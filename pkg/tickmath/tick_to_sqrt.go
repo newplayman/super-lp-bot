@@ -27,7 +27,7 @@ func TickToSqrtPriceX96(tick int64) (*big.Int, error) {
 
 	// Use Q96 as the base; apply the tick ratio iteratively
 	// For correctness, use the bit-asshift algorithm:
-	absTick := int(tick)
+	absTick := tick
 	if absTick < 0 {
 		absTick = -absTick
 	}
@@ -35,7 +35,7 @@ func TickToSqrtPriceX96(tick int64) (*big.Int, error) {
 	sqrtX96 := &big.Int{}
 	sqrtX96.Set(Q96Big) // start with 2^96
 
-	for i := 0; i < absTick; i++ {
+	for i := int64(0); i < absTick; i++ {
 		// Multiply by sqrt(1.0001) ≈ 4295128739/4294967296 (Q96 representation)
 		sqrtX96.Mul(sqrtX96, big.NewInt(4295128739))
 		sqrtX96.Div(sqrtX96, big.NewInt(4294967296))
