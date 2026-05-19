@@ -1,0 +1,41 @@
+run:
+  timeout: 5m
+  build-tags:
+    - dryrun
+    - shadow
+    - live
+    - property
+    - fork
+    - chaos
+
+linters:
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - gosimple
+    - typecheck
+    - gocritic
+    - revive
+    - gosec
+    - misspell
+    - bodyclose
+  disable:
+    - lll
+
+linters-settings:
+  gosec:
+    excludes:
+      - G404
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - gosec
+        - errcheck
+    - path: cmd/.*/main\.go
+      linters:
+        - gocritic

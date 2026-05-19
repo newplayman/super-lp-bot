@@ -1,0 +1,40 @@
+# binaries
+/bin/
+/lpbot
+/lpbot-*
+*.test
+*.exe
+*.out
+
+# coverage
+*.coverprofile
+coverage.html
+coverage.out
+
+# editor
+.vscode/
+.idea/
+.DS_Store
+
+# secrets
+*.keystore
+*.keystore.*
+.env
+.env.*
+!.env.example
+
+# data
+*.db
+*.db-*
+*.sqlite
+*.sqlite-*
+data/
+archive/
+
+# frontend
+web/.next/
+web/node_modules/
+web/out/
+
+# go
+vendor/
