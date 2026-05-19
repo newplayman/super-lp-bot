@@ -107,6 +107,9 @@ func (g *ReportGenerator) generateReport(ctx context.Context, period ReportPerio
 		Date:   date,
 	}
 
+	// Calculate summary first (needed for PnL section)
+	summary := g.calculateSummary(ctx, date)
+
 	// Build report content
 	var content string
 
@@ -125,18 +128,32 @@ func (g *ReportGenerator) generateReport(ctx context.Context, period ReportPerio
 
 	// PnL section if enabled
 	if g.config.IncludePnL {
-		content += g.buildPnLSection()
+		content += g.buildPnLSection(summary)
 	}
 
 	report.Content = content
-	report.Summary = g.calculateSummary(ctx, date)
+	report.Summary = summary
 
 	return report, nil
 }
 
-// buildPnLSection builds the PnL summary section.
-func (g *ReportGenerator) buildPnLSection() string {
-	return "## PnL Summary\n\n- Fee Income: $0.00\n- IL: $0.00\n\n"
+// buildPnLSection builds the PnL summary section with real data.
+func (g *ReportGenerator) buildPnLSection(summary ReportSummary) string {
+	return fmt.Sprintf("## PnL Summary\n\n- Fee Income: %s\n- IL: %s\n- Total PnL: %s\n- Positions Open: %d\n- Positions Closed: %d\n\n",
+		formatUSD(summary.FeeIncome),
+		formatUSD(summary.IL),
+		formatUSD(summary.TotalPnL),
+		summary.PositionsOpen,
+		summary.PositionsClosed,
+	)
+}
+
+// formatUSD formats a decimal as USD currency string.
+func formatUSD(d domain.Decimal) string {
+	if d.IsZero() {
+		return "$0.00"
+	}
+	return "$" + d.StringFixed(2)
 }
 
 // calculateSummary calculates the report summary metrics.
