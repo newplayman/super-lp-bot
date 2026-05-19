@@ -44,19 +44,22 @@ func MaxRBFAttempts() int { return 3 }
 
 // UnsignedTx represents a transaction before signing.
 type UnsignedTx struct {
-	Chain     ChainID
-	From      Address
-	To        Address
-	Data      []byte
-	Value     Decimal
-	Nonce     uint64
-	Deadline  int64
-	MinOut    Decimal
+	ID       string    // Unique identifier for the transaction
+	Chain    ChainID   // Target chain
+	From     Address   // Sender address
+	To       Address   // Recipient address
+	Data     []byte    // Calldata
+	Value    Decimal  // ETH value
+	Nonce    uint64   // Transaction nonce
+	Deadline int64    // Deadline timestamp
+	MinOut   Decimal  // Minimum output amount
 }
 
 // SignedTx is a signed transaction.
 type SignedTx struct {
 	UnsignedTx
-	Signature []byte
-	Hash      string
+	Signature   []byte
+	Hash        string
+	RFBAttempts int // Tracks RFB attempt count for this tx
+	Status      TxStatus // Current transaction status
 }

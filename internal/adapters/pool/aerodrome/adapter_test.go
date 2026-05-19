@@ -101,8 +101,11 @@ func TestAdapter_BuildAddLiquidity(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, tx)
 	require.Equal(t, domain.ChainBase, tx.Chain)
-	require.Equal(t, adapter.poolID, tx.To.String())
-	// Note: placeholder returns empty data - actual implementation will encode addLiquidity calldata
+	// Now sending to router instead of pool
+	require.Equal(t, adapter.router, tx.To)
+	// Verify calldata is not empty (proper ABI encoding)
+	require.NotEmpty(t, tx.Data)
+	require.Len(t, tx.Data, 4+32*8, "addLiquidity calldata should be 4 + 8*32 bytes")
 }
 
 func TestAdapter_BuildAddLiquidity_SingleSided(t *testing.T) {
@@ -129,28 +132,33 @@ func TestAdapter_BuildRemoveLiquidity(t *testing.T) {
 	adapter := newTestAdapter()
 	ctx := context.Background()
 
-	positionID := "0xPosition123"
+	positionID := "test-position"
 	liquidity := decimal.NewFromInt(1000000)
 
 	tx, err := adapter.BuildRemoveLiquidity(ctx, positionID, liquidity)
 	require.NoError(t, err)
 	require.NotNil(t, tx)
 	require.Equal(t, domain.ChainBase, tx.Chain)
-	require.Equal(t, adapter.poolID, tx.To.String())
-	// Note: placeholder returns empty data - actual implementation will encode removeLiquidity calldata
+	require.Equal(t, adapter.router, tx.To)
+	// Verify calldata is not empty
+	require.NotEmpty(t, tx.Data)
+	require.Len(t, tx.Data, 4+32*5, "removeLiquidity calldata should be 4 + 5*32 bytes")
 }
 
 func TestAdapter_BuildCollectFees(t *testing.T) {
 	adapter := newTestAdapter()
 	ctx := context.Background()
 
-	positionID := "0xPosition123"
+	// Use a valid address format for the gauge
+	gaugeAddress := "0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA1"
 
-	tx, err := adapter.BuildCollectFees(ctx, positionID)
+	tx, err := adapter.BuildCollectFees(ctx, gaugeAddress)
 	require.NoError(t, err)
 	require.NotNil(t, tx)
 	require.Equal(t, domain.ChainBase, tx.Chain)
-	// Note: placeholder returns empty data - actual implementation will encode claimFees calldata
+	// Verify calldata is not empty
+	require.NotEmpty(t, tx.Data)
+	require.Len(t, tx.Data, 4+32, "claimFees calldata should be 4 + 32 bytes")
 }
 
 func TestAdapter_BuildSwap(t *testing.T) {
@@ -169,8 +177,10 @@ func TestAdapter_BuildSwap(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, tx)
 	require.Equal(t, domain.ChainBase, tx.Chain)
-	require.Equal(t, adapter.poolID, tx.To.String())
-	// Note: placeholder returns empty data - actual implementation will encode swap calldata
+	// Now sending to router instead of pool
+	require.Equal(t, adapter.router, tx.To)
+	// Verify calldata is not empty
+	require.NotEmpty(t, tx.Data)
 }
 
 func TestAdapter_CompileTimeInterfaceAssertion(t *testing.T) {

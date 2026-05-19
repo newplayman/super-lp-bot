@@ -159,6 +159,15 @@ func TestWallet_Sign(t *testing.T) {
 	require.NoError(t, err)
 }
 
+// mockRPCProvider implements RPCProvider for testing
+type mockRPCProvider struct {
+	nonce uint64
+}
+
+func (m *mockRPCProvider) PendingNonceAt(_ context.Context, _ domain.Address) (uint64, error) {
+	return m.nonce, nil
+}
+
 func TestWallet_ApproveExact(t *testing.T) {
 	passphrase := "test-passphrase-123"
 	tmpDir, _ := setupTestKeystore(t, passphrase)
@@ -171,6 +180,10 @@ func TestWallet_ApproveExact(t *testing.T) {
 
 	provider, err := New(context.Background(), config)
 	require.NoError(t, err)
+
+	// Set up mock RPC provider
+	mockRPC := &mockRPCProvider{nonce: 5}
+	provider.SetRPCProvider(mockRPC)
 
 	wallet, err := provider.Open(context.Background(), config)
 	require.NoError(t, err)
@@ -214,6 +227,10 @@ func TestWallet_Revoke(t *testing.T) {
 	provider, err := New(context.Background(), config)
 	require.NoError(t, err)
 
+	// Set up mock RPC provider
+	mockRPC := &mockRPCProvider{nonce: 5}
+	provider.SetRPCProvider(mockRPC)
+
 	wallet, err := provider.Open(context.Background(), config)
 	require.NoError(t, err)
 
@@ -232,6 +249,40 @@ func TestWallet_Revoke(t *testing.T) {
 	// Verify the calldata encodes approve(address, 0)
 	// Selector (4 bytes) + padded address (32 bytes) + padded 0 (32 bytes) = 68 bytes
 	assert.Equal(t, 68, len(revokeTx.Data))
+
+	err = wallet.Close()
+	require.NoError(t, err)
+}
+
+func TestWallet_ApproveExact_NoRPCProvider(t *testing.T) {
+	passphrase := "test-passphrase-123"
+	tmpDir, _ := setupTestKeystore(t, passphrase)
+
+	config := ports.WalletConfig{
+		KeystoreDir: tmpDir,
+		Passphrase:  passphrase,
+		ChainID:     domain.ChainBase,
+	}
+
+	provider, err := New(context.Background(), config)
+	require.NoError(t, err)
+
+	// Don't set RPC provider - should fail with proper error
+	wallet, err := provider.Open(context.Background(), config)
+	require.NoError(t, err)
+
+	// Build approve transaction - should fail due to no RPC provider
+	tokenAddr := domain.MustParseAddress("0x1234567890123456789012345678901234567890")
+	spenderAddr := domain.MustParseAddress("0x0987654321098765432109876543210987654321")
+
+	_, err = wallet.ApproveExact(
+		context.Background(),
+		tokenAddr,
+		spenderAddr,
+		big.NewInt(1000000),
+	)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "RPC provider required")
 
 	err = wallet.Close()
 	require.NoError(t, err)

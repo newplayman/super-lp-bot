@@ -28,13 +28,33 @@ CREATE TABLE IF NOT EXISTS orders (
 
 CREATE TABLE IF NOT EXISTS transactions (
     id TEXT PRIMARY KEY,
+    chain TEXT NOT NULL,
     tx_hash TEXT NOT NULL UNIQUE,
-    block_number INTEGER NOT NULL,
-    status TEXT NOT NULL,
+    from_address TEXT NOT NULL,
+    to_address TEXT NOT NULL,
+    data BLOB,
+    value TEXT NOT NULL DEFAULT '0',
+    nonce INTEGER NOT NULL DEFAULT 0,
+    deadline INTEGER NOT NULL DEFAULT 0,
+    min_out TEXT NOT NULL DEFAULT '0',
+    signature BLOB,
+    status TEXT NOT NULL DEFAULT 'built',
+    block_number INTEGER,
+    block_hash TEXT,
+    broadcast_at INTEGER,
     gas_used TEXT,
     gas_price TEXT,
-    created_at INTEGER NOT NULL
+    gas_limit TEXT,
+    rfb_attempts INTEGER NOT NULL DEFAULT 0,
+    error_msg TEXT,
+    trace_id TEXT,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
 );
+
+CREATE INDEX IF NOT EXISTS idx_transactions_chain_status ON transactions(chain, status);
+CREATE INDEX IF NOT EXISTS idx_transactions_hash ON transactions(tx_hash);
+CREATE INDEX IF NOT EXISTS idx_transactions_broadcast_at ON transactions(broadcast_at);
 
 CREATE TABLE IF NOT EXISTS pool_states (
     id TEXT PRIMARY KEY,
@@ -132,6 +152,9 @@ DROP TABLE IF EXISTS pnl_ledger;
 DROP TABLE IF EXISTS pool_score_history;
 DROP TABLE IF EXISTS pools;
 DROP TABLE IF EXISTS pool_states;
+DROP INDEX IF EXISTS idx_transactions_chain_status;
+DROP INDEX IF EXISTS idx_transactions_hash;
+DROP INDEX IF EXISTS idx_transactions_broadcast_at;
 DROP TABLE IF EXISTS transactions;
 DROP TABLE IF EXISTS orders;
 DROP TABLE IF EXISTS positions;

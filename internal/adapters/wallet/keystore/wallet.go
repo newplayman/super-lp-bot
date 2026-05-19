@@ -29,13 +29,20 @@ var (
 	ErrNoPrivateKey   = errors.New("private key not available")
 	ErrInvalidChainID = errors.New("invalid chain ID")
 	ErrKeyMismatch    = errors.New("address does not match keystore")
+	ErrNoRPCProvider = errors.New("RPC provider required for nonce queries")
 )
 
 // keystoreWallet implements ports.Wallet using an encrypted keystore file.
 type keystoreWallet struct {
-	key     *keystore.Key
-	address domain.Address
-	chainID domain.ChainID
+	key         *keystore.Key
+	address     domain.Address
+	chainID     domain.ChainID
+	rpcProvider RPCProvider // For nonce queries
+}
+
+// RPCProvider interface for getting nonces
+type RPCProvider interface {
+	PendingNonceAt(ctx context.Context, addr domain.Address) (uint64, error)
 }
 
 // New creates a new keystore wallet provider.
@@ -71,13 +78,20 @@ type WalletProvider struct {
 	passphrase string
 	chainID    domain.ChainID
 	address    domain.Address
+	rpcProvider RPCProvider
+}
+
+// SetRPCProvider sets the RPC provider for nonce queries.
+func (p *WalletProvider) SetRPCProvider(rpc RPCProvider) {
+	p.rpcProvider = rpc
 }
 
 // Open creates a new keystoreWallet instance by loading and decrypting a keystore file.
 func (p *WalletProvider) Open(_ context.Context, config ports.WalletConfig) (ports.Wallet, error) {
 	// Create wallet with decrypted key
 	wallet := &keystoreWallet{
-		chainID: p.chainID,
+		chainID:     p.chainID,
+		rpcProvider: p.rpcProvider,
 	}
 
 	// Find keystore file
@@ -216,7 +230,7 @@ func (w *keystoreWallet) ApproveExact(ctx context.Context, token, spender domain
 	)
 	data = append(data, common.LeftPadBytes(amount.Bytes(), 32)...)
 
-	nonce, err := w.getNonce(token)
+	nonce, err := w.getNonce(ctx, token)
 	if err != nil {
 		return domain.UnsignedTx{}, fmt.Errorf("failed to get nonce: %w", err)
 	}
@@ -277,11 +291,12 @@ func (w *keystoreWallet) buildEVMTransaction(tx domain.UnsignedTx, chainID *big.
 }
 
 // getNonce returns the next nonce for the given address.
-// This is a placeholder - in production, this should query the blockchain.
-func (w *keystoreWallet) getNonce(addr domain.Address) (uint64, error) {
-	// TODO: Query the blockchain for the actual nonce
-	// For now, return 0 - caller should fetch nonce separately
-	return 0, nil
+// Uses the RPC provider to query the blockchain for the actual nonce.
+func (w *keystoreWallet) getNonce(ctx context.Context, addr domain.Address) (uint64, error) {
+	if w.rpcProvider == nil {
+		return 0, ErrNoRPCProvider
+	}
+	return w.rpcProvider.PendingNonceAt(ctx, addr)
 }
 
 // chainIDToBigInt converts domain.ChainID to *big.Int.
