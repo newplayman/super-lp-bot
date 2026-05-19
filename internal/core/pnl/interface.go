@@ -12,34 +12,33 @@ import (
 	"context"
 
 	"github.com/lpbot/lpbot/internal/domain"
-	"github.com/lpbot/lpbot/pkg/decimal"
 )
 
 // PriceSource provides current prices for token pairs.
 // Used for mark-to-market calculations.
 type PriceSource interface {
 	// GetPrice returns the current price for a token pair in USD.
-	// Returns decimal.Zero if price unavailable.
-	GetPrice(ctx context.Context, token0, token1 string) (price0USD, price1USD decimal.Decimal, err error)
+	// Returns zero if price unavailable.
+	GetPrice(ctx context.Context, token0, token1 string) (price0USD, price1USD domain.Decimal, err error)
 }
 
 // PnLResult contains the breakdown of a position's PnL.
 type PnLResult struct {
 	// FeeUSD is the realized fee income (non-negative).
-	FeeUSD decimal.Decimal
+	FeeUSD domain.Decimal
 	// ILUSD is the impermanent loss (non-positive).
-	ILUSD decimal.Decimal
+	ILUSD domain.Decimal
 	// NetPnLUSD is fee + IL (can be positive or negative).
-	NetPnLUSD decimal.Decimal
+	NetPnLUSD domain.Decimal
 }
 
 // PositionSnapshot represents a point-in-time valuation of a position.
 type PositionSnapshot struct {
 	PositionID   string
-	ValuationUSD decimal.Decimal
-	FeeUSD       decimal.Decimal
-	ILUSD        decimal.Decimal
-	NetPnLUSD    decimal.Decimal
+	ValuationUSD domain.Decimal
+	FeeUSD       domain.Decimal
+	ILUSD        domain.Decimal
+	NetPnLUSD    domain.Decimal
 	BlockRef     domain.BlockRef
 }
 

@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/lpbot/lpbot/internal/domain"
-	"github.com/lpbot/lpbot/pkg/decimal"
 	"github.com/stretchr/testify/require"
 )
 
@@ -14,35 +13,35 @@ var _ PnLTracker = (*defaultPnL)(nil)
 
 // mockPriceSource is a mock implementation of PriceSource for testing.
 type mockPriceSource struct {
-	price0 decimal.Decimal
-	price1 decimal.Decimal
+	price0 domain.Decimal
+	price1 domain.Decimal
 	err    error
 }
 
-func (m *mockPriceSource) GetPrice(ctx context.Context, token0, token1 string) (decimal.Decimal, decimal.Decimal, error) {
+func (m *mockPriceSource) GetPrice(ctx context.Context, token0, token1 string) (domain.Decimal, domain.Decimal, error) {
 	return m.price0, m.price1, m.err
 }
 
 // TestPnLResultConstants verifies PnLResult fields exist
 func TestPnLResultConstants(t *testing.T) {
 	result := PnLResult{
-		FeeUSD:    decimal.FromInt(100),
-		ILUSD:     decimal.MustFromString("-50"),
-		NetPnLUSD: decimal.FromInt(50),
+		FeeUSD:    domain.MustDecimal("100"),
+		ILUSD:     domain.MustDecimal("-50"),
+		NetPnLUSD: domain.MustDecimal("50"),
 	}
 	require.True(t, result.FeeUSD.IsPositive())
-	require.True(t, result.ILUSD.IsNeg())
-	require.Equal(t, decimal.FromInt(50), result.NetPnLUSD)
+	require.True(t, result.ILUSD.IsNegative())
+	require.Equal(t, domain.MustDecimal("50"), result.NetPnLUSD)
 }
 
 // TestPositionSnapshotFields verifies snapshot structure
 func TestPositionSnapshotFields(t *testing.T) {
 	snapshot := PositionSnapshot{
 		PositionID:   "pos-123",
-		ValuationUSD: decimal.FromInt(1000),
-		FeeUSD:       decimal.FromInt(50),
-		ILUSD:        decimal.MustFromString("-20"),
-		NetPnLUSD:    decimal.FromInt(30),
+		ValuationUSD: domain.MustDecimal("1000"),
+		FeeUSD:       domain.MustDecimal("50"),
+		ILUSD:        domain.MustDecimal("-20"),
+		NetPnLUSD:    domain.MustDecimal("30"),
 		BlockRef: domain.BlockRef{
 			Chain:    domain.ChainBase,
 			Number:   12345678,
@@ -51,15 +50,15 @@ func TestPositionSnapshotFields(t *testing.T) {
 		},
 	}
 	require.Equal(t, "pos-123", snapshot.PositionID)
-	require.True(t, snapshot.ValuationUSD.GreaterThan(decimal.Zero))
+	require.True(t, snapshot.ValuationUSD.GreaterThan(domain.Zero))
 }
 
 // TestPnLTrackerInterface defines the interface contract for PnLTracker.
 // These tests verify that the interface is properly defined and can be used.
 func TestPnLTrackerInterface(t *testing.T) {
 	priceSource := &mockPriceSource{
-		price0: decimal.FromInt(2000),
-		price1: decimal.FromInt(1),
+		price0: domain.MustDecimal("2000"),
+		price1: domain.MustDecimal("1"),
 	}
 
 	tracker := NewDefaultPnL(priceSource)
@@ -132,7 +131,7 @@ func TestUntrackPositionPanics(t *testing.T) {
 
 // TestNewDefaultPnLCreation verifies constructor works
 func TestNewDefaultPnLCreation(t *testing.T) {
-	ps := &mockPriceSource{price0: decimal.FromInt(100), price1: decimal.FromInt(1)}
+	ps := &mockPriceSource{price0: domain.MustDecimal("100"), price1: domain.MustDecimal("1")}
 	tracker := NewDefaultPnL(ps)
 	require.NotNil(t, tracker)
 }
