@@ -99,8 +99,8 @@ func (t *PnLTrackerImpl) UntrackPosition(ctx context.Context, positionID string)
 // Called periodically (e.g., every block or N seconds).
 // Returns the number of positions updated.
 func (t *PnLTrackerImpl) MarkPrice(ctx context.Context) (int, error) {
-	t.mu.RLock()
-	defer t.mu.RUnlock()
+	t.mu.Lock()
+	defer t.mu.Unlock()
 
 	count := 0
 	for posID, tp := range t.positions {

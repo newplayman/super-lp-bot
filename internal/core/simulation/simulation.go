@@ -15,6 +15,7 @@ package simulation
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/lpbot/lpbot/internal/ports"
 	"github.com/shopspring/decimal"
@@ -69,7 +70,28 @@ func (s *defaultSimulation) SimulateAndValidate(ctx context.Context, req Simulat
 }
 
 // SimulateSequenceAndValidate implements Simulator.
+// Runs multiple simulations in sequence, where state persists across transactions.
+// Returns annotated results for each transaction in order.
 func (s *defaultSimulation) SimulateSequenceAndValidate(ctx context.Context, reqs []SimulationRequest) ([]SimulationResponse, error) {
-	// TODO: implement sequence validation
-	return nil, nil
+	if len(reqs) == 0 {
+		return []SimulationResponse{}, nil
+	}
+
+	results := make([]SimulationResponse, 0, len(reqs))
+
+	for i := range reqs {
+		resp, err := s.SimulateAndValidate(ctx, reqs[i])
+		if err != nil {
+			// Return partial results on error
+			return results, fmt.Errorf("sequence simulation failed at step %d: %w", i, err)
+		}
+		results = append(results, *resp)
+
+		// If any transaction fails, stop the sequence
+		if resp.Result != nil && !resp.Result.Success {
+			return results, nil
+		}
+	}
+
+	return results, nil
 }
