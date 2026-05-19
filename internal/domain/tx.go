@@ -1,0 +1,62 @@
+package domain
+
+// TxStatus represents the state of a transaction.
+type TxStatus string
+
+const (
+	TxBuilt     TxStatus = "built"
+	TxBroadcast TxStatus = "broadcast"
+	TxMined     TxStatus = "mined"
+	TxConfirmed TxStatus = "confirmed"
+	TxStuck     TxStatus = "stuck"
+	TxRFBBumped TxStatus = "rbf_bumped"
+	TxFailed    TxStatus = "failed"
+	TxReverted  TxStatus = "reverted"
+	TxReorged   TxStatus = "reorged"
+)
+
+// TxValidTransitions maps current status → allowed next statuses.
+var TxValidTransitions = map[TxStatus][]TxStatus{
+	TxBuilt:     {TxBroadcast, TxFailed},
+	TxBroadcast: {TxMined, TxStuck, TxReverted, TxReorged},
+	TxMined:     {TxConfirmed, TxReverted, TxReorged},
+	TxConfirmed: {},
+	TxStuck:     {TxRFBBumped, TxFailed},
+	TxRFBBumped: {TxMined, TxStuck, TxFailed}, // stuck again possible
+	TxFailed:    {},
+	TxReverted:  {TxBroadcast, TxFailed},      // retry possible
+	TxReorged:   {TxBroadcast, TxFailed},      // rebroadcast or give up
+}
+
+// CanTransitionTo checks if a transition from current → next is valid.
+func (s TxStatus) CanTransitionTo(next TxStatus) bool {
+	allowed := TxValidTransitions[s]
+	for _, a := range allowed {
+		if a == next {
+			return true
+		}
+	}
+	return false
+}
+
+// MaxRBFAttempts returns the maximum RBF attempts allowed.
+func MaxRBFAttempts() int { return 3 }
+
+// UnsignedTx represents a transaction before signing.
+type UnsignedTx struct {
+	Chain     ChainID
+	From      Address
+	To        Address
+	Data      []byte
+	Value     Decimal
+	Nonce     uint64
+	Deadline  int64
+	MinOut    Decimal
+}
+
+// SignedTx is a signed transaction.
+type SignedTx struct {
+	UnsignedTx
+	Signature []byte
+	Hash      string
+}
