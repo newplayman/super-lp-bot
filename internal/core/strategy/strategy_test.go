@@ -6,6 +6,8 @@ import (
 	"github.com/lpbot/lpbot/internal/core/strategy"
 )
 
+// TestStrategyNotImplemented - Phase 0 scaffold test
+// Invariants (spec §9.2): #1 (total nominal exposure ≤ cap), #2 (no duplicate active position per pool)
 func TestStrategyNotImplemented(t *testing.T) {
 	// Phase 0: Strategy stub should exist but panic on operations
 	s := strategy.New()
@@ -13,7 +15,7 @@ func TestStrategyNotImplemented(t *testing.T) {
 		t.Fatal("strategy.New() returned nil")
 	}
 	// Skip actual operation tests - they will panic as expected
-	t.Skip("Phase 1 task T-301: implement EvaluatePool")
+	t.Skip("Phase 1 task T-313: implement EvaluatePool")
 }
 
 func TestRangeCalculatorNotImplemented(t *testing.T) {
