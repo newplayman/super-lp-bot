@@ -28,14 +28,19 @@ var _ ports.PositionRepo = (*PositionRepo)(nil)
 // Save persists a position. If position exists, it is updated.
 func (r *PositionRepo) Save(ctx context.Context, pos *domain.Position) error {
 	table := r.prefix + "positions"
+	// Schema: id, chain, pool_id, token0, token1, tick_lower, tick_upper,
+	//         liquidity, amount0, amount1, tvl_usd, status, opened_at, updated_at, closed_at
 	query := fmt.Sprintf(`
 		INSERT INTO %s (
 			id, chain, pool_id, token0, token1, tick_lower, tick_upper,
-			liquidity, amount0, amount1, tvl_usd, status, tier, opened_at, updated_at, closed_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			liquidity, amount0, amount1, tvl_usd, status, opened_at, updated_at, closed_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET
 			status = excluded.status,
-			tier = excluded.tier,
+			tick_lower = excluded.tick_lower,
+			tick_upper = excluded.tick_upper,
+			amount0 = excluded.amount0,
+			amount1 = excluded.amount1,
 			updated_at = excluded.updated_at,
 			closed_at = excluded.closed_at
 	`, table)
@@ -44,10 +49,11 @@ func (r *PositionRepo) Save(ctx context.Context, pos *domain.Position) error {
 
 	_, err := r.db.ExecContext(ctx, query,
 		pos.ID, string(pos.Chain), pos.PoolID,
-		"", "", // token0/token1 not in Position struct
+		"", "", // token0/token1 placeholder
 		pos.TickLower, pos.TickUpper,
-		"", "", "", // liquidity/amount0/amount1/tvl_usd not in Position struct
-		string(pos.Status), string(pos.Tier),
+		"0", "0", "0", // liquidity/amount0/amount1 placeholder
+		"0", // tvl_usd placeholder
+		string(pos.Status),
 		pos.OpenedAt, now, pos.ClosedAt,
 	)
 	return err
@@ -56,18 +62,22 @@ func (r *PositionRepo) Save(ctx context.Context, pos *domain.Position) error {
 // FindByID retrieves a position by its unique identifier.
 func (r *PositionRepo) FindByID(ctx context.Context, id string) (*domain.Position, error) {
 	table := r.prefix + "positions"
+	// Schema: id, chain, pool_id, token0, token1, tick_lower, tick_upper,
+	//         liquidity, amount0, amount1, tvl_usd, status, opened_at, updated_at, closed_at
 	query := fmt.Sprintf(`
-		SELECT id, chain, pool_id, status, tier, tick_lower, tick_upper, opened_at, updated_at, closed_at
+		SELECT id, chain, pool_id, tick_lower, tick_upper, amount0, amount1, status, opened_at, closed_at
 		FROM %s WHERE id = ?
 	`, table)
 
 	var pos domain.Position
-	var chain, status, tier string
+	var chain, status string
 	var openedAt, closedAt int64
 
 	err := r.db.QueryRowContext(ctx, query, id).Scan(
-		&pos.ID, &chain, &pos.PoolID, &status, &tier,
-		&pos.TickLower, &pos.TickUpper, &openedAt, &closedAt,
+		&pos.ID, &chain, &pos.PoolID,
+		&pos.TickLower, &pos.TickUpper,
+		new(string), new(string), // amount0, amount1 - ignore
+		&status, &openedAt, &closedAt,
 	)
 	if err == sql.ErrNoRows {
 		return nil, ports.ErrPositionNotFound
@@ -78,7 +88,6 @@ func (r *PositionRepo) FindByID(ctx context.Context, id string) (*domain.Positio
 
 	pos.Chain = domain.ChainID(chain)
 	pos.Status = domain.PositionStatus(status)
-	pos.Tier = domain.Tier(tier)
 	pos.OpenedAt = openedAt
 	pos.ClosedAt = closedAt
 
@@ -115,7 +124,7 @@ func (r *PositionRepo) FindByPoolAndStatus(ctx context.Context, poolID string, s
 // FindByChainAndStatus returns positions matching chain and status filters.
 func (r *PositionRepo) FindByChainAndStatus(ctx context.Context, chain domain.ChainID, status domain.PositionStatus) ([]*domain.Position, error) {
 	table := r.prefix + "positions"
-	query := fmt.Sprintf(`SELECT id FROM %s WHERE 1=1`, table)
+	query := `SELECT id, chain, pool_id, tick_lower, tick_upper, amount0, amount1, status, opened_at, closed_at FROM ` + table + ` WHERE 1=1`
 	args := []interface{}{}
 
 	if chain != "" {
@@ -135,14 +144,24 @@ func (r *PositionRepo) FindByChainAndStatus(ctx context.Context, chain domain.Ch
 
 	var positions []*domain.Position
 	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
+		var pos domain.Position
+		var chainStr, statusStr string
+		var openedAt, closedAt int64
+
+		err := rows.Scan(
+			&pos.ID, &chainStr, &pos.PoolID,
+			&pos.TickLower, &pos.TickUpper,
+			new(string), new(string), // amount0, amount1
+			&statusStr, &openedAt, &closedAt,
+		)
+		if err != nil {
 			continue
 		}
-		pos, err := r.FindByID(ctx, id)
-		if err == nil {
-			positions = append(positions, pos)
-		}
+		pos.Chain = domain.ChainID(chainStr)
+		pos.Status = domain.PositionStatus(statusStr)
+		pos.OpenedAt = openedAt
+		pos.ClosedAt = closedAt
+		positions = append(positions, &pos)
 	}
 
 	return positions, rows.Err()

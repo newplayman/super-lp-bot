@@ -19,8 +19,8 @@ type LedgerRepo struct {
 }
 
 // NewLedgerRepo creates a new LedgerRepo backed by the given database.
-func NewLedgerRepo(db *sql.DB) *LedgerRepo {
-	return &LedgerRepo{db: db, prefix: "shadow_"}
+func NewLedgerRepo(db *sql.DB, prefix string) *LedgerRepo {
+	return &LedgerRepo{db: db, prefix: prefix}
 }
 
 // Compile-time interface assertion
@@ -35,7 +35,12 @@ func (r *LedgerRepo) Append(ctx context.Context, entry ports.LedgerEntry) (ports
 	`, table)
 
 	now := time.Now().UnixMilli()
-	id := fmt.Sprintf("ledger_%d_%s", now, entry.PositionID)
+
+	// Use provided ID or generate unique one
+	id := entry.ID
+	if id == "" {
+		id = fmt.Sprintf("ledger_%d_%s", now, entry.PositionID)
+	}
 
 	_, err := r.db.ExecContext(ctx, query,
 		id,

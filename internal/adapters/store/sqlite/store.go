@@ -55,8 +55,8 @@ func NewStore(dbPath string) (*Store, error) {
 		txRepo:     NewTxRepo(db, prefix+"_"),
 		posRepo:    NewPositionRepo(db, prefix+"_"),
 		poolRepo:   NewPoolRepo(db, prefix+"_"),
-		ledgerRepo: NewLedgerRepo(db),
-		riskRepo:   NewRiskRepo(db),
+		ledgerRepo: NewLedgerRepo(db, prefix+"_"),
+		riskRepo:   NewRiskRepo(db, prefix+"_"),
 	}
 
 	// Run migrations

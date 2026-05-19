@@ -17,27 +17,32 @@ type RiskRepo struct {
 }
 
 // NewRiskRepo creates a new RiskRepo.
-func NewRiskRepo(db *sql.DB) *RiskRepo {
-	return &RiskRepo{db: db, prefix: "shadow_"}
+func NewRiskRepo(db *sql.DB, prefix string) *RiskRepo {
+	return &RiskRepo{db: db, prefix: prefix}
 }
 
 // Compile-time interface assertion
 var _ ports.RiskRepo = (*RiskRepo)(nil)
 
 // AppendRiskEvent appends a new risk event to the audit trail.
+// Schema: id, event_type, severity, description, data, resolved, created_at
 func (r *RiskRepo) AppendRiskEvent(ctx context.Context, event ports.RiskEvent) error {
 	table := r.prefix + "risk_events"
 	query := fmt.Sprintf(`
-		INSERT INTO %s (id, position_id, pool_key, source, action, level, details, timestamp)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO %s (id, event_type, severity, description, data, resolved, created_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
 	`, table)
 
 	now := time.Now().UnixMilli()
 
 	_, err := r.db.ExecContext(ctx, query,
-		event.ID, event.PositionID, event.PoolKey,
-		string(event.Source), string(event.Action), string(event.Level),
-		event.Details, now,
+		event.ID,
+		string(event.Source), // event_type <- Source
+		string(event.Level), // severity <- Level
+		event.Details,       // description <- Details
+		"",                  // data placeholder
+		0,                   // resolved (default false)
+		now,
 	)
 	return err
 }
@@ -45,27 +50,15 @@ func (r *RiskRepo) AppendRiskEvent(ctx context.Context, event ports.RiskEvent) e
 // ListRiskEvents returns risk events matching the provided filters.
 func (r *RiskRepo) ListRiskEvents(ctx context.Context, filter ports.RiskEventFilter) ([]ports.RiskEvent, error) {
 	table := r.prefix + "risk_events"
-	query := fmt.Sprintf(`SELECT id, position_id, pool_key, source, action, level, details, timestamp FROM %s WHERE 1=1`, table)
+	query := fmt.Sprintf(`SELECT id, event_type, severity, description, data, created_at FROM %s WHERE 1=1`, table)
 	args := []interface{}{}
 
-	if filter.PoolKey != "" {
-		query += " AND pool_key = ?"
-		args = append(args, filter.PoolKey)
-	}
-	if filter.PositionID != "" {
-		query += " AND position_id = ?"
-		args = append(args, filter.PositionID)
-	}
 	if filter.Source != "" {
-		query += " AND source = ?"
+		query += " AND event_type = ?"
 		args = append(args, string(filter.Source))
 	}
-	if filter.Since > 0 {
-		query += " AND timestamp >= ?"
-		args = append(args, filter.Since)
-	}
 
-	query += " ORDER BY timestamp DESC"
+	query += " ORDER BY created_at DESC"
 	if filter.Limit > 0 {
 		query += " LIMIT ?"
 		args = append(args, filter.Limit)
@@ -82,7 +75,8 @@ func (r *RiskRepo) ListRiskEvents(ctx context.Context, filter ports.RiskEventFil
 	var events []ports.RiskEvent
 	for rows.Next() {
 		var e ports.RiskEvent
-		err := rows.Scan(&e.ID, &e.PositionID, &e.PoolKey, &e.Source, &e.Action, &e.Level, &e.Details, &e.Timestamp)
+		var data string
+		err := rows.Scan(&e.ID, &e.Source, &e.Level, &e.Details, &data, &e.Timestamp)
 		if err != nil {
 			continue
 		}
@@ -93,21 +87,41 @@ func (r *RiskRepo) ListRiskEvents(ctx context.Context, filter ports.RiskEventFil
 }
 
 // GetKillState retrieves the current kill switch state.
+// Schema: id, switch_type, triggered_at, trigger_reason, auto_resume_at, resumed_at, resume_allowed
 func (r *RiskRepo) GetKillState(ctx context.Context) (ports.KillState, error) {
 	table := r.prefix + "kill_switch_state"
-	query := fmt.Sprintf(`SELECT level, sources, since, reason, unlocker FROM %s ORDER BY since DESC LIMIT 1`, table)
+	query := fmt.Sprintf(`SELECT switch_type, triggered_at, trigger_reason FROM %s ORDER BY triggered_at DESC LIMIT 1`, table)
 
 	var state ports.KillState
-	var sources string
+	var switchType string
+	var triggeredAt int64
 
-	err := r.db.QueryRowContext(ctx, query).Scan(
-		&state.Level, &sources, &state.Since, &state.Reason, &state.Unlocker,
-	)
+	err := r.db.QueryRowContext(ctx, query).Scan(&switchType, &triggeredAt, &state.Reason)
 	if err == sql.ErrNoRows {
 		return ports.KillState{Level: ports.KillLevelOK}, nil
 	}
 	if err != nil {
 		return ports.KillState{Level: ports.KillLevelOK}, nil
+	}
+
+	state.Since = time.UnixMilli(triggeredAt)
+
+	// Determine kill level based on switch type
+	switch switchType {
+	case "daily_dd":
+		state.Level = ports.KillLevelWarn
+	case "weekly_dd":
+		state.Level = ports.KillLevelFreeze
+	case "manual":
+		state.Level = ports.KillLevelKill
+	case "warn":
+		state.Level = ports.KillLevelWarn
+	case "freeze":
+		state.Level = ports.KillLevelFreeze
+	case "kill":
+		state.Level = ports.KillLevelKill
+	default:
+		state.Level = ports.KillLevelOK
 	}
 
 	return state, nil
@@ -117,23 +131,28 @@ func (r *RiskRepo) GetKillState(ctx context.Context) (ports.KillState, error) {
 func (r *RiskRepo) UpsertKillState(ctx context.Context, state ports.KillState) error {
 	table := r.prefix + "kill_switch_state"
 	query := fmt.Sprintf(`
-		INSERT INTO %s (id, level, sources, since, reason, unlocker, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO %s (id, switch_type, triggered_at, trigger_reason, resume_allowed, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET
-			level = excluded.level,
-			sources = excluded.sources,
-			since = excluded.since,
-			reason = excluded.reason,
-			unlocker = excluded.unlocker,
+			trigger_reason = excluded.trigger_reason,
 			updated_at = excluded.updated_at
 	`, table)
 
-	now := time.Now()
-	id := "kill_switch_state" // single row
+	now := time.Now().UnixMilli()
+
+	// Map level to switch_type string
+	switchType := string(state.Level)
+	if state.Level == "" {
+		switchType = "ok"
+	}
 
 	_, err := r.db.ExecContext(ctx, query,
-		id, string(state.Level), "", now,
-		state.Reason, state.Unlocker, now,
+		"kill_switch_state",
+		switchType,
+		state.Since.UnixMilli(),
+		state.Reason,
+		1, // resume_allowed default
+		now,
 	)
 	return err
 }
