@@ -2,6 +2,7 @@ package decimal
 
 import (
 	"fmt"
+	"math/big"
 	sd "github.com/shopspring/decimal"
 )
 
@@ -30,6 +31,8 @@ func MustFromString(s string) Decimal {
 
 func FromInt(i int64) Decimal { return Decimal{v: sd.NewFromInt(i)} }
 
+func FromBigInt(i *big.Int) Decimal { return Decimal{v: sd.NewFromBigInt(i, 0)} }
+
 // pow10 returns 10^n for n >= 0
 func pow10(n int64) int64 {
 	r := int64(1)
@@ -42,5 +45,5 @@ func pow10(n int64) int64 {
 func (d Decimal) String() string { return d.v.String() }
 
 func (d Decimal) IsZero() bool      { return d.v.IsZero() }
-func (d Decimal) IsNeg() bool       { return d.v.IsNegative() }
+func (d Decimal) IsNeg() bool        { return d.v.IsNegative() }
 func (d Decimal) IsPositive() bool  { return d.v.IsPositive() }
