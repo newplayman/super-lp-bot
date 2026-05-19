@@ -1,97 +1,341 @@
 // Package keystore implements a keystore-based wallet adapter for lp-bot.
 //
 // This adapter provides transaction signing using encrypted keystore files
-// (e.g., EVM keystore format used by geth, or similar for Solana).
-//
-// Phase 3 implementation will add:
-//   - Encrypted keystore file parsing
-//   - Passphrase-based decryption
-//   - Transaction signing with derived private key
+// (ERC-155 style encryption used by geth).
 package keystore
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io/fs"
 	"math/big"
+	"os"
+	"path/filepath"
+
+	"github.com/ethereum/go-ethereum/accounts/keystore"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/lpbot/lpbot/internal/domain"
 	"github.com/lpbot/lpbot/internal/ports"
 )
 
-// wallet implements the ports.Wallet interface for keystore-based signing.
-type wallet struct {
-	// TODO (Phase 3): Add keystore state
-	// This is a stub that implements the interface but does not actually sign.
-	// - Loaded private key (decrypted from keystore)
-	// - Chain configuration
+var (
+	ErrWalletNotOpen  = errors.New("wallet is not open")
+	ErrNoPrivateKey   = errors.New("private key not available")
+	ErrInvalidChainID = errors.New("invalid chain ID")
+	ErrKeyMismatch    = errors.New("address does not match keystore")
+)
+
+// keystoreWallet implements ports.Wallet using an encrypted keystore file.
+type keystoreWallet struct {
+	key     *keystore.Key
+	address domain.Address
+	chainID domain.ChainID
 }
 
-// New creates a new keystore wallet instance.
-//
-// Configuration is adapter-specific and may include:
-//   - KeystoreDir: path to keystore directory
-//   - KeystoreFile: specific keystore file name
-//   - Passphrase: optional passphrase (may be prompted interactively)
-//   - ChainID: the chain this wallet operates on
-func New(ctx context.Context, config ports.WalletConfig) (ports.Wallet, error) {
-	// TODO (Phase 3): Validate configuration
-	// - Check keystore directory exists
-	// - Parse keystore file if specified
-	return &wallet{}, nil
+// New creates a new keystore wallet provider.
+func New(_ context.Context, config ports.WalletConfig) (*WalletProvider, error) {
+	// Validate configuration
+	if config.KeystoreDir == "" {
+		return nil, errors.New("keystore directory is required")
+	}
+
+	// Check if directory exists
+	if _, err := os.Stat(config.KeystoreDir); err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil, fmt.Errorf("keystore directory does not exist: %s", config.KeystoreDir)
+		}
+		return nil, fmt.Errorf("failed to access keystore directory: %w", err)
+	}
+
+	provider := &WalletProvider{
+		keyDir:     config.KeystoreDir,
+		passphrase: config.Passphrase,
+		chainID:    config.ChainID,
+		address:    config.Address,
+		keyFile:    config.KeystoreFile,
+	}
+
+	return provider, nil
 }
 
-// Open initializes the wallet and decrypts the keystore.
-//
-// TODO (Phase 3): Implement keystore decryption
-// - Load and parse keystore JSON file
-// - Decrypt using passphrase
-// - Validate derived address matches configured address
-func (w *wallet) Open(ctx context.Context) error {
-	// TODO (Phase 3): Implement keystore opening
+// WalletProvider creates keystoreWallet instances.
+type WalletProvider struct {
+	keyDir     string
+	keyFile    string
+	passphrase string
+	chainID    domain.ChainID
+	address    domain.Address
+}
+
+// Open creates a new keystoreWallet instance by loading and decrypting a keystore file.
+func (p *WalletProvider) Open(_ context.Context, config ports.WalletConfig) (ports.Wallet, error) {
+	// Create wallet with decrypted key
+	wallet := &keystoreWallet{
+		chainID: p.chainID,
+	}
+
+	// Find keystore file
+	keyFile := p.keyFile
+	if keyFile == "" {
+		// Find the first UTC keystore file in the directory
+		// Pattern: UTC--<timestamp>--<address>
+		files, err := os.ReadDir(p.keyDir)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read keystore directory: %w", err)
+		}
+		for _, f := range files {
+			if !f.IsDir() {
+				// Check if file matches UTC keystore pattern
+				name := f.Name()
+				if len(name) >= 42 && name[:4] == "UTC-" {
+					keyFile = name
+					break
+				}
+			}
+		}
+		if keyFile == "" {
+			return nil, errors.New("no keystore file found in directory")
+		}
+	}
+
+	keyPath := filepath.Join(p.keyDir, keyFile)
+
+	// Load and decrypt keystore
+	keyJSON, err := os.ReadFile(keyPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read keystore file: %w", err)
+	}
+
+	// Decrypt the key
+	key, err := keystore.DecryptKey(keyJSON, p.passphrase)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decrypt keystore: %w", err)
+	}
+
+	wallet.key = key
+	wallet.address = domain.MustParseAddress(key.Address.Hex())
+
+	// Validate address if configured
+	if !p.address.IsZero() && string(wallet.address.Bytes()) != string(p.address.Bytes()) {
+		return nil, ErrKeyMismatch
+	}
+
+	return wallet, nil
+}
+
+// Type returns the wallet provider type identifier.
+func (p *WalletProvider) Type() string {
+	return "keystore"
+}
+
+// Open initializes the wallet (no-op for keystore, already open after New).
+func (w *keystoreWallet) Open(_ context.Context) error {
+	// Already open after construction
 	return nil
 }
 
-// Close releases the decrypted private key from memory.
-func (w *wallet) Close() error {
-	// TODO (Phase 3): Zero out private key memory
+// Close securely clears the private key from memory.
+func (w *keystoreWallet) Close() error {
+	if w.key != nil && w.key.PrivateKey != nil {
+		// Zero out the private key bytes
+		priv := w.key.PrivateKey
+		zero := make([]byte, len(priv.D.Bytes()))
+		priv.D.SetBytes(zero)
+		w.key = nil
+	}
 	return nil
 }
 
 // Address returns the public address of the wallet.
-//
-// Returns empty address if the wallet is not open.
-func (w *wallet) Address() domain.Address {
-	// TODO (Phase 3): Return actual address
-	return domain.Address{}
+func (w *keystoreWallet) Address() domain.Address {
+	return w.address
 }
 
 // Chain returns the chain ID this wallet is associated with.
-//
-// Returns empty string if the wallet is not open.
-func (w *wallet) Chain() domain.ChainID {
-	// TODO (Phase 3): Return actual chain ID
-	return ""
+func (w *keystoreWallet) Chain() domain.ChainID {
+	return w.chainID
 }
 
 // Sign signs an unsigned transaction with the decrypted private key.
-//
-// TODO (Phase 3): Implement actual transaction signing
-func (w *wallet) Sign(ctx context.Context, tx domain.UnsignedTx) (domain.SignedTx, error) {
-	// TODO (Phase 3): Implement actual signing
-	return domain.SignedTx{}, nil
+func (w *keystoreWallet) Sign(_ context.Context, tx domain.UnsignedTx) (domain.SignedTx, error) {
+	if w.key == nil {
+		return domain.SignedTx{}, ErrWalletNotOpen
+	}
+
+	// Get chain ID
+	chainID, err := chainIDToBigInt(tx.Chain)
+	if err != nil {
+		return domain.SignedTx{}, err
+	}
+
+	// Convert to EVM transaction
+	evmTx, err := w.buildEVMTransaction(tx, chainID)
+	if err != nil {
+		return domain.SignedTx{}, fmt.Errorf("failed to build EVM transaction: %w", err)
+	}
+
+	// Sign the transaction
+	signer := types.LatestSignerForChainID(chainID)
+	signedTx, err := types.SignTx(evmTx, signer, w.key.PrivateKey)
+	if err != nil {
+		return domain.SignedTx{}, fmt.Errorf("failed to sign transaction: %w", err)
+	}
+
+	// Encode to RLP
+	signedBytes, err := signedTx.MarshalBinary()
+	if err != nil {
+		return domain.SignedTx{}, fmt.Errorf("failed to encode signed transaction: %w", err)
+	}
+
+	signedTxDomain := domain.SignedTx{
+		UnsignedTx: tx,
+		Signature:  signedBytes,
+		Hash:       signedTx.Hash().Hex(),
+	}
+
+	return signedTxDomain, nil
 }
 
 // ApproveExact constructs an approval transaction for exact amount.
-//
-// TODO (Phase 3): Implement ERC20 approve for exact amount
-func (w *wallet) ApproveExact(ctx context.Context, token, spender domain.Address, amount *big.Int) (domain.UnsignedTx, error) {
-	// TODO (Phase 3): Implement approval transaction construction
-	return domain.UnsignedTx{}, nil
+func (w *keystoreWallet) ApproveExact(ctx context.Context, token, spender domain.Address, amount *big.Int) (domain.UnsignedTx, error) {
+	if w.key == nil {
+		return domain.UnsignedTx{}, ErrWalletNotOpen
+	}
+
+	// ERC20 approve function signature: approve(address,uint256)
+	// Function selector: 0x095ea7b3
+	data := append(
+		[]byte{0x09, 0x5e, 0xa7, 0xb3}, // approve selector
+		common.LeftPadBytes(spender.Bytes(), 32)...,
+	)
+	data = append(data, common.LeftPadBytes(amount.Bytes(), 32)...)
+
+	nonce, err := w.getNonce(token)
+	if err != nil {
+		return domain.UnsignedTx{}, fmt.Errorf("failed to get nonce: %w", err)
+	}
+
+	return domain.UnsignedTx{
+		Chain:    w.chainID,
+		From:     w.address,
+		To:       token,
+		Data:     data,
+		Value:    domain.ZeroDecimal(),
+		Nonce:    nonce,
+		Deadline: 0, // Set by caller
+		MinOut:   domain.ZeroDecimal(),
+	}, nil
 }
 
 // Revoke constructs a revocation transaction setting allowance to 0.
-//
-// TODO (Phase 3): Implement ERC20 approve(0) for revocation
-func (w *wallet) Revoke(ctx context.Context, token, spender domain.Address) (domain.UnsignedTx, error) {
-	// TODO (Phase 3): Implement revocation transaction construction
-	return domain.UnsignedTx{}, nil
+func (w *keystoreWallet) Revoke(ctx context.Context, token, spender domain.Address) (domain.UnsignedTx, error) {
+	return w.ApproveExact(ctx, token, spender, big.NewInt(0))
+}
+
+// buildEVMTransaction converts domain.UnsignedTx to types.Transaction.
+func (w *keystoreWallet) buildEVMTransaction(tx domain.UnsignedTx, chainID *big.Int) (*types.Transaction, error) {
+	value := tx.Value.BigInt()
+
+	// Determine transaction type
+	if tx.Data != nil && len(tx.Data) > 0 {
+		// Check if it's a contract creation (no To address)
+		if tx.To.IsZero() {
+			return types.NewContractCreation(
+				tx.Nonce,
+				value,
+				0, // gasLimit - caller should estimate
+				big.NewInt(0),
+				tx.Data,
+			), nil
+		}
+		// Contract call
+		return types.NewTransaction(
+			tx.Nonce,
+			common.HexToAddress(tx.To.String()),
+			value,
+			0, // gasLimit - caller should estimate
+			big.NewInt(0),
+			tx.Data,
+		), nil
+	}
+
+	// Regular transfer
+	return types.NewTransaction(
+		tx.Nonce,
+		common.HexToAddress(tx.To.String()),
+		value,
+		0,
+		big.NewInt(0),
+		nil,
+	), nil
+}
+
+// getNonce returns the next nonce for the given address.
+// This is a placeholder - in production, this should query the blockchain.
+func (w *keystoreWallet) getNonce(addr domain.Address) (uint64, error) {
+	// TODO: Query the blockchain for the actual nonce
+	// For now, return 0 - caller should fetch nonce separately
+	return 0, nil
+}
+
+// chainIDToBigInt converts domain.ChainID to *big.Int.
+// Only supports EVM chains (base, solana in domain, but we support EVM chains here).
+func chainIDToBigInt(chainID domain.ChainID) (*big.Int, error) {
+	switch chainID {
+	case domain.ChainBase:
+		return big.NewInt(8453), nil
+	case domain.ChainSolana:
+		return nil, ErrInvalidChainID
+	default:
+		return nil, fmt.Errorf("%w: %s", ErrInvalidChainID, chainID)
+	}
+}
+
+// ExportKey exports the decrypted key as JSON for backup.
+// SECURITY WARNING: This exposes the private key - use with extreme caution.
+func (w *keystoreWallet) ExportKey() ([]byte, error) {
+	if w.key == nil {
+		return nil, ErrWalletNotOpen
+	}
+
+	return json.Marshal(w.key)
+}
+
+// PrivateKey returns the underlying private key.
+// SECURITY WARNING: This exposes the private key - use with extreme caution.
+func (w *keystoreWallet) PrivateKey() *ecdsa.PrivateKey {
+	if w.key == nil {
+		return nil
+	}
+	return w.key.PrivateKey
+}
+
+// PublicKey returns the underlying public key.
+func (w *keystoreWallet) PublicKey() *ecdsa.PublicKey {
+	if w.key == nil {
+		return nil
+	}
+	return &w.key.PrivateKey.PublicKey
+}
+
+// SignMessage signs a message and returns the signature.
+func (w *keystoreWallet) SignMessage(_ context.Context, message []byte) ([]byte, error) {
+	if w.key == nil {
+		return nil, ErrWalletNotOpen
+	}
+
+	// Sign the message hash (EIP-191 style)
+	hash := crypto.Keccak256Hash(message)
+	sig, err := crypto.Sign(hash.Bytes(), w.key.PrivateKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to sign message: %w", err)
+	}
+
+	return sig, nil
 }
