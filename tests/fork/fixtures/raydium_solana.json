@@ -1,0 +1,29 @@
+{
+  "pool": {
+    "id": "8BzVxGMzDzD1bubjXkgHQ1BkpVoWPiNaRb2mYbxeNZRX",
+    "chain": "solana",
+    "protocol": "raydium",
+    "token0": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGPGZ3ZVPxJ2",
+    "token1": "So11111111111111111111111111111111111111112",
+    "fee_bps": 100,
+    "tier": "A"
+  },
+  "block": {
+    "slot": 250000000,
+    "hash": "4Nd1mBQtrMJVYVfKf2NUyDipMnte8YsB4ejrNQyEBjTY",
+    "timestamp": 1715000000
+  },
+  "state": {
+    "tick_current": 100,
+    "sqrt_price": "79228162514264337593543950336",
+    "liquidity": "10000000000000",
+    "protocol_fees_token0": "1000000",
+    "protocol_fees_token1": "10000000000",
+    "fee_growth_global_token0": "100000000",
+    "fee_growth_global_token1": "1000000000000"
+  },
+  "tick_data": {
+    "tick_array_bitmap": [],
+    "tick_arrays": {}
+  }
+}

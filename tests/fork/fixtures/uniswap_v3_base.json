@@ -1,0 +1,32 @@
+{
+  "pool": {
+    "id": "0x8ad599c3a0ff1deba0116c2208321319911ce9c7",
+    "chain": "base",
+    "protocol": "uniswap_v3",
+    "token0": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+    "token1": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+    "fee_bps": 500,
+    "tier": "A",
+    "tick": 201840,
+    "tvl_usd": "50000000",
+    "vol_24h": "25000000",
+    "fee_apr_24h": "0.15"
+  },
+  "block": {
+    "number": 19800000,
+    "hash": "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+    "timestamp": 1715000000
+  },
+  "state": {
+    "sqrt_price_x96": "2457672092493785208424724948",
+    "tick": 201840,
+    "liquidity": "15000000000000000000000000",
+    "fee_growth_global_0x128": "12345678901234567890123456",
+    "fee_growth_global_1x128": "98765432109876543210987654"
+  },
+  "tick_data": {
+    "tick_bitmap": {},
+    "tick_seeds": {},
+    "tick_info": {}
+  }
+}
