@@ -204,12 +204,14 @@ func (s *simulator) waitForReady(ctx context.Context) error {
 
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
+	timeout := time.NewTimer(time.Until(deadline))
+	defer timeout.Stop()
 
 	for {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case <-time.After(time.Until(deadline)):
+		case <-timeout.C:
 			return fmt.Errorf("timeout waiting for anvil to be ready")
 		case <-ticker.C:
 			conn, err := net.DialTimeout("tcp", fmt.Sprintf("127.0.0.1:%d", s.port), 100*time.Millisecond)
