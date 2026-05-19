@@ -76,3 +76,21 @@ func MustDecimal(s string) Decimal {
 	}
 	return d
 }
+
+// NewDecimalFromInt creates a Decimal from an int64.
+func NewDecimalFromInt(v int64) Decimal {
+	return decimal.NewFromInt(v)
+}
+
+// NewDecimalFromFloat creates a Decimal from a float64.
+func NewDecimalFromFloat(v float64) Decimal {
+	return decimal.NewFromFloat(v)
+}
+
+// Zero returns a zero Decimal.
+func ZeroDecimal() Decimal {
+	return decimal.Zero
+}
+
+// Zero is a zero Decimal constant.
+var Zero = decimal.Zero

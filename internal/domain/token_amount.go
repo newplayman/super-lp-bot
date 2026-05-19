@@ -21,7 +21,8 @@ type TokenAmount struct {
 
 func (ta TokenAmount) InUSD(price Decimal) Decimal {
 	// Convert raw amount to display amount (dividing by decimals) before multiplying by price
-	displayAmount := ta.Amount.Div(MustDecimal("1" + strings.Repeat("0", int(ta.Token.Decimals))))
+	divisor := MustDecimal("1" + strings.Repeat("0", int(ta.Token.Decimals)))
+	displayAmount := ta.Amount.Div(divisor)
 	return displayAmount.Mul(price)
 }
 
@@ -31,5 +32,7 @@ func (ta TokenAmount) String() string {
 
 // Display returns a human readable amount (adjusted by decimals).
 func (ta TokenAmount) Display() string {
-	return ta.Amount.Div(MustDecimal("1" + strings.Repeat("0", int(ta.Token.Decimals)))).String()
+	divisor := MustDecimal("1" + strings.Repeat("0", int(ta.Token.Decimals)))
+	displayAmount := ta.Amount.Div(divisor)
+	return displayAmount.String()
 }
