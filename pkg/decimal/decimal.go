@@ -47,3 +47,14 @@ func (d Decimal) String() string { return d.v.String() }
 func (d Decimal) IsZero() bool      { return d.v.IsZero() }
 func (d Decimal) IsNeg() bool        { return d.v.IsNegative() }
 func (d Decimal) IsPositive() bool  { return d.v.IsPositive() }
+
+// IntPart returns the integer component of the decimal as int64.
+func (d Decimal) IntPart() int64 { return d.v.IntPart() }
+
+// MulFrac multiplies by a fraction (numerator/denominator)
+func (d Decimal) MulFrac(num, denom int64) Decimal {
+	if denom == 0 {
+		return Zero
+	}
+	return Decimal{v: d.v.Mul(sd.NewFromInt(num)).Div(sd.NewFromInt(denom))}
+}

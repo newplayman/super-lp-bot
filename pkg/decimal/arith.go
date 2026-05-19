@@ -40,3 +40,26 @@ func (d Decimal) Neg() Decimal {
 func (d Decimal) Abs() Decimal {
 	return Decimal{v: d.v.Abs()}
 }
+
+// Sqrt returns the square root of the decimal.
+func (d Decimal) Sqrt() (Decimal, error) {
+	if d.IsNeg() {
+		return Decimal{}, fmt.Errorf("square root of negative number")
+	}
+	if d.IsZero() {
+		return Zero, nil
+	}
+	// Newton's method: x_{n+1} = (x_n + d/x_n) / 2
+	guess := Decimal{v: d.v.Div(sd.NewFromFloat(2.0))}
+	one := Decimal{v: sd.NewFromInt(1)}
+	for i := 0; i < 50; i++ {
+		div, _ := d.Div(guess)
+		next := guess.Add(div).DivInt(2)
+		diff := next.Sub(guess).Abs()
+		if diff.LessThan(one.DivInt(1000000)) {
+			return next, nil
+		}
+		guess = next
+	}
+	return guess, nil
+}
