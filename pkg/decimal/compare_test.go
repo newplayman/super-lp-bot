@@ -58,12 +58,12 @@ func TestEqual(t *testing.T) {
 func TestMin(t *testing.T) {
 	a, _ := decimal.FromString("2")
 	b, _ := decimal.FromString("5")
-	require.Equal(t, "2.000000000000000000000000000000000000", decimal.Min(a, b).String())
-	require.Equal(t, "2.000000000000000000000000000000000000", decimal.Min(b, a).String())
+	require.Equal(t, "2", decimal.Min(a, b).String())
+	require.Equal(t, "2", decimal.Min(b, a).String())
 }
 
 func TestMax(t *testing.T) {
 	a, _ := decimal.FromString("2")
 	b, _ := decimal.FromString("5")
-	require.Equal(t, "5.000000000000000000000000000000000000", decimal.Max(a, b).String())
+	require.Equal(t, "5", decimal.Max(a, b).String())
 }
