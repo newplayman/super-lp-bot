@@ -411,11 +411,11 @@ func TestBusPropertyDedupNoLossNoDup(t *testing.T) {
 
 		// Create subscribers
 		var subs []ports.Subscription
-		var mutexes []sync.Mutex
+		var mutexes []*sync.Mutex  // Use pointer to avoid copy
 		var received [][]domain.Event
 
 		for i := 0; i < numSubscribers; i++ {
-			mu := sync.Mutex{}
+			mu := &sync.Mutex{}
 			mutexes = append(mutexes, mu)
 			events := make([]domain.Event, 0)
 			received = append(received, events)

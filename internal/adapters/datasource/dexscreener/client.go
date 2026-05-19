@@ -42,7 +42,7 @@ type PoolToken struct {
 type PoolInfo struct {
 	PoolID         string      `json:"poolId"`
 	PoolAddress    string      `json:"poolAddress"`
-	chainID       string      `json:"chainId"`
+	ChainID      string      `json:"chainId"`
 	DEX           string      `json:"dexId"`
 	Protocol      string      `json:"protocolType"`
 	Factory       string      `json:"factoryAddress,omitempty"`
@@ -121,7 +121,7 @@ type SwapsDataBlock struct {
 type SwapData struct {
 	ID              string    `json:"id"`
 	PoolAddress     string    `json:"poolAddress"`
-	chainID        string    `json:"chainId"`
+	ChainID       string    `json:"chainId"`
 	DEX             string    `json:"dexId"`
 	Protocol        string    `json:"protocolType"`
 	Token0Symbol    string    `json:"baseToken_symbol"`
