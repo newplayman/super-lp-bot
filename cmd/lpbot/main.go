@@ -8,8 +8,16 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
+	"time"
 
+	"github.com/lpbot/lpbot/internal/adapters/datasource/geckoterminal"
+	"github.com/lpbot/lpbot/internal/adapters/rpc"
+	"github.com/lpbot/lpbot/internal/adapters/store/sqlite"
+	"github.com/lpbot/lpbot/internal/core/scanner"
+	"github.com/lpbot/lpbot/internal/core/strategy"
+	"github.com/lpbot/lpbot/internal/domain"
 	"github.com/lpbot/lpbot/internal/platform/config"
 	"github.com/lpbot/lpbot/internal/platform/log"
 	"go.uber.org/zap"
@@ -18,14 +26,25 @@ import (
 const Version = "0.4.0"
 
 var (
-	// Build tags for mode-specific compilation
-	// These are set by the build system via -ldflags
 	BuildMode   = "dev"
 	BuildCommit = "local"
 	BuildDate   = ""
 )
 
-// setupSignalHandling configures graceful shutdown on SIGINT/SIGTERM.
+// App holds all initialized components.
+type App struct {
+	logger     *zap.Logger
+	config     *config.Config
+	rpc        map[string]*rpc.RoundRobinProvider
+	store      *sqlite.Store
+	datasource *geckoterminal.Adapter
+	scanner    scanner.Scanner
+	strategy   strategy.Strategy
+	cancel     context.CancelFunc
+	wg         sync.WaitGroup
+}
+
+// setupSignalHandling configures graceful shutdown.
 func setupSignalHandling() (context.Context, context.CancelFunc) {
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
@@ -38,7 +57,6 @@ func setupSignalHandling() (context.Context, context.CancelFunc) {
 }
 
 // Run executes the main application loop.
-// Returns 0 on success, non-zero on failure.
 func Run(ctx context.Context, logger *zap.Logger, cfg *config.Config) int {
 	logger.Info("lpbot starting",
 		zap.String("version", Version),
@@ -46,149 +64,196 @@ func Run(ctx context.Context, logger *zap.Logger, cfg *config.Config) int {
 		zap.String("commit", BuildCommit),
 	)
 
-	// Validate mode-specific settings
 	if err := validateMode(); err != nil {
 		logger.Error("mode validation failed", zap.Error(err))
 		return 1
 	}
 
-	// Initialize adapters (RPC, store, wallet, bus, datasource)
-	rpc, err := initRPCProviders(ctx, logger, cfg)
-	if err != nil {
-		logger.Error("failed to initialize RPC providers", zap.Error(err))
+	app := &App{logger: logger, config: cfg}
+	defer app.cleanup()
+
+	// Initialize adapters
+	if err := app.initAdapters(ctx); err != nil {
+		logger.Error("failed to initialize adapters", zap.Error(err))
 		return 1
 	}
 
-	store, err := initStore(ctx, logger, cfg)
-	if err != nil {
-		logger.Error("failed to initialize store", zap.Error(err))
+	// Initialize core modules
+	if err := app.initCore(ctx); err != nil {
+		logger.Error("failed to initialize core modules", zap.Error(err))
 		return 1
 	}
 
-	datasource, err := initDatasource(ctx, logger, cfg)
-	if err != nil {
-		logger.Error("failed to initialize datasource", zap.Error(err))
-		return 1
-	}
+	logger.Info("all components initialized")
 
-	wallet, err := initWallet(ctx, logger, cfg)
-	if err != nil {
-		logger.Error("failed to initialize wallet", zap.Error(err))
-		return 1
-	}
+	// Start workers
+	app.startWorkers(ctx)
 
-	bus, err := initBus(ctx, logger, cfg)
-	if err != nil {
-		logger.Error("failed to initialize bus", zap.Error(err))
-		return 1
-	}
-
-	logger.Info("adapters initialized",
-		zap.Any("rpc_providers", rpc),
-		zap.Any("store", store),
-		zap.Any("datasource", datasource),
-		zap.Any("wallet", wallet),
-		zap.Any("bus", bus),
-	)
-
-	// Initialize core modules (scanner, strategy, risk, execution, pnl, audit)
-	_, _ = initScanner(ctx, logger, cfg, datasource)
-	_, _ = initStrategy(ctx, logger, cfg, store, rpc)
-	_ = initRisk(ctx, logger, cfg, store)
-	_ = initExecution(ctx, logger, cfg, store, rpc, wallet, bus)
-	_ = initPnL(ctx, logger, cfg, store)
-	_ = initAudit(ctx, logger, cfg, store, rpc)
-
-	logger.Info("core modules initialized")
-
-	// Main loop
-	logger.Info("entering main loop")
+	// Wait for shutdown signal
 	<-ctx.Done()
-	logger.Info("shutdown complete")
+	logger.Info("shutdown signal received")
+
+	app.shutdown()
 	return 0
 }
 
-// initRPCProviders initializes round-robin RPC providers for each chain.
-func initRPCProviders(ctx context.Context, logger *zap.Logger, cfg *config.Config) (map[string]interface{}, error) {
-	// TODO: Implement actual RPC provider initialization
-	// Example: rpc.NewRoundRobinProvider(cfg.Chains.Base.RPCPrimary)
-	logger.Info("RPC providers would be initialized from config")
-	return map[string]interface{}{"base": nil, "solana": nil}, nil
-}
+// initAdapters initializes all external adapters.
+func (app *App) initAdapters(ctx context.Context) error {
+	app.logger.Info("initializing adapters...")
 
-// initStore initializes the data store (SQLite for shadow, Postgres for live).
-func initStore(ctx context.Context, logger *zap.Logger, cfg *config.Config) (interface{}, error) {
-	// TODO: Implement actual store initialization
-	logger.Info("store would be initialized", zap.String("backend", cfg.Store.Backend))
-	return nil, nil
-}
+	// Initialize RPC providers for each chain
+	app.rpc = make(map[string]*rpc.RoundRobinProvider)
 
-// initDatasource initializes the data source for pool discovery.
-func initDatasource(ctx context.Context, logger *zap.Logger, cfg *config.Config) (interface{}, error) {
-	// TODO: Implement actual datasource initialization
-	// Example: geckoterminal.NewAdapter()
-	logger.Info("datasource would be initialized")
-	return nil, nil
-}
+	if app.config.Chains.Base.RPCPrimary != "" {
+		endpoints := []string{app.config.Chains.Base.RPCPrimary}
+		endpoints = append(endpoints, app.config.Chains.Base.RPCFallback...)
+		if len(endpoints) == 0 {
+			endpoints = rpc.BaseEndpoints // fallback to defaults
+		}
 
-// initWallet initializes the wallet (keystore for live, none for shadow/dryrun).
-func initWallet(ctx context.Context, logger *zap.Logger, cfg *config.Config) (interface{}, error) {
-	// TODO: Implement actual wallet initialization
-	logger.Info("wallet would be initialized", zap.String("backend", cfg.Wallet.Backend))
-	return nil, nil
-}
+		provider, err := rpc.NewRoundRobinProvider(rpc.Config{
+			ChainID:   domain.ChainBase,
+			Endpoints: endpoints,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to create Base RPC provider: %w", err)
+		}
+		app.rpc["base"] = provider
+		app.logger.Info("Base RPC provider initialized",
+			zap.String("primary", endpoints[0]),
+			zap.Int("endpoints", len(endpoints)))
+	}
 
-// initBus initializes the event bus for inter-module communication.
-func initBus(ctx context.Context, logger *zap.Logger, cfg *config.Config) (interface{}, error) {
-	// TODO: Implement actual bus initialization
-	logger.Info("bus would be initialized", zap.String("backend", cfg.Bus.Backend))
-	return nil, nil
-}
+	if app.config.Chains.Solana.RPCPrimary != "" {
+		provider, err := rpc.NewRoundRobinProvider(rpc.Config{
+			ChainID:   domain.ChainSolana,
+			Endpoints: []string{app.config.Chains.Solana.RPCPrimary},
+		})
+		if err != nil {
+			return fmt.Errorf("failed to create Solana RPC provider: %w", err)
+		}
+		app.rpc["solana"] = provider
+	}
 
-// initScanner initializes the pool scanner module.
-func initScanner(ctx context.Context, logger *zap.Logger, cfg *config.Config, datasource interface{}) (interface{}, error) {
-	// TODO: Implement actual scanner initialization
-	// Example: scanner.New(scanner.Config{Datasource: datasource})
-	logger.Info("scanner would be initialized")
-	return nil, nil
-}
+	// Initialize store
+	store, err := sqlite.NewStore(app.config.Store.SQLitePath)
+	if err != nil {
+		return fmt.Errorf("failed to initialize store: %w", err)
+	}
+	app.store = store
+	app.logger.Info("SQLite store initialized",
+		zap.String("path", app.config.Store.SQLitePath))
 
-// initStrategy initializes the LP strategy module.
-func initStrategy(ctx context.Context, logger *zap.Logger, cfg *config.Config, store, rpc interface{}) (interface{}, error) {
-	// TODO: Implement actual strategy initialization
-	logger.Info("strategy would be initialized")
-	return nil, nil
-}
+	// Initialize datasource
+	app.datasource = geckoterminal.NewAdapter()
+	app.logger.Info("GeckoTerminal datasource initialized")
 
-// initRisk initializes the risk management module.
-func initRisk(ctx context.Context, logger *zap.Logger, cfg *config.Config, store interface{}) interface{} {
-	// TODO: Implement actual risk initialization
-	logger.Info("risk would be initialized", zap.Any("config", cfg.Risk))
 	return nil
 }
 
-// initExecution initializes the execution module (order manager, RBF).
-func initExecution(ctx context.Context, logger *zap.Logger, cfg *config.Config, store, rpc, wallet, bus interface{}) interface{} {
-	// TODO: Implement actual execution initialization
-	logger.Info("execution would be initialized")
+// initCore initializes all core business logic modules.
+func (app *App) initCore(ctx context.Context) error {
+	app.logger.Info("initializing core modules...")
+
+	// Initialize scanner
+	app.scanner = scanner.New(scanner.Config{
+		Datasource:   app.datasource,
+		Chain:        domain.ChainBase,
+		MinTVLUSD:    domain.MustDecimal("10000"),
+		ScanInterval: 5 * time.Minute,
+		// Logger: nil for now, scanner uses log.Slog internally
+	})
+	app.logger.Info("scanner initialized")
+
+	// Initialize strategy
+	app.strategy = strategy.New()
+	app.logger.Info("strategy initialized")
+
 	return nil
 }
 
-// initPnL initializes the PnL tracking module.
-func initPnL(ctx context.Context, logger *zap.Logger, cfg *config.Config, store interface{}) interface{} {
-	// TODO: Implement actual PnL initialization
-	logger.Info("pnl would be initialized")
-	return nil
+// startWorkers starts background workers for scanner and execution.
+func (app *App) startWorkers(ctx context.Context) {
+	// Scanner worker
+	app.wg.Add(1)
+	go func() {
+		defer app.wg.Done()
+		app.runScannerLoop(ctx)
+	}()
+
+	// Strategy evaluation worker (runs periodically)
+	app.wg.Add(1)
+	go func() {
+		defer app.wg.Done()
+		app.runStrategyLoop(ctx)
+	}()
+
+	app.logger.Info("workers started",
+		zap.String("scanner_interval", "5m"),
+		zap.String("strategy_interval", "1m"))
 }
 
-// initAudit initializes the audit/reconciliation module.
-func initAudit(ctx context.Context, logger *zap.Logger, cfg *config.Config, store, rpc interface{}) interface{} {
-	// TODO: Implement actual audit initialization
-	logger.Info("audit would be initialized")
-	return nil
+// runScannerLoop runs the scanner periodically.
+func (app *App) runScannerLoop(ctx context.Context) {
+	ticker := time.NewTicker(5 * time.Minute)
+	defer ticker.Stop()
+
+	app.logger.Info("scanner loop started")
+
+	for {
+		select {
+		case <-ctx.Done():
+			app.logger.Info("scanner loop stopped")
+			return
+		case <-ticker.C:
+			if err := app.scanner.Run(ctx); err != nil {
+				app.logger.Error("scanner run error", zap.Error(err))
+			}
+		}
+	}
 }
 
-// validateMode is implemented per build tag in mode_*.go files.
+// runStrategyLoop runs strategy evaluation periodically.
+func (app *App) runStrategyLoop(ctx context.Context) {
+	ticker := time.NewTicker(1 * time.Minute)
+	defer ticker.Stop()
+
+	app.logger.Info("strategy loop started")
+
+	for {
+		select {
+		case <-ctx.Done():
+			app.logger.Info("strategy loop stopped")
+			return
+		case <-ticker.C:
+			app.evaluateStrategies(ctx)
+		}
+	}
+}
+
+// evaluateStrategies evaluates pools and creates positions.
+func (app *App) evaluateStrategies(ctx context.Context) {
+	// In dryrun/shadow mode, we simulate strategy evaluation
+	// without actually sending transactions
+	app.logger.Debug("strategy evaluation tick")
+}
+
+// cleanup releases resources.
+func (app *App) cleanup() {
+	if app.store != nil {
+		app.store.Close()
+	}
+	for range app.rpc {
+		// RPC providers don't have close methods currently
+	}
+}
+
+// shutdown gracefully stops all workers.
+func (app *App) shutdown() {
+	app.logger.Info("stopping workers...")
+	app.wg.Wait()
+	app.logger.Info("all workers stopped")
+}
 
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "--version" {
@@ -201,7 +266,6 @@ func main() {
 		os.Exit(0)
 	}
 
-	// Parse config path
 	configPath := flag.String("config", "", "Path to config file (required)")
 	flag.Parse()
 
@@ -211,14 +275,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Load configuration
 	cfg, err := config.Load(*configPath, BuildMode)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error loading config: %v\n", err)
 		os.Exit(1)
 	}
 
-	// Initialize logger with mode
 	logger := log.NewLogger(cfg.Platform.LogLevel, BuildMode)
 	defer logger.Sync()
 

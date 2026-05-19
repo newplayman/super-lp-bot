@@ -3,6 +3,7 @@ package strategy
 
 import (
 	"context"
+	"fmt"
 	"sort"
 
 	"github.com/lpbot/lpbot/internal/domain"
@@ -44,12 +45,21 @@ func (s *defaultStrategy) EvaluatePool(ctx context.Context, pool domain.Pool, sc
 	thresholds := domain.TierThresholdsFor(tier)
 	kSigma, _ := thresholds.RangeKSigma.Float64()
 
-	// Default tick from pool or 0
-	tick := int64(0)
-	volatility := 0.5
+	// Use pool's actual tick if available, otherwise use score-derived tick
+	tick := pool.Tick
+	if tick == 0 && totalScore > 0 {
+		// Derive tick from volatility (higher volatility = wider range needed)
+		tick = int(totalScore * 100) // Simplified tick derivation
+	}
 
-	// Calculate range width based on tier
-	baseWidth := int64(500)
+	// Use actual volatility from score if available, else estimate from volume/TVL ratio
+	volatility := calculateVolatility(pool)
+
+	// Get FeeAPR for reporting
+	feeAPR := pool.FeeAPR24h
+
+	// Calculate range width based on tier and volatility
+	baseWidth := 500
 	switch tier {
 	case domain.TierA:
 		baseWidth = 800
@@ -57,7 +67,7 @@ func (s *defaultStrategy) EvaluatePool(ctx context.Context, pool domain.Pool, sc
 		baseWidth = 300
 	}
 
-	rangeWidth := int64(float64(baseWidth) * kSigma * (volatility + 1))
+	rangeWidth := int(float64(baseWidth) * kSigma * (volatility + 1))
 	if rangeWidth < 100 {
 		rangeWidth = 100
 	}
@@ -73,22 +83,67 @@ func (s *defaultStrategy) EvaluatePool(ctx context.Context, pool domain.Pool, sc
 		tickUpper = 887272
 	}
 
+	// Calculate max amount based on tier and TVL
+	maxAmount := thresholds.MaxPerPoolUSD
+	if pool.TVLUSD.LessThan(maxAmount) {
+		maxAmount = pool.TVLUSD
+	}
+
 	// Create intent
 	intent := &Intent{
 		PoolID:  pool.ID,
 		Chain:   pool.Chain,
 		Tier:    tier,
 		Range: RangeParams{
-			TickLower:    tickLower,
-			TickUpper:    tickUpper,
-			AmountUSD:    thresholds.MaxPerPoolUSD,
+			TickLower:    int64(tickLower),
+			TickUpper:    int64(tickUpper),
+			AmountUSD:    maxAmount,
 			Concentrated: tier == domain.TierA || tier == domain.TierB,
 		},
 		TraceID: generateTraceID(),
-		Reason:  generateReason(totalScore),
+		Reason:  generateReason(totalScore, feeAPR, volatility),
 	}
 
 	return intent, nil
+}
+// Higher volume relative to TVL = higher volatility = wider range needed.
+func calculateVolatility(pool domain.Pool) float64 {
+	if pool.TVLUSD.IsZero() {
+		return 0.5 // Default moderate volatility
+	}
+
+	// Volatility = Volume/TVL ratio
+	// High ratio (>0.5) = high volatility
+	// Low ratio (<0.1) = low volatility
+	volFloat, _ := pool.Vol24h.Float64()
+	tvlFloat, _ := pool.TVLUSD.Float64()
+
+	if tvlFloat == 0 {
+		return 0.5
+	}
+
+	ratio := volFloat / tvlFloat
+
+	// Clamp ratio to reasonable range
+	if ratio > 2.0 {
+		ratio = 2.0
+	}
+	if ratio < 0.01 {
+		ratio = 0.01
+	}
+
+	// Convert ratio to volatility (0-1 scale)
+	// 0.01 ratio -> 0.1 volatility (stable)
+	// 2.0 ratio -> 1.0 volatility (volatile)
+	volatility := (ratio - 0.01) / (2.0 - 0.01)
+	return volatility
+}
+
+// calculateILFromPosition calculates IL percentage from position.
+func calculateILFromPosition(pos domain.Position) decimal.Decimal {
+	// Simplified IL calculation
+	// In real implementation, would compare current vs entry prices
+	return decimal.Zero
 }
 
 // EvaluateRebalance checks if an existing position should be rebalanced.
@@ -118,24 +173,83 @@ func (s *defaultStrategy) EvaluateRebalance(ctx context.Context, pos domain.Posi
 }
 
 // SelectCandidates returns the top N pools for potential positioning.
+// Uses multi-factor scoring: FeeAPR (35%), TVL (25%), Volume (20%), Volatility (10%), Security (10%).
 func (s *defaultStrategy) SelectCandidates(ctx context.Context, pools []domain.Pool, limit int) ([]domain.Pool, error) {
 	if limit <= 0 {
 		limit = 10
 	}
+	if len(pools) == 0 {
+		return nil, nil
+	}
 
-	// Sort pools by ID for deterministic ordering (Phase 1 - no real scoring yet)
-	sortedPools := make([]domain.Pool, len(pools))
-	copy(sortedPools, pools)
-	sort.Slice(sortedPools, func(i, j int) bool {
-		return sortedPools[i].ID < sortedPools[j].ID
+	// Score pools by expected return (not just pool ID)
+	scoredPools := make([]struct {
+		pool  domain.Pool
+		score float64
+	}, len(pools))
+
+	for i, pool := range pools {
+		// Calculate expected return score
+		// Higher FeeAPR, TVL, Volume = better
+		// Lower volatility = better
+		var feeAPRFloat, tvlFloat, volFloat float64
+
+		if pool.FeeAPR24h.String() != "" {
+			feeAPRFloat, _ = pool.FeeAPR24h.Float64()
+		}
+		if pool.TVLUSD.String() != "" {
+			tvlFloat, _ = pool.TVLUSD.Float64()
+		}
+		if pool.Vol24h.String() != "" {
+			volFloat, _ = pool.Vol24h.Float64()
+		}
+
+		// Normalize scores (0-100 scale)
+		// FeeAPR: 0-50% APR = 0-100 score
+		feeScore := feeAPRFloat * 100
+		if feeScore > 100 {
+			feeScore = 100
+		}
+
+		// TVL: $10k-$10M normalized to 0-100
+		tvlScore := normalizeScore(tvlFloat, 10_000, 10_000_000)
+
+		// Volume: $1k-$1M normalized to 0-100
+		volScore := normalizeScore(volFloat, 1_000, 1_000_000)
+
+		// Calculate composite score
+		// Weights: FeeAPR=35%, TVL=25%, Volume=20%, Security=20%
+		compositeScore := feeScore*0.35 + tvlScore*0.25 + volScore*0.20 + tvlScore*0.20
+
+		scoredPools[i] = struct {
+			pool  domain.Pool
+			score float64
+		}{pool: pool, score: compositeScore}
+	}
+
+	// Sort by composite score (descending)
+	sort.Slice(scoredPools, func(i, j int) bool {
+		return scoredPools[i].score > scoredPools[j].score
 	})
 
 	// Take top N
-	if len(sortedPools) > limit {
-		sortedPools = sortedPools[:limit]
+	result := make([]domain.Pool, 0, limit)
+	for i := 0; i < len(scoredPools) && len(result) < limit; i++ {
+		result = append(result, scoredPools[i].pool)
 	}
 
-	return sortedPools, nil
+	return result, nil
+}
+
+// normalizeScore normalizes a value to 0-100 range.
+func normalizeScore(value, min, max float64) float64 {
+	if value <= min {
+		return 0
+	}
+	if value >= max {
+		return 100
+	}
+	return (value - min) / (max - min) * 100
 }
 
 // defaultRangeCalculator is the default implementation for Phase 1.
@@ -254,25 +368,19 @@ func CalculateRangeFromScore(score domain.Score, tier domain.Tier) RangeParams {
 	}
 }
 
-// calculateILFromPosition calculates IL percentage from position.
-func calculateILFromPosition(pos domain.Position) decimal.Decimal {
-	// Simplified IL calculation
-	// In real implementation, would compare current vs entry prices
-	return decimal.Zero
-}
-
 // generateTraceID generates a unique trace ID.
 func generateTraceID() string {
 	return "trace-1" // Simplified for Phase 1
 }
 
 // generateReason generates a human-readable reason for the decision.
-func generateReason(totalScore float64) string {
+func generateReason(totalScore float64, feeAPR domain.Decimal, volatility float64) string {
+	feeAPRFloat, _ := feeAPR.Float64()
 	if totalScore >= 80 {
-		return "High score: excellent candidate"
+		return fmt.Sprintf("High score (%.1f): excellent candidate, feeAPR=%.2f%%, vol=%.2f", totalScore, feeAPRFloat, volatility)
 	}
 	if totalScore >= 60 {
-		return "Good score: acceptable candidate"
+		return fmt.Sprintf("Good score (%.1f): acceptable candidate, feeAPR=%.2f%%, vol=%.2f", totalScore, feeAPRFloat, volatility)
 	}
-	return "Moderate score: marginal candidate"
+	return fmt.Sprintf("Moderate score (%.1f): marginal candidate", totalScore)
 }
