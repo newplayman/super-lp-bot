@@ -7,9 +7,11 @@ import (
 
 // validateSlippage checks if output amounts are within acceptable slippage bounds.
 // It compares the actual output against the minimum output specified in the transaction.
+// Returns true if no slippage concern (either minOut not set, or within bounds).
 func validateSlippage(outputs []domain.TokenAmount, minOut domain.Decimal, maxBps int) bool {
+	// No MinOut set = user doesn't care about slippage protection
 	if minOut.IsZero() {
-		return false
+		return true
 	}
 
 	// Calculate total output value (sum of all output amounts)
