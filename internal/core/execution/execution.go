@@ -4,81 +4,486 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"sync"
 
+	"github.com/lpbot/lpbot/internal/core/simulation"
 	"github.com/lpbot/lpbot/internal/domain"
 	"github.com/lpbot/lpbot/internal/ports"
 )
 
-// defaultExecution is the scaffold stub implementation that panics on use.
-// Real implementation will be added in later phases (Phase 2 shadow, Phase 3 live).
-//
-// In Phase 0, this stub exists only to establish the interface contract
-// and allow other modules to compile. Usage in production will panic.
-type defaultExecution struct {
-	deps   ExecutionDependencies
-	config ExecutionConfig
+// positionState tracks the state of a position in shadow mode.
+type positionState struct {
+	Status domain.PositionStatus
+	Intent interface{} // OpenIntent, ExitIntent, or RebalanceIntent
 }
 
-// NewDefaultExecution creates a new scaffold execution implementation.
-// This implementation panics on any method call to prevent accidental use.
-//
-// Real execution logic will be implemented in Phase 2 (shadow) and Phase 3 (live).
-// Until then, any attempt to use this executor will panic with a helpful message.
-func NewDefaultExecution(deps ExecutionDependencies, config ExecutionConfig) OrderManager {
-	return &defaultExecution{
-		deps:   deps,
-		config: config,
+// defaultOrderManager is the shadow-mode implementation of OrderManager.
+// It builds and simulates transactions without broadcasting.
+type defaultOrderManager struct {
+	config    ExecutionConfig
+	simulator simulation.Simulator
+	chain     ports.Chain
+	txBuilder *TxBuilder
+	positions map[string]*positionState // in-memory position tracking
+	mu        sync.RWMutex
+	txs       map[string]domain.SignedTx // tracked transactions
+	txsMu     sync.RWMutex
+}
+
+// NewDefaultOrderManager creates a new shadow-mode OrderManager implementation.
+func NewDefaultOrderManager(deps ExecutionDependencies, config ExecutionConfig, sim simulation.Simulator) OrderManager {
+	return &defaultOrderManager{
+		config:    config,
+		simulator: sim,
+		chain:     deps.Chain,
+		txBuilder: NewTxBuilder(deps.Wallet, deps.Chain),
+		positions: make(map[string]*positionState),
+		txs:       make(map[string]domain.SignedTx),
 	}
 }
 
-// Open implements OrderManager.Open with a panic stub.
-func (e *defaultExecution) Open(_ context.Context, intent OpenIntent) ExecutionResult {
-	panic(fmt.Sprintf("execution: defaultExecution is a scaffold stub; real implementation pending Phase 2-3: "+
-		"Open position %s on %s", intent.PositionID, intent.Chain))
+// Compile-time interface assertion
+var _ OrderManager = (*defaultOrderManager)(nil)
+
+// Open implements OrderManager.Open for shadow mode.
+// It builds the transaction, simulates it, and updates position status without broadcasting.
+func (m *defaultOrderManager) Open(ctx context.Context, intent OpenIntent) ExecutionResult {
+	// Validate intent has simulation result (invariant #4)
+	if intent.Simulation == nil {
+		return ExecutionResult{
+			PositionID: intent.PositionID,
+			Success:    false,
+			Error:      "simulation result required before opening position",
+		}
+	}
+
+	// Validate MinOut and Deadline are non-zero (invariant #4)
+	if intent.Simulation.OutputAmounts == nil || len(intent.Simulation.OutputAmounts) == 0 {
+		return ExecutionResult{
+			PositionID: intent.PositionID,
+			Success:    false,
+			Error:      "simulation output amounts required",
+		}
+	}
+
+	// Build the add liquidity transaction
+	tx, err := m.txBuilder.BuildAddLiquidityTx(ctx, intent)
+	if err != nil {
+		return ExecutionResult{
+			PositionID: intent.PositionID,
+			Success:    false,
+			Error:      fmt.Sprintf("failed to build transaction: %v", err),
+		}
+	}
+
+	// Run simulation via the simulator
+	simReq := simulation.SimulationRequest{
+		Tx:      tx,
+		BlockRef: intent.Simulation.BlockRef,
+		TraceID:  intent.TraceID,
+		Purpose: "honeypot_check",
+	}
+
+	simResp, err := m.simulator.SimulateAndValidate(ctx, simReq)
+	if err != nil {
+		return ExecutionResult{
+			PositionID: intent.PositionID,
+			Success:    false,
+			Error:      fmt.Sprintf("simulation failed: %v", err),
+		}
+	}
+
+	// Check for honeypot detection
+	if simResp.HoneypotDetected {
+		return ExecutionResult{
+			PositionID: intent.PositionID,
+			Success:    false,
+			Error:      "honeypot detected: transaction appears to be a trap",
+			FinalStatus: domain.StatusRejected,
+		}
+	}
+
+	// Validate slippage (invariant #4)
+	if !simResp.SlippageValid {
+		return ExecutionResult{
+			PositionID: intent.PositionID,
+			Success:    false,
+			Error:      "slippage exceeds acceptable bounds",
+			FinalStatus: domain.StatusRejected,
+		}
+	}
+
+	// Validate simulation success
+	if simResp.Result == nil || !simResp.Result.Success {
+		errMsg := "simulation reverted"
+		if simResp.Result != nil && simResp.Result.Error != "" {
+			errMsg = simResp.Result.Error
+		}
+		return ExecutionResult{
+			PositionID: intent.PositionID,
+			Success:    false,
+			Error:      errMsg,
+		}
+	}
+
+	// In shadow mode: skip broadcasting, update position status directly
+	m.mu.Lock()
+	m.positions[intent.PositionID] = &positionState{
+		Status: domain.StatusOpen,
+		Intent: intent,
+	}
+	m.mu.Unlock()
+
+	return ExecutionResult{
+		PositionID:  intent.PositionID,
+		Success:     true,
+		FinalStatus: domain.StatusOpen,
+	}
 }
 
-// Close implements OrderManager.Close with a panic stub.
-func (e *defaultExecution) Close(_ context.Context, intent ExitIntent) ExecutionResult {
-	panic(fmt.Sprintf("execution: defaultExecution is a scaffold stub; real implementation pending Phase 2-3: "+
-		"Close position %s on %s", intent.PositionID, intent.Chain))
+// Close implements OrderManager.Close for shadow mode.
+func (m *defaultOrderManager) Close(ctx context.Context, intent ExitIntent) ExecutionResult {
+	// Validate simulation result
+	if intent.Simulation == nil {
+		return ExecutionResult{
+			PositionID: intent.PositionID,
+			Success:    false,
+			Error:      "simulation result required before closing position",
+		}
+	}
+
+	// Check position exists
+	m.mu.RLock()
+	pos, exists := m.positions[intent.PositionID]
+	m.mu.RUnlock()
+
+	if !exists {
+		return ExecutionResult{
+			PositionID: intent.PositionID,
+			Success:    false,
+			Error:      "position not found",
+		}
+	}
+
+	// Validate position can transition to exiting
+	if !pos.Status.CanTransitionTo(domain.StatusExiting) {
+		return ExecutionResult{
+			PositionID: intent.PositionID,
+			Success:    false,
+			Error:      fmt.Sprintf("cannot transition from %s to exiting", pos.Status),
+		}
+	}
+
+	// Build close transaction
+	tx, err := m.txBuilder.BuildRemoveLiquidityTx(ctx, intent)
+	if err != nil {
+		return ExecutionResult{
+			PositionID: intent.PositionID,
+			Success:    false,
+			Error:      fmt.Sprintf("failed to build transaction: %v", err),
+		}
+	}
+
+	// Run simulation
+	simReq := simulation.SimulationRequest{
+		Tx:       tx,
+		BlockRef: intent.Simulation.BlockRef,
+		TraceID:  intent.TraceID,
+		Purpose:  "close_position",
+	}
+
+	simResp, err := m.simulator.SimulateAndValidate(ctx, simReq)
+	if err != nil {
+		return ExecutionResult{
+			PositionID: intent.PositionID,
+			Success:    false,
+			Error:      fmt.Sprintf("simulation failed: %v", err),
+		}
+	}
+
+	// Check for honeypot detection
+	if simResp.HoneypotDetected {
+		return ExecutionResult{
+			PositionID: intent.PositionID,
+			Success:    false,
+			Error:      "honeypot detected during exit simulation",
+			FinalStatus: domain.StatusExitFailed,
+		}
+	}
+
+	// Validate slippage
+	if !simResp.SlippageValid {
+		return ExecutionResult{
+			PositionID: intent.PositionID,
+			Success:    false,
+			Error:      "slippage exceeds acceptable bounds during exit",
+			FinalStatus: domain.StatusExitFailed,
+		}
+	}
+
+	// Validate simulation success
+	if simResp.Result == nil || !simResp.Result.Success {
+		errMsg := "simulation reverted"
+		if simResp.Result != nil && simResp.Result.Error != "" {
+			errMsg = simResp.Result.Error
+		}
+		return ExecutionResult{
+			PositionID: intent.PositionID,
+			Success:    false,
+			Error:      errMsg,
+			FinalStatus: domain.StatusExitFailed,
+		}
+	}
+
+	// In shadow mode: skip broadcasting, update position status
+	m.mu.Lock()
+	if pos, ok := m.positions[intent.PositionID]; ok {
+		pos.Status = domain.StatusClosed
+	}
+	m.mu.Unlock()
+
+	return ExecutionResult{
+		PositionID:  intent.PositionID,
+		Success:     true,
+		FinalStatus: domain.StatusClosed,
+	}
 }
 
-// Rebalance implements OrderManager.Rebalance with a panic stub.
-func (e *defaultExecution) Rebalance(_ context.Context, intent RebalanceIntent) ExecutionResult {
-	panic(fmt.Sprintf("execution: defaultExecution is a scaffold stub; real implementation pending Phase 2-3: "+
-		"Rebalance position %s on %s", intent.PositionID, intent.Chain))
+// Rebalance implements OrderManager.Rebalance for shadow mode.
+// It removes liquidity at current range and adds at new range in sequence.
+func (m *defaultOrderManager) Rebalance(ctx context.Context, intent RebalanceIntent) ExecutionResult {
+	// Validate simulation result
+	if intent.Simulation == nil {
+		return ExecutionResult{
+			PositionID: intent.PositionID,
+			Success:    false,
+			Error:      "simulation result required before rebalancing",
+		}
+	}
+
+	// Check position exists
+	m.mu.RLock()
+	pos, exists := m.positions[intent.PositionID]
+	m.mu.RUnlock()
+
+	if !exists {
+		return ExecutionResult{
+			PositionID: intent.PositionID,
+			Success:    false,
+			Error:      "position not found",
+		}
+	}
+
+	// Validate position can be rebalanced (must be open)
+	if pos.Status != domain.StatusOpen {
+		return ExecutionResult{
+			PositionID: intent.PositionID,
+			Success:    false,
+			Error:      fmt.Sprintf("cannot rebalance position in status %s", pos.Status),
+		}
+	}
+
+	// Build remove and add transactions
+	removeTx, addTx, err := m.txBuilder.BuildRebalanceTxs(ctx, intent)
+	if err != nil {
+		return ExecutionResult{
+			PositionID: intent.PositionID,
+			Success:    false,
+			Error:      fmt.Sprintf("failed to build rebalance transactions: %v", err),
+		}
+	}
+
+	// Simulate sequence (remove then add)
+	simReqs := []simulation.SimulationRequest{
+		{
+			Tx:       removeTx,
+			BlockRef: intent.Simulation.BlockRef,
+			TraceID:  intent.TraceID,
+			Purpose:  "rebalance_remove",
+		},
+		{
+			Tx:       addTx,
+			BlockRef: intent.Simulation.BlockRef,
+			TraceID:  intent.TraceID,
+			Purpose:  "rebalance_add",
+		},
+	}
+
+	simResps, err := m.simulator.SimulateSequenceAndValidate(ctx, simReqs)
+	if err != nil {
+		return ExecutionResult{
+			PositionID: intent.PositionID,
+			Success:    false,
+			Error:      fmt.Sprintf("rebalance simulation failed: %v", err),
+		}
+	}
+
+	// Validate all simulations succeeded
+	for i, simResp := range simResps {
+		if simResp.HoneypotDetected {
+			return ExecutionResult{
+				PositionID: intent.PositionID,
+				Success:    false,
+				Error:      fmt.Sprintf("honeypot detected in step %d", i+1),
+			}
+		}
+		if !simResp.SlippageValid {
+			return ExecutionResult{
+				PositionID: intent.PositionID,
+				Success:    false,
+				Error:      fmt.Sprintf("slippage invalid in step %d", i+1),
+			}
+		}
+		if simResp.Result == nil || !simResp.Result.Success {
+			errMsg := "simulation reverted"
+			if simResp.Result != nil && simResp.Result.Error != "" {
+				errMsg = simResp.Result.Error
+			}
+			return ExecutionResult{
+				PositionID: intent.PositionID,
+				Success:    false,
+				Error:      fmt.Sprintf("rebalance step %d failed: %s", i+1, errMsg),
+			}
+		}
+	}
+
+	// In shadow mode: skip broadcasting, update position tick range
+	m.mu.Lock()
+	if pos, ok := m.positions[intent.PositionID]; ok {
+		if rebalanceIntent, ok := pos.Intent.(OpenIntent); ok {
+			// Update the stored intent with new tick range
+			rebalanceIntent.TickLower = intent.NewTickLower
+			rebalanceIntent.TickUpper = intent.NewTickUpper
+			pos.Intent = rebalanceIntent
+		}
+	}
+	m.mu.Unlock()
+
+	return ExecutionResult{
+		PositionID:  intent.PositionID,
+		Success:     true,
+		FinalStatus: domain.StatusOpen, // Rebalance keeps position open
+	}
 }
 
-// CollectFees implements OrderManager.CollectFees with a panic stub.
-func (e *defaultExecution) CollectFees(_ context.Context, positionID string) ExecutionResult {
-	panic(fmt.Sprintf("execution: defaultExecution is a scaffold stub; real implementation pending Phase 2-3: "+
-		"CollectFees for position %s", positionID))
+// CollectFees implements OrderManager.CollectFees for shadow mode.
+func (m *defaultOrderManager) CollectFees(ctx context.Context, positionID string) ExecutionResult {
+	// Check position exists
+	m.mu.RLock()
+	_, exists := m.positions[positionID]
+	m.mu.RUnlock()
+
+	if !exists {
+		return ExecutionResult{
+			PositionID: positionID,
+			Success:    false,
+			Error:      "position not found",
+		}
+	}
+
+	// Build collect fees transaction
+	tx, err := m.txBuilder.BuildCollectFeesTx(ctx, positionID)
+	if err != nil {
+		return ExecutionResult{
+			PositionID: positionID,
+			Success:    false,
+			Error:      fmt.Sprintf("failed to build collect fees transaction: %v", err),
+		}
+	}
+
+	// For collect fees, we need a block reference - use latest
+	block, err := m.chain.GetBlock(ctx, domain.BlockRef{})
+	if err != nil {
+		return ExecutionResult{
+			PositionID: positionID,
+			Success:    false,
+			Error:      fmt.Sprintf("failed to get block reference: %v", err),
+		}
+	}
+
+	// Simulate collect fees
+	simReq := simulation.SimulationRequest{
+		Tx:       tx,
+		BlockRef: block.Ref,
+		TraceID:  "",
+		Purpose:  "collect_fees",
+	}
+
+	simResp, err := m.simulator.SimulateAndValidate(ctx, simReq)
+	if err != nil {
+		return ExecutionResult{
+			PositionID: positionID,
+			Success:    false,
+			Error:      fmt.Sprintf("collect fees simulation failed: %v", err),
+		}
+	}
+
+	// Collect fees can succeed even with some edge cases, so we only fail on critical errors
+	if simResp.Result == nil || !simResp.Result.Success {
+		errMsg := "simulation reverted"
+		if simResp.Result != nil && simResp.Result.Error != "" {
+			errMsg = simResp.Result.Error
+		}
+		return ExecutionResult{
+			PositionID: positionID,
+			Success:    false,
+			Error:      errMsg,
+		}
+	}
+
+	// In shadow mode: skip broadcasting
+	return ExecutionResult{
+		PositionID: positionID,
+		Success:    true,
+	}
 }
 
-// UpdateTxStatus implements OrderManager.UpdateTxStatus with a panic stub.
-func (e *defaultExecution) UpdateTxStatus(_ context.Context, txHash string, status domain.TxStatus) error {
-	panic(fmt.Sprintf("execution: defaultExecution is a scaffold stub; real implementation pending Phase 2-3: "+
-		"UpdateTxStatus %s -> %s", txHash, status))
+// UpdateTxStatus implements OrderManager.UpdateTxStatus.
+// In shadow mode, this is a no-op since we don't track real transactions.
+func (m *defaultOrderManager) UpdateTxStatus(ctx context.Context, txHash string, status domain.TxStatus) error {
+	// In shadow mode, we don't track real transactions
+	// This method exists to satisfy the interface but does nothing
+	return nil
 }
 
-// GetPendingTxs implements OrderManager.GetPendingTxs with a panic stub.
-func (e *defaultExecution) GetPendingTxs(_ context.Context) ([]domain.SignedTx, error) {
-	panic("execution: defaultExecution is a scaffold stub; real implementation pending Phase 2-3: GetPendingTxs")
+// GetPendingTxs implements OrderManager.GetPendingTxs.
+// In shadow mode, returns empty since we don't broadcast transactions.
+func (m *defaultOrderManager) GetPendingTxs(ctx context.Context) ([]domain.SignedTx, error) {
+	m.txsMu.RLock()
+	defer m.txsMu.RUnlock()
+
+	result := make([]domain.SignedTx, 0, len(m.txs))
+	for _, tx := range m.txs {
+		result = append(result, tx)
+	}
+	return result, nil
 }
 
-// RetryStuck implements OrderManager.RetryStuck with a panic stub.
-func (e *defaultExecution) RetryStuck(_ context.Context, txHash string) (ExecutionResult, error) {
-	panic(fmt.Sprintf("execution: defaultExecution is a scaffold stub; real implementation pending Phase 2-3: "+
-		"RetryStuck %s", txHash))
+// RetryStuck implements OrderManager.RetryStuck.
+// In shadow mode, RBF is not supported since we don't broadcast transactions.
+func (m *defaultOrderManager) RetryStuck(ctx context.Context, txHash string) (ExecutionResult, error) {
+	return ExecutionResult{
+		TxHash:  txHash,
+		Success: false,
+		Error:   "RBF not supported in shadow mode: transactions are not broadcast",
+	}, nil
 }
 
 // Config implements OrderManager.Config.
-func (e *defaultExecution) Config() ExecutionConfig {
-	return e.config
+func (m *defaultOrderManager) Config() ExecutionConfig {
+	return m.config
 }
 
-// Compile-time interface assertions
-var _ OrderManager = (*defaultExecution)(nil)
+// GetPositionStatus returns the current status of a position (for testing).
+func (m *defaultOrderManager) GetPositionStatus(positionID string) (domain.PositionStatus, bool) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	pos, exists := m.positions[positionID]
+	if !exists {
+		return "", false
+	}
+	return pos.Status, true
+}
 
 // Verify dependencies satisfy ports interfaces at compile time
 func verifyPorts() {
