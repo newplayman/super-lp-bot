@@ -8,8 +8,16 @@ import (
 	"github.com/lpbot/lpbot/internal/domain"
 )
 
+// TestAuditNotImplemented - Phase 0 scaffold test
+// Invariants (spec §9.2): #2 (no duplicate open positions per pool)
+func TestAuditNotImplemented(t *testing.T) {
+	t.Skip("Phase 1 task T-311: implement Audit")
+}
+
+// TestAuditInterface - Phase 0 scaffold test
+// Invariants (spec §9.2): #2 (no duplicate open positions per pool)
 func TestAuditInterface(t *testing.T) {
-	t.Skip("T-071 scaffold: real audit implementation pending Phase 1")
+	t.Skip("Phase 1 task T-311: implement Audit")
 
 	// Compile-time interface assertion
 	var _ audit.Auditor = (*auditMock)(nil)
