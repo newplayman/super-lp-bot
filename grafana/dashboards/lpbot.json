@@ -1,0 +1,182 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "title": "PnL Overview",
+      "type": "stat",
+      "gridPos": { "h": 8, "w": 6, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(lpbot_pnl_total{chain=~\"$chain\"})",
+          "legendFormat": "Total PnL"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "value": 0, "color": "red" },
+              { "value": 1000, "color": "yellow" },
+              { "value": 5000, "color": "green" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Active Positions",
+      "type": "stat",
+      "gridPos": { "h": 8, "w": 6, "x": 6, "y": 0 },
+      "targets": [
+        {
+          "expr": "count(lpbot_position_status{status=\"open\"})",
+          "legendFormat": "Open Positions"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "value": 0, "color": "gray" },
+              { "value": 1, "color": "green" },
+              { "value": 10, "color": "yellow" },
+              { "value": 20, "color": "red" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Fees Collected",
+      "type": "stat",
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(lpbot_fees_collected{chain=~\"$chain\"})",
+          "legendFormat": "Total Fees"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD"
+        }
+      }
+    },
+    {
+      "title": "IL Impact",
+      "type": "stat",
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(lpbot_il_impact{chain=~\"$chain\"})",
+          "legendFormat": "Total IL"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "value": -1000, "color": "red" },
+              { "value": 0, "color": "yellow" },
+              { "value": 1000, "color": "green" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "PnL Over Time",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 8 },
+      "targets": [
+        {
+          "expr": "sum(rate(lpbot_pnl_total{chain=~\"$chain\"}[5m]))",
+          "legendFormat": "PnL Rate"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD"
+        }
+      },
+      "options": {
+        "legend": { "displayMode": "table" }
+      }
+    },
+    {
+      "title": "Positions by Chain",
+      "type": "piechart",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "targets": [
+        {
+          "expr": "count(lpbot_position_status{status=\"open\"}) by (chain)",
+          "legendFormat": "{{chain}}"
+        }
+      ]
+    },
+    {
+      "title": "Risk Status",
+      "type": "gauge",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "targets": [
+        {
+          "expr": "avg(lpbot_risk_exposure_pct)",
+          "legendFormat": "Exposure %"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "value": 0, "color": "green" },
+              { "value": 30, "color": "yellow" },
+              { "value": 50, "color": "orange" },
+              { "value": 80, "color": "red" }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["lpbot", "phase0"],
+  "templating": {
+    "list": [
+      {
+        "name": "chain",
+        "type": "multi-select",
+        "options": [
+          { "value": "base", "label": "Base" },
+          { "value": "solana", "label": "Solana" }
+        ],
+        "current": { "value": ["base", "solana"] }
+      }
+    ]
+  },
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "title": "LP-Bot Dashboard (Phase 0)",
+  "uid": "lpbot-phase0",
+  "version": 1,
+  "weekStart": ""
+}
