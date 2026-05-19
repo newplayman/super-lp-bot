@@ -12,6 +12,10 @@ import (
 // TestExecutionInterface - Phase 0 scaffold test
 // Invariants (spec §9.2): #3 (dryrun broadcast count == 0), #4 (non-zero MinOut and Deadline),
 // #9 (ApproveExact only), #10 (position exit must revoke approvals)
+func TestExecutionNotImplemented(t *testing.T) {
+	t.Skip("Phase 1 task T-314: implement ExecutePosition")
+}
+
 func TestExecutionInterface(t *testing.T) {
 	t.Skip("Phase 1 task T-314: implement ExecutePosition")
 
@@ -30,13 +34,13 @@ func TestOpenIntentValidation(t *testing.T) {
 	// Verify OpenIntent structure
 	intent := execution.OpenIntent{
 		PositionID: "test-pos-1",
-		PoolID:    "test-pool-1",
-		Chain:     "base",
-		Tier:      domain.TierC,
-		AmountUSD: domain.MustDecimal("50"),
-		TickLower: 100,
-		TickUpper: 200,
-		TraceID:   "trace-123",
+		PoolID:     "test-pool-1",
+		Chain:      "base",
+		Tier:       domain.TierC,
+		AmountUSD:  domain.MustDecimal("50"),
+		TickLower:  100,
+		TickUpper:  200,
+		TraceID:    "trace-123",
 	}
 
 	if intent.PositionID == "" {
@@ -73,11 +77,11 @@ func TestRebalanceIntentValidation(t *testing.T) {
 	t.Skip("Phase 1 task T-314: implement ExecutePosition")
 
 	intent := execution.RebalanceIntent{
-		PositionID:  "test-pos-1",
-		Chain:       "solana",
+		PositionID:   "test-pos-1",
+		Chain:        "solana",
 		NewTickLower: 150,
 		NewTickUpper: 250,
-		TraceID:     "trace-789",
+		TraceID:      "trace-789",
 	}
 
 	if intent.PositionID == "" {
@@ -198,9 +202,11 @@ var _ ports.Bus = (*mockBus)(nil)
 
 type mockChain struct{}
 
-func (*mockChain) Info() ports.ChainInfo                                         { return ports.ChainInfo{} }
-func (*mockChain) GetBlock(context.Context, domain.BlockRef) (ports.Block, error) { return ports.Block{}, nil }
-func (*mockChain) SubscribeBlocks(context.Context) (<-chan ports.Block, error)   { return nil, nil }
+func (*mockChain) Info() ports.ChainInfo { return ports.ChainInfo{} }
+func (*mockChain) GetBlock(context.Context, domain.BlockRef) (ports.Block, error) {
+	return ports.Block{}, nil
+}
+func (*mockChain) SubscribeBlocks(context.Context) (<-chan ports.Block, error) { return nil, nil }
 func (*mockChain) Multicall(context.Context, []ports.Call) ([]ports.CallResult, error) {
 	return nil, nil
 }
@@ -213,7 +219,7 @@ func (*mockChain) ListMyPositions(context.Context, domain.Address) ([]ports.Chai
 
 type mockBus struct{}
 
-func (*mockBus) Publish(domain.Event) error                             { return nil }
+func (*mockBus) Publish(domain.Event) error { return nil }
 func (*mockBus) Subscribe(string, ports.EventHandler) (ports.Subscription, error) {
 	return nil, nil
 }
