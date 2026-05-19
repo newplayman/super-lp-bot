@@ -1,0 +1,46 @@
+package decimal
+
+import (
+	"fmt"
+	sd "github.com/shopspring/decimal"
+)
+
+const Precision = 36
+
+var Zero = Decimal{sd.Zero}
+var One = Decimal{sd.NewFromInt(1)}
+
+type Decimal struct{ v sd.Decimal }
+
+func FromString(s string) (Decimal, error) {
+	d, err := sd.NewFromString(s)
+	if err != nil {
+		return Decimal{}, fmt.Errorf("decimal parse: %w", err)
+	}
+	return Decimal{v: d}, nil
+}
+
+func MustFromString(s string) Decimal {
+	d, err := FromString(s)
+	if err != nil {
+		panic(err)
+	}
+	return d
+}
+
+func FromInt(i int64) Decimal { return Decimal{v: sd.NewFromInt(i)} }
+
+// pow10 returns 10^n for n >= 0
+func pow10(n int64) int64 {
+	r := int64(1)
+	for i := int64(0); i < n; i++ {
+		r *= 10
+	}
+	return r
+}
+
+func (d Decimal) String() string { return d.v.String() }
+
+func (d Decimal) IsZero() bool      { return d.v.IsZero() }
+func (d Decimal) IsNeg() bool       { return d.v.IsNegative() }
+func (d Decimal) IsPositive() bool  { return d.v.IsPositive() }
