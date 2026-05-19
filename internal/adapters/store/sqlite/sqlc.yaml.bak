@@ -1,0 +1,16 @@
+version: "2"
+
+sql:
+  - name: "pools"
+    engine: "sqlite"
+    schema:
+        - "/Users/bendu/lp-bot/v3/migrations/sqlite/0001_init.sql"
+    queries:
+        - "/Users/bendu/lp-bot/v3/internal/adapters/store/sqlite/queries/"
+    gen:
+      go:
+        package: "sqlcgen"
+        out: "/Users/bendu/lp-bot/v3/internal/adapters/store/sqlite/sqlcgen"
+        sql_package: "database/sql"
+        emit_json_tags: true
+        emit_empty_slices: false

@@ -1,6 +1,7 @@
 -- +goose Up
 -- +goose StatementBegin
 
+-- Base tables (prefix applied at runtime via applySchemaPrefix)
 CREATE TABLE IF NOT EXISTS positions (
     id TEXT PRIMARY KEY,
     pool_address TEXT NOT NULL,
@@ -44,11 +45,92 @@ CREATE TABLE IF NOT EXISTS pool_states (
     snapshot_at INTEGER NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS pools (
+    pool_id TEXT NOT NULL,
+    chain INTEGER NOT NULL,
+    protocol TEXT NOT NULL,
+    token0 TEXT NOT NULL,
+    token1 TEXT NOT NULL,
+    fee_bps INTEGER NOT NULL,
+    tier TEXT,
+    audit_verdict TEXT,
+    last_score TEXT,
+    updated_block INTEGER DEFAULT 0,
+    updated_block_hash TEXT,
+    updated_block_time INTEGER DEFAULT 0,
+    updated_at INTEGER NOT NULL,
+    PRIMARY KEY (pool_id, chain, protocol)
+);
+
+CREATE TABLE IF NOT EXISTS pool_score_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    pool_id TEXT NOT NULL,
+    chain INTEGER NOT NULL,
+    block_number INTEGER NOT NULL,
+    block_hash TEXT,
+    block_time INTEGER NOT NULL,
+    score_json TEXT NOT NULL,
+    trace_id TEXT
+);
+
+CREATE TABLE IF NOT EXISTS pnl_ledger (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    position_id TEXT NOT NULL,
+    pool_id TEXT NOT NULL,
+    chain INTEGER NOT NULL,
+    block_number INTEGER NOT NULL,
+    block_hash TEXT,
+    block_time INTEGER NOT NULL,
+    fee_usd TEXT NOT NULL DEFAULT '0',
+    il_usd TEXT NOT NULL DEFAULT '0',
+    swap_cost_usd TEXT NOT NULL DEFAULT '0',
+    gas_usd TEXT NOT NULL DEFAULT '0',
+    slippage_usd TEXT NOT NULL DEFAULT '0',
+    rug_loss_usd TEXT NOT NULL DEFAULT '0',
+    net_pnl_usd TEXT NOT NULL DEFAULT '0',
+    trace_id TEXT
+);
+
+CREATE TABLE IF NOT EXISTS processed_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id TEXT NOT NULL UNIQUE,
+    event_topic TEXT NOT NULL,
+    processed_at INTEGER NOT NULL,
+    expires_at INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS config_snapshots (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    key TEXT NOT NULL,
+    value TEXT NOT NULL,
+    block_number INTEGER,
+    trace_id TEXT,
+    created_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS reconciliation_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    position_id TEXT NOT NULL,
+    expected_usd TEXT NOT NULL,
+    actual_usd TEXT NOT NULL,
+    variance_usd TEXT NOT NULL,
+    block_number INTEGER NOT NULL,
+    status TEXT NOT NULL,
+    trace_id TEXT,
+    created_at INTEGER NOT NULL
+);
+
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
 
+DROP TABLE IF EXISTS reconciliation_log;
+DROP TABLE IF EXISTS config_snapshots;
+DROP TABLE IF EXISTS processed_events;
+DROP TABLE IF EXISTS pnl_ledger;
+DROP TABLE IF EXISTS pool_score_history;
+DROP TABLE IF EXISTS pools;
 DROP TABLE IF EXISTS pool_states;
 DROP TABLE IF EXISTS transactions;
 DROP TABLE IF EXISTS orders;

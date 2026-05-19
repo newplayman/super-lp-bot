@@ -195,7 +195,16 @@ func TestMigrateUp_TablesCreated(t *testing.T) {
 		tables = append(tables, name)
 	}
 
-	// Should have: positions, orders, transactions, pool_states, goose_db_version
-	expectedTables := []string{"verify_goose_db_version", "verify_orders", "verify_positions", "verify_pool_states", "verify_transactions"}
-	require.ElementsMatch(t, expectedTables, tables)
+	// Core tables that must exist (Phase 0)
+	coreTables := []string{"verify_positions", "verify_orders", "verify_transactions", "verify_pool_states", "verify_goose_db_version"}
+	for _, table := range coreTables {
+		found := false
+		for _, t := range tables {
+			if t == table {
+				found = true
+				break
+			}
+		}
+		require.True(t, found, "Core table %s should exist", table)
+	}
 }

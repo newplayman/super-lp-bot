@@ -15,7 +15,7 @@ import (
 // In Phase 0, this stub exists only to establish the interface contract
 // and allow other modules to compile. Usage in production will panic.
 type defaultExecution struct {
-	deps  ExecutionDependencies
+	deps   ExecutionDependencies
 	config ExecutionConfig
 }
 
@@ -94,9 +94,11 @@ func verifyPorts() {
 // nilChain is a nil implementation for compile-time verification.
 type nilChain struct{}
 
-func (*nilChain) Info() ports.ChainInfo                                          { return ports.ChainInfo{} }
-func (*nilChain) GetBlock(context.Context, domain.BlockRef) (ports.Block, error) { return ports.Block{}, nil }
-func (*nilChain) SubscribeBlocks(context.Context) (<-chan ports.Block, error)     { return nil, nil }
+func (*nilChain) Info() ports.ChainInfo { return ports.ChainInfo{} }
+func (*nilChain) GetBlock(context.Context, domain.BlockRef) (ports.Block, error) {
+	return ports.Block{}, nil
+}
+func (*nilChain) SubscribeBlocks(context.Context) (<-chan ports.Block, error) { return nil, nil }
 func (*nilChain) Multicall(context.Context, []ports.Call) ([]ports.CallResult, error) {
 	return nil, nil
 }
@@ -110,9 +112,11 @@ func (*nilChain) ListMyPositions(context.Context, domain.Address) ([]ports.Chain
 // nilEVMChain is a nil implementation for compile-time verification.
 type nilEVMChain struct{}
 
-func (*nilEVMChain) Info() ports.ChainInfo                                          { return ports.ChainInfo{} }
-func (*nilEVMChain) GetBlock(context.Context, domain.BlockRef) (ports.Block, error) { return ports.Block{}, nil }
-func (*nilEVMChain) SubscribeBlocks(context.Context) (<-chan ports.Block, error)    { return nil, nil }
+func (*nilEVMChain) Info() ports.ChainInfo { return ports.ChainInfo{} }
+func (*nilEVMChain) GetBlock(context.Context, domain.BlockRef) (ports.Block, error) {
+	return ports.Block{}, nil
+}
+func (*nilEVMChain) SubscribeBlocks(context.Context) (<-chan ports.Block, error) { return nil, nil }
 func (*nilEVMChain) Multicall(context.Context, []ports.Call) ([]ports.CallResult, error) {
 	return nil, nil
 }
@@ -122,8 +126,10 @@ func (*nilEVMChain) EstimateGas(context.Context, ports.UnsignedTx) (ports.GasEst
 func (*nilEVMChain) ListMyPositions(context.Context, domain.Address) ([]ports.ChainPosition, error) {
 	return nil, nil
 }
-func (*nilEVMChain) NonceAt(context.Context, domain.Address, domain.BlockRef) (uint64, error) { return 0, nil }
-func (*nilEVMChain) PendingNonceAt(context.Context, domain.Address) (uint64, error)           { return 0, nil }
+func (*nilEVMChain) NonceAt(context.Context, domain.Address, domain.BlockRef) (uint64, error) {
+	return 0, nil
+}
+func (*nilEVMChain) PendingNonceAt(context.Context, domain.Address) (uint64, error) { return 0, nil }
 func (*nilEVMChain) SuggestGasFees(context.Context) (*big.Int, *big.Int, error) {
 	return nil, nil, nil
 }
@@ -131,9 +137,11 @@ func (*nilEVMChain) SuggestGasFees(context.Context) (*big.Int, *big.Int, error) 
 // nilSolanaChain is a nil implementation for compile-time verification.
 type nilSolanaChain struct{}
 
-func (*nilSolanaChain) Info() ports.ChainInfo                                          { return ports.ChainInfo{} }
-func (*nilSolanaChain) GetBlock(context.Context, domain.BlockRef) (ports.Block, error) { return ports.Block{}, nil }
-func (*nilSolanaChain) SubscribeBlocks(context.Context) (<-chan ports.Block, error)    { return nil, nil }
+func (*nilSolanaChain) Info() ports.ChainInfo { return ports.ChainInfo{} }
+func (*nilSolanaChain) GetBlock(context.Context, domain.BlockRef) (ports.Block, error) {
+	return ports.Block{}, nil
+}
+func (*nilSolanaChain) SubscribeBlocks(context.Context) (<-chan ports.Block, error) { return nil, nil }
 func (*nilSolanaChain) Multicall(context.Context, []ports.Call) ([]ports.CallResult, error) {
 	return nil, nil
 }
@@ -143,16 +151,16 @@ func (*nilSolanaChain) EstimateGas(context.Context, ports.UnsignedTx) (ports.Gas
 func (*nilSolanaChain) ListMyPositions(context.Context, domain.Address) ([]ports.ChainPosition, error) {
 	return nil, nil
 }
-func (*nilSolanaChain) LatestBlockhash(context.Context) (string, error)              { return "", nil }
-func (*nilSolanaChain) GetComputeUnitPrice(context.Context) (uint64, error)           { return 0, nil }
+func (*nilSolanaChain) LatestBlockhash(context.Context) (string, error)     { return "", nil }
+func (*nilSolanaChain) GetComputeUnitPrice(context.Context) (uint64, error) { return 0, nil }
 
 // nilWallet is a nil implementation for compile-time verification.
 type nilWallet struct{}
 
-func (*nilWallet) Open(context.Context) error                        { return nil }
-func (*nilWallet) Close() error                                      { return nil }
-func (*nilWallet) Address() domain.Address                           { return domain.Address{} }
-func (*nilWallet) Chain() domain.ChainID                            { return "" }
+func (*nilWallet) Open(context.Context) error { return nil }
+func (*nilWallet) Close() error               { return nil }
+func (*nilWallet) Address() domain.Address    { return domain.Address{} }
+func (*nilWallet) Chain() domain.ChainID      { return "" }
 func (*nilWallet) Sign(context.Context, domain.UnsignedTx) (domain.SignedTx, error) {
 	return domain.SignedTx{}, nil
 }
@@ -169,7 +177,7 @@ func (*nilWallet) Revoke(context.Context, domain.Address, domain.Address) (domai
 type nilBroadcaster struct{}
 
 func (*nilBroadcaster) Send(context.Context, domain.SignedTx) error { return nil }
-func (*nilBroadcaster) CallCount() int64                           { return 0 }
+func (*nilBroadcaster) CallCount() int64                            { return 0 }
 
 // nilMEVSubmitter is a nil implementation for compile-time verification.
 type nilMEVSubmitter struct{}
@@ -184,7 +192,7 @@ func (*nilMEVSubmitter) Type() string { return "nil" }
 // nilBus is a nil implementation for compile-time verification.
 type nilBus struct{}
 
-func (*nilBus) Publish(domain.Event) error                              { return nil }
+func (*nilBus) Publish(domain.Event) error { return nil }
 func (*nilBus) Subscribe(string, ports.EventHandler) (ports.Subscription, error) {
 	return nil, nil
 }
