@@ -52,6 +52,7 @@ func setupRepoTestDB(t *testing.T, prefix string) (*sql.DB, func()) {
 			position_id TEXT,
 			pool_key TEXT,
 			event_type TEXT NOT NULL,
+			action TEXT,
 			severity TEXT NOT NULL,
 			description TEXT NOT NULL,
 			data TEXT,

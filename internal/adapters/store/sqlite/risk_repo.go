@@ -25,26 +25,31 @@ func NewRiskRepo(db *sql.DB, prefix string) *RiskRepo {
 var _ ports.RiskRepo = (*RiskRepo)(nil)
 
 // AppendRiskEvent appends a new risk event to the audit trail.
-// Schema: id, position_id, pool_key, event_type, severity, description, data, resolved, created_at
+// Schema: id, position_id, pool_key, event_type, action, severity, description, data, resolved, created_at
 func (r *RiskRepo) AppendRiskEvent(ctx context.Context, event ports.RiskEvent) error {
 	table := r.prefix + "risk_events"
 	query := fmt.Sprintf(`
-		INSERT INTO %s (id, position_id, pool_key, event_type, severity, description, data, resolved, created_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO %s (id, position_id, pool_key, event_type, action, severity, description, data, resolved, created_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`, table)
 
-	now := time.Now().UnixMilli()
+	// Use event.Timestamp if provided, otherwise fallback to now
+	timestamp := event.Timestamp
+	if timestamp == 0 {
+		timestamp = time.Now().UnixMilli()
+	}
 
 	_, err := r.db.ExecContext(ctx, query,
 		event.ID,
 		event.PositionID,
 		event.PoolKey,
 		string(event.Source), // event_type <- Source
+		string(event.Action), // action
 		string(event.Level), // severity <- Level
 		event.Details,       // description <- Details
 		"",                  // data placeholder
 		0,                   // resolved (default false)
-		now,
+		timestamp,
 	)
 	return err
 }
@@ -52,7 +57,7 @@ func (r *RiskRepo) AppendRiskEvent(ctx context.Context, event ports.RiskEvent) e
 // ListRiskEvents returns risk events matching the provided filters.
 func (r *RiskRepo) ListRiskEvents(ctx context.Context, filter ports.RiskEventFilter) ([]ports.RiskEvent, error) {
 	table := r.prefix + "risk_events"
-	query := fmt.Sprintf(`SELECT id, position_id, pool_key, event_type, severity, description, data, created_at FROM %s WHERE 1=1`, table)
+	query := fmt.Sprintf(`SELECT id, position_id, pool_key, event_type, action, severity, description, data, created_at FROM %s WHERE 1=1`, table)
 	args := []interface{}{}
 
 	if filter.PoolKey != "" {
@@ -90,7 +95,7 @@ func (r *RiskRepo) ListRiskEvents(ctx context.Context, filter ports.RiskEventFil
 	for rows.Next() {
 		var e ports.RiskEvent
 		var data string
-		err := rows.Scan(&e.ID, &e.PositionID, &e.PoolKey, &e.Source, &e.Level, &e.Details, &data, &e.Timestamp)
+		err := rows.Scan(&e.ID, &e.PositionID, &e.PoolKey, &e.Source, &e.Action, &e.Level, &e.Details, &data, &e.Timestamp)
 		if err != nil {
 			continue
 		}

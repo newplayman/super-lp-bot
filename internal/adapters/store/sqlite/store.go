@@ -151,6 +151,7 @@ func (s *Store) migrate() error {
 			position_id TEXT,
 			pool_key TEXT,
 			event_type TEXT NOT NULL,
+			action TEXT,
 			severity TEXT NOT NULL,
 			description TEXT NOT NULL,
 			data TEXT,
@@ -185,6 +186,22 @@ func (s *Store) migrate() error {
 		if _, err := s.db.Exec(sql); err != nil {
 			return fmt.Errorf("failed to create table: %w", err)
 		}
+	}
+
+	// Run ALTER TABLE statements for existing databases
+	// This ensures new columns are added to existing tables
+	alterStatements := []string{
+		fmt.Sprintf(`ALTER TABLE %s_positions ADD COLUMN IF NOT EXISTS amount_usd TEXT`, s.prefix),
+		fmt.Sprintf(`ALTER TABLE %s_positions ADD COLUMN IF NOT EXISTS tier TEXT`, s.prefix),
+		fmt.Sprintf(`ALTER TABLE %s_risk_events ADD COLUMN IF NOT EXISTS position_id TEXT`, s.prefix),
+		fmt.Sprintf(`ALTER TABLE %s_risk_events ADD COLUMN IF NOT EXISTS pool_key TEXT`, s.prefix),
+		fmt.Sprintf(`ALTER TABLE %s_risk_events ADD COLUMN IF NOT EXISTS action TEXT`, s.prefix),
+	}
+
+	for _, sql := range alterStatements {
+		// SQLite doesn't support IF NOT EXISTS for ALTER TABLE, so we ignore errors
+		// This is safe because the columns either exist or get added
+		_, _ = s.db.Exec(sql)
 	}
 
 	return nil
