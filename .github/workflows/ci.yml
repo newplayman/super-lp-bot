@@ -17,17 +17,15 @@ jobs:
           cache: true
 
       - name: tidy
-        run: cd v3 && go mod tidy && git diff --exit-code go.mod go.sum
+        run: go mod tidy && git diff --exit-code go.mod go.sum
 
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:
           version: latest
           args: --timeout=5m
-          working-directory: v3
 
       - name: Build all tags
-        working-directory: v3
         run: |
           make build-dryrun
           make build-shadow
@@ -35,21 +33,28 @@ jobs:
           make backtest
 
       - name: Unit tests
-        working-directory: v3
         run: make test
 
       - name: Property tests
-        working-directory: v3
         run: make test-property
 
       - name: Test files unmodified check
         run: |
           set -e
           BASE=$(git merge-base origin/main HEAD || echo origin/main)
-          if git diff "$BASE" -- 'v3/**/*_test.go' | grep -E '^-[^-]' | grep -v '^---'; then
-            echo "ERROR: 不允许删/改 *_test.go（改测试需独立 PR 先合入）"
+          if git diff "$BASE" -- '*_test.go' | grep -E '^-[^-]' | grep -v '^---'; then
+            echo "ERROR: Cannot delete/modify *_test.go"
             exit 1
           fi
+
+      - name: Dependency audit
+        run: |
+          echo "=== Checking for dependency updates ==="
+          go list -m -u all
+          echo "=== Running govet ==="
+          go vet ./...
+          echo "=== Running govulncheck ==="
+          govulncheck ./...
 
   fork-tests:
     runs-on: ubuntu-latest
@@ -61,7 +66,6 @@ jobs:
         with: { go-version: "1.25" }
       - uses: foundry-rs/foundry-toolchain@v1
       - name: Fork tests
-        working-directory: v3
         env:
           BASE_RPC_PRIMARY: ${{ secrets.BASE_RPC_PRIMARY }}
           SOL_RPC_PRIMARY:  ${{ secrets.SOL_RPC_PRIMARY }}
@@ -75,5 +79,5 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with: { go-version: "1.25" }
-      - working-directory: v3
+      - name: Chaos tests
         run: make test-chaos
