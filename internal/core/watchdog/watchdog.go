@@ -36,6 +36,15 @@ func NewDefaultWatchdogWithConfig(cfg WatchdogConfig) Watchdog {
 	}
 }
 
+// NewDefaultWatchdogWithRiskGate creates a watchdog with a RiskGate for kill state monitoring.
+func NewDefaultWatchdogWithRiskGate(rg *risk.RiskGate) Watchdog {
+	return &defaultWatchdog{
+		config:    DefaultWatchdogConfig(),
+		riskGate:  rg,
+		lastCheck: make(map[CheckInterval]time.Time),
+	}
+}
+
 // Run starts the watchdog monitoring loop.
 func (w *defaultWatchdog) Run(ctx context.Context) error {
 	w.mu.Lock()
@@ -47,19 +56,36 @@ func (w *defaultWatchdog) Run(ctx context.Context) error {
 	w.stopCh = make(chan struct{})
 	w.mu.Unlock()
 
-	// Use CheckNormal (30s) as the main tick interval
-	ticker := time.NewTicker(time.Duration(CheckNormal))
+	// Use CheckFast (10s) as the main tick for responsive monitoring
+	ticker := time.NewTicker(time.Duration(CheckFast))
 	defer ticker.Stop()
 
 	// Run initial checks
 	w.runHealthCheck(ctx)
+	w.runInvariantChecks(ctx)
 	w.runMetricsCheck(ctx)
 
 	for {
 		select {
 		case <-ticker.C:
-			w.runHealthCheck(ctx)
-			w.runMetricsCheck(ctx)
+			now := time.Now()
+			w.mu.RLock()
+			healthLast := w.lastCheck[CheckHealth]
+			metricsLast := w.lastCheck[CheckSlow]
+			w.mu.RUnlock()
+
+			// Run health check if 5 minutes elapsed
+			if now.Sub(healthLast) >= time.Duration(CheckHealth) {
+				w.runHealthCheck(ctx)
+			}
+
+			// Run metrics check if 1 minute elapsed
+			if now.Sub(metricsLast) >= time.Duration(CheckSlow) {
+				w.runMetricsCheck(ctx)
+			}
+
+			// Always run invariant checks (30s interval via CheckNormal)
+			w.runInvariantChecks(ctx)
 		case <-w.stopCh:
 			return nil
 		case <-ctx.Done():

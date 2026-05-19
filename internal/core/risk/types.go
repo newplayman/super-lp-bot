@@ -2,6 +2,7 @@ package risk
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/lpbot/lpbot/internal/ports"
@@ -86,6 +87,7 @@ type RiskGate struct {
 	config RiskConfig
 	repo   ports.RiskRepo
 	state  ports.KillState
+	mu     sync.Mutex
 }
 
 // NewRiskGate creates a new RiskGate.
@@ -108,6 +110,8 @@ func NewRiskGateWithConfig(repo ports.RiskRepo, config RiskConfig) *RiskGate {
 
 // GetState returns the current kill state.
 func (g *RiskGate) GetState(ctx context.Context) (ports.KillState, error) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
 	if g.repo != nil {
 		return g.repo.GetKillState(ctx)
 	}
@@ -116,6 +120,9 @@ func (g *RiskGate) GetState(ctx context.Context) (ports.KillState, error) {
 
 // CheckVaR checks if portfolio VaR exceeds thresholds.
 func (g *RiskGate) CheckVaR(ctx context.Context, totalValue, realizedLoss decimal.Decimal) (ports.KillLevel, error) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
 	if totalValue.IsZero() {
 		return ports.KillLevelOK, nil
 	}
@@ -147,6 +154,9 @@ func (g *RiskGate) CheckVaR(ctx context.Context, totalValue, realizedLoss decima
 
 // CheckDrawdown checks daily/weekly drawdown against thresholds.
 func (g *RiskGate) CheckDrawdown(ctx context.Context, peakValue, currentValue decimal.Decimal, isWeekly bool) (ports.KillLevel, error) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
 	if peakValue.IsZero() {
 		return ports.KillLevelOK, nil
 	}
@@ -178,6 +188,9 @@ func (g *RiskGate) CheckDrawdown(ctx context.Context, peakValue, currentValue de
 
 // CheckExposure checks if total exposure exceeds limits.
 func (g *RiskGate) CheckExposure(ctx context.Context, totalExposure, totalBudget decimal.Decimal) (ports.KillLevel, error) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
 	if totalBudget.IsZero() {
 		return ports.KillLevelOK, nil
 	}
@@ -195,6 +208,9 @@ func (g *RiskGate) CheckExposure(ctx context.Context, totalExposure, totalBudget
 
 // RaiseKill manually raises the kill switch.
 func (g *RiskGate) RaiseKill(ctx context.Context, reason string) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
 	g.state = ports.KillState{Level: ports.KillLevelKill, Sources: []ports.RiskSource{ports.RiskSourceManual}, Since: time.Now(), Reason: reason}
 	if g.repo != nil {
 		return g.repo.UpsertKillState(ctx, g.state)
@@ -204,6 +220,9 @@ func (g *RiskGate) RaiseKill(ctx context.Context, reason string) error {
 
 // LowerWarn lowers the kill switch from warn to ok.
 func (g *RiskGate) LowerWarn(ctx context.Context) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
 	if g.state.Level == ports.KillLevelKill {
 		return nil
 	}

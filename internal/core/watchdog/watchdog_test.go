@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/lpbot/lpbot/internal/core/risk"
 	"github.com/lpbot/lpbot/internal/ports"
 	"github.com/stretchr/testify/require"
 )
@@ -19,6 +20,28 @@ func TestDefaultWatchdogWithConfig(t *testing.T) {
 	cfg.ExecutionStuckThreshold = 30 * time.Second
 	w := NewDefaultWatchdogWithConfig(cfg)
 	require.NotNil(t, w)
+}
+
+func TestDefaultWatchdogWithRiskGate(t *testing.T) {
+	rg := risk.NewRiskGate(nil)
+	w := NewDefaultWatchdogWithRiskGate(rg)
+	require.NotNil(t, w)
+
+	// Verify riskGate is set by checking health check includes kill state
+	ctx := context.Background()
+	results, err := w.RunChecks(ctx, CheckHealth)
+	require.NoError(t, err)
+	require.NotEmpty(t, results)
+
+	// Should have both system health and total exposure check
+	foundTotalExposure := false
+	for _, r := range results {
+		if r.Type == CheckTypeTotalExposure {
+			foundTotalExposure = true
+			require.True(t, r.Passed) // KillLevelOK by default
+		}
+	}
+	require.True(t, foundTotalExposure, "TotalExposure check should be present when RiskGate is set")
 }
 
 func TestDefaultWatchdogLastCheckTime(t *testing.T) {
