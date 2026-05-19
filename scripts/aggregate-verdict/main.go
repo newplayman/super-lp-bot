@@ -58,7 +58,7 @@ func main() {
 
 		// Parse verdict
 		poolResult := PoolResult{
-			Chain: extractField(entry.Name(), 0, "-"),
+			Chain: extractField(entry.Name(), "-", 0),
 			Pool:  entry.Name(),
 		}
 

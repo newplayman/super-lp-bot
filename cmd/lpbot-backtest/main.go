@@ -139,28 +139,31 @@ func createCacheTables(db *sql.DB) error {
 		pool_id TEXT NOT NULL,
 		timestamp INTEGER NOT NULL,
 		block_number INTEGER NOT NULL,
-		token0_in TEXT NOT NULL,
-		token1_in TEXT NOT NULL,
-		token0_out TEXT NOT NULL,
-		token1_out TEXT NOT NULL,
-		fee TEXT NOT NULL,
-		tx_hash TEXT NOT NULL
+		chain TEXT NOT NULL,
+		amount0 TEXT NOT NULL,
+		amount1 TEXT NOT NULL,
+		trader TEXT,
+		tick INTEGER,
+		sqrt_price_x96 TEXT
 	);
 
 	CREATE TABLE IF NOT EXISTS cache_pool_states (
 		id TEXT PRIMARY KEY,
 		pool_id TEXT NOT NULL,
-		timestamp INTEGER NOT NULL,
 		block_number INTEGER NOT NULL,
-		tick INTEGER NOT NULL,
-		liquidity TEXT NOT NULL,
+		block_hash TEXT,
+		block_time INTEGER NOT NULL,
+		tick INTEGER,
+		liquidity TEXT,
+		reserve0 TEXT,
+		reserve1 TEXT,
 		sqrt_price_x96 TEXT,
-		fee_growth_global_0 TEXT,
-		fee_growth_global_1 TEXT
+		fee_growth_0 TEXT,
+		fee_growth_1 TEXT
 	);
 
 	CREATE INDEX IF NOT EXISTS idx_cache_swaps_pool_timestamp ON cache_swaps(pool_id, timestamp);
-	CREATE INDEX IF NOT EXISTS idx_cache_pool_states_pool_timestamp ON cache_pool_states(pool_id, timestamp);
+	CREATE INDEX IF NOT EXISTS idx_cache_pool_states_pool_timestamp ON cache_pool_states(pool_id, block_time);
 	`
 
 	_, err := db.Exec(schema)
