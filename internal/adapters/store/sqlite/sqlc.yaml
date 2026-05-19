@@ -1,0 +1,16 @@
+version: "2"
+
+sql:
+  - name: "pools"
+    engine: "sqlite"
+    schema:
+        - "queries/schema.sql"
+    queries:
+        - "queries/pools.sql"
+    gen:
+      go:
+        package: "sqlcgen"
+        out: "sqlcgen"
+        sql_package: "database/sql"
+        emit_json_tags: true
+        emit_empty_slices: false
