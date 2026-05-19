@@ -3,6 +3,11 @@
 // The Store interface provides unified access to all repository interfaces.
 package ports
 
+import "errors"
+
+// Common repository errors
+var ErrPositionNotFound = errors.New("position not found")
+
 // Store provides unified access to all repository interfaces.
 // Implementations aggregate multiple repositories under a single interface.
 //

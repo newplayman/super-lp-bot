@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"time"
 
 	"github.com/lpbot/lpbot/internal/domain"
 	"github.com/lpbot/lpbot/internal/ports"
@@ -12,12 +13,13 @@ import (
 
 // PositionRepo implements ports.PositionRepo using SQLite.
 type PositionRepo struct {
-	db *sql.DB
+	db     *sql.DB
+	prefix string
 }
 
 // NewPositionRepo creates a new PositionRepo backed by the given database.
-func NewPositionRepo(db *sql.DB) *PositionRepo {
-	return &PositionRepo{db: db}
+func NewPositionRepo(db *sql.DB, prefix string) *PositionRepo {
+	return &PositionRepo{db: db, prefix: prefix}
 }
 
 // Compile-time interface assertion
@@ -25,182 +27,132 @@ var _ ports.PositionRepo = (*PositionRepo)(nil)
 
 // Save persists a position. If position exists, it is updated.
 func (r *PositionRepo) Save(ctx context.Context, pos *domain.Position) error {
-	_, err := r.db.ExecContext(ctx, `
-		INSERT INTO dryrun_positions (
-			position_id, pool_id, chain, status, tier, tick_lower, tick_upper,
-			amount_usd, opened_at, closed_at, created_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-		ON CONFLICT(position_id) DO UPDATE SET
+	table := r.prefix + "positions"
+	query := fmt.Sprintf(`
+		INSERT INTO %s (
+			id, chain, pool_id, token0, token1, tick_lower, tick_upper,
+			liquidity, amount0, amount1, tvl_usd, status, tier, opened_at, updated_at, closed_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		ON CONFLICT(id) DO UPDATE SET
 			status = excluded.status,
 			tier = excluded.tier,
-			tick_lower = excluded.tick_lower,
-			tick_upper = excluded.tick_upper,
-			amount_usd = excluded.amount_usd,
+			updated_at = excluded.updated_at,
 			closed_at = excluded.closed_at
-	`,
-		pos.ID,
-		pos.PoolID,
-		chainIDToInt(pos.Chain),
-		string(pos.Status),
-		string(pos.Tier),
-		pos.TickLower,
-		pos.TickUpper,
-		pos.AmountUSD.String(),
-		pos.OpenedAt,
-		pos.ClosedAt,
-		0, // created_at
+	`, table)
+
+	now := time.Now().UnixMilli()
+
+	_, err := r.db.ExecContext(ctx, query,
+		pos.ID, string(pos.Chain), pos.PoolID,
+		"", "", // token0/token1 not in Position struct
+		pos.TickLower, pos.TickUpper,
+		"", "", "", // liquidity/amount0/amount1/tvl_usd not in Position struct
+		string(pos.Status), string(pos.Tier),
+		pos.OpenedAt, now, pos.ClosedAt,
 	)
-	if err != nil {
-		return fmt.Errorf("failed to save position: %w", err)
-	}
-	return nil
+	return err
 }
 
 // FindByID retrieves a position by its unique identifier.
 func (r *PositionRepo) FindByID(ctx context.Context, id string) (*domain.Position, error) {
-	var row struct {
-		ID         string
-		PoolID     string
-		Chain      int
-		Status     string
-		Tier       string
-		TickLower  int64
-		TickUpper  int64
-		AmountUSD  string
-		OpenedAt   int64
-		ClosedAt   int64
-	}
+	table := r.prefix + "positions"
+	query := fmt.Sprintf(`
+		SELECT id, chain, pool_id, status, tier, tick_lower, tick_upper, opened_at, updated_at, closed_at
+		FROM %s WHERE id = ?
+	`, table)
 
-	err := r.db.QueryRowContext(ctx, `
-		SELECT position_id, pool_id, chain, status, tier, tick_lower, tick_upper,
-		       amount_usd, opened_at, closed_at
-		FROM dryrun_positions
-		WHERE position_id = ?
-	`, id).Scan(
-		&row.ID, &row.PoolID, &row.Chain, &row.Status, &row.Tier,
-		&row.TickLower, &row.TickUpper, &row.AmountUSD,
-		&row.OpenedAt, &row.ClosedAt,
+	var pos domain.Position
+	var chain, status, tier string
+	var openedAt, closedAt int64
+
+	err := r.db.QueryRowContext(ctx, query, id).Scan(
+		&pos.ID, &chain, &pos.PoolID, &status, &tier,
+		&pos.TickLower, &pos.TickUpper, &openedAt, &closedAt,
 	)
 	if err == sql.ErrNoRows {
-		return nil, nil
+		return nil, ports.ErrPositionNotFound
 	}
 	if err != nil {
-		return nil, fmt.Errorf("failed to query position: %w", err)
+		return nil, fmt.Errorf("failed to find position: %w", err)
 	}
 
-	tier, _ := domain.ParseTier(row.Tier)
-	pos := &domain.Position{
-		ID:         row.ID,
-		PoolID:     row.PoolID,
-		Chain:      intToChainID(row.Chain),
-		Status:     domain.PositionStatus(row.Status),
-		Tier:       tier,
-		TickLower:  row.TickLower,
-		TickUpper:  row.TickUpper,
-		OpenedAt:   row.OpenedAt,
-		ClosedAt:   row.ClosedAt,
-	}
+	pos.Chain = domain.ChainID(chain)
+	pos.Status = domain.PositionStatus(status)
+	pos.Tier = domain.Tier(tier)
+	pos.OpenedAt = openedAt
+	pos.ClosedAt = closedAt
 
-	if row.AmountUSD != "" {
-		pos.AmountUSD = domain.MustDecimal(row.AmountUSD)
-	}
-
-	return pos, nil
+	return &pos, nil
 }
 
-// FindByPoolAndStatus returns all positions for a pool with the specified status.
+// FindByPoolAndStatus returns all positions for a given pool with the specified status.
 func (r *PositionRepo) FindByPoolAndStatus(ctx context.Context, poolID string, status domain.PositionStatus) ([]*domain.Position, error) {
-	rows, err := r.db.QueryContext(ctx, `
-		SELECT position_id, pool_id, chain, status, tier, tick_lower, tick_upper,
-		       amount_usd, opened_at, closed_at
-		FROM dryrun_positions
-		WHERE pool_id = ? AND status = ?
-	`, poolID, string(status))
+	table := r.prefix + "positions"
+	query := fmt.Sprintf(`SELECT id FROM %s WHERE pool_id = ? AND status = ?`, table)
+	args := []interface{}{poolID, string(status)}
+
+	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query positions: %w", err)
 	}
 	defer rows.Close()
 
-	return scanPositions(rows)
+	var positions []*domain.Position
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			continue
+		}
+		pos, err := r.FindByID(ctx, id)
+		if err == nil {
+			positions = append(positions, pos)
+		}
+	}
+
+	return positions, rows.Err()
 }
 
-// FindByChainAndStatus returns all positions for a chain with the specified status.
+// FindByChainAndStatus returns positions matching chain and status filters.
 func (r *PositionRepo) FindByChainAndStatus(ctx context.Context, chain domain.ChainID, status domain.PositionStatus) ([]*domain.Position, error) {
-	rows, err := r.db.QueryContext(ctx, `
-		SELECT position_id, pool_id, chain, status, tier, tick_lower, tick_upper,
-		       amount_usd, opened_at, closed_at
-		FROM dryrun_positions
-		WHERE chain = ? AND status = ?
-	`, chainIDToInt(chain), string(status))
+	table := r.prefix + "positions"
+	query := fmt.Sprintf(`SELECT id FROM %s WHERE 1=1`, table)
+	args := []interface{}{}
+
+	if chain != "" {
+		query += " AND chain = ?"
+		args = append(args, string(chain))
+	}
+	if status != "" {
+		query += " AND status = ?"
+		args = append(args, string(status))
+	}
+
+	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query positions: %w", err)
 	}
 	defer rows.Close()
 
-	return scanPositions(rows)
+	var positions []*domain.Position
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			continue
+		}
+		pos, err := r.FindByID(ctx, id)
+		if err == nil {
+			positions = append(positions, pos)
+		}
+	}
+
+	return positions, rows.Err()
 }
 
 // UpdateStatus transitions a position to a new status.
 func (r *PositionRepo) UpdateStatus(ctx context.Context, id string, status domain.PositionStatus) error {
-	result, err := r.db.ExecContext(ctx, `
-		UPDATE dryrun_positions SET status = ? WHERE position_id = ?
-	`, string(status), id)
-	if err != nil {
-		return fmt.Errorf("failed to update position status: %w", err)
-	}
-
-	rows, _ := result.RowsAffected()
-	if rows == 0 {
-		return fmt.Errorf("position not found: %s", id)
-	}
-	return nil
-}
-
-// scanPositions scans rows into Position slice.
-func scanPositions(rows *sql.Rows) ([]*domain.Position, error) {
-	var positions []*domain.Position
-	for rows.Next() {
-		var row struct {
-			ID         string
-			PoolID     string
-			Chain      int
-			Status     string
-			Tier       string
-			TickLower  int64
-			TickUpper  int64
-			AmountUSD  string
-			OpenedAt   int64
-			ClosedAt   int64
-		}
-
-		err := rows.Scan(
-			&row.ID, &row.PoolID, &row.Chain, &row.Status, &row.Tier,
-			&row.TickLower, &row.TickUpper, &row.AmountUSD,
-			&row.OpenedAt, &row.ClosedAt,
-		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to scan position row: %w", err)
-		}
-
-		tier, _ := domain.ParseTier(row.Tier)
-		pos := &domain.Position{
-			ID:         row.ID,
-			PoolID:     row.PoolID,
-			Chain:      intToChainID(row.Chain),
-			Status:     domain.PositionStatus(row.Status),
-			Tier:       tier,
-			TickLower:  row.TickLower,
-			TickUpper:  row.TickUpper,
-			OpenedAt:   row.OpenedAt,
-			ClosedAt:   row.ClosedAt,
-		}
-
-		if row.AmountUSD != "" {
-			pos.AmountUSD = domain.MustDecimal(row.AmountUSD)
-		}
-
-		positions = append(positions, pos)
-	}
-
-	return positions, rows.Err()
+	table := r.prefix + "positions"
+	query := fmt.Sprintf(`UPDATE %s SET status = ?, updated_at = ? WHERE id = ?`, table)
+	now := time.Now().UnixMilli()
+	_, err := r.db.ExecContext(ctx, query, string(status), now, id)
+	return err
 }

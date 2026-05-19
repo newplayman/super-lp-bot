@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	_ "github.com/mattn/go-sqlite3"
 
@@ -13,12 +14,13 @@ import (
 
 // Store implements ports.Store using SQLite.
 type Store struct {
-	db     *sql.DB
-	txRepo *TxRepo
-	posRepo *PositionRepo
-	poolRepo *PoolRepo
+	db         *sql.DB
+	txRepo     *TxRepo
+	posRepo    *PositionRepo
+	poolRepo   *PoolRepo
 	ledgerRepo *LedgerRepo
-	riskRepo *RiskRepo
+	riskRepo   *RiskRepo
+	prefix     string
 }
 
 // NewStore creates a new SQLite store.
@@ -28,7 +30,7 @@ func NewStore(dbPath string) (*Store, error) {
 	}
 
 	// Ensure directory exists
-	dir := dbPath[:len(dbPath)-len("/data.db")]
+	dir := filepath.Dir(dbPath)
 	if dir != "" && dir != "." {
 		if err := os.MkdirAll(dir, 0755); err != nil {
 			return nil, fmt.Errorf("failed to create db directory: %w", err)
@@ -44,13 +46,17 @@ func NewStore(dbPath string) (*Store, error) {
 	db.SetMaxOpenConns(1) // SQLite doesn't support concurrent writes
 	db.SetMaxIdleConns(1)
 
+	// Derive prefix from db filename (e.g., "shadow" from "shadow.db")
+	prefix := derivePrefix(dbPath)
+
 	store := &Store{
-		db:          db,
-		txRepo:      NewTxRepo(db, "shadow_"),
-		posRepo:     NewPositionRepo(db),
-		poolRepo:    NewPoolRepo(db),
-		ledgerRepo:  NewLedgerRepo(db),
-		riskRepo:    NewRiskRepo(),
+		db:         db,
+		prefix:     prefix,
+		txRepo:     NewTxRepo(db, prefix+"_"),
+		posRepo:    NewPositionRepo(db, prefix+"_"),
+		poolRepo:   NewPoolRepo(db, prefix+"_"),
+		ledgerRepo: NewLedgerRepo(db),
+		riskRepo:   NewRiskRepo(db),
 	}
 
 	// Run migrations
@@ -62,11 +68,23 @@ func NewStore(dbPath string) (*Store, error) {
 	return store, nil
 }
 
+// derivePrefix extracts the mode prefix from the db path.
+func derivePrefix(dbPath string) string {
+	base := filepath.Base(dbPath)
+	ext := filepath.Ext(base)
+	name := base[:len(base)-len(ext)] // Remove .db
+	// Remove _db suffix if present
+	if len(name) > 3 && name[len(name)-3:] == "_db" {
+		name = name[:len(name)-3]
+	}
+	return name
+}
+
 // migrate runs database migrations.
 func (s *Store) migrate() error {
-	// Create tables if they don't exist
+	// Create tables using the correct prefix
 	tables := []string{
-		`CREATE TABLE IF NOT EXISTS shadow_transactions (
+		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s_transactions (
 			id TEXT PRIMARY KEY,
 			chain TEXT NOT NULL,
 			tx_hash TEXT UNIQUE NOT NULL,
@@ -90,8 +108,8 @@ func (s *Store) migrate() error {
 			trace_id TEXT,
 			created_at INTEGER NOT NULL,
 			updated_at INTEGER NOT NULL
-		)`,
-		`CREATE TABLE IF NOT EXISTS shadow_positions (
+		)`, s.prefix),
+		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s_positions (
 			id TEXT PRIMARY KEY,
 			chain TEXT NOT NULL,
 			pool_id TEXT NOT NULL,
@@ -111,8 +129,8 @@ func (s *Store) migrate() error {
 			opened_at INTEGER NOT NULL,
 			updated_at INTEGER NOT NULL,
 			closed_at INTEGER
-		)`,
-		`CREATE TABLE IF NOT EXISTS shadow_pools (
+		)`, s.prefix),
+		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s_pools (
 			id TEXT PRIMARY KEY,
 			chain TEXT NOT NULL,
 			protocol TEXT NOT NULL,
@@ -125,8 +143,8 @@ func (s *Store) migrate() error {
 			fee_apr_24h TEXT,
 			last_score REAL,
 			updated_at INTEGER NOT NULL
-		)`,
-		`CREATE TABLE IF NOT EXISTS shadow_risk_events (
+		)`, s.prefix),
+		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s_risk_events (
 			id TEXT PRIMARY KEY,
 			event_type TEXT NOT NULL,
 			severity TEXT NOT NULL,
@@ -135,8 +153,18 @@ func (s *Store) migrate() error {
 			resolved INTEGER DEFAULT 0,
 			resolved_at INTEGER,
 			created_at INTEGER NOT NULL
-		)`,
-		`CREATE TABLE IF NOT EXISTS shadow_kill_switch_state (
+		)`, s.prefix),
+		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s_ledger (
+			id TEXT PRIMARY KEY,
+			position_id TEXT,
+			tx_hash TEXT,
+			entry_type TEXT NOT NULL,
+			amount TEXT NOT NULL,
+			currency TEXT NOT NULL,
+			description TEXT,
+			timestamp INTEGER NOT NULL
+		)`, s.prefix),
+		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s_kill_switch_state (
 			id TEXT PRIMARY KEY,
 			switch_type TEXT NOT NULL,
 			triggered_at INTEGER NOT NULL,
@@ -146,17 +174,7 @@ func (s *Store) migrate() error {
 			resume_allowed INTEGER DEFAULT 1,
 			total_triggers INTEGER DEFAULT 1,
 			updated_at INTEGER NOT NULL
-		)`,
-		`CREATE TABLE IF NOT EXISTS shadow_ledger (
-			id TEXT PRIMARY KEY,
-			position_id TEXT,
-			tx_hash TEXT,
-			entry_type TEXT NOT NULL,
-			amount TEXT NOT NULL,
-			currency TEXT NOT NULL,
-			description TEXT,
-			timestamp INTEGER NOT NULL
-		)`,
+		)`, s.prefix),
 	}
 
 	for _, sql := range tables {
@@ -192,4 +210,9 @@ func (s *Store) ConfigSnap() ports.ConfigSnap { return nil }
 // Close closes the database connection.
 func (s *Store) Close() error {
 	return s.db.Close()
+}
+
+// Prefix returns the table prefix used by this store.
+func (s *Store) Prefix() string {
+	return s.prefix
 }
