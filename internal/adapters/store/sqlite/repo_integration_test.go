@@ -30,6 +30,8 @@ func setupRepoTestDB(t *testing.T, prefix string) (*sql.DB, func()) {
 			amount0 TEXT NOT NULL,
 			amount1 TEXT NOT NULL,
 			tvl_usd TEXT,
+			amount_usd TEXT,
+			tier TEXT,
 			status TEXT NOT NULL,
 			opened_at INTEGER NOT NULL,
 			updated_at INTEGER NOT NULL,
@@ -47,6 +49,8 @@ func setupRepoTestDB(t *testing.T, prefix string) (*sql.DB, func()) {
 		)`,
 		`CREATE TABLE IF NOT EXISTS ` + prefix + `risk_events (
 			id TEXT PRIMARY KEY,
+			position_id TEXT,
+			pool_key TEXT,
 			event_type TEXT NOT NULL,
 			severity TEXT NOT NULL,
 			description TEXT NOT NULL,
@@ -91,6 +95,8 @@ func TestPositionRepo_SaveAndFind(t *testing.T) {
 		Chain:     domain.ChainBase,
 		PoolID:    "pool_abc",
 		Status:    domain.StatusOpen,
+		Tier:      domain.TierA,
+		AmountUSD: domain.MustDecimal("500"),
 		TickLower: -1000,
 		TickUpper: 1000,
 		OpenedAt:  1700000000000,
@@ -106,6 +112,8 @@ func TestPositionRepo_SaveAndFind(t *testing.T) {
 	assert.Equal(t, domain.ChainBase, found.Chain)
 	assert.Equal(t, "pool_abc", found.PoolID)
 	assert.Equal(t, domain.StatusOpen, found.Status)
+	assert.Equal(t, domain.TierA, found.Tier)
+	assert.True(t, found.AmountUSD.Equal(domain.MustDecimal("500")))
 	assert.Equal(t, int64(-1000), found.TickLower)
 	assert.Equal(t, int64(1000), found.TickUpper)
 }
@@ -121,6 +129,8 @@ func TestPositionRepo_UpdateStatus(t *testing.T) {
 		Chain:     domain.ChainSolana,
 		PoolID:    "pool_xyz",
 		Status:    domain.StatusOpen,
+		Tier:      domain.TierB,
+		AmountUSD: domain.MustDecimal("100"),
 		TickLower: 0,
 		TickUpper: 100,
 		OpenedAt:  1700000000000,
@@ -146,9 +156,9 @@ func TestPositionRepo_FindByChainAndStatus(t *testing.T) {
 
 	// Insert multiple positions
 	positions := []*domain.Position{
-		{ID: "pos_1", Chain: domain.ChainBase, PoolID: "p1", Status: domain.StatusOpen, TickLower: 0, TickUpper: 100, OpenedAt: 1},
-		{ID: "pos_2", Chain: domain.ChainBase, PoolID: "p2", Status: domain.StatusOpen, TickLower: 0, TickUpper: 100, OpenedAt: 2},
-		{ID: "pos_3", Chain: domain.ChainSolana, PoolID: "p3", Status: domain.StatusOpen, TickLower: 0, TickUpper: 100, OpenedAt: 3},
+		{ID: "pos_1", Chain: domain.ChainBase, PoolID: "p1", Status: domain.StatusOpen, Tier: domain.TierA, AmountUSD: domain.MustDecimal("100"), TickLower: 0, TickUpper: 100, OpenedAt: 1},
+		{ID: "pos_2", Chain: domain.ChainBase, PoolID: "p2", Status: domain.StatusOpen, Tier: domain.TierB, AmountUSD: domain.MustDecimal("200"), TickLower: 0, TickUpper: 100, OpenedAt: 2},
+		{ID: "pos_3", Chain: domain.ChainSolana, PoolID: "p3", Status: domain.StatusOpen, Tier: domain.TierA, AmountUSD: domain.MustDecimal("300"), TickLower: 0, TickUpper: 100, OpenedAt: 3},
 	}
 	for _, p := range positions {
 		err := repo.Save(context.Background(), p)
@@ -261,6 +271,34 @@ func TestRiskRepo_AppendRiskEvent(t *testing.T) {
 	assert.Equal(t, "risk_test_001", found.ID)
 }
 
+func TestRiskRepo_ListRiskEvents_FilterByPoolKey(t *testing.T) {
+	db, cleanup := setupRepoTestDB(t, "risk_filter_")
+	defer cleanup()
+
+	repo := NewRiskRepo(db, "risk_filter_")
+
+	// Add multiple events
+	events := []ports.RiskEvent{
+		{ID: "rf_1", PoolKey: "base:uniswap_v3:0xpool1", Source: ports.RiskSourceDailyDD, Level: ports.KillLevelWarn, Details: "Event 1"},
+		{ID: "rf_2", PoolKey: "base:uniswap_v3:0xpool1", Source: ports.RiskSourceManual, Level: ports.KillLevelKill, Details: "Event 2"},
+		{ID: "rf_3", PoolKey: "base:uniswap_v3:0xpool2", Source: ports.RiskSourceDailyDD, Level: ports.KillLevelWarn, Details: "Event 3"},
+	}
+	for _, e := range events {
+		err := repo.AppendRiskEvent(context.Background(), e)
+		require.NoError(t, err)
+	}
+
+	// Filter by pool key
+	filtered, err := repo.ListRiskEvents(context.Background(), ports.RiskEventFilter{PoolKey: "base:uniswap_v3:0xpool1"})
+	require.NoError(t, err)
+	assert.Len(t, filtered, 2)
+
+	// Filter by source
+	bySource, err := repo.ListRiskEvents(context.Background(), ports.RiskEventFilter{Source: ports.RiskSourceManual})
+	require.NoError(t, err)
+	assert.Len(t, bySource, 1)
+}
+
 func TestRiskRepo_KillState(t *testing.T) {
 	db, err := sql.Open("sqlite3", ":memory:")
 	require.NoError(t, err)
@@ -300,6 +338,52 @@ func TestRiskRepo_KillState(t *testing.T) {
 	assert.Equal(t, ports.KillLevelWarn, retrieved.Level)
 }
 
+func TestRiskRepo_UpsertKillState(t *testing.T) {
+	db, err := sql.Open("sqlite3", ":memory:")
+	require.NoError(t, err)
+	defer db.Close()
+
+	// Create fresh table matching schema
+	_, err = db.Exec(`CREATE TABLE upsert_kill_kill_switch_state (
+		id TEXT PRIMARY KEY,
+		switch_type TEXT NOT NULL,
+		triggered_at INTEGER NOT NULL,
+		trigger_reason TEXT,
+		auto_resume_at INTEGER,
+		resumed_at INTEGER,
+		resume_allowed INTEGER DEFAULT 1,
+		total_triggers INTEGER DEFAULT 1,
+		updated_at INTEGER NOT NULL
+	)`)
+	require.NoError(t, err)
+
+	repo := NewRiskRepo(db, "upsert_kill_")
+
+	// Upsert initial warn state
+	err = repo.UpsertKillState(context.Background(), ports.KillState{
+		Level: ports.KillLevelWarn,
+		Reason: "Initial warn",
+	})
+	require.NoError(t, err)
+
+	// Verify initial state
+	state, err := repo.GetKillState(context.Background())
+	require.NoError(t, err)
+	assert.Equal(t, ports.KillLevelWarn, state.Level)
+
+	// Upsert to kill state - this should update switch_type and triggered_at
+	err = repo.UpsertKillState(context.Background(), ports.KillState{
+		Level: ports.KillLevelKill,
+		Reason: "Escalated to kill",
+	})
+	require.NoError(t, err)
+
+	// Verify escalation
+	state, err = repo.GetKillState(context.Background())
+	require.NoError(t, err)
+	assert.Equal(t, ports.KillLevelKill, state.Level)
+}
+
 // Test prefix isolation
 func TestPrefixIsolation(t *testing.T) {
 	db1, cleanup1 := setupRepoTestDB(t, "dryrun_")
@@ -313,8 +397,8 @@ func TestPrefixIsolation(t *testing.T) {
 	posRepo2 := NewPositionRepo(db2, "shadow_")
 
 	// Save to different prefixes
-	pos1 := &domain.Position{ID: "pos_dry", Chain: domain.ChainBase, PoolID: "p1", Status: domain.StatusOpen, TickLower: 0, TickUpper: 100, OpenedAt: 1}
-	pos2 := &domain.Position{ID: "pos_shadow", Chain: domain.ChainBase, PoolID: "p1", Status: domain.StatusOpen, TickLower: 0, TickUpper: 100, OpenedAt: 2}
+	pos1 := &domain.Position{ID: "pos_dry", Chain: domain.ChainBase, PoolID: "p1", Status: domain.StatusOpen, Tier: domain.TierA, AmountUSD: domain.MustDecimal("100"), TickLower: 0, TickUpper: 100, OpenedAt: 1}
+	pos2 := &domain.Position{ID: "pos_shadow", Chain: domain.ChainBase, PoolID: "p1", Status: domain.StatusOpen, Tier: domain.TierB, AmountUSD: domain.MustDecimal("200"), TickLower: 0, TickUpper: 100, OpenedAt: 2}
 
 	err := posRepo1.Save(context.Background(), pos1)
 	require.NoError(t, err)

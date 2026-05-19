@@ -121,6 +121,8 @@ func (s *Store) migrate() error {
 			amount0 TEXT NOT NULL,
 			amount1 TEXT NOT NULL,
 			tvl_usd TEXT,
+			amount_usd TEXT,
+			tier TEXT,
 			fee_growth_0 TEXT,
 			fee_growth_1 TEXT,
 			collected_fee_0 TEXT,
@@ -146,6 +148,8 @@ func (s *Store) migrate() error {
 		)`, s.prefix),
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s_risk_events (
 			id TEXT PRIMARY KEY,
+			position_id TEXT,
+			pool_key TEXT,
 			event_type TEXT NOT NULL,
 			severity TEXT NOT NULL,
 			description TEXT NOT NULL,

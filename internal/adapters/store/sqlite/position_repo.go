@@ -9,6 +9,7 @@ import (
 
 	"github.com/lpbot/lpbot/internal/domain"
 	"github.com/lpbot/lpbot/internal/ports"
+	"github.com/shopspring/decimal"
 )
 
 // PositionRepo implements ports.PositionRepo using SQLite.
@@ -29,14 +30,19 @@ var _ ports.PositionRepo = (*PositionRepo)(nil)
 func (r *PositionRepo) Save(ctx context.Context, pos *domain.Position) error {
 	table := r.prefix + "positions"
 	// Schema: id, chain, pool_id, token0, token1, tick_lower, tick_upper,
-	//         liquidity, amount0, amount1, tvl_usd, status, opened_at, updated_at, closed_at
+	//         liquidity, amount0, amount1, tvl_usd, amount_usd, tier,
+	//         fee_growth_0, fee_growth_1, collected_fee_0, collected_fee_1,
+	//         status, opened_at, updated_at, closed_at
 	query := fmt.Sprintf(`
 		INSERT INTO %s (
 			id, chain, pool_id, token0, token1, tick_lower, tick_upper,
-			liquidity, amount0, amount1, tvl_usd, status, opened_at, updated_at, closed_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			liquidity, amount0, amount1, tvl_usd, amount_usd, tier,
+			status, opened_at, updated_at, closed_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET
 			status = excluded.status,
+			tier = excluded.tier,
+			amount_usd = excluded.amount_usd,
 			tick_lower = excluded.tick_lower,
 			tick_upper = excluded.tick_upper,
 			amount0 = excluded.amount0,
@@ -53,6 +59,8 @@ func (r *PositionRepo) Save(ctx context.Context, pos *domain.Position) error {
 		pos.TickLower, pos.TickUpper,
 		"0", "0", "0", // liquidity/amount0/amount1 placeholder
 		"0", // tvl_usd placeholder
+		pos.AmountUSD.String(), // amount_usd
+		string(pos.Tier), // tier
 		string(pos.Status),
 		pos.OpenedAt, now, pos.ClosedAt,
 	)
@@ -62,21 +70,23 @@ func (r *PositionRepo) Save(ctx context.Context, pos *domain.Position) error {
 // FindByID retrieves a position by its unique identifier.
 func (r *PositionRepo) FindByID(ctx context.Context, id string) (*domain.Position, error) {
 	table := r.prefix + "positions"
-	// Schema: id, chain, pool_id, token0, token1, tick_lower, tick_upper,
-	//         liquidity, amount0, amount1, tvl_usd, status, opened_at, updated_at, closed_at
+	// Query includes tier and amount_usd
 	query := fmt.Sprintf(`
-		SELECT id, chain, pool_id, tick_lower, tick_upper, amount0, amount1, status, opened_at, closed_at
+		SELECT id, chain, pool_id, tick_lower, tick_upper, amount0, amount1,
+		       amount_usd, tier, status, opened_at, closed_at
 		FROM %s WHERE id = ?
 	`, table)
 
 	var pos domain.Position
-	var chain, status string
+	var chain, status, tier string
+	var amountUSDSql sql.NullString
 	var openedAt, closedAt int64
 
 	err := r.db.QueryRowContext(ctx, query, id).Scan(
 		&pos.ID, &chain, &pos.PoolID,
 		&pos.TickLower, &pos.TickUpper,
 		new(string), new(string), // amount0, amount1 - ignore
+		&amountUSDSql, &tier,
 		&status, &openedAt, &closedAt,
 	)
 	if err == sql.ErrNoRows {
@@ -88,6 +98,10 @@ func (r *PositionRepo) FindByID(ctx context.Context, id string) (*domain.Positio
 
 	pos.Chain = domain.ChainID(chain)
 	pos.Status = domain.PositionStatus(status)
+	pos.Tier = domain.Tier(tier)
+	if amountUSDSql.Valid {
+		pos.AmountUSD, _ = decimal.NewFromString(amountUSDSql.String)
+	}
 	pos.OpenedAt = openedAt
 	pos.ClosedAt = closedAt
 
@@ -97,10 +111,13 @@ func (r *PositionRepo) FindByID(ctx context.Context, id string) (*domain.Positio
 // FindByPoolAndStatus returns all positions for a given pool with the specified status.
 func (r *PositionRepo) FindByPoolAndStatus(ctx context.Context, poolID string, status domain.PositionStatus) ([]*domain.Position, error) {
 	table := r.prefix + "positions"
-	query := fmt.Sprintf(`SELECT id FROM %s WHERE pool_id = ? AND status = ?`, table)
-	args := []interface{}{poolID, string(status)}
+	query := fmt.Sprintf(`
+		SELECT id, chain, pool_id, tick_lower, tick_upper, amount0, amount1,
+		       amount_usd, tier, status, opened_at, closed_at
+		FROM %s WHERE pool_id = ? AND status = ?
+	`, table)
 
-	rows, err := r.db.QueryContext(ctx, query, args...)
+	rows, err := r.db.QueryContext(ctx, query, poolID, string(status))
 	if err != nil {
 		return nil, fmt.Errorf("failed to query positions: %w", err)
 	}
@@ -108,14 +125,30 @@ func (r *PositionRepo) FindByPoolAndStatus(ctx context.Context, poolID string, s
 
 	var positions []*domain.Position
 	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
+		var pos domain.Position
+		var chain, statusStr, tier string
+		var amountUSDSql sql.NullString
+		var openedAt, closedAt int64
+
+		err := rows.Scan(
+			&pos.ID, &chain, &pos.PoolID,
+			&pos.TickLower, &pos.TickUpper,
+			new(string), new(string), // amount0, amount1
+			&amountUSDSql, &tier,
+			&statusStr, &openedAt, &closedAt,
+		)
+		if err != nil {
 			continue
 		}
-		pos, err := r.FindByID(ctx, id)
-		if err == nil {
-			positions = append(positions, pos)
+		pos.Chain = domain.ChainID(chain)
+		pos.Status = domain.PositionStatus(statusStr)
+		pos.Tier = domain.Tier(tier)
+		if amountUSDSql.Valid {
+			pos.AmountUSD, _ = decimal.NewFromString(amountUSDSql.String)
 		}
+		pos.OpenedAt = openedAt
+		pos.ClosedAt = closedAt
+		positions = append(positions, &pos)
 	}
 
 	return positions, rows.Err()
@@ -124,7 +157,11 @@ func (r *PositionRepo) FindByPoolAndStatus(ctx context.Context, poolID string, s
 // FindByChainAndStatus returns positions matching chain and status filters.
 func (r *PositionRepo) FindByChainAndStatus(ctx context.Context, chain domain.ChainID, status domain.PositionStatus) ([]*domain.Position, error) {
 	table := r.prefix + "positions"
-	query := `SELECT id, chain, pool_id, tick_lower, tick_upper, amount0, amount1, status, opened_at, closed_at FROM ` + table + ` WHERE 1=1`
+	query := fmt.Sprintf(`
+		SELECT id, chain, pool_id, tick_lower, tick_upper, amount0, amount1,
+		       amount_usd, tier, status, opened_at, closed_at
+		FROM %s WHERE 1=1
+	`, table)
 	args := []interface{}{}
 
 	if chain != "" {
@@ -145,13 +182,15 @@ func (r *PositionRepo) FindByChainAndStatus(ctx context.Context, chain domain.Ch
 	var positions []*domain.Position
 	for rows.Next() {
 		var pos domain.Position
-		var chainStr, statusStr string
+		var chainStr, statusStr, tier string
+		var amountUSDSql sql.NullString
 		var openedAt, closedAt int64
 
 		err := rows.Scan(
 			&pos.ID, &chainStr, &pos.PoolID,
 			&pos.TickLower, &pos.TickUpper,
 			new(string), new(string), // amount0, amount1
+			&amountUSDSql, &tier,
 			&statusStr, &openedAt, &closedAt,
 		)
 		if err != nil {
@@ -159,6 +198,10 @@ func (r *PositionRepo) FindByChainAndStatus(ctx context.Context, chain domain.Ch
 		}
 		pos.Chain = domain.ChainID(chainStr)
 		pos.Status = domain.PositionStatus(statusStr)
+		pos.Tier = domain.Tier(tier)
+		if amountUSDSql.Valid {
+			pos.AmountUSD, _ = decimal.NewFromString(amountUSDSql.String)
+		}
 		pos.OpenedAt = openedAt
 		pos.ClosedAt = closedAt
 		positions = append(positions, &pos)
