@@ -83,7 +83,8 @@ type PoolWithScore struct {
 // PoolFilter specifies criteria for filtering pools.
 type PoolFilter struct {
 	Chain domain.ChainID // filter by chain (empty = any)
-	Tier  domain.Tier     // filter by tier (zero = any)
+	Tier  domain.Tier    // filter by tier (zero = any)
+	Limit int            // max results (0 = default 100)
 }
 
 // PoolScoreSnapshot is an immutable record of a pool's score at a point in time.
