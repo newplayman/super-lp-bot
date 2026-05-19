@@ -1,64 +1,36 @@
 package dexscreener_test
 
 import (
-	"context"
+	"net/http"
 	"testing"
 	"time"
 
 	"github.com/lpbot/lpbot/internal/adapters/datasource/dexscreener"
-	"github.com/lpbot/lpbot/internal/domain"
 	"github.com/lpbot/lpbot/internal/ports"
 	"github.com/stretchr/testify/require"
 )
 
-// TestDexScreenerAdapterInterface verifies the adapter implements ports.Datasource.
-func TestDexScreenerAdapterInterface(t *testing.T) {
-	adapter := dexscreener.NewAdapter()
+// TestDexScreenerAdapterImplementsDatasource verifies compile-time interface compliance.
+func TestDexScreenerAdapterImplementsDatasource(t *testing.T) {
+	var adapter *dexscreener.Adapter
 	var _ ports.Datasource = adapter
 }
 
-// TestDexScreenerAdapterHistoricalInterface verifies the adapter implements ports.HistoricalDatasource.
-func TestDexScreenerAdapterHistoricalInterface(t *testing.T) {
-	adapter := dexscreener.NewAdapter()
+// TestDexScreenerAdapterImplementsHistoricalDatasource verifies compile-time interface compliance.
+func TestDexScreenerAdapterImplementsHistoricalDatasource(t *testing.T) {
+	var adapter *dexscreener.Adapter
 	var _ ports.HistoricalDatasource = adapter
 }
 
-// TestDexScreenerDiscoverPoolsStub verifies DiscoverPools returns not implemented.
-func TestDexScreenerDiscoverPoolsStub(t *testing.T) {
-	adapter := dexscreener.NewAdapter()
-	_, err := adapter.DiscoverPools(context.Background(), domain.ChainBase, "uniswap_v3", domain.Decimal{}, 10)
-	require.Error(t, err)
-	require.Equal(t, dexscreener.ErrNotImplemented, err)
+// TestDexScreenerNewAdapterWithClient verifies custom HTTP client works.
+func TestDexScreenerNewAdapterWithClient(t *testing.T) {
+	client := &http.Client{Timeout: 10 * time.Second}
+	adapter := dexscreener.NewAdapterWithClient(client)
+	require.NotNil(t, adapter)
 }
 
-// TestDexScreenerGetPoolMetadataStub verifies GetPoolMetadata returns not implemented.
-func TestDexScreenerGetPoolMetadataStub(t *testing.T) {
+// TestDexScreenerNewAdapter verifies default adapter creation.
+func TestDexScreenerNewAdapter(t *testing.T) {
 	adapter := dexscreener.NewAdapter()
-	_, err := adapter.GetPoolMetadata(context.Background(), domain.ChainBase, "0x123")
-	require.Error(t, err)
-	require.Equal(t, dexscreener.ErrNotImplemented, err)
-}
-
-// TestDexScreenerHealthCheckStub verifies HealthCheck returns not implemented.
-func TestDexScreenerHealthCheckStub(t *testing.T) {
-	adapter := dexscreener.NewAdapter()
-	err := adapter.HealthCheck(context.Background())
-	require.Error(t, err)
-	require.Equal(t, dexscreener.ErrNotImplemented, err)
-}
-
-// TestDexScreenerGetPriceHistoryStub verifies GetPriceHistory returns not implemented.
-func TestDexScreenerGetPriceHistoryStub(t *testing.T) {
-	adapter := dexscreener.NewAdapter()
-	_, err := adapter.GetPriceHistory(context.Background(), domain.ChainBase, "0x123", time.Time{}, time.Now(), time.Hour)
-	require.Error(t, err)
-	require.Equal(t, dexscreener.ErrNotImplemented, err)
-}
-
-// TestDexScreenerGetPoolStateAtStub verifies GetPoolStateAt returns not implemented.
-func TestDexScreenerGetPoolStateAtStub(t *testing.T) {
-	adapter := dexscreener.NewAdapter()
-	_, err := adapter.GetPoolStateAt(context.Background(), domain.ChainBase, "0x123", 1000)
-	require.Error(t, err)
-	require.Equal(t, dexscreener.ErrNotImplemented, err)
+	require.NotNil(t, adapter)
 }

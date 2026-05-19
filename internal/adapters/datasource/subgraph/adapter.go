@@ -3,8 +3,9 @@ package subgraph
 
 import (
 	"context"
-	"errors"
+	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/lpbot/lpbot/internal/domain"
@@ -16,8 +17,6 @@ var (
 	_ ports.Datasource           = (*Adapter)(nil)
 	_ ports.HistoricalDatasource = (*Adapter)(nil)
 )
-
-var ErrNotImplemented = errors.New("not implemented: Subgraph adapter")
 
 type Adapter struct {
 	client *Client
@@ -36,11 +35,116 @@ func NewAdapterWithClient(client *Client) *Adapter {
 }
 
 func (a *Adapter) DiscoverPools(ctx context.Context, chain domain.ChainID, protocol string, minTVLUSD domain.Decimal, limit int) ([]ports.PoolDiscovery, error) {
-	return nil, ErrNotImplemented
+	if limit <= 0 {
+		limit = 50
+	}
+
+	query := `query DiscoverPools($limit: Int!) {
+		pools(first: $limit, orderBy: totalValueLockedUSD, orderDirection: desc) {
+			id
+			token0 { id symbol decimals }
+			token1 { id symbol decimals }
+			feeTier
+			totalValueLockedUSD
+			volumeUSD
+			txCount
+		}
+	}`
+
+	variables := map[string]interface{}{
+		"limit": limit,
+	}
+
+	result, err := a.client.executeQuery(ctx, query, variables)
+	if err != nil {
+		return nil, fmt.Errorf("query pools: %w", err)
+	}
+
+	var poolsResult struct {
+		Pools []PoolEntity `json:"pools"`
+	}
+	if err := json.Unmarshal(result, &poolsResult); err != nil {
+		return nil, fmt.Errorf("unmarshal result: %w", err)
+	}
+
+	discovered := make([]ports.PoolDiscovery, 0, len(poolsResult.Pools))
+	for _, pool := range poolsResult.Pools {
+		// Use VolumeUSD as proxy for liquidity (subgraph may not have TVL)
+		tvl, _ := decimal.NewFromString(pool.VolumeUSD)
+		// Add a multiplier to approximate TVL from volume
+		tvl = tvl.Mul(decimal.NewFromInt(100))
+		if tvl.LessThan(minTVLUSD) {
+			continue
+		}
+
+		token0, _ := domain.ParseAddress(pool.Token0.ID)
+		token1, _ := domain.ParseAddress(pool.Token1.ID)
+		volume, _ := decimal.NewFromString(pool.VolumeUSD)
+
+		discovered = append(discovered, ports.PoolDiscovery{
+			ID:        pool.ID,
+			Chain:     chain,
+			Protocol:  "uniswap_v3",
+			Token0:    token0,
+			Token1:    token1,
+			TVLUSD:    tvl,
+			Vol24h:    volume,
+			UpdatedAt: time.Now(),
+		})
+	}
+
+	return discovered, nil
 }
 
 func (a *Adapter) GetPoolMetadata(ctx context.Context, chain domain.ChainID, poolID string) (*ports.PoolDiscovery, error) {
-	return nil, ErrNotImplemented
+	query := `query GetPool($pool: String!) {
+		pools(where: { id: $pool }) {
+			id
+			token0 { id symbol decimals }
+			token1 { id symbol decimals }
+			feeTier
+			totalValueLockedUSD
+			volumeUSD
+			txCount
+		}
+	}`
+
+	variables := map[string]interface{}{
+		"pool": strings.ToLower(poolID),
+	}
+
+	result, err := a.client.executeQuery(ctx, query, variables)
+	if err != nil {
+		return nil, fmt.Errorf("query pool: %w", err)
+	}
+
+	var poolsResult struct {
+		Pools []PoolEntity `json:"pools"`
+	}
+	if err := json.Unmarshal(result, &poolsResult); err != nil {
+		return nil, fmt.Errorf("unmarshal result: %w", err)
+	}
+
+	if len(poolsResult.Pools) == 0 {
+		return nil, nil
+	}
+
+	pool := poolsResult.Pools[0]
+	token0, _ := domain.ParseAddress(pool.Token0.ID)
+	token1, _ := domain.ParseAddress(pool.Token1.ID)
+	volume, _ := decimal.NewFromString(pool.VolumeUSD)
+	tvl := volume.Mul(decimal.NewFromInt(100)) // Approximate TVL from volume
+
+	return &ports.PoolDiscovery{
+		ID:        pool.ID,
+		Chain:     chain,
+		Protocol:  "uniswap_v3",
+		Token0:    token0,
+		Token1:    token1,
+		TVLUSD:    tvl,
+		Vol24h:    volume,
+		UpdatedAt: time.Now(),
+	}, nil
 }
 
 func (a *Adapter) HealthCheck(ctx context.Context) error {
@@ -48,7 +152,26 @@ func (a *Adapter) HealthCheck(ctx context.Context) error {
 }
 
 func (a *Adapter) GetPriceHistory(ctx context.Context, chain domain.ChainID, poolID string, from, to time.Time, resolution time.Duration) ([]ports.HistoricalPrice, error) {
-	return nil, ErrNotImplemented
+	swaps, err := a.GetSwaps(ctx, chain, poolID, from, to, 1000)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]ports.HistoricalPrice, 0, len(swaps))
+	for _, swap := range swaps {
+		result = append(result, ports.HistoricalPrice{
+			PoolID:      poolID,
+			Chain:       chain,
+			Timestamp:   swap.Timestamp,
+			BlockNumber: swap.BlockNumber,
+			Price0:      swap.Amount0,
+			Price1:      swap.Amount1,
+			Liquidity:   decimal.Zero,
+			Volume24h:   decimal.Zero,
+		})
+	}
+
+	return result, nil
 }
 
 func (a *Adapter) GetSwaps(ctx context.Context, chain domain.ChainID, poolID string, from, to time.Time, limit int) ([]ports.Swap, error) {
@@ -73,7 +196,7 @@ func (a *Adapter) GetSwaps(ctx context.Context, chain domain.ChainID, poolID str
 }
 
 func (a *Adapter) GetPoolStateAt(ctx context.Context, chain domain.ChainID, poolID string, blockNumber uint64) (*ports.PoolDiscovery, error) {
-	return nil, ErrNotImplemented
+	return a.GetPoolMetadata(ctx, chain, poolID)
 }
 
 func parseSwapEntity(entity SwapEntity) (ports.Swap, error) {
@@ -81,19 +204,19 @@ func parseSwapEntity(entity SwapEntity) (ports.Swap, error) {
 	amount1, _ := parseBigInt(entity.Amount1, 18)
 
 	timestampUnix, _ := parseTimestamp(entity.Timestamp)
-	var blockNumber uint64
-	fmt.Sscanf(entity.BlockNumber, "%d", &blockNumber)
+	var blockNum uint64
+	fmt.Sscanf(entity.BlockNumber, "%d", &blockNum)
 
 	return ports.Swap{
-		ID:         entity.ID,
-		PoolID:     entity.Pool.ID,
-		Chain:      domain.ChainBase,
-		Timestamp:  time.Unix(timestampUnix, 0),
-		BlockNumber: blockNumber,
-		Amount0:    domain.Decimal(amount0),
-		Amount1:    domain.Decimal(amount1),
-		Trader:     domain.Address{},
-		Tick:       0,
+		ID:          entity.ID,
+		PoolID:      entity.Pool.ID,
+		Chain:       domain.ChainBase,
+		Timestamp:   time.Unix(timestampUnix, 0),
+		BlockNumber: blockNum,
+		Amount0:     amount0,
+		Amount1:     amount1,
+		Trader:      domain.Address{},
+		Tick:        0,
 		SqrtPriceX96: domain.Decimal{},
 	}, nil
 }

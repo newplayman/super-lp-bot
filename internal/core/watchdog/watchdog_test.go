@@ -9,46 +9,98 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDefaultWatchdog_Run_Panics(t *testing.T) {
+func TestDefaultWatchdogNew(t *testing.T) {
 	w := NewDefaultWatchdog()
-
-	require.Panics(t, func() {
-		_ = w.Run(context.Background())
-	}, "Run should panic as stub")
+	require.NotNil(t, w)
 }
 
-func TestDefaultWatchdog_Stop_Panics(t *testing.T) {
-	w := NewDefaultWatchdog()
-
-	require.Panics(t, func() {
-		_ = w.Stop()
-	}, "Stop should panic as stub")
-}
-
-func TestDefaultWatchdog_RunChecks_Panics(t *testing.T) {
-	w := NewDefaultWatchdog()
-
-	for _, interval := range []CheckInterval{CheckFast, CheckNormal, CheckSlow, CheckHealth} {
-		t.Run(time.Duration(interval).String(), func(t *testing.T) {
-			require.Panics(t, func() {
-				_, _ = w.RunChecks(context.Background(), interval)
-			}, "RunChecks should panic as stub")
-		})
-	}
-}
-
-func TestDefaultWatchdog_LastCheckTime_ReturnsEmptyMap(t *testing.T) {
-	w := NewDefaultWatchdog()
-
-	result := w.LastCheckTime()
-
-	require.NotNil(t, result)
-	require.Empty(t, result, "LastCheckTime should return empty map for stub")
-}
-
-func TestDefaultWatchdogConfig_DefaultValues(t *testing.T) {
+func TestDefaultWatchdogWithConfig(t *testing.T) {
 	cfg := DefaultWatchdogConfig()
+	cfg.ExecutionStuckThreshold = 30 * time.Second
+	w := NewDefaultWatchdogWithConfig(cfg)
+	require.NotNil(t, w)
+}
 
+func TestDefaultWatchdogLastCheckTime(t *testing.T) {
+	w := NewDefaultWatchdog()
+	result := w.LastCheckTime()
+	require.NotNil(t, result)
+	require.Empty(t, result)
+}
+
+func TestDefaultWatchdogRunChecks(t *testing.T) {
+	w := NewDefaultWatchdog()
+	ctx := context.Background()
+
+	// Test with CheckHealth interval
+	results, err := w.RunChecks(ctx, CheckHealth)
+	require.NoError(t, err)
+	require.NotEmpty(t, results)
+}
+
+func TestDefaultWatchdogRunChecksNormal(t *testing.T) {
+	w := NewDefaultWatchdog()
+	ctx := context.Background()
+
+	results, err := w.RunChecks(ctx, CheckNormal)
+	require.NoError(t, err)
+	require.NotEmpty(t, results)
+}
+
+func TestDefaultWatchdogRunChecksFast(t *testing.T) {
+	w := NewDefaultWatchdog()
+	ctx := context.Background()
+
+	results, err := w.RunChecks(ctx, CheckFast)
+	require.NoError(t, err)
+	require.NotEmpty(t, results)
+}
+
+func TestDefaultWatchdogRunChecksSlow(t *testing.T) {
+	w := NewDefaultWatchdog()
+	ctx := context.Background()
+
+	results, err := w.RunChecks(ctx, CheckSlow)
+	require.NoError(t, err)
+	require.NotEmpty(t, results)
+}
+
+func TestDefaultWatchdogRun(t *testing.T) {
+	w := NewDefaultWatchdog()
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancel()
+
+	go func() {
+		_ = w.Run(ctx)
+	}()
+
+	// Give Run a moment to start
+	time.Sleep(50 * time.Millisecond)
+	err := w.Stop()
+	require.NoError(t, err)
+}
+
+func TestDefaultWatchdogStop(t *testing.T) {
+	w := NewDefaultWatchdog()
+	err := w.Stop()
+	require.NoError(t, err)
+}
+
+func TestDefaultWatchdogStopAfterRun(t *testing.T) {
+	w := NewDefaultWatchdog()
+	ctx := context.Background()
+
+	go func() {
+		w.Run(ctx)
+	}()
+
+	time.Sleep(100 * time.Millisecond)
+	err := w.Stop()
+	require.NoError(t, err)
+}
+
+func TestDefaultWatchdogConfig(t *testing.T) {
+	cfg := DefaultWatchdogConfig()
 	require.Equal(t, 60*time.Second, cfg.ExecutionStuckThreshold)
 	require.Equal(t, 120*time.Second, cfg.StopLossTimeout)
 	require.Equal(t, int64(100000), cfg.TotalExposureLimit)
@@ -71,7 +123,7 @@ func TestCheckTypeConstants(t *testing.T) {
 	require.Equal(t, CheckType("system_health"), CheckTypeSystemHealth)
 }
 
-func TestCheckResult_Fields(t *testing.T) {
+func TestCheckResultFields(t *testing.T) {
 	ts := time.Now().Truncate(time.Second)
 	result := CheckResult{
 		Type:      CheckTypeExecutionStuck,
@@ -90,20 +142,22 @@ func TestCheckResult_Fields(t *testing.T) {
 	require.Equal(t, "test-trace-123", result.TraceID)
 }
 
-func TestNewDefaultWatchdogWithConfig(t *testing.T) {
-	cfg := WatchdogConfig{
-		ExecutionStuckThreshold: 30 * time.Second,
-		StopLossTimeout:         60 * time.Second,
-		TotalExposureLimit:      50000,
-		AlertOnPass:             true,
+func TestCheckResultPassed(t *testing.T) {
+	result := CheckResult{
+		Type:      CheckTypeSystemHealth,
+		Passed:    true,
+		Level:     ports.AlertP2,
+		Reason:    "OK",
+		Timestamp: time.Now(),
 	}
 
-	w := NewDefaultWatchdogWithConfig(cfg)
-	require.NotNil(t, w)
+	require.True(t, result.Passed)
+	require.Equal(t, ports.AlertP2, result.Level)
+}
 
-	// Verify the config is stored by checking LastCheckTime works
-	result := w.LastCheckTime()
-	require.NotNil(t, result)
+func TestWatchdogInterface(t *testing.T) {
+	var w Watchdog = NewDefaultWatchdog()
+	require.NotNil(t, w)
 }
 
 // Compile-time interface compliance check

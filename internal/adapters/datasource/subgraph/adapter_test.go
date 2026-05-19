@@ -1,56 +1,60 @@
 package subgraph_test
 
 import (
-	"context"
+	"net/http"
 	"testing"
-	"time"
 
 	"github.com/lpbot/lpbot/internal/adapters/datasource/subgraph"
-	"github.com/lpbot/lpbot/internal/domain"
 	"github.com/lpbot/lpbot/internal/ports"
 	"github.com/stretchr/testify/require"
 )
 
-// TestSubgraphAdapterInterface verifies the adapter implements ports.Datasource.
-func TestSubgraphAdapterInterface(t *testing.T) {
-	adapter := subgraph.NewAdapter()
+// TestSubgraphAdapterImplementsDatasource verifies compile-time interface compliance.
+func TestSubgraphAdapterImplementsDatasource(t *testing.T) {
+	var adapter *subgraph.Adapter
 	var _ ports.Datasource = adapter
 }
 
-// TestSubgraphAdapterHistoricalInterface verifies the adapter implements ports.HistoricalDatasource.
-func TestSubgraphAdapterHistoricalInterface(t *testing.T) {
-	adapter := subgraph.NewAdapter()
+// TestSubgraphAdapterImplementsHistoricalDatasource verifies compile-time interface compliance.
+func TestSubgraphAdapterImplementsHistoricalDatasource(t *testing.T) {
+	var adapter *subgraph.Adapter
 	var _ ports.HistoricalDatasource = adapter
 }
 
-// TestSubgraphDiscoverPoolsStub verifies DiscoverPools returns not implemented.
-func TestSubgraphDiscoverPoolsStub(t *testing.T) {
+// TestSubgraphNewAdapter verifies default adapter creation.
+func TestSubgraphNewAdapter(t *testing.T) {
 	adapter := subgraph.NewAdapter()
-	_, err := adapter.DiscoverPools(context.Background(), domain.ChainBase, "uniswap_v3", domain.Decimal{}, 10)
-	require.Error(t, err)
-	require.Equal(t, subgraph.ErrNotImplemented, err)
+	require.NotNil(t, adapter)
 }
 
-// TestSubgraphGetPoolMetadataStub verifies GetPoolMetadata returns not implemented.
-func TestSubgraphGetPoolMetadataStub(t *testing.T) {
-	adapter := subgraph.NewAdapter()
-	_, err := adapter.GetPoolMetadata(context.Background(), domain.ChainBase, "0x123")
-	require.Error(t, err)
-	require.Equal(t, subgraph.ErrNotImplemented, err)
+// TestSubgraphNewAdapterWithURL verifies custom URL adapter creation.
+func TestSubgraphNewAdapterWithURL(t *testing.T) {
+	adapter := subgraph.NewAdapterWithURL("https://api.thegraph.com/subgraphs/name/test")
+	require.NotNil(t, adapter)
 }
 
-// TestSubgraphGetPriceHistoryStub verifies GetPriceHistory returns not implemented.
-func TestSubgraphGetPriceHistoryStub(t *testing.T) {
-	adapter := subgraph.NewAdapter()
-	_, err := adapter.GetPriceHistory(context.Background(), domain.ChainBase, "0x123", time.Time{}, time.Now(), time.Hour)
-	require.Error(t, err)
-	require.Equal(t, subgraph.ErrNotImplemented, err)
+// TestSubgraphNewAdapterWithClient verifies custom client adapter creation.
+func TestSubgraphNewAdapterWithClient(t *testing.T) {
+	client := subgraph.NewClient()
+	adapter := subgraph.NewAdapterWithClient(client)
+	require.NotNil(t, adapter)
 }
 
-// TestSubgraphGetPoolStateAtStub verifies GetPoolStateAt returns not implemented.
-func TestSubgraphGetPoolStateAtStub(t *testing.T) {
+// TestSubgraphClientCreation verifies client creation.
+func TestSubgraphClientCreation(t *testing.T) {
+	client := subgraph.NewClient()
+	require.NotNil(t, client)
+}
+
+// TestSubgraphClientWithURL verifies client with custom URL.
+func TestSubgraphClientWithURL(t *testing.T) {
+	client := subgraph.NewClientWithURL("https://api.thegraph.com/subgraphs/name/custom")
+	require.NotNil(t, client)
+}
+
+// TestSubgraphAdapterWithHTTPClient verifies adapter with custom HTTP client.
+func TestSubgraphAdapterWithHTTPClient(t *testing.T) {
+	_ = &http.Client{}
 	adapter := subgraph.NewAdapter()
-	_, err := adapter.GetPoolStateAt(context.Background(), domain.ChainBase, "0x123", 1000)
-	require.Error(t, err)
-	require.Equal(t, subgraph.ErrNotImplemented, err)
+	require.NotNil(t, adapter)
 }

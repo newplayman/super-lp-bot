@@ -181,3 +181,52 @@ func (c *Client) HealthCheck(ctx context.Context) error {
 
 	return nil
 }
+
+// PoolListResponse represents the pool list response from GeckoTerminal.
+type PoolListResponse struct {
+	Data  []PoolInfo `json:"data"`
+	Links struct {
+		Next string `json:"next"`
+	} `json:"links"`
+}
+
+// GetPoolsByNetwork fetches top pools for a network.
+func (c *Client) GetPoolsByNetwork(ctx context.Context, network string, limit int) ([]PoolInfo, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+
+	u, err := url.Parse(fmt.Sprintf("%s/networks/%s/pools", c.baseURL, network))
+	if err != nil {
+		return nil, fmt.Errorf("parse URL: %w", err)
+	}
+
+	query := u.Query()
+	query.Set("page", "1")
+	query.Set("limit", fmt.Sprintf("%d", limit))
+	u.RawQuery = query.Encode()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	if err != nil {
+		return nil, fmt.Errorf("create request: %w", err)
+	}
+
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("execute request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("unexpected status: %d", resp.StatusCode)
+	}
+
+	var result PoolListResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("decode response: %w", err)
+	}
+
+	return result.Data, nil
+}
