@@ -256,7 +256,7 @@ func TestRiskRepo_AppendRiskEvent(t *testing.T) {
 		Action:     ports.RiskActionFreeze,
 		Level:      ports.KillLevelWarn,
 		Details:    "Daily drawdown threshold breached",
-		Timestamp: 1700000000000,
+		Timestamp:  1700000000000,
 	}
 
 	err := repo.AppendRiskEvent(context.Background(), event)
@@ -265,11 +265,17 @@ func TestRiskRepo_AppendRiskEvent(t *testing.T) {
 	// ListRiskEvents with no filter (get all)
 	events, err := repo.ListRiskEvents(context.Background(), ports.RiskEventFilter{})
 	require.NoError(t, err)
-	assert.GreaterOrEqual(t, len(events), 1, "should have at least 1 event")
+	assert.Len(t, events, 1, "should have exactly 1 event")
 
-	// Verify the event fields
+	// Verify all fields including Action and Timestamp
 	found := events[0]
 	assert.Equal(t, "risk_test_001", found.ID)
+	assert.Equal(t, "pos_001", found.PositionID)
+	assert.Equal(t, "base:uniswap_v3:0xpool", found.PoolKey)
+	assert.Equal(t, ports.RiskSourceDailyDD, found.Source)
+	assert.Equal(t, ports.RiskActionFreeze, found.Action)
+	assert.Equal(t, ports.KillLevelWarn, found.Level)
+	assert.Equal(t, int64(1700000000000), found.Timestamp)
 }
 
 func TestRiskRepo_ListRiskEvents_FilterByPoolKey(t *testing.T) {

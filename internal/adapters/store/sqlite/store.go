@@ -189,22 +189,78 @@ func (s *Store) migrate() error {
 	}
 
 	// Run ALTER TABLE statements for existing databases
-	// This ensures new columns are added to existing tables
-	alterStatements := []string{
-		fmt.Sprintf(`ALTER TABLE %s_positions ADD COLUMN IF NOT EXISTS amount_usd TEXT`, s.prefix),
-		fmt.Sprintf(`ALTER TABLE %s_positions ADD COLUMN IF NOT EXISTS tier TEXT`, s.prefix),
-		fmt.Sprintf(`ALTER TABLE %s_risk_events ADD COLUMN IF NOT EXISTS position_id TEXT`, s.prefix),
-		fmt.Sprintf(`ALTER TABLE %s_risk_events ADD COLUMN IF NOT EXISTS pool_key TEXT`, s.prefix),
-		fmt.Sprintf(`ALTER TABLE %s_risk_events ADD COLUMN IF NOT EXISTS action TEXT`, s.prefix),
-	}
-
-	for _, sql := range alterStatements {
-		// SQLite doesn't support IF NOT EXISTS for ALTER TABLE, so we ignore errors
-		// This is safe because the columns either exist or get added
-		_, _ = s.db.Exec(sql)
+	// Use PRAGMA table_info to check if columns exist before adding
+	if err := s.runMigrations(); err != nil {
+		return err
 	}
 
 	return nil
+}
+
+// runMigrations adds new columns to existing tables.
+func (s *Store) runMigrations() error {
+	// Columns to add to positions table
+	positionCols := []struct {
+		name    string
+		colType string
+	}{
+		{"amount_usd", "TEXT"},
+		{"tier", "TEXT"},
+	}
+
+	// Columns to add to risk_events table
+	riskCols := []struct {
+		name    string
+		colType string
+	}{
+		{"position_id", "TEXT"},
+		{"pool_key", "TEXT"},
+		{"action", "TEXT"},
+	}
+
+	// Add columns to positions
+	for _, col := range positionCols {
+		if err := s.addColumnIfNotExists(s.prefix+"positions", col.name, col.colType); err != nil {
+			return fmt.Errorf("failed to add column %s to positions: %w", col.name, err)
+		}
+	}
+
+	// Add columns to risk_events
+	for _, col := range riskCols {
+		if err := s.addColumnIfNotExists(s.prefix+"risk_events", col.name, col.colType); err != nil {
+			return fmt.Errorf("failed to add column %s to risk_events: %w", col.name, err)
+		}
+	}
+
+	return nil
+}
+
+// addColumnIfNotExists adds a column to a table if it doesn't already exist.
+func (s *Store) addColumnIfNotExists(tableName, columnName, columnType string) error {
+	// Check if column exists using PRAGMA table_info
+	rows, err := s.db.Query(fmt.Sprintf("PRAGMA table_info(%s)", tableName))
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var cid int
+		var name, colType string
+		var notnull, pk int
+		var dflt_value interface{}
+		if err := rows.Scan(&cid, &name, &colType, &notnull, &dflt_value, &pk); err != nil {
+			continue
+		}
+		if name == columnName {
+			// Column already exists
+			return nil
+		}
+	}
+
+	// Column doesn't exist, add it
+	_, err = s.db.Exec(fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s", tableName, columnName, columnType))
+	return err
 }
 
 // Compile-time interface assertion
