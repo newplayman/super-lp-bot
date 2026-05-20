@@ -1,0 +1,38 @@
+# VPS Shadow Mode Configuration
+# For testing the business loop on VPS
+
+[mode]
+name = "shadow"
+
+[store]
+# Use SQLite for initial testing, can switch to PostgreSQL later
+sqlite_path = "data/shadow.db"
+
+[platform]
+log_level = "debug"
+
+[chains.base]
+rpc_primary = ""  # Set your Base RPC endpoint
+rpc_fallback = []
+
+[chains.solana]
+rpc_primary = ""  # Set your Solana RPC endpoint
+
+[datasource]
+name = "geckoterminal"
+api_key = ""
+
+[scanner]
+scan_interval = "5m"
+min_tvl_usd = "10000"
+
+[strategy]
+min_score = 60
+max_positions = 5
+
+[execution]
+mode = "shadow"  # shadow = simulate, live = real execution
+max_gas_gwei = 100
+
+[alerter]
+enabled = false
