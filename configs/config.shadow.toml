@@ -16,8 +16,8 @@ rpc_primary = "${SOL_RPC_PRIMARY}"
 commitment = "finalized"
 
 [store]
-backend = "sqlite"
-sqlite_path = "data/shadow.db"
+backend = "postgres"
+postgres_dsn = "${DATABASE_URL}"
 
 [bus]
 backend = "inproc"

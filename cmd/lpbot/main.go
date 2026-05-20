@@ -8,11 +8,13 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
 
 	"github.com/lpbot/lpbot/internal/adapters/datasource/geckoterminal"
+	"github.com/lpbot/lpbot/internal/adapters/store/postgres"
 	"github.com/lpbot/lpbot/internal/adapters/rpc"
 	"github.com/lpbot/lpbot/internal/adapters/store/sqlite"
 	"github.com/lpbot/lpbot/internal/core/loop"
@@ -39,7 +41,7 @@ type App struct {
 	logger     *zap.Logger
 	config     *config.Config
 	rpc        map[string]*rpc.RoundRobinProvider
-	store      *sqlite.Store
+	store      ports.Store
 	datasource *geckoterminal.Adapter
 	scanner    scanner.Scanner
 	strategy   strategy.Strategy
@@ -52,6 +54,7 @@ type App struct {
 func minimalConfig(sqlitePath string) *config.Config {
 	return &config.Config{
 		Store: config.Store{
+			Backend:    "sqlite",
 			SQLitePath: sqlitePath,
 		},
 	}
@@ -155,13 +158,33 @@ func (app *App) initAdapters(ctx context.Context) error {
 	}
 
 	// Initialize store
-	store, err := sqlite.NewStore(app.config.Store.SQLitePath)
-	if err != nil {
-		return fmt.Errorf("failed to initialize store: %w", err)
+	backend := strings.ToLower(strings.TrimSpace(app.config.Store.Backend))
+	if backend == "" {
+		backend = "sqlite"
 	}
-	app.store = store
-	app.logger.Info("SQLite store initialized",
-		zap.String("path", app.config.Store.SQLitePath))
+
+	switch backend {
+	case "sqlite":
+		store, err := sqlite.NewStore(app.config.Store.SQLitePath)
+		if err != nil {
+			return fmt.Errorf("failed to initialize sqlite store: %w", err)
+		}
+		app.store = store
+		app.logger.Info("SQLite store initialized",
+			zap.String("path", app.config.Store.SQLitePath))
+	case "postgres", "postgresql", "pg":
+		if strings.TrimSpace(app.config.Store.PostgresDSN) == "" {
+			return fmt.Errorf("store backend is postgres but postgres_dsn is empty")
+		}
+		store, err := postgres.NewFromDSN(app.config.Store.PostgresDSN)
+		if err != nil {
+			return fmt.Errorf("failed to initialize postgres store: %w", err)
+		}
+		app.store = store
+		app.logger.Info("PostgreSQL store initialized")
+	default:
+		return fmt.Errorf("unsupported store backend: %s", app.config.Store.Backend)
+	}
 
 	// Initialize datasource
 	app.datasource = geckoterminal.NewAdapter()
@@ -356,7 +379,9 @@ func (app *App) evaluateStrategies(ctx context.Context) {
 // cleanup releases resources.
 func (app *App) cleanup() {
 	if app.store != nil {
-		app.store.Close()
+		if closer, ok := any(app.store).(interface{ Close() error }); ok {
+			_ = closer.Close()
+		}
 	}
 	for range app.rpc {
 		// RPC providers don't have close methods currently
@@ -431,7 +456,7 @@ func (m *metricsAdapter) SetPositionsClosed(n int64) {}
 func (m *metricsAdapter) SetPnLDaily(pnl domain.Decimal) {}
 
 type approveTrackerAdapter struct {
-	store *sqlite.Store
+	store ports.Store
 }
 
 func (a *approveTrackerAdapter) HasAllowance(pool domain.Pool) bool {
@@ -447,7 +472,7 @@ func (a *approveTrackerAdapter) EnsureApproval(ctx context.Context, pool domain.
 type orderManagerAdapter struct {
 	broadcaster interface{}
 	riskGate    *risk.RiskGate
-	store       *sqlite.Store
+	store       ports.Store
 }
 
 func (o *orderManagerAdapter) Open(ctx context.Context, pool domain.Pool, amountUSD domain.Decimal) (loop.ExecutionResult, error) {

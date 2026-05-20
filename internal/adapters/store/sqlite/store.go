@@ -49,14 +49,16 @@ func NewStore(dbPath string) (*Store, error) {
 	// Derive prefix from db filename (e.g., "shadow" from "shadow.db")
 	prefix := derivePrefix(dbPath)
 
+	tablePrefix := prefix + "_"
+
 	store := &Store{
 		db:         db,
 		prefix:     prefix,
-		txRepo:     NewTxRepo(db, prefix+"_"),
-		posRepo:    NewPositionRepo(db, prefix+"_"),
-		poolRepo:   NewPoolRepo(db, prefix+"_"),
-		ledgerRepo: NewLedgerRepo(db, prefix+"_"),
-		riskRepo:   NewRiskRepo(db, prefix+"_"),
+		txRepo:     NewTxRepo(db, tablePrefix),
+		posRepo:    NewPositionRepo(db, tablePrefix),
+		poolRepo:   NewPoolRepo(db, tablePrefix),
+		ledgerRepo: NewLedgerRepo(db, tablePrefix),
+		riskRepo:   NewRiskRepo(db, tablePrefix),
 	}
 
 	// Run migrations
@@ -82,9 +84,11 @@ func derivePrefix(dbPath string) string {
 
 // migrate runs database migrations.
 func (s *Store) migrate() error {
+	tablePrefix := s.prefix + "_"
+
 	// Create tables using the correct prefix
 	tables := []string{
-		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s_transactions (
+		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %stransactions (
 			id TEXT PRIMARY KEY,
 			chain TEXT NOT NULL,
 			tx_hash TEXT UNIQUE NOT NULL,
@@ -108,8 +112,8 @@ func (s *Store) migrate() error {
 			trace_id TEXT,
 			created_at INTEGER NOT NULL,
 			updated_at INTEGER NOT NULL
-		)`, s.prefix),
-		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s_positions (
+		)`, tablePrefix),
+		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %spositions (
 			id TEXT PRIMARY KEY,
 			chain TEXT NOT NULL,
 			pool_id TEXT NOT NULL,
@@ -131,8 +135,8 @@ func (s *Store) migrate() error {
 			opened_at INTEGER NOT NULL,
 			updated_at INTEGER NOT NULL,
 			closed_at INTEGER
-		)`, s.prefix),
-		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s_pools (
+		)`, tablePrefix),
+		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %spools (
 			id TEXT PRIMARY KEY,
 			chain TEXT NOT NULL,
 			protocol TEXT NOT NULL,
@@ -145,8 +149,8 @@ func (s *Store) migrate() error {
 			fee_apr_24h TEXT,
 			last_score REAL,
 			updated_at INTEGER NOT NULL
-		)`, s.prefix),
-		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s_risk_events (
+		)`, tablePrefix),
+		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %srisk_events (
 			id TEXT PRIMARY KEY,
 			position_id TEXT,
 			pool_key TEXT,
@@ -158,8 +162,8 @@ func (s *Store) migrate() error {
 			resolved INTEGER DEFAULT 0,
 			resolved_at INTEGER,
 			created_at INTEGER NOT NULL
-		)`, s.prefix),
-		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s_ledger (
+		)`, tablePrefix),
+		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %sledger (
 			id TEXT PRIMARY KEY,
 			position_id TEXT,
 			tx_hash TEXT,
@@ -168,8 +172,8 @@ func (s *Store) migrate() error {
 			currency TEXT NOT NULL,
 			description TEXT,
 			timestamp INTEGER NOT NULL
-		)`, s.prefix),
-		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s_kill_switch_state (
+		)`, tablePrefix),
+		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %skill_switch_state (
 			id TEXT PRIMARY KEY,
 			switch_type TEXT NOT NULL,
 			triggered_at INTEGER NOT NULL,
@@ -179,7 +183,7 @@ func (s *Store) migrate() error {
 			resume_allowed INTEGER DEFAULT 1,
 			total_triggers INTEGER DEFAULT 1,
 			updated_at INTEGER NOT NULL
-		)`, s.prefix),
+		)`, tablePrefix),
 	}
 
 	for _, sql := range tables {
@@ -220,14 +224,14 @@ func (s *Store) runMigrations() error {
 
 	// Add columns to positions
 	for _, col := range positionCols {
-		if err := s.addColumnIfNotExists(s.prefix+"positions", col.name, col.colType); err != nil {
+		if err := s.addColumnIfNotExists(s.prefix+"_positions", col.name, col.colType); err != nil {
 			return fmt.Errorf("failed to add column %s to positions: %w", col.name, err)
 		}
 	}
 
 	// Add columns to risk_events
 	for _, col := range riskCols {
-		if err := s.addColumnIfNotExists(s.prefix+"risk_events", col.name, col.colType); err != nil {
+		if err := s.addColumnIfNotExists(s.prefix+"_risk_events", col.name, col.colType); err != nil {
 			return fmt.Errorf("failed to add column %s to risk_events: %w", col.name, err)
 		}
 	}

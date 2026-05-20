@@ -1,236 +1,146 @@
 # VPS Shadow Deployment Runbook
 
-> Shadow mode部署 - 不进行真实交易，仅模拟执行
+> 基于 `feat/supabase-postgres-deployment` 分支的 Shadow 部署 runbook
 
-## 架构
+目标：统一本地与 VPS 的仓库来源、分支与配置入口，避免因为目录名差异/手工 `.env` 覆盖造成数据库混淆。
 
-```
-本地开发机 (git push)
-       ↓
-    GitHub/Gitea
-       ↓
-VPS (git pull + make build + systemctl restart)
-```
+## 1. 仓库与分支
 
-## 前置条件
+- Git 仓库：`git@github.com:newplayman/super-lp-bot.git`
+- 分支：`feat/supabase-postgres-deployment`（数据库改造期间固定）
+- VPS 产物不直接使用本地 `.env` 文件，全部通过环境变量注入。
 
-### VPS
-1. 安装 Go 1.21+
-2. 安装 PostgreSQL
-3. Git 已配置 (可选: 部署密钥)
-4. Firewall 开放端口: 9090 (metrics)
-
-### 本地
-1. 代码已推送: `git push origin main`
-2. 已打 tag: `git tag v0.3.0-shadow-ready && git push --tags`
-
-## 部署步骤
-
-### 1. 本地开发完成，推送代码
+## 2. VPS 标准目录（不再保留旧名）
 
 ```bash
-cd ~/lp-bot/v3
-git add -A
-git commit -m "chore: v0.3.0-shadow-ready"
-git tag v0.3.0-shadow-ready
-git push && git push --tags
+export LPBOT_ROOT=/opt/lpbot/lp-bot-v3
 ```
 
-### 2. VPS 登录，拉取代码
+如果出现历史错误目录，先清理：
 
 ```bash
-ssh user@vps
-cd ~/lp-bot/v3
-
-# 如果是首次部署
-git clone https://github.com/YOUR_USER/lpbot.git
-cd lpbot
-git checkout v0.3.0-shadow-ready
-
-# 已有仓库则拉取更新
-git pull origin v0.3.0-shadow-ready
+sudo rm -rf /opt/lpbot/lp-bot-mvp /opt/lpbot/v3 /opt/lpbot/lp-bot 2>/dev/null || true
 ```
 
-### 3. VPS 安装依赖
+## 3. 首次部署
 
 ```bash
-go mod download
-make tidy
-```
+ssh -i ~/.ssh/lpbot_ed25519 lpbot@157.173.123.24
 
-### 4. 创建配置文件
-
-```bash
-mkdir -p ~/lp-bot/v3/data
-```
-
-创建 `~/lp-bot/v3/configs/config.shadow.toml`:
-
-```toml
-[platform]
-log_level = "info"
-
-[platform.prometheus]
-enabled = true
-port = 9090
-
-[platform.telegram]
-token = "YOUR_BOT_TOKEN"           # 可选
-chat_id = 123456789                # 可选
-
-[store]
-type = "postgres"
-host = "localhost"
-port = 5432
-user = "lpbot"
-password = "YOUR_PASSWORD"
-database = "lpbot_shadow"
-sslmode = "require"
-
-[chains.base]
-rpc_primary = "https://mainnet.base.org"
-rpc_fallback = ["https://base.publicnode.com"]
-
-[chains.solana]
-rpc_primary = "https://api.mainnet-beta.solana.com"
-
-[chains.base.keystore]
-type = "file"
-path = "/home/user/lp-bot/v3/keystore/UTC--xxx"
-password_env = "KEYSTORE_PASSWORD"
-
-[execution]
-dryrun = false   # shadow模式为false
-mev_protection = true
-```
-
-### 5. VPS 构建
-
-```bash
-cd ~/lp-bot/v3
+mkdir -p /opt/lpbot
+cd /opt/lpbot
+git clone git@github.com:newplayman/super-lp-bot.git $(basename "$LPBOT_ROOT")
+cd "$LPBOT_ROOT"
+git checkout feat/supabase-postgres-deployment
+git pull origin feat/supabase-postgres-deployment
 make build-shadow
 ```
 
-### 6. 初始化数据库 (首次)
+## 4. 配置文件与环境变量
+
+- `configs/config.shadow.toml` 和 `configs/config.vps.toml` 使用 `${VAR}` 占位符读取环境变量（不写死密码）。
+- `.env` 类文件不入库，只作为启动环境注入。
+
+初始化实例文件：
 
 ```bash
-sudo -u postgres psql -c "CREATE DATABASE lpbot_shadow;"
+cd "$LPBOT_ROOT"
+cp .env.example .env
+cp .env.postgres.example .env.postgres
+chmod 600 .env .env.postgres
 ```
 
-### 7. 设置环境变量
+按实际值编辑：
 
 ```bash
-export KEYSTORE_PASSWORD="your_keystore_password"
-export DATABASE_URL="postgres://lpbot:YOUR_PASSWORD@localhost/lpbot_shadow?sslmode=require"
+vim .env
+vim .env.postgres
 ```
 
-### 8. 测试运行
+推荐变量：
+
+- `BASE_RPC_PRIMARY`, `BASE_RPC_FALLBACK`, `BASE_WS`, `SOL_RPC_PRIMARY`
+- `DATABASE_URL`（VPS 连接 `vps` 上 PostgreSQL 的连接串）
+- `REDIS_URL`（预留）
+
+## 5. 安装依赖与数据库
 
 ```bash
-cd ~/lp-bot/v3
-./bin/lpbot-shadow --config=./configs/config.shadow.toml
+sudo apt-get update
+sudo apt-get install -y postgresql redis-server
 ```
 
-观察日志，确认：
-- 无 panic
-- Metrics 端点启动: `curl http://localhost:9090/metrics`
-- 程序正常运行
+```bash
+sudo -u postgres psql -c "CREATE USER lpbot WITH LOGIN PASSWORD 'CHANGE_ME';"
+sudo -u postgres psql -c "CREATE DATABASE lpbot_shadow OWNER lpbot;"
+```
 
-### 9. 配置 systemd (后台运行)
+## 6. 直接运行验证
 
-创建 `/etc/systemd/system/lpbot-shadow.service`:
+```bash
+cd "$LPBOT_ROOT"
+set -a && source .env.postgres && set +a
+./bin/lpbot-shadow --config=configs/config.shadow.toml
+```
+
+重点检查：
+
+- 能正常启动，不 panic
+- 能连接 `DATABASE_URL`
+- 有日志输出 `all components initialized`（或等价启动成功日志）
+
+## 7. systemd 后台运行（推荐）
+
+保存为 `/etc/systemd/system/lpbot-shadow.service`：
 
 ```ini
 [Unit]
-Description=Liquidity Bot Shadow Mode
+Description=LPBot Shadow
 After=network.target postgresql.service
 
 [Service]
 Type=simple
-User=user
-WorkingDirectory=/home/user/lp-bot/v3
-Environment="KEYSTORE_PASSWORD=your_keystore_password"
-Environment="DATABASE_URL=postgres://lpbot:YOUR_PASSWORD@localhost/lpbot_shadow?sslmode=require"
-ExecStart=/home/user/lp-bot/v3/bin/lpbot-shadow --config=/home/user/lp-bot/v3/configs/config.shadow.toml
+User=lpbot
+WorkingDirectory=/opt/lpbot/lp-bot-v3
+EnvironmentFile=/opt/lpbot/lp-bot-v3/.env.postgres
+ExecStart=/opt/lpbot/lp-bot-v3/bin/lpbot-shadow --config=/opt/lpbot/lp-bot-v3/configs/config.shadow.toml
 Restart=always
 RestartSec=5
-RestartPreventExitStatus=0
 
 [Install]
 WantedBy=multi-user.target
 ```
 
-启动服务:
-
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable lpbot-shadow
-sudo systemctl start lpbot-shadow
-```
-
-## 验证部署
-
-```bash
-# 检查状态
-sudo systemctl status lpbot-shadow
-
-# 查看日志
-sudo journalctl -u lpbot-shadow -f
-
-# 检查 metrics
-curl http://localhost:9090/metrics | head -20
-```
-
-## 后续更新
-
-代码更新后，在 VPS 上:
-
-```bash
-cd ~/lp-bot/v3
-git pull origin main
-make build-shadow
+sudo systemctl enable --now lpbot-shadow
 sudo systemctl restart lpbot-shadow
-sudo journalctl -u lpbot-shadow -n 50 --no-pager
 ```
 
-## 回滚
+## 8. 每次发布更新
 
 ```bash
-# 查看历史 tag
-git tag -l | tail -5
-
-# 回滚到上一个版本
-git checkout v0.2.x
+cd "$LPBOT_ROOT"
+git fetch origin
+git checkout feat/supabase-postgres-deployment
+git reset --hard origin/feat/supabase-postgres-deployment
 make build-shadow
 sudo systemctl restart lpbot-shadow
 ```
 
-## 目录结构
+## 9. 回滚
 
-```
-~/lp-bot/v3/
-├── bin/
-│   └── lpbot-shadow          # 构建产物
-├── configs/
-│   └── config.shadow.toml    # 配置文件
-├── data/                     # SQLite/数据目录
-├── docs/
-├── internal/
-└── Makefile
+```bash
+cd "$LPBOT_ROOT"
+git log --oneline -n 10
+git checkout <commit-id>
+make build-shadow
+sudo systemctl restart lpbot-shadow
 ```
 
-## 故障排查
+## 10. 运维核对
 
-| 问题 | 解决 |
-|------|------|
-| 启动 panic: keystore not found | 检查 `chains.base.keystore.path` 配置 |
-| 数据库连接失败 | 检查 PostgreSQL 运行状态 |
-| Metrics 端点无响应 | 检查防火墙 9090 端口 |
-| 服务启动失败 | `journalctl -u lpbot-shadow -n 100` 查看日志 |
-
-## 下一步
-
-确认 shadow 运行稳定后，可升级到 live mode:
-1. 测试 Bootstrap 对账功能
-2. `git checkout v0.4.0-live-ready` (新 tag)
-3. `make build-live`
+- `sudo systemctl status lpbot-shadow`
+- `sudo journalctl -u lpbot-shadow -n 100 --no-pager`
+- `curl http://127.0.0.1:9090/metrics | head -20`
+- `ss -lnt | grep 5432`

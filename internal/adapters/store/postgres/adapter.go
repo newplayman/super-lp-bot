@@ -6,6 +6,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"net/url"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/lpbot/lpbot/internal/domain"
@@ -64,6 +67,49 @@ func New(cfg PostgresConfig) (*postgresAdapter, error) {
 	return &postgresAdapter{db: db, cfg: cfg}, nil
 }
 
+// NewFromDSN creates a new postgresAdapter by parsing a DSN-style URL.
+func NewFromDSN(dsn string) (*postgresAdapter, error) {
+	u, err := url.Parse(dsn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse postgres dsn: %w", err)
+	}
+	if u.Scheme != "postgres" && u.Scheme != "postgresql" {
+		return nil, fmt.Errorf("unsupported postgres dsn scheme: %q", u.Scheme)
+	}
+
+	host := u.Hostname()
+	if host == "" {
+		host = "localhost"
+	}
+	port := 5432
+	if p := u.Port(); p != "" {
+		v, err := strconv.Atoi(p)
+		if err != nil {
+			return nil, fmt.Errorf("invalid postgres port %q: %w", p, err)
+		}
+		port = v
+	}
+
+	user := u.User.Username()
+	password, _ := u.User.Password()
+	dbName := strings.TrimPrefix(u.Path, "/")
+	sslMode := "disable"
+	if m := u.Query().Get("sslmode"); m != "" {
+		sslMode = m
+	}
+
+	cfg := PostgresConfig{
+		Host:     host,
+		Port:     port,
+		User:     user,
+		Password: password,
+		Database: dbName,
+		SSLMode:  sslMode,
+	}
+
+	return New(cfg)
+}
+
 // Close closes the database connection pool.
 func (a *postgresAdapter) Close() error {
 	return a.db.Close()
@@ -74,29 +120,34 @@ func (a *postgresAdapter) DB() *sql.DB {
 	return a.db
 }
 
-// LedgerRepo returns a new LedgerRepo instance.
-func (a *postgresAdapter) LedgerRepo() *LedgerRepo {
+// LedgerRepo returns a new ledger repository.
+func (a *postgresAdapter) LedgerRepo() ports.LedgerRepo {
 	return NewLedgerRepo(a.db)
 }
 
-// PositionRepo returns a new PositionRepo instance.
-func (a *postgresAdapter) PositionRepo() *PositionRepo {
+// PositionRepo returns a new position repository.
+func (a *postgresAdapter) PositionRepo() ports.PositionRepo {
 	return NewPositionRepo(a.db)
 }
 
-// PoolRepo returns a new PoolRepo instance.
-func (a *postgresAdapter) PoolRepo() *PoolRepo {
+// PoolRepo returns a new pool repository.
+func (a *postgresAdapter) PoolRepo() ports.PoolRepo {
 	return NewPoolRepo(a.db)
 }
 
-// RiskRepo returns a new RiskRepo instance.
-func (a *postgresAdapter) RiskRepo() *RiskRepo {
+// RiskRepo returns a new risk repository.
+func (a *postgresAdapter) RiskRepo() ports.RiskRepo {
 	return NewRiskRepo(a.db)
 }
 
-// TxRepo returns a new TxRepo instance.
-func (a *postgresAdapter) TxRepo() *TxRepo {
+// TxRepo returns a new transaction repository.
+func (a *postgresAdapter) TxRepo() ports.TxRepo {
 	return NewTxRepo(a.db)
+}
+
+// ConfigSnap returns the config snapshot repository.
+func (a *postgresAdapter) ConfigSnap() ports.ConfigSnap {
+	return nil
 }
 
 // Compile-time interface assertion
@@ -107,6 +158,8 @@ var _ interface {
 	ports.RiskRepo
 	ports.TxRepo
 } = (*postgresAdapter)(nil)
+
+var _ ports.Store = (*postgresAdapter)(nil)
 
 // LedgerRepo implements ports.LedgerRepo.
 func (a *postgresAdapter) Append(ctx context.Context, entry ports.LedgerEntry) (ports.LedgerEntry, error) {

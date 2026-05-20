@@ -22,6 +22,7 @@ coverage.out
 .env
 .env.*
 !.env.example
+!.env.postgres.example
 
 # data
 *.db
