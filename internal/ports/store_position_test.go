@@ -33,6 +33,10 @@ func (positionRepoNop) UpdateStatus(ctx context.Context, id string, status domai
 	return nil
 }
 
+func (positionRepoNop) Snapshot(ctx context.Context, poolID string) ([]*domain.Position, error) {
+	return nil, nil
+}
+
 // TestPositionRepoInterface verifies the PositionRepo interface exists and is properly defined.
 func TestPositionRepoInterface(t *testing.T) {
 	require.NotNil(t, t, "ports.PositionRepo interface must exist")

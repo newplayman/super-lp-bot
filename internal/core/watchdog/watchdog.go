@@ -1,4 +1,16 @@
-// Package watchdog provides the global invariant monitoring for lp-bot.
+// Package watchdog provides the global invariant monitoring and kill-switch
+// trigger for lp-bot (spec §5.1).
+//
+// Watchdog runs multiple check loops at different intervals (10s/30s/1min/5min)
+// to enforce system-level invariants and trigger kill-switch transitions
+// when risk thresholds are breached.
+//
+// Key components:
+//   - Watchdog: main interface for invariant checking and kill triggers
+//   - CheckResult: outcome of a single invariant check
+//   - CheckInterval: the frequency tier for different checks
+//
+// See spec §5 for the complete risk architecture including kill-switch design.
 package watchdog
 
 import (

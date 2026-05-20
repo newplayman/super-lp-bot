@@ -9,6 +9,22 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+// RiskReason represents the reason a trade was blocked.
+type RiskReason string
+
+// Exported RiskReason values for metric labels.
+const (
+	ReasonOK           RiskReason = "ok"
+	ReasonNilGate      RiskReason = "nil_gate"
+	ReasonDailyDDKill  RiskReason = "daily_dd_kill"
+	ReasonWeeklyDDFreeze RiskReason = "weekly_dd_freeze"
+	ReasonPnLNaN       RiskReason = "pnl_nan"
+	ReasonOverSingleLimit RiskReason = "over_single_limit"
+	ReasonRepoError    RiskReason = "repo_error"
+	ReasonInternalError RiskReason = "internal_error"
+	ReasonManualKill   RiskReason = "manual_kill"
+)
+
 // RiskConfig holds risk thresholds for the RiskGate.
 type RiskConfig struct {
 	VaRWarnPct          decimal.Decimal
@@ -16,6 +32,7 @@ type RiskConfig struct {
 	DailyDDKillPct      decimal.Decimal
 	WeeklyDDFreezePct   decimal.Decimal
 	TotalExposurePct    decimal.Decimal
+	MaxSingleTradeUSD   decimal.Decimal
 }
 
 // DefaultRiskConfig returns sensible defaults.
@@ -26,6 +43,7 @@ func DefaultRiskConfig() RiskConfig {
 		DailyDDKillPct:      decimal.NewFromFloat(0.05),
 		WeeklyDDFreezePct:   decimal.NewFromFloat(0.10),
 		TotalExposurePct:    decimal.NewFromFloat(0.30),
+		MaxSingleTradeUSD:   decimal.NewFromInt(50),
 	}
 }
 
@@ -88,6 +106,16 @@ type RiskGate struct {
 	repo   ports.RiskRepo
 	state  ports.KillState
 	mu     sync.Mutex
+
+	// Drawdown tracking (exposed for Allow() checks)
+	peakUSD          decimal.Decimal
+	currentUSD       decimal.Decimal
+	peakWeeklyUSD    decimal.Decimal
+	currentWeeklyUSD decimal.Decimal
+	lastPnL          *decimal.Decimal // pointer to detect uninitialized/NaN state
+
+	// Block reason for Allow() to return
+	blockReason RiskReason
 }
 
 // NewRiskGate creates a new RiskGate.

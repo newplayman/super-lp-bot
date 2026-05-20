@@ -156,6 +156,22 @@ func (r *PositionRepo) UpdateStatus(ctx context.Context, id string, status domai
 	return nil
 }
 
+// Snapshot returns all positions for a pool without caching (fresh read from DB).
+func (r *PositionRepo) Snapshot(ctx context.Context, poolID string) ([]*domain.Position, error) {
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT id, pool_id, chain, status, tier, tick_lower, tick_upper,
+		       amount_usd, opened_at, closed_at
+		FROM positions
+		WHERE pool_id = $1
+	`, poolID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to snapshot positions: %w", err)
+	}
+	defer rows.Close()
+
+	return scanPositions(rows)
+}
+
 // scanPositions scans rows into Position slice.
 func scanPositions(rows *sql.Rows) ([]*domain.Position, error) {
 	var positions []*domain.Position

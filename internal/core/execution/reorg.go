@@ -6,6 +6,7 @@ package execution
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -17,6 +18,11 @@ import (
 type NonceManagerForReorg interface {
 	GetNextNonce(ctx context.Context) (uint64, error)
 	ClearPending(nonce uint64)
+}
+
+// MEVSubmitterForReorg defines the interface for MEV submission used by reorg handler.
+type MEVSubmitterForReorg interface {
+	Submit(ctx context.Context, tx domain.SignedTx, opts ports.MEVSubmitOpts) (ports.MEVSubmissionResult, error)
 }
 
 // ErrTxNotTracked is returned when a transaction is not tracked for reorg.
@@ -48,6 +54,7 @@ type reorgHandler struct {
 	broadcaster ports.Broadcaster
 	bus         ports.Bus
 	nonceMgr    NonceManagerForReorg
+	mevSubmitter MEVSubmitterForReorg // Optional MEV submitter for strict mode rebroadcast
 	txStates    map[string]*txReorgState // txHash -> state
 	mu          sync.RWMutex
 }
@@ -59,6 +66,7 @@ type ReorgDependencies struct {
 	Broadcaster ports.Broadcaster
 	Bus         ports.Bus
 	NonceMgr    NonceManagerForReorg
+	MEVSubmitter MEVSubmitterForReorg // Optional: uses strict MEV for rebroadcast if provided
 }
 
 // NewReorgHandler creates a new reorg handler.
@@ -69,6 +77,7 @@ func NewReorgHandler(deps ReorgDependencies) *reorgHandler {
 		broadcaster: deps.Broadcaster,
 		bus:         deps.Bus,
 		nonceMgr:    deps.NonceMgr,
+		mevSubmitter: deps.MEVSubmitter,
 		txStates:    make(map[string]*txReorgState),
 	}
 }
@@ -218,9 +227,19 @@ func (h *reorgHandler) HandleReorg(ctx context.Context, txHash string) error {
 		Signature: tx.Signature,
 	}
 
-	// Re-broadcast
-	if err := h.broadcaster.Send(ctx, newTx); err != nil {
-		return err
+	// Re-broadcast using strict MEV if available, otherwise use broadcaster directly
+	// This ensures rebroadcast respects the same strict mode settings as initial submission
+	if h.mevSubmitter != nil {
+		// Use MEV submitter (respects strict mode for rebroadcast)
+		_, err := h.mevSubmitter.Submit(ctx, newTx, ports.MEVSubmitOpts{})
+		if err != nil {
+			return fmt.Errorf("mev rebroadcast failed: %w", err)
+		}
+	} else {
+		// Fall back to direct broadcast if no MEV submitter available
+		if err := h.broadcaster.Send(ctx, newTx); err != nil {
+			return err
+		}
 	}
 
 	// Update status to broadcast

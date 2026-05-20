@@ -5,6 +5,7 @@ import (
 	"errors"
 	"math/big"
 	"testing"
+	"time"
 
 	"github.com/lpbot/lpbot/internal/core/execution"
 	"github.com/lpbot/lpbot/internal/core/simulation"
@@ -119,6 +120,13 @@ func TestOrderManager_Open_Success(t *testing.T) {
 		TickLower:  100,
 		TickUpper:  200,
 		TraceID:    "trace-123",
+		Token0:     domain.MustParseAddress("0x0000000000000000000000000000000000000002"),
+		Token1:     domain.MustParseAddress("0x0000000000000000000000000000000000000003"),
+		Recipient:  domain.MustParseAddress("0x0000000000000000000000000000000000000001"),
+		Amount0:    domain.MustDecimal("1"),
+		Amount1:    domain.MustDecimal("2000"),
+		SlippageBps: 50, // 0.5% slippage tolerance
+		Deadline:   time.Now().Add(10 * time.Minute).Unix(), // 10 minutes from now
 		Simulation: &domain.SimulationResult{
 			Success: true,
 			BlockRef: domain.BlockRef{
@@ -126,7 +134,7 @@ func TestOrderManager_Open_Success(t *testing.T) {
 				Number:   1,
 			},
 			OutputAmounts: []domain.TokenAmount{
-				{Token: domain.Token{Address: domain.MustParseAddress("0x0000000000000000000000000000000000000001"), Symbol: "ETH", Decimals: 18}, Amount: domain.MustDecimal("1")},
+				{Token: domain.Token{Address: domain.MustParseAddress("0x0000000000000000000000000000000000000002"), Symbol: "ETH", Decimals: 18}, Amount: domain.MustDecimal("1")},
 			},
 		},
 	}
@@ -172,11 +180,20 @@ func TestOrderManager_Open_HoneypotDetected(t *testing.T) {
 		PositionID: "pos-honeypot",
 		PoolID:     "pool-1",
 		Chain:      "base",
+		TickLower:  100,
+		TickUpper:  200,
+		Token0:     domain.MustParseAddress("0x0000000000000000000000000000000000000002"),
+		Token1:     domain.MustParseAddress("0x0000000000000000000000000000000000000003"),
+		Recipient:  domain.MustParseAddress("0x0000000000000000000000000000000000000001"),
+		Amount0:    domain.MustDecimal("1"),
+		Amount1:    domain.MustDecimal("2000"),
+		SlippageBps: 50,
+		Deadline:   time.Now().Add(10 * time.Minute).Unix(),
 		Simulation: &domain.SimulationResult{
 			Success: true,
 			BlockRef: domain.BlockRef{Chain: domain.ChainBase, Number: 1},
 			OutputAmounts: []domain.TokenAmount{
-				{Token: domain.Token{Address: domain.MustParseAddress("0x0000000000000000000000000000000000000001")}, Amount: domain.MustDecimal("1")},
+				{Token: domain.Token{Address: domain.MustParseAddress("0x0000000000000000000000000000000000000002")}, Amount: domain.MustDecimal("1")},
 			},
 		},
 	}
@@ -219,11 +236,20 @@ func TestOrderManager_Open_SlippageInvalid(t *testing.T) {
 		PositionID: "pos-slippage",
 		PoolID:     "pool-1",
 		Chain:      "base",
+		TickLower:  100,
+		TickUpper:  200,
+		Token0:     domain.MustParseAddress("0x0000000000000000000000000000000000000002"),
+		Token1:     domain.MustParseAddress("0x0000000000000000000000000000000000000003"),
+		Recipient:  domain.MustParseAddress("0x0000000000000000000000000000000000000001"),
+		Amount0:    domain.MustDecimal("1"),
+		Amount1:    domain.MustDecimal("2000"),
+		SlippageBps: 50,
+		Deadline:   time.Now().Add(10 * time.Minute).Unix(),
 		Simulation: &domain.SimulationResult{
 			Success: true,
 			BlockRef: domain.BlockRef{Chain: domain.ChainBase, Number: 1},
 			OutputAmounts: []domain.TokenAmount{
-				{Token: domain.Token{Address: domain.MustParseAddress("0x0000000000000000000000000000000000000001")}, Amount: domain.MustDecimal("1")},
+				{Token: domain.Token{Address: domain.MustParseAddress("0x0000000000000000000000000000000000000002")}, Amount: domain.MustDecimal("1")},
 			},
 		},
 	}
@@ -280,11 +306,20 @@ func TestOrderManager_Close_Success(t *testing.T) {
 		PositionID: "pos-close-test",
 		PoolID:     "pool-1",
 		Chain:      "base",
+		TickLower:  100,
+		TickUpper:  200,
+		Token0:     domain.MustParseAddress("0x0000000000000000000000000000000000000002"),
+		Token1:     domain.MustParseAddress("0x0000000000000000000000000000000000000003"),
+		Recipient:  domain.MustParseAddress("0x0000000000000000000000000000000000000001"),
+		Amount0:    domain.MustDecimal("1"),
+		Amount1:    domain.MustDecimal("2000"),
+		SlippageBps: 50,
+		Deadline:   time.Now().Add(10 * time.Minute).Unix(),
 		Simulation: &domain.SimulationResult{
 			Success: true,
 			BlockRef: domain.BlockRef{Chain: domain.ChainBase, Number: 1},
 			OutputAmounts: []domain.TokenAmount{
-				{Token: domain.Token{Address: domain.MustParseAddress("0x0000000000000000000000000000000000000001")}, Amount: domain.MustDecimal("1")},
+				{Token: domain.Token{Address: domain.MustParseAddress("0x0000000000000000000000000000000000000002")}, Amount: domain.MustDecimal("1")},
 			},
 		},
 	}
@@ -296,11 +331,18 @@ func TestOrderManager_Close_Success(t *testing.T) {
 		Chain:      "base",
 		Reason:     "stop_loss",
 		TraceID:    "trace-456",
+		TokenId:    "1",
+		Liquidity:  domain.MustDecimal("1000000"),
+		SlippageBps: 50,
+		Deadline:   time.Now().Add(10 * time.Minute).Unix(),
+		Recipient:  domain.MustParseAddress("0x0000000000000000000000000000000000000001"),
+		Amount0Min: domain.ZeroDecimal(),
+		Amount1Min: domain.ZeroDecimal(),
 		Simulation: &domain.SimulationResult{
 			Success: true,
 			BlockRef: domain.BlockRef{Chain: domain.ChainBase, Number: 1},
 			OutputAmounts: []domain.TokenAmount{
-				{Token: domain.Token{Address: domain.MustParseAddress("0x0000000000000000000000000000000000000001")}, Amount: domain.MustDecimal("1")},
+				{Token: domain.Token{Address: domain.MustParseAddress("0x0000000000000000000000000000000000000002")}, Amount: domain.MustDecimal("1")},
 			},
 		},
 	}
@@ -358,11 +400,20 @@ func TestOrderManager_Rebalance_Success(t *testing.T) {
 		PositionID: "pos-rebalance-test",
 		PoolID:     "pool-1",
 		Chain:      "base",
+		TickLower:  100,
+		TickUpper:  200,
+		Token0:     domain.MustParseAddress("0x0000000000000000000000000000000000000002"),
+		Token1:     domain.MustParseAddress("0x0000000000000000000000000000000000000003"),
+		Recipient:  domain.MustParseAddress("0x0000000000000000000000000000000000000001"),
+		Amount0:    domain.MustDecimal("1"),
+		Amount1:    domain.MustDecimal("2000"),
+		SlippageBps: 50,
+		Deadline:   time.Now().Add(10 * time.Minute).Unix(),
 		Simulation: &domain.SimulationResult{
 			Success: true,
 			BlockRef: domain.BlockRef{Chain: domain.ChainBase, Number: 1},
 			OutputAmounts: []domain.TokenAmount{
-				{Token: domain.Token{Address: domain.MustParseAddress("0x0000000000000000000000000000000000000001")}, Amount: domain.MustDecimal("1")},
+				{Token: domain.Token{Address: domain.MustParseAddress("0x0000000000000000000000000000000000000002")}, Amount: domain.MustDecimal("1")},
 			},
 		},
 	}
@@ -436,11 +487,20 @@ func TestOrderManager_CollectFees_Success(t *testing.T) {
 		PositionID: "pos-collect-test",
 		PoolID:     "pool-1",
 		Chain:      "base",
+		TickLower:  100,
+		TickUpper:  200,
+		Token0:     domain.MustParseAddress("0x0000000000000000000000000000000000000002"),
+		Token1:     domain.MustParseAddress("0x0000000000000000000000000000000000000003"),
+		Recipient:  domain.MustParseAddress("0x0000000000000000000000000000000000000001"),
+		Amount0:    domain.MustDecimal("1"),
+		Amount1:    domain.MustDecimal("2000"),
+		SlippageBps: 50,
+		Deadline:   time.Now().Add(10 * time.Minute).Unix(),
 		Simulation: &domain.SimulationResult{
 			Success: true,
 			BlockRef: domain.BlockRef{Chain: domain.ChainBase, Number: 1},
 			OutputAmounts: []domain.TokenAmount{
-				{Token: domain.Token{Address: domain.MustParseAddress("0x0000000000000000000000000000000000000001")}, Amount: domain.MustDecimal("1")},
+				{Token: domain.Token{Address: domain.MustParseAddress("0x0000000000000000000000000000000000000002")}, Amount: domain.MustDecimal("1")},
 			},
 		},
 	}
@@ -601,11 +661,20 @@ func TestOrderManager_Close_SimulationReverted(t *testing.T) {
 		PositionID: "pos-revert-test",
 		PoolID:     "pool-1",
 		Chain:      "base",
+		TickLower:  100,
+		TickUpper:  200,
+		Token0:     domain.MustParseAddress("0x0000000000000000000000000000000000000002"),
+		Token1:     domain.MustParseAddress("0x0000000000000000000000000000000000000003"),
+		Recipient:  domain.MustParseAddress("0x0000000000000000000000000000000000000001"),
+		Amount0:    domain.MustDecimal("1"),
+		Amount1:    domain.MustDecimal("2000"),
+		SlippageBps: 50,
+		Deadline:   time.Now().Add(10 * time.Minute).Unix(),
 		Simulation: &domain.SimulationResult{
 			Success: true,
 			BlockRef: domain.BlockRef{Chain: domain.ChainBase, Number: 1},
 			OutputAmounts: []domain.TokenAmount{
-				{Token: domain.Token{Address: domain.MustParseAddress("0x0000000000000000000000000000000000000001")}, Amount: domain.MustDecimal("1")},
+				{Token: domain.Token{Address: domain.MustParseAddress("0x0000000000000000000000000000000000000002")}, Amount: domain.MustDecimal("1")},
 			},
 		},
 	}
@@ -615,9 +684,19 @@ func TestOrderManager_Close_SimulationReverted(t *testing.T) {
 	closeIntent := execution.ExitIntent{
 		PositionID: "pos-revert-test",
 		Chain:      "base",
+		TokenId:    "1",
+		Liquidity:  domain.MustDecimal("1000000"),
+		SlippageBps: 50,
+		Deadline:   time.Now().Add(10 * time.Minute).Unix(),
+		Recipient:  domain.MustParseAddress("0x0000000000000000000000000000000000000001"),
+		Amount0Min: domain.ZeroDecimal(),
+		Amount1Min: domain.ZeroDecimal(),
 		Simulation: &domain.SimulationResult{
 			Success: true,
 			BlockRef: domain.BlockRef{Chain: domain.ChainBase, Number: 1},
+			OutputAmounts: []domain.TokenAmount{
+				{Token: domain.Token{Address: domain.MustParseAddress("0x0000000000000000000000000000000000000002")}, Amount: domain.MustDecimal("1")},
+			},
 		},
 	}
 

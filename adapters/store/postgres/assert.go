@@ -51,6 +51,7 @@ func (*PositionRepoStub) FindByChainAndStatus(context.Context, domain.ChainID, d
 	return nil, nil
 }
 func (*PositionRepoStub) UpdateStatus(context.Context, string, domain.PositionStatus) error { return nil }
+func (*PositionRepoStub) Snapshot(context.Context, string) ([]*domain.Position, error) { return nil, nil }
 
 func (*PoolRepoStub) UpsertPool(context.Context, ports.PoolWithScore) error                                        { return nil }
 func (*PoolRepoStub) GetPool(context.Context, string) (domain.Pool, error)                                         { return domain.Pool{}, ports.ErrPoolNotFound }

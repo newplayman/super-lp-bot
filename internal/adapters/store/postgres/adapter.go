@@ -158,6 +158,13 @@ func (a *postgresAdapter) UpdateStatus(ctx context.Context, id string, status do
 	return NewPositionRepo(a.db).UpdateStatus(ctx, id, status)
 }
 
+// Snapshot implements ports.PositionRepo.
+// Returns the current positions for a pool without caching.
+// Any error causes fail-closed behavior in the caller.
+func (a *postgresAdapter) Snapshot(ctx context.Context, poolID string) ([]*domain.Position, error) {
+	return NewPositionRepo(a.db).FindByPoolAndStatus(ctx, poolID, domain.StatusOpen)
+}
+
 // UpsertPool implements ports.PoolRepo.
 func (a *postgresAdapter) UpsertPool(ctx context.Context, pool ports.PoolWithScore) error {
 	return NewPoolRepo(a.db).UpsertPool(ctx, pool)

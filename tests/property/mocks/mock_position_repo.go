@@ -73,3 +73,13 @@ func (m *MockPositionRepo) UpdateStatus(ctx context.Context, id string, status d
 	pos.Status = status
 	return nil
 }
+
+func (m *MockPositionRepo) Snapshot(ctx context.Context, poolID string) ([]*domain.Position, error) {
+	var result []*domain.Position
+	for _, pos := range m.Positions {
+		if pos.PoolID == poolID {
+			result = append(result, pos)
+		}
+	}
+	return result, nil
+}

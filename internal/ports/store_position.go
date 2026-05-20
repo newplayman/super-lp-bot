@@ -35,4 +35,9 @@ type PositionRepo interface {
 	// Valid transitions are defined in domain.PositionStatus.CanTransitionTo.
 	// Returns an error if the update fails or the transition is invalid.
 	UpdateStatus(ctx context.Context, id string, status domain.PositionStatus) error
+
+	// Snapshot returns the current positions for a pool without caching.
+	// Used by AllocationManager to check real-time position state.
+	// Any error is returned to the caller for fail-closed handling.
+	Snapshot(ctx context.Context, poolID string) ([]*domain.Position, error)
 }

@@ -218,3 +218,49 @@ func (r *PositionRepo) UpdateStatus(ctx context.Context, id string, status domai
 	_, err := r.db.ExecContext(ctx, query, string(status), now, id)
 	return err
 }
+
+// Snapshot returns all positions for a pool without caching (fresh read from DB).
+func (r *PositionRepo) Snapshot(ctx context.Context, poolID string) ([]*domain.Position, error) {
+	table := r.prefix + "positions"
+	query := fmt.Sprintf(`
+		SELECT id, chain, pool_id, tick_lower, tick_upper, amount0, amount1,
+		       amount_usd, tier, status, opened_at, closed_at
+		FROM %s WHERE pool_id = ?
+	`, table)
+
+	rows, err := r.db.QueryContext(ctx, query, poolID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to snapshot positions: %w", err)
+	}
+	defer rows.Close()
+
+	var positions []*domain.Position
+	for rows.Next() {
+		var pos domain.Position
+		var chain, statusStr, tier string
+		var amountUSDSql sql.NullString
+		var openedAt, closedAt int64
+
+		err := rows.Scan(
+			&pos.ID, &chain, &pos.PoolID,
+			&pos.TickLower, &pos.TickUpper,
+			new(string), new(string), // amount0, amount1
+			&amountUSDSql, &tier,
+			&statusStr, &openedAt, &closedAt,
+		)
+		if err != nil {
+			continue
+		}
+		pos.Chain = domain.ChainID(chain)
+		pos.Status = domain.PositionStatus(statusStr)
+		pos.Tier = domain.Tier(tier)
+		if amountUSDSql.Valid {
+			pos.AmountUSD, _ = decimal.NewFromString(amountUSDSql.String)
+		}
+		pos.OpenedAt = openedAt
+		pos.ClosedAt = closedAt
+		positions = append(positions, &pos)
+	}
+
+	return positions, rows.Err()
+}
