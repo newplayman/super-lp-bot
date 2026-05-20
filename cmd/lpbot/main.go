@@ -14,8 +14,8 @@ import (
 	"time"
 
 	"github.com/lpbot/lpbot/internal/adapters/datasource/geckoterminal"
-	"github.com/lpbot/lpbot/internal/adapters/store/postgres"
 	"github.com/lpbot/lpbot/internal/adapters/rpc"
+	"github.com/lpbot/lpbot/internal/adapters/store/postgres"
 	"github.com/lpbot/lpbot/internal/adapters/store/sqlite"
 	"github.com/lpbot/lpbot/internal/core/loop"
 	"github.com/lpbot/lpbot/internal/core/risk"
@@ -126,24 +126,24 @@ func (app *App) initAdapters(ctx context.Context) error {
 	// Initialize RPC providers for each chain
 	app.rpc = make(map[string]*rpc.RoundRobinProvider)
 
-	if app.config.Chains.Base.RPCPrimary != "" {
-		endpoints := []string{app.config.Chains.Base.RPCPrimary}
-		endpoints = append(endpoints, app.config.Chains.Base.RPCFallback...)
-		if len(endpoints) == 0 {
-			endpoints = rpc.BaseEndpoints // fallback to defaults
-		}
-
+	baseEndpoints := append([]string{}, app.config.Chains.Base.RPCPrimary)
+	baseEndpoints = append(baseEndpoints, app.config.Chains.Base.RPCFallback...)
+	baseEndpoints = append(baseEndpoints, rpc.BasePublicEndpoints...)
+	baseEndpoints = append(baseEndpoints, rpc.BaseEndpoints...)
+	if len(baseEndpoints) > 0 {
 		provider, err := rpc.NewRoundRobinProvider(rpc.Config{
-			ChainID:   domain.ChainBase,
-			Endpoints: endpoints,
+			ChainID:             domain.ChainBase,
+			Endpoints:           baseEndpoints,
+			HealthCheckInterval: 30 * time.Second,
+			HealthCheckTimeout:  2 * time.Second,
 		})
 		if err != nil {
 			return fmt.Errorf("failed to create Base RPC provider: %w", err)
 		}
 		app.rpc["base"] = provider
 		app.logger.Info("Base RPC provider initialized",
-			zap.String("primary", endpoints[0]),
-			zap.Int("endpoints", len(endpoints)))
+			zap.String("primary", provider.Endpoint()),
+			zap.Int("endpoints", len(baseEndpoints)))
 	}
 
 	if app.config.Chains.Solana.RPCPrimary != "" {
@@ -284,15 +284,15 @@ func (app *App) wireMainLoop(ctx context.Context) error {
 
 	// Create and configure the main loop
 	app.mainLoop = loop.NewMainLoop(loop.MainLoopConfig{
-		TickInterval:       1 * time.Minute,
-		Broadcaster:        nil, // Set based on build mode
-		RiskGate:           riskGateAdapter,
-		AllocationManager:  allocManager,
-		Simulator:          simulator,
-		ApproveTracker:     approveTracker,
-		OrderManager:       orderManager,
-		Scanner:            app.scanner,
-		Metrics:            metrics,
+		TickInterval:      1 * time.Minute,
+		Broadcaster:       nil, // Set based on build mode
+		RiskGate:          riskGateAdapter,
+		AllocationManager: allocManager,
+		Simulator:         simulator,
+		ApproveTracker:    approveTracker,
+		OrderManager:      orderManager,
+		Scanner:           app.scanner,
+		Metrics:           metrics,
 	})
 	if app.logger != nil {
 		app.logger.Info("Main loop wired successfully")
@@ -383,8 +383,10 @@ func (app *App) cleanup() {
 			_ = closer.Close()
 		}
 	}
-	for range app.rpc {
-		// RPC providers don't have close methods currently
+	for _, provider := range app.rpc {
+		if closer, ok := any(provider).(interface{ Close() error }); ok {
+			_ = closer.Close()
+		}
 	}
 }
 
@@ -445,14 +447,14 @@ func (a *riskGateAdapter) RecordTxFailure(ctx context.Context, poolKey string) {
 // metricsAdapter implements loop.Metrics with all required methods.
 type metricsAdapter struct{}
 
-func (m *metricsAdapter) IncRiskBlock()      {}
-func (m *metricsAdapter) IncAllocBlock()    {}
-func (m *metricsAdapter) IncSimulateFail()  {}
-func (m *metricsAdapter) IncApproveFail()   {}
-func (m *metricsAdapter) IncTxFailed()      {}
-func (m *metricsAdapter) IncLoopHeartbeat() {}
-func (m *metricsAdapter) SetPositionsOpen(n int64) {}
-func (m *metricsAdapter) SetPositionsClosed(n int64) {}
+func (m *metricsAdapter) IncRiskBlock()                  {}
+func (m *metricsAdapter) IncAllocBlock()                 {}
+func (m *metricsAdapter) IncSimulateFail()               {}
+func (m *metricsAdapter) IncApproveFail()                {}
+func (m *metricsAdapter) IncTxFailed()                   {}
+func (m *metricsAdapter) IncLoopHeartbeat()              {}
+func (m *metricsAdapter) SetPositionsOpen(n int64)       {}
+func (m *metricsAdapter) SetPositionsClosed(n int64)     {}
 func (m *metricsAdapter) SetPnLDaily(pnl domain.Decimal) {}
 
 type approveTrackerAdapter struct {

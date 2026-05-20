@@ -7,6 +7,7 @@ metrics_addr = ":9090"
 
 [chains.base]
 rpc_primary = "${BASE_RPC_PRIMARY}"
+# Optional fallback list, supports comma-separated URLs, e.g. "https://a,https://b"
 rpc_fallback = ["${BASE_RPC_FALLBACK}"]
 ws = "${BASE_WS}"
 mev = "flashbots-protect"

@@ -144,3 +144,41 @@ sudo systemctl restart lpbot-shadow
 - `sudo journalctl -u lpbot-shadow -n 100 --no-pager`
 - `curl http://127.0.0.1:9090/metrics | head -20`
 - `ss -lnt | grep 5432`
+
+## 11. 全量审计脚本（v3）
+
+固定版审计脚本放在：
+`/opt/lpbot/lp-bot-v3/scripts/audit_shadow_vps.sh`
+
+执行示例：
+
+```bash
+cd /opt/lpbot/lp-bot-v3
+./scripts/audit_shadow_vps.sh 900 60
+```
+
+参数说明：
+
+- `900`：审计采样窗口（秒，默认 15 分钟）
+- `60`：采样间隔（秒）
+
+## 12. 无人值守巡检（8-10 小时）
+
+`scripts/overnight-vps-runbook.sh` 可在后台持续跑 7-10 小时：
+
+```bash
+mkdir -p /Users/bendu/.lpbot-ops
+LPBOT_HOST=lpbot@157.173.123.24 \
+LPBOT_KEY=$HOME/.ssh/lpbot_ed25519 \
+LPBOT_CYCLE_MIN=10 \
+LPBOT_AUDIT_WINDOW_SEC=20 \
+LPBOT_AUTOINSTALL_TOOLS=1 \
+LPBOT_AUTO_RESTART=0 \
+nohup /Users/bendu/lp-bot/v3/scripts/overnight-vps-runbook.sh 8 \
+  > /Users/bendu/.lpbot-ops/overnight-8h-$(date +%Y%m%d-%H%M%S).log 2>&1 &
+```
+
+说明：
+- `LPBOT_AUTOINSTALL_TOOLS=1` 会在审计阶段尝试自动安装 `psql`（`postgresql-client`）与 `redis-cli`（`redis-tools`）；
+- 若你只要观测不改系统，请保持 `LPBOT_AUTOINSTALL_TOOLS=0`（默认）；
+- 每次有新日志会持续落到 `/Users/bendu/.lpbot-ops/overnight-*.md`。
