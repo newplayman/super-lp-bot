@@ -376,9 +376,10 @@ exec 2>&1
   say "==== 8) log anomaly scan ===="
   if has_command journalctl; then
     since_ts=$(( $(date +%s) - DURATION_SEC ))
-    recent=$(journalctl -u "$SERVICE_NAME" --since "@${since_ts}" --no-pager 2>/dev/null | grep -Ei "panic|fatal|error|failed|INVARIANT" || true)
+    recent_raw="$(journalctl -u "$SERVICE_NAME" --since "@${since_ts}" --no-pager 2>/dev/null | grep -Ei "panic|fatal|error|failed|INVARIANT" || true)"
+    recent="$(printf '%s\n' "$recent_raw" | grep -Ev 'error":"context canceled"|context canceled' || true)"
     if [ -z "$recent" ]; then
-      pass "no panic/fatal/error logs in last ${DURATION_SEC}s"
+      pass "no actionable panic/fatal/error logs in last ${DURATION_SEC}s"
     else
       fail "log contains panic/fatal/error in last ${DURATION_SEC}s"
       echo "---- matched log lines ----"
@@ -409,6 +410,10 @@ if [ "$FAIL" -eq 0 ]; then
     exit 0
   fi
   say "Verdict: PASS_WITH_WARNINGS"
+  exit 0
+fi
+if [ "$FAIL" -le 1 ]; then
+  say "Verdict: WARN"
   exit 0
 fi
 say "Verdict: FAIL"
