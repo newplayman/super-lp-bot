@@ -395,7 +395,11 @@ exec 2>&1
   echo "==== audit summary ===="
   echo "PASS=$PASS WARN=$WARN FAIL=$FAIL"
   if [ "$FAIL" -eq 0 ]; then
-    echo "AUDIT_VERDICT=PASS"
+    if [ "$WARN" -eq 0 ]; then
+      echo "AUDIT_VERDICT=PASS"
+    else
+      echo "AUDIT_VERDICT=PASS_WITH_WARNINGS"
+    fi
   elif [ "$FAIL" -le 1 ]; then
     echo "AUDIT_VERDICT=WARN"
   else
