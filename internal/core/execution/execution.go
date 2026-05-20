@@ -36,7 +36,7 @@ func NewDefaultOrderManager(deps ExecutionDependencies, config ExecutionConfig, 
 		config:    config,
 		simulator: sim,
 		chain:     deps.Chain,
-		txBuilder: NewTxBuilder(deps.Wallet, deps.Chain),
+		txBuilder: NewTxBuilder(deps.Wallet, deps.Chain, NPMConfig{}),
 		positions: make(map[string]*positionState),
 		txs:       make(map[string]domain.SignedTx),
 	}

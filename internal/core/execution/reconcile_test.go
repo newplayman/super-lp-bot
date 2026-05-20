@@ -77,6 +77,10 @@ func (m *mockPositionRepoForReconcile) UpdateStatus(ctx context.Context, id stri
 	return errors.New("not implemented")
 }
 
+func (m *mockPositionRepoForReconcile) Snapshot(ctx context.Context, poolID string) ([]*domain.Position, error) {
+	return nil, errors.New("not implemented")
+}
+
 // Ensure mock implementations satisfy required interfaces
 var _ ports.Chain = (*mockChainForReconcile)(nil)
 var _ ports.PositionRepo = (*mockPositionRepoForReconcile)(nil)

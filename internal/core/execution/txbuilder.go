@@ -2,10 +2,22 @@ package execution
 
 import (
 	"context"
-	"fmt"
+	"errors"
+	"math/big"
+	"time"
 
+	"github.com/ethereum/go-ethereum/common"
+
+	npmabi "github.com/lpbot/lpbot/internal/adapters/chain/base/abi"
 	"github.com/lpbot/lpbot/internal/domain"
 	"github.com/lpbot/lpbot/internal/ports"
+)
+
+var (
+	ErrTickInvalid       = errors.New("tickLower must be less than tickUpper")
+	ErrDeadlineExpired   = errors.New("deadline must be in the future")
+	ErrSlippageTooHigh   = errors.New("slippageBps must be less than 10000 (100%)")
+	ErrZeroAmountDesired = errors.New("amount desired must be greater than 0")
 )
 
 // TxBuilder builds unsigned transactions for position operations.
@@ -15,39 +27,48 @@ import (
 //   - Rebalance: remove + add in sequence
 //   - CollectFees: collect accumulated fees
 type TxBuilder struct {
-	wallet ports.Wallet
-	chain  ports.Chain
+	wallet  ports.Wallet
+	chain   ports.Chain
+	npmAddr common.Address // NonfungiblePositionManager address from config
+}
+
+// NPMConfig holds the NonfungiblePositionManager address per chain.
+type NPMConfig struct {
+	Base string // Base chain NPM address
 }
 
 // NewTxBuilder creates a new TxBuilder instance.
-func NewTxBuilder(wallet ports.Wallet, chain ports.Chain) *TxBuilder {
+func NewTxBuilder(wallet ports.Wallet, chain ports.Chain, npmConfig NPMConfig) *TxBuilder {
+	var npmAddr common.Address
+	if npmConfig.Base != "" {
+		npmAddr = common.HexToAddress(npmConfig.Base)
+	}
 	return &TxBuilder{
-		wallet: wallet,
-		chain:  chain,
+		wallet:  wallet,
+		chain:   chain,
+		npmAddr: npmAddr,
 	}
 }
 
 // BuildAddLiquidityTx builds an add liquidity transaction for opening a position.
-// For EVM chains, this builds a multicall or single add liquidity call.
-// For Solana, this builds the appropriate instruction.
+// For EVM chains, this builds a mint call to the NonfungiblePositionManager.
 func (b *TxBuilder) BuildAddLiquidityTx(ctx context.Context, intent OpenIntent) (domain.UnsignedTx, error) {
-	// Build the add liquidity transaction
-	// The actual implementation depends on the chain type
-
-	// Get the wallet address
 	from := b.wallet.Address()
 
-	// Build calldata based on chain
-	// For now, we build a generic transaction structure
+	calldata, to, err := b.BuildMintCalldata(intent)
+	if err != nil {
+		return domain.UnsignedTx{}, err
+	}
+
 	tx := domain.UnsignedTx{
 		Chain:    intent.Chain,
 		From:     from,
-		To:       domain.Address{}, // Set by adapter
-		Data:     b.buildAddLiquidityCalldata(intent),
-		Value:    domain.MustDecimal("0"),
-		Nonce:    0, // Will be set by nonce manager in real implementation
-		Deadline: 0, // Will be set based on intent
-		MinOut:   domain.MustDecimal("0"), // Set from intent simulation
+		To:       domain.MustParseAddress(to.Hex()),
+		Data:     calldata,
+		Value:    domain.ZeroDecimal(),
+		Nonce:    0, // Will be set by nonce manager
+		Deadline: intent.Deadline,
+		MinOut:   domain.ZeroDecimal(),
 	}
 
 	return tx, nil
@@ -57,15 +78,27 @@ func (b *TxBuilder) BuildAddLiquidityTx(ctx context.Context, intent OpenIntent) 
 func (b *TxBuilder) BuildRemoveLiquidityTx(ctx context.Context, intent ExitIntent) (domain.UnsignedTx, error) {
 	from := b.wallet.Address()
 
+	calldata, to, err := b.BuildDecreaseLiquidityCalldata(DecreaseLiquidityIntent{
+		TokenId:     intent.TokenId,
+		Liquidity:  intent.Liquidity,
+		SlippageBps: intent.SlippageBps,
+		Deadline:   intent.Deadline,
+		Amount0Min: intent.Amount0Min,
+		Amount1Min: intent.Amount1Min,
+	})
+	if err != nil {
+		return domain.UnsignedTx{}, err
+	}
+
 	tx := domain.UnsignedTx{
 		Chain:    intent.Chain,
 		From:     from,
-		To:       domain.Address{},
-		Data:     b.buildRemoveLiquidityCalldata(intent),
-		Value:    domain.MustDecimal("0"),
+		To:       domain.MustParseAddress(to.Hex()),
+		Data:     calldata,
+		Value:    domain.ZeroDecimal(),
 		Nonce:    0,
-		Deadline: 0,
-		MinOut:   domain.MustDecimal("0"),
+		Deadline: intent.Deadline,
+		MinOut:   domain.ZeroDecimal(),
 	}
 
 	return tx, nil
@@ -75,29 +108,8 @@ func (b *TxBuilder) BuildRemoveLiquidityTx(ctx context.Context, intent ExitInten
 func (b *TxBuilder) BuildRebalanceTxs(ctx context.Context, intent RebalanceIntent) (removeTx, addTx domain.UnsignedTx, err error) {
 	from := b.wallet.Address()
 
-	// Build remove liquidity tx
-	removeTx = domain.UnsignedTx{
-		Chain:    intent.Chain,
-		From:     from,
-		To:       domain.Address{},
-		Data:     b.buildRemoveLiquidityCalldataForRebalance(intent),
-		Value:    domain.MustDecimal("0"),
-		Nonce:    0,
-		Deadline: 0,
-		MinOut:   domain.MustDecimal("0"),
-	}
-
-	// Build add liquidity tx with new tick range
-	addTx = domain.UnsignedTx{
-		Chain:    intent.Chain,
-		From:     from,
-		To:       domain.Address{},
-		Data:     b.buildAddLiquidityCalldataForRebalance(intent),
-		Value:    domain.MustDecimal("0"),
-		Nonce:    0,
-		Deadline: 0,
-		MinOut:   domain.MustDecimal("0"),
-	}
+	// TODO: Implement rebalance calldata building
+	_ = from
 
 	return removeTx, addTx, nil
 }
@@ -106,63 +118,232 @@ func (b *TxBuilder) BuildRebalanceTxs(ctx context.Context, intent RebalanceInten
 func (b *TxBuilder) BuildCollectFeesTx(ctx context.Context, positionID string) (domain.UnsignedTx, error) {
 	from := b.wallet.Address()
 
+	calldata, to, err := b.BuildCollectCalldata(CollectIntent{
+		TokenId:    positionID,
+		Recipient:  from,
+		Amount0Max: domain.ZeroDecimal(),
+		Amount1Max: domain.ZeroDecimal(),
+	})
+	if err != nil {
+		return domain.UnsignedTx{}, err
+	}
+
 	tx := domain.UnsignedTx{
-		Chain:    domain.ChainID("base"), // Default, should be determined from position
+		Chain:    domain.ChainID("base"),
 		From:     from,
-		To:       domain.Address{},
-		Data:     b.buildCollectFeesCalldata(positionID),
-		Value:    domain.MustDecimal("0"),
+		To:       domain.MustParseAddress(to.Hex()),
+		Data:     calldata,
+		Value:    domain.ZeroDecimal(),
 		Nonce:    0,
 		Deadline: 0,
-		MinOut:   domain.MustDecimal("0"),
+		MinOut:   domain.ZeroDecimal(),
 	}
 
 	return tx, nil
 }
 
-// buildAddLiquidityCalldata builds the calldata for add liquidity.
-// This is a placeholder that should be replaced with actual UniV3 calldata builder.
-func (b *TxBuilder) buildAddLiquidityCalldata(intent OpenIntent) []byte {
-	// TODO: Replace with actual UniV3 nonfungible position manager calldata
-	// The calldata should encode:
-	//   - mint: token ID (0 for new position)
-	//   - recipient: wallet address
-	//   - tickLower/tickUpper: position boundaries
-	//   - amount0Desired/amount1Desired: token amounts
-	return []byte{}
+// BuildMintCalldata builds calldata for minting a new LP position.
+// It encodes the mint call using ABI packing and returns the target NPM address.
+func (b *TxBuilder) BuildMintCalldata(intent OpenIntent) ([]byte, common.Address, error) {
+	// Validate tick range
+	if intent.TickLower >= intent.TickUpper {
+		return nil, common.Address{}, ErrTickInvalid
+	}
+
+	// Validate deadline
+	if intent.Deadline <= time.Now().Unix() {
+		return nil, common.Address{}, ErrDeadlineExpired
+	}
+
+	// Validate slippage
+	if intent.SlippageBps >= 10000 {
+		return nil, common.Address{}, ErrSlippageTooHigh
+	}
+
+	// Calculate amountMin with slippage protection
+	// amountMin = amountDesired * (1 - slippageBps/10000)
+	amount0Desired := intent.Amount0.BigInt()
+	amount1Desired := intent.Amount1.BigInt()
+
+	amount0Min := calculateSlippageAmount(amount0Desired, intent.SlippageBps)
+	amount1Min := calculateSlippageAmount(amount1Desired, intent.SlippageBps)
+
+	// Validate amounts
+	if amount0Min.Sign() == 0 && amount1Min.Sign() == 0 {
+		return nil, common.Address{}, ErrZeroAmountDesired
+	}
+
+	// Pack the mint call using ABI encoding
+	// Use big.Int for all integers, abi.Pack handles type conversion
+	data, err := npmabi.NPMABI.Pack("mint",
+		common.HexToAddress(intent.Token0.String()),
+		common.HexToAddress(intent.Token1.String()),
+		new(big.Int).SetInt64(int64(intent.Fee)),
+		big.NewInt(intent.TickLower),
+		big.NewInt(intent.TickUpper),
+		amount0Desired,
+		amount1Desired,
+		amount0Min,
+		amount1Min,
+		common.HexToAddress(intent.Recipient.String()),
+	)
+	if err != nil {
+		return nil, common.Address{}, err
+	}
+
+	return data, b.npmAddr, nil
 }
 
-// buildRemoveLiquidityCalldata builds the calldata for remove liquidity.
-func (b *TxBuilder) buildRemoveLiquidityCalldata(intent ExitIntent) []byte {
-	// TODO: Replace with actual UniV3 nonfungible position manager calldata
-	// The calldata should encode:
-	//   - tokenId: position token ID
-	//   - liquidity: amount to remove
-	//   - deadline: transaction deadline
-	//   - amount0Min/amount1Min: minimum amounts (slippage protection)
-	return []byte{}
+// BuildIncreaseLiquidityCalldata builds calldata for increasing liquidity in an existing position.
+func (b *TxBuilder) BuildIncreaseLiquidityCalldata(intent IncreaseLiquidityIntent) ([]byte, common.Address, error) {
+	// Validate deadline
+	if intent.Deadline <= time.Now().Unix() {
+		return nil, common.Address{}, ErrDeadlineExpired
+	}
+
+	// Validate amounts
+	if intent.Amount0.Sign() == 0 && intent.Amount1.Sign() == 0 {
+		return nil, common.Address{}, ErrZeroAmountDesired
+	}
+
+	// Calculate amountMin with slippage protection
+	amount0Desired := intent.Amount0.BigInt()
+	amount1Desired := intent.Amount1.BigInt()
+	amount0Min := calculateSlippageAmount(amount0Desired, intent.SlippageBps)
+	amount1Min := calculateSlippageAmount(amount1Desired, intent.SlippageBps)
+
+	// Parse token ID
+	tokenId, ok := new(big.Int).SetString(intent.TokenId, 10)
+	if !ok {
+		tokenId = big.NewInt(0)
+	}
+
+	// Pack the increaseLiquidity call
+	data, err := npmabi.NPMABI.Pack("increaseLiquidity",
+		tokenId,
+		amount0Desired,
+		amount1Desired,
+		amount0Min,
+		amount1Min,
+		big.NewInt(intent.Deadline),
+	)
+	if err != nil {
+		return nil, common.Address{}, err
+	}
+
+	return data, b.npmAddr, nil
 }
 
-// buildRemoveLiquidityCalldataForRebalance builds remove calldata for rebalance.
-func (b *TxBuilder) buildRemoveLiquidityCalldataForRebalance(intent RebalanceIntent) []byte {
-	// TODO: Implement actual UniV3 calldata
-	return []byte{}
+// BuildDecreaseLiquidityCalldata builds calldata for decreasing liquidity in an existing position.
+func (b *TxBuilder) BuildDecreaseLiquidityCalldata(intent DecreaseLiquidityIntent) ([]byte, common.Address, error) {
+	// Validate deadline
+	if intent.Deadline <= time.Now().Unix() {
+		return nil, common.Address{}, ErrDeadlineExpired
+	}
+
+	// Calculate amountMin with slippage protection
+	// For decrease, we use the intent's Amount0Min/Amount1Min directly
+	amount0Min := intent.Amount0Min.BigInt()
+	amount1Min := intent.Amount1Min.BigInt()
+
+	// If slippage is provided, recalculate
+	if intent.SlippageBps > 0 {
+		liquidity := intent.Liquidity.BigInt()
+		amount0Min = calculateSlippageAmount(liquidity, intent.SlippageBps)
+		amount1Min = calculateSlippageAmount(liquidity, intent.SlippageBps)
+	}
+
+	// Validate that at least one amountMin is non-zero (slippage protection)
+	if amount0Min.Sign() == 0 && amount1Min.Sign() == 0 {
+		return nil, common.Address{}, ErrZeroAmountDesired
+	}
+
+	// Parse token ID
+	tokenId, ok := new(big.Int).SetString(intent.TokenId, 10)
+	if !ok {
+		tokenId = big.NewInt(0)
+	}
+
+	// Parse liquidity
+	liquidity := intent.Liquidity.BigInt()
+
+	// Pack the decreaseLiquidity call
+	data, err := npmabi.NPMABI.Pack("decreaseLiquidity",
+		tokenId,
+		liquidity,
+		amount0Min,
+		amount1Min,
+		big.NewInt(intent.Deadline),
+	)
+	if err != nil {
+		return nil, common.Address{}, err
+	}
+
+	return data, b.npmAddr, nil
 }
 
-// buildAddLiquidityCalldataForRebalance builds add calldata for rebalance with new ticks.
-func (b *TxBuilder) buildAddLiquidityCalldataForRebalance(intent RebalanceIntent) []byte {
-	// TODO: Implement actual UniV3 calldata with NewTickLower/NewTickUpper
-	return []byte{}
+// BuildCollectCalldata builds calldata for collecting fees from a position.
+func (b *TxBuilder) BuildCollectCalldata(intent CollectIntent) ([]byte, common.Address, error) {
+	// Parse token ID
+	tokenId, ok := new(big.Int).SetString(intent.TokenId, 10)
+	if !ok {
+		tokenId = big.NewInt(0)
+	}
+
+	// For amount0Max/amount1Max, use max uint128 to collect all
+	maxUint128 := new(big.Int).Sub(new(big.Int).Lsh(big.NewInt(1), 128), big.NewInt(1))
+	amount0Max := intent.Amount0Max.BigInt()
+	amount1Max := intent.Amount1Max.BigInt()
+
+	// If amounts are 0, use max to collect all
+	if amount0Max.Sign() == 0 {
+		amount0Max = maxUint128
+	}
+	if amount1Max.Sign() == 0 {
+		amount1Max = maxUint128
+	}
+
+	// Pack the collect call
+	data, err := npmabi.NPMABI.Pack("collect",
+		tokenId,
+		common.HexToAddress(intent.Recipient.String()),
+		amount0Max,
+		amount1Max,
+	)
+	if err != nil {
+		return nil, common.Address{}, err
+	}
+
+	return data, b.npmAddr, nil
 }
 
-// buildCollectFeesCalldata builds the calldata for collect fees.
-func (b *TxBuilder) buildCollectFeesCalldata(positionID string) []byte {
-	// TODO: Replace with actual UniV3 nonfungible position manager calldata
-	// The calldata should encode:
-	//   - tokenId: position token ID
-	//   - recipient: wallet address
-	//   - amount0Max/amount1Max: max amounts to collect (0 = collect all)
-	return []byte{}
+// BuildBurnCalldata builds calldata for burning a position NFT.
+// Should only be called after liquidity has been fully removed (liquidity = 0).
+func (b *TxBuilder) BuildBurnCalldata(intent BurnIntent) ([]byte, common.Address, error) {
+	// Parse token ID
+	tokenId, ok := new(big.Int).SetString(intent.TokenId, 10)
+	if !ok {
+		tokenId = big.NewInt(0)
+	}
+
+	// Pack the burn call
+	data, err := npmabi.NPMABI.Pack("burn", tokenId)
+	if err != nil {
+		return nil, common.Address{}, err
+	}
+
+	return data, b.npmAddr, nil
+}
+
+// calculateSlippageAmount computes: amount * (10000 - slippageBps) / 10000
+func calculateSlippageAmount(amount *big.Int, slippageBps int64) *big.Int {
+	if amount.Sign() == 0 {
+		return big.NewInt(0)
+	}
+	result := new(big.Int).Sub(big.NewInt(10000), big.NewInt(slippageBps))
+	result.Mul(amount, result)
+	result.Div(result, big.NewInt(10000))
+	return result
 }
 
 // SetNonce sets the nonce for a transaction.
@@ -173,7 +354,7 @@ func (b *TxBuilder) SetNonce(ctx context.Context, tx *domain.UnsignedTx) error {
 	if evmChain, ok := b.chain.(ports.EVMChain); ok {
 		nonce, err := evmChain.PendingNonceAt(ctx, tx.From)
 		if err != nil {
-			return fmt.Errorf("failed to get nonce: %w", err)
+			return err
 		}
 		tx.Nonce = nonce
 	}

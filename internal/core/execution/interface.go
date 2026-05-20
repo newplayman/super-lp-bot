@@ -59,6 +59,30 @@ type OpenIntent struct {
 
 	// TraceID traces the intent through the decision pipeline.
 	TraceID string
+
+	// Token0 is the address of the first token in the pair.
+	Token0 domain.Address
+
+	// Token1 is the address of the second token in the pair.
+	Token1 domain.Address
+
+	// Recipient is the address that will receive the NFT position.
+	Recipient domain.Address
+
+	// Amount0 is the desired amount of token0 to deposit.
+	Amount0 domain.Decimal
+
+	// Amount1 is the desired amount of token1 to deposit.
+	Amount1 domain.Decimal
+
+	// SlippageBps is the slippage tolerance in basis points (e.g., 50 = 0.5%).
+	SlippageBps int64
+
+	// Deadline is the Unix timestamp after which the transaction is invalid.
+	Deadline int64
+
+	// Fee is the pool fee tier (e.g., 3000 = 0.3%, 10000 = 1%).
+	Fee uint32
 }
 
 // ExitIntent represents an intent to close an existing position.
@@ -77,6 +101,87 @@ type ExitIntent struct {
 
 	// Reason is the reason for the exit (stop_loss, rebalance, manual, etc.).
 	Reason string
+
+	// TokenId is the on-chain NFT token ID of the position.
+	TokenId string
+
+	// Liquidity is the amount of liquidity to remove (0 for full exit).
+	Liquidity domain.Decimal
+
+	// SlippageBps is the slippage tolerance in basis points.
+	SlippageBps int64
+
+	// Deadline is the Unix timestamp after which the transaction is invalid.
+	Deadline int64
+
+	// Recipient is the address that will receive the collected tokens.
+	Recipient domain.Address
+
+	// Amount0Min is the minimum amount of token0 to receive.
+	Amount0Min domain.Decimal
+
+	// Amount1Min is the minimum amount of token1 to receive.
+	Amount1Min domain.Decimal
+}
+
+// IncreaseLiquidityIntent represents an intent to increase liquidity in an existing position.
+type IncreaseLiquidityIntent struct {
+	// TokenId is the on-chain NFT token ID of the position.
+	TokenId string
+
+	// Amount0 is the desired amount of token0 to add.
+	Amount0 domain.Decimal
+
+	// Amount1 is the desired amount of token1 to add.
+	Amount1 domain.Decimal
+
+	// SlippageBps is the slippage tolerance in basis points.
+	SlippageBps int64
+
+	// Deadline is the Unix timestamp after which the transaction is invalid.
+	Deadline int64
+}
+
+// DecreaseLiquidityIntent represents an intent to decrease liquidity in an existing position.
+type DecreaseLiquidityIntent struct {
+	// TokenId is the on-chain NFT token ID of the position.
+	TokenId string
+
+	// Liquidity is the amount of liquidity to remove.
+	Liquidity domain.Decimal
+
+	// SlippageBps is the slippage tolerance in basis points.
+	SlippageBps int64
+
+	// Deadline is the Unix timestamp after which the transaction is invalid.
+	Deadline int64
+
+	// Amount0Min is the minimum amount of token0 to receive.
+	Amount0Min domain.Decimal
+
+	// Amount1Min is the minimum amount of token1 to receive.
+	Amount1Min domain.Decimal
+}
+
+// CollectIntent represents an intent to collect fees from a position.
+type CollectIntent struct {
+	// TokenId is the on-chain NFT token ID of the position.
+	TokenId string
+
+	// Recipient is the address that will receive the collected tokens.
+	Recipient domain.Address
+
+	// Amount0Max is the maximum amount of token0 to collect (0 = collect all).
+	Amount0Max domain.Decimal
+
+	// Amount1Max is the maximum amount of token1 to collect (0 = collect all).
+	Amount1Max domain.Decimal
+}
+
+// BurnIntent represents an intent to burn a position NFT after full removal.
+type BurnIntent struct {
+	// TokenId is the on-chain NFT token ID of the position to burn.
+	TokenId string
 }
 
 // RebalanceIntent represents an intent to rebalance an existing position.

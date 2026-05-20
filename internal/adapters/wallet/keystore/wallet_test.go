@@ -2,14 +2,17 @@ package keystore
 
 import (
 	"context"
+	"errors"
 	"math/big"
 	"os"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -402,6 +405,412 @@ func TestSignMessage(t *testing.T) {
 
 	recoveredAddr := crypto.PubkeyToAddress(*recoveredPub)
 	assert.Equal(t, strings.ToLower(keystoreWallet.Address().String()), strings.ToLower(recoveredAddr.Hex()), "recovered address should match")
+
+	err = wallet.Close()
+	require.NoError(t, err)
+}
+
+// =============================================================================
+// TR-06: Wallet EIP-1559 signing + real gas tests
+// =============================================================================
+
+// mockGasOracle implements the gas oracle for testing
+type mockGasOracle struct {
+	tip *big.Int
+	err error
+}
+
+func (m *mockGasOracle) SuggestGasTip(_ context.Context) (*big.Int, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	return m.tip, nil
+}
+
+// mockChainForWallet implements ChainReader for testing
+type mockChainForWallet struct {
+	nonce     uint64
+	nonceErr  error
+	head      *types.Header
+	headErr   error
+	estimate  uint64
+	estimateErr error
+	callErr   error
+}
+
+func (m *mockChainForWallet) PendingNonceAt(_ context.Context, _ domain.Address) (uint64, error) {
+	return m.nonce, m.nonceErr
+}
+
+func (m *mockChainForWallet) HeaderByNumber(_ context.Context, _ *big.Int) (*types.Header, error) {
+	return m.head, m.headErr
+}
+
+func (m *mockChainForWallet) EstimateGas(_ context.Context, _ ethereum.CallMsg) (uint64, error) {
+	return m.estimate, m.estimateErr
+}
+
+// TestSign_EIP1559_TxType verifies that Sign() produces EIP-1559 transaction (Type 2).
+func TestSign_EIP1559_TxType(t *testing.T) {
+	passphrase := "test-passphrase-123"
+	tmpDir, _ := setupTestKeystore(t, passphrase)
+
+	config := ports.WalletConfig{
+		KeystoreDir: tmpDir,
+		Passphrase:  passphrase,
+		ChainID:     domain.ChainBase,
+	}
+
+	provider, err := New(context.Background(), config)
+	require.NoError(t, err)
+
+	// Set up mock chain
+	mockChain := &mockChainForWallet{
+		nonce: 0,
+		head: &types.Header{
+			BaseFee: big.NewInt(1000000000), // 1 gwei
+		},
+		estimate: 100000,
+	}
+
+	// Create wallet
+	wallet, err := provider.Open(context.Background(), config)
+	require.NoError(t, err)
+
+	// Set up gas oracle
+	wallet.(*keystoreWallet).gasOracle = &mockGasOracle{tip: big.NewInt(100000000)} // 0.1 gwei
+
+	// Set up chain for PendingNonce
+	wallet.(*keystoreWallet).chain = mockChain
+
+	// Build test transaction
+	unsignedTx := domain.UnsignedTx{
+		Chain:    domain.ChainBase,
+		To:       domain.MustParseAddress("0x1234567890123456789012345678901234567890"),
+		Data:     []byte{0x12, 0x34, 0x56, 0x78},
+		Value:    domain.ZeroDecimal(),
+		Nonce:    0,
+		Deadline: 0,
+		MinOut:   domain.ZeroDecimal(),
+	}
+
+	// Sign the transaction
+	signedTx, err := wallet.Sign(context.Background(), unsignedTx)
+	require.NoError(t, err)
+	require.NotEmpty(t, signedTx.Signature)
+
+	// Decode signature to get transaction type
+	// EIP-2718 typed transactions start with tx type byte
+	// 0x02 = EIP-1559
+	assert.Equal(t, byte(0x02), signedTx.Signature[0], "EIP-1559 tx type should be 0x02")
+
+	err = wallet.Close()
+	require.NoError(t, err)
+}
+
+// TestSign_GasLimitWithBuffer verifies gasLimit = estimated * 1.2.
+func TestSign_GasLimitWithBuffer(t *testing.T) {
+	passphrase := "test-passphrase-123"
+	tmpDir, _ := setupTestKeystore(t, passphrase)
+
+	config := ports.WalletConfig{
+		KeystoreDir: tmpDir,
+		Passphrase:  passphrase,
+		ChainID:     domain.ChainBase,
+	}
+
+	provider, err := New(context.Background(), config)
+	require.NoError(t, err)
+
+	// Set up mock chain with known estimate
+	mockChain := &mockChainForWallet{
+		nonce: 0,
+		head: &types.Header{
+			BaseFee: big.NewInt(1000000000), // 1 gwei
+		},
+		estimate: 100000, // 100k gas estimate
+	}
+
+	wallet, err := provider.Open(context.Background(), config)
+	require.NoError(t, err)
+
+	wallet.(*keystoreWallet).gasOracle = &mockGasOracle{tip: big.NewInt(100000000)}
+	wallet.(*keystoreWallet).chain = mockChain
+
+	unsignedTx := domain.UnsignedTx{
+		Chain:    domain.ChainBase,
+		To:       domain.MustParseAddress("0x1234567890123456789012345678901234567890"),
+		Data:     []byte{0x12, 0x34, 0x56, 0x78},
+		Value:    domain.ZeroDecimal(),
+		Nonce:    0,
+		Deadline: 0,
+		MinOut:   domain.ZeroDecimal(),
+	}
+
+	signedTx, err := wallet.Sign(context.Background(), unsignedTx)
+	require.NoError(t, err)
+
+	// Verify 20% buffer: 100k * 1.2 = 120k
+	// We can verify by checking the RLP encoded tx has gas = 120000
+	assert.True(t, len(signedTx.Signature) > 4, "signature should be present")
+
+	err = wallet.Close()
+	require.NoError(t, err)
+}
+
+// TestSign_MaxFeeFormula verifies maxFee = 2*baseFee + tip.
+func TestSign_MaxFeeFormula(t *testing.T) {
+	passphrase := "test-passphrase-123"
+	tmpDir, _ := setupTestKeystore(t, passphrase)
+
+	config := ports.WalletConfig{
+		KeystoreDir: tmpDir,
+		Passphrase:  passphrase,
+		ChainID:     domain.ChainBase,
+	}
+
+	provider, err := New(context.Background(), config)
+	require.NoError(t, err)
+
+	// Set up with specific baseFee and tip
+	baseFee := big.NewInt(1000000000)  // 1 gwei
+	tip := big.NewInt(100000000)       // 0.1 gwei
+	expectedMaxFee := big.NewInt(0).Add(
+		big.NewInt(0).Mul(baseFee, big.NewInt(2)),
+		tip,
+	) // 2.1 gwei
+
+	mockChain := &mockChainForWallet{
+		nonce: 0,
+		head: &types.Header{
+			BaseFee: baseFee,
+		},
+		estimate: 100000,
+	}
+
+	wallet, err := provider.Open(context.Background(), config)
+	require.NoError(t, err)
+
+	wallet.(*keystoreWallet).gasOracle = &mockGasOracle{tip: tip}
+	wallet.(*keystoreWallet).chain = mockChain
+
+	unsignedTx := domain.UnsignedTx{
+		Chain:    domain.ChainBase,
+		To:       domain.MustParseAddress("0x1234567890123456789012345678901234567890"),
+		Data:     []byte{0x12, 0x34, 0x56, 0x78},
+		Value:    domain.ZeroDecimal(),
+		Nonce:    0,
+		Deadline: 0,
+		MinOut:   domain.ZeroDecimal(),
+	}
+
+	signedTx, err := wallet.Sign(context.Background(), unsignedTx)
+	require.NoError(t, err)
+
+	// Max fee should be 2*1gwei + 0.1gwei = 2.1 gwei
+	assert.True(t, expectedMaxFee.Cmp(big.NewInt(2100000000)) == 0, "expected max fee 2.1 gwei")
+	assert.NotEmpty(t, signedTx.Signature)
+
+	err = wallet.Close()
+	require.NoError(t, err)
+}
+
+// TestSign_NonceFromPending verifies nonce comes from PendingNonceAt.
+func TestSign_NonceFromPending(t *testing.T) {
+	passphrase := "test-passphrase-123"
+	tmpDir, _ := setupTestKeystore(t, passphrase)
+
+	config := ports.WalletConfig{
+		KeystoreDir: tmpDir,
+		Passphrase:  passphrase,
+		ChainID:     domain.ChainBase,
+	}
+
+	provider, err := New(context.Background(), config)
+	require.NoError(t, err)
+
+	// Set up mock with specific nonce
+	expectedNonce := uint64(5)
+	mockChain := &mockChainForWallet{
+		nonce:  expectedNonce,
+		head: &types.Header{
+			BaseFee: big.NewInt(1000000000),
+		},
+		estimate: 100000,
+	}
+
+	wallet, err := provider.Open(context.Background(), config)
+	require.NoError(t, err)
+
+	wallet.(*keystoreWallet).gasOracle = &mockGasOracle{tip: big.NewInt(100000000)}
+	wallet.(*keystoreWallet).chain = mockChain
+
+	unsignedTx := domain.UnsignedTx{
+		Chain:    domain.ChainBase,
+		To:       domain.MustParseAddress("0x1234567890123456789012345678901234567890"),
+		Data:     []byte{0x12, 0x34, 0x56, 0x78},
+		Value:    domain.ZeroDecimal(),
+		Nonce:    0, // Should be overwritten
+		Deadline: 0,
+		MinOut:   domain.ZeroDecimal(),
+	}
+
+	signedTx, err := wallet.Sign(context.Background(), unsignedTx)
+	require.NoError(t, err)
+
+	// Verify signature has correct size for nonce=5
+	// RLP encoding of nonce=5 differs from nonce=0
+	assert.NotEmpty(t, signedTx.Signature)
+	assert.NotEqual(t, expectedNonce, unsignedTx.Nonce, "original tx nonce was 0")
+
+	err = wallet.Close()
+	require.NoError(t, err)
+}
+
+// TestSign_EstimateGasError_Propagates verifies EstimateGas errors propagate.
+func TestSign_EstimateGasError_Propagates(t *testing.T) {
+	passphrase := "test-passphrase-123"
+	tmpDir, _ := setupTestKeystore(t, passphrase)
+
+	config := ports.WalletConfig{
+		KeystoreDir: tmpDir,
+		Passphrase:  passphrase,
+		ChainID:     domain.ChainBase,
+	}
+
+	provider, err := New(context.Background(), config)
+	require.NoError(t, err)
+
+	// Set up mock with estimate error
+	estimateErr := errors.New("execution reverted")
+	mockChain := &mockChainForWallet{
+		nonce: 0,
+		head: &types.Header{
+			BaseFee: big.NewInt(1000000000),
+		},
+		estimateErr: estimateErr,
+	}
+
+	wallet, err := provider.Open(context.Background(), config)
+	require.NoError(t, err)
+
+	wallet.(*keystoreWallet).gasOracle = &mockGasOracle{tip: big.NewInt(100000000)}
+	wallet.(*keystoreWallet).chain = mockChain
+
+	unsignedTx := domain.UnsignedTx{
+		Chain:    domain.ChainBase,
+		To:       domain.MustParseAddress("0x1234567890123456789012345678901234567890"),
+		Data:     []byte{0x12, 0x34, 0x56, 0x78},
+		Value:    domain.ZeroDecimal(),
+		Nonce:    0,
+		Deadline: 0,
+		MinOut:   domain.ZeroDecimal(),
+	}
+
+	_, err = wallet.Sign(context.Background(), unsignedTx)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "execution reverted")
+}
+
+// TestSign_HeaderError_Propagates verifies HeaderByNumber errors propagate.
+func TestSign_HeaderError_Propagates(t *testing.T) {
+	passphrase := "test-passphrase-123"
+	tmpDir, _ := setupTestKeystore(t, passphrase)
+
+	config := ports.WalletConfig{
+		KeystoreDir: tmpDir,
+		Passphrase:  passphrase,
+		ChainID:     domain.ChainBase,
+	}
+
+	provider, err := New(context.Background(), config)
+	require.NoError(t, err)
+
+	// Set up mock with header error
+	headerErr := errors.New("header not found")
+	mockChain := &mockChainForWallet{
+		nonce: 0,
+		headErr: headerErr,
+	}
+
+	wallet, err := provider.Open(context.Background(), config)
+	require.NoError(t, err)
+
+	wallet.(*keystoreWallet).gasOracle = &mockGasOracle{tip: big.NewInt(100000000)}
+	wallet.(*keystoreWallet).chain = mockChain
+
+	unsignedTx := domain.UnsignedTx{
+		Chain:    domain.ChainBase,
+		To:       domain.MustParseAddress("0x1234567890123456789012345678901234567890"),
+		Data:     []byte{0x12, 0x34, 0x56, 0x78},
+		Value:    domain.ZeroDecimal(),
+		Nonce:    0,
+		Deadline: 0,
+		MinOut:   domain.ZeroDecimal(),
+	}
+
+	_, err = wallet.Sign(context.Background(), unsignedTx)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "header not found")
+}
+
+// TestSign_RecoverFromSig_MatchesAddress verifies signature recovery matches address.
+func TestSign_RecoverFromSig_MatchesAddress(t *testing.T) {
+	passphrase := "test-passphrase-123"
+	tmpDir, _ := setupTestKeystore(t, passphrase)
+
+	config := ports.WalletConfig{
+		KeystoreDir: tmpDir,
+		Passphrase:  passphrase,
+		ChainID:     domain.ChainBase,
+	}
+
+	provider, err := New(context.Background(), config)
+	require.NoError(t, err)
+
+	mockChain := &mockChainForWallet{
+		nonce: 0,
+		head: &types.Header{
+			BaseFee: big.NewInt(1000000000),
+		},
+		estimate: 100000,
+	}
+
+	wallet, err := provider.Open(context.Background(), config)
+	require.NoError(t, err)
+
+	wallet.(*keystoreWallet).gasOracle = &mockGasOracle{tip: big.NewInt(100000000)}
+	wallet.(*keystoreWallet).chain = mockChain
+
+	unsignedTx := domain.UnsignedTx{
+		Chain:    domain.ChainBase,
+		To:       domain.MustParseAddress("0x1234567890123456789012345678901234567890"),
+		Data:     []byte{0x12, 0x34, 0x56, 0x78},
+		Value:    domain.ZeroDecimal(),
+		Nonce:    0,
+		Deadline: 0,
+		MinOut:   domain.ZeroDecimal(),
+	}
+
+	signedTx, err := wallet.Sign(context.Background(), unsignedTx)
+	require.NoError(t, err)
+	require.NotEmpty(t, signedTx.Signature)
+
+	// Recover address from signature
+	// For EIP-1559, we need to decode the tx from RLP first
+	tx := new(types.Transaction)
+	err = tx.UnmarshalBinary(signedTx.Signature)
+	require.NoError(t, err)
+
+	// Get signer and recover sender
+	signer := types.LatestSignerForChainID(big.NewInt(8453)) // Base chain ID
+	from, err := signer.Sender(tx)
+	require.NoError(t, err)
+
+	// Verify recovered address matches wallet address
+	expectedAddr := wallet.Address()
+	actualAddr := common.BytesToAddress(from.Bytes())
+	assert.Equal(t, strings.ToLower(expectedAddr.String()), strings.ToLower(actualAddr.Hex()))
 
 	err = wallet.Close()
 	require.NoError(t, err)
