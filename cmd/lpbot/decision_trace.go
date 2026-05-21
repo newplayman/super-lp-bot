@@ -209,6 +209,15 @@ func (app *App) evaluateShadowPipeline(ctx context.Context, pool domain.Pool) sh
 		}
 	}
 
+	chainValidation := app.validatePoolOnChain(ctx, pool)
+	if !chainValidation.OK {
+		return shadowPipelineDecision{
+			Stage:  chainValidation.Stage,
+			Reason: chainValidation.Reason,
+			Action: "skip",
+		}
+	}
+
 	sim, err := app.mainLoop.Simulator.Simulate(ctx, domain.UnsignedTx{}, domain.BlockRef{})
 	if err != nil {
 		app.mainLoop.GetMetrics().IncSimulateFail()
