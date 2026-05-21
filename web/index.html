@@ -312,24 +312,24 @@
                             <span id="decision-risk-score" class="row-value green-text">平均 48 / 100</span>
                         </div>
                         <div class="status-item-row">
-                            <span class="row-label">组合上限</span>
-                            <span class="row-value">已用 70.2% / 上限 85%</span>
+                            <span class="row-label">单池 / 日亏上限</span>
+                            <span id="decision-exposure" class="row-value">读取中</span>
                         </div>
                         <div class="status-item-row">
                             <span class="row-label">Kill-Switch</span>
                             <span id="decision-kill-switch" class="row-value green-badge">全局 Kill-Switch 正常</span>
                         </div>
                         <div class="status-item-row">
-                            <span class="row-label">动态阈值</span>
-                            <span class="row-value">触发阈值 18% / 启用中</span>
+                            <span class="row-label">Canary 模式</span>
+                            <span id="decision-canary" class="row-value">读取中</span>
                         </div>
                         <div class="status-item-row">
-                            <span class="row-label">门禁状态</span>
-                            <span class="row-value font-12">
-                                Dry-run <span class="text-glow-green">✔ 通过</span> | 
-                                Shadow <span class="text-glow-green">✔ 通过</span> | 
-                                Active LP <span class="text-glow-green">✔ 通过</span>
-                            </span>
+                            <span class="row-label">实盘门禁</span>
+                            <span id="decision-live-gate" class="row-value font-12">读取中</span>
+                        </div>
+                        <div class="status-item-row">
+                            <span class="row-label">阻塞原因</span>
+                            <span id="decision-live-blockers" class="row-value font-12">读取中</span>
                         </div>
                     </div>
                 </div>
@@ -340,37 +340,28 @@
                     </div>
                     <div class="panel-body flex-col">
                         <div class="execution-row">
-                            <span class="exec-type">Add LP (24h)</span>
-                            <span class="exec-count">66 Tx</span>
-                            <span class="exec-success text-glow-green">成功率 98.5%</span>
+                            <span class="exec-type">执行后端</span>
+                            <span id="execution-backend" class="exec-count">读取中</span>
+                            <span id="execution-backend-status" class="exec-success text-glow-green">读取中</span>
                         </div>
                         <div class="execution-row">
-                            <span class="exec-type">Remove LP (24h)</span>
-                            <span class="exec-count">38 Tx</span>
-                            <span class="exec-success text-glow-green">成功率 97.4%</span>
+                            <span class="exec-type">钱包地址</span>
+                            <span id="execution-wallet" class="exec-count">读取中</span>
+                            <span id="execution-wallet-status" class="exec-success text-glow-green">读取中</span>
                         </div>
                         <div class="execution-row">
-                            <span class="exec-type">Rebalance (24h)</span>
-                            <span class="exec-count">24 Tx</span>
-                            <span class="exec-success text-glow-green">成功率 97.9%</span>
+                            <span class="exec-type">白名单范围</span>
+                            <span id="execution-whitelist" class="exec-count">读取中</span>
+                            <span id="execution-whitelist-status" class="exec-success text-glow-green">读取中</span>
                         </div>
                         <div class="execution-row">
-                            <span class="exec-type">Approve/Revoke</span>
-                            <span class="exec-count">312 Tx</span>
-                            <span class="exec-success text-glow-green">成功率 99.1%</span>
+                            <span class="exec-type">最近执行</span>
+                            <span id="execution-last-tx" class="exec-count">shadow only</span>
+                            <span id="execution-last-tx-status" class="exec-success text-glow-green">未广播</span>
                         </div>
                         <div class="tx-status-mini-bar">
-                            <div class="bar-title">Tx 状态 (24H)</div>
-                            <div class="progress-segmented">
-                                <div class="seg seg-success" style="width: 92.3%;" title="成功 1428"></div>
-                                <div class="seg seg-failed" style="style: width: 7.2%;" title="失败 112"></div>
-                                <div class="seg seg-pending" style="width: 0.5%;" title="待处理 12"></div>
-                            </div>
-                            <div class="bar-legend">
-                                <span class="dot green-dot"></span> 成功 1,428
-                                <span class="dot orange-dot"></span> 失败 112
-                                <span class="dot blue-dot"></span> 待处理 12
-                            </div>
+                            <div class="bar-title">Live Gate 阻塞摘要</div>
+                            <div id="execution-blockers" class="bar-legend">读取中</div>
                         </div>
                     </div>
                 </div>

@@ -61,6 +61,7 @@
         const health = data.health || {};
         const counts = data.counts || {};
         const markSeries = data.mark_series || [];
+        const live = data.live_readiness || {};
 
         const totalValue = sum(marks, 'valuation_usd');
         const totalFees = sum(marks, 'fee_usd');
@@ -99,12 +100,13 @@
         if (healthBar) healthBar.style.width = healthPct.toFixed(1) + '%';
 
         setHeaderStatus(data, healthPct);
-        renderStrategyCards(latestAudit, marks, health);
+        renderStrategyCards(latestAudit, marks, health, live);
+        renderLiveReadiness(data, live, health);
         renderScanner(decisions);
         renderPositions(marks);
         renderAudit(data);
         renderExecution(data);
-        renderLogs(data);
+        renderLogs(data, live);
         updateCharts(data, marks, markSeries);
     }
 
@@ -117,17 +119,49 @@
         if (alarm) alarm.textContent = String((data.recent_issues || []).length || 0);
     }
 
-    function renderStrategyCards(audit, marks, health) {
+    function renderStrategyCards(audit, marks, health, live) {
         const cards = document.querySelectorAll('.strategy-mode-chip .chip-number');
         if (cards[0]) cards[0].innerHTML = `${num(audit.scanned)}<span class="plus-badge">scan</span>`;
         if (cards[1]) cards[1].innerHTML = `${marks.length}<span class="plus-badge">marks</span>`;
-        if (cards[2]) cards[2].innerHTML = `0<span class="plus-badge">live</span>`;
-        if (cards[3]) cards[3].innerHTML = `${num(audit.pipeline_ok)}<span class="plus-badge">ok</span>`;
+        if (cards[2]) cards[2].innerHTML = `${live.ready ? 1 : 0}<span class="plus-badge">${live.canary ? 'canary' : 'live'}</span>`;
+        if (cards[3]) cards[3].innerHTML = `${num(audit.pipeline_ok)}<span class="plus-badge">${live.ready ? 'ready' : 'ok'}</span>`;
 
         setText('decision-risk-score', `chain ${num(health.recent_chain_failures)} / pipeline ${num(health.recent_pipeline_failures)}`);
-        setText('decision-kill-switch', 'Shadow only / Live disabled');
         setText('active-positions-count', String(marks.length));
         setText('active-positions-val', compactMoney(sum(marks, 'valuation_usd')));
+    }
+
+    function renderLiveReadiness(data, live, health) {
+        const blockers = Array.isArray(live.blockers) ? live.blockers : [];
+        const blockerText = blockers.length ? blockers.slice(0, 3).join(' | ') : '无';
+        const txs = data.transactions || [];
+        const lastTx = txs[0] || {};
+        const allowedChains = Array.isArray(live.allowed_chains) && live.allowed_chains.length ? live.allowed_chains.join(', ') : '-';
+        const wallet = live.wallet_address || '未配置';
+        const backend = live.execution_backend || 'shadow';
+        const backendSummary = live.execution_configured ? `${backend} / configured` : `${backend} / config missing`;
+        const backendStatus = live.execution_backend_wired ? (live.ready ? '可执行' : '已接线待放行') : '执行器未接线';
+        const whitelistStatus = num(live.allowed_pools_count) > 0 ? '白名单已加载' : '白名单为空';
+        const rpcStatus = live.rpc_primary_configured ? 'RPC 已配置' : 'RPC 缺失';
+        const okxStatus = backend === 'okx-onchain'
+            ? ((live.okx_api_configured && live.okx_project_configured) ? 'OKX 凭据已配置' : 'OKX 凭据缺失')
+            : '未使用 OKX';
+
+        setText('decision-exposure', `$${money(live.max_order_usd)} / $${money(live.daily_loss_limit_usd)}`);
+        setText('decision-kill-switch', live.kill_switch ? '已触发 / 拒绝新单' : (live.live_enabled ? '未触发 / 等待全量通过' : 'live 未启用'));
+        setText('decision-canary', live.canary ? '已配置 canary' : '未配置 canary');
+        setText('decision-live-gate', live.ready ? 'YES / 可以进入 canary 实单检查' : 'NO / 当前仍为 fail-closed');
+        setText('decision-live-blockers', blockerText);
+
+        setText('execution-backend', backendSummary);
+        setText('execution-backend-status', backendStatus);
+        setText('execution-wallet', wallet);
+        setText('execution-wallet-status', wallet === '未配置' ? '缺失' : '已配置');
+        setText('execution-whitelist', `${allowedChains} / ${num(live.allowed_pools_count)} pools`);
+        setText('execution-whitelist-status', whitelistStatus);
+        setText('execution-last-tx', lastTx.tx_hash ? short(lastTx.tx_hash) : 'shadow only');
+        setText('execution-last-tx-status', lastTx.tx_hash ? (lastTx.status || 'recorded') : `${rpcStatus} | ${okxStatus}`);
+        setText('execution-blockers', `${blockerText} | ${rpcStatus} | ${okxStatus}`);
     }
 
     function renderScanner(decisions) {
@@ -210,7 +244,7 @@
             </div>`).join('');
     }
 
-    function renderLogs(data) {
+    function renderLogs(data, live) {
         const box = document.getElementById('console-log-box');
         if (!box) return;
         const audit = (data.strategy_audit || [])[0] || {};
@@ -219,6 +253,7 @@
             ['info', 'runtime', `commit ${data.commit || '-'} / mode ${data.mode || 'shadow'}`],
             ['info', 'scanner', `scanned ${num(audit.scanned)}, selected ${num(audit.selected)}, pipeline ok ${num(audit.pipeline_ok)}`],
             ['info', 'mark', `last mark age ${health.last_mark_age_seconds || '-'}s, source ${health.last_mark_source || '-'}`],
+            ['info', 'live', `ready ${live.ready ? 'yes' : 'no'}, blockers ${(live.blockers || []).length}, canary ${live.canary ? 'on' : 'off'}`],
             [num(health.recent_chain_failures) ? 'warn' : 'success', 'chain', `chain failures / 30m: ${num(health.recent_chain_failures)}`],
             [num(health.recent_pipeline_failures) ? 'warn' : 'success', 'pipeline', `pipeline failures / 30m: ${num(health.recent_pipeline_failures)}`]
         ];

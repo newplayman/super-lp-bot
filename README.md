@@ -27,6 +27,14 @@ make build-all     # 编译三个 mode 二进制 + backtest
 make backtest      # 仅编译 backtest
 ```
 
+## Canary / Live 准备
+
+- `configs/config.canary.toml`：默认保守 canary 模板，仍是 `fail-closed`，不会因为填了环境变量就自动实单。
+- `configs/config.live.toml`：完整 live 模板，必须配套 `.sha256`，并且当前 `cmd/lpbot` 仍未接入真实执行器。
+- `BASE_RPC_PRIMARY` / `BASE_WS`：这里填你的 QuickNode Base HTTPS/WSS。
+- `OKX_API_KEY` / `OKX_API_SECRET` / `OKX_API_PASSPHRASE` / `OKX_PROJECT_ID`：这里填你的 OKX Onchain API 凭据；仅当 `execution.backend = "okx-onchain"` 时需要。
+- 推荐先从 [`.env.canary.example`](/Users/bendu/lp-bot/v3/.env.canary.example) 衍生实例环境，再由 systemd `EnvironmentFile=` 注入。
+
 ## 模式隔离（spec §2.4）
 
 | 模式 | build tag | broadcaster | wallet | DB 前缀 |

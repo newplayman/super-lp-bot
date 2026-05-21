@@ -67,6 +67,27 @@ type Bus struct {
 	Backend string `toml:"backend"`
 }
 
+// Execution represents execution backend configuration for live/canary mode.
+type Execution struct {
+	Backend        string `toml:"backend"`
+	OKXAPIKey      string `toml:"okx_api_key"`
+	OKXAPISecret   string `toml:"okx_api_secret"`
+	OKXPassphrase  string `toml:"okx_api_passphrase"`
+	OKXProjectID   string `toml:"okx_project_id"`
+}
+
+// Live represents the live execution safety configuration.
+type Live struct {
+	Enabled           bool     `toml:"enabled"`
+	Canary            bool     `toml:"canary"`
+	KillSwitch        bool     `toml:"kill_switch"`
+	WalletAddress     string   `toml:"wallet_address"`
+	AllowedChains     []string `toml:"allowed_chains"`
+	AllowedPools      []string `toml:"allowed_pools"`
+	MaxOrderUSD       float64  `toml:"max_order_usd"`
+	DailyLossLimitUSD float64  `toml:"daily_loss_limit_usd"`
+}
+
 // Risk represents the risk configuration.
 type Risk struct {
 	TotalExposurePct  int `toml:"total_exposure_pct"`
@@ -93,6 +114,8 @@ type Config struct {
 	Redis    Redis      `toml:"redis"`
 	Wallet   Wallet     `toml:"wallet"`
 	Bus      Bus        `toml:"bus"`
+	Execution Execution `toml:"execution"`
+	Live     Live       `toml:"live"`
 	Risk     Risk       `toml:"risk"`
 	TierA    TierConfig `toml:"tier_a"`
 	TierB    TierConfig `toml:"tier_b"`

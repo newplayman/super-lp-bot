@@ -2,7 +2,7 @@
 
 > 基于 `feat/supabase-postgres-deployment` 分支的 Shadow 部署 runbook
 
-目标：统一本地与 VPS 的仓库来源、分支与配置入口，避免因为目录名差异/手工 `.env` 覆盖造成数据库混淆。
+目标：统一本地与 VPS 的仓库来源、分支与配置入口，避免因为目录名差异/手工 `.env` 覆盖造成数据库混淆，并为后续 canary/live 保留统一入口。
 
 ## 1. 仓库与分支
 
@@ -41,7 +41,7 @@ make build-shadow
 - `configs/config.shadow.toml` 和 `configs/config.vps.toml` 使用 `${VAR}` 占位符读取环境变量（不写死密码）。
 - `.env` 类文件不入库，只作为启动环境注入。
 
-初始化实例文件：
+初始化 shadow 实例文件：
 
 ```bash
 cd "$LPBOT_ROOT"
@@ -62,6 +62,32 @@ vim .env.postgres
 - `BASE_RPC_PRIMARY`, `BASE_RPC_FALLBACK`, `BASE_WS`, `SOL_RPC_PRIMARY`
 - `DATABASE_URL`（VPS 连接 `vps` 上 PostgreSQL 的连接串）
 - `REDIS_URL`（建议启用，当前用于 Redis 心跳与运行态探活）
+
+## 4.1 Canary / Live 变量入口
+
+- QuickNode Base RPC：
+  - `BASE_RPC_PRIMARY`
+  - `BASE_WS`
+- OKX Onchain：
+  - `OKX_API_KEY`
+  - `OKX_API_SECRET`
+  - `OKX_API_PASSPHRASE`
+  - `OKX_PROJECT_ID`
+- 钱包地址：
+  - `CANARY_WALLET_ADDRESS`
+  - `LIVE_WALLET_ADDRESS`
+
+推荐直接从仓库模板生成：
+
+```bash
+cp .env.canary.example .env.canary
+cp .env.live.example .env.live
+chmod 600 .env.canary .env.live
+```
+
+说明：
+- `configs/config.canary.toml` 默认 `execution.backend = "native-rpc"`，只需要 QuickNode/RPC 即可。
+- 若后续切换 `execution.backend = "okx-onchain"`，再填写 OKX 变量；当前代码只做配置门禁与 readiness 展示，不代表已经完成真实交易执行。
 
 ## 5. 安装依赖与数据库
 

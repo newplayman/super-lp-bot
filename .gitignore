@@ -23,6 +23,10 @@ coverage.out
 .env.*
 !.env.example
 !.env.postgres.example
+!.env.canary.example
+!.env.live.example
+!.env.dashboard.example
+!.env.redis.example
 
 # data
 *.db

@@ -234,6 +234,18 @@ func (app *App) evaluateShadowPipeline(ctx context.Context, pool domain.Pool) sh
 		}
 	}
 
+	if app.liveGate != nil {
+		if err := app.liveGate.checkOpen(pool, amount); err != nil {
+			return shadowPipelineDecision{
+				Stage:       "live_gate_blocked",
+				Reason:      err.Error(),
+				ChainStage:  chainValidation.Stage,
+				ChainReason: chainValidation.Reason,
+				Action:      "skip",
+			}
+		}
+	}
+
 	sim, err := app.mainLoop.Simulator.Simulate(ctx, domain.UnsignedTx{}, domain.BlockRef{})
 	if err != nil {
 		app.mainLoop.GetMetrics().IncSimulateFail()

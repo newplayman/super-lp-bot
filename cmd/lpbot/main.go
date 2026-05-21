@@ -54,6 +54,7 @@ var (
 type App struct {
 	logger     *zap.Logger
 	config     *config.Config
+	liveGate   *liveSafetyGate
 	rpc        map[string]*rpc.RoundRobinProvider
 	redis      *platformredis.Runtime
 	store      ports.Store
@@ -64,6 +65,205 @@ type App struct {
 	metricsSrv *http.Server
 	cancel     context.CancelFunc
 	wg         sync.WaitGroup
+}
+
+type liveSafetyGate struct {
+	buildMode                  string
+	enabled                    bool
+	canary                     bool
+	killSwitch                 bool
+	walletAddress              string
+	allowedChains              map[string]struct{}
+	allowedPools               map[string]struct{}
+	maxOrderUSD                float64
+	dailyLossLimitUSD          float64
+	executionBackend           string
+	executionBackendConfigured bool
+	executionBackendWired      bool
+	rpcPrimaryConfigured       bool
+	okxAPIConfigured           bool
+	okxProjectConfigured       bool
+}
+
+func newLiveSafetyGate(buildMode string, cfg *config.Config) *liveSafetyGate {
+	gate := &liveSafetyGate{
+		buildMode:     buildMode,
+		allowedChains: make(map[string]struct{}),
+		allowedPools:  make(map[string]struct{}),
+	}
+	if cfg == nil {
+		return gate
+	}
+
+	gate.enabled = cfg.Live.Enabled
+	gate.canary = cfg.Live.Canary
+	gate.killSwitch = cfg.Live.KillSwitch
+	gate.walletAddress = strings.TrimSpace(cfg.Live.WalletAddress)
+	gate.maxOrderUSD = cfg.Live.MaxOrderUSD
+	gate.dailyLossLimitUSD = cfg.Live.DailyLossLimitUSD
+	gate.executionBackend = normalizeExecutionBackend(cfg.Execution.Backend)
+	gate.rpcPrimaryConfigured = strings.TrimSpace(cfg.Chains.Base.RPCPrimary) != ""
+	gate.okxAPIConfigured = strings.TrimSpace(cfg.Execution.OKXAPIKey) != "" &&
+		strings.TrimSpace(cfg.Execution.OKXAPISecret) != "" &&
+		strings.TrimSpace(cfg.Execution.OKXPassphrase) != ""
+	gate.okxProjectConfigured = strings.TrimSpace(cfg.Execution.OKXProjectID) != ""
+	gate.executionBackendConfigured = gate.backendConfigured()
+
+	for _, chain := range cfg.Live.AllowedChains {
+		normalized := strings.ToLower(strings.TrimSpace(chain))
+		if normalized != "" {
+			gate.allowedChains[normalized] = struct{}{}
+		}
+	}
+	for _, poolID := range cfg.Live.AllowedPools {
+		normalized := strings.ToLower(strings.TrimSpace(poolID))
+		if normalized != "" {
+			gate.allowedPools[normalized] = struct{}{}
+		}
+	}
+
+	return gate
+}
+
+func normalizeExecutionBackend(value string) string {
+	normalized := strings.ToLower(strings.TrimSpace(value))
+	if normalized == "" {
+		return "shadow"
+	}
+	return normalized
+}
+
+func (g *liveSafetyGate) backendConfigured() bool {
+	switch g.executionBackend {
+	case "native-rpc":
+		return g.rpcPrimaryConfigured
+	case "okx-onchain":
+		return g.okxAPIConfigured && g.okxProjectConfigured
+	default:
+		return false
+	}
+}
+
+func (g *liveSafetyGate) isExecutionMode() bool {
+	return strings.EqualFold(strings.TrimSpace(g.buildMode), "live")
+}
+
+func (g *liveSafetyGate) blockers() []string {
+	if g == nil {
+		return []string{"live gate not initialized"}
+	}
+
+	var blockers []string
+	if !g.isExecutionMode() {
+		blockers = append(blockers, fmt.Sprintf("build mode is %s", strings.TrimSpace(g.buildMode)))
+	}
+	if !g.enabled {
+		blockers = append(blockers, "live.enabled=false")
+	}
+	if g.killSwitch {
+		blockers = append(blockers, "live.kill_switch=true")
+	}
+	if g.walletAddress == "" {
+		blockers = append(blockers, "live.wallet_address is empty")
+	}
+	if len(g.allowedChains) == 0 {
+		blockers = append(blockers, "live.allowed_chains is empty")
+	}
+	if len(g.allowedPools) == 0 {
+		blockers = append(blockers, "live.allowed_pools is empty")
+	}
+	if g.maxOrderUSD <= 0 {
+		blockers = append(blockers, "live.max_order_usd must be > 0")
+	}
+	if g.dailyLossLimitUSD <= 0 {
+		blockers = append(blockers, "live.daily_loss_limit_usd must be > 0")
+	}
+	if !g.executionBackendConfigured {
+		switch g.executionBackend {
+		case "native-rpc":
+			blockers = append(blockers, "execution backend native-rpc requires chains.base.rpc_primary")
+		case "okx-onchain":
+			blockers = append(blockers, "execution backend okx-onchain requires OKX api key/secret/passphrase/project id")
+		default:
+			blockers = append(blockers, fmt.Sprintf("execution.backend=%s is not configured", g.executionBackend))
+		}
+	}
+	if !g.executionBackendWired {
+		blockers = append(blockers, "executor is still shadow-only; live broadcaster is not wired in cmd/lpbot")
+	}
+	sort.Strings(blockers)
+	return blockers
+}
+
+func (g *liveSafetyGate) readiness() dashboardLiveReadiness {
+	if g == nil {
+		return dashboardLiveReadiness{
+			BuildMode: "unknown",
+			Blockers:  []string{"live gate not initialized"},
+		}
+	}
+
+	allowedChains := make([]string, 0, len(g.allowedChains))
+	for chain := range g.allowedChains {
+		allowedChains = append(allowedChains, chain)
+	}
+	sort.Strings(allowedChains)
+	blockers := g.blockers()
+
+	return dashboardLiveReadiness{
+		BuildMode:             g.buildMode,
+		LiveEnabled:           g.enabled,
+		Canary:                g.canary,
+		KillSwitch:            g.killSwitch,
+		WalletAddress:         maskAddress(g.walletAddress),
+		AllowedChains:         allowedChains,
+		AllowedPoolsCount:     len(g.allowedPools),
+		MaxOrderUSD:           g.maxOrderUSD,
+		DailyLossLimitUSD:     g.dailyLossLimitUSD,
+		ExecutionBackend:      g.executionBackend,
+		ExecutionConfigured:   g.executionBackendConfigured,
+		ExecutionBackendWired: g.executionBackendWired,
+		RPCPrimaryConfigured:  g.rpcPrimaryConfigured,
+		OKXAPIConfigured:      g.okxAPIConfigured,
+		OKXProjectConfigured:  g.okxProjectConfigured,
+		Ready:                 len(blockers) == 0,
+		Blockers:              blockers,
+	}
+}
+
+func (g *liveSafetyGate) checkOpen(pool domain.Pool, amountUSD domain.Decimal) error {
+	if g == nil || !g.isExecutionMode() {
+		return nil
+	}
+
+	if blockers := g.blockers(); len(blockers) > 0 {
+		return fmt.Errorf("live gate blocked: %s", strings.Join(blockers, "; "))
+	}
+
+	chain := strings.ToLower(strings.TrimSpace(string(pool.Chain)))
+	if _, ok := g.allowedChains[chain]; !ok {
+		return fmt.Errorf("live gate blocked: chain %s not in allowed_chains", pool.Chain)
+	}
+
+	poolID := strings.ToLower(strings.TrimSpace(pool.ID))
+	if _, ok := g.allowedPools[poolID]; !ok {
+		return fmt.Errorf("live gate blocked: pool %s not in allowed_pools", pool.ID)
+	}
+
+	maxOrder := domain.NewDecimalFromFloat(g.maxOrderUSD)
+	if amountUSD.GreaterThan(maxOrder) {
+		return fmt.Errorf("live gate blocked: amount %s exceeds max_order_usd %.2f", amountUSD.String(), g.maxOrderUSD)
+	}
+
+	return nil
+}
+
+func maskAddress(value string) string {
+	trimmed := strings.TrimSpace(value)
+	if len(trimmed) <= 12 {
+		return trimmed
+	}
+	return trimmed[:6] + "..." + trimmed[len(trimmed)-4:]
 }
 
 // minimalConfig creates a config with only the store field for testing.
@@ -101,7 +301,7 @@ func Run(ctx context.Context, logger *zap.Logger, cfg *config.Config) int {
 		return 1
 	}
 
-	app := &App{logger: logger, config: cfg}
+	app := &App{logger: logger, config: cfg, liveGate: newLiveSafetyGate(BuildMode, cfg)}
 	defer app.cleanup()
 
 	// Initialize adapters
@@ -364,9 +564,23 @@ func (app *App) wireMainLoop(ctx context.Context) error {
 		broadcaster: nil, // Will be wired based on build mode
 		riskGate:    riskGate,
 		store:       app.store,
+		liveGate:    app.liveGate,
 	}
 	if app.logger != nil {
 		app.logger.Info("OrderManager wired")
+	}
+	if app.logger != nil && app.liveGate != nil {
+		readiness := app.liveGate.readiness()
+		if readiness.Ready {
+			app.logger.Info("live safety gate ready",
+				zap.Bool("canary", readiness.Canary),
+				zap.Float64("max_order_usd", readiness.MaxOrderUSD),
+				zap.Float64("daily_loss_limit_usd", readiness.DailyLossLimitUSD))
+		} else {
+			app.logger.Warn("live safety gate not ready",
+				zap.Bool("canary", readiness.Canary),
+				zap.Strings("blockers", readiness.Blockers))
+		}
 	}
 
 	// Create Simulator (placeholder - from existing implementation)
@@ -724,11 +938,17 @@ type orderManagerAdapter struct {
 	broadcaster interface{}
 	riskGate    *risk.RiskGate
 	store       ports.Store
+	liveGate    *liveSafetyGate
 }
 
 func (o *orderManagerAdapter) Open(ctx context.Context, pool domain.Pool, amountUSD domain.Decimal) (loop.ExecutionResult, error) {
 	if o.store == nil {
 		return loop.ExecutionResult{Success: false, Error: "store not configured"}, nil
+	}
+	if o.liveGate != nil {
+		if err := o.liveGate.checkOpen(pool, amountUSD); err != nil {
+			return loop.ExecutionResult{Success: false, Error: err.Error()}, nil
+		}
 	}
 
 	for _, status := range []domain.PositionStatus{domain.StatusIntended, domain.StatusOpening, domain.StatusOpen} {

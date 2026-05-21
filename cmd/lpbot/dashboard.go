@@ -28,6 +28,7 @@ type dashboardSnapshot struct {
 	Commit          string                     `json:"commit"`
 	Counts          dashboardCounts            `json:"counts"`
 	LatestTick      dashboardTick              `json:"latest_tick"`
+	LiveReadiness   dashboardLiveReadiness     `json:"live_readiness"`
 	Pools           []dashboardPool            `json:"pools"`
 	Positions       []dashboardPosition        `json:"positions"`
 	ClosedPositions []dashboardPosition        `json:"closed_positions"`
@@ -69,6 +70,26 @@ type dashboardHealth struct {
 	RecentNonGeckoMarks    int64  `json:"recent_non_gecko_marks"`
 	RecentChainFailures    int64  `json:"recent_chain_failures"`
 	RecentPipelineFailures int64  `json:"recent_pipeline_failures"`
+}
+
+type dashboardLiveReadiness struct {
+	BuildMode             string   `json:"build_mode"`
+	LiveEnabled           bool     `json:"live_enabled"`
+	Canary                bool     `json:"canary"`
+	KillSwitch            bool     `json:"kill_switch"`
+	WalletAddress         string   `json:"wallet_address"`
+	AllowedChains         []string `json:"allowed_chains"`
+	AllowedPoolsCount     int      `json:"allowed_pools_count"`
+	MaxOrderUSD           float64  `json:"max_order_usd"`
+	DailyLossLimitUSD     float64  `json:"daily_loss_limit_usd"`
+	ExecutionBackend      string   `json:"execution_backend"`
+	ExecutionConfigured   bool     `json:"execution_configured"`
+	ExecutionBackendWired bool     `json:"execution_backend_wired"`
+	RPCPrimaryConfigured  bool     `json:"rpc_primary_configured"`
+	OKXAPIConfigured      bool     `json:"okx_api_configured"`
+	OKXProjectConfigured  bool     `json:"okx_project_configured"`
+	Ready                 bool     `json:"ready"`
+	Blockers              []string `json:"blockers"`
 }
 
 type dashboardStageCount struct {
@@ -288,6 +309,9 @@ func (app *App) dashboardSnapshot(ctx context.Context) (dashboardSnapshot, error
 		Version:     Version,
 		Mode:        BuildMode,
 		Commit:      BuildCommit,
+	}
+	if app.liveGate != nil {
+		snapshot.LiveReadiness = app.liveGate.readiness()
 	}
 	provider, ok := app.store.(dbProvider)
 	if !ok || provider.DB() == nil {
