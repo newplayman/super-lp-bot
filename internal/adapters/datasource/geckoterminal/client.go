@@ -99,7 +99,7 @@ type PoolInfo struct {
 				ID string `json:"id"`
 			} `json:"data"`
 		} `json:"dex"`
-	} `json:"attributes"`
+	} `json:"relationships"`
 }
 
 // Token represents token info from GeckoTerminal.
