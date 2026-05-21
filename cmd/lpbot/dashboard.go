@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"math/big"
 	"net"
 	"net/http"
 	"os"
@@ -16,7 +17,16 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/lpbot/lpbot/internal/adapters/rpc"
+	"github.com/lpbot/lpbot/internal/domain"
 	"github.com/lpbot/lpbot/internal/platform/config"
+)
+
+const (
+	baseUSDCAddress = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+	baseWETHAddress = "0x4200000000000000000000000000000000000006"
 )
 
 //go:embed dashboard.html
@@ -79,30 +89,41 @@ type dashboardHealth struct {
 }
 
 type dashboardLiveReadiness struct {
-	BuildMode             string   `json:"build_mode"`
-	LiveEnabled           bool     `json:"live_enabled"`
-	Canary                bool     `json:"canary"`
-	KillSwitch            bool     `json:"kill_switch"`
-	WalletAddress         string   `json:"wallet_address"`
-	AllowedChains         []string `json:"allowed_chains"`
-	AllowedPoolsCount     int      `json:"allowed_pools_count"`
-	MaxOrderUSD           float64  `json:"max_order_usd"`
-	DailyLossLimitUSD     float64  `json:"daily_loss_limit_usd"`
-	ExecutionBackend      string   `json:"execution_backend"`
-	ExecutionConfigured   bool     `json:"execution_configured"`
-	ExecutionBackendWired bool     `json:"execution_backend_wired"`
-	RPCPrimaryConfigured  bool     `json:"rpc_primary_configured"`
-	OKXAPIConfigured      bool     `json:"okx_api_configured"`
-	OKXProjectConfigured  bool     `json:"okx_project_configured"`
-	WalletBackend         string   `json:"wallet_backend"`
-	KeystorePath          string   `json:"keystore_path"`
-	KeystorePresent       bool     `json:"keystore_present"`
-	WalletPassphraseSet   bool     `json:"wallet_passphrase_set"`
-	NPMBaseAddress        string   `json:"npm_base_address"`
-	NPMBaseConfigured     bool     `json:"npm_base_configured"`
-	SizingPathReady       bool     `json:"sizing_path_ready"`
-	Ready                 bool     `json:"ready"`
-	Blockers              []string `json:"blockers"`
+	BuildMode             string                  `json:"build_mode"`
+	LiveEnabled           bool                    `json:"live_enabled"`
+	Canary                bool                    `json:"canary"`
+	KillSwitch            bool                    `json:"kill_switch"`
+	WalletAddress         string                  `json:"wallet_address"`
+	WalletBalances        dashboardWalletBalances `json:"wallet_balances"`
+	FundingReady          bool                    `json:"funding_ready"`
+	AllowedChains         []string                `json:"allowed_chains"`
+	AllowedPoolsCount     int                     `json:"allowed_pools_count"`
+	MaxOrderUSD           float64                 `json:"max_order_usd"`
+	DailyLossLimitUSD     float64                 `json:"daily_loss_limit_usd"`
+	ExecutionBackend      string                  `json:"execution_backend"`
+	ExecutionConfigured   bool                    `json:"execution_configured"`
+	ExecutionBackendWired bool                    `json:"execution_backend_wired"`
+	RPCPrimaryConfigured  bool                    `json:"rpc_primary_configured"`
+	OKXAPIConfigured      bool                    `json:"okx_api_configured"`
+	OKXProjectConfigured  bool                    `json:"okx_project_configured"`
+	WalletBackend         string                  `json:"wallet_backend"`
+	KeystorePath          string                  `json:"keystore_path"`
+	KeystorePresent       bool                    `json:"keystore_present"`
+	WalletPassphraseSet   bool                    `json:"wallet_passphrase_set"`
+	NPMBaseAddress        string                  `json:"npm_base_address"`
+	NPMBaseConfigured     bool                    `json:"npm_base_configured"`
+	SizingPathReady       bool                    `json:"sizing_path_ready"`
+	Ready                 bool                    `json:"ready"`
+	Blockers              []string                `json:"blockers"`
+}
+
+type dashboardWalletBalances struct {
+	Address   string `json:"address"`
+	ETH       string `json:"eth"`
+	USDC      string `json:"usdc"`
+	WETH      string `json:"weth"`
+	CheckedAt string `json:"checked_at"`
+	Error     string `json:"error,omitempty"`
 }
 
 type dashboardStageCount struct {
@@ -338,7 +359,7 @@ func (app *App) dashboardSnapshot(ctx context.Context) (dashboardSnapshot, error
 	if app.liveGate != nil {
 		snapshot.LiveReadiness = app.liveGate.readiness()
 	}
-	if canary, err := dashboardLoadCanaryReadiness(); err == nil {
+	if canary, err := dashboardLoadCanaryReadiness(ctx); err == nil {
 		snapshot.CanaryReadiness = canary
 	} else {
 		snapshot.Warnings = append(snapshot.Warnings, fmt.Sprintf("canary readiness unavailable: %v", err))
@@ -467,7 +488,7 @@ func (app *App) dashboardSnapshot(ctx context.Context) (dashboardSnapshot, error
 	return snapshot, nil
 }
 
-func dashboardLoadCanaryReadiness() (readiness dashboardLiveReadiness, err error) {
+func dashboardLoadCanaryReadiness(ctx context.Context) (readiness dashboardLiveReadiness, err error) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			readiness = dashboardLiveReadiness{}
@@ -483,7 +504,103 @@ func dashboardLoadCanaryReadiness() (readiness dashboardLiveReadiness, err error
 		return dashboardLiveReadiness{}, err
 	}
 	gate := newLiveSafetyGate("live", cfg)
-	return gate.readiness(), nil
+	readiness = gate.readiness()
+	balances, fundingReady, balanceBlockers, balanceErr := dashboardCanaryWalletBalances(ctx, cfg)
+	readiness.WalletBalances = balances
+	readiness.FundingReady = fundingReady
+	if balanceErr != nil {
+		readiness.Blockers = append(readiness.Blockers, fmt.Sprintf("canary wallet balance check failed: %v", balanceErr))
+		readiness.Ready = false
+	} else if len(balanceBlockers) > 0 {
+		readiness.Blockers = append(readiness.Blockers, balanceBlockers...)
+		readiness.Ready = false
+	}
+	sort.Strings(readiness.Blockers)
+	return readiness, nil
+}
+
+func dashboardCanaryWalletBalances(ctx context.Context, cfg *config.Config) (dashboardWalletBalances, bool, []string, error) {
+	if cfg == nil {
+		return dashboardWalletBalances{}, false, nil, fmt.Errorf("canary config is nil")
+	}
+	walletAddress := parseAddressOrZero(strings.TrimSpace(cfg.Live.WalletAddress))
+	balances := dashboardWalletBalances{
+		Address:   maskAddress(cfg.Live.WalletAddress),
+		CheckedAt: time.Now().UTC().Format(time.RFC3339),
+	}
+	if walletAddress.IsZero() {
+		return balances, false, []string{"canary wallet address is invalid"}, nil
+	}
+
+	endpoints := []string{cfg.Chains.Base.RPCPrimary}
+	endpoints = append(endpoints, cfg.Chains.Base.RPCFallback...)
+	endpoints = append(endpoints, rpc.BasePublicEndpoints...)
+	provider, err := rpc.NewRoundRobinProvider(rpc.Config{
+		ChainID:             domain.ChainBase,
+		Endpoints:           endpoints,
+		HealthCheckInterval: time.Minute,
+		HealthCheckTimeout:  2 * time.Second,
+	})
+	if err != nil {
+		return balances, false, nil, err
+	}
+
+	queryCtx, cancel := context.WithTimeout(ctx, 8*time.Second)
+	defer cancel()
+	ethBalance, err := provider.BalanceAt(queryCtx, walletAddress, nil)
+	if err != nil {
+		return balances, false, nil, fmt.Errorf("base eth balance: %w", err)
+	}
+	usdcBalance, err := dashboardERC20Balance(queryCtx, provider, baseUSDCAddress, walletAddress)
+	if err != nil {
+		return balances, false, nil, fmt.Errorf("base usdc balance: %w", err)
+	}
+	wethBalance, err := dashboardERC20Balance(queryCtx, provider, baseWETHAddress, walletAddress)
+	if err != nil {
+		return balances, false, nil, fmt.Errorf("base weth balance: %w", err)
+	}
+
+	balances.ETH = formatTokenBalance(ethBalance, 18)
+	balances.USDC = formatTokenBalance(usdcBalance, 6)
+	balances.WETH = formatTokenBalance(wethBalance, 18)
+
+	var blockers []string
+	if ethBalance.Sign() <= 0 {
+		blockers = append(blockers, "canary wallet has no Base ETH for gas")
+	}
+	if usdcBalance.Sign() <= 0 {
+		blockers = append(blockers, "canary wallet has no Base USDC for the WETH/USDC test")
+	}
+	if wethBalance.Sign() <= 0 {
+		blockers = append(blockers, "canary wallet has no WETH; automated swap/pairing path is not implemented")
+	}
+	return balances, len(blockers) == 0, blockers, nil
+}
+
+func dashboardERC20Balance(ctx context.Context, provider *rpc.RoundRobinProvider, token string, owner domain.Address) (*big.Int, error) {
+	selector := common.FromHex("0x70a08231")
+	ownerBytes := common.LeftPadBytes(common.HexToAddress(owner.String()).Bytes(), 32)
+	data := append(selector, ownerBytes...)
+	raw, err := provider.CallContract(ctx, ethereum.CallMsg{
+		To:   ptrAddress(common.HexToAddress(token)),
+		Data: data,
+	}, nil)
+	if err != nil {
+		return nil, err
+	}
+	return new(big.Int).SetBytes(raw), nil
+}
+
+func ptrAddress(value common.Address) *common.Address {
+	return &value
+}
+
+func formatTokenBalance(value *big.Int, decimals int) string {
+	if value == nil {
+		return "0"
+	}
+	rat := new(big.Rat).SetFrac(value, new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(decimals)), nil))
+	return rat.FloatString(minInt(decimals, 8))
 }
 
 func readDashboardEnvFiles(paths ...string) (map[string]string, error) {

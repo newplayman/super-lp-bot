@@ -160,6 +160,10 @@
             : 'wallet passphrase 缺失';
         const npmStatus = live.npm_base_configured ? 'NPM 地址已配置' : 'NPM 地址缺失';
         const sizingStatus = live.sizing_path_ready ? 'sizing 已实现' : 'sizing 未实现';
+        const balances = live.wallet_balances || {};
+        const balanceStatus = balances.error
+            ? `余额读取失败: ${balances.error}`
+            : `ETH ${fmtBalance(balances.eth)} / USDC ${fmtBalance(balances.usdc)} / WETH ${fmtBalance(balances.weth)}`;
 
         setText('decision-exposure', `$${money(live.max_order_usd)} / $${money(live.daily_loss_limit_usd)}`);
         setText('decision-kill-switch', live.kill_switch ? '已触发 / 拒绝新单' : (live.live_enabled ? '未触发 / 等待全量通过' : 'live 未启用'));
@@ -170,12 +174,12 @@
         setText('execution-backend', backendSummary);
         setText('execution-backend-status', backendStatus);
         setText('execution-wallet', wallet);
-        setText('execution-wallet-status', wallet === '未配置' ? '缺失' : '已配置');
+        setText('execution-wallet-status', wallet === '未配置' ? '缺失' : balanceStatus);
         setText('execution-whitelist', `${allowedChains} / ${num(live.allowed_pools_count)} pools`);
         setText('execution-whitelist-status', whitelistStatus);
         setText('execution-last-tx', lastTx.tx_hash ? short(lastTx.tx_hash) : (live.canary ? 'canary not started' : 'shadow only'));
         setText('execution-last-tx-status', lastTx.tx_hash ? (lastTx.status || 'recorded') : `${rpcStatus} | ${okxStatus}`);
-        setText('execution-blockers', `${blockerText} | ${rpcStatus} | ${okxStatus} | ${walletStatus} | ${npmStatus} | ${sizingStatus}`);
+        setText('execution-blockers', `${blockerText} | ${balanceStatus} | ${rpcStatus} | ${okxStatus} | ${walletStatus} | ${npmStatus} | ${sizingStatus}`);
     }
 
     function renderScanner(decisions) {
@@ -339,6 +343,7 @@
     function sum(rows, key) { return rows.reduce((total, row) => total + num(row[key]), 0); }
     function setText(id, value) { const el = document.getElementById(id); if (el) el.textContent = value; }
     function num(value) { const n = Number(value || 0); return Number.isFinite(n) ? n : 0; }
+    function fmtBalance(value) { const n = num(value); return n ? n.toLocaleString(undefined, { maximumFractionDigits: 8 }) : '0'; }
     function money(value) { return Math.abs(num(value)).toLocaleString(undefined, { maximumFractionDigits: 2 }); }
     function signedMoney(value) { const n = num(value); return (n >= 0 ? '+' : '-') + money(n); }
     function compactMoney(value) { const n = num(value); if (Math.abs(n) >= 1e6) return (n / 1e6).toFixed(2) + 'M'; if (Math.abs(n) >= 1e3) return (n / 1e3).toFixed(2) + 'K'; return n.toFixed(2); }
