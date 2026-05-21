@@ -38,6 +38,11 @@ type dashboardSnapshot struct {
 	ExitActions     []dashboardExitAction   `json:"exit_actions"`
 	RecentScores    []dashboardScore        `json:"recent_scores"`
 	Decisions       []dashboardDecision     `json:"decisions"`
+	Health          dashboardHealth         `json:"health"`
+	ChainStages     []dashboardStageCount   `json:"chain_stages"`
+	MarkSources     []dashboardStageCount   `json:"mark_sources"`
+	RecentIssues    []dashboardRecentIssue  `json:"recent_issues"`
+	StrategyAudit   []dashboardStrategyTick `json:"strategy_audit"`
 	Warnings        []string                `json:"warnings"`
 }
 
@@ -52,6 +57,41 @@ type dashboardTick struct {
 	UpdatedAt       int64  `json:"updated_at"`
 	UpdatedAtText   string `json:"updated_at_text"`
 	ScannedEstimate int64  `json:"scanned_estimate"`
+}
+
+type dashboardHealth struct {
+	LastMarkTime           int64  `json:"last_mark_time"`
+	LastMarkTimeText       string `json:"last_mark_time_text"`
+	LastMarkAgeSeconds     int64  `json:"last_mark_age_seconds"`
+	LastMarkSource         string `json:"last_mark_source"`
+	RecentStaleMarks       int64  `json:"recent_stale_marks"`
+	RecentNonGeckoMarks    int64  `json:"recent_non_gecko_marks"`
+	RecentChainFailures    int64  `json:"recent_chain_failures"`
+	RecentPipelineFailures int64  `json:"recent_pipeline_failures"`
+}
+
+type dashboardStageCount struct {
+	Name  string `json:"name"`
+	Count int64  `json:"count"`
+}
+
+type dashboardRecentIssue struct {
+	TickTime int64  `json:"tick_time"`
+	PoolID   string `json:"pool_id"`
+	Stage    string `json:"stage"`
+	Reason   string `json:"reason"`
+	Action   string `json:"action"`
+}
+
+type dashboardStrategyTick struct {
+	TickTime       int64 `json:"tick_time"`
+	Scanned        int64 `json:"scanned"`
+	Selected       int64 `json:"selected"`
+	IntentOpen     int64 `json:"intent_open"`
+	ChainOK        int64 `json:"chain_ok"`
+	PipelineOK     int64 `json:"pipeline_ok"`
+	OpenedOrReused int64 `json:"opened_or_reused"`
+	Skipped        int64 `json:"skipped"`
 }
 
 type dashboardPool struct {
@@ -312,6 +352,36 @@ func (app *App) dashboardSnapshot(ctx context.Context) (dashboardSnapshot, error
 		return snapshot, err
 	}
 	snapshot.Decisions = decisions
+
+	health, err := queryDashboardHealth(ctx, db)
+	if err != nil {
+		return snapshot, err
+	}
+	snapshot.Health = health
+
+	chainStages, err := queryDashboardChainStages(ctx, db)
+	if err != nil {
+		return snapshot, err
+	}
+	snapshot.ChainStages = chainStages
+
+	markSources, err := queryDashboardMarkSources(ctx, db)
+	if err != nil {
+		return snapshot, err
+	}
+	snapshot.MarkSources = markSources
+
+	recentIssues, err := queryDashboardRecentIssues(ctx, db)
+	if err != nil {
+		return snapshot, err
+	}
+	snapshot.RecentIssues = recentIssues
+
+	strategyAudit, err := queryDashboardStrategyAudit(ctx, db)
+	if err != nil {
+		return snapshot, err
+	}
+	snapshot.StrategyAudit = strategyAudit
 
 	return snapshot, nil
 }
@@ -670,4 +740,152 @@ func queryDashboardDecisions(ctx context.Context, db *sql.DB) ([]dashboardDecisi
 		decisions = append(decisions, decision)
 	}
 	return decisions, rows.Err()
+}
+
+func queryDashboardHealth(ctx context.Context, db *sql.DB) (dashboardHealth, error) {
+	var health dashboardHealth
+	since := time.Now().Add(-30 * time.Minute).Unix()
+	if err := db.QueryRowContext(ctx, `
+		SELECT
+			COALESCE((SELECT mark_time FROM shadow_position_marks ORDER BY mark_time DESC, id DESC LIMIT 1), 0),
+			COALESCE((SELECT source FROM shadow_position_marks ORDER BY mark_time DESC, id DESC LIMIT 1), ''),
+			(SELECT count(*) FROM shadow_position_marks WHERE mark_time >= $1 AND source LIKE '%stale%'),
+			(SELECT count(*) FROM shadow_position_marks WHERE mark_time >= $1 AND source <> '' AND source <> 'geckoterminal'),
+			(SELECT count(*) FROM shadow_decision_trace WHERE tick_time >= $1 AND chain_stage <> '' AND chain_stage NOT LIKE 'chain_%validated%'),
+			(SELECT count(*) FROM shadow_decision_trace WHERE tick_time >= $1 AND pipeline_stage <> '' AND pipeline_ok = FALSE)
+	`, since).Scan(
+		&health.LastMarkTime,
+		&health.LastMarkSource,
+		&health.RecentStaleMarks,
+		&health.RecentNonGeckoMarks,
+		&health.RecentChainFailures,
+		&health.RecentPipelineFailures,
+	); err != nil {
+		return health, fmt.Errorf("query dashboard health: %w", err)
+	}
+	if health.LastMarkTime > 0 {
+		health.LastMarkTimeText = time.Unix(health.LastMarkTime, 0).UTC().Format(time.RFC3339)
+		health.LastMarkAgeSeconds = time.Now().Unix() - health.LastMarkTime
+	}
+	return health, nil
+}
+
+func queryDashboardChainStages(ctx context.Context, db *sql.DB) ([]dashboardStageCount, error) {
+	return queryDashboardStageCounts(ctx, db, `
+		SELECT COALESCE(NULLIF(chain_stage, ''), 'blank') AS name, count(*)
+		FROM (
+			SELECT chain_stage
+			FROM shadow_decision_trace
+			ORDER BY id DESC
+			LIMIT 300
+		) recent
+		GROUP BY name
+		ORDER BY count(*) DESC, name
+	`)
+}
+
+func queryDashboardMarkSources(ctx context.Context, db *sql.DB) ([]dashboardStageCount, error) {
+	return queryDashboardStageCounts(ctx, db, `
+		SELECT COALESCE(NULLIF(source, ''), 'blank') AS name, count(*)
+		FROM (
+			SELECT source
+			FROM shadow_position_marks
+			ORDER BY id DESC
+			LIMIT 100
+		) recent
+		GROUP BY name
+		ORDER BY count(*) DESC, name
+	`)
+}
+
+func queryDashboardStageCounts(ctx context.Context, db *sql.DB, query string) ([]dashboardStageCount, error) {
+	rows, err := db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("query dashboard stage counts: %w", err)
+	}
+	defer rows.Close()
+
+	var counts []dashboardStageCount
+	for rows.Next() {
+		var count dashboardStageCount
+		if err := rows.Scan(&count.Name, &count.Count); err != nil {
+			return nil, fmt.Errorf("scan dashboard stage count: %w", err)
+		}
+		counts = append(counts, count)
+	}
+	return counts, rows.Err()
+}
+
+func queryDashboardRecentIssues(ctx context.Context, db *sql.DB) ([]dashboardRecentIssue, error) {
+	rows, err := db.QueryContext(ctx, `
+		SELECT tick_time, pool_id,
+		       COALESCE(NULLIF(chain_stage, ''), NULLIF(pipeline_stage, ''), 'unknown') AS stage,
+		       COALESCE(NULLIF(chain_reason, ''), NULLIF(pipeline_reason, ''), selection_reason, '') AS reason,
+		       final_action
+		FROM shadow_decision_trace
+		WHERE (chain_stage <> '' AND chain_stage NOT LIKE 'chain_%validated%')
+		   OR (pipeline_stage <> '' AND pipeline_ok = FALSE)
+		ORDER BY id DESC
+		LIMIT 20
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("query dashboard recent issues: %w", err)
+	}
+	defer rows.Close()
+
+	var issues []dashboardRecentIssue
+	for rows.Next() {
+		var issue dashboardRecentIssue
+		if err := rows.Scan(&issue.TickTime, &issue.PoolID, &issue.Stage, &issue.Reason, &issue.Action); err != nil {
+			return nil, fmt.Errorf("scan dashboard recent issue: %w", err)
+		}
+		issues = append(issues, issue)
+	}
+	return issues, rows.Err()
+}
+
+func queryDashboardStrategyAudit(ctx context.Context, db *sql.DB) ([]dashboardStrategyTick, error) {
+	rows, err := db.QueryContext(ctx, `
+		WITH recent_ticks AS (
+			SELECT DISTINCT tick_time
+			FROM shadow_decision_trace
+			ORDER BY tick_time DESC
+			LIMIT 12
+		)
+		SELECT d.tick_time,
+		       count(*) AS scanned,
+		       count(*) FILTER (WHERE selected) AS selected,
+		       count(*) FILTER (WHERE intent_open) AS intent_open,
+		       count(*) FILTER (WHERE chain_stage LIKE 'chain_%validated%') AS chain_ok,
+		       count(*) FILTER (WHERE pipeline_ok) AS pipeline_ok,
+		       count(*) FILTER (WHERE final_action IN ('open_shadow_position', 'reuse_shadow_position')) AS opened_or_reused,
+		       count(*) FILTER (WHERE final_action = 'skip') AS skipped
+		FROM shadow_decision_trace d
+		JOIN recent_ticks r ON r.tick_time = d.tick_time
+		GROUP BY d.tick_time
+		ORDER BY d.tick_time DESC
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("query dashboard strategy audit: %w", err)
+	}
+	defer rows.Close()
+
+	var ticks []dashboardStrategyTick
+	for rows.Next() {
+		var tick dashboardStrategyTick
+		if err := rows.Scan(
+			&tick.TickTime,
+			&tick.Scanned,
+			&tick.Selected,
+			&tick.IntentOpen,
+			&tick.ChainOK,
+			&tick.PipelineOK,
+			&tick.OpenedOrReused,
+			&tick.Skipped,
+		); err != nil {
+			return nil, fmt.Errorf("scan dashboard strategy audit: %w", err)
+		}
+		ticks = append(ticks, tick)
+	}
+	return ticks, rows.Err()
 }

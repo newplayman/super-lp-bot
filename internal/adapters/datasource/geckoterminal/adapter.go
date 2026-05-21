@@ -31,11 +31,19 @@ type Adapter struct {
 	fallback         *dexscreener.Adapter
 	mu               sync.Mutex
 	poolCache        map[string]poolCacheEntry
+	metadataCache    map[string]metadataCacheEntry
 	cooldownUntil    time.Time
 }
 
 type poolCacheEntry struct {
 	pools     []ports.PoolDiscovery
+	expiresAt time.Time
+	fetchedAt time.Time
+}
+
+type metadataCacheEntry struct {
+	metadata  ports.PoolDiscovery
+	source    string
 	expiresAt time.Time
 	fetchedAt time.Time
 }
@@ -48,6 +56,7 @@ func NewAdapter() *Adapter {
 		rateLimitBackoff: 2 * time.Minute,
 		fallback:         dexscreener.NewAdapter(),
 		poolCache:        make(map[string]poolCacheEntry),
+		metadataCache:    make(map[string]metadataCacheEntry),
 	}
 }
 
@@ -59,6 +68,7 @@ func NewAdapterWithClient(client *http.Client) *Adapter {
 		rateLimitBackoff: 2 * time.Minute,
 		fallback:         dexscreener.NewAdapterWithClient(client),
 		poolCache:        make(map[string]poolCacheEntry),
+		metadataCache:    make(map[string]metadataCacheEntry),
 	}
 }
 
@@ -107,6 +117,23 @@ func (a *Adapter) GetPoolMetadata(ctx context.Context, chain domain.ChainID, poo
 }
 
 func (a *Adapter) GetPoolMetadataWithSource(ctx context.Context, chain domain.ChainID, poolID string) (*ports.PoolDiscovery, string, error) {
+	cacheKey := fmt.Sprintf("%s:%s", chain, strings.ToLower(poolID))
+	if cached, source, ok := a.cachedMetadata(cacheKey, false); ok {
+		metrics.IncDatasourceCacheHit("geckoterminal", "metadata_fresh")
+		return cached, source, nil
+	}
+	if a.inCooldown() {
+		if cached, source, ok := a.cachedMetadata(cacheKey, true); ok {
+			metrics.IncDatasourceCacheHit("geckoterminal", "metadata_stale")
+			return cached, source, nil
+		}
+		if fallback, fallbackErr := a.fallback.GetPoolMetadata(ctx, chain, poolID); fallbackErr == nil && fallback != nil {
+			metrics.IncDatasourceFallback("geckoterminal", "dexscreener", "get_pool_metadata_cooldown")
+			a.storeMetadata(cacheKey, fallback, "dexscreener")
+			return fallback, "dexscreener", nil
+		}
+	}
+
 	metadata, err := a.getPoolMetadataPrimary(ctx, chain, poolID)
 	if err == nil && metadata != nil {
 		if metadata.PriceUSD.IsZero() || metadata.PriceChange24hPct.IsZero() || metadata.Vol24h.IsZero() {
@@ -125,6 +152,7 @@ func (a *Adapter) GetPoolMetadataWithSource(ctx context.Context, chain domain.Ch
 				}
 			}
 		}
+		a.storeMetadata(cacheKey, metadata, "geckoterminal")
 		return metadata, "geckoterminal", nil
 	}
 
@@ -135,7 +163,13 @@ func (a *Adapter) GetPoolMetadataWithSource(ctx context.Context, chain domain.Ch
 			op = "get_pool_metadata_empty"
 		}
 		metrics.IncDatasourceFallback("geckoterminal", "dexscreener", op)
+		a.storeMetadata(cacheKey, fallback, "dexscreener")
 		return fallback, "dexscreener", nil
+	}
+
+	if cached, source, ok := a.cachedMetadata(cacheKey, true); ok {
+		metrics.IncDatasourceCacheHit("geckoterminal", "metadata_error_stale")
+		return cached, source + ":stale", nil
 	}
 
 	if err != nil {
@@ -356,6 +390,37 @@ func (a *Adapter) storePools(key string, pools []ports.PoolDiscovery) {
 	now := time.Now()
 	a.poolCache[key] = poolCacheEntry{
 		pools:     clonePoolDiscoveries(pools),
+		expiresAt: now.Add(a.cacheTTL),
+		fetchedAt: now,
+	}
+}
+
+func (a *Adapter) cachedMetadata(key string, allowStale bool) (*ports.PoolDiscovery, string, bool) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	entry, ok := a.metadataCache[key]
+	if !ok {
+		return nil, "", false
+	}
+	if !allowStale && time.Now().After(entry.expiresAt) {
+		return nil, "", false
+	}
+	metadata := entry.metadata
+	return &metadata, entry.source, true
+}
+
+func (a *Adapter) storeMetadata(key string, metadata *ports.PoolDiscovery, source string) {
+	if metadata == nil {
+		return
+	}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	now := time.Now()
+	a.metadataCache[key] = metadataCacheEntry{
+		metadata:  *metadata,
+		source:    source,
 		expiresAt: now.Add(a.cacheTTL),
 		fetchedAt: now,
 	}

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/lpbot/lpbot/internal/core/pnl"
@@ -220,10 +221,18 @@ func (app *App) markShadowPositions(ctx context.Context) {
 	for _, pos := range positions {
 		record, err := app.buildPositionMarkRecord(ctx, pos, now)
 		if err != nil {
-			app.logger.Warn("shadow position mark failed",
-				zap.String("position_id", pos.ID),
-				zap.Error(err))
-			continue
+			staleRecord, staleErr := app.buildStalePositionMarkRecord(ctx, provider.DB(), pos, now)
+			if staleErr == nil {
+				app.logger.Warn("shadow position mark reused stale record",
+					zap.String("position_id", pos.ID),
+					zap.Error(err))
+				record = staleRecord
+			} else {
+				app.logger.Warn("shadow position mark failed",
+					zap.String("position_id", pos.ID),
+					zap.Error(err))
+				continue
+			}
 		}
 		records = append(records, record)
 		totalValuation = totalValuation.Add(dexdomain.MustDecimal(record.ValuationUSD))
@@ -265,6 +274,54 @@ func (app *App) markShadowPositions(ctx context.Context) {
 	metrics.RecordShadowPositionMarks(len(records), valuationFloat, netPnLFloat)
 	metrics.RecordShadowExitSignals(exitSignals)
 	metrics.RecordPnL(totalNetPnL)
+}
+
+func (app *App) buildStalePositionMarkRecord(ctx context.Context, db *sql.DB, pos activeShadowPosition, now time.Time) (shadowPositionMarkRecord, error) {
+	var record shadowPositionMarkRecord
+	if err := db.QueryRowContext(ctx, `
+		SELECT position_id, pool_id, chain, status, tier, amount_usd, source,
+		       hold_minutes, valuation_usd, fee_usd, il_usd, net_pnl_usd,
+		       current_tvl_usd, current_vol24h_usd, price_change_pct
+		FROM shadow_position_marks
+		WHERE position_id = $1
+		ORDER BY mark_time DESC, id DESC
+		LIMIT 1
+	`, pos.ID).Scan(
+		&record.PositionID,
+		&record.PoolID,
+		&record.Chain,
+		&record.Status,
+		&record.Tier,
+		&record.AmountUSD,
+		&record.Source,
+		&record.HoldMinutes,
+		&record.ValuationUSD,
+		&record.FeeUSD,
+		&record.ILUSD,
+		&record.NetPnLUSD,
+		&record.CurrentTVLUSD,
+		&record.CurrentVol24h,
+		&record.PriceChangePct,
+	); err != nil {
+		return shadowPositionMarkRecord{}, fmt.Errorf("query latest stale mark for %s: %w", pos.ID, err)
+	}
+
+	record.MarkTime = now.Unix()
+	record.Status = string(pos.Status)
+	record.HoldMinutes = 0
+	if pos.OpenedAt > 0 {
+		record.HoldMinutes = int64(now.Sub(time.Unix(pos.OpenedAt, 0)).Minutes())
+		if record.HoldMinutes < 0 {
+			record.HoldMinutes = 0
+		}
+	}
+	if record.Source == "" {
+		record.Source = "last_mark_stale"
+	} else if !strings.Contains(record.Source, "stale") {
+		record.Source += ":stale"
+	}
+	record.CreatedAt = time.Now().UnixMilli()
+	return record, nil
 }
 
 func (app *App) listActiveShadowPositions(ctx context.Context, db *sql.DB) ([]activeShadowPosition, error) {
