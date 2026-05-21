@@ -1,0 +1,23 @@
+
+/* Real data integration helpers */
+.muted-mini {
+    color: var(--text-muted);
+    font-size: 10px;
+    margin-top: 2px;
+    font-family: var(--font-mono);
+}
+.dashboard-table a,
+.flow-tx,
+.action-btn-mini {
+    color: var(--cyan-glow);
+    text-decoration: none;
+}
+.dashboard-table a:hover,
+.flow-tx:hover,
+.action-btn-mini:hover {
+    text-decoration: underline;
+}
+.badge-chain.base {
+    background: rgba(0, 82, 255, 0.14);
+    color: #6aa7ff;
+}

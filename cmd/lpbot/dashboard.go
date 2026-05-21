@@ -222,6 +222,10 @@ type dashboardDecision struct {
 }
 
 func (app *App) registerDashboardRoutes(mux *http.ServeMux) {
+	mux.Handle("/web/", http.StripPrefix("/web/", http.FileServer(http.Dir("web"))))
+	mux.HandleFunc("/web", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/web/", http.StatusFound)
+	})
 	mux.HandleFunc("/", app.dashboardAuth(app.handleDashboard))
 	mux.HandleFunc("/dashboard", app.dashboardAuth(app.handleDashboard))
 	mux.HandleFunc("/api/dashboard", app.dashboardAuth(app.handleDashboardAPI))
