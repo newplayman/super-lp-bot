@@ -208,6 +208,9 @@ func (app *App) initAdapters(ctx context.Context) error {
 	if err := app.ensureShadowDecisionTraceTable(ctx); err != nil {
 		return fmt.Errorf("failed to initialize decision trace schema: %w", err)
 	}
+	if err := app.ensureShadowPositionMarksTable(ctx); err != nil {
+		return fmt.Errorf("failed to initialize position mark schema: %w", err)
+	}
 
 	// Initialize datasource
 	app.datasource = geckoterminal.NewAdapter()
@@ -444,6 +447,7 @@ func (app *App) runStrategyLoop(ctx context.Context) {
 			return
 		case <-ticker.C:
 			app.evaluateStrategies(ctx)
+			app.markShadowPositions(ctx)
 		}
 	}
 }

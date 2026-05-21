@@ -90,6 +90,10 @@ var (
 	lpbotShadowOrders             = Gauge("lpbot_shadow_orders", "Shadow orders opened or matched in the latest shadow tick")
 	lpbotDatasourceRateLimitTotal = CounterVec("lpbot_datasource_rate_limit_total", "Total datasource rate limit responses", []string{"source"})
 	lpbotDatasourceCacheHitTotal  = CounterVec("lpbot_datasource_cache_hit_total", "Total datasource cache hits", []string{"source", "state"})
+	lpbotDatasourceFallbackTotal  = CounterVec("lpbot_datasource_fallback_total", "Total datasource fallback uses", []string{"primary", "fallback", "operation"})
+	lpbotShadowMarkedPositions    = Gauge("lpbot_shadow_marked_positions", "Shadow positions marked in the latest cycle")
+	lpbotShadowMarkValueUSD       = Gauge("lpbot_shadow_mark_value_usd", "Total latest shadow marked valuation in USD")
+	lpbotShadowMarkNetPnLUSD      = Gauge("lpbot_shadow_mark_net_pnl_usd", "Total latest shadow mark net PnL in USD")
 )
 
 // CounterVec creates and registers a new Prometheus CounterVec.
@@ -298,6 +302,18 @@ func IncDatasourceRateLimit(source string) {
 // IncDatasourceCacheHit increments a datasource cache-hit counter.
 func IncDatasourceCacheHit(source, state string) {
 	lpbotDatasourceCacheHitTotal.WithLabelValues(source, state).Inc()
+}
+
+// IncDatasourceFallback increments a datasource fallback counter.
+func IncDatasourceFallback(primary, fallback, operation string) {
+	lpbotDatasourceFallbackTotal.WithLabelValues(primary, fallback, operation).Inc()
+}
+
+// RecordShadowPositionMarks records the latest aggregate mark state.
+func RecordShadowPositionMarks(marked int, valuationUSD, netPnLUSD float64) {
+	lpbotShadowMarkedPositions.Set(float64(marked))
+	lpbotShadowMarkValueUSD.Set(valuationUSD)
+	lpbotShadowMarkNetPnLUSD.Set(netPnLUSD)
 }
 
 // SetPositionStatus sets the position status gauge (1=open, 0=closed).

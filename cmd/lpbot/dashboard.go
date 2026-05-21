@@ -22,18 +22,20 @@ type dbProvider interface {
 }
 
 type dashboardSnapshot struct {
-	GeneratedAt  string                 `json:"generated_at"`
-	Version      string                 `json:"version"`
-	Mode         string                 `json:"mode"`
-	Commit       string                 `json:"commit"`
-	Counts       dashboardCounts        `json:"counts"`
-	LatestTick   dashboardTick          `json:"latest_tick"`
-	Pools        []dashboardPool        `json:"pools"`
-	Positions    []dashboardPosition    `json:"positions"`
-	Transactions []dashboardTransaction `json:"transactions"`
-	RecentScores []dashboardScore       `json:"recent_scores"`
-	Decisions    []dashboardDecision    `json:"decisions"`
-	Warnings     []string               `json:"warnings"`
+	GeneratedAt   string                  `json:"generated_at"`
+	Version       string                  `json:"version"`
+	Mode          string                  `json:"mode"`
+	Commit        string                  `json:"commit"`
+	Counts        dashboardCounts         `json:"counts"`
+	LatestTick    dashboardTick           `json:"latest_tick"`
+	Pools         []dashboardPool         `json:"pools"`
+	Positions     []dashboardPosition     `json:"positions"`
+	Transactions  []dashboardTransaction  `json:"transactions"`
+	PositionMarks []dashboardPositionMark `json:"position_marks"`
+	MarkSeries    []dashboardMarkPoint    `json:"mark_series"`
+	RecentScores  []dashboardScore        `json:"recent_scores"`
+	Decisions     []dashboardDecision     `json:"decisions"`
+	Warnings      []string                `json:"warnings"`
 }
 
 type dashboardCounts struct {
@@ -86,6 +88,28 @@ type dashboardScore struct {
 	Chain     int    `json:"chain"`
 	BlockTime int64  `json:"block_time"`
 	ScoreJSON string `json:"score_json"`
+}
+
+type dashboardPositionMark struct {
+	PositionID     string `json:"position_id"`
+	PoolID         string `json:"pool_id"`
+	Status         string `json:"status"`
+	Source         string `json:"source"`
+	MarkTime       int64  `json:"mark_time"`
+	HoldMinutes    int64  `json:"hold_minutes"`
+	ValuationUSD   string `json:"valuation_usd"`
+	FeeUSD         string `json:"fee_usd"`
+	ILUSD          string `json:"il_usd"`
+	NetPnLUSD      string `json:"net_pnl_usd"`
+	CurrentTVLUSD  string `json:"current_tvl_usd"`
+	CurrentVol24h  string `json:"current_vol24h_usd"`
+	PriceChangePct string `json:"price_change_pct"`
+}
+
+type dashboardMarkPoint struct {
+	MarkTime     int64  `json:"mark_time"`
+	ValuationUSD string `json:"valuation_usd"`
+	NetPnLUSD    string `json:"net_pnl_usd"`
 }
 
 type dashboardDecision struct {
@@ -214,6 +238,18 @@ func (app *App) dashboardSnapshot(ctx context.Context) (dashboardSnapshot, error
 	}
 	snapshot.Transactions = txs
 
+	positionMarks, err := queryDashboardPositionMarks(ctx, db)
+	if err != nil {
+		return snapshot, err
+	}
+	snapshot.PositionMarks = positionMarks
+
+	markSeries, err := queryDashboardMarkSeries(ctx, db)
+	if err != nil {
+		return snapshot, err
+	}
+	snapshot.MarkSeries = markSeries
+
 	scores, err := queryDashboardScores(ctx, db)
 	if err != nil {
 		return snapshot, err
@@ -297,6 +333,81 @@ func queryDashboardTransactions(ctx context.Context, db *sql.DB) ([]dashboardTra
 		txs = append(txs, tx)
 	}
 	return txs, rows.Err()
+}
+
+func queryDashboardPositionMarks(ctx context.Context, db *sql.DB) ([]dashboardPositionMark, error) {
+	rows, err := db.QueryContext(ctx, `
+		SELECT position_id, pool_id, status, source, mark_time, hold_minutes,
+		       valuation_usd, fee_usd, il_usd, net_pnl_usd,
+		       current_tvl_usd, current_vol24h_usd, price_change_pct
+		FROM (
+			SELECT DISTINCT ON (position_id)
+				position_id, pool_id, status, source, mark_time, hold_minutes,
+				valuation_usd, fee_usd, il_usd, net_pnl_usd,
+				current_tvl_usd, current_vol24h_usd, price_change_pct
+			FROM shadow_position_marks
+			ORDER BY position_id, mark_time DESC
+		) latest
+		ORDER BY mark_time DESC
+		LIMIT 50
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("query dashboard position marks: %w", err)
+	}
+	defer rows.Close()
+
+	var marks []dashboardPositionMark
+	for rows.Next() {
+		var mark dashboardPositionMark
+		if err := rows.Scan(
+			&mark.PositionID,
+			&mark.PoolID,
+			&mark.Status,
+			&mark.Source,
+			&mark.MarkTime,
+			&mark.HoldMinutes,
+			&mark.ValuationUSD,
+			&mark.FeeUSD,
+			&mark.ILUSD,
+			&mark.NetPnLUSD,
+			&mark.CurrentTVLUSD,
+			&mark.CurrentVol24h,
+			&mark.PriceChangePct,
+		); err != nil {
+			return nil, fmt.Errorf("scan dashboard position mark: %w", err)
+		}
+		marks = append(marks, mark)
+	}
+	return marks, rows.Err()
+}
+
+func queryDashboardMarkSeries(ctx context.Context, db *sql.DB) ([]dashboardMarkPoint, error) {
+	rows, err := db.QueryContext(ctx, `
+		SELECT mark_time,
+		       COALESCE(sum(valuation_usd::numeric), 0)::text AS valuation_usd,
+		       COALESCE(sum(net_pnl_usd::numeric), 0)::text AS net_pnl_usd
+		FROM shadow_position_marks
+		GROUP BY mark_time
+		ORDER BY mark_time DESC
+		LIMIT 60
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("query dashboard mark series: %w", err)
+	}
+	defer rows.Close()
+
+	var points []dashboardMarkPoint
+	for rows.Next() {
+		var point dashboardMarkPoint
+		if err := rows.Scan(&point.MarkTime, &point.ValuationUSD, &point.NetPnLUSD); err != nil {
+			return nil, fmt.Errorf("scan dashboard mark point: %w", err)
+		}
+		points = append(points, point)
+	}
+	sort.Slice(points, func(i, j int) bool {
+		return points[i].MarkTime < points[j].MarkTime
+	})
+	return points, rows.Err()
 }
 
 func queryDashboardScores(ctx context.Context, db *sql.DB) ([]dashboardScore, error) {

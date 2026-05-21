@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/lpbot/lpbot/internal/adapters/datasource/dexscreener"
 	"github.com/lpbot/lpbot/internal/domain"
 	"github.com/lpbot/lpbot/internal/platform/metrics"
 	"github.com/lpbot/lpbot/internal/ports"
@@ -27,6 +28,7 @@ type Adapter struct {
 	baseURL          string
 	cacheTTL         time.Duration
 	rateLimitBackoff time.Duration
+	fallback         *dexscreener.Adapter
 	mu               sync.Mutex
 	poolCache        map[string]poolCacheEntry
 	cooldownUntil    time.Time
@@ -44,6 +46,7 @@ func NewAdapter() *Adapter {
 		baseURL:          "https://api.geckoterminal.com/api/v2",
 		cacheTTL:         90 * time.Second,
 		rateLimitBackoff: 2 * time.Minute,
+		fallback:         dexscreener.NewAdapter(),
 		poolCache:        make(map[string]poolCacheEntry),
 	}
 }
@@ -54,6 +57,7 @@ func NewAdapterWithClient(client *http.Client) *Adapter {
 		baseURL:          "https://api.geckoterminal.com/api/v2",
 		cacheTTL:         90 * time.Second,
 		rateLimitBackoff: 2 * time.Minute,
+		fallback:         dexscreener.NewAdapterWithClient(client),
 		poolCache:        make(map[string]poolCacheEntry),
 	}
 }
@@ -69,8 +73,108 @@ func (a *Adapter) DiscoverPools(ctx context.Context, chain domain.ChainID, proto
 			metrics.IncDatasourceCacheHit("geckoterminal", "stale")
 			return cached, nil
 		}
+		if fallback, err := a.fallback.DiscoverPools(ctx, chain, protocol, minTVLUSD, limit); err == nil && len(fallback) > 0 {
+			metrics.IncDatasourceFallback("geckoterminal", "dexscreener", "discover_pools_cooldown")
+			a.storePools(cacheKey, fallback)
+			return fallback, nil
+		}
 	}
 
+	result, err := a.discoverPoolsPrimary(ctx, chain, minTVLUSD, limit)
+	if err != nil {
+		if fallback, fallbackErr := a.fallback.DiscoverPools(ctx, chain, protocol, minTVLUSD, limit); fallbackErr == nil && len(fallback) > 0 {
+			metrics.IncDatasourceFallback("geckoterminal", "dexscreener", "discover_pools_error")
+			a.storePools(cacheKey, fallback)
+			return fallback, nil
+		}
+		return nil, fmt.Errorf("get pools: %w", err)
+	}
+	if len(result) == 0 {
+		if fallback, fallbackErr := a.fallback.DiscoverPools(ctx, chain, protocol, minTVLUSD, limit); fallbackErr == nil && len(fallback) > 0 {
+			metrics.IncDatasourceFallback("geckoterminal", "dexscreener", "discover_pools_empty")
+			a.storePools(cacheKey, fallback)
+			return fallback, nil
+		}
+	}
+
+	a.storePools(cacheKey, result)
+	return result, nil
+}
+
+func (a *Adapter) GetPoolMetadata(ctx context.Context, chain domain.ChainID, poolID string) (*ports.PoolDiscovery, error) {
+	metadata, _, err := a.GetPoolMetadataWithSource(ctx, chain, poolID)
+	return metadata, err
+}
+
+func (a *Adapter) GetPoolMetadataWithSource(ctx context.Context, chain domain.ChainID, poolID string) (*ports.PoolDiscovery, string, error) {
+	metadata, err := a.getPoolMetadataPrimary(ctx, chain, poolID)
+	if err == nil && metadata != nil {
+		return metadata, "geckoterminal", nil
+	}
+
+	fallback, fallbackErr := a.fallback.GetPoolMetadata(ctx, chain, poolID)
+	if fallbackErr == nil && fallback != nil {
+		op := "get_pool_metadata"
+		if err == nil {
+			op = "get_pool_metadata_empty"
+		}
+		metrics.IncDatasourceFallback("geckoterminal", "dexscreener", op)
+		return fallback, "dexscreener", nil
+	}
+
+	if err != nil {
+		return nil, "", fmt.Errorf("get pool: %w", err)
+	}
+	if fallbackErr != nil {
+		return nil, "", fmt.Errorf("fallback get pool: %w", fallbackErr)
+	}
+	return nil, "", nil
+}
+
+func (a *Adapter) getPoolMetadataPrimary(ctx context.Context, chain domain.ChainID, poolID string) (*ports.PoolDiscovery, error) {
+	client := NewClientWithHTTP(a.client, a.baseURL)
+	network := mapChainToNetwork(chain)
+	pool, err := client.GetPoolInfo(ctx, network, poolID)
+	if err != nil {
+		var rateLimit *RateLimitError
+		if errors.As(err, &rateLimit) {
+			metrics.IncDatasourceRateLimit("geckoterminal")
+			a.setCooldown(rateLimit.RetryAfter)
+		}
+		return nil, err
+	}
+	if pool == nil {
+		return nil, nil
+	}
+
+	token0, _ := domain.ParseAddress(resolveTokenAddress(pool.Attributes.Token0.Address, pool.Relationships.BaseToken.Data.ID))
+	token1, _ := domain.ParseAddress(resolveTokenAddress(pool.Attributes.Token1.Address, pool.Relationships.QuoteToken.Data.ID))
+	liquidity, _ := decimal.NewFromString(firstNonEmpty(pool.Attributes.LiquidityUSD, pool.Attributes.ReserveInUSD, "0"))
+	volume, _ := decimal.NewFromString(firstNonEmpty(pool.Attributes.VolumeUSD.H24, pool.Attributes.BaseVolume, pool.Attributes.QuoteVolume, "0"))
+
+	resolvedPoolID := pool.Attributes.Address
+	if resolvedPoolID == "" {
+		resolvedPoolID = stripNetworkPrefix(pool.ID)
+	}
+	protocol := pool.Relationships.Dex.Data.ID
+	if protocol == "" {
+		protocol = "geckoterminal"
+	}
+
+	return &ports.PoolDiscovery{
+		ID:        resolvedPoolID,
+		Chain:     chain,
+		Protocol:  protocol,
+		Token0:    token0,
+		Token1:    token1,
+		FeeBPS:    parseFeeBPS(pool.Attributes.Name),
+		TVLUSD:    liquidity,
+		Vol24h:    volume,
+		UpdatedAt: time.Now(),
+	}, nil
+}
+
+func (a *Adapter) discoverPoolsPrimary(ctx context.Context, chain domain.ChainID, minTVLUSD domain.Decimal, limit int) ([]ports.PoolDiscovery, error) {
 	client := NewClientWithHTTP(a.client, a.baseURL)
 	network := mapChainToNetwork(chain)
 	pools, err := client.GetPoolsByNetwork(ctx, network, limit)
@@ -79,12 +183,12 @@ func (a *Adapter) DiscoverPools(ctx context.Context, chain domain.ChainID, proto
 		if errors.As(err, &rateLimit) {
 			metrics.IncDatasourceRateLimit("geckoterminal")
 			a.setCooldown(rateLimit.RetryAfter)
-			if cached, ok := a.cachedPools(cacheKey, true); ok {
+			if cached, ok := a.cachedPools(fmt.Sprintf("%s:::%d", chain, limit), true); ok {
 				metrics.IncDatasourceCacheHit("geckoterminal", "rate_limited_stale")
 				return cached, nil
 			}
 		}
-		return nil, fmt.Errorf("get pools: %w", err)
+		return nil, err
 	}
 
 	result := make([]ports.PoolDiscovery, 0, len(pools))
@@ -95,10 +199,7 @@ func (a *Adapter) DiscoverPools(ctx context.Context, chain domain.ChainID, proto
 			pool.Attributes.BaseLiquidityUSD,
 			pool.Attributes.QuoteLiquidityUSD,
 		))
-		if err != nil {
-			continue
-		}
-		if liquidity.LessThan(minTVLUSD) {
+		if err != nil || liquidity.LessThan(minTVLUSD) {
 			continue
 		}
 
@@ -134,46 +235,7 @@ func (a *Adapter) DiscoverPools(ctx context.Context, chain domain.ChainID, proto
 		})
 	}
 
-	a.storePools(cacheKey, result)
 	return result, nil
-}
-
-func (a *Adapter) GetPoolMetadata(ctx context.Context, chain domain.ChainID, poolID string) (*ports.PoolDiscovery, error) {
-	client := NewClientWithHTTP(a.client, a.baseURL)
-	network := mapChainToNetwork(chain)
-	pool, err := client.GetPoolInfo(ctx, network, poolID)
-	if err != nil {
-		return nil, fmt.Errorf("get pool: %w", err)
-	}
-	if pool == nil {
-		return nil, nil
-	}
-
-	token0, _ := domain.ParseAddress(resolveTokenAddress(pool.Attributes.Token0.Address, pool.Relationships.BaseToken.Data.ID))
-	token1, _ := domain.ParseAddress(resolveTokenAddress(pool.Attributes.Token1.Address, pool.Relationships.QuoteToken.Data.ID))
-	liquidity, _ := decimal.NewFromString(firstNonEmpty(pool.Attributes.LiquidityUSD, pool.Attributes.ReserveInUSD, "0"))
-	volume, _ := decimal.NewFromString(firstNonEmpty(pool.Attributes.VolumeUSD.H24, pool.Attributes.BaseVolume, pool.Attributes.QuoteVolume, "0"))
-
-	resolvedPoolID := pool.Attributes.Address
-	if resolvedPoolID == "" {
-		resolvedPoolID = stripNetworkPrefix(pool.ID)
-	}
-	protocol := pool.Relationships.Dex.Data.ID
-	if protocol == "" {
-		protocol = "geckoterminal"
-	}
-
-	return &ports.PoolDiscovery{
-		ID:        resolvedPoolID,
-		Chain:     chain,
-		Protocol:  protocol,
-		Token0:    token0,
-		Token1:    token1,
-		FeeBPS:    parseFeeBPS(pool.Attributes.Name),
-		TVLUSD:    liquidity,
-		Vol24h:    volume,
-		UpdatedAt: time.Now(),
-	}, nil
 }
 
 func (a *Adapter) HealthCheck(ctx context.Context) error {

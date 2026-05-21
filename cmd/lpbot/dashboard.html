@@ -112,6 +112,15 @@
     }
     .warn { color: var(--warn); font-weight: 700; }
     .small { color: var(--muted); font-size: 12px; }
+    .curve-wrap {
+      width: 100%;
+      min-height: 220px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.35), rgba(223,233,221,0.25));
+      padding: 10px;
+    }
+    svg { width: 100%; height: 220px; display: block; }
     @media (max-width: 920px) {
       .grid, .two { grid-template-columns: 1fr; }
       .card { border-radius: 18px; overflow-x: auto; }
@@ -160,6 +169,16 @@
       <div class="section-title"><h2>Shadow 交易</h2><span class="small">latest 50</span></div>
       <table><thead><tr><th>ID</th><th>Status</th><th>Hash</th><th>Created</th></tr></thead><tbody id="tx-rows"></tbody></table>
     </section>
+    <section class="two">
+      <div class="card">
+        <div class="section-title"><h2>Position Mark Curve</h2><span class="small">aggregate net pnl by tick</span></div>
+        <div class="curve-wrap"><svg id="mark-curve" viewBox="0 0 800 220" preserveAspectRatio="none"></svg></div>
+      </div>
+      <div class="card">
+        <div class="section-title"><h2>Latest Marks</h2><span class="small">latest per position</span></div>
+        <table><thead><tr><th>Position</th><th>Value</th><th>PnL</th><th>Hold</th></tr></thead><tbody id="mark-rows"></tbody></table>
+      </div>
+    </section>
     <section class="card">
       <div class="section-title"><h2>Decision Trace</h2><span class="small">latest 30 pool decisions</span></div>
       <table><thead><tr><th>Pool</th><th>Score</th><th>Selected</th><th>Intent</th><th>Pipeline</th><th>Action</th></tr></thead><tbody id="decision-rows"></tbody></table>
@@ -174,6 +193,7 @@
     const api = "/api/dashboard" + (token ? "?token=" + encodeURIComponent(token) : "");
     const short = (value) => value && value.length > 18 ? value.slice(0, 10) + "..." + value.slice(-6) : value;
     const timeText = (unix) => unix ? new Date(unix * 1000).toLocaleString() : "-";
+    const num = (value) => Number(value || 0);
     function scoreSummary(raw) {
       try {
         const parsed = JSON.parse(raw || "{}");
@@ -185,6 +205,33 @@
       } catch {
         return raw ? raw.slice(0, 32) : "-";
       }
+    }
+    function renderCurve(points) {
+      const svg = document.getElementById("mark-curve");
+      if (!points.length) {
+        svg.innerHTML = `<text x="20" y="110" fill="#667066" font-size="14">No mark data yet</text>`;
+        return;
+      }
+      const values = points.map(p => num(p.net_pnl_usd));
+      const min = Math.min(...values, 0);
+      const max = Math.max(...values, 0);
+      const range = max - min || 1;
+      const width = 800;
+      const height = 220;
+      const step = points.length > 1 ? width / (points.length - 1) : width;
+      const coords = points.map((p, i) => {
+        const x = i * step;
+        const y = height - ((num(p.net_pnl_usd) - min) / range) * (height - 30) - 15;
+        return [x, y];
+      });
+      const line = coords.map(([x, y]) => `${x},${y}`).join(" ");
+      const baselineY = height - ((0 - min) / range) * (height - 30) - 15;
+      svg.innerHTML = `
+        <line x1="0" y1="${baselineY}" x2="${width}" y2="${baselineY}" stroke="rgba(23,32,24,0.15)" stroke-dasharray="6 6"/>
+        <polyline fill="none" stroke="#0b5e68" stroke-width="3" points="${line}"/>
+        <text x="12" y="20" fill="#667066" font-size="13">Net PnL</text>
+        <text x="12" y="${height - 10}" fill="#667066" font-size="12">${values[values.length - 1].toFixed(2)} USD</text>
+      `;
     }
     async function refresh() {
       const res = await fetch(api, {cache: "no-store"});
@@ -201,6 +248,8 @@
       document.getElementById("pool-rows").innerHTML = data.pools.map(p => `<tr><td><code>${short(p.pool_id)}</code></td><td>${p.protocol}</td><td>${p.fee_bps}</td><td>${p.tier || "-"}</td><td><code>${scoreSummary(p.score)}</code></td></tr>`).join("");
       document.getElementById("position-rows").innerHTML = data.positions.map(p => `<tr><td><code>${short(p.id)}</code><br><span class="small">${short(p.pool_id)}</span></td><td>${p.status}</td><td>${p.amount_usd}</td></tr>`).join("");
       document.getElementById("tx-rows").innerHTML = data.transactions.map(t => `<tr><td><code>${short(t.id)}</code></td><td>${t.status}</td><td><code>${short(t.tx_hash)}</code></td><td>${timeText(Math.floor(t.created_at / 1000))}</td></tr>`).join("");
+      document.getElementById("mark-rows").innerHTML = (data.position_marks || []).map(m => `<tr><td><code>${short(m.position_id)}</code><br><span class="small">${m.source || "-"}</span></td><td>${num(m.valuation_usd).toFixed(2)}<br><span class="small">TVL ${num(m.current_tvl_usd).toFixed(0)}</span></td><td>${num(m.net_pnl_usd).toFixed(2)}<br><span class="small">fees ${num(m.fee_usd).toFixed(2)} / il ${num(m.il_usd).toFixed(2)}</span></td><td>${m.hold_minutes}m<br><span class="small">price ${(num(m.price_change_pct) * 100).toFixed(2)}%</span></td></tr>`).join("");
+      renderCurve(data.mark_series || []);
       document.getElementById("decision-rows").innerHTML = (data.decisions || []).map(d => `<tr><td><code>${short(d.pool_id)}</code><br><span class="small">${d.protocol}</span></td><td>${Number(d.score_total || 0).toFixed(1)}</td><td>${d.selected ? "yes" : "no"}<br><span class="small">${d.selection_reason || "-"}</span></td><td>${d.intent_open ? "open" : "skip"}<br><span class="small">${d.intent_reason || "-"}</span></td><td>${d.pipeline_stage || "-"}<br><span class="small">${d.pipeline_reason || "-"}</span></td><td>${d.final_action || "-"}${d.position_id ? `<br><span class="small">${short(d.position_id)}</span>` : ""}</td></tr>`).join("");
       document.getElementById("warnings").innerHTML = (data.warnings && data.warnings.length) ? data.warnings.map(w => `<div class="warn">${w}</div>`).join("") : "无";
     }
