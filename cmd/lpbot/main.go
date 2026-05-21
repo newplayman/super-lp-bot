@@ -37,7 +37,10 @@ import (
 	"go.uber.org/zap"
 )
 
-const Version = "0.4.0"
+const (
+	Version              = "0.4.0"
+	shadowCandidateLimit = 10
+)
 
 var (
 	BuildMode   = "dev"
@@ -495,7 +498,7 @@ func (app *App) evaluateStrategies(ctx context.Context) {
 		}
 	}
 
-	candidates, err := app.strategy.SelectCandidates(ctx, pools, 5)
+	candidates, err := app.strategy.SelectCandidates(ctx, pools, shadowCandidateLimit)
 	if err != nil {
 		app.logger.Error("shadow candidate selection failed", zap.Error(err))
 		return

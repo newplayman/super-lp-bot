@@ -247,14 +247,41 @@ func (c *Client) GetPoolsByNetwork(ctx context.Context, network string, limit in
 	if limit <= 0 {
 		limit = 50
 	}
+	pageLimit := 20
+	if limit < pageLimit {
+		pageLimit = limit
+	}
+	maxPages := (limit + pageLimit - 1) / pageLimit
 
+	result := make([]PoolInfo, 0, limit)
+	for page := 1; page <= maxPages && len(result) < limit; page++ {
+		pools, err := c.getPoolsByNetworkPage(ctx, network, page, pageLimit)
+		if err != nil {
+			return nil, err
+		}
+		if len(pools) == 0 {
+			break
+		}
+		remaining := limit - len(result)
+		if len(pools) > remaining {
+			pools = pools[:remaining]
+		}
+		result = append(result, pools...)
+		if len(pools) < pageLimit {
+			break
+		}
+	}
+	return result, nil
+}
+
+func (c *Client) getPoolsByNetworkPage(ctx context.Context, network string, page int, limit int) ([]PoolInfo, error) {
 	u, err := url.Parse(fmt.Sprintf("%s/networks/%s/pools", c.baseURL, network))
 	if err != nil {
 		return nil, fmt.Errorf("parse URL: %w", err)
 	}
 
 	query := u.Query()
-	query.Set("page", "1")
+	query.Set("page", fmt.Sprintf("%d", page))
 	query.Set("limit", fmt.Sprintf("%d", limit))
 	u.RawQuery = query.Encode()
 
