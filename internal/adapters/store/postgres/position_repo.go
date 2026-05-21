@@ -142,7 +142,13 @@ func (r *PositionRepo) FindByChainAndStatus(ctx context.Context, chain domain.Ch
 // UpdateStatus transitions a position to a new status.
 func (r *PositionRepo) UpdateStatus(ctx context.Context, id string, status domain.PositionStatus) error {
 	result, err := r.db.ExecContext(ctx, `
-		UPDATE positions SET status = $1 WHERE id = $2
+		UPDATE positions
+		SET status = $1,
+		    closed_at = CASE
+		        WHEN $1 = 'closed' AND closed_at = 0 THEN EXTRACT(EPOCH FROM NOW())::BIGINT
+		        ELSE closed_at
+		    END
+		WHERE id = $2
 	`, string(status), id)
 	if err != nil {
 		return fmt.Errorf("failed to update position status: %w", err)

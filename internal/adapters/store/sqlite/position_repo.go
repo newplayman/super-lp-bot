@@ -58,9 +58,9 @@ func (r *PositionRepo) Save(ctx context.Context, pos *domain.Position) error {
 		"", "", // token0/token1 placeholder
 		pos.TickLower, pos.TickUpper,
 		"0", "0", "0", // liquidity/amount0/amount1 placeholder
-		"0", // tvl_usd placeholder
+		"0",                    // tvl_usd placeholder
 		pos.AmountUSD.String(), // amount_usd
-		string(pos.Tier), // tier
+		string(pos.Tier),       // tier
 		string(pos.Status),
 		pos.OpenedAt, now, pos.ClosedAt,
 	)
@@ -213,9 +213,17 @@ func (r *PositionRepo) FindByChainAndStatus(ctx context.Context, chain domain.Ch
 // UpdateStatus transitions a position to a new status.
 func (r *PositionRepo) UpdateStatus(ctx context.Context, id string, status domain.PositionStatus) error {
 	table := r.prefix + "positions"
-	query := fmt.Sprintf(`UPDATE %s SET status = ?, updated_at = ? WHERE id = ?`, table)
+	query := fmt.Sprintf(`UPDATE %s
+		SET status = ?,
+		    updated_at = ?,
+		    closed_at = CASE
+		        WHEN ? = 'closed' AND closed_at = 0 THEN ?
+		        ELSE closed_at
+		    END
+		WHERE id = ?`, table)
 	now := time.Now().UnixMilli()
-	_, err := r.db.ExecContext(ctx, query, string(status), now, id)
+	closedAt := time.Now().Unix()
+	_, err := r.db.ExecContext(ctx, query, string(status), now, string(status), closedAt, id)
 	return err
 }
 

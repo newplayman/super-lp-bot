@@ -124,20 +124,25 @@ func (a *Adapter) GetPriceHistory(ctx context.Context, chain domain.ChainID, poo
 		}
 
 		priceUSD, _ := decimal.NewFromString(swap.PriceUSD)
-		amount0, _ := decimal.NewFromString(swap.TokenAmount0)
-		amount1, _ := decimal.NewFromString(swap.TokenAmount1)
+		price0 := priceUSD
+		price1 := priceUSD
+		if priceUSD.IsZero() {
+			amount0, _ := decimal.NewFromString(swap.TokenAmount0)
+			amount1, _ := decimal.NewFromString(swap.TokenAmount1)
+			price0 = amount0
+			price1 = amount1
+		}
 
 		result = append(result, ports.HistoricalPrice{
 			PoolID:      poolID,
 			Chain:       chain,
 			Timestamp:   ts,
 			BlockNumber: swap.BlockNumber,
-			Price0:      amount0,
-			Price1:      amount1,
+			Price0:      price0,
+			Price1:      price1,
 			Liquidity:   decimal.Zero,
 			Volume24h:   decimal.Zero,
 		})
-		_ = priceUSD
 	}
 
 	return result, nil

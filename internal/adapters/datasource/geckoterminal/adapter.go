@@ -244,6 +244,31 @@ func (a *Adapter) HealthCheck(ctx context.Context) error {
 }
 
 func (a *Adapter) GetPriceHistory(ctx context.Context, chain domain.ChainID, poolID string, from, to time.Time, resolution time.Duration) ([]ports.HistoricalPrice, error) {
+	result, err := a.getPriceHistoryPrimary(ctx, chain, poolID, from, to, resolution)
+	if err == nil && len(result) > 0 {
+		return result, nil
+	}
+
+	fallback, fallbackErr := a.fallback.GetPriceHistory(ctx, chain, poolID, from, to, resolution)
+	if fallbackErr == nil && len(fallback) > 0 {
+		op := "price_history_empty"
+		if err != nil {
+			op = "price_history_error"
+		}
+		metrics.IncDatasourceFallback("geckoterminal", "dexscreener", op)
+		return fallback, nil
+	}
+
+	if err != nil {
+		return nil, err
+	}
+	if fallbackErr != nil {
+		return nil, fmt.Errorf("fallback get price history: %w", fallbackErr)
+	}
+	return result, nil
+}
+
+func (a *Adapter) getPriceHistoryPrimary(ctx context.Context, chain domain.ChainID, poolID string, from, to time.Time, resolution time.Duration) ([]ports.HistoricalPrice, error) {
 	client := NewClientWithHTTP(a.client, a.baseURL)
 	network := mapChainToNetwork(chain)
 	fromUnix := from.Unix()
@@ -253,6 +278,11 @@ func (a *Adapter) GetPriceHistory(ctx context.Context, chain domain.ChainID, poo
 	timeframe := mapStepToTimeframe(resolution)
 	ohlcvData, err := client.GetOHLCV(ctx, network, poolID, timeframe, fromUnix, toUnix, limit)
 	if err != nil {
+		var rateLimit *RateLimitError
+		if errors.As(err, &rateLimit) {
+			metrics.IncDatasourceRateLimit("geckoterminal")
+			a.setCooldown(rateLimit.RetryAfter)
+		}
 		return nil, err
 	}
 

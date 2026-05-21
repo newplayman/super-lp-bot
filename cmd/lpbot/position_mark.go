@@ -349,7 +349,7 @@ func (app *App) estimateShadowIL(ctx context.Context, pos activeShadowPosition, 
 	if pos.OpenedAt > 0 {
 		from = time.Unix(pos.OpenedAt, 0)
 	}
-	history, err := historical.GetPriceHistory(ctx, pos.Chain, pos.PoolID, from, now, time.Hour)
+	history, err := historical.GetPriceHistory(ctx, pos.Chain, pos.PoolID, from, now, shadowPriceResolution(now.Sub(from)))
 	if err != nil || len(history) == 0 {
 		return dexdomain.ZeroDecimal(), dexdomain.ZeroDecimal()
 	}
@@ -358,8 +358,8 @@ func (app *App) estimateShadowIL(ctx context.Context, pos activeShadowPosition, 
 		return history[i].Timestamp.Before(history[j].Timestamp)
 	})
 
-	entryPrice := firstNonZeroPrice(history[0])
-	currentPrice := firstNonZeroPrice(history[len(history)-1])
+	entryPrice := openingPrice(history[0])
+	currentPrice := closingPrice(history[len(history)-1])
 	if entryPrice.IsZero() || currentPrice.IsZero() {
 		return dexdomain.ZeroDecimal(), dexdomain.ZeroDecimal()
 	}
@@ -569,6 +569,7 @@ func (app *App) recordShadowExitActions(ctx context.Context, db *sql.DB, records
 		}
 
 		txHash := shadowID("exit-tx", record.PositionID, record.DecisionTime)
+		txStatus := dexdomain.TxConfirmed
 		exitTx := dexdomain.SignedTx{
 			UnsignedTx: dexdomain.UnsignedTx{
 				ID:       txHash,
@@ -580,7 +581,7 @@ func (app *App) recordShadowExitActions(ctx context.Context, db *sql.DB, records
 				MinOut:   dexdomain.ZeroDecimal(),
 			},
 			Hash:   txHash,
-			Status: dexdomain.TxBuilt,
+			Status: txStatus,
 		}
 		if err := app.store.TxRepo().UpsertTx(ctx, exitTx); err != nil {
 			return fmt.Errorf("upsert shadow exit tx for %s: %w", record.PositionID, err)
@@ -600,11 +601,14 @@ func (app *App) recordShadowExitActions(ctx context.Context, db *sql.DB, records
 			record.Reason,
 			record.Action,
 			txHash,
-			string(dexdomain.TxBuilt),
+			string(txStatus),
 			time.Now().UnixMilli(),
 		)
 		if err != nil {
 			return fmt.Errorf("insert exit action for %s: %w", record.PositionID, err)
+		}
+		if err := app.store.PositionRepo().UpdateStatus(ctx, record.PositionID, dexdomain.StatusClosed); err != nil {
+			return fmt.Errorf("close shadow position %s: %w", record.PositionID, err)
 		}
 	}
 
@@ -633,13 +637,33 @@ func hasRecentEquivalentExitAction(ctx context.Context, tx *sql.Tx, record shado
 	return exists, nil
 }
 
-func firstNonZeroPrice(point ports.HistoricalPrice) dexdomain.Decimal {
+func openingPrice(point ports.HistoricalPrice) dexdomain.Decimal {
+	for _, candidate := range []dexdomain.Decimal{point.Price0, point.Price1} {
+		if !candidate.IsZero() {
+			return candidate
+		}
+	}
+	return dexdomain.ZeroDecimal()
+}
+
+func closingPrice(point ports.HistoricalPrice) dexdomain.Decimal {
 	for _, candidate := range []dexdomain.Decimal{point.Price1, point.Price0} {
 		if !candidate.IsZero() {
 			return candidate
 		}
 	}
 	return dexdomain.ZeroDecimal()
+}
+
+func shadowPriceResolution(window time.Duration) time.Duration {
+	switch {
+	case window <= 0:
+		return time.Hour
+	case window <= 12*time.Hour:
+		return time.Minute
+	default:
+		return time.Hour
+	}
 }
 
 func max64(a, b int64) int64 {
