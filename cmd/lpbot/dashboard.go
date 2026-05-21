@@ -22,22 +22,23 @@ type dbProvider interface {
 }
 
 type dashboardSnapshot struct {
-	GeneratedAt   string                  `json:"generated_at"`
-	Version       string                  `json:"version"`
-	Mode          string                  `json:"mode"`
-	Commit        string                  `json:"commit"`
-	Counts        dashboardCounts         `json:"counts"`
-	LatestTick    dashboardTick           `json:"latest_tick"`
-	Pools         []dashboardPool         `json:"pools"`
-	Positions     []dashboardPosition     `json:"positions"`
-	Transactions  []dashboardTransaction  `json:"transactions"`
-	PositionMarks []dashboardPositionMark `json:"position_marks"`
-	MarkSeries    []dashboardMarkPoint    `json:"mark_series"`
-	ExitDecisions []dashboardExitDecision `json:"exit_decisions"`
-	ExitActions   []dashboardExitAction   `json:"exit_actions"`
-	RecentScores  []dashboardScore        `json:"recent_scores"`
-	Decisions     []dashboardDecision     `json:"decisions"`
-	Warnings      []string                `json:"warnings"`
+	GeneratedAt     string                  `json:"generated_at"`
+	Version         string                  `json:"version"`
+	Mode            string                  `json:"mode"`
+	Commit          string                  `json:"commit"`
+	Counts          dashboardCounts         `json:"counts"`
+	LatestTick      dashboardTick           `json:"latest_tick"`
+	Pools           []dashboardPool         `json:"pools"`
+	Positions       []dashboardPosition     `json:"positions"`
+	ClosedPositions []dashboardPosition     `json:"closed_positions"`
+	Transactions    []dashboardTransaction  `json:"transactions"`
+	PositionMarks   []dashboardPositionMark `json:"position_marks"`
+	MarkSeries      []dashboardMarkPoint    `json:"mark_series"`
+	ExitDecisions   []dashboardExitDecision `json:"exit_decisions"`
+	ExitActions     []dashboardExitAction   `json:"exit_actions"`
+	RecentScores    []dashboardScore        `json:"recent_scores"`
+	Decisions       []dashboardDecision     `json:"decisions"`
+	Warnings        []string                `json:"warnings"`
 }
 
 type dashboardCounts struct {
@@ -258,6 +259,12 @@ func (app *App) dashboardSnapshot(ctx context.Context) (dashboardSnapshot, error
 	}
 	snapshot.Positions = positions
 
+	closedPositions, err := queryDashboardClosedPositions(ctx, db)
+	if err != nil {
+		return snapshot, err
+	}
+	snapshot.ClosedPositions = closedPositions
+
 	txs, err := queryDashboardTransactions(ctx, db)
 	if err != nil {
 		return snapshot, err
@@ -344,6 +351,30 @@ func queryDashboardPositions(ctx context.Context, db *sql.DB) ([]dashboardPositi
 		var pos dashboardPosition
 		if err := rows.Scan(&pos.ID, &pos.PoolID, &pos.Chain, &pos.Status, &pos.Tier, &pos.AmountUSD, &pos.OpenedAt, &pos.ClosedAt); err != nil {
 			return nil, fmt.Errorf("scan dashboard position: %w", err)
+		}
+		positions = append(positions, pos)
+	}
+	return positions, rows.Err()
+}
+
+func queryDashboardClosedPositions(ctx context.Context, db *sql.DB) ([]dashboardPosition, error) {
+	rows, err := db.QueryContext(ctx, `
+		SELECT id, pool_id, chain, status, COALESCE(tier, ''), amount_usd, opened_at, COALESCE(closed_at, 0)
+		FROM positions
+		WHERE status = 'closed'
+		ORDER BY closed_at DESC, opened_at DESC
+		LIMIT 30
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("query dashboard closed positions: %w", err)
+	}
+	defer rows.Close()
+
+	var positions []dashboardPosition
+	for rows.Next() {
+		var pos dashboardPosition
+		if err := rows.Scan(&pos.ID, &pos.PoolID, &pos.Chain, &pos.Status, &pos.Tier, &pos.AmountUSD, &pos.OpenedAt, &pos.ClosedAt); err != nil {
+			return nil, fmt.Errorf("scan dashboard closed position: %w", err)
 		}
 		positions = append(positions, pos)
 	}
