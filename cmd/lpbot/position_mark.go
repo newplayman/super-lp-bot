@@ -317,7 +317,11 @@ func (app *App) buildPositionMarkRecord(ctx context.Context, pos activeShadowPos
 		sharePct = maxShare
 	}
 
-	estimatedFeeUSD := pnl.AccrueFeesFromVolume(meta.Vol24h, meta.FeeBPS).Mul(sharePct).Mul(holdDays)
+	effectiveFeeBPS := meta.FeeBPS
+	if effectiveFeeBPS == 0 {
+		effectiveFeeBPS = 30
+	}
+	estimatedFeeUSD := pnl.AccrueFeesFromVolume(meta.Vol24h, effectiveFeeBPS).Mul(sharePct).Mul(holdDays)
 	priceChangePct, estimatedILUSD := app.estimateShadowIL(ctx, pos, meta, holdMinutes, now)
 	valuationUSD := pos.AmountUSD.Add(estimatedFeeUSD).Add(estimatedILUSD)
 	netPnLUSD := estimatedFeeUSD.Add(estimatedILUSD)
@@ -359,7 +363,10 @@ func (app *App) estimateShadowIL(ctx context.Context, pos activeShadowPosition, 
 			entryPrice := openingPrice(history[0])
 			currentPrice := closingPrice(history[len(history)-1])
 			if !entryPrice.IsZero() && !currentPrice.IsZero() {
-				return realizeShadowIL(pos, entryPrice, currentPrice)
+				historyChangePct, historyILUSD := realizeShadowIL(pos, entryPrice, currentPrice)
+				if !historyChangePct.IsZero() || meta == nil || meta.PriceUSD.IsZero() || meta.PriceChange24hPct.IsZero() {
+					return historyChangePct, historyILUSD
+				}
 			}
 		}
 	}
