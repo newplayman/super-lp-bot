@@ -47,6 +47,14 @@ type Store struct {
 	SQLitePath  string `toml:"sqlite_path"`
 }
 
+// Redis represents optional Redis runtime configuration.
+type Redis struct {
+	URL                      string `toml:"url"`
+	Prefix                   string `toml:"prefix"`
+	HeartbeatIntervalSeconds int    `toml:"heartbeat_interval_seconds"`
+	HeartbeatTTLSeconds      int    `toml:"heartbeat_ttl_seconds"`
+}
+
 // Wallet represents the wallet configuration.
 type Wallet struct {
 	Backend      string `toml:"backend"`
@@ -81,6 +89,7 @@ type Config struct {
 	Platform Platform   `toml:"platform"`
 	Chains   Chains     `toml:"chains"`
 	Store    Store      `toml:"store"`
+	Redis    Redis      `toml:"redis"`
 	Wallet   Wallet     `toml:"wallet"`
 	Bus      Bus        `toml:"bus"`
 	Risk     Risk       `toml:"risk"`

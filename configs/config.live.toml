@@ -23,6 +23,12 @@ commitment = "finalized"
 backend = "postgres"
 postgres_dsn = "${POSTGRES_DSN}"
 
+[redis]
+url = "${REDIS_URL}"
+prefix = "lpbot"
+heartbeat_interval_seconds = 15
+heartbeat_ttl_seconds = 60
+
 [wallet]
 backend = "keystore"
 keystore_path = "${HOME}/.lpbot/keystore-live.json"

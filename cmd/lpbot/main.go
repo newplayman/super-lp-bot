@@ -6,6 +6,8 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"strings"
@@ -24,6 +26,8 @@ import (
 	"github.com/lpbot/lpbot/internal/domain"
 	"github.com/lpbot/lpbot/internal/platform/config"
 	"github.com/lpbot/lpbot/internal/platform/log"
+	"github.com/lpbot/lpbot/internal/platform/metrics"
+	platformredis "github.com/lpbot/lpbot/internal/platform/redis"
 	"github.com/lpbot/lpbot/internal/ports"
 	"go.uber.org/zap"
 )
@@ -41,11 +45,13 @@ type App struct {
 	logger     *zap.Logger
 	config     *config.Config
 	rpc        map[string]*rpc.RoundRobinProvider
+	redis      *platformredis.Runtime
 	store      ports.Store
 	datasource *geckoterminal.Adapter
 	scanner    scanner.Scanner
 	strategy   strategy.Strategy
 	mainLoop   *loop.MainLoop
+	metricsSrv *http.Server
 	cancel     context.CancelFunc
 	wg         sync.WaitGroup
 }
@@ -186,10 +192,81 @@ func (app *App) initAdapters(ctx context.Context) error {
 		return fmt.Errorf("unsupported store backend: %s", app.config.Store.Backend)
 	}
 
+	if err := app.initRedis(ctx); err != nil {
+		return fmt.Errorf("failed to initialize redis runtime: %w", err)
+	}
+
+	if err := app.initMetricsServer(); err != nil {
+		return fmt.Errorf("failed to initialize metrics server: %w", err)
+	}
+
 	// Initialize datasource
 	app.datasource = geckoterminal.NewAdapter()
 	app.logger.Info("GeckoTerminal datasource initialized")
 
+	return nil
+}
+
+func (app *App) initRedis(ctx context.Context) error {
+	if app.config == nil {
+		return nil
+	}
+
+	if strings.TrimSpace(app.config.Redis.URL) == "" {
+		app.logger.Info("Redis runtime disabled", zap.String("reason", "redis.url empty"))
+		return nil
+	}
+
+	heartbeatInterval := time.Duration(app.config.Redis.HeartbeatIntervalSeconds) * time.Second
+	heartbeatTTL := time.Duration(app.config.Redis.HeartbeatTTLSeconds) * time.Second
+
+	runtime, err := platformredis.New(ctx, app.logger, platformredis.Config{
+		URL:               app.config.Redis.URL,
+		Prefix:            app.config.Redis.Prefix,
+		Mode:              BuildMode,
+		HeartbeatInterval: heartbeatInterval,
+		HeartbeatTTL:      heartbeatTTL,
+	})
+	if err != nil {
+		return err
+	}
+
+	app.redis = runtime
+	return nil
+}
+
+func (app *App) initMetricsServer() error {
+	if app.config == nil {
+		return nil
+	}
+
+	addr := strings.TrimSpace(app.config.Platform.MetricsAddr)
+	if addr == "" {
+		app.logger.Info("metrics server disabled", zap.String("reason", "platform.metrics_addr empty"))
+		return nil
+	}
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/metrics", metrics.Handler)
+
+	listener, err := net.Listen("tcp", addr)
+	if err != nil {
+		return err
+	}
+
+	app.metricsSrv = &http.Server{
+		Addr:              addr,
+		Handler:           mux,
+		ReadHeaderTimeout: 5 * time.Second,
+	}
+
+	go func() {
+		if err := app.metricsSrv.Serve(listener); err != nil && err != http.ErrServerClosed {
+			app.logger.Error("metrics server exited", zap.Error(err), zap.String("addr", addr))
+		}
+	}()
+
+	app.logger.Info("metrics server started", zap.String("addr", addr))
 	return nil
 }
 
@@ -303,6 +380,14 @@ func (app *App) wireMainLoop(ctx context.Context) error {
 
 // startWorkers starts background workers for scanner and execution.
 func (app *App) startWorkers(ctx context.Context) {
+	if app.redis != nil {
+		app.wg.Add(1)
+		go func() {
+			defer app.wg.Done()
+			app.redis.Run(ctx)
+		}()
+	}
+
 	// Scanner worker
 	app.wg.Add(1)
 	go func() {
@@ -378,6 +463,14 @@ func (app *App) evaluateStrategies(ctx context.Context) {
 
 // cleanup releases resources.
 func (app *App) cleanup() {
+	if app.metricsSrv != nil {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		_ = app.metricsSrv.Shutdown(shutdownCtx)
+		cancel()
+	}
+	if app.redis != nil {
+		_ = app.redis.Close()
+	}
 	if app.store != nil {
 		if closer, ok := any(app.store).(interface{ Close() error }); ok {
 			_ = closer.Close()

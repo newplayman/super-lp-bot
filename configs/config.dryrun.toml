@@ -19,6 +19,12 @@ commitment = "finalized"
 backend = "sqlite"
 sqlite_path = "data/dryrun.db"
 
+[redis]
+url = "${REDIS_URL}"
+prefix = "lpbot"
+heartbeat_interval_seconds = 15
+heartbeat_ttl_seconds = 60
+
 [bus]
 backend = "inproc"
 

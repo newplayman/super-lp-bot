@@ -61,13 +61,20 @@ vim .env.postgres
 
 - `BASE_RPC_PRIMARY`, `BASE_RPC_FALLBACK`, `BASE_WS`, `SOL_RPC_PRIMARY`
 - `DATABASE_URL`（VPS 连接 `vps` 上 PostgreSQL 的连接串）
-- `REDIS_URL`（预留）
+- `REDIS_URL`（建议启用，当前用于 Redis 心跳与运行态探活）
 
 ## 5. 安装依赖与数据库
 
 ```bash
 sudo apt-get update
 sudo apt-get install -y postgresql redis-server
+```
+
+推荐先确认 Redis 本机可达：
+
+```bash
+redis-cli ping
+# 期望: PONG
 ```
 
 ```bash
@@ -103,6 +110,7 @@ Type=simple
 User=lpbot
 WorkingDirectory=/opt/lpbot/lp-bot-v3
 EnvironmentFile=/opt/lpbot/lp-bot-v3/.env.postgres
+EnvironmentFile=/opt/lpbot/lp-bot-v3/.env.redis
 ExecStart=/opt/lpbot/lp-bot-v3/bin/lpbot-shadow --config=/opt/lpbot/lp-bot-v3/configs/config.shadow.toml
 Restart=always
 RestartSec=5
@@ -143,6 +151,7 @@ sudo systemctl restart lpbot-shadow
 - `sudo systemctl status lpbot-shadow`
 - `sudo journalctl -u lpbot-shadow -n 100 --no-pager`
 - `curl http://127.0.0.1:9090/metrics | head -20`
+- `redis-cli --scan --pattern 'lpbot:*:heartbeat:*'`
 - `ss -lnt | grep 5432`
 
 ## 11. 全量审计脚本（v3）

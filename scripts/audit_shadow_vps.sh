@@ -260,7 +260,7 @@ exec 2>&1
   if [ -n "${REDIS_URL:-}" ]; then
     pass "REDIS_URL is set"
   else
-    warn "REDIS_URL is empty (expected for later integration)"
+    warn "REDIS_URL is empty (Redis runtime disabled)"
   fi
 
   if has_command ss; then
@@ -305,6 +305,12 @@ exec 2>&1
   if [ -n "${REDIS_URL:-}" ] && ensure_tool redis-cli redis-tools; then
     if redis-cli -u "${REDIS_URL}" ping | grep -q PONG; then
       pass "redis ping success"
+      heartbeat_key="$(redis-cli -u "${REDIS_URL}" --scan --pattern 'lpbot:*:heartbeat:*' 2>/dev/null | head -n 1 || true)"
+      if [ -n "$heartbeat_key" ]; then
+        pass "redis heartbeat key present: $heartbeat_key"
+      else
+        warn "redis heartbeat key not found"
+      fi
     else
       fail "redis ping failed"
     fi
