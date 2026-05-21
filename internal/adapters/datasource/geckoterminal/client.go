@@ -32,19 +32,19 @@ func NewClient() *Client {
 // OHLCV represents a single OHLCV candle from GeckoTerminal.
 type OHLCV struct {
 	Attributes struct {
-		OHLCVOpen    string `json:"ohlcv_open"`
-		OHLCVHigh    string `json:"ohlcv_high"`
-		OHLCVLow     string `json:"ohlcv_low"`
-		OHLCVClose   string `json:"ohlcv_close"`
-		OHLCVVolume  string `json:"ohlcv_volume"`
-		Timestamp    string `json:"timestamp"`
-		BlockTime    string `json:"block_time"`
-		Transaction  string `json:"transaction"`
-		TxHash       string `json:"tx_hash"`
-		TxFrom       string `json:"tx_from"`
-		TxTo         string `json:"tx_to"`
-		TxType       string `json:"tx_type"`
-	} `json:"attributes"`
+		OHLCVOpen   string `json:"ohlcv_open"`
+		OHLCVHigh   string `json:"ohlcv_high"`
+		OHLCVLow    string `json:"ohlcv_low"`
+		OHLCVClose  string `json:"ohlcv_close"`
+		OHLCVVolume string `json:"ohlcv_volume"`
+		Timestamp   string `json:"timestamp"`
+		BlockTime   string `json:"block_time"`
+		Transaction string `json:"transaction"`
+		TxHash      string `json:"tx_hash"`
+		TxFrom      string `json:"tx_from"`
+		TxTo        string `json:"tx_to"`
+		TxType      string `json:"tx_type"`
+	} `json:"relationships"`
 }
 
 // OHLCVListResponse represents the OHLCV API response from GeckoTerminal.
@@ -65,18 +65,40 @@ type PoolInfo struct {
 	ID         string `json:"id"`
 	Type       string `json:"type"`
 	Attributes struct {
-		Address      string `json:"address"`
-		BaseVolume   string `json:"base_volume"`
-		QuoteVolume  string `json:"quote_volume"`
-		BaseLiquidityUSD string `json:"base_liquidity_usd"`
+		Address           string `json:"address"`
+		Name              string `json:"name"`
+		BaseVolume        string `json:"base_volume"`
+		QuoteVolume       string `json:"quote_volume"`
+		BaseLiquidityUSD  string `json:"base_liquidity_usd"`
 		QuoteLiquidityUSD string `json:"quote_liquidity_usd"`
-		LiquidityUSD string `json:"liquidity_usd"`
-		PriceUSD     string `json:"price_usd"`
-		PriceNative  string `json:"price_native"`
-		TxCount      string `json:"tx_count"`
-		PoolCreated  string `json:"pool_created"`
-		Token0       Token  `json:"token0"`
-		Token1       Token  `json:"token1"`
+		LiquidityUSD      string `json:"liquidity_usd"`
+		ReserveInUSD      string `json:"reserve_in_usd"`
+		PriceUSD          string `json:"price_usd"`
+		PriceNative       string `json:"price_native"`
+		TxCount           string `json:"tx_count"`
+		PoolCreated       string `json:"pool_created"`
+		Token0            Token  `json:"token0"`
+		Token1            Token  `json:"token1"`
+		VolumeUSD         struct {
+			H24 string `json:"h24"`
+		} `json:"volume_usd"`
+	} `json:"attributes"`
+	Relationships struct {
+		BaseToken struct {
+			Data struct {
+				ID string `json:"id"`
+			} `json:"data"`
+		} `json:"base_token"`
+		QuoteToken struct {
+			Data struct {
+				ID string `json:"id"`
+			} `json:"data"`
+		} `json:"quote_token"`
+		Dex struct {
+			Data struct {
+				ID string `json:"id"`
+			} `json:"data"`
+		} `json:"dex"`
 	} `json:"attributes"`
 }
 

@@ -5,6 +5,8 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/lpbot/lpbot/internal/domain"
@@ -46,7 +48,12 @@ func (a *Adapter) DiscoverPools(ctx context.Context, chain domain.ChainID, proto
 
 	result := make([]ports.PoolDiscovery, 0, len(pools))
 	for _, pool := range pools {
-		liquidity, err := decimal.NewFromString(pool.Attributes.LiquidityUSD)
+		liquidity, err := decimal.NewFromString(firstNonEmpty(
+			pool.Attributes.LiquidityUSD,
+			pool.Attributes.ReserveInUSD,
+			pool.Attributes.BaseLiquidityUSD,
+			pool.Attributes.QuoteLiquidityUSD,
+		))
 		if err != nil {
 			continue
 		}
@@ -54,24 +61,34 @@ func (a *Adapter) DiscoverPools(ctx context.Context, chain domain.ChainID, proto
 			continue
 		}
 
-		token0, _ := domain.ParseAddress(pool.Attributes.Token0.Address)
-		token1, _ := domain.ParseAddress(pool.Attributes.Token1.Address)
-		baseVolume, _ := decimal.NewFromString(pool.Attributes.BaseVolume)
-		quoteVolume, _ := decimal.NewFromString(pool.Attributes.QuoteVolume)
+		token0, err := domain.ParseAddress(resolveTokenAddress(pool.Attributes.Token0.Address, pool.Relationships.BaseToken.Data.ID))
+		if err != nil {
+			continue
+		}
+		token1, err := domain.ParseAddress(resolveTokenAddress(pool.Attributes.Token1.Address, pool.Relationships.QuoteToken.Data.ID))
+		if err != nil {
+			continue
+		}
+		volume, _ := decimal.NewFromString(firstNonEmpty(pool.Attributes.VolumeUSD.H24, pool.Attributes.BaseVolume, pool.Attributes.QuoteVolume, "0"))
 
 		poolID := pool.Attributes.Address
 		if poolID == "" {
-			poolID = pool.ID
+			poolID = stripNetworkPrefix(pool.ID)
+		}
+		protocol := pool.Relationships.Dex.Data.ID
+		if protocol == "" {
+			protocol = "geckoterminal"
 		}
 
 		result = append(result, ports.PoolDiscovery{
 			ID:        poolID,
 			Chain:     chain,
-			Protocol:  "geckoterminal",
+			Protocol:  protocol,
 			Token0:    token0,
 			Token1:    token1,
+			FeeBPS:    parseFeeBPS(pool.Attributes.Name),
 			TVLUSD:    liquidity,
-			Vol24h:    baseVolume.Add(quoteVolume),
+			Vol24h:    volume,
 			UpdatedAt: time.Now(),
 		})
 	}
@@ -90,25 +107,29 @@ func (a *Adapter) GetPoolMetadata(ctx context.Context, chain domain.ChainID, poo
 		return nil, nil
 	}
 
-	token0, _ := domain.ParseAddress(pool.Attributes.Token0.Address)
-	token1, _ := domain.ParseAddress(pool.Attributes.Token1.Address)
-	liquidity, _ := decimal.NewFromString(pool.Attributes.LiquidityUSD)
-	baseVolume, _ := decimal.NewFromString(pool.Attributes.BaseVolume)
-	quoteVolume, _ := decimal.NewFromString(pool.Attributes.QuoteVolume)
+	token0, _ := domain.ParseAddress(resolveTokenAddress(pool.Attributes.Token0.Address, pool.Relationships.BaseToken.Data.ID))
+	token1, _ := domain.ParseAddress(resolveTokenAddress(pool.Attributes.Token1.Address, pool.Relationships.QuoteToken.Data.ID))
+	liquidity, _ := decimal.NewFromString(firstNonEmpty(pool.Attributes.LiquidityUSD, pool.Attributes.ReserveInUSD, "0"))
+	volume, _ := decimal.NewFromString(firstNonEmpty(pool.Attributes.VolumeUSD.H24, pool.Attributes.BaseVolume, pool.Attributes.QuoteVolume, "0"))
 
 	resolvedPoolID := pool.Attributes.Address
 	if resolvedPoolID == "" {
-		resolvedPoolID = pool.ID
+		resolvedPoolID = stripNetworkPrefix(pool.ID)
+	}
+	protocol := pool.Relationships.Dex.Data.ID
+	if protocol == "" {
+		protocol = "geckoterminal"
 	}
 
 	return &ports.PoolDiscovery{
 		ID:        resolvedPoolID,
 		Chain:     chain,
-		Protocol:  "geckoterminal",
+		Protocol:  protocol,
 		Token0:    token0,
 		Token1:    token1,
+		FeeBPS:    parseFeeBPS(pool.Attributes.Name),
 		TVLUSD:    liquidity,
-		Vol24h:    baseVolume.Add(quoteVolume),
+		Vol24h:    volume,
 		UpdatedAt: time.Now(),
 	}, nil
 }
@@ -200,4 +221,43 @@ func parseTimestamp(ts string) (int64, error) {
 		return 0, err
 	}
 	return t.Unix(), nil
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			return value
+		}
+	}
+	return ""
+}
+
+func resolveTokenAddress(attrAddress string, relationshipID string) string {
+	if strings.TrimSpace(attrAddress) != "" {
+		return attrAddress
+	}
+	return stripNetworkPrefix(relationshipID)
+}
+
+func stripNetworkPrefix(value string) string {
+	if idx := strings.LastIndex(value, "_"); idx >= 0 && idx+1 < len(value) {
+		return value[idx+1:]
+	}
+	return value
+}
+
+func parseFeeBPS(name string) uint {
+	fields := strings.Fields(name)
+	if len(fields) == 0 {
+		return 0
+	}
+	last := strings.TrimSuffix(fields[len(fields)-1], "%")
+	if last == fields[len(fields)-1] {
+		return 0
+	}
+	percent, err := strconv.ParseFloat(last, 64)
+	if err != nil {
+		return 0
+	}
+	return uint(percent * 100)
 }
