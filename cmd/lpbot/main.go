@@ -12,8 +12,8 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"path/filepath"
 	"os/signal"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -121,7 +121,7 @@ func newLiveSafetyGate(buildMode string, cfg *config.Config) *liveSafetyGate {
 	gate.walletPassphraseSet = strings.TrimSpace(cfg.Wallet.Passphrase) != ""
 	gate.npmBaseAddress = strings.TrimSpace(cfg.Execution.NPMBaseAddress)
 	gate.npmBaseConfigured = gate.npmBaseAddress != ""
-	gate.sizingPathReady = false
+	gate.sizingPathReady = nativeRPCLiveSizingSupported(cfg)
 	gate.executionBackendConfigured = gate.backendConfigured()
 
 	for _, chain := range cfg.Live.AllowedChains {
@@ -639,6 +639,11 @@ func (app *App) wireMainLoop(ctx context.Context) error {
 		riskGate:    riskGate,
 		store:       app.store,
 		liveGate:    app.liveGate,
+		provider:    app.rpc["base"],
+		walletAddress: parseAddressOrZero(
+			strings.TrimSpace(app.config.Live.WalletAddress),
+		),
+		npmBaseAddress: strings.TrimSpace(app.config.Execution.NPMBaseAddress),
 	}
 	if app.logger != nil {
 		app.logger.Info("OrderManager wired")
@@ -1009,10 +1014,13 @@ func (a *approveTrackerAdapter) EnsureApproval(ctx context.Context, pool domain.
 }
 
 type orderManagerAdapter struct {
-	broadcaster interface{}
-	riskGate    *risk.RiskGate
-	store       ports.Store
-	liveGate    *liveSafetyGate
+	broadcaster    interface{}
+	riskGate       *risk.RiskGate
+	store          ports.Store
+	liveGate       *liveSafetyGate
+	provider       *rpc.RoundRobinProvider
+	walletAddress  domain.Address
+	npmBaseAddress string
 }
 
 func (o *orderManagerAdapter) Open(ctx context.Context, pool domain.Pool, amountUSD domain.Decimal) (loop.ExecutionResult, error) {
@@ -1062,18 +1070,25 @@ func (o *orderManagerAdapter) Open(ctx context.Context, pool domain.Pool, amount
 	}
 
 	txHash := shadowID("tx", positionID, now)
-	tx := domain.SignedTx{
-		UnsignedTx: domain.UnsignedTx{
-			ID:       txHash,
-			Chain:    pool.Chain,
-			From:     zeroEVMAddress(),
-			To:       parseAddressOrZero(pool.ID),
-			Value:    domain.ZeroDecimal(),
-			Deadline: now + 300,
-			MinOut:   domain.ZeroDecimal(),
-		},
-		Hash:   txHash,
-		Status: domain.TxBuilt,
+	tx, err := o.buildPreparedMintTx(ctx, pool, amountUSD, positionID, time.Unix(now, 0))
+	if err != nil {
+		if o.liveGate != nil && o.liveGate.isExecutionMode() {
+			return loop.ExecutionResult{Success: false, Error: err.Error()}, nil
+		}
+
+		tx = domain.SignedTx{
+			UnsignedTx: domain.UnsignedTx{
+				ID:       txHash,
+				Chain:    pool.Chain,
+				From:     zeroEVMAddress(),
+				To:       parseAddressOrZero(pool.ID),
+				Value:    domain.ZeroDecimal(),
+				Deadline: now + 300,
+				MinOut:   domain.ZeroDecimal(),
+			},
+			Hash:   txHash,
+			Status: domain.TxBuilt,
+		}
 	}
 	if err := o.store.TxRepo().UpsertTx(ctx, tx); err != nil {
 		return loop.ExecutionResult{}, err

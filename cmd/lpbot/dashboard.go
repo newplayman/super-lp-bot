@@ -8,11 +8,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
-	"os"
 	"net"
 	"net/http"
-	"sort"
+	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -260,8 +260,8 @@ func (app *App) registerDashboardRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/web", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/web/", http.StatusFound)
 	})
-	mux.HandleFunc("/", app.dashboardAuth(app.handleDashboard))
-	mux.HandleFunc("/dashboard", app.dashboardAuth(app.handleDashboard))
+	mux.HandleFunc("/", app.dashboardAuth(app.redirectToWebDashboard))
+	mux.HandleFunc("/dashboard", app.dashboardAuth(app.redirectToWebDashboard))
 	mux.HandleFunc("/api/dashboard", app.dashboardAuth(app.handleDashboardAPI))
 }
 
@@ -304,6 +304,18 @@ func (app *App) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		"Mode":    BuildMode,
 		"Commit":  BuildCommit,
 	})
+}
+
+func (app *App) redirectToWebDashboard(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/" && r.URL.Path != "/dashboard" {
+		http.NotFound(w, r)
+		return
+	}
+	target := "/web/"
+	if r.URL.RawQuery != "" {
+		target += "?" + r.URL.RawQuery
+	}
+	http.Redirect(w, r, target, http.StatusFound)
 }
 
 func (app *App) handleDashboardAPI(w http.ResponseWriter, r *http.Request) {

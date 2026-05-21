@@ -114,7 +114,13 @@
 
     function setHeaderStatus(data, healthPct) {
         const env = document.querySelector('.env-badge');
-        if (env) env.innerHTML = '<span class="dot green-dot"></span>' + (data.mode || 'shadow');
+        if (env) {
+            const canary = data.canary_readiness || {};
+            const canaryLabel = canary.build_mode
+                ? (canary.ready ? 'canary ready' : 'canary gated')
+                : 'canary unavailable';
+            env.innerHTML = '<span class="dot green-dot"></span>' + (data.mode || 'shadow') + ' / ' + canaryLabel;
+        }
         const health = document.querySelector('.health-badge');
         if (health) health.innerHTML = '<span class="dot green-dot-breath"></span>' + (healthPct >= 90 ? '系统健康' : '需要关注');
         const alarm = document.querySelector('.alarm-count');
