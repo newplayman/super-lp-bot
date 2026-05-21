@@ -71,18 +71,21 @@ func (app *App) validatePoolOnChain(ctx context.Context, pool domain.Pool) chain
 			Reason: err.Error(),
 		}
 	}
-	if !strings.EqualFold(token0.String(), pool.Token0.String()) {
+	tokensExact := strings.EqualFold(token0.String(), pool.Token0.String()) &&
+		strings.EqualFold(token1.String(), pool.Token1.String())
+	tokensSwapped := strings.EqualFold(token0.String(), pool.Token1.String()) &&
+		strings.EqualFold(token1.String(), pool.Token0.String())
+	if !tokensExact && !tokensSwapped {
 		return chainValidationResult{
-			OK:     false,
-			Stage:  "chain_token0_mismatch",
-			Reason: fmt.Sprintf("token0 mismatch: chain=%s metadata=%s", token0, pool.Token0),
-		}
-	}
-	if !strings.EqualFold(token1.String(), pool.Token1.String()) {
-		return chainValidationResult{
-			OK:     false,
-			Stage:  "chain_token1_mismatch",
-			Reason: fmt.Sprintf("token1 mismatch: chain=%s metadata=%s", token1, pool.Token1),
+			OK:    false,
+			Stage: "chain_token_pair_mismatch",
+			Reason: fmt.Sprintf(
+				"token pair mismatch: chain=%s/%s metadata=%s/%s",
+				token0,
+				token1,
+				pool.Token0,
+				pool.Token1,
+			),
 		}
 	}
 
@@ -100,6 +103,13 @@ func (app *App) validatePoolOnChain(ctx context.Context, pool domain.Pool) chain
 				}
 			}
 		}
+		if tokensSwapped {
+			return chainValidationResult{
+				OK:     true,
+				Stage:  "chain_v3_validated_swapped_tokens",
+				Reason: "verified code, token pair with metadata order swapped, slot0, liquidity",
+			}
+		}
 		return chainValidationResult{
 			OK:     true,
 			Stage:  "chain_v3_validated",
@@ -109,6 +119,13 @@ func (app *App) validatePoolOnChain(ctx context.Context, pool domain.Pool) chain
 
 	reservesData, reservesErr := callRawMethod(ctx, provider, poolAddr, "getReserves()")
 	if reservesErr == nil && len(reservesData) >= 96 {
+		if tokensSwapped {
+			return chainValidationResult{
+				OK:     true,
+				Stage:  "chain_v2_validated_swapped_tokens",
+				Reason: "verified code, token pair with metadata order swapped, reserves",
+			}
+		}
 		return chainValidationResult{
 			OK:     true,
 			Stage:  "chain_v2_validated",

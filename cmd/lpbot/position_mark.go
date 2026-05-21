@@ -693,7 +693,7 @@ func buildShadowExitDecision(pos activeShadowPosition, mark shadowPositionMarkRe
 	switch {
 	case !amountUSD.IsZero() && ilPct.GreaterThan(thresholds.ILStopPct):
 		wouldExit = true
-		reason = fmt.Sprintf("IL breach: %.2f%% > %.2f%%", ilPct.Mul(dexdomain.MustDecimal("100")), thresholds.ILStopPct.Mul(dexdomain.MustDecimal("100")))
+		reason = fmt.Sprintf("IL breach: %s%% > %s%%", ilPct.Mul(dexdomain.MustDecimal("100")).StringFixed(2), thresholds.ILStopPct.Mul(dexdomain.MustDecimal("100")).StringFixed(2))
 		action = "shadow_close"
 	case !currentTVLUSD.IsZero() && currentTVLUSD.LessThan(tvlFloor):
 		wouldExit = true
@@ -705,7 +705,7 @@ func buildShadowExitDecision(pos activeShadowPosition, mark shadowPositionMarkRe
 		action = "shadow_close"
 	case priceChangePct.Abs().GreaterThan(thresholds.ILStopPct.Mul(dexdomain.MustDecimal("3"))):
 		wouldExit = true
-		reason = fmt.Sprintf("price moved %.2f%% which exceeds watch band %.2f%%", priceChangePct.Abs().Mul(dexdomain.MustDecimal("100")), thresholds.ILStopPct.Mul(dexdomain.MustDecimal("300")))
+		reason = fmt.Sprintf("price moved %s%% which exceeds watch band %s%%", priceChangePct.Abs().Mul(dexdomain.MustDecimal("100")).StringFixed(2), thresholds.ILStopPct.Mul(dexdomain.MustDecimal("300")).StringFixed(2))
 		action = "shadow_review"
 	}
 
