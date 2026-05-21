@@ -255,6 +255,10 @@ func (app *App) markShadowPositions(ctx context.Context) {
 		app.logger.Warn("closed shadow mark backfill failed", zap.Error(err))
 		return
 	}
+	if err := app.refreshAllClosedShadowExitReasons(ctx, provider.DB()); err != nil {
+		app.logger.Warn("closed shadow exit reason refresh failed", zap.Error(err))
+		return
+	}
 
 	valuationFloat, _ := totalValuation.Float64()
 	netPnLFloat, _ := totalNetPnL.Float64()
@@ -587,6 +591,60 @@ func (app *App) refreshClosedShadowExitReasons(ctx context.Context, db *sql.DB, 
 		return fmt.Errorf("commit closed exit reason refresh tx: %w", err)
 	}
 	return nil
+}
+
+func (app *App) refreshAllClosedShadowExitReasons(ctx context.Context, db *sql.DB) error {
+	rows, err := db.QueryContext(ctx, `
+		SELECT position_id, pool_id, chain, status, tier, amount_usd, source,
+		       hold_minutes, valuation_usd, fee_usd, il_usd, net_pnl_usd,
+		       current_tvl_usd, current_vol24h_usd, price_change_pct, mark_time, created_at
+		FROM (
+			SELECT DISTINCT ON (position_id)
+				position_id, pool_id, chain, status, tier, amount_usd, source,
+				hold_minutes, valuation_usd, fee_usd, il_usd, net_pnl_usd,
+				current_tvl_usd, current_vol24h_usd, price_change_pct, mark_time, created_at
+			FROM shadow_position_marks
+			WHERE status = 'closed'
+			ORDER BY position_id, mark_time DESC
+		) latest
+		ORDER BY mark_time DESC
+		LIMIT 50
+	`)
+	if err != nil {
+		return fmt.Errorf("query latest closed shadow marks: %w", err)
+	}
+	defer rows.Close()
+
+	records := make([]shadowPositionMarkRecord, 0)
+	for rows.Next() {
+		var record shadowPositionMarkRecord
+		if err := rows.Scan(
+			&record.PositionID,
+			&record.PoolID,
+			&record.Chain,
+			&record.Status,
+			&record.Tier,
+			&record.AmountUSD,
+			&record.Source,
+			&record.HoldMinutes,
+			&record.ValuationUSD,
+			&record.FeeUSD,
+			&record.ILUSD,
+			&record.NetPnLUSD,
+			&record.CurrentTVLUSD,
+			&record.CurrentVol24h,
+			&record.PriceChangePct,
+			&record.MarkTime,
+			&record.CreatedAt,
+		); err != nil {
+			return fmt.Errorf("scan latest closed shadow mark: %w", err)
+		}
+		records = append(records, record)
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("iterate latest closed shadow marks: %w", err)
+	}
+	return app.refreshClosedShadowExitReasons(ctx, db, records)
 }
 
 func buildClosedShadowExitReason(record shadowPositionMarkRecord) string {
