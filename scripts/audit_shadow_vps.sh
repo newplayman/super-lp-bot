@@ -309,9 +309,15 @@ exec 2>&1
   fi
 
   if [ -n "${REDIS_URL:-}" ] && ensure_tool redis-cli redis-tools; then
-    if redis-cli -u "${REDIS_URL}" ping | grep -q PONG; then
+    redis_cli_args=()
+    if [ -n "${REDIS_PASS:-}" ]; then
+      redis_cli_args=(-a "${REDIS_PASS}")
+    else
+      redis_cli_args=(-u "${REDIS_URL}")
+    fi
+    if redis-cli "${redis_cli_args[@]}" ping | grep -q PONG; then
       pass "redis ping success"
-      heartbeat_key="$(redis-cli -u "${REDIS_URL}" --scan --pattern 'lpbot:*:heartbeat:*' 2>/dev/null | head -n 1 || true)"
+      heartbeat_key="$(redis-cli "${redis_cli_args[@]}" --scan --pattern 'lpbot:*:heartbeat:*' 2>/dev/null | head -n 1 || true)"
       if [ -n "$heartbeat_key" ]; then
         pass "redis heartbeat key present: $heartbeat_key"
       else
