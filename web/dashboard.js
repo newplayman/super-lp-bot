@@ -151,6 +151,11 @@
         const backendSummary = live.execution_configured ? `${backend} / configured` : `${backend} / config missing`;
         const backendStatus = live.execution_backend_wired ? (live.ready ? '可执行' : '已接线待放行') : '执行器未接线';
         const whitelistStatus = num(live.allowed_pools_count) > 0 ? '白名单已加载' : '白名单为空';
+        const poolChecks = Array.isArray(live.allowed_pool_checks) ? live.allowed_pool_checks : [];
+        const poolCheck = poolChecks[0] || {};
+        const poolStatus = poolCheck.pool_id
+            ? `${poolCheck.pair_ok ? 'WETH/USDC 已链上确认' : '池子不匹配'} / fee ${poolCheck.fee || '-'}`
+            : whitelistStatus;
         const rpcStatus = live.rpc_primary_configured ? 'RPC 已配置' : 'RPC 缺失';
         const okxStatus = backend === 'okx-onchain'
             ? ((live.okx_api_configured && live.okx_project_configured) ? 'OKX 凭据已配置' : 'OKX 凭据缺失')
@@ -179,7 +184,7 @@
         setText('execution-wallet', wallet);
         setText('execution-wallet-status', wallet === '未配置' ? '缺失' : balanceStatus);
         setText('execution-whitelist', `${allowedChains} / ${num(live.allowed_pools_count)} pools`);
-        setText('execution-whitelist-status', whitelistStatus);
+        setText('execution-whitelist-status', poolStatus);
         setText('execution-last-tx', lastTx.tx_hash ? short(lastTx.tx_hash) : (live.canary ? 'canary not started' : 'shadow only'));
         setText('execution-last-tx-status', lastTx.tx_hash ? (lastTx.status || 'recorded') : `${rpcStatus} | ${okxStatus}`);
         setText('execution-blockers', `${blockerText} | ${balanceStatus} | ${rpcStatus} | ${okxStatus} | ${walletStatus} | ${npmStatus} | ${sizingStatus}`);
