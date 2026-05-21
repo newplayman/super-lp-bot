@@ -39,8 +39,9 @@ import (
 )
 
 const (
-	Version              = "0.4.0"
-	shadowCandidateLimit = 10
+	Version                  = "0.4.0"
+	shadowCandidateLimit     = 10
+	shadowOpenScoreThreshold = 60.0
 )
 
 var (
@@ -536,7 +537,7 @@ func (app *App) evaluateStrategies(ctx context.Context) {
 			continue
 		}
 		if intent == nil {
-			trace.IntentReason = fmt.Sprintf("score threshold not met: total %.1f < 60", score.ComputeTotal())
+			trace.IntentReason = fmt.Sprintf("score threshold not met: total %.1f < %.0f", score.ComputeTotal(), shadowOpenScoreThreshold)
 			traces = append(traces, trace)
 			continue
 		}
@@ -597,6 +598,13 @@ func selectShadowCandidatesByScore(scoredPools []scanner.ScoredPool, limit int) 
 
 	candidates := make([]domain.Pool, 0, minInt(limit, len(ranked)))
 	for i := 0; i < len(ranked) && len(candidates) < limit; i++ {
+		score := ranked[i].Score.Total
+		if score == 0 {
+			score = ranked[i].Score.ComputeTotal()
+		}
+		if score < shadowOpenScoreThreshold {
+			continue
+		}
 		candidates = append(candidates, ranked[i].Pool)
 	}
 	return candidates
