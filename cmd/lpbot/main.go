@@ -628,7 +628,11 @@ func (app *App) wireMainLoop(ctx context.Context) error {
 
 	// Create ApproveTracker (will use existing implementation from execution module)
 	approveTracker := &approveTrackerAdapter{
-		store: app.store,
+		store:          app.store,
+		liveGate:       app.liveGate,
+		provider:       app.rpc["base"],
+		walletAddress:  parseAddressOrZero(strings.TrimSpace(app.config.Live.WalletAddress)),
+		npmBaseAddress: strings.TrimSpace(app.config.Execution.NPMBaseAddress),
 	}
 	if app.logger != nil {
 		app.logger.Info("ApproveTracker wired")
@@ -1003,17 +1007,43 @@ func (m *metricsAdapter) SetPositionsClosed(n int64)     {}
 func (m *metricsAdapter) SetPnLDaily(pnl domain.Decimal) {}
 
 type approveTrackerAdapter struct {
-	store ports.Store
+	store          ports.Store
+	liveGate       *liveSafetyGate
+	provider       *rpc.RoundRobinProvider
+	walletAddress  domain.Address
+	npmBaseAddress string
 }
 
 func (a *approveTrackerAdapter) HasAllowance(pool domain.Pool) bool {
-	// Placeholder - real implementation in TR-04
+	if a == nil || a.liveGate == nil || !a.liveGate.isExecutionMode() {
+		return true
+	}
+	if pool.Chain != domain.ChainBase || a.provider == nil || a.walletAddress.IsZero() {
+		return false
+	}
+	spender := parseAddressOrZero(strings.TrimSpace(a.npmBaseAddress))
+	if spender.IsZero() {
+		return false
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+	defer cancel()
+	for _, token := range []domain.Address{pool.Token0, pool.Token1} {
+		allowance, err := dashboardERC20Allowance(ctx, a.provider, token.String(), a.walletAddress, spender)
+		if err != nil || allowance.Sign() <= 0 {
+			return false
+		}
+	}
 	return true
 }
 
 func (a *approveTrackerAdapter) EnsureApproval(ctx context.Context, pool domain.Pool) error {
-	// Placeholder - real implementation in TR-04
-	return nil
+	if a == nil || a.liveGate == nil || !a.liveGate.isExecutionMode() {
+		return nil
+	}
+	if a.HasAllowance(pool) {
+		return nil
+	}
+	return fmt.Errorf("live approval path is not wired; refusing to auto-approve pool %s", pool.ID)
 }
 
 type orderManagerAdapter struct {
