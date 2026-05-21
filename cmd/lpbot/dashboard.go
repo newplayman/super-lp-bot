@@ -96,6 +96,7 @@ type dashboardLiveReadiness struct {
 	WalletAddress         string                  `json:"wallet_address"`
 	WalletBalances        dashboardWalletBalances `json:"wallet_balances"`
 	FundingReady          bool                    `json:"funding_ready"`
+	ApprovalsReady        bool                    `json:"approvals_ready"`
 	AllowedChains         []string                `json:"allowed_chains"`
 	AllowedPoolsCount     int                     `json:"allowed_pools_count"`
 	MaxOrderUSD           float64                 `json:"max_order_usd"`
@@ -118,12 +119,15 @@ type dashboardLiveReadiness struct {
 }
 
 type dashboardWalletBalances struct {
-	Address   string `json:"address"`
-	ETH       string `json:"eth"`
-	USDC      string `json:"usdc"`
-	WETH      string `json:"weth"`
-	CheckedAt string `json:"checked_at"`
-	Error     string `json:"error,omitempty"`
+	Address       string `json:"address"`
+	NPMSpender    string `json:"npm_spender"`
+	ETH           string `json:"eth"`
+	USDC          string `json:"usdc"`
+	WETH          string `json:"weth"`
+	USDCAllowance string `json:"usdc_allowance"`
+	WETHAllowance string `json:"weth_allowance"`
+	CheckedAt     string `json:"checked_at"`
+	Error         string `json:"error,omitempty"`
 }
 
 type dashboardStageCount struct {
@@ -505,9 +509,10 @@ func dashboardLoadCanaryReadiness(ctx context.Context) (readiness dashboardLiveR
 	}
 	gate := newLiveSafetyGate("live", cfg)
 	readiness = gate.readiness()
-	balances, fundingReady, balanceBlockers, balanceErr := dashboardCanaryWalletBalances(ctx, cfg)
+	balances, fundingReady, approvalsReady, balanceBlockers, balanceErr := dashboardCanaryWalletBalances(ctx, cfg)
 	readiness.WalletBalances = balances
 	readiness.FundingReady = fundingReady
+	readiness.ApprovalsReady = approvalsReady
 	if balanceErr != nil {
 		readiness.Blockers = append(readiness.Blockers, fmt.Sprintf("canary wallet balance check failed: %v", balanceErr))
 		readiness.Ready = false
@@ -519,17 +524,19 @@ func dashboardLoadCanaryReadiness(ctx context.Context) (readiness dashboardLiveR
 	return readiness, nil
 }
 
-func dashboardCanaryWalletBalances(ctx context.Context, cfg *config.Config) (dashboardWalletBalances, bool, []string, error) {
+func dashboardCanaryWalletBalances(ctx context.Context, cfg *config.Config) (dashboardWalletBalances, bool, bool, []string, error) {
 	if cfg == nil {
-		return dashboardWalletBalances{}, false, nil, fmt.Errorf("canary config is nil")
+		return dashboardWalletBalances{}, false, false, nil, fmt.Errorf("canary config is nil")
 	}
 	walletAddress := parseAddressOrZero(strings.TrimSpace(cfg.Live.WalletAddress))
+	npmAddress := parseAddressOrZero(strings.TrimSpace(cfg.Execution.NPMBaseAddress))
 	balances := dashboardWalletBalances{
-		Address:   maskAddress(cfg.Live.WalletAddress),
-		CheckedAt: time.Now().UTC().Format(time.RFC3339),
+		Address:    maskAddress(cfg.Live.WalletAddress),
+		NPMSpender: maskAddress(cfg.Execution.NPMBaseAddress),
+		CheckedAt:  time.Now().UTC().Format(time.RFC3339),
 	}
 	if walletAddress.IsZero() {
-		return balances, false, []string{"canary wallet address is invalid"}, nil
+		return balances, false, false, []string{"canary wallet address is invalid"}, nil
 	}
 
 	endpoints := []string{cfg.Chains.Base.RPCPrimary}
@@ -542,27 +549,41 @@ func dashboardCanaryWalletBalances(ctx context.Context, cfg *config.Config) (das
 		HealthCheckTimeout:  2 * time.Second,
 	})
 	if err != nil {
-		return balances, false, nil, err
+		return balances, false, false, nil, err
 	}
 
 	queryCtx, cancel := context.WithTimeout(ctx, 8*time.Second)
 	defer cancel()
 	ethBalance, err := provider.BalanceAt(queryCtx, walletAddress, nil)
 	if err != nil {
-		return balances, false, nil, fmt.Errorf("base eth balance: %w", err)
+		return balances, false, false, nil, fmt.Errorf("base eth balance: %w", err)
 	}
 	usdcBalance, err := dashboardERC20Balance(queryCtx, provider, baseUSDCAddress, walletAddress)
 	if err != nil {
-		return balances, false, nil, fmt.Errorf("base usdc balance: %w", err)
+		return balances, false, false, nil, fmt.Errorf("base usdc balance: %w", err)
 	}
 	wethBalance, err := dashboardERC20Balance(queryCtx, provider, baseWETHAddress, walletAddress)
 	if err != nil {
-		return balances, false, nil, fmt.Errorf("base weth balance: %w", err)
+		return balances, false, false, nil, fmt.Errorf("base weth balance: %w", err)
+	}
+	usdcAllowance := big.NewInt(0)
+	wethAllowance := big.NewInt(0)
+	if !npmAddress.IsZero() {
+		usdcAllowance, err = dashboardERC20Allowance(queryCtx, provider, baseUSDCAddress, walletAddress, npmAddress)
+		if err != nil {
+			return balances, false, false, nil, fmt.Errorf("base usdc allowance: %w", err)
+		}
+		wethAllowance, err = dashboardERC20Allowance(queryCtx, provider, baseWETHAddress, walletAddress, npmAddress)
+		if err != nil {
+			return balances, false, false, nil, fmt.Errorf("base weth allowance: %w", err)
+		}
 	}
 
 	balances.ETH = formatTokenBalance(ethBalance, 18)
 	balances.USDC = formatTokenBalance(usdcBalance, 6)
 	balances.WETH = formatTokenBalance(wethBalance, 18)
+	balances.USDCAllowance = formatTokenBalance(usdcAllowance, 6)
+	balances.WETHAllowance = formatTokenBalance(wethAllowance, 18)
 
 	var blockers []string
 	if ethBalance.Sign() <= 0 {
@@ -574,13 +595,40 @@ func dashboardCanaryWalletBalances(ctx context.Context, cfg *config.Config) (das
 	if wethBalance.Sign() <= 0 {
 		blockers = append(blockers, "canary wallet has no WETH; automated swap/pairing path is not implemented")
 	}
-	return balances, len(blockers) == 0, blockers, nil
+	if npmAddress.IsZero() {
+		blockers = append(blockers, "canary NPM spender address is invalid")
+	}
+	if usdcBalance.Sign() > 0 && usdcAllowance.Sign() <= 0 {
+		blockers = append(blockers, "canary wallet has no USDC allowance for NPM; approval path is not wired")
+	}
+	if wethBalance.Sign() > 0 && wethAllowance.Sign() <= 0 {
+		blockers = append(blockers, "canary wallet has no WETH allowance for NPM; approval path is not wired")
+	}
+	fundingReady := ethBalance.Sign() > 0 && usdcBalance.Sign() > 0 && wethBalance.Sign() > 0
+	approvalsReady := !npmAddress.IsZero() && usdcAllowance.Sign() > 0 && (wethBalance.Sign() <= 0 || wethAllowance.Sign() > 0)
+	return balances, fundingReady, approvalsReady, blockers, nil
 }
 
 func dashboardERC20Balance(ctx context.Context, provider *rpc.RoundRobinProvider, token string, owner domain.Address) (*big.Int, error) {
 	selector := common.FromHex("0x70a08231")
 	ownerBytes := common.LeftPadBytes(common.HexToAddress(owner.String()).Bytes(), 32)
 	data := append(selector, ownerBytes...)
+	raw, err := provider.CallContract(ctx, ethereum.CallMsg{
+		To:   ptrAddress(common.HexToAddress(token)),
+		Data: data,
+	}, nil)
+	if err != nil {
+		return nil, err
+	}
+	return new(big.Int).SetBytes(raw), nil
+}
+
+func dashboardERC20Allowance(ctx context.Context, provider *rpc.RoundRobinProvider, token string, owner, spender domain.Address) (*big.Int, error) {
+	selector := common.FromHex("0xdd62ed3e")
+	ownerBytes := common.LeftPadBytes(common.HexToAddress(owner.String()).Bytes(), 32)
+	spenderBytes := common.LeftPadBytes(common.HexToAddress(spender.String()).Bytes(), 32)
+	data := append(selector, ownerBytes...)
+	data = append(data, spenderBytes...)
 	raw, err := provider.CallContract(ctx, ethereum.CallMsg{
 		To:   ptrAddress(common.HexToAddress(token)),
 		Data: data,

@@ -161,9 +161,12 @@
         const npmStatus = live.npm_base_configured ? 'NPM 地址已配置' : 'NPM 地址缺失';
         const sizingStatus = live.sizing_path_ready ? 'sizing 已实现' : 'sizing 未实现';
         const balances = live.wallet_balances || {};
+        const allowanceStatus = balances.error
+            ? ''
+            : ` / allowance USDC ${fmtBalance(balances.usdc_allowance)} WETH ${fmtBalance(balances.weth_allowance)}`;
         const balanceStatus = balances.error
             ? `余额读取失败: ${balances.error}`
-            : `ETH ${fmtBalance(balances.eth)} / USDC ${fmtBalance(balances.usdc)} / WETH ${fmtBalance(balances.weth)}`;
+            : `ETH ${fmtBalance(balances.eth)} / USDC ${fmtBalance(balances.usdc)} / WETH ${fmtBalance(balances.weth)}${allowanceStatus}`;
 
         setText('decision-exposure', `$${money(live.max_order_usd)} / $${money(live.daily_loss_limit_usd)}`);
         setText('decision-kill-switch', live.kill_switch ? '已触发 / 拒绝新单' : (live.live_enabled ? '未触发 / 等待全量通过' : 'live 未启用'));
