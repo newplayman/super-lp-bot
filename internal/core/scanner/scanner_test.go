@@ -80,11 +80,11 @@ func TestScanner_Score_DifferentPools(t *testing.T) {
 	s := scanner.New(cfg)
 
 	tests := []struct {
-		name     string
-		tvlUSD   string
-		vol24h   string
-		wantMin  float64
-		wantMax  float64
+		name    string
+		tvlUSD  string
+		vol24h  string
+		wantMin float64
+		wantMax float64
 	}{
 		{"Low TVL pool", "1000", "500", 0, 30},
 		{"Medium TVL pool", "100000", "50000", 0, 100},
@@ -210,6 +210,9 @@ func TestScanner_Interface(t *testing.T) {
 type scannerImpl struct{}
 
 func (s *scannerImpl) Run(ctx context.Context) error { return nil }
+func (s *scannerImpl) ScanOnce(ctx context.Context) ([]scanner.ScoredPool, error) {
+	return nil, nil
+}
 func (s *scannerImpl) Score(ctx context.Context, p domain.Pool) (domain.Score, error) {
 	return domain.Score{}, nil
 }

@@ -28,8 +28,8 @@ func (r *PositionRepo) Save(ctx context.Context, pos *domain.Position) error {
 	_, err := r.db.ExecContext(ctx, `
 		INSERT INTO positions (
 			id, pool_id, chain, status, tier, tick_lower, tick_upper,
-			amount_usd, opened_at, closed_at, created_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+			amount_usd, opened_at, closed_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		ON CONFLICT (id) DO UPDATE SET
 			status = excluded.status,
 			tier = excluded.tier,
@@ -48,7 +48,6 @@ func (r *PositionRepo) Save(ctx context.Context, pos *domain.Position) error {
 		pos.AmountUSD.String(),
 		pos.OpenedAt,
 		pos.ClosedAt,
-		0, // created_at
 	)
 	if err != nil {
 		return fmt.Errorf("failed to save position: %w", err)
@@ -90,15 +89,15 @@ func (r *PositionRepo) FindByID(ctx context.Context, id string) (*domain.Positio
 
 	tier, _ := domain.ParseTier(row.Tier)
 	pos := &domain.Position{
-		ID:         row.ID,
-		PoolID:     row.PoolID,
-		Chain:      intToChainID(row.Chain),
-		Status:     domain.PositionStatus(row.Status),
-		Tier:       tier,
-		TickLower:  row.TickLower,
-		TickUpper:  row.TickUpper,
-		OpenedAt:   row.OpenedAt,
-		ClosedAt:   row.ClosedAt,
+		ID:        row.ID,
+		PoolID:    row.PoolID,
+		Chain:     intToChainID(row.Chain),
+		Status:    domain.PositionStatus(row.Status),
+		Tier:      tier,
+		TickLower: row.TickLower,
+		TickUpper: row.TickUpper,
+		OpenedAt:  row.OpenedAt,
+		ClosedAt:  row.ClosedAt,
 	}
 
 	if row.AmountUSD != "" {
@@ -200,15 +199,15 @@ func scanPositions(rows *sql.Rows) ([]*domain.Position, error) {
 
 		tier, _ := domain.ParseTier(row.Tier)
 		pos := &domain.Position{
-			ID:         row.ID,
-			PoolID:     row.PoolID,
-			Chain:      intToChainID(row.Chain),
-			Status:     domain.PositionStatus(row.Status),
-			Tier:       tier,
-			TickLower:  row.TickLower,
-			TickUpper:  row.TickUpper,
-			OpenedAt:   row.OpenedAt,
-			ClosedAt:   row.ClosedAt,
+			ID:        row.ID,
+			PoolID:    row.PoolID,
+			Chain:     intToChainID(row.Chain),
+			Status:    domain.PositionStatus(row.Status),
+			Tier:      tier,
+			TickLower: row.TickLower,
+			TickUpper: row.TickUpper,
+			OpenedAt:  row.OpenedAt,
+			ClosedAt:  row.ClosedAt,
 		}
 
 		if row.AmountUSD != "" {

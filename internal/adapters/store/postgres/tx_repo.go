@@ -39,7 +39,7 @@ func (r *TxRepo) UpsertTx(ctx context.Context, tx domain.SignedTx) error {
 			block_number, block_hash, broadcast_at,
 			gas_used, gas_price, gas_limit,
 			rfb_attempts, error_msg, trace_id, created_at, updated_at
-		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22)
+		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)
 		ON CONFLICT (tx_hash) DO UPDATE SET
 			status = EXCLUDED.status,
 			block_number = COALESCE(EXCLUDED.block_number, transactions.block_number),

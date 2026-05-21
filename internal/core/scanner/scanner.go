@@ -17,6 +17,9 @@ type Scanner interface {
 	// Run starts the scanner loop. It blocks until ctx is cancelled.
 	Run(ctx context.Context) error
 
+	// ScanOnce discovers and scores candidate pools once.
+	ScanOnce(ctx context.Context) ([]ScoredPool, error)
+
 	// Score evaluates a pool and returns its score.
 	Score(ctx context.Context, p domain.Pool) (domain.Score, error)
 
@@ -27,6 +30,12 @@ type Scanner interface {
 // PoolScorer calculates scores for pools.
 type PoolScorer interface {
 	Score(ctx context.Context, pool domain.Pool) (domain.Score, error)
+}
+
+// ScoredPool is the scanner output consumed by strategy/shadow execution.
+type ScoredPool struct {
+	Pool  domain.Pool
+	Score domain.Score
 }
 
 // Config holds scanner configuration.
@@ -69,7 +78,7 @@ func (s *defaultScanner) Run(ctx context.Context) error {
 	defer ticker.Stop()
 
 	// Initial scan
-	if err := s.scanOnce(ctx); err != nil {
+	if _, err := s.ScanOnce(ctx); err != nil {
 		s.log("initial scan failed: %v", err)
 	}
 
@@ -78,21 +87,27 @@ func (s *defaultScanner) Run(ctx context.Context) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-ticker.C:
-			if err := s.scanOnce(ctx); err != nil {
+			if _, err := s.ScanOnce(ctx); err != nil {
 				s.log("scan failed: %v", err)
 			}
 		}
 	}
 }
 
-// scanOnce performs a single scan of the configured chain.
-func (s *defaultScanner) scanOnce(ctx context.Context) error {
+// ScanOnce performs a single scan of the configured chain.
+func (s *defaultScanner) ScanOnce(ctx context.Context) ([]ScoredPool, error) {
+	if s.config.Datasource == nil {
+		return nil, fmt.Errorf("datasource is required")
+	}
+
 	pools, err := s.config.Datasource.DiscoverPools(ctx, s.config.Chain, "", s.config.MinTVLUSD, 100)
 	if err != nil {
-		return fmt.Errorf("discover pools: %w", err)
+		return nil, fmt.Errorf("discover pools: %w", err)
 	}
 
 	s.log("discovered %d pools", len(pools))
+
+	scored := make([]ScoredPool, 0, len(pools))
 
 	// Score each pool
 	for _, discovery := range pools {
@@ -116,11 +131,13 @@ func (s *defaultScanner) scanOnce(ctx context.Context) error {
 		tier := s.AssignTier(score)
 		pool.Tier_ = tier
 
+		scored = append(scored, ScoredPool{Pool: pool, Score: score})
+
 		s.log("pool %s: score=%.2f tier=%s tvl=%s vol=%s",
 			pool.ID, score.Total, tier, pool.TVLUSD, pool.Vol24h)
 	}
 
-	return nil
+	return scored, nil
 }
 
 // Score evaluates a pool and returns its score (0-100).
@@ -232,7 +249,7 @@ func calculateVolatilityScore(tvl, vol domain.Decimal) float64 {
 // Higher TVL = more established = safer
 func calculateSecurityScore(tvl domain.Decimal) float64 {
 	// Minimum TVL for any score
-	minTVL := 10_000.0 // $10k
+	minTVL := 10_000.0     // $10k
 	maxTVL := 50_000_000.0 // $50M for max score
 
 	return normalizeScore(tvl.String(), minTVL, maxTVL)

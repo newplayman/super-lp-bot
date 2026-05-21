@@ -4,8 +4,11 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"flag"
 	"fmt"
+	"math/big"
 	"net"
 	"net/http"
 	"os"
@@ -15,6 +18,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/lpbot/lpbot/internal/adapters/datasource/geckoterminal"
 	"github.com/lpbot/lpbot/internal/adapters/rpc"
 	"github.com/lpbot/lpbot/internal/adapters/store/postgres"
@@ -346,11 +351,11 @@ func (app *App) wireMainLoop(ctx context.Context) error {
 	}
 
 	// Create Simulator (placeholder - from existing implementation)
-	simulator := &simulatorAdapter{
-		rpc: app.rpc["base"],
+	simulator := &rpcSimulatorAdapter{
+		provider: app.rpc["base"],
 	}
 	if app.logger != nil {
-		app.logger.Info("Simulator wired")
+		app.logger.Info("RPC simulator wired")
 	}
 
 	// Create Metrics adapter with all required methods
@@ -378,7 +383,7 @@ func (app *App) wireMainLoop(ctx context.Context) error {
 	return nil
 }
 
-// startWorkers starts background workers for scanner and execution.
+// startWorkers starts background workers for runtime services and strategy.
 func (app *App) startWorkers(ctx context.Context) {
 	if app.redis != nil {
 		app.wg.Add(1)
@@ -388,14 +393,7 @@ func (app *App) startWorkers(ctx context.Context) {
 		}()
 	}
 
-	// Scanner worker
-	app.wg.Add(1)
-	go func() {
-		defer app.wg.Done()
-		app.runScannerLoop(ctx)
-	}()
-
-	// Strategy evaluation worker (runs periodically)
+	// Strategy evaluation worker owns scan -> score -> shadow evaluation.
 	app.wg.Add(1)
 	go func() {
 		defer app.wg.Done()
@@ -403,7 +401,6 @@ func (app *App) startWorkers(ctx context.Context) {
 	}()
 
 	app.logger.Info("workers started",
-		zap.String("scanner_interval", "5m"),
 		zap.String("strategy_interval", "1m"))
 }
 
@@ -450,15 +447,76 @@ func (app *App) runStrategyLoop(ctx context.Context) {
 // This function now delegates to the main loop which applies all risk gates,
 // allocation checks, simulations, and approvals before any order is submitted.
 func (app *App) evaluateStrategies(ctx context.Context) {
-	// Delegate to the main loop for proper risk/allocation pipeline
-	if app.mainLoop != nil && app.logger != nil {
-		// Get pools from scanner and evaluate each
-		// The main loop handles RiskGate, AllocationManager, Simulator,
-		// ApproveTracker, and OrderManager in proper sequence
-		app.logger.Debug("main loop tick - running via wired loop")
-		// Note: In full implementation, we would iterate over candidate pools
-		// and call app.mainLoop.EvaluatePool(ctx, pool) for each
+	if app.mainLoop == nil || app.scanner == nil {
+		return
 	}
+
+	scoredPools, err := app.scanner.ScanOnce(ctx)
+	if err != nil {
+		app.logger.Error("shadow scan failed", zap.Error(err))
+		return
+	}
+	if len(scoredPools) == 0 {
+		app.logger.Info("shadow scan completed with no candidates")
+		return
+	}
+
+	pools := make([]domain.Pool, 0, len(scoredPools))
+	scores := make(map[string]domain.Score, len(scoredPools))
+	for _, scored := range scoredPools {
+		pools = append(pools, scored.Pool)
+		scores[scored.Pool.Key()] = scored.Score
+		if app.store != nil {
+			if err := app.store.PoolRepo().UpsertPool(ctx, ports.PoolWithScore{
+				Pool:  scored.Pool,
+				Score: scored.Score,
+			}); err != nil {
+				app.logger.Warn("shadow pool upsert failed",
+					zap.String("pool", scored.Pool.Key()),
+					zap.Error(err))
+			}
+		}
+	}
+
+	candidates, err := app.strategy.SelectCandidates(ctx, pools, 5)
+	if err != nil {
+		app.logger.Error("shadow candidate selection failed", zap.Error(err))
+		return
+	}
+
+	evaluated := 0
+	opened := 0
+	for _, pool := range candidates {
+		score := scores[pool.Key()]
+		intent, err := app.strategy.EvaluatePool(ctx, pool, score)
+		if err != nil {
+			app.logger.Warn("shadow strategy evaluation failed",
+				zap.String("pool", pool.Key()),
+				zap.Error(err))
+			continue
+		}
+		if intent == nil {
+			continue
+		}
+
+		evaluated++
+		ok, err := app.mainLoop.EvaluatePool(ctx, pool)
+		if err != nil {
+			app.logger.Warn("shadow pipeline evaluation failed",
+				zap.String("pool", pool.Key()),
+				zap.Error(err))
+			continue
+		}
+		if ok {
+			opened++
+		}
+	}
+
+	app.logger.Info("shadow strategy tick completed",
+		zap.Int("scanned", len(scoredPools)),
+		zap.Int("candidates", len(candidates)),
+		zap.Int("evaluated", evaluated),
+		zap.Int("shadow_orders", opened))
 }
 
 // cleanup releases resources.
@@ -540,12 +598,12 @@ func (a *riskGateAdapter) RecordTxFailure(ctx context.Context, poolKey string) {
 // metricsAdapter implements loop.Metrics with all required methods.
 type metricsAdapter struct{}
 
-func (m *metricsAdapter) IncRiskBlock()                  {}
-func (m *metricsAdapter) IncAllocBlock()                 {}
-func (m *metricsAdapter) IncSimulateFail()               {}
-func (m *metricsAdapter) IncApproveFail()                {}
-func (m *metricsAdapter) IncTxFailed()                   {}
-func (m *metricsAdapter) IncLoopHeartbeat()              {}
+func (m *metricsAdapter) IncRiskBlock()                  { metrics.IncRiskBlock() }
+func (m *metricsAdapter) IncAllocBlock()                 { metrics.IncAllocBlock() }
+func (m *metricsAdapter) IncSimulateFail()               { metrics.IncSimulateFail() }
+func (m *metricsAdapter) IncApproveFail()                { metrics.IncApproveFail() }
+func (m *metricsAdapter) IncTxFailed()                   { metrics.IncTxFailed("", "", "shadow_pipeline") }
+func (m *metricsAdapter) IncLoopHeartbeat()              { metrics.RecordLoopHeartbeat() }
 func (m *metricsAdapter) SetPositionsOpen(n int64)       {}
 func (m *metricsAdapter) SetPositionsClosed(n int64)     {}
 func (m *metricsAdapter) SetPnLDaily(pnl domain.Decimal) {}
@@ -571,8 +629,70 @@ type orderManagerAdapter struct {
 }
 
 func (o *orderManagerAdapter) Open(ctx context.Context, pool domain.Pool, amountUSD domain.Decimal) (loop.ExecutionResult, error) {
-	// Placeholder - real implementation in TR-04
-	return loop.ExecutionResult{Success: false, Error: "not yet wired"}, nil
+	if o.store == nil {
+		return loop.ExecutionResult{Success: false, Error: "store not configured"}, nil
+	}
+
+	for _, status := range []domain.PositionStatus{domain.StatusIntended, domain.StatusOpening, domain.StatusOpen} {
+		existing, err := o.store.PositionRepo().FindByPoolAndStatus(ctx, pool.ID, status)
+		if err != nil {
+			return loop.ExecutionResult{}, err
+		}
+		if len(existing) > 0 {
+			return loop.ExecutionResult{
+				Success:     true,
+				PositionID:  existing[0].ID,
+				FinalStatus: existing[0].Status,
+			}, nil
+		}
+	}
+
+	now := time.Now().Unix()
+	positionID := shadowID("pos", pool.Key(), now)
+	position := &domain.Position{
+		ID:        positionID,
+		PoolID:    pool.ID,
+		Chain:     pool.Chain,
+		Status:    domain.StatusIntended,
+		Tier:      pool.Tier_,
+		AmountUSD: amountUSD,
+		TickLower: int64(pool.Tick) - 100,
+		TickUpper: int64(pool.Tick) + 100,
+		OpenedAt:  now,
+	}
+	if position.TickLower == -100 && position.TickUpper == 100 {
+		position.TickLower = -500
+		position.TickUpper = 500
+	}
+
+	if err := o.store.PositionRepo().Save(ctx, position); err != nil {
+		return loop.ExecutionResult{}, err
+	}
+
+	txHash := shadowID("tx", positionID, now)
+	tx := domain.SignedTx{
+		UnsignedTx: domain.UnsignedTx{
+			ID:       txHash,
+			Chain:    pool.Chain,
+			From:     zeroEVMAddress(),
+			To:       parseAddressOrZero(pool.ID),
+			Value:    domain.ZeroDecimal(),
+			Deadline: now + 300,
+			MinOut:   domain.ZeroDecimal(),
+		},
+		Hash:   txHash,
+		Status: domain.TxBuilt,
+	}
+	if err := o.store.TxRepo().UpsertTx(ctx, tx); err != nil {
+		return loop.ExecutionResult{}, err
+	}
+
+	return loop.ExecutionResult{
+		TxHash:      txHash,
+		Success:     true,
+		PositionID:  positionID,
+		FinalStatus: domain.StatusIntended,
+	}, nil
 }
 
 func (o *orderManagerAdapter) Close(ctx context.Context, positionID string) (loop.ExecutionResult, error) {
@@ -599,17 +719,99 @@ func (o *orderManagerAdapter) Config() loop.ExecutionConfig {
 	}
 }
 
-type simulatorAdapter struct {
-	rpc interface{}
+type rpcSimulatorAdapter struct {
+	provider *rpc.RoundRobinProvider
 }
 
-func (s *simulatorAdapter) Simulate(ctx any, tx domain.UnsignedTx, blockRef domain.BlockRef) (*domain.SimulationResult, error) {
-	// Placeholder - real implementation in TR-05
-	return &domain.SimulationResult{Success: true}, nil
+func (s *rpcSimulatorAdapter) Simulate(ctx any, tx domain.UnsignedTx, blockRef domain.BlockRef) (*domain.SimulationResult, error) {
+	if s == nil || s.provider == nil {
+		return &domain.SimulationResult{Success: false, Error: "rpc provider not configured"}, nil
+	}
+
+	c := context.Background()
+	if typed, ok := ctx.(context.Context); ok {
+		c = typed
+	}
+
+	header, err := s.provider.HeaderByNumber(c, nil)
+	if err != nil {
+		return &domain.SimulationResult{Success: false, Error: err.Error(), BlockRef: blockRef}, nil
+	}
+
+	result := &domain.SimulationResult{
+		Success: true,
+		BlockRef: domain.BlockRef{
+			Chain:    s.provider.ChainID(),
+			Number:   header.Number.Uint64(),
+			Hash:     header.Hash().Hex(),
+			TimeUnix: int64(header.Time),
+		},
+	}
+
+	if !tx.To.IsZero() || len(tx.Data) > 0 {
+		msg := ethereum.CallMsg{
+			From:  common.HexToAddress(tx.From.String()),
+			To:    addressPtr(tx.To),
+			Value: decimalToBigInt(tx.Value),
+			Data:  tx.Data,
+		}
+		gas, err := s.provider.EstimateGas(c, msg)
+		if err != nil {
+			return &domain.SimulationResult{Success: false, Error: err.Error(), BlockRef: result.BlockRef}, nil
+		}
+		result.GasUsed = gas
+	}
+
+	gasPrice, err := s.provider.SuggestGasPrice(c)
+	if err == nil {
+		result.GasPrice = gasPrice
+	}
+
+	return result, nil
 }
 
-func (s *simulatorAdapter) SimulateSequence(ctx any, txs []domain.UnsignedTx, blockRef domain.BlockRef) ([]domain.SimulationResult, error) {
-	return nil, nil
+func (s *rpcSimulatorAdapter) SimulateSequence(ctx any, txs []domain.UnsignedTx, blockRef domain.BlockRef) ([]domain.SimulationResult, error) {
+	results := make([]domain.SimulationResult, 0, len(txs))
+	for _, tx := range txs {
+		result, err := s.Simulate(ctx, tx, blockRef)
+		if err != nil {
+			return results, err
+		}
+		results = append(results, *result)
+		if !result.Success {
+			break
+		}
+	}
+	return results, nil
+}
+
+func shadowID(prefix string, key string, ts int64) string {
+	sum := sha256.Sum256([]byte(fmt.Sprintf("%s:%s:%d", prefix, key, ts)))
+	return fmt.Sprintf("shadow-%s-%s", prefix, hex.EncodeToString(sum[:])[:24])
+}
+
+func zeroEVMAddress() domain.Address {
+	return domain.MustParseAddress("0x0000000000000000000000000000000000000000")
+}
+
+func parseAddressOrZero(value string) domain.Address {
+	addr, err := domain.ParseAddress(value)
+	if err != nil {
+		return zeroEVMAddress()
+	}
+	return addr
+}
+
+func addressPtr(addr domain.Address) *common.Address {
+	ethAddr := common.HexToAddress(addr.String())
+	return &ethAddr
+}
+
+func decimalToBigInt(value domain.Decimal) *big.Int {
+	if value.IsZero() {
+		return big.NewInt(0)
+	}
+	return value.BigInt()
 }
 
 func main() {
