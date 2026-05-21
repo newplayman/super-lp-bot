@@ -33,6 +33,7 @@ type dashboardSnapshot struct {
 	Transactions  []dashboardTransaction  `json:"transactions"`
 	PositionMarks []dashboardPositionMark `json:"position_marks"`
 	MarkSeries    []dashboardMarkPoint    `json:"mark_series"`
+	ExitDecisions []dashboardExitDecision `json:"exit_decisions"`
 	RecentScores  []dashboardScore        `json:"recent_scores"`
 	Decisions     []dashboardDecision     `json:"decisions"`
 	Warnings      []string                `json:"warnings"`
@@ -110,6 +111,20 @@ type dashboardMarkPoint struct {
 	MarkTime     int64  `json:"mark_time"`
 	ValuationUSD string `json:"valuation_usd"`
 	NetPnLUSD    string `json:"net_pnl_usd"`
+}
+
+type dashboardExitDecision struct {
+	DecisionTime  int64  `json:"decision_time"`
+	PositionID    string `json:"position_id"`
+	PoolID        string `json:"pool_id"`
+	Tier          string `json:"tier"`
+	HoldMinutes   int64  `json:"hold_minutes"`
+	CurrentTVLUSD string `json:"current_tvl_usd"`
+	NetPnLUSD     string `json:"net_pnl_usd"`
+	ILUSD         string `json:"il_usd"`
+	WouldExit     bool   `json:"would_exit"`
+	Reason        string `json:"reason"`
+	Action        string `json:"action"`
 }
 
 type dashboardDecision struct {
@@ -250,6 +265,12 @@ func (app *App) dashboardSnapshot(ctx context.Context) (dashboardSnapshot, error
 	}
 	snapshot.MarkSeries = markSeries
 
+	exitDecisions, err := queryDashboardExitDecisions(ctx, db)
+	if err != nil {
+		return snapshot, err
+	}
+	snapshot.ExitDecisions = exitDecisions
+
 	scores, err := queryDashboardScores(ctx, db)
 	if err != nil {
 		return snapshot, err
@@ -379,6 +400,48 @@ func queryDashboardPositionMarks(ctx context.Context, db *sql.DB) ([]dashboardPo
 		marks = append(marks, mark)
 	}
 	return marks, rows.Err()
+}
+
+func queryDashboardExitDecisions(ctx context.Context, db *sql.DB) ([]dashboardExitDecision, error) {
+	rows, err := db.QueryContext(ctx, `
+		SELECT decision_time, position_id, pool_id, tier, hold_minutes,
+		       current_tvl_usd, net_pnl_usd, il_usd, would_exit, reason, action
+		FROM (
+			SELECT DISTINCT ON (position_id)
+				decision_time, position_id, pool_id, tier, hold_minutes,
+				current_tvl_usd, net_pnl_usd, il_usd, would_exit, reason, action
+			FROM shadow_exit_decisions
+			ORDER BY position_id, decision_time DESC
+		) latest
+		ORDER BY decision_time DESC
+		LIMIT 50
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("query dashboard exit decisions: %w", err)
+	}
+	defer rows.Close()
+
+	var decisions []dashboardExitDecision
+	for rows.Next() {
+		var decision dashboardExitDecision
+		if err := rows.Scan(
+			&decision.DecisionTime,
+			&decision.PositionID,
+			&decision.PoolID,
+			&decision.Tier,
+			&decision.HoldMinutes,
+			&decision.CurrentTVLUSD,
+			&decision.NetPnLUSD,
+			&decision.ILUSD,
+			&decision.WouldExit,
+			&decision.Reason,
+			&decision.Action,
+		); err != nil {
+			return nil, fmt.Errorf("scan dashboard exit decision: %w", err)
+		}
+		decisions = append(decisions, decision)
+	}
+	return decisions, rows.Err()
 }
 
 func queryDashboardMarkSeries(ctx context.Context, db *sql.DB) ([]dashboardMarkPoint, error) {

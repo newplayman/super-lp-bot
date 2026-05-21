@@ -211,6 +211,9 @@ func (app *App) initAdapters(ctx context.Context) error {
 	if err := app.ensureShadowPositionMarksTable(ctx); err != nil {
 		return fmt.Errorf("failed to initialize position mark schema: %w", err)
 	}
+	if err := app.ensureShadowExitDecisionsTable(ctx); err != nil {
+		return fmt.Errorf("failed to initialize exit decision schema: %w", err)
+	}
 
 	// Initialize datasource
 	app.datasource = geckoterminal.NewAdapter()

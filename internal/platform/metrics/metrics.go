@@ -94,6 +94,7 @@ var (
 	lpbotShadowMarkedPositions    = Gauge("lpbot_shadow_marked_positions", "Shadow positions marked in the latest cycle")
 	lpbotShadowMarkValueUSD       = Gauge("lpbot_shadow_mark_value_usd", "Total latest shadow marked valuation in USD")
 	lpbotShadowMarkNetPnLUSD      = Gauge("lpbot_shadow_mark_net_pnl_usd", "Total latest shadow mark net PnL in USD")
+	lpbotShadowExitSignals        = Gauge("lpbot_shadow_exit_signals", "Shadow positions that currently meet exit conditions")
 )
 
 // CounterVec creates and registers a new Prometheus CounterVec.
@@ -314,6 +315,11 @@ func RecordShadowPositionMarks(marked int, valuationUSD, netPnLUSD float64) {
 	lpbotShadowMarkedPositions.Set(float64(marked))
 	lpbotShadowMarkValueUSD.Set(valuationUSD)
 	lpbotShadowMarkNetPnLUSD.Set(netPnLUSD)
+}
+
+// RecordShadowExitSignals records the latest number of shadow exit signals.
+func RecordShadowExitSignals(signals int) {
+	lpbotShadowExitSignals.Set(float64(signals))
 }
 
 // SetPositionStatus sets the position status gauge (1=open, 0=closed).
