@@ -501,7 +501,10 @@ func (app *App) backfillClosedShadowPositionMarks(ctx context.Context, db *sql.D
 	if len(records) == 0 {
 		return nil
 	}
-	return app.persistShadowPositionMarks(ctx, db, records)
+	if err := app.persistShadowPositionMarks(ctx, db, records); err != nil {
+		return err
+	}
+	return app.refreshClosedShadowExitReasons(ctx, db, records)
 }
 
 func (app *App) listClosedShadowPositionsForBackfill(ctx context.Context, db *sql.DB) ([]activeShadowPosition, error) {
@@ -546,6 +549,67 @@ func (app *App) listClosedShadowPositionsForBackfill(ctx context.Context, db *sq
 		positions = append(positions, row)
 	}
 	return positions, rows.Err()
+}
+
+func (app *App) refreshClosedShadowExitReasons(ctx context.Context, db *sql.DB, records []shadowPositionMarkRecord) error {
+	if len(records) == 0 {
+		return nil
+	}
+
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin closed exit reason refresh tx: %w", err)
+	}
+	defer tx.Rollback()
+
+	for _, record := range records {
+		reason := buildClosedShadowExitReason(record)
+		if _, err := tx.ExecContext(ctx, `
+			UPDATE shadow_exit_decisions
+			SET reason = $1
+			WHERE position_id = $2
+			  AND action = 'shadow_close'
+			  AND would_exit = TRUE
+		`, reason, record.PositionID); err != nil {
+			return fmt.Errorf("update closed exit decision reason for %s: %w", record.PositionID, err)
+		}
+		if _, err := tx.ExecContext(ctx, `
+			UPDATE shadow_exit_actions
+			SET reason = $1
+			WHERE position_id = $2
+			  AND action = 'shadow_close'
+		`, reason, record.PositionID); err != nil {
+			return fmt.Errorf("update closed exit action reason for %s: %w", record.PositionID, err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit closed exit reason refresh tx: %w", err)
+	}
+	return nil
+}
+
+func buildClosedShadowExitReason(record shadowPositionMarkRecord) string {
+	netPnL := dexdomain.MustDecimal(record.NetPnLUSD)
+	feeUSD := dexdomain.MustDecimal(record.FeeUSD)
+	ilUSD := dexdomain.MustDecimal(record.ILUSD)
+	priceChangePct := dexdomain.MustDecimal(record.PriceChangePct)
+	return fmt.Sprintf(
+		"closed after %dm; final pnl %s USD (fees %s, il %s, price %s%%)",
+		record.HoldMinutes,
+		signedFixed(netPnL, 4),
+		signedFixed(feeUSD, 4),
+		signedFixed(ilUSD, 4),
+		signedFixed(priceChangePct.Mul(dexdomain.MustDecimal("100")), 4),
+	)
+}
+
+func signedFixed(value dexdomain.Decimal, places int32) string {
+	text := value.StringFixed(places)
+	if value.IsPositive() {
+		return "+" + text
+	}
+	return text
 }
 
 func buildShadowExitDecision(pos activeShadowPosition, mark shadowPositionMarkRecord, now time.Time) shadowExitDecisionRecord {
