@@ -65,6 +65,18 @@ type shadowExitDecisionRecord struct {
 	CreatedAt      int64
 }
 
+type shadowExitActionRecord struct {
+	DecisionTime int64
+	PositionID   string
+	PoolID       string
+	Chain        string
+	Reason       string
+	Action       string
+	TxHash       string
+	TxStatus     string
+	CreatedAt    int64
+}
+
 func (app *App) ensureShadowPositionMarksTable(ctx context.Context) error {
 	provider, ok := app.store.(dbProvider)
 	if !ok || provider.DB() == nil {
@@ -147,6 +159,37 @@ func (app *App) ensureShadowExitDecisionsTable(ctx context.Context) error {
 	return nil
 }
 
+func (app *App) ensureShadowExitActionsTable(ctx context.Context) error {
+	provider, ok := app.store.(dbProvider)
+	if !ok || provider.DB() == nil {
+		return nil
+	}
+
+	_, err := provider.DB().ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS shadow_exit_actions (
+			id BIGSERIAL PRIMARY KEY,
+			decision_time BIGINT NOT NULL,
+			position_id TEXT NOT NULL,
+			pool_id TEXT NOT NULL,
+			chain TEXT NOT NULL,
+			reason TEXT NOT NULL DEFAULT '',
+			action TEXT NOT NULL DEFAULT '',
+			tx_hash TEXT NOT NULL DEFAULT '',
+			tx_status TEXT NOT NULL DEFAULT '',
+			created_at BIGINT NOT NULL
+		);
+
+		CREATE INDEX IF NOT EXISTS idx_shadow_exit_actions_position_time
+			ON shadow_exit_actions(position_id, decision_time DESC);
+		CREATE INDEX IF NOT EXISTS idx_shadow_exit_actions_decision_time
+			ON shadow_exit_actions(decision_time DESC);
+	`)
+	if err != nil {
+		return fmt.Errorf("ensure shadow_exit_actions table: %w", err)
+	}
+	return nil
+}
+
 func (app *App) markShadowPositions(ctx context.Context) {
 	provider, ok := app.store.(dbProvider)
 	if !ok || provider.DB() == nil {
@@ -197,6 +240,10 @@ func (app *App) markShadowPositions(ctx context.Context) {
 	}
 	if err := app.persistShadowExitDecisions(ctx, provider.DB(), exitDecisions); err != nil {
 		app.logger.Warn("shadow exit decision persist failed", zap.Error(err))
+		return
+	}
+	if err := app.recordShadowExitActions(ctx, provider.DB(), exitDecisions); err != nil {
+		app.logger.Warn("shadow exit action persist failed", zap.Error(err))
 		return
 	}
 
@@ -496,6 +543,94 @@ func (app *App) persistShadowExitDecisions(ctx context.Context, db *sql.DB, reco
 		return fmt.Errorf("commit exit decision tx: %w", err)
 	}
 	return nil
+}
+
+func (app *App) recordShadowExitActions(ctx context.Context, db *sql.DB, records []shadowExitDecisionRecord) error {
+	if len(records) == 0 {
+		return nil
+	}
+
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin exit action tx: %w", err)
+	}
+	defer tx.Rollback()
+
+	for _, record := range records {
+		if !record.WouldExit || record.Action != "shadow_close" {
+			continue
+		}
+		exists, err := hasRecentEquivalentExitAction(ctx, tx, record)
+		if err != nil {
+			return fmt.Errorf("check exit action dedupe for %s: %w", record.PositionID, err)
+		}
+		if exists {
+			continue
+		}
+
+		txHash := shadowID("exit-tx", record.PositionID, record.DecisionTime)
+		exitTx := dexdomain.SignedTx{
+			UnsignedTx: dexdomain.UnsignedTx{
+				ID:       txHash,
+				Chain:    dexdomain.ChainID(record.Chain),
+				From:     zeroEVMAddress(),
+				To:       parseAddressOrZero(record.PoolID),
+				Value:    dexdomain.ZeroDecimal(),
+				Deadline: record.DecisionTime + 300,
+				MinOut:   dexdomain.ZeroDecimal(),
+			},
+			Hash:   txHash,
+			Status: dexdomain.TxBuilt,
+		}
+		if err := app.store.TxRepo().UpsertTx(ctx, exitTx); err != nil {
+			return fmt.Errorf("upsert shadow exit tx for %s: %w", record.PositionID, err)
+		}
+
+		_, err = tx.ExecContext(ctx, `
+			INSERT INTO shadow_exit_actions (
+				decision_time, position_id, pool_id, chain, reason, action, tx_hash, tx_status, created_at
+			) VALUES (
+				$1, $2, $3, $4, $5, $6, $7, $8, $9
+			)
+		`,
+			record.DecisionTime,
+			record.PositionID,
+			record.PoolID,
+			record.Chain,
+			record.Reason,
+			record.Action,
+			txHash,
+			string(dexdomain.TxBuilt),
+			time.Now().UnixMilli(),
+		)
+		if err != nil {
+			return fmt.Errorf("insert exit action for %s: %w", record.PositionID, err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit exit action tx: %w", err)
+	}
+	return nil
+}
+
+func hasRecentEquivalentExitAction(ctx context.Context, tx *sql.Tx, record shadowExitDecisionRecord) (bool, error) {
+	cutoff := record.DecisionTime - 3600
+	var exists bool
+	err := tx.QueryRowContext(ctx, `
+		SELECT EXISTS (
+			SELECT 1
+			FROM shadow_exit_actions
+			WHERE position_id = $1
+			  AND action = $2
+			  AND reason = $3
+			  AND decision_time >= $4
+		)
+	`, record.PositionID, record.Action, record.Reason, cutoff).Scan(&exists)
+	if err != nil {
+		return false, err
+	}
+	return exists, nil
 }
 
 func firstNonZeroPrice(point ports.HistoricalPrice) dexdomain.Decimal {

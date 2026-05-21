@@ -214,6 +214,9 @@ func (app *App) initAdapters(ctx context.Context) error {
 	if err := app.ensureShadowExitDecisionsTable(ctx); err != nil {
 		return fmt.Errorf("failed to initialize exit decision schema: %w", err)
 	}
+	if err := app.ensureShadowExitActionsTable(ctx); err != nil {
+		return fmt.Errorf("failed to initialize exit action schema: %w", err)
+	}
 
 	// Initialize datasource
 	app.datasource = geckoterminal.NewAdapter()

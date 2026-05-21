@@ -34,6 +34,7 @@ type dashboardSnapshot struct {
 	PositionMarks []dashboardPositionMark `json:"position_marks"`
 	MarkSeries    []dashboardMarkPoint    `json:"mark_series"`
 	ExitDecisions []dashboardExitDecision `json:"exit_decisions"`
+	ExitActions   []dashboardExitAction   `json:"exit_actions"`
 	RecentScores  []dashboardScore        `json:"recent_scores"`
 	Decisions     []dashboardDecision     `json:"decisions"`
 	Warnings      []string                `json:"warnings"`
@@ -125,6 +126,16 @@ type dashboardExitDecision struct {
 	WouldExit     bool   `json:"would_exit"`
 	Reason        string `json:"reason"`
 	Action        string `json:"action"`
+}
+
+type dashboardExitAction struct {
+	DecisionTime int64  `json:"decision_time"`
+	PositionID   string `json:"position_id"`
+	PoolID       string `json:"pool_id"`
+	Reason       string `json:"reason"`
+	Action       string `json:"action"`
+	TxHash       string `json:"tx_hash"`
+	TxStatus     string `json:"tx_status"`
 }
 
 type dashboardDecision struct {
@@ -270,6 +281,12 @@ func (app *App) dashboardSnapshot(ctx context.Context) (dashboardSnapshot, error
 		return snapshot, err
 	}
 	snapshot.ExitDecisions = exitDecisions
+
+	exitActions, err := queryDashboardExitActions(ctx, db)
+	if err != nil {
+		return snapshot, err
+	}
+	snapshot.ExitActions = exitActions
 
 	scores, err := queryDashboardScores(ctx, db)
 	if err != nil {
@@ -442,6 +459,37 @@ func queryDashboardExitDecisions(ctx context.Context, db *sql.DB) ([]dashboardEx
 		decisions = append(decisions, decision)
 	}
 	return decisions, rows.Err()
+}
+
+func queryDashboardExitActions(ctx context.Context, db *sql.DB) ([]dashboardExitAction, error) {
+	rows, err := db.QueryContext(ctx, `
+		SELECT decision_time, position_id, pool_id, reason, action, tx_hash, tx_status
+		FROM shadow_exit_actions
+		ORDER BY id DESC
+		LIMIT 30
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("query dashboard exit actions: %w", err)
+	}
+	defer rows.Close()
+
+	var actions []dashboardExitAction
+	for rows.Next() {
+		var action dashboardExitAction
+		if err := rows.Scan(
+			&action.DecisionTime,
+			&action.PositionID,
+			&action.PoolID,
+			&action.Reason,
+			&action.Action,
+			&action.TxHash,
+			&action.TxStatus,
+		); err != nil {
+			return nil, fmt.Errorf("scan dashboard exit action: %w", err)
+		}
+		actions = append(actions, action)
+	}
+	return actions, rows.Err()
 }
 
 func queryDashboardMarkSeries(ctx context.Context, db *sql.DB) ([]dashboardMarkPoint, error) {
