@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/lpbot/lpbot/internal/adapters/rpc"
 	"github.com/lpbot/lpbot/internal/core/execution"
 	"github.com/lpbot/lpbot/internal/domain"
@@ -27,6 +29,16 @@ func nativeRPCLiveSizingSupported(cfg *config.Config) bool {
 		return false
 	}
 	return strings.TrimSpace(cfg.Chains.Base.RPCPrimary) != "" || rpc.ResolveQuickNodeAPIKey() != ""
+}
+
+func liveExecutionPathAvailable(cfg *config.Config) bool {
+	if cfg == nil {
+		return false
+	}
+	if !nativeRPCLiveSizingSupported(cfg) {
+		return false
+	}
+	return strings.EqualFold(strings.TrimSpace(cfg.Wallet.Backend), "keystore")
 }
 
 func (o *orderManagerAdapter) buildPreparedMintTx(
@@ -78,6 +90,20 @@ func (o *orderManagerAdapter) buildPreparedMintTx(
 		Hash:   txHash,
 		Status: domain.TxBuilt,
 	}, nil
+}
+
+func (o *orderManagerAdapter) preflightPreparedTx(ctx context.Context, tx domain.UnsignedTx) error {
+	if o == nil || o.provider == nil {
+		return fmt.Errorf("base rpc provider not configured")
+	}
+	to := common.HexToAddress(tx.To.String())
+	_, err := o.provider.CallContract(ctx, ethereum.CallMsg{
+		From:  common.HexToAddress(tx.From.String()),
+		To:    &to,
+		Value: tx.Value.BigInt(),
+		Data:  tx.Data,
+	}, nil)
+	return err
 }
 
 func buildBaseOpenIntent(

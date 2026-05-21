@@ -123,6 +123,7 @@ func newLiveSafetyGate(buildMode string, cfg *config.Config) *liveSafetyGate {
 	gate.npmBaseConfigured = gate.npmBaseAddress != ""
 	gate.sizingPathReady = nativeRPCLiveSizingSupported(cfg)
 	gate.executionBackendConfigured = gate.backendConfigured()
+	gate.executionBackendWired = liveExecutionPathAvailable(cfg)
 
 	for _, chain := range cfg.Live.AllowedChains {
 		normalized := strings.ToLower(strings.TrimSpace(chain))
@@ -635,15 +636,17 @@ func (app *App) wireMainLoop(ctx context.Context) error {
 
 	// Create OrderManager (placeholder - wired in execution module)
 	orderManager := &orderManagerAdapter{
-		broadcaster: nil, // Will be wired based on build mode
-		riskGate:    riskGate,
-		store:       app.store,
-		liveGate:    app.liveGate,
-		provider:    app.rpc["base"],
+		riskGate: riskGate,
+		store:    app.store,
+		liveGate: app.liveGate,
+		provider: app.rpc["base"],
 		walletAddress: parseAddressOrZero(
 			strings.TrimSpace(app.config.Live.WalletAddress),
 		),
 		npmBaseAddress: strings.TrimSpace(app.config.Execution.NPMBaseAddress),
+	}
+	if err := configureLiveExecution(ctx, app, orderManager); err != nil {
+		return err
 	}
 	if app.logger != nil {
 		app.logger.Info("OrderManager wired")
@@ -679,7 +682,7 @@ func (app *App) wireMainLoop(ctx context.Context) error {
 	// Create and configure the main loop
 	app.mainLoop = loop.NewMainLoop(loop.MainLoopConfig{
 		TickInterval:      1 * time.Minute,
-		Broadcaster:       nil, // Set based on build mode
+		Broadcaster:       orderManager.broadcaster,
 		RiskGate:          riskGateAdapter,
 		AllocationManager: allocManager,
 		Simulator:         simulator,
@@ -1014,11 +1017,12 @@ func (a *approveTrackerAdapter) EnsureApproval(ctx context.Context, pool domain.
 }
 
 type orderManagerAdapter struct {
-	broadcaster    interface{}
+	broadcaster    ports.Broadcaster
 	riskGate       *risk.RiskGate
 	store          ports.Store
 	liveGate       *liveSafetyGate
 	provider       *rpc.RoundRobinProvider
+	wallet         ports.Wallet
 	walletAddress  domain.Address
 	npmBaseAddress string
 }
@@ -1089,6 +1093,29 @@ func (o *orderManagerAdapter) Open(ctx context.Context, pool domain.Pool, amount
 			Hash:   txHash,
 			Status: domain.TxBuilt,
 		}
+	}
+
+	if o.liveGate != nil && o.liveGate.isExecutionMode() {
+		if o.wallet == nil || o.broadcaster == nil {
+			return loop.ExecutionResult{Success: false, Error: "live execution components not configured"}, nil
+		}
+		if err := o.preflightPreparedTx(ctx, tx.UnsignedTx); err != nil {
+			return loop.ExecutionResult{Success: false, Error: fmt.Sprintf("live preflight failed: %v", err)}, nil
+		}
+		signed, err := o.wallet.Sign(ctx, tx.UnsignedTx)
+		if err != nil {
+			return loop.ExecutionResult{Success: false, Error: fmt.Sprintf("wallet sign failed: %v", err)}, nil
+		}
+		signed.ID = tx.ID
+		signed.Status = domain.TxBuilt
+		if err := o.broadcaster.Send(ctx, signed); err != nil {
+			signed.Status = domain.TxFailed
+			_ = o.store.TxRepo().UpsertTx(ctx, signed)
+			return loop.ExecutionResult{Success: false, Error: fmt.Sprintf("broadcast failed: %v", err)}, nil
+		}
+		signed.Status = domain.TxBroadcast
+		tx = signed
+		txHash = signed.Hash
 	}
 	if err := o.store.TxRepo().UpsertTx(ctx, tx); err != nil {
 		return loop.ExecutionResult{}, err
