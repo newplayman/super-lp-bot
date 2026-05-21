@@ -175,7 +175,10 @@ func Load(path string, expectedMode string) (*Config, error) {
 // LoadWithEnvMap parses a TOML configuration file using the provided env map for interpolation.
 func LoadWithEnvMap(path string, expectedMode string, env map[string]string) (*Config, error) {
 	lookup := func(key string) string {
-		return env[key]
+		if value, ok := env[key]; ok && value != "" {
+			return value
+		}
+		return os.Getenv(key)
 	}
 	return LoadWithLookup(path, expectedMode, lookup)
 }
