@@ -56,16 +56,20 @@ func (a *Adapter) DiscoverPools(ctx context.Context, chain domain.ChainID, proto
 		token0, _ := domain.ParseAddress(pool.Token0.Address)
 		token1, _ := domain.ParseAddress(pool.Token1.Address)
 		volume24h, _ := decimal.NewFromString(pool.Volume.H24.String())
+		priceUSD, _ := decimal.NewFromString(pool.PriceUSD)
+		priceChange24hPct, _ := decimal.NewFromString(pool.PriceChange.H24.String())
 
 		parsed := ports.PoolDiscovery{
-			ID:        pool.PoolAddress,
-			Chain:     chain,
-			Protocol:  pool.DEX,
-			Token0:    token0,
-			Token1:    token1,
-			TVLUSD:    liquidity,
-			Vol24h:    volume24h,
-			UpdatedAt: time.Now(),
+			ID:                pool.PoolAddress,
+			Chain:             chain,
+			Protocol:          pool.DEX,
+			Token0:            token0,
+			Token1:            token1,
+			TVLUSD:            liquidity,
+			Vol24h:            volume24h,
+			PriceUSD:          priceUSD,
+			PriceChange24hPct: priceChange24hPct.Div(decimal.NewFromInt(100)),
+			UpdatedAt:         time.Now(),
 		}
 
 		result = append(result, parsed)
@@ -91,16 +95,20 @@ func (a *Adapter) GetPoolMetadata(ctx context.Context, chain domain.ChainID, poo
 	token1, _ := domain.ParseAddress(pool.Token1.Address)
 	liquidity, _ := decimal.NewFromString(pool.Liquidity.USD.String())
 	volume24h, _ := decimal.NewFromString(pool.Volume.H24.String())
+	priceUSD, _ := decimal.NewFromString(pool.PriceUSD)
+	priceChange24hPct, _ := decimal.NewFromString(pool.PriceChange.H24.String())
 
 	return &ports.PoolDiscovery{
-		ID:        pool.PoolAddress,
-		Chain:     chain,
-		Protocol:  pool.DEX,
-		Token0:    token0,
-		Token1:    token1,
-		TVLUSD:    liquidity,
-		Vol24h:    volume24h,
-		UpdatedAt: time.Now(),
+		ID:                pool.PoolAddress,
+		Chain:             chain,
+		Protocol:          pool.DEX,
+		Token0:            token0,
+		Token1:            token1,
+		TVLUSD:            liquidity,
+		Vol24h:            volume24h,
+		PriceUSD:          priceUSD,
+		PriceChange24hPct: priceChange24hPct.Div(decimal.NewFromInt(100)),
+		UpdatedAt:         time.Now(),
 	}, nil
 }
 

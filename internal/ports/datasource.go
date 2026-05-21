@@ -33,6 +33,10 @@ type PoolDiscovery struct {
 	TVLUSD domain.Decimal
 	// Vol24h is the 24-hour trading volume in USD.
 	Vol24h domain.Decimal
+	// PriceUSD is the current pool reference price in USD.
+	PriceUSD domain.Decimal
+	// PriceChange24hPct is the 24-hour price change ratio, e.g. 0.05 = +5%.
+	PriceChange24hPct domain.Decimal
 	// UpdatedAt is the timestamp of the last update from the data source.
 	UpdatedAt time.Time
 }

@@ -109,6 +109,22 @@ func (a *Adapter) GetPoolMetadata(ctx context.Context, chain domain.ChainID, poo
 func (a *Adapter) GetPoolMetadataWithSource(ctx context.Context, chain domain.ChainID, poolID string) (*ports.PoolDiscovery, string, error) {
 	metadata, err := a.getPoolMetadataPrimary(ctx, chain, poolID)
 	if err == nil && metadata != nil {
+		if metadata.PriceUSD.IsZero() || metadata.PriceChange24hPct.IsZero() || metadata.Vol24h.IsZero() {
+			if fallback, fallbackErr := a.fallback.GetPoolMetadata(ctx, chain, poolID); fallbackErr == nil && fallback != nil {
+				if metadata.PriceUSD.IsZero() && !fallback.PriceUSD.IsZero() {
+					metadata.PriceUSD = fallback.PriceUSD
+					metrics.IncDatasourceFallback("geckoterminal", "dexscreener", "augment_pool_price")
+				}
+				if metadata.PriceChange24hPct.IsZero() && !fallback.PriceChange24hPct.IsZero() {
+					metadata.PriceChange24hPct = fallback.PriceChange24hPct
+					metrics.IncDatasourceFallback("geckoterminal", "dexscreener", "augment_pool_price_change")
+				}
+				if metadata.Vol24h.IsZero() && !fallback.Vol24h.IsZero() {
+					metadata.Vol24h = fallback.Vol24h
+					metrics.IncDatasourceFallback("geckoterminal", "dexscreener", "augment_pool_volume")
+				}
+			}
+		}
 		return metadata, "geckoterminal", nil
 	}
 
@@ -151,6 +167,7 @@ func (a *Adapter) getPoolMetadataPrimary(ctx context.Context, chain domain.Chain
 	token1, _ := domain.ParseAddress(resolveTokenAddress(pool.Attributes.Token1.Address, pool.Relationships.QuoteToken.Data.ID))
 	liquidity, _ := decimal.NewFromString(firstNonEmpty(pool.Attributes.LiquidityUSD, pool.Attributes.ReserveInUSD, "0"))
 	volume, _ := decimal.NewFromString(firstNonEmpty(pool.Attributes.VolumeUSD.H24, pool.Attributes.BaseVolume, pool.Attributes.QuoteVolume, "0"))
+	priceUSD, _ := decimal.NewFromString(firstNonEmpty(pool.Attributes.PriceUSD, pool.Attributes.PriceNative, "0"))
 
 	resolvedPoolID := pool.Attributes.Address
 	if resolvedPoolID == "" {
@@ -162,15 +179,17 @@ func (a *Adapter) getPoolMetadataPrimary(ctx context.Context, chain domain.Chain
 	}
 
 	return &ports.PoolDiscovery{
-		ID:        resolvedPoolID,
-		Chain:     chain,
-		Protocol:  protocol,
-		Token0:    token0,
-		Token1:    token1,
-		FeeBPS:    parseFeeBPS(pool.Attributes.Name),
-		TVLUSD:    liquidity,
-		Vol24h:    volume,
-		UpdatedAt: time.Now(),
+		ID:                resolvedPoolID,
+		Chain:             chain,
+		Protocol:          protocol,
+		Token0:            token0,
+		Token1:            token1,
+		FeeBPS:            parseFeeBPS(pool.Attributes.Name),
+		TVLUSD:            liquidity,
+		Vol24h:            volume,
+		PriceUSD:          priceUSD,
+		PriceChange24hPct: decimal.Zero,
+		UpdatedAt:         time.Now(),
 	}, nil
 }
 
@@ -212,6 +231,7 @@ func (a *Adapter) discoverPoolsPrimary(ctx context.Context, chain domain.ChainID
 			continue
 		}
 		volume, _ := decimal.NewFromString(firstNonEmpty(pool.Attributes.VolumeUSD.H24, pool.Attributes.BaseVolume, pool.Attributes.QuoteVolume, "0"))
+		priceUSD, _ := decimal.NewFromString(firstNonEmpty(pool.Attributes.PriceUSD, pool.Attributes.PriceNative, "0"))
 
 		poolID := pool.Attributes.Address
 		if poolID == "" {
@@ -223,15 +243,17 @@ func (a *Adapter) discoverPoolsPrimary(ctx context.Context, chain domain.ChainID
 		}
 
 		result = append(result, ports.PoolDiscovery{
-			ID:        poolID,
-			Chain:     chain,
-			Protocol:  protocol,
-			Token0:    token0,
-			Token1:    token1,
-			FeeBPS:    parseFeeBPS(pool.Attributes.Name),
-			TVLUSD:    liquidity,
-			Vol24h:    volume,
-			UpdatedAt: time.Now(),
+			ID:                poolID,
+			Chain:             chain,
+			Protocol:          protocol,
+			Token0:            token0,
+			Token1:            token1,
+			FeeBPS:            parseFeeBPS(pool.Attributes.Name),
+			TVLUSD:            liquidity,
+			Vol24h:            volume,
+			PriceUSD:          priceUSD,
+			PriceChange24hPct: decimal.Zero,
+			UpdatedAt:         time.Now(),
 		})
 	}
 

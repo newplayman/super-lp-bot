@@ -318,7 +318,7 @@ func (app *App) buildPositionMarkRecord(ctx context.Context, pos activeShadowPos
 	}
 
 	estimatedFeeUSD := pnl.AccrueFeesFromVolume(meta.Vol24h, meta.FeeBPS).Mul(sharePct).Mul(holdDays)
-	priceChangePct, estimatedILUSD := app.estimateShadowIL(ctx, pos, now)
+	priceChangePct, estimatedILUSD := app.estimateShadowIL(ctx, pos, meta, holdMinutes, now)
 	valuationUSD := pos.AmountUSD.Add(estimatedFeeUSD).Add(estimatedILUSD)
 	netPnLUSD := estimatedFeeUSD.Add(estimatedILUSD)
 
@@ -343,31 +343,52 @@ func (app *App) buildPositionMarkRecord(ctx context.Context, pos activeShadowPos
 	}, nil
 }
 
-func (app *App) estimateShadowIL(ctx context.Context, pos activeShadowPosition, now time.Time) (dexdomain.Decimal, dexdomain.Decimal) {
+func (app *App) estimateShadowIL(ctx context.Context, pos activeShadowPosition, meta *ports.PoolDiscovery, holdMinutes int64, now time.Time) (dexdomain.Decimal, dexdomain.Decimal) {
 	historical, ok := any(app.datasource).(ports.HistoricalDatasource)
-	if !ok {
+	if ok {
+		from := now.Add(-24 * time.Hour)
+		if pos.OpenedAt > 0 {
+			from = time.Unix(pos.OpenedAt, 0)
+		}
+		history, err := historical.GetPriceHistory(ctx, pos.Chain, pos.PoolID, from, now, shadowPriceResolution(now.Sub(from)))
+		if err == nil && len(history) > 0 {
+			sort.Slice(history, func(i, j int) bool {
+				return history[i].Timestamp.Before(history[j].Timestamp)
+			})
+
+			entryPrice := openingPrice(history[0])
+			currentPrice := closingPrice(history[len(history)-1])
+			if !entryPrice.IsZero() && !currentPrice.IsZero() {
+				return realizeShadowIL(pos, entryPrice, currentPrice)
+			}
+		}
+	}
+
+	if meta == nil || meta.PriceUSD.IsZero() || meta.PriceChange24hPct.IsZero() {
 		return dexdomain.ZeroDecimal(), dexdomain.ZeroDecimal()
 	}
 
-	from := now.Add(-24 * time.Hour)
-	if pos.OpenedAt > 0 {
-		from = time.Unix(pos.OpenedAt, 0)
+	scale := dexdomain.NewDecimalFromFloat(1)
+	if holdMinutes > 0 && holdMinutes < 1440 {
+		scale = dexdomain.NewDecimalFromFloat(float64(holdMinutes) / 1440.0)
+		if scale.LessThan(dexdomain.MustDecimal("0.05")) {
+			scale = dexdomain.MustDecimal("0.05")
+		}
 	}
-	history, err := historical.GetPriceHistory(ctx, pos.Chain, pos.PoolID, from, now, shadowPriceResolution(now.Sub(from)))
-	if err != nil || len(history) == 0 {
+	priceChangePct := meta.PriceChange24hPct.Mul(scale)
+	denom := dexdomain.MustDecimal("1").Add(priceChangePct)
+	if denom.LessThanOrEqual(dexdomain.ZeroDecimal()) {
 		return dexdomain.ZeroDecimal(), dexdomain.ZeroDecimal()
 	}
-
-	sort.Slice(history, func(i, j int) bool {
-		return history[i].Timestamp.Before(history[j].Timestamp)
-	})
-
-	entryPrice := openingPrice(history[0])
-	currentPrice := closingPrice(history[len(history)-1])
+	currentPrice := meta.PriceUSD
+	entryPrice := currentPrice.Div(denom)
 	if entryPrice.IsZero() || currentPrice.IsZero() {
 		return dexdomain.ZeroDecimal(), dexdomain.ZeroDecimal()
 	}
+	return realizeShadowIL(pos, entryPrice, currentPrice)
+}
 
+func realizeShadowIL(pos activeShadowPosition, entryPrice, currentPrice dexdomain.Decimal) (dexdomain.Decimal, dexdomain.Decimal) {
 	priceChangePct := currentPrice.Div(entryPrice).Sub(dexdomain.MustDecimal("1"))
 	position := dexdomain.Position{
 		ID:        pos.ID,
@@ -379,7 +400,6 @@ func (app *App) estimateShadowIL(ctx context.Context, pos activeShadowPosition, 
 		TickUpper: pos.TickUpper,
 		OpenedAt:  pos.OpenedAt,
 	}
-
 	ilFraction, err := pnl.RealizeIL(position, entryPrice, currentPrice)
 	if err != nil {
 		return priceChangePct, dexdomain.ZeroDecimal()
