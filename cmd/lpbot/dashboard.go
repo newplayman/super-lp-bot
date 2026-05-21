@@ -154,6 +154,8 @@ type dashboardDecision struct {
 	SelectionReason string  `json:"selection_reason"`
 	IntentOpen      bool    `json:"intent_open"`
 	IntentReason    string  `json:"intent_reason"`
+	ChainStage      string  `json:"chain_stage"`
+	ChainReason     string  `json:"chain_reason"`
 	PipelineStage   string  `json:"pipeline_stage"`
 	PipelineOK      bool    `json:"pipeline_ok"`
 	PipelineReason  string  `json:"pipeline_reason"`
@@ -624,7 +626,8 @@ func queryDashboardDecisions(ctx context.Context, db *sql.DB) ([]dashboardDecisi
 	rows, err := db.QueryContext(ctx, `
 		SELECT tick_time, pool_id, pool_key, protocol, score_total,
 		       selected, COALESCE(selected_rank, 0), selection_reason,
-		       intent_open, intent_reason, pipeline_stage, pipeline_ok,
+		       intent_open, intent_reason, chain_stage, chain_reason,
+		       pipeline_stage, pipeline_ok,
 		       pipeline_reason, final_action,
 		       COALESCE(position_id, ''), COALESCE(tx_hash, '')
 		FROM shadow_decision_trace
@@ -653,6 +656,8 @@ func queryDashboardDecisions(ctx context.Context, db *sql.DB) ([]dashboardDecisi
 			&decision.SelectionReason,
 			&decision.IntentOpen,
 			&decision.IntentReason,
+			&decision.ChainStage,
+			&decision.ChainReason,
 			&decision.PipelineStage,
 			&decision.PipelineOK,
 			&decision.PipelineReason,

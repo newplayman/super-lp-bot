@@ -546,6 +546,8 @@ func (app *App) evaluateStrategies(ctx context.Context) {
 		trace.TraceID = shadowID("trace", fmt.Sprintf("%s:%d:%d", pool.Key(), rank, tickTime), tickTime)
 		evaluated++
 		pipeline := app.evaluateShadowPipeline(ctx, pool)
+		trace.ChainStage = pipeline.ChainStage
+		trace.ChainReason = pipeline.ChainReason
 		trace.PipelineStage = pipeline.Stage
 		trace.PipelineOK = pipeline.OK
 		trace.PipelineReason = pipeline.Reason

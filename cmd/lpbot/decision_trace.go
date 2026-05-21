@@ -23,6 +23,8 @@ type shadowDecisionTraceRecord struct {
 	SelectionReason string
 	IntentOpen      bool
 	IntentReason    string
+	ChainStage      string
+	ChainReason     string
 	PipelineStage   string
 	PipelineOK      bool
 	PipelineReason  string
@@ -33,12 +35,14 @@ type shadowDecisionTraceRecord struct {
 }
 
 type shadowPipelineDecision struct {
-	Stage      string
-	OK         bool
-	Reason     string
-	Action     string
-	PositionID string
-	TxHash     string
+	Stage       string
+	OK          bool
+	Reason      string
+	ChainStage  string
+	ChainReason string
+	Action      string
+	PositionID  string
+	TxHash      string
 }
 
 func (app *App) ensureShadowDecisionTraceTable(ctx context.Context) error {
@@ -63,6 +67,8 @@ func (app *App) ensureShadowDecisionTraceTable(ctx context.Context) error {
 			selection_reason TEXT NOT NULL DEFAULT '',
 			intent_open BOOLEAN NOT NULL DEFAULT FALSE,
 			intent_reason TEXT NOT NULL DEFAULT '',
+			chain_stage TEXT NOT NULL DEFAULT '',
+			chain_reason TEXT NOT NULL DEFAULT '',
 			pipeline_stage TEXT NOT NULL DEFAULT '',
 			pipeline_ok BOOLEAN NOT NULL DEFAULT FALSE,
 			pipeline_reason TEXT NOT NULL DEFAULT '',
@@ -78,6 +84,10 @@ func (app *App) ensureShadowDecisionTraceTable(ctx context.Context) error {
 			ON shadow_decision_trace(tick_time DESC);
 		CREATE INDEX IF NOT EXISTS idx_shadow_decision_trace_pool_id
 			ON shadow_decision_trace(pool_id);
+		ALTER TABLE shadow_decision_trace
+			ADD COLUMN IF NOT EXISTS chain_stage TEXT NOT NULL DEFAULT '';
+		ALTER TABLE shadow_decision_trace
+			ADD COLUMN IF NOT EXISTS chain_reason TEXT NOT NULL DEFAULT '';
 	`)
 	if err != nil {
 		return fmt.Errorf("ensure shadow_decision_trace table: %w", err)
@@ -105,13 +115,15 @@ func (app *App) persistShadowDecisionTraces(ctx context.Context, records []shado
 			INSERT INTO shadow_decision_trace (
 				tick_time, trace_id, pool_id, pool_key, chain, protocol,
 				score_total, score_json, selected, selected_rank, selection_reason,
-				intent_open, intent_reason, pipeline_stage, pipeline_ok, pipeline_reason,
+				intent_open, intent_reason, chain_stage, chain_reason,
+				pipeline_stage, pipeline_ok, pipeline_reason,
 				final_action, position_id, tx_hash, created_at
 			) VALUES (
 				$1, $2, $3, $4, $5, $6,
 				$7, $8, $9, $10, $11,
-				$12, $13, $14, $15, $16,
-				$17, $18, $19, $20
+				$12, $13, $14, $15,
+				$16, $17, $18,
+				$19, $20, $21, $22
 			)
 		`,
 			record.TickTime,
@@ -127,6 +139,8 @@ func (app *App) persistShadowDecisionTraces(ctx context.Context, records []shado
 			record.SelectionReason,
 			record.IntentOpen,
 			record.IntentReason,
+			record.ChainStage,
+			record.ChainReason,
 			record.PipelineStage,
 			record.PipelineOK,
 			record.PipelineReason,
@@ -212,9 +226,11 @@ func (app *App) evaluateShadowPipeline(ctx context.Context, pool domain.Pool) sh
 	chainValidation := app.validatePoolOnChain(ctx, pool)
 	if !chainValidation.OK {
 		return shadowPipelineDecision{
-			Stage:  chainValidation.Stage,
-			Reason: chainValidation.Reason,
-			Action: "skip",
+			Stage:       chainValidation.Stage,
+			Reason:      chainValidation.Reason,
+			ChainStage:  chainValidation.Stage,
+			ChainReason: chainValidation.Reason,
+			Action:      "skip",
 		}
 	}
 
@@ -222,9 +238,11 @@ func (app *App) evaluateShadowPipeline(ctx context.Context, pool domain.Pool) sh
 	if err != nil {
 		app.mainLoop.GetMetrics().IncSimulateFail()
 		return shadowPipelineDecision{
-			Stage:  "simulation_error",
-			Reason: err.Error(),
-			Action: "skip",
+			Stage:       "simulation_error",
+			Reason:      err.Error(),
+			ChainStage:  chainValidation.Stage,
+			ChainReason: chainValidation.Reason,
+			Action:      "skip",
 		}
 	}
 	if sim == nil || !sim.Success {
@@ -234,9 +252,11 @@ func (app *App) evaluateShadowPipeline(ctx context.Context, pool domain.Pool) sh
 			reason = sim.Error
 		}
 		return shadowPipelineDecision{
-			Stage:  "simulation_failed",
-			Reason: reason,
-			Action: "skip",
+			Stage:       "simulation_failed",
+			Reason:      reason,
+			ChainStage:  chainValidation.Stage,
+			ChainReason: chainValidation.Reason,
+			Action:      "skip",
 		}
 	}
 
@@ -244,9 +264,11 @@ func (app *App) evaluateShadowPipeline(ctx context.Context, pool domain.Pool) sh
 		if err := app.mainLoop.ApproveTracker.EnsureApproval(ctx, pool); err != nil {
 			app.mainLoop.GetMetrics().IncApproveFail()
 			return shadowPipelineDecision{
-				Stage:  "approval_failed",
-				Reason: err.Error(),
-				Action: "skip",
+				Stage:       "approval_failed",
+				Reason:      err.Error(),
+				ChainStage:  chainValidation.Stage,
+				ChainReason: chainValidation.Reason,
+				Action:      "skip",
 			}
 		}
 	}
@@ -256,9 +278,11 @@ func (app *App) evaluateShadowPipeline(ctx context.Context, pool domain.Pool) sh
 		app.mainLoop.GetMetrics().IncTxFailed()
 		app.mainLoop.OrderManager.OnTxFailure(ctx, pool.ID)
 		return shadowPipelineDecision{
-			Stage:  "order_error",
-			Reason: err.Error(),
-			Action: "skip",
+			Stage:       "order_error",
+			Reason:      err.Error(),
+			ChainStage:  chainValidation.Stage,
+			ChainReason: chainValidation.Reason,
+			Action:      "skip",
 		}
 	}
 	if !result.Success {
@@ -269,11 +293,13 @@ func (app *App) evaluateShadowPipeline(ctx context.Context, pool domain.Pool) sh
 			reason = "order manager returned unsuccessful result"
 		}
 		return shadowPipelineDecision{
-			Stage:      "order_rejected",
-			Reason:     reason,
-			Action:     "skip",
-			PositionID: result.PositionID,
-			TxHash:     result.TxHash,
+			Stage:       "order_rejected",
+			Reason:      reason,
+			ChainStage:  chainValidation.Stage,
+			ChainReason: chainValidation.Reason,
+			Action:      "skip",
+			PositionID:  result.PositionID,
+			TxHash:      result.TxHash,
 		}
 	}
 
@@ -289,12 +315,14 @@ func (app *App) evaluateShadowPipeline(ctx context.Context, pool domain.Pool) sh
 	}
 
 	return shadowPipelineDecision{
-		Stage:      stage,
-		OK:         true,
-		Reason:     reason,
-		Action:     action,
-		PositionID: result.PositionID,
-		TxHash:     result.TxHash,
+		Stage:       stage,
+		OK:          true,
+		Reason:      reason,
+		ChainStage:  chainValidation.Stage,
+		ChainReason: chainValidation.Reason,
+		Action:      action,
+		PositionID:  result.PositionID,
+		TxHash:      result.TxHash,
 	}
 }
 
