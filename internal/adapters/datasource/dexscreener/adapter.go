@@ -45,7 +45,7 @@ func (a *Adapter) DiscoverPools(ctx context.Context, chain domain.ChainID, proto
 	result := make([]ports.PoolDiscovery, 0, len(pools))
 
 	for _, pool := range pools {
-		liquidity, err := decimal.NewFromString(pool.Liquidity.USD)
+		liquidity, err := decimal.NewFromString(pool.Liquidity.USD.String())
 		if err != nil {
 			continue
 		}
@@ -55,7 +55,7 @@ func (a *Adapter) DiscoverPools(ctx context.Context, chain domain.ChainID, proto
 
 		token0, _ := domain.ParseAddress(pool.Token0.Address)
 		token1, _ := domain.ParseAddress(pool.Token1.Address)
-		volume24h, _ := decimal.NewFromString(pool.Volume.H24)
+		volume24h, _ := decimal.NewFromString(pool.Volume.H24.String())
 
 		parsed := ports.PoolDiscovery{
 			ID:        pool.PoolAddress,
@@ -89,8 +89,8 @@ func (a *Adapter) GetPoolMetadata(ctx context.Context, chain domain.ChainID, poo
 
 	token0, _ := domain.ParseAddress(pool.Token0.Address)
 	token1, _ := domain.ParseAddress(pool.Token1.Address)
-	liquidity, _ := decimal.NewFromString(pool.Liquidity.USD)
-	volume24h, _ := decimal.NewFromString(pool.Volume.H24)
+	liquidity, _ := decimal.NewFromString(pool.Liquidity.USD.String())
+	volume24h, _ := decimal.NewFromString(pool.Volume.H24.String())
 
 	return &ports.PoolDiscovery{
 		ID:        pool.PoolAddress,
@@ -159,15 +159,15 @@ func (a *Adapter) GetSwaps(ctx context.Context, chain domain.ChainID, poolID str
 		}
 
 		result = append(result, ports.Swap{
-			ID:          swap.ID,
-			PoolID:      swap.PoolAddress,
-			Chain:       chain,
-			Timestamp:   time.Unix(swap.BlockTimestamp, 0),
-			BlockNumber: swap.BlockNumber,
-			Amount0:     amount0,
-			Amount1:     amount1,
-			Trader:      domain.Address{},
-			Tick:        0,
+			ID:           swap.ID,
+			PoolID:       swap.PoolAddress,
+			Chain:        chain,
+			Timestamp:    time.Unix(swap.BlockTimestamp, 0),
+			BlockNumber:  swap.BlockNumber,
+			Amount0:      amount0,
+			Amount1:      amount1,
+			Trader:       domain.Address{},
+			Tick:         0,
 			SqrtPriceX96: decimal.Zero,
 		})
 

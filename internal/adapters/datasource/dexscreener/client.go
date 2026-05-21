@@ -40,28 +40,28 @@ type PoolToken struct {
 
 // PoolInfo represents pool information from DexScreener.
 type PoolInfo struct {
-	PoolID         string      `json:"poolId"`
-	PoolAddress    string      `json:"poolAddress"`
-	ChainID      string      `json:"chainId"`
-	DEX           string      `json:"dexId"`
-	Protocol      string      `json:"protocolType"`
-	Factory       string      `json:"factoryAddress,omitempty"`
-	Token0        PoolToken   `json:"baseToken"`
-	Token1        PoolToken   `json:"quoteToken"`
-	Liquidity     Liquidity   `json:"liquidity"`
-	PriceUSD      string      `json:"priceUsd"`
-	PriceNative   string      `json:"priceNative"`
-	Txns          Txns        `json:"txns"`
-	Volume        Volume      `json:"volume"`
-	PriceChange   PriceChange `json:"priceChange"`
-	CreatedAt     int64       `json:"poolCreatedAtTimestamp"`
+	PoolID      string      `json:"pairAddress"`
+	PoolAddress string      `json:"pairAddress"`
+	ChainID     string      `json:"chainId"`
+	DEX         string      `json:"dexId"`
+	Protocol    string      `json:"protocolType"`
+	Factory     string      `json:"factoryAddress,omitempty"`
+	Token0      PoolToken   `json:"baseToken"`
+	Token1      PoolToken   `json:"quoteToken"`
+	Liquidity   Liquidity   `json:"liquidity"`
+	PriceUSD    string      `json:"priceUsd"`
+	PriceNative string      `json:"priceNative"`
+	Txns        Txns        `json:"txns"`
+	Volume      Volume      `json:"volume"`
+	PriceChange PriceChange `json:"priceChange"`
+	CreatedAt   int64       `json:"poolCreatedAtTimestamp"`
 }
 
 // Liquidity represents liquidity data from DexScreener.
 type Liquidity struct {
-	USD  string `json:"usd"`
-	Base string `json:"base"`
-	Quote string `json:"quote"`
+	USD   json.Number `json:"usd"`
+	Base  json.Number `json:"base"`
+	Quote json.Number `json:"quote"`
 }
 
 // Txns represents transaction counts from DexScreener.
@@ -79,36 +79,32 @@ type TxCount struct {
 
 // Volume represents volume data from DexScreener.
 type Volume struct {
-	M5   string `json:"m5"`
-	H1   string `json:"h1"`
-	H24  string `json:"h24"`
-	H6   string `json:"h6"`
-	H12  string `json:"h12"`
+	M5  json.Number `json:"m5"`
+	H1  json.Number `json:"h1"`
+	H24 json.Number `json:"h24"`
+	H6  json.Number `json:"h6"`
+	H12 json.Number `json:"h12"`
 }
 
 // PriceChange represents price change data from DexScreener.
 type PriceChange struct {
-	M5   string `json:"m5"`
-	H1   string `json:"h1"`
-	H24  string `json:"h24"`
-	H6   string `json:"h6"`
-	H12  string `json:"h12"`
+	M5  json.Number `json:"m5"`
+	H1  json.Number `json:"h1"`
+	H24 json.Number `json:"h24"`
+	H6  json.Number `json:"h6"`
+	H12 json.Number `json:"h12"`
 }
 
 // SearchResponse represents the DexScreener search API response.
 type SearchResponse struct {
-	Schema string    `json:"schema"`
-	Data  DataBlock `json:"data"`
-}
-
-// DataBlock contains the array of pools from DexScreener.
-type DataBlock struct {
-	Pairs []PoolInfo `json:"pairs"`
+	SchemaVersion string     `json:"schemaVersion"`
+	Pairs         []PoolInfo `json:"pairs"`
+	Pair          *PoolInfo  `json:"pair"`
 }
 
 // RecentSwapsResponse represents the recent swaps API response.
 type RecentSwapsResponse struct {
-	Schema string       `json:"schema"`
+	Schema string         `json:"schema"`
 	Data   SwapsDataBlock `json:"data"`
 }
 
@@ -119,30 +115,30 @@ type SwapsDataBlock struct {
 
 // SwapData represents a single swap from DexScreener recent swaps API.
 type SwapData struct {
-	ID              string    `json:"id"`
-	PoolAddress     string    `json:"poolAddress"`
-	ChainID       string    `json:"chainId"`
-	DEX             string    `json:"dexId"`
-	Protocol        string    `json:"protocolType"`
-	Token0Symbol    string    `json:"baseToken_symbol"`
-	Token1Symbol    string    `json:"quoteToken_symbol"`
-	Token0Address   string    `json:"baseToken_address"`
-	Token1Address   string    `json:"quoteToken_address"`
-	Side            string    `json:"side"` // "BUY" or "SELL"
-	Amount          string    `json:"amount"`
-	TokenAmount0    string    `json:"tokenAmount0"`
-	TokenAmount1    string    `json:"tokenAmount1"`
-	VolumeUSD       string    `json:"volumeUsd"`
-	Price           string    `json:"price"`
-	PriceUSD        string    `json:"priceUsd"`
-	TxHash          string    `json:"txHash"`
-	BlockNumber     uint64    `json:"blockNumber"`
-	BlockTimestamp  int64     `json:"blockTimestamp"`
-	Gas             string    `json:"gas"`
-	GasPrice        string    `json:"gasPrice"`
-	IsBot           bool      `json:"isBot"`
-	IsWhale         bool      `json:"isWhale"`
-	IsInstitutional bool      `json:"isInstitutional"`
+	ID              string `json:"id"`
+	PoolAddress     string `json:"poolAddress"`
+	ChainID         string `json:"chainId"`
+	DEX             string `json:"dexId"`
+	Protocol        string `json:"protocolType"`
+	Token0Symbol    string `json:"baseToken_symbol"`
+	Token1Symbol    string `json:"quoteToken_symbol"`
+	Token0Address   string `json:"baseToken_address"`
+	Token1Address   string `json:"quoteToken_address"`
+	Side            string `json:"side"` // "BUY" or "SELL"
+	Amount          string `json:"amount"`
+	TokenAmount0    string `json:"tokenAmount0"`
+	TokenAmount1    string `json:"tokenAmount1"`
+	VolumeUSD       string `json:"volumeUsd"`
+	Price           string `json:"price"`
+	PriceUSD        string `json:"priceUsd"`
+	TxHash          string `json:"txHash"`
+	BlockNumber     uint64 `json:"blockNumber"`
+	BlockTimestamp  int64  `json:"blockTimestamp"`
+	Gas             string `json:"gas"`
+	GasPrice        string `json:"gasPrice"`
+	IsBot           bool   `json:"isBot"`
+	IsWhale         bool   `json:"isWhale"`
+	IsInstitutional bool   `json:"isInstitutional"`
 }
 
 // SearchPools searches for pools by token pair on a chain.
@@ -174,7 +170,7 @@ func (c *Client) SearchPools(ctx context.Context, chainID, token0Address, token1
 		return nil, fmt.Errorf("decode response: %w", err)
 	}
 
-	return result.Data.Pairs, nil
+	return result.Pairs, nil
 }
 
 // GetPoolByAddress retrieves pool info by pool address.
@@ -206,11 +202,13 @@ func (c *Client) GetPoolByAddress(ctx context.Context, chainID, poolAddress stri
 		return nil, fmt.Errorf("decode response: %w", err)
 	}
 
-	if len(result.Data.Pairs) == 0 {
-		return nil, nil
+	if result.Pair != nil {
+		return result.Pair, nil
 	}
-
-	return &result.Data.Pairs[0], nil
+	if len(result.Pairs) > 0 {
+		return &result.Pairs[0], nil
+	}
+	return nil, nil
 }
 
 // GetRecentSwaps retrieves recent swaps for a pool.
@@ -270,10 +268,8 @@ func (c *Client) GetTokenPrice(ctx context.Context, chainID, tokenAddress string
 	}
 
 	var result struct {
-		Schema string `json:"schema"`
-		Data   struct {
-			Pairs []PoolInfo `json:"pairs"`
-		} `json:"data"`
+		SchemaVersion string     `json:"schemaVersion"`
+		Pairs         []PoolInfo `json:"pairs"`
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
@@ -283,9 +279,9 @@ func (c *Client) GetTokenPrice(ctx context.Context, chainID, tokenAddress string
 	// Get the pool with highest liquidity
 	var bestPool *PoolInfo
 	var maxLiquidity decimal.Decimal
-	for i := range result.Data.Pairs {
-		pool := &result.Data.Pairs[i]
-		liquidity, _ := decimal.NewFromString(pool.Liquidity.USD)
+	for i := range result.Pairs {
+		pool := &result.Pairs[i]
+		liquidity, _ := decimal.NewFromString(pool.Liquidity.USD.String())
 		if liquidity.GreaterThan(maxLiquidity) {
 			maxLiquidity = liquidity
 			bestPool = pool
