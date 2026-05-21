@@ -26,6 +26,7 @@ heartbeat_ttl_seconds = 60
 [wallet]
 backend = "keystore"
 keystore_path = "${HOME}/.lpbot/keystore-live.json"
+passphrase = "${WALLET_PASSPHRASE}"
 
 [bus]
 backend = "inproc"
@@ -36,6 +37,7 @@ okx_api_key = "${OKX_API_KEY}"
 okx_api_secret = "${OKX_API_SECRET}"
 okx_api_passphrase = "${OKX_API_PASSPHRASE}"
 okx_project_id = "${OKX_PROJECT_ID}"
+npm_base_address = "${NPM_BASE_ADDRESS}"
 
 [live]
 enabled = false

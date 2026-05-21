@@ -94,6 +94,13 @@ type dashboardLiveReadiness struct {
 	RPCPrimaryConfigured  bool     `json:"rpc_primary_configured"`
 	OKXAPIConfigured      bool     `json:"okx_api_configured"`
 	OKXProjectConfigured  bool     `json:"okx_project_configured"`
+	WalletBackend         string   `json:"wallet_backend"`
+	KeystorePath          string   `json:"keystore_path"`
+	KeystorePresent       bool     `json:"keystore_present"`
+	WalletPassphraseSet   bool     `json:"wallet_passphrase_set"`
+	NPMBaseAddress        string   `json:"npm_base_address"`
+	NPMBaseConfigured     bool     `json:"npm_base_configured"`
+	SizingPathReady       bool     `json:"sizing_path_ready"`
 	Ready                 bool     `json:"ready"`
 	Blockers              []string `json:"blockers"`
 }

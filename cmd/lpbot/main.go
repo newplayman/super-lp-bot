@@ -12,6 +12,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"os/signal"
 	"sort"
 	"strings"
@@ -83,6 +84,13 @@ type liveSafetyGate struct {
 	rpcPrimaryConfigured       bool
 	okxAPIConfigured           bool
 	okxProjectConfigured       bool
+	walletBackend              string
+	keystorePath               string
+	keystorePresent            bool
+	walletPassphraseSet        bool
+	npmBaseAddress             string
+	npmBaseConfigured          bool
+	sizingPathReady            bool
 }
 
 func newLiveSafetyGate(buildMode string, cfg *config.Config) *liveSafetyGate {
@@ -107,6 +115,13 @@ func newLiveSafetyGate(buildMode string, cfg *config.Config) *liveSafetyGate {
 		strings.TrimSpace(cfg.Execution.OKXAPISecret) != "" &&
 		strings.TrimSpace(cfg.Execution.OKXPassphrase) != ""
 	gate.okxProjectConfigured = strings.TrimSpace(cfg.Execution.OKXProjectID) != ""
+	gate.walletBackend = strings.ToLower(strings.TrimSpace(cfg.Wallet.Backend))
+	gate.keystorePath = strings.TrimSpace(cfg.Wallet.KeystorePath)
+	gate.keystorePresent = fileExists(gate.keystorePath)
+	gate.walletPassphraseSet = strings.TrimSpace(cfg.Wallet.Passphrase) != ""
+	gate.npmBaseAddress = strings.TrimSpace(cfg.Execution.NPMBaseAddress)
+	gate.npmBaseConfigured = gate.npmBaseAddress != ""
+	gate.sizingPathReady = false
 	gate.executionBackendConfigured = gate.backendConfigured()
 
 	for _, chain := range cfg.Live.AllowedChains {
@@ -131,6 +146,16 @@ func normalizeExecutionBackend(value string) string {
 		return "shadow"
 	}
 	return normalized
+}
+
+func fileExists(path string) bool {
+	if strings.TrimSpace(path) == "" {
+		return false
+	}
+	if _, err := os.Stat(filepath.Clean(path)); err == nil {
+		return true
+	}
+	return false
 }
 
 func (g *liveSafetyGate) backendConfigured() bool {
@@ -177,6 +202,22 @@ func (g *liveSafetyGate) blockers() []string {
 	}
 	if g.dailyLossLimitUSD <= 0 {
 		blockers = append(blockers, "live.daily_loss_limit_usd must be > 0")
+	}
+	if g.walletBackend == "keystore" {
+		if g.keystorePath == "" {
+			blockers = append(blockers, "wallet.keystore_path is empty")
+		} else if !g.keystorePresent {
+			blockers = append(blockers, "wallet.keystore_path does not exist on disk")
+		}
+		if !g.walletPassphraseSet {
+			blockers = append(blockers, "wallet.passphrase is empty")
+		}
+	}
+	if !g.npmBaseConfigured {
+		blockers = append(blockers, "execution.npm_base_address is empty")
+	}
+	if !g.sizingPathReady {
+		blockers = append(blockers, "amount_usd to token amount sizing path is not implemented")
 	}
 	if !g.executionBackendConfigured {
 		switch g.executionBackend {
@@ -226,6 +267,13 @@ func (g *liveSafetyGate) readiness() dashboardLiveReadiness {
 		RPCPrimaryConfigured:  g.rpcPrimaryConfigured,
 		OKXAPIConfigured:      g.okxAPIConfigured,
 		OKXProjectConfigured:  g.okxProjectConfigured,
+		WalletBackend:         g.walletBackend,
+		KeystorePath:          g.keystorePath,
+		KeystorePresent:       g.keystorePresent,
+		WalletPassphraseSet:   g.walletPassphraseSet,
+		NPMBaseAddress:        g.npmBaseAddress,
+		NPMBaseConfigured:     g.npmBaseConfigured,
+		SizingPathReady:       g.sizingPathReady,
 		Ready:                 len(blockers) == 0,
 		Blockers:              blockers,
 	}

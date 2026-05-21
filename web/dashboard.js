@@ -149,6 +149,11 @@
         const okxStatus = backend === 'okx-onchain'
             ? ((live.okx_api_configured && live.okx_project_configured) ? 'OKX 凭据已配置' : 'OKX 凭据缺失')
             : '未使用 OKX';
+        const walletStatus = live.wallet_passphrase_set
+            ? ((live.keystore_present) ? 'Keystore + passphrase 已配置' : 'passphrase 已配 / keystore 缺失')
+            : 'wallet passphrase 缺失';
+        const npmStatus = live.npm_base_configured ? 'NPM 地址已配置' : 'NPM 地址缺失';
+        const sizingStatus = live.sizing_path_ready ? 'sizing 已实现' : 'sizing 未实现';
 
         setText('decision-exposure', `$${money(live.max_order_usd)} / $${money(live.daily_loss_limit_usd)}`);
         setText('decision-kill-switch', live.kill_switch ? '已触发 / 拒绝新单' : (live.live_enabled ? '未触发 / 等待全量通过' : 'live 未启用'));
@@ -164,7 +169,7 @@
         setText('execution-whitelist-status', whitelistStatus);
         setText('execution-last-tx', lastTx.tx_hash ? short(lastTx.tx_hash) : (live.canary ? 'canary not started' : 'shadow only'));
         setText('execution-last-tx-status', lastTx.tx_hash ? (lastTx.status || 'recorded') : `${rpcStatus} | ${okxStatus}`);
-        setText('execution-blockers', `${blockerText} | ${rpcStatus} | ${okxStatus}`);
+        setText('execution-blockers', `${blockerText} | ${rpcStatus} | ${okxStatus} | ${walletStatus} | ${npmStatus} | ${sizingStatus}`);
     }
 
     function renderScanner(decisions) {

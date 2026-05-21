@@ -60,6 +60,7 @@ type Redis struct {
 type Wallet struct {
 	Backend      string `toml:"backend"`
 	KeystorePath string `toml:"keystore_path"`
+	Passphrase   string `toml:"passphrase"`
 }
 
 // Bus represents the bus configuration.
@@ -74,6 +75,7 @@ type Execution struct {
 	OKXAPISecret   string `toml:"okx_api_secret"`
 	OKXPassphrase  string `toml:"okx_api_passphrase"`
 	OKXProjectID   string `toml:"okx_project_id"`
+	NPMBaseAddress string `toml:"npm_base_address"`
 }
 
 // Live represents the live execution safety configuration.
