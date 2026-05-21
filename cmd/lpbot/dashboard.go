@@ -156,6 +156,8 @@ type dashboardPositionMark struct {
 	PositionID     string `json:"position_id"`
 	PoolID         string `json:"pool_id"`
 	Status         string `json:"status"`
+	Tier           string `json:"tier"`
+	AmountUSD      string `json:"amount_usd"`
 	Source         string `json:"source"`
 	MarkTime       int64  `json:"mark_time"`
 	HoldMinutes    int64  `json:"hold_minutes"`
@@ -541,12 +543,12 @@ func queryDashboardTransactions(ctx context.Context, db *sql.DB) ([]dashboardTra
 
 func queryDashboardPositionMarks(ctx context.Context, db *sql.DB) ([]dashboardPositionMark, error) {
 	rows, err := db.QueryContext(ctx, `
-		SELECT position_id, pool_id, status, source, mark_time, hold_minutes,
+		SELECT position_id, pool_id, status, tier, amount_usd, source, mark_time, hold_minutes,
 		       valuation_usd, fee_usd, il_usd, net_pnl_usd,
 		       current_tvl_usd, current_vol24h_usd, price_change_pct
 		FROM (
 			SELECT DISTINCT ON (position_id)
-				position_id, pool_id, status, source, mark_time, hold_minutes,
+				position_id, pool_id, status, tier, amount_usd, source, mark_time, hold_minutes,
 				valuation_usd, fee_usd, il_usd, net_pnl_usd,
 				current_tvl_usd, current_vol24h_usd, price_change_pct
 			FROM shadow_position_marks
@@ -567,6 +569,8 @@ func queryDashboardPositionMarks(ctx context.Context, db *sql.DB) ([]dashboardPo
 			&mark.PositionID,
 			&mark.PoolID,
 			&mark.Status,
+			&mark.Tier,
+			&mark.AmountUSD,
 			&mark.Source,
 			&mark.MarkTime,
 			&mark.HoldMinutes,

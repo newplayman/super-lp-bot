@@ -205,6 +205,16 @@
         <table><thead><tr><th>Position</th><th>Value</th><th>PnL</th><th>Hold</th></tr></thead><tbody id="mark-rows"></tbody></table>
       </div>
     </section>
+    <section class="grid">
+      <div class="card metric"><div class="label">Total IL</div><div class="value" id="total-il">-</div></div>
+      <div class="card metric"><div class="label">Total Fees</div><div class="value" id="total-fees">-</div></div>
+      <div class="card metric"><div class="label">Fee / IL Cover</div><div class="value" id="fee-il-cover">-</div></div>
+      <div class="card metric"><div class="label">Worst IL %</div><div class="value" id="worst-il-pct">-</div></div>
+    </section>
+    <section class="card">
+      <div class="section-title"><h2>IL Risk</h2><span class="small">impermanent loss by position</span></div>
+      <table><thead><tr><th>Position</th><th>IL</th><th>Fees</th><th>Net</th><th>Threshold</th></tr></thead><tbody id="il-risk-rows"></tbody></table>
+    </section>
     <section class="card">
       <div class="section-title"><h2>Decision Trace</h2><span class="small">latest 30 pool decisions</span></div>
       <table><thead><tr><th>Pool</th><th>Score</th><th>Selected</th><th>Intent</th><th>Chain</th><th>Pipeline</th><th>Action</th></tr></thead><tbody id="decision-rows"></tbody></table>
@@ -252,6 +262,16 @@
     }
     function poolCell(poolId, sub) {
       return `<code>${short(poolId)}</code><br><span class="small">${poolLinks(poolId)}${sub ? " · " + sub : ""}</span>`;
+    }
+    function ilStopPct(tier) {
+      const value = String(tier || "").toUpperCase();
+      if (value === "A") return 3;
+      if (value === "B") return 5;
+      return 8;
+    }
+    function signed(value, digits = 2) {
+      const n = num(value);
+      return (n > 0 ? "+" : "") + n.toFixed(digits);
     }
     function scoreSummary(raw) {
       try {
@@ -324,7 +344,27 @@
       document.getElementById("position-rows").innerHTML = data.positions.map(p => `<tr><td><code>${short(p.id)}</code><br><span class="small">${poolLinks(p.pool_id)} · ${short(p.pool_id)}</span></td><td>${p.status}</td><td>${p.amount_usd}</td></tr>`).join("");
       document.getElementById("closed-position-rows").innerHTML = (data.closed_positions || []).map(p => `<tr><td><code>${short(p.id)}</code></td><td>${poolCell(p.pool_id)}</td><td>${p.tier || "-"}</td><td>${num(p.net_pnl_usd).toFixed(2)}</td><td>${p.hold_minutes || 0}m</td><td>${p.exit_action || "-"}<br><span class="small">${p.exit_reason || "-"}</span></td><td>${timeText(p.closed_at)}</td></tr>`).join("");
       document.getElementById("tx-rows").innerHTML = data.transactions.map(t => `<tr><td><code>${short(t.id)}</code></td><td>${t.status}</td><td><code>${short(t.tx_hash)}</code></td><td>${timeText(Math.floor(t.created_at / 1000))}</td></tr>`).join("");
-      document.getElementById("mark-rows").innerHTML = (data.position_marks || []).map(m => `<tr><td><code>${short(m.position_id)}</code><br><span class="small">${m.source || "-"} · ${poolLinks(m.pool_id)}</span></td><td>${num(m.valuation_usd).toFixed(2)}<br><span class="small">TVL ${num(m.current_tvl_usd).toFixed(0)}</span></td><td>${num(m.net_pnl_usd).toFixed(2)}<br><span class="small">fees ${num(m.fee_usd).toFixed(2)} / il ${num(m.il_usd).toFixed(2)}</span></td><td>${m.hold_minutes}m<br><span class="small">price ${(num(m.price_change_pct) * 100).toFixed(2)}%</span></td></tr>`).join("");
+      const marks = data.position_marks || [];
+      const totalIL = marks.reduce((sum, m) => sum + num(m.il_usd), 0);
+      const totalFees = marks.reduce((sum, m) => sum + num(m.fee_usd), 0);
+      const worstILPct = marks.reduce((worst, m) => {
+        const amount = Math.max(num(m.amount_usd), 1);
+        return Math.max(worst, Math.abs(num(m.il_usd)) / amount * 100);
+      }, 0);
+      const feeILCover = Math.abs(totalIL) > 0.000001 ? totalFees / Math.abs(totalIL) : 0;
+      document.getElementById("total-il").textContent = signed(totalIL);
+      document.getElementById("total-fees").textContent = signed(totalFees);
+      document.getElementById("fee-il-cover").textContent = feeILCover ? feeILCover.toFixed(2) + "x" : "-";
+      document.getElementById("worst-il-pct").textContent = worstILPct.toFixed(2) + "%";
+      document.getElementById("mark-rows").innerHTML = marks.map(m => `<tr><td><code>${short(m.position_id)}</code><br><span class="small">${m.source || "-"} · ${poolLinks(m.pool_id)}</span></td><td>${num(m.valuation_usd).toFixed(2)}<br><span class="small">TVL ${num(m.current_tvl_usd).toFixed(0)}</span></td><td>${signed(m.net_pnl_usd)}<br><span class="small">fees ${signed(m.fee_usd)} / IL ${signed(m.il_usd)}</span></td><td>${m.hold_minutes}m<br><span class="small">price ${(num(m.price_change_pct) * 100).toFixed(2)}%</span></td></tr>`).join("");
+      document.getElementById("il-risk-rows").innerHTML = marks.map(m => {
+        const amount = Math.max(num(m.amount_usd), 1);
+        const ilPct = Math.abs(num(m.il_usd)) / amount * 100;
+        const stop = ilStopPct(m.tier);
+        const margin = Math.max(stop - ilPct, 0);
+        const label = ilPct >= stop ? "BREACH" : margin < stop * 0.25 ? "WATCH" : "OK";
+        return `<tr><td><code>${short(m.position_id)}</code><br><span class="small">tier ${m.tier || "-"} · ${poolLinks(m.pool_id)}</span></td><td>${signed(m.il_usd)} USD<br><span class="small">${ilPct.toFixed(2)}% of ${num(m.amount_usd).toFixed(0)}</span></td><td>${signed(m.fee_usd)} USD<br><span class="small">cover ${Math.abs(num(m.il_usd)) > 0.000001 ? (num(m.fee_usd) / Math.abs(num(m.il_usd))).toFixed(2) + "x" : "-"}</span></td><td>${signed(m.net_pnl_usd)} USD</td><td>${label}<br><span class="small">stop ${stop.toFixed(1)}%, margin ${margin.toFixed(2)}%</span></td></tr>`;
+      }).join("");
       renderCurve(data.mark_series || []);
       document.getElementById("decision-rows").innerHTML = (data.decisions || []).map(d => `<tr><td>${poolCell(d.pool_id, d.protocol)}</td><td>${Number(d.score_total || 0).toFixed(1)}</td><td>${d.selected ? "yes" : "no"}<br><span class="small">${d.selection_reason || "-"}</span></td><td>${d.intent_open ? "open" : "skip"}<br><span class="small">${d.intent_reason || "-"}</span></td><td>${d.chain_stage || "-"}<br><span class="small">${d.chain_reason || "-"}</span></td><td>${d.pipeline_stage || "-"}<br><span class="small">${d.pipeline_reason || "-"}</span></td><td>${d.final_action || "-"}${d.position_id ? `<br><span class="small">${short(d.position_id)}</span>` : ""}</td></tr>`).join("");
       document.getElementById("strategy-audit-rows").innerHTML = (data.strategy_audit || []).map(t => `<tr><td>${timeText(t.tick_time)}</td><td>${t.scanned}</td><td>${t.selected}</td><td>${t.intent_open}</td><td>${t.chain_ok}</td><td>${t.pipeline_ok}</td><td>${t.opened_or_reused}</td></tr>`).join("");
