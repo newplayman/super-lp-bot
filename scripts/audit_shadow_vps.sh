@@ -250,6 +250,12 @@ exec 2>&1
     source "$ROOT_DIR/.env.postgres"
     set +a
   fi
+  if [ -f "$ROOT_DIR/.env.redis" ]; then
+    # shellcheck disable=SC1090
+    set -a
+    source "$ROOT_DIR/.env.redis"
+    set +a
+  fi
   set -u
 
   if [ -n "${DATABASE_URL:-}" ]; then
