@@ -252,11 +252,17 @@ func (c *Client) GetPoolsByNetwork(ctx context.Context, network string, limit in
 		pageLimit = limit
 	}
 	maxPages := (limit + pageLimit - 1) / pageLimit
+	if maxPages > 2 {
+		maxPages = 2
+	}
 
 	result := make([]PoolInfo, 0, limit)
 	for page := 1; page <= maxPages && len(result) < limit; page++ {
 		pools, err := c.getPoolsByNetworkPage(ctx, network, page, pageLimit)
 		if err != nil {
+			if len(result) > 0 {
+				return result, nil
+			}
 			return nil, err
 		}
 		if len(pools) == 0 {
