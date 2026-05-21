@@ -3,13 +3,16 @@ package geckoterminal
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/lpbot/lpbot/internal/domain"
+	"github.com/lpbot/lpbot/internal/platform/metrics"
 	"github.com/lpbot/lpbot/internal/ports"
 	"github.com/shopspring/decimal"
 )
@@ -20,29 +23,67 @@ var (
 )
 
 type Adapter struct {
-	client  *http.Client
-	baseURL string
+	client           *http.Client
+	baseURL          string
+	cacheTTL         time.Duration
+	rateLimitBackoff time.Duration
+	mu               sync.Mutex
+	poolCache        map[string]poolCacheEntry
+	cooldownUntil    time.Time
+}
+
+type poolCacheEntry struct {
+	pools     []ports.PoolDiscovery
+	expiresAt time.Time
+	fetchedAt time.Time
 }
 
 func NewAdapter() *Adapter {
 	return &Adapter{
-		client:  &http.Client{Timeout: 30 * time.Second},
-		baseURL: "https://api.geckoterminal.com/api/v2",
+		client:           &http.Client{Timeout: 30 * time.Second},
+		baseURL:          "https://api.geckoterminal.com/api/v2",
+		cacheTTL:         90 * time.Second,
+		rateLimitBackoff: 2 * time.Minute,
+		poolCache:        make(map[string]poolCacheEntry),
 	}
 }
 
 func NewAdapterWithClient(client *http.Client) *Adapter {
 	return &Adapter{
-		client:  client,
-		baseURL: "https://api.geckoterminal.com/api/v2",
+		client:           client,
+		baseURL:          "https://api.geckoterminal.com/api/v2",
+		cacheTTL:         90 * time.Second,
+		rateLimitBackoff: 2 * time.Minute,
+		poolCache:        make(map[string]poolCacheEntry),
 	}
 }
 
 func (a *Adapter) DiscoverPools(ctx context.Context, chain domain.ChainID, protocol string, minTVLUSD domain.Decimal, limit int) ([]ports.PoolDiscovery, error) {
-	client := NewClient()
+	cacheKey := fmt.Sprintf("%s:%s:%s:%d", chain, protocol, minTVLUSD.String(), limit)
+	if cached, ok := a.cachedPools(cacheKey, false); ok {
+		metrics.IncDatasourceCacheHit("geckoterminal", "fresh")
+		return cached, nil
+	}
+	if a.inCooldown() {
+		if cached, ok := a.cachedPools(cacheKey, true); ok {
+			metrics.IncDatasourceCacheHit("geckoterminal", "stale")
+			return cached, nil
+		}
+	}
+
+	client := NewClientWithHTTP(a.client, a.baseURL)
 	network := mapChainToNetwork(chain)
 	pools, err := client.GetPoolsByNetwork(ctx, network, limit)
 	if err != nil {
+		var rateLimit *RateLimitError
+		if errors.As(err, &rateLimit) {
+			metrics.IncDatasourceRateLimit("geckoterminal")
+			a.setCooldown(rateLimit.RetryAfter)
+			if cached, ok := a.cachedPools(cacheKey, true); ok {
+				metrics.IncDatasourceCacheHit("geckoterminal", "rate_limited_stale")
+				return cached, nil
+			}
+		}
 		return nil, fmt.Errorf("get pools: %w", err)
 	}
 
@@ -93,11 +134,12 @@ func (a *Adapter) DiscoverPools(ctx context.Context, chain domain.ChainID, proto
 		})
 	}
 
+	a.storePools(cacheKey, result)
 	return result, nil
 }
 
 func (a *Adapter) GetPoolMetadata(ctx context.Context, chain domain.ChainID, poolID string) (*ports.PoolDiscovery, error) {
-	client := NewClient()
+	client := NewClientWithHTTP(a.client, a.baseURL)
 	network := mapChainToNetwork(chain)
 	pool, err := client.GetPoolInfo(ctx, network, poolID)
 	if err != nil {
@@ -135,12 +177,12 @@ func (a *Adapter) GetPoolMetadata(ctx context.Context, chain domain.ChainID, poo
 }
 
 func (a *Adapter) HealthCheck(ctx context.Context) error {
-	client := NewClient()
+	client := NewClientWithHTTP(a.client, a.baseURL)
 	return client.HealthCheck(ctx)
 }
 
 func (a *Adapter) GetPriceHistory(ctx context.Context, chain domain.ChainID, poolID string, from, to time.Time, resolution time.Duration) ([]ports.HistoricalPrice, error) {
-	client := NewClient()
+	client := NewClientWithHTTP(a.client, a.baseURL)
 	network := mapChainToNetwork(chain)
 	fromUnix := from.Unix()
 	toUnix := to.Unix()
@@ -177,6 +219,53 @@ func (a *Adapter) GetPriceHistory(ctx context.Context, chain domain.ChainID, poo
 	}
 
 	return result, nil
+}
+
+func (a *Adapter) cachedPools(key string, allowStale bool) ([]ports.PoolDiscovery, bool) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	entry, ok := a.poolCache[key]
+	if !ok || len(entry.pools) == 0 {
+		return nil, false
+	}
+	if !allowStale && time.Now().After(entry.expiresAt) {
+		return nil, false
+	}
+	return clonePoolDiscoveries(entry.pools), true
+}
+
+func (a *Adapter) storePools(key string, pools []ports.PoolDiscovery) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	now := time.Now()
+	a.poolCache[key] = poolCacheEntry{
+		pools:     clonePoolDiscoveries(pools),
+		expiresAt: now.Add(a.cacheTTL),
+		fetchedAt: now,
+	}
+}
+
+func (a *Adapter) inCooldown() bool {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return time.Now().Before(a.cooldownUntil)
+}
+
+func (a *Adapter) setCooldown(retryAfter time.Duration) {
+	if retryAfter <= 0 {
+		retryAfter = a.rateLimitBackoff
+	}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.cooldownUntil = time.Now().Add(retryAfter)
+}
+
+func clonePoolDiscoveries(pools []ports.PoolDiscovery) []ports.PoolDiscovery {
+	out := make([]ports.PoolDiscovery, len(pools))
+	copy(out, pools)
+	return out
 }
 
 func (a *Adapter) GetSwaps(ctx context.Context, chain domain.ChainID, poolID string, from, to time.Time, limit int) ([]ports.Swap, error) {

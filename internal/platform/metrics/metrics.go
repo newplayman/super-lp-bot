@@ -41,20 +41,20 @@ var standardLabels = []string{"chain", "pool"}
 // Pre-registered metrics (initialized once)
 var (
 	// PnL metrics
-	lpbotPnlTotalUSD = Gauge("lpbot_pnl_total_usd", "Total PnL in USD across all positions")
-	lpbotPositionStatus = Gauge("lpbot_position_status", "Number of open positions by status (1=open, 0=closed)")
+	lpbotPnlTotalUSD      = Gauge("lpbot_pnl_total_usd", "Total PnL in USD across all positions")
+	lpbotPositionStatus   = Gauge("lpbot_position_status", "Number of open positions by status (1=open, 0=closed)")
 	lpbotFeesCollectedUSD = Counter("lpbot_fees_collected_usd", "Total fees collected in USD")
-	lpbotILImpactPct = Gauge("lpbot_il_impact_pct", "Impermanent loss impact percentage")
+	lpbotILImpactPct      = Gauge("lpbot_il_impact_pct", "Impermanent loss impact percentage")
 
 	// Exposure metrics
 	lpbotRiskExposurePct = Gauge("lpbot_risk_exposure_pct", "Current risk exposure as percentage of total capital")
 
 	// Transaction metrics
-	lpbotTxFailedTotal = CounterVec("lpbot_tx_failed_total", "Total failed transactions", []string{"chain", "pool", "reason"})
+	lpbotTxFailedTotal       = CounterVec("lpbot_tx_failed_total", "Total failed transactions", []string{"chain", "pool", "reason"})
 	lpbotTxPendingAgeSeconds = Histogram("lpbot_tx_pending_age_seconds", "Age of pending transactions in seconds", LatencyBuckets)
 
 	// Risk metrics
-	lpbotRiskBlockTotal = Counter("lpbot_risk_block_total", "Total number of risk blocks (position blocked by risk)")
+	lpbotRiskBlockTotal  = Counter("lpbot_risk_block_total", "Total number of risk blocks (position blocked by risk)")
 	lpbotAllocBlockTotal = Counter("lpbot_alloc_block_total", "Total number of allocation blocks (position blocked by allocation limits)")
 
 	// Simulation metrics
@@ -77,11 +77,19 @@ var (
 	lpbotBootstrapReconcileDurationSeconds = Histogram("lpbot_bootstrap_reconcile_duration_seconds", "Duration of bootstrap reconciliation in seconds", LatencyBuckets)
 
 	// RPC metrics
-	lpbotRpcEndpointErrorsTotal = CounterVec("lpbot_rpc_endpoint_errors_total", "Total RPC endpoint errors", []string{"chain", "endpoint", "error_type"})
+	lpbotRpcEndpointErrorsTotal    = CounterVec("lpbot_rpc_endpoint_errors_total", "Total RPC endpoint errors", []string{"chain", "endpoint", "error_type"})
 	lpbotRpcRequestDurationSeconds = HistogramVec("lpbot_rpc_request_duration_seconds", "RPC request duration in seconds", []string{"chain", "method", "endpoint"}, LatencyBuckets)
 
 	// Dryrun invariant metrics
 	lpbotDryrunBroadcastCallsTotal = Counter("lpbot_dryrun_broadcast_calls_total", "Total broadcast attempts in dryrun mode (should always be 0)")
+
+	// Shadow operations metrics
+	lpbotShadowScannedPools       = Gauge("lpbot_shadow_scanned_pools", "Pools scanned in the latest shadow tick")
+	lpbotShadowCandidates         = Gauge("lpbot_shadow_candidates", "Candidate pools selected in the latest shadow tick")
+	lpbotShadowEvaluated          = Gauge("lpbot_shadow_evaluated", "Pools evaluated by strategy in the latest shadow tick")
+	lpbotShadowOrders             = Gauge("lpbot_shadow_orders", "Shadow orders opened or matched in the latest shadow tick")
+	lpbotDatasourceRateLimitTotal = CounterVec("lpbot_datasource_rate_limit_total", "Total datasource rate limit responses", []string{"source"})
+	lpbotDatasourceCacheHitTotal  = CounterVec("lpbot_datasource_cache_hit_total", "Total datasource cache hits", []string{"source", "state"})
 )
 
 // CounterVec creates and registers a new Prometheus CounterVec.
@@ -272,6 +280,24 @@ func ObserveRpcRequestDuration(chain, method, endpoint string, seconds float64) 
 // IncDryrunBroadcast increments the dryrun broadcast counter (should always be 0).
 func IncDryrunBroadcast() {
 	lpbotDryrunBroadcastCallsTotal.Inc()
+}
+
+// RecordShadowTick records the latest shadow business loop counts.
+func RecordShadowTick(scanned, candidates, evaluated, shadowOrders int) {
+	lpbotShadowScannedPools.Set(float64(scanned))
+	lpbotShadowCandidates.Set(float64(candidates))
+	lpbotShadowEvaluated.Set(float64(evaluated))
+	lpbotShadowOrders.Set(float64(shadowOrders))
+}
+
+// IncDatasourceRateLimit increments a datasource rate-limit counter.
+func IncDatasourceRateLimit(source string) {
+	lpbotDatasourceRateLimitTotal.WithLabelValues(source).Inc()
+}
+
+// IncDatasourceCacheHit increments a datasource cache-hit counter.
+func IncDatasourceCacheHit(source, state string) {
+	lpbotDatasourceCacheHitTotal.WithLabelValues(source, state).Inc()
 }
 
 // SetPositionStatus sets the position status gauge (1=open, 0=closed).

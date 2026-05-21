@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LPBot Shadow 运维面板</title>
+  <style>
+    :root {
+      --ink: #172018;
+      --muted: #667066;
+      --paper: #f3efe3;
+      --card: rgba(255, 252, 241, 0.86);
+      --line: rgba(23, 32, 24, 0.14);
+      --good: #1f7a4f;
+      --warn: #b46a00;
+      --accent: #0b5e68;
+      --shadow: 0 22px 60px rgba(31, 42, 29, 0.16);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: "Avenir Next", "Trebuchet MS", sans-serif;
+      background:
+        radial-gradient(circle at 8% 8%, rgba(255, 184, 77, 0.28), transparent 34%),
+        radial-gradient(circle at 90% 4%, rgba(11, 94, 104, 0.18), transparent 30%),
+        linear-gradient(135deg, #efe8d4 0%, #f8f5eb 44%, #dfe9dd 100%);
+      min-height: 100vh;
+    }
+    header {
+      padding: 34px clamp(18px, 4vw, 56px) 18px;
+      display: grid;
+      gap: 10px;
+    }
+    h1 {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(34px, 6vw, 78px);
+      letter-spacing: -0.06em;
+      line-height: 0.92;
+    }
+    .sub {
+      color: var(--muted);
+      font-size: 14px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .pill {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 6px 10px;
+      background: rgba(255,255,255,0.4);
+    }
+    main {
+      padding: 14px clamp(18px, 4vw, 56px) 54px;
+      display: grid;
+      gap: 18px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      padding: 18px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+    .metric .label { color: var(--muted); font-size: 13px; }
+    .metric .value { font-size: clamp(30px, 5vw, 54px); font-weight: 800; letter-spacing: -0.05em; margin-top: 8px; }
+    .section-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 16px;
+      margin-bottom: 12px;
+    }
+    h2 { margin: 0; font-size: 18px; }
+    .status {
+      color: var(--good);
+      font-weight: 700;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    th, td {
+      text-align: left;
+      padding: 10px 8px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+    th {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+    code {
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 12px;
+      overflow-wrap: anywhere;
+    }
+    .two {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 18px;
+    }
+    .warn { color: var(--warn); font-weight: 700; }
+    .small { color: var(--muted); font-size: 12px; }
+    @media (max-width: 920px) {
+      .grid, .two { grid-template-columns: 1fr; }
+      .card { border-radius: 18px; overflow-x: auto; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>LPBot Shadow<br>只读运维面板</h1>
+    <div class="sub">
+      <span class="pill">mode: {{.Mode}}</span>
+      <span class="pill">version: {{.Version}}</span>
+      <span class="pill">commit: {{.Commit}}</span>
+      <span class="pill" id="generated">loading</span>
+    </div>
+  </header>
+  <main>
+    <section class="grid">
+      <div class="card metric"><div class="label">Pools</div><div class="value" id="pools">-</div></div>
+      <div class="card metric"><div class="label">Scores</div><div class="value" id="scores">-</div></div>
+      <div class="card metric"><div class="label">Positions</div><div class="value" id="positions">-</div></div>
+      <div class="card metric"><div class="label">Transactions</div><div class="value" id="txs">-</div></div>
+    </section>
+    <section class="card">
+      <div class="section-title">
+        <h2>当前 Tick</h2>
+        <span class="status" id="tick-status">读取中</span>
+      </div>
+      <div class="sub">
+        <span class="pill">latest score time: <span id="tick-time">-</span></span>
+        <span class="pill">scanned estimate: <span id="tick-scanned">-</span></span>
+      </div>
+      <p class="small">页面每 15 秒自动刷新；这是只读面板，没有任何交易或写库按钮。</p>
+    </section>
+    <section class="two">
+      <div class="card">
+        <div class="section-title"><h2>最近池子</h2><span class="small">top 50</span></div>
+        <table><thead><tr><th>Pool</th><th>Protocol</th><th>Fee</th><th>Tier</th><th>Score</th></tr></thead><tbody id="pool-rows"></tbody></table>
+      </div>
+      <div class="card">
+        <div class="section-title"><h2>Shadow 仓位</h2><span class="small">latest 50</span></div>
+        <table><thead><tr><th>ID</th><th>Status</th><th>Amount</th></tr></thead><tbody id="position-rows"></tbody></table>
+      </div>
+    </section>
+    <section class="card">
+      <div class="section-title"><h2>Shadow 交易</h2><span class="small">latest 50</span></div>
+      <table><thead><tr><th>ID</th><th>Status</th><th>Hash</th><th>Created</th></tr></thead><tbody id="tx-rows"></tbody></table>
+    </section>
+    <section class="card">
+      <div class="section-title"><h2>警告</h2><span class="small">runtime</span></div>
+      <div id="warnings" class="small">无</div>
+    </section>
+  </main>
+  <script>
+    const token = new URLSearchParams(location.search).get("token") || "";
+    const api = "/api/dashboard" + (token ? "?token=" + encodeURIComponent(token) : "");
+    const short = (value) => value && value.length > 18 ? value.slice(0, 10) + "..." + value.slice(-6) : value;
+    const timeText = (unix) => unix ? new Date(unix * 1000).toLocaleString() : "-";
+    function scoreSummary(raw) {
+      try {
+        const parsed = JSON.parse(raw || "{}");
+        const keys = ["Total", "Score", "APR", "TVL", "Vol"];
+        for (const key of keys) {
+          if (parsed[key] !== undefined) return String(parsed[key]);
+        }
+        return Object.keys(parsed).slice(0, 3).join(", ") || "-";
+      } catch {
+        return raw ? raw.slice(0, 32) : "-";
+      }
+    }
+    async function refresh() {
+      const res = await fetch(api, {cache: "no-store"});
+      if (!res.ok) throw new Error("API " + res.status);
+      const data = await res.json();
+      document.getElementById("generated").textContent = "updated: " + new Date(data.generated_at).toLocaleTimeString();
+      document.getElementById("pools").textContent = data.counts.pools;
+      document.getElementById("scores").textContent = data.counts.scores;
+      document.getElementById("positions").textContent = data.counts.positions;
+      document.getElementById("txs").textContent = data.counts.transactions;
+      document.getElementById("tick-status").textContent = data.latest_tick.updated_at ? "运行中" : "暂无 tick";
+      document.getElementById("tick-time").textContent = data.latest_tick.updated_at_text || "-";
+      document.getElementById("tick-scanned").textContent = data.latest_tick.scanned_estimate || "-";
+      document.getElementById("pool-rows").innerHTML = data.pools.map(p => `<tr><td><code>${short(p.pool_id)}</code></td><td>${p.protocol}</td><td>${p.fee_bps}</td><td>${p.tier || "-"}</td><td><code>${scoreSummary(p.score)}</code></td></tr>`).join("");
+      document.getElementById("position-rows").innerHTML = data.positions.map(p => `<tr><td><code>${short(p.id)}</code><br><span class="small">${short(p.pool_id)}</span></td><td>${p.status}</td><td>${p.amount_usd}</td></tr>`).join("");
+      document.getElementById("tx-rows").innerHTML = data.transactions.map(t => `<tr><td><code>${short(t.id)}</code></td><td>${t.status}</td><td><code>${short(t.tx_hash)}</code></td><td>${timeText(Math.floor(t.created_at / 1000))}</td></tr>`).join("");
+      document.getElementById("warnings").innerHTML = (data.warnings && data.warnings.length) ? data.warnings.map(w => `<div class="warn">${w}</div>`).join("") : "无";
+    }
+    refresh().catch(err => {
+      document.getElementById("tick-status").textContent = "读取失败";
+      document.getElementById("warnings").innerHTML = `<span class="warn">${err.message}</span>`;
+    });
+    setInterval(() => refresh().catch(() => {}), 15000);
+  </script>
+</body>
+</html>

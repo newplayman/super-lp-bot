@@ -20,8 +20,9 @@ type Mode struct {
 
 // Platform represents platform-level configuration.
 type Platform struct {
-	LogLevel    string `toml:"log_level"`
-	MetricsAddr string `toml:"metrics_addr"`
+	LogLevel       string `toml:"log_level"`
+	MetricsAddr    string `toml:"metrics_addr"`
+	DashboardToken string `toml:"dashboard_token"`
 }
 
 // ChainConfig represents a single chain's configuration.

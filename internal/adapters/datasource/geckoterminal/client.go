@@ -10,8 +10,19 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 	"time"
 )
+
+// RateLimitError indicates GeckoTerminal returned HTTP 429.
+type RateLimitError struct {
+	StatusCode int
+	RetryAfter time.Duration
+}
+
+func (e *RateLimitError) Error() string {
+	return fmt.Sprintf("rate limited: status %d", e.StatusCode)
+}
 
 // Client handles HTTP communication with GeckoTerminal API.
 type Client struct {
@@ -27,6 +38,16 @@ func NewClient() *Client {
 		},
 		baseURL: "https://api.geckoterminal.com/api/v2",
 	}
+}
+
+func NewClientWithHTTP(client *http.Client, baseURL string) *Client {
+	if client == nil {
+		client = &http.Client{Timeout: 30 * time.Second}
+	}
+	if baseURL == "" {
+		baseURL = "https://api.geckoterminal.com/api/v2"
+	}
+	return &Client{client: client, baseURL: baseURL}
 }
 
 // OHLCV represents a single OHLCV candle from GeckoTerminal.
@@ -140,6 +161,9 @@ func (c *Client) GetOHLCV(ctx context.Context, network, poolAddress, timeframe s
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode == http.StatusTooManyRequests {
+		return nil, rateLimitFromResponse(resp)
+	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("unexpected status: %d", resp.StatusCode)
 	}
@@ -172,6 +196,9 @@ func (c *Client) GetPoolInfo(ctx context.Context, network, poolAddress string) (
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode == http.StatusTooManyRequests {
+		return nil, rateLimitFromResponse(resp)
+	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("unexpected status: %d", resp.StatusCode)
 	}
@@ -197,6 +224,9 @@ func (c *Client) HealthCheck(ctx context.Context) error {
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode == http.StatusTooManyRequests {
+		return rateLimitFromResponse(resp)
+	}
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("health check failed: status %d", resp.StatusCode)
 	}
@@ -241,6 +271,9 @@ func (c *Client) GetPoolsByNetwork(ctx context.Context, network string, limit in
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode == http.StatusTooManyRequests {
+		return nil, rateLimitFromResponse(resp)
+	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("unexpected status: %d", resp.StatusCode)
 	}
@@ -251,4 +284,14 @@ func (c *Client) GetPoolsByNetwork(ctx context.Context, network string, limit in
 	}
 
 	return result.Data, nil
+}
+
+func rateLimitFromResponse(resp *http.Response) error {
+	retryAfter := 2 * time.Minute
+	if value := resp.Header.Get("Retry-After"); value != "" {
+		if seconds, err := strconv.Atoi(value); err == nil && seconds > 0 {
+			retryAfter = time.Duration(seconds) * time.Second
+		}
+	}
+	return &RateLimitError{StatusCode: resp.StatusCode, RetryAfter: retryAfter}
 }

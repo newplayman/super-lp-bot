@@ -252,7 +252,8 @@ func (app *App) initMetricsServer() error {
 	}
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/metrics", metrics.Handler)
+	mux.HandleFunc("/metrics", app.dashboardAuth(metrics.Handler))
+	app.registerDashboardRoutes(mux)
 
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -361,7 +362,7 @@ func (app *App) wireMainLoop(ctx context.Context) error {
 	// Create Metrics adapter with all required methods
 	metrics := &metricsAdapter{}
 	if app.logger != nil {
-		app.logger.Info("Metrics wired (noop mode)")
+		app.logger.Info("Metrics wired")
 	}
 
 	// Create and configure the main loop
@@ -517,6 +518,7 @@ func (app *App) evaluateStrategies(ctx context.Context) {
 		zap.Int("candidates", len(candidates)),
 		zap.Int("evaluated", evaluated),
 		zap.Int("shadow_orders", opened))
+	metrics.RecordShadowTick(len(scoredPools), len(candidates), evaluated, opened)
 }
 
 // cleanup releases resources.
