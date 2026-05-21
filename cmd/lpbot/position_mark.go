@@ -246,6 +246,10 @@ func (app *App) markShadowPositions(ctx context.Context) {
 		app.logger.Warn("shadow exit action persist failed", zap.Error(err))
 		return
 	}
+	if err := app.reconcileBuiltShadowExits(ctx, provider.DB()); err != nil {
+		app.logger.Warn("shadow exit reconciliation failed", zap.Error(err))
+		return
+	}
 
 	valuationFloat, _ := totalValuation.Float64()
 	netPnLFloat, _ := totalNetPnL.Float64()
