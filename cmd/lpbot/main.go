@@ -383,7 +383,10 @@ func (app *App) initAdapters(ctx context.Context) error {
 			zap.Int("endpoints", len(baseEndpoints)))
 	}
 
-	solanaEndpoints := append([]string{}, app.config.Chains.Solana.RPCPrimary)
+	solanaEndpoints := make([]string, 0, 2)
+	if primary := strings.TrimSpace(app.config.Chains.Solana.RPCPrimary); primary != "" {
+		solanaEndpoints = append(solanaEndpoints, primary)
+	}
 	solanaEndpoints = append(solanaEndpoints, rpc.PickQuickNodeHTTPEndpoints(quickNodeDiscovered, "solana")...)
 	if len(solanaEndpoints) > 0 {
 		provider, err := rpc.NewRoundRobinProvider(rpc.Config{
