@@ -44,6 +44,7 @@ type activeShadowPosition struct {
 	TickLower int64
 	TickUpper int64
 	OpenedAt  int64
+	ClosedAt  int64
 }
 
 type shadowExitDecisionRecord struct {
@@ -250,6 +251,10 @@ func (app *App) markShadowPositions(ctx context.Context) {
 		app.logger.Warn("shadow exit reconciliation failed", zap.Error(err))
 		return
 	}
+	if err := app.backfillClosedShadowPositionMarks(ctx, provider.DB()); err != nil {
+		app.logger.Warn("closed shadow mark backfill failed", zap.Error(err))
+		return
+	}
 
 	valuationFloat, _ := totalValuation.Float64()
 	netPnLFloat, _ := totalNetPnL.Float64()
@@ -290,6 +295,10 @@ func (app *App) listActiveShadowPositions(ctx context.Context, db *sql.DB) ([]ac
 }
 
 func (app *App) buildPositionMarkRecord(ctx context.Context, pos activeShadowPosition, now time.Time) (shadowPositionMarkRecord, error) {
+	return app.buildPositionMarkRecordAt(ctx, pos, string(pos.Status), now)
+}
+
+func (app *App) buildPositionMarkRecordAt(ctx context.Context, pos activeShadowPosition, status string, asOf time.Time) (shadowPositionMarkRecord, error) {
 	meta, source, err := app.datasource.GetPoolMetadataWithSource(ctx, pos.Chain, pos.PoolID)
 	if err != nil {
 		return shadowPositionMarkRecord{}, err
@@ -300,7 +309,7 @@ func (app *App) buildPositionMarkRecord(ctx context.Context, pos activeShadowPos
 
 	holdMinutes := int64(0)
 	if pos.OpenedAt > 0 {
-		holdMinutes = int64(now.Sub(time.Unix(pos.OpenedAt, 0)).Minutes())
+		holdMinutes = int64(asOf.Sub(time.Unix(pos.OpenedAt, 0)).Minutes())
 		if holdMinutes < 0 {
 			holdMinutes = 0
 		}
@@ -322,16 +331,16 @@ func (app *App) buildPositionMarkRecord(ctx context.Context, pos activeShadowPos
 		effectiveFeeBPS = 30
 	}
 	estimatedFeeUSD := pnl.AccrueFeesFromVolume(meta.Vol24h, effectiveFeeBPS).Mul(sharePct).Mul(holdDays)
-	priceChangePct, estimatedILUSD := app.estimateShadowIL(ctx, pos, meta, holdMinutes, now)
+	priceChangePct, estimatedILUSD := app.estimateShadowIL(ctx, pos, meta, holdMinutes, asOf)
 	valuationUSD := pos.AmountUSD.Add(estimatedFeeUSD).Add(estimatedILUSD)
 	netPnLUSD := estimatedFeeUSD.Add(estimatedILUSD)
 
 	return shadowPositionMarkRecord{
-		MarkTime:       now.Unix(),
+		MarkTime:       asOf.Unix(),
 		PositionID:     pos.ID,
 		PoolID:         pos.PoolID,
 		Chain:          string(pos.Chain),
-		Status:         string(pos.Status),
+		Status:         status,
 		Tier:           string(pos.Tier),
 		AmountUSD:      pos.AmountUSD.String(),
 		Source:         source,
@@ -343,7 +352,7 @@ func (app *App) buildPositionMarkRecord(ctx context.Context, pos activeShadowPos
 		CurrentTVLUSD:  meta.TVLUSD.String(),
 		CurrentVol24h:  meta.Vol24h.String(),
 		PriceChangePct: priceChangePct.String(),
-		CreatedAt:      now.UnixMilli(),
+		CreatedAt:      time.Now().UnixMilli(),
 	}, nil
 }
 
@@ -464,6 +473,79 @@ func (app *App) persistShadowPositionMarks(ctx context.Context, db *sql.DB, reco
 		return fmt.Errorf("commit position mark tx: %w", err)
 	}
 	return nil
+}
+
+func (app *App) backfillClosedShadowPositionMarks(ctx context.Context, db *sql.DB) error {
+	positions, err := app.listClosedShadowPositionsForBackfill(ctx, db)
+	if err != nil {
+		return err
+	}
+	if len(positions) == 0 {
+		return nil
+	}
+
+	records := make([]shadowPositionMarkRecord, 0, len(positions))
+	for _, pos := range positions {
+		if pos.ClosedAt <= 0 {
+			continue
+		}
+		record, err := app.buildPositionMarkRecordAt(ctx, pos, string(dexdomain.StatusClosed), time.Unix(pos.ClosedAt, 0))
+		if err != nil {
+			app.logger.Warn("closed shadow mark backfill skipped",
+				zap.String("position_id", pos.ID),
+				zap.Error(err))
+			continue
+		}
+		records = append(records, record)
+	}
+	if len(records) == 0 {
+		return nil
+	}
+	return app.persistShadowPositionMarks(ctx, db, records)
+}
+
+func (app *App) listClosedShadowPositionsForBackfill(ctx context.Context, db *sql.DB) ([]activeShadowPosition, error) {
+	rows, err := db.QueryContext(ctx, `
+		SELECT p.id, p.pool_id, p.chain, p.status, COALESCE(p.tier, ''), p.amount_usd, p.tick_lower, p.tick_upper, p.opened_at, COALESCE(p.closed_at, 0)
+		FROM positions p
+		LEFT JOIN (
+			SELECT DISTINCT ON (position_id)
+				position_id, status, mark_time
+			FROM shadow_position_marks
+			ORDER BY position_id, mark_time DESC
+		) m ON m.position_id = p.id
+		WHERE p.status = 'closed'
+		  AND p.closed_at > 0
+		  AND (
+			m.position_id IS NULL
+			OR m.status <> 'closed'
+			OR m.mark_time < p.closed_at
+		  )
+		ORDER BY p.closed_at DESC
+		LIMIT 20
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("query closed positions for backfill: %w", err)
+	}
+	defer rows.Close()
+
+	positions := make([]activeShadowPosition, 0)
+	for rows.Next() {
+		var row activeShadowPosition
+		var chainInt int
+		var tier string
+		var amountUSD string
+		if err := rows.Scan(&row.ID, &row.PoolID, &chainInt, &row.Status, &tier, &amountUSD, &row.TickLower, &row.TickUpper, &row.OpenedAt, &row.ClosedAt); err != nil {
+			return nil, fmt.Errorf("scan closed position for backfill: %w", err)
+		}
+		row.Chain = chainIntToDomain(chainInt)
+		if parsedTier, err := dexdomain.ParseTier(tier); err == nil {
+			row.Tier = parsedTier
+		}
+		row.AmountUSD = dexdomain.MustDecimal(amountUSD)
+		positions = append(positions, row)
+	}
+	return positions, rows.Err()
 }
 
 func buildShadowExitDecision(pos activeShadowPosition, mark shadowPositionMarkRecord, now time.Time) shadowExitDecisionRecord {
