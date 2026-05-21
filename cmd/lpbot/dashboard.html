@@ -167,7 +167,7 @@
     </section>
     <section class="card">
       <div class="section-title"><h2>Closed Positions</h2><span class="small">close history</span></div>
-      <table><thead><tr><th>ID</th><th>Pool</th><th>Tier</th><th>Opened</th><th>Closed</th></tr></thead><tbody id="closed-position-rows"></tbody></table>
+      <table><thead><tr><th>ID</th><th>Pool</th><th>Tier</th><th>PnL</th><th>Hold</th><th>Exit</th><th>Closed</th></tr></thead><tbody id="closed-position-rows"></tbody></table>
     </section>
     <section class="card">
       <div class="section-title"><h2>Shadow 交易</h2><span class="small">latest 50</span></div>
@@ -259,7 +259,7 @@
       document.getElementById("tick-scanned").textContent = data.latest_tick.scanned_estimate || "-";
       document.getElementById("pool-rows").innerHTML = data.pools.map(p => `<tr><td><code>${short(p.pool_id)}</code></td><td>${p.protocol}</td><td>${p.fee_bps}</td><td>${p.tier || "-"}</td><td><code>${scoreSummary(p.score)}</code></td></tr>`).join("");
       document.getElementById("position-rows").innerHTML = data.positions.map(p => `<tr><td><code>${short(p.id)}</code><br><span class="small">${short(p.pool_id)}</span></td><td>${p.status}</td><td>${p.amount_usd}</td></tr>`).join("");
-      document.getElementById("closed-position-rows").innerHTML = (data.closed_positions || []).map(p => `<tr><td><code>${short(p.id)}</code></td><td><code>${short(p.pool_id)}</code></td><td>${p.tier || "-"}</td><td>${timeText(p.opened_at)}</td><td>${timeText(p.closed_at)}</td></tr>`).join("");
+      document.getElementById("closed-position-rows").innerHTML = (data.closed_positions || []).map(p => `<tr><td><code>${short(p.id)}</code></td><td><code>${short(p.pool_id)}</code></td><td>${p.tier || "-"}</td><td>${num(p.net_pnl_usd).toFixed(2)}</td><td>${p.hold_minutes || 0}m</td><td>${p.exit_action || "-"}<br><span class="small">${p.exit_reason || "-"}</span></td><td>${timeText(p.closed_at)}</td></tr>`).join("");
       document.getElementById("tx-rows").innerHTML = data.transactions.map(t => `<tr><td><code>${short(t.id)}</code></td><td>${t.status}</td><td><code>${short(t.tx_hash)}</code></td><td>${timeText(Math.floor(t.created_at / 1000))}</td></tr>`).join("");
       document.getElementById("mark-rows").innerHTML = (data.position_marks || []).map(m => `<tr><td><code>${short(m.position_id)}</code><br><span class="small">${m.source || "-"}</span></td><td>${num(m.valuation_usd).toFixed(2)}<br><span class="small">TVL ${num(m.current_tvl_usd).toFixed(0)}</span></td><td>${num(m.net_pnl_usd).toFixed(2)}<br><span class="small">fees ${num(m.fee_usd).toFixed(2)} / il ${num(m.il_usd).toFixed(2)}</span></td><td>${m.hold_minutes}m<br><span class="small">price ${(num(m.price_change_pct) * 100).toFixed(2)}%</span></td></tr>`).join("");
       renderCurve(data.mark_series || []);

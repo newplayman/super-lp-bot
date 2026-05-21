@@ -67,14 +67,18 @@ type dashboardPool struct {
 }
 
 type dashboardPosition struct {
-	ID        string `json:"id"`
-	PoolID    string `json:"pool_id"`
-	Chain     int    `json:"chain"`
-	Status    string `json:"status"`
-	Tier      string `json:"tier"`
-	AmountUSD string `json:"amount_usd"`
-	OpenedAt  int64  `json:"opened_at"`
-	ClosedAt  int64  `json:"closed_at"`
+	ID          string `json:"id"`
+	PoolID      string `json:"pool_id"`
+	Chain       int    `json:"chain"`
+	Status      string `json:"status"`
+	Tier        string `json:"tier"`
+	AmountUSD   string `json:"amount_usd"`
+	OpenedAt    int64  `json:"opened_at"`
+	ClosedAt    int64  `json:"closed_at"`
+	HoldMinutes int64  `json:"hold_minutes"`
+	NetPnLUSD   string `json:"net_pnl_usd"`
+	ExitReason  string `json:"exit_reason"`
+	ExitAction  string `json:"exit_action"`
 }
 
 type dashboardTransaction struct {
@@ -359,10 +363,35 @@ func queryDashboardPositions(ctx context.Context, db *sql.DB) ([]dashboardPositi
 
 func queryDashboardClosedPositions(ctx context.Context, db *sql.DB) ([]dashboardPosition, error) {
 	rows, err := db.QueryContext(ctx, `
-		SELECT id, pool_id, chain, status, COALESCE(tier, ''), amount_usd, opened_at, COALESCE(closed_at, 0)
-		FROM positions
-		WHERE status = 'closed'
-		ORDER BY closed_at DESC, opened_at DESC
+		SELECT
+			p.id,
+			p.pool_id,
+			p.chain,
+			p.status,
+			COALESCE(p.tier, ''),
+			p.amount_usd,
+			p.opened_at,
+			COALESCE(p.closed_at, 0),
+			COALESCE(m.hold_minutes, 0),
+			COALESCE(m.net_pnl_usd, '0'),
+			COALESCE(e.reason, ''),
+			COALESCE(e.action, '')
+		FROM positions p
+		LEFT JOIN (
+			SELECT DISTINCT ON (position_id)
+				position_id, hold_minutes, net_pnl_usd
+			FROM shadow_position_marks
+			ORDER BY position_id, mark_time DESC
+		) m ON m.position_id = p.id
+		LEFT JOIN (
+			SELECT DISTINCT ON (position_id)
+				position_id, reason, action
+			FROM shadow_exit_decisions
+			WHERE would_exit = TRUE
+			ORDER BY position_id, decision_time DESC
+		) e ON e.position_id = p.id
+		WHERE p.status = 'closed'
+		ORDER BY p.closed_at DESC, p.opened_at DESC
 		LIMIT 30
 	`)
 	if err != nil {
@@ -373,7 +402,20 @@ func queryDashboardClosedPositions(ctx context.Context, db *sql.DB) ([]dashboard
 	var positions []dashboardPosition
 	for rows.Next() {
 		var pos dashboardPosition
-		if err := rows.Scan(&pos.ID, &pos.PoolID, &pos.Chain, &pos.Status, &pos.Tier, &pos.AmountUSD, &pos.OpenedAt, &pos.ClosedAt); err != nil {
+		if err := rows.Scan(
+			&pos.ID,
+			&pos.PoolID,
+			&pos.Chain,
+			&pos.Status,
+			&pos.Tier,
+			&pos.AmountUSD,
+			&pos.OpenedAt,
+			&pos.ClosedAt,
+			&pos.HoldMinutes,
+			&pos.NetPnLUSD,
+			&pos.ExitReason,
+			&pos.ExitAction,
+		); err != nil {
 			return nil, fmt.Errorf("scan dashboard closed position: %w", err)
 		}
 		positions = append(positions, pos)
