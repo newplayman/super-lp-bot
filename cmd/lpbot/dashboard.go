@@ -817,17 +817,21 @@ func queryDashboardStageCounts(ctx context.Context, db *sql.DB, query string) ([
 }
 
 func queryDashboardRecentIssues(ctx context.Context, db *sql.DB) ([]dashboardRecentIssue, error) {
+	since := time.Now().Add(-30 * time.Minute).Unix()
 	rows, err := db.QueryContext(ctx, `
 		SELECT tick_time, pool_id,
 		       COALESCE(NULLIF(chain_stage, ''), NULLIF(pipeline_stage, ''), 'unknown') AS stage,
 		       COALESCE(NULLIF(chain_reason, ''), NULLIF(pipeline_reason, ''), selection_reason, '') AS reason,
 		       final_action
 		FROM shadow_decision_trace
-		WHERE (chain_stage <> '' AND chain_stage NOT LIKE 'chain_%validated%')
-		   OR (pipeline_stage <> '' AND pipeline_ok = FALSE)
+		WHERE tick_time >= $1
+		  AND (
+			(chain_stage <> '' AND chain_stage NOT LIKE 'chain_%validated%')
+			OR (pipeline_stage <> '' AND pipeline_ok = FALSE)
+		  )
 		ORDER BY id DESC
 		LIMIT 20
-	`)
+	`, since)
 	if err != nil {
 		return nil, fmt.Errorf("query dashboard recent issues: %w", err)
 	}
