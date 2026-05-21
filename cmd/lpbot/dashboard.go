@@ -22,28 +22,29 @@ type dbProvider interface {
 }
 
 type dashboardSnapshot struct {
-	GeneratedAt     string                  `json:"generated_at"`
-	Version         string                  `json:"version"`
-	Mode            string                  `json:"mode"`
-	Commit          string                  `json:"commit"`
-	Counts          dashboardCounts         `json:"counts"`
-	LatestTick      dashboardTick           `json:"latest_tick"`
-	Pools           []dashboardPool         `json:"pools"`
-	Positions       []dashboardPosition     `json:"positions"`
-	ClosedPositions []dashboardPosition     `json:"closed_positions"`
-	Transactions    []dashboardTransaction  `json:"transactions"`
-	PositionMarks   []dashboardPositionMark `json:"position_marks"`
-	MarkSeries      []dashboardMarkPoint    `json:"mark_series"`
-	ExitDecisions   []dashboardExitDecision `json:"exit_decisions"`
-	ExitActions     []dashboardExitAction   `json:"exit_actions"`
-	RecentScores    []dashboardScore        `json:"recent_scores"`
-	Decisions       []dashboardDecision     `json:"decisions"`
-	Health          dashboardHealth         `json:"health"`
-	ChainStages     []dashboardStageCount   `json:"chain_stages"`
-	MarkSources     []dashboardStageCount   `json:"mark_sources"`
-	RecentIssues    []dashboardRecentIssue  `json:"recent_issues"`
-	StrategyAudit   []dashboardStrategyTick `json:"strategy_audit"`
-	Warnings        []string                `json:"warnings"`
+	GeneratedAt     string                     `json:"generated_at"`
+	Version         string                     `json:"version"`
+	Mode            string                     `json:"mode"`
+	Commit          string                     `json:"commit"`
+	Counts          dashboardCounts            `json:"counts"`
+	LatestTick      dashboardTick              `json:"latest_tick"`
+	Pools           []dashboardPool            `json:"pools"`
+	Positions       []dashboardPosition        `json:"positions"`
+	ClosedPositions []dashboardPosition        `json:"closed_positions"`
+	Transactions    []dashboardTransaction     `json:"transactions"`
+	PositionMarks   []dashboardPositionMark    `json:"position_marks"`
+	MarkSeries      []dashboardMarkPoint       `json:"mark_series"`
+	ExitDecisions   []dashboardExitDecision    `json:"exit_decisions"`
+	ExitActions     []dashboardExitAction      `json:"exit_actions"`
+	RecentScores    []dashboardScore           `json:"recent_scores"`
+	Decisions       []dashboardDecision        `json:"decisions"`
+	Health          dashboardHealth            `json:"health"`
+	ChainStages     []dashboardStageCount      `json:"chain_stages"`
+	MarkSources     []dashboardStageCount      `json:"mark_sources"`
+	RecentIssues    []dashboardRecentIssue     `json:"recent_issues"`
+	StrategyAudit   []dashboardStrategyTick    `json:"strategy_audit"`
+	StrategyQuality []dashboardStrategyQuality `json:"strategy_quality"`
+	Warnings        []string                   `json:"warnings"`
 }
 
 type dashboardCounts struct {
@@ -92,6 +93,20 @@ type dashboardStrategyTick struct {
 	PipelineOK     int64 `json:"pipeline_ok"`
 	OpenedOrReused int64 `json:"opened_or_reused"`
 	Skipped        int64 `json:"skipped"`
+}
+
+type dashboardStrategyQuality struct {
+	Segment       string  `json:"segment"`
+	Bottleneck    string  `json:"bottleneck"`
+	Count         int64   `json:"count"`
+	AvgTotal      float64 `json:"avg_total"`
+	AvgFeeAPR     float64 `json:"avg_fee_apr"`
+	AvgTVL        float64 `json:"avg_tvl"`
+	AvgVolume     float64 `json:"avg_volume"`
+	AvgVolatility float64 `json:"avg_volatility"`
+	AvgSecurity   float64 `json:"avg_security"`
+	ExamplePoolID string  `json:"example_pool_id"`
+	ExampleReason string  `json:"example_reason"`
 }
 
 type dashboardPool struct {
@@ -382,6 +397,12 @@ func (app *App) dashboardSnapshot(ctx context.Context) (dashboardSnapshot, error
 		return snapshot, err
 	}
 	snapshot.StrategyAudit = strategyAudit
+
+	strategyQuality, err := queryDashboardStrategyQuality(ctx, db)
+	if err != nil {
+		return snapshot, err
+	}
+	snapshot.StrategyQuality = strategyQuality
 
 	return snapshot, nil
 }
@@ -892,4 +913,106 @@ func queryDashboardStrategyAudit(ctx context.Context, db *sql.DB) ([]dashboardSt
 		ticks = append(ticks, tick)
 	}
 	return ticks, rows.Err()
+}
+
+func queryDashboardStrategyQuality(ctx context.Context, db *sql.DB) ([]dashboardStrategyQuality, error) {
+	rows, err := db.QueryContext(ctx, `
+		WITH latest AS (
+			SELECT max(tick_time) AS tick_time
+			FROM shadow_decision_trace
+		),
+		enriched AS (
+			SELECT
+				d.pool_id,
+				d.score_total,
+				d.selected,
+				d.intent_open,
+				d.pipeline_ok,
+				d.selection_reason,
+				d.intent_reason,
+				d.pipeline_reason,
+				COALESCE((d.score_json::jsonb ->> 'FeeAPRScore')::double precision, 0) AS fee_apr,
+				COALESCE((d.score_json::jsonb ->> 'TvlScore')::double precision, 0) AS tvl,
+				COALESCE((d.score_json::jsonb ->> 'VolScore')::double precision, 0) AS volume,
+				COALESCE((d.score_json::jsonb ->> 'VolatilityScore')::double precision, 0) AS volatility,
+				COALESCE((d.score_json::jsonb ->> 'SecurityScore')::double precision, 0) AS security
+			FROM shadow_decision_trace d
+			JOIN latest l ON l.tick_time = d.tick_time
+		),
+		classified AS (
+			SELECT *,
+				CASE
+					WHEN pipeline_ok THEN 'passed_pipeline'
+					WHEN selected AND intent_open THEN 'intent_pipeline_blocked'
+					WHEN selected AND NOT intent_open THEN 'selected_below_open_threshold'
+					WHEN NOT selected AND score_total >= 60 THEN 'not_selected_top_cutoff'
+					WHEN NOT selected THEN 'not_selected_score_lt_60'
+					ELSE 'other'
+				END AS segment,
+				CASE least(fee_apr, tvl, volume, volatility, security)
+					WHEN fee_apr THEN 'fee_apr'
+					WHEN tvl THEN 'tvl'
+					WHEN volume THEN 'volume'
+					WHEN volatility THEN 'volatility'
+					ELSE 'security'
+				END AS bottleneck
+			FROM enriched
+		),
+		ranked AS (
+			SELECT *,
+				row_number() OVER (PARTITION BY segment, bottleneck ORDER BY score_total DESC, pool_id) AS rn
+			FROM classified
+		)
+		SELECT
+			segment,
+			bottleneck,
+			count(*) AS count,
+			avg(score_total) AS avg_total,
+			avg(fee_apr) AS avg_fee_apr,
+			avg(tvl) AS avg_tvl,
+			avg(volume) AS avg_volume,
+			avg(volatility) AS avg_volatility,
+			avg(security) AS avg_security,
+			COALESCE(max(pool_id) FILTER (WHERE rn = 1), '') AS example_pool_id,
+			COALESCE(max(NULLIF(coalesce(pipeline_reason, intent_reason, selection_reason), '')) FILTER (WHERE rn = 1), '') AS example_reason
+		FROM ranked
+		GROUP BY segment, bottleneck
+		ORDER BY
+			CASE segment
+				WHEN 'passed_pipeline' THEN 1
+				WHEN 'intent_pipeline_blocked' THEN 2
+				WHEN 'selected_below_open_threshold' THEN 3
+				WHEN 'not_selected_top_cutoff' THEN 4
+				WHEN 'not_selected_score_lt_60' THEN 5
+				ELSE 6
+			END,
+			count(*) DESC,
+			bottleneck
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("query dashboard strategy quality: %w", err)
+	}
+	defer rows.Close()
+
+	var quality []dashboardStrategyQuality
+	for rows.Next() {
+		var item dashboardStrategyQuality
+		if err := rows.Scan(
+			&item.Segment,
+			&item.Bottleneck,
+			&item.Count,
+			&item.AvgTotal,
+			&item.AvgFeeAPR,
+			&item.AvgTVL,
+			&item.AvgVolume,
+			&item.AvgVolatility,
+			&item.AvgSecurity,
+			&item.ExamplePoolID,
+			&item.ExampleReason,
+		); err != nil {
+			return nil, fmt.Errorf("scan dashboard strategy quality: %w", err)
+		}
+		quality = append(quality, item)
+	}
+	return quality, rows.Err()
 }
