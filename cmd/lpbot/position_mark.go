@@ -560,32 +560,18 @@ func (app *App) recordShadowExitActions(ctx context.Context, db *sql.DB, records
 		if !record.WouldExit || record.Action != "shadow_close" {
 			continue
 		}
-		exists, err := hasRecentEquivalentExitAction(ctx, tx, record)
+		existingTxHash, exists, err := recentEquivalentExitAction(ctx, tx, record)
 		if err != nil {
 			return fmt.Errorf("check exit action dedupe for %s: %w", record.PositionID, err)
 		}
 		if exists {
+			if err := app.finalizeShadowExitAction(ctx, tx, record, existingTxHash); err != nil {
+				return err
+			}
 			continue
 		}
 
 		txHash := shadowID("exit-tx", record.PositionID, record.DecisionTime)
-		txStatus := dexdomain.TxConfirmed
-		exitTx := dexdomain.SignedTx{
-			UnsignedTx: dexdomain.UnsignedTx{
-				ID:       txHash,
-				Chain:    dexdomain.ChainID(record.Chain),
-				From:     zeroEVMAddress(),
-				To:       parseAddressOrZero(record.PoolID),
-				Value:    dexdomain.ZeroDecimal(),
-				Deadline: record.DecisionTime + 300,
-				MinOut:   dexdomain.ZeroDecimal(),
-			},
-			Hash:   txHash,
-			Status: txStatus,
-		}
-		if err := app.store.TxRepo().UpsertTx(ctx, exitTx); err != nil {
-			return fmt.Errorf("upsert shadow exit tx for %s: %w", record.PositionID, err)
-		}
 
 		_, err = tx.ExecContext(ctx, `
 			INSERT INTO shadow_exit_actions (
@@ -601,14 +587,14 @@ func (app *App) recordShadowExitActions(ctx context.Context, db *sql.DB, records
 			record.Reason,
 			record.Action,
 			txHash,
-			string(txStatus),
+			string(dexdomain.TxConfirmed),
 			time.Now().UnixMilli(),
 		)
 		if err != nil {
 			return fmt.Errorf("insert exit action for %s: %w", record.PositionID, err)
 		}
-		if err := app.store.PositionRepo().UpdateStatus(ctx, record.PositionID, dexdomain.StatusClosed); err != nil {
-			return fmt.Errorf("close shadow position %s: %w", record.PositionID, err)
+		if err := app.finalizeShadowExitAction(ctx, tx, record, txHash); err != nil {
+			return err
 		}
 	}
 
@@ -618,23 +604,58 @@ func (app *App) recordShadowExitActions(ctx context.Context, db *sql.DB, records
 	return nil
 }
 
-func hasRecentEquivalentExitAction(ctx context.Context, tx *sql.Tx, record shadowExitDecisionRecord) (bool, error) {
+func recentEquivalentExitAction(ctx context.Context, tx *sql.Tx, record shadowExitDecisionRecord) (string, bool, error) {
 	cutoff := record.DecisionTime - 3600
-	var exists bool
+	var txHash string
 	err := tx.QueryRowContext(ctx, `
-		SELECT EXISTS (
-			SELECT 1
-			FROM shadow_exit_actions
-			WHERE position_id = $1
-			  AND action = $2
-			  AND reason = $3
-			  AND decision_time >= $4
-		)
-	`, record.PositionID, record.Action, record.Reason, cutoff).Scan(&exists)
-	if err != nil {
-		return false, err
+		SELECT tx_hash
+		FROM shadow_exit_actions
+		WHERE position_id = $1
+		  AND action = $2
+		  AND reason = $3
+		  AND decision_time >= $4
+		ORDER BY decision_time DESC, id DESC
+		LIMIT 1
+	`, record.PositionID, record.Action, record.Reason, cutoff).Scan(&txHash)
+	if err == sql.ErrNoRows {
+		return "", false, nil
 	}
-	return exists, nil
+	if err != nil {
+		return "", false, err
+	}
+	return txHash, true, nil
+}
+
+func (app *App) finalizeShadowExitAction(ctx context.Context, tx *sql.Tx, record shadowExitDecisionRecord, txHash string) error {
+	txStatus := dexdomain.TxConfirmed
+	exitTx := dexdomain.SignedTx{
+		UnsignedTx: dexdomain.UnsignedTx{
+			ID:       txHash,
+			Chain:    dexdomain.ChainID(record.Chain),
+			From:     zeroEVMAddress(),
+			To:       parseAddressOrZero(record.PoolID),
+			Value:    dexdomain.ZeroDecimal(),
+			Deadline: record.DecisionTime + 300,
+			MinOut:   dexdomain.ZeroDecimal(),
+		},
+		Hash:   txHash,
+		Status: txStatus,
+	}
+	if err := app.store.TxRepo().UpsertTx(ctx, exitTx); err != nil {
+		return fmt.Errorf("upsert shadow exit tx for %s: %w", record.PositionID, err)
+	}
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE shadow_exit_actions
+		SET tx_status = $1
+		WHERE position_id = $2
+		  AND tx_hash = $3
+	`, string(txStatus), record.PositionID, txHash); err != nil {
+		return fmt.Errorf("update exit action status for %s: %w", record.PositionID, err)
+	}
+	if err := app.store.PositionRepo().UpdateStatus(ctx, record.PositionID, dexdomain.StatusClosed); err != nil {
+		return fmt.Errorf("close shadow position %s: %w", record.PositionID, err)
+	}
+	return nil
 }
 
 func openingPrice(point ports.HistoricalPrice) dexdomain.Decimal {
