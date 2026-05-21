@@ -102,7 +102,7 @@ func newLiveSafetyGate(buildMode string, cfg *config.Config) *liveSafetyGate {
 	gate.maxOrderUSD = cfg.Live.MaxOrderUSD
 	gate.dailyLossLimitUSD = cfg.Live.DailyLossLimitUSD
 	gate.executionBackend = normalizeExecutionBackend(cfg.Execution.Backend)
-	gate.rpcPrimaryConfigured = strings.TrimSpace(cfg.Chains.Base.RPCPrimary) != ""
+	gate.rpcPrimaryConfigured = strings.TrimSpace(cfg.Chains.Base.RPCPrimary) != "" || rpc.ResolveQuickNodeAPIKey() != ""
 	gate.okxAPIConfigured = strings.TrimSpace(cfg.Execution.OKXAPIKey) != "" &&
 		strings.TrimSpace(cfg.Execution.OKXAPISecret) != "" &&
 		strings.TrimSpace(cfg.Execution.OKXPassphrase) != ""
@@ -138,7 +138,7 @@ func (g *liveSafetyGate) backendConfigured() bool {
 	case "native-rpc":
 		return g.rpcPrimaryConfigured
 	case "okx-onchain":
-		return g.okxAPIConfigured && g.okxProjectConfigured
+		return g.okxAPIConfigured
 	default:
 		return false
 	}
@@ -181,9 +181,9 @@ func (g *liveSafetyGate) blockers() []string {
 	if !g.executionBackendConfigured {
 		switch g.executionBackend {
 		case "native-rpc":
-			blockers = append(blockers, "execution backend native-rpc requires chains.base.rpc_primary")
+			blockers = append(blockers, "execution backend native-rpc requires chains.base.rpc_primary or QUICKNODE_API_KEY")
 		case "okx-onchain":
-			blockers = append(blockers, "execution backend okx-onchain requires OKX api key/secret/passphrase/project id")
+			blockers = append(blockers, "execution backend okx-onchain requires OKX api key/secret/passphrase")
 		default:
 			blockers = append(blockers, fmt.Sprintf("execution.backend=%s is not configured", g.executionBackend))
 		}
@@ -346,6 +346,27 @@ func (app *App) initAdapters(ctx context.Context) error {
 	baseEndpoints = append(baseEndpoints, app.config.Chains.Base.RPCFallback...)
 	baseEndpoints = append(baseEndpoints, rpc.BasePublicEndpoints...)
 	baseEndpoints = append(baseEndpoints, rpc.BaseEndpoints...)
+	quickNodeHTTP := &http.Client{Timeout: 5 * time.Second}
+	quickNodeAPIKey := rpc.ResolveQuickNodeAPIKey()
+	var quickNodeDiscovered []rpc.QuickNodeEndpoint
+	if quickNodeAPIKey != "" {
+		discovered, err := rpc.DiscoverQuickNodeEndpoints(ctx, quickNodeAPIKey, quickNodeHTTP)
+		if err != nil {
+			app.logger.Warn("QuickNode endpoint discovery skipped", zap.Error(err))
+		} else {
+			quickNodeDiscovered = discovered
+			baseQuickNode := rpc.PickQuickNodeHTTPEndpoints(discovered, "base")
+			baseEndpoints = append(baseEndpoints, baseQuickNode...)
+			if app.config.Chains.Base.WS == "" {
+				if ws := rpc.PickQuickNodeWSURL(discovered, "base"); ws != "" {
+					app.config.Chains.Base.WS = ws
+				}
+			}
+			app.logger.Info("QuickNode endpoint discovery completed",
+				zap.Int("discovered", len(discovered)),
+				zap.Int("base_http", len(baseQuickNode)))
+		}
+	}
 	if len(baseEndpoints) > 0 {
 		provider, err := rpc.NewRoundRobinProvider(rpc.Config{
 			ChainID:             domain.ChainBase,
@@ -362,10 +383,12 @@ func (app *App) initAdapters(ctx context.Context) error {
 			zap.Int("endpoints", len(baseEndpoints)))
 	}
 
-	if app.config.Chains.Solana.RPCPrimary != "" {
+	solanaEndpoints := append([]string{}, app.config.Chains.Solana.RPCPrimary)
+	solanaEndpoints = append(solanaEndpoints, rpc.PickQuickNodeHTTPEndpoints(quickNodeDiscovered, "solana")...)
+	if len(solanaEndpoints) > 0 {
 		provider, err := rpc.NewRoundRobinProvider(rpc.Config{
 			ChainID:   domain.ChainSolana,
-			Endpoints: []string{app.config.Chains.Solana.RPCPrimary},
+			Endpoints: solanaEndpoints,
 		})
 		if err != nil {
 			return fmt.Errorf("failed to create Solana RPC provider: %w", err)

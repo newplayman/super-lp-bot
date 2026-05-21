@@ -32,7 +32,9 @@ make backtest      # 仅编译 backtest
 - `configs/config.canary.toml`：默认保守 canary 模板，仍是 `fail-closed`，不会因为填了环境变量就自动实单。
 - `configs/config.live.toml`：完整 live 模板，必须配套 `.sha256`，并且当前 `cmd/lpbot` 仍未接入真实执行器。
 - `BASE_RPC_PRIMARY` / `BASE_WS`：这里填你的 QuickNode Base HTTPS/WSS。
-- `OKX_API_KEY` / `OKX_API_SECRET` / `OKX_API_PASSPHRASE` / `OKX_PROJECT_ID`：这里填你的 OKX Onchain API 凭据；仅当 `execution.backend = "okx-onchain"` 时需要。
+- `QUICKNODE_API_KEY`：可选。若是带 Admin/Console 权限的 key，程序会自动发现账户下的 Base/Solana endpoint，并把它们放在公共 RPC 之后作为低优先级备用。
+- `OKX_API_KEY` / `OKX_API_SECRET` / `OKX_API_PASSPHRASE`：这里填你的 OKX Onchain API 凭据；仅当 `execution.backend = "okx-onchain"` 时需要。
+- `OKX_PROJECT_ID`：当前 DEX API 不是必填，只为后续更深的 OKX 集成预留。
 - 推荐先从 [`.env.canary.example`](/Users/bendu/lp-bot/v3/.env.canary.example) 衍生实例环境，再由 systemd `EnvironmentFile=` 注入。
 
 ## 模式隔离（spec §2.4）

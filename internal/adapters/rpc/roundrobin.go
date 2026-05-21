@@ -370,6 +370,11 @@ func normalizeEndpoints(endpoints []string) []string {
 	return normalized
 }
 
+func isReserveEndpoint(endpoint string) bool {
+	value := strings.ToLower(strings.TrimSpace(endpoint))
+	return strings.Contains(value, ".quiknode.pro/") || strings.Contains(value, ".quiknode.pro")
+}
+
 func rankEndpointsByLatency(ctx context.Context, endpoints []string, httpClient *http.Client, timeout time.Duration) ([]string, string) {
 	if len(endpoints) <= 1 {
 		return endpoints, ""
@@ -420,6 +425,12 @@ func rankEndpointsByLatency(ctx context.Context, endpoints []string, httpClient 
 	sort.SliceStable(probeResults, func(i, j int) bool {
 		if probeResults[i].ok != probeResults[j].ok {
 			return probeResults[i].ok
+		}
+
+		leftReserve := isReserveEndpoint(probeResults[i].endpoint)
+		rightReserve := isReserveEndpoint(probeResults[j].endpoint)
+		if leftReserve != rightReserve {
+			return !leftReserve
 		}
 
 		if probeResults[i].ok && probeResults[i].latency != probeResults[j].latency {
