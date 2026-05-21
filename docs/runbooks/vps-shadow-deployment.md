@@ -88,6 +88,7 @@ chmod 600 .env.canary .env.live
 说明：
 - `configs/config.canary.toml` 默认 `execution.backend = "native-rpc"`，只需要 QuickNode/RPC 即可。
 - 若后续切换 `execution.backend = "okx-onchain"`，再填写 OKX 变量；当前代码只做配置门禁与 readiness 展示，不代表已经完成真实交易执行。
+- `POSTGRES_DSN` 如果未单独填写，会自动回退到 `.env.postgres` 里的 `DATABASE_URL`。
 
 ## 5. 安装依赖与数据库
 
@@ -150,6 +151,25 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now lpbot-shadow
 sudo systemctl restart lpbot-shadow
 ```
+
+## 7.1 Canary service 预装但不启动
+
+仓库模板：
+`deploy/systemd/lpbot-canary.service`
+
+安装到 VPS：
+
+```bash
+sudo cp deploy/systemd/lpbot-canary.service /etc/systemd/system/lpbot-canary.service
+sudo systemctl daemon-reload
+sudo systemctl disable lpbot-canary
+sudo systemctl stop lpbot-canary 2>/dev/null || true
+```
+
+说明：
+- `lpbot-canary` 使用 `bin/lpbot-live` + `configs/config.canary.toml`
+- 默认保持 `disabled/inactive`
+- readiness 会显示在现有 `9090` dashboard 上，即使服务尚未启动
 
 ## 8. 每次发布更新
 

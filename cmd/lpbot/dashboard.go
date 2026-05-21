@@ -1,17 +1,22 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"database/sql"
 	_ "embed"
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"os"
 	"net"
 	"net/http"
 	"sort"
+	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/lpbot/lpbot/internal/platform/config"
 )
 
 //go:embed dashboard.html
@@ -29,6 +34,7 @@ type dashboardSnapshot struct {
 	Counts          dashboardCounts            `json:"counts"`
 	LatestTick      dashboardTick              `json:"latest_tick"`
 	LiveReadiness   dashboardLiveReadiness     `json:"live_readiness"`
+	CanaryReadiness dashboardLiveReadiness     `json:"canary_readiness"`
 	Pools           []dashboardPool            `json:"pools"`
 	Positions       []dashboardPosition        `json:"positions"`
 	ClosedPositions []dashboardPosition        `json:"closed_positions"`
@@ -313,6 +319,11 @@ func (app *App) dashboardSnapshot(ctx context.Context) (dashboardSnapshot, error
 	if app.liveGate != nil {
 		snapshot.LiveReadiness = app.liveGate.readiness()
 	}
+	if canary, err := dashboardLoadCanaryReadiness(); err == nil {
+		snapshot.CanaryReadiness = canary
+	} else {
+		snapshot.Warnings = append(snapshot.Warnings, fmt.Sprintf("canary readiness unavailable: %v", err))
+	}
 	provider, ok := app.store.(dbProvider)
 	if !ok || provider.DB() == nil {
 		snapshot.Warnings = append(snapshot.Warnings, "dashboard requires postgres store with DB access")
@@ -435,6 +446,61 @@ func (app *App) dashboardSnapshot(ctx context.Context) (dashboardSnapshot, error
 	snapshot.StrategyQuality = strategyQuality
 
 	return snapshot, nil
+}
+
+func dashboardLoadCanaryReadiness() (readiness dashboardLiveReadiness, err error) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			readiness = dashboardLiveReadiness{}
+			err = fmt.Errorf("canary config panic: %v", recovered)
+		}
+	}()
+	env, err := readDashboardEnvFiles(".env.canary", ".env.postgres", ".env.redis", ".env.dashboard")
+	if err != nil {
+		return dashboardLiveReadiness{}, err
+	}
+	cfg, err := config.LoadWithEnvMap(filepath.Clean("configs/config.canary.toml"), "live", env)
+	if err != nil {
+		return dashboardLiveReadiness{}, err
+	}
+	gate := newLiveSafetyGate("live", cfg)
+	return gate.readiness(), nil
+}
+
+func readDashboardEnvFiles(paths ...string) (map[string]string, error) {
+	values := make(map[string]string)
+	seenAny := false
+	for _, path := range paths {
+		file, err := os.Open(filepath.Clean(path))
+		if err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
+			return nil, err
+		}
+		seenAny = true
+		scanner := bufio.NewScanner(file)
+		for scanner.Scan() {
+			line := strings.TrimSpace(scanner.Text())
+			if line == "" || strings.HasPrefix(line, "#") {
+				continue
+			}
+			key, value, ok := strings.Cut(line, "=")
+			if !ok {
+				continue
+			}
+			values[strings.TrimSpace(key)] = strings.TrimSpace(value)
+		}
+		if err := scanner.Err(); err != nil {
+			_ = file.Close()
+			return nil, err
+		}
+		_ = file.Close()
+	}
+	if !seenAny {
+		return nil, fmt.Errorf("no canary env files found")
+	}
+	return values, nil
 }
 
 func queryDashboardPools(ctx context.Context, db *sql.DB) ([]dashboardPool, error) {

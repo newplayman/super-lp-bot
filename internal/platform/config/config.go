@@ -130,15 +130,35 @@ type Loader struct {
 // envVarPattern matches ${ENV_VAR} pattern for environment variable interpolation.
 var envVarPattern = regexp.MustCompile(`\$\{([^}]+)\}`)
 
-// interpolateEnvVars replaces ${ENV_VAR} patterns with environment variable values.
+func resolveEnvValue(varName string, lookup func(string) string) string {
+	value := lookup(varName)
+	if value != "" {
+		return value
+	}
+	switch varName {
+	case "POSTGRES_DSN":
+		return lookup("DATABASE_URL")
+	case "DATABASE_URL":
+		return lookup("POSTGRES_DSN")
+	default:
+		return ""
+	}
+}
+
+// interpolateEnvVarsWithLookup replaces ${ENV_VAR} patterns with values from the provided lookup.
 // If an environment variable is not set, it is replaced with an empty string.
-func interpolateEnvVars(data []byte) []byte {
+func interpolateEnvVarsWithLookup(data []byte, lookup func(string) string) []byte {
 	return envVarPattern.ReplaceAllFunc(data, func(match []byte) []byte {
 		// Extract the variable name from ${VAR_NAME}
 		varName := string(match[2 : len(match)-1]) // Remove ${ and }
-		value := os.Getenv(varName)
+		value := resolveEnvValue(varName, lookup)
 		return []byte(value)
 	})
+}
+
+// interpolateEnvVars replaces ${ENV_VAR} patterns with environment variable values.
+func interpolateEnvVars(data []byte) []byte {
+	return interpolateEnvVarsWithLookup(data, os.Getenv)
 }
 
 // Load reads and parses a TOML configuration file from the given path.
@@ -147,6 +167,19 @@ func interpolateEnvVars(data []byte) []byte {
 // Returns an error if the file cannot be read, contains invalid TOML,
 // or if the mode mismatch panic is triggered.
 func Load(path string, expectedMode string) (*Config, error) {
+	return LoadWithLookup(path, expectedMode, os.Getenv)
+}
+
+// LoadWithEnvMap parses a TOML configuration file using the provided env map for interpolation.
+func LoadWithEnvMap(path string, expectedMode string, env map[string]string) (*Config, error) {
+	lookup := func(key string) string {
+		return env[key]
+	}
+	return LoadWithLookup(path, expectedMode, lookup)
+}
+
+// LoadWithLookup reads and parses a TOML configuration file using the provided lookup.
+func LoadWithLookup(path string, expectedMode string, lookup func(string) string) (*Config, error) {
 	// Read the raw config file
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -154,7 +187,7 @@ func Load(path string, expectedMode string) (*Config, error) {
 	}
 
 	// Perform environment variable interpolation
-	interpolated := interpolateEnvVars(data)
+	interpolated := interpolateEnvVarsWithLookup(data, lookup)
 
 	// Parse TOML
 	var cfg Config

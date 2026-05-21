@@ -61,7 +61,9 @@
         const health = data.health || {};
         const counts = data.counts || {};
         const markSeries = data.mark_series || [];
-        const live = data.live_readiness || {};
+        const currentLive = data.live_readiness || {};
+        const canaryLive = data.canary_readiness || {};
+        const live = canaryLive.build_mode ? canaryLive : currentLive;
 
         const totalValue = sum(marks, 'valuation_usd');
         const totalFees = sum(marks, 'fee_usd');
@@ -89,7 +91,7 @@
         setText('val-gas', '0');
         setText('val-net-pnl', signedMoney(totalNet));
 
-        setText('metric-bots', '1 shadow');
+        setText('metric-bots', canaryLive.build_mode ? '1 shadow + canary plan' : '1 shadow');
         setText('metric-pools', scanned || counts.pools || '-');
         setText('metric-chains', 'Base');
         setText('metric-templates', selected || '-');
@@ -139,6 +141,7 @@
         const allowedChains = Array.isArray(live.allowed_chains) && live.allowed_chains.length ? live.allowed_chains.join(', ') : '-';
         const wallet = live.wallet_address || '未配置';
         const backend = live.execution_backend || 'shadow';
+        const readinessTarget = live.canary ? 'canary' : 'live';
         const backendSummary = live.execution_configured ? `${backend} / configured` : `${backend} / config missing`;
         const backendStatus = live.execution_backend_wired ? (live.ready ? '可执行' : '已接线待放行') : '执行器未接线';
         const whitelistStatus = num(live.allowed_pools_count) > 0 ? '白名单已加载' : '白名单为空';
@@ -149,8 +152,8 @@
 
         setText('decision-exposure', `$${money(live.max_order_usd)} / $${money(live.daily_loss_limit_usd)}`);
         setText('decision-kill-switch', live.kill_switch ? '已触发 / 拒绝新单' : (live.live_enabled ? '未触发 / 等待全量通过' : 'live 未启用'));
-        setText('decision-canary', live.canary ? '已配置 canary' : '未配置 canary');
-        setText('decision-live-gate', live.ready ? 'YES / 可以进入 canary 实单检查' : 'NO / 当前仍为 fail-closed');
+        setText('decision-canary', live.canary ? '已配置 canary / 来自 .env.canary' : '未配置 canary');
+        setText('decision-live-gate', live.ready ? `YES / ${readinessTarget} 配置已就绪` : `NO / ${readinessTarget} 仍为 fail-closed`);
         setText('decision-live-blockers', blockerText);
 
         setText('execution-backend', backendSummary);
@@ -159,7 +162,7 @@
         setText('execution-wallet-status', wallet === '未配置' ? '缺失' : '已配置');
         setText('execution-whitelist', `${allowedChains} / ${num(live.allowed_pools_count)} pools`);
         setText('execution-whitelist-status', whitelistStatus);
-        setText('execution-last-tx', lastTx.tx_hash ? short(lastTx.tx_hash) : 'shadow only');
+        setText('execution-last-tx', lastTx.tx_hash ? short(lastTx.tx_hash) : (live.canary ? 'canary not started' : 'shadow only'));
         setText('execution-last-tx-status', lastTx.tx_hash ? (lastTx.status || 'recorded') : `${rpcStatus} | ${okxStatus}`);
         setText('execution-blockers', `${blockerText} | ${rpcStatus} | ${okxStatus}`);
     }
