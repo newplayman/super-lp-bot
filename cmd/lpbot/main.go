@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sort"
 	"strings"
 	"sync"
 	"syscall"
@@ -498,11 +499,7 @@ func (app *App) evaluateStrategies(ctx context.Context) {
 		}
 	}
 
-	candidates, err := app.strategy.SelectCandidates(ctx, pools, shadowCandidateLimit)
-	if err != nil {
-		app.logger.Error("shadow candidate selection failed", zap.Error(err))
-		return
-	}
+	candidates := selectShadowCandidatesByScore(scoredPools, shadowCandidateLimit)
 
 	tickTime := time.Now().Unix()
 	candidateRanks := make(map[string]int, len(candidates))
@@ -579,6 +576,37 @@ func (app *App) evaluateStrategies(ctx context.Context) {
 		zap.Int("evaluated", evaluated),
 		zap.Int("shadow_orders", opened))
 	metrics.RecordShadowTick(len(scoredPools), len(candidates), evaluated, opened)
+}
+
+func selectShadowCandidatesByScore(scoredPools []scanner.ScoredPool, limit int) []domain.Pool {
+	if limit <= 0 {
+		limit = shadowCandidateLimit
+	}
+	ranked := append([]scanner.ScoredPool(nil), scoredPools...)
+	sort.SliceStable(ranked, func(i, j int) bool {
+		left := ranked[i].Score.Total
+		if left == 0 {
+			left = ranked[i].Score.ComputeTotal()
+		}
+		right := ranked[j].Score.Total
+		if right == 0 {
+			right = ranked[j].Score.ComputeTotal()
+		}
+		return left > right
+	})
+
+	candidates := make([]domain.Pool, 0, minInt(limit, len(ranked)))
+	for i := 0; i < len(ranked) && len(candidates) < limit; i++ {
+		candidates = append(candidates, ranked[i].Pool)
+	}
+	return candidates
+}
+
+func minInt(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 // cleanup releases resources.
