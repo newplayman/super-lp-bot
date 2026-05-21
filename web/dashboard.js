@@ -30,13 +30,24 @@
             document.getElementById('degrade-alert').classList.add('hidden');
             render(data);
         } catch (err) {
-            document.getElementById('degrade-alert').classList.remove('hidden');
+            const alert = document.getElementById('degrade-alert');
+            alert.classList.remove('hidden');
+            const hasToken = new URLSearchParams(location.search).get('token') || localStorage.getItem('lpbot_dashboard_token');
+            alert.querySelector('span').textContent = hasToken ? '无法读取真实 API：token 可能错误或服务暂不可用' : '无法读取真实 API：URL 缺少 ?token=DashboardToken';
             appendLog('warn', 'dashboard', '无法读取真实 API: ' + err.message);
         }
     }
 
     function apiURL() {
-        const token = new URLSearchParams(location.search).get('token') || '';
+        const params = new URLSearchParams(location.search);
+        const tokenFromURL = params.get('token') || '';
+        if (tokenFromURL) {
+            try { localStorage.setItem('lpbot_dashboard_token', tokenFromURL); } catch (_) {}
+        }
+        let token = tokenFromURL;
+        if (!token) {
+            try { token = localStorage.getItem('lpbot_dashboard_token') || ''; } catch (_) { token = ''; }
+        }
         const base = window.DashboardConfig.apiBaseUrl || '/api/dashboard';
         return base + (token ? '?token=' + encodeURIComponent(token) : '');
     }
