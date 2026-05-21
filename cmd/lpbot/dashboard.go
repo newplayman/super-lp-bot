@@ -32,6 +32,7 @@ type dashboardSnapshot struct {
 	Positions    []dashboardPosition    `json:"positions"`
 	Transactions []dashboardTransaction `json:"transactions"`
 	RecentScores []dashboardScore       `json:"recent_scores"`
+	Decisions    []dashboardDecision    `json:"decisions"`
 	Warnings     []string               `json:"warnings"`
 }
 
@@ -85,6 +86,25 @@ type dashboardScore struct {
 	Chain     int    `json:"chain"`
 	BlockTime int64  `json:"block_time"`
 	ScoreJSON string `json:"score_json"`
+}
+
+type dashboardDecision struct {
+	TickTime        int64   `json:"tick_time"`
+	PoolID          string  `json:"pool_id"`
+	PoolKey         string  `json:"pool_key"`
+	Protocol        string  `json:"protocol"`
+	ScoreTotal      float64 `json:"score_total"`
+	Selected        bool    `json:"selected"`
+	SelectedRank    int     `json:"selected_rank"`
+	SelectionReason string  `json:"selection_reason"`
+	IntentOpen      bool    `json:"intent_open"`
+	IntentReason    string  `json:"intent_reason"`
+	PipelineStage   string  `json:"pipeline_stage"`
+	PipelineOK      bool    `json:"pipeline_ok"`
+	PipelineReason  string  `json:"pipeline_reason"`
+	FinalAction     string  `json:"final_action"`
+	PositionID      string  `json:"position_id"`
+	TxHash          string  `json:"tx_hash"`
 }
 
 func (app *App) registerDashboardRoutes(mux *http.ServeMux) {
@@ -200,6 +220,12 @@ func (app *App) dashboardSnapshot(ctx context.Context) (dashboardSnapshot, error
 	}
 	snapshot.RecentScores = scores
 
+	decisions, err := queryDashboardDecisions(ctx, db)
+	if err != nil {
+		return snapshot, err
+	}
+	snapshot.Decisions = decisions
+
 	return snapshot, nil
 }
 
@@ -297,4 +323,51 @@ func queryDashboardScores(ctx context.Context, db *sql.DB) ([]dashboardScore, er
 		return scores[i].BlockTime > scores[j].BlockTime
 	})
 	return scores, rows.Err()
+}
+
+func queryDashboardDecisions(ctx context.Context, db *sql.DB) ([]dashboardDecision, error) {
+	rows, err := db.QueryContext(ctx, `
+		SELECT tick_time, pool_id, pool_key, protocol, score_total,
+		       selected, COALESCE(selected_rank, 0), selection_reason,
+		       intent_open, intent_reason, pipeline_stage, pipeline_ok,
+		       pipeline_reason, final_action,
+		       COALESCE(position_id, ''), COALESCE(tx_hash, '')
+		FROM shadow_decision_trace
+		ORDER BY id DESC
+		LIMIT 30
+	`)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("query dashboard decisions: %w", err)
+	}
+	defer rows.Close()
+
+	var decisions []dashboardDecision
+	for rows.Next() {
+		var decision dashboardDecision
+		if err := rows.Scan(
+			&decision.TickTime,
+			&decision.PoolID,
+			&decision.PoolKey,
+			&decision.Protocol,
+			&decision.ScoreTotal,
+			&decision.Selected,
+			&decision.SelectedRank,
+			&decision.SelectionReason,
+			&decision.IntentOpen,
+			&decision.IntentReason,
+			&decision.PipelineStage,
+			&decision.PipelineOK,
+			&decision.PipelineReason,
+			&decision.FinalAction,
+			&decision.PositionID,
+			&decision.TxHash,
+		); err != nil {
+			return nil, fmt.Errorf("scan dashboard decision: %w", err)
+		}
+		decisions = append(decisions, decision)
+	}
+	return decisions, rows.Err()
 }

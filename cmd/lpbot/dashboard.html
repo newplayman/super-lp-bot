@@ -161,6 +161,10 @@
       <table><thead><tr><th>ID</th><th>Status</th><th>Hash</th><th>Created</th></tr></thead><tbody id="tx-rows"></tbody></table>
     </section>
     <section class="card">
+      <div class="section-title"><h2>Decision Trace</h2><span class="small">latest 30 pool decisions</span></div>
+      <table><thead><tr><th>Pool</th><th>Score</th><th>Selected</th><th>Intent</th><th>Pipeline</th><th>Action</th></tr></thead><tbody id="decision-rows"></tbody></table>
+    </section>
+    <section class="card">
       <div class="section-title"><h2>警告</h2><span class="small">runtime</span></div>
       <div id="warnings" class="small">无</div>
     </section>
@@ -197,6 +201,7 @@
       document.getElementById("pool-rows").innerHTML = data.pools.map(p => `<tr><td><code>${short(p.pool_id)}</code></td><td>${p.protocol}</td><td>${p.fee_bps}</td><td>${p.tier || "-"}</td><td><code>${scoreSummary(p.score)}</code></td></tr>`).join("");
       document.getElementById("position-rows").innerHTML = data.positions.map(p => `<tr><td><code>${short(p.id)}</code><br><span class="small">${short(p.pool_id)}</span></td><td>${p.status}</td><td>${p.amount_usd}</td></tr>`).join("");
       document.getElementById("tx-rows").innerHTML = data.transactions.map(t => `<tr><td><code>${short(t.id)}</code></td><td>${t.status}</td><td><code>${short(t.tx_hash)}</code></td><td>${timeText(Math.floor(t.created_at / 1000))}</td></tr>`).join("");
+      document.getElementById("decision-rows").innerHTML = (data.decisions || []).map(d => `<tr><td><code>${short(d.pool_id)}</code><br><span class="small">${d.protocol}</span></td><td>${Number(d.score_total || 0).toFixed(1)}</td><td>${d.selected ? "yes" : "no"}<br><span class="small">${d.selection_reason || "-"}</span></td><td>${d.intent_open ? "open" : "skip"}<br><span class="small">${d.intent_reason || "-"}</span></td><td>${d.pipeline_stage || "-"}<br><span class="small">${d.pipeline_reason || "-"}</span></td><td>${d.final_action || "-"}${d.position_id ? `<br><span class="small">${short(d.position_id)}</span>` : ""}</td></tr>`).join("");
       document.getElementById("warnings").innerHTML = (data.warnings && data.warnings.length) ? data.warnings.map(w => `<div class="warn">${w}</div>`).join("") : "无";
     }
     refresh().catch(err => {

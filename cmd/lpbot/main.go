@@ -205,6 +205,10 @@ func (app *App) initAdapters(ctx context.Context) error {
 		return fmt.Errorf("failed to initialize metrics server: %w", err)
 	}
 
+	if err := app.ensureShadowDecisionTraceTable(ctx); err != nil {
+		return fmt.Errorf("failed to initialize decision trace schema: %w", err)
+	}
+
 	// Initialize datasource
 	app.datasource = geckoterminal.NewAdapter()
 	app.logger.Info("GeckoTerminal datasource initialized")
@@ -452,6 +456,8 @@ func (app *App) evaluateStrategies(ctx context.Context) {
 		return
 	}
 
+	metrics.RecordLoopHeartbeat()
+
 	scoredPools, err := app.scanner.ScanOnce(ctx)
 	if err != nil {
 		app.logger.Error("shadow scan failed", zap.Error(err))
@@ -485,32 +491,71 @@ func (app *App) evaluateStrategies(ctx context.Context) {
 		return
 	}
 
+	tickTime := time.Now().Unix()
+	candidateRanks := make(map[string]int, len(candidates))
+	for idx, pool := range candidates {
+		candidateRanks[pool.Key()] = idx + 1
+	}
+
 	evaluated := 0
 	opened := 0
-	for _, pool := range candidates {
+	traces := make([]shadowDecisionTraceRecord, 0, len(scoredPools))
+	for _, scored := range scoredPools {
+		pool := scored.Pool
 		score := scores[pool.Key()]
+		trace := app.buildDecisionTraceRecord(pool, score, tickTime)
+		rank, selected := candidateRanks[pool.Key()]
+		if !selected {
+			trace.SelectionReason = fmt.Sprintf("not ranked in top %d candidates for this tick", len(candidates))
+			traces = append(traces, trace)
+			continue
+		}
+
+		trace.Selected = true
+		trace.SelectedRank = rank
+		trace.SelectionReason = fmt.Sprintf("ranked #%d of %d selected candidates", rank, len(candidates))
 		intent, err := app.strategy.EvaluatePool(ctx, pool, score)
 		if err != nil {
+			trace.PipelineStage = "strategy_error"
+			trace.PipelineReason = err.Error()
+			trace.FinalAction = "skip"
+			traces = append(traces, trace)
 			app.logger.Warn("shadow strategy evaluation failed",
 				zap.String("pool", pool.Key()),
 				zap.Error(err))
 			continue
 		}
 		if intent == nil {
+			trace.IntentReason = fmt.Sprintf("score threshold not met: total %.1f < 60", score.ComputeTotal())
+			traces = append(traces, trace)
 			continue
 		}
 
+		trace.IntentOpen = true
+		trace.IntentReason = intent.Reason
+		trace.TraceID = shadowID("trace", fmt.Sprintf("%s:%d:%d", pool.Key(), rank, tickTime), tickTime)
 		evaluated++
-		ok, err := app.mainLoop.EvaluatePool(ctx, pool)
-		if err != nil {
-			app.logger.Warn("shadow pipeline evaluation failed",
-				zap.String("pool", pool.Key()),
-				zap.Error(err))
+		pipeline := app.evaluateShadowPipeline(ctx, pool)
+		trace.PipelineStage = pipeline.Stage
+		trace.PipelineOK = pipeline.OK
+		trace.PipelineReason = pipeline.Reason
+		trace.FinalAction = pipeline.Action
+		trace.PositionID = pipeline.PositionID
+		trace.TxHash = pipeline.TxHash
+		traces = append(traces, trace)
+		if pipeline.OK {
+			opened++
 			continue
 		}
-		if ok {
-			opened++
-		}
+
+		app.logger.Warn("shadow pipeline evaluation failed",
+			zap.String("pool", pool.Key()),
+			zap.String("stage", pipeline.Stage),
+			zap.String("reason", pipeline.Reason))
+	}
+
+	if err := app.persistShadowDecisionTraces(ctx, traces); err != nil {
+		app.logger.Warn("shadow decision trace persist failed", zap.Error(err))
 	}
 
 	app.logger.Info("shadow strategy tick completed",
