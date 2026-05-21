@@ -137,6 +137,10 @@ func buildBaseOpenIntent(
 	if amount0Raw.LessThanOrEqual(domain.ZeroDecimal()) && amount1Raw.LessThanOrEqual(domain.ZeroDecimal()) {
 		return execution.OpenIntent{}, fmt.Errorf("sized amounts are zero for pool %s", pool.ID)
 	}
+	feeRaw, err := baseV3FeeRaw(ctx, provider, pool)
+	if err != nil {
+		return execution.OpenIntent{}, err
+	}
 
 	tickLower, tickUpper := defaultOpenRange(pool.Tick)
 	return execution.OpenIntent{
@@ -155,8 +159,26 @@ func buildBaseOpenIntent(
 		Amount1:     amount1Raw,
 		SlippageBps: 50,
 		Deadline:    now.Add(5 * time.Minute).Unix(),
-		Fee:         uint32(pool.FeeBPS * 100),
+		Fee:         feeRaw,
 	}, nil
+}
+
+func baseV3FeeRaw(ctx context.Context, provider *rpc.RoundRobinProvider, pool domain.Pool) (uint32, error) {
+	if pool.FeeBPS > 0 {
+		return uint32(pool.FeeBPS * 100), nil
+	}
+	poolAddress, err := domain.ParseAddress(pool.ID)
+	if err != nil {
+		return 0, fmt.Errorf("pool fee is missing and pool address is invalid: %w", err)
+	}
+	fee, err := callUintMethod(ctx, provider, poolAddress, "fee()")
+	if err != nil {
+		return 0, fmt.Errorf("read v3 pool fee: %w", err)
+	}
+	if fee == 0 || fee > math.MaxUint32 {
+		return 0, fmt.Errorf("invalid v3 pool fee: %d", fee)
+	}
+	return uint32(fee), nil
 }
 
 func tokenDecimals(ctx context.Context, provider *rpc.RoundRobinProvider, token domain.Address) (uint8, error) {
