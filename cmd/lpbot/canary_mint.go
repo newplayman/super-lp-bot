@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -40,7 +41,7 @@ func runCanaryMint(ctx context.Context, cfg *config.Config) error {
 		return fmt.Errorf("canary mint requires exactly one allowed pool, got %d", len(cfg.Live.AllowedPools))
 	}
 
-	provider, err := newCanaryPreflightProvider(ctx, cfg)
+	provider, err := newCanaryMintProvider(ctx, cfg)
 	if err != nil {
 		return err
 	}
@@ -118,6 +119,18 @@ func newCanaryMintBroadcaster(ctx context.Context, cfg *config.Config, provider 
 	return livebroadcast.New(ctx, livebroadcast.BroadcastConfig{
 		BaseRPCURL:    baseRPCURL,
 		Confirmations: cfg.Chains.Base.Confirmations,
+	})
+}
+
+func newCanaryMintProvider(ctx context.Context, cfg *config.Config) (*rpc.RoundRobinProvider, error) {
+	endpoints := []string{cfg.Chains.Base.RPCPrimary}
+	endpoints = append(endpoints, cfg.Chains.Base.RPCFallback...)
+	return rpc.NewRoundRobinProvider(rpc.Config{
+		ChainID:             domain.ChainBase,
+		Endpoints:           endpoints,
+		HTTPClient:          &http.Client{Timeout: 5 * time.Second},
+		HealthCheckInterval: time.Minute,
+		HealthCheckTimeout:  2 * time.Second,
 	})
 }
 
