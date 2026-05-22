@@ -571,7 +571,6 @@ func (app *App) dashboardSnapshot(ctx context.Context) (dashboardSnapshot, error
 		return snapshot, err
 	}
 	snapshot.PositionMarks = positionMarks
-	snapshot.BaseCanary = buildDashboardBaseCanary(snapshot.Positions, snapshot.ClosedPositions, snapshot.PositionMarks, snapshot.CanaryEvents)
 	exitPreflights, err := queryDashboardExitPreflights(ctx, db)
 	if err != nil {
 		snapshot.Warnings = append(snapshot.Warnings, fmt.Sprintf("dashboard exit preflights unavailable: %v", err))
@@ -581,6 +580,7 @@ func (app *App) dashboardSnapshot(ctx context.Context) (dashboardSnapshot, error
 		exitPreflights = buildDashboardExitPreflights(positionMarks)
 	}
 	snapshot.ExitPreflights = exitPreflights
+	snapshot.BaseCanary = buildDashboardBaseCanary(snapshot.Positions, snapshot.ClosedPositions, snapshot.PositionMarks, snapshot.CanaryEvents, snapshot.ExitPreflights)
 
 	markSeries, err := queryDashboardMarkSeries(ctx, db)
 	if err != nil {
@@ -1186,7 +1186,7 @@ func queryDashboardSolanaCanary(ctx context.Context, db *sql.DB) (dashboardSolan
 	return summary, nil
 }
 
-func buildDashboardBaseCanary(positions, closedPositions []dashboardPosition, marks []dashboardPositionMark, events []dashboardCanaryEvent) dashboardBaseCanary {
+func buildDashboardBaseCanary(positions, closedPositions []dashboardPosition, marks []dashboardPositionMark, events []dashboardCanaryEvent, exitPreflights []dashboardExitPreflight) dashboardBaseCanary {
 	var summary dashboardBaseCanary
 	for _, pos := range positions {
 		if pos.Chain != 1 || strings.TrimSpace(pos.TokenID) == "" {
@@ -1252,6 +1252,18 @@ func buildDashboardBaseCanary(positions, closedPositions []dashboardPosition, ma
 		if strings.TrimSpace(summary.LastNetPnLUSD) == "" || summary.LastNetPnLUSD == "0" {
 			summary.LastNetPnLUSD = mark.NetPnLUSD
 		}
+		break
+	}
+	for _, ep := range exitPreflights {
+		if summary.LastTokenID == "" {
+			break
+		}
+		if ep.TokenID != summary.LastTokenID || !strings.EqualFold(ep.Status, "closed") {
+			continue
+		}
+		summary.LastFeeUSD = ep.FeeUSD
+		summary.LastILUSD = ep.ILUSD
+		summary.LastNetPnLUSD = ep.NetPnLUSD
 		break
 	}
 	return summary
@@ -1351,7 +1363,7 @@ func queryDashboardExitPreflights(ctx context.Context, db *sql.DB) ([]dashboardE
 			e.principal_usd,
 			e.fee_usd,
 			e.total_usd,
-			COALESCE(m.il_usd, '0') AS il_usd,
+			((e.total_usd::numeric - e.principal_usd::numeric - e.fee_usd::numeric))::text AS il_usd,
 			(e.total_usd::numeric - COALESCE(p.amount_usd::numeric, 0))::text AS net_pnl_usd,
 			e.decrease_gas,
 			e.collect_gas,
@@ -1364,13 +1376,6 @@ func queryDashboardExitPreflights(ctx context.Context, db *sql.DB) ([]dashboardE
 			e.status
 		FROM canary_exit_preflights e
 		LEFT JOIN positions p ON p.token_id = e.token_id
-		LEFT JOIN LATERAL (
-			SELECT il_usd
-			FROM shadow_position_marks
-			WHERE position_id = p.id
-			ORDER BY mark_time DESC, id DESC
-			LIMIT 1
-		) m ON TRUE
 		ORDER BY e.checked_at DESC
 		LIMIT 20
 	`)
