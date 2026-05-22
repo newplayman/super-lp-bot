@@ -155,6 +155,9 @@ func (w *canaryEventWriter) Record(ctx context.Context, event canaryEvent) error
 	if event.Status == "" {
 		event.Status = "ok"
 	}
+	if strings.TrimSpace(event.Chain) == "" {
+		event.Chain = string(domain.ChainBase)
+	}
 	idInput := fmt.Sprintf("%s:%s:%s:%s:%d", event.Command, event.Stage, event.PositionID, event.TxHash, time.Now().UnixNano())
 	id := shadowID("canary-event", idInput, time.Now().UnixNano())
 	_, err := w.db.ExecContext(ctx, `
