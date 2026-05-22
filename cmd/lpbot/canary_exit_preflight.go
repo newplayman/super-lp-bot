@@ -175,7 +175,12 @@ func runCanaryExit(ctx context.Context, cfg *config.Config, tokenID string) erro
 		big.NewInt(time.Now().Add(10*time.Minute).Unix()),
 	)
 	decreaseTx := buildCanaryNPMUnsignedTx(cfg, wallet.Address(), decreaseData, "canary-exit-decrease-"+tokenID)
-	if err := sendCanaryExitTx(ctx, wallet, broadcaster, decreaseTx, "decrease_liquidity"); err != nil {
+	decreaseSigned, err := sendCanaryExitTx(ctx, wallet, broadcaster, decreaseTx, "decrease_liquidity")
+	if err != nil {
+		_ = persistCanaryExitExecution(ctx, cfg, report, nil, nil, "exit_failed", err.Error())
+		return err
+	}
+	if err := persistCanaryExitExecution(ctx, cfg, report, &decreaseSigned, nil, "decrease_broadcast", ""); err != nil {
 		return err
 	}
 
@@ -186,7 +191,12 @@ func runCanaryExit(ctx context.Context, cfg *config.Config, tokenID string) erro
 		new(big.Int).Sub(new(big.Int).Lsh(big.NewInt(1), 128), big.NewInt(1)),
 	)
 	collectTx := buildCanaryNPMUnsignedTx(cfg, wallet.Address(), collectData, "canary-exit-collect-"+tokenID)
-	if err := sendCanaryExitTx(ctx, wallet, broadcaster, collectTx, "collect"); err != nil {
+	collectSigned, err := sendCanaryExitTx(ctx, wallet, broadcaster, collectTx, "collect")
+	if err != nil {
+		_ = persistCanaryExitExecution(ctx, cfg, report, &decreaseSigned, nil, "collect_failed", err.Error())
+		return err
+	}
+	if err := persistCanaryExitExecution(ctx, cfg, report, &decreaseSigned, &collectSigned, "closed", ""); err != nil {
 		return err
 	}
 
@@ -509,12 +519,12 @@ func sendCanaryExitTx(ctx context.Context, wallet interface {
 	Sign(context.Context, domain.UnsignedTx) (domain.SignedTx, error)
 }, broadcaster interface {
 	Send(context.Context, domain.SignedTx) error
-}, tx domain.UnsignedTx, action string) error {
+}, tx domain.UnsignedTx, action string) (domain.SignedTx, error) {
 	signCtx, cancel := context.WithTimeout(ctx, 45*time.Second)
 	signed, err := wallet.Sign(signCtx, tx)
 	cancel()
 	if err != nil {
-		return fmt.Errorf("sign %s: %w", action, err)
+		return domain.SignedTx{}, fmt.Errorf("sign %s: %w", action, err)
 	}
 	signed.ID = tx.ID
 	signed.Status = domain.TxBuilt
@@ -522,10 +532,12 @@ func sendCanaryExitTx(ctx context.Context, wallet interface {
 	err = broadcaster.Send(sendCtx, signed)
 	cancel()
 	if err != nil {
-		return fmt.Errorf("broadcast %s: %w", action, err)
+		signed.Status = domain.TxFailed
+		return signed, fmt.Errorf("broadcast %s: %w", action, err)
 	}
+	signed.Status = domain.TxBroadcast
 	fmt.Printf("tx_broadcast action=%s hash=%s id=%s\n", action, signed.Hash, signed.ID)
-	return nil
+	return signed, nil
 }
 
 func printCanaryExitPreflightReport(report canaryExitPreflightReport) {
@@ -631,6 +643,130 @@ func persistCanaryExitPreflight(ctx context.Context, cfg *config.Config, report 
 	return nil
 }
 
+func persistCanaryExitExecution(ctx context.Context, cfg *config.Config, report canaryExitPreflightReport, decreaseTx *domain.SignedTx, collectTx *domain.SignedTx, status string, errorMsg string) error {
+	dsn := strings.TrimSpace(cfg.Store.PostgresDSN)
+	if dsn == "" {
+		return fmt.Errorf("store.postgres_dsn is empty; cannot persist canary exit execution")
+	}
+	db, err := sql.Open("postgres", dsn)
+	if err != nil {
+		return fmt.Errorf("open postgres for canary exit execution: %w", err)
+	}
+	defer db.Close()
+	if err := db.PingContext(ctx); err != nil {
+		return fmt.Errorf("ping postgres for canary exit execution: %w", err)
+	}
+	if err := ensureCanaryExitPreflightsTable(ctx, db); err != nil {
+		return err
+	}
+
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin canary exit persist tx: %w", err)
+	}
+	defer tx.Rollback()
+
+	nowMilli := time.Now().UnixMilli()
+	if decreaseTx != nil {
+		if err := upsertCanaryExitSignedTx(ctx, tx, *decreaseTx, nowMilli); err != nil {
+			return err
+		}
+	}
+	if collectTx != nil {
+		if err := upsertCanaryExitSignedTx(ctx, tx, *collectTx, nowMilli); err != nil {
+			return err
+		}
+	}
+
+	positionStatus := "exiting"
+	if status == "closed" {
+		positionStatus = string(domain.StatusClosed)
+	}
+	if strings.Contains(status, "failed") {
+		positionStatus = string(domain.StatusExitFailed)
+	}
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE positions
+		SET status = $1,
+		    closed_at = CASE WHEN $1 = 'closed' AND COALESCE(closed_at, 0) = 0 THEN EXTRACT(EPOCH FROM NOW())::BIGINT ELSE closed_at END
+		WHERE token_id = $2
+	`, positionStatus, report.TokenID); err != nil {
+		return fmt.Errorf("update position after canary exit: %w", err)
+	}
+
+	decreaseHash := ""
+	collectHash := ""
+	if decreaseTx != nil {
+		decreaseHash = decreaseTx.Hash
+	}
+	if collectTx != nil {
+		collectHash = collectTx.Hash
+	}
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE canary_exit_preflights
+		SET broadcast_enabled = TRUE,
+		    status = $1,
+		    decrease_tx_hash = $2,
+		    collect_tx_hash = $3,
+		    error_msg = $4,
+		    updated_at = $5
+		WHERE token_id = $6
+	`, status, decreaseHash, collectHash, errorMsg, time.Now().Unix(), report.TokenID); err != nil {
+		return fmt.Errorf("update canary exit preflight execution state: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit canary exit persist tx: %w", err)
+	}
+	fmt.Printf("canary_exit_persisted token_id=%s status=%s decrease_hash=%s collect_hash=%s\n",
+		report.TokenID, status, decreaseHash, collectHash)
+	return nil
+}
+
+func upsertCanaryExitSignedTx(ctx context.Context, tx *sql.Tx, signed domain.SignedTx, nowMilli int64) error {
+	_, err := tx.ExecContext(ctx, `
+		INSERT INTO transactions (
+			id, chain, tx_hash, from_address, to_address, data, value,
+			nonce, deadline, min_out, signature, status,
+			block_number, block_hash, broadcast_at,
+			gas_used, gas_price, gas_limit,
+			rfb_attempts, error_msg, trace_id, created_at, updated_at
+		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)
+		ON CONFLICT (tx_hash) DO UPDATE SET
+			status = EXCLUDED.status,
+			broadcast_at = COALESCE(EXCLUDED.broadcast_at, transactions.broadcast_at),
+			updated_at = EXCLUDED.updated_at
+	`,
+		signed.ID,
+		signed.Chain,
+		signed.Hash,
+		signed.From.String(),
+		signed.To.String(),
+		signed.Data,
+		signed.Value.String(),
+		signed.Nonce,
+		signed.Deadline,
+		signed.MinOut.String(),
+		signed.Signature,
+		signed.Status,
+		nil,
+		nil,
+		nowMilli,
+		nil,
+		nil,
+		nil,
+		signed.RFBAttempts,
+		nil,
+		nil,
+		nowMilli,
+		nowMilli,
+	)
+	if err != nil {
+		return fmt.Errorf("upsert canary exit tx %s: %w", signed.ID, err)
+	}
+	return nil
+}
+
 func ensureCanaryExitPreflightsTable(ctx context.Context, db *sql.DB) error {
 	_, err := db.ExecContext(ctx, `
 		CREATE TABLE IF NOT EXISTS canary_exit_preflights (
@@ -654,10 +790,16 @@ func ensureCanaryExitPreflightsTable(ctx context.Context, db *sql.DB) error {
 			collect_gas BIGINT NOT NULL DEFAULT 0,
 			slippage_bps BIGINT NOT NULL DEFAULT 0,
 			broadcast_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+			decrease_tx_hash TEXT NOT NULL DEFAULT '',
+			collect_tx_hash TEXT NOT NULL DEFAULT '',
+			error_msg TEXT NOT NULL DEFAULT '',
 			status TEXT NOT NULL DEFAULT '',
 			checked_at BIGINT NOT NULL DEFAULT 0,
 			updated_at BIGINT NOT NULL DEFAULT 0
 		);
+		ALTER TABLE canary_exit_preflights ADD COLUMN IF NOT EXISTS decrease_tx_hash TEXT NOT NULL DEFAULT '';
+		ALTER TABLE canary_exit_preflights ADD COLUMN IF NOT EXISTS collect_tx_hash TEXT NOT NULL DEFAULT '';
+		ALTER TABLE canary_exit_preflights ADD COLUMN IF NOT EXISTS error_msg TEXT NOT NULL DEFAULT '';
 		CREATE INDEX IF NOT EXISTS idx_canary_exit_preflights_checked_at
 			ON canary_exit_preflights(checked_at DESC);
 	`)

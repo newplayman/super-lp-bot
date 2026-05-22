@@ -255,6 +255,9 @@ type dashboardExitPreflight struct {
 	NetPnLUSD        string `json:"net_pnl_usd"`
 	DecreaseGas      uint64 `json:"decrease_gas"`
 	CollectGas       uint64 `json:"collect_gas"`
+	DecreaseTxHash   string `json:"decrease_tx_hash"`
+	CollectTxHash    string `json:"collect_tx_hash"`
+	ErrorMsg         string `json:"error_msg"`
 	BroadcastEnabled bool   `json:"broadcast_enabled"`
 	Command          string `json:"command"`
 	UpdatedAt        int64  `json:"updated_at"`
@@ -1055,6 +1058,9 @@ func queryDashboardExitPreflights(ctx context.Context, db *sql.DB) ([]dashboardE
 			(e.total_usd::numeric - COALESCE(p.amount_usd::numeric, 0))::text AS net_pnl_usd,
 			e.decrease_gas,
 			e.collect_gas,
+			e.decrease_tx_hash,
+			e.collect_tx_hash,
+			e.error_msg,
 			e.broadcast_enabled,
 			('./bin/lpbot-live --config=configs/config.canary.toml --canary-exit-preflight --token-id=' || e.token_id) AS command,
 			e.checked_at,
@@ -1091,6 +1097,9 @@ func queryDashboardExitPreflights(ctx context.Context, db *sql.DB) ([]dashboardE
 			&item.NetPnLUSD,
 			&item.DecreaseGas,
 			&item.CollectGas,
+			&item.DecreaseTxHash,
+			&item.CollectTxHash,
+			&item.ErrorMsg,
 			&item.BroadcastEnabled,
 			&item.Command,
 			&item.UpdatedAt,

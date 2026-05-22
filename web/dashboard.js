@@ -260,6 +260,8 @@
                     <span>${escapeHTML(item.status || 'mark_estimate')}</span>
                     <code>${escapeHTML(item.command || '')}</code>
                 </div>
+                <div class="muted-mini">decrease tx: ${txLink(item.decrease_tx_hash)} / collect tx: ${txLink(item.collect_tx_hash)}</div>
+                ${item.error_msg ? `<div class="muted-mini red-text">error: ${escapeHTML(item.error_msg)}</div>` : ''}
                 <div class="muted-mini">source: ${escapeHTML(item.source || '-')} / updated ${timeText(item.updated_at)}</div>
             </div>
         `).join('');
@@ -394,5 +396,6 @@
     function dexscreenerURL(poolId) { return `https://dexscreener.com/base/${encodeURIComponent(poolId || '')}`; }
     function geckoURL(poolId) { return `https://www.geckoterminal.com/base/pools/${encodeURIComponent(poolId || '')}`; }
     function poolLink(poolId) { return `<a target="_blank" rel="noreferrer" href="${dexscreenerURL(poolId)}">${short(poolId)}</a> <a target="_blank" rel="noreferrer" href="${geckoURL(poolId)}">GT</a>`; }
+    function txLink(hash) { return hash ? `<a target="_blank" rel="noreferrer" href="https://basescan.org/tx/${escapeHTML(hash)}">${short(hash)}</a>` : '-'; }
     function escapeHTML(value) { return String(value || '').replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c])); }
 })();
