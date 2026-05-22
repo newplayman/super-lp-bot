@@ -52,6 +52,8 @@ type activeShadowPosition struct {
 	ClosedAt  int64
 }
 
+const defaultBaseUniswapV3NPMAddress = "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1"
+
 type shadowExitDecisionRecord struct {
 	DecisionTime   int64
 	PositionID     string
@@ -467,7 +469,7 @@ func (app *App) loadNPMPositionState(ctx context.Context, pos activeShadowPositi
 	}
 	npmAddress := strings.TrimSpace(app.config.Execution.NPMBaseAddress)
 	if npmAddress == "" {
-		return npmPositionState{}, fmt.Errorf("npm base address is empty")
+		npmAddress = defaultBaseUniswapV3NPMAddress
 	}
 	tokenID, ok := new(big.Int).SetString(strings.TrimSpace(pos.TokenID), 10)
 	if !ok || tokenID.Sign() <= 0 {
