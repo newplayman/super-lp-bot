@@ -173,14 +173,15 @@ func readV3PoolTick(ctx context.Context, provider *rpc.RoundRobinProvider, pool 
 	if len(raw) < 64 {
 		return 0, fmt.Errorf("slot0 returned short response")
 	}
-	tick := new(big.Int).SetBytes(raw[32:64])
-	if tick.Bit(23) == 1 {
-		tick.Sub(tick, new(big.Int).Lsh(big.NewInt(1), 24))
+	word := raw[32:64]
+	tick := int32(word[29])<<16 | int32(word[30])<<8 | int32(word[31])
+	if tick&0x800000 != 0 {
+		tick -= 1 << 24
 	}
-	if !tick.IsInt64() || tick.Int64() < math.MinInt32 || tick.Int64() > math.MaxInt32 {
-		return 0, fmt.Errorf("slot0 tick out of range: %s", tick.String())
+	if tick < math.MinInt32 || tick > math.MaxInt32 {
+		return 0, fmt.Errorf("slot0 tick out of range: %d", tick)
 	}
-	return int(tick.Int64()), nil
+	return int(tick), nil
 }
 
 func buildCanaryPreflightReport(
