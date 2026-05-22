@@ -349,13 +349,17 @@
         const tiers = groupSum(marks, 'tier', 'valuation_usd');
         charts.tier && charts.tier.setOption(getPieOption('资金分布 (Tier)', Object.entries(tiers).map(([name, value]) => ({ name: name || 'unknown', value }))));
         charts.chain && charts.chain.setOption(getPieOption('资金分布 (链)', [{ name: 'Base', value: sum(marks, 'valuation_usd') || 1 }]));
+        const summaryByKind = (ledgerSummary || []).reduce((out, item) => {
+            out[item.kind] = num(item.amount);
+            return out;
+        }, {});
 
         const pnlSeries = ledgerSeries.length ? ledgerSeries : markSeries;
         const pnlValues = pnlSeries.map(p => Number(num(p.net_pnl_usd).toFixed(4)));
         const labels = pnlSeries.map(p => new Date(num((p.block_time || p.mark_time)) * 1000).toLocaleTimeString());
         charts.cumulativePnl && charts.cumulativePnl.setOption({ xAxis: { data: labels }, series: [{ data: pnlValues }] });
-		charts.revenueBreakdown && charts.revenueBreakdown.setOption({
-			xAxis: { data: ['24h ledger'] },
+        charts.revenueBreakdown && charts.revenueBreakdown.setOption({
+            xAxis: { data: ['24h ledger'] },
             series: [
                 { name: 'Fee', type: 'bar', stack: 'total', itemStyle: { color: '#10b981' }, data: [summaryByKind.fee || 0] },
                 { name: 'IL', type: 'bar', stack: 'total', itemStyle: { color: '#ef4444' }, data: [summaryByKind.il || 0] }
