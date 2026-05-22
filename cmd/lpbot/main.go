@@ -1465,6 +1465,7 @@ func main() {
 	}
 
 	configPath := flag.String("config", "", "Path to config file (required)")
+	solanaReadiness := flag.Bool("solana-readiness", false, "Run Solana read-only RPC and simulation readiness checks")
 	canaryPreflight := flag.Bool("canary-preflight", false, "Run a single Base canary preflight without signing or broadcasting")
 	canaryPrepare := flag.Bool("canary-prepare", false, "Run a single Base canary prepare: wrap WETH and approve exact token amounts")
 	canaryMint := flag.Bool("canary-mint", false, "Run a single Base canary Uniswap V3 mint")
@@ -1492,6 +1493,14 @@ func main() {
 
 	ctx, cancel := setupSignalHandling()
 	defer cancel()
+
+	if *solanaReadiness {
+		if err := runSolanaReadiness(ctx, cfg); err != nil {
+			fmt.Fprintf(os.Stderr, "Solana readiness failed: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
 
 	if *canaryPreflight {
 		if BuildMode != "live" {
