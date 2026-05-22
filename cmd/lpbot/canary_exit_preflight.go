@@ -12,7 +12,7 @@ import (
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
-	npmabi "github.com/lpbot/lpbot/internal/adapters/chain/base/abi"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/lpbot/lpbot/internal/adapters/rpc"
 	"github.com/lpbot/lpbot/internal/domain"
 	"github.com/lpbot/lpbot/internal/platform/config"
@@ -269,10 +269,7 @@ func estimateCanaryDecreaseGas(ctx context.Context, provider *rpc.RoundRobinProv
 	}
 	amount0Min := big.NewInt(0)
 	amount1Min := big.NewInt(0)
-	data, err := npmabi.NPMABI.Pack("decreaseLiquidity", token, liquidity, amount0Min, amount1Min, big.NewInt(time.Now().Add(10*time.Minute).Unix()))
-	if err != nil {
-		return 0, err
-	}
+	data := encodeNPMDecreaseLiquidityCalldata(token, liquidity, amount0Min, amount1Min, big.NewInt(time.Now().Add(10*time.Minute).Unix()))
 	return estimateNPMGas(ctx, provider, cfg, wallet, data)
 }
 
@@ -282,11 +279,36 @@ func estimateCanaryCollectGas(ctx context.Context, provider *rpc.RoundRobinProvi
 		return 0, fmt.Errorf("invalid token id %q", tokenID)
 	}
 	maxUint128 := new(big.Int).Sub(new(big.Int).Lsh(big.NewInt(1), 128), big.NewInt(1))
-	data, err := npmabi.NPMABI.Pack("collect", token, common.HexToAddress(wallet.String()), maxUint128, maxUint128)
-	if err != nil {
-		return 0, err
-	}
+	data := encodeNPMCollectCalldata(token, common.HexToAddress(wallet.String()), maxUint128, maxUint128)
 	return estimateNPMGas(ctx, provider, cfg, wallet, data)
+}
+
+func encodeNPMDecreaseLiquidityCalldata(tokenID *big.Int, liquidity *big.Int, amount0Min *big.Int, amount1Min *big.Int, deadline *big.Int) []byte {
+	data := make([]byte, 0, 4+32*5)
+	data = append(data, crypto.Keccak256([]byte("decreaseLiquidity((uint256,uint128,uint256,uint256,uint256))"))[:4]...)
+	data = append(data, leftPadWord(tokenID)...)
+	data = append(data, leftPadWord(liquidity)...)
+	data = append(data, leftPadWord(amount0Min)...)
+	data = append(data, leftPadWord(amount1Min)...)
+	data = append(data, leftPadWord(deadline)...)
+	return data
+}
+
+func encodeNPMCollectCalldata(tokenID *big.Int, recipient common.Address, amount0Max *big.Int, amount1Max *big.Int) []byte {
+	data := make([]byte, 0, 4+32*4)
+	data = append(data, crypto.Keccak256([]byte("collect((uint256,address,uint128,uint128))"))[:4]...)
+	data = append(data, leftPadWord(tokenID)...)
+	data = append(data, common.LeftPadBytes(recipient.Bytes(), 32)...)
+	data = append(data, leftPadWord(amount0Max)...)
+	data = append(data, leftPadWord(amount1Max)...)
+	return data
+}
+
+func leftPadWord(value *big.Int) []byte {
+	if value == nil {
+		value = big.NewInt(0)
+	}
+	return common.LeftPadBytes(value.Bytes(), 32)
 }
 
 func estimateNPMGas(ctx context.Context, provider *rpc.RoundRobinProvider, cfg *config.Config, wallet domain.Address, data []byte) (uint64, error) {
