@@ -75,7 +75,7 @@ func (r *PositionRepo) FindByID(ctx context.Context, id string) (*domain.Positio
 
 	err := r.db.QueryRowContext(ctx, `
 		SELECT id, COALESCE(token_id, ''), pool_id, chain, status, tier, tick_lower, tick_upper,
-		       amount_usd, opened_at, closed_at
+		       amount_usd, opened_at, COALESCE(closed_at, 0)
 		FROM positions
 		WHERE id = $1
 	`, id).Scan(
@@ -115,7 +115,7 @@ func (r *PositionRepo) FindByID(ctx context.Context, id string) (*domain.Positio
 func (r *PositionRepo) FindByPoolAndStatus(ctx context.Context, poolID string, status domain.PositionStatus) ([]*domain.Position, error) {
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT id, COALESCE(token_id, ''), pool_id, chain, status, tier, tick_lower, tick_upper,
-		       amount_usd, opened_at, closed_at
+		       amount_usd, opened_at, COALESCE(closed_at, 0)
 		FROM positions
 		WHERE pool_id = $1 AND status = $2
 	`, poolID, string(status))
@@ -131,7 +131,7 @@ func (r *PositionRepo) FindByPoolAndStatus(ctx context.Context, poolID string, s
 func (r *PositionRepo) FindByChainAndStatus(ctx context.Context, chain domain.ChainID, status domain.PositionStatus) ([]*domain.Position, error) {
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT id, COALESCE(token_id, ''), pool_id, chain, status, tier, tick_lower, tick_upper,
-		       amount_usd, opened_at, closed_at
+		       amount_usd, opened_at, COALESCE(closed_at, 0)
 		FROM positions
 		WHERE chain = $1 AND status = $2
 	`, chainIDToInt(chain), string(status))
@@ -169,7 +169,7 @@ func (r *PositionRepo) UpdateStatus(ctx context.Context, id string, status domai
 func (r *PositionRepo) Snapshot(ctx context.Context, poolID string) ([]*domain.Position, error) {
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT id, COALESCE(token_id, ''), pool_id, chain, status, tier, tick_lower, tick_upper,
-		       amount_usd, opened_at, closed_at
+		       amount_usd, opened_at, COALESCE(closed_at, 0)
 		FROM positions
 		WHERE pool_id = $1
 	`, poolID)
