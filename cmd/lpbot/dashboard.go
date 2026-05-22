@@ -542,17 +542,13 @@ func (app *App) dashboardSnapshot(ctx context.Context) (dashboardSnapshot, error
 		return snapshot, err
 	}
 	snapshot.Transactions = txs
+	snapshot.BaseCanary = buildDashboardBaseCanary(snapshot.Positions, snapshot.ClosedPositions, snapshot.Transactions)
 
 	canaryEvents, err := queryDashboardCanaryEvents(ctx, db)
 	if err != nil {
 		snapshot.Warnings = append(snapshot.Warnings, fmt.Sprintf("dashboard canary events unavailable: %v", err))
 	} else {
 		snapshot.CanaryEvents = canaryEvents
-	}
-	if summary, err := queryDashboardBaseCanary(ctx, db); err != nil {
-		snapshot.Warnings = append(snapshot.Warnings, fmt.Sprintf("dashboard base canary summary unavailable: %v", err))
-	} else {
-		snapshot.BaseCanary = summary
 	}
 	if summary, err := queryDashboardSolanaCanary(ctx, db); err != nil {
 		snapshot.Warnings = append(snapshot.Warnings, fmt.Sprintf("dashboard solana canary summary unavailable: %v", err))
@@ -1166,69 +1162,38 @@ func queryDashboardSolanaCanary(ctx context.Context, db *sql.DB) (dashboardSolan
 	return summary, nil
 }
 
-func queryDashboardBaseCanary(ctx context.Context, db *sql.DB) (dashboardBaseCanary, error) {
+func buildDashboardBaseCanary(positions, closedPositions []dashboardPosition, txs []dashboardTransaction) dashboardBaseCanary {
 	var summary dashboardBaseCanary
-	if err := db.QueryRowContext(ctx, `
-		SELECT count(*)
-		FROM canary_events
-		WHERE chain = 'base' AND COALESCE(tx_hash, '') <> ''
-	`).Scan(&summary.Broadcasts); err != nil {
-		return summary, fmt.Errorf("query base canary broadcast count: %w", err)
+	for _, pos := range positions {
+		if pos.Chain != 1 || strings.TrimSpace(pos.TokenID) == "" {
+			continue
+		}
+		summary.Opened++
+		if strings.EqualFold(pos.Status, "closed") {
+			summary.Closed++
+		}
 	}
-	if err := db.QueryRowContext(ctx, `
-		SELECT
-			count(*) FILTER (WHERE chain = 1 AND COALESCE(token_id, '') <> ''),
-			count(*) FILTER (WHERE chain = 1 AND COALESCE(token_id, '') <> '' AND status = 'closed')
-		FROM positions
-	`).Scan(&summary.Opened, &summary.Closed); err != nil {
-		return summary, fmt.Errorf("query base canary position counts: %w", err)
+	for _, tx := range txs {
+		if !strings.EqualFold(tx.Chain, "base") || strings.TrimSpace(tx.TxHash) == "" {
+			continue
+		}
+		summary.Broadcasts++
+		if summary.LastTxHash == "" {
+			summary.LastTxHash = tx.TxHash
+		}
 	}
-	if err := db.QueryRowContext(ctx, `
-		SELECT
-			p.id,
-			COALESCE(p.token_id, ''),
-			p.pool_id,
-			p.status,
-			p.amount_usd,
-			COALESCE(p.closed_at, 0),
-			COALESCE(pm.hold_minutes, 0),
-			COALESCE(pm.net_pnl_usd, '0'),
-			COALESCE(pm.fee_usd, '0'),
-			COALESCE(pm.il_usd, '0'),
-			COALESCE(ce.tx_hash, '')
-		FROM positions p
-		LEFT JOIN (
-			SELECT DISTINCT ON (position_id)
-				position_id, hold_minutes, net_pnl_usd, fee_usd, il_usd
-			FROM shadow_position_marks
-			ORDER BY position_id, mark_time DESC
-		) pm ON pm.position_id = p.id
-		LEFT JOIN (
-			SELECT tx_hash
-			FROM transactions
-			WHERE chain = 'base' AND COALESCE(tx_hash, '') <> ''
-			ORDER BY created_at DESC
-			LIMIT 1
-		) tx ON true
-		WHERE p.chain = 1 AND COALESCE(p.token_id, '') <> ''
-		ORDER BY GREATEST(COALESCE(p.closed_at, 0), p.opened_at) DESC
-		LIMIT 1
-	`).Scan(
-		&summary.LastPositionID,
-		&summary.LastTokenID,
-		&summary.LastPoolID,
-		&summary.LastStatus,
-		&summary.LastAmountUSD,
-		&summary.LastClosedAt,
-		&summary.LastHoldMinutes,
-		&summary.LastNetPnLUSD,
-		&summary.LastFeeUSD,
-		&summary.LastILUSD,
-		&summary.LastTxHash,
-	); err != nil && err != sql.ErrNoRows {
-		return summary, fmt.Errorf("query base canary latest: %w", err)
+	if len(closedPositions) > 0 {
+		pos := closedPositions[0]
+		summary.LastPositionID = pos.ID
+		summary.LastTokenID = pos.TokenID
+		summary.LastPoolID = pos.PoolID
+		summary.LastStatus = pos.Status
+		summary.LastAmountUSD = pos.AmountUSD
+		summary.LastHoldMinutes = pos.HoldMinutes
+		summary.LastNetPnLUSD = pos.NetPnLUSD
+		summary.LastClosedAt = pos.ClosedAt
 	}
-	return summary, nil
+	return summary
 }
 
 func queryDashboardPositionMarks(ctx context.Context, db *sql.DB) ([]dashboardPositionMark, error) {
