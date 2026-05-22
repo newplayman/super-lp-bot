@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"net/http"
 	"strings"
 	"time"
 
@@ -61,7 +62,7 @@ func runCanaryExitPreflight(ctx context.Context, cfg *config.Config, tokenID str
 		return fmt.Errorf("canary exit preflight requires exactly one allowed pool, got %d", len(cfg.Live.AllowedPools))
 	}
 
-	provider, err := newCanaryPreflightProvider(ctx, cfg)
+	provider, err := newCanaryExitPreflightProvider(ctx, cfg)
 	if err != nil {
 		return err
 	}
@@ -84,6 +85,18 @@ func runCanaryExitPreflight(ctx context.Context, cfg *config.Config, tokenID str
 	}
 	printCanaryExitPreflightReport(report)
 	return nil
+}
+
+func newCanaryExitPreflightProvider(ctx context.Context, cfg *config.Config) (*rpc.RoundRobinProvider, error) {
+	endpoints := []string{cfg.Chains.Base.RPCPrimary}
+	endpoints = append(endpoints, cfg.Chains.Base.RPCFallback...)
+	return rpc.NewRoundRobinProvider(rpc.Config{
+		ChainID:             domain.ChainBase,
+		Endpoints:           endpoints,
+		HTTPClient:          &http.Client{Timeout: 8 * time.Second},
+		HealthCheckInterval: time.Minute,
+		HealthCheckTimeout:  3 * time.Second,
+	})
 }
 
 func checkCanaryExitGate(gate *liveSafetyGate, pool domain.Pool) error {
