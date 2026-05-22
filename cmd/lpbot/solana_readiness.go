@@ -190,32 +190,20 @@ func runSolanaSwapSignReadiness(ctx context.Context, userPublicKey string, input
 	if pub != built.UserPublicKey {
 		return fmt.Errorf("solana signer public key mismatch: signer=%s user=%s", shortAddress(pub), shortAddress(built.UserPublicKey))
 	}
-	tx, err := solanago.TransactionFromBase64(built.SwapTransaction)
+	_, signedBytes, signature, err := signJupiterSwapTransaction(built.SwapTransaction, key)
 	if err != nil {
-		return fmt.Errorf("decode jupiter swap transaction for signing: %w", err)
+		return err
 	}
-	if _, err := tx.Sign(func(publicKey solanago.PublicKey) *solanago.PrivateKey {
-		if publicKey.String() == pub {
-			return &key
+	signedBase64 := ""
+	if len(signedBytes) > 0 {
+		tx, txErr := solanago.TransactionFromBytes(signedBytes)
+		if txErr != nil {
+			return fmt.Errorf("decode signed solana swap transaction: %w", txErr)
 		}
-		return nil
-	}); err != nil {
-		return fmt.Errorf("sign solana swap transaction: %w", err)
-	}
-	if err := tx.VerifySignatures(); err != nil {
-		return fmt.Errorf("verify solana swap transaction signature: %w", err)
-	}
-	signedBytes, err := tx.MarshalBinary()
-	if err != nil {
-		return fmt.Errorf("marshal signed solana swap transaction: %w", err)
-	}
-	signedBase64, err := tx.ToBase64()
-	if err != nil {
-		return fmt.Errorf("encode signed solana swap transaction: %w", err)
-	}
-	signature := ""
-	if len(tx.Signatures) > 0 {
-		signature = tx.Signatures[0].String()
+		signedBase64, err = tx.ToBase64()
+		if err != nil {
+			return fmt.Errorf("encode signed solana swap transaction: %w", err)
+		}
 	}
 	fmt.Printf("solana_swap_sign_readiness ready=true source=%s user=%s input=%s output=%s in_amount=%s out_amount=%s signature=%s signed_bytes=%d signed_base64_len=%d\n",
 		keySource,
@@ -523,6 +511,34 @@ func runSolanaDiscoveryReadiness(ctx context.Context, cfg *config.Config, minTVL
 		}
 	}
 	return nil
+}
+
+func signJupiterSwapTransaction(txBase64 string, key solanago.PrivateKey) (*solanago.Transaction, []byte, string, error) {
+	pub := key.PublicKey().String()
+	tx, err := solanago.TransactionFromBase64(txBase64)
+	if err != nil {
+		return nil, nil, "", fmt.Errorf("decode jupiter swap transaction for signing: %w", err)
+	}
+	if _, err := tx.Sign(func(publicKey solanago.PublicKey) *solanago.PrivateKey {
+		if publicKey.String() == pub {
+			return &key
+		}
+		return nil
+	}); err != nil {
+		return nil, nil, "", fmt.Errorf("sign solana swap transaction: %w", err)
+	}
+	if err := tx.VerifySignatures(); err != nil {
+		return nil, nil, "", fmt.Errorf("verify solana swap transaction signature: %w", err)
+	}
+	signedBytes, err := tx.MarshalBinary()
+	if err != nil {
+		return nil, nil, "", fmt.Errorf("marshal signed solana swap transaction: %w", err)
+	}
+	signature := ""
+	if len(tx.Signatures) > 0 {
+		signature = tx.Signatures[0].String()
+	}
+	return tx, signedBytes, signature, nil
 }
 
 func loadCachedSolanaDiscoveryPools(ctx context.Context, cfg *config.Config, limit int) ([]ports.PoolDiscovery, error) {
