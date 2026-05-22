@@ -198,6 +198,7 @@ func buildCanaryExitPreflightReport(
 	if err != nil {
 		return canaryExitPreflightReport{}, fmt.Errorf("estimate decreaseLiquidity gas: %w", err)
 	}
+	time.Sleep(1200 * time.Millisecond)
 	collectGas, err := estimateCanaryCollectGas(ctx, provider, cfg, wallet, tokenID)
 	if err != nil {
 		return canaryExitPreflightReport{}, fmt.Errorf("estimate collect gas: %w", err)
@@ -317,11 +318,24 @@ func estimateNPMGas(ctx context.Context, provider *rpc.RoundRobinProvider, cfg *
 		npmAddress = defaultBaseUniswapV3NPMAddress
 	}
 	to := common.HexToAddress(npmAddress)
-	return provider.EstimateGas(ctx, ethereum.CallMsg{
+	msg := ethereum.CallMsg{
 		From: common.HexToAddress(wallet.String()),
 		To:   &to,
 		Data: data,
-	})
+	}
+	var lastErr error
+	for attempt := 0; attempt < 4; attempt++ {
+		gas, err := provider.EstimateGas(ctx, msg)
+		if err == nil {
+			return gas, nil
+		}
+		lastErr = err
+		if !strings.Contains(strings.ToLower(err.Error()), "429") && !strings.Contains(strings.ToLower(err.Error()), "too many requests") {
+			return 0, err
+		}
+		time.Sleep(time.Duration(attempt+1) * 1500 * time.Millisecond)
+	}
+	return 0, lastErr
 }
 
 func readNPMOwnerOf(ctx context.Context, provider *rpc.RoundRobinProvider, npmAddress string, tokenID string) (domain.Address, error) {
