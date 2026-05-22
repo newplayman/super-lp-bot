@@ -349,7 +349,6 @@ func (app *App) listActiveShadowPositions(ctx context.Context, db *sql.DB) ([]ac
 		SELECT id, pool_id, COALESCE(token_id, ''), chain, status, COALESCE(tier, ''), amount_usd, tick_lower, tick_upper, opened_at
 		FROM positions
 		WHERE status IN ('intended', 'opening', 'open')
-		  AND id NOT LIKE 'shadow-canary-live-pos-%'
 		ORDER BY opened_at DESC
 	`)
 	if err != nil {
