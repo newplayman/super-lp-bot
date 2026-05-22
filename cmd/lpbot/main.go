@@ -1468,9 +1468,11 @@ func main() {
 	canaryPreflight := flag.Bool("canary-preflight", false, "Run a single Base canary preflight without signing or broadcasting")
 	canaryPrepare := flag.Bool("canary-prepare", false, "Run a single Base canary prepare: wrap WETH and approve exact token amounts")
 	canaryMint := flag.Bool("canary-mint", false, "Run a single Base canary Uniswap V3 mint")
+	canaryReconcileMint := flag.Bool("canary-reconcile-mint", false, "Reconcile a Base canary mint receipt into the database")
 	canaryExitPreflight := flag.Bool("canary-exit-preflight", false, "Run a single Base canary exit preflight without signing or broadcasting")
 	canaryExit := flag.Bool("canary-exit", false, "Run a single guarded Base canary Uniswap V3 exit")
 	canaryTokenID := flag.String("token-id", "", "Uniswap V3 NFT token ID for canary exit preflight")
+	canaryTxHash := flag.String("tx-hash", "", "Transaction hash for canary receipt reconciliation")
 	flag.Parse()
 
 	if *configPath == "" {
@@ -1519,6 +1521,17 @@ func main() {
 			os.Exit(1)
 		}
 		if err := runCanaryMint(ctx, cfg); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+	if *canaryReconcileMint {
+		if BuildMode != "live" {
+			fmt.Fprintln(os.Stderr, "Error: --canary-reconcile-mint requires a live build")
+			os.Exit(1)
+		}
+		if err := runCanaryMintReconcile(ctx, cfg, *canaryTxHash); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
