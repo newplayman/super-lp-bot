@@ -464,7 +464,7 @@ func mapChainToNetwork(chain domain.ChainID) string {
 	case domain.ChainBase:
 		return "base"
 	case domain.ChainSolana:
-		return "sol"
+		return "solana"
 	default:
 		return "eth"
 	}

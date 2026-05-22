@@ -1466,6 +1466,9 @@ func main() {
 
 	configPath := flag.String("config", "", "Path to config file (required)")
 	solanaReadiness := flag.Bool("solana-readiness", false, "Run Solana read-only RPC and simulation readiness checks")
+	solanaDiscoveryReadiness := flag.Bool("solana-discovery-readiness", false, "Run Solana read-only pool discovery readiness checks")
+	solanaDiscoveryMinTVL := flag.String("solana-discovery-min-tvl", "100000", "Minimum Solana pool TVL in USD for discovery readiness")
+	solanaDiscoveryLimit := flag.Int("solana-discovery-limit", 10, "Maximum Solana pools to print during discovery readiness")
 	canaryPreflight := flag.Bool("canary-preflight", false, "Run a single Base canary preflight without signing or broadcasting")
 	canaryPrepare := flag.Bool("canary-prepare", false, "Run a single Base canary prepare: wrap WETH and approve exact token amounts")
 	canaryMint := flag.Bool("canary-mint", false, "Run a single Base canary Uniswap V3 mint")
@@ -1497,6 +1500,14 @@ func main() {
 	if *solanaReadiness {
 		if err := runSolanaReadiness(ctx, cfg); err != nil {
 			fmt.Fprintf(os.Stderr, "Solana readiness failed: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+	if *solanaDiscoveryReadiness {
+		minTVL := domain.MustDecimal(*solanaDiscoveryMinTVL)
+		if err := runSolanaDiscoveryReadiness(ctx, minTVL, *solanaDiscoveryLimit); err != nil {
+			fmt.Fprintf(os.Stderr, "Solana discovery readiness failed: %v\n", err)
 			os.Exit(1)
 		}
 		return

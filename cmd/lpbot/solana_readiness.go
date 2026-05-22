@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/lpbot/lpbot/internal/adapters/datasource/geckoterminal"
 	solrpc "github.com/lpbot/lpbot/internal/adapters/simulator/sol_rpc"
 	"github.com/lpbot/lpbot/internal/domain"
 	"github.com/lpbot/lpbot/internal/platform/config"
@@ -77,6 +78,40 @@ func runSolanaReadiness(ctx context.Context, cfg *config.Config) error {
 	fmt.Printf("solana_simulate success=%t gas_used=%d error=%q\n", result.Success, result.GasUsed, result.Error)
 	if !result.Success {
 		return fmt.Errorf("solana simulate failed: %s", result.Error)
+	}
+	return nil
+}
+
+func runSolanaDiscoveryReadiness(ctx context.Context, minTVLUSD domain.Decimal, limit int) error {
+	if limit <= 0 {
+		limit = 10
+	}
+	if minTVLUSD.IsNegative() {
+		return fmt.Errorf("min tvl must be non-negative")
+	}
+
+	ds := geckoterminal.NewAdapter()
+	if err := ds.HealthCheck(ctx); err != nil {
+		fmt.Printf("solana_discovery_health=warning source=geckoterminal error=%q\n", err.Error())
+	}
+	pools, err := ds.DiscoverPools(ctx, domain.ChainSolana, "", minTVLUSD, limit)
+	if err != nil {
+		return fmt.Errorf("discover solana pools: %w", err)
+	}
+	fmt.Printf("solana_discovery_readiness pools=%d min_tvl_usd=%s limit=%d\n", len(pools), minTVLUSD.String(), limit)
+	if len(pools) == 0 {
+		return fmt.Errorf("no solana pools discovered")
+	}
+	for i, pool := range pools {
+		fmt.Printf("solana_pool rank=%d id=%s protocol=%s tvl_usd=%s vol24h_usd=%s token0=%s token1=%s\n",
+			i+1,
+			pool.ID,
+			pool.Protocol,
+			pool.TVLUSD.String(),
+			pool.Vol24h.String(),
+			shortAddress(pool.Token0.String()),
+			shortAddress(pool.Token1.String()),
+		)
 	}
 	return nil
 }

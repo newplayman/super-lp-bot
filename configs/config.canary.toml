@@ -13,6 +13,14 @@ ws = "${BASE_WS}"
 mev = "flashbots-protect"
 confirmations = 10
 
+[chains.solana]
+rpc_primary = "${SOL_RPC_PRIMARY}"
+rpc_fallback = []
+ws = ""
+mev = "none"
+confirmations = 1
+commitment = "processed"
+
 [store]
 backend = "postgres"
 postgres_dsn = "${POSTGRES_DSN}"
