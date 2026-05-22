@@ -37,6 +37,20 @@ type NPMConfig struct {
 	Base string // Base chain NPM address
 }
 
+type uniswapV3MintParams struct {
+	Token0         common.Address `abi:"token0"`
+	Token1         common.Address `abi:"token1"`
+	Fee            *big.Int       `abi:"fee"`
+	TickLower      *big.Int       `abi:"tickLower"`
+	TickUpper      *big.Int       `abi:"tickUpper"`
+	Amount0Desired *big.Int       `abi:"amount0Desired"`
+	Amount1Desired *big.Int       `abi:"amount1Desired"`
+	Amount0Min     *big.Int       `abi:"amount0Min"`
+	Amount1Min     *big.Int       `abi:"amount1Min"`
+	Recipient      common.Address `abi:"recipient"`
+	Deadline       *big.Int       `abi:"deadline"`
+}
+
 // NewTxBuilder creates a new TxBuilder instance.
 func NewTxBuilder(wallet ports.Wallet, chain ports.Chain, npmConfig NPMConfig) *TxBuilder {
 	var npmAddr common.Address
@@ -80,11 +94,11 @@ func (b *TxBuilder) BuildRemoveLiquidityTx(ctx context.Context, intent ExitInten
 
 	calldata, to, err := b.BuildDecreaseLiquidityCalldata(DecreaseLiquidityIntent{
 		TokenId:     intent.TokenId,
-		Liquidity:  intent.Liquidity,
+		Liquidity:   intent.Liquidity,
 		SlippageBps: intent.SlippageBps,
-		Deadline:   intent.Deadline,
-		Amount0Min: intent.Amount0Min,
-		Amount1Min: intent.Amount1Min,
+		Deadline:    intent.Deadline,
+		Amount0Min:  intent.Amount0Min,
+		Amount1Min:  intent.Amount1Min,
 	})
 	if err != nil {
 		return domain.UnsignedTx{}, err
@@ -173,20 +187,20 @@ func (b *TxBuilder) BuildMintCalldata(intent OpenIntent) ([]byte, common.Address
 		return nil, common.Address{}, ErrZeroAmountDesired
 	}
 
-	// Pack the mint call using ABI encoding
-	// Use big.Int for all integers, abi.Pack handles type conversion
-	data, err := npmabi.NPMABI.Pack("mint",
-		common.HexToAddress(intent.Token0.String()),
-		common.HexToAddress(intent.Token1.String()),
-		new(big.Int).SetInt64(int64(intent.Fee)),
-		big.NewInt(intent.TickLower),
-		big.NewInt(intent.TickUpper),
-		amount0Desired,
-		amount1Desired,
-		amount0Min,
-		amount1Min,
-		common.HexToAddress(intent.Recipient.String()),
-	)
+	params := uniswapV3MintParams{
+		Token0:         common.HexToAddress(intent.Token0.String()),
+		Token1:         common.HexToAddress(intent.Token1.String()),
+		Fee:            new(big.Int).SetUint64(uint64(intent.Fee)),
+		TickLower:      big.NewInt(intent.TickLower),
+		TickUpper:      big.NewInt(intent.TickUpper),
+		Amount0Desired: amount0Desired,
+		Amount1Desired: amount1Desired,
+		Amount0Min:     amount0Min,
+		Amount1Min:     amount1Min,
+		Recipient:      common.HexToAddress(intent.Recipient.String()),
+		Deadline:       big.NewInt(intent.Deadline),
+	}
+	data, err := npmabi.NPMABI.Pack("mint", params)
 	if err != nil {
 		return nil, common.Address{}, err
 	}
