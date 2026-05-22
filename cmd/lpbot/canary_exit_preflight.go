@@ -48,13 +48,38 @@ type canaryExitPreflightReport struct {
 	CollectCurrentFeeGas uint64
 }
 
-func runCanaryExitPreflight(ctx context.Context, cfg *config.Config, tokenID string) error {
+func runCanaryExitPreflight(ctx context.Context, cfg *config.Config, tokenID string) (err error) {
 	if cfg == nil {
 		return fmt.Errorf("config is nil")
 	}
 	tokenID = strings.TrimSpace(tokenID)
 	if tokenID == "" {
 		return fmt.Errorf("--token-id is required")
+	}
+	stateWriter, err := newCanaryEventWriter(ctx, cfg)
+	if err != nil {
+		return err
+	}
+	defer stateWriter.Close()
+	defer func() {
+		if err != nil {
+			_ = stateWriter.Record(ctx, canaryEvent{
+				Command:  "canary_exit_preflight",
+				Stage:    "failed",
+				Status:   "failed",
+				TokenID:  tokenID,
+				ErrorMsg: err.Error(),
+			})
+		}
+	}()
+	if err := stateWriter.Record(ctx, canaryEvent{
+		Command: "canary_exit_preflight",
+		Stage:   "started",
+		Status:  "running",
+		TokenID: tokenID,
+		Message: "manual canary exit preflight command started",
+	}); err != nil {
+		return err
 	}
 	gate := newLiveSafetyGate("live", cfg)
 	if gate.killSwitch {
@@ -92,10 +117,22 @@ func runCanaryExitPreflight(ctx context.Context, cfg *config.Config, tokenID str
 	if err := persistCanaryExitPreflight(ctx, cfg, report, false, "preflight"); err != nil {
 		return err
 	}
+	if err := stateWriter.Record(ctx, canaryEvent{
+		Command:     "canary_exit_preflight",
+		Stage:       "preflight_ok",
+		Status:      "ok",
+		PoolID:      report.PoolID,
+		Wallet:      report.Wallet,
+		TokenID:     tokenID,
+		GasEstimate: report.DecreaseGas + report.CollectCurrentFeeGas,
+		Message:     "exit preflight persisted",
+	}); err != nil {
+		return err
+	}
 	return nil
 }
 
-func runCanaryExit(ctx context.Context, cfg *config.Config, tokenID string) error {
+func runCanaryExit(ctx context.Context, cfg *config.Config, tokenID string) (err error) {
 	if os.Getenv(canaryExitConfirmEnv) != "YES" {
 		return fmt.Errorf("canary exit requires %s=YES", canaryExitConfirmEnv)
 	}
@@ -105,6 +142,31 @@ func runCanaryExit(ctx context.Context, cfg *config.Config, tokenID string) erro
 	tokenID = strings.TrimSpace(tokenID)
 	if tokenID != canaryExitAllowedTokenID {
 		return fmt.Errorf("canary exit only allows token id %s, got %q", canaryExitAllowedTokenID, tokenID)
+	}
+	stateWriter, err := newCanaryEventWriter(ctx, cfg)
+	if err != nil {
+		return err
+	}
+	defer stateWriter.Close()
+	defer func() {
+		if err != nil {
+			_ = stateWriter.Record(ctx, canaryEvent{
+				Command:  "canary_exit",
+				Stage:    "failed",
+				Status:   "failed",
+				TokenID:  tokenID,
+				ErrorMsg: err.Error(),
+			})
+		}
+	}()
+	if err := stateWriter.Record(ctx, canaryEvent{
+		Command: "canary_exit",
+		Stage:   "started",
+		Status:  "running",
+		TokenID: tokenID,
+		Message: "manual canary exit command started",
+	}); err != nil {
+		return err
 	}
 
 	gate := newLiveSafetyGate("live", cfg)
@@ -148,6 +210,18 @@ func runCanaryExit(ctx context.Context, cfg *config.Config, tokenID string) erro
 	if err := persistCanaryExitPreflight(ctx, cfg, report, false, "preflight_before_exit"); err != nil {
 		return err
 	}
+	if err := stateWriter.Record(ctx, canaryEvent{
+		Command:     "canary_exit",
+		Stage:       "preflight_ok",
+		Status:      "ok",
+		PoolID:      report.PoolID,
+		Wallet:      report.Wallet,
+		TokenID:     tokenID,
+		GasEstimate: report.DecreaseGas + report.CollectCurrentFeeGas,
+		Message:     "exit preflight before broadcast persisted",
+	}); err != nil {
+		return err
+	}
 
 	app := &App{
 		config: cfg,
@@ -183,6 +257,18 @@ func runCanaryExit(ctx context.Context, cfg *config.Config, tokenID string) erro
 	if err := persistCanaryExitExecution(ctx, cfg, report, &decreaseSigned, nil, "decrease_confirmed", ""); err != nil {
 		return err
 	}
+	if err := stateWriter.Record(ctx, canaryEvent{
+		Command: "canary_exit",
+		Stage:   "decrease_broadcast",
+		Status:  "broadcast",
+		PoolID:  report.PoolID,
+		Wallet:  report.Wallet,
+		TokenID: tokenID,
+		TxHash:  decreaseSigned.Hash,
+		Message: "decrease liquidity transaction broadcast and persisted",
+	}); err != nil {
+		return err
+	}
 
 	collectData := encodeNPMCollectCalldata(
 		mustTokenIDBig(tokenID),
@@ -197,6 +283,18 @@ func runCanaryExit(ctx context.Context, cfg *config.Config, tokenID string) erro
 		return err
 	}
 	if err := persistCanaryExitExecution(ctx, cfg, report, &decreaseSigned, &collectSigned, "closed", ""); err != nil {
+		return err
+	}
+	if err := stateWriter.Record(ctx, canaryEvent{
+		Command: "canary_exit",
+		Stage:   "collect_broadcast",
+		Status:  "broadcast",
+		PoolID:  report.PoolID,
+		Wallet:  report.Wallet,
+		TokenID: tokenID,
+		TxHash:  collectSigned.Hash,
+		Message: "collect transaction broadcast and position marked closed",
+	}); err != nil {
 		return err
 	}
 

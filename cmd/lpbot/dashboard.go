@@ -49,6 +49,7 @@ type dashboardSnapshot struct {
 	Positions       []dashboardPosition        `json:"positions"`
 	ClosedPositions []dashboardPosition        `json:"closed_positions"`
 	Transactions    []dashboardTransaction     `json:"transactions"`
+	CanaryEvents    []dashboardCanaryEvent     `json:"canary_events"`
 	PositionMarks   []dashboardPositionMark    `json:"position_marks"`
 	ExitPreflights  []dashboardExitPreflight   `json:"exit_preflights"`
 	MarkSeries      []dashboardMarkPoint       `json:"mark_series"`
@@ -217,6 +218,24 @@ type dashboardTransaction struct {
 	Status    string `json:"status"`
 	CreatedAt int64  `json:"created_at"`
 	UpdatedAt int64  `json:"updated_at"`
+}
+
+type dashboardCanaryEvent struct {
+	CreatedAt       int64  `json:"created_at"`
+	Command         string `json:"command"`
+	Stage           string `json:"stage"`
+	Status          string `json:"status"`
+	PositionID      string `json:"position_id"`
+	PoolID          string `json:"pool_id"`
+	Wallet          string `json:"wallet"`
+	TokenID         string `json:"token_id"`
+	TxHash          string `json:"tx_hash"`
+	AmountUSD       string `json:"amount_usd"`
+	RequiredUSDCRaw string `json:"required_usdc_raw"`
+	RequiredWETHRaw string `json:"required_weth_raw"`
+	GasEstimate     uint64 `json:"gas_estimate"`
+	Message         string `json:"message"`
+	ErrorMsg        string `json:"error_msg"`
 }
 
 type dashboardScore struct {
@@ -465,6 +484,13 @@ func (app *App) dashboardSnapshot(ctx context.Context) (dashboardSnapshot, error
 		return snapshot, err
 	}
 	snapshot.Transactions = txs
+
+	canaryEvents, err := queryDashboardCanaryEvents(ctx, db)
+	if err != nil {
+		snapshot.Warnings = append(snapshot.Warnings, fmt.Sprintf("dashboard canary events unavailable: %v", err))
+	} else {
+		snapshot.CanaryEvents = canaryEvents
+	}
 
 	positionMarks, err := queryDashboardPositionMarks(ctx, db)
 	if err != nil {
@@ -984,6 +1010,46 @@ func queryDashboardTransactions(ctx context.Context, db *sql.DB) ([]dashboardTra
 		txs = append(txs, tx)
 	}
 	return txs, rows.Err()
+}
+
+func queryDashboardCanaryEvents(ctx context.Context, db *sql.DB) ([]dashboardCanaryEvent, error) {
+	rows, err := db.QueryContext(ctx, `
+		SELECT created_at, command, stage, status, position_id, pool_id, wallet, token_id, tx_hash,
+		       amount_usd, required_usdc_raw, required_weth_raw, gas_estimate, message, error_msg
+		FROM canary_events
+		ORDER BY created_at DESC
+		LIMIT 80
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("query dashboard canary events: %w", err)
+	}
+	defer rows.Close()
+
+	var events []dashboardCanaryEvent
+	for rows.Next() {
+		var event dashboardCanaryEvent
+		if err := rows.Scan(
+			&event.CreatedAt,
+			&event.Command,
+			&event.Stage,
+			&event.Status,
+			&event.PositionID,
+			&event.PoolID,
+			&event.Wallet,
+			&event.TokenID,
+			&event.TxHash,
+			&event.AmountUSD,
+			&event.RequiredUSDCRaw,
+			&event.RequiredWETHRaw,
+			&event.GasEstimate,
+			&event.Message,
+			&event.ErrorMsg,
+		); err != nil {
+			return nil, fmt.Errorf("scan dashboard canary event: %w", err)
+		}
+		events = append(events, event)
+	}
+	return events, rows.Err()
 }
 
 func queryDashboardPositionMarks(ctx context.Context, db *sql.DB) ([]dashboardPositionMark, error) {

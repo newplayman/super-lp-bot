@@ -306,16 +306,26 @@
     function renderExecution(data) {
         const list = document.getElementById('execution-flow-list');
         if (!list) return;
+        const canaryEvents = data.canary_events || [];
         const actions = data.exit_actions || [];
         const txs = data.transactions || [];
         const flows = [
+            ...canaryEvents.map(e => ({
+                time: timeText(e.created_at),
+                module: e.command || 'canary',
+                type: e.status || e.stage || '-',
+                chain: 'Base',
+                hash: e.tx_hash || '',
+                desc: `${e.stage || '-'}: ${e.error_msg || e.message || ''}${e.pool_id ? ' / pool ' + short(e.pool_id) : ''}${e.position_id ? ' / pos ' + short(e.position_id) : ''}`,
+                source: 'canary'
+            })),
             ...actions.map(a => ({time: timeText(a.decision_time), module: 'exit', type: a.action, chain: 'Base', hash: a.tx_hash || '', desc: a.reason || 'shadow exit action'})),
             ...txs.map(t => ({time: timeText(Math.floor(num(t.created_at) / 1000)), module: 'transaction', type: t.status, chain: t.chain, hash: t.tx_hash || '', desc: t.status || 'transaction'}))
         ].slice(0, 20);
         list.innerHTML = (flows.length ? flows : [{time: 'latest', module: 'shadow', type: 'no live tx', chain: 'Base', hash: '', desc: '当前仍是 shadow 观测，没有真实链上执行'}]).map(fl => `
             <div class="flow-item">
                 <div class="flow-left"><div class="flow-header"><span class="flow-time">${fl.time}</span><span class="flow-module">${escapeHTML(fl.module)}</span><span class="flow-tag">${escapeHTML(fl.type || '-')}</span></div><div class="flow-desc">${escapeHTML(fl.desc || '-')}</div></div>
-                <div class="flow-right">${fl.hash ? `<a target="_blank" rel="noreferrer" href="https://basescan.org/tx/${fl.hash}" class="flow-tx">${short(fl.hash)}</a>` : '<span class="flow-tx">shadow</span>'}<span class="badge-success-glow">记录</span></div>
+                <div class="flow-right">${fl.hash ? `<a target="_blank" rel="noreferrer" href="https://basescan.org/tx/${fl.hash}" class="flow-tx">${short(fl.hash)}</a>` : `<span class="flow-tx">${escapeHTML(fl.source || 'shadow')}</span>`}<span class="badge-success-glow">DB</span></div>
             </div>`).join('');
     }
 

@@ -20,12 +20,41 @@ import (
 
 const canaryMintConfirmEnv = "LPBOT_CONFIRM_CANARY_MINT"
 
-func runCanaryMint(ctx context.Context, cfg *config.Config) error {
+func runCanaryMint(ctx context.Context, cfg *config.Config) (err error) {
 	if os.Getenv(canaryMintConfirmEnv) != "YES" {
 		return fmt.Errorf("canary mint requires %s=YES", canaryMintConfirmEnv)
 	}
 	if cfg == nil {
 		return fmt.Errorf("config is nil")
+	}
+	state, err := newCanaryEventWriter(ctx, cfg)
+	if err != nil {
+		return err
+	}
+	defer state.Close()
+	positionID := ""
+	poolID := ""
+	walletAddress := ""
+	defer func() {
+		if err != nil {
+			_ = state.Record(ctx, canaryEvent{
+				Command:    "canary_mint",
+				Stage:      "failed",
+				Status:     "failed",
+				PositionID: positionID,
+				PoolID:     poolID,
+				Wallet:     walletAddress,
+				ErrorMsg:   err.Error(),
+			})
+		}
+	}()
+	if err := state.Record(ctx, canaryEvent{
+		Command: "canary_mint",
+		Stage:   "started",
+		Status:  "running",
+		Message: "manual canary mint command started",
+	}); err != nil {
+		return err
 	}
 	gate := newLiveSafetyGate("live", cfg)
 	if gate.killSwitch {
@@ -50,6 +79,7 @@ func runCanaryMint(ctx context.Context, cfg *config.Config) error {
 		return err
 	}
 	defer wallet.Close()
+	walletAddress = wallet.Address().String()
 
 	broadcaster, err := newCanaryMintBroadcaster(ctx, cfg, provider)
 	if err != nil {
@@ -64,19 +94,48 @@ func runCanaryMint(ctx context.Context, cfg *config.Config) error {
 	if err != nil {
 		return err
 	}
+	poolID = pool.ID
 	if err := checkCanaryPreflightOpen(gate, pool, amountUSD); err != nil {
 		return err
 	}
 
 	now := time.Now()
-	positionID := shadowID("canary-live-pos", pool.Key(), now.Unix())
+	positionID = shadowID("canary-live-pos", pool.Key(), now.Unix())
 	intent, err := buildBaseOpenIntent(ctx, provider, wallet.Address(), pool, amountUSD, positionID, now)
 	if err != nil {
 		return fmt.Errorf("build mint sizing: %w", err)
 	}
 	requiredUSDC := amountForToken(pool, baseUSDCAddress, intent)
 	requiredWETH := amountForToken(pool, baseWETHAddress, intent)
+	if err := state.Record(ctx, canaryEvent{
+		Command:         "canary_mint",
+		Stage:           "intent_built",
+		Status:          "ok",
+		PositionID:      positionID,
+		PoolID:          pool.ID,
+		Wallet:          wallet.Address().String(),
+		AmountUSD:       amountUSD.String(),
+		RequiredUSDCRaw: requiredUSDC.String(),
+		RequiredWETHRaw: requiredWETH.String(),
+		Message:         "mint token sizing completed",
+	}); err != nil {
+		return err
+	}
 	if err := checkCanaryMintPrerequisites(ctx, cfg, provider, wallet, requiredUSDC, requiredWETH); err != nil {
+		return err
+	}
+	if err := state.Record(ctx, canaryEvent{
+		Command:         "canary_mint",
+		Stage:           "prerequisites_ok",
+		Status:          "ok",
+		PositionID:      positionID,
+		PoolID:          pool.ID,
+		Wallet:          wallet.Address().String(),
+		AmountUSD:       amountUSD.String(),
+		RequiredUSDCRaw: requiredUSDC.String(),
+		RequiredWETHRaw: requiredWETH.String(),
+		Message:         "balances and allowances satisfy mint requirements",
+	}); err != nil {
 		return err
 	}
 
@@ -95,6 +154,21 @@ func runCanaryMint(ctx context.Context, cfg *config.Config) error {
 	if err != nil {
 		return fmt.Errorf("estimate mint gas: %w", err)
 	}
+	if err := state.Record(ctx, canaryEvent{
+		Command:         "canary_mint",
+		Stage:           "preflight_ok",
+		Status:          "ok",
+		PositionID:      positionID,
+		PoolID:          pool.ID,
+		Wallet:          wallet.Address().String(),
+		AmountUSD:       amountUSD.String(),
+		RequiredUSDCRaw: requiredUSDC.String(),
+		RequiredWETHRaw: requiredWETH.String(),
+		GasEstimate:     gas,
+		Message:         "mint gas estimate completed",
+	}); err != nil {
+		return err
+	}
 	signCtx, cancel := context.WithTimeout(ctx, 45*time.Second)
 	signed, err := wallet.Sign(signCtx, prepared.UnsignedTx)
 	cancel()
@@ -103,8 +177,47 @@ func runCanaryMint(ctx context.Context, cfg *config.Config) error {
 	}
 	signed.ID = prepared.ID
 	signed.Status = domain.TxBuilt
+	if err := state.RecordSignedTx(ctx, signed, domain.TxBuilt); err != nil {
+		return fmt.Errorf("persist built mint tx: %w", err)
+	}
+	if err := state.Record(ctx, canaryEvent{
+		Command:     "canary_mint",
+		Stage:       "signed",
+		Status:      "built",
+		PositionID:  positionID,
+		PoolID:      pool.ID,
+		Wallet:      wallet.Address().String(),
+		TxHash:      signed.Hash,
+		AmountUSD:   amountUSD.String(),
+		GasEstimate: gas,
+		Message:     "mint transaction signed and persisted",
+	}); err != nil {
+		return err
+	}
 	if err := broadcaster.Send(ctx, signed); err != nil {
 		return fmt.Errorf("broadcast mint: %w", err)
+	}
+	if err := state.RecordSignedTx(ctx, signed, domain.TxBroadcast); err != nil {
+		return fmt.Errorf("persist broadcast mint tx: %w", err)
+	}
+	if err := state.SaveOpeningPosition(ctx, positionID, pool, amountUSD, now.Unix()); err != nil {
+		return fmt.Errorf("persist opening position: %w", err)
+	}
+	if err := state.Record(ctx, canaryEvent{
+		Command:         "canary_mint",
+		Stage:           "broadcast",
+		Status:          "broadcast",
+		PositionID:      positionID,
+		PoolID:          pool.ID,
+		Wallet:          wallet.Address().String(),
+		TxHash:          signed.Hash,
+		AmountUSD:       amountUSD.String(),
+		RequiredUSDCRaw: requiredUSDC.String(),
+		RequiredWETHRaw: requiredWETH.String(),
+		GasEstimate:     gas,
+		Message:         "mint transaction broadcast; position stored as opening until NFT token_id is reconciled",
+	}); err != nil {
+		return err
 	}
 	fmt.Printf("tx_broadcast action=mint_lp hash=%s position=%s gas_estimate=%d required_usdc=%s required_weth=%s\n",
 		signed.Hash, positionID, gas, requiredUSDC.String(), requiredWETH.String())
