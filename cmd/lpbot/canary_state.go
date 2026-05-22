@@ -38,6 +38,15 @@ type canaryEventWriter struct {
 	db *sql.DB
 }
 
+type canaryStrategyApproval struct {
+	TickTime       int64
+	AgeSeconds     int64
+	ScoreTotal     float64
+	FinalAction    string
+	PipelineStage  string
+	PipelineReason string
+}
+
 func newCanaryEventWriter(ctx context.Context, cfg *config.Config) (*canaryEventWriter, error) {
 	if cfg == nil {
 		return nil, fmt.Errorf("config is nil")
@@ -173,4 +182,82 @@ func (w *canaryEventWriter) SaveOpeningPosition(ctx context.Context, positionID 
 		OpenedAt:  openedAt,
 	}
 	return postgres.NewPositionRepo(w.db).Save(ctx, pos)
+}
+
+func (w *canaryEventWriter) RequireRecentShadowApproval(ctx context.Context, poolID string, maxAge time.Duration) (canaryStrategyApproval, error) {
+	if w == nil || w.db == nil {
+		return canaryStrategyApproval{}, fmt.Errorf("canary state writer is not initialized")
+	}
+	poolID = strings.TrimSpace(poolID)
+	if poolID == "" {
+		return canaryStrategyApproval{}, fmt.Errorf("pool id is empty")
+	}
+	if maxAge <= 0 {
+		maxAge = 30 * time.Minute
+	}
+
+	var row struct {
+		TickTime       int64
+		ScoreTotal     float64
+		Selected       bool
+		IntentOpen     bool
+		ChainStage     string
+		PipelineStage  string
+		PipelineOK     bool
+		PipelineReason string
+		FinalAction    string
+	}
+	err := w.db.QueryRowContext(ctx, `
+		SELECT tick_time, score_total, selected, intent_open, chain_stage,
+		       pipeline_stage, pipeline_ok, pipeline_reason, final_action
+		FROM shadow_decision_trace
+		WHERE lower(pool_id) = lower($1)
+		ORDER BY tick_time DESC
+		LIMIT 1
+	`, poolID).Scan(
+		&row.TickTime,
+		&row.ScoreTotal,
+		&row.Selected,
+		&row.IntentOpen,
+		&row.ChainStage,
+		&row.PipelineStage,
+		&row.PipelineOK,
+		&row.PipelineReason,
+		&row.FinalAction,
+	)
+	if err == sql.ErrNoRows {
+		return canaryStrategyApproval{}, fmt.Errorf("canary quality gate blocked: no recent shadow decision for pool %s", poolID)
+	}
+	if err != nil {
+		return canaryStrategyApproval{}, fmt.Errorf("read shadow decision for canary quality gate: %w", err)
+	}
+
+	ageSeconds := time.Now().Unix() - row.TickTime
+	if ageSeconds < 0 {
+		ageSeconds = 0
+	}
+	approval := canaryStrategyApproval{
+		TickTime:       row.TickTime,
+		AgeSeconds:     ageSeconds,
+		ScoreTotal:     row.ScoreTotal,
+		FinalAction:    row.FinalAction,
+		PipelineStage:  row.PipelineStage,
+		PipelineReason: row.PipelineReason,
+	}
+	if time.Duration(ageSeconds)*time.Second > maxAge {
+		return approval, fmt.Errorf("canary quality gate blocked: latest shadow decision is stale age=%ds max=%s", ageSeconds, maxAge)
+	}
+	if row.ScoreTotal < shadowOpenScoreThreshold {
+		return approval, fmt.Errorf("canary quality gate blocked: score %.2f below threshold %.2f", row.ScoreTotal, shadowOpenScoreThreshold)
+	}
+	if !row.Selected || !row.IntentOpen || !row.PipelineOK {
+		return approval, fmt.Errorf("canary quality gate blocked: selected=%t intent_open=%t pipeline_ok=%t stage=%s reason=%s", row.Selected, row.IntentOpen, row.PipelineOK, row.PipelineStage, row.PipelineReason)
+	}
+	if row.ChainStage != "chain_state_ok" {
+		return approval, fmt.Errorf("canary quality gate blocked: chain_stage=%s", row.ChainStage)
+	}
+	if row.FinalAction != "open_shadow_position" && row.FinalAction != "reuse_shadow_position" {
+		return approval, fmt.Errorf("canary quality gate blocked: final_action=%s", row.FinalAction)
+	}
+	return approval, nil
 }

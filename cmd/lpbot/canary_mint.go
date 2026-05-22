@@ -98,6 +98,20 @@ func runCanaryMint(ctx context.Context, cfg *config.Config) (err error) {
 	if err := checkCanaryPreflightOpen(gate, pool, amountUSD); err != nil {
 		return err
 	}
+	approval, err := state.RequireRecentShadowApproval(ctx, pool.ID, 30*time.Minute)
+	if err != nil {
+		return err
+	}
+	if err := state.Record(ctx, canaryEvent{
+		Command: "canary_mint",
+		Stage:   "strategy_quality_ok",
+		Status:  "ok",
+		PoolID:  pool.ID,
+		Wallet:  wallet.Address().String(),
+		Message: fmt.Sprintf("recent shadow approval score=%.2f age=%ds action=%s stage=%s", approval.ScoreTotal, approval.AgeSeconds, approval.FinalAction, approval.PipelineStage),
+	}); err != nil {
+		return err
+	}
 
 	now := time.Now()
 	positionID = shadowID("canary-live-pos", pool.Key(), now.Unix())
