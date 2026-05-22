@@ -787,6 +787,7 @@ func (app *App) evaluateStrategies(ctx context.Context) {
 		app.logger.Error("shadow scan failed", zap.Error(err))
 		return
 	}
+	scoredPools = app.extendShadowScoredPoolsWithActivePositions(ctx, scoredPools)
 	if len(scoredPools) == 0 {
 		app.logger.Info("shadow scan completed with no candidates")
 		return
@@ -923,6 +924,77 @@ func selectShadowCandidatesByScore(scoredPools []scanner.ScoredPool, limit int) 
 		candidates = append(candidates, ranked[i].Pool)
 	}
 	return candidates
+}
+
+func (app *App) extendShadowScoredPoolsWithActivePositions(ctx context.Context, scoredPools []scanner.ScoredPool) []scanner.ScoredPool {
+	if app == nil || app.store == nil || app.store.PositionRepo() == nil || app.store.PoolRepo() == nil || len(scoredPools) == 0 {
+		return scoredPools
+	}
+
+	scoredByRef := make(map[string]struct{}, len(scoredPools))
+	chains := make(map[domain.ChainID]struct{})
+	for _, scored := range scoredPools {
+		scoredByRef[shadowCandidatePoolRef(scored.Pool.Chain, scored.Pool.ID)] = struct{}{}
+		chains[scored.Pool.Chain] = struct{}{}
+	}
+
+	storePoolsByRef := make(map[string]domain.Pool)
+	for chain := range chains {
+		pools, err := app.store.PoolRepo().ListPools(ctx, ports.PoolFilter{Chain: chain, Limit: 1000})
+		if err != nil {
+			app.logger.Warn("shadow active pool universe lookup failed",
+				zap.String("chain", string(chain)),
+				zap.Error(err))
+			continue
+		}
+		for _, pool := range pools {
+			storePoolsByRef[shadowCandidatePoolRef(pool.Chain, pool.ID)] = pool
+		}
+	}
+
+	for chain := range chains {
+		for _, status := range []domain.PositionStatus{domain.StatusOpening, domain.StatusOpen} {
+			positions, err := app.store.PositionRepo().FindByChainAndStatus(ctx, chain, status)
+			if err != nil {
+				app.logger.Warn("shadow active position candidate lookup failed",
+					zap.String("chain", string(chain)),
+					zap.String("status", string(status)),
+					zap.Error(err))
+				continue
+			}
+			for _, pos := range positions {
+				ref := shadowCandidatePoolRef(pos.Chain, pos.PoolID)
+				if _, exists := scoredByRef[ref]; exists {
+					continue
+				}
+				pool, ok := storePoolsByRef[ref]
+				if !ok {
+					continue
+				}
+				history, err := app.store.PoolRepo().GetScoreHistory(ctx, pool.Key(), 0)
+				if err != nil || len(history) == 0 {
+					if err != nil {
+						app.logger.Warn("shadow active pool score history lookup failed",
+							zap.String("pool", pool.Key()),
+							zap.Error(err))
+					}
+					continue
+				}
+				latest := history[len(history)-1]
+				scoredPools = append(scoredPools, scanner.ScoredPool{
+					Pool:  pool,
+					Score: latest.Score,
+				})
+				scoredByRef[ref] = struct{}{}
+				app.logger.Info("shadow injected active pool into scored universe",
+					zap.String("pool", pool.Key()),
+					zap.String("status", string(status)),
+					zap.Float64("score_total", latest.Score.ComputeTotal()))
+			}
+		}
+	}
+
+	return scoredPools
 }
 
 func (app *App) extendShadowCandidatesWithActivePositions(ctx context.Context, scoredPools []scanner.ScoredPool, candidates []domain.Pool) []domain.Pool {
