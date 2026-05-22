@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 
 	livebroadcast "github.com/lpbot/lpbot/internal/adapters/broadcast/live"
@@ -12,14 +13,31 @@ import (
 	"github.com/lpbot/lpbot/internal/platform/config"
 )
 
-const solanaCanaryMaxAmountRaw uint64 = 10000000
+const solanaCanaryMaxSOLAmountRaw uint64 = 10000000
+const solanaCanaryMaxUSDCAmountRaw uint64 = 1000000
 
 func runSolanaSwapCanary(ctx context.Context, cfg *config.Config, userPublicKey string, inputMint string, outputMint string, amountRaw string, slippageBPS int, maxPriorityLamports uint64) error {
 	if cfg == nil {
 		return fmt.Errorf("config is required")
 	}
-	if strings.TrimSpace(inputMint) != solanaWrappedSOLAddress || strings.TrimSpace(outputMint) != solanaUSDCAddress {
-		return fmt.Errorf("solana canary only allows %s -> %s", solanaWrappedSOLAddress, solanaUSDCAddress)
+	inputMint = strings.TrimSpace(inputMint)
+	outputMint = strings.TrimSpace(outputMint)
+	rawAmount, err := strconv.ParseUint(strings.TrimSpace(amountRaw), 10, 64)
+	if err != nil || rawAmount == 0 {
+		return fmt.Errorf("invalid solana canary amount raw %q", amountRaw)
+	}
+
+	switch {
+	case inputMint == solanaWrappedSOLAddress && outputMint == solanaUSDCAddress:
+		if rawAmount > solanaCanaryMaxSOLAmountRaw {
+			return fmt.Errorf("solana canary %s -> %s max amount is %d raw (0.01 SOL)", solanaWrappedSOLAddress, solanaUSDCAddress, solanaCanaryMaxSOLAmountRaw)
+		}
+	case inputMint == solanaUSDCAddress && outputMint == solanaWrappedSOLAddress:
+		if rawAmount > solanaCanaryMaxUSDCAmountRaw {
+			return fmt.Errorf("solana canary %s -> %s max amount is %d raw (1 USDC)", solanaUSDCAddress, solanaWrappedSOLAddress, solanaCanaryMaxUSDCAmountRaw)
+		}
+	default:
+		return fmt.Errorf("solana canary only allows %s <-> %s", solanaWrappedSOLAddress, solanaUSDCAddress)
 	}
 
 	quote, built, err := buildJupiterSwapTransaction(ctx, userPublicKey, inputMint, outputMint, amountRaw, slippageBPS, maxPriorityLamports)
@@ -28,9 +46,6 @@ func runSolanaSwapCanary(ctx context.Context, cfg *config.Config, userPublicKey 
 	}
 	if quote.InAmount != amountRaw {
 		return fmt.Errorf("unexpected quote input amount: got %s want %s", quote.InAmount, amountRaw)
-	}
-	if strings.TrimSpace(amountRaw) != fmt.Sprintf("%d", solanaCanaryMaxAmountRaw) {
-		return fmt.Errorf("solana canary amount must be exactly %d raw (0.01 SOL)", solanaCanaryMaxAmountRaw)
 	}
 	if len(built.SimulationError) > 0 && string(built.SimulationError) != "null" {
 		return fmt.Errorf("solana canary blocked by simulation: %s", compactJSON(built.SimulationError))
@@ -68,7 +83,7 @@ func runSolanaSwapCanary(ctx context.Context, cfg *config.Config, userPublicKey 
 			ID:     "solana-swap-canary",
 			Chain:  domain.ChainSolana,
 			From:   domain.MustParseAddress(pub),
-			To:     domain.MustParseAddress(solanaUSDCAddress),
+			To:     domain.MustParseAddress(outputMint),
 			MinOut: domain.NewDecimalFromInt(0),
 		},
 		Signature: signedBytes,
