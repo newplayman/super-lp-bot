@@ -28,6 +28,7 @@ const (
 	defaultHealthCheckInterval = 30 * time.Second
 	defaultHealthCheckTimeout  = 2 * time.Second
 	switchLogCooldown          = 15 * time.Second
+	endpointFailureCooldown    = 45 * time.Second
 )
 
 // Default public RPC endpoints
@@ -82,6 +83,8 @@ type switchLogState struct {
 var (
 	switchLogStateMu sync.Mutex
 	switchLogStates  = make(map[string]switchLogState)
+	endpointStateMu  sync.Mutex
+	endpointCooldown = make(map[string]time.Time)
 )
 
 // RoundRobinProvider distributes requests across multiple RPC endpoints with automatic failover.
@@ -276,20 +279,45 @@ func (p *RoundRobinProvider) nextEndpoint() error {
 
 	prevIdx := int(atomic.LoadUint32(&p.current) % uint32(len(endpoints)))
 	prev := endpoints[prevIdx]
-	idx := int(atomic.AddUint32(&p.current, 1) % uint32(len(endpoints)))
-	endpoint := endpoints[idx]
+	p.markEndpointCooldown(prev)
 
-	client, err := p.connect(endpoint)
-	if err != nil {
-		return fmt.Errorf("failed to connect to endpoint %s: %w", endpoint, err)
+	startIdx := prevIdx
+	lastErr := error(nil)
+	cooledSkipped := 0
+
+	for pass := 0; pass < 2; pass++ {
+		allowCooled := pass == 1 && cooledSkipped == len(endpoints)-1
+		for step := 1; step <= len(endpoints); step++ {
+			idx := (startIdx + step) % len(endpoints)
+			endpoint := endpoints[idx]
+			if endpoint == prev {
+				continue
+			}
+			if !allowCooled && p.isEndpointCooling(endpoint) {
+				cooledSkipped++
+				continue
+			}
+
+			client, err := p.connect(endpoint)
+			if err != nil {
+				p.markEndpointCooldown(endpoint)
+				lastErr = fmt.Errorf("failed to connect to endpoint %s: %w", endpoint, err)
+				continue
+			}
+
+			atomic.StoreUint32(&p.current, uint32(idx))
+			p.mu.Lock()
+			p.client = client
+			p.mu.Unlock()
+			p.logEndpointSwitch(prev, endpoint)
+			return nil
+		}
 	}
 
-	p.mu.Lock()
-	p.client = client
-	p.mu.Unlock()
-
-	p.logEndpointSwitch(prev, endpoint)
-	return nil
+	if lastErr != nil {
+		return lastErr
+	}
+	return fmt.Errorf("no alternate rpc endpoint available after cooldown")
 }
 
 func (p *RoundRobinProvider) logEndpointSwitch(prev, endpoint string) {
@@ -320,6 +348,38 @@ func (p *RoundRobinProvider) logEndpointSwitch(prev, endpoint string) {
 		return
 	}
 	log.Printf("[rpc:%s] switched rpc endpoint: %s -> %s", p.chainID, prev, endpoint)
+}
+
+func (p *RoundRobinProvider) markEndpointCooldown(endpoint string) {
+	if endpoint == "" {
+		return
+	}
+	key := string(p.chainID) + "|" + endpoint
+	until := time.Now().Add(endpointFailureCooldown)
+	endpointStateMu.Lock()
+	if existing, ok := endpointCooldown[key]; !ok || existing.Before(until) {
+		endpointCooldown[key] = until
+	}
+	endpointStateMu.Unlock()
+}
+
+func (p *RoundRobinProvider) isEndpointCooling(endpoint string) bool {
+	if endpoint == "" {
+		return false
+	}
+	key := string(p.chainID) + "|" + endpoint
+	now := time.Now()
+	endpointStateMu.Lock()
+	defer endpointStateMu.Unlock()
+	until, ok := endpointCooldown[key]
+	if !ok {
+		return false
+	}
+	if !until.After(now) {
+		delete(endpointCooldown, key)
+		return false
+	}
+	return true
 }
 
 // getClientWithRetry gets a client, rotating on failure.
