@@ -22,6 +22,7 @@ import (
 	"github.com/lpbot/lpbot/internal/domain"
 	"github.com/lpbot/lpbot/internal/platform/config"
 	"github.com/lpbot/lpbot/internal/ports"
+	"github.com/shopspring/decimal"
 )
 
 const solanaWrappedSOLAddress = "So11111111111111111111111111111111111111112"
@@ -233,13 +234,23 @@ func runSolanaDiscoveryReadiness(ctx context.Context, cfg *config.Config, minTVL
 			fmt.Printf("solana_discovery_fallback=failed source=dexscreener error=%q\n", err.Error())
 			knownPool, knownErr := fallback.GetPoolMetadata(ctx, domain.ChainSolana, solanaKnownSOLUSDCPool)
 			if knownErr != nil {
-				return fmt.Errorf("discover solana known pool fallback: %w", knownErr)
+				cached, cachedErr := loadCachedSolanaDiscoveryPools(ctx, cfg, limit)
+				if cachedErr != nil || len(cached) == 0 {
+					return fmt.Errorf("discover solana known pool fallback: %w; cached fallback: %v", knownErr, cachedErr)
+				}
+				pools = cached
+				fmt.Println("solana_discovery_source=postgres_cache")
+			} else if knownPool == nil {
+				cached, cachedErr := loadCachedSolanaDiscoveryPools(ctx, cfg, limit)
+				if cachedErr != nil || len(cached) == 0 {
+					return fmt.Errorf("discover solana known pool fallback: pool %s not found; cached fallback: %v", solanaKnownSOLUSDCPool, cachedErr)
+				}
+				pools = cached
+				fmt.Println("solana_discovery_source=postgres_cache")
+			} else {
+				pools = []ports.PoolDiscovery{*knownPool}
+				fmt.Println("solana_discovery_source=dexscreener_known_pool")
 			}
-			if knownPool == nil {
-				return fmt.Errorf("discover solana known pool fallback: pool %s not found", solanaKnownSOLUSDCPool)
-			}
-			pools = []ports.PoolDiscovery{*knownPool}
-			fmt.Println("solana_discovery_source=dexscreener_known_pool")
 		} else {
 			fmt.Println("solana_discovery_source=dexscreener")
 		}
@@ -278,6 +289,80 @@ func runSolanaDiscoveryReadiness(ctx context.Context, cfg *config.Config, minTVL
 		}
 	}
 	return nil
+}
+
+func loadCachedSolanaDiscoveryPools(ctx context.Context, cfg *config.Config, limit int) ([]ports.PoolDiscovery, error) {
+	if cfg == nil || strings.TrimSpace(cfg.Store.PostgresDSN) == "" {
+		return nil, fmt.Errorf("postgres dsn is empty")
+	}
+	store, err := postgres.NewFromDSN(strings.TrimSpace(cfg.Store.PostgresDSN))
+	if err != nil {
+		return nil, fmt.Errorf("open postgres for cached solana pools: %w", err)
+	}
+	defer store.Close()
+	if err := ensureSolanaPoolRiskTable(ctx, store.DB()); err != nil {
+		return nil, err
+	}
+	if limit <= 0 {
+		limit = 10
+	}
+	rows, err := store.DB().QueryContext(ctx, `
+		SELECT p.pool_id, p.protocol, p.token0, p.token1, p.fee_bps,
+		       COALESCE(r.tvl_usd, '0'), COALESCE(r.vol24h_usd, '0'), p.updated_at
+		FROM pools p
+		LEFT JOIN solana_pool_risk r ON r.pool_id = p.pool_id AND r.chain = p.chain
+		WHERE p.chain = 2
+		ORDER BY COALESCE(r.eligible, false) DESC, p.updated_at DESC
+		LIMIT $1
+	`, limit)
+	if err != nil {
+		return nil, fmt.Errorf("query cached solana pools: %w", err)
+	}
+	defer rows.Close()
+
+	var pools []ports.PoolDiscovery
+	for rows.Next() {
+		var poolID, protocol, token0Raw, token1Raw, tvlRaw, volRaw string
+		var feeBPS int
+		var updatedAt int64
+		if err := rows.Scan(&poolID, &protocol, &token0Raw, &token1Raw, &feeBPS, &tvlRaw, &volRaw, &updatedAt); err != nil {
+			return nil, fmt.Errorf("scan cached solana pool: %w", err)
+		}
+		token0, err := domain.ParseAddress(token0Raw)
+		if err != nil {
+			return nil, fmt.Errorf("parse cached solana token0 %s: %w", poolID, err)
+		}
+		token1, err := domain.ParseAddress(token1Raw)
+		if err != nil {
+			return nil, fmt.Errorf("parse cached solana token1 %s: %w", poolID, err)
+		}
+		pools = append(pools, ports.PoolDiscovery{
+			ID:        poolID,
+			Chain:     domain.ChainSolana,
+			Protocol:  protocol,
+			Token0:    token0,
+			Token1:    token1,
+			FeeBPS:    uint(feeBPS),
+			TVLUSD:    parseDecimalOrZero(tvlRaw),
+			Vol24h:    parseDecimalOrZero(volRaw),
+			UpdatedAt: time.Unix(updatedAt, 0),
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if len(pools) == 0 {
+		return nil, fmt.Errorf("no cached solana pools")
+	}
+	return pools, nil
+}
+
+func parseDecimalOrZero(value string) domain.Decimal {
+	parsed, err := decimal.NewFromString(strings.TrimSpace(value))
+	if err != nil {
+		return domain.NewDecimalFromInt(0)
+	}
+	return parsed
 }
 
 func persistSolanaDiscoveryPools(ctx context.Context, cfg *config.Config, pools []ports.PoolDiscovery, minTVLUSD domain.Decimal, minVol24hUSD domain.Decimal) error {
