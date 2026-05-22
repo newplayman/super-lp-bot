@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	solanago "github.com/gagliardetto/solana-go"
 	"github.com/lpbot/lpbot/internal/adapters/datasource/dexscreener"
 	"github.com/lpbot/lpbot/internal/adapters/datasource/geckoterminal"
 	solrpc "github.com/lpbot/lpbot/internal/adapters/simulator/sol_rpc"
@@ -134,91 +135,13 @@ func runSolanaQuoteReadiness(ctx context.Context, inputMint string, outputMint s
 }
 
 func runSolanaSwapBuildReadiness(ctx context.Context, userPublicKey string, inputMint string, outputMint string, amountRaw string, slippageBPS int, maxPriorityLamports uint64) error {
-	userPublicKey = strings.TrimSpace(userPublicKey)
-	if userPublicKey == "" {
-		userPublicKey = strings.TrimSpace(os.Getenv("SOLANA_FEE_PAYER_ADDRESS"))
-	}
-	if userPublicKey == "" {
-		return fmt.Errorf("solana swap build user public key is empty; set SOLANA_FEE_PAYER_ADDRESS or --solana-swap-user-public-key")
-	}
-	userAddress, err := domain.ParseAddress(userPublicKey)
-	if err != nil {
-		return fmt.Errorf("invalid solana swap build user public key: %w", err)
-	}
-	if userAddress.Chain() != domain.ChainSolana {
-		return fmt.Errorf("solana swap build user public key is not a solana address")
-	}
-	if maxPriorityLamports == 0 {
-		maxPriorityLamports = 500000
-	}
-
-	rawQuote, quote, err := fetchJupiterQuote(ctx, inputMint, outputMint, amountRaw, slippageBPS)
+	quote, built, err := buildJupiterSwapTransaction(ctx, userPublicKey, inputMint, outputMint, amountRaw, slippageBPS, maxPriorityLamports)
 	if err != nil {
 		return err
-	}
-
-	payload := map[string]any{
-		"userPublicKey":           userPublicKey,
-		"quoteResponse":           json.RawMessage(rawQuote),
-		"dynamicComputeUnitLimit": true,
-		"wrapAndUnwrapSol":        true,
-		"prioritizationFeeLamports": map[string]any{
-			"priorityLevelWithMaxLamports": map[string]any{
-				"priorityLevel": "medium",
-				"maxLamports":   maxPriorityLamports,
-				"global":        false,
-			},
-		},
-	}
-	body, err := json.Marshal(payload)
-	if err != nil {
-		return fmt.Errorf("marshal jupiter swap build payload: %w", err)
-	}
-
-	endpoint := strings.TrimSpace(os.Getenv("JUPITER_SWAP_URL"))
-	if endpoint == "" {
-		endpoint = defaultJupiterSwapURL
-	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
-	if err != nil {
-		return err
-	}
-	req.Header.Set("content-type", "application/json")
-	req.Header.Set("accept", "application/json")
-	if apiKey := strings.TrimSpace(os.Getenv("JUPITER_API_KEY")); apiKey != "" {
-		req.Header.Set("x-api-key", apiKey)
-	}
-
-	client := &http.Client{Timeout: 20 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return fmt.Errorf("jupiter swap build request: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 2048))
-		return fmt.Errorf("jupiter swap build status=%d body=%q", resp.StatusCode, strings.TrimSpace(string(respBody)))
-	}
-
-	var built struct {
-		SwapTransaction             string          `json:"swapTransaction"`
-		LastValidBlockHeight        uint64          `json:"lastValidBlockHeight"`
-		PrioritizationFeeLamports   uint64          `json:"prioritizationFeeLamports"`
-		ComputeUnitLimit            uint64          `json:"computeUnitLimit"`
-		DynamicSlippageReport       json.RawMessage `json:"dynamicSlippageReport"`
-		SimulationError             json.RawMessage `json:"simulationError"`
-		PrioritizationType          json.RawMessage `json:"prioritizationType"`
-		AddressLookupTableAddresses []string        `json:"addressLookupTableAddresses"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&built); err != nil {
-		return fmt.Errorf("decode jupiter swap build: %w", err)
-	}
-	if strings.TrimSpace(built.SwapTransaction) == "" {
-		return fmt.Errorf("jupiter swap build returned empty transaction")
 	}
 
 	fmt.Printf("solana_swap_build_readiness source=jupiter user=%s input=%s output=%s in_amount=%s out_amount=%s slippage_bps=%d price_impact_pct=%s tx_base64_len=%d last_valid_block_height=%d priority_fee_lamports=%d compute_unit_limit=%d lookup_tables=%d\n",
-		shortAddress(userPublicKey),
+		shortAddress(built.UserPublicKey),
 		shortAddress(quote.InputMint),
 		shortAddress(quote.OutputMint),
 		quote.InAmount,
@@ -241,6 +164,187 @@ func runSolanaSwapBuildReadiness(ctx context.Context, userPublicKey string, inpu
 	}
 	fmt.Println("solana_swap_build_execution=unsigned not_signed not_broadcast ready=true")
 	return nil
+}
+
+func runSolanaSwapSignReadiness(ctx context.Context, userPublicKey string, inputMint string, outputMint string, amountRaw string, slippageBPS int, maxPriorityLamports uint64) error {
+	quote, built, err := buildJupiterSwapTransaction(ctx, userPublicKey, inputMint, outputMint, amountRaw, slippageBPS, maxPriorityLamports)
+	if err != nil {
+		return err
+	}
+	if len(built.SimulationError) > 0 && string(built.SimulationError) != "null" {
+		fmt.Printf("solana_swap_sign_readiness ready=false blocker=simulation_error error=%s\n", compactJSON(built.SimulationError))
+		fmt.Println("solana_swap_sign_execution=not_signed not_broadcast")
+		return nil
+	}
+
+	key, keySource, ok, err := loadSolanaPrivateKeyFromEnv()
+	if err != nil {
+		return err
+	}
+	if !ok {
+		fmt.Println("solana_swap_sign_readiness ready=false blocker=missing_signer expected_env=SOLANA_PRIVATE_KEY|SOLANA_KEYPAIR_JSON|SOLANA_KEYPAIR_PATH")
+		fmt.Println("solana_swap_sign_execution=not_signed not_broadcast")
+		return nil
+	}
+	pub := key.PublicKey().String()
+	if pub != built.UserPublicKey {
+		return fmt.Errorf("solana signer public key mismatch: signer=%s user=%s", shortAddress(pub), shortAddress(built.UserPublicKey))
+	}
+	tx, err := solanago.TransactionFromBase64(built.SwapTransaction)
+	if err != nil {
+		return fmt.Errorf("decode jupiter swap transaction for signing: %w", err)
+	}
+	if _, err := tx.Sign(func(publicKey solanago.PublicKey) *solanago.PrivateKey {
+		if publicKey.String() == pub {
+			return &key
+		}
+		return nil
+	}); err != nil {
+		return fmt.Errorf("sign solana swap transaction: %w", err)
+	}
+	if err := tx.VerifySignatures(); err != nil {
+		return fmt.Errorf("verify solana swap transaction signature: %w", err)
+	}
+	signedBytes, err := tx.MarshalBinary()
+	if err != nil {
+		return fmt.Errorf("marshal signed solana swap transaction: %w", err)
+	}
+	signedBase64, err := tx.ToBase64()
+	if err != nil {
+		return fmt.Errorf("encode signed solana swap transaction: %w", err)
+	}
+	signature := ""
+	if len(tx.Signatures) > 0 {
+		signature = tx.Signatures[0].String()
+	}
+	fmt.Printf("solana_swap_sign_readiness ready=true source=%s user=%s input=%s output=%s in_amount=%s out_amount=%s signature=%s signed_bytes=%d signed_base64_len=%d\n",
+		keySource,
+		shortAddress(pub),
+		shortAddress(quote.InputMint),
+		shortAddress(quote.OutputMint),
+		quote.InAmount,
+		quote.OutAmount,
+		shortAddress(signature),
+		len(signedBytes),
+		len(signedBase64),
+	)
+	fmt.Println("solana_swap_sign_execution=signed_in_memory not_persisted not_broadcast")
+	return nil
+}
+
+type jupiterSwapBuildResult struct {
+	UserPublicKey               string
+	SwapTransaction             string          `json:"swapTransaction"`
+	LastValidBlockHeight        uint64          `json:"lastValidBlockHeight"`
+	PrioritizationFeeLamports   uint64          `json:"prioritizationFeeLamports"`
+	ComputeUnitLimit            uint64          `json:"computeUnitLimit"`
+	DynamicSlippageReport       json.RawMessage `json:"dynamicSlippageReport"`
+	SimulationError             json.RawMessage `json:"simulationError"`
+	PrioritizationType          json.RawMessage `json:"prioritizationType"`
+	AddressLookupTableAddresses []string        `json:"addressLookupTableAddresses"`
+}
+
+func buildJupiterSwapTransaction(ctx context.Context, userPublicKey string, inputMint string, outputMint string, amountRaw string, slippageBPS int, maxPriorityLamports uint64) (jupiterQuoteSummary, jupiterSwapBuildResult, error) {
+	userPublicKey = strings.TrimSpace(userPublicKey)
+	if userPublicKey == "" {
+		userPublicKey = strings.TrimSpace(os.Getenv("SOLANA_FEE_PAYER_ADDRESS"))
+	}
+	if userPublicKey == "" {
+		return jupiterQuoteSummary{}, jupiterSwapBuildResult{}, fmt.Errorf("solana swap build user public key is empty; set SOLANA_FEE_PAYER_ADDRESS or --solana-swap-user-public-key")
+	}
+	userAddress, err := domain.ParseAddress(userPublicKey)
+	if err != nil {
+		return jupiterQuoteSummary{}, jupiterSwapBuildResult{}, fmt.Errorf("invalid solana swap build user public key: %w", err)
+	}
+	if userAddress.Chain() != domain.ChainSolana {
+		return jupiterQuoteSummary{}, jupiterSwapBuildResult{}, fmt.Errorf("solana swap build user public key is not a solana address")
+	}
+	if maxPriorityLamports == 0 {
+		maxPriorityLamports = 500000
+	}
+
+	rawQuote, quote, err := fetchJupiterQuote(ctx, inputMint, outputMint, amountRaw, slippageBPS)
+	if err != nil {
+		return jupiterQuoteSummary{}, jupiterSwapBuildResult{}, err
+	}
+
+	payload := map[string]any{
+		"userPublicKey":           userPublicKey,
+		"quoteResponse":           json.RawMessage(rawQuote),
+		"dynamicComputeUnitLimit": true,
+		"wrapAndUnwrapSol":        true,
+		"prioritizationFeeLamports": map[string]any{
+			"priorityLevelWithMaxLamports": map[string]any{
+				"priorityLevel": "medium",
+				"maxLamports":   maxPriorityLamports,
+				"global":        false,
+			},
+		},
+	}
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return jupiterQuoteSummary{}, jupiterSwapBuildResult{}, fmt.Errorf("marshal jupiter swap build payload: %w", err)
+	}
+
+	endpoint := strings.TrimSpace(os.Getenv("JUPITER_SWAP_URL"))
+	if endpoint == "" {
+		endpoint = defaultJupiterSwapURL
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
+	if err != nil {
+		return jupiterQuoteSummary{}, jupiterSwapBuildResult{}, err
+	}
+	req.Header.Set("content-type", "application/json")
+	req.Header.Set("accept", "application/json")
+	if apiKey := strings.TrimSpace(os.Getenv("JUPITER_API_KEY")); apiKey != "" {
+		req.Header.Set("x-api-key", apiKey)
+	}
+
+	client := &http.Client{Timeout: 20 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return jupiterQuoteSummary{}, jupiterSwapBuildResult{}, fmt.Errorf("jupiter swap build request: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 2048))
+		return jupiterQuoteSummary{}, jupiterSwapBuildResult{}, fmt.Errorf("jupiter swap build status=%d body=%q", resp.StatusCode, strings.TrimSpace(string(respBody)))
+	}
+
+	var built jupiterSwapBuildResult
+	if err := json.NewDecoder(resp.Body).Decode(&built); err != nil {
+		return jupiterQuoteSummary{}, jupiterSwapBuildResult{}, fmt.Errorf("decode jupiter swap build: %w", err)
+	}
+	built.UserPublicKey = userPublicKey
+	if strings.TrimSpace(built.SwapTransaction) == "" {
+		return jupiterQuoteSummary{}, jupiterSwapBuildResult{}, fmt.Errorf("jupiter swap build returned empty transaction")
+	}
+	return quote, built, nil
+}
+
+func loadSolanaPrivateKeyFromEnv() (solanago.PrivateKey, string, bool, error) {
+	if raw := strings.TrimSpace(os.Getenv("SOLANA_PRIVATE_KEY")); raw != "" {
+		key, err := solanago.PrivateKeyFromBase58(raw)
+		if err != nil {
+			return nil, "SOLANA_PRIVATE_KEY", true, fmt.Errorf("parse SOLANA_PRIVATE_KEY: %w", err)
+		}
+		return key, "SOLANA_PRIVATE_KEY", true, nil
+	}
+	if raw := strings.TrimSpace(os.Getenv("SOLANA_KEYPAIR_JSON")); raw != "" {
+		key, err := solanago.PrivateKeyFromSolanaKeygenFileBytes([]byte(raw))
+		if err != nil {
+			return nil, "SOLANA_KEYPAIR_JSON", true, fmt.Errorf("parse SOLANA_KEYPAIR_JSON: %w", err)
+		}
+		return key, "SOLANA_KEYPAIR_JSON", true, nil
+	}
+	if path := strings.TrimSpace(os.Getenv("SOLANA_KEYPAIR_PATH")); path != "" {
+		key, err := solanago.PrivateKeyFromSolanaKeygenFile(path)
+		if err != nil {
+			return nil, "SOLANA_KEYPAIR_PATH", true, fmt.Errorf("parse SOLANA_KEYPAIR_PATH: %w", err)
+		}
+		return key, "SOLANA_KEYPAIR_PATH", true, nil
+	}
+	return nil, "", false, nil
 }
 
 type jupiterQuoteSummary struct {

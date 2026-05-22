@@ -1472,6 +1472,7 @@ func main() {
 	solanaQuoteAmountRaw := flag.String("solana-quote-amount-raw", "2500000", "Solana quote input amount in raw integer units")
 	solanaQuoteSlippageBPS := flag.Int("solana-quote-slippage-bps", 100, "Solana quote slippage tolerance in basis points")
 	solanaSwapBuildReadiness := flag.Bool("solana-swap-build-readiness", false, "Run Solana read-only Jupiter swap transaction build readiness checks without signing or broadcasting")
+	solanaSwapSignReadiness := flag.Bool("solana-swap-sign-readiness", false, "Run Solana Jupiter swap sign readiness checks without broadcasting")
 	solanaSwapInputMint := flag.String("solana-swap-input-mint", solanaWrappedSOLAddress, "Solana swap build input mint")
 	solanaSwapOutputMint := flag.String("solana-swap-output-mint", solanaUSDCAddress, "Solana swap build output mint")
 	solanaSwapAmountRaw := flag.String("solana-swap-amount-raw", "10000000", "Solana swap build input amount in raw integer units")
@@ -1526,6 +1527,13 @@ func main() {
 	if *solanaSwapBuildReadiness {
 		if err := runSolanaSwapBuildReadiness(ctx, *solanaSwapUserPublicKey, *solanaSwapInputMint, *solanaSwapOutputMint, *solanaSwapAmountRaw, *solanaQuoteSlippageBPS, *solanaSwapMaxPriorityLamports); err != nil {
 			fmt.Fprintf(os.Stderr, "Solana swap build readiness failed: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+	if *solanaSwapSignReadiness {
+		if err := runSolanaSwapSignReadiness(ctx, *solanaSwapUserPublicKey, *solanaSwapInputMint, *solanaSwapOutputMint, *solanaSwapAmountRaw, *solanaQuoteSlippageBPS, *solanaSwapMaxPriorityLamports); err != nil {
+			fmt.Fprintf(os.Stderr, "Solana swap sign readiness failed: %v\n", err)
 			os.Exit(1)
 		}
 		return
