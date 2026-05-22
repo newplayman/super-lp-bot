@@ -1447,6 +1447,7 @@ func main() {
 	}
 
 	configPath := flag.String("config", "", "Path to config file (required)")
+	canaryPreflight := flag.Bool("canary-preflight", false, "Run a single Base canary preflight without signing or broadcasting")
 	flag.Parse()
 
 	if *configPath == "" {
@@ -1466,6 +1467,18 @@ func main() {
 
 	ctx, cancel := setupSignalHandling()
 	defer cancel()
+
+	if *canaryPreflight {
+		if BuildMode != "live" {
+			fmt.Fprintln(os.Stderr, "Error: --canary-preflight requires a live build")
+			os.Exit(1)
+		}
+		if err := runCanaryPreflight(ctx, cfg); err != nil {
+			fmt.Fprintf(os.Stderr, "Canary preflight failed: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
 
 	code := Run(ctx, logger, cfg)
 	os.Exit(code)
