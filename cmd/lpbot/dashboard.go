@@ -603,16 +603,16 @@ func dashboardCanaryWalletBalances(ctx context.Context, cfg *config.Config, prov
 		blockers = append(blockers, "canary wallet has no Base USDC for the WETH/USDC test")
 	}
 	if wethBalance.Sign() <= 0 {
-		blockers = append(blockers, "canary wallet has no WETH; automated swap/pairing path is not implemented")
+		blockers = append(blockers, "canary wallet has no WETH; WETH wrap is required before mint")
 	}
 	if npmAddress.IsZero() {
 		blockers = append(blockers, "canary NPM spender address is invalid")
 	}
 	if usdcBalance.Sign() > 0 && usdcAllowance.Sign() <= 0 {
-		blockers = append(blockers, "canary wallet has no USDC allowance for NPM; approval path is not wired")
+		blockers = append(blockers, "canary wallet has no USDC allowance for NPM; exact approval is required before mint")
 	}
 	if wethBalance.Sign() > 0 && wethAllowance.Sign() <= 0 {
-		blockers = append(blockers, "canary wallet has no WETH allowance for NPM; approval path is not wired")
+		blockers = append(blockers, "canary wallet has no WETH allowance for NPM; exact approval is required before mint")
 	}
 	fundingReady := ethBalance.Sign() > 0 && usdcBalance.Sign() > 0 && wethBalance.Sign() > 0
 	approvalsReady := !npmAddress.IsZero() && usdcAllowance.Sign() > 0 && (wethBalance.Sign() <= 0 || wethAllowance.Sign() > 0)

@@ -659,6 +659,8 @@ func (app *App) wireMainLoop(ctx context.Context) error {
 	if err := configureLiveExecution(ctx, app, orderManager); err != nil {
 		return err
 	}
+	approveTracker.wallet = orderManager.wallet
+	approveTracker.broadcaster = orderManager.broadcaster
 	if app.logger != nil {
 		app.logger.Info("OrderManager wired")
 	}
@@ -1017,6 +1019,8 @@ type approveTrackerAdapter struct {
 	store          ports.Store
 	liveGate       *liveSafetyGate
 	provider       *rpc.RoundRobinProvider
+	wallet         ports.Wallet
+	broadcaster    ports.Broadcaster
 	walletAddress  domain.Address
 	npmBaseAddress string
 }
@@ -1050,7 +1054,153 @@ func (a *approveTrackerAdapter) EnsureApproval(ctx context.Context, pool domain.
 	if a.HasAllowance(pool) {
 		return nil
 	}
-	return fmt.Errorf("live approval path is not wired; refusing to auto-approve pool %s", pool.ID)
+	if a.wallet == nil || a.broadcaster == nil {
+		return fmt.Errorf("live approval components not configured; refusing to approve pool %s", pool.ID)
+	}
+	amountUSD := domain.NewDecimalFromFloat(a.liveGate.maxOrderUSD)
+	if a.liveGate.canary && a.liveGate.maxOrderUSD > canaryMaxOrderUSD {
+		amountUSD = domain.NewDecimalFromFloat(canaryMaxOrderUSD)
+	}
+	if err := a.liveGate.checkOpen(pool, amountUSD); err != nil {
+		return err
+	}
+	spender := parseAddressOrZero(strings.TrimSpace(a.npmBaseAddress))
+	if spender.IsZero() {
+		return fmt.Errorf("npm spender address not configured")
+	}
+	intent, err := buildBaseOpenIntent(ctx, a.provider, a.walletAddress, pool, amountUSD, shadowID("approve", pool.Key(), time.Now().Unix()), time.Now())
+	if err != nil {
+		return fmt.Errorf("build exact approval sizing: %w", err)
+	}
+	needed := []struct {
+		token  domain.Address
+		amount *big.Int
+		name   string
+	}{
+		{token: pool.Token0, amount: intent.Amount0.BigInt(), name: "token0"},
+		{token: pool.Token1, amount: intent.Amount1.BigInt(), name: "token1"},
+	}
+	for _, item := range needed {
+		if item.amount.Sign() <= 0 {
+			continue
+		}
+		balance, err := dashboardERC20Balance(ctx, a.provider, item.token.String(), a.walletAddress)
+		if err != nil {
+			return fmt.Errorf("check %s balance before approval: %w", item.name, err)
+		}
+		if balance.Cmp(item.amount) < 0 && strings.EqualFold(item.token.String(), baseWETHAddress) {
+			if err := a.wrapWETH(ctx, pool, new(big.Int).Sub(item.amount, balance)); err != nil {
+				return err
+			}
+			balance, err = dashboardERC20Balance(ctx, a.provider, item.token.String(), a.walletAddress)
+			if err != nil {
+				return fmt.Errorf("recheck %s balance after wrap: %w", item.name, err)
+			}
+		}
+		if balance.Cmp(item.amount) < 0 {
+			return fmt.Errorf("insufficient %s balance for exact approval: need %s raw, have %s raw", item.name, item.amount.String(), balance.String())
+		}
+		allowance, err := dashboardERC20Allowance(ctx, a.provider, item.token.String(), a.walletAddress, spender)
+		if err != nil {
+			return fmt.Errorf("check %s allowance: %w", item.name, err)
+		}
+		if allowance.Cmp(item.amount) >= 0 {
+			continue
+		}
+		tx, err := a.wallet.ApproveExact(ctx, item.token, spender, item.amount)
+		if err != nil {
+			return fmt.Errorf("build %s exact approval: %w", item.name, err)
+		}
+		tx.ID = shadowID("approve-tx", fmt.Sprintf("%s:%s", pool.Key(), item.token.String()), time.Now().Unix())
+		tx.Deadline = time.Now().Add(5 * time.Minute).Unix()
+		tx.MinOut = domain.NewDecimalFromInt(1)
+		if err := a.preflightApprovalTx(ctx, tx); err != nil {
+			return fmt.Errorf("preflight %s approval: %w", item.name, err)
+		}
+		signed, err := a.wallet.Sign(ctx, tx)
+		if err != nil {
+			return fmt.Errorf("sign %s approval: %w", item.name, err)
+		}
+		signed.ID = tx.ID
+		signed.Status = domain.TxBuilt
+		if a.store != nil {
+			_ = a.store.TxRepo().UpsertTx(ctx, signed)
+		}
+		if err := a.broadcaster.Send(ctx, signed); err != nil {
+			signed.Status = domain.TxFailed
+			if a.store != nil {
+				_ = a.store.TxRepo().UpsertTx(ctx, signed)
+			}
+			return fmt.Errorf("broadcast %s approval: %w", item.name, err)
+		}
+		signed.Status = domain.TxBroadcast
+		if a.store != nil {
+			_ = a.store.TxRepo().UpsertTx(ctx, signed)
+		}
+	}
+	return nil
+}
+
+func (a *approveTrackerAdapter) wrapWETH(ctx context.Context, pool domain.Pool, amountWei *big.Int) error {
+	if amountWei == nil || amountWei.Sign() <= 0 {
+		return nil
+	}
+	ethBalance, err := a.provider.BalanceAt(ctx, a.walletAddress, nil)
+	if err != nil {
+		return fmt.Errorf("check ETH balance before WETH wrap: %w", err)
+	}
+	gasReserveWei := new(big.Int).Mul(big.NewInt(5), big.NewInt(100000000000000))
+	if ethBalance.Cmp(new(big.Int).Add(amountWei, gasReserveWei)) < 0 {
+		return fmt.Errorf("insufficient ETH to wrap WETH and keep gas reserve: need %s raw plus reserve %s raw, have %s raw", amountWei.String(), gasReserveWei.String(), ethBalance.String())
+	}
+	tx := domain.UnsignedTx{
+		ID:       shadowID("wrap-weth", pool.Key(), time.Now().Unix()),
+		Chain:    domain.ChainBase,
+		From:     a.walletAddress,
+		To:       domain.MustParseAddress(baseWETHAddress),
+		Data:     common.FromHex("0xd0e30db0"),
+		Value:    domain.MustDecimal(amountWei.String()),
+		Deadline: time.Now().Add(5 * time.Minute).Unix(),
+		MinOut:   domain.NewDecimalFromInt(1),
+	}
+	if err := a.preflightApprovalTx(ctx, tx); err != nil {
+		return fmt.Errorf("preflight WETH wrap: %w", err)
+	}
+	signed, err := a.wallet.Sign(ctx, tx)
+	if err != nil {
+		return fmt.Errorf("sign WETH wrap: %w", err)
+	}
+	signed.ID = tx.ID
+	signed.Status = domain.TxBuilt
+	if a.store != nil {
+		_ = a.store.TxRepo().UpsertTx(ctx, signed)
+	}
+	if err := a.broadcaster.Send(ctx, signed); err != nil {
+		signed.Status = domain.TxFailed
+		if a.store != nil {
+			_ = a.store.TxRepo().UpsertTx(ctx, signed)
+		}
+		return fmt.Errorf("broadcast WETH wrap: %w", err)
+	}
+	signed.Status = domain.TxBroadcast
+	if a.store != nil {
+		_ = a.store.TxRepo().UpsertTx(ctx, signed)
+	}
+	return nil
+}
+
+func (a *approveTrackerAdapter) preflightApprovalTx(ctx context.Context, tx domain.UnsignedTx) error {
+	if a == nil || a.provider == nil {
+		return fmt.Errorf("base rpc provider not configured")
+	}
+	to := common.HexToAddress(tx.To.String())
+	_, err := a.provider.CallContract(ctx, ethereum.CallMsg{
+		From:  common.HexToAddress(tx.From.String()),
+		To:    &to,
+		Value: tx.Value.BigInt(),
+		Data:  tx.Data,
+	}, nil)
+	return err
 }
 
 type orderManagerAdapter struct {
