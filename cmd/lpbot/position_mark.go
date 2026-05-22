@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"math"
 	"math/big"
 	"sort"
 	"strings"
@@ -442,6 +443,21 @@ func (app *App) buildPositionMarkRecordAt(ctx context.Context, pos activeShadowP
 	priceChangePct, estimatedILUSD := app.estimateShadowIL(ctx, pos, meta, holdMinutes, asOf)
 	valuationUSD := pos.AmountUSD.Add(estimatedFeeUSD).Add(estimatedILUSD)
 	netPnLUSD := estimatedFeeUSD.Add(estimatedILUSD)
+	if npmState != nil {
+		onchainValueUSD, err := app.estimateNPMPositionValueUSD(ctx, pos, *npmState)
+		if err == nil {
+			valuationUSD = onchainValueUSD.Add(estimatedFeeUSD)
+			netPnLUSD = valuationUSD.Sub(pos.AmountUSD)
+			estimatedILUSD = netPnLUSD.Sub(estimatedFeeUSD)
+			markSource = prependMarkSource(markSource, "onchain_value")
+		} else {
+			markSource = prependMarkSource(markSource, "onchain_value_error")
+			app.logger.Warn("nft value mark fell back to amount estimate",
+				zap.String("position_id", pos.ID),
+				zap.String("token_id", pos.TokenID),
+				zap.Error(err))
+		}
+	}
 
 	return shadowPositionMarkRecord{
 		MarkTime:       asOf.Unix(),
@@ -481,6 +497,11 @@ type npmPositionState struct {
 type v3TickFeeGrowthState struct {
 	FeeGrowthOutside0X128 *big.Int
 	FeeGrowthOutside1X128 *big.Int
+}
+
+type v3Slot0MarkState struct {
+	SqrtPriceX96 *big.Int
+	Tick         int
 }
 
 func (app *App) loadNPMPositionState(ctx context.Context, pos activeShadowPosition) (npmPositionState, error) {
@@ -615,6 +636,52 @@ func (app *App) estimateNPMUncollectedFeeUSD(ctx context.Context, pos activeShad
 	return amount0.Mul(price0).Add(amount1.Mul(price1)), nil
 }
 
+func (app *App) estimateNPMPositionValueUSD(ctx context.Context, pos activeShadowPosition, state npmPositionState) (dexdomain.Decimal, error) {
+	if state.Liquidity == nil || state.Liquidity.Sign() == 0 {
+		return dexdomain.ZeroDecimal(), nil
+	}
+	provider := app.rpcProviderForChain(dexdomain.ChainBase)
+	if provider == nil {
+		return dexdomain.ZeroDecimal(), fmt.Errorf("base rpc provider is not configured")
+	}
+	poolAddress, err := dexdomain.ParseAddress(pos.PoolID)
+	if err != nil {
+		return dexdomain.ZeroDecimal(), fmt.Errorf("parse pool address: %w", err)
+	}
+	slot0, err := readV3PoolSlot0ForMark(ctx, provider, poolAddress)
+	if err != nil {
+		return dexdomain.ZeroDecimal(), err
+	}
+	decimals0, err := tokenDecimals(ctx, provider, state.Token0)
+	if err != nil {
+		return dexdomain.ZeroDecimal(), err
+	}
+	decimals1, err := tokenDecimals(ctx, provider, state.Token1)
+	if err != nil {
+		return dexdomain.ZeroDecimal(), err
+	}
+	price0, price1, err := inferBaseTokenPricesUSD(dexdomain.Pool{
+		ID:       pos.PoolID,
+		Chain:    pos.Chain,
+		Protocol: "uniswap_v3",
+		Token0:   state.Token0,
+		Token1:   state.Token1,
+		FeeBPS:   uint(state.Fee / 100),
+		Tick:     slot0.Tick,
+	}, decimals0, decimals1)
+	if err != nil {
+		return dexdomain.ZeroDecimal(), err
+	}
+
+	raw0, raw1, err := v3LiquidityAmountsRaw(state.Liquidity, slot0.SqrtPriceX96, state.TickLower, state.TickUpper)
+	if err != nil {
+		return dexdomain.ZeroDecimal(), err
+	}
+	amount0 := dexdomain.NewDecimalFromFloat(raw0).Div(scaleForDecimals(decimals0))
+	amount1 := dexdomain.NewDecimalFromFloat(raw1).Div(scaleForDecimals(decimals1))
+	return amount0.Mul(price0).Add(amount1.Mul(price1)), nil
+}
+
 func callBigMethod(ctx context.Context, provider *rpc.RoundRobinProvider, contract dexdomain.Address, signature string) (*big.Int, error) {
 	data, err := callRawMethod(ctx, provider, contract, signature)
 	if err != nil {
@@ -627,14 +694,25 @@ func callBigMethod(ctx context.Context, provider *rpc.RoundRobinProvider, contra
 }
 
 func readV3PoolTickForMark(ctx context.Context, provider *rpc.RoundRobinProvider, pool dexdomain.Address) (int, error) {
+	slot0, err := readV3PoolSlot0ForMark(ctx, provider, pool)
+	if err != nil {
+		return 0, err
+	}
+	return slot0.Tick, nil
+}
+
+func readV3PoolSlot0ForMark(ctx context.Context, provider *rpc.RoundRobinProvider, pool dexdomain.Address) (v3Slot0MarkState, error) {
 	raw, err := callRawMethod(ctx, provider, pool, "slot0()")
 	if err != nil {
-		return 0, fmt.Errorf("read pool slot0: %w", err)
+		return v3Slot0MarkState{}, fmt.Errorf("read pool slot0: %w", err)
 	}
 	if len(raw) < 64 {
-		return 0, fmt.Errorf("slot0 returned short response")
+		return v3Slot0MarkState{}, fmt.Errorf("slot0 returned short response")
 	}
-	return int(decodeABIInt24(raw[32:64])), nil
+	return v3Slot0MarkState{
+		SqrtPriceX96: new(big.Int).SetBytes(raw[:32]),
+		Tick:         int(decodeABIInt24(raw[32:64])),
+	}, nil
 }
 
 func readV3TickFeeGrowth(ctx context.Context, provider *rpc.RoundRobinProvider, pool dexdomain.Address, tick int64) (v3TickFeeGrowthState, error) {
@@ -703,6 +781,45 @@ func decimalFromRawAmount(value *big.Int, decimals uint8) dexdomain.Decimal {
 		return dexdomain.ZeroDecimal()
 	}
 	return dexdomain.MustDecimal(value.String()).Div(scaleForDecimals(decimals))
+}
+
+func v3LiquidityAmountsRaw(liquidity *big.Int, sqrtPriceX96 *big.Int, tickLower int64, tickUpper int64) (float64, float64, error) {
+	if liquidity == nil || liquidity.Sign() == 0 {
+		return 0, 0, nil
+	}
+	if sqrtPriceX96 == nil || sqrtPriceX96.Sign() <= 0 {
+		return 0, 0, fmt.Errorf("invalid sqrtPriceX96")
+	}
+	if tickLower >= tickUpper {
+		return 0, 0, fmt.Errorf("invalid tick range: %d >= %d", tickLower, tickUpper)
+	}
+
+	liquidityFloat, _ := new(big.Float).SetPrec(256).SetInt(liquidity).Float64()
+	q96Float := new(big.Float).SetPrec(256).SetInt(new(big.Int).Lsh(big.NewInt(1), 96))
+	sqrtPriceFloat, _ := new(big.Float).SetPrec(256).Quo(
+		new(big.Float).SetPrec(256).SetInt(sqrtPriceX96),
+		q96Float,
+	).Float64()
+	if liquidityFloat <= 0 || sqrtPriceFloat <= 0 || math.IsInf(liquidityFloat, 0) || math.IsInf(sqrtPriceFloat, 0) {
+		return 0, 0, fmt.Errorf("invalid liquidity or sqrt price float conversion")
+	}
+
+	sqrtLower := math.Pow(1.0001, float64(tickLower)/2)
+	sqrtUpper := math.Pow(1.0001, float64(tickUpper)/2)
+	if sqrtLower <= 0 || sqrtUpper <= 0 || sqrtLower >= sqrtUpper {
+		return 0, 0, fmt.Errorf("invalid sqrt tick range")
+	}
+
+	switch {
+	case sqrtPriceFloat <= sqrtLower:
+		return liquidityFloat * (sqrtUpper - sqrtLower) / (sqrtLower * sqrtUpper), 0, nil
+	case sqrtPriceFloat < sqrtUpper:
+		amount0 := liquidityFloat * (sqrtUpper - sqrtPriceFloat) / (sqrtPriceFloat * sqrtUpper)
+		amount1 := liquidityFloat * (sqrtPriceFloat - sqrtLower)
+		return amount0, amount1, nil
+	default:
+		return 0, liquidityFloat * (sqrtUpper - sqrtLower), nil
+	}
 }
 
 func decodeABIInt24(word []byte) int64 {
