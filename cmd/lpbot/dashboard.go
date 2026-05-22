@@ -1018,7 +1018,7 @@ func queryDashboardClosedPositions(ctx context.Context, db *sql.DB) ([]dashboard
 			p.opened_at,
 			COALESCE(p.closed_at, 0),
 			COALESCE(m.hold_minutes, 0),
-			COALESCE(ep.net_pnl_usd, m.net_pnl_usd, '0'),
+			COALESCE(((ep.total_usd - p.amount_usd))::text, m.net_pnl_usd, '0'),
 			CASE
 				WHEN COALESCE(ep.status, '') = 'closed' THEN 'real canary exit recorded'
 				ELSE COALESCE(e.reason, '')
@@ -1043,7 +1043,7 @@ func queryDashboardClosedPositions(ctx context.Context, db *sql.DB) ([]dashboard
 		) e ON e.position_id = p.id
 		LEFT JOIN (
 			SELECT DISTINCT ON (token_id)
-				token_id, net_pnl_usd, status
+				token_id, total_usd, status
 			FROM canary_exit_preflights
 			WHERE COALESCE(token_id, '') <> ''
 			ORDER BY token_id, checked_at DESC
