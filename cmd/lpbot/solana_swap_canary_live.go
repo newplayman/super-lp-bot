@@ -86,7 +86,7 @@ func runSolanaSwapCanary(ctx context.Context, cfg *config.Config, userPublicKey 
 
 	signedTx := domain.SignedTx{
 		UnsignedTx: domain.UnsignedTx{
-			ID:     "solana-swap-canary",
+			ID:     "solana-swap-canary-" + signature,
 			Chain:  domain.ChainSolana,
 			From:   domain.MustParseAddress(pub),
 			To:     domain.MustParseAddress(outputMint),
