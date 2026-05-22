@@ -142,7 +142,7 @@ func buildBaseOpenIntent(
 		return execution.OpenIntent{}, err
 	}
 
-	tickLower, tickUpper := defaultOpenRange(pool.Tick)
+	tickLower, tickUpper := defaultOpenRange(pool.Tick, tickSpacingForFee(feeRaw))
 	return execution.OpenIntent{
 		PositionID:  positionID,
 		PoolID:      pool.ID,
@@ -245,11 +245,51 @@ func absInt(value int) int {
 	return value
 }
 
-func defaultOpenRange(currentTick int) (int64, int64) {
-	lower := int64(currentTick) - 100
-	upper := int64(currentTick) + 100
+func defaultOpenRange(currentTick int, tickSpacing int64) (int64, int64) {
+	if tickSpacing <= 0 {
+		tickSpacing = 1
+	}
+	width := int64(100)
+	if tickSpacing*2 > width {
+		width = tickSpacing * 2
+	}
+	lower := floorTickToSpacing(int64(currentTick)-width, tickSpacing)
+	upper := ceilTickToSpacing(int64(currentTick)+width, tickSpacing)
 	if lower == -100 && upper == 100 {
 		return -500, 500
 	}
 	return lower, upper
+}
+
+func tickSpacingForFee(feeRaw uint32) int64 {
+	switch feeRaw {
+	case 100:
+		return 1
+	case 500:
+		return 10
+	case 3000:
+		return 60
+	case 10000:
+		return 200
+	default:
+		return 60
+	}
+}
+
+func floorTickToSpacing(tick, spacing int64) int64 {
+	quotient := tick / spacing
+	remainder := tick % spacing
+	if remainder != 0 && tick < 0 {
+		quotient--
+	}
+	return quotient * spacing
+}
+
+func ceilTickToSpacing(tick, spacing int64) int64 {
+	quotient := tick / spacing
+	remainder := tick % spacing
+	if remainder != 0 && tick > 0 {
+		quotient++
+	}
+	return quotient * spacing
 }
