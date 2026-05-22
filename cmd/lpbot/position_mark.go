@@ -4,10 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"math/big"
 	"sort"
 	"strings"
 	"time"
 
+	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/lpbot/lpbot/internal/core/pnl"
 	dexdomain "github.com/lpbot/lpbot/internal/domain"
 	"github.com/lpbot/lpbot/internal/platform/metrics"
@@ -38,6 +41,7 @@ type shadowPositionMarkRecord struct {
 type activeShadowPosition struct {
 	ID        string
 	PoolID    string
+	TokenID   string
 	Chain     dexdomain.ChainID
 	Status    dexdomain.PositionStatus
 	Tier      dexdomain.Tier
@@ -326,7 +330,7 @@ func (app *App) buildStalePositionMarkRecord(ctx context.Context, db *sql.DB, po
 
 func (app *App) listActiveShadowPositions(ctx context.Context, db *sql.DB) ([]activeShadowPosition, error) {
 	rows, err := db.QueryContext(ctx, `
-		SELECT id, pool_id, chain, status, COALESCE(tier, ''), amount_usd, tick_lower, tick_upper, opened_at
+		SELECT id, pool_id, COALESCE(token_id, ''), chain, status, COALESCE(tier, ''), amount_usd, tick_lower, tick_upper, opened_at
 		FROM positions
 		WHERE status IN ('intended', 'opening', 'open')
 		ORDER BY opened_at DESC
@@ -342,7 +346,7 @@ func (app *App) listActiveShadowPositions(ctx context.Context, db *sql.DB) ([]ac
 		var chainInt int
 		var tier string
 		var amountUSD string
-		if err := rows.Scan(&row.ID, &row.PoolID, &chainInt, &row.Status, &tier, &amountUSD, &row.TickLower, &row.TickUpper, &row.OpenedAt); err != nil {
+		if err := rows.Scan(&row.ID, &row.PoolID, &row.TokenID, &chainInt, &row.Status, &tier, &amountUSD, &row.TickLower, &row.TickUpper, &row.OpenedAt); err != nil {
 			return nil, fmt.Errorf("scan active position: %w", err)
 		}
 		row.Chain = chainIntToDomain(chainInt)
@@ -366,6 +370,25 @@ func (app *App) buildPositionMarkRecordAt(ctx context.Context, pos activeShadowP
 	}
 	if meta == nil {
 		return shadowPositionMarkRecord{}, fmt.Errorf("no pool metadata for %s", pos.PoolID)
+	}
+
+	markSource := source
+	if strings.TrimSpace(pos.TokenID) != "" {
+		npmState, err := app.loadNPMPositionState(ctx, pos)
+		if err == nil {
+			pos.TickLower = npmState.TickLower
+			pos.TickUpper = npmState.TickUpper
+			markSource = prependMarkSource(markSource, "onchain_npm")
+			if npmState.Liquidity.Sign() == 0 {
+				markSource = prependMarkSource(markSource, "zero_liquidity")
+			}
+		} else {
+			markSource = prependMarkSource(markSource, "onchain_npm_error")
+			app.logger.Warn("nft position mark fell back to datasource estimate",
+				zap.String("position_id", pos.ID),
+				zap.String("token_id", pos.TokenID),
+				zap.Error(err))
+		}
 	}
 
 	holdMinutes := int64(0)
@@ -404,7 +427,7 @@ func (app *App) buildPositionMarkRecordAt(ctx context.Context, pos activeShadowP
 		Status:         status,
 		Tier:           string(pos.Tier),
 		AmountUSD:      pos.AmountUSD.String(),
-		Source:         source,
+		Source:         markSource,
 		HoldMinutes:    holdMinutes,
 		ValuationUSD:   valuationUSD.String(),
 		FeeUSD:         estimatedFeeUSD.String(),
@@ -415,6 +438,106 @@ func (app *App) buildPositionMarkRecordAt(ctx context.Context, pos activeShadowP
 		PriceChangePct: priceChangePct.String(),
 		CreatedAt:      time.Now().UnixMilli(),
 	}, nil
+}
+
+type npmPositionState struct {
+	TokenID                  string
+	Token0                   dexdomain.Address
+	Token1                   dexdomain.Address
+	Fee                      uint64
+	TickLower                int64
+	TickUpper                int64
+	Liquidity                *big.Int
+	FeeGrowthInside0LastX128 *big.Int
+	FeeGrowthInside1LastX128 *big.Int
+	TokensOwed0              *big.Int
+	TokensOwed1              *big.Int
+}
+
+func (app *App) loadNPMPositionState(ctx context.Context, pos activeShadowPosition) (npmPositionState, error) {
+	if pos.Chain != dexdomain.ChainBase {
+		return npmPositionState{}, fmt.Errorf("npm position state only supports base chain")
+	}
+	if app == nil || app.config == nil {
+		return npmPositionState{}, fmt.Errorf("app config is nil")
+	}
+	provider := app.rpcProviderForChain(dexdomain.ChainBase)
+	if provider == nil {
+		return npmPositionState{}, fmt.Errorf("base rpc provider is not configured")
+	}
+	npmAddress := strings.TrimSpace(app.config.Execution.NPMBaseAddress)
+	if npmAddress == "" {
+		return npmPositionState{}, fmt.Errorf("npm base address is empty")
+	}
+	tokenID, ok := new(big.Int).SetString(strings.TrimSpace(pos.TokenID), 10)
+	if !ok || tokenID.Sign() <= 0 {
+		return npmPositionState{}, fmt.Errorf("invalid npm token id %q", pos.TokenID)
+	}
+
+	data := make([]byte, 4+32)
+	copy(data[:4], common.FromHex("0x99fbab88"))
+	copy(data[4+32-len(tokenID.Bytes()):], tokenID.Bytes())
+
+	to := common.HexToAddress(npmAddress)
+	raw, err := provider.CallContract(ctx, ethereum.CallMsg{
+		To:   &to,
+		Data: data,
+	}, nil)
+	if err != nil {
+		return npmPositionState{}, fmt.Errorf("read npm positions(%s): %w", pos.TokenID, err)
+	}
+	if len(raw) < 32*12 {
+		return npmPositionState{}, fmt.Errorf("npm positions(%s) returned short response: %d bytes", pos.TokenID, len(raw))
+	}
+
+	token0, err := dexdomain.ParseAddress(common.BytesToAddress(raw[2*32+12 : 3*32]).Hex())
+	if err != nil {
+		return npmPositionState{}, fmt.Errorf("decode npm token0: %w", err)
+	}
+	token1, err := dexdomain.ParseAddress(common.BytesToAddress(raw[3*32+12 : 4*32]).Hex())
+	if err != nil {
+		return npmPositionState{}, fmt.Errorf("decode npm token1: %w", err)
+	}
+
+	return npmPositionState{
+		TokenID:                  pos.TokenID,
+		Token0:                   token0,
+		Token1:                   token1,
+		Fee:                      new(big.Int).SetBytes(raw[4*32 : 5*32]).Uint64(),
+		TickLower:                decodeABIInt24(raw[5*32 : 6*32]),
+		TickUpper:                decodeABIInt24(raw[6*32 : 7*32]),
+		Liquidity:                new(big.Int).SetBytes(raw[7*32 : 8*32]),
+		FeeGrowthInside0LastX128: new(big.Int).SetBytes(raw[8*32 : 9*32]),
+		FeeGrowthInside1LastX128: new(big.Int).SetBytes(raw[9*32 : 10*32]),
+		TokensOwed0:              new(big.Int).SetBytes(raw[10*32 : 11*32]),
+		TokensOwed1:              new(big.Int).SetBytes(raw[11*32 : 12*32]),
+	}, nil
+}
+
+func decodeABIInt24(word []byte) int64 {
+	if len(word) < 32 {
+		return 0
+	}
+	value := int32(word[29])<<16 | int32(word[30])<<8 | int32(word[31])
+	if value&0x800000 != 0 {
+		value -= 1 << 24
+	}
+	return int64(value)
+}
+
+func prependMarkSource(source string, prefix string) string {
+	source = strings.TrimSpace(source)
+	prefix = strings.TrimSpace(prefix)
+	if prefix == "" {
+		return source
+	}
+	if source == "" {
+		return prefix
+	}
+	if strings.Contains(source, prefix) {
+		return source
+	}
+	return prefix + "+" + source
 }
 
 func (app *App) estimateShadowIL(ctx context.Context, pos activeShadowPosition, meta *ports.PoolDiscovery, holdMinutes int64, now time.Time) (dexdomain.Decimal, dexdomain.Decimal) {
@@ -570,7 +693,7 @@ func (app *App) backfillClosedShadowPositionMarks(ctx context.Context, db *sql.D
 
 func (app *App) listClosedShadowPositionsForBackfill(ctx context.Context, db *sql.DB) ([]activeShadowPosition, error) {
 	rows, err := db.QueryContext(ctx, `
-		SELECT p.id, p.pool_id, p.chain, p.status, COALESCE(p.tier, ''), p.amount_usd, p.tick_lower, p.tick_upper, p.opened_at, COALESCE(p.closed_at, 0)
+		SELECT p.id, p.pool_id, COALESCE(p.token_id, ''), p.chain, p.status, COALESCE(p.tier, ''), p.amount_usd, p.tick_lower, p.tick_upper, p.opened_at, COALESCE(p.closed_at, 0)
 		FROM positions p
 		LEFT JOIN (
 			SELECT DISTINCT ON (position_id)
@@ -599,7 +722,7 @@ func (app *App) listClosedShadowPositionsForBackfill(ctx context.Context, db *sq
 		var chainInt int
 		var tier string
 		var amountUSD string
-		if err := rows.Scan(&row.ID, &row.PoolID, &chainInt, &row.Status, &tier, &amountUSD, &row.TickLower, &row.TickUpper, &row.OpenedAt, &row.ClosedAt); err != nil {
+		if err := rows.Scan(&row.ID, &row.PoolID, &row.TokenID, &chainInt, &row.Status, &tier, &amountUSD, &row.TickLower, &row.TickUpper, &row.OpenedAt, &row.ClosedAt); err != nil {
 			return nil, fmt.Errorf("scan closed position for backfill: %w", err)
 		}
 		row.Chain = chainIntToDomain(chainInt)
