@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/big"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -19,6 +20,8 @@ import (
 )
 
 const canaryExitPreflightSlippageBps = 100
+const canaryExitConfirmEnv = "LPBOT_CONFIRM_CANARY_EXIT"
+const canaryExitAllowedTokenID = "5166834"
 
 type canaryExitPreflightReport struct {
 	TokenID              string
@@ -84,6 +87,103 @@ func runCanaryExitPreflight(ctx context.Context, cfg *config.Config, tokenID str
 		return err
 	}
 	printCanaryExitPreflightReport(report)
+	return nil
+}
+
+func runCanaryExit(ctx context.Context, cfg *config.Config, tokenID string) error {
+	if os.Getenv(canaryExitConfirmEnv) != "YES" {
+		return fmt.Errorf("canary exit requires %s=YES", canaryExitConfirmEnv)
+	}
+	if cfg == nil {
+		return fmt.Errorf("config is nil")
+	}
+	tokenID = strings.TrimSpace(tokenID)
+	if tokenID != canaryExitAllowedTokenID {
+		return fmt.Errorf("canary exit only allows token id %s, got %q", canaryExitAllowedTokenID, tokenID)
+	}
+
+	gate := newLiveSafetyGate("live", cfg)
+	if gate.killSwitch {
+		return fmt.Errorf("canary exit blocked: live.kill_switch=true")
+	}
+	if !gate.canary {
+		return fmt.Errorf("canary exit requires live.canary=true")
+	}
+	if len(cfg.Live.AllowedPools) != 1 {
+		return fmt.Errorf("canary exit requires exactly one allowed pool, got %d", len(cfg.Live.AllowedPools))
+	}
+
+	provider, err := newCanaryExitPreflightProvider(ctx, cfg)
+	if err != nil {
+		return err
+	}
+	wallet, err := openCanaryPreflightWallet(ctx, cfg, provider)
+	if err != nil {
+		return err
+	}
+	defer wallet.Close()
+
+	broadcaster, err := newCanaryMintBroadcaster(ctx, cfg, provider)
+	if err != nil {
+		return err
+	}
+	pool, err := loadCanaryPreflightPool(ctx, provider, strings.TrimSpace(cfg.Live.AllowedPools[0]))
+	if err != nil {
+		return err
+	}
+	if err := checkCanaryExitGate(gate, pool); err != nil {
+		return err
+	}
+
+	report, err := buildCanaryExitPreflightReport(ctx, cfg, provider, wallet.Address(), pool, tokenID)
+	if err != nil {
+		return err
+	}
+	printCanaryExitPreflightReport(report)
+
+	app := &App{
+		config: cfg,
+		rpc: map[string]*rpc.RoundRobinProvider{
+			string(domain.ChainBase): provider,
+		},
+	}
+	state, err := app.loadNPMPositionState(ctx, activeShadowPosition{
+		ID:        "canary-exit-" + tokenID,
+		PoolID:    pool.ID,
+		TokenID:   tokenID,
+		Chain:     domain.ChainBase,
+		Status:    domain.StatusOpen,
+		AmountUSD: domain.NewDecimalFromFloat(cfg.Live.MaxOrderUSD),
+	})
+	if err != nil {
+		return err
+	}
+
+	decreaseData := encodeNPMDecreaseLiquidityCalldata(
+		mustTokenIDBig(tokenID),
+		state.Liquidity,
+		big.NewInt(0),
+		big.NewInt(0),
+		big.NewInt(time.Now().Add(10*time.Minute).Unix()),
+	)
+	decreaseTx := buildCanaryNPMUnsignedTx(cfg, wallet.Address(), decreaseData, "canary-exit-decrease-"+tokenID)
+	if err := sendCanaryExitTx(ctx, wallet, broadcaster, decreaseTx, "decrease_liquidity"); err != nil {
+		return err
+	}
+
+	collectData := encodeNPMCollectCalldata(
+		mustTokenIDBig(tokenID),
+		common.HexToAddress(wallet.Address().String()),
+		new(big.Int).Sub(new(big.Int).Lsh(big.NewInt(1), 128), big.NewInt(1)),
+		new(big.Int).Sub(new(big.Int).Lsh(big.NewInt(1), 128), big.NewInt(1)),
+	)
+	collectTx := buildCanaryNPMUnsignedTx(cfg, wallet.Address(), collectData, "canary-exit-collect-"+tokenID)
+	if err := sendCanaryExitTx(ctx, wallet, broadcaster, collectTx, "collect"); err != nil {
+		return err
+	}
+
+	fmt.Printf("canary_exit_complete token_id=%s decrease_gas_preflight=%d collect_gas_preflight=%d\n",
+		tokenID, report.DecreaseGas, report.CollectCurrentFeeGas)
 	return nil
 }
 
@@ -370,6 +470,54 @@ func calculateBpsMin(value *big.Int, slippageBps int64) *big.Int {
 	}
 	result := new(big.Int).Mul(value, big.NewInt(10000-slippageBps))
 	return result.Div(result, big.NewInt(10000))
+}
+
+func mustTokenIDBig(tokenID string) *big.Int {
+	token, ok := new(big.Int).SetString(tokenID, 10)
+	if !ok || token.Sign() <= 0 {
+		panic("invalid token id")
+	}
+	return token
+}
+
+func buildCanaryNPMUnsignedTx(cfg *config.Config, wallet domain.Address, data []byte, id string) domain.UnsignedTx {
+	npmAddress := strings.TrimSpace(cfg.Execution.NPMBaseAddress)
+	if npmAddress == "" {
+		npmAddress = defaultBaseUniswapV3NPMAddress
+	}
+	return domain.UnsignedTx{
+		ID:       id,
+		Chain:    domain.ChainBase,
+		From:     wallet,
+		To:       domain.MustParseAddress(npmAddress),
+		Value:    domain.ZeroDecimal(),
+		Data:     data,
+		Deadline: time.Now().Add(10 * time.Minute).Unix(),
+		MinOut:   domain.ZeroDecimal(),
+	}
+}
+
+func sendCanaryExitTx(ctx context.Context, wallet interface {
+	Sign(context.Context, domain.UnsignedTx) (domain.SignedTx, error)
+}, broadcaster interface {
+	Send(context.Context, domain.SignedTx) error
+}, tx domain.UnsignedTx, action string) error {
+	signCtx, cancel := context.WithTimeout(ctx, 45*time.Second)
+	signed, err := wallet.Sign(signCtx, tx)
+	cancel()
+	if err != nil {
+		return fmt.Errorf("sign %s: %w", action, err)
+	}
+	signed.ID = tx.ID
+	signed.Status = domain.TxBuilt
+	sendCtx, cancel := context.WithTimeout(ctx, 180*time.Second)
+	err = broadcaster.Send(sendCtx, signed)
+	cancel()
+	if err != nil {
+		return fmt.Errorf("broadcast %s: %w", action, err)
+	}
+	fmt.Printf("tx_broadcast action=%s hash=%s id=%s\n", action, signed.Hash, signed.ID)
+	return nil
 }
 
 func printCanaryExitPreflightReport(report canaryExitPreflightReport) {
