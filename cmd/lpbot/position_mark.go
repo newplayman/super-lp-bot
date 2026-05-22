@@ -1085,6 +1085,17 @@ func (app *App) backfillClosedShadowPositionMarks(ctx context.Context, db *sql.D
 		if pos.ClosedAt <= 0 {
 			continue
 		}
+		if strings.TrimSpace(pos.TokenID) != "" {
+			if record, ok, err := latestOpenMarkAsClosed(ctx, db, pos); err != nil {
+				app.logger.Warn("closed nft mark could not reuse latest open mark",
+					zap.String("position_id", pos.ID),
+					zap.String("token_id", pos.TokenID),
+					zap.Error(err))
+			} else if ok {
+				records = append(records, record)
+				continue
+			}
+		}
 		record, err := app.buildPositionMarkRecordAt(ctx, pos, string(dexdomain.StatusClosed), time.Unix(pos.ClosedAt, 0))
 		if err != nil {
 			app.logger.Warn("closed shadow mark backfill skipped",
@@ -1101,6 +1112,54 @@ func (app *App) backfillClosedShadowPositionMarks(ctx context.Context, db *sql.D
 		return err
 	}
 	return app.refreshClosedShadowExitReasons(ctx, db, records)
+}
+
+func latestOpenMarkAsClosed(ctx context.Context, db *sql.DB, pos activeShadowPosition) (shadowPositionMarkRecord, bool, error) {
+	var record shadowPositionMarkRecord
+	err := db.QueryRowContext(ctx, `
+		SELECT mark_time, position_id, pool_id, chain, status, tier, amount_usd, source,
+		       hold_minutes, valuation_usd, fee_usd, il_usd, net_pnl_usd,
+		       current_tvl_usd, current_vol24h_usd, price_change_pct, created_at
+		FROM shadow_position_marks
+		WHERE position_id = $1
+		  AND status <> 'closed'
+		  AND mark_time <= $2
+		ORDER BY mark_time DESC
+		LIMIT 1
+	`, pos.ID, pos.ClosedAt).Scan(
+		&record.MarkTime,
+		&record.PositionID,
+		&record.PoolID,
+		&record.Chain,
+		&record.Status,
+		&record.Tier,
+		&record.AmountUSD,
+		&record.Source,
+		&record.HoldMinutes,
+		&record.ValuationUSD,
+		&record.FeeUSD,
+		&record.ILUSD,
+		&record.NetPnLUSD,
+		&record.CurrentTVLUSD,
+		&record.CurrentVol24h,
+		&record.PriceChangePct,
+		&record.CreatedAt,
+	)
+	if err == sql.ErrNoRows {
+		return shadowPositionMarkRecord{}, false, nil
+	}
+	if err != nil {
+		return shadowPositionMarkRecord{}, false, err
+	}
+	record.MarkTime = pos.ClosedAt
+	record.Status = string(dexdomain.StatusClosed)
+	record.HoldMinutes = int64(time.Unix(pos.ClosedAt, 0).Sub(time.Unix(pos.OpenedAt, 0)).Minutes())
+	if record.HoldMinutes < 0 {
+		record.HoldMinutes = 0
+	}
+	record.Source = prependMarkSource(record.Source, "closed_from_last_open_mark")
+	record.CreatedAt = time.Now().UnixMilli()
+	return record, true, nil
 }
 
 func (app *App) listClosedShadowPositionsForBackfill(ctx context.Context, db *sql.DB) ([]activeShadowPosition, error) {
