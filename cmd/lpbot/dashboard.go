@@ -374,7 +374,7 @@ func (app *App) dashboardSnapshot(ctx context.Context) (dashboardSnapshot, error
 	if app.liveGate != nil {
 		snapshot.LiveReadiness = app.liveGate.readiness()
 	}
-	if canary, err := dashboardLoadCanaryReadiness(ctx); err == nil {
+	if canary, err := dashboardLoadCanaryReadiness(ctx, app.rpcProviderForChain(domain.ChainBase)); err == nil {
 		snapshot.CanaryReadiness = canary
 	} else {
 		snapshot.Warnings = append(snapshot.Warnings, fmt.Sprintf("canary readiness unavailable: %v", err))
@@ -503,7 +503,7 @@ func (app *App) dashboardSnapshot(ctx context.Context) (dashboardSnapshot, error
 	return snapshot, nil
 }
 
-func dashboardLoadCanaryReadiness(ctx context.Context) (readiness dashboardLiveReadiness, err error) {
+func dashboardLoadCanaryReadiness(ctx context.Context, provider *rpc.RoundRobinProvider) (readiness dashboardLiveReadiness, err error) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			readiness = dashboardLiveReadiness{}
@@ -520,11 +520,11 @@ func dashboardLoadCanaryReadiness(ctx context.Context) (readiness dashboardLiveR
 	}
 	gate := newLiveSafetyGate("live", cfg)
 	readiness = gate.readiness()
-	balances, fundingReady, approvalsReady, balanceBlockers, balanceErr := dashboardCanaryWalletBalances(ctx, cfg)
+	balances, fundingReady, approvalsReady, balanceBlockers, balanceErr := dashboardCanaryWalletBalances(ctx, cfg, provider)
 	readiness.WalletBalances = balances
 	readiness.FundingReady = fundingReady
 	readiness.ApprovalsReady = approvalsReady
-	poolChecks, poolBlockers, poolErr := dashboardAllowedPoolChecks(ctx, cfg)
+	poolChecks, poolBlockers, poolErr := dashboardAllowedPoolChecks(ctx, cfg, provider)
 	readiness.AllowedPoolChecks = poolChecks
 	if balanceErr != nil {
 		readiness.Blockers = append(readiness.Blockers, fmt.Sprintf("canary wallet balance check failed: %v", balanceErr))
@@ -544,7 +544,7 @@ func dashboardLoadCanaryReadiness(ctx context.Context) (readiness dashboardLiveR
 	return readiness, nil
 }
 
-func dashboardCanaryWalletBalances(ctx context.Context, cfg *config.Config) (dashboardWalletBalances, bool, bool, []string, error) {
+func dashboardCanaryWalletBalances(ctx context.Context, cfg *config.Config, provider *rpc.RoundRobinProvider) (dashboardWalletBalances, bool, bool, []string, error) {
 	if cfg == nil {
 		return dashboardWalletBalances{}, false, false, nil, fmt.Errorf("canary config is nil")
 	}
@@ -558,18 +558,8 @@ func dashboardCanaryWalletBalances(ctx context.Context, cfg *config.Config) (das
 	if walletAddress.IsZero() {
 		return balances, false, false, []string{"canary wallet address is invalid"}, nil
 	}
-
-	endpoints := []string{cfg.Chains.Base.RPCPrimary}
-	endpoints = append(endpoints, cfg.Chains.Base.RPCFallback...)
-	endpoints = append(endpoints, rpc.BasePublicEndpoints...)
-	provider, err := rpc.NewRoundRobinProvider(rpc.Config{
-		ChainID:             domain.ChainBase,
-		Endpoints:           endpoints,
-		HealthCheckInterval: time.Minute,
-		HealthCheckTimeout:  2 * time.Second,
-	})
-	if err != nil {
-		return balances, false, false, nil, err
+	if provider == nil {
+		return balances, false, false, nil, fmt.Errorf("base rpc provider not configured")
 	}
 
 	queryCtx, cancel := context.WithTimeout(ctx, 8*time.Second)
@@ -659,21 +649,12 @@ func dashboardERC20Allowance(ctx context.Context, provider *rpc.RoundRobinProvid
 	return new(big.Int).SetBytes(raw), nil
 }
 
-func dashboardAllowedPoolChecks(ctx context.Context, cfg *config.Config) ([]dashboardAllowedPoolCheck, []string, error) {
+func dashboardAllowedPoolChecks(ctx context.Context, cfg *config.Config, provider *rpc.RoundRobinProvider) ([]dashboardAllowedPoolCheck, []string, error) {
 	if cfg == nil {
 		return nil, nil, fmt.Errorf("canary config is nil")
 	}
-	endpoints := []string{cfg.Chains.Base.RPCPrimary}
-	endpoints = append(endpoints, cfg.Chains.Base.RPCFallback...)
-	endpoints = append(endpoints, rpc.BasePublicEndpoints...)
-	provider, err := rpc.NewRoundRobinProvider(rpc.Config{
-		ChainID:             domain.ChainBase,
-		Endpoints:           endpoints,
-		HealthCheckInterval: time.Minute,
-		HealthCheckTimeout:  2 * time.Second,
-	})
-	if err != nil {
-		return nil, nil, err
+	if provider == nil {
+		return nil, nil, fmt.Errorf("base rpc provider not configured")
 	}
 
 	queryCtx, cancel := context.WithTimeout(ctx, 8*time.Second)
