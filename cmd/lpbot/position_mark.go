@@ -222,6 +222,9 @@ func (app *App) markShadowPositions(ctx context.Context) {
 	}
 	if len(positions) == 0 {
 		metrics.RecordShadowPositionMarks(0, 0, 0)
+		if feeUSD, ilUSD, netPnLUSD, err := app.loadShadowLedgerTotals(ctx, provider.DB()); err == nil {
+			metrics.RecordShadowLedgerTotals(feeUSD, ilUSD, netPnLUSD)
+		}
 		return
 	}
 
@@ -288,6 +291,9 @@ func (app *App) markShadowPositions(ctx context.Context) {
 	metrics.RecordShadowPositionMarks(len(records), valuationFloat, netPnLFloat)
 	metrics.RecordShadowExitSignals(exitSignals)
 	metrics.RecordPnL(totalNetPnL)
+	if feeUSD, ilUSD, ledgerNetPnLUSD, err := app.loadShadowLedgerTotals(ctx, provider.DB()); err == nil {
+		metrics.RecordShadowLedgerTotals(feeUSD, ilUSD, ledgerNetPnLUSD)
+	}
 }
 
 func (app *App) buildStalePositionMarkRecord(ctx context.Context, db *sql.DB, pos activeShadowPosition, now time.Time) (shadowPositionMarkRecord, error) {
@@ -1043,6 +1049,26 @@ func decimalFromText(value string) dexdomain.Decimal {
 		return dexdomain.ZeroDecimal()
 	}
 	return dexdomain.MustDecimal(value)
+}
+
+func (app *App) loadShadowLedgerTotals(ctx context.Context, db *sql.DB) (float64, float64, float64, error) {
+	var feeText string
+	var ilText string
+	if err := db.QueryRowContext(ctx, `
+		SELECT
+			COALESCE(SUM(CASE WHEN kind = 'fee' THEN amount::numeric ELSE 0 END), 0)::text,
+			COALESCE(SUM(CASE WHEN kind = 'il' THEN amount::numeric ELSE 0 END), 0)::text
+		FROM pnl_ledger
+	`).Scan(&feeText, &ilText); err != nil {
+		return 0, 0, 0, err
+	}
+	fee := decimalFromText(feeText)
+	il := decimalFromText(ilText)
+	net := fee.Add(il)
+	feeFloat, _ := fee.Float64()
+	ilFloat, _ := il.Float64()
+	netFloat, _ := net.Float64()
+	return feeFloat, ilFloat, netFloat, nil
 }
 
 func (app *App) backfillClosedShadowPositionMarks(ctx context.Context, db *sql.DB) error {

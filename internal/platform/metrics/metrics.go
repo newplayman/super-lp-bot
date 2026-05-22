@@ -95,6 +95,9 @@ var (
 	lpbotShadowMarkValueUSD       = Gauge("lpbot_shadow_mark_value_usd", "Total latest shadow marked valuation in USD")
 	lpbotShadowMarkNetPnLUSD      = Gauge("lpbot_shadow_mark_net_pnl_usd", "Total latest shadow mark net PnL in USD")
 	lpbotShadowExitSignals        = Gauge("lpbot_shadow_exit_signals", "Shadow positions that currently meet exit conditions")
+	lpbotShadowLedgerFeeUSD       = Gauge("lpbot_shadow_ledger_fee_usd", "Cumulative shadow fee PnL from pnl_ledger in USD")
+	lpbotShadowLedgerILUSD        = Gauge("lpbot_shadow_ledger_il_usd", "Cumulative shadow IL PnL from pnl_ledger in USD")
+	lpbotShadowLedgerNetPnLUSD    = Gauge("lpbot_shadow_ledger_net_pnl_usd", "Cumulative shadow net PnL from pnl_ledger in USD")
 )
 
 // CounterVec creates and registers a new Prometheus CounterVec.
@@ -320,6 +323,13 @@ func RecordShadowPositionMarks(marked int, valuationUSD, netPnLUSD float64) {
 // RecordShadowExitSignals records the latest number of shadow exit signals.
 func RecordShadowExitSignals(signals int) {
 	lpbotShadowExitSignals.Set(float64(signals))
+}
+
+// RecordShadowLedgerTotals records cumulative ledger totals for shadow fee/IL/net.
+func RecordShadowLedgerTotals(feeUSD, ilUSD, netPnLUSD float64) {
+	lpbotShadowLedgerFeeUSD.Set(feeUSD)
+	lpbotShadowLedgerILUSD.Set(ilUSD)
+	lpbotShadowLedgerNetPnLUSD.Set(netPnLUSD)
 }
 
 // SetPositionStatus sets the position status gauge (1=open, 0=closed).

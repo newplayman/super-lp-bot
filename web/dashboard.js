@@ -61,6 +61,8 @@
         const health = data.health || {};
         const counts = data.counts || {};
         const markSeries = data.mark_series || [];
+        const ledgerSeries = data.ledger_series || [];
+        const ledgerSummary = data.ledger_summary || [];
         const currentLive = data.live_readiness || {};
         const canaryLive = data.canary_readiness || {};
         const live = canaryLive.build_mode ? canaryLive : currentLive;
@@ -110,7 +112,7 @@
         renderAudit(data);
         renderExecution(data);
         renderLogs(data, live);
-        updateCharts(data, marks, markSeries);
+        updateCharts(data, marks, markSeries, ledgerSeries, ledgerSummary);
     }
 
     function setHeaderStatus(data, healthPct) {
@@ -322,19 +324,24 @@
         box.innerHTML = logs.map(([level, module, msg]) => getLogLineHtml({ time: new Date().toLocaleTimeString(), level, module, msg })).join('');
     }
 
-    function updateCharts(data, marks, markSeries) {
+    function updateCharts(data, marks, markSeries, ledgerSeries, ledgerSummary) {
         const tiers = groupSum(marks, 'tier', 'valuation_usd');
         charts.tier && charts.tier.setOption(getPieOption('资金分布 (Tier)', Object.entries(tiers).map(([name, value]) => ({ name: name || 'unknown', value }))));
         charts.chain && charts.chain.setOption(getPieOption('资金分布 (链)', [{ name: 'Base', value: sum(marks, 'valuation_usd') || 1 }]));
 
-        const pnlValues = markSeries.map(p => Number(num(p.net_pnl_usd).toFixed(4)));
-        const labels = markSeries.map(p => new Date(num(p.mark_time) * 1000).toLocaleTimeString());
+        const pnlSeries = ledgerSeries.length ? ledgerSeries : markSeries;
+        const pnlValues = pnlSeries.map(p => Number(num(p.net_pnl_usd).toFixed(4)));
+        const labels = pnlSeries.map(p => new Date(num((p.block_time || p.mark_time)) * 1000).toLocaleTimeString());
         charts.cumulativePnl && charts.cumulativePnl.setOption({ xAxis: { data: labels }, series: [{ data: pnlValues }] });
+        const summaryByKind = ledgerSummary.reduce((out, item) => {
+            out[item.kind] = num(item.amount);
+            return out;
+        }, {});
         charts.revenueBreakdown && charts.revenueBreakdown.setOption({
-            xAxis: { data: marks.map(m => short(m.position_id)) },
+            xAxis: { data: ['24h ledger'] },
             series: [
-                { name: 'Fee', type: 'bar', stack: 'total', itemStyle: { color: '#10b981' }, data: marks.map(m => num(m.fee_usd)) },
-                { name: 'IL', type: 'bar', stack: 'total', itemStyle: { color: '#ef4444' }, data: marks.map(m => num(m.il_usd)) }
+                { name: 'Fee', type: 'bar', stack: 'total', itemStyle: { color: '#10b981' }, data: [summaryByKind.fee || 0] },
+                { name: 'IL', type: 'bar', stack: 'total', itemStyle: { color: '#ef4444' }, data: [summaryByKind.il || 0] }
             ]
         });
 

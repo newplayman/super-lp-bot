@@ -52,6 +52,8 @@ type dashboardSnapshot struct {
 	PositionMarks   []dashboardPositionMark    `json:"position_marks"`
 	ExitPreflights  []dashboardExitPreflight   `json:"exit_preflights"`
 	MarkSeries      []dashboardMarkPoint       `json:"mark_series"`
+	LedgerSummary   []dashboardLedgerBucket    `json:"ledger_summary"`
+	LedgerSeries    []dashboardLedgerPoint     `json:"ledger_series"`
 	ExitDecisions   []dashboardExitDecision    `json:"exit_decisions"`
 	ExitActions     []dashboardExitAction      `json:"exit_actions"`
 	RecentScores    []dashboardScore           `json:"recent_scores"`
@@ -270,6 +272,18 @@ type dashboardMarkPoint struct {
 	NetPnLUSD    string `json:"net_pnl_usd"`
 }
 
+type dashboardLedgerBucket struct {
+	Kind   string `json:"kind"`
+	Amount string `json:"amount"`
+}
+
+type dashboardLedgerPoint struct {
+	BlockTime int64  `json:"block_time"`
+	FeeUSD    string `json:"fee_usd"`
+	ILUSD     string `json:"il_usd"`
+	NetPnLUSD string `json:"net_pnl_usd"`
+}
+
 type dashboardExitDecision struct {
 	DecisionTime  int64  `json:"decision_time"`
 	PositionID    string `json:"position_id"`
@@ -472,6 +486,18 @@ func (app *App) dashboardSnapshot(ctx context.Context) (dashboardSnapshot, error
 		return snapshot, err
 	}
 	snapshot.MarkSeries = markSeries
+
+	ledgerSummary, err := queryDashboardLedgerSummary(ctx, db)
+	if err != nil {
+		return snapshot, err
+	}
+	snapshot.LedgerSummary = ledgerSummary
+
+	ledgerSeries, err := queryDashboardLedgerSeries(ctx, db)
+	if err != nil {
+		return snapshot, err
+	}
+	snapshot.LedgerSeries = ledgerSeries
 
 	exitDecisions, err := queryDashboardExitDecisions(ctx, db)
 	if err != nil {
@@ -1211,6 +1237,67 @@ func queryDashboardMarkSeries(ctx context.Context, db *sql.DB) ([]dashboardMarkP
 	sort.Slice(points, func(i, j int) bool {
 		return points[i].MarkTime < points[j].MarkTime
 	})
+	return points, rows.Err()
+}
+
+func queryDashboardLedgerSummary(ctx context.Context, db *sql.DB) ([]dashboardLedgerBucket, error) {
+	rows, err := db.QueryContext(ctx, `
+		WITH since AS (
+			SELECT EXTRACT(EPOCH FROM NOW() - INTERVAL '24 hours')::BIGINT AS ts
+		)
+		SELECT kind, COALESCE(SUM(amount::numeric), 0)::text
+		FROM pnl_ledger, since
+		WHERE block_time >= since.ts
+		GROUP BY kind
+		ORDER BY kind
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("query dashboard ledger summary: %w", err)
+	}
+	defer rows.Close()
+
+	var buckets []dashboardLedgerBucket
+	for rows.Next() {
+		var item dashboardLedgerBucket
+		if err := rows.Scan(&item.Kind, &item.Amount); err != nil {
+			return nil, fmt.Errorf("scan dashboard ledger summary: %w", err)
+		}
+		buckets = append(buckets, item)
+	}
+	return buckets, rows.Err()
+}
+
+func queryDashboardLedgerSeries(ctx context.Context, db *sql.DB) ([]dashboardLedgerPoint, error) {
+	rows, err := db.QueryContext(ctx, `
+		WITH recent_times AS (
+			SELECT DISTINCT block_time
+			FROM pnl_ledger
+			ORDER BY block_time DESC
+			LIMIT 60
+		)
+		SELECT
+			l.block_time,
+			COALESCE(SUM(CASE WHEN l.kind = 'fee' THEN l.amount::numeric ELSE 0 END), 0)::text AS fee_usd,
+			COALESCE(SUM(CASE WHEN l.kind = 'il' THEN l.amount::numeric ELSE 0 END), 0)::text AS il_usd,
+			COALESCE(SUM(l.amount::numeric), 0)::text AS net_pnl_usd
+		FROM pnl_ledger l
+		JOIN recent_times r ON r.block_time = l.block_time
+		GROUP BY l.block_time
+		ORDER BY l.block_time ASC
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("query dashboard ledger series: %w", err)
+	}
+	defer rows.Close()
+
+	var points []dashboardLedgerPoint
+	for rows.Next() {
+		var point dashboardLedgerPoint
+		if err := rows.Scan(&point.BlockTime, &point.FeeUSD, &point.ILUSD, &point.NetPnLUSD); err != nil {
+			return nil, fmt.Errorf("scan dashboard ledger point: %w", err)
+		}
+		points = append(points, point)
+	}
 	return points, rows.Err()
 }
 
