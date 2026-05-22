@@ -117,6 +117,7 @@ func (s *defaultScanner) ScanOnce(ctx context.Context) ([]ScoredPool, error) {
 			Protocol:  discovery.Protocol,
 			Token0:    discovery.Token0,
 			Token1:    discovery.Token1,
+			FeeBPS:    discovery.FeeBPS,
 			TVLUSD:    discovery.TVLUSD,
 			Vol24h:    discovery.Vol24h,
 			UpdatedAt: discovery.UpdatedAt.Unix(),
