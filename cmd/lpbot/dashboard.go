@@ -454,7 +454,15 @@ func (app *App) dashboardSnapshot(ctx context.Context) (dashboardSnapshot, error
 		return snapshot, err
 	}
 	snapshot.PositionMarks = positionMarks
-	snapshot.ExitPreflights = buildDashboardExitPreflights(positionMarks)
+	exitPreflights, err := queryDashboardExitPreflights(ctx, db)
+	if err != nil {
+		snapshot.Warnings = append(snapshot.Warnings, fmt.Sprintf("dashboard exit preflights unavailable: %v", err))
+		exitPreflights = buildDashboardExitPreflights(positionMarks)
+	}
+	if len(exitPreflights) == 0 {
+		exitPreflights = buildDashboardExitPreflights(positionMarks)
+	}
+	snapshot.ExitPreflights = exitPreflights
 
 	markSeries, err := queryDashboardMarkSeries(ctx, db)
 	if err != nil {
@@ -1031,6 +1039,68 @@ func buildDashboardExitPreflights(marks []dashboardPositionMark) []dashboardExit
 		})
 	}
 	return preflights
+}
+
+func queryDashboardExitPreflights(ctx context.Context, db *sql.DB) ([]dashboardExitPreflight, error) {
+	rows, err := db.QueryContext(ctx, `
+		SELECT
+			COALESCE(p.id, '') AS position_id,
+			e.token_id,
+			e.pool_id,
+			'exit_preflight_db' AS source,
+			e.principal_usd,
+			e.fee_usd,
+			e.total_usd,
+			COALESCE(m.il_usd, '0') AS il_usd,
+			(e.total_usd::numeric - COALESCE(p.amount_usd::numeric, 0))::text AS net_pnl_usd,
+			e.decrease_gas,
+			e.collect_gas,
+			e.broadcast_enabled,
+			('./bin/lpbot-live --config=configs/config.canary.toml --canary-exit-preflight --token-id=' || e.token_id) AS command,
+			e.checked_at,
+			e.status
+		FROM canary_exit_preflights e
+		LEFT JOIN positions p ON p.token_id = e.token_id
+		LEFT JOIN LATERAL (
+			SELECT il_usd
+			FROM shadow_position_marks
+			WHERE position_id = p.id
+			ORDER BY mark_time DESC, id DESC
+			LIMIT 1
+		) m ON TRUE
+		ORDER BY e.checked_at DESC
+		LIMIT 20
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("query dashboard exit preflights: %w", err)
+	}
+	defer rows.Close()
+
+	preflights := make([]dashboardExitPreflight, 0)
+	for rows.Next() {
+		var item dashboardExitPreflight
+		if err := rows.Scan(
+			&item.PositionID,
+			&item.TokenID,
+			&item.PoolID,
+			&item.Source,
+			&item.PrincipalUSD,
+			&item.FeeUSD,
+			&item.TotalUSD,
+			&item.ILUSD,
+			&item.NetPnLUSD,
+			&item.DecreaseGas,
+			&item.CollectGas,
+			&item.BroadcastEnabled,
+			&item.Command,
+			&item.UpdatedAt,
+			&item.Status,
+		); err != nil {
+			return nil, fmt.Errorf("scan dashboard exit preflight: %w", err)
+		}
+		preflights = append(preflights, item)
+	}
+	return preflights, rows.Err()
 }
 
 func queryDashboardExitDecisions(ctx context.Context, db *sql.DB) ([]dashboardExitDecision, error) {

@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"math/big"
 	"net/http"
@@ -14,6 +15,7 @@ import (
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
+	_ "github.com/lib/pq"
 	"github.com/lpbot/lpbot/internal/adapters/rpc"
 	"github.com/lpbot/lpbot/internal/domain"
 	"github.com/lpbot/lpbot/internal/platform/config"
@@ -87,6 +89,9 @@ func runCanaryExitPreflight(ctx context.Context, cfg *config.Config, tokenID str
 		return err
 	}
 	printCanaryExitPreflightReport(report)
+	if err := persistCanaryExitPreflight(ctx, cfg, report, false, "preflight"); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -140,6 +145,9 @@ func runCanaryExit(ctx context.Context, cfg *config.Config, tokenID string) erro
 		return err
 	}
 	printCanaryExitPreflightReport(report)
+	if err := persistCanaryExitPreflight(ctx, cfg, report, true, "preflight_before_exit"); err != nil {
+		return err
+	}
 
 	app := &App{
 		config: cfg,
@@ -536,4 +544,125 @@ func printCanaryExitPreflightReport(report canaryExitPreflightReport) {
 		report.PrincipalUSD.String(), report.FeeUSD.String(), report.TotalUSD.String())
 	fmt.Printf("canary_exit_gas decrease_liquidity=%d collect_current_fees=%d slippage_bps=%d broadcast=false\n",
 		report.DecreaseGas, report.CollectCurrentFeeGas, canaryExitPreflightSlippageBps)
+}
+
+func persistCanaryExitPreflight(ctx context.Context, cfg *config.Config, report canaryExitPreflightReport, broadcastEnabled bool, status string) error {
+	dsn := strings.TrimSpace(cfg.Store.PostgresDSN)
+	if dsn == "" {
+		return fmt.Errorf("store.postgres_dsn is empty; cannot persist canary exit preflight")
+	}
+	db, err := sql.Open("postgres", dsn)
+	if err != nil {
+		return fmt.Errorf("open postgres for exit preflight: %w", err)
+	}
+	defer db.Close()
+	if err := db.PingContext(ctx); err != nil {
+		return fmt.Errorf("ping postgres for exit preflight: %w", err)
+	}
+	if err := ensureCanaryExitPreflightsTable(ctx, db); err != nil {
+		return err
+	}
+	now := time.Now().Unix()
+	_, err = db.ExecContext(ctx, `
+		INSERT INTO canary_exit_preflights (
+			token_id, owner, wallet, pool_id, tick_lower, tick_upper, liquidity,
+			token0, token1, principal0_raw, principal1_raw, fee0_raw, fee1_raw,
+			principal_usd, fee_usd, total_usd, decrease_gas, collect_gas,
+			slippage_bps, broadcast_enabled, status, checked_at, updated_at
+		) VALUES (
+			$1, $2, $3, $4, $5, $6, $7,
+			$8, $9, $10, $11, $12, $13,
+			$14, $15, $16, $17, $18,
+			$19, $20, $21, $22, $23
+		)
+		ON CONFLICT (token_id) DO UPDATE SET
+			owner = excluded.owner,
+			wallet = excluded.wallet,
+			pool_id = excluded.pool_id,
+			tick_lower = excluded.tick_lower,
+			tick_upper = excluded.tick_upper,
+			liquidity = excluded.liquidity,
+			token0 = excluded.token0,
+			token1 = excluded.token1,
+			principal0_raw = excluded.principal0_raw,
+			principal1_raw = excluded.principal1_raw,
+			fee0_raw = excluded.fee0_raw,
+			fee1_raw = excluded.fee1_raw,
+			principal_usd = excluded.principal_usd,
+			fee_usd = excluded.fee_usd,
+			total_usd = excluded.total_usd,
+			decrease_gas = excluded.decrease_gas,
+			collect_gas = excluded.collect_gas,
+			slippage_bps = excluded.slippage_bps,
+			broadcast_enabled = excluded.broadcast_enabled,
+			status = excluded.status,
+			checked_at = excluded.checked_at,
+			updated_at = excluded.updated_at
+	`,
+		report.TokenID,
+		report.Owner,
+		report.Wallet,
+		report.PoolID,
+		report.TickLower,
+		report.TickUpper,
+		report.Liquidity,
+		report.Token0.String(),
+		report.Token1.String(),
+		report.Principal0Raw.String(),
+		report.Principal1Raw.String(),
+		report.Fee0Raw.String(),
+		report.Fee1Raw.String(),
+		report.PrincipalUSD.String(),
+		report.FeeUSD.String(),
+		report.TotalUSD.String(),
+		report.DecreaseGas,
+		report.CollectCurrentFeeGas,
+		canaryExitPreflightSlippageBps,
+		broadcastEnabled,
+		status,
+		now,
+		now,
+	)
+	if err != nil {
+		return fmt.Errorf("upsert canary exit preflight: %w", err)
+	}
+	fmt.Printf("canary_exit_preflight_persisted token_id=%s status=%s broadcast_enabled=%t checked_at=%d\n",
+		report.TokenID, status, broadcastEnabled, now)
+	return nil
+}
+
+func ensureCanaryExitPreflightsTable(ctx context.Context, db *sql.DB) error {
+	_, err := db.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS canary_exit_preflights (
+			token_id TEXT PRIMARY KEY,
+			owner TEXT NOT NULL DEFAULT '',
+			wallet TEXT NOT NULL DEFAULT '',
+			pool_id TEXT NOT NULL DEFAULT '',
+			tick_lower BIGINT NOT NULL DEFAULT 0,
+			tick_upper BIGINT NOT NULL DEFAULT 0,
+			liquidity TEXT NOT NULL DEFAULT '0',
+			token0 TEXT NOT NULL DEFAULT '',
+			token1 TEXT NOT NULL DEFAULT '',
+			principal0_raw TEXT NOT NULL DEFAULT '0',
+			principal1_raw TEXT NOT NULL DEFAULT '0',
+			fee0_raw TEXT NOT NULL DEFAULT '0',
+			fee1_raw TEXT NOT NULL DEFAULT '0',
+			principal_usd TEXT NOT NULL DEFAULT '0',
+			fee_usd TEXT NOT NULL DEFAULT '0',
+			total_usd TEXT NOT NULL DEFAULT '0',
+			decrease_gas BIGINT NOT NULL DEFAULT 0,
+			collect_gas BIGINT NOT NULL DEFAULT 0,
+			slippage_bps BIGINT NOT NULL DEFAULT 0,
+			broadcast_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+			status TEXT NOT NULL DEFAULT '',
+			checked_at BIGINT NOT NULL DEFAULT 0,
+			updated_at BIGINT NOT NULL DEFAULT 0
+		);
+		CREATE INDEX IF NOT EXISTS idx_canary_exit_preflights_checked_at
+			ON canary_exit_preflights(checked_at DESC);
+	`)
+	if err != nil {
+		return fmt.Errorf("ensure canary_exit_preflights table: %w", err)
+	}
+	return nil
 }
