@@ -46,8 +46,8 @@ kill_switch = false
 wallet_address = "${CANARY_WALLET_ADDRESS}"
 allowed_chains = ["base"]
 allowed_pools = ["0x6c561b446416e1a00e8e93e221854d6ea4171372"]
-max_order_usd = 50
-daily_loss_limit_usd = 100
+max_order_usd = 5
+daily_loss_limit_usd = 10
 
 [risk]
 total_exposure_pct = 30

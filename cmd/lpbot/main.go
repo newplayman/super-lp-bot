@@ -43,6 +43,7 @@ const (
 	Version                  = "0.4.0"
 	shadowCandidateLimit     = 10
 	shadowOpenScoreThreshold = 60.0
+	canaryMaxOrderUSD        = 5.0
 )
 
 var (
@@ -201,6 +202,9 @@ func (g *liveSafetyGate) blockers() []string {
 	if g.maxOrderUSD <= 0 {
 		blockers = append(blockers, "live.max_order_usd must be > 0")
 	}
+	if g.canary && g.maxOrderUSD > canaryMaxOrderUSD {
+		blockers = append(blockers, fmt.Sprintf("canary max_order_usd %.2f exceeds hard cap %.2f", g.maxOrderUSD, canaryMaxOrderUSD))
+	}
 	if g.dailyLossLimitUSD <= 0 {
 		blockers = append(blockers, "live.daily_loss_limit_usd must be > 0")
 	}
@@ -300,8 +304,11 @@ func (g *liveSafetyGate) checkOpen(pool domain.Pool, amountUSD domain.Decimal) e
 	}
 
 	maxOrder := domain.NewDecimalFromFloat(g.maxOrderUSD)
+	if g.canary && g.maxOrderUSD > canaryMaxOrderUSD {
+		maxOrder = domain.NewDecimalFromFloat(canaryMaxOrderUSD)
+	}
 	if amountUSD.GreaterThan(maxOrder) {
-		return fmt.Errorf("live gate blocked: amount %s exceeds max_order_usd %.2f", amountUSD.String(), g.maxOrderUSD)
+		return fmt.Errorf("live gate blocked: amount %s exceeds max_order_usd %s", amountUSD.String(), maxOrder.String())
 	}
 
 	return nil
