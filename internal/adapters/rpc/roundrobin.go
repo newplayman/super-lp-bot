@@ -163,6 +163,7 @@ func NewRoundRobinProvider(cfg Config) (*RoundRobinProvider, error) {
 		p.httpClient,
 		p.healthTimeout,
 	)
+	ranked = p.prioritizeAvailableEndpoints(ranked)
 	p.endpoints = ranked
 	log.Printf("[rpc:%s] initial rpc order: %v", p.chainID, p.endpoints)
 	if healthSummary != "" {
@@ -197,6 +198,7 @@ func (p *RoundRobinProvider) healthLoop() {
 			if len(ranked) == 0 {
 				continue
 			}
+			ranked = p.prioritizeAvailableEndpoints(ranked)
 
 			p.mu.Lock()
 			prevPrimary := ""
@@ -366,7 +368,11 @@ func (p *RoundRobinProvider) markEndpointCooldown(endpoint string) {
 }
 
 func (p *RoundRobinProvider) markEndpointRateLimited(endpoint string) {
-	p.markEndpointCooldownUntil(endpoint, time.Now().Add(endpointRateLimitCooldown))
+	until := time.Now().Add(endpointRateLimitCooldown)
+	p.markEndpointCooldownUntil(endpoint, until)
+	if endpoint != "" {
+		log.Printf("[rpc:%s] rate limited endpoint cooling down until %s: %s", p.chainID, until.Format(time.RFC3339), endpoint)
+	}
 }
 
 func (p *RoundRobinProvider) markCurrentEndpointRateLimited() {
@@ -402,6 +408,28 @@ func (p *RoundRobinProvider) isEndpointCooling(endpoint string) bool {
 		return false
 	}
 	return true
+}
+
+func (p *RoundRobinProvider) prioritizeAvailableEndpoints(endpoints []string) []string {
+	if len(endpoints) <= 1 {
+		return endpoints
+	}
+
+	available := make([]string, 0, len(endpoints))
+	cooling := make([]string, 0, len(endpoints))
+	for _, endpoint := range endpoints {
+		if p.isEndpointCooling(endpoint) {
+			cooling = append(cooling, endpoint)
+			continue
+		}
+		available = append(available, endpoint)
+	}
+
+	if len(available) == 0 || len(cooling) == 0 {
+		return endpoints
+	}
+
+	return append(available, cooling...)
 }
 
 func isRateLimitError(err error) bool {
