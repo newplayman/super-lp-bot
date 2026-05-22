@@ -589,6 +589,21 @@
                 </div>
             </div>
 
+            <!-- 只读退出预估：基于链上 NFT mark，不从前端广播 -->
+            <div class="panel-card-group triple-col-span">
+                <div class="panel-card col-span-3">
+                    <div class="panel-header">
+                        <div class="panel-title">
+                            <i data-lucide="shield-check"></i> Canary 退出预估 (只读)
+                            <span class="badge-title-header">前端不广播交易 | 真实退出仅允许 CLI 显式确认</span>
+                        </div>
+                    </div>
+                    <div id="exit-preflight-list" class="panel-body exit-preflight-grid">
+                        <!-- 动态追加 -->
+                    </div>
+                </div>
+            </div>
+
             <!-- 数据表格三与大图表：Rebalance柱状图 & 策略收益对比折线图 & 执行流水表格 -->
             <div class="panel-card-group triple-col-span">
                 <!-- Rebalance 时间线 (7天) -->

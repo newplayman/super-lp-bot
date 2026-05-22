@@ -106,6 +106,7 @@
         renderLiveReadiness(data, live, health);
         renderScanner(decisions);
         renderPositions(marks);
+        renderExitPreflights(data.exit_preflights || []);
         renderAudit(data);
         renderExecution(data);
         renderLogs(data, live);
@@ -229,6 +230,39 @@
                     <td><a class="action-btn-mini" target="_blank" rel="noreferrer" href="${dexscreenerURL(pos.pool_id)}">查看池子</a></td>
                 </tr>`;
         }).join('');
+    }
+
+    function renderExitPreflights(preflights) {
+        const list = document.getElementById('exit-preflight-list');
+        if (!list) return;
+        if (!preflights.length) {
+            list.innerHTML = '<div class="exit-preflight-empty">暂无真实 NFT 退出预估。等待 position mark 写入 token_id 与 onchain_value。</div>';
+            return;
+        }
+        list.innerHTML = preflights.map(item => `
+            <div class="exit-preflight-card">
+                <div class="exit-preflight-top">
+                    <div>
+                        <div class="exit-preflight-title">NFT #${escapeHTML(item.token_id || '-')}</div>
+                        <div class="muted-mini">${poolLink(item.pool_id)}</div>
+                    </div>
+                    <span class="${item.broadcast_enabled ? 'badge-danger' : 'badge-success-glow'}">${item.broadcast_enabled ? 'broadcast enabled' : 'broadcast=false'}</span>
+                </div>
+                <div class="exit-preflight-metrics">
+                    <div><span>可退出总值</span><strong>$${money(item.total_usd)}</strong></div>
+                    <div><span>本金估值</span><strong>$${money(item.principal_usd)}</strong></div>
+                    <div><span>未领取手续费</span><strong class="green-text">${signedMoney(item.fee_usd)}</strong></div>
+                    <div><span>IL</span><strong class="red-text">${signedMoney(item.il_usd)}</strong></div>
+                    <div><span>净 PnL</span><strong class="${num(item.net_pnl_usd) >= 0 ? 'green-text' : 'red-text'}">${signedMoney(item.net_pnl_usd)}</strong></div>
+                    <div><span>Gas</span><strong>${item.decrease_gas || '-'} / ${item.collect_gas || '-'}</strong></div>
+                </div>
+                <div class="exit-preflight-footer">
+                    <span>${escapeHTML(item.status || 'mark_estimate')}</span>
+                    <code>${escapeHTML(item.command || '')}</code>
+                </div>
+                <div class="muted-mini">source: ${escapeHTML(item.source || '-')} / updated ${timeText(item.updated_at)}</div>
+            </div>
+        `).join('');
     }
 
     function renderAudit(data) {

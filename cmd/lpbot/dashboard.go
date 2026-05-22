@@ -50,6 +50,7 @@ type dashboardSnapshot struct {
 	ClosedPositions []dashboardPosition        `json:"closed_positions"`
 	Transactions    []dashboardTransaction     `json:"transactions"`
 	PositionMarks   []dashboardPositionMark    `json:"position_marks"`
+	ExitPreflights  []dashboardExitPreflight   `json:"exit_preflights"`
 	MarkSeries      []dashboardMarkPoint       `json:"mark_series"`
 	ExitDecisions   []dashboardExitDecision    `json:"exit_decisions"`
 	ExitActions     []dashboardExitAction      `json:"exit_actions"`
@@ -240,6 +241,24 @@ type dashboardPositionMark struct {
 	CurrentTVLUSD  string `json:"current_tvl_usd"`
 	CurrentVol24h  string `json:"current_vol24h_usd"`
 	PriceChangePct string `json:"price_change_pct"`
+}
+
+type dashboardExitPreflight struct {
+	PositionID       string `json:"position_id"`
+	TokenID          string `json:"token_id"`
+	PoolID           string `json:"pool_id"`
+	Source           string `json:"source"`
+	PrincipalUSD     string `json:"principal_usd"`
+	FeeUSD           string `json:"fee_usd"`
+	TotalUSD         string `json:"total_usd"`
+	ILUSD            string `json:"il_usd"`
+	NetPnLUSD        string `json:"net_pnl_usd"`
+	DecreaseGas      uint64 `json:"decrease_gas"`
+	CollectGas       uint64 `json:"collect_gas"`
+	BroadcastEnabled bool   `json:"broadcast_enabled"`
+	Command          string `json:"command"`
+	UpdatedAt        int64  `json:"updated_at"`
+	Status           string `json:"status"`
 }
 
 type dashboardMarkPoint struct {
@@ -435,6 +454,7 @@ func (app *App) dashboardSnapshot(ctx context.Context) (dashboardSnapshot, error
 		return snapshot, err
 	}
 	snapshot.PositionMarks = positionMarks
+	snapshot.ExitPreflights = buildDashboardExitPreflights(positionMarks)
 
 	markSeries, err := queryDashboardMarkSeries(ctx, db)
 	if err != nil {
@@ -977,6 +997,40 @@ func queryDashboardPositionMarks(ctx context.Context, db *sql.DB) ([]dashboardPo
 		marks = append(marks, mark)
 	}
 	return marks, rows.Err()
+}
+
+func buildDashboardExitPreflights(marks []dashboardPositionMark) []dashboardExitPreflight {
+	preflights := make([]dashboardExitPreflight, 0)
+	for _, mark := range marks {
+		if strings.TrimSpace(mark.TokenID) == "" {
+			continue
+		}
+		feeUSD := domain.MustDecimal(mark.FeeUSD)
+		totalUSD := domain.MustDecimal(mark.ValuationUSD)
+		principalUSD := totalUSD.Sub(feeUSD)
+		status := "mark_estimate"
+		if strings.Contains(mark.Source, "onchain_value") && strings.Contains(mark.Source, "onchain_fees") {
+			status = "ready_preflight_cli"
+		}
+		preflights = append(preflights, dashboardExitPreflight{
+			PositionID:       mark.PositionID,
+			TokenID:          mark.TokenID,
+			PoolID:           mark.PoolID,
+			Source:           mark.Source,
+			PrincipalUSD:     principalUSD.String(),
+			FeeUSD:           mark.FeeUSD,
+			TotalUSD:         mark.ValuationUSD,
+			ILUSD:            mark.ILUSD,
+			NetPnLUSD:        mark.NetPnLUSD,
+			DecreaseGas:      0,
+			CollectGas:       0,
+			BroadcastEnabled: false,
+			Command:          fmt.Sprintf("./bin/lpbot-live --config=configs/config.canary.toml --canary-exit-preflight --token-id=%s", mark.TokenID),
+			UpdatedAt:        mark.MarkTime,
+			Status:           status,
+		})
+	}
+	return preflights
 }
 
 func queryDashboardExitDecisions(ctx context.Context, db *sql.DB) ([]dashboardExitDecision, error) {
