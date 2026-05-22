@@ -216,9 +216,6 @@ func runSolanaSwapBuildReadiness(ctx context.Context, userPublicKey string, inpu
 	if strings.TrimSpace(built.SwapTransaction) == "" {
 		return fmt.Errorf("jupiter swap build returned empty transaction")
 	}
-	if len(built.SimulationError) > 0 && string(built.SimulationError) != "null" {
-		return fmt.Errorf("jupiter swap build simulation_error=%s", compactJSON(built.SimulationError))
-	}
 
 	fmt.Printf("solana_swap_build_readiness source=jupiter user=%s input=%s output=%s in_amount=%s out_amount=%s slippage_bps=%d price_impact_pct=%s tx_base64_len=%d last_valid_block_height=%d priority_fee_lamports=%d compute_unit_limit=%d lookup_tables=%d\n",
 		shortAddress(userPublicKey),
@@ -237,7 +234,12 @@ func runSolanaSwapBuildReadiness(ctx context.Context, userPublicKey string, inpu
 	if len(built.PrioritizationType) > 0 {
 		fmt.Printf("solana_swap_build_priority=%s\n", compactJSON(built.PrioritizationType))
 	}
-	fmt.Println("solana_swap_build_execution=unsigned not_signed not_broadcast")
+	if len(built.SimulationError) > 0 && string(built.SimulationError) != "null" {
+		fmt.Printf("solana_swap_build_simulation=blocked error=%s\n", compactJSON(built.SimulationError))
+		fmt.Println("solana_swap_build_execution=unsigned not_signed not_broadcast ready=false")
+		return nil
+	}
+	fmt.Println("solana_swap_build_execution=unsigned not_signed not_broadcast ready=true")
 	return nil
 }
 
