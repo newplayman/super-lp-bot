@@ -1016,12 +1016,11 @@ func queryDashboardClosedPositions(ctx context.Context, db *sql.DB) ([]dashboard
 			COALESCE(e.action, '')
 		FROM positions p
 		LEFT JOIN (
-			SELECT DISTINCT ON (token_id)
-				token_id, hold_minutes, net_pnl_usd
-			FROM position_marks
-			WHERE COALESCE(token_id, '') <> ''
-			ORDER BY token_id, observed_at DESC
-		) m ON m.token_id = p.token_id
+			SELECT DISTINCT ON (position_id)
+				position_id, hold_minutes, net_pnl_usd
+			FROM shadow_position_marks
+			ORDER BY position_id, mark_time DESC
+		) m ON m.position_id = p.id
 		LEFT JOIN (
 			SELECT DISTINCT ON (position_id)
 				position_id, reason, action
@@ -1199,12 +1198,11 @@ func queryDashboardBaseCanary(ctx context.Context, db *sql.DB) (dashboardBaseCan
 			COALESCE(ce.tx_hash, '')
 		FROM positions p
 		LEFT JOIN (
-			SELECT DISTINCT ON (token_id)
-				token_id, hold_minutes, net_pnl_usd, fee_usd, il_usd
-			FROM position_marks
-			WHERE COALESCE(token_id, '') <> ''
-			ORDER BY token_id, observed_at DESC
-		) pm ON pm.token_id = p.token_id
+			SELECT DISTINCT ON (position_id)
+				position_id, hold_minutes, net_pnl_usd, fee_usd, il_usd
+			FROM shadow_position_marks
+			ORDER BY position_id, mark_time DESC
+		) pm ON pm.position_id = p.id
 		LEFT JOIN (
 			SELECT tx_hash
 			FROM transactions
