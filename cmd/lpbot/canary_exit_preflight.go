@@ -267,8 +267,8 @@ func estimateCanaryDecreaseGas(ctx context.Context, provider *rpc.RoundRobinProv
 	if !ok || token.Sign() <= 0 {
 		return 0, fmt.Errorf("invalid token id %q", tokenID)
 	}
-	amount0Min := calculateBpsMin(amount0Raw, canaryExitPreflightSlippageBps)
-	amount1Min := calculateBpsMin(amount1Raw, canaryExitPreflightSlippageBps)
+	amount0Min := big.NewInt(0)
+	amount1Min := big.NewInt(0)
 	data, err := npmabi.NPMABI.Pack("decreaseLiquidity", token, liquidity, amount0Min, amount1Min, big.NewInt(time.Now().Add(10*time.Minute).Unix()))
 	if err != nil {
 		return 0, err
