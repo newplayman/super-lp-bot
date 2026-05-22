@@ -196,11 +196,11 @@ func buildCanaryExitPreflightReport(
 
 	decreaseGas, err := estimateCanaryDecreaseGas(ctx, provider, cfg, wallet, tokenID, state.Liquidity, raw0, raw1)
 	if err != nil {
-		return canaryExitPreflightReport{}, err
+		return canaryExitPreflightReport{}, fmt.Errorf("estimate decreaseLiquidity gas: %w", err)
 	}
 	collectGas, err := estimateCanaryCollectGas(ctx, provider, cfg, wallet, tokenID)
 	if err != nil {
-		return canaryExitPreflightReport{}, err
+		return canaryExitPreflightReport{}, fmt.Errorf("estimate collect gas: %w", err)
 	}
 
 	return canaryExitPreflightReport{
