@@ -810,6 +810,7 @@ func (app *App) evaluateStrategies(ctx context.Context) {
 	}
 
 	candidates := selectShadowCandidatesByScore(scoredPools, shadowCandidateLimit)
+	candidates = app.extendShadowCandidatesWithActivePositions(ctx, scoredPools, candidates)
 
 	tickTime := time.Now().Unix()
 	candidateRanks := make(map[string]int, len(candidates))
@@ -922,6 +923,56 @@ func selectShadowCandidatesByScore(scoredPools []scanner.ScoredPool, limit int) 
 		candidates = append(candidates, ranked[i].Pool)
 	}
 	return candidates
+}
+
+func (app *App) extendShadowCandidatesWithActivePositions(ctx context.Context, scoredPools []scanner.ScoredPool, candidates []domain.Pool) []domain.Pool {
+	if app == nil || app.store == nil || app.store.PositionRepo() == nil || len(scoredPools) == 0 {
+		return candidates
+	}
+
+	scoredByRef := make(map[string]domain.Pool, len(scoredPools))
+	chains := make(map[domain.ChainID]struct{})
+	for _, scored := range scoredPools {
+		ref := shadowCandidatePoolRef(scored.Pool.Chain, scored.Pool.ID)
+		scoredByRef[ref] = scored.Pool
+		chains[scored.Pool.Chain] = struct{}{}
+	}
+
+	candidateSet := make(map[string]struct{}, len(candidates))
+	for _, pool := range candidates {
+		candidateSet[shadowCandidatePoolRef(pool.Chain, pool.ID)] = struct{}{}
+	}
+
+	for chain := range chains {
+		for _, status := range []domain.PositionStatus{domain.StatusOpening, domain.StatusOpen} {
+			positions, err := app.store.PositionRepo().FindByChainAndStatus(ctx, chain, status)
+			if err != nil {
+				app.logger.Warn("shadow active position candidate lookup failed",
+					zap.String("chain", string(chain)),
+					zap.String("status", string(status)),
+					zap.Error(err))
+				continue
+			}
+			for _, pos := range positions {
+				ref := shadowCandidatePoolRef(pos.Chain, pos.PoolID)
+				if _, exists := candidateSet[ref]; exists {
+					continue
+				}
+				pool, ok := scoredByRef[ref]
+				if !ok {
+					continue
+				}
+				candidates = append(candidates, pool)
+				candidateSet[ref] = struct{}{}
+			}
+		}
+	}
+
+	return candidates
+}
+
+func shadowCandidatePoolRef(chain domain.ChainID, poolID string) string {
+	return strings.ToLower(strings.TrimSpace(string(chain))) + "|" + strings.ToLower(strings.TrimSpace(poolID))
 }
 
 func minInt(a, b int) int {
