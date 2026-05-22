@@ -68,10 +68,21 @@
         const live = canaryLive.build_mode ? canaryLive : currentLive;
 
         const totalValue = sum(marks, 'valuation_usd');
-        const totalFees = sum(marks, 'fee_usd');
-        const totalIL = sum(marks, 'il_usd');
-        const totalNet = sum(marks, 'net_pnl_usd');
-        const activeAmount = sum(marks, 'amount_usd');
+		const totalFees = sum(marks, 'fee_usd');
+		const totalIL = sum(marks, 'il_usd');
+		const totalNet = sum(marks, 'net_pnl_usd');
+		const summaryByKind = ledgerSummary.reduce((out, item) => {
+			out[item.kind] = num(item.amount);
+			return out;
+		}, {});
+		const ledgerLatest = ledgerSeries.length ? ledgerSeries[ledgerSeries.length - 1] : {};
+		const ledgerFeeTotal = ledgerSeries.length ? num(ledgerLatest.fee_usd) : totalFees;
+		const ledgerILTotal = ledgerSeries.length ? num(ledgerLatest.il_usd) : totalIL;
+		const ledgerNetTotal = ledgerSeries.length ? num(ledgerLatest.net_pnl_usd) : totalNet;
+		const ledgerFee24h = summaryByKind.fee || 0;
+		const ledgerIL24h = summaryByKind.il || 0;
+		const ledgerNet24h = ledgerFee24h + ledgerIL24h;
+		const activeAmount = sum(marks, 'amount_usd');
         const worstILPct = marks.reduce((max, m) => Math.max(max, Math.abs(num(m.il_usd)) / Math.max(num(m.amount_usd), 1) * 100), 0);
         const selected = num(latestAudit.selected);
         const scanned = num(latestAudit.scanned);
@@ -84,14 +95,14 @@
         setText('val-aum', money(totalValue));
         setText('val-deployed', money(activeAmount));
         setText('val-available', money(0));
-        setText('val-pnl-today', signedMoney(totalNet));
-        setText('val-pnl-7d', signedMoney(totalNet));
-        setText('val-pnl-total', signedMoney(totalNet));
-        setText('val-fee', money(totalFees));
-        setText('val-incentives', '0');
-        setText('val-il', money(Math.abs(totalIL)));
-        setText('val-gas', '0');
-        setText('val-net-pnl', signedMoney(totalNet));
+		setText('val-pnl-today', signedMoney(ledgerNet24h));
+		setText('val-pnl-7d', signedMoney(ledgerNetTotal));
+		setText('val-pnl-total', signedMoney(ledgerNetTotal));
+		setText('val-fee', money(ledgerFeeTotal));
+		setText('val-incentives', '0');
+		setText('val-il', money(Math.abs(ledgerILTotal)));
+		setText('val-gas', '0');
+		setText('val-net-pnl', signedMoney(ledgerNetTotal));
 
         setText('metric-bots', canaryLive.build_mode ? '1 shadow + canary plan' : '1 shadow');
         setText('metric-pools', scanned || counts.pools || '-');
@@ -333,12 +344,8 @@
         const pnlValues = pnlSeries.map(p => Number(num(p.net_pnl_usd).toFixed(4)));
         const labels = pnlSeries.map(p => new Date(num((p.block_time || p.mark_time)) * 1000).toLocaleTimeString());
         charts.cumulativePnl && charts.cumulativePnl.setOption({ xAxis: { data: labels }, series: [{ data: pnlValues }] });
-        const summaryByKind = ledgerSummary.reduce((out, item) => {
-            out[item.kind] = num(item.amount);
-            return out;
-        }, {});
-        charts.revenueBreakdown && charts.revenueBreakdown.setOption({
-            xAxis: { data: ['24h ledger'] },
+		charts.revenueBreakdown && charts.revenueBreakdown.setOption({
+			xAxis: { data: ['24h ledger'] },
             series: [
                 { name: 'Fee', type: 'bar', stack: 'total', itemStyle: { color: '#10b981' }, data: [summaryByKind.fee || 0] },
                 { name: 'IL', type: 'bar', stack: 'total', itemStyle: { color: '#ef4444' }, data: [summaryByKind.il || 0] }

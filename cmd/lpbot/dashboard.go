@@ -1269,21 +1269,31 @@ func queryDashboardLedgerSummary(ctx context.Context, db *sql.DB) ([]dashboardLe
 
 func queryDashboardLedgerSeries(ctx context.Context, db *sql.DB) ([]dashboardLedgerPoint, error) {
 	rows, err := db.QueryContext(ctx, `
-		WITH recent_times AS (
-			SELECT DISTINCT block_time
+		WITH grouped AS (
+			SELECT
+				block_time,
+				COALESCE(SUM(CASE WHEN kind = 'fee' THEN amount::numeric ELSE 0 END), 0) AS fee_delta,
+				COALESCE(SUM(CASE WHEN kind = 'il' THEN amount::numeric ELSE 0 END), 0) AS il_delta,
+				COALESCE(SUM(amount::numeric), 0) AS net_delta
 			FROM pnl_ledger
+			GROUP BY block_time
+		),
+		running AS (
+			SELECT
+				block_time,
+				SUM(fee_delta) OVER (ORDER BY block_time ASC) AS fee_usd,
+				SUM(il_delta) OVER (ORDER BY block_time ASC) AS il_usd,
+				SUM(net_delta) OVER (ORDER BY block_time ASC) AS net_pnl_usd
+			FROM grouped
+		)
+		SELECT block_time, fee_usd::text, il_usd::text, net_pnl_usd::text
+		FROM (
+			SELECT *
+			FROM running
 			ORDER BY block_time DESC
 			LIMIT 60
-		)
-		SELECT
-			l.block_time,
-			COALESCE(SUM(CASE WHEN l.kind = 'fee' THEN l.amount::numeric ELSE 0 END), 0)::text AS fee_usd,
-			COALESCE(SUM(CASE WHEN l.kind = 'il' THEN l.amount::numeric ELSE 0 END), 0)::text AS il_usd,
-			COALESCE(SUM(l.amount::numeric), 0)::text AS net_pnl_usd
-		FROM pnl_ledger l
-		JOIN recent_times r ON r.block_time = l.block_time
-		GROUP BY l.block_time
-		ORDER BY l.block_time ASC
+		) recent
+		ORDER BY block_time ASC
 	`)
 	if err != nil {
 		return nil, fmt.Errorf("query dashboard ledger series: %w", err)
