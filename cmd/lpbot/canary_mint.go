@@ -98,7 +98,7 @@ func runCanaryMint(ctx context.Context, cfg *config.Config) (err error) {
 	if err := checkCanaryPreflightOpen(gate, pool, amountUSD); err != nil {
 		return err
 	}
-	approval, err := state.RequireRecentShadowApproval(ctx, pool.ID, 30*time.Minute)
+	approval, err := state.RequireRecentShadowApproval(ctx, pool.ID, canaryShadowApprovalMaxAge)
 	if err != nil {
 		return err
 	}

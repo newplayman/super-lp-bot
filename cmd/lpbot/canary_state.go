@@ -47,6 +47,8 @@ type canaryStrategyApproval struct {
 	PipelineReason string
 }
 
+const canaryShadowApprovalMaxAge = 3 * time.Hour
+
 func newCanaryEventWriter(ctx context.Context, cfg *config.Config) (*canaryEventWriter, error) {
 	if cfg == nil {
 		return nil, fmt.Errorf("config is nil")
@@ -193,7 +195,7 @@ func (w *canaryEventWriter) RequireRecentShadowApproval(ctx context.Context, poo
 		return canaryStrategyApproval{}, fmt.Errorf("pool id is empty")
 	}
 	if maxAge <= 0 {
-		maxAge = 30 * time.Minute
+		maxAge = canaryShadowApprovalMaxAge
 	}
 
 	var row struct {
@@ -253,7 +255,7 @@ func (w *canaryEventWriter) RequireRecentShadowApproval(ctx context.Context, poo
 	if !row.Selected || !row.IntentOpen || !row.PipelineOK {
 		return approval, fmt.Errorf("canary quality gate blocked: selected=%t intent_open=%t pipeline_ok=%t stage=%s reason=%s", row.Selected, row.IntentOpen, row.PipelineOK, row.PipelineStage, row.PipelineReason)
 	}
-	if row.ChainStage != "chain_state_ok" {
+	if row.ChainStage != "chain_state_ok" && row.ChainStage != "chain_v3_validated" {
 		return approval, fmt.Errorf("canary quality gate blocked: chain_stage=%s", row.ChainStage)
 	}
 	if row.FinalAction != "open_shadow_position" && row.FinalAction != "reuse_shadow_position" {
