@@ -98,6 +98,10 @@ type dashboardBaseCanary struct {
 	Broadcasts      int64  `json:"broadcasts"`
 	Opened          int64  `json:"opened"`
 	Closed          int64  `json:"closed"`
+	TxBroadcasts    int64  `json:"tx_broadcasts"`
+	PrepBroadcasts  int64  `json:"prep_broadcasts"`
+	MintBroadcasts  int64  `json:"mint_broadcasts"`
+	ExitBroadcasts  int64  `json:"exit_broadcasts"`
 	LastPositionID  string `json:"last_position_id"`
 	LastTokenID     string `json:"last_token_id"`
 	LastPoolID      string `json:"last_pool_id"`
@@ -1173,11 +1177,21 @@ func buildDashboardBaseCanary(positions, closedPositions []dashboardPosition, ev
 			summary.Closed++
 		}
 	}
+	summary.Broadcasts = summary.Opened
 	for _, event := range events {
 		if !strings.EqualFold(event.Chain, "base") || strings.TrimSpace(event.TxHash) == "" || !strings.Contains(strings.ToLower(event.Stage), "broadcast") {
 			continue
 		}
-		summary.Broadcasts++
+		summary.TxBroadcasts++
+		stage := strings.ToLower(event.Stage)
+		switch {
+		case strings.Contains(stage, "decrease_broadcast"), strings.Contains(stage, "collect_broadcast"):
+			summary.ExitBroadcasts++
+		case stage == "broadcast":
+			summary.MintBroadcasts++
+		default:
+			summary.PrepBroadcasts++
+		}
 		if summary.LastTxHash == "" {
 			summary.LastTxHash = event.TxHash
 		}
