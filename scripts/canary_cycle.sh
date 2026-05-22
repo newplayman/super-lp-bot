@@ -60,6 +60,10 @@ if [[ -z "$TX_HASH" ]]; then
   mint_output="$(LPBOT_CONFIRM_CANARY_MINT=YES "$BINARY" --config="$CONFIG_PATH" --canary-mint 2>&1)" || {
     status=$?
     printf '%s\n' "$mint_output" >&2
+    if printf '%s\n' "$mint_output" | grep -q "canary quality gate blocked"; then
+      log "stage=mint blocked_by_quality_gate"
+      exit 20
+    fi
     log "stage=mint failed status=${status}"
     exit "$status"
   }

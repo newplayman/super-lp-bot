@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -47,8 +48,21 @@ func runSolanaReadiness(ctx context.Context, cfg *config.Config) error {
 		fmt.Printf("solana_priority_fees=%s\n", compactJSON(fees))
 	}
 
-	from := domain.MustParseAddress("SysvarRent111111111111111111111111111111111")
+	feePayer := strings.TrimSpace(os.Getenv("SOLANA_FEE_PAYER_ADDRESS"))
+	if feePayer == "" {
+		fmt.Println("solana_simulate=skipped reason=missing_fee_payer env=SOLANA_FEE_PAYER_ADDRESS")
+		return nil
+	}
+
+	from, err := domain.ParseAddress(feePayer)
+	if err != nil {
+		return fmt.Errorf("invalid SOLANA_FEE_PAYER_ADDRESS: %w", err)
+	}
+	if from.Chain() != domain.ChainSolana {
+		return fmt.Errorf("SOLANA_FEE_PAYER_ADDRESS is not a solana address")
+	}
 	to := domain.MustParseAddress("So11111111111111111111111111111111111111112")
+	fmt.Printf("solana_fee_payer=%s\n", shortAddress(from.String()))
 	sim := solrpc.New(solrpc.Config{RPCEndpoint: endpoint})
 	result, err := sim.Simulate(ctx, domain.UnsignedTx{
 		ID:    "solana-readiness-simulate",
@@ -61,6 +75,9 @@ func runSolanaReadiness(ctx context.Context, cfg *config.Config) error {
 		return fmt.Errorf("simulateTransaction: %w", err)
 	}
 	fmt.Printf("solana_simulate success=%t gas_used=%d error=%q\n", result.Success, result.GasUsed, result.Error)
+	if !result.Success {
+		return fmt.Errorf("solana simulate failed: %s", result.Error)
+	}
 	return nil
 }
 
@@ -145,4 +162,11 @@ func redactRPCURL(raw string) string {
 		parsed.Path = "/<redacted>/"
 	}
 	return parsed.String()
+}
+
+func shortAddress(address string) string {
+	if len(address) <= 12 {
+		return address
+	}
+	return address[:6] + "..." + address[len(address)-4:]
 }
