@@ -38,6 +38,7 @@ type canaryPreflightReport struct {
 	USDCApprovalGas uint64
 	WETHApprovalGas uint64
 	MintGas         uint64
+	MintSkipReason  string
 	PoolFee         uint32
 	PoolTick        int
 }
@@ -304,20 +305,41 @@ func buildCanaryPreflightReport(
 		}
 	}
 
-	orderManager := &orderManagerAdapter{
-		provider:       provider,
-		walletAddress:  wallet.Address(),
-		npmBaseAddress: strings.TrimSpace(cfg.Execution.NPMBaseAddress),
-	}
-	mintTx, err := orderManager.buildPreparedMintTx(ctx, pool, amountUSD, shadowID("preflight-pos", pool.Key(), time.Now().Unix()), time.Now())
-	if err != nil {
-		return report, err
-	}
-	report.MintGas, err = estimatePreflightGas(ctx, provider, mintTx.UnsignedTx)
-	if err != nil {
-		return report, fmt.Errorf("estimate mint gas: %w", err)
+	if reason := mintPreflightSkipReason(report); reason != "" {
+		report.MintSkipReason = reason
+	} else {
+		orderManager := &orderManagerAdapter{
+			provider:       provider,
+			walletAddress:  wallet.Address(),
+			npmBaseAddress: strings.TrimSpace(cfg.Execution.NPMBaseAddress),
+		}
+		mintTx, err := orderManager.buildPreparedMintTx(ctx, pool, amountUSD, shadowID("preflight-pos", pool.Key(), time.Now().Unix()), time.Now())
+		if err != nil {
+			return report, err
+		}
+		report.MintGas, err = estimatePreflightGas(ctx, provider, mintTx.UnsignedTx)
+		if err != nil {
+			return report, fmt.Errorf("estimate mint gas: %w", err)
+		}
 	}
 	return report, nil
+}
+
+func mintPreflightSkipReason(report canaryPreflightReport) string {
+	var reasons []string
+	if report.WrapRequiredWei.Sign() > 0 {
+		reasons = append(reasons, "weth_wrap_required")
+	}
+	if report.USDCAllowance.Cmp(report.RequiredUSDC) < 0 {
+		reasons = append(reasons, "usdc_approval_required")
+	}
+	if report.WETHAllowance.Cmp(report.RequiredWETH) < 0 {
+		reasons = append(reasons, "weth_approval_required")
+	}
+	if len(reasons) == 0 {
+		return ""
+	}
+	return strings.Join(reasons, ",")
 }
 
 func amountForToken(pool domain.Pool, token string, intent execution.OpenIntent) *big.Int {
@@ -351,4 +373,7 @@ func printCanaryPreflightReport(report canaryPreflightReport) {
 	fmt.Printf("allowances_raw usdc=%s weth=%s\n", report.USDCAllowance.String(), report.WETHAllowance.String())
 	fmt.Printf("required_raw usdc=%s weth=%s wrap_weth=%s\n", report.RequiredUSDC.String(), report.RequiredWETH.String(), report.WrapRequiredWei.String())
 	fmt.Printf("gas_estimates wrap=%d approve_usdc=%d approve_weth=%d mint=%d\n", report.WrapGas, report.USDCApprovalGas, report.WETHApprovalGas, report.MintGas)
+	if report.MintSkipReason != "" {
+		fmt.Printf("mint_preflight_skipped=%s\n", report.MintSkipReason)
+	}
 }
