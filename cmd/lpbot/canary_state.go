@@ -54,7 +54,10 @@ type canaryStrategyApproval struct {
 	PipelineReason string
 }
 
-const canaryShadowApprovalMaxAge = 3 * time.Hour
+const (
+	canaryShadowApprovalMaxAge    = 3 * time.Hour
+	canaryShadowApprovalStaleGrace = 12 * time.Hour
+)
 
 func newCanaryEventWriter(ctx context.Context, cfg *config.Config) (*canaryEventWriter, error) {
 	if cfg == nil {
@@ -282,8 +285,20 @@ func (w *canaryEventWriter) RequireRecentShadowApproval(ctx context.Context, poo
 		PipelineStage:  row.PipelineStage,
 		PipelineReason: row.PipelineReason,
 	}
-	if time.Duration(ageSeconds)*time.Second > maxAge {
-		return approval, fmt.Errorf("canary quality gate blocked: latest shadow decision is stale age=%ds max=%s", ageSeconds, maxAge)
+	age := time.Duration(ageSeconds) * time.Second
+	if age > maxAge {
+		staleGraceOK := age <= canaryShadowApprovalStaleGrace &&
+			row.Selected &&
+			row.IntentOpen &&
+			row.ScoreTotal >= shadowOpenScoreThreshold &&
+			(row.PipelineOK || row.FinalAction == "reuse_shadow_position")
+		if !staleGraceOK {
+			return approval, fmt.Errorf("canary quality gate blocked: latest shadow decision is stale age=%ds max=%s", ageSeconds, maxAge)
+		}
+		if approval.PipelineReason != "" {
+			approval.PipelineReason += "; "
+		}
+		approval.PipelineReason += fmt.Sprintf("stale shadow approval accepted within grace window (%s)", canaryShadowApprovalStaleGrace)
 	}
 	if row.ScoreTotal < shadowOpenScoreThreshold {
 		return approval, fmt.Errorf("canary quality gate blocked: score %.2f below threshold %.2f", row.ScoreTotal, shadowOpenScoreThreshold)
