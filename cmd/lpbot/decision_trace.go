@@ -181,6 +181,9 @@ func (app *App) buildDecisionTraceRecord(pool domain.Pool, score domain.Score, t
 		ScoreTotal:      total,
 		ScoreJSON:       scoreJSON,
 		SelectionReason: "not evaluated yet",
+		IntentReason:    "strategy not evaluated",
+		PipelineStage:   "candidate_filtered",
+		PipelineReason:  "pool not selected for pipeline evaluation",
 		FinalAction:     "skip",
 		CreatedAt:       time.Now().UnixMilli(),
 	}

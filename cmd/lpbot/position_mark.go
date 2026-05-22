@@ -927,6 +927,9 @@ func (app *App) persistShadowPositionMarks(ctx context.Context, db *sql.DB, reco
 	defer tx.Rollback()
 
 	for _, record := range records {
+		if err := app.appendShadowMarkLedgerEntries(ctx, tx, record); err != nil {
+			return err
+		}
 		_, err := tx.ExecContext(ctx, `
 			INSERT INTO shadow_position_marks (
 				mark_time, position_id, pool_id, chain, status, tier, amount_usd, source,
@@ -965,6 +968,81 @@ func (app *App) persistShadowPositionMarks(ctx context.Context, db *sql.DB, reco
 		return fmt.Errorf("commit position mark tx: %w", err)
 	}
 	return nil
+}
+
+func (app *App) appendShadowMarkLedgerEntries(ctx context.Context, tx *sql.Tx, record shadowPositionMarkRecord) error {
+	currentFee := decimalFromText(record.FeeUSD)
+	currentIL := decimalFromText(record.ILUSD)
+	prevFee, prevIL, err := latestShadowMarkPnL(ctx, tx, record.PositionID)
+	if err != nil {
+		return fmt.Errorf("query previous shadow mark pnl for %s: %w", record.PositionID, err)
+	}
+
+	deltas := []struct {
+		kind   string
+		amount dexdomain.Decimal
+	}{
+		{kind: string(ports.LedgerEntryFee), amount: currentFee.Sub(prevFee)},
+		{kind: string(ports.LedgerEntryIL), amount: currentIL.Sub(prevIL)},
+	}
+
+	for _, delta := range deltas {
+		if delta.amount.IsZero() {
+			continue
+		}
+		if _, err := tx.ExecContext(ctx, `
+			INSERT INTO pnl_ledger (
+				id, position_id, kind, amount, token_symbol,
+				chain, block_number, block_hash, block_time, tx_hash
+			) VALUES (
+				$1, $2, $3, $4, $5,
+				$6, $7, $8, $9, $10
+			)
+			ON CONFLICT (id) DO NOTHING
+		`,
+			fmt.Sprintf("shadow-mark:%s:%s:%d", record.PositionID, delta.kind, record.MarkTime),
+			record.PositionID,
+			delta.kind,
+			delta.amount.String(),
+			"USD",
+			domainChainToInt(dexdomain.ChainID(record.Chain)),
+			record.MarkTime,
+			"",
+			record.MarkTime,
+			nil,
+		); err != nil {
+			return fmt.Errorf("insert pnl ledger %s for %s: %w", delta.kind, record.PositionID, err)
+		}
+	}
+
+	return nil
+}
+
+func latestShadowMarkPnL(ctx context.Context, tx *sql.Tx, positionID string) (dexdomain.Decimal, dexdomain.Decimal, error) {
+	var feeUSD string
+	var ilUSD string
+	err := tx.QueryRowContext(ctx, `
+		SELECT COALESCE(fee_usd, '0'), COALESCE(il_usd, '0')
+		FROM shadow_position_marks
+		WHERE position_id = $1
+		ORDER BY mark_time DESC, id DESC
+		LIMIT 1
+	`, positionID).Scan(&feeUSD, &ilUSD)
+	if err == sql.ErrNoRows {
+		return dexdomain.ZeroDecimal(), dexdomain.ZeroDecimal(), nil
+	}
+	if err != nil {
+		return dexdomain.ZeroDecimal(), dexdomain.ZeroDecimal(), err
+	}
+	return decimalFromText(feeUSD), decimalFromText(ilUSD), nil
+}
+
+func decimalFromText(value string) dexdomain.Decimal {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return dexdomain.ZeroDecimal()
+	}
+	return dexdomain.MustDecimal(value)
 }
 
 func (app *App) backfillClosedShadowPositionMarks(ctx context.Context, db *sql.DB) error {
@@ -1430,5 +1508,16 @@ func chainIntToDomain(value int) dexdomain.ChainID {
 		return dexdomain.ChainSolana
 	default:
 		return dexdomain.ChainBase
+	}
+}
+
+func domainChainToInt(chain dexdomain.ChainID) int {
+	switch chain {
+	case dexdomain.ChainSolana:
+		return 2
+	case dexdomain.ChainBase:
+		return 1
+	default:
+		return 0
 	}
 }

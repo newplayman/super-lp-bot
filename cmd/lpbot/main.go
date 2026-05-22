@@ -827,6 +827,9 @@ func (app *App) evaluateStrategies(ctx context.Context) {
 		rank, selected := candidateRanks[pool.Key()]
 		if !selected {
 			trace.SelectionReason = fmt.Sprintf("not ranked in top %d candidates for this tick", len(candidates))
+			trace.IntentReason = "pool not selected for strategy evaluation"
+			trace.PipelineStage = "candidate_filtered"
+			trace.PipelineReason = trace.SelectionReason
 			traces = append(traces, trace)
 			continue
 		}
@@ -847,6 +850,8 @@ func (app *App) evaluateStrategies(ctx context.Context) {
 		}
 		if intent == nil {
 			trace.IntentReason = fmt.Sprintf("score threshold not met: total %.1f < %.0f", score.ComputeTotal(), shadowOpenScoreThreshold)
+			trace.PipelineStage = "strategy_declined"
+			trace.PipelineReason = trace.IntentReason
 			traces = append(traces, trace)
 			continue
 		}
@@ -1218,6 +1223,7 @@ func (o *orderManagerAdapter) Open(ctx context.Context, pool domain.Pool, amount
 	if o.store == nil {
 		return loop.ExecutionResult{Success: false, Error: "store not configured"}, nil
 	}
+	shadowExecution := o.liveGate == nil || !o.liveGate.isExecutionMode()
 	if o.liveGate != nil {
 		if err := o.liveGate.checkOpen(pool, amountUSD); err != nil {
 			return loop.ExecutionResult{Success: false, Error: err.Error()}, nil
@@ -1230,6 +1236,12 @@ func (o *orderManagerAdapter) Open(ctx context.Context, pool domain.Pool, amount
 			return loop.ExecutionResult{}, err
 		}
 		if len(existing) > 0 {
+			if shadowExecution && existing[0].Status != domain.StatusOpen {
+				if err := o.store.PositionRepo().UpdateStatus(ctx, existing[0].ID, domain.StatusOpen); err != nil {
+					return loop.ExecutionResult{}, err
+				}
+				existing[0].Status = domain.StatusOpen
+			}
 			return loop.ExecutionResult{
 				Success:     true,
 				PositionID:  existing[0].ID,
@@ -1258,6 +1270,12 @@ func (o *orderManagerAdapter) Open(ctx context.Context, pool domain.Pool, amount
 
 	if err := o.store.PositionRepo().Save(ctx, position); err != nil {
 		return loop.ExecutionResult{}, err
+	}
+	if shadowExecution {
+		if err := o.store.PositionRepo().UpdateStatus(ctx, positionID, domain.StatusOpen); err != nil {
+			return loop.ExecutionResult{}, err
+		}
+		position.Status = domain.StatusOpen
 	}
 
 	txHash := shadowID("tx", positionID, now)
@@ -1312,7 +1330,7 @@ func (o *orderManagerAdapter) Open(ctx context.Context, pool domain.Pool, amount
 		TxHash:      txHash,
 		Success:     true,
 		PositionID:  positionID,
-		FinalStatus: domain.StatusIntended,
+		FinalStatus: position.Status,
 	}, nil
 }
 
