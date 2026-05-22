@@ -3,11 +3,14 @@ package main
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -24,6 +27,7 @@ import (
 const solanaWrappedSOLAddress = "So11111111111111111111111111111111111111112"
 const solanaUSDCAddress = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
 const solanaKnownSOLUSDCPool = "DJNtGuBGEQiUCWE8F981M2C3ZghZt2XLD8f2sQdZ6rsZ"
+const defaultJupiterQuoteURL = "https://api.jup.ag/swap/v1/quote"
 
 var solanaReadinessProtocolAllowlist = map[string]bool{
 	"orca-whirlpool":        true,
@@ -96,6 +100,114 @@ func runSolanaReadiness(ctx context.Context, cfg *config.Config) error {
 	return nil
 }
 
+func runSolanaQuoteReadiness(ctx context.Context, inputMint string, outputMint string, amountRaw string, slippageBPS int) error {
+	inputMint = strings.TrimSpace(inputMint)
+	outputMint = strings.TrimSpace(outputMint)
+	if inputMint == "" {
+		inputMint = solanaUSDCAddress
+	}
+	if outputMint == "" {
+		outputMint = solanaWrappedSOLAddress
+	}
+	amount, err := strconv.ParseUint(strings.TrimSpace(amountRaw), 10, 64)
+	if err != nil || amount == 0 {
+		return fmt.Errorf("invalid quote amount raw %q", amountRaw)
+	}
+	if slippageBPS <= 0 || slippageBPS > 500 {
+		return fmt.Errorf("slippage bps must be between 1 and 500")
+	}
+
+	endpoint := strings.TrimSpace(os.Getenv("JUPITER_QUOTE_URL"))
+	if endpoint == "" {
+		endpoint = defaultJupiterQuoteURL
+	}
+	parsed, err := url.Parse(endpoint)
+	if err != nil {
+		return fmt.Errorf("parse jupiter quote url: %w", err)
+	}
+	q := parsed.Query()
+	q.Set("inputMint", inputMint)
+	q.Set("outputMint", outputMint)
+	q.Set("amount", strconv.FormatUint(amount, 10))
+	q.Set("slippageBps", strconv.Itoa(slippageBPS))
+	q.Set("restrictIntermediateTokens", "true")
+	q.Set("instructionVersion", "V2")
+	parsed.RawQuery = q.Encode()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, parsed.String(), nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("accept", "application/json")
+	if apiKey := strings.TrimSpace(os.Getenv("JUPITER_API_KEY")); apiKey != "" {
+		req.Header.Set("x-api-key", apiKey)
+	}
+
+	client := &http.Client{Timeout: 15 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("jupiter quote request: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+		return fmt.Errorf("jupiter quote status=%d body=%q", resp.StatusCode, strings.TrimSpace(string(body)))
+	}
+
+	var quote struct {
+		InputMint            string `json:"inputMint"`
+		InAmount             string `json:"inAmount"`
+		OutputMint           string `json:"outputMint"`
+		OutAmount            string `json:"outAmount"`
+		OtherAmountThreshold string `json:"otherAmountThreshold"`
+		SwapMode             string `json:"swapMode"`
+		SlippageBPS          int    `json:"slippageBps"`
+		PriceImpactPct       string `json:"priceImpactPct"`
+		ContextSlot          uint64 `json:"contextSlot"`
+		TimeTaken            any    `json:"timeTaken"`
+		RoutePlan            []struct {
+			Percent  int `json:"percent"`
+			SwapInfo struct {
+				AmmKey     string `json:"ammKey"`
+				Label      string `json:"label"`
+				InputMint  string `json:"inputMint"`
+				OutputMint string `json:"outputMint"`
+				InAmount   string `json:"inAmount"`
+				OutAmount  string `json:"outAmount"`
+			} `json:"swapInfo"`
+		} `json:"routePlan"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&quote); err != nil {
+		return fmt.Errorf("decode jupiter quote: %w", err)
+	}
+	if len(quote.RoutePlan) == 0 {
+		return fmt.Errorf("jupiter quote returned no route")
+	}
+
+	routeLabels := make([]string, 0, len(quote.RoutePlan))
+	for _, route := range quote.RoutePlan {
+		label := strings.TrimSpace(route.SwapInfo.Label)
+		if label == "" {
+			label = shortAddress(route.SwapInfo.AmmKey)
+		}
+		routeLabels = append(routeLabels, fmt.Sprintf("%s:%d%%", label, route.Percent))
+	}
+	fmt.Printf("solana_quote_readiness source=jupiter input=%s output=%s in_amount=%s out_amount=%s threshold=%s slippage_bps=%d price_impact_pct=%s routes=%d context_slot=%d\n",
+		shortAddress(quote.InputMint),
+		shortAddress(quote.OutputMint),
+		quote.InAmount,
+		quote.OutAmount,
+		quote.OtherAmountThreshold,
+		quote.SlippageBPS,
+		quote.PriceImpactPct,
+		len(quote.RoutePlan),
+		quote.ContextSlot,
+	)
+	fmt.Printf("solana_quote_route labels=%s\n", strings.Join(routeLabels, ","))
+	fmt.Println("solana_quote_execution=not_built not_signed not_broadcast")
+	return nil
+}
+
 func runSolanaDiscoveryReadiness(ctx context.Context, cfg *config.Config, minTVLUSD domain.Decimal, minVol24hUSD domain.Decimal, limit int) error {
 	if limit <= 0 {
 		limit = 10
@@ -161,19 +273,22 @@ func runSolanaDiscoveryReadiness(ctx context.Context, cfg *config.Config, minTVL
 		eligible, minTVLUSD.String(), minVol24hUSD.String(), strings.Join(solanaProtocolAllowlistNames(), ","))
 
 	if cfg != nil && strings.TrimSpace(cfg.Store.PostgresDSN) != "" {
-		if err := persistSolanaDiscoveryPools(ctx, cfg, pools, minVol24hUSD); err != nil {
+		if err := persistSolanaDiscoveryPools(ctx, cfg, pools, minTVLUSD, minVol24hUSD); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func persistSolanaDiscoveryPools(ctx context.Context, cfg *config.Config, pools []ports.PoolDiscovery, minVol24hUSD domain.Decimal) error {
+func persistSolanaDiscoveryPools(ctx context.Context, cfg *config.Config, pools []ports.PoolDiscovery, minTVLUSD domain.Decimal, minVol24hUSD domain.Decimal) error {
 	store, err := postgres.NewFromDSN(strings.TrimSpace(cfg.Store.PostgresDSN))
 	if err != nil {
 		return fmt.Errorf("open postgres for solana discovery persistence: %w", err)
 	}
 	defer store.Close()
+	if err := ensureSolanaPoolRiskTable(ctx, store.DB()); err != nil {
+		return err
+	}
 
 	s := scanner.New(scanner.Config{})
 	persisted := 0
@@ -201,13 +316,69 @@ func persistSolanaDiscoveryPools(ctx context.Context, cfg *config.Config, pools 
 		}); err != nil {
 			return fmt.Errorf("upsert solana pool %s: %w", pool.Key(), err)
 		}
+		ok, reason := solanaPoolRiskEligible(discovered, minTVLUSD, minVol24hUSD)
+		if err := upsertSolanaPoolRisk(ctx, store.DB(), discovered, ok, reason); err != nil {
+			return err
+		}
 		persisted++
-		if ok, _ := solanaPoolRiskEligible(discovered, discovered.TVLUSD, minVol24hUSD); ok {
+		if ok {
 			eligible++
 		}
 	}
 	fmt.Printf("solana_discovery_persisted pools=%d eligible=%d\n", persisted, eligible)
 	return nil
+}
+
+func ensureSolanaPoolRiskTable(ctx context.Context, db *sql.DB) error {
+	if db == nil {
+		return nil
+	}
+	_, err := db.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS solana_pool_risk (
+			pool_id TEXT PRIMARY KEY,
+			chain INTEGER NOT NULL,
+			protocol TEXT NOT NULL DEFAULT '',
+			eligible BOOLEAN NOT NULL DEFAULT false,
+			reason TEXT NOT NULL DEFAULT '',
+			tvl_usd TEXT NOT NULL DEFAULT '0',
+			vol24h_usd TEXT NOT NULL DEFAULT '0',
+			updated_at BIGINT NOT NULL DEFAULT 0
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("ensure solana pool risk table: %w", err)
+	}
+	return nil
+}
+
+func upsertSolanaPoolRisk(ctx context.Context, db *sql.DB, pool ports.PoolDiscovery, eligible bool, reason string) error {
+	_, err := db.ExecContext(ctx, `
+		INSERT INTO solana_pool_risk (pool_id, chain, protocol, eligible, reason, tvl_usd, vol24h_usd, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		ON CONFLICT (pool_id) DO UPDATE SET
+			chain = EXCLUDED.chain,
+			protocol = EXCLUDED.protocol,
+			eligible = EXCLUDED.eligible,
+			reason = EXCLUDED.reason,
+			tvl_usd = EXCLUDED.tvl_usd,
+			vol24h_usd = EXCLUDED.vol24h_usd,
+			updated_at = EXCLUDED.updated_at
+	`, pool.ID, solanaReadinessChainIDToInt(pool.Chain), pool.Protocol, eligible, reason, pool.TVLUSD.String(), pool.Vol24h.String(), time.Now().Unix())
+	if err != nil {
+		return fmt.Errorf("upsert solana pool risk %s: %w", pool.ID, err)
+	}
+	return nil
+}
+
+func solanaReadinessChainIDToInt(chain domain.ChainID) int {
+	switch chain {
+	case domain.ChainBase:
+		return 1
+	case domain.ChainSolana:
+		return 2
+	default:
+		return 0
+	}
 }
 
 func solanaPoolRiskEligible(pool ports.PoolDiscovery, minTVLUSD domain.Decimal, minVol24hUSD domain.Decimal) (bool, string) {

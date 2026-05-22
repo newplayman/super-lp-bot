@@ -1466,6 +1466,11 @@ func main() {
 
 	configPath := flag.String("config", "", "Path to config file (required)")
 	solanaReadiness := flag.Bool("solana-readiness", false, "Run Solana read-only RPC and simulation readiness checks")
+	solanaQuoteReadiness := flag.Bool("solana-quote-readiness", false, "Run Solana read-only Jupiter route quote readiness checks")
+	solanaQuoteInputMint := flag.String("solana-quote-input-mint", solanaUSDCAddress, "Solana quote input mint")
+	solanaQuoteOutputMint := flag.String("solana-quote-output-mint", solanaWrappedSOLAddress, "Solana quote output mint")
+	solanaQuoteAmountRaw := flag.String("solana-quote-amount-raw", "2500000", "Solana quote input amount in raw integer units")
+	solanaQuoteSlippageBPS := flag.Int("solana-quote-slippage-bps", 100, "Solana quote slippage tolerance in basis points")
 	solanaDiscoveryReadiness := flag.Bool("solana-discovery-readiness", false, "Run Solana read-only pool discovery readiness checks")
 	solanaDiscoveryMinTVL := flag.String("solana-discovery-min-tvl", "100000", "Minimum Solana pool TVL in USD for discovery readiness")
 	solanaDiscoveryMinVol24h := flag.String("solana-discovery-min-vol24h", "100000", "Minimum Solana pool 24h volume in USD for discovery readiness")
@@ -1501,6 +1506,13 @@ func main() {
 	if *solanaReadiness {
 		if err := runSolanaReadiness(ctx, cfg); err != nil {
 			fmt.Fprintf(os.Stderr, "Solana readiness failed: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+	if *solanaQuoteReadiness {
+		if err := runSolanaQuoteReadiness(ctx, *solanaQuoteInputMint, *solanaQuoteOutputMint, *solanaQuoteAmountRaw, *solanaQuoteSlippageBPS); err != nil {
+			fmt.Fprintf(os.Stderr, "Solana quote readiness failed: %v\n", err)
 			os.Exit(1)
 		}
 		return

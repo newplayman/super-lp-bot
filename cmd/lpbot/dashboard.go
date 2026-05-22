@@ -184,15 +184,19 @@ type dashboardStrategyQuality struct {
 }
 
 type dashboardPool struct {
-	PoolID    string `json:"pool_id"`
-	Chain     int    `json:"chain"`
-	Protocol  string `json:"protocol"`
-	Token0    string `json:"token0"`
-	Token1    string `json:"token1"`
-	FeeBPS    int    `json:"fee_bps"`
-	Tier      string `json:"tier"`
-	Score     string `json:"score"`
-	UpdatedAt int64  `json:"updated_at"`
+	PoolID       string `json:"pool_id"`
+	Chain        int    `json:"chain"`
+	Protocol     string `json:"protocol"`
+	Token0       string `json:"token0"`
+	Token1       string `json:"token1"`
+	FeeBPS       int    `json:"fee_bps"`
+	Tier         string `json:"tier"`
+	Score        string `json:"score"`
+	UpdatedAt    int64  `json:"updated_at"`
+	RiskEligible bool   `json:"risk_eligible"`
+	RiskReason   string `json:"risk_reason"`
+	TVLUSD       string `json:"tvl_usd"`
+	Vol24hUSD    string `json:"vol24h_usd"`
 }
 
 type dashboardPosition struct {
@@ -895,11 +899,16 @@ func readDashboardEnvFiles(paths ...string) (map[string]string, error) {
 }
 
 func queryDashboardPools(ctx context.Context, db *sql.DB) ([]dashboardPool, error) {
+	if err := ensureSolanaPoolRiskTable(ctx, db); err != nil {
+		return nil, err
+	}
 	rows, err := db.QueryContext(ctx, `
-		SELECT pool_id, chain, protocol, token0, token1, fee_bps,
-		       COALESCE(tier, ''), COALESCE(last_score, ''), updated_at
-		FROM pools
-		ORDER BY updated_at DESC
+		SELECT p.pool_id, p.chain, p.protocol, p.token0, p.token1, p.fee_bps,
+		       COALESCE(p.tier, ''), COALESCE(p.last_score, ''), p.updated_at,
+		       COALESCE(r.eligible, false), COALESCE(r.reason, ''), COALESCE(r.tvl_usd, '0'), COALESCE(r.vol24h_usd, '0')
+		FROM pools p
+		LEFT JOIN solana_pool_risk r ON r.pool_id = p.pool_id AND r.chain = p.chain
+		ORDER BY p.updated_at DESC
 		LIMIT 50
 	`)
 	if err != nil {
@@ -910,7 +919,7 @@ func queryDashboardPools(ctx context.Context, db *sql.DB) ([]dashboardPool, erro
 	var pools []dashboardPool
 	for rows.Next() {
 		var pool dashboardPool
-		if err := rows.Scan(&pool.PoolID, &pool.Chain, &pool.Protocol, &pool.Token0, &pool.Token1, &pool.FeeBPS, &pool.Tier, &pool.Score, &pool.UpdatedAt); err != nil {
+		if err := rows.Scan(&pool.PoolID, &pool.Chain, &pool.Protocol, &pool.Token0, &pool.Token1, &pool.FeeBPS, &pool.Tier, &pool.Score, &pool.UpdatedAt, &pool.RiskEligible, &pool.RiskReason, &pool.TVLUSD, &pool.Vol24hUSD); err != nil {
 			return nil, fmt.Errorf("scan dashboard pool: %w", err)
 		}
 		pools = append(pools, pool)

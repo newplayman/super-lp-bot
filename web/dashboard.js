@@ -117,7 +117,7 @@
         setHeaderStatus(data, healthPct);
         renderStrategyCards(latestAudit, marks, health, live);
         renderLiveReadiness(data, live, health);
-        renderScanner(decisions);
+        renderScanner(decisions, data.pools || []);
         renderPositions(marks);
         renderExitPreflights(data.exit_preflights || []);
         renderAudit(data);
@@ -204,14 +204,14 @@
         setText('execution-blockers', `${blockerText} | ${balanceStatus} | ${rpcStatus} | ${okxStatus} | ${walletStatus} | ${npmStatus} | ${sizingStatus}`);
     }
 
-    function renderScanner(decisions) {
+    function renderScanner(decisions, pools) {
         const tbody = document.getElementById('alpha-scanner-tbody');
         if (!tbody) return;
         const rows = decisions.slice().sort((a, b) => num(b.score_total) - num(a.score_total)).slice(0, 12);
-        tbody.innerHTML = rows.map((row, idx) => `
+        const decisionHTML = rows.map((row, idx) => `
             <tr>
                 <td><span class="mono">${idx + 1}</span></td>
-                <td><strong>${poolLink(row.pool_id)}</strong><div class="muted-mini">${short(row.pool_id)}</div></td>
+                <td><strong>${poolLink(row.pool_id, 1)}</strong><div class="muted-mini">${short(row.pool_id)}</div></td>
                 <td><span class="badge-chain base">Base</span></td>
                 <td><span class="badge-dex">${escapeHTML(row.protocol || 'AMM')}</span></td>
                 <td class="green-text mono"><strong>${num(row.score_total).toFixed(1)}</strong></td>
@@ -221,6 +221,20 @@
                 <td class="green-text mono"><strong>${num(row.score_total).toFixed(1)}</strong></td>
                 <td><span class="${row.selected ? 'badge-success-glow' : 'green-badge'}">${row.final_action || 'skip'}</span></td>
             </tr>`).join('');
+        const solanaHTML = (pools || []).filter(pool => num(pool.chain) === 2).slice(0, 6).map((pool, idx) => `
+            <tr>
+                <td><span class="mono">S${idx + 1}</span></td>
+                <td><strong>${poolLink(pool.pool_id, pool.chain)}</strong><div class="muted-mini">${short(pool.pool_id)}</div></td>
+                <td><span class="badge-chain">Solana</span></td>
+                <td><span class="badge-dex">${escapeHTML(pool.protocol || 'AMM')}</span></td>
+                <td class="green-text mono"><strong>$${compactMoney(pool.tvl_usd)}</strong><div class="muted-mini">TVL</div></td>
+                <td class="mono">$${compactMoney(pool.vol24h_usd)}<div class="muted-mini">24h vol</div></td>
+                <td><span class="mono font-12">${escapeHTML(pool.risk_reason || '-')}</span></td>
+                <td><span class="mono font-12">${escapeHTML(pool.tier || '-')}</span></td>
+                <td class="green-text mono"><strong>${pool.risk_eligible ? 'OK' : '-'}</strong></td>
+                <td><span class="${pool.risk_eligible ? 'badge-success-glow' : 'green-badge'}">${pool.risk_eligible ? 'eligible' : 'observe'}</span></td>
+            </tr>`).join('');
+        tbody.innerHTML = decisionHTML + solanaHTML;
     }
 
     function renderPositions(marks) {
@@ -421,9 +435,9 @@
     function compactMoney(value) { const n = num(value); if (Math.abs(n) >= 1e6) return (n / 1e6).toFixed(2) + 'M'; if (Math.abs(n) >= 1e3) return (n / 1e3).toFixed(2) + 'K'; return n.toFixed(2); }
     function short(value) { const s = String(value || ''); return s.length > 18 ? s.slice(0, 8) + '...' + s.slice(-6) : s; }
     function timeText(unix) { return unix ? new Date(num(unix) * 1000).toLocaleTimeString() : '-'; }
-    function dexscreenerURL(poolId) { return `https://dexscreener.com/base/${encodeURIComponent(poolId || '')}`; }
-    function geckoURL(poolId) { return `https://www.geckoterminal.com/base/pools/${encodeURIComponent(poolId || '')}`; }
-    function poolLink(poolId) { return `<a target="_blank" rel="noreferrer" href="${dexscreenerURL(poolId)}">${short(poolId)}</a> <a target="_blank" rel="noreferrer" href="${geckoURL(poolId)}">GT</a>`; }
+    function dexscreenerURL(poolId, chain) { return `https://dexscreener.com/${num(chain) === 2 ? 'solana' : 'base'}/${encodeURIComponent(poolId || '')}`; }
+    function geckoURL(poolId, chain) { return `https://www.geckoterminal.com/${num(chain) === 2 ? 'solana' : 'base'}/pools/${encodeURIComponent(poolId || '')}`; }
+    function poolLink(poolId, chain) { return `<a target="_blank" rel="noreferrer" href="${dexscreenerURL(poolId, chain)}">${short(poolId)}</a> <a target="_blank" rel="noreferrer" href="${geckoURL(poolId, chain)}">GT</a>`; }
     function txLink(hash) { return hash ? `<a target="_blank" rel="noreferrer" href="https://basescan.org/tx/${escapeHTML(hash)}">${short(hash)}</a>` : '-'; }
     function escapeHTML(value) { return String(value || '').replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c])); }
 })();
