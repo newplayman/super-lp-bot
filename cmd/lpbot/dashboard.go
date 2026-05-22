@@ -65,6 +65,7 @@ type dashboardSnapshot struct {
 	RecentIssues    []dashboardRecentIssue     `json:"recent_issues"`
 	StrategyAudit   []dashboardStrategyTick    `json:"strategy_audit"`
 	StrategyQuality []dashboardStrategyQuality `json:"strategy_quality"`
+	BaseCanary      dashboardBaseCanary        `json:"base_canary"`
 	SolanaCanary    dashboardSolanaCanary      `json:"solana_canary"`
 	Warnings        []string                   `json:"warnings"`
 }
@@ -91,6 +92,23 @@ type dashboardHealth struct {
 	RecentNonGeckoMarks    int64  `json:"recent_non_gecko_marks"`
 	RecentChainFailures    int64  `json:"recent_chain_failures"`
 	RecentPipelineFailures int64  `json:"recent_pipeline_failures"`
+}
+
+type dashboardBaseCanary struct {
+	Broadcasts      int64  `json:"broadcasts"`
+	Opened          int64  `json:"opened"`
+	Closed          int64  `json:"closed"`
+	LastPositionID  string `json:"last_position_id"`
+	LastTokenID     string `json:"last_token_id"`
+	LastPoolID      string `json:"last_pool_id"`
+	LastStatus      string `json:"last_status"`
+	LastAmountUSD   string `json:"last_amount_usd"`
+	LastHoldMinutes int64  `json:"last_hold_minutes"`
+	LastNetPnLUSD   string `json:"last_net_pnl_usd"`
+	LastFeeUSD      string `json:"last_fee_usd"`
+	LastILUSD       string `json:"last_il_usd"`
+	LastTxHash      string `json:"last_tx_hash"`
+	LastClosedAt    int64  `json:"last_closed_at"`
 }
 
 type dashboardSolanaCanary struct {
@@ -530,6 +548,11 @@ func (app *App) dashboardSnapshot(ctx context.Context) (dashboardSnapshot, error
 		snapshot.Warnings = append(snapshot.Warnings, fmt.Sprintf("dashboard canary events unavailable: %v", err))
 	} else {
 		snapshot.CanaryEvents = canaryEvents
+	}
+	if summary, err := queryDashboardBaseCanary(ctx, db); err != nil {
+		snapshot.Warnings = append(snapshot.Warnings, fmt.Sprintf("dashboard base canary summary unavailable: %v", err))
+	} else {
+		snapshot.BaseCanary = summary
 	}
 	if summary, err := queryDashboardSolanaCanary(ctx, db); err != nil {
 		snapshot.Warnings = append(snapshot.Warnings, fmt.Sprintf("dashboard solana canary summary unavailable: %v", err))
@@ -1139,6 +1162,72 @@ func queryDashboardSolanaCanary(ctx context.Context, db *sql.DB) (dashboardSolan
 		&summary.LastCreatedAt,
 	); err != nil && err != sql.ErrNoRows {
 		return summary, fmt.Errorf("query solana canary latest: %w", err)
+	}
+	return summary, nil
+}
+
+func queryDashboardBaseCanary(ctx context.Context, db *sql.DB) (dashboardBaseCanary, error) {
+	var summary dashboardBaseCanary
+	if err := db.QueryRowContext(ctx, `
+		SELECT count(*)
+		FROM canary_events
+		WHERE chain = 'base' AND COALESCE(tx_hash, '') <> ''
+	`).Scan(&summary.Broadcasts); err != nil {
+		return summary, fmt.Errorf("query base canary broadcast count: %w", err)
+	}
+	if err := db.QueryRowContext(ctx, `
+		SELECT
+			count(*) FILTER (WHERE id LIKE 'shadow-canary-live-pos-%'),
+			count(*) FILTER (WHERE id LIKE 'shadow-canary-live-pos-%' AND status = 'closed')
+		FROM positions
+	`).Scan(&summary.Opened, &summary.Closed); err != nil {
+		return summary, fmt.Errorf("query base canary position counts: %w", err)
+	}
+	if err := db.QueryRowContext(ctx, `
+		SELECT
+			p.id,
+			COALESCE(p.token_id, ''),
+			p.pool_id,
+			p.status,
+			p.amount_usd,
+			COALESCE(p.closed_at, 0),
+			COALESCE(pm.hold_minutes, 0),
+			COALESCE(pm.net_pnl_usd, '0'),
+			COALESCE(pm.fee_usd, '0'),
+			COALESCE(pm.il_usd, '0'),
+			COALESCE(ce.tx_hash, '')
+		FROM positions p
+		LEFT JOIN (
+			SELECT DISTINCT ON (token_id)
+				token_id, hold_minutes, net_pnl_usd, fee_usd, il_usd
+			FROM position_marks
+			WHERE COALESCE(token_id, '') <> ''
+			ORDER BY token_id, observed_at DESC
+		) pm ON pm.token_id = p.token_id
+		LEFT JOIN (
+			SELECT DISTINCT ON (token_id)
+				token_id, tx_hash
+			FROM canary_events
+			WHERE chain = 'base' AND COALESCE(token_id, '') <> '' AND COALESCE(tx_hash, '') <> ''
+			ORDER BY token_id, created_at DESC
+		) ce ON ce.token_id = p.token_id
+		WHERE p.id LIKE 'shadow-canary-live-pos-%'
+		ORDER BY GREATEST(COALESCE(p.closed_at, 0), p.opened_at) DESC
+		LIMIT 1
+	`).Scan(
+		&summary.LastPositionID,
+		&summary.LastTokenID,
+		&summary.LastPoolID,
+		&summary.LastStatus,
+		&summary.LastAmountUSD,
+		&summary.LastClosedAt,
+		&summary.LastHoldMinutes,
+		&summary.LastNetPnLUSD,
+		&summary.LastFeeUSD,
+		&summary.LastILUSD,
+		&summary.LastTxHash,
+	); err != nil && err != sql.ErrNoRows {
+		return summary, fmt.Errorf("query base canary latest: %w", err)
 	}
 	return summary, nil
 }

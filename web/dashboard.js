@@ -63,6 +63,7 @@
         const markSeries = data.mark_series || [];
         const ledgerSeries = data.ledger_series || [];
         const ledgerSummary = data.ledger_summary || [];
+        const baseCanary = data.base_canary || {};
         const solanaCanary = data.solana_canary || {};
         const currentLive = data.live_readiness || {};
         const canaryLive = data.canary_readiness || {};
@@ -107,9 +108,9 @@
 
         setText('metric-bots', canaryLive.build_mode ? '1 shadow + canary plan' : '1 shadow');
         setText('metric-pools', scanned || counts.pools || '-');
-        setText('metric-chains', num(solanaCanary.broadcasts) > 0 ? 'Base + Solana' : 'Base');
+        setText('metric-chains', (num(baseCanary.broadcasts) > 0 && num(solanaCanary.broadcasts) > 0) ? 'Base + Solana' : 'Base');
         setText('metric-templates', selected || '-');
-        setText('metric-events', num(solanaCanary.broadcasts) > 0 ? `${counts.scores || '-'} / S:${num(solanaCanary.broadcasts)}` : (counts.scores || '-'));
+        setText('metric-events', `${counts.scores || '-'} / B:${num(baseCanary.broadcasts)} / S:${num(solanaCanary.broadcasts)}`);
         setText('metric-latency', health.last_mark_age_seconds !== undefined ? health.last_mark_age_seconds + 's' : '-');
         setText('health-pct', healthPct.toFixed(1) + '%');
         const healthBar = document.getElementById('health-bar');
@@ -117,13 +118,13 @@
 
         setHeaderStatus(data, healthPct);
         renderStrategyCards(latestAudit, marks, health, live);
-        renderLiveReadiness(data, live, health);
+        renderLiveReadiness(data, live, health, baseCanary);
         renderScanner(decisions, data.pools || []);
         renderPositions(marks);
         renderExitPreflights(data.exit_preflights || []);
         renderAudit(data);
         renderExecution(data);
-        renderLogs(data, live);
+        renderLogs(data, live, baseCanary, solanaCanary);
         updateCharts(data, marks, markSeries, ledgerSeries, ledgerSummary);
     }
 
@@ -154,7 +155,7 @@
         setText('active-positions-val', compactMoney(sum(marks, 'valuation_usd')));
     }
 
-    function renderLiveReadiness(data, live, health) {
+    function renderLiveReadiness(data, live, health, baseCanary) {
         const blockers = Array.isArray(live.blockers) ? live.blockers : [];
         const blockerText = blockers.length ? blockers.slice(0, 3).join(' | ') : '无';
         const txs = data.transactions || [];
@@ -190,7 +191,10 @@
 
         setText('decision-exposure', `$${money(live.max_order_usd)} / $${money(live.daily_loss_limit_usd)}`);
         setText('decision-kill-switch', live.kill_switch ? '已触发 / 拒绝新单' : (live.live_enabled ? '未触发 / 等待全量通过' : 'live 未启用'));
-        setText('decision-canary', live.canary ? '已配置 canary / 来自 .env.canary' : '未配置 canary');
+        const baseCycle = num(baseCanary.broadcasts)
+            ? `Base NFT #${baseCanary.last_token_id || '-'} / ${baseCanary.last_status || 'unknown'} / ${num(baseCanary.last_hold_minutes)}m / ${signedMoney(baseCanary.last_net_pnl_usd)}`
+            : 'Base canary 尚未广播';
+        setText('decision-canary', live.canary ? `已配置 canary / ${baseCycle}` : '未配置 canary');
         setText('decision-live-gate', live.ready ? `YES / ${readinessTarget} 配置已就绪` : `NO / ${readinessTarget} 仍为 fail-closed`);
         setText('decision-live-blockers', blockerText);
 
@@ -200,8 +204,9 @@
         setText('execution-wallet-status', wallet === '未配置' ? '缺失' : balanceStatus);
         setText('execution-whitelist', `${allowedChains} / ${num(live.allowed_pools_count)} pools`);
         setText('execution-whitelist-status', poolStatus);
-        setText('execution-last-tx', lastTx.tx_hash ? short(lastTx.tx_hash) : (live.canary ? 'canary not started' : 'shadow only'));
-        setText('execution-last-tx-status', lastTx.tx_hash ? (lastTx.status || 'recorded') : `${rpcStatus} | ${okxStatus}`);
+        const lastBaseTx = baseCanary.last_tx_hash || lastTx.tx_hash || '';
+        setText('execution-last-tx', lastBaseTx ? short(lastBaseTx) : (live.canary ? 'canary not started' : 'shadow only'));
+        setText('execution-last-tx-status', lastBaseTx ? `${baseCanary.last_status || lastTx.status || 'recorded'} / hold ${num(baseCanary.last_hold_minutes)}m / pnl ${signedMoney(baseCanary.last_net_pnl_usd)}` : `${rpcStatus} | ${okxStatus}`);
         setText('execution-blockers', `${blockerText} | ${balanceStatus} | ${rpcStatus} | ${okxStatus} | ${walletStatus} | ${npmStatus} | ${sizingStatus}`);
     }
 
@@ -344,7 +349,7 @@
             </div>`).join('');
     }
 
-    function renderLogs(data, live) {
+    function renderLogs(data, live, baseCanary, solanaCanary) {
         const box = document.getElementById('console-log-box');
         if (!box) return;
         const audit = (data.strategy_audit || [])[0] || {};
@@ -354,6 +359,7 @@
             ['info', 'scanner', `scanned ${num(audit.scanned)}, selected ${num(audit.selected)}, pipeline ok ${num(audit.pipeline_ok)}`],
             ['info', 'mark', `last mark age ${health.last_mark_age_seconds || '-'}s, source ${health.last_mark_source || '-'}`],
             ['info', 'live', `ready ${live.ready ? 'yes' : 'no'}, blockers ${(live.blockers || []).length}, canary ${live.canary ? 'on' : 'off'}`],
+            [num(baseCanary.broadcasts) ? 'success' : 'info', 'base', num(baseCanary.broadcasts) ? `broadcasts ${num(baseCanary.broadcasts)}, last NFT ${baseCanary.last_token_id || '-'} ${baseCanary.last_status || 'unknown'} hold ${num(baseCanary.last_hold_minutes)}m pnl ${signedMoney(baseCanary.last_net_pnl_usd)}` : 'no base canary broadcast yet'],
             [num(solanaCanary.broadcasts) ? 'success' : 'info', 'solana', num(solanaCanary.broadcasts) ? `broadcasts ${num(solanaCanary.broadcasts)}, wallet SOL ${formatTokenAmount(solanaCanary.sol_balance_raw || '0', 'So11111111111111111111111111111111111111112')} / USDC ${formatTokenAmount(solanaCanary.usdc_balance_raw || '0', 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v')}` : 'no solana canary broadcast yet'],
             [num(health.recent_chain_failures) ? 'warn' : 'success', 'chain', `chain failures / 30m: ${num(health.recent_chain_failures)}`],
             [num(health.recent_pipeline_failures) ? 'warn' : 'success', 'pipeline', `pipeline failures / 30m: ${num(health.recent_pipeline_failures)}`]
