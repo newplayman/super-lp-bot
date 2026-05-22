@@ -115,6 +115,7 @@ func (s *Store) migrate() error {
 		)`, tablePrefix),
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %spositions (
 			id TEXT PRIMARY KEY,
+			token_id TEXT,
 			chain TEXT NOT NULL,
 			pool_id TEXT NOT NULL,
 			token0 TEXT NOT NULL,

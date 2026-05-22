@@ -193,6 +193,7 @@ type dashboardPool struct {
 
 type dashboardPosition struct {
 	ID          string `json:"id"`
+	TokenID     string `json:"token_id"`
 	PoolID      string `json:"pool_id"`
 	Chain       int    `json:"chain"`
 	Status      string `json:"status"`
@@ -224,6 +225,7 @@ type dashboardScore struct {
 
 type dashboardPositionMark struct {
 	PositionID     string `json:"position_id"`
+	TokenID        string `json:"token_id"`
 	PoolID         string `json:"pool_id"`
 	Status         string `json:"status"`
 	Tier           string `json:"tier"`
@@ -819,7 +821,7 @@ func queryDashboardPools(ctx context.Context, db *sql.DB) ([]dashboardPool, erro
 
 func queryDashboardPositions(ctx context.Context, db *sql.DB) ([]dashboardPosition, error) {
 	rows, err := db.QueryContext(ctx, `
-		SELECT id, pool_id, chain, status, COALESCE(tier, ''), amount_usd, opened_at, COALESCE(closed_at, 0)
+		SELECT id, COALESCE(token_id, ''), pool_id, chain, status, COALESCE(tier, ''), amount_usd, opened_at, COALESCE(closed_at, 0)
 		FROM positions
 		ORDER BY opened_at DESC
 		LIMIT 50
@@ -832,7 +834,7 @@ func queryDashboardPositions(ctx context.Context, db *sql.DB) ([]dashboardPositi
 	var positions []dashboardPosition
 	for rows.Next() {
 		var pos dashboardPosition
-		if err := rows.Scan(&pos.ID, &pos.PoolID, &pos.Chain, &pos.Status, &pos.Tier, &pos.AmountUSD, &pos.OpenedAt, &pos.ClosedAt); err != nil {
+		if err := rows.Scan(&pos.ID, &pos.TokenID, &pos.PoolID, &pos.Chain, &pos.Status, &pos.Tier, &pos.AmountUSD, &pos.OpenedAt, &pos.ClosedAt); err != nil {
 			return nil, fmt.Errorf("scan dashboard position: %w", err)
 		}
 		positions = append(positions, pos)
@@ -844,6 +846,7 @@ func queryDashboardClosedPositions(ctx context.Context, db *sql.DB) ([]dashboard
 	rows, err := db.QueryContext(ctx, `
 		SELECT
 			p.id,
+			COALESCE(p.token_id, ''),
 			p.pool_id,
 			p.chain,
 			p.status,
@@ -883,6 +886,7 @@ func queryDashboardClosedPositions(ctx context.Context, db *sql.DB) ([]dashboard
 		var pos dashboardPosition
 		if err := rows.Scan(
 			&pos.ID,
+			&pos.TokenID,
 			&pos.PoolID,
 			&pos.Chain,
 			&pos.Status,
@@ -927,16 +931,17 @@ func queryDashboardTransactions(ctx context.Context, db *sql.DB) ([]dashboardTra
 
 func queryDashboardPositionMarks(ctx context.Context, db *sql.DB) ([]dashboardPositionMark, error) {
 	rows, err := db.QueryContext(ctx, `
-		SELECT position_id, pool_id, status, tier, amount_usd, source, mark_time, hold_minutes,
+		SELECT position_id, token_id, pool_id, status, tier, amount_usd, source, mark_time, hold_minutes,
 		       valuation_usd, fee_usd, il_usd, net_pnl_usd,
 		       current_tvl_usd, current_vol24h_usd, price_change_pct
 		FROM (
 			SELECT DISTINCT ON (position_id)
-				position_id, pool_id, status, tier, amount_usd, source, mark_time, hold_minutes,
+				m.position_id, COALESCE(p.token_id, '') AS token_id, m.pool_id, m.status, m.tier, m.amount_usd, m.source, m.mark_time, m.hold_minutes,
 				valuation_usd, fee_usd, il_usd, net_pnl_usd,
 				current_tvl_usd, current_vol24h_usd, price_change_pct
-			FROM shadow_position_marks
-			ORDER BY position_id, mark_time DESC
+			FROM shadow_position_marks m
+			LEFT JOIN positions p ON p.id = m.position_id
+			ORDER BY m.position_id, m.mark_time DESC
 		) latest
 		ORDER BY mark_time DESC
 		LIMIT 50
@@ -951,6 +956,7 @@ func queryDashboardPositionMarks(ctx context.Context, db *sql.DB) ([]dashboardPo
 		var mark dashboardPositionMark
 		if err := rows.Scan(
 			&mark.PositionID,
+			&mark.TokenID,
 			&mark.PoolID,
 			&mark.Status,
 			&mark.Tier,

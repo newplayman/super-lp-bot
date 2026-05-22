@@ -219,7 +219,7 @@
             return `
                 <tr>
                     <td><span class="mono">${idx + 1}</span></td>
-                    <td><strong>${poolLink(pos.pool_id)}</strong><div class="muted-mini">${short(pos.position_id)}</div></td>
+                    <td><strong>${poolLink(pos.pool_id)}</strong><div class="muted-mini">NFT #${escapeHTML(pos.token_id || '-')}</div><div class="muted-mini">${short(pos.position_id)}</div></td>
                     <td><span class="badge-chain base">Base</span></td>
                     <td><span class="badge-dex">${escapeHTML(pos.source || 'datasource')}</span></td>
                     <td class="mono"><strong>$${money(pos.valuation_usd)}</strong></td>

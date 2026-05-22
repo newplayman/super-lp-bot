@@ -41,6 +41,7 @@ func (s PositionStatus) CanTransitionTo(next PositionStatus) bool {
 // Position represents an LP position.
 type Position struct {
 	ID        string
+	TokenID   string
 	PoolID    string
 	Chain     ChainID
 	Status    PositionStatus

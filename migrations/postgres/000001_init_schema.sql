@@ -33,6 +33,7 @@ CREATE INDEX IF NOT EXISTS idx_transactions_broadcast_at ON transactions(broadca
 
 CREATE TABLE IF NOT EXISTS positions (
     id TEXT PRIMARY KEY,
+    token_id TEXT,
     pool_id TEXT NOT NULL,
     chain INTEGER NOT NULL,
     status TEXT NOT NULL,
@@ -43,6 +44,8 @@ CREATE TABLE IF NOT EXISTS positions (
     opened_at BIGINT NOT NULL,
     closed_at BIGINT
 );
+
+ALTER TABLE positions ADD COLUMN IF NOT EXISTS token_id TEXT;
 
 CREATE TABLE IF NOT EXISTS pools (
     pool_id TEXT NOT NULL,

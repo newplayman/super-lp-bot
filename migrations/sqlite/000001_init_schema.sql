@@ -4,6 +4,7 @@
 -- Base tables (prefix applied at runtime via applySchemaPrefix)
 CREATE TABLE IF NOT EXISTS positions (
     id TEXT PRIMARY KEY,
+    token_id TEXT,
     pool_address TEXT NOT NULL,
     tick_lower INTEGER NOT NULL,
     tick_upper INTEGER NOT NULL,

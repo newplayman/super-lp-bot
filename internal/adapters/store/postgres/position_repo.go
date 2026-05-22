@@ -27,10 +27,11 @@ var _ ports.PositionRepo = (*PositionRepo)(nil)
 func (r *PositionRepo) Save(ctx context.Context, pos *domain.Position) error {
 	_, err := r.db.ExecContext(ctx, `
 		INSERT INTO positions (
-			id, pool_id, chain, status, tier, tick_lower, tick_upper,
+			id, token_id, pool_id, chain, status, tier, tick_lower, tick_upper,
 			amount_usd, opened_at, closed_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 		ON CONFLICT (id) DO UPDATE SET
+			token_id = excluded.token_id,
 			status = excluded.status,
 			tier = excluded.tier,
 			tick_lower = excluded.tick_lower,
@@ -39,6 +40,7 @@ func (r *PositionRepo) Save(ctx context.Context, pos *domain.Position) error {
 			closed_at = excluded.closed_at
 	`,
 		pos.ID,
+		pos.TokenID,
 		pos.PoolID,
 		chainIDToInt(pos.Chain),
 		string(pos.Status),
@@ -59,6 +61,7 @@ func (r *PositionRepo) Save(ctx context.Context, pos *domain.Position) error {
 func (r *PositionRepo) FindByID(ctx context.Context, id string) (*domain.Position, error) {
 	var row struct {
 		ID        string
+		TokenID   string
 		PoolID    string
 		Chain     int
 		Status    string
@@ -71,12 +74,12 @@ func (r *PositionRepo) FindByID(ctx context.Context, id string) (*domain.Positio
 	}
 
 	err := r.db.QueryRowContext(ctx, `
-		SELECT id, pool_id, chain, status, tier, tick_lower, tick_upper,
+		SELECT id, COALESCE(token_id, ''), pool_id, chain, status, tier, tick_lower, tick_upper,
 		       amount_usd, opened_at, closed_at
 		FROM positions
 		WHERE id = $1
 	`, id).Scan(
-		&row.ID, &row.PoolID, &row.Chain, &row.Status, &row.Tier,
+		&row.ID, &row.TokenID, &row.PoolID, &row.Chain, &row.Status, &row.Tier,
 		&row.TickLower, &row.TickUpper, &row.AmountUSD,
 		&row.OpenedAt, &row.ClosedAt,
 	)
@@ -90,6 +93,7 @@ func (r *PositionRepo) FindByID(ctx context.Context, id string) (*domain.Positio
 	tier, _ := domain.ParseTier(row.Tier)
 	pos := &domain.Position{
 		ID:        row.ID,
+		TokenID:   row.TokenID,
 		PoolID:    row.PoolID,
 		Chain:     intToChainID(row.Chain),
 		Status:    domain.PositionStatus(row.Status),
@@ -110,7 +114,7 @@ func (r *PositionRepo) FindByID(ctx context.Context, id string) (*domain.Positio
 // FindByPoolAndStatus returns all positions for a pool with the specified status.
 func (r *PositionRepo) FindByPoolAndStatus(ctx context.Context, poolID string, status domain.PositionStatus) ([]*domain.Position, error) {
 	rows, err := r.db.QueryContext(ctx, `
-		SELECT id, pool_id, chain, status, tier, tick_lower, tick_upper,
+		SELECT id, COALESCE(token_id, ''), pool_id, chain, status, tier, tick_lower, tick_upper,
 		       amount_usd, opened_at, closed_at
 		FROM positions
 		WHERE pool_id = $1 AND status = $2
@@ -126,7 +130,7 @@ func (r *PositionRepo) FindByPoolAndStatus(ctx context.Context, poolID string, s
 // FindByChainAndStatus returns all positions for a chain with the specified status.
 func (r *PositionRepo) FindByChainAndStatus(ctx context.Context, chain domain.ChainID, status domain.PositionStatus) ([]*domain.Position, error) {
 	rows, err := r.db.QueryContext(ctx, `
-		SELECT id, pool_id, chain, status, tier, tick_lower, tick_upper,
+		SELECT id, COALESCE(token_id, ''), pool_id, chain, status, tier, tick_lower, tick_upper,
 		       amount_usd, opened_at, closed_at
 		FROM positions
 		WHERE chain = $1 AND status = $2
@@ -164,7 +168,7 @@ func (r *PositionRepo) UpdateStatus(ctx context.Context, id string, status domai
 // Snapshot returns all positions for a pool without caching (fresh read from DB).
 func (r *PositionRepo) Snapshot(ctx context.Context, poolID string) ([]*domain.Position, error) {
 	rows, err := r.db.QueryContext(ctx, `
-		SELECT id, pool_id, chain, status, tier, tick_lower, tick_upper,
+		SELECT id, COALESCE(token_id, ''), pool_id, chain, status, tier, tick_lower, tick_upper,
 		       amount_usd, opened_at, closed_at
 		FROM positions
 		WHERE pool_id = $1
@@ -183,6 +187,7 @@ func scanPositions(rows *sql.Rows) ([]*domain.Position, error) {
 	for rows.Next() {
 		var row struct {
 			ID        string
+			TokenID   string
 			PoolID    string
 			Chain     int
 			Status    string
@@ -195,7 +200,7 @@ func scanPositions(rows *sql.Rows) ([]*domain.Position, error) {
 		}
 
 		err := rows.Scan(
-			&row.ID, &row.PoolID, &row.Chain, &row.Status, &row.Tier,
+			&row.ID, &row.TokenID, &row.PoolID, &row.Chain, &row.Status, &row.Tier,
 			&row.TickLower, &row.TickUpper, &row.AmountUSD,
 			&row.OpenedAt, &row.ClosedAt,
 		)
@@ -206,6 +211,7 @@ func scanPositions(rows *sql.Rows) ([]*domain.Position, error) {
 		tier, _ := domain.ParseTier(row.Tier)
 		pos := &domain.Position{
 			ID:        row.ID,
+			TokenID:   row.TokenID,
 			PoolID:    row.PoolID,
 			Chain:     intToChainID(row.Chain),
 			Status:    domain.PositionStatus(row.Status),
