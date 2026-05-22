@@ -330,7 +330,7 @@
                 type: e.status || e.stage || '-',
                 chain: (e.chain || 'base'),
                 hash: e.tx_hash || '',
-                desc: `${e.stage || '-'}: ${e.error_msg || e.message || ''}${e.pool_id ? ' / pool ' + short(e.pool_id) : ''}${e.position_id ? ' / pos ' + short(e.position_id) : ''}`,
+                desc: formatCanaryEventDesc(e),
                 source: 'canary'
             })),
             ...actions.map(a => ({time: timeText(a.decision_time), module: 'exit', type: a.action, chain: 'Base', hash: a.tx_hash || '', desc: a.reason || 'shadow exit action'})),
@@ -443,6 +443,34 @@
         const normalized = String(chain || '').toLowerCase();
         const host = normalized === 'solana' ? 'https://solscan.io/tx/' : 'https://basescan.org/tx/';
         return `<a target="_blank" rel="noreferrer" href="${host}${escapeHTML(hash)}" class="flow-tx">${short(hash)}</a>`;
+    }
+    function formatCanaryEventDesc(e) {
+        const parts = [`${e.stage || '-'}: ${e.error_msg || e.message || ''}`];
+        if (e.input_mint && e.output_mint && e.input_amount_raw && e.output_amount_raw) {
+            parts.push(`${formatTokenAmount(e.input_amount_raw, e.input_mint)} -> ${formatTokenAmount(e.output_amount_raw, e.output_mint)}`);
+        }
+        if (e.chain === 'solana' && (e.sol_balance_raw || e.usdc_balance_raw)) {
+            parts.push(`wallet SOL ${formatTokenAmount(e.sol_balance_raw || '0', 'So11111111111111111111111111111111111111112')} / USDC ${formatTokenAmount(e.usdc_balance_raw || '0', 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v')}`);
+        }
+        if (e.pool_id) parts.push(`pool ${short(e.pool_id)}`);
+        if (e.position_id) parts.push(`pos ${short(e.position_id)}`);
+        return parts.join(' / ');
+    }
+    function formatTokenAmount(raw, mint) {
+        const decimals = tokenDecimals(mint);
+        const symbol = tokenSymbol(mint);
+        const value = num(raw) / Math.pow(10, decimals);
+        return `${value.toFixed(decimals === 9 ? 6 : 4)} ${symbol}`;
+    }
+    function tokenDecimals(mint) {
+        if (mint === 'So11111111111111111111111111111111111111112') return 9;
+        if (mint === 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v') return 6;
+        return 6;
+    }
+    function tokenSymbol(mint) {
+        if (mint === 'So11111111111111111111111111111111111111112') return 'SOL';
+        if (mint === 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v') return 'USDC';
+        return short(mint);
     }
     function escapeHTML(value) { return String(value || '').replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c])); }
 })();

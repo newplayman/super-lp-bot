@@ -238,6 +238,12 @@ type dashboardCanaryEvent struct {
 	AmountUSD       string `json:"amount_usd"`
 	RequiredUSDCRaw string `json:"required_usdc_raw"`
 	RequiredWETHRaw string `json:"required_weth_raw"`
+	InputMint       string `json:"input_mint"`
+	OutputMint      string `json:"output_mint"`
+	InputAmountRaw  string `json:"input_amount_raw"`
+	OutputAmountRaw string `json:"output_amount_raw"`
+	SOLBalanceRaw   string `json:"sol_balance_raw"`
+	USDCBalanceRaw  string `json:"usdc_balance_raw"`
 	GasEstimate     uint64 `json:"gas_estimate"`
 	Message         string `json:"message"`
 	ErrorMsg        string `json:"error_msg"`
@@ -1041,7 +1047,9 @@ func queryDashboardTransactions(ctx context.Context, db *sql.DB) ([]dashboardTra
 func queryDashboardCanaryEvents(ctx context.Context, db *sql.DB) ([]dashboardCanaryEvent, error) {
 	rows, err := db.QueryContext(ctx, `
 		SELECT created_at, COALESCE(chain, ''), command, stage, status, position_id, pool_id, wallet, token_id, tx_hash,
-		       amount_usd, required_usdc_raw, required_weth_raw, gas_estimate, message, error_msg
+		       amount_usd, required_usdc_raw, required_weth_raw, COALESCE(input_mint, ''), COALESCE(output_mint, ''),
+		       COALESCE(input_amount_raw, ''), COALESCE(output_amount_raw, ''), COALESCE(sol_balance_raw, ''), COALESCE(usdc_balance_raw, ''),
+		       gas_estimate, message, error_msg
 		FROM canary_events
 		ORDER BY created_at DESC
 		LIMIT 80
@@ -1068,6 +1076,12 @@ func queryDashboardCanaryEvents(ctx context.Context, db *sql.DB) ([]dashboardCan
 			&event.AmountUSD,
 			&event.RequiredUSDCRaw,
 			&event.RequiredWETHRaw,
+			&event.InputMint,
+			&event.OutputMint,
+			&event.InputAmountRaw,
+			&event.OutputAmountRaw,
+			&event.SOLBalanceRaw,
+			&event.USDCBalanceRaw,
 			&event.GasEstimate,
 			&event.Message,
 			&event.ErrorMsg,

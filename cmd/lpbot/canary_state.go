@@ -25,6 +25,12 @@ type canaryEvent struct {
 	AmountUSD       string
 	RequiredUSDCRaw string
 	RequiredWETHRaw string
+	InputMint       string
+	OutputMint      string
+	InputAmountRaw  string
+	OutputAmountRaw string
+	SOLBalanceRaw   string
+	USDCBalanceRaw  string
 	GasEstimate     uint64
 	Message         string
 	ErrorMsg        string
@@ -96,6 +102,12 @@ func (w *canaryEventWriter) ensure(ctx context.Context) error {
 			amount_usd TEXT NOT NULL DEFAULT '',
 			required_usdc_raw TEXT NOT NULL DEFAULT '',
 			required_weth_raw TEXT NOT NULL DEFAULT '',
+			input_mint TEXT NOT NULL DEFAULT '',
+			output_mint TEXT NOT NULL DEFAULT '',
+			input_amount_raw TEXT NOT NULL DEFAULT '',
+			output_amount_raw TEXT NOT NULL DEFAULT '',
+			sol_balance_raw TEXT NOT NULL DEFAULT '',
+			usdc_balance_raw TEXT NOT NULL DEFAULT '',
 			gas_estimate BIGINT NOT NULL DEFAULT 0,
 			message TEXT NOT NULL DEFAULT '',
 			error_msg TEXT NOT NULL DEFAULT '',
@@ -104,6 +116,18 @@ func (w *canaryEventWriter) ensure(ctx context.Context) error {
 		);
 		ALTER TABLE canary_events
 			ADD COLUMN IF NOT EXISTS chain TEXT NOT NULL DEFAULT '';
+		ALTER TABLE canary_events
+			ADD COLUMN IF NOT EXISTS input_mint TEXT NOT NULL DEFAULT '';
+		ALTER TABLE canary_events
+			ADD COLUMN IF NOT EXISTS output_mint TEXT NOT NULL DEFAULT '';
+		ALTER TABLE canary_events
+			ADD COLUMN IF NOT EXISTS input_amount_raw TEXT NOT NULL DEFAULT '';
+		ALTER TABLE canary_events
+			ADD COLUMN IF NOT EXISTS output_amount_raw TEXT NOT NULL DEFAULT '';
+		ALTER TABLE canary_events
+			ADD COLUMN IF NOT EXISTS sol_balance_raw TEXT NOT NULL DEFAULT '';
+		ALTER TABLE canary_events
+			ADD COLUMN IF NOT EXISTS usdc_balance_raw TEXT NOT NULL DEFAULT '';
 		CREATE INDEX IF NOT EXISTS idx_canary_events_created_at
 			ON canary_events(created_at DESC);
 		CREATE INDEX IF NOT EXISTS idx_canary_events_position
@@ -133,9 +157,10 @@ func (w *canaryEventWriter) Record(ctx context.Context, event canaryEvent) error
 	_, err := w.db.ExecContext(ctx, `
 		INSERT INTO canary_events (
 			id, chain, command, stage, status, position_id, pool_id, wallet, token_id, tx_hash,
-			amount_usd, required_usdc_raw, required_weth_raw, gas_estimate,
-			message, error_msg, created_at, updated_at
-		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+			amount_usd, required_usdc_raw, required_weth_raw, input_mint, output_mint,
+			input_amount_raw, output_amount_raw, sol_balance_raw, usdc_balance_raw,
+			gas_estimate, message, error_msg, created_at, updated_at
+		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24)
 	`,
 		id,
 		event.Chain,
@@ -150,6 +175,12 @@ func (w *canaryEventWriter) Record(ctx context.Context, event canaryEvent) error
 		event.AmountUSD,
 		event.RequiredUSDCRaw,
 		event.RequiredWETHRaw,
+		event.InputMint,
+		event.OutputMint,
+		event.InputAmountRaw,
+		event.OutputAmountRaw,
+		event.SOLBalanceRaw,
+		event.USDCBalanceRaw,
 		event.GasEstimate,
 		event.Message,
 		event.ErrorMsg,

@@ -232,6 +232,11 @@ type jupiterSwapBuildResult struct {
 	AddressLookupTableAddresses []string        `json:"addressLookupTableAddresses"`
 }
 
+type solanaWalletSnapshot struct {
+	SOLBalanceRaw  uint64
+	USDCBalanceRaw uint64
+}
+
 func buildJupiterSwapTransaction(ctx context.Context, userPublicKey string, inputMint string, outputMint string, amountRaw string, slippageBPS int, maxPriorityLamports uint64) (jupiterQuoteSummary, jupiterSwapBuildResult, error) {
 	userPublicKey = strings.TrimSpace(userPublicKey)
 	if userPublicKey == "" {
@@ -333,6 +338,72 @@ func loadSolanaPrivateKeyFromEnv() (solanago.PrivateKey, string, bool, error) {
 		return key, "SOLANA_KEYPAIR_PATH", true, nil
 	}
 	return nil, "", false, nil
+}
+
+func fetchSolanaWalletSnapshot(ctx context.Context, cfg *config.Config, wallet string) (solanaWalletSnapshot, error) {
+	endpoint := solanaReadinessEndpoint(cfg)
+	if endpoint == "" {
+		return solanaWalletSnapshot{}, fmt.Errorf("solana rpc endpoint is empty")
+	}
+
+	balanceRaw, err := solanaJSONRPC(ctx, endpoint, "getBalance", []any{
+		wallet,
+		map[string]any{"commitment": "confirmed"},
+	})
+	if err != nil {
+		return solanaWalletSnapshot{}, fmt.Errorf("getBalance: %w", err)
+	}
+	var balance struct {
+		Value uint64 `json:"value"`
+	}
+	if err := json.Unmarshal(balanceRaw, &balance); err != nil {
+		return solanaWalletSnapshot{}, fmt.Errorf("decode getBalance: %w", err)
+	}
+
+	tokenRaw, err := solanaJSONRPC(ctx, endpoint, "getTokenAccountsByOwner", []any{
+		wallet,
+		map[string]any{"mint": solanaUSDCAddress},
+		map[string]any{"encoding": "jsonParsed", "commitment": "confirmed"},
+	})
+	if err != nil {
+		return solanaWalletSnapshot{}, fmt.Errorf("getTokenAccountsByOwner: %w", err)
+	}
+	var tokenAccounts struct {
+		Value []struct {
+			Account struct {
+				Data struct {
+					Parsed struct {
+						Info struct {
+							TokenAmount struct {
+								Amount string `json:"amount"`
+							} `json:"tokenAmount"`
+						} `json:"info"`
+					} `json:"parsed"`
+				} `json:"data"`
+			} `json:"account"`
+		} `json:"value"`
+	}
+	if err := json.Unmarshal(tokenRaw, &tokenAccounts); err != nil {
+		return solanaWalletSnapshot{}, fmt.Errorf("decode getTokenAccountsByOwner: %w", err)
+	}
+
+	var usdcRaw uint64
+	for _, account := range tokenAccounts.Value {
+		amount := strings.TrimSpace(account.Account.Data.Parsed.Info.TokenAmount.Amount)
+		if amount == "" {
+			continue
+		}
+		value, err := strconv.ParseUint(amount, 10, 64)
+		if err != nil {
+			return solanaWalletSnapshot{}, fmt.Errorf("parse token account amount: %w", err)
+		}
+		usdcRaw += value
+	}
+
+	return solanaWalletSnapshot{
+		SOLBalanceRaw:  balance.Value,
+		USDCBalanceRaw: usdcRaw,
+	}, nil
 }
 
 type jupiterQuoteSummary struct {
