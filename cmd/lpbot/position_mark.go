@@ -349,6 +349,7 @@ func (app *App) listActiveShadowPositions(ctx context.Context, db *sql.DB) ([]ac
 		SELECT id, pool_id, COALESCE(token_id, ''), chain, status, COALESCE(tier, ''), amount_usd, tick_lower, tick_upper, opened_at
 		FROM positions
 		WHERE status IN ('intended', 'opening', 'open')
+		  AND id NOT LIKE 'shadow-canary-live-pos-%'
 		ORDER BY opened_at DESC
 	`)
 	if err != nil {
@@ -1387,6 +1388,9 @@ func (app *App) recordShadowExitActions(ctx context.Context, db *sql.DB, records
 		if !record.WouldExit || record.Action != "shadow_close" {
 			continue
 		}
+		if isLiveCanaryPositionID(record.PositionID) {
+			continue
+		}
 		existingTxHash, exists, err := recentEquivalentExitAction(ctx, tx, record)
 		if err != nil {
 			return fmt.Errorf("check exit action dedupe for %s: %w", record.PositionID, err)
@@ -1454,6 +1458,9 @@ func recentEquivalentExitAction(ctx context.Context, tx *sql.Tx, record shadowEx
 }
 
 func (app *App) finalizeShadowExitAction(ctx context.Context, tx *sql.Tx, record shadowExitDecisionRecord, txHash string) error {
+	if isLiveCanaryPositionID(record.PositionID) {
+		return fmt.Errorf("refuse to close live canary position through shadow exit path: %s", record.PositionID)
+	}
 	txStatus := dexdomain.TxConfirmed
 	exitTx := dexdomain.SignedTx{
 		UnsignedTx: dexdomain.UnsignedTx{
@@ -1483,6 +1490,10 @@ func (app *App) finalizeShadowExitAction(ctx context.Context, tx *sql.Tx, record
 		return fmt.Errorf("close shadow position %s: %w", record.PositionID, err)
 	}
 	return nil
+}
+
+func isLiveCanaryPositionID(id string) bool {
+	return strings.HasPrefix(id, "shadow-canary-live-pos-")
 }
 
 func openingPrice(point ports.HistoricalPrice) dexdomain.Decimal {
