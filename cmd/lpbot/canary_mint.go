@@ -1,0 +1,165 @@
+//go:build live
+
+package main
+
+import (
+	"context"
+	"fmt"
+	"math/big"
+	"os"
+	"strings"
+	"time"
+
+	livebroadcast "github.com/lpbot/lpbot/internal/adapters/broadcast/live"
+	"github.com/lpbot/lpbot/internal/adapters/rpc"
+	"github.com/lpbot/lpbot/internal/domain"
+	"github.com/lpbot/lpbot/internal/platform/config"
+	"github.com/lpbot/lpbot/internal/ports"
+)
+
+const canaryMintConfirmEnv = "LPBOT_CONFIRM_CANARY_MINT"
+
+func runCanaryMint(ctx context.Context, cfg *config.Config) error {
+	if os.Getenv(canaryMintConfirmEnv) != "YES" {
+		return fmt.Errorf("canary mint requires %s=YES", canaryMintConfirmEnv)
+	}
+	if cfg == nil {
+		return fmt.Errorf("config is nil")
+	}
+	gate := newLiveSafetyGate("live", cfg)
+	if gate.killSwitch {
+		return fmt.Errorf("canary mint blocked: live.kill_switch=true")
+	}
+	if !gate.canary {
+		return fmt.Errorf("canary mint requires live.canary=true")
+	}
+	if cfg.Live.MaxOrderUSD > canaryMaxOrderUSD {
+		return fmt.Errorf("canary mint blocked: max_order_usd %.2f exceeds hard cap %.2f", cfg.Live.MaxOrderUSD, canaryMaxOrderUSD)
+	}
+	if len(cfg.Live.AllowedPools) != 1 {
+		return fmt.Errorf("canary mint requires exactly one allowed pool, got %d", len(cfg.Live.AllowedPools))
+	}
+
+	provider, err := newCanaryPreflightProvider(ctx, cfg)
+	if err != nil {
+		return err
+	}
+	wallet, err := openCanaryPreflightWallet(ctx, cfg, provider)
+	if err != nil {
+		return err
+	}
+	defer wallet.Close()
+
+	broadcaster, err := newCanaryMintBroadcaster(ctx, cfg, provider)
+	if err != nil {
+		return err
+	}
+
+	amountUSD := domain.NewDecimalFromFloat(cfg.Live.MaxOrderUSD)
+	if amountUSD.LessThanOrEqual(domain.ZeroDecimal()) || amountUSD.GreaterThan(domain.NewDecimalFromFloat(canaryMaxOrderUSD)) {
+		return fmt.Errorf("invalid canary amount_usd: %s", amountUSD.String())
+	}
+	pool, err := loadCanaryPreflightPool(ctx, provider, strings.TrimSpace(cfg.Live.AllowedPools[0]))
+	if err != nil {
+		return err
+	}
+	if err := checkCanaryPreflightOpen(gate, pool, amountUSD); err != nil {
+		return err
+	}
+
+	now := time.Now()
+	positionID := shadowID("canary-live-pos", pool.Key(), now.Unix())
+	intent, err := buildBaseOpenIntent(ctx, provider, wallet.Address(), pool, amountUSD, positionID, now)
+	if err != nil {
+		return fmt.Errorf("build mint sizing: %w", err)
+	}
+	requiredUSDC := amountForToken(pool, baseUSDCAddress, intent)
+	requiredWETH := amountForToken(pool, baseWETHAddress, intent)
+	if err := checkCanaryMintPrerequisites(ctx, cfg, provider, wallet, requiredUSDC, requiredWETH); err != nil {
+		return err
+	}
+
+	orderManager := &orderManagerAdapter{
+		provider:       provider,
+		walletAddress:  wallet.Address(),
+		npmBaseAddress: strings.TrimSpace(cfg.Execution.NPMBaseAddress),
+	}
+	prepared, err := orderManager.buildPreparedMintTx(ctx, pool, amountUSD, positionID, now)
+	if err != nil {
+		return fmt.Errorf("build mint tx: %w", err)
+	}
+	preflightCtx, cancel := context.WithTimeout(ctx, 45*time.Second)
+	gas, err := estimatePreflightGas(preflightCtx, provider, prepared.UnsignedTx)
+	cancel()
+	if err != nil {
+		return fmt.Errorf("estimate mint gas: %w", err)
+	}
+	signed, err := wallet.Sign(ctx, prepared.UnsignedTx)
+	if err != nil {
+		return fmt.Errorf("sign mint: %w", err)
+	}
+	signed.ID = prepared.ID
+	signed.Status = domain.TxBuilt
+	if err := broadcaster.Send(ctx, signed); err != nil {
+		return fmt.Errorf("broadcast mint: %w", err)
+	}
+	fmt.Printf("tx_broadcast action=mint_lp hash=%s position=%s gas_estimate=%d required_usdc=%s required_weth=%s\n",
+		signed.Hash, positionID, gas, requiredUSDC.String(), requiredWETH.String())
+	return nil
+}
+
+func newCanaryMintBroadcaster(ctx context.Context, cfg *config.Config, provider *rpc.RoundRobinProvider) (ports.Broadcaster, error) {
+	baseRPCURL := strings.TrimSpace(cfg.Chains.Base.RPCPrimary)
+	if baseRPCURL == "" && provider != nil {
+		baseRPCURL = provider.Endpoint()
+	}
+	return livebroadcast.New(ctx, livebroadcast.BroadcastConfig{
+		BaseRPCURL:    baseRPCURL,
+		Confirmations: cfg.Chains.Base.Confirmations,
+	})
+}
+
+func checkCanaryMintPrerequisites(
+	ctx context.Context,
+	cfg *config.Config,
+	provider *rpc.RoundRobinProvider,
+	wallet ports.Wallet,
+	requiredUSDC *big.Int,
+	requiredWETH *big.Int,
+) error {
+	spender := parseAddressOrZero(strings.TrimSpace(cfg.Execution.NPMBaseAddress))
+	if spender.IsZero() {
+		return fmt.Errorf("npm base address is invalid")
+	}
+	usdcBalance, err := dashboardERC20Balance(ctx, provider, baseUSDCAddress, wallet.Address())
+	if err != nil {
+		return fmt.Errorf("read USDC balance: %w", err)
+	}
+	wethBalance, err := dashboardERC20Balance(ctx, provider, baseWETHAddress, wallet.Address())
+	if err != nil {
+		return fmt.Errorf("read WETH balance: %w", err)
+	}
+	usdcAllowance, err := dashboardERC20Allowance(ctx, provider, baseUSDCAddress, wallet.Address(), spender)
+	if err != nil {
+		return fmt.Errorf("read USDC allowance: %w", err)
+	}
+	wethAllowance, err := dashboardERC20Allowance(ctx, provider, baseWETHAddress, wallet.Address(), spender)
+	if err != nil {
+		return fmt.Errorf("read WETH allowance: %w", err)
+	}
+	if usdcBalance.Cmp(requiredUSDC) < 0 {
+		return fmt.Errorf("insufficient USDC for mint: need %s raw, have %s raw", requiredUSDC.String(), usdcBalance.String())
+	}
+	if wethBalance.Cmp(requiredWETH) < 0 {
+		return fmt.Errorf("insufficient WETH for mint: need %s raw, have %s raw", requiredWETH.String(), wethBalance.String())
+	}
+	if usdcAllowance.Cmp(requiredUSDC) < 0 {
+		return fmt.Errorf("insufficient USDC allowance for mint: need %s raw, have %s raw", requiredUSDC.String(), usdcAllowance.String())
+	}
+	if wethAllowance.Cmp(requiredWETH) < 0 {
+		return fmt.Errorf("insufficient WETH allowance for mint: need %s raw, have %s raw", requiredWETH.String(), wethAllowance.String())
+	}
+	fmt.Printf("canary mint prerequisites ok required_usdc=%s required_weth=%s balances_usdc=%s balances_weth=%s allowances_usdc=%s allowances_weth=%s\n",
+		requiredUSDC.String(), requiredWETH.String(), usdcBalance.String(), wethBalance.String(), usdcAllowance.String(), wethAllowance.String())
+	return nil
+}
