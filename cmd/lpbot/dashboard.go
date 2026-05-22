@@ -542,7 +542,6 @@ func (app *App) dashboardSnapshot(ctx context.Context) (dashboardSnapshot, error
 		return snapshot, err
 	}
 	snapshot.Transactions = txs
-	snapshot.BaseCanary = buildDashboardBaseCanary(snapshot.Positions, snapshot.ClosedPositions, snapshot.Transactions)
 
 	canaryEvents, err := queryDashboardCanaryEvents(ctx, db)
 	if err != nil {
@@ -550,6 +549,7 @@ func (app *App) dashboardSnapshot(ctx context.Context) (dashboardSnapshot, error
 	} else {
 		snapshot.CanaryEvents = canaryEvents
 	}
+	snapshot.BaseCanary = buildDashboardBaseCanary(snapshot.Positions, snapshot.ClosedPositions, snapshot.CanaryEvents)
 	if summary, err := queryDashboardSolanaCanary(ctx, db); err != nil {
 		snapshot.Warnings = append(snapshot.Warnings, fmt.Sprintf("dashboard solana canary summary unavailable: %v", err))
 	} else {
@@ -1162,7 +1162,7 @@ func queryDashboardSolanaCanary(ctx context.Context, db *sql.DB) (dashboardSolan
 	return summary, nil
 }
 
-func buildDashboardBaseCanary(positions, closedPositions []dashboardPosition, txs []dashboardTransaction) dashboardBaseCanary {
+func buildDashboardBaseCanary(positions, closedPositions []dashboardPosition, events []dashboardCanaryEvent) dashboardBaseCanary {
 	var summary dashboardBaseCanary
 	for _, pos := range positions {
 		if pos.Chain != 1 || strings.TrimSpace(pos.TokenID) == "" {
@@ -1173,13 +1173,13 @@ func buildDashboardBaseCanary(positions, closedPositions []dashboardPosition, tx
 			summary.Closed++
 		}
 	}
-	for _, tx := range txs {
-		if !strings.EqualFold(tx.Chain, "base") || strings.TrimSpace(tx.TxHash) == "" {
+	for _, event := range events {
+		if !strings.EqualFold(event.Chain, "base") || strings.TrimSpace(event.TxHash) == "" {
 			continue
 		}
 		summary.Broadcasts++
 		if summary.LastTxHash == "" {
-			summary.LastTxHash = tx.TxHash
+			summary.LastTxHash = event.TxHash
 		}
 	}
 	if len(closedPositions) > 0 {
