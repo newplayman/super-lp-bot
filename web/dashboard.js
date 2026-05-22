@@ -328,7 +328,7 @@
                 time: timeText(e.created_at),
                 module: e.command || 'canary',
                 type: e.status || e.stage || '-',
-                chain: 'Base',
+                chain: (e.chain || 'base'),
                 hash: e.tx_hash || '',
                 desc: `${e.stage || '-'}: ${e.error_msg || e.message || ''}${e.pool_id ? ' / pool ' + short(e.pool_id) : ''}${e.position_id ? ' / pos ' + short(e.position_id) : ''}`,
                 source: 'canary'
@@ -339,7 +339,7 @@
         list.innerHTML = (flows.length ? flows : [{time: 'latest', module: 'shadow', type: 'no live tx', chain: 'Base', hash: '', desc: '当前仍是 shadow 观测，没有真实链上执行'}]).map(fl => `
             <div class="flow-item">
                 <div class="flow-left"><div class="flow-header"><span class="flow-time">${fl.time}</span><span class="flow-module">${escapeHTML(fl.module)}</span><span class="flow-tag">${escapeHTML(fl.type || '-')}</span></div><div class="flow-desc">${escapeHTML(fl.desc || '-')}</div></div>
-                <div class="flow-right">${fl.hash ? `<a target="_blank" rel="noreferrer" href="https://basescan.org/tx/${fl.hash}" class="flow-tx">${short(fl.hash)}</a>` : `<span class="flow-tx">${escapeHTML(fl.source || 'shadow')}</span>`}<span class="badge-success-glow">DB</span></div>
+                <div class="flow-right">${fl.hash ? chainTxLink(fl.chain, fl.hash) : `<span class="flow-tx">${escapeHTML(fl.source || 'shadow')}</span>`}<span class="badge-success-glow">DB</span></div>
             </div>`).join('');
     }
 
@@ -439,5 +439,10 @@
     function geckoURL(poolId, chain) { return `https://www.geckoterminal.com/${num(chain) === 2 ? 'solana' : 'base'}/pools/${encodeURIComponent(poolId || '')}`; }
     function poolLink(poolId, chain) { return `<a target="_blank" rel="noreferrer" href="${dexscreenerURL(poolId, chain)}">${short(poolId)}</a> <a target="_blank" rel="noreferrer" href="${geckoURL(poolId, chain)}">GT</a>`; }
     function txLink(hash) { return hash ? `<a target="_blank" rel="noreferrer" href="https://basescan.org/tx/${escapeHTML(hash)}">${short(hash)}</a>` : '-'; }
+    function chainTxLink(chain, hash) {
+        const normalized = String(chain || '').toLowerCase();
+        const host = normalized === 'solana' ? 'https://solscan.io/tx/' : 'https://basescan.org/tx/';
+        return `<a target="_blank" rel="noreferrer" href="${host}${escapeHTML(hash)}" class="flow-tx">${short(hash)}</a>`;
+    }
     function escapeHTML(value) { return String(value || '').replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c])); }
 })();

@@ -13,6 +13,7 @@ import (
 )
 
 type canaryEvent struct {
+	Chain           string
 	Command         string
 	Stage           string
 	Status          string
@@ -83,6 +84,7 @@ func (w *canaryEventWriter) ensure(ctx context.Context) error {
 	_, err := w.db.ExecContext(ctx, `
 		CREATE TABLE IF NOT EXISTS canary_events (
 			id TEXT PRIMARY KEY,
+			chain TEXT NOT NULL DEFAULT '',
 			command TEXT NOT NULL DEFAULT '',
 			stage TEXT NOT NULL DEFAULT '',
 			status TEXT NOT NULL DEFAULT '',
@@ -100,6 +102,8 @@ func (w *canaryEventWriter) ensure(ctx context.Context) error {
 			created_at BIGINT NOT NULL DEFAULT 0,
 			updated_at BIGINT NOT NULL DEFAULT 0
 		);
+		ALTER TABLE canary_events
+			ADD COLUMN IF NOT EXISTS chain TEXT NOT NULL DEFAULT '';
 		CREATE INDEX IF NOT EXISTS idx_canary_events_created_at
 			ON canary_events(created_at DESC);
 		CREATE INDEX IF NOT EXISTS idx_canary_events_position
@@ -128,12 +132,13 @@ func (w *canaryEventWriter) Record(ctx context.Context, event canaryEvent) error
 	id := shadowID("canary-event", idInput, time.Now().UnixNano())
 	_, err := w.db.ExecContext(ctx, `
 		INSERT INTO canary_events (
-			id, command, stage, status, position_id, pool_id, wallet, token_id, tx_hash,
+			id, chain, command, stage, status, position_id, pool_id, wallet, token_id, tx_hash,
 			amount_usd, required_usdc_raw, required_weth_raw, gas_estimate,
 			message, error_msg, created_at, updated_at
-		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
 	`,
 		id,
+		event.Chain,
 		event.Command,
 		event.Stage,
 		event.Status,

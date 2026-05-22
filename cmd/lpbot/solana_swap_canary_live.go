@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	livebroadcast "github.com/lpbot/lpbot/internal/adapters/broadcast/live"
 	"github.com/lpbot/lpbot/internal/domain"
@@ -20,6 +21,11 @@ func runSolanaSwapCanary(ctx context.Context, cfg *config.Config, userPublicKey 
 	if cfg == nil {
 		return fmt.Errorf("config is required")
 	}
+	state, err := newCanaryEventWriter(ctx, cfg)
+	if err != nil {
+		return err
+	}
+	defer state.Close()
 	inputMint = strings.TrimSpace(inputMint)
 	outputMint = strings.TrimSpace(outputMint)
 	rawAmount, err := strconv.ParseUint(strings.TrimSpace(amountRaw), 10, 64)
@@ -84,11 +90,26 @@ func runSolanaSwapCanary(ctx context.Context, cfg *config.Config, userPublicKey 
 			Chain:  domain.ChainSolana,
 			From:   domain.MustParseAddress(pub),
 			To:     domain.MustParseAddress(outputMint),
-			MinOut: domain.NewDecimalFromInt(0),
+			MinOut: domain.MustDecimal(quote.OtherAmountThreshold),
 		},
 		Signature: signedBytes,
 		Hash:      signature,
 		Status:    domain.TxBuilt,
+	}
+	if err := state.Record(ctx, canaryEvent{
+		Chain:     domain.ChainSolana.String(),
+		Command:   "solana_swap_canary",
+		Stage:     "signed",
+		Status:    "ok",
+		Wallet:    pub,
+		TxHash:    signature,
+		Message:   fmt.Sprintf("signed %s -> %s in=%s out=%s", shortAddress(inputMint), shortAddress(outputMint), quote.InAmount, quote.OutAmount),
+		CreatedAt: time.Now().Unix(),
+	}); err != nil {
+		return fmt.Errorf("record solana canary signed event: %w", err)
+	}
+	if err := state.RecordSignedTx(ctx, signedTx, domain.TxBuilt); err != nil {
+		return fmt.Errorf("record solana canary built tx: %w", err)
 	}
 
 	fmt.Printf("solana_swap_canary_prepare source=%s user=%s in_amount=%s out_amount=%s tx_base64_len=%d signed_bytes=%d signature=%s\n",
@@ -102,6 +123,21 @@ func runSolanaSwapCanary(ctx context.Context, cfg *config.Config, userPublicKey 
 	)
 	if err := broadcaster.Send(ctx, signedTx); err != nil {
 		return fmt.Errorf("broadcast solana canary swap: %w", err)
+	}
+	if err := state.RecordSignedTx(ctx, signedTx, domain.TxBroadcast); err != nil {
+		return fmt.Errorf("record solana canary broadcast tx: %w", err)
+	}
+	if err := state.Record(ctx, canaryEvent{
+		Chain:     domain.ChainSolana.String(),
+		Command:   "solana_swap_canary",
+		Stage:     "broadcast",
+		Status:    "ok",
+		Wallet:    pub,
+		TxHash:    signature,
+		Message:   fmt.Sprintf("broadcast %s -> %s in=%s out=%s", shortAddress(inputMint), shortAddress(outputMint), quote.InAmount, quote.OutAmount),
+		CreatedAt: time.Now().Unix(),
+	}); err != nil {
+		return fmt.Errorf("record solana canary broadcast event: %w", err)
 	}
 	fmt.Printf("solana_swap_canary_broadcast success=true signature=%s in_amount=%s out_amount=%s\n", signature, quote.InAmount, quote.OutAmount)
 	return nil

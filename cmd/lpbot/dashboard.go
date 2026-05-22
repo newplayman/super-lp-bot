@@ -226,6 +226,7 @@ type dashboardTransaction struct {
 
 type dashboardCanaryEvent struct {
 	CreatedAt       int64  `json:"created_at"`
+	Chain           string `json:"chain"`
 	Command         string `json:"command"`
 	Stage           string `json:"stage"`
 	Status          string `json:"status"`
@@ -1039,7 +1040,7 @@ func queryDashboardTransactions(ctx context.Context, db *sql.DB) ([]dashboardTra
 
 func queryDashboardCanaryEvents(ctx context.Context, db *sql.DB) ([]dashboardCanaryEvent, error) {
 	rows, err := db.QueryContext(ctx, `
-		SELECT created_at, command, stage, status, position_id, pool_id, wallet, token_id, tx_hash,
+		SELECT created_at, COALESCE(chain, ''), command, stage, status, position_id, pool_id, wallet, token_id, tx_hash,
 		       amount_usd, required_usdc_raw, required_weth_raw, gas_estimate, message, error_msg
 		FROM canary_events
 		ORDER BY created_at DESC
@@ -1055,6 +1056,7 @@ func queryDashboardCanaryEvents(ctx context.Context, db *sql.DB) ([]dashboardCan
 		var event dashboardCanaryEvent
 		if err := rows.Scan(
 			&event.CreatedAt,
+			&event.Chain,
 			&event.Command,
 			&event.Stage,
 			&event.Status,
