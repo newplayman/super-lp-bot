@@ -11,6 +11,8 @@ import (
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/lpbot/lpbot/internal/adapters/rpc"
 	"github.com/lpbot/lpbot/internal/core/pnl"
 	dexdomain "github.com/lpbot/lpbot/internal/domain"
 	"github.com/lpbot/lpbot/internal/platform/metrics"
@@ -53,6 +55,11 @@ type activeShadowPosition struct {
 }
 
 const defaultBaseUniswapV3NPMAddress = "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1"
+
+var (
+	uniswapQ128 = new(big.Int).Lsh(big.NewInt(1), 128)
+	twoPow256   = new(big.Int).Lsh(big.NewInt(1), 256)
+)
 
 type shadowExitDecisionRecord struct {
 	DecisionTime   int64
@@ -375,13 +382,15 @@ func (app *App) buildPositionMarkRecordAt(ctx context.Context, pos activeShadowP
 	}
 
 	markSource := source
+	var npmState *npmPositionState
 	if strings.TrimSpace(pos.TokenID) != "" {
-		npmState, err := app.loadNPMPositionState(ctx, pos)
+		state, err := app.loadNPMPositionState(ctx, pos)
 		if err == nil {
-			pos.TickLower = npmState.TickLower
-			pos.TickUpper = npmState.TickUpper
+			npmState = &state
+			pos.TickLower = state.TickLower
+			pos.TickUpper = state.TickUpper
 			markSource = prependMarkSource(markSource, "onchain_npm")
-			if npmState.Liquidity.Sign() == 0 {
+			if state.Liquidity.Sign() == 0 {
 				markSource = prependMarkSource(markSource, "zero_liquidity")
 			}
 		} else {
@@ -417,6 +426,19 @@ func (app *App) buildPositionMarkRecordAt(ctx context.Context, pos activeShadowP
 		effectiveFeeBPS = 30
 	}
 	estimatedFeeUSD := pnl.AccrueFeesFromVolume(meta.Vol24h, effectiveFeeBPS).Mul(sharePct).Mul(holdDays)
+	if npmState != nil {
+		onchainFeeUSD, err := app.estimateNPMUncollectedFeeUSD(ctx, pos, *npmState)
+		if err == nil {
+			estimatedFeeUSD = onchainFeeUSD
+			markSource = prependMarkSource(markSource, "onchain_fees")
+		} else {
+			markSource = prependMarkSource(markSource, "onchain_fee_error")
+			app.logger.Warn("nft fee mark fell back to volume estimate",
+				zap.String("position_id", pos.ID),
+				zap.String("token_id", pos.TokenID),
+				zap.Error(err))
+		}
+	}
 	priceChangePct, estimatedILUSD := app.estimateShadowIL(ctx, pos, meta, holdMinutes, asOf)
 	valuationUSD := pos.AmountUSD.Add(estimatedFeeUSD).Add(estimatedILUSD)
 	netPnLUSD := estimatedFeeUSD.Add(estimatedILUSD)
@@ -454,6 +476,11 @@ type npmPositionState struct {
 	FeeGrowthInside1LastX128 *big.Int
 	TokensOwed0              *big.Int
 	TokensOwed1              *big.Int
+}
+
+type v3TickFeeGrowthState struct {
+	FeeGrowthOutside0X128 *big.Int
+	FeeGrowthOutside1X128 *big.Int
 }
 
 func (app *App) loadNPMPositionState(ctx context.Context, pos activeShadowPosition) (npmPositionState, error) {
@@ -514,6 +541,168 @@ func (app *App) loadNPMPositionState(ctx context.Context, pos activeShadowPositi
 		TokensOwed0:              new(big.Int).SetBytes(raw[10*32 : 11*32]),
 		TokensOwed1:              new(big.Int).SetBytes(raw[11*32 : 12*32]),
 	}, nil
+}
+
+func (app *App) estimateNPMUncollectedFeeUSD(ctx context.Context, pos activeShadowPosition, state npmPositionState) (dexdomain.Decimal, error) {
+	if state.Liquidity == nil || state.Liquidity.Sign() == 0 {
+		return dexdomain.ZeroDecimal(), nil
+	}
+	provider := app.rpcProviderForChain(dexdomain.ChainBase)
+	if provider == nil {
+		return dexdomain.ZeroDecimal(), fmt.Errorf("base rpc provider is not configured")
+	}
+	poolAddress, err := dexdomain.ParseAddress(pos.PoolID)
+	if err != nil {
+		return dexdomain.ZeroDecimal(), fmt.Errorf("parse pool address: %w", err)
+	}
+	currentTick, err := readV3PoolTickForMark(ctx, provider, poolAddress)
+	if err != nil {
+		return dexdomain.ZeroDecimal(), err
+	}
+	global0, err := callBigMethod(ctx, provider, poolAddress, "feeGrowthGlobal0X128()")
+	if err != nil {
+		return dexdomain.ZeroDecimal(), err
+	}
+	global1, err := callBigMethod(ctx, provider, poolAddress, "feeGrowthGlobal1X128()")
+	if err != nil {
+		return dexdomain.ZeroDecimal(), err
+	}
+	lowerTick, err := readV3TickFeeGrowth(ctx, provider, poolAddress, state.TickLower)
+	if err != nil {
+		return dexdomain.ZeroDecimal(), err
+	}
+	upperTick, err := readV3TickFeeGrowth(ctx, provider, poolAddress, state.TickUpper)
+	if err != nil {
+		return dexdomain.ZeroDecimal(), err
+	}
+
+	inside0 := feeGrowthInsideX128(global0, lowerTick.FeeGrowthOutside0X128, upperTick.FeeGrowthOutside0X128, currentTick, state.TickLower, state.TickUpper)
+	inside1 := feeGrowthInsideX128(global1, lowerTick.FeeGrowthOutside1X128, upperTick.FeeGrowthOutside1X128, currentTick, state.TickLower, state.TickUpper)
+	delta0 := subModU256(inside0, state.FeeGrowthInside0LastX128)
+	delta1 := subModU256(inside1, state.FeeGrowthInside1LastX128)
+	rawFees0 := liquidityFeeAmount(state.Liquidity, delta0)
+	rawFees1 := liquidityFeeAmount(state.Liquidity, delta1)
+	if state.TokensOwed0 != nil {
+		rawFees0.Add(rawFees0, state.TokensOwed0)
+	}
+	if state.TokensOwed1 != nil {
+		rawFees1.Add(rawFees1, state.TokensOwed1)
+	}
+
+	decimals0, err := tokenDecimals(ctx, provider, state.Token0)
+	if err != nil {
+		return dexdomain.ZeroDecimal(), err
+	}
+	decimals1, err := tokenDecimals(ctx, provider, state.Token1)
+	if err != nil {
+		return dexdomain.ZeroDecimal(), err
+	}
+	price0, price1, err := inferBaseTokenPricesUSD(dexdomain.Pool{
+		ID:       pos.PoolID,
+		Chain:    pos.Chain,
+		Protocol: "uniswap_v3",
+		Token0:   state.Token0,
+		Token1:   state.Token1,
+		FeeBPS:   uint(state.Fee / 100),
+		Tick:     currentTick,
+	}, decimals0, decimals1)
+	if err != nil {
+		return dexdomain.ZeroDecimal(), err
+	}
+
+	amount0 := decimalFromRawAmount(rawFees0, decimals0)
+	amount1 := decimalFromRawAmount(rawFees1, decimals1)
+	return amount0.Mul(price0).Add(amount1.Mul(price1)), nil
+}
+
+func callBigMethod(ctx context.Context, provider *rpc.RoundRobinProvider, contract dexdomain.Address, signature string) (*big.Int, error) {
+	data, err := callRawMethod(ctx, provider, contract, signature)
+	if err != nil {
+		return nil, err
+	}
+	if len(data) < 32 {
+		return nil, fmt.Errorf("%s returned short response", signature)
+	}
+	return new(big.Int).SetBytes(data[:32]), nil
+}
+
+func readV3PoolTickForMark(ctx context.Context, provider *rpc.RoundRobinProvider, pool dexdomain.Address) (int, error) {
+	raw, err := callRawMethod(ctx, provider, pool, "slot0()")
+	if err != nil {
+		return 0, fmt.Errorf("read pool slot0: %w", err)
+	}
+	if len(raw) < 64 {
+		return 0, fmt.Errorf("slot0 returned short response")
+	}
+	return int(decodeABIInt24(raw[32:64])), nil
+}
+
+func readV3TickFeeGrowth(ctx context.Context, provider *rpc.RoundRobinProvider, pool dexdomain.Address, tick int64) (v3TickFeeGrowthState, error) {
+	data := make([]byte, 4+32)
+	copy(data[:4], crypto.Keccak256([]byte("ticks(int24)"))[:4])
+	copy(data[4:], encodeABIInt24(tick))
+
+	to := common.HexToAddress(pool.String())
+	raw, err := provider.CallContract(ctx, ethereum.CallMsg{
+		To:   &to,
+		Data: data,
+	}, nil)
+	if err != nil {
+		return v3TickFeeGrowthState{}, fmt.Errorf("read pool ticks(%d): %w", tick, err)
+	}
+	if len(raw) < 8*32 {
+		return v3TickFeeGrowthState{}, fmt.Errorf("ticks(%d) returned short response: %d bytes", tick, len(raw))
+	}
+	return v3TickFeeGrowthState{
+		FeeGrowthOutside0X128: new(big.Int).SetBytes(raw[2*32 : 3*32]),
+		FeeGrowthOutside1X128: new(big.Int).SetBytes(raw[3*32 : 4*32]),
+	}, nil
+}
+
+func encodeABIInt24(value int64) []byte {
+	word := make([]byte, 32)
+	encoded := uint32(int32(value)) & 0xFFFFFF
+	if value < 0 {
+		for i := range word {
+			word[i] = 0xff
+		}
+	}
+	word[29] = byte(encoded >> 16)
+	word[30] = byte(encoded >> 8)
+	word[31] = byte(encoded)
+	return word
+}
+
+func feeGrowthInsideX128(global, lowerOutside, upperOutside *big.Int, currentTick int, tickLower, tickUpper int64) *big.Int {
+	feeGrowthBelow := new(big.Int).Set(lowerOutside)
+	if int64(currentTick) < tickLower {
+		feeGrowthBelow = subModU256(global, lowerOutside)
+	}
+	feeGrowthAbove := new(big.Int).Set(upperOutside)
+	if int64(currentTick) >= tickUpper {
+		feeGrowthAbove = subModU256(global, upperOutside)
+	}
+	return subModU256(subModU256(global, feeGrowthBelow), feeGrowthAbove)
+}
+
+func subModU256(left, right *big.Int) *big.Int {
+	result := new(big.Int).Sub(left, right)
+	result.Mod(result, twoPow256)
+	return result
+}
+
+func liquidityFeeAmount(liquidity, feeGrowthDelta *big.Int) *big.Int {
+	if liquidity == nil || feeGrowthDelta == nil {
+		return new(big.Int)
+	}
+	return new(big.Int).Div(new(big.Int).Mul(liquidity, feeGrowthDelta), uniswapQ128)
+}
+
+func decimalFromRawAmount(value *big.Int, decimals uint8) dexdomain.Decimal {
+	if value == nil || value.Sign() == 0 {
+		return dexdomain.ZeroDecimal()
+	}
+	return dexdomain.MustDecimal(value.String()).Div(scaleForDecimals(decimals))
 }
 
 func decodeABIInt24(word []byte) int64 {
