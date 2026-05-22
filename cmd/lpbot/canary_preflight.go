@@ -78,7 +78,7 @@ func runCanaryPreflight(ctx context.Context, cfg *config.Config) error {
 	if err != nil {
 		return err
 	}
-	if err := gate.checkOpen(pool, amountUSD); err != nil {
+	if err := checkCanaryPreflightOpen(gate, pool, amountUSD); err != nil {
 		return err
 	}
 	report, err := buildCanaryPreflightReport(ctx, cfg, provider, wallet, pool, amountUSD)
@@ -86,6 +86,31 @@ func runCanaryPreflight(ctx context.Context, cfg *config.Config) error {
 		return err
 	}
 	printCanaryPreflightReport(report)
+	return nil
+}
+
+func checkCanaryPreflightOpen(gate *liveSafetyGate, pool domain.Pool, amountUSD domain.Decimal) error {
+	if gate == nil {
+		return fmt.Errorf("live gate not initialized")
+	}
+	if gate.killSwitch {
+		return fmt.Errorf("live gate blocked: live.kill_switch=true")
+	}
+	chain := strings.ToLower(strings.TrimSpace(string(pool.Chain)))
+	if _, ok := gate.allowedChains[chain]; !ok {
+		return fmt.Errorf("live gate blocked: chain %s not in allowed_chains", pool.Chain)
+	}
+	poolID := strings.ToLower(strings.TrimSpace(pool.ID))
+	if _, ok := gate.allowedPools[poolID]; !ok {
+		return fmt.Errorf("live gate blocked: pool %s not in allowed_pools", pool.ID)
+	}
+	maxOrder := domain.NewDecimalFromFloat(gate.maxOrderUSD)
+	if gate.canary && gate.maxOrderUSD > canaryMaxOrderUSD {
+		maxOrder = domain.NewDecimalFromFloat(canaryMaxOrderUSD)
+	}
+	if amountUSD.GreaterThan(maxOrder) {
+		return fmt.Errorf("live gate blocked: amount %s exceeds max_order_usd %s", amountUSD.String(), maxOrder.String())
+	}
 	return nil
 }
 
