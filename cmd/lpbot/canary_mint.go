@@ -125,6 +125,7 @@ func newCanaryMintBroadcaster(ctx context.Context, cfg *config.Config, provider 
 func newCanaryMintProvider(ctx context.Context, cfg *config.Config) (*rpc.RoundRobinProvider, error) {
 	endpoints := []string{cfg.Chains.Base.RPCPrimary}
 	endpoints = append(endpoints, cfg.Chains.Base.RPCFallback...)
+	endpoints = append(endpoints, "https://base.drpc.org")
 	return rpc.NewRoundRobinProvider(rpc.Config{
 		ChainID:             domain.ChainBase,
 		Endpoints:           endpoints,
