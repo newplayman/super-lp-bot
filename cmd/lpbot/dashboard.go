@@ -553,7 +553,6 @@ func (app *App) dashboardSnapshot(ctx context.Context) (dashboardSnapshot, error
 	} else {
 		snapshot.CanaryEvents = canaryEvents
 	}
-	snapshot.BaseCanary = buildDashboardBaseCanary(snapshot.Positions, snapshot.ClosedPositions, snapshot.CanaryEvents)
 	if summary, err := queryDashboardSolanaCanary(ctx, db); err != nil {
 		snapshot.Warnings = append(snapshot.Warnings, fmt.Sprintf("dashboard solana canary summary unavailable: %v", err))
 	} else {
@@ -565,6 +564,7 @@ func (app *App) dashboardSnapshot(ctx context.Context) (dashboardSnapshot, error
 		return snapshot, err
 	}
 	snapshot.PositionMarks = positionMarks
+	snapshot.BaseCanary = buildDashboardBaseCanary(snapshot.Positions, snapshot.ClosedPositions, snapshot.PositionMarks, snapshot.CanaryEvents)
 	exitPreflights, err := queryDashboardExitPreflights(ctx, db)
 	if err != nil {
 		snapshot.Warnings = append(snapshot.Warnings, fmt.Sprintf("dashboard exit preflights unavailable: %v", err))
@@ -1166,7 +1166,7 @@ func queryDashboardSolanaCanary(ctx context.Context, db *sql.DB) (dashboardSolan
 	return summary, nil
 }
 
-func buildDashboardBaseCanary(positions, closedPositions []dashboardPosition, events []dashboardCanaryEvent) dashboardBaseCanary {
+func buildDashboardBaseCanary(positions, closedPositions []dashboardPosition, marks []dashboardPositionMark, events []dashboardCanaryEvent) dashboardBaseCanary {
 	var summary dashboardBaseCanary
 	for _, pos := range positions {
 		if pos.Chain != 1 || strings.TrimSpace(pos.TokenID) == "" {
@@ -1206,6 +1206,20 @@ func buildDashboardBaseCanary(positions, closedPositions []dashboardPosition, ev
 		summary.LastHoldMinutes = pos.HoldMinutes
 		summary.LastNetPnLUSD = pos.NetPnLUSD
 		summary.LastClosedAt = pos.ClosedAt
+	}
+	for _, mark := range marks {
+		if summary.LastPositionID == "" {
+			break
+		}
+		if mark.PositionID != summary.LastPositionID {
+			continue
+		}
+		summary.LastFeeUSD = mark.FeeUSD
+		summary.LastILUSD = mark.ILUSD
+		if strings.TrimSpace(summary.LastNetPnLUSD) == "" || summary.LastNetPnLUSD == "0" {
+			summary.LastNetPnLUSD = mark.NetPnLUSD
+		}
+		break
 	}
 	return summary
 }

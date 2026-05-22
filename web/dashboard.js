@@ -192,7 +192,7 @@
         setText('decision-exposure', `$${money(live.max_order_usd)} / $${money(live.daily_loss_limit_usd)}`);
         setText('decision-kill-switch', live.kill_switch ? '已触发 / 拒绝新单' : (live.live_enabled ? '未触发 / 等待全量通过' : 'live 未启用'));
         const baseCycle = num(baseCanary.broadcasts)
-            ? `Base cycle ${num(baseCanary.broadcasts)} / mint ${num(baseCanary.mint_broadcasts)} / exit ${num(baseCanary.exit_broadcasts)} / latest NFT #${baseCanary.last_token_id || '-'} ${baseCanary.last_status || 'unknown'} ${num(baseCanary.last_hold_minutes)}m ${signedMoney(baseCanary.last_net_pnl_usd)}`
+            ? `Base cycle ${num(baseCanary.broadcasts)} / mint ${num(baseCanary.mint_broadcasts)} / exit ${num(baseCanary.exit_broadcasts)} / latest NFT #${baseCanary.last_token_id || '-'} ${baseCanary.last_status || 'unknown'} ${num(baseCanary.last_hold_minutes)}m pnl ${signedMoney(baseCanary.last_net_pnl_usd)} / fee ${signedMoney(baseCanary.last_fee_usd)} / il ${signedMoney(baseCanary.last_il_usd)}`
             : 'Base canary 尚未广播';
         setText('decision-canary', live.canary ? `已配置 canary / ${baseCycle}` : '未配置 canary');
         setText('decision-live-gate', live.ready ? `YES / ${readinessTarget} 配置已就绪` : `NO / ${readinessTarget} 仍为 fail-closed`);
@@ -359,7 +359,7 @@
             ['info', 'scanner', `scanned ${num(audit.scanned)}, selected ${num(audit.selected)}, pipeline ok ${num(audit.pipeline_ok)}`],
             ['info', 'mark', `last mark age ${health.last_mark_age_seconds || '-'}s, source ${health.last_mark_source || '-'}`],
             ['info', 'live', `ready ${live.ready ? 'yes' : 'no'}, blockers ${(live.blockers || []).length}, canary ${live.canary ? 'on' : 'off'}`],
-            [num(baseCanary.broadcasts) ? 'success' : 'info', 'base', num(baseCanary.broadcasts) ? `cycles ${num(baseCanary.broadcasts)}, tx ${num(baseCanary.tx_broadcasts)}, prep ${num(baseCanary.prep_broadcasts)}, mint ${num(baseCanary.mint_broadcasts)}, exit ${num(baseCanary.exit_broadcasts)}, last NFT ${baseCanary.last_token_id || '-'} ${baseCanary.last_status || 'unknown'} hold ${num(baseCanary.last_hold_minutes)}m pnl ${signedMoney(baseCanary.last_net_pnl_usd)}` : 'no base canary broadcast yet'],
+            [num(baseCanary.broadcasts) ? 'success' : 'info', 'base', num(baseCanary.broadcasts) ? `cycles ${num(baseCanary.broadcasts)}, tx ${num(baseCanary.tx_broadcasts)}, prep ${num(baseCanary.prep_broadcasts)}, mint ${num(baseCanary.mint_broadcasts)}, exit ${num(baseCanary.exit_broadcasts)}, last NFT ${baseCanary.last_token_id || '-'} ${baseCanary.last_status || 'unknown'} hold ${num(baseCanary.last_hold_minutes)}m pnl ${signedMoney(baseCanary.last_net_pnl_usd)} fee ${signedMoney(baseCanary.last_fee_usd)} il ${signedMoney(baseCanary.last_il_usd)}` : 'no base canary broadcast yet'],
             [num(solanaCanary.broadcasts) ? 'success' : 'info', 'solana', num(solanaCanary.broadcasts) ? `broadcasts ${num(solanaCanary.broadcasts)}, wallet SOL ${formatTokenAmount(solanaCanary.sol_balance_raw || '0', 'So11111111111111111111111111111111111111112')} / USDC ${formatTokenAmount(solanaCanary.usdc_balance_raw || '0', 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v')}` : 'no solana canary broadcast yet'],
             [num(health.recent_chain_failures) ? 'warn' : 'success', 'chain', `chain failures / 30m: ${num(health.recent_chain_failures)}`],
             [num(health.recent_pipeline_failures) ? 'warn' : 'success', 'pipeline', `pipeline failures / 30m: ${num(health.recent_pipeline_failures)}`]
