@@ -94,7 +94,9 @@ func runCanaryMint(ctx context.Context, cfg *config.Config) error {
 	if err != nil {
 		return fmt.Errorf("estimate mint gas: %w", err)
 	}
-	signed, err := wallet.Sign(ctx, prepared.UnsignedTx)
+	signCtx, cancel := context.WithTimeout(ctx, 45*time.Second)
+	signed, err := wallet.Sign(signCtx, prepared.UnsignedTx)
+	cancel()
 	if err != nil {
 		return fmt.Errorf("sign mint: %w", err)
 	}
