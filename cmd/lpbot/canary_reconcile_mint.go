@@ -203,7 +203,10 @@ func persistCanaryMintReconcile(ctx context.Context, db *sql.DB, report canaryMi
 	result, err := db.ExecContext(ctx, `
 		UPDATE positions
 		SET token_id = $1,
-		    amount_usd = $2,
+		    amount_usd = CASE
+		        WHEN status = 'closed' AND amount_usd <> '' THEN amount_usd
+		        ELSE $2
+		    END,
 		    status = CASE
 		        WHEN status IN ('intended', 'opening') THEN 'open'
 		        ELSE status
@@ -223,6 +226,15 @@ func persistCanaryMintReconcile(ctx context.Context, db *sql.DB, report canaryMi
 	}
 	if affected != 1 {
 		return fmt.Errorf("expected to reconcile 1 position %s, updated %d", report.PositionID, affected)
+	}
+	_, err = db.ExecContext(ctx, `
+		UPDATE transactions
+		SET status = 'confirmed'
+		WHERE tx_hash = $1
+		  AND status IN ('built', 'broadcast')
+	`, report.TxHash)
+	if err != nil {
+		return fmt.Errorf("mark reconciled mint tx confirmed: %w", err)
 	}
 	_, err = db.ExecContext(ctx, `
 		DELETE FROM shadow_exit_actions
