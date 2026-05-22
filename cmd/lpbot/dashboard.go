@@ -1018,7 +1018,7 @@ func queryDashboardClosedPositions(ctx context.Context, db *sql.DB) ([]dashboard
 			p.opened_at,
 			COALESCE(p.closed_at, 0),
 			COALESCE(m.hold_minutes, 0),
-			COALESCE(((ep.total_usd - p.amount_usd))::text, m.net_pnl_usd, '0'),
+			COALESCE((((ep.total_usd)::numeric - (p.amount_usd)::numeric))::text, m.net_pnl_usd, '0'),
 			CASE
 				WHEN COALESCE(ep.status, '') = 'closed' THEN 'real canary exit recorded'
 				ELSE COALESCE(e.reason, '')
