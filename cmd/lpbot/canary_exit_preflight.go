@@ -679,8 +679,10 @@ func persistCanaryExitExecution(ctx context.Context, cfg *config.Config, report 
 	}
 
 	positionStatus := "exiting"
+	closedAt := int64(0)
 	if status == "closed" {
 		positionStatus = string(domain.StatusClosed)
+		closedAt = time.Now().Unix()
 	}
 	if strings.Contains(status, "failed") {
 		positionStatus = string(domain.StatusExitFailed)
@@ -688,9 +690,12 @@ func persistCanaryExitExecution(ctx context.Context, cfg *config.Config, report 
 	if _, err := tx.ExecContext(ctx, `
 		UPDATE positions
 		SET status = $1,
-		    closed_at = CASE WHEN $1 = 'closed' AND COALESCE(closed_at, 0) = 0 THEN EXTRACT(EPOCH FROM NOW())::BIGINT ELSE closed_at END
+		    closed_at = CASE
+		        WHEN $1 = 'closed' THEN $3
+		        ELSE closed_at
+		    END
 		WHERE token_id = $2
-	`, positionStatus, report.TokenID); err != nil {
+	`, positionStatus, report.TokenID, closedAt); err != nil {
 		return fmt.Errorf("update position after canary exit: %w", err)
 	}
 
