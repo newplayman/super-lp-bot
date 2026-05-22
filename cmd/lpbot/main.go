@@ -1450,6 +1450,8 @@ func main() {
 	canaryPreflight := flag.Bool("canary-preflight", false, "Run a single Base canary preflight without signing or broadcasting")
 	canaryPrepare := flag.Bool("canary-prepare", false, "Run a single Base canary prepare: wrap WETH and approve exact token amounts")
 	canaryMint := flag.Bool("canary-mint", false, "Run a single Base canary Uniswap V3 mint")
+	canaryExitPreflight := flag.Bool("canary-exit-preflight", false, "Run a single Base canary exit preflight without signing or broadcasting")
+	canaryTokenID := flag.String("token-id", "", "Uniswap V3 NFT token ID for canary exit preflight")
 	flag.Parse()
 
 	if *configPath == "" {
@@ -1498,6 +1500,17 @@ func main() {
 			os.Exit(1)
 		}
 		if err := runCanaryMint(ctx, cfg); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+	if *canaryExitPreflight {
+		if BuildMode != "live" {
+			fmt.Fprintln(os.Stderr, "Error: --canary-exit-preflight requires a live build")
+			os.Exit(1)
+		}
+		if err := runCanaryExitPreflight(ctx, cfg, *canaryTokenID); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
