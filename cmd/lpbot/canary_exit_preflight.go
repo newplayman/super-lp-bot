@@ -145,7 +145,7 @@ func runCanaryExit(ctx context.Context, cfg *config.Config, tokenID string) erro
 		return err
 	}
 	printCanaryExitPreflightReport(report)
-	if err := persistCanaryExitPreflight(ctx, cfg, report, true, "preflight_before_exit"); err != nil {
+	if err := persistCanaryExitPreflight(ctx, cfg, report, false, "preflight_before_exit"); err != nil {
 		return err
 	}
 
@@ -180,7 +180,7 @@ func runCanaryExit(ctx context.Context, cfg *config.Config, tokenID string) erro
 		_ = persistCanaryExitExecution(ctx, cfg, report, nil, nil, "exit_failed", err.Error())
 		return err
 	}
-	if err := persistCanaryExitExecution(ctx, cfg, report, &decreaseSigned, nil, "decrease_broadcast", ""); err != nil {
+	if err := persistCanaryExitExecution(ctx, cfg, report, &decreaseSigned, nil, "decrease_confirmed", ""); err != nil {
 		return err
 	}
 
@@ -535,7 +535,7 @@ func sendCanaryExitTx(ctx context.Context, wallet interface {
 		signed.Status = domain.TxFailed
 		return signed, fmt.Errorf("broadcast %s: %w", action, err)
 	}
-	signed.Status = domain.TxBroadcast
+	signed.Status = domain.TxConfirmed
 	fmt.Printf("tx_broadcast action=%s hash=%s id=%s\n", action, signed.Hash, signed.ID)
 	return signed, nil
 }
