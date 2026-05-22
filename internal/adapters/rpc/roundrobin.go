@@ -519,19 +519,25 @@ func (p *RoundRobinProvider) BalanceAt(ctx context.Context, addr domain.Address,
 
 // NonceAt returns the nonce at the given block.
 func (p *RoundRobinProvider) NonceAt(ctx context.Context, addr domain.Address, block *big.Int) (uint64, error) {
-	client, err := p.getClientWithRetry()
-	if err != nil {
-		return 0, err
-	}
-
-	nonce, err := client.NonceAt(ctx, common.HexToAddress(addr.String()), block)
-	if err != nil {
-		if p.nextEndpoint() == nil {
-			return p.NonceAt(ctx, addr, block)
+	var lastErr error
+	for attempt := 0; attempt < p.retryAttempts(); attempt++ {
+		if err := ctx.Err(); err != nil {
+			return 0, err
 		}
-		return 0, err
+		client, err := p.getClientWithRetry()
+		if err != nil {
+			return 0, err
+		}
+		nonce, err := client.NonceAt(ctx, common.HexToAddress(addr.String()), block)
+		if err == nil {
+			return nonce, nil
+		}
+		lastErr = err
+		if err := p.nextEndpoint(); err != nil {
+			return 0, lastErr
+		}
 	}
-	return nonce, nil
+	return 0, lastErr
 }
 
 // PendingNonceAt returns the pending nonce for the given address.
@@ -594,19 +600,25 @@ func (p *RoundRobinProvider) HeaderByHash(ctx context.Context, hash common.Hash)
 
 // HeaderByNumber returns the header with the given number.
 func (p *RoundRobinProvider) HeaderByNumber(ctx context.Context, num *big.Int) (*types.Header, error) {
-	client, err := p.getClientWithRetry()
-	if err != nil {
-		return nil, err
-	}
-
-	header, err := client.HeaderByNumber(ctx, num)
-	if err != nil {
-		if p.nextEndpoint() == nil {
-			return p.HeaderByNumber(ctx, num)
+	var lastErr error
+	for attempt := 0; attempt < p.retryAttempts(); attempt++ {
+		if err := ctx.Err(); err != nil {
+			return nil, err
 		}
-		return nil, err
+		client, err := p.getClientWithRetry()
+		if err != nil {
+			return nil, err
+		}
+		header, err := client.HeaderByNumber(ctx, num)
+		if err == nil {
+			return header, nil
+		}
+		lastErr = err
+		if err := p.nextEndpoint(); err != nil {
+			return nil, lastErr
+		}
 	}
-	return header, nil
+	return nil, lastErr
 }
 
 // SuggestGasPrice suggests a gas price based on the current network conditions.
@@ -628,36 +640,48 @@ func (p *RoundRobinProvider) SuggestGasPrice(ctx context.Context) (*big.Int, err
 
 // SuggestGasTipCap suggests a gas tip cap based on the current network conditions.
 func (p *RoundRobinProvider) SuggestGasTipCap(ctx context.Context) (*big.Int, error) {
-	client, err := p.getClientWithRetry()
-	if err != nil {
-		return nil, err
-	}
-
-	tip, err := client.SuggestGasTipCap(ctx)
-	if err != nil {
-		if p.nextEndpoint() == nil {
-			return p.SuggestGasTipCap(ctx)
+	var lastErr error
+	for attempt := 0; attempt < p.retryAttempts(); attempt++ {
+		if err := ctx.Err(); err != nil {
+			return nil, err
 		}
-		return nil, err
+		client, err := p.getClientWithRetry()
+		if err != nil {
+			return nil, err
+		}
+		tip, err := client.SuggestGasTipCap(ctx)
+		if err == nil {
+			return tip, nil
+		}
+		lastErr = err
+		if err := p.nextEndpoint(); err != nil {
+			return nil, lastErr
+		}
 	}
-	return tip, nil
+	return nil, lastErr
 }
 
 // EstimateGas estimates the gas needed for a transaction.
 func (p *RoundRobinProvider) EstimateGas(ctx context.Context, msg ethereum.CallMsg) (uint64, error) {
-	client, err := p.getClientWithRetry()
-	if err != nil {
-		return 0, err
-	}
-
-	gas, err := client.EstimateGas(ctx, msg)
-	if err != nil {
-		if p.nextEndpoint() == nil {
-			return p.EstimateGas(ctx, msg)
+	var lastErr error
+	for attempt := 0; attempt < p.retryAttempts(); attempt++ {
+		if err := ctx.Err(); err != nil {
+			return 0, err
 		}
-		return 0, err
+		client, err := p.getClientWithRetry()
+		if err != nil {
+			return 0, err
+		}
+		gas, err := client.EstimateGas(ctx, msg)
+		if err == nil {
+			return gas, nil
+		}
+		lastErr = err
+		if err := p.nextEndpoint(); err != nil {
+			return 0, lastErr
+		}
 	}
-	return gas, nil
+	return 0, lastErr
 }
 
 // CodeAt returns the code at the given address.
@@ -696,19 +720,33 @@ func (p *RoundRobinProvider) PendingCodeAt(ctx context.Context, addr domain.Addr
 
 // CallContract executes a message call.
 func (p *RoundRobinProvider) CallContract(ctx context.Context, msg ethereum.CallMsg, blockNumber *big.Int) ([]byte, error) {
-	client, err := p.getClientWithRetry()
-	if err != nil {
-		return nil, err
-	}
-
-	result, err := client.CallContract(ctx, msg, blockNumber)
-	if err != nil {
-		if p.nextEndpoint() == nil {
-			return p.CallContract(ctx, msg, blockNumber)
+	var lastErr error
+	for attempt := 0; attempt < p.retryAttempts(); attempt++ {
+		if err := ctx.Err(); err != nil {
+			return nil, err
 		}
-		return nil, err
+		client, err := p.getClientWithRetry()
+		if err != nil {
+			return nil, err
+		}
+		result, err := client.CallContract(ctx, msg, blockNumber)
+		if err == nil {
+			return result, nil
+		}
+		lastErr = err
+		if err := p.nextEndpoint(); err != nil {
+			return nil, lastErr
+		}
 	}
-	return result, nil
+	return nil, lastErr
+}
+
+func (p *RoundRobinProvider) retryAttempts() int {
+	attempts := len(p.copyEndpoints())
+	if attempts <= 0 {
+		return 1
+	}
+	return attempts
 }
 
 // FilterLogs executes a log filter query.
