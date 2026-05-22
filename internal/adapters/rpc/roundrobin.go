@@ -29,6 +29,9 @@ const (
 	defaultHealthCheckTimeout  = 2 * time.Second
 	switchLogCooldown          = 15 * time.Second
 	endpointFailureCooldown    = 45 * time.Second
+	endpointRateLimitCooldown  = 2 * time.Minute
+	callContractCacheTTL       = 20 * time.Second
+	callContractCacheMaxItems  = 2048
 )
 
 // Default public RPC endpoints
@@ -80,6 +83,11 @@ type switchLogState struct {
 	suppressed int
 }
 
+type callCacheEntry struct {
+	value     []byte
+	expiresAt time.Time
+}
+
 var (
 	switchLogStateMu sync.Mutex
 	switchLogStates  = make(map[string]switchLogState)
@@ -99,6 +107,8 @@ type RoundRobinProvider struct {
 	closed         uint32
 	healthInterval time.Duration
 	healthTimeout  time.Duration
+	callCacheMu    sync.Mutex
+	callCache      map[string]callCacheEntry
 }
 
 // Config holds the configuration for a round-robin RPC provider.
@@ -144,6 +154,7 @@ func NewRoundRobinProvider(cfg Config) (*RoundRobinProvider, error) {
 		stopCh:         make(chan struct{}),
 		healthInterval: healthInterval,
 		healthTimeout:  healthTimeout,
+		callCache:      make(map[string]callCacheEntry),
 	}
 
 	ranked, healthSummary := rankEndpointsByLatency(
@@ -351,11 +362,22 @@ func (p *RoundRobinProvider) logEndpointSwitch(prev, endpoint string) {
 }
 
 func (p *RoundRobinProvider) markEndpointCooldown(endpoint string) {
+	p.markEndpointCooldownUntil(endpoint, time.Now().Add(endpointFailureCooldown))
+}
+
+func (p *RoundRobinProvider) markEndpointRateLimited(endpoint string) {
+	p.markEndpointCooldownUntil(endpoint, time.Now().Add(endpointRateLimitCooldown))
+}
+
+func (p *RoundRobinProvider) markCurrentEndpointRateLimited() {
+	p.markEndpointRateLimited(p.Endpoint())
+}
+
+func (p *RoundRobinProvider) markEndpointCooldownUntil(endpoint string, until time.Time) {
 	if endpoint == "" {
 		return
 	}
 	key := string(p.chainID) + "|" + endpoint
-	until := time.Now().Add(endpointFailureCooldown)
 	endpointStateMu.Lock()
 	if existing, ok := endpointCooldown[key]; !ok || existing.Before(until) {
 		endpointCooldown[key] = until
@@ -380,6 +402,89 @@ func (p *RoundRobinProvider) isEndpointCooling(endpoint string) bool {
 		return false
 	}
 	return true
+}
+
+func isRateLimitError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "429") ||
+		strings.Contains(msg, "too many request") ||
+		strings.Contains(msg, "rate limit") ||
+		strings.Contains(msg, "over rate limit")
+}
+
+func (p *RoundRobinProvider) shouldStopAfterRPCError(err error) bool {
+	if !isRateLimitError(err) {
+		return false
+	}
+	p.markCurrentEndpointRateLimited()
+	_ = p.nextEndpoint()
+	return true
+}
+
+func cloneBytes(value []byte) []byte {
+	if value == nil {
+		return nil
+	}
+	dst := make([]byte, len(value))
+	copy(dst, value)
+	return dst
+}
+
+func (p *RoundRobinProvider) callContractCacheKey(msg ethereum.CallMsg, blockNumber *big.Int) (string, bool) {
+	if msg.To == nil || len(msg.Data) == 0 {
+		return "", false
+	}
+	if msg.From != (common.Address{}) || msg.Gas != 0 || msg.Value != nil || msg.GasPrice != nil {
+		return "", false
+	}
+
+	blockKey := "latest"
+	if blockNumber != nil {
+		blockKey = blockNumber.String()
+	}
+
+	return fmt.Sprintf("%s|%s|%s|%s", p.chainID, msg.To.Hex(), common.Bytes2Hex(msg.Data), blockKey), true
+}
+
+func (p *RoundRobinProvider) getCallContractCache(key string) ([]byte, bool) {
+	now := time.Now()
+	p.callCacheMu.Lock()
+	defer p.callCacheMu.Unlock()
+
+	entry, ok := p.callCache[key]
+	if !ok {
+		return nil, false
+	}
+	if !entry.expiresAt.After(now) {
+		delete(p.callCache, key)
+		return nil, false
+	}
+	return cloneBytes(entry.value), true
+}
+
+func (p *RoundRobinProvider) setCallContractCache(key string, value []byte) {
+	now := time.Now()
+	p.callCacheMu.Lock()
+	defer p.callCacheMu.Unlock()
+
+	if len(p.callCache) >= callContractCacheMaxItems {
+		for k, entry := range p.callCache {
+			if !entry.expiresAt.After(now) {
+				delete(p.callCache, k)
+			}
+		}
+		if len(p.callCache) >= callContractCacheMaxItems {
+			p.callCache = make(map[string]callCacheEntry)
+		}
+	}
+
+	p.callCache[key] = callCacheEntry{
+		value:     cloneBytes(value),
+		expiresAt: now.Add(callContractCacheTTL),
+	}
 }
 
 // getClientWithRetry gets a client, rotating on failure.
@@ -601,19 +706,28 @@ func probeEndpointLatency(ctx context.Context, endpoint string, httpClient *http
 
 // BalanceAt returns the balance at the given block.
 func (p *RoundRobinProvider) BalanceAt(ctx context.Context, addr domain.Address, block *big.Int) (*big.Int, error) {
-	client, err := p.getClientWithRetry()
-	if err != nil {
-		return nil, err
-	}
-
-	balance, err := client.BalanceAt(ctx, common.HexToAddress(addr.String()), block)
-	if err != nil {
-		if p.nextEndpoint() == nil {
-			return p.BalanceAt(ctx, addr, block)
+	var lastErr error
+	for attempt := 0; attempt < p.retryAttempts(); attempt++ {
+		if err := ctx.Err(); err != nil {
+			return nil, err
 		}
-		return nil, err
+		client, err := p.getClientWithRetry()
+		if err != nil {
+			return nil, err
+		}
+		balance, err := client.BalanceAt(ctx, common.HexToAddress(addr.String()), block)
+		if err == nil {
+			return balance, nil
+		}
+		lastErr = err
+		if p.shouldStopAfterRPCError(err) {
+			return nil, err
+		}
+		if err := p.nextEndpoint(); err != nil {
+			return nil, lastErr
+		}
 	}
-	return balance, nil
+	return nil, lastErr
 }
 
 // NonceAt returns the nonce at the given block.
@@ -632,6 +746,9 @@ func (p *RoundRobinProvider) NonceAt(ctx context.Context, addr domain.Address, b
 			return nonce, nil
 		}
 		lastErr = err
+		if p.shouldStopAfterRPCError(err) {
+			return 0, err
+		}
 		if err := p.nextEndpoint(); err != nil {
 			return 0, lastErr
 		}
@@ -648,53 +765,80 @@ func (p *RoundRobinProvider) PendingNonceAt(ctx context.Context, addr domain.Add
 
 // BlockByHash returns the block with the given hash.
 func (p *RoundRobinProvider) BlockByHash(ctx context.Context, hash common.Hash) (*types.Block, error) {
-	client, err := p.getClientWithRetry()
-	if err != nil {
-		return nil, err
-	}
-
-	block, err := client.BlockByHash(ctx, hash)
-	if err != nil {
-		if p.nextEndpoint() == nil {
-			return p.BlockByHash(ctx, hash)
+	var lastErr error
+	for attempt := 0; attempt < p.retryAttempts(); attempt++ {
+		if err := ctx.Err(); err != nil {
+			return nil, err
 		}
-		return nil, err
+		client, err := p.getClientWithRetry()
+		if err != nil {
+			return nil, err
+		}
+		block, err := client.BlockByHash(ctx, hash)
+		if err == nil {
+			return block, nil
+		}
+		lastErr = err
+		if p.shouldStopAfterRPCError(err) {
+			return nil, err
+		}
+		if err := p.nextEndpoint(); err != nil {
+			return nil, lastErr
+		}
 	}
-	return block, nil
+	return nil, lastErr
 }
 
 // BlockByNumber returns the block with the given number.
 func (p *RoundRobinProvider) BlockByNumber(ctx context.Context, num *big.Int) (*types.Block, error) {
-	client, err := p.getClientWithRetry()
-	if err != nil {
-		return nil, err
-	}
-
-	block, err := client.BlockByNumber(ctx, num)
-	if err != nil {
-		if p.nextEndpoint() == nil {
-			return p.BlockByNumber(ctx, num)
+	var lastErr error
+	for attempt := 0; attempt < p.retryAttempts(); attempt++ {
+		if err := ctx.Err(); err != nil {
+			return nil, err
 		}
-		return nil, err
+		client, err := p.getClientWithRetry()
+		if err != nil {
+			return nil, err
+		}
+		block, err := client.BlockByNumber(ctx, num)
+		if err == nil {
+			return block, nil
+		}
+		lastErr = err
+		if p.shouldStopAfterRPCError(err) {
+			return nil, err
+		}
+		if err := p.nextEndpoint(); err != nil {
+			return nil, lastErr
+		}
 	}
-	return block, nil
+	return nil, lastErr
 }
 
 // HeaderByHash returns the header with the given hash.
 func (p *RoundRobinProvider) HeaderByHash(ctx context.Context, hash common.Hash) (*types.Header, error) {
-	client, err := p.getClientWithRetry()
-	if err != nil {
-		return nil, err
-	}
-
-	header, err := client.HeaderByHash(ctx, hash)
-	if err != nil {
-		if p.nextEndpoint() == nil {
-			return p.HeaderByHash(ctx, hash)
+	var lastErr error
+	for attempt := 0; attempt < p.retryAttempts(); attempt++ {
+		if err := ctx.Err(); err != nil {
+			return nil, err
 		}
-		return nil, err
+		client, err := p.getClientWithRetry()
+		if err != nil {
+			return nil, err
+		}
+		header, err := client.HeaderByHash(ctx, hash)
+		if err == nil {
+			return header, nil
+		}
+		lastErr = err
+		if p.shouldStopAfterRPCError(err) {
+			return nil, err
+		}
+		if err := p.nextEndpoint(); err != nil {
+			return nil, lastErr
+		}
 	}
-	return header, nil
+	return nil, lastErr
 }
 
 // HeaderByNumber returns the header with the given number.
@@ -713,6 +857,9 @@ func (p *RoundRobinProvider) HeaderByNumber(ctx context.Context, num *big.Int) (
 			return header, nil
 		}
 		lastErr = err
+		if p.shouldStopAfterRPCError(err) {
+			return nil, err
+		}
 		if err := p.nextEndpoint(); err != nil {
 			return nil, lastErr
 		}
@@ -722,19 +869,28 @@ func (p *RoundRobinProvider) HeaderByNumber(ctx context.Context, num *big.Int) (
 
 // SuggestGasPrice suggests a gas price based on the current network conditions.
 func (p *RoundRobinProvider) SuggestGasPrice(ctx context.Context) (*big.Int, error) {
-	client, err := p.getClientWithRetry()
-	if err != nil {
-		return nil, err
-	}
-
-	price, err := client.SuggestGasPrice(ctx)
-	if err != nil {
-		if p.nextEndpoint() == nil {
-			return p.SuggestGasPrice(ctx)
+	var lastErr error
+	for attempt := 0; attempt < p.retryAttempts(); attempt++ {
+		if err := ctx.Err(); err != nil {
+			return nil, err
 		}
-		return nil, err
+		client, err := p.getClientWithRetry()
+		if err != nil {
+			return nil, err
+		}
+		price, err := client.SuggestGasPrice(ctx)
+		if err == nil {
+			return price, nil
+		}
+		lastErr = err
+		if p.shouldStopAfterRPCError(err) {
+			return nil, err
+		}
+		if err := p.nextEndpoint(); err != nil {
+			return nil, lastErr
+		}
 	}
-	return price, nil
+	return nil, lastErr
 }
 
 // SuggestGasTipCap suggests a gas tip cap based on the current network conditions.
@@ -753,6 +909,9 @@ func (p *RoundRobinProvider) SuggestGasTipCap(ctx context.Context) (*big.Int, er
 			return tip, nil
 		}
 		lastErr = err
+		if p.shouldStopAfterRPCError(err) {
+			return nil, err
+		}
 		if err := p.nextEndpoint(); err != nil {
 			return nil, lastErr
 		}
@@ -776,6 +935,9 @@ func (p *RoundRobinProvider) EstimateGas(ctx context.Context, msg ethereum.CallM
 			return gas, nil
 		}
 		lastErr = err
+		if p.shouldStopAfterRPCError(err) {
+			return 0, err
+		}
 		if err := p.nextEndpoint(); err != nil {
 			return 0, lastErr
 		}
@@ -785,40 +947,65 @@ func (p *RoundRobinProvider) EstimateGas(ctx context.Context, msg ethereum.CallM
 
 // CodeAt returns the code at the given address.
 func (p *RoundRobinProvider) CodeAt(ctx context.Context, addr domain.Address, block *big.Int) ([]byte, error) {
-	client, err := p.getClientWithRetry()
-	if err != nil {
-		return nil, err
-	}
-
-	code, err := client.CodeAt(ctx, common.HexToAddress(addr.String()), block)
-	if err != nil {
-		if p.nextEndpoint() == nil {
-			return p.CodeAt(ctx, addr, block)
+	var lastErr error
+	for attempt := 0; attempt < p.retryAttempts(); attempt++ {
+		if err := ctx.Err(); err != nil {
+			return nil, err
 		}
-		return nil, err
+		client, err := p.getClientWithRetry()
+		if err != nil {
+			return nil, err
+		}
+		code, err := client.CodeAt(ctx, common.HexToAddress(addr.String()), block)
+		if err == nil {
+			return code, nil
+		}
+		lastErr = err
+		if p.shouldStopAfterRPCError(err) {
+			return nil, err
+		}
+		if err := p.nextEndpoint(); err != nil {
+			return nil, lastErr
+		}
 	}
-	return code, nil
+	return nil, lastErr
 }
 
 // PendingCodeAt returns the pending code at the given address.
 func (p *RoundRobinProvider) PendingCodeAt(ctx context.Context, addr domain.Address) ([]byte, error) {
-	client, err := p.getClientWithRetry()
-	if err != nil {
-		return nil, err
-	}
-
-	code, err := client.PendingCodeAt(ctx, common.HexToAddress(addr.String()))
-	if err != nil {
-		if p.nextEndpoint() == nil {
-			return p.PendingCodeAt(ctx, addr)
+	var lastErr error
+	for attempt := 0; attempt < p.retryAttempts(); attempt++ {
+		if err := ctx.Err(); err != nil {
+			return nil, err
 		}
-		return nil, err
+		client, err := p.getClientWithRetry()
+		if err != nil {
+			return nil, err
+		}
+		code, err := client.PendingCodeAt(ctx, common.HexToAddress(addr.String()))
+		if err == nil {
+			return code, nil
+		}
+		lastErr = err
+		if p.shouldStopAfterRPCError(err) {
+			return nil, err
+		}
+		if err := p.nextEndpoint(); err != nil {
+			return nil, lastErr
+		}
 	}
-	return code, nil
+	return nil, lastErr
 }
 
 // CallContract executes a message call.
 func (p *RoundRobinProvider) CallContract(ctx context.Context, msg ethereum.CallMsg, blockNumber *big.Int) ([]byte, error) {
+	cacheKey, cacheable := p.callContractCacheKey(msg, blockNumber)
+	if cacheable {
+		if cached, ok := p.getCallContractCache(cacheKey); ok {
+			return cached, nil
+		}
+	}
+
 	var lastErr error
 	for attempt := 0; attempt < p.retryAttempts(); attempt++ {
 		if err := ctx.Err(); err != nil {
@@ -830,9 +1017,15 @@ func (p *RoundRobinProvider) CallContract(ctx context.Context, msg ethereum.Call
 		}
 		result, err := client.CallContract(ctx, msg, blockNumber)
 		if err == nil {
+			if cacheable {
+				p.setCallContractCache(cacheKey, result)
+			}
 			return result, nil
 		}
 		lastErr = err
+		if p.shouldStopAfterRPCError(err) {
+			return nil, err
+		}
 		if err := p.nextEndpoint(); err != nil {
 			return nil, lastErr
 		}
@@ -850,88 +1043,133 @@ func (p *RoundRobinProvider) retryAttempts() int {
 
 // FilterLogs executes a log filter query.
 func (p *RoundRobinProvider) FilterLogs(ctx context.Context, q ethereum.FilterQuery) ([]types.Log, error) {
-	client, err := p.getClientWithRetry()
-	if err != nil {
-		return nil, err
-	}
-
-	logs, err := client.FilterLogs(ctx, q)
-	if err != nil {
-		if p.nextEndpoint() != nil {
-			return p.FilterLogs(ctx, q)
+	var lastErr error
+	for attempt := 0; attempt < p.retryAttempts(); attempt++ {
+		if err := ctx.Err(); err != nil {
+			return nil, err
 		}
-		return nil, err
+		client, err := p.getClientWithRetry()
+		if err != nil {
+			return nil, err
+		}
+		logs, err := client.FilterLogs(ctx, q)
+		if err == nil {
+			return logs, nil
+		}
+		lastErr = err
+		if p.shouldStopAfterRPCError(err) {
+			return nil, err
+		}
+		if err := p.nextEndpoint(); err != nil {
+			return nil, lastErr
+		}
 	}
-	return logs, nil
+	return nil, lastErr
 }
 
 // SendTransaction sends a signed transaction.
 func (p *RoundRobinProvider) SendTransaction(ctx context.Context, tx *types.Transaction) error {
-	client, err := p.getClientWithRetry()
-	if err != nil {
-		return err
-	}
-
-	err = client.SendTransaction(ctx, tx)
-	if err != nil {
+	var lastErr error
+	for attempt := 0; attempt < p.retryAttempts(); attempt++ {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		client, err := p.getClientWithRetry()
+		if err != nil {
+			return err
+		}
+		err = client.SendTransaction(ctx, tx)
+		if err == nil {
+			return nil
+		}
+		lastErr = err
 		if strings.Contains(err.Error(), "already known") || strings.Contains(err.Error(), "replacement underpriced") {
 			return err // Don't retry for these errors
 		}
-		if p.nextEndpoint() == nil {
+		if p.shouldStopAfterRPCError(err) {
 			return err
 		}
-		return p.SendTransaction(ctx, tx)
+		if err := p.nextEndpoint(); err != nil {
+			return lastErr
+		}
 	}
-	return nil
+	return lastErr
 }
 
 // TransactionByHash returns the transaction with the given hash.
 func (p *RoundRobinProvider) TransactionByHash(ctx context.Context, hash common.Hash) (*types.Transaction, bool, error) {
-	client, err := p.getClientWithRetry()
-	if err != nil {
-		return nil, false, err
-	}
-
-	tx, pending, err := client.TransactionByHash(ctx, hash)
-	if err != nil {
-		if p.nextEndpoint() == nil {
+	var lastErr error
+	for attempt := 0; attempt < p.retryAttempts(); attempt++ {
+		if err := ctx.Err(); err != nil {
 			return nil, false, err
 		}
-		return p.TransactionByHash(ctx, hash)
+		client, err := p.getClientWithRetry()
+		if err != nil {
+			return nil, false, err
+		}
+		tx, pending, err := client.TransactionByHash(ctx, hash)
+		if err == nil {
+			return tx, pending, nil
+		}
+		lastErr = err
+		if p.shouldStopAfterRPCError(err) {
+			return nil, false, err
+		}
+		if err := p.nextEndpoint(); err != nil {
+			return nil, false, lastErr
+		}
 	}
-	return tx, pending, nil
+	return nil, false, lastErr
 }
 
 // TransactionReceipt returns the receipt for the given transaction hash.
 func (p *RoundRobinProvider) TransactionReceipt(ctx context.Context, hash common.Hash) (*types.Receipt, error) {
-	client, err := p.getClientWithRetry()
-	if err != nil {
-		return nil, err
-	}
-
-	receipt, err := client.TransactionReceipt(ctx, hash)
-	if err != nil {
-		if p.nextEndpoint() == nil {
+	var lastErr error
+	for attempt := 0; attempt < p.retryAttempts(); attempt++ {
+		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
-		return p.TransactionReceipt(ctx, hash)
+		client, err := p.getClientWithRetry()
+		if err != nil {
+			return nil, err
+		}
+		receipt, err := client.TransactionReceipt(ctx, hash)
+		if err == nil {
+			return receipt, nil
+		}
+		lastErr = err
+		if p.shouldStopAfterRPCError(err) {
+			return nil, err
+		}
+		if err := p.nextEndpoint(); err != nil {
+			return nil, lastErr
+		}
 	}
-	return receipt, nil
+	return nil, lastErr
 }
 
 // NetworkID returns the network ID.
 func (p *RoundRobinProvider) NetworkID(ctx context.Context) (*big.Int, error) {
-	client, err := p.getClientWithRetry()
-	if err != nil {
-		return nil, err
-	}
-
-	id, err := client.NetworkID(ctx)
-	if err != nil {
-		if p.nextEndpoint() == nil {
+	var lastErr error
+	for attempt := 0; attempt < p.retryAttempts(); attempt++ {
+		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
-		return nil, err
+		client, err := p.getClientWithRetry()
+		if err != nil {
+			return nil, err
+		}
+		id, err := client.NetworkID(ctx)
+		if err == nil {
+			return id, nil
+		}
+		lastErr = err
+		if p.shouldStopAfterRPCError(err) {
+			return nil, err
+		}
+		if err := p.nextEndpoint(); err != nil {
+			return nil, lastErr
+		}
 	}
-	return id, nil
+	return nil, lastErr
 }
