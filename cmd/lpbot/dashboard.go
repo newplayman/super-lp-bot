@@ -1016,11 +1016,12 @@ func queryDashboardClosedPositions(ctx context.Context, db *sql.DB) ([]dashboard
 			COALESCE(e.action, '')
 		FROM positions p
 		LEFT JOIN (
-			SELECT DISTINCT ON (position_id)
-				position_id, hold_minutes, net_pnl_usd
-			FROM shadow_position_marks
-			ORDER BY position_id, mark_time DESC
-		) m ON m.position_id = p.id
+			SELECT DISTINCT ON (token_id)
+				token_id, hold_minutes, net_pnl_usd
+			FROM position_marks
+			WHERE COALESCE(token_id, '') <> ''
+			ORDER BY token_id, observed_at DESC
+		) m ON m.token_id = p.token_id
 		LEFT JOIN (
 			SELECT DISTINCT ON (position_id)
 				position_id, reason, action
@@ -1177,8 +1178,8 @@ func queryDashboardBaseCanary(ctx context.Context, db *sql.DB) (dashboardBaseCan
 	}
 	if err := db.QueryRowContext(ctx, `
 		SELECT
-			count(*) FILTER (WHERE id LIKE 'shadow-canary-live-pos-%'),
-			count(*) FILTER (WHERE id LIKE 'shadow-canary-live-pos-%' AND status = 'closed')
+			count(*) FILTER (WHERE chain = 1 AND COALESCE(token_id, '') <> ''),
+			count(*) FILTER (WHERE chain = 1 AND COALESCE(token_id, '') <> '' AND status = 'closed')
 		FROM positions
 	`).Scan(&summary.Opened, &summary.Closed); err != nil {
 		return summary, fmt.Errorf("query base canary position counts: %w", err)
@@ -1205,13 +1206,13 @@ func queryDashboardBaseCanary(ctx context.Context, db *sql.DB) (dashboardBaseCan
 			ORDER BY token_id, observed_at DESC
 		) pm ON pm.token_id = p.token_id
 		LEFT JOIN (
-			SELECT DISTINCT ON (token_id)
-				token_id, tx_hash
-			FROM canary_events
-			WHERE chain = 'base' AND COALESCE(token_id, '') <> '' AND COALESCE(tx_hash, '') <> ''
-			ORDER BY token_id, created_at DESC
-		) ce ON ce.token_id = p.token_id
-		WHERE p.id LIKE 'shadow-canary-live-pos-%'
+			SELECT tx_hash
+			FROM transactions
+			WHERE chain = 'base' AND COALESCE(tx_hash, '') <> ''
+			ORDER BY created_at DESC
+			LIMIT 1
+		) tx ON true
+		WHERE p.chain = 1 AND COALESCE(p.token_id, '') <> ''
 		ORDER BY GREATEST(COALESCE(p.closed_at, 0), p.opened_at) DESC
 		LIMIT 1
 	`).Scan(
