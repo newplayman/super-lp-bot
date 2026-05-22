@@ -27,6 +27,7 @@ import (
 const (
 	defaultHealthCheckInterval = 30 * time.Second
 	defaultHealthCheckTimeout  = 2 * time.Second
+	switchLogCooldown          = 15 * time.Second
 )
 
 // Default public RPC endpoints
@@ -40,8 +41,6 @@ var (
 	// Extra public Base endpoints for failover and latency-based ordering.
 	BasePublicEndpoints = []string{
 		"https://base.drpc.org",
-		"https://1rpc.io/base",
-		"https://base.llamarpc.com",
 	}
 
 	// Base Sepolia testnet endpoints
@@ -74,6 +73,16 @@ type endpointProbeResult struct {
 	ok       bool
 	errMsg   string
 }
+
+type switchLogState struct {
+	lastAt     time.Time
+	suppressed int
+}
+
+var (
+	switchLogStateMu sync.Mutex
+	switchLogStates  = make(map[string]switchLogState)
+)
 
 // RoundRobinProvider distributes requests across multiple RPC endpoints with automatic failover.
 type RoundRobinProvider struct {
@@ -279,8 +288,38 @@ func (p *RoundRobinProvider) nextEndpoint() error {
 	p.client = client
 	p.mu.Unlock()
 
-	log.Printf("[rpc:%s] switched rpc endpoint: %s -> %s", p.chainID, prev, endpoint)
+	p.logEndpointSwitch(prev, endpoint)
 	return nil
+}
+
+func (p *RoundRobinProvider) logEndpointSwitch(prev, endpoint string) {
+	if prev == "" || endpoint == "" || prev == endpoint {
+		return
+	}
+
+	now := time.Now()
+	key := string(p.chainID)
+
+	switchLogStateMu.Lock()
+	state := switchLogStates[key]
+	if !state.lastAt.IsZero() && now.Sub(state.lastAt) < switchLogCooldown {
+		state.suppressed++
+		switchLogStates[key] = state
+		switchLogStateMu.Unlock()
+		return
+	}
+
+	suppressed := state.suppressed
+	state.suppressed = 0
+	state.lastAt = now
+	switchLogStates[key] = state
+	switchLogStateMu.Unlock()
+
+	if suppressed > 0 {
+		log.Printf("[rpc:%s] switched rpc endpoint: %s -> %s (suppressed %d rapid switches)", p.chainID, prev, endpoint, suppressed)
+		return
+	}
+	log.Printf("[rpc:%s] switched rpc endpoint: %s -> %s", p.chainID, prev, endpoint)
 }
 
 // getClientWithRetry gets a client, rotating on failure.
