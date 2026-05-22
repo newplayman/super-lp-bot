@@ -1174,7 +1174,7 @@ func buildDashboardBaseCanary(positions, closedPositions []dashboardPosition, ev
 		}
 	}
 	for _, event := range events {
-		if !strings.EqualFold(event.Chain, "base") || strings.TrimSpace(event.TxHash) == "" {
+		if !strings.EqualFold(event.Chain, "base") || strings.TrimSpace(event.TxHash) == "" || !strings.Contains(strings.ToLower(event.Stage), "broadcast") {
 			continue
 		}
 		summary.Broadcasts++
