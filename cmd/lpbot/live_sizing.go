@@ -144,20 +144,22 @@ func buildBaseOpenIntent(
 
 	tickLower, tickUpper := defaultOpenRange(pool.Tick, tickSpacingForFee(feeRaw))
 	return execution.OpenIntent{
-		PositionID:  positionID,
-		PoolID:      pool.ID,
-		Chain:       pool.Chain,
-		Tier:        pool.Tier_,
-		AmountUSD:   amountUSD,
-		TickLower:   tickLower,
-		TickUpper:   tickUpper,
-		TraceID:     shadowID("trace", pool.Key(), now.Unix()),
-		Token0:      pool.Token0,
-		Token1:      pool.Token1,
-		Recipient:   recipient,
-		Amount0:     amount0Raw,
-		Amount1:     amount1Raw,
-		SlippageBps: 50,
+		PositionID: positionID,
+		PoolID:     pool.ID,
+		Chain:      pool.Chain,
+		Tier:       pool.Tier_,
+		AmountUSD:  amountUSD,
+		TickLower:  tickLower,
+		TickUpper:  tickUpper,
+		TraceID:    shadowID("trace", pool.Key(), now.Unix()),
+		Token0:     pool.Token0,
+		Token1:     pool.Token1,
+		Recipient:  recipient,
+		Amount0:    amount0Raw,
+		Amount1:    amount1Raw,
+		// For V3 mint, actual token usage depends on current price and tick range.
+		// amountDesired caps max spend; keep amountMin loose for tiny canary mints.
+		SlippageBps: 9999,
 		Deadline:    now.Add(5 * time.Minute).Unix(),
 		Fee:         feeRaw,
 	}, nil
