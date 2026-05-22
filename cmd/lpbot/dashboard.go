@@ -65,6 +65,7 @@ type dashboardSnapshot struct {
 	RecentIssues    []dashboardRecentIssue     `json:"recent_issues"`
 	StrategyAudit   []dashboardStrategyTick    `json:"strategy_audit"`
 	StrategyQuality []dashboardStrategyQuality `json:"strategy_quality"`
+	SolanaCanary    dashboardSolanaCanary      `json:"solana_canary"`
 	Warnings        []string                   `json:"warnings"`
 }
 
@@ -90,6 +91,18 @@ type dashboardHealth struct {
 	RecentNonGeckoMarks    int64  `json:"recent_non_gecko_marks"`
 	RecentChainFailures    int64  `json:"recent_chain_failures"`
 	RecentPipelineFailures int64  `json:"recent_pipeline_failures"`
+}
+
+type dashboardSolanaCanary struct {
+	Broadcasts     int64  `json:"broadcasts"`
+	LastTxHash     string `json:"last_tx_hash"`
+	LastInputMint  string `json:"last_input_mint"`
+	LastOutputMint string `json:"last_output_mint"`
+	LastInputRaw   string `json:"last_input_raw"`
+	LastOutputRaw  string `json:"last_output_raw"`
+	SOLBalanceRaw  string `json:"sol_balance_raw"`
+	USDCBalanceRaw string `json:"usdc_balance_raw"`
+	LastCreatedAt  int64  `json:"last_created_at"`
 }
 
 type dashboardLiveReadiness struct {
@@ -517,6 +530,11 @@ func (app *App) dashboardSnapshot(ctx context.Context) (dashboardSnapshot, error
 		snapshot.Warnings = append(snapshot.Warnings, fmt.Sprintf("dashboard canary events unavailable: %v", err))
 	} else {
 		snapshot.CanaryEvents = canaryEvents
+	}
+	if summary, err := queryDashboardSolanaCanary(ctx, db); err != nil {
+		snapshot.Warnings = append(snapshot.Warnings, fmt.Sprintf("dashboard solana canary summary unavailable: %v", err))
+	} else {
+		snapshot.SolanaCanary = summary
 	}
 
 	positionMarks, err := queryDashboardPositionMarks(ctx, db)
@@ -1091,6 +1109,38 @@ func queryDashboardCanaryEvents(ctx context.Context, db *sql.DB) ([]dashboardCan
 		events = append(events, event)
 	}
 	return events, rows.Err()
+}
+
+func queryDashboardSolanaCanary(ctx context.Context, db *sql.DB) (dashboardSolanaCanary, error) {
+	var summary dashboardSolanaCanary
+	if err := db.QueryRowContext(ctx, `
+		SELECT count(*)
+		FROM canary_events
+		WHERE chain = 'solana' AND stage = 'broadcast' AND status = 'ok'
+	`).Scan(&summary.Broadcasts); err != nil {
+		return summary, fmt.Errorf("query solana canary count: %w", err)
+	}
+	if err := db.QueryRowContext(ctx, `
+		SELECT tx_hash, COALESCE(input_mint, ''), COALESCE(output_mint, ''),
+		       COALESCE(input_amount_raw, ''), COALESCE(output_amount_raw, ''),
+		       COALESCE(sol_balance_raw, ''), COALESCE(usdc_balance_raw, ''), created_at
+		FROM canary_events
+		WHERE chain = 'solana' AND stage = 'broadcast' AND status = 'ok'
+		ORDER BY created_at DESC
+		LIMIT 1
+	`).Scan(
+		&summary.LastTxHash,
+		&summary.LastInputMint,
+		&summary.LastOutputMint,
+		&summary.LastInputRaw,
+		&summary.LastOutputRaw,
+		&summary.SOLBalanceRaw,
+		&summary.USDCBalanceRaw,
+		&summary.LastCreatedAt,
+	); err != nil && err != sql.ErrNoRows {
+		return summary, fmt.Errorf("query solana canary latest: %w", err)
+	}
+	return summary, nil
 }
 
 func queryDashboardPositionMarks(ctx context.Context, db *sql.DB) ([]dashboardPositionMark, error) {

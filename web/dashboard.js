@@ -63,6 +63,7 @@
         const markSeries = data.mark_series || [];
         const ledgerSeries = data.ledger_series || [];
         const ledgerSummary = data.ledger_summary || [];
+        const solanaCanary = data.solana_canary || {};
         const currentLive = data.live_readiness || {};
         const canaryLive = data.canary_readiness || {};
         const live = canaryLive.build_mode ? canaryLive : currentLive;
@@ -106,9 +107,9 @@
 
         setText('metric-bots', canaryLive.build_mode ? '1 shadow + canary plan' : '1 shadow');
         setText('metric-pools', scanned || counts.pools || '-');
-        setText('metric-chains', 'Base');
+        setText('metric-chains', num(solanaCanary.broadcasts) > 0 ? 'Base + Solana' : 'Base');
         setText('metric-templates', selected || '-');
-        setText('metric-events', counts.scores || '-');
+        setText('metric-events', num(solanaCanary.broadcasts) > 0 ? `${counts.scores || '-'} / S:${num(solanaCanary.broadcasts)}` : (counts.scores || '-'));
         setText('metric-latency', health.last_mark_age_seconds !== undefined ? health.last_mark_age_seconds + 's' : '-');
         setText('health-pct', healthPct.toFixed(1) + '%');
         const healthBar = document.getElementById('health-bar');
@@ -353,6 +354,7 @@
             ['info', 'scanner', `scanned ${num(audit.scanned)}, selected ${num(audit.selected)}, pipeline ok ${num(audit.pipeline_ok)}`],
             ['info', 'mark', `last mark age ${health.last_mark_age_seconds || '-'}s, source ${health.last_mark_source || '-'}`],
             ['info', 'live', `ready ${live.ready ? 'yes' : 'no'}, blockers ${(live.blockers || []).length}, canary ${live.canary ? 'on' : 'off'}`],
+            [num(solanaCanary.broadcasts) ? 'success' : 'info', 'solana', num(solanaCanary.broadcasts) ? `broadcasts ${num(solanaCanary.broadcasts)}, wallet SOL ${formatTokenAmount(solanaCanary.sol_balance_raw || '0', 'So11111111111111111111111111111111111111112')} / USDC ${formatTokenAmount(solanaCanary.usdc_balance_raw || '0', 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v')}` : 'no solana canary broadcast yet'],
             [num(health.recent_chain_failures) ? 'warn' : 'success', 'chain', `chain failures / 30m: ${num(health.recent_chain_failures)}`],
             [num(health.recent_pipeline_failures) ? 'warn' : 'success', 'pipeline', `pipeline failures / 30m: ${num(health.recent_pipeline_failures)}`]
         ];
