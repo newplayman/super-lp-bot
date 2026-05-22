@@ -102,6 +102,13 @@ type dashboardBaseCanary struct {
 	PrepBroadcasts  int64  `json:"prep_broadcasts"`
 	MintBroadcasts  int64  `json:"mint_broadcasts"`
 	ExitBroadcasts  int64  `json:"exit_broadcasts"`
+	ActivePositionID string `json:"active_position_id"`
+	ActiveTokenID    string `json:"active_token_id"`
+	ActiveStatus     string `json:"active_status"`
+	ActiveHoldMinutes int64 `json:"active_hold_minutes"`
+	ActiveNetPnLUSD  string `json:"active_net_pnl_usd"`
+	ActiveFeeUSD     string `json:"active_fee_usd"`
+	ActiveILUSD      string `json:"active_il_usd"`
 	LastPositionID  string `json:"last_position_id"`
 	LastTokenID     string `json:"last_token_id"`
 	LastPoolID      string `json:"last_pool_id"`
@@ -1195,6 +1202,19 @@ func buildDashboardBaseCanary(positions, closedPositions []dashboardPosition, ma
 		if summary.LastTxHash == "" {
 			summary.LastTxHash = event.TxHash
 		}
+	}
+	for _, mark := range marks {
+		if strings.TrimSpace(mark.TokenID) == "" || !strings.EqualFold(mark.Status, "open") {
+			continue
+		}
+		summary.ActivePositionID = mark.PositionID
+		summary.ActiveTokenID = mark.TokenID
+		summary.ActiveStatus = mark.Status
+		summary.ActiveHoldMinutes = mark.HoldMinutes
+		summary.ActiveNetPnLUSD = mark.NetPnLUSD
+		summary.ActiveFeeUSD = mark.FeeUSD
+		summary.ActiveILUSD = mark.ILUSD
+		break
 	}
 	if len(closedPositions) > 0 {
 		pos := closedPositions[0]
