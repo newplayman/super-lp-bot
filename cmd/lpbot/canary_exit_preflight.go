@@ -23,7 +23,6 @@ import (
 
 const canaryExitPreflightSlippageBps = 100
 const canaryExitConfirmEnv = "LPBOT_CONFIRM_CANARY_EXIT"
-const canaryExitAllowedTokenID = "5166834"
 
 type canaryExitPreflightReport struct {
 	TokenID              string
@@ -140,14 +139,15 @@ func runCanaryExit(ctx context.Context, cfg *config.Config, tokenID string) (err
 		return fmt.Errorf("config is nil")
 	}
 	tokenID = strings.TrimSpace(tokenID)
-	if tokenID != canaryExitAllowedTokenID {
-		return fmt.Errorf("canary exit only allows token id %s, got %q", canaryExitAllowedTokenID, tokenID)
-	}
 	stateWriter, err := newCanaryEventWriter(ctx, cfg)
 	if err != nil {
 		return err
 	}
 	defer stateWriter.Close()
+	positionID, err := requireOpenLiveCanaryPositionToken(ctx, stateWriter.db, tokenID)
+	if err != nil {
+		return err
+	}
 	defer func() {
 		if err != nil {
 			_ = stateWriter.Record(ctx, canaryEvent{
@@ -160,11 +160,12 @@ func runCanaryExit(ctx context.Context, cfg *config.Config, tokenID string) (err
 		}
 	}()
 	if err := stateWriter.Record(ctx, canaryEvent{
-		Command: "canary_exit",
-		Stage:   "started",
-		Status:  "running",
-		TokenID: tokenID,
-		Message: "manual canary exit command started",
+		Command:    "canary_exit",
+		Stage:      "started",
+		Status:     "running",
+		PositionID: positionID,
+		TokenID:    tokenID,
+		Message:    "manual canary exit command started",
 	}); err != nil {
 		return err
 	}
@@ -214,6 +215,7 @@ func runCanaryExit(ctx context.Context, cfg *config.Config, tokenID string) (err
 		Command:     "canary_exit",
 		Stage:       "preflight_ok",
 		Status:      "ok",
+		PositionID:  positionID,
 		PoolID:      report.PoolID,
 		Wallet:      report.Wallet,
 		TokenID:     tokenID,
@@ -301,6 +303,30 @@ func runCanaryExit(ctx context.Context, cfg *config.Config, tokenID string) (err
 	fmt.Printf("canary_exit_complete token_id=%s decrease_gas_preflight=%d collect_gas_preflight=%d\n",
 		tokenID, report.DecreaseGas, report.CollectCurrentFeeGas)
 	return nil
+}
+
+func requireOpenLiveCanaryPositionToken(ctx context.Context, db *sql.DB, tokenID string) (string, error) {
+	tokenID = strings.TrimSpace(tokenID)
+	if tokenID == "" {
+		return "", fmt.Errorf("--token-id is required")
+	}
+	var positionID string
+	err := db.QueryRowContext(ctx, `
+		SELECT id
+		FROM positions
+		WHERE token_id = $1
+		  AND id LIKE 'shadow-canary-live-pos-%'
+		  AND status IN ('opening', 'open')
+		ORDER BY opened_at DESC
+		LIMIT 1
+	`, tokenID).Scan(&positionID)
+	if err == sql.ErrNoRows {
+		return "", fmt.Errorf("canary exit blocked: token_id %s is not an open reconciled live canary position", tokenID)
+	}
+	if err != nil {
+		return "", fmt.Errorf("read live canary position for exit: %w", err)
+	}
+	return positionID, nil
 }
 
 func newCanaryExitPreflightProvider(ctx context.Context, cfg *config.Config) (*rpc.RoundRobinProvider, error) {
