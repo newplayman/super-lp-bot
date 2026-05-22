@@ -364,7 +364,19 @@ func (app *App) dashboardAuth(next http.HandlerFunc) http.HandlerFunc {
 		if app.config != nil {
 			token = strings.TrimSpace(app.config.Platform.DashboardToken)
 		}
-		if token == "" || requestFromLoopback(r) || dashboardTokenMatches(r, token) {
+		if token == "" || requestFromLoopback(r) {
+			next(w, r)
+			return
+		}
+		if dashboardTokenMatches(r, token) {
+			http.SetCookie(w, &http.Cookie{
+				Name:     "lpbot_dashboard_token",
+				Value:    token,
+				Path:     "/",
+				MaxAge:   7 * 24 * 60 * 60,
+				HttpOnly: true,
+				SameSite: http.SameSiteLaxMode,
+			})
 			next(w, r)
 			return
 		}
@@ -386,7 +398,11 @@ func dashboardTokenMatches(r *http.Request, token string) bool {
 		return true
 	}
 	auth := r.Header.Get("Authorization")
-	return strings.TrimPrefix(auth, "Bearer ") == token
+	if strings.TrimPrefix(auth, "Bearer ") == token {
+		return true
+	}
+	cookie, err := r.Cookie("lpbot_dashboard_token")
+	return err == nil && cookie.Value == token
 }
 
 func (app *App) handleDashboard(w http.ResponseWriter, r *http.Request) {
