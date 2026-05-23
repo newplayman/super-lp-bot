@@ -4,6 +4,12 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+mapfile -t inherited_env_names < <(compgen -e)
+declare -A inherited_env_values=()
+for name in "${inherited_env_names[@]}"; do
+  inherited_env_values["${name}"]="${!name}"
+done
+
 required_env_files=(
   ".env.postgres"
   ".env.redis"
@@ -38,6 +44,10 @@ set -a
 . "${ROOT_DIR}/.env.dashboard"
 . "${ROOT_DIR}/.env.canary"
 set +a
+
+for name in "${inherited_env_names[@]}"; do
+  export "${name}=${inherited_env_values[$name]}"
+done
 
 cd "${ROOT_DIR}"
 exec "$@"
