@@ -604,6 +604,49 @@
                 </div>
             </div>
 
+            <div class="panel-card-group triple-col-span">
+                <div class="panel-card">
+                    <div class="panel-header">
+                        <div class="panel-title">
+                            <i data-lucide="badge-dollar-sign"></i> Latest Live Canary
+                        </div>
+                    </div>
+                    <div id="latest-canary-card" class="panel-body latest-canary-card">
+                        <!-- 动态追加 -->
+                    </div>
+                </div>
+                <div class="panel-card col-span-2">
+                    <div class="panel-header">
+                        <div class="panel-title">
+                            <i data-lucide="receipt-text"></i> Canary Rounds
+                            <span class="badge-title-header">投入 / 退出或估值 / gas 估算 / 净值变化 / fee / IL</span>
+                        </div>
+                    </div>
+                    <div class="panel-body no-padding overflow-x">
+                        <table class="dashboard-table">
+                            <thead>
+                                <tr>
+                                    <th>时间</th>
+                                    <th>NFT / Pool</th>
+                                    <th>状态</th>
+                                    <th>投入</th>
+                                    <th>退出 / 估值</th>
+                                    <th>Gas Est</th>
+                                    <th>净值变化</th>
+                                    <th>Fee</th>
+                                    <th>IL</th>
+                                    <th>Net(after gas)</th>
+                                    <th>Tx</th>
+                                </tr>
+                            </thead>
+                            <tbody id="canary-rounds-tbody">
+                                <!-- 动态追加 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
             <!-- 数据表格三与大图表：Rebalance柱状图 & 策略收益对比折线图 & 执行流水表格 -->
             <div class="panel-card-group triple-col-span">
                 <!-- Rebalance 时间线 (7天) -->

@@ -45,8 +45,9 @@ func (r *PoolRepo) UpsertPool(ctx context.Context, pool ports.PoolWithScore) err
 	_, err = tx.ExecContext(ctx, `
 		INSERT INTO pools (
 			pool_id, chain, protocol, token0, token1, fee_bps,
-			tier, audit_verdict, last_score, updated_block, updated_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+			tier, audit_verdict, last_score, updated_block, updated_at,
+			liquidity, tick, tvl_usd, vol_24h, fee_apr_24h
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
 		ON CONFLICT (pool_id, chain, protocol) DO UPDATE SET
 			token0 = excluded.token0,
 			token1 = excluded.token1,
@@ -54,7 +55,12 @@ func (r *PoolRepo) UpsertPool(ctx context.Context, pool ports.PoolWithScore) err
 			tier = excluded.tier,
 			last_score = excluded.last_score,
 			updated_block = excluded.updated_block,
-			updated_at = excluded.updated_at
+			updated_at = excluded.updated_at,
+			liquidity = excluded.liquidity,
+			tick = excluded.tick,
+			tvl_usd = excluded.tvl_usd,
+			vol_24h = excluded.vol_24h,
+			fee_apr_24h = excluded.fee_apr_24h
 	`,
 		pool.Pool.ID,
 		chainIDToInt(pool.Pool.Chain),
@@ -67,6 +73,11 @@ func (r *PoolRepo) UpsertPool(ctx context.Context, pool ports.PoolWithScore) err
 		scoreJSON,
 		0, // updated_block
 		pool.Pool.UpdatedAt,
+		pool.Pool.Liquidity.String(),
+		pool.Pool.Tick,
+		pool.Pool.TVLUSD.String(),
+		pool.Pool.Vol24h.String(),
+		pool.Pool.FeeAPR24h.String(),
 	)
 	if err != nil {
 		return fmt.Errorf("failed to upsert pool: %w", err)
@@ -120,11 +131,17 @@ func (r *PoolRepo) GetPool(ctx context.Context, key string) (domain.Pool, error)
 		LastScore    sql.NullString
 		UpdatedBlock int
 		UpdatedAt    int64
+		Liquidity    sql.NullString
+		Tick         sql.NullInt64
+		TVLUSD       sql.NullString
+		Vol24h       sql.NullString
+		FeeAPR24h    sql.NullString
 	}
 
 	err = r.db.QueryRowContext(ctx, `
 		SELECT pool_id, chain, protocol, token0, token1, fee_bps,
-		       tier, audit_verdict, last_score, updated_block, updated_at
+		       tier, audit_verdict, last_score, updated_block, updated_at,
+		       liquidity, tick, tvl_usd, vol_24h, fee_apr_24h
 		FROM pools
 		WHERE pool_id = $1 AND chain = $2 AND protocol = $3
 	`, poolID, chainIDToInt(chain), protocol).Scan(
@@ -132,6 +149,7 @@ func (r *PoolRepo) GetPool(ctx context.Context, key string) (domain.Pool, error)
 		&row.Token0, &row.Token1, &row.FeeBPS,
 		&row.Tier, &row.AuditVerdict, &row.LastScore,
 		&row.UpdatedBlock, &row.UpdatedAt,
+		&row.Liquidity, &row.Tick, &row.TVLUSD, &row.Vol24h, &row.FeeAPR24h,
 	)
 	if err == sql.ErrNoRows {
 		return domain.Pool{}, ports.ErrPoolNotFound
@@ -162,6 +180,21 @@ func (r *PoolRepo) GetPool(ctx context.Context, key string) (domain.Pool, error)
 	if row.Tier.Valid {
 		pool.Tier_ = domain.Tier(row.Tier.String)
 	}
+	if row.Liquidity.Valid && row.Liquidity.String != "" {
+		pool.Liquidity = domain.MustDecimal(row.Liquidity.String)
+	}
+	if row.Tick.Valid {
+		pool.Tick = int(row.Tick.Int64)
+	}
+	if row.TVLUSD.Valid && row.TVLUSD.String != "" {
+		pool.TVLUSD = domain.MustDecimal(row.TVLUSD.String)
+	}
+	if row.Vol24h.Valid && row.Vol24h.String != "" {
+		pool.Vol24h = domain.MustDecimal(row.Vol24h.String)
+	}
+	if row.FeeAPR24h.Valid && row.FeeAPR24h.String != "" {
+		pool.FeeAPR24h = domain.MustDecimal(row.FeeAPR24h.String)
+	}
 
 	return pool, nil
 }
@@ -170,7 +203,8 @@ func (r *PoolRepo) GetPool(ctx context.Context, key string) (domain.Pool, error)
 func (r *PoolRepo) ListPools(ctx context.Context, filter ports.PoolFilter) ([]domain.Pool, error) {
 	query := `
 		SELECT pool_id, chain, protocol, token0, token1, fee_bps,
-		       tier, audit_verdict, last_score, updated_block, updated_at
+		       tier, audit_verdict, last_score, updated_block, updated_at,
+		       liquidity, tick, tvl_usd, vol_24h, fee_apr_24h
 		FROM pools
 		WHERE 1=1
 	`
@@ -218,6 +252,11 @@ func (r *PoolRepo) ListPools(ctx context.Context, filter ports.PoolFilter) ([]do
 			LastScore    sql.NullString
 			UpdatedBlock int
 			UpdatedAt    int64
+			Liquidity    sql.NullString
+			Tick         sql.NullInt64
+			TVLUSD       sql.NullString
+			Vol24h       sql.NullString
+			FeeAPR24h    sql.NullString
 		}
 
 		err := rows.Scan(
@@ -225,6 +264,7 @@ func (r *PoolRepo) ListPools(ctx context.Context, filter ports.PoolFilter) ([]do
 			&row.Token0, &row.Token1, &row.FeeBPS,
 			&row.Tier, &row.AuditVerdict, &row.LastScore,
 			&row.UpdatedBlock, &row.UpdatedAt,
+			&row.Liquidity, &row.Tick, &row.TVLUSD, &row.Vol24h, &row.FeeAPR24h,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan pool row: %w", err)
@@ -251,6 +291,21 @@ func (r *PoolRepo) ListPools(ctx context.Context, filter ports.PoolFilter) ([]do
 
 		if row.Tier.Valid {
 			pool.Tier_ = domain.Tier(row.Tier.String)
+		}
+		if row.Liquidity.Valid && row.Liquidity.String != "" {
+			pool.Liquidity = domain.MustDecimal(row.Liquidity.String)
+		}
+		if row.Tick.Valid {
+			pool.Tick = int(row.Tick.Int64)
+		}
+		if row.TVLUSD.Valid && row.TVLUSD.String != "" {
+			pool.TVLUSD = domain.MustDecimal(row.TVLUSD.String)
+		}
+		if row.Vol24h.Valid && row.Vol24h.String != "" {
+			pool.Vol24h = domain.MustDecimal(row.Vol24h.String)
+		}
+		if row.FeeAPR24h.Valid && row.FeeAPR24h.String != "" {
+			pool.FeeAPR24h = domain.MustDecimal(row.FeeAPR24h.String)
 		}
 
 		pools = append(pools, pool)

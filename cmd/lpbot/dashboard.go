@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"math"
 	"math/big"
 	"net"
 	"net/http"
@@ -66,6 +67,8 @@ type dashboardSnapshot struct {
 	StrategyAudit   []dashboardStrategyTick    `json:"strategy_audit"`
 	StrategyQuality []dashboardStrategyQuality `json:"strategy_quality"`
 	BaseCanary      dashboardBaseCanary        `json:"base_canary"`
+	CanaryRounds    []dashboardCanaryRound     `json:"canary_rounds"`
+	CanarySummary   dashboardCanarySummary     `json:"canary_summary"`
 	SolanaCanary    dashboardSolanaCanary      `json:"solana_canary"`
 	Warnings        []string                   `json:"warnings"`
 }
@@ -95,31 +98,31 @@ type dashboardHealth struct {
 }
 
 type dashboardBaseCanary struct {
-	Broadcasts      int64  `json:"broadcasts"`
-	Opened          int64  `json:"opened"`
-	Closed          int64  `json:"closed"`
-	TxBroadcasts    int64  `json:"tx_broadcasts"`
-	PrepBroadcasts  int64  `json:"prep_broadcasts"`
-	MintBroadcasts  int64  `json:"mint_broadcasts"`
-	ExitBroadcasts  int64  `json:"exit_broadcasts"`
-	ActivePositionID string `json:"active_position_id"`
-	ActiveTokenID    string `json:"active_token_id"`
-	ActiveStatus     string `json:"active_status"`
-	ActiveHoldMinutes int64 `json:"active_hold_minutes"`
-	ActiveNetPnLUSD  string `json:"active_net_pnl_usd"`
-	ActiveFeeUSD     string `json:"active_fee_usd"`
-	ActiveILUSD      string `json:"active_il_usd"`
-	LastPositionID  string `json:"last_position_id"`
-	LastTokenID     string `json:"last_token_id"`
-	LastPoolID      string `json:"last_pool_id"`
-	LastStatus      string `json:"last_status"`
-	LastAmountUSD   string `json:"last_amount_usd"`
-	LastHoldMinutes int64  `json:"last_hold_minutes"`
-	LastNetPnLUSD   string `json:"last_net_pnl_usd"`
-	LastFeeUSD      string `json:"last_fee_usd"`
-	LastILUSD       string `json:"last_il_usd"`
-	LastTxHash      string `json:"last_tx_hash"`
-	LastClosedAt    int64  `json:"last_closed_at"`
+	Broadcasts        int64  `json:"broadcasts"`
+	Opened            int64  `json:"opened"`
+	Closed            int64  `json:"closed"`
+	TxBroadcasts      int64  `json:"tx_broadcasts"`
+	PrepBroadcasts    int64  `json:"prep_broadcasts"`
+	MintBroadcasts    int64  `json:"mint_broadcasts"`
+	ExitBroadcasts    int64  `json:"exit_broadcasts"`
+	ActivePositionID  string `json:"active_position_id"`
+	ActiveTokenID     string `json:"active_token_id"`
+	ActiveStatus      string `json:"active_status"`
+	ActiveHoldMinutes int64  `json:"active_hold_minutes"`
+	ActiveNetPnLUSD   string `json:"active_net_pnl_usd"`
+	ActiveFeeUSD      string `json:"active_fee_usd"`
+	ActiveILUSD       string `json:"active_il_usd"`
+	LastPositionID    string `json:"last_position_id"`
+	LastTokenID       string `json:"last_token_id"`
+	LastPoolID        string `json:"last_pool_id"`
+	LastStatus        string `json:"last_status"`
+	LastAmountUSD     string `json:"last_amount_usd"`
+	LastHoldMinutes   int64  `json:"last_hold_minutes"`
+	LastNetPnLUSD     string `json:"last_net_pnl_usd"`
+	LastFeeUSD        string `json:"last_fee_usd"`
+	LastILUSD         string `json:"last_il_usd"`
+	LastTxHash        string `json:"last_tx_hash"`
+	LastClosedAt      int64  `json:"last_closed_at"`
 }
 
 type dashboardSolanaCanary struct {
@@ -134,10 +137,87 @@ type dashboardSolanaCanary struct {
 	LastCreatedAt  int64  `json:"last_created_at"`
 }
 
+type dashboardCanaryRound struct {
+	PositionID      string `json:"position_id"`
+	TokenID         string `json:"token_id"`
+	PoolID          string `json:"pool_id"`
+	Status          string `json:"status"`
+	AmountUSD       string `json:"amount_usd"`
+	ExitUSD         string `json:"exit_usd"`
+	ValuationUSD    string `json:"valuation_usd"`
+	ValueDeltaUSD   string `json:"value_delta_usd"`
+	FeeUSD          string `json:"fee_usd"`
+	ILUSD           string `json:"il_usd"`
+	NetPnLUSD       string `json:"net_pnl_usd"`
+	NetAfterGasUSD  string `json:"net_after_gas_usd"`
+	HoldMinutes     int64  `json:"hold_minutes"`
+	OpenedAt        int64  `json:"opened_at"`
+	ClosedAt        int64  `json:"closed_at"`
+	MintGasEstimate uint64 `json:"mint_gas_estimate"`
+	ExitGasEstimate uint64 `json:"exit_gas_estimate"`
+	MintGasUsed     uint64 `json:"mint_gas_used"`
+	ExitGasUsed     uint64 `json:"exit_gas_used"`
+	TotalGasUsed    uint64 `json:"total_gas_used"`
+	MintGasETH      string `json:"mint_gas_eth"`
+	ExitGasETH      string `json:"exit_gas_eth"`
+	TotalGasETH     string `json:"total_gas_eth"`
+	MintGasUSD      string `json:"mint_gas_usd"`
+	ExitGasUSD      string `json:"exit_gas_usd"`
+	TotalGasUSD     string `json:"total_gas_usd"`
+	MintTxHash      string `json:"mint_tx_hash"`
+	DecreaseTxHash  string `json:"decrease_tx_hash"`
+	CollectTxHash   string `json:"collect_tx_hash"`
+	LastTxHash      string `json:"last_tx_hash"`
+}
+
+type dashboardCanarySummary struct {
+	ETHPriceUSD            string `json:"eth_price_usd"`
+	Rounds24h              int64  `json:"rounds_24h"`
+	Closed24h              int64  `json:"closed_24h"`
+	Open24h                int64  `json:"open_24h"`
+	TotalAmountUSD24h      string `json:"total_amount_usd_24h"`
+	TotalExitUSD24h        string `json:"total_exit_usd_24h"`
+	TotalFeeUSD24h         string `json:"total_fee_usd_24h"`
+	TotalILUSD24h          string `json:"total_il_usd_24h"`
+	TotalNetPnLUSD24h      string `json:"total_net_pnl_usd_24h"`
+	TotalNetAfterGasUSD24h string `json:"total_net_after_gas_usd_24h"`
+	TotalValueDelta24h     string `json:"total_value_delta_usd_24h"`
+	TotalGasUsed24h        uint64 `json:"total_gas_used_24h"`
+	TotalGasETH24h         string `json:"total_gas_eth_24h"`
+	TotalGasUSD24h         string `json:"total_gas_usd_24h"`
+	Rounds7d               int64  `json:"rounds_7d"`
+	Closed7d               int64  `json:"closed_7d"`
+	Open7d                 int64  `json:"open_7d"`
+	TotalAmountUSD7d       string `json:"total_amount_usd_7d"`
+	TotalExitUSD7d         string `json:"total_exit_usd_7d"`
+	TotalFeeUSD7d          string `json:"total_fee_usd_7d"`
+	TotalILUSD7d           string `json:"total_il_usd_7d"`
+	TotalNetPnLUSD7d       string `json:"total_net_pnl_usd_7d"`
+	TotalNetAfterGasUSD7d  string `json:"total_net_after_gas_usd_7d"`
+	TotalValueDeltaUSD7d   string `json:"total_value_delta_usd_7d"`
+	TotalGasUsed7d         uint64 `json:"total_gas_used_7d"`
+	TotalGasETH7d          string `json:"total_gas_eth_7d"`
+	TotalGasUSD7d          string `json:"total_gas_usd_7d"`
+	RoundsAll              int64  `json:"rounds_all"`
+	ClosedAll              int64  `json:"closed_all"`
+	OpenAll                int64  `json:"open_all"`
+	TotalAmountUSDAll      string `json:"total_amount_usd_all"`
+	TotalExitUSDAll        string `json:"total_exit_usd_all"`
+	TotalFeeUSDAll         string `json:"total_fee_usd_all"`
+	TotalILUSDAll          string `json:"total_il_usd_all"`
+	TotalNetPnLUSDAll      string `json:"total_net_pnl_usd_all"`
+	TotalNetAfterGasUSDAll string `json:"total_net_after_gas_usd_all"`
+	TotalValueDeltaUSDAll  string `json:"total_value_delta_usd_all"`
+	TotalGasUsedAll        uint64 `json:"total_gas_used_all"`
+	TotalGasETHAll         string `json:"total_gas_eth_all"`
+	TotalGasUSDAll         string `json:"total_gas_usd_all"`
+}
+
 type dashboardLiveReadiness struct {
 	BuildMode             string                      `json:"build_mode"`
 	LiveEnabled           bool                        `json:"live_enabled"`
 	Canary                bool                        `json:"canary"`
+	ManualCanaryOverride  bool                        `json:"manual_canary_override"`
 	KillSwitch            bool                        `json:"kill_switch"`
 	WalletAddress         string                      `json:"wallet_address"`
 	WalletBalances        dashboardWalletBalances     `json:"wallet_balances"`
@@ -491,6 +571,18 @@ func (app *App) handleDashboardAPI(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *App) dashboardSnapshot(ctx context.Context) (dashboardSnapshot, error) {
+	if snapshot, ok := app.dashboardCache.get(); ok {
+		return snapshot, nil
+	}
+	snapshot, err := app.buildDashboardSnapshot(ctx)
+	if err != nil {
+		return dashboardSnapshot{}, err
+	}
+	app.dashboardCache.set(snapshot, dashboardSnapshotTTL)
+	return snapshot, nil
+}
+
+func (app *App) buildDashboardSnapshot(ctx context.Context) (dashboardSnapshot, error) {
 	snapshot := dashboardSnapshot{
 		GeneratedAt: time.Now().UTC().Format(time.RFC3339),
 		Version:     Version,
@@ -581,6 +673,12 @@ func (app *App) dashboardSnapshot(ctx context.Context) (dashboardSnapshot, error
 	}
 	snapshot.ExitPreflights = exitPreflights
 	snapshot.BaseCanary = buildDashboardBaseCanary(snapshot.Positions, snapshot.ClosedPositions, snapshot.PositionMarks, snapshot.CanaryEvents, snapshot.ExitPreflights)
+	snapshot.CanaryRounds = buildDashboardCanaryRounds(snapshot.Positions, snapshot.ClosedPositions, snapshot.PositionMarks, snapshot.ExitPreflights, snapshot.CanaryEvents)
+	ethPriceUSD := "0"
+	if provider := app.rpcProviderForChain(domain.ChainBase); provider != nil {
+		snapshot.CanaryRounds, ethPriceUSD = dashboardHydrateCanaryRoundGas(ctx, provider, snapshot.CanaryRounds)
+	}
+	snapshot.CanarySummary = buildDashboardCanarySummary(snapshot.CanaryRounds, time.Now().UTC(), ethPriceUSD)
 
 	markSeries, err := queryDashboardMarkSeries(ctx, db)
 	if err != nil {
@@ -679,7 +777,10 @@ func dashboardLoadCanaryReadiness(ctx context.Context, provider *rpc.RoundRobinP
 		return dashboardLiveReadiness{}, err
 	}
 	gate := newLiveSafetyGate("live", cfg)
-	readiness = gate.readiness()
+	if envAffirmative(env[manualCanaryOverrideEnv]) {
+		gate.manualCanaryOverride = true
+	}
+	readiness = gate.canaryReadiness()
 	balances, fundingReady, approvalsReady, balanceBlockers, balanceErr := dashboardCanaryWalletBalances(ctx, cfg, provider)
 	readiness.WalletBalances = balances
 	readiness.FundingReady = fundingReady
@@ -1100,6 +1201,12 @@ func queryDashboardTransactions(ctx context.Context, db *sql.DB) ([]dashboardTra
 		if err := rows.Scan(&tx.ID, &tx.Chain, &tx.TxHash, &tx.Status, &tx.CreatedAt, &tx.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("scan dashboard transaction: %w", err)
 		}
+		if tx.CreatedAt > 0 && tx.CreatedAt < 2_000_000_000 {
+			tx.CreatedAt *= 1000
+		}
+		if tx.UpdatedAt > 0 && tx.UpdatedAt < 2_000_000_000 {
+			tx.UpdatedAt *= 1000
+		}
 		txs = append(txs, tx)
 	}
 	return txs, rows.Err()
@@ -1267,6 +1374,374 @@ func buildDashboardBaseCanary(positions, closedPositions []dashboardPosition, ma
 		break
 	}
 	return summary
+}
+
+type dashboardCanaryMintInfo struct {
+	TxHash      string
+	GasEstimate uint64
+	CreatedAt   int64
+}
+
+func buildDashboardCanaryRounds(positions, closedPositions []dashboardPosition, marks []dashboardPositionMark, exitPreflights []dashboardExitPreflight, events []dashboardCanaryEvent) []dashboardCanaryRound {
+	basePositions := make(map[string]dashboardPosition)
+	for _, pos := range positions {
+		if dashboardIsBaseCanaryPosition(pos.ID, pos.Chain) {
+			basePositions[pos.ID] = pos
+		}
+	}
+	for _, pos := range closedPositions {
+		if dashboardIsBaseCanaryPosition(pos.ID, pos.Chain) {
+			basePositions[pos.ID] = pos
+		}
+	}
+
+	markByPosition := make(map[string]dashboardPositionMark)
+	for _, mark := range marks {
+		if strings.TrimSpace(mark.PositionID) == "" {
+			continue
+		}
+		if _, ok := markByPosition[mark.PositionID]; ok {
+			continue
+		}
+		markByPosition[mark.PositionID] = mark
+	}
+
+	exitByToken := make(map[string]dashboardExitPreflight)
+	for _, item := range exitPreflights {
+		tokenID := strings.TrimSpace(item.TokenID)
+		if tokenID == "" {
+			continue
+		}
+		if _, ok := exitByToken[tokenID]; ok {
+			continue
+		}
+		exitByToken[tokenID] = item
+	}
+
+	mintByPosition := make(map[string]dashboardCanaryMintInfo)
+	for _, event := range events {
+		if !strings.EqualFold(event.Chain, "base") || !strings.EqualFold(event.Command, "canary_mint") {
+			continue
+		}
+		positionID := strings.TrimSpace(event.PositionID)
+		if positionID == "" || strings.TrimSpace(event.TxHash) == "" {
+			continue
+		}
+		if _, ok := mintByPosition[positionID]; ok {
+			continue
+		}
+		mintByPosition[positionID] = dashboardCanaryMintInfo{
+			TxHash:      event.TxHash,
+			GasEstimate: event.GasEstimate,
+			CreatedAt:   event.CreatedAt,
+		}
+	}
+
+	rounds := make([]dashboardCanaryRound, 0, len(basePositions))
+	for _, pos := range basePositions {
+		mark := markByPosition[pos.ID]
+		exit := exitByToken[strings.TrimSpace(pos.TokenID)]
+		mint := mintByPosition[pos.ID]
+
+		valuationUSD := dashboardFirstNonEmpty(exit.TotalUSD, mark.ValuationUSD)
+		if !strings.EqualFold(pos.Status, "closed") {
+			valuationUSD = dashboardFirstNonEmpty(mark.ValuationUSD, exit.TotalUSD)
+		}
+		feeUSD := dashboardFirstNonEmpty(exit.FeeUSD, mark.FeeUSD)
+		ilUSD := dashboardFirstNonEmpty(exit.ILUSD, mark.ILUSD)
+		holdMinutes := pos.HoldMinutes
+		if holdMinutes == 0 {
+			holdMinutes = mark.HoldMinutes
+		}
+		netPnLUSD := dashboardFirstNonEmpty(pos.NetPnLUSD, mark.NetPnLUSD, exit.NetPnLUSD)
+		valueDeltaUSD := dashboardDecimalDiff(valuationUSD, pos.AmountUSD)
+		if strings.TrimSpace(netPnLUSD) == "" {
+			netPnLUSD = valueDeltaUSD
+		}
+		lastTxHash := dashboardFirstNonEmpty(exit.CollectTxHash, exit.DecreaseTxHash, mint.TxHash)
+		if !strings.EqualFold(pos.Status, "closed") {
+			lastTxHash = dashboardFirstNonEmpty(mint.TxHash, exit.DecreaseTxHash, exit.CollectTxHash)
+		}
+
+		rounds = append(rounds, dashboardCanaryRound{
+			PositionID:      pos.ID,
+			TokenID:         pos.TokenID,
+			PoolID:          pos.PoolID,
+			Status:          dashboardFirstNonEmpty(pos.Status, mark.Status, exit.Status),
+			AmountUSD:       dashboardFirstNonEmpty(pos.AmountUSD, mark.AmountUSD),
+			ExitUSD:         exit.TotalUSD,
+			ValuationUSD:    valuationUSD,
+			ValueDeltaUSD:   valueDeltaUSD,
+			FeeUSD:          feeUSD,
+			ILUSD:           ilUSD,
+			NetPnLUSD:       netPnLUSD,
+			HoldMinutes:     holdMinutes,
+			OpenedAt:        pos.OpenedAt,
+			ClosedAt:        pos.ClosedAt,
+			MintGasEstimate: mint.GasEstimate,
+			ExitGasEstimate: exit.DecreaseGas + exit.CollectGas,
+			MintTxHash:      mint.TxHash,
+			DecreaseTxHash:  exit.DecreaseTxHash,
+			CollectTxHash:   exit.CollectTxHash,
+			LastTxHash:      lastTxHash,
+		})
+	}
+
+	sort.Slice(rounds, func(i, j int) bool {
+		if rounds[i].OpenedAt == rounds[j].OpenedAt {
+			return rounds[i].ClosedAt > rounds[j].ClosedAt
+		}
+		return rounds[i].OpenedAt > rounds[j].OpenedAt
+	})
+	if len(rounds) > 12 {
+		rounds = rounds[:12]
+	}
+	return rounds
+}
+
+func dashboardHydrateCanaryRoundGas(ctx context.Context, provider *rpc.RoundRobinProvider, rounds []dashboardCanaryRound) ([]dashboardCanaryRound, string) {
+	if provider == nil || len(rounds) == 0 {
+		return rounds, "0"
+	}
+	ethPriceUSD := dashboardBaseETHPriceUSD(ctx, provider, rounds)
+	queryCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	for i := range rounds {
+		mintUsed, mintETH := dashboardReceiptGas(queryCtx, provider, rounds[i].MintTxHash)
+		decreaseUsed, decreaseETH := dashboardReceiptGas(queryCtx, provider, rounds[i].DecreaseTxHash)
+		collectUsed, collectETH := dashboardReceiptGas(queryCtx, provider, rounds[i].CollectTxHash)
+		rounds[i].MintGasUsed = mintUsed
+		rounds[i].ExitGasUsed = decreaseUsed + collectUsed
+		rounds[i].TotalGasUsed = rounds[i].MintGasUsed + rounds[i].ExitGasUsed
+		rounds[i].MintGasETH = mintETH
+		rounds[i].ExitGasETH = dashboardDecimalAdd(decreaseETH, collectETH)
+		rounds[i].TotalGasETH = dashboardDecimalAdd(rounds[i].MintGasETH, rounds[i].ExitGasETH)
+		rounds[i].MintGasUSD = dashboardDecimalMul(rounds[i].MintGasETH, ethPriceUSD)
+		rounds[i].ExitGasUSD = dashboardDecimalMul(rounds[i].ExitGasETH, ethPriceUSD)
+		rounds[i].TotalGasUSD = dashboardDecimalMul(rounds[i].TotalGasETH, ethPriceUSD)
+		rounds[i].NetAfterGasUSD = dashboardDecimalSub(rounds[i].NetPnLUSD, rounds[i].TotalGasUSD)
+	}
+	return rounds, ethPriceUSD
+}
+
+func dashboardReceiptGas(ctx context.Context, provider *rpc.RoundRobinProvider, txHash string) (uint64, string) {
+	txHash = strings.TrimSpace(txHash)
+	if provider == nil || txHash == "" || !common.IsHexHash(txHash) {
+		return 0, "0"
+	}
+	receipt, err := provider.TransactionReceipt(ctx, common.HexToHash(txHash))
+	if err != nil || receipt == nil {
+		return 0, "0"
+	}
+	gasUsed := receipt.GasUsed
+	if receipt.EffectiveGasPrice == nil {
+		return gasUsed, "0"
+	}
+	wei := new(big.Int).Mul(new(big.Int).SetUint64(gasUsed), receipt.EffectiveGasPrice)
+	return gasUsed, dashboardWeiToETH(wei)
+}
+
+func dashboardWeiToETH(wei *big.Int) string {
+	if wei == nil || wei.Sign() <= 0 {
+		return "0"
+	}
+	rat := new(big.Rat).SetFrac(wei, new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil))
+	return rat.FloatString(8)
+}
+
+func dashboardDecimalAdd(lhs, rhs string) string {
+	return domain.MustDecimal(dashboardFirstNonEmpty(lhs, "0")).Add(domain.MustDecimal(dashboardFirstNonEmpty(rhs, "0"))).String()
+}
+
+func dashboardDecimalMul(lhs, rhs string) string {
+	return domain.MustDecimal(dashboardFirstNonEmpty(lhs, "0")).Mul(domain.MustDecimal(dashboardFirstNonEmpty(rhs, "0"))).String()
+}
+
+func dashboardDecimalSub(lhs, rhs string) string {
+	return domain.MustDecimal(dashboardFirstNonEmpty(lhs, "0")).Sub(domain.MustDecimal(dashboardFirstNonEmpty(rhs, "0"))).String()
+}
+
+func buildDashboardCanarySummary(rounds []dashboardCanaryRound, now time.Time, ethPriceUSD string) dashboardCanarySummary {
+	summary := dashboardCanarySummary{
+		ETHPriceUSD:            ethPriceUSD,
+		TotalAmountUSD24h:      "0",
+		TotalExitUSD24h:        "0",
+		TotalFeeUSD24h:         "0",
+		TotalILUSD24h:          "0",
+		TotalNetPnLUSD24h:      "0",
+		TotalNetAfterGasUSD24h: "0",
+		TotalValueDelta24h:     "0",
+		TotalGasETH24h:         "0",
+		TotalGasUSD24h:         "0",
+		TotalAmountUSD7d:       "0",
+		TotalExitUSD7d:         "0",
+		TotalFeeUSD7d:          "0",
+		TotalILUSD7d:           "0",
+		TotalNetPnLUSD7d:       "0",
+		TotalNetAfterGasUSD7d:  "0",
+		TotalValueDeltaUSD7d:   "0",
+		TotalGasETH7d:          "0",
+		TotalGasUSD7d:          "0",
+		TotalAmountUSDAll:      "0",
+		TotalExitUSDAll:        "0",
+		TotalFeeUSDAll:         "0",
+		TotalILUSDAll:          "0",
+		TotalNetPnLUSDAll:      "0",
+		TotalNetAfterGasUSDAll: "0",
+		TotalValueDeltaUSDAll:  "0",
+		TotalGasETHAll:         "0",
+		TotalGasUSDAll:         "0",
+	}
+	cutoff24h := now.Add(-24 * time.Hour).Unix()
+	cutoff7d := now.Add(-7 * 24 * time.Hour).Unix()
+	for _, round := range rounds {
+		if round.OpenedAt >= cutoff24h {
+			summary.Rounds24h++
+			if strings.EqualFold(round.Status, "closed") {
+				summary.Closed24h++
+			} else {
+				summary.Open24h++
+			}
+			summary.TotalAmountUSD24h = dashboardDecimalAdd(summary.TotalAmountUSD24h, round.AmountUSD)
+			summary.TotalExitUSD24h = dashboardDecimalAdd(summary.TotalExitUSD24h, dashboardFirstNonEmpty(round.ExitUSD, round.ValuationUSD, "0"))
+			summary.TotalFeeUSD24h = dashboardDecimalAdd(summary.TotalFeeUSD24h, round.FeeUSD)
+			summary.TotalILUSD24h = dashboardDecimalAdd(summary.TotalILUSD24h, round.ILUSD)
+			summary.TotalNetPnLUSD24h = dashboardDecimalAdd(summary.TotalNetPnLUSD24h, round.NetPnLUSD)
+			summary.TotalNetAfterGasUSD24h = dashboardDecimalAdd(summary.TotalNetAfterGasUSD24h, round.NetAfterGasUSD)
+			summary.TotalValueDelta24h = dashboardDecimalAdd(summary.TotalValueDelta24h, round.ValueDeltaUSD)
+			summary.TotalGasETH24h = dashboardDecimalAdd(summary.TotalGasETH24h, round.TotalGasETH)
+			summary.TotalGasUSD24h = dashboardDecimalAdd(summary.TotalGasUSD24h, round.TotalGasUSD)
+			summary.TotalGasUsed24h += round.TotalGasUsed
+		}
+		if round.OpenedAt >= cutoff7d {
+			summary.Rounds7d++
+			if strings.EqualFold(round.Status, "closed") {
+				summary.Closed7d++
+			} else {
+				summary.Open7d++
+			}
+			summary.TotalAmountUSD7d = dashboardDecimalAdd(summary.TotalAmountUSD7d, round.AmountUSD)
+			summary.TotalExitUSD7d = dashboardDecimalAdd(summary.TotalExitUSD7d, dashboardFirstNonEmpty(round.ExitUSD, round.ValuationUSD, "0"))
+			summary.TotalFeeUSD7d = dashboardDecimalAdd(summary.TotalFeeUSD7d, round.FeeUSD)
+			summary.TotalILUSD7d = dashboardDecimalAdd(summary.TotalILUSD7d, round.ILUSD)
+			summary.TotalNetPnLUSD7d = dashboardDecimalAdd(summary.TotalNetPnLUSD7d, round.NetPnLUSD)
+			summary.TotalNetAfterGasUSD7d = dashboardDecimalAdd(summary.TotalNetAfterGasUSD7d, round.NetAfterGasUSD)
+			summary.TotalValueDeltaUSD7d = dashboardDecimalAdd(summary.TotalValueDeltaUSD7d, round.ValueDeltaUSD)
+			summary.TotalGasETH7d = dashboardDecimalAdd(summary.TotalGasETH7d, round.TotalGasETH)
+			summary.TotalGasUSD7d = dashboardDecimalAdd(summary.TotalGasUSD7d, round.TotalGasUSD)
+			summary.TotalGasUsed7d += round.TotalGasUsed
+		}
+		summary.RoundsAll++
+		if strings.EqualFold(round.Status, "closed") {
+			summary.ClosedAll++
+		} else {
+			summary.OpenAll++
+		}
+		summary.TotalAmountUSDAll = dashboardDecimalAdd(summary.TotalAmountUSDAll, round.AmountUSD)
+		summary.TotalExitUSDAll = dashboardDecimalAdd(summary.TotalExitUSDAll, dashboardFirstNonEmpty(round.ExitUSD, round.ValuationUSD, "0"))
+		summary.TotalFeeUSDAll = dashboardDecimalAdd(summary.TotalFeeUSDAll, round.FeeUSD)
+		summary.TotalILUSDAll = dashboardDecimalAdd(summary.TotalILUSDAll, round.ILUSD)
+		summary.TotalNetPnLUSDAll = dashboardDecimalAdd(summary.TotalNetPnLUSDAll, round.NetPnLUSD)
+		summary.TotalNetAfterGasUSDAll = dashboardDecimalAdd(summary.TotalNetAfterGasUSDAll, round.NetAfterGasUSD)
+		summary.TotalValueDeltaUSDAll = dashboardDecimalAdd(summary.TotalValueDeltaUSDAll, round.ValueDeltaUSD)
+		summary.TotalGasETHAll = dashboardDecimalAdd(summary.TotalGasETHAll, round.TotalGasETH)
+		summary.TotalGasUSDAll = dashboardDecimalAdd(summary.TotalGasUSDAll, round.TotalGasUSD)
+		summary.TotalGasUsedAll += round.TotalGasUsed
+	}
+	return summary
+}
+
+func dashboardBaseETHPriceUSD(ctx context.Context, provider *rpc.RoundRobinProvider, rounds []dashboardCanaryRound) string {
+	if provider == nil {
+		return "0"
+	}
+	poolID := ""
+	for _, round := range rounds {
+		if strings.TrimSpace(round.PoolID) != "" {
+			poolID = round.PoolID
+			break
+		}
+	}
+	if poolID == "" {
+		return "0"
+	}
+	poolAddr := parseAddressOrZero(poolID)
+	if poolAddr.IsZero() {
+		return "0"
+	}
+	queryCtx, cancel := context.WithTimeout(ctx, 6*time.Second)
+	defer cancel()
+	tick, err := dashboardReadV3PoolTick(queryCtx, provider, poolAddr)
+	if err != nil {
+		return "0"
+	}
+	token0, err := callAddressMethod(queryCtx, provider, poolAddr, "token0()")
+	if err != nil {
+		return "0"
+	}
+	token1, err := callAddressMethod(queryCtx, provider, poolAddr, "token1()")
+	if err != nil {
+		return "0"
+	}
+	decimals0, err := tokenDecimals(queryCtx, provider, token0)
+	if err != nil {
+		return "0"
+	}
+	decimals1, err := tokenDecimals(queryCtx, provider, token1)
+	if err != nil {
+		return "0"
+	}
+	pool := domain.Pool{ID: poolID, Token0: token0, Token1: token1, Tick: tick}
+	price0, price1, err := inferBaseTokenPricesUSD(pool, decimals0, decimals1)
+	if err != nil {
+		return "0"
+	}
+	switch {
+	case strings.EqualFold(token0.String(), baseWETHAddress):
+		return price0.String()
+	case strings.EqualFold(token1.String(), baseWETHAddress):
+		return price1.String()
+	default:
+		return "0"
+	}
+}
+
+func dashboardReadV3PoolTick(ctx context.Context, provider *rpc.RoundRobinProvider, pool domain.Address) (int, error) {
+	raw, err := callRawMethod(ctx, provider, pool, "slot0()")
+	if err != nil {
+		return 0, fmt.Errorf("read pool slot0: %w", err)
+	}
+	if len(raw) < 64 {
+		return 0, fmt.Errorf("slot0 returned short response")
+	}
+	word := raw[32:64]
+	tick := int32(word[29])<<16 | int32(word[30])<<8 | int32(word[31])
+	if tick&0x800000 != 0 {
+		tick -= 1 << 24
+	}
+	if tick < math.MinInt32 || tick > math.MaxInt32 {
+		return 0, fmt.Errorf("slot0 tick out of range: %d", tick)
+	}
+	return int(tick), nil
+}
+
+func dashboardIsBaseCanaryPosition(id string, chain int) bool {
+	return chain == 1 && strings.HasPrefix(strings.TrimSpace(id), "shadow-canary-live-pos-")
+}
+
+func dashboardFirstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			return value
+		}
+	}
+	return ""
+}
+
+func dashboardDecimalDiff(lhs, rhs string) string {
+	left := dashboardFirstNonEmpty(lhs, "0")
+	right := dashboardFirstNonEmpty(rhs, "0")
+	return domain.MustDecimal(left).Sub(domain.MustDecimal(right)).String()
 }
 
 func queryDashboardPositionMarks(ctx context.Context, db *sql.DB) ([]dashboardPositionMark, error) {

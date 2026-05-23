@@ -8,6 +8,7 @@ import (
 	"github.com/shopspring/decimal"
 
 	"github.com/lpbot/lpbot/internal/domain"
+	riskcore "github.com/lpbot/lpbot/internal/core/risk"
 	"github.com/lpbot/lpbot/internal/ports"
 )
 
@@ -55,6 +56,11 @@ type AllocationManager interface {
 	CheckAllocation(tier domain.Tier, amount decimal.Decimal) bool
 	CheckTotalExposure(current, budget decimal.Decimal) bool
 	GetRemainingBudget(tier domain.Tier, current decimal.Decimal) decimal.Decimal
+}
+
+type snapshotAllocationManager interface {
+	CheckAllocationWithSnapshot(ctx context.Context, c riskcore.AllocationCandidate) (bool, riskcore.AllocReason)
+	CheckTotalExposureWithSnapshot(ctx context.Context, c riskcore.AllocationCandidate) (bool, riskcore.AllocReason)
 }
 
 // ApproveTracker defines the approve tracker interface.
@@ -162,18 +168,6 @@ func (ml *MainLoop) Run(ctx context.Context) {
 // This is the main strategy evaluation tick function.
 func (ml *MainLoop) evaluateStrategies(ctx context.Context) {
 	ml.metrics.IncLoopHeartbeat()
-
-	// Run scanner to discover pools
-	if ml.Scanner != nil {
-		if err := ml.Scanner.Run(ctx); err != nil {
-			return
-		}
-	}
-
-	// In a full implementation, we would:
-	// 1. Get candidate pools from store/scanner
-	// 2. Evaluate each pool through the risk pipeline
-	// For now, we evaluate each pool as it comes in via EvaluatePool
 }
 
 // EvaluatePool evaluates a single pool for trading opportunity.
@@ -194,7 +188,29 @@ func (ml *MainLoop) EvaluatePool(ctx context.Context, pool domain.Pool) (bool, e
 	// Get the max per-pool amount for this tier
 	thresholds := domain.TierThresholdsFor(pool.Tier_)
 	amount := thresholds.MaxPerPoolUSD
-	if !ml.AllocationManager.CheckAllocation(pool.Tier_, amount) {
+	candidate := riskcore.AllocationCandidate{
+		PoolID:    pool.ID,
+		Chain:     pool.Chain,
+		Tier:      pool.Tier_,
+		AmountUSD: amount,
+	}
+	if snapshotMgr, ok := ml.AllocationManager.(snapshotAllocationManager); ok {
+		allowed, _ := snapshotMgr.CheckAllocationWithSnapshot(ctx, candidate)
+		if !allowed {
+			ml.metrics.IncAllocBlock()
+			return false, nil
+		}
+	} else if !ml.AllocationManager.CheckAllocation(pool.Tier_, amount) {
+		ml.metrics.IncAllocBlock()
+		return false, nil
+	}
+	if snapshotMgr, ok := ml.AllocationManager.(snapshotAllocationManager); ok {
+		allowed, _ := snapshotMgr.CheckTotalExposureWithSnapshot(ctx, candidate)
+		if !allowed {
+			ml.metrics.IncAllocBlock()
+			return false, nil
+		}
+	} else if !ml.AllocationManager.CheckTotalExposure(amount, decimal.NewFromInt(1000)) {
 		ml.metrics.IncAllocBlock()
 		return false, nil
 	}

@@ -4,8 +4,11 @@ package postgres
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"fmt"
+	"strings"
 
 	"github.com/lpbot/lpbot/internal/domain"
 	"github.com/lpbot/lpbot/internal/ports"
@@ -26,9 +29,8 @@ var _ ports.LedgerRepo = (*LedgerRepo)(nil)
 
 // Append adds a new ledger entry to the append-only ledger.
 func (r *LedgerRepo) Append(ctx context.Context, entry ports.LedgerEntry) (ports.LedgerEntry, error) {
-	// Generate ID if empty
 	if entry.ID == "" {
-		entry.ID = fmt.Sprintf("le-%d", entry.BlockRef.Number)
+		entry.ID = stableLedgerEntryID(entry)
 	}
 
 	_, err := r.db.ExecContext(ctx, `
@@ -53,6 +55,22 @@ func (r *LedgerRepo) Append(ctx context.Context, entry ports.LedgerEntry) (ports
 		return entry, fmt.Errorf("failed to append ledger entry: %w", err)
 	}
 	return entry, nil
+}
+
+func stableLedgerEntryID(entry ports.LedgerEntry) string {
+	parts := []string{
+		entry.PositionID,
+		string(entry.Kind),
+		entry.Amount.String(),
+		entry.TokenSymbol,
+		string(entry.BlockRef.Chain),
+		fmt.Sprintf("%d", entry.BlockRef.Number),
+		entry.BlockRef.Hash,
+		fmt.Sprintf("%d", entry.BlockRef.TimeUnix),
+		entry.TxHash,
+	}
+	sum := sha256.Sum256([]byte(strings.Join(parts, "|")))
+	return "le-" + hex.EncodeToString(sum[:16])
 }
 
 // ByPosition returns all ledger entries for a given position.

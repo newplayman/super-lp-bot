@@ -42,6 +42,8 @@ type ScoredPool struct {
 type Config struct {
 	// Datasource is used to discover pools.
 	Datasource ports.Datasource
+	// PoolRepo persists discovered pool state as the scanner source of truth.
+	PoolRepo ports.PoolRepo
 	// Chain to scan.
 	Chain domain.ChainID
 	// MinTVLUSD minimum TVL in USD to consider a pool.
@@ -131,6 +133,14 @@ func (s *defaultScanner) ScanOnce(ctx context.Context) ([]ScoredPool, error) {
 
 		tier := s.AssignTier(score)
 		pool.Tier_ = tier
+		if s.config.PoolRepo != nil {
+			if err := s.config.PoolRepo.UpsertPool(ctx, ports.PoolWithScore{
+				Pool:  pool,
+				Score: score,
+			}); err != nil {
+				s.log("persist pool %s failed: %v", pool.ID, err)
+			}
+		}
 
 		scored = append(scored, ScoredPool{Pool: pool, Score: score})
 

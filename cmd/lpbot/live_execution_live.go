@@ -49,6 +49,7 @@ func configureLiveExecution(ctx context.Context, app *App, orderManager *orderMa
 
 	orderManager.wallet = wallet
 	orderManager.broadcaster = broadcaster
+	orderManager.requiredConfs = app.config.Chains.Base.Confirmations
 	app.liveGate.executionBackendWired = true
 	app.logger.Info("live execution path wired",
 		zap.String("backend", app.liveGate.executionBackend),

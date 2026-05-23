@@ -64,6 +64,8 @@
         const ledgerSeries = data.ledger_series || [];
         const ledgerSummary = data.ledger_summary || [];
         const baseCanary = data.base_canary || {};
+        const canaryRounds = data.canary_rounds || [];
+        const canarySummary = data.canary_summary || {};
         const solanaCanary = data.solana_canary || {};
         const currentLive = data.live_readiness || {};
         const canaryLive = data.canary_readiness || {};
@@ -122,6 +124,8 @@
         renderScanner(decisions, data.pools || []);
         renderPositions(marks);
         renderExitPreflights(data.exit_preflights || []);
+        renderLatestCanary(canaryRounds, canarySummary, baseCanary);
+        renderCanaryRounds(canaryRounds);
         renderAudit(data);
         renderExecution(data);
         renderLogs(data, live, baseCanary, solanaCanary);
@@ -135,20 +139,20 @@
             const canaryLabel = canary.build_mode
                 ? (canary.ready ? 'canary ready' : 'canary gated')
                 : 'canary unavailable';
-            env.innerHTML = '<span class="dot green-dot"></span>' + (data.mode || 'shadow') + ' / ' + canaryLabel;
+            setBadgeText(env, 'green-dot', (data.mode || 'shadow') + ' / ' + canaryLabel);
         }
         const health = document.querySelector('.health-badge');
-        if (health) health.innerHTML = '<span class="dot green-dot-breath"></span>' + (healthPct >= 90 ? '系统健康' : '需要关注');
+        if (health) setBadgeText(health, 'green-dot-breath', healthPct >= 90 ? '系统健康' : '需要关注');
         const alarm = document.querySelector('.alarm-count');
         if (alarm) alarm.textContent = String((data.recent_issues || []).length || 0);
     }
 
     function renderStrategyCards(audit, marks, health, live) {
         const cards = document.querySelectorAll('.strategy-mode-chip .chip-number');
-        if (cards[0]) cards[0].innerHTML = `${num(audit.scanned)}<span class="plus-badge">scan</span>`;
-        if (cards[1]) cards[1].innerHTML = `${marks.length}<span class="plus-badge">marks</span>`;
-        if (cards[2]) cards[2].innerHTML = `${live.ready ? 1 : 0}<span class="plus-badge">${live.canary ? 'canary' : 'live'}</span>`;
-        if (cards[3]) cards[3].innerHTML = `${num(audit.pipeline_ok)}<span class="plus-badge">${live.ready ? 'ready' : 'ok'}</span>`;
+        if (cards[0]) setChipNumber(cards[0], String(num(audit.scanned)), 'scan');
+        if (cards[1]) setChipNumber(cards[1], String(marks.length), 'marks');
+        if (cards[2]) setChipNumber(cards[2], String(live.ready ? 1 : 0), live.canary ? 'canary' : 'live');
+        if (cards[3]) setChipNumber(cards[3], String(num(audit.pipeline_ok)), live.ready ? 'ready' : 'ok');
 
         setText('decision-risk-score', `chain ${num(health.recent_chain_failures)} / pipeline ${num(health.recent_pipeline_failures)}`);
         setText('active-positions-count', String(marks.length));
@@ -217,90 +221,28 @@
         const tbody = document.getElementById('alpha-scanner-tbody');
         if (!tbody) return;
         const rows = decisions.slice().sort((a, b) => num(b.score_total) - num(a.score_total)).slice(0, 12);
-        const decisionHTML = rows.map((row, idx) => `
-            <tr>
-                <td><span class="mono">${idx + 1}</span></td>
-                <td><strong>${poolLink(row.pool_id, 1)}</strong><div class="muted-mini">${short(row.pool_id)}</div></td>
-                <td><span class="badge-chain base">Base</span></td>
-                <td><span class="badge-dex">${escapeHTML(row.protocol || 'AMM')}</span></td>
-                <td class="green-text mono"><strong>${num(row.score_total).toFixed(1)}</strong></td>
-                <td class="mono">${row.intent_open ? '通过' : '跳过'}</td>
-                <td><span class="mono font-12">${row.chain_stage || '-'}</span></td>
-                <td><span class="mono font-12">${row.pipeline_stage || '-'}</span></td>
-                <td class="green-text mono"><strong>${num(row.score_total).toFixed(1)}</strong></td>
-                <td><span class="${row.selected ? 'badge-success-glow' : 'green-badge'}">${row.final_action || 'skip'}</span></td>
-            </tr>`).join('');
-        const solanaHTML = (pools || []).filter(pool => num(pool.chain) === 2).slice(0, 6).map((pool, idx) => `
-            <tr>
-                <td><span class="mono">S${idx + 1}</span></td>
-                <td><strong>${poolLink(pool.pool_id, pool.chain)}</strong><div class="muted-mini">${short(pool.pool_id)}</div></td>
-                <td><span class="badge-chain">Solana</span></td>
-                <td><span class="badge-dex">${escapeHTML(pool.protocol || 'AMM')}</span></td>
-                <td class="green-text mono"><strong>$${compactMoney(pool.tvl_usd)}</strong><div class="muted-mini">TVL</div></td>
-                <td class="mono">$${compactMoney(pool.vol24h_usd)}<div class="muted-mini">24h vol</div></td>
-                <td><span class="mono font-12">${escapeHTML(pool.risk_reason || '-')}</span></td>
-                <td><span class="mono font-12">${escapeHTML(pool.tier || '-')}</span></td>
-                <td class="green-text mono"><strong>${pool.risk_eligible ? 'OK' : '-'}</strong></td>
-                <td><span class="${pool.risk_eligible ? 'badge-success-glow' : 'green-badge'}">${pool.risk_eligible ? 'eligible' : 'observe'}</span></td>
-            </tr>`).join('');
-        tbody.innerHTML = decisionHTML + solanaHTML;
+        const decisionRows = rows.map((row, idx) => buildScannerDecisionRow(row, idx));
+        const solanaRows = (pools || []).filter(pool => num(pool.chain) === 2).slice(0, 6).map((pool, idx) => buildScannerSolanaRow(pool, idx));
+        tbody.replaceChildren(...decisionRows, ...solanaRows);
     }
 
     function renderPositions(marks) {
         const tbody = document.getElementById('lp-positions-tbody');
         if (!tbody) return;
-        tbody.innerHTML = marks.map((pos, idx) => {
-            const amount = Math.max(num(pos.amount_usd), 1);
-            const ilPct = Math.abs(num(pos.il_usd)) / amount * 100;
-            const feeCover = Math.abs(num(pos.il_usd)) > 0.000001 ? num(pos.fee_usd) / Math.abs(num(pos.il_usd)) : 0;
-            return `
-                <tr>
-                    <td><span class="mono">${idx + 1}</span></td>
-                    <td><strong>${poolLink(pos.pool_id)}</strong><div class="muted-mini">NFT #${escapeHTML(pos.token_id || '-')}</div><div class="muted-mini">${short(pos.position_id)}</div></td>
-                    <td><span class="badge-chain base">Base</span></td>
-                    <td><span class="badge-dex">${escapeHTML(pos.source || 'datasource')}</span></td>
-                    <td class="mono"><strong>$${money(pos.valuation_usd)}</strong></td>
-                    <td class="green-text mono"><strong>${signedMoney(pos.fee_usd)}</strong><div class="muted-mini">cover ${feeCover ? feeCover.toFixed(2) + 'x' : '-'}</div></td>
-                    <td class="red-text mono">${signedMoney(pos.il_usd)}<div class="muted-mini">${ilPct.toFixed(4)}%</div></td>
-                    <td class="mono">${signedMoney(pos.net_pnl_usd)}</td>
-                    <td><a class="action-btn-mini" target="_blank" rel="noreferrer" href="${dexscreenerURL(pos.pool_id)}">查看池子</a></td>
-                </tr>`;
-        }).join('');
+        tbody.replaceChildren(...marks.map((pos, idx) => buildPositionRow(pos, idx)));
     }
 
     function renderExitPreflights(preflights) {
         const list = document.getElementById('exit-preflight-list');
         if (!list) return;
         if (!preflights.length) {
-            list.innerHTML = '<div class="exit-preflight-empty">暂无真实 NFT 退出预估。等待 position mark 写入 token_id 与 onchain_value。</div>';
+            const empty = document.createElement('div');
+            empty.className = 'exit-preflight-empty';
+            empty.textContent = '暂无真实 NFT 退出预估。等待 position mark 写入 token_id 与 onchain_value。';
+            list.replaceChildren(empty);
             return;
         }
-        list.innerHTML = preflights.map(item => `
-            <div class="exit-preflight-card">
-                <div class="exit-preflight-top">
-                    <div>
-                        <div class="exit-preflight-title">NFT #${escapeHTML(item.token_id || '-')}</div>
-                        <div class="muted-mini">${poolLink(item.pool_id)}</div>
-                    </div>
-                    <span class="${item.broadcast_enabled ? 'badge-danger' : 'badge-success-glow'}">${item.broadcast_enabled ? 'broadcast enabled' : 'broadcast=false'}</span>
-                </div>
-                <div class="exit-preflight-metrics">
-                    <div><span>可退出总值</span><strong>$${money(item.total_usd)}</strong></div>
-                    <div><span>本金估值</span><strong>$${money(item.principal_usd)}</strong></div>
-                    <div><span>未领取手续费</span><strong class="green-text">${signedMoney(item.fee_usd)}</strong></div>
-                    <div><span>IL</span><strong class="red-text">${signedMoney(item.il_usd)}</strong></div>
-                    <div><span>净 PnL</span><strong class="${num(item.net_pnl_usd) >= 0 ? 'green-text' : 'red-text'}">${signedMoney(item.net_pnl_usd)}</strong></div>
-                    <div><span>Gas</span><strong>${item.decrease_gas || '-'} / ${item.collect_gas || '-'}</strong></div>
-                </div>
-                <div class="exit-preflight-footer">
-                    <span>${escapeHTML(item.status || 'mark_estimate')}</span>
-                    <code>${escapeHTML(item.command || '')}</code>
-                </div>
-                <div class="muted-mini">decrease tx: ${txLink(item.decrease_tx_hash)} / collect tx: ${txLink(item.collect_tx_hash)}</div>
-                ${item.error_msg ? `<div class="muted-mini red-text">error: ${escapeHTML(item.error_msg)}</div>` : ''}
-                <div class="muted-mini">source: ${escapeHTML(item.source || '-')} / updated ${timeText(item.updated_at)}</div>
-            </div>
-        `).join('');
+        list.replaceChildren(...preflights.map(buildExitPreflightCard));
     }
 
     function renderAudit(data) {
@@ -319,11 +261,7 @@
             desc: `${q.count} pools, bottleneck ${q.bottleneck}, avg ${num(q.avg_total).toFixed(1)}`,
             time: 'latest'
         }));
-        list.innerHTML = items.slice(0, 8).map(ev => `
-            <div class="audit-event-card">
-                <div class="audit-event-top"><span class="audit-time">${ev.time}</span><span class="audit-type ${ev.type}">${ev.type}</span></div>
-                <div class="audit-desc"><strong>${escapeHTML(ev.title)}</strong>: ${escapeHTML(ev.desc)}</div>
-            </div>`).join('');
+        list.replaceChildren(...items.slice(0, 8).map(buildAuditEventCard));
     }
 
     function renderExecution(data) {
@@ -345,11 +283,115 @@
             ...actions.map(a => ({time: timeText(a.decision_time), module: 'exit', type: a.action, chain: 'Base', hash: a.tx_hash || '', desc: a.reason || 'shadow exit action'})),
             ...txs.map(t => ({time: timeText(Math.floor(num(t.created_at) / 1000)), module: 'transaction', type: t.status, chain: t.chain, hash: t.tx_hash || '', desc: t.status || 'transaction'}))
         ].slice(0, 20);
-        list.innerHTML = (flows.length ? flows : [{time: 'latest', module: 'shadow', type: 'no live tx', chain: 'Base', hash: '', desc: '当前仍是 shadow 观测，没有真实链上执行'}]).map(fl => `
-            <div class="flow-item">
-                <div class="flow-left"><div class="flow-header"><span class="flow-time">${fl.time}</span><span class="flow-module">${escapeHTML(fl.module)}</span><span class="flow-tag">${escapeHTML(fl.type || '-')}</span></div><div class="flow-desc">${escapeHTML(fl.desc || '-')}</div></div>
-                <div class="flow-right">${fl.hash ? chainTxLink(fl.chain, fl.hash) : `<span class="flow-tx">${escapeHTML(fl.source || 'shadow')}</span>`}<span class="badge-success-glow">DB</span></div>
-            </div>`).join('');
+        const normalizedFlows = flows.length ? flows : [{time: 'latest', module: 'shadow', type: 'no live tx', chain: 'Base', hash: '', desc: '当前仍是 shadow 观测，没有真实链上执行'}];
+        list.replaceChildren(...normalizedFlows.map(buildExecutionFlowItem));
+    }
+
+    function renderLatestCanary(rounds, canarySummary, baseCanary) {
+        const card = document.getElementById('latest-canary-card');
+        if (!card) return;
+        const round = rounds[0];
+        if (!round) {
+            const empty = document.createElement('div');
+            empty.className = 'latest-canary-metric';
+            const label = document.createElement('span');
+            label.textContent = '状态';
+            const value = document.createElement('strong');
+            value.textContent = '暂无 Base live canary 记录';
+            empty.append(label, value);
+            card.replaceChildren(empty);
+            return;
+        }
+
+        const top = document.createElement('div');
+        top.className = 'latest-canary-top';
+
+        const title = document.createElement('div');
+        title.className = 'latest-canary-title';
+        const strong = document.createElement('strong');
+        strong.textContent = `NFT #${round.token_id || '-'}`;
+        const sub = document.createElement('div');
+        sub.className = 'latest-canary-sub';
+        sub.textContent = `${short(round.position_id)} · ${timeText(round.opened_at)}${round.closed_at ? ` -> ${timeText(round.closed_at)}` : ''}`;
+        title.append(strong, sub);
+
+        const status = document.createElement('span');
+        status.className = String(round.status || '').toLowerCase() === 'closed' ? 'badge-success-glow' : 'green-badge';
+        status.textContent = String(round.status || 'unknown');
+        top.append(title, status);
+
+        const summaryGrid = document.createElement('div');
+        summaryGrid.className = 'latest-canary-grid';
+        summaryGrid.append(
+            buildLatestCanaryMetric('ETH/USD', `$${money(canarySummary.eth_price_usd)}`),
+            buildLatestCanaryMetric('24h rounds', `${num(canarySummary.rounds_24h)} / ${num(canarySummary.closed_24h)} closed`),
+            buildLatestCanaryMetric('24h Net(after gas)', signedMoney(canarySummary.total_net_after_gas_usd_24h)),
+            buildLatestCanaryMetric('24h Gas', `${num(canarySummary.total_gas_used_24h)} / ${fmtGasEth(canarySummary.total_gas_eth_24h)} ETH / $${money(canarySummary.total_gas_usd_24h)}`),
+            buildLatestCanaryMetric('7d rounds', `${num(canarySummary.rounds_7d)} / ${num(canarySummary.closed_7d)} closed`),
+            buildLatestCanaryMetric('7d Net(after gas)', signedMoney(canarySummary.total_net_after_gas_usd_7d)),
+            buildLatestCanaryMetric('7d Gas', `${num(canarySummary.total_gas_used_7d)} / ${fmtGasEth(canarySummary.total_gas_eth_7d)} ETH / $${money(canarySummary.total_gas_usd_7d)}`),
+            buildLatestCanaryMetric('All rounds', `${num(canarySummary.rounds_all)} / ${num(canarySummary.closed_all)} closed`),
+            buildLatestCanaryMetric('All Net(after gas)', signedMoney(canarySummary.total_net_after_gas_usd_all)),
+            buildLatestCanaryMetric('All Gas', `${num(canarySummary.total_gas_used_all)} / ${fmtGasEth(canarySummary.total_gas_eth_all)} ETH / $${money(canarySummary.total_gas_usd_all)}`)
+        );
+
+        const grid = document.createElement('div');
+        grid.className = 'latest-canary-grid';
+        grid.append(
+            buildLatestCanaryMetric('投入', `$${money(round.amount_usd)}`),
+            buildLatestCanaryMetric(String(round.status || '').toLowerCase() === 'closed' ? '退出' : '当前估值', `$${money(round.status === 'closed' ? round.exit_usd : round.valuation_usd)}`),
+            buildLatestCanaryMetric('净值变化', signedMoney(round.value_delta_usd)),
+            buildLatestCanaryMetric('Net(after gas)', signedMoney(round.net_after_gas_usd)),
+            buildLatestCanaryMetric('Fee', signedMoney(round.fee_usd)),
+            buildLatestCanaryMetric('IL', signedMoney(round.il_usd)),
+            buildLatestCanaryMetric('Hold', `${num(round.hold_minutes)}m`),
+            buildLatestCanaryMetric('Gas Real', `${num(round.total_gas_used)} / ${fmtGasEth(round.total_gas_eth)} ETH / $${money(round.total_gas_usd)}`)
+        );
+
+        const links = document.createElement('div');
+        links.className = 'latest-canary-links';
+        if (round.pool_id) {
+            const poolWrap = document.createElement('span');
+            poolWrap.appendChild(poolLinkNode(round.pool_id));
+            links.appendChild(poolWrap);
+        }
+        if (round.mint_tx_hash) {
+            const mint = document.createElement('span');
+            mint.append(document.createTextNode('mint '), txLinkNode(round.mint_tx_hash));
+            links.appendChild(mint);
+        }
+        if (round.decrease_tx_hash) {
+            const decrease = document.createElement('span');
+            decrease.append(document.createTextNode('decrease '), txLinkNode(round.decrease_tx_hash));
+            links.appendChild(decrease);
+        }
+        if (round.collect_tx_hash) {
+            const collect = document.createElement('span');
+            collect.append(document.createTextNode('collect '), txLinkNode(round.collect_tx_hash));
+            links.appendChild(collect);
+        } else if (baseCanary.last_tx_hash && !round.last_tx_hash) {
+            const last = document.createElement('span');
+            last.append(document.createTextNode('last '), txLinkNode(baseCanary.last_tx_hash));
+            links.appendChild(last);
+        }
+
+        card.replaceChildren(top, summaryGrid, grid, links);
+    }
+
+    function renderCanaryRounds(rounds) {
+        const tbody = document.getElementById('canary-rounds-tbody');
+        if (!tbody) return;
+        if (!rounds.length) {
+            const tr = document.createElement('tr');
+            const td = document.createElement('td');
+            td.colSpan = 11;
+            td.className = 'mono';
+            td.textContent = '暂无 Base canary rounds。';
+            tr.appendChild(td);
+            tbody.replaceChildren(tr);
+            return;
+        }
+        tbody.replaceChildren(...rounds.map(buildCanaryRoundRow));
     }
 
     function renderLogs(data, live, baseCanary, solanaCanary) {
@@ -367,7 +409,12 @@
             [num(health.recent_chain_failures) ? 'warn' : 'success', 'chain', `chain failures / 30m: ${num(health.recent_chain_failures)}`],
             [num(health.recent_pipeline_failures) ? 'warn' : 'success', 'pipeline', `pipeline failures / 30m: ${num(health.recent_pipeline_failures)}`]
         ];
-        box.innerHTML = logs.map(([level, module, msg]) => getLogLineHtml({ time: new Date().toLocaleTimeString(), level, module, msg })).join('');
+        box.replaceChildren(...logs.map(([level, module, msg]) => buildLogLine({
+            time: new Date().toLocaleTimeString(),
+            level,
+            module,
+            msg
+        })));
     }
 
     function updateCharts(data, marks, markSeries, ledgerSeries, ledgerSummary) {
@@ -433,8 +480,409 @@
         if (range) range.addEventListener('click', () => alert('只读面板：当前不允许从前端修改 Range 策略。'));
     }
 
-    function getLogLineHtml(log) { return `<div class="log-line"><span class="log-time">[${escapeHTML(log.time)}]</span><span class="log-level ${escapeHTML(log.level)}">${escapeHTML(String(log.level).toUpperCase())}</span><span class="log-module">${escapeHTML(log.module)}:</span><span class="log-msg">${escapeHTML(log.msg)}</span></div>`; }
-    function appendLog(level, module, msg) { const box = document.getElementById('console-log-box'); if (!box) return; box.insertAdjacentHTML('beforeend', getLogLineHtml({ time: new Date().toLocaleTimeString(), level, module, msg })); box.scrollTop = box.scrollHeight; }
+    function setBadgeText(el, dotClass, text) {
+        if (!el) return;
+        const dot = document.createElement('span');
+        dot.className = `dot ${dotClass}`;
+        el.replaceChildren(dot, document.createTextNode(text));
+    }
+    function setChipNumber(el, value, badgeText) {
+        if (!el) return;
+        const badge = document.createElement('span');
+        badge.className = 'plus-badge';
+        badge.textContent = badgeText;
+        el.replaceChildren(document.createTextNode(value), badge);
+    }
+    function buildLogLine(log) {
+        const row = document.createElement('div');
+        row.className = 'log-line';
+
+        const time = document.createElement('span');
+        time.className = 'log-time';
+        time.textContent = `[${log.time}]`;
+
+        const level = document.createElement('span');
+        level.className = `log-level ${String(log.level || '').toLowerCase()}`;
+        level.textContent = String(log.level || '').toUpperCase();
+
+        const module = document.createElement('span');
+        module.className = 'log-module';
+        module.textContent = `${log.module}:`;
+
+        const msg = document.createElement('span');
+        msg.className = 'log-msg';
+        msg.textContent = String(log.msg || '');
+
+        row.append(time, level, module, msg);
+        return row;
+    }
+    function buildAuditEventCard(ev) {
+        const card = document.createElement('div');
+        card.className = 'audit-event-card';
+
+        const top = document.createElement('div');
+        top.className = 'audit-event-top';
+
+        const time = document.createElement('span');
+        time.className = 'audit-time';
+        time.textContent = String(ev.time || '-');
+
+        const type = document.createElement('span');
+        type.className = `audit-type ${String(ev.type || '')}`;
+        type.textContent = String(ev.type || '-');
+
+        top.append(time, type);
+
+        const desc = document.createElement('div');
+        desc.className = 'audit-desc';
+
+        const strong = document.createElement('strong');
+        strong.textContent = String(ev.title || '-');
+
+        desc.append(strong, document.createTextNode(`: ${String(ev.desc || '-')}`));
+        card.append(top, desc);
+        return card;
+    }
+    function buildExecutionFlowItem(fl) {
+        const item = document.createElement('div');
+        item.className = 'flow-item';
+
+        const left = document.createElement('div');
+        left.className = 'flow-left';
+
+        const header = document.createElement('div');
+        header.className = 'flow-header';
+
+        const time = document.createElement('span');
+        time.className = 'flow-time';
+        time.textContent = String(fl.time || '-');
+
+        const module = document.createElement('span');
+        module.className = 'flow-module';
+        module.textContent = String(fl.module || '-');
+
+        const tag = document.createElement('span');
+        tag.className = 'flow-tag';
+        tag.textContent = String(fl.type || '-');
+
+        header.append(time, module, tag);
+
+        const desc = document.createElement('div');
+        desc.className = 'flow-desc';
+        desc.textContent = String(fl.desc || '-');
+
+        left.append(header, desc);
+
+        const right = document.createElement('div');
+        right.className = 'flow-right';
+        if (fl.hash) {
+            const link = document.createElement('a');
+            const normalized = String(fl.chain || '').toLowerCase();
+            link.target = '_blank';
+            link.rel = 'noreferrer';
+            link.className = 'flow-tx';
+            link.href = `${normalized === 'solana' ? 'https://solscan.io/tx/' : 'https://basescan.org/tx/'}${String(fl.hash)}`;
+            link.textContent = short(fl.hash);
+            right.appendChild(link);
+        } else {
+            const source = document.createElement('span');
+            source.className = 'flow-tx';
+            source.textContent = String(fl.source || 'shadow');
+            right.appendChild(source);
+        }
+        const badge = document.createElement('span');
+        badge.className = 'badge-success-glow';
+        badge.textContent = 'DB';
+        right.appendChild(badge);
+
+        item.append(left, right);
+        return item;
+    }
+    function buildScannerDecisionRow(row, idx) {
+        const tr = document.createElement('tr');
+        tr.append(
+            buildCellWithSpan(String(idx + 1), 'mono'),
+            buildScannerPoolCell(row.pool_id, 1),
+            buildBadgeCell('Base', 'badge-chain base'),
+            buildBadgeCell(String(row.protocol || 'AMM'), 'badge-dex'),
+            buildValueCell(num(row.score_total).toFixed(1), 'green-text mono', true),
+            buildCellText(row.intent_open ? '通过' : '跳过', 'mono'),
+            buildCellText(row.chain_stage || '-', 'mono font-12'),
+            buildCellText(row.pipeline_stage || '-', 'mono font-12'),
+            buildValueCell(num(row.score_total).toFixed(1), 'green-text mono', true),
+            buildBadgeCell(String(row.final_action || 'skip'), row.selected ? 'badge-success-glow' : 'green-badge')
+        );
+        return tr;
+    }
+    function buildScannerSolanaRow(pool, idx) {
+        const tr = document.createElement('tr');
+        const tvlCell = document.createElement('td');
+        tvlCell.className = 'green-text mono';
+        const tvlStrong = document.createElement('strong');
+        tvlStrong.textContent = `$${compactMoney(pool.tvl_usd)}`;
+        const tvlMini = document.createElement('div');
+        tvlMini.className = 'muted-mini';
+        tvlMini.textContent = 'TVL';
+        tvlCell.append(tvlStrong, tvlMini);
+
+        const volCell = document.createElement('td');
+        volCell.className = 'mono';
+        volCell.append(document.createTextNode(`$${compactMoney(pool.vol24h_usd)}`));
+        const volMini = document.createElement('div');
+        volMini.className = 'muted-mini';
+        volMini.textContent = '24h vol';
+        volCell.appendChild(volMini);
+
+        tr.append(
+            buildCellWithSpan(`S${idx + 1}`, 'mono'),
+            buildScannerPoolCell(pool.pool_id, pool.chain),
+            buildBadgeCell('Solana', 'badge-chain'),
+            buildBadgeCell(String(pool.protocol || 'AMM'), 'badge-dex'),
+            tvlCell,
+            volCell,
+            buildCellText(pool.risk_reason || '-', 'mono font-12'),
+            buildCellText(pool.tier || '-', 'mono font-12'),
+            buildValueCell(pool.risk_eligible ? 'OK' : '-', 'green-text mono', true),
+            buildBadgeCell(pool.risk_eligible ? 'eligible' : 'observe', pool.risk_eligible ? 'badge-success-glow' : 'green-badge')
+        );
+        return tr;
+    }
+    function buildPositionRow(pos, idx) {
+        const amount = Math.max(num(pos.amount_usd), 1);
+        const ilPct = Math.abs(num(pos.il_usd)) / amount * 100;
+        const feeCover = Math.abs(num(pos.il_usd)) > 0.000001 ? num(pos.fee_usd) / Math.abs(num(pos.il_usd)) : 0;
+
+        const tr = document.createElement('tr');
+        const poolCell = document.createElement('td');
+        const strong = document.createElement('strong');
+        strong.appendChild(poolLinkNode(pos.pool_id));
+        const nft = document.createElement('div');
+        nft.className = 'muted-mini';
+        nft.textContent = `NFT #${pos.token_id || '-'}`;
+        const pid = document.createElement('div');
+        pid.className = 'muted-mini';
+        pid.textContent = short(pos.position_id);
+        poolCell.append(strong, nft, pid);
+
+        const feeCell = document.createElement('td');
+        feeCell.className = 'green-text mono';
+        const feeStrong = document.createElement('strong');
+        feeStrong.textContent = signedMoney(pos.fee_usd);
+        const feeMini = document.createElement('div');
+        feeMini.className = 'muted-mini';
+        feeMini.textContent = `cover ${feeCover ? feeCover.toFixed(2) + 'x' : '-'}`;
+        feeCell.append(feeStrong, feeMini);
+
+        const ilCell = document.createElement('td');
+        ilCell.className = 'red-text mono';
+        ilCell.append(document.createTextNode(signedMoney(pos.il_usd)));
+        const ilMini = document.createElement('div');
+        ilMini.className = 'muted-mini';
+        ilMini.textContent = `${ilPct.toFixed(4)}%`;
+        ilCell.appendChild(ilMini);
+
+        const actionCell = document.createElement('td');
+        const action = document.createElement('a');
+        action.className = 'action-btn-mini';
+        action.target = '_blank';
+        action.rel = 'noreferrer';
+        action.href = dexscreenerURL(pos.pool_id);
+        action.textContent = '查看池子';
+        actionCell.appendChild(action);
+
+        tr.append(
+            buildCellWithSpan(String(idx + 1), 'mono'),
+            poolCell,
+            buildBadgeCell('Base', 'badge-chain base'),
+            buildBadgeCell(String(pos.source || 'datasource'), 'badge-dex'),
+            buildValueCell(`$${money(pos.valuation_usd)}`, 'mono', true),
+            feeCell,
+            ilCell,
+            buildCellText(signedMoney(pos.net_pnl_usd), 'mono'),
+            actionCell
+        );
+        return tr;
+    }
+    function buildCanaryRoundRow(round) {
+        const tr = document.createElement('tr');
+
+        const timeCell = document.createElement('td');
+        const timeStrong = document.createElement('strong');
+        timeStrong.textContent = timeText(round.opened_at);
+        const timeMini = document.createElement('div');
+        timeMini.className = 'muted-mini';
+        timeMini.textContent = round.closed_at ? `closed ${timeText(round.closed_at)}` : 'still open';
+        timeCell.append(timeStrong, timeMini);
+
+        const nftCell = document.createElement('td');
+        const nftStrong = document.createElement('strong');
+        nftStrong.textContent = `NFT #${round.token_id || '-'}`;
+        const poolMini = document.createElement('div');
+        poolMini.className = 'muted-mini';
+        poolMini.appendChild(poolLinkNode(round.pool_id));
+        nftCell.append(nftStrong, poolMini);
+
+        const statusClass = String(round.status || '').toLowerCase() === 'closed' ? 'badge-success-glow' : 'green-badge';
+        const shownValue = String(round.status || '').toLowerCase() === 'closed' ? round.exit_usd : round.valuation_usd;
+
+        const txCell = document.createElement('td');
+        if (round.last_tx_hash) {
+            txCell.appendChild(txLinkNode(round.last_tx_hash));
+        } else {
+            txCell.textContent = '-';
+        }
+        const txMini = document.createElement('div');
+        txMini.className = 'muted-mini';
+        txMini.textContent = `${num(round.hold_minutes)}m / gross ${signedMoney(round.net_pnl_usd)}`;
+        txCell.appendChild(txMini);
+
+        tr.append(
+            timeCell,
+            nftCell,
+            buildBadgeCell(String(round.status || '-'), statusClass),
+            buildCellText(`$${money(round.amount_usd)}`, 'mono'),
+            buildCellText(`$${money(shownValue)}`, 'mono'),
+            buildCellText(`${num(round.total_gas_used) || (num(round.mint_gas_estimate) + num(round.exit_gas_estimate) || 0)}${num(round.total_gas_used) ? ` / ${fmtGasEth(round.total_gas_eth)} ETH / $${money(round.total_gas_usd)}` : ' est'}`, 'mono'),
+            buildCellText(signedMoney(round.value_delta_usd), 'mono'),
+            buildCellText(signedMoney(round.fee_usd), 'mono green-text'),
+            buildCellText(signedMoney(round.il_usd), 'mono red-text'),
+            buildCellText(signedMoney(round.net_after_gas_usd), 'mono'),
+            txCell
+        );
+        return tr;
+    }
+    function buildExitPreflightCard(item) {
+        const card = document.createElement('div');
+        card.className = 'exit-preflight-card';
+
+        const top = document.createElement('div');
+        top.className = 'exit-preflight-top';
+        const left = document.createElement('div');
+        const title = document.createElement('div');
+        title.className = 'exit-preflight-title';
+        title.textContent = `NFT #${item.token_id || '-'}`;
+        const pool = document.createElement('div');
+        pool.className = 'muted-mini';
+        pool.appendChild(poolLinkNode(item.pool_id));
+        left.append(title, pool);
+        const badge = document.createElement('span');
+        badge.className = item.broadcast_enabled ? 'badge-danger' : 'badge-success-glow';
+        badge.textContent = item.broadcast_enabled ? 'broadcast enabled' : 'broadcast=false';
+        top.append(left, badge);
+
+        const metrics = document.createElement('div');
+        metrics.className = 'exit-preflight-metrics';
+        metrics.append(
+            buildMetricPair('可退出总值', `$${money(item.total_usd)}`),
+            buildMetricPair('本金估值', `$${money(item.principal_usd)}`),
+            buildMetricPair('未领取手续费', signedMoney(item.fee_usd), 'green-text'),
+            buildMetricPair('IL', signedMoney(item.il_usd), 'red-text'),
+            buildMetricPair('净 PnL', signedMoney(item.net_pnl_usd), num(item.net_pnl_usd) >= 0 ? 'green-text' : 'red-text'),
+            buildMetricPair('Gas', `${item.decrease_gas || '-'} / ${item.collect_gas || '-'}`)
+        );
+
+        const footer = document.createElement('div');
+        footer.className = 'exit-preflight-footer';
+        const status = document.createElement('span');
+        status.textContent = String(item.status || 'mark_estimate');
+        const code = document.createElement('code');
+        code.textContent = String(item.command || '');
+        footer.append(status, code);
+
+        const txs = document.createElement('div');
+        txs.className = 'muted-mini';
+        txs.append(
+            document.createTextNode('decrease tx: '),
+            txLinkNode(item.decrease_tx_hash),
+            document.createTextNode(' / collect tx: '),
+            txLinkNode(item.collect_tx_hash)
+        );
+
+        const nodes = [top, metrics, footer, txs];
+        if (item.error_msg) {
+            const err = document.createElement('div');
+            err.className = 'muted-mini red-text';
+            err.textContent = `error: ${item.error_msg}`;
+            nodes.push(err);
+        }
+        const meta = document.createElement('div');
+        meta.className = 'muted-mini';
+        meta.textContent = `source: ${item.source || '-'} / updated ${timeText(item.updated_at)}`;
+        nodes.push(meta);
+
+        card.append(...nodes);
+        return card;
+    }
+    function buildCellWithSpan(text, className) {
+        const td = document.createElement('td');
+        const span = document.createElement('span');
+        span.className = className;
+        span.textContent = text;
+        td.appendChild(span);
+        return td;
+    }
+    function buildCellText(text, className) {
+        const td = document.createElement('td');
+        if (className) td.className = className;
+        td.textContent = String(text);
+        return td;
+    }
+    function buildBadgeCell(text, className) {
+        const td = document.createElement('td');
+        const span = document.createElement('span');
+        span.className = className;
+        span.textContent = String(text);
+        td.appendChild(span);
+        return td;
+    }
+    function buildValueCell(text, className, strong) {
+        const td = document.createElement('td');
+        if (className) td.className = className;
+        if (strong) {
+            const node = document.createElement('strong');
+            node.textContent = String(text);
+            td.appendChild(node);
+        } else {
+            td.textContent = String(text);
+        }
+        return td;
+    }
+    function buildScannerPoolCell(poolId, chain) {
+        const td = document.createElement('td');
+        const strong = document.createElement('strong');
+        strong.appendChild(poolLinkNode(poolId, chain));
+        const mini = document.createElement('div');
+        mini.className = 'muted-mini';
+        mini.textContent = short(poolId);
+        td.append(strong, mini);
+        return td;
+    }
+    function buildMetricPair(label, value, valueClass) {
+        const wrap = document.createElement('div');
+        const span = document.createElement('span');
+        span.textContent = String(label);
+        const strong = document.createElement('strong');
+        if (valueClass) strong.className = valueClass;
+        strong.textContent = String(value);
+        wrap.append(span, strong);
+        return wrap;
+    }
+    function buildLatestCanaryMetric(label, value) {
+        const wrap = document.createElement('div');
+        wrap.className = 'latest-canary-metric';
+        const span = document.createElement('span');
+        span.textContent = String(label);
+        const strong = document.createElement('strong');
+        strong.textContent = String(value);
+        wrap.append(span, strong);
+        return wrap;
+    }
+    function appendLog(level, module, msg) {
+        const box = document.getElementById('console-log-box');
+        if (!box) return;
+        box.appendChild(buildLogLine({ time: new Date().toLocaleTimeString(), level, module, msg }));
+        box.scrollTop = box.scrollHeight;
+    }
     function radarFromQuality(quality) { const pass = quality.find(q => q.segment === 'passed_pipeline') || {}; return [num(pass.count) * 20, num(pass.avg_volatility), 100 - Math.min(100, num(pass.avg_volatility)), num(pass.avg_tvl), num(pass.avg_security), num(pass.avg_fee_apr)].map(v => Math.max(0, Math.min(100, v || 0))); }
     function groupSum(rows, key, valueKey) { return rows.reduce((out, row) => { const k = row[key] || 'unknown'; out[k] = (out[k] || 0) + num(row[valueKey]); return out; }, {}); }
     function sum(rows, key) { return rows.reduce((total, row) => total + num(row[key]), 0); }
@@ -444,12 +892,35 @@
     function money(value) { return Math.abs(num(value)).toLocaleString(undefined, { maximumFractionDigits: 2 }); }
     function signedMoney(value) { const n = num(value); return (n >= 0 ? '+' : '-') + money(n); }
     function compactMoney(value) { const n = num(value); if (Math.abs(n) >= 1e6) return (n / 1e6).toFixed(2) + 'M'; if (Math.abs(n) >= 1e3) return (n / 1e3).toFixed(2) + 'K'; return n.toFixed(2); }
+    function fmtGasEth(value) { const n = num(value); return n ? n.toFixed(6) : '0'; }
     function short(value) { const s = String(value || ''); return s.length > 18 ? s.slice(0, 8) + '...' + s.slice(-6) : s; }
     function timeText(unix) { return unix ? new Date(num(unix) * 1000).toLocaleTimeString() : '-'; }
     function dexscreenerURL(poolId, chain) { return `https://dexscreener.com/${num(chain) === 2 ? 'solana' : 'base'}/${encodeURIComponent(poolId || '')}`; }
     function geckoURL(poolId, chain) { return `https://www.geckoterminal.com/${num(chain) === 2 ? 'solana' : 'base'}/pools/${encodeURIComponent(poolId || '')}`; }
-    function poolLink(poolId, chain) { return `<a target="_blank" rel="noreferrer" href="${dexscreenerURL(poolId, chain)}">${short(poolId)}</a> <a target="_blank" rel="noreferrer" href="${geckoURL(poolId, chain)}">GT</a>`; }
-    function txLink(hash) { return hash ? `<a target="_blank" rel="noreferrer" href="https://basescan.org/tx/${escapeHTML(hash)}">${short(hash)}</a>` : '-'; }
+    function poolLinkNode(poolId, chain) {
+        const frag = document.createDocumentFragment();
+        const dex = document.createElement('a');
+        dex.target = '_blank';
+        dex.rel = 'noreferrer';
+        dex.href = dexscreenerURL(poolId, chain);
+        dex.textContent = short(poolId);
+        const gt = document.createElement('a');
+        gt.target = '_blank';
+        gt.rel = 'noreferrer';
+        gt.href = geckoURL(poolId, chain);
+        gt.textContent = 'GT';
+        frag.append(dex, document.createTextNode(' '), gt);
+        return frag;
+    }
+    function txLinkNode(hash) {
+        if (!hash) return document.createTextNode('-');
+        const link = document.createElement('a');
+        link.target = '_blank';
+        link.rel = 'noreferrer';
+        link.href = `https://basescan.org/tx/${String(hash)}`;
+        link.textContent = short(hash);
+        return link;
+    }
     function chainTxLink(chain, hash) {
         const normalized = String(chain || '').toLowerCase();
         const host = normalized === 'solana' ? 'https://solscan.io/tx/' : 'https://basescan.org/tx/';

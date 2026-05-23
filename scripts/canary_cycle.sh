@@ -34,6 +34,43 @@ run_step() {
   log "stage=${name} ok"
 }
 
+have_psql() {
+  command -v psql >/dev/null 2>&1
+}
+
+print_summary_table() {
+  local title="$1"
+  local sql="$2"
+  log "summary=${title}"
+  psql "$POSTGRES_DSN" -X -A -F $'\t' -P pager=off -c "$sql" || log "summary=${title} unavailable"
+}
+
+print_canary_summary() {
+  if ! have_psql; then
+    log "summary skipped: psql not installed"
+    return 0
+  fi
+  print_summary_table "positions" "
+    SELECT id, status, COALESCE(token_id,''), pool_id, opened_at, closed_at
+    FROM positions
+    WHERE id LIKE 'shadow-canary-live-pos-%'
+    ORDER BY opened_at DESC
+    LIMIT 5;
+  "
+  print_summary_table "events" "
+    SELECT command, stage, status, COALESCE(token_id,''), COALESCE(tx_hash,''), created_at
+    FROM canary_events
+    ORDER BY created_at DESC
+    LIMIT 8;
+  "
+  print_summary_table "exit_preflights" "
+    SELECT token_id, status, COALESCE(decrease_tx_hash,''), COALESCE(collect_tx_hash,''), updated_at
+    FROM canary_exit_preflights
+    ORDER BY updated_at DESC
+    LIMIT 5;
+  "
+}
+
 extract_field() {
   local text="$1"
   local key="$2"
@@ -107,4 +144,5 @@ else
   log "stage=exit skipped: set LPBOT_CANARY_CYCLE_EXIT=YES to broadcast exit"
 fi
 
+print_canary_summary
 log "complete tx_hash=${TX_HASH} token_id=${TOKEN_ID} exit=${RUN_EXIT}"

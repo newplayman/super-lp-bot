@@ -43,17 +43,19 @@ type Receipt struct {
 
 // BroadcastConfig holds the configuration for the live broadcaster.
 type BroadcastConfig struct {
-	BaseRPCURL    string
-	SolanaRPCURL  string
-	Confirmations int // Number of confirmations to wait for before returning success
+	BaseRPCURL          string
+	SolanaRPCURL        string
+	Confirmations       int // Number of confirmations to wait for before returning success
+	SolanaSkipPreflight bool
 }
 
 // broadcaster implements ports.Broadcaster for live broadcast.
 type broadcaster struct {
-	ethClient    *ethclient.Client
-	solClient    *rpc.Client
-	confirmations int
-	callCount   int64
+	ethClient           *ethclient.Client
+	solClient           *rpc.Client
+	confirmations       int
+	solanaSkipPreflight bool
+	callCount           int64
 }
 
 // New creates a new live broadcaster instance.
@@ -72,9 +74,10 @@ func New(_ context.Context, config BroadcastConfig) (ports.Broadcaster, error) {
 	solClient := rpc.New(config.SolanaRPCURL)
 
 	b := &broadcaster{
-		ethClient:    ethClient,
-		solClient:    solClient,
-		confirmations: config.Confirmations,
+		ethClient:           ethClient,
+		solClient:           solClient,
+		confirmations:       config.Confirmations,
+		solanaSkipPreflight: config.SolanaSkipPreflight,
 	}
 
 	return b, nil
@@ -175,7 +178,7 @@ func (b *broadcaster) sendSolana(ctx context.Context, tx domain.SignedTx) error 
 		ctx,
 		&solTx,
 		rpc.TransactionOpts{
-			SkipPreflight: true,
+			SkipPreflight: b.solanaSkipPreflight,
 		},
 	)
 	if err != nil {

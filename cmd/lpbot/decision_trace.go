@@ -236,6 +236,9 @@ func (app *App) evaluateShadowPipeline(ctx context.Context, pool domain.Pool) sh
 			Action:      "skip",
 		}
 	}
+	if chainValidation.CorrectedFeeBPS > 0 {
+		pool.FeeBPS = chainValidation.CorrectedFeeBPS
+	}
 
 	if app.liveGate != nil {
 		if err := app.liveGate.checkOpen(pool, amount); err != nil {

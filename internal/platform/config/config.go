@@ -33,6 +33,7 @@ type ChainConfig struct {
 	MEV           string   `toml:"mev"`
 	Confirmations int      `toml:"confirmations"`
 	Commitment    string   `toml:"commitment"`
+	SkipPreflight bool     `toml:"skip_preflight"`
 }
 
 // Chains represents all chain configurations.
@@ -76,6 +77,11 @@ type Execution struct {
 	OKXPassphrase  string `toml:"okx_api_passphrase"`
 	OKXProjectID   string `toml:"okx_project_id"`
 	NPMBaseAddress string `toml:"npm_base_address"`
+	TxDeadlineSeconds   int `toml:"tx_deadline_seconds"`
+	ExitDeadlineSeconds int `toml:"exit_deadline_seconds"`
+	SignTimeoutSeconds  int `toml:"sign_timeout_seconds"`
+	SendTimeoutSeconds  int `toml:"send_timeout_seconds"`
+	MintSlippageBps     int `toml:"mint_slippage_bps"`
 }
 
 // Live represents the live execution safety configuration.

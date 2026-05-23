@@ -15,9 +15,10 @@ import (
 )
 
 type chainValidationResult struct {
-	OK     bool
-	Stage  string
-	Reason string
+	OK              bool
+	Stage           string
+	Reason          string
+	CorrectedFeeBPS uint
 }
 
 func (app *App) validatePoolOnChain(ctx context.Context, pool domain.Pool) chainValidationResult {
@@ -93,13 +94,14 @@ func (app *App) validatePoolOnChain(ctx context.Context, pool domain.Pool) chain
 	slot0Data, slot0Err := callRawMethod(ctx, provider, poolAddr, "slot0()")
 	liquidityData, liquidityErr := callRawMethod(ctx, provider, poolAddr, "liquidity()")
 	if slot0Err == nil && len(slot0Data) >= 32 && liquidityErr == nil && len(liquidityData) >= 32 {
-		if pool.FeeBPS > 0 && v3Fee > 0 {
+		if v3Fee > 0 {
 			onChainFeeBPS := normalizeV3FeeToBPS(v3Fee)
 			if onChainFeeBPS > 0 && onChainFeeBPS != pool.FeeBPS {
 				return chainValidationResult{
-					OK:     false,
-					Stage:  "chain_fee_mismatch",
-					Reason: fmt.Sprintf("fee mismatch: chain=%dbps metadata=%dbps", onChainFeeBPS, pool.FeeBPS),
+					OK:              true,
+					Stage:           "chain_fee_corrected",
+					Reason:          fmt.Sprintf("fee corrected from metadata=%dbps to chain=%dbps", pool.FeeBPS, onChainFeeBPS),
+					CorrectedFeeBPS: onChainFeeBPS,
 				}
 			}
 		}

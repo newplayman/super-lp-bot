@@ -31,6 +31,11 @@ func (r *TxRepo) UpsertTx(ctx context.Context, tx domain.SignedTx) error {
 	if status == "" {
 		status = domain.TxBuilt
 	}
+	txHash := tx.Hash
+	if txHash == "" {
+		txHash = tx.ID
+	}
+	broadcastAt := txBroadcastTimestamp(status, now)
 
 	_, err := r.db.ExecContext(ctx, `
 		INSERT INTO transactions (
@@ -54,7 +59,7 @@ func (r *TxRepo) UpsertTx(ctx context.Context, tx domain.SignedTx) error {
 	`,
 		tx.ID,
 		tx.Chain,
-		tx.Hash,
+		txHash,
 		tx.From.String(),
 		tx.To.String(),
 		tx.Data,
@@ -66,7 +71,7 @@ func (r *TxRepo) UpsertTx(ctx context.Context, tx domain.SignedTx) error {
 		status,
 		nil,
 		nil,
-		nil,
+		broadcastAt,
 		nil,
 		nil,
 		nil,
@@ -80,6 +85,15 @@ func (r *TxRepo) UpsertTx(ctx context.Context, tx domain.SignedTx) error {
 		return fmt.Errorf("failed to upsert tx: %w", err)
 	}
 	return nil
+}
+
+func txBroadcastTimestamp(status domain.TxStatus, now int64) interface{} {
+	switch status {
+	case domain.TxBroadcast, domain.TxMined, domain.TxConfirmed, domain.TxStuck, domain.TxRFBBumped, domain.TxReverted, domain.TxReorged, domain.TxFailed:
+		return now
+	default:
+		return nil
+	}
 }
 
 // GetTxByHash retrieves a transaction by its chain and hash.
@@ -196,13 +210,17 @@ func (r *TxRepo) UpdateTxStatus(ctx context.Context, chain domain.ChainID, hash 
 
 	query := "UPDATE transactions SET status = $1, updated_at = $2"
 	args := []interface{}{newStatus, time.Now().UnixMilli()}
+	if newStatus == domain.TxBroadcast || newStatus == domain.TxRFBBumped {
+		query += ", broadcast_at = COALESCE(broadcast_at, $3)"
+		args = append(args, time.Now().UnixMilli())
+	}
 	if ref != nil {
-		query += ", block_number = $3, block_hash = $4"
+		query += fmt.Sprintf(", block_number = $%d, block_hash = $%d", len(args)+1, len(args)+2)
 		args = append(args, ref.Number, ref.Hash)
-		query += " WHERE chain = $5 AND tx_hash = $6"
+		query += fmt.Sprintf(" WHERE chain = $%d AND tx_hash = $%d", len(args)+1, len(args)+2)
 		args = append(args, string(chain), hash)
 	} else {
-		query += " WHERE chain = $3 AND tx_hash = $4"
+		query += fmt.Sprintf(" WHERE chain = $%d AND tx_hash = $%d", len(args)+1, len(args)+2)
 		args = append(args, string(chain), hash)
 	}
 

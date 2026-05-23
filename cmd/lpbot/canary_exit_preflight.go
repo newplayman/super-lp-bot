@@ -81,11 +81,8 @@ func runCanaryExitPreflight(ctx context.Context, cfg *config.Config, tokenID str
 		return err
 	}
 	gate := newLiveSafetyGate("live", cfg)
-	if gate.killSwitch {
-		return fmt.Errorf("canary exit preflight blocked: live.kill_switch=true")
-	}
-	if !gate.canary {
-		return fmt.Errorf("canary exit preflight requires live.canary=true")
+	if err := gate.requireManualCanary("canary exit preflight"); err != nil {
+		return err
 	}
 	if len(cfg.Live.AllowedPools) != 1 {
 		return fmt.Errorf("canary exit preflight requires exactly one allowed pool, got %d", len(cfg.Live.AllowedPools))
@@ -171,11 +168,8 @@ func runCanaryExit(ctx context.Context, cfg *config.Config, tokenID string) (err
 	}
 
 	gate := newLiveSafetyGate("live", cfg)
-	if gate.killSwitch {
-		return fmt.Errorf("canary exit blocked: live.kill_switch=true")
-	}
-	if !gate.canary {
-		return fmt.Errorf("canary exit requires live.canary=true")
+	if err := gate.requireManualCanary("canary exit"); err != nil {
+		return err
 	}
 	if len(cfg.Live.AllowedPools) != 1 {
 		return fmt.Errorf("canary exit requires exactly one allowed pool, got %d", len(cfg.Live.AllowedPools))

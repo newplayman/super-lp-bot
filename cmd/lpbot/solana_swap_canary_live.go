@@ -76,9 +76,10 @@ func runSolanaSwapCanary(ctx context.Context, cfg *config.Config, userPublicKey 
 	_ = tx
 
 	broadcaster, err := livebroadcast.New(ctx, livebroadcast.BroadcastConfig{
-		BaseRPCURL:    strings.TrimSpace(cfg.Chains.Base.RPCPrimary),
-		SolanaRPCURL:  solanaReadinessEndpoint(cfg),
-		Confirmations: cfg.Chains.Base.Confirmations,
+		BaseRPCURL:          strings.TrimSpace(cfg.Chains.Base.RPCPrimary),
+		SolanaRPCURL:        solanaReadinessEndpoint(cfg),
+		Confirmations:       cfg.Chains.Base.Confirmations,
+		SolanaSkipPreflight: cfg.Chains.Solana.SkipPreflight,
 	})
 	if err != nil {
 		return fmt.Errorf("initialize solana live broadcaster: %w", err)

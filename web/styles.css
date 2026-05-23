@@ -915,6 +915,68 @@ body {
     margin-top: 2px;
 }
 
+.latest-canary-card {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.latest-canary-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.latest-canary-title {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.latest-canary-title strong {
+    font-family: var(--font-tech);
+    font-size: 16px;
+}
+
+.latest-canary-sub {
+    color: var(--text-secondary);
+    font-size: 11px;
+}
+
+.latest-canary-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.latest-canary-metric {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    border-radius: 8px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.latest-canary-metric span {
+    color: var(--text-muted);
+    font-size: 10px;
+}
+
+.latest-canary-metric strong {
+    font-family: var(--font-tech);
+    font-size: 13px;
+}
+
+.latest-canary-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 11px;
+}
+
 /* 基础设施与跨域辅助能力 */
 .icon-wrapper {
     display: inline-flex;

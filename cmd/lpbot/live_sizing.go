@@ -68,6 +68,65 @@ func (o *orderManagerAdapter) buildPreparedMintTx(
 	if err != nil {
 		return domain.SignedTx{}, err
 	}
+	intent.SlippageBps = int64(o.mintSlippageBps)
+	intent.Deadline = now.Add(time.Duration(o.txDeadlineSeconds) * time.Second).Unix()
+
+	builder := execution.NewTxBuilder(nil, nil, execution.NPMConfig{Base: o.npmBaseAddress})
+	calldata, to, err := builder.BuildMintCalldata(intent)
+	if err != nil {
+		return domain.SignedTx{}, fmt.Errorf("build mint calldata: %w", err)
+	}
+
+	txHash := shadowID("tx", positionID, now.Unix())
+	return domain.SignedTx{
+		UnsignedTx: domain.UnsignedTx{
+			ID:       txHash,
+			Chain:    pool.Chain,
+			From:     intent.Recipient,
+			To:       domain.MustParseAddress(to.Hex()),
+			Data:     calldata,
+			Value:    domain.ZeroDecimal(),
+			Deadline: intent.Deadline,
+			MinOut:   domain.ZeroDecimal(),
+		},
+		Hash:   txHash,
+		Status: domain.TxBuilt,
+	}, nil
+}
+
+func (o *orderManagerAdapter) buildPreparedMintTxWithTicks(
+	ctx context.Context,
+	pool domain.Pool,
+	amountUSD domain.Decimal,
+	positionID string,
+	now time.Time,
+	tickLower int64,
+	tickUpper int64,
+) (domain.SignedTx, error) {
+	if o == nil {
+		return domain.SignedTx{}, fmt.Errorf("order manager not configured")
+	}
+	if pool.Chain != domain.ChainBase {
+		return domain.SignedTx{}, fmt.Errorf("live sizing only supports base pools")
+	}
+	if o.provider == nil {
+		return domain.SignedTx{}, fmt.Errorf("base rpc provider not configured")
+	}
+	if o.walletAddress.IsZero() {
+		return domain.SignedTx{}, fmt.Errorf("wallet address not configured")
+	}
+	if strings.TrimSpace(o.npmBaseAddress) == "" {
+		return domain.SignedTx{}, fmt.Errorf("npm base address not configured")
+	}
+
+	intent, err := buildBaseOpenIntent(ctx, o.provider, o.walletAddress, pool, amountUSD, positionID, now)
+	if err != nil {
+		return domain.SignedTx{}, err
+	}
+	intent.TickLower = tickLower
+	intent.TickUpper = tickUpper
+	intent.SlippageBps = int64(o.mintSlippageBps)
+	intent.Deadline = now.Add(time.Duration(o.txDeadlineSeconds) * time.Second).Unix()
 
 	builder := execution.NewTxBuilder(nil, nil, execution.NPMConfig{Base: o.npmBaseAddress})
 	calldata, to, err := builder.BuildMintCalldata(intent)
