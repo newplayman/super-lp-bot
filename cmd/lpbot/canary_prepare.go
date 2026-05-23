@@ -54,14 +54,8 @@ func runCanaryPrepare(ctx context.Context, cfg *config.Config) (err error) {
 		return err
 	}
 	gate := newLiveSafetyGate("live", cfg)
-	if gate.killSwitch {
-		return fmt.Errorf("canary prepare blocked: live.kill_switch=true")
-	}
-	if !gate.canary {
-		return fmt.Errorf("canary prepare requires live.canary=true")
-	}
-	if cfg.Live.MaxOrderUSD > canaryMaxOrderUSD {
-		return fmt.Errorf("canary prepare blocked: max_order_usd %.2f exceeds hard cap %.2f", cfg.Live.MaxOrderUSD, canaryMaxOrderUSD)
+	if err := gate.requireManualCanary("canary prepare"); err != nil {
+		return err
 	}
 	if len(cfg.Live.AllowedPools) != 1 {
 		return fmt.Errorf("canary prepare requires exactly one allowed pool, got %d", len(cfg.Live.AllowedPools))
@@ -83,9 +77,9 @@ func runCanaryPrepare(ctx context.Context, cfg *config.Config) (err error) {
 		return err
 	}
 
-	amountUSD := domain.NewDecimalFromFloat(cfg.Live.MaxOrderUSD)
-	if amountUSD.LessThanOrEqual(domain.ZeroDecimal()) || amountUSD.GreaterThan(domain.NewDecimalFromFloat(canaryMaxOrderUSD)) {
-		return fmt.Errorf("invalid canary amount_usd: %s", amountUSD.String())
+	amountUSD, err := selectCanaryAmountUSD(cfg)
+	if err != nil {
+		return err
 	}
 	pool, err := loadCanaryPreflightPool(ctx, provider, strings.TrimSpace(cfg.Live.AllowedPools[0]))
 	if err != nil {

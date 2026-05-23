@@ -46,6 +46,11 @@ okx_api_secret = "${OKX_API_SECRET}"
 okx_api_passphrase = "${OKX_API_PASSPHRASE}"
 okx_project_id = "${OKX_PROJECT_ID}"
 npm_base_address = "${NPM_BASE_ADDRESS}"
+tx_deadline_seconds = 300
+exit_deadline_seconds = 600
+sign_timeout_seconds = 45
+send_timeout_seconds = 180
+mint_slippage_bps = 9999
 
 [live]
 enabled = false
@@ -54,7 +59,7 @@ kill_switch = false
 wallet_address = "${CANARY_WALLET_ADDRESS}"
 allowed_chains = ["base"]
 allowed_pools = ["0x6c561b446416e1a00e8e93e221854d6ea4171372"]
-max_order_usd = 5
+max_order_usd = 20
 daily_loss_limit_usd = 10
 
 [risk]

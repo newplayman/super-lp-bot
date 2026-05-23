@@ -48,14 +48,8 @@ func runCanaryPreflight(ctx context.Context, cfg *config.Config) error {
 		return fmt.Errorf("config is nil")
 	}
 	gate := newLiveSafetyGate("live", cfg)
-	if gate.killSwitch {
-		return fmt.Errorf("canary preflight blocked: live.kill_switch=true")
-	}
-	if !gate.canary {
-		return fmt.Errorf("canary preflight requires live.canary=true")
-	}
-	if cfg.Live.MaxOrderUSD > canaryMaxOrderUSD {
-		return fmt.Errorf("canary preflight blocked: max_order_usd %.2f exceeds hard cap %.2f", cfg.Live.MaxOrderUSD, canaryMaxOrderUSD)
+	if err := gate.requireManualCanary("canary preflight"); err != nil {
+		return err
 	}
 	if len(cfg.Live.AllowedPools) != 1 {
 		return fmt.Errorf("canary preflight requires exactly one allowed pool, got %d", len(cfg.Live.AllowedPools))
@@ -71,9 +65,9 @@ func runCanaryPreflight(ctx context.Context, cfg *config.Config) error {
 	}
 	defer wallet.Close()
 
-	amountUSD := domain.NewDecimalFromFloat(cfg.Live.MaxOrderUSD)
-	if amountUSD.LessThanOrEqual(domain.ZeroDecimal()) || amountUSD.GreaterThan(domain.NewDecimalFromFloat(canaryMaxOrderUSD)) {
-		return fmt.Errorf("invalid canary amount_usd: %s", amountUSD.String())
+	amountUSD, err := selectCanaryAmountUSD(cfg)
+	if err != nil {
+		return err
 	}
 	pool, err := loadCanaryPreflightPool(ctx, provider, strings.TrimSpace(cfg.Live.AllowedPools[0]))
 	if err != nil {
@@ -309,9 +303,11 @@ func buildCanaryPreflightReport(
 		report.MintSkipReason = reason
 	} else {
 		orderManager := &orderManagerAdapter{
-			provider:       provider,
-			walletAddress:  wallet.Address(),
-			npmBaseAddress: strings.TrimSpace(cfg.Execution.NPMBaseAddress),
+			provider:          provider,
+			walletAddress:     wallet.Address(),
+			npmBaseAddress:    strings.TrimSpace(cfg.Execution.NPMBaseAddress),
+			txDeadlineSeconds: positiveOrDefault(cfg.Execution.TxDeadlineSeconds, 300),
+			mintSlippageBps:   cfg.Execution.MintSlippageBps,
 		}
 		mintTx, err := orderManager.buildPreparedMintTx(ctx, pool, amountUSD, shadowID("preflight-pos", pool.Key(), time.Now().Unix()), time.Now())
 		if err != nil {

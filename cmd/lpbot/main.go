@@ -22,6 +22,7 @@ import (
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/lpbot/lpbot/internal/adapters/datasource/geckoterminal"
 	"github.com/lpbot/lpbot/internal/adapters/rpc"
 	"github.com/lpbot/lpbot/internal/adapters/store/postgres"
@@ -43,7 +44,9 @@ const (
 	Version                  = "0.4.0"
 	shadowCandidateLimit     = 10
 	shadowOpenScoreThreshold = 60.0
-	canaryMaxOrderUSD        = 5.0
+	canaryMaxOrderUSD        = 20.0
+	manualCanaryOverrideEnv  = "LPBOT_MANUAL_CANARY_OVERRIDE"
+	dashboardSnapshotTTL     = 15 * time.Second
 )
 
 var (
@@ -54,25 +57,49 @@ var (
 
 // App holds all initialized components.
 type App struct {
-	logger     *zap.Logger
-	config     *config.Config
-	liveGate   *liveSafetyGate
-	rpc        map[string]*rpc.RoundRobinProvider
-	redis      *platformredis.Runtime
-	store      ports.Store
-	datasource *geckoterminal.Adapter
-	scanner    scanner.Scanner
-	strategy   strategy.Strategy
-	mainLoop   *loop.MainLoop
-	metricsSrv *http.Server
-	cancel     context.CancelFunc
-	wg         sync.WaitGroup
+	logger         *zap.Logger
+	config         *config.Config
+	liveGate       *liveSafetyGate
+	rpc            map[string]*rpc.RoundRobinProvider
+	redis          *platformredis.Runtime
+	store          ports.Store
+	datasource     *geckoterminal.Adapter
+	scanner        scanner.Scanner
+	strategy       strategy.Strategy
+	mainLoop       *loop.MainLoop
+	metricsSrv     *http.Server
+	cancel         context.CancelFunc
+	wg             sync.WaitGroup
+	dashboardCache dashboardSnapshotCache
+}
+
+type dashboardSnapshotCache struct {
+	mu        sync.RWMutex
+	snapshot  dashboardSnapshot
+	expiresAt time.Time
+}
+
+func (c *dashboardSnapshotCache) get() (dashboardSnapshot, bool) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	if c.expiresAt.IsZero() || time.Now().After(c.expiresAt) {
+		return dashboardSnapshot{}, false
+	}
+	return c.snapshot, true
+}
+
+func (c *dashboardSnapshotCache) set(snapshot dashboardSnapshot, ttl time.Duration) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.snapshot = snapshot
+	c.expiresAt = time.Now().Add(ttl)
 }
 
 type liveSafetyGate struct {
 	buildMode                  string
 	enabled                    bool
 	canary                     bool
+	manualCanaryOverride       bool
 	killSwitch                 bool
 	walletAddress              string
 	allowedChains              map[string]struct{}
@@ -106,6 +133,7 @@ func newLiveSafetyGate(buildMode string, cfg *config.Config) *liveSafetyGate {
 
 	gate.enabled = cfg.Live.Enabled
 	gate.canary = cfg.Live.Canary
+	gate.manualCanaryOverride = envAffirmative(os.Getenv(manualCanaryOverrideEnv))
 	gate.killSwitch = cfg.Live.KillSwitch
 	gate.walletAddress = strings.TrimSpace(cfg.Live.WalletAddress)
 	gate.maxOrderUSD = cfg.Live.MaxOrderUSD
@@ -150,6 +178,15 @@ func normalizeExecutionBackend(value string) string {
 	return normalized
 }
 
+func envAffirmative(value string) bool {
+	switch strings.ToUpper(strings.TrimSpace(value)) {
+	case "1", "TRUE", "YES", "ON":
+		return true
+	default:
+		return false
+	}
+}
+
 func fileExists(path string) bool {
 	if strings.TrimSpace(path) == "" {
 		return false
@@ -158,6 +195,13 @@ func fileExists(path string) bool {
 		return true
 	}
 	return false
+}
+
+func positiveOrDefault(value int, fallback int) int {
+	if value > 0 {
+		return value
+	}
+	return fallback
 }
 
 func (g *liveSafetyGate) backendConfigured() bool {
@@ -260,6 +304,7 @@ func (g *liveSafetyGate) readiness() dashboardLiveReadiness {
 		BuildMode:             g.buildMode,
 		LiveEnabled:           g.enabled,
 		Canary:                g.canary,
+		ManualCanaryOverride:  g.manualCanaryOverride,
 		KillSwitch:            g.killSwitch,
 		WalletAddress:         maskAddress(g.walletAddress),
 		AllowedChains:         allowedChains,
@@ -282,6 +327,46 @@ func (g *liveSafetyGate) readiness() dashboardLiveReadiness {
 		Ready:                 len(blockers) == 0,
 		Blockers:              blockers,
 	}
+}
+
+func (g *liveSafetyGate) canaryBlockers() []string {
+	blockers := g.blockers()
+	if g == nil || !g.canary || !g.manualCanaryOverride {
+		return blockers
+	}
+	filtered := make([]string, 0, len(blockers))
+	for _, blocker := range blockers {
+		if blocker == "live.enabled=false" {
+			continue
+		}
+		filtered = append(filtered, blocker)
+	}
+	sort.Strings(filtered)
+	return filtered
+}
+
+func (g *liveSafetyGate) canaryReadiness() dashboardLiveReadiness {
+	readiness := g.readiness()
+	blockers := g.canaryBlockers()
+	readiness.Blockers = blockers
+	readiness.Ready = len(blockers) == 0
+	return readiness
+}
+
+func (g *liveSafetyGate) requireManualCanary(action string) error {
+	if g == nil {
+		return fmt.Errorf("%s blocked: live gate not initialized", action)
+	}
+	if !g.canary {
+		return fmt.Errorf("%s requires live.canary=true", action)
+	}
+	if !g.enabled && !g.manualCanaryOverride {
+		return fmt.Errorf("%s blocked: live.enabled=false and %s=YES is required", action, manualCanaryOverrideEnv)
+	}
+	if blockers := g.canaryBlockers(); len(blockers) > 0 {
+		return fmt.Errorf("%s blocked: %s", action, strings.Join(blockers, "; "))
+	}
+	return nil
 }
 
 func (g *liveSafetyGate) checkOpen(pool domain.Pool, amountUSD domain.Decimal) error {
@@ -583,6 +668,7 @@ func (app *App) initCore(ctx context.Context) error {
 	// Initialize scanner
 	app.scanner = scanner.New(scanner.Config{
 		Datasource:   app.datasource,
+		PoolRepo:     app.store.PoolRepo(),
 		Chain:        domain.ChainBase,
 		MinTVLUSD:    domain.MustDecimal("10000"),
 		ScanInterval: 5 * time.Minute,
@@ -613,9 +699,14 @@ func (app *App) wireMainLoop(ctx context.Context) error {
 		WeeklyDDFreezePct: domain.MustDecimal("0.10"),
 		TotalExposurePct:  domain.MustDecimal("0.30"),
 	}
-	riskGate := risk.NewRiskGateWithConfig(nil, riskConfig)
+	var riskRepo ports.RiskRepo
+	if app.store != nil {
+		riskRepo = app.store.RiskRepo()
+	}
+	riskGate := risk.NewRiskGateWithConfig(riskRepo, riskConfig)
 	if app.logger != nil {
-		app.logger.Info("RiskGate wired (fail-closed enabled)")
+		app.logger.Info("RiskGate wired (fail-closed enabled)",
+			zap.Bool("risk_repo_attached", riskRepo != nil))
 	}
 
 	// Wrap RiskGate with adapter to satisfy loop.RiskGate interface
@@ -628,7 +719,7 @@ func (app *App) wireMainLoop(ctx context.Context) error {
 		TierCLimit:  domain.MustDecimal("50"),
 		MaxExposure: domain.MustDecimal("0.30"),
 	}
-	allocManager := risk.NewAllocationManager(allocConfig)
+	allocManager := risk.NewAllocationManagerWithRepo(allocConfig, app.store.PositionRepo())
 	if app.logger != nil {
 		app.logger.Info("AllocationManager wired (per-pool + total exposure checks)")
 	}
@@ -654,7 +745,12 @@ func (app *App) wireMainLoop(ctx context.Context) error {
 		walletAddress: parseAddressOrZero(
 			strings.TrimSpace(app.config.Live.WalletAddress),
 		),
-		npmBaseAddress: strings.TrimSpace(app.config.Execution.NPMBaseAddress),
+		npmBaseAddress:      strings.TrimSpace(app.config.Execution.NPMBaseAddress),
+		txDeadlineSeconds:   positiveOrDefault(app.config.Execution.TxDeadlineSeconds, 300),
+		exitDeadlineSeconds: positiveOrDefault(app.config.Execution.ExitDeadlineSeconds, 600),
+		signTimeoutSeconds:  positiveOrDefault(app.config.Execution.SignTimeoutSeconds, 45),
+		sendTimeoutSeconds:  positiveOrDefault(app.config.Execution.SendTimeoutSeconds, 180),
+		mintSlippageBps:     positiveOrDefault(app.config.Execution.MintSlippageBps, 9999),
 	}
 	if err := configureLiveExecution(ctx, app, orderManager); err != nil {
 		return err
@@ -798,16 +894,6 @@ func (app *App) evaluateStrategies(ctx context.Context) {
 	for _, scored := range scoredPools {
 		pools = append(pools, scored.Pool)
 		scores[scored.Pool.Key()] = scored.Score
-		if app.store != nil {
-			if err := app.store.PoolRepo().UpsertPool(ctx, ports.PoolWithScore{
-				Pool:  scored.Pool,
-				Score: scored.Score,
-			}); err != nil {
-				app.logger.Warn("shadow pool upsert failed",
-					zap.String("pool", scored.Pool.Key()),
-					zap.Error(err))
-			}
-		}
 	}
 
 	candidates := selectShadowCandidatesByScore(scoredPools, shadowCandidateLimit)
@@ -1332,14 +1418,20 @@ func (a *approveTrackerAdapter) preflightApprovalTx(ctx context.Context, tx doma
 }
 
 type orderManagerAdapter struct {
-	broadcaster    ports.Broadcaster
-	riskGate       *risk.RiskGate
-	store          ports.Store
-	liveGate       *liveSafetyGate
-	provider       *rpc.RoundRobinProvider
-	wallet         ports.Wallet
-	walletAddress  domain.Address
-	npmBaseAddress string
+	broadcaster         ports.Broadcaster
+	requiredConfs       int
+	riskGate            *risk.RiskGate
+	store               ports.Store
+	liveGate            *liveSafetyGate
+	provider            *rpc.RoundRobinProvider
+	wallet              ports.Wallet
+	walletAddress       domain.Address
+	npmBaseAddress      string
+	txDeadlineSeconds   int
+	exitDeadlineSeconds int
+	signTimeoutSeconds  int
+	sendTimeoutSeconds  int
+	mintSlippageBps     int
 }
 
 func (o *orderManagerAdapter) Open(ctx context.Context, pool domain.Pool, amountUSD domain.Decimal) (loop.ExecutionResult, error) {
@@ -1391,16 +1483,6 @@ func (o *orderManagerAdapter) Open(ctx context.Context, pool domain.Pool, amount
 		position.TickUpper = 500
 	}
 
-	if err := o.store.PositionRepo().Save(ctx, position); err != nil {
-		return loop.ExecutionResult{}, err
-	}
-	if shadowExecution {
-		if err := o.store.PositionRepo().UpdateStatus(ctx, positionID, domain.StatusOpen); err != nil {
-			return loop.ExecutionResult{}, err
-		}
-		position.Status = domain.StatusOpen
-	}
-
 	txHash := shadowID("tx", positionID, now)
 	tx, err := o.buildPreparedMintTx(ctx, pool, amountUSD, positionID, time.Unix(now, 0))
 	if err != nil {
@@ -1436,17 +1518,53 @@ func (o *orderManagerAdapter) Open(ctx context.Context, pool domain.Pool, amount
 		}
 		signed.ID = tx.ID
 		signed.Status = domain.TxBuilt
+		position.Status = domain.StatusApproved
+		if err := o.store.PositionRepo().Save(ctx, position); err != nil {
+			return loop.ExecutionResult{}, err
+		}
+		if err := o.store.TxRepo().UpsertTx(ctx, signed); err != nil {
+			return loop.ExecutionResult{}, err
+		}
 		if err := o.broadcaster.Send(ctx, signed); err != nil {
 			signed.Status = domain.TxFailed
 			_ = o.store.TxRepo().UpsertTx(ctx, signed)
 			return loop.ExecutionResult{Success: false, Error: fmt.Sprintf("broadcast failed: %v", err)}, nil
 		}
 		signed.Status = domain.TxBroadcast
+		if err := o.store.TxRepo().UpsertTx(ctx, signed); err != nil {
+			return loop.ExecutionResult{}, err
+		}
+		finalStatus := domain.StatusOpening
+		if err := o.store.PositionRepo().UpdateStatus(ctx, positionID, finalStatus); err != nil {
+			return loop.ExecutionResult{}, err
+		}
+		position.Status = finalStatus
+		if o.requiredConfs > 0 {
+			signed.Status = domain.TxConfirmed
+			if err := o.store.TxRepo().UpsertTx(ctx, signed); err != nil {
+				return loop.ExecutionResult{}, err
+			}
+			finalStatus = domain.StatusOpen
+			if err := o.store.PositionRepo().UpdateStatus(ctx, positionID, finalStatus); err != nil {
+				return loop.ExecutionResult{}, err
+			}
+			position.Status = finalStatus
+		}
 		tx = signed
 		txHash = signed.Hash
-	}
-	if err := o.store.TxRepo().UpsertTx(ctx, tx); err != nil {
-		return loop.ExecutionResult{}, err
+	} else {
+		if err := o.store.PositionRepo().Save(ctx, position); err != nil {
+			return loop.ExecutionResult{}, err
+		}
+		if shadowExecution {
+			if err := o.store.PositionRepo().UpdateStatus(ctx, positionID, domain.StatusOpen); err != nil {
+				return loop.ExecutionResult{}, err
+			}
+			position.Status = domain.StatusOpen
+		}
+		if err := o.store.TxRepo().UpsertTx(ctx, tx); err != nil {
+			return loop.ExecutionResult{}, err
+		}
 	}
 
 	return loop.ExecutionResult{
@@ -1458,15 +1576,641 @@ func (o *orderManagerAdapter) Open(ctx context.Context, pool domain.Pool, amount
 }
 
 func (o *orderManagerAdapter) Close(ctx context.Context, positionID string) (loop.ExecutionResult, error) {
-	return loop.ExecutionResult{Success: true}, nil
+	if o == nil || o.store == nil {
+		return loop.ExecutionResult{Success: false, Error: "store not configured"}, nil
+	}
+	position, err := o.store.PositionRepo().FindByID(ctx, positionID)
+	if err != nil {
+		return loop.ExecutionResult{}, err
+	}
+	if position == nil {
+		return loop.ExecutionResult{Success: false, Error: "position not found", PositionID: positionID}, nil
+	}
+	if o != nil && o.liveGate != nil && o.liveGate.isExecutionMode() {
+		return o.closeLiveCanaryPosition(ctx, position)
+	}
+	if position.Status == domain.StatusClosed {
+		return loop.ExecutionResult{
+			Success:     true,
+			PositionID:  positionID,
+			FinalStatus: domain.StatusClosed,
+		}, nil
+	}
+	if position.Status != domain.StatusExiting {
+		if !position.Status.CanTransitionTo(domain.StatusExiting) {
+			return loop.ExecutionResult{
+				Success:     false,
+				Error:       fmt.Sprintf("cannot transition from %s to exiting", position.Status),
+				PositionID:  positionID,
+				FinalStatus: position.Status,
+			}, nil
+		}
+		if err := o.store.PositionRepo().UpdateStatus(ctx, positionID, domain.StatusExiting); err != nil {
+			return loop.ExecutionResult{}, err
+		}
+		position.Status = domain.StatusExiting
+	}
+	txHash, err := o.persistShadowAuditTx(ctx, position, "close")
+	if err != nil {
+		return loop.ExecutionResult{}, err
+	}
+	if err := o.store.PositionRepo().UpdateStatus(ctx, positionID, domain.StatusClosed); err != nil {
+		return loop.ExecutionResult{}, err
+	}
+	return loop.ExecutionResult{
+		TxHash:      txHash,
+		Success:     true,
+		PositionID:  positionID,
+		FinalStatus: domain.StatusClosed,
+	}, nil
+}
+
+func (o *orderManagerAdapter) closeLiveCanaryPosition(ctx context.Context, position *domain.Position) (loop.ExecutionResult, error) {
+	if position == nil {
+		return loop.ExecutionResult{Success: false, Error: "position not found"}, nil
+	}
+	if o.wallet == nil || o.broadcaster == nil || o.provider == nil {
+		return loop.ExecutionResult{
+			Success:     false,
+			Error:       "live close components not configured",
+			PositionID:  position.ID,
+			FinalStatus: position.Status,
+		}, nil
+	}
+	if strings.TrimSpace(position.TokenID) == "" {
+		return loop.ExecutionResult{
+			Success:     false,
+			Error:       "live close requires position token_id",
+			PositionID:  position.ID,
+			FinalStatus: position.Status,
+		}, nil
+	}
+	if err := checkLiveCloseGate(o.liveGate, domain.Pool{ID: position.PoolID, Chain: position.Chain}); err != nil {
+		return loop.ExecutionResult{
+			Success:     false,
+			Error:       err.Error(),
+			PositionID:  position.ID,
+			FinalStatus: position.Status,
+		}, nil
+	}
+	if position.Status == domain.StatusClosed {
+		return loop.ExecutionResult{
+			Success:     true,
+			PositionID:  position.ID,
+			FinalStatus: domain.StatusClosed,
+		}, nil
+	}
+	if position.Status != domain.StatusExiting {
+		if !position.Status.CanTransitionTo(domain.StatusExiting) {
+			return loop.ExecutionResult{
+				Success:     false,
+				Error:       fmt.Sprintf("cannot transition from %s to exiting", position.Status),
+				PositionID:  position.ID,
+				FinalStatus: position.Status,
+			}, nil
+		}
+		if err := o.store.PositionRepo().UpdateStatus(ctx, position.ID, domain.StatusExiting); err != nil {
+			return loop.ExecutionResult{}, err
+		}
+		position.Status = domain.StatusExiting
+	}
+
+	state, err := o.loadLiveNPMPositionState(ctx, position)
+	if err != nil {
+		_ = o.store.PositionRepo().UpdateStatus(ctx, position.ID, domain.StatusExitFailed)
+		return loop.ExecutionResult{
+			Success:     false,
+			Error:       err.Error(),
+			PositionID:  position.ID,
+			FinalStatus: domain.StatusExitFailed,
+		}, nil
+	}
+
+	decreaseData := encodeLiveCloseDecreaseCalldata(
+		mustLiveCloseTokenIDBig(position.TokenID),
+		state.Liquidity,
+		big.NewInt(0),
+		big.NewInt(0),
+		big.NewInt(time.Now().Add(time.Duration(o.exitDeadlineSeconds)*time.Second).Unix()),
+	)
+	decreaseTx := buildLiveCloseUnsignedTx(o.npmBaseAddress, o.wallet.Address(), decreaseData, "live-exit-decrease-"+position.TokenID, o.exitDeadlineSeconds)
+	decreaseSigned, err := sendLiveCloseTx(ctx, o.wallet, o.broadcaster, decreaseTx, "decrease_liquidity", o.signTimeoutSeconds, o.sendTimeoutSeconds)
+	if err != nil {
+		if decreaseSigned.ID != "" {
+			_ = o.store.TxRepo().UpsertTx(ctx, decreaseSigned)
+		}
+		_ = o.store.PositionRepo().UpdateStatus(ctx, position.ID, domain.StatusExitFailed)
+		return loop.ExecutionResult{
+			Success:     false,
+			Error:       err.Error(),
+			PositionID:  position.ID,
+			FinalStatus: domain.StatusExitFailed,
+		}, nil
+	}
+	if err := o.store.TxRepo().UpsertTx(ctx, decreaseSigned); err != nil {
+		return loop.ExecutionResult{}, err
+	}
+
+	maxUint128 := new(big.Int).Sub(new(big.Int).Lsh(big.NewInt(1), 128), big.NewInt(1))
+	collectData := encodeLiveCloseCollectCalldata(
+		mustLiveCloseTokenIDBig(position.TokenID),
+		common.HexToAddress(o.wallet.Address().String()),
+		maxUint128,
+		maxUint128,
+	)
+	collectTx := buildLiveCloseUnsignedTx(o.npmBaseAddress, o.wallet.Address(), collectData, "live-exit-collect-"+position.TokenID, o.exitDeadlineSeconds)
+	collectSigned, err := sendLiveCloseTx(ctx, o.wallet, o.broadcaster, collectTx, "collect", o.signTimeoutSeconds, o.sendTimeoutSeconds)
+	if err != nil {
+		if collectSigned.ID != "" {
+			_ = o.store.TxRepo().UpsertTx(ctx, collectSigned)
+		}
+		_ = o.store.PositionRepo().UpdateStatus(ctx, position.ID, domain.StatusExitFailed)
+		return loop.ExecutionResult{
+			TxHash:      decreaseSigned.Hash,
+			Success:     false,
+			Error:       err.Error(),
+			PositionID:  position.ID,
+			FinalStatus: domain.StatusExitFailed,
+		}, nil
+	}
+	if err := o.store.TxRepo().UpsertTx(ctx, collectSigned); err != nil {
+		return loop.ExecutionResult{}, err
+	}
+	if err := o.store.PositionRepo().UpdateStatus(ctx, position.ID, domain.StatusClosed); err != nil {
+		return loop.ExecutionResult{}, err
+	}
+	return loop.ExecutionResult{
+		TxHash:      collectSigned.Hash,
+		Success:     true,
+		PositionID:  position.ID,
+		FinalStatus: domain.StatusClosed,
+	}, nil
 }
 
 func (o *orderManagerAdapter) Rebalance(ctx context.Context, positionID string, newLower, newUpper int64) (loop.ExecutionResult, error) {
-	return loop.ExecutionResult{Success: true}, nil
+	if o == nil || o.store == nil {
+		return loop.ExecutionResult{Success: false, Error: "store not configured"}, nil
+	}
+	position, err := o.store.PositionRepo().FindByID(ctx, positionID)
+	if err != nil {
+		return loop.ExecutionResult{}, err
+	}
+	if position == nil {
+		return loop.ExecutionResult{Success: false, Error: "position not found", PositionID: positionID}, nil
+	}
+	if o != nil && o.liveGate != nil && o.liveGate.isExecutionMode() {
+		if o.wallet == nil || o.broadcaster == nil || o.provider == nil {
+			return loop.ExecutionResult{
+				Success:     false,
+				Error:       "live rebalance components not configured",
+				PositionID:  positionID,
+				FinalStatus: position.Status,
+			}, nil
+		}
+		if position.Status != domain.StatusOpen {
+			return loop.ExecutionResult{
+				Success:     false,
+				Error:       fmt.Sprintf("cannot rebalance position in %s state", position.Status),
+				PositionID:  positionID,
+				FinalStatus: position.Status,
+			}, nil
+		}
+		pool, err := o.loadPoolForPosition(ctx, position)
+		if err != nil {
+			return loop.ExecutionResult{
+				Success:     false,
+				Error:       err.Error(),
+				PositionID:  positionID,
+				FinalStatus: position.Status,
+			}, nil
+		}
+		closeResult, err := o.closeLiveCanaryPosition(ctx, position)
+		if err != nil {
+			return loop.ExecutionResult{}, err
+		}
+		if !closeResult.Success {
+			return closeResult, nil
+		}
+
+		now := time.Now()
+		newPositionID := shadowID("rebalance-pos", pool.Key(), now.Unix())
+		reopened := &domain.Position{
+			ID:        newPositionID,
+			PoolID:    pool.ID,
+			Chain:     pool.Chain,
+			Status:    domain.StatusApproved,
+			Tier:      pool.Tier_,
+			AmountUSD: position.AmountUSD,
+			TickLower: newLower,
+			TickUpper: newUpper,
+			OpenedAt:  now.Unix(),
+		}
+		prepared, err := o.buildPreparedMintTxWithTicks(ctx, pool, position.AmountUSD, newPositionID, now, newLower, newUpper)
+		if err != nil {
+			reopened.Status = domain.StatusRejected
+			_ = o.store.PositionRepo().Save(ctx, reopened)
+			return loop.ExecutionResult{
+				TxHash:      closeResult.TxHash,
+				Success:     false,
+				Error:       fmt.Sprintf("rebalance reopen build failed after close: %v", err),
+				PositionID:  closeResult.PositionID,
+				FinalStatus: domain.StatusClosed,
+			}, nil
+		}
+		if err := o.preflightPreparedTx(ctx, prepared.UnsignedTx); err != nil {
+			reopened.Status = domain.StatusRejected
+			_ = o.store.PositionRepo().Save(ctx, reopened)
+			return loop.ExecutionResult{
+				TxHash:      closeResult.TxHash,
+				Success:     false,
+				Error:       fmt.Sprintf("rebalance reopen preflight failed after close: %v", err),
+				PositionID:  closeResult.PositionID,
+				FinalStatus: domain.StatusClosed,
+			}, nil
+		}
+		signed, err := o.wallet.Sign(ctx, prepared.UnsignedTx)
+		if err != nil {
+			reopened.Status = domain.StatusRejected
+			_ = o.store.PositionRepo().Save(ctx, reopened)
+			return loop.ExecutionResult{
+				TxHash:      closeResult.TxHash,
+				Success:     false,
+				Error:       fmt.Sprintf("rebalance reopen sign failed after close: %v", err),
+				PositionID:  closeResult.PositionID,
+				FinalStatus: domain.StatusClosed,
+			}, nil
+		}
+		signed.ID = prepared.ID
+		signed.Status = domain.TxBuilt
+		if err := o.store.PositionRepo().Save(ctx, reopened); err != nil {
+			return loop.ExecutionResult{}, err
+		}
+		if err := o.store.TxRepo().UpsertTx(ctx, signed); err != nil {
+			return loop.ExecutionResult{}, err
+		}
+		if err := o.broadcaster.Send(ctx, signed); err != nil {
+			signed.Status = domain.TxFailed
+			_ = o.store.TxRepo().UpsertTx(ctx, signed)
+			_ = o.store.PositionRepo().UpdateStatus(ctx, newPositionID, domain.StatusRejected)
+			return loop.ExecutionResult{
+				TxHash:      closeResult.TxHash,
+				Success:     false,
+				Error:       fmt.Sprintf("rebalance reopen broadcast failed after close: %v", err),
+				PositionID:  closeResult.PositionID,
+				FinalStatus: domain.StatusClosed,
+			}, nil
+		}
+		signed.Status = domain.TxBroadcast
+		if err := o.store.TxRepo().UpsertTx(ctx, signed); err != nil {
+			return loop.ExecutionResult{}, err
+		}
+		if err := o.store.PositionRepo().UpdateStatus(ctx, newPositionID, domain.StatusOpening); err != nil {
+			return loop.ExecutionResult{}, err
+		}
+		if o.requiredConfs > 0 {
+			signed.Status = domain.TxConfirmed
+			if err := o.store.TxRepo().UpsertTx(ctx, signed); err != nil {
+				return loop.ExecutionResult{}, err
+			}
+			if err := o.store.PositionRepo().UpdateStatus(ctx, newPositionID, domain.StatusOpen); err != nil {
+				return loop.ExecutionResult{}, err
+			}
+		}
+		return loop.ExecutionResult{
+			TxHash:      signed.Hash,
+			Success:     true,
+			PositionID:  newPositionID,
+			FinalStatus: domain.StatusOpen,
+		}, nil
+	}
+	if position.Status != domain.StatusOpen {
+		return loop.ExecutionResult{
+			Success:     false,
+			Error:       fmt.Sprintf("cannot rebalance position in %s state", position.Status),
+			PositionID:  positionID,
+			FinalStatus: position.Status,
+		}, nil
+	}
+	position.TickLower = newLower
+	position.TickUpper = newUpper
+	if err := o.store.PositionRepo().Save(ctx, position); err != nil {
+		return loop.ExecutionResult{}, err
+	}
+	txHash, err := o.persistShadowAuditTx(ctx, position, "rebalance")
+	if err != nil {
+		return loop.ExecutionResult{}, err
+	}
+	return loop.ExecutionResult{
+		TxHash:      txHash,
+		Success:     true,
+		PositionID:  positionID,
+		FinalStatus: domain.StatusOpen,
+	}, nil
+}
+
+func (o *orderManagerAdapter) loadPoolForPosition(ctx context.Context, position *domain.Position) (domain.Pool, error) {
+	if o == nil || o.store == nil || position == nil {
+		return domain.Pool{}, fmt.Errorf("pool lookup unavailable")
+	}
+	pools, err := o.store.PoolRepo().ListPools(ctx, ports.PoolFilter{Chain: position.Chain})
+	if err != nil {
+		return domain.Pool{}, err
+	}
+	for _, pool := range pools {
+		if strings.EqualFold(strings.TrimSpace(pool.ID), strings.TrimSpace(position.PoolID)) {
+			if pool.Tick == 0 {
+				poolAddr, parseErr := domain.ParseAddress(pool.ID)
+				if parseErr == nil && o.provider != nil {
+					if tick, tickErr := readV3PoolTickForMark(ctx, o.provider, poolAddr); tickErr == nil {
+						pool.Tick = tick
+					}
+				}
+			}
+			return pool, nil
+		}
+	}
+	return domain.Pool{}, fmt.Errorf("pool not found for position %s", position.ID)
 }
 
 func (o *orderManagerAdapter) CollectFees(ctx context.Context, positionID string) (loop.ExecutionResult, error) {
-	return loop.ExecutionResult{Success: true}, nil
+	if o == nil || o.store == nil {
+		return loop.ExecutionResult{Success: false, Error: "store not configured"}, nil
+	}
+	position, err := o.store.PositionRepo().FindByID(ctx, positionID)
+	if err != nil {
+		return loop.ExecutionResult{}, err
+	}
+	if position == nil {
+		return loop.ExecutionResult{Success: false, Error: "position not found", PositionID: positionID}, nil
+	}
+	if o != nil && o.liveGate != nil && o.liveGate.isExecutionMode() {
+		if o.wallet == nil || o.broadcaster == nil {
+			return loop.ExecutionResult{
+				Success:     false,
+				Error:       "live fee collection components not configured",
+				PositionID:  positionID,
+				FinalStatus: position.Status,
+			}, nil
+		}
+		if strings.TrimSpace(position.TokenID) == "" {
+			return loop.ExecutionResult{
+				Success:     false,
+				Error:       "live fee collection requires position token_id",
+				PositionID:  positionID,
+				FinalStatus: position.Status,
+			}, nil
+		}
+		if position.Status != domain.StatusOpen {
+			return loop.ExecutionResult{
+				Success:     false,
+				Error:       fmt.Sprintf("cannot collect fees from position in %s state", position.Status),
+				PositionID:  positionID,
+				FinalStatus: position.Status,
+			}, nil
+		}
+		if err := checkLiveCloseGate(o.liveGate, domain.Pool{ID: position.PoolID, Chain: position.Chain}); err != nil {
+			return loop.ExecutionResult{
+				Success:     false,
+				Error:       err.Error(),
+				PositionID:  positionID,
+				FinalStatus: position.Status,
+			}, nil
+		}
+		maxUint128 := new(big.Int).Sub(new(big.Int).Lsh(big.NewInt(1), 128), big.NewInt(1))
+		collectData := encodeLiveCloseCollectCalldata(
+			mustLiveCloseTokenIDBig(position.TokenID),
+			common.HexToAddress(o.wallet.Address().String()),
+			maxUint128,
+			maxUint128,
+		)
+		collectTx := buildLiveCloseUnsignedTx(o.npmBaseAddress, o.wallet.Address(), collectData, "live-collect-"+position.TokenID, o.exitDeadlineSeconds)
+		collectSigned, err := sendLiveCloseTx(ctx, o.wallet, o.broadcaster, collectTx, "collect", o.signTimeoutSeconds, o.sendTimeoutSeconds)
+		if err != nil {
+			if collectSigned.ID != "" {
+				_ = o.store.TxRepo().UpsertTx(ctx, collectSigned)
+			}
+			return loop.ExecutionResult{
+				Success:     false,
+				Error:       err.Error(),
+				PositionID:  positionID,
+				FinalStatus: position.Status,
+			}, nil
+		}
+		if err := o.store.TxRepo().UpsertTx(ctx, collectSigned); err != nil {
+			return loop.ExecutionResult{}, err
+		}
+		return loop.ExecutionResult{
+			TxHash:      collectSigned.Hash,
+			Success:     true,
+			PositionID:  positionID,
+			FinalStatus: domain.StatusOpen,
+		}, nil
+	}
+	if position.Status != domain.StatusOpen {
+		return loop.ExecutionResult{
+			Success:     false,
+			Error:       fmt.Sprintf("cannot collect fees from position in %s state", position.Status),
+			PositionID:  positionID,
+			FinalStatus: position.Status,
+		}, nil
+	}
+	txHash, err := o.persistShadowAuditTx(ctx, position, "collect")
+	if err != nil {
+		return loop.ExecutionResult{}, err
+	}
+	return loop.ExecutionResult{
+		TxHash:      txHash,
+		Success:     true,
+		PositionID:  positionID,
+		FinalStatus: domain.StatusOpen,
+	}, nil
+}
+
+func (o *orderManagerAdapter) persistShadowAuditTx(ctx context.Context, position *domain.Position, action string) (string, error) {
+	if o == nil || o.store == nil || position == nil {
+		return "", nil
+	}
+	now := time.Now().Unix()
+	txHash := shadowID(action+"-tx", position.ID, now)
+	from := o.walletAddress
+	if from.IsZero() {
+		from = zeroEVMAddress()
+	}
+	tx := domain.SignedTx{
+		UnsignedTx: domain.UnsignedTx{
+			ID:       txHash,
+			Chain:    position.Chain,
+			From:     from,
+			To:       parseAddressOrZero(position.PoolID),
+			Value:    domain.ZeroDecimal(),
+			Deadline: now + 300,
+			MinOut:   domain.ZeroDecimal(),
+		},
+		Hash:   txHash,
+		Status: domain.TxConfirmed,
+	}
+	if err := o.store.TxRepo().UpsertTx(ctx, tx); err != nil {
+		return "", err
+	}
+	return txHash, nil
+}
+
+func (o *orderManagerAdapter) loadLiveNPMPositionState(ctx context.Context, position *domain.Position) (npmPositionState, error) {
+	if position == nil {
+		return npmPositionState{}, fmt.Errorf("position is nil")
+	}
+	if position.Chain != domain.ChainBase {
+		return npmPositionState{}, fmt.Errorf("live close only supports base chain")
+	}
+	if o == nil || o.provider == nil {
+		return npmPositionState{}, fmt.Errorf("base rpc provider is not configured")
+	}
+	npmAddress := strings.TrimSpace(o.npmBaseAddress)
+	if npmAddress == "" {
+		npmAddress = defaultBaseUniswapV3NPMAddress
+	}
+	tokenID, ok := new(big.Int).SetString(strings.TrimSpace(position.TokenID), 10)
+	if !ok || tokenID.Sign() <= 0 {
+		return npmPositionState{}, fmt.Errorf("invalid npm token id %q", position.TokenID)
+	}
+
+	data := make([]byte, 4+32)
+	copy(data[:4], common.FromHex("0x99fbab88"))
+	copy(data[4+32-len(tokenID.Bytes()):], tokenID.Bytes())
+
+	to := common.HexToAddress(npmAddress)
+	raw, err := o.provider.CallContract(ctx, ethereum.CallMsg{
+		To:   &to,
+		Data: data,
+	}, nil)
+	if err != nil {
+		return npmPositionState{}, fmt.Errorf("read npm positions(%s): %w", position.TokenID, err)
+	}
+	if len(raw) < 32*12 {
+		return npmPositionState{}, fmt.Errorf("npm positions(%s) returned short response: %d bytes", position.TokenID, len(raw))
+	}
+
+	token0, err := domain.ParseAddress(common.BytesToAddress(raw[2*32+12 : 3*32]).Hex())
+	if err != nil {
+		return npmPositionState{}, fmt.Errorf("decode npm token0: %w", err)
+	}
+	token1, err := domain.ParseAddress(common.BytesToAddress(raw[3*32+12 : 4*32]).Hex())
+	if err != nil {
+		return npmPositionState{}, fmt.Errorf("decode npm token1: %w", err)
+	}
+
+	return npmPositionState{
+		TokenID:                  position.TokenID,
+		Token0:                   token0,
+		Token1:                   token1,
+		Fee:                      new(big.Int).SetBytes(raw[4*32 : 5*32]).Uint64(),
+		TickLower:                decodeABIInt24(raw[5*32 : 6*32]),
+		TickUpper:                decodeABIInt24(raw[6*32 : 7*32]),
+		Liquidity:                new(big.Int).SetBytes(raw[7*32 : 8*32]),
+		FeeGrowthInside0LastX128: new(big.Int).SetBytes(raw[8*32 : 9*32]),
+		FeeGrowthInside1LastX128: new(big.Int).SetBytes(raw[9*32 : 10*32]),
+		TokensOwed0:              new(big.Int).SetBytes(raw[10*32 : 11*32]),
+		TokensOwed1:              new(big.Int).SetBytes(raw[11*32 : 12*32]),
+	}, nil
+}
+
+func checkLiveCloseGate(gate *liveSafetyGate, pool domain.Pool) error {
+	if gate == nil {
+		return fmt.Errorf("live gate not initialized")
+	}
+	if gate.killSwitch {
+		return fmt.Errorf("live gate blocked: live.kill_switch=true")
+	}
+	chain := strings.ToLower(strings.TrimSpace(string(pool.Chain)))
+	if _, ok := gate.allowedChains[chain]; !ok {
+		return fmt.Errorf("live gate blocked: chain %s not in allowed_chains", pool.Chain)
+	}
+	poolID := strings.ToLower(strings.TrimSpace(pool.ID))
+	if _, ok := gate.allowedPools[poolID]; !ok {
+		return fmt.Errorf("live gate blocked: pool %s not in allowed_pools", pool.ID)
+	}
+	return nil
+}
+
+func buildLiveCloseUnsignedTx(npmBaseAddress string, wallet domain.Address, data []byte, id string, deadlineSeconds int) domain.UnsignedTx {
+	npmAddress := strings.TrimSpace(npmBaseAddress)
+	if npmAddress == "" {
+		npmAddress = defaultBaseUniswapV3NPMAddress
+	}
+	return domain.UnsignedTx{
+		ID:       id,
+		Chain:    domain.ChainBase,
+		From:     wallet,
+		To:       domain.MustParseAddress(npmAddress),
+		Value:    domain.ZeroDecimal(),
+		Data:     data,
+		Deadline: time.Now().Add(time.Duration(positiveOrDefault(deadlineSeconds, 600)) * time.Second).Unix(),
+		MinOut:   domain.ZeroDecimal(),
+	}
+}
+
+func sendLiveCloseTx(ctx context.Context, wallet interface {
+	Sign(context.Context, domain.UnsignedTx) (domain.SignedTx, error)
+}, broadcaster interface {
+	Send(context.Context, domain.SignedTx) error
+}, tx domain.UnsignedTx, action string, signTimeoutSeconds int, sendTimeoutSeconds int) (domain.SignedTx, error) {
+	signCtx, cancel := context.WithTimeout(ctx, time.Duration(positiveOrDefault(signTimeoutSeconds, 45))*time.Second)
+	signed, err := wallet.Sign(signCtx, tx)
+	cancel()
+	if err != nil {
+		return domain.SignedTx{}, fmt.Errorf("sign %s: %w", action, err)
+	}
+	signed.ID = tx.ID
+	signed.Status = domain.TxBuilt
+	sendCtx, cancel := context.WithTimeout(ctx, time.Duration(positiveOrDefault(sendTimeoutSeconds, 180))*time.Second)
+	err = broadcaster.Send(sendCtx, signed)
+	cancel()
+	if err != nil {
+		signed.Status = domain.TxFailed
+		return signed, fmt.Errorf("broadcast %s: %w", action, err)
+	}
+	signed.Status = domain.TxConfirmed
+	return signed, nil
+}
+
+func encodeLiveCloseDecreaseCalldata(tokenID *big.Int, liquidity *big.Int, amount0Min *big.Int, amount1Min *big.Int, deadline *big.Int) []byte {
+	data := make([]byte, 0, 4+32*5)
+	data = append(data, mustKeccak4("decreaseLiquidity((uint256,uint128,uint256,uint256,uint256))")...)
+	data = append(data, leftPadLiveCloseWord(tokenID)...)
+	data = append(data, leftPadLiveCloseWord(liquidity)...)
+	data = append(data, leftPadLiveCloseWord(amount0Min)...)
+	data = append(data, leftPadLiveCloseWord(amount1Min)...)
+	data = append(data, leftPadLiveCloseWord(deadline)...)
+	return data
+}
+
+func encodeLiveCloseCollectCalldata(tokenID *big.Int, recipient common.Address, amount0Max *big.Int, amount1Max *big.Int) []byte {
+	data := make([]byte, 0, 4+32*4)
+	data = append(data, mustKeccak4("collect((uint256,address,uint128,uint128))")...)
+	data = append(data, leftPadLiveCloseWord(tokenID)...)
+	data = append(data, common.LeftPadBytes(recipient.Bytes(), 32)...)
+	data = append(data, leftPadLiveCloseWord(amount0Max)...)
+	data = append(data, leftPadLiveCloseWord(amount1Max)...)
+	return data
+}
+
+func mustLiveCloseTokenIDBig(tokenID string) *big.Int {
+	token, ok := new(big.Int).SetString(tokenID, 10)
+	if !ok || token.Sign() <= 0 {
+		panic("invalid token id")
+	}
+	return token
+}
+
+func leftPadLiveCloseWord(value *big.Int) []byte {
+	if value == nil {
+		value = big.NewInt(0)
+	}
+	return common.LeftPadBytes(value.Bytes(), 32)
+}
+
+func mustKeccak4(signature string) []byte {
+	return crypto.Keccak256([]byte(signature))[:4]
 }
 
 func (o *orderManagerAdapter) OnTxFailure(ctx context.Context, positionID string) {

@@ -57,14 +57,8 @@ func runCanaryMint(ctx context.Context, cfg *config.Config) (err error) {
 		return err
 	}
 	gate := newLiveSafetyGate("live", cfg)
-	if gate.killSwitch {
-		return fmt.Errorf("canary mint blocked: live.kill_switch=true")
-	}
-	if !gate.canary {
-		return fmt.Errorf("canary mint requires live.canary=true")
-	}
-	if cfg.Live.MaxOrderUSD > canaryMaxOrderUSD {
-		return fmt.Errorf("canary mint blocked: max_order_usd %.2f exceeds hard cap %.2f", cfg.Live.MaxOrderUSD, canaryMaxOrderUSD)
+	if err := gate.requireManualCanary("canary mint"); err != nil {
+		return err
 	}
 	if len(cfg.Live.AllowedPools) != 1 {
 		return fmt.Errorf("canary mint requires exactly one allowed pool, got %d", len(cfg.Live.AllowedPools))
@@ -86,9 +80,9 @@ func runCanaryMint(ctx context.Context, cfg *config.Config) (err error) {
 		return err
 	}
 
-	amountUSD := domain.NewDecimalFromFloat(cfg.Live.MaxOrderUSD)
-	if amountUSD.LessThanOrEqual(domain.ZeroDecimal()) || amountUSD.GreaterThan(domain.NewDecimalFromFloat(canaryMaxOrderUSD)) {
-		return fmt.Errorf("invalid canary amount_usd: %s", amountUSD.String())
+	amountUSD, err := selectCanaryAmountUSD(cfg)
+	if err != nil {
+		return err
 	}
 	pool, err := loadCanaryPreflightPool(ctx, provider, strings.TrimSpace(cfg.Live.AllowedPools[0]))
 	if err != nil {
@@ -154,9 +148,11 @@ func runCanaryMint(ctx context.Context, cfg *config.Config) (err error) {
 	}
 
 	orderManager := &orderManagerAdapter{
-		provider:       provider,
-		walletAddress:  wallet.Address(),
-		npmBaseAddress: strings.TrimSpace(cfg.Execution.NPMBaseAddress),
+		provider:          provider,
+		walletAddress:     wallet.Address(),
+		npmBaseAddress:    strings.TrimSpace(cfg.Execution.NPMBaseAddress),
+		txDeadlineSeconds: positiveOrDefault(cfg.Execution.TxDeadlineSeconds, 300),
+		mintSlippageBps:   cfg.Execution.MintSlippageBps,
 	}
 	prepared, err := orderManager.buildPreparedMintTx(ctx, pool, amountUSD, positionID, now)
 	if err != nil {
@@ -180,6 +176,37 @@ func runCanaryMint(ctx context.Context, cfg *config.Config) (err error) {
 		RequiredWETHRaw: requiredWETH.String(),
 		GasEstimate:     gas,
 		Message:         "mint gas estimate completed",
+	}); err != nil {
+		return err
+	}
+	economics, err := state.EvaluateCanaryOpenEconomics(ctx, pool, amountUSD, gas, provider)
+	if err != nil {
+		return err
+	}
+	if err := state.Record(ctx, canaryEvent{
+		Command:         "canary_mint",
+		Stage:           "profitability_ok",
+		Status:          "ok",
+		PositionID:      positionID,
+		PoolID:          pool.ID,
+		Wallet:          wallet.Address().String(),
+		AmountUSD:       amountUSD.String(),
+		RequiredUSDCRaw: requiredUSDC.String(),
+		RequiredWETHRaw: requiredWETH.String(),
+		GasEstimate:     gas,
+		Message: fmt.Sprintf(
+			"size_usd=%s projected_gross_usd=%s recent_avg_gross_usd=%s recent_avg_gross_per_usd=%s gas_usd=%s coverage=%s rounds=%d win_rate=%s eth_price_usd=%s gas_price_gwei=%s",
+			economics.RequestedAmountUSD.StringFixed(2),
+			economics.ProjectedGrossUSD.StringFixed(6),
+			economics.RecentAvgGrossUSD.StringFixed(6),
+			economics.RecentAvgGrossPerUSD.StringFixed(6),
+			economics.EstimatedGasUSD.StringFixed(6),
+			economics.CoverageRatio.StringFixed(4),
+			economics.RecentRounds,
+			economics.RecentWinRate.StringFixed(4),
+			economics.ETHPriceUSD.StringFixed(4),
+			economics.GasPriceGwei.StringFixed(4),
+		),
 	}); err != nil {
 		return err
 	}

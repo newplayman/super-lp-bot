@@ -452,6 +452,17 @@ func (p *RoundRobinProvider) shouldStopAfterRPCError(err error) bool {
 	return true
 }
 
+func (p *RoundRobinProvider) retryAfterRateLimit(err error) (bool, error) {
+	if !isRateLimitError(err) {
+		return false, nil
+	}
+	p.markCurrentEndpointRateLimited()
+	if rotateErr := p.nextEndpoint(); rotateErr != nil {
+		return true, rotateErr
+	}
+	return true, nil
+}
+
 func cloneBytes(value []byte) []byte {
 	if value == nil {
 		return nil
@@ -911,8 +922,11 @@ func (p *RoundRobinProvider) SuggestGasPrice(ctx context.Context) (*big.Int, err
 			return price, nil
 		}
 		lastErr = err
-		if p.shouldStopAfterRPCError(err) {
-			return nil, err
+		if retry, rotateErr := p.retryAfterRateLimit(err); retry {
+			if rotateErr != nil {
+				return nil, lastErr
+			}
+			continue
 		}
 		if err := p.nextEndpoint(); err != nil {
 			return nil, lastErr
@@ -963,8 +977,11 @@ func (p *RoundRobinProvider) EstimateGas(ctx context.Context, msg ethereum.CallM
 			return gas, nil
 		}
 		lastErr = err
-		if p.shouldStopAfterRPCError(err) {
-			return 0, err
+		if retry, rotateErr := p.retryAfterRateLimit(err); retry {
+			if rotateErr != nil {
+				return 0, lastErr
+			}
+			continue
 		}
 		if err := p.nextEndpoint(); err != nil {
 			return 0, lastErr

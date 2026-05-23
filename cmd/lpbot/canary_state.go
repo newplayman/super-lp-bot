@@ -4,9 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"math/big"
 	"strings"
 	"time"
 
+	"github.com/lpbot/lpbot/internal/adapters/rpc"
 	"github.com/lpbot/lpbot/internal/adapters/store/postgres"
 	"github.com/lpbot/lpbot/internal/domain"
 	"github.com/lpbot/lpbot/internal/platform/config"
@@ -54,9 +56,24 @@ type canaryStrategyApproval struct {
 	PipelineReason string
 }
 
+type canaryOpenEconomics struct {
+	RequestedAmountUSD   domain.Decimal
+	ETHPriceUSD          domain.Decimal
+	GasPriceGwei         domain.Decimal
+	EstimatedGasUSD      domain.Decimal
+	RecentAvgGrossUSD    domain.Decimal
+	RecentAvgGrossPerUSD domain.Decimal
+	ProjectedGrossUSD    domain.Decimal
+	RecentWinRate        domain.Decimal
+	CoverageRatio        domain.Decimal
+	RecentRounds         int64
+}
+
 const (
-	canaryShadowApprovalMaxAge    = 3 * time.Hour
+	canaryShadowApprovalMaxAge     = 3 * time.Hour
 	canaryShadowApprovalStaleGrace = 12 * time.Hour
+	canaryRecentRoundWindow        = 6
+	canaryGrossToGasCoverageMin    = 1.5
 )
 
 func newCanaryEventWriter(ctx context.Context, cfg *config.Config) (*canaryEventWriter, error) {
@@ -90,56 +107,29 @@ func (w *canaryEventWriter) ensure(ctx context.Context) error {
 	if w == nil || w.db == nil {
 		return fmt.Errorf("canary state writer is not initialized")
 	}
-	_, err := w.db.ExecContext(ctx, `
-		CREATE TABLE IF NOT EXISTS canary_events (
-			id TEXT PRIMARY KEY,
-			chain TEXT NOT NULL DEFAULT '',
-			command TEXT NOT NULL DEFAULT '',
-			stage TEXT NOT NULL DEFAULT '',
-			status TEXT NOT NULL DEFAULT '',
-			position_id TEXT NOT NULL DEFAULT '',
-			pool_id TEXT NOT NULL DEFAULT '',
-			wallet TEXT NOT NULL DEFAULT '',
-			token_id TEXT NOT NULL DEFAULT '',
-			tx_hash TEXT NOT NULL DEFAULT '',
-			amount_usd TEXT NOT NULL DEFAULT '',
-			required_usdc_raw TEXT NOT NULL DEFAULT '',
-			required_weth_raw TEXT NOT NULL DEFAULT '',
-			input_mint TEXT NOT NULL DEFAULT '',
-			output_mint TEXT NOT NULL DEFAULT '',
-			input_amount_raw TEXT NOT NULL DEFAULT '',
-			output_amount_raw TEXT NOT NULL DEFAULT '',
-			sol_balance_raw TEXT NOT NULL DEFAULT '',
-			usdc_balance_raw TEXT NOT NULL DEFAULT '',
-			gas_estimate BIGINT NOT NULL DEFAULT 0,
-			message TEXT NOT NULL DEFAULT '',
-			error_msg TEXT NOT NULL DEFAULT '',
-			created_at BIGINT NOT NULL DEFAULT 0,
-			updated_at BIGINT NOT NULL DEFAULT 0
-		);
-		ALTER TABLE canary_events
-			ADD COLUMN IF NOT EXISTS chain TEXT NOT NULL DEFAULT '';
-		ALTER TABLE canary_events
-			ADD COLUMN IF NOT EXISTS input_mint TEXT NOT NULL DEFAULT '';
-		ALTER TABLE canary_events
-			ADD COLUMN IF NOT EXISTS output_mint TEXT NOT NULL DEFAULT '';
-		ALTER TABLE canary_events
-			ADD COLUMN IF NOT EXISTS input_amount_raw TEXT NOT NULL DEFAULT '';
-		ALTER TABLE canary_events
-			ADD COLUMN IF NOT EXISTS output_amount_raw TEXT NOT NULL DEFAULT '';
-		ALTER TABLE canary_events
-			ADD COLUMN IF NOT EXISTS sol_balance_raw TEXT NOT NULL DEFAULT '';
-		ALTER TABLE canary_events
-			ADD COLUMN IF NOT EXISTS usdc_balance_raw TEXT NOT NULL DEFAULT '';
-		CREATE INDEX IF NOT EXISTS idx_canary_events_created_at
-			ON canary_events(created_at DESC);
-		CREATE INDEX IF NOT EXISTS idx_canary_events_position
-			ON canary_events(position_id, created_at DESC);
-		CREATE INDEX IF NOT EXISTS idx_canary_events_tx_hash
-			ON canary_events(tx_hash);
-	`)
-	if err != nil {
-		return fmt.Errorf("ensure canary_events table: %w", err)
+	var exists bool
+	if err := w.db.QueryRowContext(ctx, `SELECT to_regclass('public.canary_events') IS NOT NULL`).Scan(&exists); err != nil {
+		return fmt.Errorf("check canary_events table: %w", err)
+	}
+	if !exists {
+		return fmt.Errorf("canary_events table missing; apply migrations/postgres/000002_canary_state.sql")
+	}
+	var columnCount int
+	if err := w.db.QueryRowContext(ctx, `
+		SELECT count(*)
+		FROM information_schema.columns
+		WHERE table_schema = 'public'
+		  AND table_name = 'canary_events'
+		  AND column_name IN (
+			'chain', 'input_mint', 'output_mint',
+			'input_amount_raw', 'output_amount_raw',
+			'sol_balance_raw', 'usdc_balance_raw'
+		  )
+	`).Scan(&columnCount); err != nil {
+		return fmt.Errorf("check canary_events columns: %w", err)
+	}
+	if columnCount != 7 {
+		return fmt.Errorf("canary_events schema is outdated; apply migrations/postgres/000002_canary_state.sql")
 	}
 	return nil
 }
@@ -316,4 +306,138 @@ func (w *canaryEventWriter) RequireRecentShadowApproval(ctx context.Context, poo
 		return approval, fmt.Errorf("canary quality gate blocked: final_action=%s", row.FinalAction)
 	}
 	return approval, nil
+}
+
+func (w *canaryEventWriter) EvaluateCanaryOpenEconomics(ctx context.Context, pool domain.Pool, amountUSD domain.Decimal, mintGas uint64, provider *rpc.RoundRobinProvider) (canaryOpenEconomics, error) {
+	if w == nil || w.db == nil {
+		return canaryOpenEconomics{}, fmt.Errorf("canary state writer is not initialized")
+	}
+	if provider == nil {
+		return canaryOpenEconomics{}, fmt.Errorf("rpc provider is not configured")
+	}
+	if mintGas == 0 {
+		return canaryOpenEconomics{}, fmt.Errorf("mint gas estimate is zero")
+	}
+
+	ethPriceUSD, err := estimateBaseWETHPriceUSD(ctx, pool, provider)
+	if err != nil {
+		return canaryOpenEconomics{}, fmt.Errorf("estimate canary ETH/USD for quality gate: %w", err)
+	}
+	gasPriceWei, err := provider.SuggestGasPrice(ctx)
+	if err != nil {
+		return canaryOpenEconomics{}, fmt.Errorf("suggest gas price for canary quality gate: %w", err)
+	}
+	gasPriceGwei := decimalFromWei(gasPriceWei, 9)
+	estimatedGasETH := decimalFromWei(new(big.Int).Mul(new(big.Int).SetUint64(mintGas), gasPriceWei), 18)
+	estimatedGasUSD := estimatedGasETH.Mul(ethPriceUSD)
+	if estimatedGasUSD.LessThanOrEqual(domain.ZeroDecimal()) {
+		return canaryOpenEconomics{}, fmt.Errorf("canary quality gate blocked: estimated gas usd is zero")
+	}
+
+	var recentRounds int64
+	var recentAvgGrossUSD, recentAvgGrossPerUSD, recentWinRate float64
+	err = w.db.QueryRowContext(ctx, `
+		WITH recent AS (
+			SELECT
+				(e.total_usd::numeric - p.amount_usd::numeric) AS gross_net_usd,
+				NULLIF(p.amount_usd::numeric, 0) AS amount_usd
+			FROM positions p
+			JOIN canary_exit_preflights e ON e.token_id = p.token_id
+			WHERE lower(p.pool_id) = lower($1)
+			  AND p.status = 'closed'
+			  AND COALESCE(e.status, '') = 'closed'
+			ORDER BY COALESCE(p.closed_at, 0) DESC
+			LIMIT $2
+		)
+		SELECT
+			count(*),
+			COALESCE(avg(gross_net_usd::double precision), 0),
+			COALESCE(avg(CASE WHEN amount_usd IS NULL THEN 0 ELSE (gross_net_usd / amount_usd)::double precision END), 0),
+			COALESCE(avg(CASE WHEN gross_net_usd > 0 THEN 1.0 ELSE 0.0 END), 0)
+		FROM recent
+	`, pool.ID, canaryRecentRoundWindow).Scan(&recentRounds, &recentAvgGrossUSD, &recentAvgGrossPerUSD, &recentWinRate)
+	if err != nil {
+		return canaryOpenEconomics{}, fmt.Errorf("read recent canary outcomes for quality gate: %w", err)
+	}
+	if recentRounds == 0 {
+		return canaryOpenEconomics{}, fmt.Errorf("canary quality gate blocked: no closed canary history for pool %s", pool.ID)
+	}
+
+	avgGross := domain.NewDecimalFromFloat(recentAvgGrossUSD)
+	avgGrossPerUSD := domain.NewDecimalFromFloat(recentAvgGrossPerUSD)
+	projectedGross := avgGrossPerUSD.Mul(amountUSD)
+	winRate := domain.NewDecimalFromFloat(recentWinRate)
+	coverageRatio := projectedGross.Div(estimatedGasUSD)
+	minCoverage := domain.NewDecimalFromFloat(canaryGrossToGasCoverageMin)
+	if coverageRatio.LessThan(minCoverage) {
+		return canaryOpenEconomics{
+				RequestedAmountUSD:   amountUSD,
+				ETHPriceUSD:          ethPriceUSD,
+				GasPriceGwei:         gasPriceGwei,
+				EstimatedGasUSD:      estimatedGasUSD,
+				RecentAvgGrossUSD:    avgGross,
+				RecentAvgGrossPerUSD: avgGrossPerUSD,
+				ProjectedGrossUSD:    projectedGross,
+				RecentWinRate:        winRate,
+				CoverageRatio:        coverageRatio,
+				RecentRounds:         recentRounds,
+			}, fmt.Errorf(
+				"canary quality gate blocked: projected_gross_usd=%s < gas_usd=%s * coverage_min=%.2f (coverage=%s, size_usd=%s, recent_avg_gross_usd=%s, recent_avg_gross_per_usd=%s, rounds=%d, win_rate=%s, eth_price_usd=%s, gas_price_gwei=%s)",
+				projectedGross.StringFixed(6),
+				estimatedGasUSD.StringFixed(6),
+				canaryGrossToGasCoverageMin,
+				coverageRatio.StringFixed(4),
+				amountUSD.StringFixed(2),
+				avgGross.StringFixed(6),
+				avgGrossPerUSD.StringFixed(6),
+				recentRounds,
+				winRate.StringFixed(4),
+				ethPriceUSD.StringFixed(4),
+				gasPriceGwei.StringFixed(4),
+			)
+	}
+	return canaryOpenEconomics{
+		RequestedAmountUSD:   amountUSD,
+		ETHPriceUSD:          ethPriceUSD,
+		GasPriceGwei:         gasPriceGwei,
+		EstimatedGasUSD:      estimatedGasUSD,
+		RecentAvgGrossUSD:    avgGross,
+		RecentAvgGrossPerUSD: avgGrossPerUSD,
+		ProjectedGrossUSD:    projectedGross,
+		RecentWinRate:        winRate,
+		CoverageRatio:        coverageRatio,
+		RecentRounds:         recentRounds,
+	}, nil
+}
+
+func estimateBaseWETHPriceUSD(ctx context.Context, pool domain.Pool, provider *rpc.RoundRobinProvider) (domain.Decimal, error) {
+	queryCtx, cancel := context.WithTimeout(ctx, 6*time.Second)
+	defer cancel()
+	decimals0, err := tokenDecimals(queryCtx, provider, pool.Token0)
+	if err != nil {
+		return domain.ZeroDecimal(), err
+	}
+	decimals1, err := tokenDecimals(queryCtx, provider, pool.Token1)
+	if err != nil {
+		return domain.ZeroDecimal(), err
+	}
+	price0, price1, err := inferBaseTokenPricesUSD(pool, decimals0, decimals1)
+	if err != nil {
+		return domain.ZeroDecimal(), err
+	}
+	switch {
+	case strings.EqualFold(pool.Token0.String(), baseWETHAddress):
+		return price0, nil
+	case strings.EqualFold(pool.Token1.String(), baseWETHAddress):
+		return price1, nil
+	default:
+		return domain.ZeroDecimal(), fmt.Errorf("pool %s does not include base WETH", pool.ID)
+	}
+}
+
+func decimalFromWei(value *big.Int, decimals int32) domain.Decimal {
+	if value == nil || value.Sign() <= 0 {
+		return domain.ZeroDecimal()
+	}
+	return domain.MustDecimal(value.String()).Div(domain.MustDecimal("1" + strings.Repeat("0", int(decimals))))
 }
