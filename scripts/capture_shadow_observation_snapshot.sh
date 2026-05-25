@@ -114,10 +114,12 @@ SELECT
     NULLIF(SUM(CASE WHEN label IN ('win', 'loss') THEN 1 ELSE 0 END), 0), 0),
     6
   ) AS win_rate,
-  ROUND(AVG(net_pnl_usd) FILTER (WHERE label IN ('win', 'loss')), 6) AS avg_net_pnl_usd,
+  ROUND((AVG(net_pnl_usd) FILTER (WHERE label IN ('win', 'loss')))::NUMERIC, 6) AS avg_net_pnl_usd,
   ROUND(
-    percentile_cont(0.5) WITHIN GROUP (ORDER BY net_pnl_usd)
-    FILTER (WHERE label IN ('win', 'loss')),
+    (
+      percentile_cont(0.5) WITHIN GROUP (ORDER BY net_pnl_usd)
+      FILTER (WHERE label IN ('win', 'loss'))
+    )::NUMERIC,
     6
   ) AS median_net_pnl_usd
 FROM bucketed
