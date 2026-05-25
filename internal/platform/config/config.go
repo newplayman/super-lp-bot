@@ -69,6 +69,13 @@ type Bus struct {
 	Backend string `toml:"backend"`
 }
 
+// Alerting represents alert routing configuration.
+type Alerting struct {
+	TelegramToken         string `toml:"telegram_token"`
+	TelegramChatID        string `toml:"telegram_chat_id"`
+	MinIntervalSeconds    int    `toml:"min_interval_seconds"`
+}
+
 // Execution represents execution backend configuration for live/canary mode.
 type Execution struct {
 	Backend        string `toml:"backend"`
@@ -122,6 +129,7 @@ type Config struct {
 	Redis    Redis      `toml:"redis"`
 	Wallet   Wallet     `toml:"wallet"`
 	Bus      Bus        `toml:"bus"`
+	Alerting Alerting   `toml:"alerting"`
 	Execution Execution `toml:"execution"`
 	Live     Live       `toml:"live"`
 	Risk     Risk       `toml:"risk"`
@@ -153,19 +161,27 @@ func resolveEnvValue(varName string, lookup func(string) string) string {
 	}
 }
 
-// interpolateEnvVarsWithLookup replaces ${ENV_VAR} patterns with values from the provided lookup.
-// If an environment variable is not set, it is replaced with an empty string.
-func interpolateEnvVarsWithLookup(data []byte, lookup func(string) string) []byte {
-	return envVarPattern.ReplaceAllFunc(data, func(match []byte) []byte {
-		// Extract the variable name from ${VAR_NAME}
-		varName := string(match[2 : len(match)-1]) // Remove ${ and }
-		value := resolveEnvValue(varName, lookup)
-		return []byte(value)
+func interpolateEnvVarsWithLookup(data []byte, lookup func(string) string) ([]byte, error) {
+	matches := envVarPattern.FindAllSubmatch(data, -1)
+	for _, match := range matches {
+		if len(match) < 2 {
+			continue
+		}
+		varName := string(match[1])
+		if resolveEnvValue(varName, lookup) == "" {
+			return nil, fmt.Errorf("missing required environment variable %q", varName)
+		}
+	}
+
+	interpolated := envVarPattern.ReplaceAllFunc(data, func(match []byte) []byte {
+		varName := string(match[2 : len(match)-1])
+		return []byte(resolveEnvValue(varName, lookup))
 	})
+	return interpolated, nil
 }
 
 // interpolateEnvVars replaces ${ENV_VAR} patterns with environment variable values.
-func interpolateEnvVars(data []byte) []byte {
+func interpolateEnvVars(data []byte) ([]byte, error) {
 	return interpolateEnvVarsWithLookup(data, os.Getenv)
 }
 
@@ -198,7 +214,10 @@ func LoadWithLookup(path string, expectedMode string, lookup func(string) string
 	}
 
 	// Perform environment variable interpolation
-	interpolated := interpolateEnvVarsWithLookup(data, lookup)
+	interpolated, err := interpolateEnvVarsWithLookup(data, lookup)
+	if err != nil {
+		return nil, err
+	}
 
 	// Parse TOML
 	var cfg Config
@@ -208,13 +227,13 @@ func LoadWithLookup(path string, expectedMode string, lookup func(string) string
 
 	// Verify mode matches
 	if cfg.Mode.Expected != expectedMode {
-		panic(fmt.Sprintf("mode mismatch: config expects %q but expected %q", cfg.Mode.Expected, expectedMode))
+		return nil, fmt.Errorf("mode mismatch: config expects %q but expected %q", cfg.Mode.Expected, expectedMode)
 	}
 
 	// For live mode, verify sha256 checksum
 	if expectedMode == "live" {
-		if err := verifySHA256(path); err != nil {
-			panic(err)
+		if err := verifySHA256(path, interpolated); err != nil {
+			return nil, err
 		}
 	}
 
@@ -223,7 +242,7 @@ func LoadWithLookup(path string, expectedMode string, lookup func(string) string
 
 // verifySHA256 verifies that the config file matches the sha256 checksum
 // stored in the .sha256 sidecar file.
-func verifySHA256(configPath string) error {
+func verifySHA256(configPath string, effectiveConfig []byte) error {
 	sha256Path := configPath + ".sha256"
 
 	// Read the expected sha256 from the sidecar file
@@ -235,14 +254,7 @@ func verifySHA256(configPath string) error {
 	// Trim whitespace/newlines
 	expectedSHA256Hex = []byte(strings.TrimSpace(string(expectedSHA256Hex)))
 
-	// Read the current config file content
-	configData, err := os.ReadFile(configPath)
-	if err != nil {
-		return fmt.Errorf("failed to read config for verification: %w", err)
-	}
-
-	// Compute sha256 of the config file
-	hash := sha256.Sum256(configData)
+	hash := sha256.Sum256(effectiveConfig)
 	actualSHA256Hex := hex.EncodeToString(hash[:])
 
 	// Compare

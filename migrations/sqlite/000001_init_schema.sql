@@ -5,12 +5,24 @@
 CREATE TABLE IF NOT EXISTS positions (
     id TEXT PRIMARY KEY,
     token_id TEXT,
-    pool_address TEXT NOT NULL,
+    chain TEXT NOT NULL,
+    pool_id TEXT NOT NULL,
+    token0 TEXT NOT NULL,
+    token1 TEXT NOT NULL,
     tick_lower INTEGER NOT NULL,
     tick_upper INTEGER NOT NULL,
     liquidity TEXT NOT NULL,
-    owner TEXT NOT NULL,
+    amount0 TEXT NOT NULL,
+    amount1 TEXT NOT NULL,
+    tvl_usd TEXT,
+    amount_usd TEXT,
+    tier TEXT,
+    fee_growth_0 TEXT,
+    fee_growth_1 TEXT,
+    collected_fee_0 TEXT,
+    collected_fee_1 TEXT,
     opened_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
     closed_at INTEGER,
     status TEXT NOT NULL
 );
@@ -43,9 +55,9 @@ CREATE TABLE IF NOT EXISTS transactions (
     block_number INTEGER,
     block_hash TEXT,
     broadcast_at INTEGER,
-    gas_used TEXT,
+    gas_used INTEGER,
     gas_price TEXT,
-    gas_limit TEXT,
+    gas_limit INTEGER,
     rfb_attempts INTEGER NOT NULL DEFAULT 0,
     error_msg TEXT,
     trace_id TEXT,
@@ -59,7 +71,7 @@ CREATE INDEX IF NOT EXISTS idx_transactions_broadcast_at ON transactions(broadca
 
 CREATE TABLE IF NOT EXISTS pool_states (
     id TEXT PRIMARY KEY,
-    pool_address TEXT NOT NULL,
+    pool_id TEXT NOT NULL,
     tick INTEGER NOT NULL,
     liquidity TEXT NOT NULL,
     observation_cardinality INTEGER,
@@ -67,26 +79,24 @@ CREATE TABLE IF NOT EXISTS pool_states (
 );
 
 CREATE TABLE IF NOT EXISTS pools (
-    pool_id TEXT NOT NULL,
-    chain INTEGER NOT NULL,
+    id TEXT PRIMARY KEY,
+    chain TEXT NOT NULL,
     protocol TEXT NOT NULL,
     token0 TEXT NOT NULL,
     token1 TEXT NOT NULL,
     fee_bps INTEGER NOT NULL,
-    tier TEXT,
-    audit_verdict TEXT,
-    last_score TEXT,
-    updated_block INTEGER DEFAULT 0,
-    updated_block_hash TEXT,
-    updated_block_time INTEGER DEFAULT 0,
-    updated_at INTEGER NOT NULL,
-    PRIMARY KEY (pool_id, chain, protocol)
+    tier TEXT NOT NULL,
+    tvl_usd TEXT,
+    vol_24h TEXT,
+    fee_apr_24h TEXT,
+    last_score REAL,
+    updated_at INTEGER NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS pool_score_history (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     pool_id TEXT NOT NULL,
-    chain INTEGER NOT NULL,
+    chain TEXT NOT NULL,
     block_number INTEGER NOT NULL,
     block_hash TEXT,
     block_time INTEGER NOT NULL,
@@ -98,7 +108,7 @@ CREATE TABLE IF NOT EXISTS pnl_ledger (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     position_id TEXT NOT NULL,
     pool_id TEXT NOT NULL,
-    chain INTEGER NOT NULL,
+    chain TEXT NOT NULL,
     block_number INTEGER NOT NULL,
     block_hash TEXT,
     block_time INTEGER NOT NULL,
@@ -141,11 +151,51 @@ CREATE TABLE IF NOT EXISTS reconciliation_log (
     created_at INTEGER NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS risk_events (
+    id TEXT PRIMARY KEY,
+    position_id TEXT,
+    pool_key TEXT,
+    event_type TEXT NOT NULL,
+    action TEXT,
+    severity TEXT NOT NULL,
+    description TEXT NOT NULL,
+    data TEXT,
+    resolved INTEGER DEFAULT 0,
+    resolved_at INTEGER,
+    created_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS ledger (
+    id TEXT PRIMARY KEY,
+    position_id TEXT,
+    tx_hash TEXT,
+    entry_type TEXT NOT NULL,
+    amount TEXT NOT NULL,
+    currency TEXT NOT NULL,
+    description TEXT,
+    timestamp INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS kill_switch_state (
+    id TEXT PRIMARY KEY,
+    switch_type TEXT NOT NULL,
+    triggered_at INTEGER NOT NULL,
+    trigger_reason TEXT,
+    auto_resume_at INTEGER,
+    resumed_at INTEGER,
+    resume_allowed INTEGER DEFAULT 1,
+    total_triggers INTEGER DEFAULT 1,
+    updated_at INTEGER NOT NULL
+);
+
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
 
+DROP TABLE IF EXISTS kill_switch_state;
+DROP TABLE IF EXISTS ledger;
+DROP TABLE IF EXISTS risk_events;
 DROP TABLE IF EXISTS reconciliation_log;
 DROP TABLE IF EXISTS config_snapshots;
 DROP TABLE IF EXISTS processed_events;

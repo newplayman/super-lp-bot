@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/shopspring/decimal"
+	"github.com/stretchr/testify/require"
 
 	"github.com/lpbot/lpbot/internal/domain"
 	"github.com/lpbot/lpbot/internal/ports"
@@ -37,6 +38,12 @@ type mockRiskGate struct {
 	blockedLevel ports.KillLevel
 	shouldBlock  bool
 	blockErr     error
+	varLevel     ports.KillLevel
+	drawdownLevel ports.KillLevel
+	exposureLevel ports.KillLevel
+	varCalls     int
+	drawdownCalls int
+	exposureCalls int
 }
 
 func (m *mockRiskGate) IsBlocked(ctx context.Context) (bool, error) {
@@ -47,14 +54,26 @@ func (m *mockRiskGate) IsBlocked(ctx context.Context) (bool, error) {
 }
 
 func (m *mockRiskGate) CheckVaR(ctx context.Context, totalValue, realizedLoss decimal.Decimal) (ports.KillLevel, error) {
+	m.varCalls++
+	if m.varLevel != "" {
+		return m.varLevel, nil
+	}
 	return m.blockedLevel, nil
 }
 
 func (m *mockRiskGate) CheckDrawdown(ctx context.Context, peakValue, currentValue decimal.Decimal, isWeekly bool) (ports.KillLevel, error) {
+	m.drawdownCalls++
+	if m.drawdownLevel != "" {
+		return m.drawdownLevel, nil
+	}
 	return m.blockedLevel, nil
 }
 
 func (m *mockRiskGate) CheckExposure(ctx context.Context, totalExposure, totalBudget decimal.Decimal) (ports.KillLevel, error) {
+	m.exposureCalls++
+	if m.exposureLevel != "" {
+		return m.exposureLevel, nil
+	}
 	return m.blockedLevel, nil
 }
 
@@ -322,6 +341,37 @@ func TestLoop_TotalExposureExceeded_NoBroadcast(t *testing.T) {
 	if broadcaster.sendCalls != 0 {
 		t.Errorf("expected 0 broadcast calls, got %d", broadcaster.sendCalls)
 	}
+}
+
+func TestLoop_RiskChecksBlockBeforeSimulation(t *testing.T) {
+	riskGate := &mockRiskGate{varLevel: ports.KillLevelWarn}
+	simulator := &mockSimulator{resultValid: true}
+	orderMgr := &mockOrderManager{}
+
+	loop := NewMainLoop(MainLoopConfig{
+		TickInterval:      1 * time.Minute,
+		Broadcaster:       &mockBroadcaster{},
+		RiskGate:          riskGate,
+		AllocationManager: &mockAllocationManager{perPoolLimit: decimal.NewFromInt(50)},
+		Simulator:         simulator,
+		ApproveTracker:    &mockApproveTracker{approved: true},
+		OrderManager:      orderMgr,
+		Scanner:           &mockScanner{},
+		Metrics:           &mockMetrics{},
+	})
+
+	pool := domain.Pool{
+		ID:     "pool-risk-check",
+		Tier_:  domain.TierC,
+		TVLUSD: domain.MustDecimal("10000"),
+	}
+
+	allowed, err := loop.EvaluatePool(context.Background(), pool)
+	require.NoError(t, err)
+	require.False(t, allowed)
+	require.Equal(t, 1, riskGate.varCalls)
+	require.Equal(t, 0, orderMgr.submitCalls)
+	require.Equal(t, false, simulator.shouldFail)
 }
 
 // TestLoop_SimulateFails_NoBroadcast verifies simulation failure blocks broadcast

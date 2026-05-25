@@ -11,9 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Test_ModeMismatchPanic tests that Load panics when the config's mode.expected
-// does not match the expectedMode parameter.
-func Test_ModeMismatchPanic(t *testing.T) {
+func Test_ModeMismatchReturnsError(t *testing.T) {
 	// Create a temporary config file with mode.expected = "live"
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "config.toml")
@@ -26,14 +24,12 @@ log_level = "info"
 `), 0644)
 	require.NoError(t, err)
 
-	// Calling Load with expectedMode="dryrun" should panic
-	assert.Panics(t, func() {
-		Load(configPath, "dryrun")
-	}, "Load should panic when mode.expected does not match expectedMode")
+	_, err = Load(configPath, "dryrun")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "mode mismatch")
 }
 
-// Test_ModeMatchNoPanic tests that Load does not panic when modes match.
-func Test_ModeMatchNoPanic(t *testing.T) {
+func Test_ModeMatchLoads(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "config.toml")
 	err := os.WriteFile(configPath, []byte(`
@@ -45,12 +41,9 @@ log_level = "debug"
 `), 0644)
 	require.NoError(t, err)
 
-	// This should not panic
-	require.NotPanics(t, func() {
-		cfg, err := Load(configPath, "dryrun")
-		require.NoError(t, err)
-		assert.Equal(t, "dryrun", cfg.Mode.Expected)
-	}, "Load should not panic when modes match")
+	cfg, err := Load(configPath, "dryrun")
+	require.NoError(t, err)
+	assert.Equal(t, "dryrun", cfg.Mode.Expected)
 }
 
 // Test_EnvInterpolation tests that environment variables are correctly interpolated.
@@ -96,8 +89,7 @@ sqlite_path = "${TEST_SQLITE_PATH}"
 	assert.Equal(t, "/tmp/test.db", cfg.Store.SQLitePath)
 }
 
-// Test_EnvInterpolationMissingVar tests that missing env vars result in empty string.
-func Test_EnvInterpolationMissingVar(t *testing.T) {
+func Test_EnvInterpolationMissingVarFailsClosed(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "config.toml")
 	configContent := `
@@ -110,15 +102,13 @@ rpc_primary = "${NONEXISTENT_VAR_12345}"
 	err := os.WriteFile(configPath, []byte(configContent), 0644)
 	require.NoError(t, err)
 
-	// NONEXISTENT_VAR_12345 is not set, so it should interpolate to empty string
-	cfg, err := Load(configPath, "dryrun")
-	require.NoError(t, err)
-	assert.Equal(t, "", cfg.Chains.Base.RPCPrimary)
+	_, err = Load(configPath, "dryrun")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "missing required environment variable")
+	assert.Contains(t, err.Error(), "NONEXISTENT_VAR_12345")
 }
 
-// Test_SHA256MismatchPanic tests that for live mode, sha256 checksum verification
-// is performed and mismatches cause panic.
-func Test_SHA256MismatchPanic(t *testing.T) {
+func Test_SHA256MismatchReturnsError(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "config.live.toml")
 	sha256Path := filepath.Join(tmpDir, "config.live.toml.sha256")
@@ -138,14 +128,12 @@ log_level = "info"
 	err = os.WriteFile(sha256Path, []byte("deadbeefcafebabe0000000000000000000000000000000000000000000000\n"), 0644)
 	require.NoError(t, err)
 
-	// Loading live config with wrong sha256 should panic
-	assert.Panics(t, func() {
-		Load(configPath, "live")
-	}, "Load should panic when sha256 checksum does not match")
+	_, err = Load(configPath, "live")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "sha256 mismatch")
 }
 
-// Test_SHA256MatchNoPanic tests that correct sha256 allows loading.
-func Test_SHA256MatchNoPanic(t *testing.T) {
+func Test_SHA256MatchLoads(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "config.live.toml")
 	sha256Path := filepath.Join(tmpDir, "config.live.toml.sha256")
@@ -166,12 +154,41 @@ log_level = "info"
 	err = os.WriteFile(sha256Path, []byte(sha256Hex), 0644)
 	require.NoError(t, err)
 
-	// This should not panic
-	require.NotPanics(t, func() {
-		cfg, err := Load(configPath, "live")
-		require.NoError(t, err)
-		assert.Equal(t, "live", cfg.Mode.Expected)
-	}, "Load should not panic when sha256 matches")
+	cfg, err := Load(configPath, "live")
+	require.NoError(t, err)
+	assert.Equal(t, "live", cfg.Mode.Expected)
+}
+
+func Test_SHA256UsesInterpolatedContent(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config.live.toml")
+	sha256Path := filepath.Join(tmpDir, "config.live.toml.sha256")
+
+	configContent := `
+[mode]
+expected = "live"
+
+[store]
+postgres_dsn = "${TEST_POSTGRES_DSN}"
+`
+	require.NoError(t, os.WriteFile(configPath, []byte(configContent), 0644))
+
+	os.Setenv("TEST_POSTGRES_DSN", "postgres://user:pass@db.internal/lpbot")
+	defer os.Unsetenv("TEST_POSTGRES_DSN")
+
+	effective := `
+[mode]
+expected = "live"
+
+[store]
+postgres_dsn = "postgres://user:pass@db.internal/lpbot"
+`
+	hash := sha256.Sum256([]byte(effective))
+	require.NoError(t, os.WriteFile(sha256Path, []byte(fmt.Sprintf("%x\n", hash)), 0644))
+
+	cfg, err := Load(configPath, "live")
+	require.NoError(t, err)
+	assert.Equal(t, "postgres://user:pass@db.internal/lpbot", cfg.Store.PostgresDSN)
 }
 
 // Test_LoadNonExistentFile tests that loading a non-existent file returns error.

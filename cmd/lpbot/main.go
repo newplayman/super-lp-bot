@@ -11,6 +11,7 @@ import (
 	"math/big"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -31,6 +32,7 @@ import (
 	"github.com/lpbot/lpbot/internal/core/risk"
 	"github.com/lpbot/lpbot/internal/core/scanner"
 	"github.com/lpbot/lpbot/internal/core/strategy"
+	"github.com/lpbot/lpbot/internal/core/watchdog"
 	"github.com/lpbot/lpbot/internal/domain"
 	"github.com/lpbot/lpbot/internal/platform/config"
 	"github.com/lpbot/lpbot/internal/platform/log"
@@ -62,11 +64,13 @@ type App struct {
 	liveGate       *liveSafetyGate
 	rpc            map[string]*rpc.RoundRobinProvider
 	redis          *platformredis.Runtime
+	alerter        ports.Alerter
 	store          ports.Store
 	datasource     *geckoterminal.Adapter
 	scanner        scanner.Scanner
 	strategy       strategy.Strategy
 	mainLoop       *loop.MainLoop
+	watchdog       watchdog.Watchdog
 	metricsSrv     *http.Server
 	cancel         context.CancelFunc
 	wg             sync.WaitGroup
@@ -407,6 +411,66 @@ func maskAddress(value string) string {
 	return trimmed[:6] + "..." + trimmed[len(trimmed)-4:]
 }
 
+func sanitizeEndpointForLog(value string) string {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return ""
+	}
+	parsed, err := url.Parse(trimmed)
+	if err != nil {
+		return "redacted"
+	}
+	host := parsed.Hostname()
+	if host == "" {
+		return "redacted"
+	}
+	if parsed.Path == "" && parsed.RawQuery == "" {
+		return host
+	}
+	sum := sha256.Sum256([]byte(parsed.Path + "?" + parsed.RawQuery))
+	return fmt.Sprintf("%s#%s", host, hex.EncodeToString(sum[:])[:8])
+}
+
+func pctOrDefault(value int, fallback string) domain.Decimal {
+	if value <= 0 {
+		return domain.MustDecimal(fallback)
+	}
+	return domain.NewDecimalFromInt(int64(value)).Div(domain.NewDecimalFromInt(100))
+}
+
+func riskConfigFromSettings(cfg *config.Config) risk.RiskConfig {
+	if cfg == nil {
+		return risk.DefaultRiskConfig()
+	}
+	return risk.RiskConfig{
+		VaRWarnPct:        pctOrDefault(cfg.Risk.VarWarnPct, "0.08"),
+		VaRKillPct:        pctOrDefault(cfg.Risk.VarKillPct, "0.12"),
+		DailyDDKillPct:    pctOrDefault(cfg.Risk.DailyDDKillPct, "0.05"),
+		WeeklyDDFreezePct: pctOrDefault(cfg.Risk.WeeklyDDFreezePct, "0.10"),
+		TotalExposurePct:  pctOrDefault(cfg.Risk.TotalExposurePct, "0.30"),
+		MaxSingleTradeUSD: domain.NewDecimalFromFloat(positiveFloatOrDefault(cfg.Live.MaxOrderUSD, 1)),
+	}
+}
+
+func allocationConfigFromSettings(cfg *config.Config) risk.AllocationConfig {
+	defaults := risk.DefaultAllocationConfig()
+	if cfg == nil {
+		return defaults
+	}
+	defaults.TierALimit = domain.NewDecimalFromFloat(positiveFloatOrDefault(cfg.TierA.MaxPerPoolUSD, 1))
+	defaults.TierBLimit = domain.NewDecimalFromFloat(positiveFloatOrDefault(cfg.TierB.MaxPerPoolUSD, 1))
+	defaults.TierCLimit = domain.NewDecimalFromFloat(positiveFloatOrDefault(cfg.TierC.MaxPerPoolUSD, 1))
+	defaults.MaxExposure = pctOrDefault(cfg.Risk.TotalExposurePct, "0.30")
+	return defaults
+}
+
+func positiveFloatOrDefault(value float64, fallback float64) float64 {
+	if value > 0 {
+		return value
+	}
+	return fallback
+}
+
 // minimalConfig creates a config with only the store field for testing.
 func minimalConfig(sqlitePath string) *config.Config {
 	return &config.Config{
@@ -443,23 +507,27 @@ func Run(ctx context.Context, logger *zap.Logger, cfg *config.Config) int {
 	}
 
 	app := &App{logger: logger, config: cfg, liveGate: newLiveSafetyGate(BuildMode, cfg)}
+	app.alerter = initAlerter(logger, cfg)
 	defer app.cleanup()
 
 	// Initialize adapters
 	if err := app.initAdapters(ctx); err != nil {
 		logger.Error("failed to initialize adapters", zap.Error(err))
+		app.sendAlert(ports.AlertP0, "startup", fmt.Sprintf("adapter initialization failed: %v", err))
 		return 1
 	}
 
 	// Initialize core modules
 	if err := app.initCore(ctx); err != nil {
 		logger.Error("failed to initialize core modules", zap.Error(err))
+		app.sendAlert(ports.AlertP0, "startup", fmt.Sprintf("core initialization failed: %v", err))
 		return 1
 	}
 
 	// Wire the main loop with all components (TR-01 wiring)
 	if err := app.wireMainLoop(ctx); err != nil {
 		logger.Error("failed to wire main loop", zap.Error(err))
+		app.sendAlert(ports.AlertP0, "startup", fmt.Sprintf("main loop wiring failed: %v", err))
 		return 1
 	}
 
@@ -520,7 +588,7 @@ func (app *App) initAdapters(ctx context.Context) error {
 		}
 		app.rpc["base"] = provider
 		app.logger.Info("Base RPC provider initialized",
-			zap.String("primary", provider.Endpoint()),
+			zap.String("primary", sanitizeEndpointForLog(provider.Endpoint())),
 			zap.Int("endpoints", len(baseEndpoints)))
 	}
 
@@ -692,13 +760,7 @@ func (app *App) wireMainLoop(ctx context.Context) error {
 	}
 
 	// Create RiskGate with config from settings
-	riskConfig := risk.RiskConfig{
-		VaRWarnPct:        domain.MustDecimal("0.08"),
-		VaRKillPct:        domain.MustDecimal("0.12"),
-		DailyDDKillPct:    domain.MustDecimal("0.05"),
-		WeeklyDDFreezePct: domain.MustDecimal("0.10"),
-		TotalExposurePct:  domain.MustDecimal("0.30"),
-	}
+	riskConfig := riskConfigFromSettings(app.config)
 	var riskRepo ports.RiskRepo
 	if app.store != nil {
 		riskRepo = app.store.RiskRepo()
@@ -713,12 +775,7 @@ func (app *App) wireMainLoop(ctx context.Context) error {
 	riskGateAdapter := &riskGateAdapter{riskGate: riskGate}
 
 	// Create AllocationManager with config from settings
-	allocConfig := risk.AllocationConfig{
-		TierALimit:  domain.MustDecimal("1000"),
-		TierBLimit:  domain.MustDecimal("200"),
-		TierCLimit:  domain.MustDecimal("50"),
-		MaxExposure: domain.MustDecimal("0.30"),
-	}
+	allocConfig := allocationConfigFromSettings(app.config)
 	allocManager := risk.NewAllocationManagerWithRepo(allocConfig, app.store.PositionRepo())
 	if app.logger != nil {
 		app.logger.Info("AllocationManager wired (per-pool + total exposure checks)")
@@ -803,6 +860,7 @@ func (app *App) wireMainLoop(ctx context.Context) error {
 	if app.logger != nil {
 		app.logger.Info("Main loop wired successfully")
 	}
+	app.watchdog = watchdog.NewDefaultWatchdogWithRiskGate(riskGate)
 
 	return nil
 }
@@ -824,8 +882,28 @@ func (app *App) startWorkers(ctx context.Context) {
 		app.runStrategyLoop(ctx)
 	}()
 
+	// Scanner heartbeat worker keeps pool cache warm and provides additional
+	// evidence when external issues appear in scan steps.
+	app.wg.Add(1)
+	go func() {
+		defer app.wg.Done()
+		app.runScannerLoop(ctx)
+	}()
+
+	if app.watchdog != nil {
+		app.wg.Add(1)
+		go func() {
+			defer app.wg.Done()
+			if err := app.watchdog.Run(ctx); err != nil && ctx.Err() == nil {
+				app.logger.Error("watchdog exited", zap.Error(err))
+				app.sendAlert(ports.AlertP1, "watchdog", fmt.Sprintf("watchdog exited: %v", err))
+			}
+		}()
+	}
+
 	app.logger.Info("workers started",
-		zap.String("strategy_interval", "1m"))
+		zap.String("strategy_interval", "1m"),
+		zap.String("scanner_interval", "5m"))
 }
 
 // runScannerLoop runs the scanner periodically.
@@ -843,6 +921,7 @@ func (app *App) runScannerLoop(ctx context.Context) {
 		case <-ticker.C:
 			if err := app.scanner.Run(ctx); err != nil {
 				app.logger.Error("scanner run error", zap.Error(err))
+				app.sendAlert(ports.AlertP1, "scanner", fmt.Sprintf("scanner run failed: %v", err))
 			}
 		}
 	}
@@ -881,6 +960,7 @@ func (app *App) evaluateStrategies(ctx context.Context) {
 	scoredPools, err := app.scanner.ScanOnce(ctx)
 	if err != nil {
 		app.logger.Error("shadow scan failed", zap.Error(err))
+		app.sendAlert(ports.AlertP1, "shadow_strategy_scan", fmt.Sprintf("scanner ScanOnce failed: %v", err))
 		return
 	}
 	scoredPools = app.extendShadowScoredPoolsWithActivePositions(ctx, scoredPools)
@@ -931,6 +1011,7 @@ func (app *App) evaluateStrategies(ctx context.Context) {
 			trace.PipelineReason = err.Error()
 			trace.FinalAction = "skip"
 			traces = append(traces, trace)
+			app.sendAlert(ports.AlertP1, "shadow_strategy", fmt.Sprintf("strategy evaluation failed: pool=%s reason=%s", pool.Key(), err))
 			app.logger.Warn("shadow strategy evaluation failed",
 				zap.String("pool", pool.Key()),
 				zap.Error(err))
@@ -963,6 +1044,7 @@ func (app *App) evaluateStrategies(ctx context.Context) {
 			continue
 		}
 
+		app.sendAlert(ports.AlertP1, "shadow_pipeline", fmt.Sprintf("pipeline reject pool=%s stage=%s reason=%s", pool.Key(), pipeline.Stage, pipeline.Reason))
 		app.logger.Warn("shadow pipeline evaluation failed",
 			zap.String("pool", pool.Key()),
 			zap.String("stage", pipeline.Stage),

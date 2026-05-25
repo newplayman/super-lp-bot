@@ -119,6 +119,26 @@ func TestRiskGateCheckDrawdownFreeze(t *testing.T) {
 	require.Equal(t, ports.KillLevelFreeze, level)
 }
 
+func TestRiskGateVaRRecoveryDoesNotClearWeeklyDrawdownFreeze(t *testing.T) {
+	config := risk.DefaultRiskConfig()
+	config.WeeklyDDFreezePct = decimal.NewFromFloat(0.10)
+	g := risk.NewRiskGateWithConfig(nil, config)
+	ctx := context.Background()
+
+	level, err := g.CheckDrawdown(ctx, decimal.NewFromInt(10000), decimal.NewFromInt(8900), true)
+	require.NoError(t, err)
+	require.Equal(t, ports.KillLevelFreeze, level)
+
+	level, err = g.CheckVaR(ctx, decimal.NewFromInt(10000), decimal.NewFromInt(100))
+	require.NoError(t, err)
+	require.Equal(t, ports.KillLevelOK, level)
+
+	state, err := g.GetState(ctx)
+	require.NoError(t, err)
+	require.Equal(t, ports.KillLevelFreeze, state.Level)
+	require.Contains(t, state.Sources, ports.RiskSourceWeeklyDD)
+}
+
 // TestRiskGateIsBlocked verifies block check.
 func TestRiskGateIsBlocked(t *testing.T) {
 	g := risk.NewRiskGate(nil)

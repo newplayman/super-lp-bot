@@ -134,8 +134,7 @@ func TestKMSWalletRevokeStub(t *testing.T) {
 	require.True(t, errors.Is(err, kms.ErrNotImplemented))
 }
 
-// TestKMSWalletSignStub verifies Sign returns stub signature when open.
-func TestKMSWalletSignStub(t *testing.T) {
+func TestKMSWalletSignReturnsNotImplemented(t *testing.T) {
 	provider := kms.NewKMSWalletProvider()
 	wallet, err := provider.Open(context.Background(), ports.WalletConfig{
 		KMSKeyID: "key-12345",
@@ -144,14 +143,13 @@ func TestKMSWalletSignStub(t *testing.T) {
 	require.NoError(t, err)
 
 	require.NoError(t, wallet.Open(context.Background()))
-	signed, err := wallet.Sign(context.Background(), domain.UnsignedTx{
+	_, err = wallet.Sign(context.Background(), domain.UnsignedTx{
 		Chain:  domain.ChainBase,
 		Nonce:  42,
 		MinOut: domain.MustDecimal("100"),
 	})
-	require.NoError(t, err)
-	require.NotEmpty(t, signed.Signature)
-	require.NotEmpty(t, signed.Hash)
+	require.Error(t, err)
+	require.True(t, errors.Is(err, kms.ErrNotImplemented))
 }
 
 // TestKMSWalletChain verifies Chain returns correct chain ID.

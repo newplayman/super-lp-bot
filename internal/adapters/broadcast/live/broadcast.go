@@ -286,7 +286,7 @@ func (b *broadcaster) broadcastSolana(ctx context.Context, signedTx []byte) (str
 		ctx,
 		&solTx,
 		rpc.TransactionOpts{
-			SkipPreflight: true,
+			SkipPreflight: b.solanaSkipPreflight,
 		},
 	)
 	if err != nil {

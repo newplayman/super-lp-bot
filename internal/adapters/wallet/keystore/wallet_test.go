@@ -5,6 +5,7 @@ import (
 	"errors"
 	"math/big"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -365,6 +366,35 @@ func TestWallet_ProviderType(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, "keystore", provider.Type())
+}
+
+func TestWallet_Open_RejectsInsecureFilePermissions(t *testing.T) {
+	passphrase := "test-passphrase-123"
+	tmpDir, _ := setupTestKeystore(t, passphrase)
+
+	entries, err := os.ReadDir(tmpDir)
+	require.NoError(t, err)
+	require.NotEmpty(t, entries)
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		require.NoError(t, os.Chmod(filepath.Join(tmpDir, entry.Name()), 0644))
+	}
+
+	config := ports.WalletConfig{
+		KeystoreDir: tmpDir,
+		Passphrase:  passphrase,
+		ChainID:     domain.ChainBase,
+	}
+	provider, err := New(context.Background(), config)
+	require.NoError(t, err)
+
+	wallet, err := provider.Open(context.Background(), config)
+	require.Error(t, err)
+	require.Nil(t, wallet)
+	assert.ErrorIs(t, err, ErrPermissionsTooOpen)
 }
 
 // TestSignMessage tests the SignMessage helper method.

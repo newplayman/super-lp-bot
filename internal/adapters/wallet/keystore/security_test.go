@@ -152,7 +152,7 @@ func TestKeystore_FileMissing_Error(t *testing.T) {
 		ChainID:      domain.ChainBase,
 	})
 	assert.Error(t, err, "opening with missing file should return error")
-	assert.Contains(t, err.Error(), "failed to read")
+	assert.Contains(t, err.Error(), "keystore permission check failed")
 }
 
 // TestKeystore_PassphraseZeroedOnError verifies that the passphrase is zeroed

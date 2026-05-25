@@ -6,6 +6,11 @@ log_level = "info"
 metrics_addr = ":9090"
 dashboard_token = "${DASHBOARD_TOKEN}"
 
+[alerting]
+telegram_token = "${TELEGRAM_BOT_TOKEN}"
+telegram_chat_id = "${TELEGRAM_CHAT_ID}"
+min_interval_seconds = 60
+
 [chains.base]
 rpc_primary = "${BASE_RPC_PRIMARY}"
 # Optional fallback list, supports comma-separated URLs, e.g. "https://a,https://b"

@@ -113,6 +113,10 @@ type MainLoop struct {
 	metrics            Metrics
 }
 
+func blocksNewPositions(level ports.KillLevel) bool {
+	return level != "" && level != ports.KillLevelOK
+}
+
 // NewMainLoop creates a new MainLoop instance.
 func NewMainLoop(cfg MainLoopConfig) *MainLoop {
 	if cfg.TickInterval == 0 {
@@ -184,10 +188,29 @@ func (ml *MainLoop) EvaluatePool(ctx context.Context, pool domain.Pool) (bool, e
 		return false, nil
 	}
 
-	// Step 2: Check per-pool allocation limit (fail-closed)
-	// Get the max per-pool amount for this tier
+	// Step 2: Run explicit risk checks before any allocation/simulation work.
 	thresholds := domain.TierThresholdsFor(pool.Tier_)
 	amount := thresholds.MaxPerPoolUSD
+	if level, err := ml.RiskGate.CheckVaR(ctx, pool.TVLUSD, decimal.Zero); err != nil {
+		return false, err
+	} else if blocksNewPositions(level) {
+		ml.metrics.IncRiskBlock()
+		return false, nil
+	}
+	if level, err := ml.RiskGate.CheckDrawdown(ctx, pool.TVLUSD, pool.TVLUSD, false); err != nil {
+		return false, err
+	} else if blocksNewPositions(level) {
+		ml.metrics.IncRiskBlock()
+		return false, nil
+	}
+	if level, err := ml.RiskGate.CheckExposure(ctx, amount, decimal.NewFromInt(1000)); err != nil {
+		return false, err
+	} else if blocksNewPositions(level) {
+		ml.metrics.IncRiskBlock()
+		return false, nil
+	}
+
+	// Step 3: Check per-pool allocation limit (fail-closed)
 	candidate := riskcore.AllocationCandidate{
 		PoolID:    pool.ID,
 		Chain:     pool.Chain,
@@ -215,7 +238,7 @@ func (ml *MainLoop) EvaluatePool(ctx context.Context, pool domain.Pool) (bool, e
 		return false, nil
 	}
 
-	// Step 3: Simulate the transaction (fail-closed on simulation failure)
+	// Step 4: Simulate the transaction (fail-closed on simulation failure)
 	// For simulation, we use empty tx and block ref as placeholders
 	// In real implementation, these would be populated from the pool
 	sim, err := ml.Simulator.Simulate(ctx, domain.UnsignedTx{}, domain.BlockRef{})
@@ -228,7 +251,7 @@ func (ml *MainLoop) EvaluatePool(ctx context.Context, pool domain.Pool) (bool, e
 		return false, nil
 	}
 
-	// Step 4: Ensure approval (fail-closed on approval failure)
+	// Step 5: Ensure approval (fail-closed on approval failure)
 	if !ml.ApproveTracker.HasAllowance(pool) {
 		if err := ml.ApproveTracker.EnsureApproval(ctx, pool); err != nil {
 			ml.metrics.IncApproveFail()
@@ -236,7 +259,7 @@ func (ml *MainLoop) EvaluatePool(ctx context.Context, pool domain.Pool) (bool, e
 		}
 	}
 
-	// Step 5: Submit order via OrderManager
+	// Step 6: Submit order via OrderManager
 	thresholds = domain.TierThresholdsFor(pool.Tier_)
 	result, err := ml.OrderManager.Open(ctx, pool, thresholds.MaxPerPoolUSD)
 	if err != nil || !result.Success {

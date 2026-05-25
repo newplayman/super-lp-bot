@@ -13,7 +13,6 @@ package keystore
 import (
 	"context"
 	"crypto/ecdsa"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -154,6 +153,9 @@ func (p *WalletProvider) Open(_ context.Context, config ports.WalletConfig) (por
 	}
 
 	keyPath := filepath.Join(p.keyDir, keyFile)
+	if err := CheckFilePermissions(keyPath); err != nil {
+		return nil, fmt.Errorf("keystore permission check failed: %w", err)
+	}
 
 	// Load and decrypt keystore
 	keyJSON, err := os.ReadFile(keyPath)
@@ -419,25 +421,6 @@ func chainIDToBigInt(chainID domain.ChainID) (*big.Int, error) {
 	default:
 		return nil, fmt.Errorf("%w: %s", ErrInvalidChainID, chainID)
 	}
-}
-
-// ExportKey exports the decrypted key as JSON for backup.
-// SECURITY WARNING: This exposes the private key - use with extreme caution.
-func (w *keystoreWallet) ExportKey() ([]byte, error) {
-	if w.key == nil {
-		return nil, ErrWalletNotOpen
-	}
-
-	return json.Marshal(w.key)
-}
-
-// PrivateKey returns the underlying private key.
-// SECURITY WARNING: This exposes the private key - use with extreme caution.
-func (w *keystoreWallet) PrivateKey() *ecdsa.PrivateKey {
-	if w.key == nil {
-		return nil
-	}
-	return w.key.PrivateKey
 }
 
 // PublicKey returns the underlying public key.

@@ -7,7 +7,6 @@ package kms
 import (
 	"context"
 	"errors"
-	"fmt"
 	"math/big"
 
 	"github.com/lpbot/lpbot/internal/domain"
@@ -105,13 +104,9 @@ func (w *KMSWallet) Sign(ctx context.Context, tx domain.UnsignedTx) (domain.Sign
 		return domain.SignedTx{}, ErrNotOpen
 	}
 
-	// Phase 4 stub: actual signing with AWS KMS
-	// TODO(milestone-4): Call AWS KMS Sign API with tx.ToProto()
-	return domain.SignedTx{
-		UnsignedTx: tx,
-		Signature:  []byte("stub-signature"),
-		Hash:       fmt.Sprintf("0xstub-%d", tx.Nonce),
-	}, nil
+	_ = ctx
+	_ = tx
+	return domain.SignedTx{}, ErrNotImplemented
 }
 
 // ApproveExact returns an approval transaction for the exact amount.

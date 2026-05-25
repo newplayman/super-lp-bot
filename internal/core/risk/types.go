@@ -118,6 +118,92 @@ type RiskGate struct {
 	blockReason RiskReason
 }
 
+func uniqueSources(sources []ports.RiskSource) []ports.RiskSource {
+	seen := make(map[ports.RiskSource]struct{}, len(sources))
+	result := make([]ports.RiskSource, 0, len(sources))
+	for _, source := range sources {
+		if source == "" {
+			continue
+		}
+		if _, ok := seen[source]; ok {
+			continue
+		}
+		seen[source] = struct{}{}
+		result = append(result, source)
+	}
+	return result
+}
+
+func levelForSources(sources []ports.RiskSource) ports.KillLevel {
+	level := ports.KillLevelOK
+	for _, source := range sources {
+		switch source {
+		case ports.RiskSourceDailyDD, ports.RiskSourceManual:
+			return ports.KillLevelKill
+		case ports.RiskSourceWeeklyDD:
+			if level != ports.KillLevelKill {
+				level = ports.KillLevelFreeze
+			}
+		case ports.RiskSourceVaR, ports.RiskSourceExecutionStuck, ports.RiskSourceRecon, ports.RiskSourceDatasource:
+			if level == ports.KillLevelOK {
+				level = ports.KillLevelWarn
+			}
+		}
+	}
+	return level
+}
+
+func killLevelSeverity(level ports.KillLevel) int {
+	switch level {
+	case ports.KillLevelKill:
+		return 3
+	case ports.KillLevelFreeze:
+		return 2
+	case ports.KillLevelWarn:
+		return 1
+	default:
+		return 0
+	}
+}
+
+func (g *RiskGate) persistState(ctx context.Context) error {
+	if g.repo != nil {
+		return g.repo.UpsertKillState(ctx, g.state)
+	}
+	return nil
+}
+
+func (g *RiskGate) setSourceState(ctx context.Context, source ports.RiskSource, level ports.KillLevel, reason string) error {
+	sources := uniqueSources(append(g.state.Sources, source))
+	if inferred := levelForSources(sources); killLevelSeverity(inferred) > killLevelSeverity(level) {
+		level = inferred
+	}
+	g.state = ports.KillState{
+		Level:   level,
+		Sources: sources,
+		Since:   time.Now(),
+		Reason:  reason,
+	}
+	return g.persistState(ctx)
+}
+
+func (g *RiskGate) clearSourceState(ctx context.Context, source ports.RiskSource, reason string) error {
+	filtered := make([]ports.RiskSource, 0, len(g.state.Sources))
+	for _, active := range g.state.Sources {
+		if active != source {
+			filtered = append(filtered, active)
+		}
+	}
+	filtered = uniqueSources(filtered)
+	g.state = ports.KillState{
+		Level:   levelForSources(filtered),
+		Sources: filtered,
+		Since:   time.Now(),
+		Reason:  reason,
+	}
+	return g.persistState(ctx)
+}
+
 // NewRiskGate creates a new RiskGate.
 func NewRiskGate(repo ports.RiskRepo) *RiskGate {
 	return &RiskGate{
@@ -158,23 +244,28 @@ func (g *RiskGate) CheckVaR(ctx context.Context, totalValue, realizedLoss decima
 	lossPct := realizedLoss.Div(totalValue).Abs()
 
 	if lossPct.GreaterThanOrEqual(g.config.VaRKillPct) {
-		g.state = ports.KillState{Level: ports.KillLevelKill, Sources: []ports.RiskSource{ports.RiskSourceVaR}, Since: time.Now(), Reason: "VaR kill exceeded"}
-		if g.repo != nil { g.repo.UpsertKillState(ctx, g.state) }
+		if err := g.setSourceState(ctx, ports.RiskSourceVaR, ports.KillLevelKill, "VaR kill exceeded"); err != nil {
+			return ports.KillLevelKill, err
+		}
 		return ports.KillLevelKill, nil
 	}
 
 	if lossPct.GreaterThanOrEqual(g.config.VaRWarnPct) {
-		if g.state.Level != ports.KillLevelWarn {
-			g.state = ports.KillState{Level: ports.KillLevelWarn, Sources: []ports.RiskSource{ports.RiskSourceVaR}, Since: time.Now(), Reason: "VaR warn exceeded"}
-			if g.repo != nil { g.repo.UpsertKillState(ctx, g.state) }
+		if g.state.Level != ports.KillLevelWarn || len(g.state.Sources) == 0 {
+			if err := g.setSourceState(ctx, ports.RiskSourceVaR, ports.KillLevelWarn, "VaR warn exceeded"); err != nil {
+				return ports.KillLevelWarn, err
+			}
 		}
 		return ports.KillLevelWarn, nil
 	}
 
-	// Auto-recovery
-	if g.state.Level == ports.KillLevelWarn || g.state.Level == ports.KillLevelFreeze {
-		g.state = ports.KillState{Level: ports.KillLevelOK, Since: time.Now(), Reason: "VaR normalized"}
-		if g.repo != nil { g.repo.UpsertKillState(ctx, g.state) }
+	for _, source := range g.state.Sources {
+		if source == ports.RiskSourceVaR {
+			if err := g.clearSourceState(ctx, ports.RiskSourceVaR, "VaR normalized"); err != nil {
+				return ports.KillLevelOK, err
+			}
+			break
+		}
 	}
 
 	return ports.KillLevelOK, nil
@@ -206,9 +297,19 @@ func (g *RiskGate) CheckDrawdown(ctx context.Context, peakValue, currentValue de
 		if !isWeekly {
 			level = ports.KillLevelKill
 		}
-		g.state = ports.KillState{Level: level, Sources: []ports.RiskSource{source}, Since: time.Now(), Reason: "Drawdown exceeded"}
-		if g.repo != nil { g.repo.UpsertKillState(ctx, g.state) }
+		if err := g.setSourceState(ctx, source, level, "Drawdown exceeded"); err != nil {
+			return level, err
+		}
 		return level, nil
+	}
+
+	for _, active := range g.state.Sources {
+		if active == source {
+			if err := g.clearSourceState(ctx, source, "Drawdown normalized"); err != nil {
+				return ports.KillLevelOK, err
+			}
+			break
+		}
 	}
 
 	return ports.KillLevelOK, nil
@@ -226,9 +327,19 @@ func (g *RiskGate) CheckExposure(ctx context.Context, totalExposure, totalBudget
 	exposurePct := totalExposure.Div(totalBudget)
 
 	if exposurePct.GreaterThanOrEqual(g.config.TotalExposurePct) {
-		g.state = ports.KillState{Level: ports.KillLevelWarn, Sources: []ports.RiskSource{ports.RiskSourceManual}, Since: time.Now(), Reason: "Exposure exceeded"}
-		if g.repo != nil { g.repo.UpsertKillState(ctx, g.state) }
+		if err := g.setSourceState(ctx, ports.RiskSourceRecon, ports.KillLevelWarn, "Exposure exceeded"); err != nil {
+			return ports.KillLevelWarn, err
+		}
 		return ports.KillLevelWarn, nil
+	}
+
+	for _, source := range g.state.Sources {
+		if source == ports.RiskSourceRecon {
+			if err := g.clearSourceState(ctx, ports.RiskSourceRecon, "Exposure normalized"); err != nil {
+				return ports.KillLevelOK, err
+			}
+			break
+		}
 	}
 
 	return ports.KillLevelOK, nil
@@ -239,11 +350,7 @@ func (g *RiskGate) RaiseKill(ctx context.Context, reason string) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
-	g.state = ports.KillState{Level: ports.KillLevelKill, Sources: []ports.RiskSource{ports.RiskSourceManual}, Since: time.Now(), Reason: reason}
-	if g.repo != nil {
-		return g.repo.UpsertKillState(ctx, g.state)
-	}
-	return nil
+	return g.setSourceState(ctx, ports.RiskSourceManual, ports.KillLevelKill, reason)
 }
 
 // LowerWarn lowers the kill switch from warn to ok.
@@ -255,10 +362,7 @@ func (g *RiskGate) LowerWarn(ctx context.Context) error {
 		return nil
 	}
 	g.state = ports.KillState{Level: ports.KillLevelOK, Since: time.Now(), Reason: "Risk normalized"}
-	if g.repo != nil {
-		return g.repo.UpsertKillState(ctx, g.state)
-	}
-	return nil
+	return g.persistState(ctx)
 }
 
 // IsBlocked returns true if the kill state blocks new positions.

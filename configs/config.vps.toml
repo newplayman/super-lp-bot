@@ -11,6 +11,11 @@ postgres_dsn = "${DATABASE_URL}"
 [platform]
 log_level = "debug"
 
+[alerting]
+telegram_token = "${TELEGRAM_BOT_TOKEN}"
+telegram_chat_id = "${TELEGRAM_CHAT_ID}"
+min_interval_seconds = 60
+
 [chains.base]
 rpc_primary = ""  # Set your Base RPC endpoint
 rpc_fallback = []

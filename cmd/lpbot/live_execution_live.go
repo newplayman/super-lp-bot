@@ -54,7 +54,7 @@ func configureLiveExecution(ctx context.Context, app *App, orderManager *orderMa
 	app.logger.Info("live execution path wired",
 		zap.String("backend", app.liveGate.executionBackend),
 		zap.String("wallet", maskAddress(wallet.Address().String())),
-		zap.String("base_rpc", liveBaseRPCURL(app)))
+		zap.String("base_rpc", sanitizeEndpointForLog(liveBaseRPCURL(app))))
 	return nil
 }
 

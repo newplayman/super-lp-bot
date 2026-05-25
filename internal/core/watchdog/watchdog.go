@@ -15,6 +15,7 @@ package watchdog
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -153,24 +154,56 @@ func (w *defaultWatchdog) runInvariantChecks(ctx context.Context) ([]CheckResult
 	w.lastCheck[CheckNormal] = now
 	w.mu.Unlock()
 
-	return []CheckResult{
+	results := []CheckResult{
 		{
 			Type:      CheckTypeExecutionStuck,
 			Passed:    true,
 			Level:     ports.AlertP2,
-			Reason:    "No execution stuck",
+			Reason:    "no execution-stuck source active",
 			Timestamp: now,
-			TraceID:   "",
 		},
 		{
 			Type:      CheckTypeRPCConnectivity,
-			Passed:    true,
+			Passed:    ctx.Err() == nil,
 			Level:     ports.AlertP2,
-			Reason:    "RPC connected",
+			Reason:    "runtime context healthy",
 			Timestamp: now,
-			TraceID:   "",
 		},
-	}, nil
+	}
+
+	if ctx.Err() != nil {
+		results[1].Reason = ctx.Err().Error()
+	}
+
+	if w.riskGate == nil {
+		return results, nil
+	}
+
+	state, err := w.riskGate.GetState(ctx)
+	if err != nil {
+		results[0].Passed = false
+		results[0].Level = ports.AlertP1
+		results[0].Reason = fmt.Sprintf("risk state unavailable: %v", err)
+		results[1].Passed = false
+		results[1].Level = ports.AlertP1
+		results[1].Reason = fmt.Sprintf("risk state unavailable: %v", err)
+		return results, nil
+	}
+
+	for _, source := range state.Sources {
+		switch source {
+		case ports.RiskSourceExecutionStuck:
+			results[0].Passed = false
+			results[0].Level = ports.AlertP1
+			results[0].Reason = "execution_stuck source active in kill state"
+		case ports.RiskSourceDatasource:
+			results[1].Passed = false
+			results[1].Level = ports.AlertP1
+			results[1].Reason = "datasource source active in kill state"
+		}
+	}
+
+	return results, nil
 }
 
 // runHealthCheck runs health checks.
@@ -208,6 +241,14 @@ func (w *defaultWatchdog) runHealthCheck(ctx context.Context) []CheckResult {
 				Timestamp: now,
 				TraceID:   "",
 			})
+		} else {
+			results = append(results, CheckResult{
+				Type:      CheckTypeTotalExposure,
+				Passed:    false,
+				Level:     ports.AlertP1,
+				Reason:    fmt.Sprintf("kill state unavailable: %v", err),
+				Timestamp: now,
+			})
 		}
 	}
 
@@ -221,14 +262,31 @@ func (w *defaultWatchdog) runMetricsCheck(ctx context.Context) []CheckResult {
 	w.lastCheck[CheckSlow] = now
 	w.mu.Unlock()
 
-	return []CheckResult{
-		{
-			Type:      CheckTypePendingTimeout,
-			Passed:    true,
-			Level:     ports.AlertP2,
-			Reason:    "No pending timeout",
-			Timestamp: now,
-			TraceID:   "",
-		},
+	result := CheckResult{
+		Type:      CheckTypePendingTimeout,
+		Passed:    true,
+		Level:     ports.AlertP2,
+		Reason:    "no pending-timeout source active",
+		Timestamp: now,
 	}
+
+	if w.riskGate != nil {
+		state, err := w.riskGate.GetState(ctx)
+		if err != nil {
+			result.Passed = false
+			result.Level = ports.AlertP1
+			result.Reason = fmt.Sprintf("kill state unavailable: %v", err)
+			return []CheckResult{result}
+		}
+		for _, source := range state.Sources {
+			if source == ports.RiskSourceExecutionStuck {
+				result.Passed = false
+				result.Level = ports.AlertP1
+				result.Reason = "pending timeout inferred from execution_stuck source"
+				break
+			}
+		}
+	}
+
+	return []CheckResult{result}
 }

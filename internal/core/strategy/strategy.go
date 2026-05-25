@@ -7,6 +7,7 @@ import (
 	"sort"
 
 	"github.com/lpbot/lpbot/internal/domain"
+	platformtrace "github.com/lpbot/lpbot/internal/platform/trace"
 	"github.com/shopspring/decimal"
 )
 
@@ -370,7 +371,7 @@ func CalculateRangeFromScore(score domain.Score, tier domain.Tier) RangeParams {
 
 // generateTraceID generates a unique trace ID.
 func generateTraceID() string {
-	return "trace-1" // Simplified for Phase 1
+	return platformtrace.NewTraceID()
 }
 
 // generateReason generates a human-readable reason for the decision.
