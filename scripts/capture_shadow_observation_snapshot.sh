@@ -285,7 +285,7 @@ ranked AS (
     horizon,
     score_total,
     label,
-    net_pnl_usd,
+    CAST(simulated_net_pnl_usd AS NUMERIC) AS net_pnl_usd,
     NTILE(5) OVER (PARTITION BY horizon ORDER BY score_total ASC, decision_trace_id) AS score_ntile
   FROM shadow_outcome_labels
   WHERE label IN ('win', 'loss')
