@@ -1,3 +1,6 @@
+-- +goose Up
+-- +goose StatementBegin
+
 -- Normalize transaction audit timestamps to Unix milliseconds and clear
 -- obviously corrupted block numbers from older upsert code.
 
@@ -19,3 +22,12 @@ SET
         WHEN block_number > 1000000000 THEN NULL
         ELSE block_number
     END;
+
+-- +goose StatementEnd
+
+-- +goose Down
+-- +goose StatementBegin
+
+-- data cleanup migration is not reversible
+
+-- +goose StatementEnd

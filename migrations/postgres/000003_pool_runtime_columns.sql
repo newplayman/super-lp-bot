@@ -1,6 +1,18 @@
+-- +goose Up
+-- +goose StatementBegin
+
 ALTER TABLE pools
     ADD COLUMN IF NOT EXISTS liquidity TEXT NOT NULL DEFAULT '0',
     ADD COLUMN IF NOT EXISTS tick BIGINT NOT NULL DEFAULT 0,
     ADD COLUMN IF NOT EXISTS tvl_usd TEXT NOT NULL DEFAULT '0',
     ADD COLUMN IF NOT EXISTS vol_24h TEXT NOT NULL DEFAULT '0',
     ADD COLUMN IF NOT EXISTS fee_apr_24h TEXT NOT NULL DEFAULT '0';
+
+-- +goose StatementEnd
+
+-- +goose Down
+-- +goose StatementBegin
+
+-- additive runtime columns intentionally left in place
+
+-- +goose StatementEnd

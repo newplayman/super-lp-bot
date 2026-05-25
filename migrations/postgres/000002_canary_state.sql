@@ -1,3 +1,6 @@
+-- +goose Up
+-- +goose StatementBegin
+
 CREATE TABLE IF NOT EXISTS canary_events (
     id TEXT PRIMARY KEY,
     chain TEXT NOT NULL DEFAULT '',
@@ -31,3 +34,12 @@ CREATE INDEX IF NOT EXISTS idx_canary_events_position
     ON canary_events(position_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_canary_events_tx_hash
     ON canary_events(tx_hash);
+
+-- +goose StatementEnd
+
+-- +goose Down
+-- +goose StatementBegin
+
+DROP TABLE IF EXISTS canary_events;
+
+-- +goose StatementEnd

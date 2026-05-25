@@ -1,3 +1,6 @@
+-- +goose Up
+-- +goose StatementBegin
+
 -- PostgreSQL schema initialization for lp-bot shadow/live stores.
 -- Generated for current adapter expectations.
 
@@ -117,3 +120,19 @@ CREATE TABLE IF NOT EXISTS config_snapshots (
     trace_id TEXT,
     created_at BIGINT NOT NULL
 );
+
+-- +goose StatementEnd
+
+-- +goose Down
+-- +goose StatementBegin
+
+DROP TABLE IF EXISTS config_snapshots;
+DROP TABLE IF EXISTS kill_switch_state;
+DROP TABLE IF EXISTS risk_events;
+DROP TABLE IF EXISTS pnl_ledger;
+DROP TABLE IF EXISTS pool_score_history;
+DROP TABLE IF EXISTS pools;
+DROP TABLE IF EXISTS positions;
+DROP TABLE IF EXISTS transactions;
+
+-- +goose StatementEnd
