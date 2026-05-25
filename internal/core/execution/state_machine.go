@@ -21,15 +21,16 @@ var positionValidTransitions = map[domain.PositionStatus][]domain.PositionStatus
 // Tx state transition validation map.
 // Maps each tx status to its valid next states.
 var txValidTransitions = map[domain.TxStatus][]domain.TxStatus{
-	domain.TxBuilt:     {domain.TxBroadcast, domain.TxFailed},
-	domain.TxBroadcast: {domain.TxMined, domain.TxStuck, domain.TxReverted, domain.TxReorged},
-	domain.TxMined:     {domain.TxConfirmed, domain.TxReverted, domain.TxReorged},
-	domain.TxConfirmed: {},
-	domain.TxStuck:     {domain.TxRFBBumped, domain.TxFailed},
-	domain.TxRFBBumped: {domain.TxMined, domain.TxStuck, domain.TxFailed},
-	domain.TxFailed:    {},
-	domain.TxReverted:  {domain.TxBroadcast, domain.TxFailed},
-	domain.TxReorged:   {domain.TxBroadcast, domain.TxFailed},
+	domain.TxBuilt:            {domain.TxSubmittedPrivate, domain.TxBroadcast, domain.TxFailed},
+	domain.TxSubmittedPrivate: {domain.TxMined, domain.TxBroadcast, domain.TxStuck, domain.TxFailed, domain.TxReverted, domain.TxReorged},
+	domain.TxBroadcast:        {domain.TxMined, domain.TxStuck, domain.TxReverted, domain.TxReorged},
+	domain.TxMined:            {domain.TxConfirmed, domain.TxReverted, domain.TxReorged},
+	domain.TxConfirmed:        {},
+	domain.TxStuck:            {domain.TxRFBBumped, domain.TxFailed},
+	domain.TxRFBBumped:        {domain.TxMined, domain.TxStuck, domain.TxFailed},
+	domain.TxFailed:           {},
+	domain.TxReverted:         {domain.TxBroadcast, domain.TxFailed},
+	domain.TxReorged:          {domain.TxBroadcast, domain.TxFailed},
 }
 
 // ValidatePositionTransition checks if a position state transition is valid.

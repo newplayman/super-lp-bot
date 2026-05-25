@@ -35,7 +35,7 @@ func TestValidatePositionTransition_Valid(t *testing.T) {
 func TestValidatePositionTransition_Invalid(t *testing.T) {
 	invalidTransitions := []struct {
 		from, to domain.PositionStatus
-		desc      string
+		desc     string
 	}{
 		{domain.StatusIntended, domain.StatusOpen, "skip from intended to open"},
 		{domain.StatusIntended, domain.StatusClosed, "skip to closed"},
@@ -70,8 +70,13 @@ func TestValidateTxTransition_Valid(t *testing.T) {
 	validTransitions := []struct {
 		from, to domain.TxStatus
 	}{
+		{domain.TxBuilt, domain.TxSubmittedPrivate},
 		{domain.TxBuilt, domain.TxBroadcast},
 		{domain.TxBuilt, domain.TxFailed},
+		{domain.TxSubmittedPrivate, domain.TxMined},
+		{domain.TxSubmittedPrivate, domain.TxBroadcast},
+		{domain.TxSubmittedPrivate, domain.TxStuck},
+		{domain.TxSubmittedPrivate, domain.TxFailed},
 		{domain.TxBroadcast, domain.TxMined},
 		{domain.TxBroadcast, domain.TxStuck},
 		{domain.TxBroadcast, domain.TxReverted},
@@ -106,6 +111,7 @@ func TestValidateTxTransition_Invalid(t *testing.T) {
 	}{
 		{domain.TxBuilt, domain.TxMined, "skip to mined"},
 		{domain.TxBuilt, domain.TxConfirmed, "skip to confirmed"},
+		{domain.TxSubmittedPrivate, domain.TxConfirmed, "private submit must still confirm on-chain"},
 		{domain.TxBroadcast, domain.TxConfirmed, "must go through mined"},
 		{domain.TxBroadcast, domain.TxBuilt, "cannot go back to built"},
 		{domain.TxConfirmed, domain.TxMined, "confirmed is terminal"},
@@ -161,6 +167,7 @@ func TestIsTerminalTxStatus(t *testing.T) {
 		expect bool
 	}{
 		{domain.TxBuilt, false},
+		{domain.TxSubmittedPrivate, false},
 		{domain.TxBroadcast, false},
 		{domain.TxMined, false},
 		{domain.TxConfirmed, true},
@@ -217,7 +224,8 @@ func TestValidTxTransitions(t *testing.T) {
 		from   domain.TxStatus
 		expect []domain.TxStatus
 	}{
-		{domain.TxBuilt, []domain.TxStatus{domain.TxBroadcast, domain.TxFailed}},
+		{domain.TxBuilt, []domain.TxStatus{domain.TxSubmittedPrivate, domain.TxBroadcast, domain.TxFailed}},
+		{domain.TxSubmittedPrivate, []domain.TxStatus{domain.TxMined, domain.TxBroadcast, domain.TxStuck, domain.TxFailed, domain.TxReverted, domain.TxReorged}},
 		{domain.TxBroadcast, []domain.TxStatus{domain.TxMined, domain.TxStuck, domain.TxReverted, domain.TxReorged}},
 		{domain.TxMined, []domain.TxStatus{domain.TxConfirmed, domain.TxReverted, domain.TxReorged}},
 		{domain.TxConfirmed, nil},

@@ -8,7 +8,9 @@ import (
 )
 
 func TestTxStatus_ValidTransitions(t *testing.T) {
+	require.True(t, domain.TxBuilt.CanTransitionTo(domain.TxSubmittedPrivate))
 	require.True(t, domain.TxBuilt.CanTransitionTo(domain.TxBroadcast))
+	require.True(t, domain.TxSubmittedPrivate.CanTransitionTo(domain.TxMined))
 	require.True(t, domain.TxBroadcast.CanTransitionTo(domain.TxMined))
 	require.True(t, domain.TxBroadcast.CanTransitionTo(domain.TxStuck))
 	require.True(t, domain.TxStuck.CanTransitionTo(domain.TxRFBBumped))

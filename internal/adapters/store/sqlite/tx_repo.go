@@ -56,12 +56,17 @@ func (r *TxRepo) UpsertTx(ctx context.Context, tx domain.SignedTx) error {
 	if status == "" {
 		status = domain.TxBuilt
 	}
+	var broadcastAt interface{}
+	switch status {
+	case domain.TxSubmittedPrivate, domain.TxBroadcast, domain.TxMined, domain.TxConfirmed, domain.TxStuck, domain.TxRFBBumped, domain.TxReverted, domain.TxReorged, domain.TxFailed:
+		broadcastAt = now
+	}
 
 	_, err := r.db.ExecContext(ctx, query,
 		tx.ID, tx.Chain, tx.Hash, tx.From.String(), tx.To.String(), tx.Data, tx.Value.String(),
 		tx.Nonce, tx.Deadline, tx.MinOut.String(), tx.Signature,
-		status,        // Initial status
-		nil, nil, nil, // block refs
+		status,                // Initial status
+		nil, nil, broadcastAt, // block refs
 		nil, nil, nil, // gas
 		tx.RFBAttempts,
 		nil,      // error_msg
@@ -221,7 +226,7 @@ func (r *TxRepo) ListPendingTxs(ctx context.Context, chain domain.ChainID) ([]do
 			   gas_used, gas_price, gas_limit, rfb_attempts,
 			   error_msg, trace_id, created_at, updated_at
 		FROM %s
-		WHERE chain = ? AND status IN ('built', 'broadcast', 'mined', 'stuck', 'rfb_bumped', 'reverted', 'reorged')
+		WHERE chain = ? AND status IN ('built', 'submitted_private', 'broadcast', 'mined', 'stuck', 'rfb_bumped', 'reverted', 'reorged')
 		ORDER BY created_at ASC
 	`, table)
 
@@ -246,7 +251,7 @@ func (r *TxRepo) ListStuckTxs(ctx context.Context, chain domain.ChainID, stuckTi
 			   gas_used, gas_price, gas_limit, rfb_attempts,
 			   error_msg, trace_id, created_at, updated_at
 		FROM %s
-		WHERE chain = ? AND status IN ('broadcast', 'rfb_bumped')
+		WHERE chain = ? AND status IN ('submitted_private', 'broadcast', 'rfb_bumped')
 		  AND broadcast_at > 0 AND broadcast_at < ?
 		ORDER BY broadcast_at ASC
 	`, table)

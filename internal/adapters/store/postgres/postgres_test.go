@@ -189,6 +189,7 @@ func TestTxBroadcastTimestamp(t *testing.T) {
 		t.Fatalf("built tx should not set broadcast timestamp, got %v", got)
 	}
 	for _, status := range []domain.TxStatus{
+		domain.TxSubmittedPrivate,
 		domain.TxBroadcast,
 		domain.TxMined,
 		domain.TxConfirmed,

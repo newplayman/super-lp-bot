@@ -209,6 +209,29 @@ func (w *canaryEventWriter) RecordSignedTx(ctx context.Context, signed domain.Si
 	return postgres.NewTxRepo(w.db).UpsertTx(ctx, signed)
 }
 
+func (w *canaryEventWriter) ReserveOpeningPosition(ctx context.Context, pos *domain.Position) error {
+	if w == nil || w.db == nil {
+		return fmt.Errorf("canary state writer is not initialized")
+	}
+	if pos == nil {
+		return fmt.Errorf("position is nil")
+	}
+	if pos.ID == "" {
+		return fmt.Errorf("position id is empty")
+	}
+	if pos.Status == "" {
+		pos.Status = domain.StatusIntended
+	}
+	return postgres.NewPositionRepo(w.db).Save(ctx, pos)
+}
+
+func (w *canaryEventWriter) UpdatePositionStatus(ctx context.Context, positionID string, status domain.PositionStatus) error {
+	if w == nil || w.db == nil {
+		return fmt.Errorf("canary state writer is not initialized")
+	}
+	return postgres.NewPositionRepo(w.db).UpdateStatus(ctx, positionID, status)
+}
+
 func (w *canaryEventWriter) SaveOpeningPosition(ctx context.Context, positionID string, pool domain.Pool, amountUSD domain.Decimal, openedAt int64) error {
 	if w == nil || w.db == nil {
 		return fmt.Errorf("canary state writer is not initialized")

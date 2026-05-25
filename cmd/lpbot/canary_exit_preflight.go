@@ -19,6 +19,7 @@ import (
 	"github.com/lpbot/lpbot/internal/adapters/rpc"
 	"github.com/lpbot/lpbot/internal/domain"
 	"github.com/lpbot/lpbot/internal/platform/config"
+	"github.com/lpbot/lpbot/internal/ports"
 )
 
 const canaryExitPreflightSlippageBps = 100
@@ -185,7 +186,7 @@ func runCanaryExit(ctx context.Context, cfg *config.Config, tokenID string) (err
 	}
 	defer wallet.Close()
 
-	broadcaster, err := newCanaryMintBroadcaster(ctx, cfg, provider)
+	broadcaster, _, err := buildLiveBroadcasterWithRuntime(ctx, cfg, provider, nil)
 	if err != nil {
 		return err
 	}
@@ -245,18 +246,18 @@ func runCanaryExit(ctx context.Context, cfg *config.Config, tokenID string) (err
 		big.NewInt(time.Now().Add(10*time.Minute).Unix()),
 	)
 	decreaseTx := buildCanaryNPMUnsignedTx(cfg, wallet.Address(), decreaseData, "canary-exit-decrease-"+tokenID)
-	decreaseSigned, err := sendCanaryExitTx(ctx, wallet, broadcaster, decreaseTx, "decrease_liquidity")
+	decreaseSigned, err := sendCanaryExitTx(ctx, wallet, broadcaster, decreaseTx, "decrease_liquidity", cfg.Chains.Base.Confirmations)
 	if err != nil {
 		_ = persistCanaryExitExecution(ctx, cfg, report, nil, nil, "exit_failed", err.Error())
 		return err
 	}
-	if err := persistCanaryExitExecution(ctx, cfg, report, &decreaseSigned, nil, "decrease_confirmed", ""); err != nil {
+	if err := persistCanaryExitExecution(ctx, cfg, report, &decreaseSigned, nil, canaryExitExecutionStatus("decrease", decreaseSigned.Status), ""); err != nil {
 		return err
 	}
 	if err := stateWriter.Record(ctx, canaryEvent{
 		Command: "canary_exit",
-		Stage:   "decrease_broadcast",
-		Status:  "broadcast",
+		Stage:   canaryExitExecutionStatus("decrease", decreaseSigned.Status),
+		Status:  string(decreaseSigned.Status),
 		PoolID:  report.PoolID,
 		Wallet:  report.Wallet,
 		TokenID: tokenID,
@@ -273,23 +274,23 @@ func runCanaryExit(ctx context.Context, cfg *config.Config, tokenID string) (err
 		new(big.Int).Sub(new(big.Int).Lsh(big.NewInt(1), 128), big.NewInt(1)),
 	)
 	collectTx := buildCanaryNPMUnsignedTx(cfg, wallet.Address(), collectData, "canary-exit-collect-"+tokenID)
-	collectSigned, err := sendCanaryExitTx(ctx, wallet, broadcaster, collectTx, "collect")
+	collectSigned, err := sendCanaryExitTx(ctx, wallet, broadcaster, collectTx, "collect", cfg.Chains.Base.Confirmations)
 	if err != nil {
 		_ = persistCanaryExitExecution(ctx, cfg, report, &decreaseSigned, nil, "collect_failed", err.Error())
 		return err
 	}
-	if err := persistCanaryExitExecution(ctx, cfg, report, &decreaseSigned, &collectSigned, "closed", ""); err != nil {
+	if err := persistCanaryExitExecution(ctx, cfg, report, &decreaseSigned, &collectSigned, canaryExitExecutionStatus("collect", collectSigned.Status), ""); err != nil {
 		return err
 	}
 	if err := stateWriter.Record(ctx, canaryEvent{
 		Command: "canary_exit",
-		Stage:   "collect_broadcast",
-		Status:  "broadcast",
+		Stage:   canaryExitExecutionStatus("collect", collectSigned.Status),
+		Status:  string(collectSigned.Status),
 		PoolID:  report.PoolID,
 		Wallet:  report.Wallet,
 		TokenID: tokenID,
 		TxHash:  collectSigned.Hash,
-		Message: "collect transaction broadcast and position marked closed",
+		Message: "collect transaction submitted",
 	}); err != nil {
 		return err
 	}
@@ -637,7 +638,7 @@ func sendCanaryExitTx(ctx context.Context, wallet interface {
 	Sign(context.Context, domain.UnsignedTx) (domain.SignedTx, error)
 }, broadcaster interface {
 	Send(context.Context, domain.SignedTx) error
-}, tx domain.UnsignedTx, action string) (domain.SignedTx, error) {
+}, tx domain.UnsignedTx, action string, requiredConfs int) (domain.SignedTx, error) {
 	signCtx, cancel := context.WithTimeout(ctx, 45*time.Second)
 	signed, err := wallet.Sign(signCtx, tx)
 	cancel()
@@ -653,9 +654,24 @@ func sendCanaryExitTx(ctx context.Context, wallet interface {
 		signed.Status = domain.TxFailed
 		return signed, fmt.Errorf("broadcast %s: %w", action, err)
 	}
-	signed.Status = domain.TxConfirmed
+	if aware, ok := broadcaster.(ports.Broadcaster); ok {
+		signed.Status = txStatusAfterLiveSend(aware, requiredConfs)
+	} else {
+		signed.Status = domain.TxBroadcast
+	}
 	fmt.Printf("tx_broadcast action=%s hash=%s id=%s\n", action, signed.Hash, signed.ID)
 	return signed, nil
+}
+
+func canaryExitExecutionStatus(step string, status domain.TxStatus) string {
+	switch status {
+	case domain.TxSubmittedPrivate:
+		return step + "_submitted_private"
+	case domain.TxConfirmed:
+		return step + "_confirmed"
+	default:
+		return step + "_broadcast"
+	}
 }
 
 func printCanaryExitPreflightReport(report canaryExitPreflightReport) {

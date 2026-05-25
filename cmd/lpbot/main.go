@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"crypto/sha256"
+	"database/sql"
 	"encoding/hex"
 	"flag"
 	"fmt"
@@ -636,6 +637,9 @@ func (app *App) initAdapters(ctx context.Context) error {
 	default:
 		return fmt.Errorf("unsupported store backend: %s", app.config.Store.Backend)
 	}
+	if err := app.ensureLiveSchema(ctx); err != nil {
+		return err
+	}
 
 	if err := app.initRedis(ctx); err != nil {
 		return fmt.Errorf("failed to initialize redis runtime: %w", err)
@@ -690,6 +694,66 @@ func (app *App) initRedis(ctx context.Context) error {
 	}
 
 	app.redis = runtime
+	return nil
+}
+
+func (app *App) ensureLiveSchema(ctx context.Context) error {
+	if app == nil || app.config == nil || app.liveGate == nil || !app.liveGate.isExecutionMode() || !app.liveGate.enabled {
+		return nil
+	}
+	backend := strings.ToLower(strings.TrimSpace(app.config.Store.Backend))
+	if backend != "postgres" && backend != "postgresql" && backend != "pg" {
+		return nil
+	}
+	dbStore, ok := any(app.store).(interface{ DB() *sql.DB })
+	if !ok || dbStore.DB() == nil {
+		return fmt.Errorf("live schema guard requires postgres store with DB access")
+	}
+	state, err := loadLiveSchemaState(ctx, dbStore.DB())
+	if err != nil {
+		return err
+	}
+	return validateLiveSchemaState(state)
+}
+
+func loadLiveSchemaState(ctx context.Context, db *sql.DB) (map[string]bool, error) {
+	required := []string{
+		"positions",
+		"transactions",
+		"canary_events",
+		"pnl_ledger",
+		"shadow_decision_trace",
+		"idx_positions_one_active_per_pool",
+	}
+	state := make(map[string]bool, len(required))
+	for _, relation := range required {
+		var exists bool
+		if err := db.QueryRowContext(ctx, `SELECT to_regclass($1) IS NOT NULL`, "public."+relation).Scan(&exists); err != nil {
+			return nil, fmt.Errorf("live schema guard query failed for %s: %w", relation, err)
+		}
+		state[relation] = exists
+	}
+	return state, nil
+}
+
+func validateLiveSchemaState(state map[string]bool) error {
+	required := []string{
+		"positions",
+		"transactions",
+		"canary_events",
+		"pnl_ledger",
+		"shadow_decision_trace",
+		"idx_positions_one_active_per_pool",
+	}
+	var missing []string
+	for _, relation := range required {
+		if !state[relation] {
+			missing = append(missing, relation)
+		}
+	}
+	if len(missing) > 0 {
+		return fmt.Errorf("live schema guard blocked startup; missing postgres relations: %s", strings.Join(missing, ", "))
+	}
 	return nil
 }
 
@@ -1616,7 +1680,7 @@ func (o *orderManagerAdapter) Open(ctx context.Context, pool domain.Pool, amount
 			_ = o.store.TxRepo().UpsertTx(ctx, signed)
 			return loop.ExecutionResult{Success: false, Error: fmt.Sprintf("broadcast failed: %v", err)}, nil
 		}
-		signed.Status = domain.TxBroadcast
+		signed.Status = txStatusAfterLiveSend(o.broadcaster, o.requiredConfs)
 		if err := o.store.TxRepo().UpsertTx(ctx, signed); err != nil {
 			return loop.ExecutionResult{}, err
 		}
@@ -1625,11 +1689,7 @@ func (o *orderManagerAdapter) Open(ctx context.Context, pool domain.Pool, amount
 			return loop.ExecutionResult{}, err
 		}
 		position.Status = finalStatus
-		if o.requiredConfs > 0 {
-			signed.Status = domain.TxConfirmed
-			if err := o.store.TxRepo().UpsertTx(ctx, signed); err != nil {
-				return loop.ExecutionResult{}, err
-			}
+		if broadcasterConfirmsOnSend(o.broadcaster, o.requiredConfs) {
 			finalStatus = domain.StatusOpen
 			if err := o.store.PositionRepo().UpdateStatus(ctx, positionID, finalStatus); err != nil {
 				return loop.ExecutionResult{}, err
@@ -1830,7 +1890,7 @@ func (o *orderManagerAdapter) closeLiveCanaryPosition(ctx context.Context, posit
 		big.NewInt(time.Now().Add(time.Duration(o.exitDeadlineSeconds)*time.Second).Unix()),
 	)
 	decreaseTx := buildLiveCloseUnsignedTx(o.npmBaseAddress, o.wallet.Address(), decreaseData, "live-exit-decrease-"+position.TokenID, o.exitDeadlineSeconds)
-	decreaseSigned, err := sendLiveCloseTx(ctx, o.wallet, o.broadcaster, decreaseTx, "decrease_liquidity", o.signTimeoutSeconds, o.sendTimeoutSeconds)
+	decreaseSigned, err := sendLiveCloseTx(ctx, o.wallet, o.broadcaster, decreaseTx, "decrease_liquidity", o.signTimeoutSeconds, o.sendTimeoutSeconds, o.requiredConfs)
 	if err != nil {
 		if decreaseSigned.ID != "" {
 			_ = o.store.TxRepo().UpsertTx(ctx, decreaseSigned)
@@ -1855,7 +1915,7 @@ func (o *orderManagerAdapter) closeLiveCanaryPosition(ctx context.Context, posit
 		maxUint128,
 	)
 	collectTx := buildLiveCloseUnsignedTx(o.npmBaseAddress, o.wallet.Address(), collectData, "live-exit-collect-"+position.TokenID, o.exitDeadlineSeconds)
-	collectSigned, err := sendLiveCloseTx(ctx, o.wallet, o.broadcaster, collectTx, "collect", o.signTimeoutSeconds, o.sendTimeoutSeconds)
+	collectSigned, err := sendLiveCloseTx(ctx, o.wallet, o.broadcaster, collectTx, "collect", o.signTimeoutSeconds, o.sendTimeoutSeconds, o.requiredConfs)
 	if err != nil {
 		if collectSigned.ID != "" {
 			_ = o.store.TxRepo().UpsertTx(ctx, collectSigned)
@@ -1872,14 +1932,22 @@ func (o *orderManagerAdapter) closeLiveCanaryPosition(ctx context.Context, posit
 	if err := o.store.TxRepo().UpsertTx(ctx, collectSigned); err != nil {
 		return loop.ExecutionResult{}, err
 	}
-	if err := o.store.PositionRepo().UpdateStatus(ctx, position.ID, domain.StatusClosed); err != nil {
-		return loop.ExecutionResult{}, err
+	if broadcasterConfirmsOnSend(o.broadcaster, o.requiredConfs) {
+		if err := o.store.PositionRepo().UpdateStatus(ctx, position.ID, domain.StatusClosed); err != nil {
+			return loop.ExecutionResult{}, err
+		}
+		return loop.ExecutionResult{
+			TxHash:      collectSigned.Hash,
+			Success:     true,
+			PositionID:  position.ID,
+			FinalStatus: domain.StatusClosed,
+		}, nil
 	}
 	return loop.ExecutionResult{
 		TxHash:      collectSigned.Hash,
 		Success:     true,
 		PositionID:  position.ID,
-		FinalStatus: domain.StatusClosed,
+		FinalStatus: domain.StatusExiting,
 	}, nil
 }
 
@@ -1996,27 +2064,29 @@ func (o *orderManagerAdapter) Rebalance(ctx context.Context, positionID string, 
 				FinalStatus: domain.StatusClosed,
 			}, nil
 		}
-		signed.Status = domain.TxBroadcast
+		signed.Status = txStatusAfterLiveSend(o.broadcaster, o.requiredConfs)
 		if err := o.store.TxRepo().UpsertTx(ctx, signed); err != nil {
 			return loop.ExecutionResult{}, err
 		}
 		if err := o.store.PositionRepo().UpdateStatus(ctx, newPositionID, domain.StatusOpening); err != nil {
 			return loop.ExecutionResult{}, err
 		}
-		if o.requiredConfs > 0 {
-			signed.Status = domain.TxConfirmed
-			if err := o.store.TxRepo().UpsertTx(ctx, signed); err != nil {
-				return loop.ExecutionResult{}, err
-			}
+		if broadcasterConfirmsOnSend(o.broadcaster, o.requiredConfs) {
 			if err := o.store.PositionRepo().UpdateStatus(ctx, newPositionID, domain.StatusOpen); err != nil {
 				return loop.ExecutionResult{}, err
 			}
+			return loop.ExecutionResult{
+				TxHash:      signed.Hash,
+				Success:     true,
+				PositionID:  newPositionID,
+				FinalStatus: domain.StatusOpen,
+			}, nil
 		}
 		return loop.ExecutionResult{
 			TxHash:      signed.Hash,
 			Success:     true,
 			PositionID:  newPositionID,
-			FinalStatus: domain.StatusOpen,
+			FinalStatus: domain.StatusOpening,
 		}, nil
 	}
 	if position.Status != domain.StatusOpen {
@@ -2120,7 +2190,7 @@ func (o *orderManagerAdapter) CollectFees(ctx context.Context, positionID string
 			maxUint128,
 		)
 		collectTx := buildLiveCloseUnsignedTx(o.npmBaseAddress, o.wallet.Address(), collectData, "live-collect-"+position.TokenID, o.exitDeadlineSeconds)
-		collectSigned, err := sendLiveCloseTx(ctx, o.wallet, o.broadcaster, collectTx, "collect", o.signTimeoutSeconds, o.sendTimeoutSeconds)
+		collectSigned, err := sendLiveCloseTx(ctx, o.wallet, o.broadcaster, collectTx, "collect", o.signTimeoutSeconds, o.sendTimeoutSeconds, o.requiredConfs)
 		if err != nil {
 			if collectSigned.ID != "" {
 				_ = o.store.TxRepo().UpsertTx(ctx, collectSigned)
@@ -2135,11 +2205,15 @@ func (o *orderManagerAdapter) CollectFees(ctx context.Context, positionID string
 		if err := o.store.TxRepo().UpsertTx(ctx, collectSigned); err != nil {
 			return loop.ExecutionResult{}, err
 		}
+		finalStatus := domain.StatusOpen
+		if !broadcasterConfirmsOnSend(o.broadcaster, o.requiredConfs) {
+			finalStatus = position.Status
+		}
 		return loop.ExecutionResult{
 			TxHash:      collectSigned.Hash,
 			Success:     true,
 			PositionID:  positionID,
-			FinalStatus: domain.StatusOpen,
+			FinalStatus: finalStatus,
 		}, nil
 	}
 	if position.Status != domain.StatusOpen {
@@ -2289,7 +2363,7 @@ func sendLiveCloseTx(ctx context.Context, wallet interface {
 	Sign(context.Context, domain.UnsignedTx) (domain.SignedTx, error)
 }, broadcaster interface {
 	Send(context.Context, domain.SignedTx) error
-}, tx domain.UnsignedTx, action string, signTimeoutSeconds int, sendTimeoutSeconds int) (domain.SignedTx, error) {
+}, tx domain.UnsignedTx, action string, signTimeoutSeconds int, sendTimeoutSeconds int, requiredConfs int) (domain.SignedTx, error) {
 	signCtx, cancel := context.WithTimeout(ctx, time.Duration(positiveOrDefault(signTimeoutSeconds, 45))*time.Second)
 	signed, err := wallet.Sign(signCtx, tx)
 	cancel()
@@ -2305,7 +2379,11 @@ func sendLiveCloseTx(ctx context.Context, wallet interface {
 		signed.Status = domain.TxFailed
 		return signed, fmt.Errorf("broadcast %s: %w", action, err)
 	}
-	signed.Status = domain.TxConfirmed
+	if aware, ok := broadcaster.(ports.Broadcaster); ok {
+		signed.Status = txStatusAfterLiveSend(aware, requiredConfs)
+	} else {
+		signed.Status = domain.TxBroadcast
+	}
 	return signed, nil
 }
 

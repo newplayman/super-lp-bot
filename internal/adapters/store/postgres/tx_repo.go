@@ -89,7 +89,7 @@ func (r *TxRepo) UpsertTx(ctx context.Context, tx domain.SignedTx) error {
 
 func txBroadcastTimestamp(status domain.TxStatus, now int64) interface{} {
 	switch status {
-	case domain.TxBroadcast, domain.TxMined, domain.TxConfirmed, domain.TxStuck, domain.TxRFBBumped, domain.TxReverted, domain.TxReorged, domain.TxFailed:
+	case domain.TxSubmittedPrivate, domain.TxBroadcast, domain.TxMined, domain.TxConfirmed, domain.TxStuck, domain.TxRFBBumped, domain.TxReverted, domain.TxReorged, domain.TxFailed:
 		return now
 	default:
 		return nil
@@ -244,7 +244,7 @@ func (r *TxRepo) ListPendingTxs(ctx context.Context, chain domain.ChainID) ([]do
 			   gas_used, gas_price, gas_limit, rfb_attempts,
 			   error_msg, trace_id, created_at, updated_at
 		FROM transactions
-		WHERE chain = $1 AND status IN ('built', 'broadcast', 'mined', 'stuck', 'rfb_bumped', 'reverted', 'reorged')
+		WHERE chain = $1 AND status IN ('built', 'submitted_private', 'broadcast', 'mined', 'stuck', 'rfb_bumped', 'reverted', 'reorged')
 		ORDER BY created_at ASC
 	`, string(chain))
 	if err != nil {
@@ -266,7 +266,7 @@ func (r *TxRepo) ListStuckTxs(ctx context.Context, chain domain.ChainID, stuckTi
 			   error_msg, trace_id, created_at, updated_at
 		FROM transactions
 		WHERE chain = $1
-		  AND status IN ('broadcast', 'rfb_bumped')
+		  AND status IN ('submitted_private', 'broadcast', 'rfb_bumped')
 		  AND broadcast_at > 0
 		  AND broadcast_at < $2
 		ORDER BY broadcast_at ASC

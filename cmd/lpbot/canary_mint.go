@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	livebroadcast "github.com/lpbot/lpbot/internal/adapters/broadcast/live"
 	"github.com/lpbot/lpbot/internal/adapters/rpc"
 	"github.com/lpbot/lpbot/internal/domain"
 	"github.com/lpbot/lpbot/internal/platform/config"
@@ -19,6 +18,13 @@ import (
 )
 
 const canaryMintConfirmEnv = "LPBOT_CONFIRM_CANARY_MINT"
+
+type canaryMintState interface {
+	ReserveOpeningPosition(ctx context.Context, pos *domain.Position) error
+	UpdatePositionStatus(ctx context.Context, positionID string, status domain.PositionStatus) error
+	RecordSignedTx(ctx context.Context, signed domain.SignedTx, status domain.TxStatus) error
+	Record(ctx context.Context, event canaryEvent) error
+}
 
 func runCanaryMint(ctx context.Context, cfg *config.Config) (err error) {
 	if os.Getenv(canaryMintConfirmEnv) != "YES" {
@@ -75,7 +81,7 @@ func runCanaryMint(ctx context.Context, cfg *config.Config) (err error) {
 	defer wallet.Close()
 	walletAddress = wallet.Address().String()
 
-	broadcaster, err := newCanaryMintBroadcaster(ctx, cfg, provider)
+	broadcaster, _, err := buildLiveBroadcasterWithRuntime(ctx, cfg, provider, nil)
 	if err != nil {
 		return err
 	}
@@ -217,44 +223,47 @@ func runCanaryMint(ctx context.Context, cfg *config.Config) (err error) {
 	}); err != nil {
 		return err
 	}
-	signCtx, cancel := context.WithTimeout(ctx, 45*time.Second)
-	signed, err := wallet.Sign(signCtx, prepared.UnsignedTx)
-	cancel()
-	if err != nil {
-		return fmt.Errorf("sign mint: %w", err)
-	}
-	signed.ID = prepared.ID
-	signed.Status = domain.TxBuilt
-	if err := state.RecordSignedTx(ctx, signed, domain.TxBuilt); err != nil {
-		return fmt.Errorf("persist built mint tx: %w", err)
+	reservation := &domain.Position{
+		ID:        positionID,
+		PoolID:    pool.ID,
+		Chain:     pool.Chain,
+		Status:    domain.StatusIntended,
+		Tier:      pool.Tier_,
+		AmountUSD: amountUSD,
+		TickLower: intent.TickLower,
+		TickUpper: intent.TickUpper,
+		OpenedAt:  now.Unix(),
 	}
 	if err := state.Record(ctx, canaryEvent{
 		Command:     "canary_mint",
-		Stage:       "signed",
-		Status:      "built",
+		Stage:       "reservation_pending",
+		Status:      "running",
 		PositionID:  positionID,
 		PoolID:      pool.ID,
 		Wallet:      wallet.Address().String(),
-		TxHash:      signed.Hash,
 		AmountUSD:   amountUSD.String(),
 		GasEstimate: gas,
-		Message:     "mint transaction signed and persisted",
+		Message:     "reserving active position before signing",
 	}); err != nil {
 		return err
 	}
-	if err := broadcaster.Send(ctx, signed); err != nil {
-		return fmt.Errorf("broadcast mint: %w", err)
-	}
-	if err := state.RecordSignedTx(ctx, signed, domain.TxBroadcast); err != nil {
-		return fmt.Errorf("persist broadcast mint tx: %w", err)
-	}
-	if err := state.SaveOpeningPosition(ctx, positionID, pool, amountUSD, now.Unix()); err != nil {
-		return fmt.Errorf("persist opening position: %w", err)
+	signed, err := submitReservedCanaryMint(ctx, state, wallet, broadcaster, reservation, prepared.UnsignedTx, canaryMintSubmissionInput{
+		Pool:          pool,
+		PositionID:    positionID,
+		Wallet:        wallet.Address(),
+		AmountUSD:     amountUSD,
+		RequiredUSDC:  requiredUSDC,
+		RequiredWETH:  requiredWETH,
+		GasEstimate:   gas,
+		Confirmations: cfg.Chains.Base.Confirmations,
+	})
+	if err != nil {
+		return err
 	}
 	if err := state.Record(ctx, canaryEvent{
 		Command:         "canary_mint",
-		Stage:           "broadcast",
-		Status:          "broadcast",
+		Stage:           canaryMintStageForStatus(signed.Status),
+		Status:          string(signed.Status),
 		PositionID:      positionID,
 		PoolID:          pool.ID,
 		Wallet:          wallet.Address().String(),
@@ -272,17 +281,6 @@ func runCanaryMint(ctx context.Context, cfg *config.Config) (err error) {
 	return nil
 }
 
-func newCanaryMintBroadcaster(ctx context.Context, cfg *config.Config, provider *rpc.RoundRobinProvider) (ports.Broadcaster, error) {
-	baseRPCURL := strings.TrimSpace(cfg.Chains.Base.RPCPrimary)
-	if baseRPCURL == "" && provider != nil {
-		baseRPCURL = provider.Endpoint()
-	}
-	return livebroadcast.New(ctx, livebroadcast.BroadcastConfig{
-		BaseRPCURL:    baseRPCURL,
-		Confirmations: cfg.Chains.Base.Confirmations,
-	})
-}
-
 func newCanaryMintProvider(ctx context.Context, cfg *config.Config) (*rpc.RoundRobinProvider, error) {
 	endpoints := []string{cfg.Chains.Base.RPCPrimary}
 	endpoints = append(endpoints, cfg.Chains.Base.RPCFallback...)
@@ -294,6 +292,101 @@ func newCanaryMintProvider(ctx context.Context, cfg *config.Config) (*rpc.RoundR
 		HealthCheckInterval: time.Minute,
 		HealthCheckTimeout:  2 * time.Second,
 	})
+}
+
+type canaryMintSubmissionInput struct {
+	Pool          domain.Pool
+	PositionID    string
+	Wallet        domain.Address
+	AmountUSD     domain.Decimal
+	RequiredUSDC  *big.Int
+	RequiredWETH  *big.Int
+	GasEstimate   uint64
+	Confirmations int
+}
+
+func submitReservedCanaryMint(
+	ctx context.Context,
+	state canaryMintState,
+	wallet interface {
+		Address() domain.Address
+		Sign(context.Context, domain.UnsignedTx) (domain.SignedTx, error)
+	},
+	broadcaster ports.Broadcaster,
+	reservation *domain.Position,
+	unsignedTx domain.UnsignedTx,
+	input canaryMintSubmissionInput,
+) (domain.SignedTx, error) {
+	if err := state.ReserveOpeningPosition(ctx, reservation); err != nil {
+		return domain.SignedTx{}, fmt.Errorf("reserve opening position: %w", err)
+	}
+	if err := state.Record(ctx, canaryEvent{
+		Command:     "canary_mint",
+		Stage:       "reserved",
+		Status:      "reserved",
+		PositionID:  input.PositionID,
+		PoolID:      input.Pool.ID,
+		Wallet:      input.Wallet.String(),
+		AmountUSD:   input.AmountUSD.String(),
+		GasEstimate: input.GasEstimate,
+		Message:     "active position reserved before signing",
+	}); err != nil {
+		_ = state.UpdatePositionStatus(ctx, reservation.ID, domain.StatusRejected)
+		return domain.SignedTx{}, err
+	}
+
+	signCtx, cancel := context.WithTimeout(ctx, 45*time.Second)
+	signed, err := wallet.Sign(signCtx, unsignedTx)
+	cancel()
+	if err != nil {
+		_ = state.UpdatePositionStatus(ctx, reservation.ID, domain.StatusRejected)
+		return domain.SignedTx{}, fmt.Errorf("sign mint: %w", err)
+	}
+	signed.ID = unsignedTx.ID
+	signed.Status = domain.TxBuilt
+	if err := state.RecordSignedTx(ctx, signed, domain.TxBuilt); err != nil {
+		_ = state.UpdatePositionStatus(ctx, reservation.ID, domain.StatusRejected)
+		return domain.SignedTx{}, fmt.Errorf("persist built mint tx: %w", err)
+	}
+	if err := state.Record(ctx, canaryEvent{
+		Command:     "canary_mint",
+		Stage:       "signed",
+		Status:      "built",
+		PositionID:  input.PositionID,
+		PoolID:      input.Pool.ID,
+		Wallet:      input.Wallet.String(),
+		TxHash:      signed.Hash,
+		AmountUSD:   input.AmountUSD.String(),
+		GasEstimate: input.GasEstimate,
+		Message:     "mint transaction signed and persisted",
+	}); err != nil {
+		_ = state.UpdatePositionStatus(ctx, reservation.ID, domain.StatusRejected)
+		return domain.SignedTx{}, err
+	}
+	if err := broadcaster.Send(ctx, signed); err != nil {
+		_ = state.RecordSignedTx(ctx, signed, domain.TxFailed)
+		_ = state.UpdatePositionStatus(ctx, reservation.ID, domain.StatusRejected)
+		return domain.SignedTx{}, fmt.Errorf("broadcast mint: %w", err)
+	}
+	submissionStatus := txStatusAfterLiveSend(broadcaster, input.Confirmations)
+	signed.Status = submissionStatus
+	if err := state.RecordSignedTx(ctx, signed, submissionStatus); err != nil {
+		return domain.SignedTx{}, fmt.Errorf("persist submitted mint tx: %w", err)
+	}
+	if err := state.UpdatePositionStatus(ctx, reservation.ID, domain.StatusOpening); err != nil {
+		return domain.SignedTx{}, fmt.Errorf("mark reserved position opening: %w", err)
+	}
+	return signed, nil
+}
+
+func canaryMintStageForStatus(status domain.TxStatus) string {
+	if status == domain.TxSubmittedPrivate {
+		return "submitted_private"
+	}
+	if status == domain.TxConfirmed {
+		return "confirmed"
+	}
+	return "broadcast"
 }
 
 func checkCanaryMintPrerequisites(

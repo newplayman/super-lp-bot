@@ -424,6 +424,13 @@ func TestBuildBurnCalldata_InvalidTokenID(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestBuildBurnCalldata_ZeroTokenID(t *testing.T) {
+	builder := &TxBuilder{}
+
+	_, _, err := builder.BuildBurnCalldata(BurnIntent{TokenId: "0"})
+	assert.Error(t, err)
+}
+
 // TestBuildBurnCalldata_RequiresZeroLiquidity tests that burn only allowed when liquidity=0.
 func TestBuildBurnCalldata_RequiresZeroLiquidity(t *testing.T) {
 	// This is a documentation test - burn should only be called after

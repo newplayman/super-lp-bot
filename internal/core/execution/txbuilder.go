@@ -362,7 +362,7 @@ func calculateSlippageAmount(amount *big.Int, slippageBps int64) *big.Int {
 
 func parseTokenID(raw string) (*big.Int, error) {
 	tokenID, ok := new(big.Int).SetString(strings.TrimSpace(raw), 10)
-	if !ok || tokenID.Sign() < 0 {
+	if !ok || tokenID.Sign() <= 0 {
 		return nil, ErrTokenIDInvalid
 	}
 	return tokenID, nil

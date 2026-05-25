@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	livebroadcast "github.com/lpbot/lpbot/internal/adapters/broadcast/live"
 	"github.com/lpbot/lpbot/internal/adapters/rpc"
 	"github.com/lpbot/lpbot/internal/domain"
 	"github.com/lpbot/lpbot/internal/platform/config"
@@ -72,7 +71,7 @@ func runCanaryPrepare(ctx context.Context, cfg *config.Config) (err error) {
 	defer wallet.Close()
 	walletAddress = wallet.Address().String()
 
-	broadcaster, err := newCanaryPrepareBroadcaster(ctx, cfg, provider)
+	broadcaster, _, err := buildLiveBroadcasterWithRuntime(ctx, cfg, provider, nil)
 	if err != nil {
 		return err
 	}
@@ -142,17 +141,6 @@ func runCanaryPrepare(ctx context.Context, cfg *config.Config) (err error) {
 	return nil
 }
 
-func newCanaryPrepareBroadcaster(ctx context.Context, cfg *config.Config, provider *rpc.RoundRobinProvider) (ports.Broadcaster, error) {
-	baseRPCURL := strings.TrimSpace(cfg.Chains.Base.RPCPrimary)
-	if baseRPCURL == "" && provider != nil {
-		baseRPCURL = provider.Endpoint()
-	}
-	return livebroadcast.New(ctx, livebroadcast.BroadcastConfig{
-		BaseRPCURL:    baseRPCURL,
-		Confirmations: cfg.Chains.Base.Confirmations,
-	})
-}
-
 func sendCanaryPrepareWrap(ctx context.Context, provider *rpc.RoundRobinProvider, wallet ports.Wallet, broadcaster ports.Broadcaster, state *canaryEventWriter, pool domain.Pool, amountWei *big.Int) error {
 	if amountWei == nil || amountWei.Sign() <= 0 {
 		return nil
@@ -214,17 +202,19 @@ func signAndBroadcastCanaryPrepare(ctx context.Context, wallet ports.Wallet, bro
 	if err := broadcaster.Send(ctx, signed); err != nil {
 		return fmt.Errorf("broadcast %s: %w", action, err)
 	}
-	if err := state.RecordSignedTx(ctx, signed, domain.TxBroadcast); err != nil {
+	submissionStatus := txStatusAfterLiveSend(broadcaster, 1)
+	signed.Status = submissionStatus
+	if err := state.RecordSignedTx(ctx, signed, submissionStatus); err != nil {
 		return fmt.Errorf("persist broadcast %s tx: %w", action, err)
 	}
 	if err := state.Record(ctx, canaryEvent{
 		Command: "canary_prepare",
-		Stage:   action + "_broadcast",
-		Status:  "broadcast",
+		Stage:   action + "_" + canaryMintStageForStatus(submissionStatus),
+		Status:  string(submissionStatus),
 		PoolID:  pool.ID,
 		Wallet:  wallet.Address().String(),
 		TxHash:  signed.Hash,
-		Message: action + " transaction broadcast",
+		Message: action + " transaction submitted",
 	}); err != nil {
 		return err
 	}
