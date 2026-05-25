@@ -16,6 +16,7 @@ import (
 type Store struct {
 	db         *sql.DB
 	txRepo     *TxRepo
+	intentRepo *ExecutionIntentRepo
 	posRepo    *PositionRepo
 	poolRepo   *PoolRepo
 	ledgerRepo *LedgerRepo
@@ -55,6 +56,7 @@ func NewStore(dbPath string) (*Store, error) {
 		db:         db,
 		prefix:     prefix,
 		txRepo:     NewTxRepo(db, tablePrefix),
+		intentRepo: NewExecutionIntentRepo(db, tablePrefix),
 		posRepo:    NewPositionRepo(db, tablePrefix),
 		poolRepo:   NewPoolRepo(db, tablePrefix),
 		ledgerRepo: NewLedgerRepo(db, tablePrefix),
@@ -112,6 +114,42 @@ func (s *Store) migrate() error {
 			trace_id TEXT,
 			created_at INTEGER NOT NULL,
 			updated_at INTEGER NOT NULL
+		)`, tablePrefix),
+		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %sexecution_intents (
+			id TEXT PRIMARY KEY,
+			mode TEXT NOT NULL,
+			chain TEXT NOT NULL,
+			pool_id TEXT,
+			position_id TEXT,
+			action TEXT NOT NULL,
+			status TEXT NOT NULL,
+			idempotency_key TEXT NOT NULL UNIQUE,
+			unsigned_tx_hash TEXT,
+			signed_tx_hash TEXT,
+			tx_hash TEXT,
+			reason TEXT,
+			risk_snapshot_json TEXT NOT NULL DEFAULT '{}',
+			sizing_snapshot_json TEXT NOT NULL DEFAULT '{}',
+			decision_trace_id TEXT,
+			created_at INTEGER NOT NULL,
+			updated_at INTEGER NOT NULL
+		)`, tablePrefix),
+		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %sportfolio_snapshots (
+			id TEXT PRIMARY KEY,
+			mode TEXT NOT NULL,
+			chain TEXT NOT NULL,
+			wallet_address TEXT NOT NULL,
+			native_balance_wei TEXT NOT NULL DEFAULT '0',
+			gas_reserve_wei TEXT NOT NULL DEFAULT '0',
+			open_position_count INTEGER NOT NULL DEFAULT 0,
+			open_position_exposure_usd TEXT NOT NULL DEFAULT '0',
+			pending_exposure_usd TEXT NOT NULL DEFAULT '0',
+			submitted_private_exposure_usd TEXT NOT NULL DEFAULT '0',
+			realized_pnl_usd TEXT NOT NULL DEFAULT '0',
+			unrealized_pnl_usd TEXT NOT NULL DEFAULT '0',
+			balances_json TEXT NOT NULL DEFAULT '{}',
+			positions_json TEXT NOT NULL DEFAULT '[]',
+			created_at INTEGER NOT NULL
 		)`, tablePrefix),
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %spositions (
 			id TEXT PRIMARY KEY,
@@ -279,6 +317,9 @@ var _ ports.Store = (*Store)(nil)
 
 // TxRepo returns the transaction repository.
 func (s *Store) TxRepo() ports.TxRepo { return s.txRepo }
+
+// ExecutionIntentRepo returns the execution intent repository.
+func (s *Store) ExecutionIntentRepo() ports.ExecutionIntentRepo { return s.intentRepo }
 
 // PositionRepo returns the position repository.
 func (s *Store) PositionRepo() ports.PositionRepo { return s.posRepo }

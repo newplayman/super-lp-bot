@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
+	_ "github.com/lib/pq"
 	"github.com/lpbot/lpbot/internal/domain"
 	"github.com/lpbot/lpbot/internal/ports"
-	_ "github.com/lib/pq"
 )
 
 // PostgresConfig holds the connection configuration for PostgreSQL.
@@ -143,6 +143,11 @@ func (a *postgresAdapter) RiskRepo() ports.RiskRepo {
 // TxRepo returns a new transaction repository.
 func (a *postgresAdapter) TxRepo() ports.TxRepo {
 	return NewTxRepo(a.db)
+}
+
+// ExecutionIntentRepo returns a new execution intent repository.
+func (a *postgresAdapter) ExecutionIntentRepo() ports.ExecutionIntentRepo {
+	return NewExecutionIntentRepo(a.db)
 }
 
 // ConfigSnap returns the config snapshot repository.

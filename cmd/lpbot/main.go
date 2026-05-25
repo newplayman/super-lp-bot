@@ -720,6 +720,8 @@ func loadLiveSchemaState(ctx context.Context, db *sql.DB) (map[string]bool, erro
 	required := []string{
 		"positions",
 		"transactions",
+		"execution_intents",
+		"portfolio_snapshots",
 		"canary_events",
 		"pnl_ledger",
 		"shadow_decision_trace",
@@ -740,6 +742,8 @@ func validateLiveSchemaState(state map[string]bool) error {
 	required := []string{
 		"positions",
 		"transactions",
+		"execution_intents",
+		"portfolio_snapshots",
 		"canary_events",
 		"pnl_ledger",
 		"shadow_decision_trace",
@@ -974,6 +978,14 @@ func (app *App) startWorkers(ctx context.Context) {
 		go func() {
 			defer app.wg.Done()
 			app.runBaseTxConfirmerLoop(ctx)
+		}()
+	}
+
+	if app.shouldRunPortfolioSnapshotLoop() {
+		app.wg.Add(1)
+		go func() {
+			defer app.wg.Done()
+			app.runPortfolioSnapshotLoop(ctx)
 		}()
 	}
 
@@ -1667,21 +1679,35 @@ func (o *orderManagerAdapter) Open(ctx context.Context, pool domain.Pool, amount
 		if o.wallet == nil || o.broadcaster == nil {
 			return loop.ExecutionResult{Success: false, Error: "live execution components not configured"}, nil
 		}
+		openIntent := newExecutionIntent("live_open", pool.Chain, pool.ID, "pool-scope:"+pool.ID, "open", "live daemon open", time.Unix(now, 0))
+		openIntent.SizingSnapshotJSON = buildSizingSnapshotJSON(amountUSD, map[string]string{
+			"tick_lower": fmt.Sprintf("%d", position.TickLower),
+			"tick_upper": fmt.Sprintf("%d", position.TickUpper),
+		})
+		if err := reserveExecutionIntent(ctx, o.store.ExecutionIntentRepo(), openIntent); err != nil {
+			return loop.ExecutionResult{Success: false, Error: fmt.Sprintf("reserve execution intent failed: %v", err)}, nil
+		}
 		if err := o.preflightPreparedTx(ctx, tx.UnsignedTx); err != nil {
+			_ = updateExecutionIntent(ctx, o.store.ExecutionIntentRepo(), openIntent, domain.IntentStatusFailed, tx.ID, "", "", "live preflight failed")
 			return loop.ExecutionResult{Success: false, Error: fmt.Sprintf("live preflight failed: %v", err)}, nil
 		}
 		signed, err := o.wallet.Sign(ctx, tx.UnsignedTx)
 		if err != nil {
+			_ = updateExecutionIntent(ctx, o.store.ExecutionIntentRepo(), openIntent, domain.IntentStatusFailed, tx.ID, "", "", "wallet sign failed")
 			return loop.ExecutionResult{Success: false, Error: fmt.Sprintf("wallet sign failed: %v", err)}, nil
 		}
 		signed.ID = tx.ID
 		signed.Status = domain.TxBuilt
+		openIntent.PositionID = positionID
+		_ = updateExecutionIntent(ctx, o.store.ExecutionIntentRepo(), openIntent, domain.IntentStatusSigned, tx.ID, signed.Hash, signed.Hash, "")
 		position.Status = domain.StatusApproved
 		if result, handled, err := o.saveNewPosition(ctx, pool.ID, position); handled {
+			_ = updateExecutionIntent(ctx, o.store.ExecutionIntentRepo(), openIntent, domain.IntentStatusFailed, tx.ID, signed.Hash, signed.Hash, "save position failed")
 			return result, err
 		}
 		if err := attachOpenTxHashToPosition(ctx, o.store.PositionRepo(), positionID, signed.Hash); err != nil {
 			_ = o.store.PositionRepo().UpdateStatus(ctx, positionID, domain.StatusRejected)
+			_ = updateExecutionIntent(ctx, o.store.ExecutionIntentRepo(), openIntent, domain.IntentStatusFailed, tx.ID, signed.Hash, signed.Hash, "attach opening tx hash failed")
 			return loop.ExecutionResult{Success: false, Error: fmt.Sprintf("attach opening tx hash failed: %v", err)}, nil
 		}
 		if err := o.store.TxRepo().UpsertTx(ctx, signed); err != nil {
@@ -1690,9 +1716,11 @@ func (o *orderManagerAdapter) Open(ctx context.Context, pool domain.Pool, amount
 		if err := o.broadcaster.Send(ctx, signed); err != nil {
 			signed.Status = domain.TxFailed
 			_ = o.store.TxRepo().UpsertTx(ctx, signed)
+			_ = updateExecutionIntent(ctx, o.store.ExecutionIntentRepo(), openIntent, domain.IntentStatusFailed, tx.ID, signed.Hash, signed.Hash, "broadcast failed")
 			return loop.ExecutionResult{Success: false, Error: fmt.Sprintf("broadcast failed: %v", err)}, nil
 		}
 		signed.Status = txStatusAfterLiveSend(o.broadcaster, o.requiredConfs)
+		_ = updateExecutionIntent(ctx, o.store.ExecutionIntentRepo(), openIntent, intentStatusFromTxStatus(signed.Status), tx.ID, signed.Hash, signed.Hash, "")
 		if err := o.store.TxRepo().UpsertTx(ctx, signed); err != nil {
 			return loop.ExecutionResult{}, err
 		}
@@ -1902,12 +1930,18 @@ func (o *orderManagerAdapter) closeLiveCanaryPosition(ctx context.Context, posit
 		big.NewInt(time.Now().Add(time.Duration(o.exitDeadlineSeconds)*time.Second).Unix()),
 	)
 	decreaseTx := buildLiveCloseUnsignedTx(o.npmBaseAddress, o.wallet.Address(), decreaseData, "live-exit-decrease-"+position.TokenID, o.exitDeadlineSeconds)
+	decreaseIntent := newExecutionIntent("live_exit", position.Chain, position.PoolID, position.ID, "decrease", "live close decrease liquidity", time.Now())
+	decreaseIntent.SizingSnapshotJSON = buildSizingSnapshotJSON(position.AmountUSD, map[string]string{"token_id": position.TokenID})
+	if err := reserveExecutionIntent(ctx, o.store.ExecutionIntentRepo(), decreaseIntent); err != nil {
+		return loop.ExecutionResult{Success: false, Error: fmt.Sprintf("reserve decrease intent failed: %v", err), PositionID: position.ID, FinalStatus: position.Status}, nil
+	}
 	decreaseSigned, err := sendLiveCloseTx(ctx, o.wallet, o.broadcaster, decreaseTx, "decrease_liquidity", o.signTimeoutSeconds, o.sendTimeoutSeconds, o.requiredConfs)
 	if err != nil {
 		if decreaseSigned.ID != "" {
 			_ = o.store.TxRepo().UpsertTx(ctx, decreaseSigned)
 		}
 		_ = o.store.PositionRepo().UpdateStatus(ctx, position.ID, domain.StatusExitFailed)
+		_ = updateExecutionIntent(ctx, o.store.ExecutionIntentRepo(), decreaseIntent, domain.IntentStatusFailed, decreaseTx.ID, decreaseSigned.Hash, decreaseSigned.Hash, "decrease liquidity failed")
 		return loop.ExecutionResult{
 			Success:     false,
 			Error:       err.Error(),
@@ -1915,6 +1949,7 @@ func (o *orderManagerAdapter) closeLiveCanaryPosition(ctx context.Context, posit
 			FinalStatus: domain.StatusExitFailed,
 		}, nil
 	}
+	_ = updateExecutionIntent(ctx, o.store.ExecutionIntentRepo(), decreaseIntent, intentStatusFromTxStatus(decreaseSigned.Status), decreaseTx.ID, decreaseSigned.Hash, decreaseSigned.Hash, "")
 	if err := o.store.TxRepo().UpsertTx(ctx, decreaseSigned); err != nil {
 		return loop.ExecutionResult{}, err
 	}
@@ -1927,12 +1962,19 @@ func (o *orderManagerAdapter) closeLiveCanaryPosition(ctx context.Context, posit
 		maxUint128,
 	)
 	collectTx := buildLiveCloseUnsignedTx(o.npmBaseAddress, o.wallet.Address(), collectData, "live-exit-collect-"+position.TokenID, o.exitDeadlineSeconds)
+	collectIntent := newExecutionIntent("live_exit", position.Chain, position.PoolID, position.ID, "collect", "live close collect", time.Now())
+	collectIntent.SizingSnapshotJSON = buildSizingSnapshotJSON(position.AmountUSD, map[string]string{"token_id": position.TokenID})
+	if err := reserveExecutionIntent(ctx, o.store.ExecutionIntentRepo(), collectIntent); err != nil {
+		_ = o.store.PositionRepo().UpdateStatus(ctx, position.ID, domain.StatusExitFailed)
+		return loop.ExecutionResult{TxHash: decreaseSigned.Hash, Success: false, Error: fmt.Sprintf("reserve collect intent failed: %v", err), PositionID: position.ID, FinalStatus: domain.StatusExitFailed}, nil
+	}
 	collectSigned, err := sendLiveCloseTx(ctx, o.wallet, o.broadcaster, collectTx, "collect", o.signTimeoutSeconds, o.sendTimeoutSeconds, o.requiredConfs)
 	if err != nil {
 		if collectSigned.ID != "" {
 			_ = o.store.TxRepo().UpsertTx(ctx, collectSigned)
 		}
 		_ = o.store.PositionRepo().UpdateStatus(ctx, position.ID, domain.StatusExitFailed)
+		_ = updateExecutionIntent(ctx, o.store.ExecutionIntentRepo(), collectIntent, domain.IntentStatusFailed, collectTx.ID, collectSigned.Hash, collectSigned.Hash, "collect failed")
 		return loop.ExecutionResult{
 			TxHash:      decreaseSigned.Hash,
 			Success:     false,
@@ -1941,6 +1983,7 @@ func (o *orderManagerAdapter) closeLiveCanaryPosition(ctx context.Context, posit
 			FinalStatus: domain.StatusExitFailed,
 		}, nil
 	}
+	_ = updateExecutionIntent(ctx, o.store.ExecutionIntentRepo(), collectIntent, intentStatusFromTxStatus(collectSigned.Status), collectTx.ID, collectSigned.Hash, collectSigned.Hash, "")
 	if err := o.store.TxRepo().UpsertTx(ctx, collectSigned); err != nil {
 		return loop.ExecutionResult{}, err
 	}
@@ -2058,11 +2101,31 @@ func (o *orderManagerAdapter) Rebalance(ctx context.Context, positionID string, 
 		}
 		signed.ID = prepared.ID
 		signed.Status = domain.TxBuilt
+		reopenIntent := newExecutionIntent("live_rebalance", pool.Chain, pool.ID, "pool-scope:"+pool.ID, "open", "rebalance reopen", now)
+		reopenIntent.SizingSnapshotJSON = buildSizingSnapshotJSON(position.AmountUSD, map[string]string{
+			"tick_lower": fmt.Sprintf("%d", newLower),
+			"tick_upper": fmt.Sprintf("%d", newUpper),
+		})
+		if err := reserveExecutionIntent(ctx, o.store.ExecutionIntentRepo(), reopenIntent); err != nil {
+			reopened.Status = domain.StatusRejected
+			_ = o.store.PositionRepo().Save(ctx, reopened)
+			return loop.ExecutionResult{
+				TxHash:      closeResult.TxHash,
+				Success:     false,
+				Error:       fmt.Sprintf("rebalance reopen reserve intent failed after close: %v", err),
+				PositionID:  closeResult.PositionID,
+				FinalStatus: domain.StatusClosed,
+			}, nil
+		}
+		reopenIntent.PositionID = newPositionID
+		_ = updateExecutionIntent(ctx, o.store.ExecutionIntentRepo(), reopenIntent, domain.IntentStatusSigned, prepared.ID, signed.Hash, signed.Hash, "")
 		if err := o.store.PositionRepo().Save(ctx, reopened); err != nil {
+			_ = updateExecutionIntent(ctx, o.store.ExecutionIntentRepo(), reopenIntent, domain.IntentStatusFailed, prepared.ID, signed.Hash, signed.Hash, "save reopened position failed")
 			return loop.ExecutionResult{}, err
 		}
 		if err := attachOpenTxHashToPosition(ctx, o.store.PositionRepo(), newPositionID, signed.Hash); err != nil {
 			_ = o.store.PositionRepo().UpdateStatus(ctx, newPositionID, domain.StatusRejected)
+			_ = updateExecutionIntent(ctx, o.store.ExecutionIntentRepo(), reopenIntent, domain.IntentStatusFailed, prepared.ID, signed.Hash, signed.Hash, "attach opening tx hash failed")
 			return loop.ExecutionResult{
 				TxHash:      closeResult.TxHash,
 				Success:     false,
@@ -2078,6 +2141,7 @@ func (o *orderManagerAdapter) Rebalance(ctx context.Context, positionID string, 
 			signed.Status = domain.TxFailed
 			_ = o.store.TxRepo().UpsertTx(ctx, signed)
 			_ = o.store.PositionRepo().UpdateStatus(ctx, newPositionID, domain.StatusRejected)
+			_ = updateExecutionIntent(ctx, o.store.ExecutionIntentRepo(), reopenIntent, domain.IntentStatusFailed, prepared.ID, signed.Hash, signed.Hash, "broadcast failed")
 			return loop.ExecutionResult{
 				TxHash:      closeResult.TxHash,
 				Success:     false,
@@ -2087,6 +2151,7 @@ func (o *orderManagerAdapter) Rebalance(ctx context.Context, positionID string, 
 			}, nil
 		}
 		signed.Status = txStatusAfterLiveSend(o.broadcaster, o.requiredConfs)
+		_ = updateExecutionIntent(ctx, o.store.ExecutionIntentRepo(), reopenIntent, intentStatusFromTxStatus(signed.Status), prepared.ID, signed.Hash, signed.Hash, "")
 		if err := o.store.TxRepo().UpsertTx(ctx, signed); err != nil {
 			return loop.ExecutionResult{}, err
 		}
@@ -2212,11 +2277,17 @@ func (o *orderManagerAdapter) CollectFees(ctx context.Context, positionID string
 			maxUint128,
 		)
 		collectTx := buildLiveCloseUnsignedTx(o.npmBaseAddress, o.wallet.Address(), collectData, "live-collect-"+position.TokenID, o.exitDeadlineSeconds)
+		collectIntent := newExecutionIntent("live_collect", position.Chain, position.PoolID, position.ID, "collect", "live fee collection", time.Now())
+		collectIntent.SizingSnapshotJSON = buildSizingSnapshotJSON(position.AmountUSD, map[string]string{"token_id": position.TokenID})
+		if err := reserveExecutionIntent(ctx, o.store.ExecutionIntentRepo(), collectIntent); err != nil {
+			return loop.ExecutionResult{Success: false, Error: fmt.Sprintf("reserve collect intent failed: %v", err), PositionID: positionID, FinalStatus: position.Status}, nil
+		}
 		collectSigned, err := sendLiveCloseTx(ctx, o.wallet, o.broadcaster, collectTx, "collect", o.signTimeoutSeconds, o.sendTimeoutSeconds, o.requiredConfs)
 		if err != nil {
 			if collectSigned.ID != "" {
 				_ = o.store.TxRepo().UpsertTx(ctx, collectSigned)
 			}
+			_ = updateExecutionIntent(ctx, o.store.ExecutionIntentRepo(), collectIntent, domain.IntentStatusFailed, collectTx.ID, collectSigned.Hash, collectSigned.Hash, "collect failed")
 			return loop.ExecutionResult{
 				Success:     false,
 				Error:       err.Error(),
@@ -2224,6 +2295,7 @@ func (o *orderManagerAdapter) CollectFees(ctx context.Context, positionID string
 				FinalStatus: position.Status,
 			}, nil
 		}
+		_ = updateExecutionIntent(ctx, o.store.ExecutionIntentRepo(), collectIntent, intentStatusFromTxStatus(collectSigned.Status), collectTx.ID, collectSigned.Hash, collectSigned.Hash, "")
 		if err := o.store.TxRepo().UpsertTx(ctx, collectSigned); err != nil {
 			return loop.ExecutionResult{}, err
 		}

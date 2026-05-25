@@ -26,7 +26,7 @@ var txValidTransitions = map[domain.TxStatus][]domain.TxStatus{
 	domain.TxBroadcast:        {domain.TxMined, domain.TxStuck, domain.TxReverted, domain.TxReorged},
 	domain.TxMined:            {domain.TxConfirmed, domain.TxReverted, domain.TxReorged},
 	domain.TxConfirmed:        {},
-	domain.TxStuck:            {domain.TxMined, domain.TxRFBBumped, domain.TxFailed},
+	domain.TxStuck:            {domain.TxMined, domain.TxReverted, domain.TxRFBBumped, domain.TxFailed},
 	domain.TxRFBBumped:        {domain.TxMined, domain.TxStuck, domain.TxFailed},
 	domain.TxFailed:           {},
 	domain.TxReverted:         {domain.TxBroadcast, domain.TxFailed},

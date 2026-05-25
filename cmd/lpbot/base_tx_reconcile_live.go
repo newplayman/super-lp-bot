@@ -118,6 +118,9 @@ func markTimedOutBaseTxs(ctx context.Context, store ports.Store, timeoutSeconds 
 		if err := store.TxRepo().UpdateTxStatus(ctx, domain.ChainBase, tx.Hash, domain.TxStuck, nil); err != nil {
 			return err
 		}
+		if err := markExecutionIntentByTxHash(ctx, store, domain.ChainBase, tx.Hash, domain.IntentStatusStuck, "tx exceeded stuck timeout"); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -169,9 +172,12 @@ func reconcileOneBaseTx(ctx context.Context, cfg *config.Config, store ports.Sto
 		return err
 	}
 	if latest.Status == domain.TxConfirmed {
-		return nil
+		return markExecutionIntentByTxHash(ctx, store, domain.ChainBase, tx.Hash, domain.IntentStatusReconciled, "already confirmed and reconciled")
 	}
-	return store.TxRepo().UpdateTxStatus(ctx, domain.ChainBase, tx.Hash, domain.TxConfirmed, ref)
+	if err := store.TxRepo().UpdateTxStatus(ctx, domain.ChainBase, tx.Hash, domain.TxConfirmed, ref); err != nil {
+		return err
+	}
+	return markExecutionIntentByTxHash(ctx, store, domain.ChainBase, tx.Hash, domain.IntentStatusReconciled, "receipt confirmed and reconciled")
 }
 
 func reconcileBaseRevertedTx(ctx context.Context, store ports.Store, tx domain.SignedTx, ref *domain.BlockRef) error {
@@ -183,6 +189,9 @@ func reconcileBaseRevertedTx(ctx context.Context, store ports.Store, tx domain.S
 		if err := store.TxRepo().UpdateTxStatus(ctx, domain.ChainBase, tx.Hash, domain.TxReverted, ref); err != nil && !errors.Is(err, ports.ErrInvalidTxTransition) {
 			return err
 		}
+	}
+	if err := markExecutionIntentByTxHash(ctx, store, domain.ChainBase, tx.Hash, domain.IntentStatusFailed, "receipt reverted"); err != nil {
+		return err
 	}
 
 	position, err := findOpeningPositionByOpenTxHash(ctx, store.PositionRepo(), tx.Hash)
@@ -396,14 +405,14 @@ func persistSuccessfulMintReconcile(
 	position.OpenTxHash = txHash
 	position.Status = domain.StatusOpen
 	updates := map[string]string{
-		"open_tx_hash":    txHash,
-		"token_id":        tokenID,
-		"liquidity":       liquidity,
-		"actual_amount0":  amount0,
-		"actual_amount1":  amount1,
-		"receipt_block":   fmt.Sprintf("%d", receipt.BlockNumber.Uint64()),
-		"receipt_hash":    receipt.BlockHash.Hex(),
-		"reconciled_at":   fmt.Sprintf("%d", time.Now().Unix()),
+		"open_tx_hash":   txHash,
+		"token_id":       tokenID,
+		"liquidity":      liquidity,
+		"actual_amount0": amount0,
+		"actual_amount1": amount1,
+		"receipt_block":  fmt.Sprintf("%d", receipt.BlockNumber.Uint64()),
+		"receipt_hash":   receipt.BlockHash.Hex(),
+		"reconciled_at":  fmt.Sprintf("%d", time.Now().Unix()),
 	}
 	merged, err := mergePositionMetadata(position.MetadataJSON, updates)
 	if err != nil {

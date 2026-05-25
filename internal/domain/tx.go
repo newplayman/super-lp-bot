@@ -23,7 +23,7 @@ var TxValidTransitions = map[TxStatus][]TxStatus{
 	TxBroadcast:        {TxMined, TxStuck, TxReverted, TxReorged},
 	TxMined:            {TxConfirmed, TxReverted, TxReorged},
 	TxConfirmed:        {},
-	TxStuck:            {TxMined, TxRFBBumped, TxFailed},
+	TxStuck:            {TxMined, TxReverted, TxRFBBumped, TxFailed},
 	TxRFBBumped:        {TxMined, TxStuck, TxFailed}, // stuck again possible
 	TxFailed:           {},
 	TxReverted:         {TxBroadcast, TxFailed}, // retry possible

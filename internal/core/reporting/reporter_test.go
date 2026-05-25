@@ -34,12 +34,13 @@ func (n *reportGeneratorNop) GenerateMonthly(ctx context.Context, date time.Time
 // storeNop is a no-op Store for testing.
 type storeNop struct{}
 
-func (s *storeNop) TxRepo() ports.TxRepo                { return nil }
-func (s *storeNop) PositionRepo() ports.PositionRepo      { return nil }
-func (s *storeNop) PoolRepo() ports.PoolRepo             { return nil }
-func (s *storeNop) LedgerRepo() ports.LedgerRepo         { return nil }
-func (s *storeNop) RiskRepo() ports.RiskRepo             { return nil }
-func (s *storeNop) ConfigSnap() ports.ConfigSnap         { return nil }
+func (s *storeNop) TxRepo() ports.TxRepo                           { return nil }
+func (s *storeNop) PositionRepo() ports.PositionRepo               { return nil }
+func (s *storeNop) PoolRepo() ports.PoolRepo                       { return nil }
+func (s *storeNop) LedgerRepo() ports.LedgerRepo                   { return nil }
+func (s *storeNop) RiskRepo() ports.RiskRepo                       { return nil }
+func (s *storeNop) ExecutionIntentRepo() ports.ExecutionIntentRepo { return nil }
+func (s *storeNop) ConfigSnap() ports.ConfigSnap                   { return nil }
 
 // TestReportGenerator_DailyReport verifies daily report generation.
 func TestReportGenerator_DailyReport(t *testing.T) {
@@ -131,7 +132,7 @@ func TestReportGenerator_DefaultConfig(t *testing.T) {
 // pnlNop is a no-op PnLTracker for testing.
 type pnlNop struct{}
 
-func (n *pnlNop) MarkPrice(ctx context.Context) (int, error)                             { return 0, nil }
+func (n *pnlNop) MarkPrice(ctx context.Context) (int, error) { return 0, nil }
 func (n *pnlNop) GetPositionPnL(ctx context.Context, positionID string) (*pnl.PnLResult, error) {
 	return &pnl.PnLResult{}, nil
 }
@@ -142,4 +143,4 @@ func (n *pnlNop) RecordRealizedPnL(ctx context.Context, positionID string, txHas
 	return &pnl.PnLResult{}, nil
 }
 func (n *pnlNop) TrackPosition(ctx context.Context, pos *domain.Position) error { return nil }
-func (n *pnlNop) UntrackPosition(ctx context.Context, positionID string) error   { return nil }
+func (n *pnlNop) UntrackPosition(ctx context.Context, positionID string) error  { return nil }

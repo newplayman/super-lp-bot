@@ -246,7 +246,9 @@ func runCanaryExit(ctx context.Context, cfg *config.Config, tokenID string) (err
 		big.NewInt(time.Now().Add(10*time.Minute).Unix()),
 	)
 	decreaseTx := buildCanaryNPMUnsignedTx(cfg, wallet.Address(), decreaseData, "canary-exit-decrease-"+tokenID)
-	decreaseSigned, err := sendCanaryExitTx(ctx, wallet, broadcaster, decreaseTx, "decrease_liquidity", cfg.Chains.Base.Confirmations)
+	decreaseIntent := newExecutionIntent("canary_exit", domain.ChainBase, report.PoolID, positionID, "decrease", "manual canary exit", time.Now())
+	decreaseIntent.SizingSnapshotJSON = buildSizingSnapshotJSON(report.TotalUSD, map[string]string{"token_id": tokenID})
+	decreaseSigned, err := sendCanaryExitTx(ctx, wallet, broadcaster, stateWriter, decreaseTx, "decrease_liquidity", cfg.Chains.Base.Confirmations, decreaseIntent)
 	if err != nil {
 		_ = persistCanaryExitExecution(ctx, cfg, report, nil, nil, "exit_failed", err.Error())
 		return err
@@ -274,7 +276,9 @@ func runCanaryExit(ctx context.Context, cfg *config.Config, tokenID string) (err
 		new(big.Int).Sub(new(big.Int).Lsh(big.NewInt(1), 128), big.NewInt(1)),
 	)
 	collectTx := buildCanaryNPMUnsignedTx(cfg, wallet.Address(), collectData, "canary-exit-collect-"+tokenID)
-	collectSigned, err := sendCanaryExitTx(ctx, wallet, broadcaster, collectTx, "collect", cfg.Chains.Base.Confirmations)
+	collectIntent := newExecutionIntent("canary_exit", domain.ChainBase, report.PoolID, positionID, "collect", "manual canary exit", time.Now())
+	collectIntent.SizingSnapshotJSON = buildSizingSnapshotJSON(report.TotalUSD, map[string]string{"token_id": tokenID})
+	collectSigned, err := sendCanaryExitTx(ctx, wallet, broadcaster, stateWriter, collectTx, "collect", cfg.Chains.Base.Confirmations, collectIntent)
 	if err != nil {
 		_ = persistCanaryExitExecution(ctx, cfg, report, &decreaseSigned, nil, "collect_failed", err.Error())
 		return err
@@ -638,26 +642,57 @@ func sendCanaryExitTx(ctx context.Context, wallet interface {
 	Sign(context.Context, domain.UnsignedTx) (domain.SignedTx, error)
 }, broadcaster interface {
 	Send(context.Context, domain.SignedTx) error
-}, tx domain.UnsignedTx, action string, requiredConfs int) (domain.SignedTx, error) {
+}, state *canaryEventWriter, tx domain.UnsignedTx, action string, requiredConfs int, intent *domain.ExecutionIntent) (domain.SignedTx, error) {
+	if intent != nil && state != nil {
+		if err := state.ReserveExecutionIntent(ctx, intent); err != nil {
+			return domain.SignedTx{}, fmt.Errorf("reserve %s intent: %w", action, err)
+		}
+	}
 	signCtx, cancel := context.WithTimeout(ctx, 45*time.Second)
 	signed, err := wallet.Sign(signCtx, tx)
 	cancel()
 	if err != nil {
+		if intent != nil && state != nil {
+			intent.Status = domain.IntentStatusFailed
+			intent.Reason = "sign failed"
+			_ = state.UpdateExecutionIntent(ctx, intent)
+		}
 		return domain.SignedTx{}, fmt.Errorf("sign %s: %w", action, err)
 	}
 	signed.ID = tx.ID
 	signed.Status = domain.TxBuilt
+	if intent != nil && state != nil {
+		intent.Status = domain.IntentStatusSigned
+		intent.UnsignedTxHash = tx.ID
+		intent.SignedTxHash = signed.Hash
+		intent.TxHash = signed.Hash
+		if err := state.UpdateExecutionIntent(ctx, intent); err != nil {
+			return domain.SignedTx{}, fmt.Errorf("update signed %s intent: %w", action, err)
+		}
+	}
 	sendCtx, cancel := context.WithTimeout(ctx, 180*time.Second)
 	err = broadcaster.Send(sendCtx, signed)
 	cancel()
 	if err != nil {
 		signed.Status = domain.TxFailed
+		if intent != nil && state != nil {
+			intent.Status = domain.IntentStatusFailed
+			intent.Reason = "broadcast failed"
+			_ = state.UpdateExecutionIntent(ctx, intent)
+		}
 		return signed, fmt.Errorf("broadcast %s: %w", action, err)
 	}
 	if aware, ok := broadcaster.(ports.Broadcaster); ok {
 		signed.Status = txStatusAfterLiveSend(aware, requiredConfs)
 	} else {
 		signed.Status = domain.TxBroadcast
+	}
+	if intent != nil && state != nil {
+		intent.Status = intentStatusFromTxStatus(signed.Status)
+		intent.TxHash = signed.Hash
+		if err := state.UpdateExecutionIntent(ctx, intent); err != nil {
+			return domain.SignedTx{}, fmt.Errorf("update submitted %s intent: %w", action, err)
+		}
 	}
 	fmt.Printf("tx_broadcast action=%s hash=%s id=%s\n", action, signed.Hash, signed.ID)
 	return signed, nil

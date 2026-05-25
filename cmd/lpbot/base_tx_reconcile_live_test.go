@@ -51,6 +51,10 @@ func TestReconcileBasePendingTxs_MintReceiptConfirmsAndOpensPosition(t *testing.
 		OpenedAt:     time.Now().Unix(),
 	}
 	require.NoError(t, store.PositionRepo().Save(ctx, position))
+	intent := newExecutionIntent("live_open", domain.ChainBase, position.PoolID, position.ID, "open", "test", time.Now())
+	intent.TxHash = txHash
+	intent.SignedTxHash = txHash
+	require.NoError(t, store.ExecutionIntentRepo().Reserve(ctx, intent))
 	require.NoError(t, store.TxRepo().UpsertTx(ctx, domain.SignedTx{
 		UnsignedTx: domain.UnsignedTx{
 			ID:       "mint-open-1",
@@ -84,6 +88,9 @@ func TestReconcileBasePendingTxs_MintReceiptConfirmsAndOpensPosition(t *testing.
 	require.Equal(t, "1000", metadata["liquidity"])
 	require.Equal(t, "2500000", metadata["actual_amount0"])
 	require.Equal(t, "500000000000000", metadata["actual_amount1"])
+	storedIntent, err := store.ExecutionIntentRepo().FindByTxHash(ctx, domain.ChainBase, txHash)
+	require.NoError(t, err)
+	require.Equal(t, domain.IntentStatusReconciled, storedIntent.Status)
 
 	require.NoError(t, reconcileBasePendingTxs(ctx, cfg, store, source, nil, time.Now()))
 	rechecked, err := store.PositionRepo().FindByID(ctx, position.ID)
@@ -110,6 +117,10 @@ func TestReconcileBasePendingTxs_RevertedMintRejectsOpeningPosition(t *testing.T
 		OpenedAt:     time.Now().Unix(),
 	}
 	require.NoError(t, store.PositionRepo().Save(ctx, position))
+	intent := newExecutionIntent("live_open", domain.ChainBase, position.PoolID, position.ID, "open", "test", time.Now())
+	intent.TxHash = txHash
+	intent.SignedTxHash = txHash
+	require.NoError(t, store.ExecutionIntentRepo().Reserve(ctx, intent))
 	require.NoError(t, store.TxRepo().UpsertTx(ctx, domain.SignedTx{
 		UnsignedTx: domain.UnsignedTx{
 			ID:       "mint-open-revert",
@@ -129,6 +140,60 @@ func TestReconcileBasePendingTxs_RevertedMintRejectsOpeningPosition(t *testing.T
 			Status:      types.ReceiptStatusFailed,
 			BlockNumber: newTestBigInt(101),
 			BlockHash:   common.HexToHash("0x1"),
+		},
+	}}
+
+	require.NoError(t, reconcileBasePendingTxs(ctx, cfg, store, source, nil, time.Now()))
+
+	tx, err := store.TxRepo().GetTxByHash(ctx, domain.ChainBase, txHash)
+	require.NoError(t, err)
+	require.Equal(t, domain.TxReverted, tx.Status)
+
+	updated, err := store.PositionRepo().FindByID(ctx, position.ID)
+	require.NoError(t, err)
+	require.Equal(t, domain.StatusRejected, updated.Status)
+	storedIntent, err := store.ExecutionIntentRepo().FindByTxHash(ctx, domain.ChainBase, txHash)
+	require.NoError(t, err)
+	require.Equal(t, domain.IntentStatusFailed, storedIntent.Status)
+}
+
+func TestReconcileBasePendingTxs_StuckRevertedOpeningPositionBecomesRejected(t *testing.T) {
+	store := newLiveReconcileTestStore(t)
+	ctx := context.Background()
+	cfg := liveReconcileTestConfig()
+	txHash := "0xabababababababababababababababababababababababababababababababab"
+
+	position := &domain.Position{
+		ID:           "pos-open-stuck-revert",
+		PoolID:       "0xcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+		Chain:        domain.ChainBase,
+		Status:       domain.StatusOpening,
+		Tier:         domain.TierC,
+		AmountUSD:    domain.MustDecimal("10"),
+		OpenTxHash:   txHash,
+		MetadataJSON: "{}",
+		OpenedAt:     time.Now().Unix(),
+	}
+	require.NoError(t, store.PositionRepo().Save(ctx, position))
+	require.NoError(t, store.TxRepo().UpsertTx(ctx, domain.SignedTx{
+		UnsignedTx: domain.UnsignedTx{
+			ID:       "mint-open-stuck-revert",
+			Chain:    domain.ChainBase,
+			From:     zeroEVMAddress(),
+			To:       domain.MustParseAddress(cfg.Execution.NPMBaseAddress),
+			Deadline: time.Now().Add(5 * time.Minute).Unix(),
+			MinOut:   domain.ZeroDecimal(),
+		},
+		Hash:   txHash,
+		Status: domain.TxStuck,
+	}))
+
+	source := &fakeBaseReceiptSource{receipts: map[string]*types.Receipt{
+		common.HexToHash(txHash).Hex(): {
+			TxHash:      common.HexToHash(txHash),
+			Status:      types.ReceiptStatusFailed,
+			BlockNumber: newTestBigInt(102),
+			BlockHash:   common.HexToHash("0x3"),
 		},
 	}}
 
@@ -224,6 +289,61 @@ func TestReconcileBasePendingTxs_CollectReceiptClosesExitingPosition(t *testing.
 	updated, err := store.PositionRepo().FindByID(ctx, position.ID)
 	require.NoError(t, err)
 	require.Equal(t, domain.StatusClosed, updated.Status)
+}
+
+func TestReconcileBasePendingTxs_StuckRevertedExitingPositionBecomesExitFailed(t *testing.T) {
+	store := newLiveReconcileTestStore(t)
+	ctx := context.Background()
+	cfg := liveReconcileTestConfig()
+	txHash := "0xefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefef"
+	wallet := domain.MustParseAddress("0x4444444444444444444444444444444444444444")
+
+	position := &domain.Position{
+		ID:           "pos-exit-stuck-revert",
+		TokenID:      "123",
+		PoolID:       "0x5555555555555555555555555555555555555555",
+		Chain:        domain.ChainBase,
+		Status:       domain.StatusExiting,
+		Tier:         domain.TierC,
+		AmountUSD:    domain.MustDecimal("10"),
+		MetadataJSON: "{}",
+		OpenedAt:     time.Now().Add(-time.Hour).Unix(),
+	}
+	require.NoError(t, store.PositionRepo().Save(ctx, position))
+
+	data := encodeLiveCloseCollectCalldata(newTestBigIntFromString("123"), common.HexToAddress(wallet.String()), newTestBigInt(1), newTestBigInt(1))
+	require.NoError(t, store.TxRepo().UpsertTx(ctx, domain.SignedTx{
+		UnsignedTx: domain.UnsignedTx{
+			ID:       "collect-stuck-revert-123",
+			Chain:    domain.ChainBase,
+			From:     wallet,
+			To:       domain.MustParseAddress(cfg.Execution.NPMBaseAddress),
+			Data:     data,
+			Deadline: time.Now().Add(5 * time.Minute).Unix(),
+			MinOut:   domain.ZeroDecimal(),
+		},
+		Hash:   txHash,
+		Status: domain.TxStuck,
+	}))
+
+	source := &fakeBaseReceiptSource{receipts: map[string]*types.Receipt{
+		common.HexToHash(txHash).Hex(): {
+			TxHash:      common.HexToHash(txHash),
+			Status:      types.ReceiptStatusFailed,
+			BlockNumber: newTestBigInt(203),
+			BlockHash:   common.HexToHash("0x4"),
+		},
+	}}
+
+	require.NoError(t, reconcileBasePendingTxs(ctx, cfg, store, source, nil, time.Now()))
+
+	tx, err := store.TxRepo().GetTxByHash(ctx, domain.ChainBase, txHash)
+	require.NoError(t, err)
+	require.Equal(t, domain.TxReverted, tx.Status)
+
+	updated, err := store.PositionRepo().FindByID(ctx, position.ID)
+	require.NoError(t, err)
+	require.Equal(t, domain.StatusExitFailed, updated.Status)
 }
 
 func newLiveReconcileTestStore(t *testing.T) *sqlite.Store {

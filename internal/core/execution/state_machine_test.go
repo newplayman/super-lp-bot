@@ -231,7 +231,7 @@ func TestValidTxTransitions(t *testing.T) {
 		{domain.TxBroadcast, []domain.TxStatus{domain.TxMined, domain.TxStuck, domain.TxReverted, domain.TxReorged}},
 		{domain.TxMined, []domain.TxStatus{domain.TxConfirmed, domain.TxReverted, domain.TxReorged}},
 		{domain.TxConfirmed, nil},
-		{domain.TxStuck, []domain.TxStatus{domain.TxMined, domain.TxRFBBumped, domain.TxFailed}},
+		{domain.TxStuck, []domain.TxStatus{domain.TxMined, domain.TxReverted, domain.TxRFBBumped, domain.TxFailed}},
 		{domain.TxRFBBumped, []domain.TxStatus{domain.TxMined, domain.TxStuck, domain.TxFailed}},
 		{domain.TxFailed, nil},
 		{domain.TxReverted, []domain.TxStatus{domain.TxBroadcast, domain.TxFailed}},

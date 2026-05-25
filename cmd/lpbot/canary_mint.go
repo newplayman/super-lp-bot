@@ -20,6 +20,8 @@ import (
 const canaryMintConfirmEnv = "LPBOT_CONFIRM_CANARY_MINT"
 
 type canaryMintState interface {
+	ReserveExecutionIntent(ctx context.Context, intent *domain.ExecutionIntent) error
+	UpdateExecutionIntent(ctx context.Context, intent *domain.ExecutionIntent) error
 	ReserveOpeningPosition(ctx context.Context, pos *domain.Position) error
 	UpdatePositionStatus(ctx context.Context, positionID string, status domain.PositionStatus) error
 	AttachOpenTxHash(ctx context.Context, positionID string, txHash string) error
@@ -257,6 +259,16 @@ func runCanaryMint(ctx context.Context, cfg *config.Config) (err error) {
 		RequiredWETH:  requiredWETH,
 		GasEstimate:   gas,
 		Confirmations: cfg.Chains.Base.Confirmations,
+		Intent: func() *domain.ExecutionIntent {
+			intent := newExecutionIntent("canary_mint", pool.Chain, pool.ID, positionID, "open", "manual canary mint", now)
+			intent.Status = domain.IntentStatusIntended
+			intent.SizingSnapshotJSON = buildSizingSnapshotJSON(amountUSD, map[string]string{
+				"required_usdc_raw": requiredUSDC.String(),
+				"required_weth_raw": requiredWETH.String(),
+				"gas_estimate":      fmt.Sprintf("%d", gas),
+			})
+			return intent
+		}(),
 	})
 	if err != nil {
 		return err
@@ -304,6 +316,7 @@ type canaryMintSubmissionInput struct {
 	RequiredWETH  *big.Int
 	GasEstimate   uint64
 	Confirmations int
+	Intent        *domain.ExecutionIntent
 }
 
 func submitReservedCanaryMint(
@@ -318,7 +331,16 @@ func submitReservedCanaryMint(
 	unsignedTx domain.UnsignedTx,
 	input canaryMintSubmissionInput,
 ) (domain.SignedTx, error) {
+	if input.Intent != nil {
+		if err := state.ReserveExecutionIntent(ctx, input.Intent); err != nil {
+			return domain.SignedTx{}, fmt.Errorf("reserve execution intent: %w", err)
+		}
+	}
 	if err := state.ReserveOpeningPosition(ctx, reservation); err != nil {
+		if input.Intent != nil {
+			_ = updateExecutionIntent(ctx, nil, input.Intent, domain.IntentStatusFailed, "", "", "", "reserve opening position failed")
+			_ = state.UpdateExecutionIntent(ctx, input.Intent)
+		}
 		return domain.SignedTx{}, fmt.Errorf("reserve opening position: %w", err)
 	}
 	if err := state.Record(ctx, canaryEvent{
@@ -341,12 +363,32 @@ func submitReservedCanaryMint(
 	cancel()
 	if err != nil {
 		_ = state.UpdatePositionStatus(ctx, reservation.ID, domain.StatusRejected)
+		if input.Intent != nil {
+			input.Intent.Status = domain.IntentStatusFailed
+			input.Intent.Reason = "sign mint failed"
+			_ = state.UpdateExecutionIntent(ctx, input.Intent)
+		}
 		return domain.SignedTx{}, fmt.Errorf("sign mint: %w", err)
 	}
 	signed.ID = unsignedTx.ID
 	signed.Status = domain.TxBuilt
+	if input.Intent != nil {
+		input.Intent.Status = domain.IntentStatusSigned
+		input.Intent.UnsignedTxHash = unsignedTx.ID
+		input.Intent.SignedTxHash = signed.Hash
+		input.Intent.TxHash = signed.Hash
+		if err := state.UpdateExecutionIntent(ctx, input.Intent); err != nil {
+			_ = state.UpdatePositionStatus(ctx, reservation.ID, domain.StatusRejected)
+			return domain.SignedTx{}, fmt.Errorf("update signed execution intent: %w", err)
+		}
+	}
 	if err := state.AttachOpenTxHash(ctx, reservation.ID, signed.Hash); err != nil {
 		_ = state.UpdatePositionStatus(ctx, reservation.ID, domain.StatusRejected)
+		if input.Intent != nil {
+			input.Intent.Status = domain.IntentStatusFailed
+			input.Intent.Reason = "attach opening tx hash failed"
+			_ = state.UpdateExecutionIntent(ctx, input.Intent)
+		}
 		return domain.SignedTx{}, fmt.Errorf("attach opening tx hash: %w", err)
 	}
 	if err := state.RecordSignedTx(ctx, signed, domain.TxBuilt); err != nil {
@@ -371,6 +413,11 @@ func submitReservedCanaryMint(
 	if err := broadcaster.Send(ctx, signed); err != nil {
 		_ = state.RecordSignedTx(ctx, signed, domain.TxFailed)
 		_ = state.UpdatePositionStatus(ctx, reservation.ID, domain.StatusRejected)
+		if input.Intent != nil {
+			input.Intent.Status = domain.IntentStatusFailed
+			input.Intent.Reason = "broadcast mint failed"
+			_ = state.UpdateExecutionIntent(ctx, input.Intent)
+		}
 		return domain.SignedTx{}, fmt.Errorf("broadcast mint: %w", err)
 	}
 	submissionStatus := txStatusAfterLiveSend(broadcaster, input.Confirmations)
@@ -380,6 +427,13 @@ func submitReservedCanaryMint(
 	}
 	if err := state.UpdatePositionStatus(ctx, reservation.ID, domain.StatusOpening); err != nil {
 		return domain.SignedTx{}, fmt.Errorf("mark reserved position opening: %w", err)
+	}
+	if input.Intent != nil {
+		input.Intent.Status = intentStatusFromTxStatus(submissionStatus)
+		input.Intent.TxHash = signed.Hash
+		if err := state.UpdateExecutionIntent(ctx, input.Intent); err != nil {
+			return domain.SignedTx{}, fmt.Errorf("update submitted execution intent: %w", err)
+		}
 	}
 	return signed, nil
 }

@@ -19,6 +19,9 @@ type Store interface {
 	// TxRepo returns the transaction repository.
 	TxRepo() TxRepo
 
+	// ExecutionIntentRepo returns the execution intent repository.
+	ExecutionIntentRepo() ExecutionIntentRepo
+
 	// PositionRepo returns the position repository.
 	PositionRepo() PositionRepo
 

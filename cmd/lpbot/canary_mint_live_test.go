@@ -7,6 +7,7 @@ import (
 	"errors"
 	"math/big"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -16,9 +17,33 @@ import (
 type fakeCanaryMintState struct {
 	reserved       map[string]domain.PositionStatus
 	openTxHashes   map[string]string
+	intents        map[string]domain.ExecutionIntentStatus
+	intentErr      error
 	reserveErr     error
 	recordedTx     []domain.TxStatus
 	recordedEvents []string
+}
+
+func (s *fakeCanaryMintState) ReserveExecutionIntent(_ context.Context, intent *domain.ExecutionIntent) error {
+	if s.intentErr != nil {
+		return s.intentErr
+	}
+	if s.intents == nil {
+		s.intents = make(map[string]domain.ExecutionIntentStatus)
+	}
+	s.intents[intent.IdempotencyKey] = intent.Status
+	return nil
+}
+
+func (s *fakeCanaryMintState) UpdateExecutionIntent(_ context.Context, intent *domain.ExecutionIntent) error {
+	if intent == nil {
+		return nil
+	}
+	if s.intents == nil {
+		s.intents = make(map[string]domain.ExecutionIntentStatus)
+	}
+	s.intents[intent.IdempotencyKey] = intent.Status
+	return nil
 }
 
 func (s *fakeCanaryMintState) ReserveOpeningPosition(_ context.Context, pos *domain.Position) error {
@@ -118,6 +143,7 @@ func TestSubmitReservedCanaryMint_ReservationHappensBeforeBroadcast(t *testing.T
 		RequiredWETH:  bigZero(),
 		GasEstimate:   21000,
 		Confirmations: 0,
+		Intent:        newExecutionIntent("canary_mint", domain.ChainBase, "pool-1", "pos-1", "open", "test", time.Now()),
 	})
 	require.NoError(t, err)
 	require.True(t, wallet.signCalled)
@@ -151,16 +177,51 @@ func TestSubmitReservedCanaryMint_DuplicateReservationBlocksSignAndBroadcast(t *
 		RequiredWETH:  bigZero(),
 		GasEstimate:   21000,
 		Confirmations: 0,
+		Intent:        newExecutionIntent("canary_mint", domain.ChainBase, "pool-1", "pos-dup", "open", "test", time.Now()),
 	})
 	require.Error(t, err)
 	require.False(t, wallet.signCalled)
 	require.False(t, broadcaster.sendCalled)
 }
 
+func TestSubmitReservedCanaryMint_DuplicateIntentBlocksSignAndBroadcast(t *testing.T) {
+	state := &fakeCanaryMintState{intentErr: errors.New("duplicate intent")}
+	wallet := &fakeCanaryWallet{}
+	broadcaster := &fakeCanaryBroadcaster{state: state, reservationID: "pos-intent-dup"}
+	reservation := &domain.Position{
+		ID:     "pos-intent-dup",
+		PoolID: "pool-1",
+		Chain:  domain.ChainBase,
+		Status: domain.StatusIntended,
+	}
+
+	_, err := submitReservedCanaryMint(context.Background(), state, wallet, broadcaster, reservation, domain.UnsignedTx{
+		ID:    "tx-intent-dup",
+		Chain: domain.ChainBase,
+		From:  wallet.Address(),
+	}, canaryMintSubmissionInput{
+		Pool:          domain.Pool{ID: "pool-1", Chain: domain.ChainBase},
+		PositionID:    "pos-intent-dup",
+		Wallet:        wallet.Address(),
+		AmountUSD:     domain.MustDecimal("5"),
+		RequiredUSDC:  bigZero(),
+		RequiredWETH:  bigZero(),
+		GasEstimate:   21000,
+		Confirmations: 0,
+		Intent:        newExecutionIntent("canary_mint", domain.ChainBase, "pool-1", "pos-intent-dup", "open", "test", time.Now()),
+	})
+	require.Error(t, err)
+	require.False(t, wallet.signCalled)
+	require.False(t, broadcaster.sendCalled)
+	require.Empty(t, state.reserved)
+}
+
 func TestValidateLiveSchemaState_MissingUniqueIndexBlocksStartup(t *testing.T) {
 	err := validateLiveSchemaState(map[string]bool{
 		"positions":                         true,
 		"transactions":                      true,
+		"execution_intents":                 true,
+		"portfolio_snapshots":               true,
 		"canary_events":                     true,
 		"pnl_ledger":                        true,
 		"shadow_decision_trace":             true,

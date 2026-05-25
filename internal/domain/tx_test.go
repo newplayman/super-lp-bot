@@ -14,6 +14,7 @@ func TestTxStatus_ValidTransitions(t *testing.T) {
 	require.True(t, domain.TxBroadcast.CanTransitionTo(domain.TxMined))
 	require.True(t, domain.TxBroadcast.CanTransitionTo(domain.TxStuck))
 	require.True(t, domain.TxStuck.CanTransitionTo(domain.TxMined))
+	require.True(t, domain.TxStuck.CanTransitionTo(domain.TxReverted))
 	require.True(t, domain.TxStuck.CanTransitionTo(domain.TxRFBBumped))
 	require.True(t, domain.TxStuck.CanTransitionTo(domain.TxFailed))
 	require.False(t, domain.TxConfirmed.CanTransitionTo(domain.TxBroadcast))
