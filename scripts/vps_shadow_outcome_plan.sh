@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 EXPECTED_COMMIT="${LPBOT_VPS_EXPECT_COMMIT:-}"
-CONFIG_PATH="${LPBOT_VPS_CONFIG_PATH:-configs/config.live.toml}"
+CONFIG_PATH="${LPBOT_VPS_CONFIG_PATH:-configs/config.shadow.toml}"
 
 cat <<EOF
 # VPS Shadow Outcome 只读执行计划
@@ -23,7 +23,7 @@ git rev-parse HEAD
 
 go test ./...
 go test -tags live ./cmd/lpbot ./internal/adapters/broadcast/live ./internal/adapters/mev/flashbots-protect
-bash -n scripts/live_readiness_check.sh
+bash -n scripts/shadow_research_readiness_check.sh
 
 ## 3. 数据库迁移与关系检查
 
@@ -38,14 +38,13 @@ psql "\$POSTGRES_DSN" -c "SELECT to_regclass('public.portfolio_snapshots');"
 psql "\$POSTGRES_DSN" -c "SELECT to_regclass('public.position_marks');"
 psql "\$POSTGRES_DSN" -c "SELECT to_regclass('public.idx_positions_one_active_per_pool');"
 
-## 4. 只读 shadow 回填与报告
+## 4. 研究 readiness 与只读 shadow 回填
 
-go run ./cmd/lpbot --config=${CONFIG_PATH} --shadow-outcomes-backfill --report-shadow-outcomes
-./scripts/live_readiness_check.sh
+./scripts/shadow_research_readiness_check.sh
+go run -tags shadow ./cmd/lpbot --config=${CONFIG_PATH} --shadow-outcomes-backfill --report-shadow-outcomes
 
 ## 5. 观察重点
 
-- portfolio_snapshots 是否持续刷新
 - shadow_outcome_labels 是否开始产生 1h / 6h / 24h 样本
 - REPORT_SHADOW_OUTCOMES_CN.md 中 invalid_rate 是否过高
 - high_score_vs_low_score 是否开始出现 better 信号

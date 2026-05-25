@@ -4,6 +4,12 @@
 
 ## 阶段 A: 1h Smoke
 
+进入 1h / 6h / 24h 观察前，先执行：
+
+```bash
+./scripts/shadow_research_readiness_check.sh
+```
+
 观察表：
 
 - `shadow_decision_trace`
@@ -16,7 +22,7 @@
 1. `shadow_outcome_labels` 是否开始产生 `1h` 样本
 2. `label=invalid` 比例是否异常高
 3. `REPORT_SHADOW_OUTCOMES_CN.md` 是否可正常生成
-4. `live_readiness_check.sh` 是否能输出一致的 PASS/WARN/FAIL
+4. `shadow_research_readiness_check.sh` 是否能稳定通过
 
 ## 阶段 B: 6h
 

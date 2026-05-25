@@ -3,7 +3,7 @@
 当前文件作为占位模板存在。实际报告请运行：
 
 ```bash
-go run ./cmd/lpbot --config=configs/config.live.toml --shadow-outcomes-backfill --report-shadow-outcomes
+go run -tags shadow ./cmd/lpbot --config=configs/config.shadow.toml --shadow-outcomes-backfill --report-shadow-outcomes
 ```
 
 默认输出仍会覆盖本文件。
