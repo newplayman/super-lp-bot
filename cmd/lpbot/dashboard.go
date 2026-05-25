@@ -23,6 +23,8 @@ import (
 	"github.com/lpbot/lpbot/internal/adapters/rpc"
 	"github.com/lpbot/lpbot/internal/domain"
 	"github.com/lpbot/lpbot/internal/platform/config"
+	"github.com/lpbot/lpbot/internal/platform/metrics"
+	dto "github.com/prometheus/client_model/go"
 )
 
 const (
@@ -61,6 +63,7 @@ type dashboardSnapshot struct {
 	RecentScores    []dashboardScore           `json:"recent_scores"`
 	Decisions       []dashboardDecision        `json:"decisions"`
 	Health          dashboardHealth            `json:"health"`
+	RPCEndpoints    []dashboardRPCEndpoint     `json:"rpc_endpoints"`
 	ChainStages     []dashboardStageCount      `json:"chain_stages"`
 	MarkSources     []dashboardStageCount      `json:"mark_sources"`
 	RecentIssues    []dashboardRecentIssue     `json:"recent_issues"`
@@ -95,6 +98,15 @@ type dashboardHealth struct {
 	RecentNonGeckoMarks    int64  `json:"recent_non_gecko_marks"`
 	RecentChainFailures    int64  `json:"recent_chain_failures"`
 	RecentPipelineFailures int64  `json:"recent_pipeline_failures"`
+}
+
+type dashboardRPCEndpoint struct {
+	Chain        string  `json:"chain"`
+	Endpoint     string  `json:"endpoint"`
+	Primary      bool    `json:"primary"`
+	Requests     float64 `json:"requests"`
+	RateLimits   float64 `json:"rate_limits"`
+	SuccessRatio float64 `json:"success_ratio"`
 }
 
 type dashboardBaseCanary struct {
@@ -425,12 +437,14 @@ type dashboardMarkPoint struct {
 }
 
 type dashboardLedgerBucket struct {
+	Source string `json:"source"`
 	Kind   string `json:"kind"`
 	Amount string `json:"amount"`
 }
 
 type dashboardLedgerPoint struct {
 	BlockTime int64  `json:"block_time"`
+	Source    string `json:"source"`
 	FeeUSD    string `json:"fee_usd"`
 	ILUSD     string `json:"il_usd"`
 	NetPnLUSD string `json:"net_pnl_usd"`
@@ -727,6 +741,7 @@ func (app *App) buildDashboardSnapshot(ctx context.Context) (dashboardSnapshot, 
 		return snapshot, err
 	}
 	snapshot.Health = health
+	snapshot.RPCEndpoints = dashboardCollectRPCEndpoints(app.rpcProviderForChain(domain.ChainBase))
 
 	chainStages, err := queryDashboardChainStages(ctx, db)
 	if err != nil {
@@ -759,6 +774,97 @@ func (app *App) buildDashboardSnapshot(ctx context.Context) (dashboardSnapshot, 
 	snapshot.StrategyQuality = strategyQuality
 
 	return snapshot, nil
+}
+
+func dashboardCollectRPCEndpoints(provider *rpc.RoundRobinProvider) []dashboardRPCEndpoint {
+	families, err := metrics.GetRegistry().Gather()
+	if err != nil {
+		return nil
+	}
+
+	currentPrimary := ""
+	if provider != nil {
+		currentPrimary = provider.Endpoint()
+	}
+
+	type key struct {
+		chain    string
+		endpoint string
+	}
+	rows := make(map[key]*dashboardRPCEndpoint)
+
+	getRow := func(chain, endpoint string) *dashboardRPCEndpoint {
+		k := key{chain: chain, endpoint: endpoint}
+		row, ok := rows[k]
+		if !ok {
+			row = &dashboardRPCEndpoint{Chain: chain, Endpoint: endpoint}
+			rows[k] = row
+		}
+		if endpoint != "" && endpoint == currentPrimary {
+			row.Primary = true
+		}
+		return row
+	}
+
+	for _, family := range families {
+		name := family.GetName()
+		switch name {
+		case "lpbot_rpc_endpoint_requests_total":
+			for _, metric := range family.GetMetric() {
+				chain, endpoint := metricLabel(metric, "chain"), metricLabel(metric, "endpoint")
+				if chain == "" || endpoint == "" {
+					continue
+				}
+				getRow(chain, endpoint).Requests += metric.GetCounter().GetValue()
+			}
+		case "lpbot_rpc_endpoint_rate_limit_total":
+			for _, metric := range family.GetMetric() {
+				chain, endpoint := metricLabel(metric, "chain"), metricLabel(metric, "endpoint")
+				if chain == "" || endpoint == "" {
+					continue
+				}
+				getRow(chain, endpoint).RateLimits += metric.GetCounter().GetValue()
+			}
+		case "lpbot_rpc_endpoint_success_ratio":
+			for _, metric := range family.GetMetric() {
+				chain, endpoint := metricLabel(metric, "chain"), metricLabel(metric, "endpoint")
+				if chain == "" || endpoint == "" {
+					continue
+				}
+				getRow(chain, endpoint).SuccessRatio = metric.GetGauge().GetValue()
+			}
+		}
+	}
+
+	out := make([]dashboardRPCEndpoint, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, *row)
+	}
+	sort.SliceStable(out, func(i, j int) bool {
+		if out[i].Primary != out[j].Primary {
+			return out[i].Primary
+		}
+		if out[i].RateLimits != out[j].RateLimits {
+			return out[i].RateLimits < out[j].RateLimits
+		}
+		if out[i].SuccessRatio != out[j].SuccessRatio {
+			return out[i].SuccessRatio > out[j].SuccessRatio
+		}
+		if out[i].Requests != out[j].Requests {
+			return out[i].Requests > out[j].Requests
+		}
+		return out[i].Endpoint < out[j].Endpoint
+	})
+	return out
+}
+
+func metricLabel(metric *dto.Metric, name string) string {
+	for _, label := range metric.GetLabel() {
+		if label.GetName() == name {
+			return label.GetValue()
+		}
+	}
+	return ""
 }
 
 func dashboardLoadCanaryReadiness(ctx context.Context, provider *rpc.RoundRobinProvider) (readiness dashboardLiveReadiness, err error) {
@@ -1995,12 +2101,21 @@ func queryDashboardLedgerSummary(ctx context.Context, db *sql.DB) ([]dashboardLe
 	rows, err := db.QueryContext(ctx, `
 		WITH since AS (
 			SELECT EXTRACT(EPOCH FROM NOW() - INTERVAL '24 hours')::BIGINT AS ts
+		), classified AS (
+			SELECT CASE
+			       WHEN id LIKE 'solana-lp-realized:%' OR id LIKE 'base-lp-realized:%' OR id LIKE 'canary-realized:%' THEN 'realized'
+			       WHEN id LIKE 'shadow-mark:%' THEN 'shadow'
+			       ELSE 'other'
+			       END AS source,
+			       kind,
+			       amount
+			FROM pnl_ledger, since
+			WHERE block_time >= since.ts
 		)
-		SELECT kind, COALESCE(SUM(amount::numeric), 0)::text
-		FROM pnl_ledger, since
-		WHERE block_time >= since.ts
-		GROUP BY kind
-		ORDER BY kind
+		SELECT source, kind, COALESCE(SUM(amount::numeric), 0)::text
+		FROM classified
+		GROUP BY source, kind
+		ORDER BY source, kind
 	`)
 	if err != nil {
 		return nil, fmt.Errorf("query dashboard ledger summary: %w", err)
@@ -2010,7 +2125,7 @@ func queryDashboardLedgerSummary(ctx context.Context, db *sql.DB) ([]dashboardLe
 	var buckets []dashboardLedgerBucket
 	for rows.Next() {
 		var item dashboardLedgerBucket
-		if err := rows.Scan(&item.Kind, &item.Amount); err != nil {
+		if err := rows.Scan(&item.Source, &item.Kind, &item.Amount); err != nil {
 			return nil, fmt.Errorf("scan dashboard ledger summary: %w", err)
 		}
 		buckets = append(buckets, item)
@@ -2020,24 +2135,38 @@ func queryDashboardLedgerSummary(ctx context.Context, db *sql.DB) ([]dashboardLe
 
 func queryDashboardLedgerSeries(ctx context.Context, db *sql.DB) ([]dashboardLedgerPoint, error) {
 	rows, err := db.QueryContext(ctx, `
-		WITH grouped AS (
+		WITH classified AS (
 			SELECT
 				block_time,
+				CASE
+				WHEN id LIKE 'solana-lp-realized:%' OR id LIKE 'base-lp-realized:%' OR id LIKE 'canary-realized:%' THEN 'realized'
+				WHEN id LIKE 'shadow-mark:%' THEN 'shadow'
+				ELSE 'other'
+				END AS source,
+				kind,
+				amount
+			FROM pnl_ledger
+		),
+		grouped AS (
+			SELECT
+				block_time,
+				source,
 				COALESCE(SUM(CASE WHEN kind = 'fee' THEN amount::numeric ELSE 0 END), 0) AS fee_delta,
 				COALESCE(SUM(CASE WHEN kind = 'il' THEN amount::numeric ELSE 0 END), 0) AS il_delta,
 				COALESCE(SUM(amount::numeric), 0) AS net_delta
-			FROM pnl_ledger
-			GROUP BY block_time
+			FROM classified
+			GROUP BY block_time, source
 		),
 		running AS (
 			SELECT
 				block_time,
-				SUM(fee_delta) OVER (ORDER BY block_time ASC) AS fee_usd,
-				SUM(il_delta) OVER (ORDER BY block_time ASC) AS il_usd,
-				SUM(net_delta) OVER (ORDER BY block_time ASC) AS net_pnl_usd
+				source,
+				SUM(fee_delta) OVER (PARTITION BY source ORDER BY block_time ASC) AS fee_usd,
+				SUM(il_delta) OVER (PARTITION BY source ORDER BY block_time ASC) AS il_usd,
+				SUM(net_delta) OVER (PARTITION BY source ORDER BY block_time ASC) AS net_pnl_usd
 			FROM grouped
 		)
-		SELECT block_time, fee_usd::text, il_usd::text, net_pnl_usd::text
+		SELECT block_time, source, fee_usd::text, il_usd::text, net_pnl_usd::text
 		FROM (
 			SELECT *
 			FROM running
@@ -2054,7 +2183,7 @@ func queryDashboardLedgerSeries(ctx context.Context, db *sql.DB) ([]dashboardLed
 	var points []dashboardLedgerPoint
 	for rows.Next() {
 		var point dashboardLedgerPoint
-		if err := rows.Scan(&point.BlockTime, &point.FeeUSD, &point.ILUSD, &point.NetPnLUSD); err != nil {
+		if err := rows.Scan(&point.BlockTime, &point.Source, &point.FeeUSD, &point.ILUSD, &point.NetPnLUSD); err != nil {
 			return nil, fmt.Errorf("scan dashboard ledger point: %w", err)
 		}
 		points = append(points, point)

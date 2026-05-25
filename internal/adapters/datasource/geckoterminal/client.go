@@ -52,28 +52,23 @@ func NewClientWithHTTP(client *http.Client, baseURL string) *Client {
 
 // OHLCV represents a single OHLCV candle from GeckoTerminal.
 type OHLCV struct {
-	Attributes struct {
-		OHLCVOpen   string `json:"ohlcv_open"`
-		OHLCVHigh   string `json:"ohlcv_high"`
-		OHLCVLow    string `json:"ohlcv_low"`
-		OHLCVClose  string `json:"ohlcv_close"`
-		OHLCVVolume string `json:"ohlcv_volume"`
-		Timestamp   string `json:"timestamp"`
-		BlockTime   string `json:"block_time"`
-		Transaction string `json:"transaction"`
-		TxHash      string `json:"tx_hash"`
-		TxFrom      string `json:"tx_from"`
-		TxTo        string `json:"tx_to"`
-		TxType      string `json:"tx_type"`
-	} `json:"relationships"`
+	Timestamp int64
+	Open      string
+	High      string
+	Low       string
+	Close     string
+	Volume    string
 }
 
 // OHLCVListResponse represents the OHLCV API response from GeckoTerminal.
 type OHLCVListResponse struct {
-	Data  []OHLCV `json:"data"`
-	Links struct {
-		Next string `json:"next"`
-	} `json:"links"`
+	Data struct {
+		ID         string `json:"id"`
+		Type       string `json:"type"`
+		Attributes struct {
+			OHLCVList [][]json.Number `json:"ohlcv_list"`
+		} `json:"attributes"`
+	} `json:"data"`
 }
 
 // PoolResponse represents a pool info response from GeckoTerminal.
@@ -101,8 +96,23 @@ type PoolInfo struct {
 		Token0            Token  `json:"token0"`
 		Token1            Token  `json:"token1"`
 		VolumeUSD         struct {
+			M5  string `json:"m5"`
+			H1  string `json:"h1"`
+			H6  string `json:"h6"`
 			H24 string `json:"h24"`
 		} `json:"volume_usd"`
+		Transactions struct {
+			M5  TransactionWindow `json:"m5"`
+			H1  TransactionWindow `json:"h1"`
+			H6  TransactionWindow `json:"h6"`
+			H24 TransactionWindow `json:"h24"`
+		} `json:"transactions"`
+		PriceChangePercentage struct {
+			M5  string `json:"m5"`
+			H1  string `json:"h1"`
+			H6  string `json:"h6"`
+			H24 string `json:"h24"`
+		} `json:"price_change_percentage"`
 	} `json:"attributes"`
 	Relationships struct {
 		BaseToken struct {
@@ -123,6 +133,13 @@ type PoolInfo struct {
 	} `json:"relationships"`
 }
 
+type TransactionWindow struct {
+	Buys    int64 `json:"buys"`
+	Sells   int64 `json:"sells"`
+	Buyers  int64 `json:"buyers"`
+	Sellers int64 `json:"sellers"`
+}
+
 // Token represents token info from GeckoTerminal.
 type Token struct {
 	Address  string `json:"address"`
@@ -136,8 +153,9 @@ func (c *Client) GetOHLCV(ctx context.Context, network, poolAddress, timeframe s
 	if limit <= 0 {
 		limit = 1000
 	}
+	pathTimeframe, aggregate := normalizeOHLCVTimeframe(timeframe)
 
-	u, err := url.Parse(fmt.Sprintf("%s/networks/%s/pools/%s/ohlcv/%s", c.baseURL, network, poolAddress, timeframe))
+	u, err := url.Parse(fmt.Sprintf("%s/networks/%s/pools/%s/ohlcv/%s", c.baseURL, network, poolAddress, pathTimeframe))
 	if err != nil {
 		return nil, fmt.Errorf("parse URL: %w", err)
 	}
@@ -146,6 +164,9 @@ func (c *Client) GetOHLCV(ctx context.Context, network, poolAddress, timeframe s
 	query.Set("timestamp_start", fmt.Sprintf("%d", from))
 	query.Set("timestamp_end", fmt.Sprintf("%d", to))
 	query.Set("limit", fmt.Sprintf("%d", limit))
+	if aggregate > 1 {
+		query.Set("aggregate", fmt.Sprintf("%d", aggregate))
+	}
 	u.RawQuery = query.Encode()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
@@ -173,7 +194,26 @@ func (c *Client) GetOHLCV(ctx context.Context, network, poolAddress, timeframe s
 		return nil, fmt.Errorf("decode response: %w", err)
 	}
 
-	return result.Data, nil
+	candles := make([]OHLCV, 0, len(result.Data.Attributes.OHLCVList))
+	for _, tuple := range result.Data.Attributes.OHLCVList {
+		if len(tuple) < 6 {
+			continue
+		}
+		timestamp, err := tuple[0].Int64()
+		if err != nil {
+			continue
+		}
+		candles = append(candles, OHLCV{
+			Timestamp: timestamp,
+			Open:      tuple[1].String(),
+			High:      tuple[2].String(),
+			Low:       tuple[3].String(),
+			Close:     tuple[4].String(),
+			Volume:    tuple[5].String(),
+		})
+	}
+
+	return candles, nil
 }
 
 // GetPoolInfo fetches pool info for a specific pool.
@@ -327,4 +367,21 @@ func rateLimitFromResponse(resp *http.Response) error {
 		}
 	}
 	return &RateLimitError{StatusCode: resp.StatusCode, RetryAfter: retryAfter}
+}
+
+func normalizeOHLCVTimeframe(timeframe string) (string, int) {
+	switch timeframe {
+	case "5m":
+		return "minute", 5
+	case "1m", "minute":
+		return "minute", 1
+	case "1h", "hour":
+		return "hour", 1
+	case "1d", "day":
+		return "day", 1
+	case "second":
+		return "second", 1
+	default:
+		return "minute", 1
+	}
 }

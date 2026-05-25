@@ -63,10 +63,17 @@ type canaryOpenEconomics struct {
 	EstimatedGasUSD      domain.Decimal
 	RecentAvgGrossUSD    domain.Decimal
 	RecentAvgGrossPerUSD domain.Decimal
+	ShadowAvgGrossUSD    domain.Decimal
+	ShadowAvgGrossPerUSD domain.Decimal
+	EffectiveGrossUSD    domain.Decimal
+	EffectiveGrossPerUSD domain.Decimal
 	ProjectedGrossUSD    domain.Decimal
 	RecentWinRate        domain.Decimal
+	ShadowWinRate        domain.Decimal
 	CoverageRatio        domain.Decimal
 	RecentRounds         int64
+	ShadowRounds         int64
+	ProjectionSource     string
 }
 
 const (
@@ -74,6 +81,11 @@ const (
 	canaryShadowApprovalStaleGrace = 12 * time.Hour
 	canaryRecentRoundWindow        = 6
 	canaryGrossToGasCoverageMin    = 1.5
+	canaryShadowBlendWeight        = 0.35
+	canaryShadowBlendHaircut       = 0.60
+	canaryShadowOnlyHaircut        = 0.50
+	canaryShadowMinSizeRatio       = 0.50
+	canaryShadowMaxSizeRatio       = 3.00
 )
 
 func newCanaryEventWriter(ctx context.Context, cfg *config.Config) (*canaryEventWriter, error) {
@@ -359,14 +371,78 @@ func (w *canaryEventWriter) EvaluateCanaryOpenEconomics(ctx context.Context, poo
 	if err != nil {
 		return canaryOpenEconomics{}, fmt.Errorf("read recent canary outcomes for quality gate: %w", err)
 	}
-	if recentRounds == 0 {
-		return canaryOpenEconomics{}, fmt.Errorf("canary quality gate blocked: no closed canary history for pool %s", pool.ID)
+
+	var shadowRounds int64
+	var shadowAvgGrossUSD, shadowAvgGrossPerUSD, shadowWinRate float64
+	shadowMinAmountUSD := amountUSD.Mul(domain.NewDecimalFromFloat(canaryShadowMinSizeRatio))
+	shadowMaxAmountUSD := amountUSD.Mul(domain.NewDecimalFromFloat(canaryShadowMaxSizeRatio))
+	err = w.db.QueryRowContext(ctx, `
+		WITH latest AS (
+			SELECT DISTINCT ON (position_id)
+				position_id,
+				mark_time,
+				(COALESCE(amount_usd, '0'))::numeric AS amount_usd,
+				((COALESCE(fee_usd, '0'))::numeric + (COALESCE(il_usd, '0'))::numeric) AS gross_net_usd
+			FROM shadow_position_marks
+			WHERE lower(pool_id) = lower($1)
+			  AND status = 'closed'
+			  AND position_id NOT LIKE 'shadow-canary-live-pos-%'
+			  AND COALESCE(amount_usd, '0') <> '0'
+			  AND (COALESCE(amount_usd, '0'))::numeric >= $3::numeric
+			  AND (COALESCE(amount_usd, '0'))::numeric <= $4::numeric
+			ORDER BY position_id, mark_time DESC, created_at DESC
+		),
+		recent AS (
+			SELECT
+				gross_net_usd,
+				NULLIF(amount_usd, 0) AS amount_usd
+			FROM latest
+			ORDER BY mark_time DESC
+			LIMIT $2
+		)
+		SELECT
+			count(*),
+			COALESCE(avg(gross_net_usd::double precision), 0),
+			COALESCE(avg(CASE WHEN amount_usd IS NULL THEN 0 ELSE (gross_net_usd / amount_usd)::double precision END), 0),
+			COALESCE(avg(CASE WHEN gross_net_usd > 0 THEN 1.0 ELSE 0.0 END), 0)
+		FROM recent
+	`, pool.ID, canaryRecentRoundWindow, shadowMinAmountUSD.String(), shadowMaxAmountUSD.String()).Scan(&shadowRounds, &shadowAvgGrossUSD, &shadowAvgGrossPerUSD, &shadowWinRate)
+	if err != nil {
+		return canaryOpenEconomics{}, fmt.Errorf("read recent shadow outcomes for quality gate: %w", err)
+	}
+	if recentRounds == 0 && shadowRounds == 0 {
+		return canaryOpenEconomics{}, fmt.Errorf("canary quality gate blocked: no closed canary or shadow history for pool %s", pool.ID)
 	}
 
 	avgGross := domain.NewDecimalFromFloat(recentAvgGrossUSD)
 	avgGrossPerUSD := domain.NewDecimalFromFloat(recentAvgGrossPerUSD)
-	projectedGross := avgGrossPerUSD.Mul(amountUSD)
+	shadowGross := domain.NewDecimalFromFloat(shadowAvgGrossUSD)
+	shadowGrossPerUSD := domain.NewDecimalFromFloat(shadowAvgGrossPerUSD)
+	shadowGrossHaircut := domain.NewDecimalFromFloat(canaryShadowBlendHaircut)
+	shadowOnlyHaircut := domain.NewDecimalFromFloat(canaryShadowOnlyHaircut)
+	effectiveGross := avgGross
+	effectiveGrossPerUSD := avgGrossPerUSD
+	projectionSource := "canary_realized_only"
+	switch {
+	case recentRounds > 0 && shadowRounds > 0:
+		canaryWeight := domain.NewDecimalFromFloat(float64(recentRounds))
+		shadowWeight := domain.NewDecimalFromFloat(float64(shadowRounds)).Mul(domain.NewDecimalFromFloat(canaryShadowBlendWeight))
+		totalWeight := canaryWeight.Add(shadowWeight)
+		effectiveGross = avgGross.Mul(canaryWeight).
+			Add(shadowGross.Mul(shadowGrossHaircut).Mul(shadowWeight)).
+			Div(totalWeight)
+		effectiveGrossPerUSD = avgGrossPerUSD.Mul(canaryWeight).
+			Add(shadowGrossPerUSD.Mul(shadowGrossHaircut).Mul(shadowWeight)).
+			Div(totalWeight)
+		projectionSource = "canary_plus_shadow_haircut"
+	case recentRounds == 0 && shadowRounds > 0:
+		effectiveGross = shadowGross.Mul(shadowOnlyHaircut)
+		effectiveGrossPerUSD = shadowGrossPerUSD.Mul(shadowOnlyHaircut)
+		projectionSource = "shadow_only_haircut"
+	}
+	projectedGross := effectiveGrossPerUSD.Mul(amountUSD)
 	winRate := domain.NewDecimalFromFloat(recentWinRate)
+	shadowWin := domain.NewDecimalFromFloat(shadowWinRate)
 	coverageRatio := projectedGross.Div(estimatedGasUSD)
 	minCoverage := domain.NewDecimalFromFloat(canaryGrossToGasCoverageMin)
 	if coverageRatio.LessThan(minCoverage) {
@@ -377,21 +453,35 @@ func (w *canaryEventWriter) EvaluateCanaryOpenEconomics(ctx context.Context, poo
 				EstimatedGasUSD:      estimatedGasUSD,
 				RecentAvgGrossUSD:    avgGross,
 				RecentAvgGrossPerUSD: avgGrossPerUSD,
+				ShadowAvgGrossUSD:    shadowGross,
+				ShadowAvgGrossPerUSD: shadowGrossPerUSD,
+				EffectiveGrossUSD:    effectiveGross,
+				EffectiveGrossPerUSD: effectiveGrossPerUSD,
 				ProjectedGrossUSD:    projectedGross,
 				RecentWinRate:        winRate,
+				ShadowWinRate:        shadowWin,
 				CoverageRatio:        coverageRatio,
 				RecentRounds:         recentRounds,
+				ShadowRounds:         shadowRounds,
+				ProjectionSource:     projectionSource,
 			}, fmt.Errorf(
-				"canary quality gate blocked: projected_gross_usd=%s < gas_usd=%s * coverage_min=%.2f (coverage=%s, size_usd=%s, recent_avg_gross_usd=%s, recent_avg_gross_per_usd=%s, rounds=%d, win_rate=%s, eth_price_usd=%s, gas_price_gwei=%s)",
+				"canary quality gate blocked: projected_gross_usd=%s < gas_usd=%s * coverage_min=%.2f (coverage=%s, source=%s, size_usd=%s, recent_avg_gross_usd=%s, recent_avg_gross_per_usd=%s, recent_rounds=%d, recent_win_rate=%s, shadow_avg_gross_usd=%s, shadow_avg_gross_per_usd=%s, shadow_rounds=%d, shadow_win_rate=%s, effective_gross_usd=%s, effective_gross_per_usd=%s, eth_price_usd=%s, gas_price_gwei=%s)",
 				projectedGross.StringFixed(6),
 				estimatedGasUSD.StringFixed(6),
 				canaryGrossToGasCoverageMin,
 				coverageRatio.StringFixed(4),
+				projectionSource,
 				amountUSD.StringFixed(2),
 				avgGross.StringFixed(6),
 				avgGrossPerUSD.StringFixed(6),
 				recentRounds,
 				winRate.StringFixed(4),
+				shadowGross.StringFixed(6),
+				shadowGrossPerUSD.StringFixed(6),
+				shadowRounds,
+				shadowWin.StringFixed(4),
+				effectiveGross.StringFixed(6),
+				effectiveGrossPerUSD.StringFixed(6),
 				ethPriceUSD.StringFixed(4),
 				gasPriceGwei.StringFixed(4),
 			)
@@ -403,10 +493,17 @@ func (w *canaryEventWriter) EvaluateCanaryOpenEconomics(ctx context.Context, poo
 		EstimatedGasUSD:      estimatedGasUSD,
 		RecentAvgGrossUSD:    avgGross,
 		RecentAvgGrossPerUSD: avgGrossPerUSD,
+		ShadowAvgGrossUSD:    shadowGross,
+		ShadowAvgGrossPerUSD: shadowGrossPerUSD,
+		EffectiveGrossUSD:    effectiveGross,
+		EffectiveGrossPerUSD: effectiveGrossPerUSD,
 		ProjectedGrossUSD:    projectedGross,
 		RecentWinRate:        winRate,
+		ShadowWinRate:        shadowWin,
 		CoverageRatio:        coverageRatio,
 		RecentRounds:         recentRounds,
+		ShadowRounds:         shadowRounds,
+		ProjectionSource:     projectionSource,
 	}, nil
 }
 

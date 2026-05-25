@@ -177,6 +177,10 @@
         <table><thead><tr><th>Type</th><th>Count</th></tr></thead><tbody id="stage-rows"></tbody></table>
       </div>
     </section>
+    <section class="card">
+      <div class="section-title"><h2>Base RPC 观测</h2><span class="small">primary / request / 429 / success ratio</span></div>
+      <table><thead><tr><th>Endpoint</th><th>Primary</th><th>Requests</th><th>429</th><th>Success</th></tr></thead><tbody id="rpc-rows"></tbody></table>
+    </section>
     <section class="two">
       <div class="card">
         <div class="section-title"><h2>最近池子</h2><span class="small">top 50</span></div>
@@ -214,6 +218,16 @@
     <section class="card">
       <div class="section-title"><h2>IL Risk</h2><span class="small">impermanent loss by position</span></div>
       <table><thead><tr><th>Position</th><th>IL</th><th>Fees</th><th>Net</th><th>Threshold</th></tr></thead><tbody id="il-risk-rows"></tbody></table>
+    </section>
+    <section class="two">
+      <div class="card">
+        <div class="section-title"><h2>PnL Ledger Summary</h2><span class="small">24h, split by source</span></div>
+        <table><thead><tr><th>Source</th><th>Kind</th><th>Amount</th></tr></thead><tbody id="ledger-summary-rows"></tbody></table>
+      </div>
+      <div class="card">
+        <div class="section-title"><h2>PnL Ledger Series</h2><span class="small">latest running net by source</span></div>
+        <table><thead><tr><th>Time</th><th>Source</th><th>Fees</th><th>IL</th><th>Net</th></tr></thead><tbody id="ledger-series-rows"></tbody></table>
+      </div>
     </section>
     <section class="card">
       <div class="section-title"><h2>Decision Trace</h2><span class="small">latest 30 pool decisions</span></div>
@@ -341,6 +355,7 @@
       const chainStages = (data.chain_stages || []).map(s => ({name: "chain:" + s.name, count: s.count}));
       const markSources = (data.mark_sources || []).map(s => ({name: "mark:" + s.name, count: s.count}));
       document.getElementById("stage-rows").innerHTML = [...chainStages, ...markSources].map(s => `<tr><td><code>${s.name}</code></td><td>${s.count}</td></tr>`).join("");
+      document.getElementById("rpc-rows").innerHTML = (data.rpc_endpoints || []).map(r => `<tr><td><code>${esc(short(r.endpoint))}</code><br><span class="small">${esc(r.chain || "-")}</span></td><td>${r.primary ? "yes" : ""}</td><td>${Math.round(num(r.requests || 0))}</td><td>${Math.round(num(r.rate_limits || 0))}</td><td>${(num(r.success_ratio || 0) * 100).toFixed(1)}%</td></tr>`).join("");
       document.getElementById("pool-rows").innerHTML = data.pools.map(p => `<tr><td>${poolCell(p.pool_id)}</td><td>${esc(p.protocol)}</td><td>${esc(p.fee_bps)}</td><td>${esc(p.tier || "-")}</td><td><code>${esc(scoreSummary(p.score))}</code></td></tr>`).join("");
       document.getElementById("position-rows").innerHTML = data.positions.map(p => `<tr><td><code>${esc(short(p.id))}</code><br><span class="small">${poolLinks(p.pool_id)} · ${esc(short(p.pool_id))}</span></td><td>${esc(p.status)}</td><td>${esc(p.amount_usd)}</td></tr>`).join("");
       document.getElementById("closed-position-rows").innerHTML = (data.closed_positions || []).map(p => `<tr><td><code>${esc(short(p.id))}</code></td><td>${poolCell(p.pool_id)}</td><td>${esc(p.tier || "-")}</td><td>${num(p.net_pnl_usd).toFixed(2)}</td><td>${esc(p.hold_minutes || 0)}m</td><td>${esc(p.exit_action || "-")}<br><span class="small">${esc(p.exit_reason || "-")}</span></td><td>${timeText(p.closed_at)}</td></tr>`).join("");
@@ -366,6 +381,8 @@
         const label = ilPct >= stop ? "BREACH" : margin < stop * 0.25 ? "WATCH" : "OK";
         return `<tr><td><code>${short(m.position_id)}</code><br><span class="small">tier ${m.tier || "-"} · ${poolLinks(m.pool_id)}</span></td><td>${signed(m.il_usd)} USD<br><span class="small">${ilPct.toFixed(2)}% of ${num(m.amount_usd).toFixed(0)}</span></td><td>${signed(m.fee_usd)} USD<br><span class="small">cover ${Math.abs(num(m.il_usd)) > 0.000001 ? (num(m.fee_usd) / Math.abs(num(m.il_usd))).toFixed(2) + "x" : "-"}</span></td><td>${signed(m.net_pnl_usd)} USD</td><td>${label}<br><span class="small">stop ${stop.toFixed(1)}%, margin ${margin.toFixed(2)}%</span></td></tr>`;
       }).join("");
+      document.getElementById("ledger-summary-rows").innerHTML = (data.ledger_summary || []).map(l => `<tr><td><code>${esc(l.source || "other")}</code></td><td>${esc(l.kind || "-")}</td><td>${signed(l.amount)} USD</td></tr>`).join("");
+      document.getElementById("ledger-series-rows").innerHTML = (data.ledger_series || []).slice(-24).map(l => `<tr><td>${timeText(l.block_time)}</td><td><code>${esc(l.source || "other")}</code></td><td>${signed(l.fee_usd)}</td><td>${signed(l.il_usd)}</td><td>${signed(l.net_pnl_usd)}</td></tr>`).join("");
       renderCurve(data.mark_series || []);
       document.getElementById("decision-rows").innerHTML = (data.decisions || []).map(d => `<tr><td>${poolCell(d.pool_id, d.protocol)}</td><td>${Number(d.score_total || 0).toFixed(1)}</td><td>${d.selected ? "yes" : "no"}<br><span class="small">${esc(d.selection_reason || "-")}</span></td><td>${d.intent_open ? "open" : "skip"}<br><span class="small">${esc(d.intent_reason || "-")}</span></td><td>${esc(d.chain_stage || "-")}<br><span class="small">${esc(d.chain_reason || "-")}</span></td><td>${esc(d.pipeline_stage || "-")}<br><span class="small">${esc(d.pipeline_reason || "-")}</span></td><td>${esc(d.final_action || "-")}${d.position_id ? `<br><span class="small">${esc(short(d.position_id))}</span>` : ""}</td></tr>`).join("");
       document.getElementById("strategy-audit-rows").innerHTML = (data.strategy_audit || []).map(t => `<tr><td>${timeText(t.tick_time)}</td><td>${t.scanned}</td><td>${t.selected}</td><td>${t.intent_open}</td><td>${t.chain_ok}</td><td>${t.pipeline_ok}</td><td>${t.opened_or_reused}</td></tr>`).join("");

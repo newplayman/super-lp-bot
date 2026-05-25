@@ -44,9 +44,12 @@ type Position struct {
 	TokenID   string
 	PoolID    string
 	Chain     ChainID
+	Protocol  string
 	Status    PositionStatus
 	Tier      Tier
 	AmountUSD Decimal // position size in USD
+	OpenTxHash string
+	MetadataJSON string
 
 	// V3 specific
 	TickLower int64

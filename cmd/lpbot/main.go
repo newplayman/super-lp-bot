@@ -2341,15 +2341,56 @@ func main() {
 	solanaSwapBuildReadiness := flag.Bool("solana-swap-build-readiness", false, "Run Solana read-only Jupiter swap transaction build readiness checks without signing or broadcasting")
 	solanaSwapSignReadiness := flag.Bool("solana-swap-sign-readiness", false, "Run Solana Jupiter swap sign readiness checks without broadcasting")
 	solanaSwapCanary := flag.Bool("solana-swap-canary", false, "Run a tiny real Solana canary swap with signing and broadcast")
+	solanaFundingPlan := flag.Bool("solana-funding-plan", false, "Run a Solana same-chain funding plan for a target mint amount using existing wallet assets only")
+	solanaLPFundingPlan := flag.Bool("solana-lp-funding-plan", false, "Run a Solana same-chain LP pair funding plan for a SOL/USDC 50/50 target")
+	solanaLPPreflight := flag.Bool("solana-lp-preflight", false, "Run a Solana read-only LP preflight for SOL/USDC using same-chain funding planning")
+	solanaMeteoraLPPreflight := flag.Bool("solana-meteora-lp-preflight", false, "Run a Solana read-only Meteora DLMM LP preflight for an audited pool")
+	solanaMeteoraLPBuildReadiness := flag.Bool("solana-meteora-lp-build-readiness", false, "Run a Solana read-only Meteora DLMM LP build and simulation readiness check for an audited pool")
+	solanaLPClosePreflight := flag.Bool("solana-lp-close-preflight", false, "Run a Solana read-only close preflight for an existing SOL/USDC LP position")
+	solanaLPPrefundCanary := flag.Bool("solana-lp-prefund-canary", false, "Run a tiny real Solana LP prefund canary swap only after LP preflight shows prefund is the last blocker")
+	solanaLPOpenCanary := flag.Bool("solana-lp-open-canary", false, "Run a tiny real Solana LP open canary after prefund and LP preflight are fully ready")
+	solanaLPCloseCanary := flag.Bool("solana-lp-close-canary", false, "Run a tiny real Solana LP close canary only after close preflight shows exit_now and an existing open position")
+	solanaLPRealizedPnLReconcile := flag.Bool("solana-lp-realized-pnl-reconcile", false, "Reconcile a closed Solana LP lifecycle into realized pnl_ledger entries")
 	solanaSwapInputMint := flag.String("solana-swap-input-mint", solanaWrappedSOLAddress, "Solana swap build input mint")
 	solanaSwapOutputMint := flag.String("solana-swap-output-mint", solanaUSDCAddress, "Solana swap build output mint")
 	solanaSwapAmountRaw := flag.String("solana-swap-amount-raw", "10000000", "Solana swap build input amount in raw integer units")
 	solanaSwapUserPublicKey := flag.String("solana-swap-user-public-key", "", "Solana public key to use for swap build readiness; defaults to SOLANA_FEE_PAYER_ADDRESS")
 	solanaSwapMaxPriorityLamports := flag.Uint64("solana-swap-max-priority-lamports", 500000, "Maximum priority fee lamports for Solana swap build readiness")
+	solanaFundingReserveLamports := flag.Uint64("solana-funding-reserve-lamports", solanaFundingMinReserveLamports, "Minimum SOL lamports to reserve when planning same-chain Solana funding")
+	solanaFundingLedgerPositionID := flag.String("solana-funding-ledger-position-id", "", "Optional position id used to write estimated funding costs into the ledger")
+	solanaLPTotalUSD := flag.String("solana-lp-total-usd", "10", "Total USD notional for the SOL/USDC LP funding plan")
+	solanaMeteoraLPPool := flag.String("solana-meteora-lp-pool", "", "Meteora DLMM pool id for read-only LP preflight")
+	solanaMeteoraLPRangePct := flag.String("solana-meteora-lp-range-pct", "2.5", "Symmetric Meteora DLMM LP range percentage for preflight")
 	solanaDiscoveryReadiness := flag.Bool("solana-discovery-readiness", false, "Run Solana read-only pool discovery readiness checks")
 	solanaDiscoveryMinTVL := flag.String("solana-discovery-min-tvl", "100000", "Minimum Solana pool TVL in USD for discovery readiness")
 	solanaDiscoveryMinVol24h := flag.String("solana-discovery-min-vol24h", "100000", "Minimum Solana pool 24h volume in USD for discovery readiness")
 	solanaDiscoveryLimit := flag.Int("solana-discovery-limit", 10, "Maximum Solana pools to print during discovery readiness")
+	solanaTierCDiscovery := flag.Bool("solana-tierc-discovery", false, "Run Solana read-only Tier C candidate discovery for aggressive LP scouting")
+	solanaTierCMinTVL := flag.String("solana-tierc-min-tvl", "10000", "Minimum Solana Tier C pool TVL in USD")
+	solanaTierCMaxTVL := flag.String("solana-tierc-max-tvl", "1500000", "Maximum Solana Tier C pool TVL in USD")
+	solanaTierCMinVol24h := flag.String("solana-tierc-min-vol24h", "25000", "Minimum Solana Tier C pool 24h volume in USD")
+	solanaTierCMinVolTVL := flag.String("solana-tierc-min-vol-tvl", "0.75", "Minimum Solana Tier C volume/TVL ratio")
+	solanaTierCLimit := flag.Int("solana-tierc-limit", 10, "Maximum Solana Tier C pools to print during discovery")
+	solanaTierCJSONOut := flag.String("solana-tierc-json-out", "", "Path to write JSON output file with Solana Tier C audit results")
+	solanaTierCIncludeRejects := flag.Bool("solana-tierc-include-rejects", false, "Include rejected Solana Tier C candidates in console output")
+	solanaTierCMajorOnly := flag.Bool("solana-tierc-major-only", true, "Only include Solana Tier C candidates where both tokens are major assets")
+	solanaTierCProtocol := flag.String("solana-tierc-protocol", "", "Restrict Solana Tier C discovery to an exact protocol id such as meteora-dlmm")
+	solanaTierCAuditPool := flag.String("solana-tierc-audit-pool", "", "Run read-only deep audit for a single Solana pool id")
+	solanaTierCDeepAuditWatchlist := flag.String("solana-tierc-deep-audit-watchlist", "", "Run repeated read-only Solana Tier C deep audit sampling for comma-separated protocol:pool targets")
+	solanaTierCDeepAuditRounds := flag.Int("solana-tierc-deep-audit-rounds", 3, "Number of repeated Solana Tier C deep audit rounds")
+	solanaTierCDeepAuditIntervalSeconds := flag.Int("solana-tierc-deep-audit-interval-seconds", 60, "Seconds to wait between Solana Tier C deep audit rounds")
+	baseTierCDiscovery := flag.Bool("base-tierc-discovery", false, "Run Base read-only Tier C candidate discovery for aggressive LP scouting")
+	baseTierCMinTVL := flag.String("base-tierc-min-tvl", "25000", "Minimum Base Tier C pool TVL in USD")
+	baseTierCMaxTVL := flag.String("base-tierc-max-tvl", "2500000", "Maximum Base Tier C pool TVL in USD")
+	baseTierCMinVol24h := flag.String("base-tierc-min-vol24h", "50000", "Minimum Base Tier C pool 24h volume in USD")
+	baseTierCMinVolTVL := flag.String("base-tierc-min-vol-tvl", "0.50", "Minimum Base Tier C volume/TVL ratio")
+	baseTierCMinFeeAPR := flag.String("base-tierc-min-fee-apr", "0.25", "Minimum estimated Base Tier C fee APR as a decimal ratio")
+	baseTierCLimit := flag.Int("base-tierc-limit", 10, "Maximum Base Tier C pools to print during discovery")
+	baseTierCJSONOut := flag.String("base-tierc-json-out", "", "Path to write JSON output file with audit pack results")
+	baseTierCIncludeRejects := flag.Bool("base-tierc-include-rejects", false, "Include rejected candidates in console output")
+	baseTierCAuditPool := flag.String("base-tierc-audit-pool", "", "Run read-only deep audit for a single Base pool id")
+	baseTierCHolderSnapshotRefresh := flag.Bool("base-tierc-holder-snapshot-refresh", false, "Refresh Base Tier C holder snapshot overrides from BaseScan token pages")
+	baseTierCHolderSnapshotPath := flag.String("base-tierc-holder-snapshot-path", "", "Path to Tier C holder snapshot override JSON file")
 	canaryPreflight := flag.Bool("canary-preflight", false, "Run a single Base canary preflight without signing or broadcasting")
 	canaryPrepare := flag.Bool("canary-prepare", false, "Run a single Base canary prepare: wrap WETH and approve exact token amounts")
 	canaryMint := flag.Bool("canary-mint", false, "Run a single Base canary Uniswap V3 mint")
@@ -2370,6 +2411,10 @@ func main() {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error loading config: %v\n", err)
 		os.Exit(1)
+	}
+	configureTierCPathEnv(*configPath)
+	if strings.TrimSpace(*baseTierCHolderSnapshotPath) == "" {
+		*baseTierCHolderSnapshotPath = resolveTierCDefaultPath(*configPath, "configs/tierc_holder_overrides.json")
 	}
 
 	logger := log.NewLogger(cfg.Platform.LogLevel, BuildMode)
@@ -2393,14 +2438,14 @@ func main() {
 		return
 	}
 	if *solanaSwapBuildReadiness {
-		if err := runSolanaSwapBuildReadiness(ctx, *solanaSwapUserPublicKey, *solanaSwapInputMint, *solanaSwapOutputMint, *solanaSwapAmountRaw, *solanaQuoteSlippageBPS, *solanaSwapMaxPriorityLamports); err != nil {
+		if err := runSolanaSwapBuildReadiness(ctx, cfg, *solanaSwapUserPublicKey, *solanaSwapInputMint, *solanaSwapOutputMint, *solanaSwapAmountRaw, *solanaQuoteSlippageBPS, *solanaSwapMaxPriorityLamports); err != nil {
 			fmt.Fprintf(os.Stderr, "Solana swap build readiness failed: %v\n", err)
 			os.Exit(1)
 		}
 		return
 	}
 	if *solanaSwapSignReadiness {
-		if err := runSolanaSwapSignReadiness(ctx, *solanaSwapUserPublicKey, *solanaSwapInputMint, *solanaSwapOutputMint, *solanaSwapAmountRaw, *solanaQuoteSlippageBPS, *solanaSwapMaxPriorityLamports); err != nil {
+		if err := runSolanaSwapSignReadiness(ctx, cfg, *solanaSwapUserPublicKey, *solanaSwapInputMint, *solanaSwapOutputMint, *solanaSwapAmountRaw, *solanaQuoteSlippageBPS, *solanaSwapMaxPriorityLamports); err != nil {
 			fmt.Fprintf(os.Stderr, "Solana swap sign readiness failed: %v\n", err)
 			os.Exit(1)
 		}
@@ -2413,11 +2458,132 @@ func main() {
 		}
 		return
 	}
+	if *solanaFundingPlan {
+		if err := runSolanaFundingPlan(ctx, cfg, *solanaSwapUserPublicKey, *solanaSwapInputMint, *solanaSwapAmountRaw, *solanaQuoteSlippageBPS, *solanaSwapMaxPriorityLamports, *solanaFundingReserveLamports, *solanaFundingLedgerPositionID); err != nil {
+			fmt.Fprintf(os.Stderr, "Solana funding plan failed: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+	if *solanaLPFundingPlan {
+		if err := runSolanaLPFundingPlan(ctx, cfg, *solanaSwapUserPublicKey, *solanaLPTotalUSD, *solanaQuoteSlippageBPS, *solanaSwapMaxPriorityLamports, *solanaFundingReserveLamports, *solanaFundingLedgerPositionID); err != nil {
+			fmt.Fprintf(os.Stderr, "Solana LP funding plan failed: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+	if *solanaLPPreflight {
+		if err := runSolanaLPPreflight(ctx, cfg, *solanaSwapUserPublicKey, *solanaLPTotalUSD, *solanaQuoteSlippageBPS, *solanaSwapMaxPriorityLamports, *solanaFundingReserveLamports); err != nil {
+			fmt.Fprintf(os.Stderr, "Solana LP preflight failed: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+	if *solanaMeteoraLPPreflight {
+		if err := runSolanaMeteoraLPPreflight(ctx, cfg, *solanaMeteoraLPPool, *solanaSwapUserPublicKey, *solanaLPTotalUSD, *solanaMeteoraLPRangePct, *solanaQuoteSlippageBPS, *solanaSwapMaxPriorityLamports, *solanaFundingReserveLamports); err != nil {
+			fmt.Fprintf(os.Stderr, "Solana Meteora LP preflight failed: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+	if *solanaMeteoraLPBuildReadiness {
+		if err := runSolanaMeteoraLPBuildReadiness(ctx, cfg, *solanaMeteoraLPPool, *solanaSwapUserPublicKey, *solanaLPTotalUSD, *solanaMeteoraLPRangePct, *solanaQuoteSlippageBPS, *solanaSwapMaxPriorityLamports, *solanaFundingReserveLamports); err != nil {
+			fmt.Fprintf(os.Stderr, "Solana Meteora LP build readiness failed: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+	if *solanaLPClosePreflight {
+		if err := runSolanaLPClosePreflight(ctx, cfg, *solanaSwapMaxPriorityLamports); err != nil {
+			fmt.Fprintf(os.Stderr, "Solana LP close preflight failed: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+	if *solanaLPPrefundCanary {
+		if err := runSolanaLPPrefundCanary(ctx, cfg, *solanaSwapUserPublicKey, *solanaLPTotalUSD, *solanaQuoteSlippageBPS, *solanaSwapMaxPriorityLamports, *solanaFundingReserveLamports); err != nil {
+			fmt.Fprintf(os.Stderr, "Solana LP prefund canary failed: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+	if *solanaLPOpenCanary {
+		if err := runSolanaLPOpenCanary(ctx, cfg, *solanaSwapUserPublicKey, *solanaLPTotalUSD, *solanaQuoteSlippageBPS, *solanaSwapMaxPriorityLamports, *solanaFundingReserveLamports); err != nil {
+			fmt.Fprintf(os.Stderr, "Solana LP open canary failed: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+	if *solanaLPCloseCanary {
+		if err := runSolanaLPCloseCanary(ctx, cfg, *solanaSwapMaxPriorityLamports); err != nil {
+			fmt.Fprintf(os.Stderr, "Solana LP close canary failed: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+	if *solanaLPRealizedPnLReconcile {
+		if err := runSolanaLPRealizedPnLReconcile(ctx, cfg, *canaryTokenID, *solanaQuoteSlippageBPS); err != nil {
+			fmt.Fprintf(os.Stderr, "Solana LP realized PnL reconcile failed: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
 	if *solanaDiscoveryReadiness {
 		minTVL := domain.MustDecimal(*solanaDiscoveryMinTVL)
 		minVol24h := domain.MustDecimal(*solanaDiscoveryMinVol24h)
 		if err := runSolanaDiscoveryReadiness(ctx, cfg, minTVL, minVol24h, *solanaDiscoveryLimit); err != nil {
 			fmt.Fprintf(os.Stderr, "Solana discovery readiness failed: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+	if *solanaTierCDiscovery {
+		minTVL := domain.MustDecimal(*solanaTierCMinTVL)
+		maxTVL := domain.MustDecimal(*solanaTierCMaxTVL)
+		minVol24h := domain.MustDecimal(*solanaTierCMinVol24h)
+		minVolTVL := domain.MustDecimal(*solanaTierCMinVolTVL)
+		if err := runSolanaTierCDiscovery(ctx, cfg, minTVL, maxTVL, minVol24h, minVolTVL, *solanaTierCLimit, *solanaTierCJSONOut, *solanaTierCIncludeRejects, *solanaTierCMajorOnly, *solanaTierCProtocol); err != nil {
+			fmt.Fprintf(os.Stderr, "Solana Tier C discovery failed: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+	if strings.TrimSpace(*solanaTierCAuditPool) != "" {
+		if err := runSolanaTierCAuditPool(ctx, cfg, *solanaTierCAuditPool, *solanaTierCJSONOut); err != nil {
+			fmt.Fprintf(os.Stderr, "Solana Tier C pool audit failed: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+	if strings.TrimSpace(*solanaTierCDeepAuditWatchlist) != "" {
+		if err := runSolanaTierCDeepAuditWatchlist(ctx, cfg, *solanaTierCDeepAuditWatchlist, *solanaTierCDeepAuditRounds, *solanaTierCDeepAuditIntervalSeconds, *solanaTierCJSONOut); err != nil {
+			fmt.Fprintf(os.Stderr, "Solana Tier C deep audit watchlist failed: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+	if *baseTierCDiscovery {
+		minTVL := domain.MustDecimal(*baseTierCMinTVL)
+		maxTVL := domain.MustDecimal(*baseTierCMaxTVL)
+		minVol24h := domain.MustDecimal(*baseTierCMinVol24h)
+		minVolTVL := domain.MustDecimal(*baseTierCMinVolTVL)
+		minFeeAPR := domain.MustDecimal(*baseTierCMinFeeAPR)
+		if err := runBaseTierCDiscovery(ctx, cfg, minTVL, maxTVL, minVol24h, minVolTVL, minFeeAPR, *baseTierCLimit, *baseTierCJSONOut, *baseTierCIncludeRejects); err != nil {
+			fmt.Fprintf(os.Stderr, "Base Tier C discovery failed: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+	if strings.TrimSpace(*baseTierCAuditPool) != "" {
+		if err := runBaseTierCAuditPool(ctx, cfg, *baseTierCAuditPool, *baseTierCJSONOut); err != nil {
+			fmt.Fprintf(os.Stderr, "Base Tier C pool audit failed: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+	if *baseTierCHolderSnapshotRefresh {
+		if err := runBaseTierCHolderSnapshotRefresh(ctx, *baseTierCHolderSnapshotPath); err != nil {
+			fmt.Fprintf(os.Stderr, "Base Tier C holder snapshot refresh failed: %v\n", err)
 			os.Exit(1)
 		}
 		return
@@ -2492,4 +2658,29 @@ func main() {
 
 	code := Run(ctx, logger, cfg)
 	os.Exit(code)
+}
+
+func configureTierCPathEnv(configPath string) {
+	if strings.TrimSpace(os.Getenv("LPBOT_TIERC_HOLDER_SNAPSHOT_PATH")) == "" {
+		_ = os.Setenv("LPBOT_TIERC_HOLDER_SNAPSHOT_PATH", resolveTierCDefaultPath(configPath, "configs/tierc_holder_overrides.json"))
+	}
+	if strings.TrimSpace(os.Getenv("LPBOT_TIERC_NEGATIVE_SAMPLES_PATH")) == "" {
+		_ = os.Setenv("LPBOT_TIERC_NEGATIVE_SAMPLES_PATH", resolveTierCDefaultPath(configPath, "configs/tierc_negative_samples.json"))
+	}
+}
+
+func resolveTierCDefaultPath(configPath, relativeFromRepoRoot string) string {
+	configPath = strings.TrimSpace(configPath)
+	if configPath == "" {
+		return relativeFromRepoRoot
+	}
+	absConfigPath, err := filepath.Abs(configPath)
+	if err != nil {
+		return relativeFromRepoRoot
+	}
+	baseDir := filepath.Dir(absConfigPath)
+	if strings.EqualFold(filepath.Base(baseDir), "configs") {
+		baseDir = filepath.Dir(baseDir)
+	}
+	return filepath.Join(baseDir, filepath.FromSlash(relativeFromRepoRoot))
 }

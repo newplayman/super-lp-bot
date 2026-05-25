@@ -1,0 +1,12 @@
+{
+  "updated_at": "2026-05-23T19:46:42Z",
+  "entries": [
+    {
+      "chain": "base",
+      "token": "0x9126236476EFBA9AD8AB77855C60EB5BF37586EB",
+      "top10_holder_pct": "91.39",
+      "source": "basescan_manual_snapshot",
+      "note": "CHECK negative sample; BaseScan holders overview observed top10 concentration 91.39%"
+    }
+  ]
+}

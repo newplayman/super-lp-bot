@@ -12,6 +12,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	solanago "github.com/gagliardetto/solana-go"
@@ -37,6 +38,13 @@ var solanaReadinessProtocolAllowlist = map[string]bool{
 	"raydium-clmm":          true,
 	"pancakeswap-v3-solana": true,
 }
+
+var (
+	solanaRPCCooldownMu    sync.Mutex
+	solanaRPCCooldownUntil = map[string]time.Time{}
+)
+
+const solanaRPCCooldown = 20 * time.Second
 
 func runSolanaReadiness(ctx context.Context, cfg *config.Config) error {
 	endpoint := solanaReadinessEndpoint(cfg)
@@ -134,7 +142,38 @@ func runSolanaQuoteReadiness(ctx context.Context, inputMint string, outputMint s
 	return nil
 }
 
-func runSolanaSwapBuildReadiness(ctx context.Context, userPublicKey string, inputMint string, outputMint string, amountRaw string, slippageBPS int, maxPriorityLamports uint64) error {
+func runSolanaSwapBuildReadiness(ctx context.Context, cfg *config.Config, userPublicKey string, inputMint string, outputMint string, amountRaw string, slippageBPS int, maxPriorityLamports uint64) error {
+	plan, err := estimateSolanaFundingPlan(ctx, cfg, userPublicKey, inputMint, amountRaw, slippageBPS, maxPriorityLamports, solanaFundingMinReserveLamports, newSolanaFundingQuoteClient())
+	if err != nil {
+		return err
+	}
+	printSolanaFundingPlan(plan)
+	if plan.Status == "insufficient_chain_assets" || plan.Status == "funding_path_unavailable" || plan.Status == "unsupported_target_mint" {
+		fmt.Println("solana_swap_build_execution=blocked reason=funding_unavailable ready=false")
+		return nil
+	}
+	if plan.Status == "requires_prefund_swap" {
+		_, prefundBuilt, err := buildJupiterSwapTransaction(ctx, plan.Wallet, plan.FundingMint, plan.TargetMint, strconv.FormatUint(plan.FundingAmountInRaw, 10), slippageBPS, maxPriorityLamports)
+		if err != nil {
+			fmt.Printf("solana_prefund_swap_build=failed error=%q\n", err.Error())
+			fmt.Println("solana_swap_build_execution=blocked reason=prefund_swap_build_failed ready=false")
+			return nil
+		}
+		if len(prefundBuilt.SimulationError) > 0 && string(prefundBuilt.SimulationError) != "null" {
+			fmt.Printf("solana_prefund_swap_simulation=blocked error=%s\n", compactJSON(prefundBuilt.SimulationError))
+			fmt.Println("solana_swap_build_execution=blocked reason=prefund_swap_simulation ready=false")
+			return nil
+		}
+		fmt.Printf("solana_prefund_swap_build_readiness user=%s input=%s output=%s in_amount=%d out_amount=%d ready=true\n",
+			shortAddress(plan.Wallet),
+			shortAddress(plan.FundingMint),
+			shortAddress(plan.TargetMint),
+			plan.FundingAmountInRaw,
+			plan.FundingExpectedOutRaw,
+		)
+		fmt.Println("solana_swap_build_execution=blocked reason=prefund_swap_required ready=false")
+		return nil
+	}
 	quote, built, err := buildJupiterSwapTransaction(ctx, userPublicKey, inputMint, outputMint, amountRaw, slippageBPS, maxPriorityLamports)
 	if err != nil {
 		return err
@@ -166,7 +205,47 @@ func runSolanaSwapBuildReadiness(ctx context.Context, userPublicKey string, inpu
 	return nil
 }
 
-func runSolanaSwapSignReadiness(ctx context.Context, userPublicKey string, inputMint string, outputMint string, amountRaw string, slippageBPS int, maxPriorityLamports uint64) error {
+func runSolanaSwapSignReadiness(ctx context.Context, cfg *config.Config, userPublicKey string, inputMint string, outputMint string, amountRaw string, slippageBPS int, maxPriorityLamports uint64) error {
+	plan, err := estimateSolanaFundingPlan(ctx, cfg, userPublicKey, inputMint, amountRaw, slippageBPS, maxPriorityLamports, solanaFundingMinReserveLamports, newSolanaFundingQuoteClient())
+	if err != nil {
+		return err
+	}
+	printSolanaFundingPlan(plan)
+	if plan.Status == "insufficient_chain_assets" || plan.Status == "funding_path_unavailable" || plan.Status == "unsupported_target_mint" {
+		fmt.Println("solana_swap_sign_execution=blocked reason=funding_unavailable not_signed not_broadcast")
+		return nil
+	}
+	if plan.Status == "requires_prefund_swap" {
+		_, prefundBuilt, err := buildJupiterSwapTransaction(ctx, plan.Wallet, plan.FundingMint, plan.TargetMint, strconv.FormatUint(plan.FundingAmountInRaw, 10), slippageBPS, maxPriorityLamports)
+		if err != nil {
+			fmt.Printf("solana_prefund_swap_sign_readiness ready=false blocker=%q\n", err.Error())
+			fmt.Println("solana_swap_sign_execution=blocked reason=prefund_swap_build_failed not_signed not_broadcast")
+			return nil
+		}
+		if len(prefundBuilt.SimulationError) > 0 && string(prefundBuilt.SimulationError) != "null" {
+			fmt.Printf("solana_prefund_swap_sign_readiness ready=false blocker=%s\n", compactJSON(prefundBuilt.SimulationError))
+			fmt.Println("solana_swap_sign_execution=blocked reason=prefund_swap_simulation not_signed not_broadcast")
+			return nil
+		}
+		key, keySource, ok, err := loadSolanaPrivateKeyFromEnv()
+		if err != nil {
+			return err
+		}
+		if !ok {
+			fmt.Println("solana_prefund_swap_sign_readiness ready=false blocker=missing_signer")
+			fmt.Println("solana_swap_sign_execution=blocked reason=prefund_swap_required not_signed not_broadcast")
+			return nil
+		}
+		_, signedBytes, signature, err := signJupiterSwapTransaction(prefundBuilt.SwapTransaction, key)
+		if err != nil {
+			fmt.Printf("solana_prefund_swap_sign_readiness ready=false blocker=%q\n", err.Error())
+			fmt.Println("solana_swap_sign_execution=blocked reason=prefund_swap_sign_failed not_signed not_broadcast")
+			return nil
+		}
+		fmt.Printf("solana_prefund_swap_sign_readiness ready=true source=%s signature=%s signed_bytes=%d\n", keySource, shortAddress(signature), len(signedBytes))
+		fmt.Println("solana_swap_sign_execution=blocked reason=prefund_swap_required prefund_signed_in_memory target_not_signed not_broadcast")
+		return nil
+	}
 	quote, built, err := buildJupiterSwapTransaction(ctx, userPublicKey, inputMint, outputMint, amountRaw, slippageBPS, maxPriorityLamports)
 	if err != nil {
 		return err
@@ -341,12 +420,7 @@ func loadSolanaPrivateKeyFromEnv() (solanago.PrivateKey, string, bool, error) {
 }
 
 func fetchSolanaWalletSnapshot(ctx context.Context, cfg *config.Config, wallet string) (solanaWalletSnapshot, error) {
-	endpoint := solanaReadinessEndpoint(cfg)
-	if endpoint == "" {
-		return solanaWalletSnapshot{}, fmt.Errorf("solana rpc endpoint is empty")
-	}
-
-	balanceRaw, err := solanaJSONRPC(ctx, endpoint, "getBalance", []any{
+	balanceRaw, err := solanaJSONRPCAny(ctx, cfg, "getBalance", []any{
 		wallet,
 		map[string]any{"commitment": "confirmed"},
 	})
@@ -360,7 +434,7 @@ func fetchSolanaWalletSnapshot(ctx context.Context, cfg *config.Config, wallet s
 		return solanaWalletSnapshot{}, fmt.Errorf("decode getBalance: %w", err)
 	}
 
-	tokenRaw, err := solanaJSONRPC(ctx, endpoint, "getTokenAccountsByOwner", []any{
+	tokenRaw, err := solanaJSONRPCAny(ctx, cfg, "getTokenAccountsByOwner", []any{
 		wallet,
 		map[string]any{"mint": solanaUSDCAddress},
 		map[string]any{"encoding": "jsonParsed", "commitment": "confirmed"},
@@ -792,8 +866,8 @@ func solanaPoolRiskEligible(pool ports.PoolDiscovery, minTVLUSD domain.Decimal, 
 	if !solanaReadinessProtocolAllowlist[strings.ToLower(pool.Protocol)] {
 		return false, "protocol_not_allowed"
 	}
-	if !isSolanaSOLUSDCPair(pool.Token0, pool.Token1) {
-		return false, "not_sol_usdc"
+	if !isSolanaPriorityLPPair(pool.Token0, pool.Token1) {
+		return false, "not_priority_lp_pair"
 	}
 	if pool.TVLUSD.LessThan(minTVLUSD) {
 		return false, "tvl_below_min"
@@ -811,6 +885,28 @@ func isSolanaSOLUSDCPair(token0 domain.Address, token1 domain.Address) bool {
 		(a == solanaUSDCAddress && b == solanaWrappedSOLAddress)
 }
 
+func isSolanaSOLUSDTPair(token0 domain.Address, token1 domain.Address) bool {
+	a := token0.String()
+	b := token1.String()
+	usdt := "Es9vMFrzaCERmJfrF4H2FYD4G5DzzU6rybbtXdy41vP"
+	return (a == solanaWrappedSOLAddress && b == usdt) ||
+		(a == usdt && b == solanaWrappedSOLAddress)
+}
+
+func isSolanaSOLJitoSOLPair(token0 domain.Address, token1 domain.Address) bool {
+	a := token0.String()
+	b := token1.String()
+	jitoSOL := "J1toso1uCk3RLmjorhTtrVwYkzjvQF7nXjJ6dA2iRfi"
+	return (a == solanaWrappedSOLAddress && b == jitoSOL) ||
+		(a == jitoSOL && b == solanaWrappedSOLAddress)
+}
+
+func isSolanaPriorityLPPair(token0 domain.Address, token1 domain.Address) bool {
+	return isSolanaSOLUSDCPair(token0, token1) ||
+		isSolanaSOLUSDTPair(token0, token1) ||
+		isSolanaSOLJitoSOLPair(token0, token1)
+}
+
 func solanaProtocolAllowlistNames() []string {
 	names := make([]string, 0, len(solanaReadinessProtocolAllowlist))
 	for name := range solanaReadinessProtocolAllowlist {
@@ -820,17 +916,68 @@ func solanaProtocolAllowlistNames() []string {
 }
 
 func solanaReadinessEndpoint(cfg *config.Config) string {
+	endpoints := solanaReadinessEndpoints(cfg)
+	if len(endpoints) == 0 {
+		return ""
+	}
+	return endpoints[0]
+}
+
+func solanaReadinessEndpoints(cfg *config.Config) []string {
+	seen := make(map[string]struct{})
+	var endpoints []string
 	if cfg != nil {
 		if endpoint := strings.TrimSpace(cfg.Chains.Solana.RPCPrimary); endpoint != "" {
-			return endpoint
+			if _, ok := seen[endpoint]; !ok {
+				seen[endpoint] = struct{}{}
+				endpoints = append(endpoints, endpoint)
+			}
 		}
 		for _, endpoint := range cfg.Chains.Solana.RPCFallback {
-			if strings.TrimSpace(endpoint) != "" {
-				return strings.TrimSpace(endpoint)
+			if endpoint = strings.TrimSpace(endpoint); endpoint != "" {
+				if _, ok := seen[endpoint]; !ok {
+					seen[endpoint] = struct{}{}
+					endpoints = append(endpoints, endpoint)
+				}
 			}
 		}
 	}
-	return solrpc.DefaultRPCEndpoint
+	if _, ok := seen[solrpc.DefaultRPCEndpoint]; !ok {
+		endpoints = append(endpoints, solrpc.DefaultRPCEndpoint)
+	}
+	return endpoints
+}
+
+func solanaJSONRPCAny(ctx context.Context, cfg *config.Config, method string, params []any) (json.RawMessage, error) {
+	endpoints := solanaReadinessEndpoints(cfg)
+	if len(endpoints) == 0 {
+		return nil, fmt.Errorf("solana rpc endpoint is empty")
+	}
+	now := time.Now()
+	var lastErr error
+	for _, endpoint := range endpoints {
+		solanaRPCCooldownMu.Lock()
+		cooldownUntil := solanaRPCCooldownUntil[endpoint]
+		solanaRPCCooldownMu.Unlock()
+		if now.Before(cooldownUntil) {
+			continue
+		}
+		raw, err := solanaJSONRPC(ctx, endpoint, method, params)
+		if err == nil {
+			return raw, nil
+		}
+		lastErr = err
+		if strings.Contains(err.Error(), "code=429") || strings.Contains(err.Error(), "status=429") || strings.Contains(strings.ToLower(err.Error()), "too many requests") {
+			solanaRPCCooldownMu.Lock()
+			solanaRPCCooldownUntil[endpoint] = time.Now().Add(solanaRPCCooldown)
+			solanaRPCCooldownMu.Unlock()
+			continue
+		}
+	}
+	if lastErr != nil {
+		return nil, lastErr
+	}
+	return nil, fmt.Errorf("no available solana rpc endpoints")
 }
 
 func solanaJSONRPC(ctx context.Context, endpoint string, method string, params []any) (json.RawMessage, error) {
@@ -854,6 +1001,10 @@ func solanaJSONRPC(ctx context.Context, endpoint string, method string, params [
 		return nil, err
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusTooManyRequests {
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+		return nil, fmt.Errorf("rpc status=429 body=%s", strings.TrimSpace(string(body)))
+	}
 
 	var decoded struct {
 		Result json.RawMessage `json:"result"`

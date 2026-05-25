@@ -79,6 +79,9 @@ var (
 	// RPC metrics
 	lpbotRpcEndpointErrorsTotal    = CounterVec("lpbot_rpc_endpoint_errors_total", "Total RPC endpoint errors", []string{"chain", "endpoint", "error_type"})
 	lpbotRpcRequestDurationSeconds = HistogramVec("lpbot_rpc_request_duration_seconds", "RPC request duration in seconds", []string{"chain", "method", "endpoint"}, LatencyBuckets)
+	lpbotRpcEndpointRequestsTotal  = CounterVec("lpbot_rpc_endpoint_requests_total", "Total RPC endpoint request attempts", []string{"chain", "endpoint", "method"})
+	lpbotRpcEndpointRateLimitTotal = CounterVec("lpbot_rpc_endpoint_rate_limit_total", "Total RPC endpoint rate limit responses", []string{"chain", "endpoint"})
+	lpbotRpcEndpointSuccessRatio   = GaugeVec("lpbot_rpc_endpoint_success_ratio", "Observed RPC endpoint success ratio from 0 to 1", []string{"chain", "endpoint"})
 
 	// Dryrun invariant metrics
 	lpbotDryrunBroadcastCallsTotal = Counter("lpbot_dryrun_broadcast_calls_total", "Total broadcast attempts in dryrun mode (should always be 0)")
@@ -283,6 +286,21 @@ func IncRpcEndpointError(chain, endpoint, errorType string) {
 // ObserveRpcRequestDuration records the duration of an RPC request.
 func ObserveRpcRequestDuration(chain, method, endpoint string, seconds float64) {
 	lpbotRpcRequestDurationSeconds.WithLabelValues(chain, method, endpoint).Observe(seconds)
+}
+
+// IncRpcEndpointRequest increments the RPC endpoint request counter.
+func IncRpcEndpointRequest(chain, endpoint, method string) {
+	lpbotRpcEndpointRequestsTotal.WithLabelValues(chain, endpoint, method).Inc()
+}
+
+// IncRpcEndpointRateLimit increments the RPC endpoint 429/rate-limit counter.
+func IncRpcEndpointRateLimit(chain, endpoint string) {
+	lpbotRpcEndpointRateLimitTotal.WithLabelValues(chain, endpoint).Inc()
+}
+
+// SetRpcEndpointSuccessRatio records the observed success ratio for an endpoint.
+func SetRpcEndpointSuccessRatio(chain, endpoint string, ratio float64) {
+	lpbotRpcEndpointSuccessRatio.WithLabelValues(chain, endpoint).Set(ratio)
 }
 
 // IncDryrunBroadcast increments the dryrun broadcast counter (should always be 0).

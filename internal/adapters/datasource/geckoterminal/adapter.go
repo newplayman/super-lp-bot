@@ -26,13 +26,16 @@ var (
 type Adapter struct {
 	client           *http.Client
 	baseURL          string
-	cacheTTL         time.Duration
+	poolCacheTTL     time.Duration
+	metadataCacheTTL time.Duration
+	minPrimaryGap    time.Duration
 	rateLimitBackoff time.Duration
 	fallback         *dexscreener.Adapter
 	mu               sync.Mutex
 	poolCache        map[string]poolCacheEntry
 	metadataCache    map[string]metadataCacheEntry
 	cooldownUntil    time.Time
+	nextPrimaryAt    time.Time
 }
 
 type poolCacheEntry struct {
@@ -52,8 +55,10 @@ func NewAdapter() *Adapter {
 	return &Adapter{
 		client:           &http.Client{Timeout: 30 * time.Second},
 		baseURL:          "https://api.geckoterminal.com/api/v2",
-		cacheTTL:         90 * time.Second,
-		rateLimitBackoff: 2 * time.Minute,
+		poolCacheTTL:     4 * time.Minute,
+		metadataCacheTTL: 3 * time.Minute,
+		minPrimaryGap:    350 * time.Millisecond,
+		rateLimitBackoff: 4 * time.Minute,
 		fallback:         dexscreener.NewAdapter(),
 		poolCache:        make(map[string]poolCacheEntry),
 		metadataCache:    make(map[string]metadataCacheEntry),
@@ -64,8 +69,10 @@ func NewAdapterWithClient(client *http.Client) *Adapter {
 	return &Adapter{
 		client:           client,
 		baseURL:          "https://api.geckoterminal.com/api/v2",
-		cacheTTL:         90 * time.Second,
-		rateLimitBackoff: 2 * time.Minute,
+		poolCacheTTL:     4 * time.Minute,
+		metadataCacheTTL: 3 * time.Minute,
+		minPrimaryGap:    350 * time.Millisecond,
+		rateLimitBackoff: 4 * time.Minute,
 		fallback:         dexscreener.NewAdapterWithClient(client),
 		poolCache:        make(map[string]poolCacheEntry),
 		metadataCache:    make(map[string]metadataCacheEntry),
@@ -182,6 +189,9 @@ func (a *Adapter) GetPoolMetadataWithSource(ctx context.Context, chain domain.Ch
 }
 
 func (a *Adapter) getPoolMetadataPrimary(ctx context.Context, chain domain.ChainID, poolID string) (*ports.PoolDiscovery, error) {
+	if err := a.acquirePrimarySlot(ctx); err != nil {
+		return nil, err
+	}
 	client := NewClientWithHTTP(a.client, a.baseURL)
 	network := mapChainToNetwork(chain)
 	pool, err := client.GetPoolInfo(ctx, network, poolID)
@@ -202,6 +212,7 @@ func (a *Adapter) getPoolMetadataPrimary(ctx context.Context, chain domain.Chain
 	liquidity, _ := decimal.NewFromString(firstNonEmpty(pool.Attributes.LiquidityUSD, pool.Attributes.ReserveInUSD, "0"))
 	volume, _ := decimal.NewFromString(firstNonEmpty(pool.Attributes.VolumeUSD.H24, pool.Attributes.BaseVolume, pool.Attributes.QuoteVolume, "0"))
 	priceUSD, _ := decimal.NewFromString(firstNonEmpty(pool.Attributes.PriceUSD, pool.Attributes.PriceNative, "0"))
+	priceChange24hPct, _ := decimal.NewFromString(firstNonEmpty(pool.Attributes.PriceChangePercentage.H24, "0"))
 
 	resolvedPoolID := pool.Attributes.Address
 	if resolvedPoolID == "" {
@@ -222,12 +233,15 @@ func (a *Adapter) getPoolMetadataPrimary(ctx context.Context, chain domain.Chain
 		TVLUSD:            liquidity,
 		Vol24h:            volume,
 		PriceUSD:          priceUSD,
-		PriceChange24hPct: decimal.Zero,
+		PriceChange24hPct: priceChange24hPct.Div(decimal.NewFromInt(100)),
 		UpdatedAt:         time.Now(),
 	}, nil
 }
 
 func (a *Adapter) discoverPoolsPrimary(ctx context.Context, chain domain.ChainID, minTVLUSD domain.Decimal, limit int) ([]ports.PoolDiscovery, error) {
+	if err := a.acquirePrimarySlot(ctx); err != nil {
+		return nil, err
+	}
 	client := NewClientWithHTTP(a.client, a.baseURL)
 	network := mapChainToNetwork(chain)
 	pools, err := client.GetPoolsByNetwork(ctx, network, limit)
@@ -266,6 +280,7 @@ func (a *Adapter) discoverPoolsPrimary(ctx context.Context, chain domain.ChainID
 		}
 		volume, _ := decimal.NewFromString(firstNonEmpty(pool.Attributes.VolumeUSD.H24, pool.Attributes.BaseVolume, pool.Attributes.QuoteVolume, "0"))
 		priceUSD, _ := decimal.NewFromString(firstNonEmpty(pool.Attributes.PriceUSD, pool.Attributes.PriceNative, "0"))
+		priceChange24hPct, _ := decimal.NewFromString(firstNonEmpty(pool.Attributes.PriceChangePercentage.H24, "0"))
 
 		poolID := pool.Attributes.Address
 		if poolID == "" {
@@ -286,7 +301,7 @@ func (a *Adapter) discoverPoolsPrimary(ctx context.Context, chain domain.ChainID
 			TVLUSD:            liquidity,
 			Vol24h:            volume,
 			PriceUSD:          priceUSD,
-			PriceChange24hPct: decimal.Zero,
+			PriceChange24hPct: priceChange24hPct.Div(decimal.NewFromInt(100)),
 			UpdatedAt:         time.Now(),
 		})
 	}
@@ -325,6 +340,9 @@ func (a *Adapter) GetPriceHistory(ctx context.Context, chain domain.ChainID, poo
 }
 
 func (a *Adapter) getPriceHistoryPrimary(ctx context.Context, chain domain.ChainID, poolID string, from, to time.Time, resolution time.Duration) ([]ports.HistoricalPrice, error) {
+	if err := a.acquirePrimarySlot(ctx); err != nil {
+		return nil, err
+	}
 	client := NewClientWithHTTP(a.client, a.baseURL)
 	network := mapChainToNetwork(chain)
 	fromUnix := from.Unix()
@@ -344,21 +362,15 @@ func (a *Adapter) getPriceHistoryPrimary(ctx context.Context, chain domain.Chain
 
 	result := make([]ports.HistoricalPrice, 0, len(ohlcvData))
 	for _, candle := range ohlcvData {
-		open, _ := decimal.NewFromString(candle.Attributes.OHLCVOpen)
-		close, _ := decimal.NewFromString(candle.Attributes.OHLCVClose)
-
-		var blockTime int64
-		if candle.Attributes.BlockTime != "" {
-			blockTime, _ = parseTimestamp(candle.Attributes.BlockTime)
-		}
-
-		volume, _ := decimal.NewFromString(candle.Attributes.OHLCVVolume)
+		open, _ := decimal.NewFromString(candle.Open)
+		close, _ := decimal.NewFromString(candle.Close)
+		volume, _ := decimal.NewFromString(candle.Volume)
 
 		result = append(result, ports.HistoricalPrice{
 			PoolID:      poolID,
 			Chain:       chain,
-			Timestamp:   time.Unix(blockTime, 0),
-			BlockNumber: uint64(blockTime),
+			Timestamp:   time.Unix(candle.Timestamp, 0),
+			BlockNumber: uint64(candle.Timestamp),
 			Price0:      open,
 			Price1:      close,
 			Liquidity:   decimal.Zero,
@@ -390,7 +402,7 @@ func (a *Adapter) storePools(key string, pools []ports.PoolDiscovery) {
 	now := time.Now()
 	a.poolCache[key] = poolCacheEntry{
 		pools:     clonePoolDiscoveries(pools),
-		expiresAt: now.Add(a.cacheTTL),
+		expiresAt: now.Add(a.poolCacheTTL),
 		fetchedAt: now,
 	}
 }
@@ -421,7 +433,7 @@ func (a *Adapter) storeMetadata(key string, metadata *ports.PoolDiscovery, sourc
 	a.metadataCache[key] = metadataCacheEntry{
 		metadata:  *metadata,
 		source:    source,
-		expiresAt: now.Add(a.cacheTTL),
+		expiresAt: now.Add(a.metadataCacheTTL),
 		fetchedAt: now,
 	}
 }
@@ -439,6 +451,37 @@ func (a *Adapter) setCooldown(retryAfter time.Duration) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.cooldownUntil = time.Now().Add(retryAfter)
+}
+
+func (a *Adapter) acquirePrimarySlot(ctx context.Context) error {
+	if a.minPrimaryGap <= 0 {
+		return nil
+	}
+
+	waitFor := time.Duration(0)
+	now := time.Now()
+
+	a.mu.Lock()
+	if a.nextPrimaryAt.After(now) {
+		waitFor = a.nextPrimaryAt.Sub(now)
+		now = a.nextPrimaryAt
+	}
+	a.nextPrimaryAt = now.Add(a.minPrimaryGap)
+	a.mu.Unlock()
+
+	if waitFor <= 0 {
+		return nil
+	}
+
+	timer := time.NewTimer(waitFor)
+	defer timer.Stop()
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-timer.C:
+		return nil
+	}
 }
 
 func clonePoolDiscoveries(pools []ports.PoolDiscovery) []ports.PoolDiscovery {
@@ -476,10 +519,12 @@ func mapStepToTimeframe(step time.Duration) string {
 		return "1d"
 	case step >= time.Hour:
 		return "1h"
+	case step >= 5*time.Minute:
+		return "5m"
 	case step >= time.Minute:
 		return "1m"
 	default:
-		return "1h"
+		return "1m"
 	}
 }
 

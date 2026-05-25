@@ -22,16 +22,21 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 
 	"github.com/lpbot/lpbot/internal/domain"
+	"github.com/lpbot/lpbot/internal/platform/metrics"
 )
 
 const (
-	defaultHealthCheckInterval = 30 * time.Second
-	defaultHealthCheckTimeout  = 2 * time.Second
-	switchLogCooldown          = 15 * time.Second
-	endpointFailureCooldown    = 45 * time.Second
-	endpointRateLimitCooldown  = 2 * time.Minute
-	callContractCacheTTL       = 20 * time.Second
-	callContractCacheMaxItems  = 2048
+	defaultHealthCheckInterval       = 30 * time.Second
+	defaultHealthCheckTimeout        = 2 * time.Second
+	initialHealthCheckTimeout        = 5 * time.Second
+	switchLogCooldown                = 15 * time.Second
+	endpointFailureCooldown          = 45 * time.Second
+	endpointRateLimitCooldown        = 2 * time.Minute
+	reserveEndpointRateLimitCooldown = 5 * time.Minute
+	defaultEndpointMinInterval       = 75 * time.Millisecond
+	reserveEndpointMinInterval       = 1200 * time.Millisecond
+	callContractCacheTTL             = 20 * time.Second
+	callContractCacheMaxItems        = 2048
 )
 
 // Default public RPC endpoints
@@ -88,11 +93,21 @@ type callCacheEntry struct {
 	expiresAt time.Time
 }
 
+type endpointHistory struct {
+	successes  int
+	failures   int
+	rateLimits int
+	lastOK     time.Time
+	lastFail   time.Time
+}
+
 var (
-	switchLogStateMu sync.Mutex
-	switchLogStates  = make(map[string]switchLogState)
-	endpointStateMu  sync.Mutex
-	endpointCooldown = make(map[string]time.Time)
+	switchLogStateMu  sync.Mutex
+	switchLogStates   = make(map[string]switchLogState)
+	endpointStateMu   sync.Mutex
+	endpointCooldown  = make(map[string]time.Time)
+	endpointHistoryMu sync.Mutex
+	endpointHistories = make(map[string]endpointHistory)
 )
 
 // RoundRobinProvider distributes requests across multiple RPC endpoints with automatic failover.
@@ -109,6 +124,8 @@ type RoundRobinProvider struct {
 	healthTimeout  time.Duration
 	callCacheMu    sync.Mutex
 	callCache      map[string]callCacheEntry
+	endpointPaceMu sync.Mutex
+	endpointReady  map[string]time.Time
 }
 
 // Config holds the configuration for a round-robin RPC provider.
@@ -155,14 +172,14 @@ func NewRoundRobinProvider(cfg Config) (*RoundRobinProvider, error) {
 		healthInterval: healthInterval,
 		healthTimeout:  healthTimeout,
 		callCache:      make(map[string]callCacheEntry),
+		endpointReady:  make(map[string]time.Time),
 	}
 
-	ranked, healthSummary := rankEndpointsByLatency(
-		context.Background(),
-		p.endpoints,
-		p.httpClient,
-		p.healthTimeout,
-	)
+	initialTimeout := p.healthTimeout
+	if initialTimeout < initialHealthCheckTimeout {
+		initialTimeout = initialHealthCheckTimeout
+	}
+	ranked, healthSummary := p.rankEndpointsWithTimeout(context.Background(), p.endpoints, initialTimeout)
 	ranked = p.prioritizeAvailableEndpoints(ranked)
 	p.endpoints = ranked
 	log.Printf("[rpc:%s] initial rpc order: %v", p.chainID, p.endpoints)
@@ -189,12 +206,7 @@ func (p *RoundRobinProvider) healthLoop() {
 			if len(p.copyEndpoints()) == 0 {
 				continue
 			}
-			ranked, healthSummary := rankEndpointsByLatency(
-				context.Background(),
-				p.copyEndpoints(),
-				p.httpClient,
-				p.healthTimeout,
-			)
+			ranked, healthSummary := p.rankEndpoints(context.Background(), p.copyEndpoints())
 			if len(ranked) == 0 {
 				continue
 			}
@@ -313,10 +325,12 @@ func (p *RoundRobinProvider) nextEndpoint() error {
 
 			client, err := p.connect(endpoint)
 			if err != nil {
+				p.recordEndpointProbe(endpoint, false)
 				p.markEndpointCooldown(endpoint)
 				lastErr = fmt.Errorf("failed to connect to endpoint %s: %w", endpoint, err)
 				continue
 			}
+			p.recordEndpointProbe(endpoint, true)
 
 			atomic.StoreUint32(&p.current, uint32(idx))
 			p.mu.Lock()
@@ -368,7 +382,8 @@ func (p *RoundRobinProvider) markEndpointCooldown(endpoint string) {
 }
 
 func (p *RoundRobinProvider) markEndpointRateLimited(endpoint string) {
-	until := time.Now().Add(endpointRateLimitCooldown)
+	until := time.Now().Add(rateLimitCooldownForEndpoint(endpoint))
+	p.recordEndpointRateLimit(endpoint)
 	p.markEndpointCooldownUntil(endpoint, until)
 	if endpoint != "" {
 		log.Printf("[rpc:%s] rate limited endpoint cooling down until %s: %s", p.chainID, until.Format(time.RFC3339), endpoint)
@@ -426,9 +441,48 @@ func (p *RoundRobinProvider) prioritizeAvailableEndpoints(endpoints []string) []
 	}
 
 	if len(available) == 0 || len(cooling) == 0 {
+		sort.SliceStable(endpoints, func(i, j int) bool {
+			leftPenalty := p.endpointStabilityPenalty(endpoints[i])
+			rightPenalty := p.endpointStabilityPenalty(endpoints[j])
+			if leftPenalty != rightPenalty {
+				return leftPenalty < rightPenalty
+			}
+			leftReserve := isReserveEndpoint(endpoints[i])
+			rightReserve := isReserveEndpoint(endpoints[j])
+			if leftReserve != rightReserve {
+				return !leftReserve
+			}
+			return false
+		})
 		return endpoints
 	}
 
+	sort.SliceStable(available, func(i, j int) bool {
+		leftPenalty := p.endpointStabilityPenalty(available[i])
+		rightPenalty := p.endpointStabilityPenalty(available[j])
+		if leftPenalty != rightPenalty {
+			return leftPenalty < rightPenalty
+		}
+		leftReserve := isReserveEndpoint(available[i])
+		rightReserve := isReserveEndpoint(available[j])
+		if leftReserve != rightReserve {
+			return !leftReserve
+		}
+		return false
+	})
+	sort.SliceStable(cooling, func(i, j int) bool {
+		leftPenalty := p.endpointStabilityPenalty(cooling[i])
+		rightPenalty := p.endpointStabilityPenalty(cooling[j])
+		if leftPenalty != rightPenalty {
+			return leftPenalty < rightPenalty
+		}
+		leftReserve := isReserveEndpoint(cooling[i])
+		rightReserve := isReserveEndpoint(cooling[j])
+		if leftReserve != rightReserve {
+			return !leftReserve
+		}
+		return false
+	})
 	return append(available, cooling...)
 }
 
@@ -448,7 +502,6 @@ func (p *RoundRobinProvider) shouldStopAfterRPCError(err error) bool {
 		return false
 	}
 	p.markCurrentEndpointRateLimited()
-	_ = p.nextEndpoint()
 	return true
 }
 
@@ -470,6 +523,187 @@ func cloneBytes(value []byte) []byte {
 	dst := make([]byte, len(value))
 	copy(dst, value)
 	return dst
+}
+
+func endpointHistoryKey(chainID domain.ChainID, endpoint string) string {
+	if endpoint == "" {
+		return ""
+	}
+	return string(chainID) + "|" + endpoint
+}
+
+func (p *RoundRobinProvider) recordEndpointProbe(endpoint string, ok bool) {
+	key := endpointHistoryKey(p.chainID, endpoint)
+	if key == "" {
+		return
+	}
+	now := time.Now()
+	endpointHistoryMu.Lock()
+	h := endpointHistories[key]
+	if ok {
+		h.successes++
+		h.lastOK = now
+	} else {
+		h.failures++
+		h.lastFail = now
+	}
+	endpointHistories[key] = h
+	endpointHistoryMu.Unlock()
+	total := h.successes + h.failures
+	if total > 0 {
+		metrics.SetRpcEndpointSuccessRatio(string(p.chainID), endpoint, float64(h.successes)/float64(total))
+	}
+}
+
+func (p *RoundRobinProvider) recordEndpointRateLimit(endpoint string) {
+	key := endpointHistoryKey(p.chainID, endpoint)
+	if key == "" {
+		return
+	}
+	now := time.Now()
+	endpointHistoryMu.Lock()
+	h := endpointHistories[key]
+	h.rateLimits++
+	h.failures++
+	h.lastFail = now
+	endpointHistories[key] = h
+	endpointHistoryMu.Unlock()
+	total := h.successes + h.failures
+	if total > 0 {
+		metrics.SetRpcEndpointSuccessRatio(string(p.chainID), endpoint, float64(h.successes)/float64(total))
+	}
+	metrics.IncRpcEndpointRateLimit(string(p.chainID), endpoint)
+}
+
+func (p *RoundRobinProvider) endpointStabilityPenalty(endpoint string) int {
+	key := endpointHistoryKey(p.chainID, endpoint)
+	if key == "" {
+		return 0
+	}
+	now := time.Now()
+	endpointHistoryMu.Lock()
+	h := endpointHistories[key]
+	endpointHistoryMu.Unlock()
+
+	penalty := 0
+	if h.failures > h.successes {
+		penalty += (h.failures - h.successes) * 2
+	}
+	penalty += h.rateLimits * 4
+	if !h.lastFail.IsZero() && now.Sub(h.lastFail) < 10*time.Minute {
+		penalty += 6
+	}
+	if !h.lastOK.IsZero() && now.Sub(h.lastOK) < 10*time.Minute {
+		penalty -= 2
+	}
+	if penalty < 0 {
+		return 0
+	}
+	return penalty
+}
+
+func (p *RoundRobinProvider) applyPrimaryHysteresis(current string, ranked []endpointProbeResult) []endpointProbeResult {
+	if len(ranked) <= 1 || current == "" {
+		return ranked
+	}
+
+	currentIdx := -1
+	for i := range ranked {
+		if ranked[i].endpoint == current {
+			currentIdx = i
+			break
+		}
+	}
+	if currentIdx <= 0 {
+		return ranked
+	}
+
+	leader := ranked[0]
+	cur := ranked[currentIdx]
+	if !cur.ok {
+		return ranked
+	}
+
+	leaderPenalty := p.endpointStabilityPenalty(leader.endpoint)
+	currentPenalty := p.endpointStabilityPenalty(cur.endpoint)
+	if leaderPenalty+1 < currentPenalty {
+		return ranked
+	}
+	if currentPenalty+1 < leaderPenalty {
+		ranked[0], ranked[currentIdx] = ranked[currentIdx], ranked[0]
+		return ranked
+	}
+
+	leaderReserve := isReserveEndpoint(leader.endpoint)
+	currentReserve := isReserveEndpoint(cur.endpoint)
+	latencyGain := cur.latency - leader.latency
+	improvementRatio := 0.0
+	if cur.latency > 0 {
+		improvementRatio = float64(latencyGain) / float64(cur.latency)
+	}
+
+	requiredRatio := 0.20
+	requiredGain := 150 * time.Millisecond
+	if !currentReserve && leaderReserve {
+		requiredRatio = 0.50
+		requiredGain = 300 * time.Millisecond
+	}
+
+	if improvementRatio < requiredRatio && latencyGain < requiredGain {
+		ranked[0], ranked[currentIdx] = ranked[currentIdx], ranked[0]
+	}
+	return ranked
+}
+
+func rateLimitCooldownForEndpoint(endpoint string) time.Duration {
+	if isReserveEndpoint(endpoint) {
+		return reserveEndpointRateLimitCooldown
+	}
+	return endpointRateLimitCooldown
+}
+
+func minIntervalForEndpoint(endpoint string) time.Duration {
+	if isReserveEndpoint(endpoint) {
+		return reserveEndpointMinInterval
+	}
+	return defaultEndpointMinInterval
+}
+
+func (p *RoundRobinProvider) waitForEndpointBudget(ctx context.Context, endpoint string) error {
+	if endpoint == "" {
+		return nil
+	}
+
+	interval := minIntervalForEndpoint(endpoint)
+	if interval <= 0 {
+		return nil
+	}
+
+	now := time.Now()
+	waitFor := time.Duration(0)
+
+	p.endpointPaceMu.Lock()
+	readyAt := p.endpointReady[endpoint]
+	if readyAt.After(now) {
+		waitFor = readyAt.Sub(now)
+		now = readyAt
+	}
+	p.endpointReady[endpoint] = now.Add(interval)
+	p.endpointPaceMu.Unlock()
+
+	if waitFor <= 0 {
+		return nil
+	}
+
+	timer := time.NewTimer(waitFor)
+	defer timer.Stop()
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-timer.C:
+		return nil
+	}
 }
 
 func (p *RoundRobinProvider) callContractCacheKey(msg ethereum.CallMsg, blockNumber *big.Int) (string, bool) {
@@ -561,8 +795,10 @@ func (p *RoundRobinProvider) connectAtLeastOne() error {
 	for idx, endpoint := range endpoints {
 		client, err := p.connect(endpoint)
 		if err != nil {
+			p.recordEndpointProbe(endpoint, false)
 			continue
 		}
+		p.recordEndpointProbe(endpoint, true)
 		p.mu.Lock()
 		p.client = client
 		p.mu.Unlock()
@@ -696,6 +932,14 @@ func rankEndpointsByLatency(ctx context.Context, endpoints []string, httpClient 
 	return ranked, strings.Join(summaryParts, ", ")
 }
 
+func probeResultsToEndpoints(results []endpointProbeResult) []string {
+	ranked := make([]string, 0, len(results))
+	for _, result := range results {
+		ranked = append(ranked, result.endpoint)
+	}
+	return ranked
+}
+
 func probeEndpointLatency(ctx context.Context, endpoint string, httpClient *http.Client, timeout time.Duration) (time.Duration, error) {
 	if timeout <= 0 {
 		timeout = defaultHealthCheckTimeout
@@ -743,6 +987,99 @@ func probeEndpointLatency(ctx context.Context, endpoint string, httpClient *http
 	return time.Since(start), nil
 }
 
+func (p *RoundRobinProvider) rankEndpoints(ctx context.Context, endpoints []string) ([]string, string) {
+	return p.rankEndpointsWithTimeout(ctx, endpoints, p.healthTimeout)
+}
+
+func (p *RoundRobinProvider) rankEndpointsWithTimeout(ctx context.Context, endpoints []string, timeout time.Duration) ([]string, string) {
+	if len(endpoints) <= 1 {
+		return endpoints, ""
+	}
+	rankedResults, summary := rankEndpointsDetailed(ctx, endpoints, p.httpClient, timeout)
+	rankedResults = p.applyPrimaryHysteresis(p.Endpoint(), rankedResults)
+	return probeResultsToEndpoints(rankedResults), summary
+}
+
+func rankEndpointsDetailed(ctx context.Context, endpoints []string, httpClient *http.Client, timeout time.Duration) ([]endpointProbeResult, string) {
+	if len(endpoints) <= 1 {
+		results := make([]endpointProbeResult, 0, len(endpoints))
+		for idx, endpoint := range endpoints {
+			results = append(results, endpointProbeResult{endpoint: endpoint, index: idx, ok: true})
+		}
+		return results, ""
+	}
+
+	results := make(chan endpointProbeResult, len(endpoints))
+	var wg sync.WaitGroup
+	wg.Add(len(endpoints))
+
+	for idx, endpoint := range endpoints {
+		go func(i int, endpoint string) {
+			defer wg.Done()
+			latency, err := probeEndpointLatency(ctx, endpoint, httpClient, timeout)
+			errMsg := ""
+			if err != nil {
+				errMsg = err.Error()
+			}
+			results <- endpointProbeResult{
+				endpoint: endpoint,
+				latency:  latency,
+				index:    i,
+				ok:       err == nil,
+				errMsg:   errMsg,
+			}
+		}(idx, endpoint)
+	}
+
+	wg.Wait()
+	close(results)
+
+	probeResults := make([]endpointProbeResult, 0, len(endpoints))
+	allFailed := true
+	for r := range results {
+		if r.ok {
+			allFailed = false
+		}
+		probeResults = append(probeResults, r)
+	}
+
+	if allFailed {
+		failSummary := make([]string, 0, len(probeResults))
+		for _, result := range probeResults {
+			failSummary = append(failSummary, fmt.Sprintf("%s:FAIL(%s)", result.endpoint, result.errMsg))
+		}
+		return probeResults, strings.Join(failSummary, ", ")
+	}
+
+	sort.SliceStable(probeResults, func(i, j int) bool {
+		if probeResults[i].ok != probeResults[j].ok {
+			return probeResults[i].ok
+		}
+
+		leftReserve := isReserveEndpoint(probeResults[i].endpoint)
+		rightReserve := isReserveEndpoint(probeResults[j].endpoint)
+		if leftReserve != rightReserve {
+			return !leftReserve
+		}
+
+		if probeResults[i].ok && probeResults[i].latency != probeResults[j].latency {
+			return probeResults[i].latency < probeResults[j].latency
+		}
+
+		return probeResults[i].index < probeResults[j].index
+	})
+
+	summaryParts := make([]string, 0, len(probeResults))
+	for _, result := range probeResults {
+		if result.ok {
+			summaryParts = append(summaryParts, fmt.Sprintf("%s:OK(%s)", result.endpoint, result.latency))
+		} else {
+			summaryParts = append(summaryParts, fmt.Sprintf("%s:FAIL(%s)", result.endpoint, result.errMsg))
+		}
+	}
+	return probeResults, strings.Join(summaryParts, ", ")
+}
+
 // BalanceAt returns the balance at the given block.
 func (p *RoundRobinProvider) BalanceAt(ctx context.Context, addr domain.Address, block *big.Int) (*big.Int, error) {
 	var lastErr error
@@ -756,6 +1093,7 @@ func (p *RoundRobinProvider) BalanceAt(ctx context.Context, addr domain.Address,
 		}
 		balance, err := client.BalanceAt(ctx, common.HexToAddress(addr.String()), block)
 		if err == nil {
+			p.recordEndpointProbe(p.Endpoint(), true)
 			return balance, nil
 		}
 		lastErr = err
@@ -782,6 +1120,7 @@ func (p *RoundRobinProvider) NonceAt(ctx context.Context, addr domain.Address, b
 		}
 		nonce, err := client.NonceAt(ctx, common.HexToAddress(addr.String()), block)
 		if err == nil {
+			p.recordEndpointProbe(p.Endpoint(), true)
 			return nonce, nil
 		}
 		lastErr = err
@@ -815,6 +1154,7 @@ func (p *RoundRobinProvider) BlockByHash(ctx context.Context, hash common.Hash) 
 		}
 		block, err := client.BlockByHash(ctx, hash)
 		if err == nil {
+			p.recordEndpointProbe(p.Endpoint(), true)
 			return block, nil
 		}
 		lastErr = err
@@ -841,6 +1181,7 @@ func (p *RoundRobinProvider) BlockByNumber(ctx context.Context, num *big.Int) (*
 		}
 		block, err := client.BlockByNumber(ctx, num)
 		if err == nil {
+			p.recordEndpointProbe(p.Endpoint(), true)
 			return block, nil
 		}
 		lastErr = err
@@ -867,6 +1208,7 @@ func (p *RoundRobinProvider) HeaderByHash(ctx context.Context, hash common.Hash)
 		}
 		header, err := client.HeaderByHash(ctx, hash)
 		if err == nil {
+			p.recordEndpointProbe(p.Endpoint(), true)
 			return header, nil
 		}
 		lastErr = err
@@ -893,6 +1235,7 @@ func (p *RoundRobinProvider) HeaderByNumber(ctx context.Context, num *big.Int) (
 		}
 		header, err := client.HeaderByNumber(ctx, num)
 		if err == nil {
+			p.recordEndpointProbe(p.Endpoint(), true)
 			return header, nil
 		}
 		lastErr = err
@@ -917,8 +1260,14 @@ func (p *RoundRobinProvider) SuggestGasPrice(ctx context.Context) (*big.Int, err
 		if err != nil {
 			return nil, err
 		}
+		endpoint := p.Endpoint()
+		if err := p.waitForEndpointBudget(ctx, endpoint); err != nil {
+			return nil, err
+		}
+		metrics.IncRpcEndpointRequest(string(p.chainID), endpoint, "eth_gasPrice")
 		price, err := client.SuggestGasPrice(ctx)
 		if err == nil {
+			p.recordEndpointProbe(p.Endpoint(), true)
 			return price, nil
 		}
 		lastErr = err
@@ -946,8 +1295,14 @@ func (p *RoundRobinProvider) SuggestGasTipCap(ctx context.Context) (*big.Int, er
 		if err != nil {
 			return nil, err
 		}
+		endpoint := p.Endpoint()
+		if err := p.waitForEndpointBudget(ctx, endpoint); err != nil {
+			return nil, err
+		}
+		metrics.IncRpcEndpointRequest(string(p.chainID), endpoint, "eth_maxPriorityFeePerGas")
 		tip, err := client.SuggestGasTipCap(ctx)
 		if err == nil {
+			p.recordEndpointProbe(p.Endpoint(), true)
 			return tip, nil
 		}
 		lastErr = err
@@ -972,8 +1327,14 @@ func (p *RoundRobinProvider) EstimateGas(ctx context.Context, msg ethereum.CallM
 		if err != nil {
 			return 0, err
 		}
+		endpoint := p.Endpoint()
+		if err := p.waitForEndpointBudget(ctx, endpoint); err != nil {
+			return 0, err
+		}
+		metrics.IncRpcEndpointRequest(string(p.chainID), endpoint, "eth_estimateGas")
 		gas, err := client.EstimateGas(ctx, msg)
 		if err == nil {
+			p.recordEndpointProbe(p.Endpoint(), true)
 			return gas, nil
 		}
 		lastErr = err
@@ -1003,6 +1364,7 @@ func (p *RoundRobinProvider) CodeAt(ctx context.Context, addr domain.Address, bl
 		}
 		code, err := client.CodeAt(ctx, common.HexToAddress(addr.String()), block)
 		if err == nil {
+			p.recordEndpointProbe(p.Endpoint(), true)
 			return code, nil
 		}
 		lastErr = err
@@ -1029,6 +1391,7 @@ func (p *RoundRobinProvider) PendingCodeAt(ctx context.Context, addr domain.Addr
 		}
 		code, err := client.PendingCodeAt(ctx, common.HexToAddress(addr.String()))
 		if err == nil {
+			p.recordEndpointProbe(p.Endpoint(), true)
 			return code, nil
 		}
 		lastErr = err
@@ -1060,16 +1423,25 @@ func (p *RoundRobinProvider) CallContract(ctx context.Context, msg ethereum.Call
 		if err != nil {
 			return nil, err
 		}
+		endpoint := p.Endpoint()
+		if err := p.waitForEndpointBudget(ctx, endpoint); err != nil {
+			return nil, err
+		}
+		metrics.IncRpcEndpointRequest(string(p.chainID), endpoint, "eth_call")
 		result, err := client.CallContract(ctx, msg, blockNumber)
 		if err == nil {
+			p.recordEndpointProbe(p.Endpoint(), true)
 			if cacheable {
 				p.setCallContractCache(cacheKey, result)
 			}
 			return result, nil
 		}
 		lastErr = err
-		if p.shouldStopAfterRPCError(err) {
-			return nil, err
+		if retry, rotateErr := p.retryAfterRateLimit(err); retry {
+			if rotateErr != nil {
+				return nil, lastErr
+			}
+			continue
 		}
 		if err := p.nextEndpoint(); err != nil {
 			return nil, lastErr
@@ -1097,13 +1469,22 @@ func (p *RoundRobinProvider) FilterLogs(ctx context.Context, q ethereum.FilterQu
 		if err != nil {
 			return nil, err
 		}
+		endpoint := p.Endpoint()
+		if err := p.waitForEndpointBudget(ctx, endpoint); err != nil {
+			return nil, err
+		}
+		metrics.IncRpcEndpointRequest(string(p.chainID), endpoint, "eth_getLogs")
 		logs, err := client.FilterLogs(ctx, q)
 		if err == nil {
+			p.recordEndpointProbe(p.Endpoint(), true)
 			return logs, nil
 		}
 		lastErr = err
-		if p.shouldStopAfterRPCError(err) {
-			return nil, err
+		if retry, rotateErr := p.retryAfterRateLimit(err); retry {
+			if rotateErr != nil {
+				return nil, lastErr
+			}
+			continue
 		}
 		if err := p.nextEndpoint(); err != nil {
 			return nil, lastErr

@@ -35,11 +35,26 @@ coverage.out
 *.sqlite-*
 data/
 archive/
+bin/
+build/
+artifacts/
 
 # frontend
 web/.next/
 web/node_modules/
 web/out/
+tools/**/node_modules/
+run/
+run/audits/
+tmp_sync_placeholder/
+
+# mac artifacts
+._*
+
+# runtime artifacts
+*.log
+*.tmp
+logs/
 
 # go
 vendor/

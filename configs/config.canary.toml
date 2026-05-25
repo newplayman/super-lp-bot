@@ -53,7 +53,7 @@ send_timeout_seconds = 180
 mint_slippage_bps = 9999
 
 [live]
-enabled = false
+enabled = true
 canary = true
 kill_switch = false
 wallet_address = "${CANARY_WALLET_ADDRESS}"
