@@ -232,6 +232,13 @@ func (w *canaryEventWriter) UpdatePositionStatus(ctx context.Context, positionID
 	return postgres.NewPositionRepo(w.db).UpdateStatus(ctx, positionID, status)
 }
 
+func (w *canaryEventWriter) AttachOpenTxHash(ctx context.Context, positionID string, txHash string) error {
+	if w == nil || w.db == nil {
+		return fmt.Errorf("canary state writer is not initialized")
+	}
+	return attachOpenTxHashToPosition(ctx, postgres.NewPositionRepo(w.db), positionID, txHash)
+}
+
 func (w *canaryEventWriter) SaveOpeningPosition(ctx context.Context, positionID string, pool domain.Pool, amountUSD domain.Decimal, openedAt int64) error {
 	if w == nil || w.db == nil {
 		return fmt.Errorf("canary state writer is not initialized")

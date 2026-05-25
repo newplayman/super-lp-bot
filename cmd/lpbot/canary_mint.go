@@ -22,6 +22,7 @@ const canaryMintConfirmEnv = "LPBOT_CONFIRM_CANARY_MINT"
 type canaryMintState interface {
 	ReserveOpeningPosition(ctx context.Context, pos *domain.Position) error
 	UpdatePositionStatus(ctx context.Context, positionID string, status domain.PositionStatus) error
+	AttachOpenTxHash(ctx context.Context, positionID string, txHash string) error
 	RecordSignedTx(ctx context.Context, signed domain.SignedTx, status domain.TxStatus) error
 	Record(ctx context.Context, event canaryEvent) error
 }
@@ -344,6 +345,10 @@ func submitReservedCanaryMint(
 	}
 	signed.ID = unsignedTx.ID
 	signed.Status = domain.TxBuilt
+	if err := state.AttachOpenTxHash(ctx, reservation.ID, signed.Hash); err != nil {
+		_ = state.UpdatePositionStatus(ctx, reservation.ID, domain.StatusRejected)
+		return domain.SignedTx{}, fmt.Errorf("attach opening tx hash: %w", err)
+	}
 	if err := state.RecordSignedTx(ctx, signed, domain.TxBuilt); err != nil {
 		_ = state.UpdatePositionStatus(ctx, reservation.ID, domain.StatusRejected)
 		return domain.SignedTx{}, fmt.Errorf("persist built mint tx: %w", err)

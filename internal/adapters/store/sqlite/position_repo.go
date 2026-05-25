@@ -35,12 +35,13 @@ func (r *PositionRepo) Save(ctx context.Context, pos *domain.Position) error {
 	//         status, opened_at, updated_at, closed_at
 	query := fmt.Sprintf(`
 		INSERT INTO %s (
-			id, token_id, chain, pool_id, token0, token1, tick_lower, tick_upper,
-			liquidity, amount0, amount1, tvl_usd, amount_usd, tier,
+			id, token_id, chain, pool_id, protocol, token0, token1, tick_lower, tick_upper,
+			liquidity, amount0, amount1, tvl_usd, amount_usd, tier, open_tx_hash, metadata,
 			status, opened_at, updated_at, closed_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET
 			token_id = excluded.token_id,
+			protocol = excluded.protocol,
 			status = excluded.status,
 			tier = excluded.tier,
 			amount_usd = excluded.amount_usd,
@@ -48,6 +49,8 @@ func (r *PositionRepo) Save(ctx context.Context, pos *domain.Position) error {
 			tick_upper = excluded.tick_upper,
 			amount0 = excluded.amount0,
 			amount1 = excluded.amount1,
+			open_tx_hash = excluded.open_tx_hash,
+			metadata = excluded.metadata,
 			updated_at = excluded.updated_at,
 			closed_at = excluded.closed_at
 	`, table)
@@ -55,13 +58,15 @@ func (r *PositionRepo) Save(ctx context.Context, pos *domain.Position) error {
 	now := time.Now().UnixMilli()
 
 	_, err := r.db.ExecContext(ctx, query,
-		pos.ID, pos.TokenID, string(pos.Chain), pos.PoolID,
+		pos.ID, pos.TokenID, string(pos.Chain), pos.PoolID, pos.Protocol,
 		"", "", // token0/token1 placeholder
 		pos.TickLower, pos.TickUpper,
 		"0", "0", "0", // liquidity/amount0/amount1 placeholder
 		"0",                    // tvl_usd placeholder
 		pos.AmountUSD.String(), // amount_usd
 		string(pos.Tier),       // tier
+		pos.OpenTxHash,
+		defaultSQLiteMetadataJSON(pos.MetadataJSON),
 		string(pos.Status),
 		pos.OpenedAt, now, pos.ClosedAt,
 	)
@@ -73,21 +78,22 @@ func (r *PositionRepo) FindByID(ctx context.Context, id string) (*domain.Positio
 	table := r.prefix + "positions"
 	// Query includes tier and amount_usd
 	query := fmt.Sprintf(`
-		SELECT id, COALESCE(token_id, ''), chain, pool_id, tick_lower, tick_upper, amount0, amount1,
-		       amount_usd, tier, status, opened_at, closed_at
+		SELECT id, COALESCE(token_id, ''), chain, pool_id, COALESCE(protocol, ''), tick_lower, tick_upper, amount0, amount1,
+		       amount_usd, tier, COALESCE(open_tx_hash, ''), COALESCE(metadata, '{}'), status, opened_at, closed_at
 		FROM %s WHERE id = ?
 	`, table)
 
 	var pos domain.Position
 	var chain, status, tier string
+	var protocol, openTxHash, metadataJSON string
 	var amountUSDSql sql.NullString
 	var openedAt, closedAt int64
 
 	err := r.db.QueryRowContext(ctx, query, id).Scan(
-		&pos.ID, &pos.TokenID, &chain, &pos.PoolID,
+		&pos.ID, &pos.TokenID, &chain, &pos.PoolID, &protocol,
 		&pos.TickLower, &pos.TickUpper,
 		new(string), new(string), // amount0, amount1 - ignore
-		&amountUSDSql, &tier,
+		&amountUSDSql, &tier, &openTxHash, &metadataJSON,
 		&status, &openedAt, &closedAt,
 	)
 	if err == sql.ErrNoRows {
@@ -98,8 +104,11 @@ func (r *PositionRepo) FindByID(ctx context.Context, id string) (*domain.Positio
 	}
 
 	pos.Chain = domain.ChainID(chain)
+	pos.Protocol = protocol
 	pos.Status = domain.PositionStatus(status)
 	pos.Tier = domain.Tier(tier)
+	pos.OpenTxHash = openTxHash
+	pos.MetadataJSON = metadataJSON
 	if amountUSDSql.Valid {
 		pos.AmountUSD, _ = decimal.NewFromString(amountUSDSql.String)
 	}
@@ -113,8 +122,8 @@ func (r *PositionRepo) FindByID(ctx context.Context, id string) (*domain.Positio
 func (r *PositionRepo) FindByPoolAndStatus(ctx context.Context, poolID string, status domain.PositionStatus) ([]*domain.Position, error) {
 	table := r.prefix + "positions"
 	query := fmt.Sprintf(`
-		SELECT id, COALESCE(token_id, ''), chain, pool_id, tick_lower, tick_upper, amount0, amount1,
-		       amount_usd, tier, status, opened_at, closed_at
+		SELECT id, COALESCE(token_id, ''), chain, pool_id, COALESCE(protocol, ''), tick_lower, tick_upper, amount0, amount1,
+		       amount_usd, tier, COALESCE(open_tx_hash, ''), COALESCE(metadata, '{}'), status, opened_at, closed_at
 		FROM %s WHERE pool_id = ? AND status = ?
 	`, table)
 
@@ -128,22 +137,26 @@ func (r *PositionRepo) FindByPoolAndStatus(ctx context.Context, poolID string, s
 	for rows.Next() {
 		var pos domain.Position
 		var chain, statusStr, tier string
+		var protocol, openTxHash, metadataJSON string
 		var amountUSDSql sql.NullString
 		var openedAt, closedAt int64
 
 		err := rows.Scan(
-			&pos.ID, &pos.TokenID, &chain, &pos.PoolID,
+			&pos.ID, &pos.TokenID, &chain, &pos.PoolID, &protocol,
 			&pos.TickLower, &pos.TickUpper,
 			new(string), new(string), // amount0, amount1
-			&amountUSDSql, &tier,
+			&amountUSDSql, &tier, &openTxHash, &metadataJSON,
 			&statusStr, &openedAt, &closedAt,
 		)
 		if err != nil {
 			continue
 		}
 		pos.Chain = domain.ChainID(chain)
+		pos.Protocol = protocol
 		pos.Status = domain.PositionStatus(statusStr)
 		pos.Tier = domain.Tier(tier)
+		pos.OpenTxHash = openTxHash
+		pos.MetadataJSON = metadataJSON
 		if amountUSDSql.Valid {
 			pos.AmountUSD, _ = decimal.NewFromString(amountUSDSql.String)
 		}
@@ -159,8 +172,8 @@ func (r *PositionRepo) FindByPoolAndStatus(ctx context.Context, poolID string, s
 func (r *PositionRepo) FindByChainAndStatus(ctx context.Context, chain domain.ChainID, status domain.PositionStatus) ([]*domain.Position, error) {
 	table := r.prefix + "positions"
 	query := fmt.Sprintf(`
-		SELECT id, COALESCE(token_id, ''), chain, pool_id, tick_lower, tick_upper, amount0, amount1,
-		       amount_usd, tier, status, opened_at, closed_at
+		SELECT id, COALESCE(token_id, ''), chain, pool_id, COALESCE(protocol, ''), tick_lower, tick_upper, amount0, amount1,
+		       amount_usd, tier, COALESCE(open_tx_hash, ''), COALESCE(metadata, '{}'), status, opened_at, closed_at
 		FROM %s WHERE 1=1
 	`, table)
 	args := []interface{}{}
@@ -184,22 +197,26 @@ func (r *PositionRepo) FindByChainAndStatus(ctx context.Context, chain domain.Ch
 	for rows.Next() {
 		var pos domain.Position
 		var chainStr, statusStr, tier string
+		var protocol, openTxHash, metadataJSON string
 		var amountUSDSql sql.NullString
 		var openedAt, closedAt int64
 
 		err := rows.Scan(
-			&pos.ID, &pos.TokenID, &chainStr, &pos.PoolID,
+			&pos.ID, &pos.TokenID, &chainStr, &pos.PoolID, &protocol,
 			&pos.TickLower, &pos.TickUpper,
 			new(string), new(string), // amount0, amount1
-			&amountUSDSql, &tier,
+			&amountUSDSql, &tier, &openTxHash, &metadataJSON,
 			&statusStr, &openedAt, &closedAt,
 		)
 		if err != nil {
 			continue
 		}
 		pos.Chain = domain.ChainID(chainStr)
+		pos.Protocol = protocol
 		pos.Status = domain.PositionStatus(statusStr)
 		pos.Tier = domain.Tier(tier)
+		pos.OpenTxHash = openTxHash
+		pos.MetadataJSON = metadataJSON
 		if amountUSDSql.Valid {
 			pos.AmountUSD, _ = decimal.NewFromString(amountUSDSql.String)
 		}
@@ -232,8 +249,8 @@ func (r *PositionRepo) UpdateStatus(ctx context.Context, id string, status domai
 func (r *PositionRepo) Snapshot(ctx context.Context, poolID string) ([]*domain.Position, error) {
 	table := r.prefix + "positions"
 	query := fmt.Sprintf(`
-		SELECT id, COALESCE(token_id, ''), chain, pool_id, tick_lower, tick_upper, amount0, amount1,
-		       amount_usd, tier, status, opened_at, closed_at
+		SELECT id, COALESCE(token_id, ''), chain, pool_id, COALESCE(protocol, ''), tick_lower, tick_upper, amount0, amount1,
+		       amount_usd, tier, COALESCE(open_tx_hash, ''), COALESCE(metadata, '{}'), status, opened_at, closed_at
 		FROM %s WHERE pool_id = ?
 	`, table)
 
@@ -247,22 +264,26 @@ func (r *PositionRepo) Snapshot(ctx context.Context, poolID string) ([]*domain.P
 	for rows.Next() {
 		var pos domain.Position
 		var chain, statusStr, tier string
+		var protocol, openTxHash, metadataJSON string
 		var amountUSDSql sql.NullString
 		var openedAt, closedAt int64
 
 		err := rows.Scan(
-			&pos.ID, &pos.TokenID, &chain, &pos.PoolID,
+			&pos.ID, &pos.TokenID, &chain, &pos.PoolID, &protocol,
 			&pos.TickLower, &pos.TickUpper,
 			new(string), new(string), // amount0, amount1
-			&amountUSDSql, &tier,
+			&amountUSDSql, &tier, &openTxHash, &metadataJSON,
 			&statusStr, &openedAt, &closedAt,
 		)
 		if err != nil {
 			continue
 		}
 		pos.Chain = domain.ChainID(chain)
+		pos.Protocol = protocol
 		pos.Status = domain.PositionStatus(statusStr)
 		pos.Tier = domain.Tier(tier)
+		pos.OpenTxHash = openTxHash
+		pos.MetadataJSON = metadataJSON
 		if amountUSDSql.Valid {
 			pos.AmountUSD, _ = decimal.NewFromString(amountUSDSql.String)
 		}
@@ -272,4 +293,11 @@ func (r *PositionRepo) Snapshot(ctx context.Context, poolID string) ([]*domain.P
 	}
 
 	return positions, rows.Err()
+}
+
+func defaultSQLiteMetadataJSON(raw string) string {
+	if raw == "" {
+		return "{}"
+	}
+	return raw
 }

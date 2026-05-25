@@ -118,6 +118,7 @@ func (s *Store) migrate() error {
 			token_id TEXT,
 			chain TEXT NOT NULL,
 			pool_id TEXT NOT NULL,
+			protocol TEXT,
 			token0 TEXT NOT NULL,
 			token1 TEXT NOT NULL,
 			tick_lower INTEGER NOT NULL,
@@ -128,6 +129,8 @@ func (s *Store) migrate() error {
 			tvl_usd TEXT,
 			amount_usd TEXT,
 			tier TEXT,
+			open_tx_hash TEXT,
+			metadata TEXT NOT NULL DEFAULT '{}',
 			fee_growth_0 TEXT,
 			fee_growth_1 TEXT,
 			collected_fee_0 TEXT,
@@ -211,6 +214,9 @@ func (s *Store) runMigrations() error {
 	}{
 		{"amount_usd", "TEXT"},
 		{"tier", "TEXT"},
+		{"protocol", "TEXT"},
+		{"open_tx_hash", "TEXT"},
+		{"metadata", "TEXT NOT NULL DEFAULT '{}'"},
 	}
 
 	// Columns to add to risk_events table
@@ -292,6 +298,11 @@ func (s *Store) ConfigSnap() ports.ConfigSnap { return nil }
 // Close closes the database connection.
 func (s *Store) Close() error {
 	return s.db.Close()
+}
+
+// DB returns the underlying database handle for tests and targeted maintenance queries.
+func (s *Store) DB() *sql.DB {
+	return s.db
 }
 
 // Prefix returns the table prefix used by this store.

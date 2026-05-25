@@ -969,6 +969,14 @@ func (app *App) startWorkers(ctx context.Context) {
 		}()
 	}
 
+	if app.shouldRunBaseTxConfirmer() {
+		app.wg.Add(1)
+		go func() {
+			defer app.wg.Done()
+			app.runBaseTxConfirmerLoop(ctx)
+		}()
+	}
+
 	app.logger.Info("workers started",
 		zap.String("strategy_interval", "1m"),
 		zap.String("scanner_interval", "5m"))
@@ -1672,6 +1680,10 @@ func (o *orderManagerAdapter) Open(ctx context.Context, pool domain.Pool, amount
 		if result, handled, err := o.saveNewPosition(ctx, pool.ID, position); handled {
 			return result, err
 		}
+		if err := attachOpenTxHashToPosition(ctx, o.store.PositionRepo(), positionID, signed.Hash); err != nil {
+			_ = o.store.PositionRepo().UpdateStatus(ctx, positionID, domain.StatusRejected)
+			return loop.ExecutionResult{Success: false, Error: fmt.Sprintf("attach opening tx hash failed: %v", err)}, nil
+		}
 		if err := o.store.TxRepo().UpsertTx(ctx, signed); err != nil {
 			return loop.ExecutionResult{}, err
 		}
@@ -2048,6 +2060,16 @@ func (o *orderManagerAdapter) Rebalance(ctx context.Context, positionID string, 
 		signed.Status = domain.TxBuilt
 		if err := o.store.PositionRepo().Save(ctx, reopened); err != nil {
 			return loop.ExecutionResult{}, err
+		}
+		if err := attachOpenTxHashToPosition(ctx, o.store.PositionRepo(), newPositionID, signed.Hash); err != nil {
+			_ = o.store.PositionRepo().UpdateStatus(ctx, newPositionID, domain.StatusRejected)
+			return loop.ExecutionResult{
+				TxHash:      closeResult.TxHash,
+				Success:     false,
+				Error:       fmt.Sprintf("rebalance reopen attach tx hash failed after close: %v", err),
+				PositionID:  closeResult.PositionID,
+				FinalStatus: domain.StatusClosed,
+			}, nil
 		}
 		if err := o.store.TxRepo().UpsertTx(ctx, signed); err != nil {
 			return loop.ExecutionResult{}, err

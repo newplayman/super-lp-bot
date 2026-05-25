@@ -15,6 +15,7 @@ import (
 
 type fakeCanaryMintState struct {
 	reserved       map[string]domain.PositionStatus
+	openTxHashes   map[string]string
 	reserveErr     error
 	recordedTx     []domain.TxStatus
 	recordedEvents []string
@@ -36,6 +37,14 @@ func (s *fakeCanaryMintState) UpdatePositionStatus(_ context.Context, positionID
 		s.reserved = make(map[string]domain.PositionStatus)
 	}
 	s.reserved[positionID] = status
+	return nil
+}
+
+func (s *fakeCanaryMintState) AttachOpenTxHash(_ context.Context, positionID string, txHash string) error {
+	if s.openTxHashes == nil {
+		s.openTxHashes = make(map[string]string)
+	}
+	s.openTxHashes[positionID] = txHash
 	return nil
 }
 
@@ -115,6 +124,7 @@ func TestSubmitReservedCanaryMint_ReservationHappensBeforeBroadcast(t *testing.T
 	require.True(t, broadcaster.sendCalled)
 	require.Equal(t, domain.TxBroadcast, signed.Status)
 	require.Equal(t, domain.StatusOpening, state.reserved["pos-1"])
+	require.Equal(t, "0xsigned", state.openTxHashes["pos-1"])
 }
 
 func TestSubmitReservedCanaryMint_DuplicateReservationBlocksSignAndBroadcast(t *testing.T) {

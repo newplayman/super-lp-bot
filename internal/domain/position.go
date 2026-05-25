@@ -20,7 +20,7 @@ var ValidTransitions = map[PositionStatus][]PositionStatus{
 	StatusIntended:   {StatusApproved, StatusRejected},
 	StatusApproved:   {StatusOpening},
 	StatusRejected:   {},
-	StatusOpening:    {StatusOpen, StatusExitFailed},
+	StatusOpening:    {StatusOpen, StatusRejected, StatusExitFailed},
 	StatusOpen:       {StatusExiting, StatusManual},
 	StatusExiting:    {StatusClosed, StatusExitFailed},
 	StatusClosed:     {},

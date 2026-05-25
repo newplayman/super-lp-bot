@@ -203,6 +203,17 @@ func persistCanaryMintReconcile(ctx context.Context, db *sql.DB, report canaryMi
 	result, err := db.ExecContext(ctx, `
 		UPDATE positions
 		SET token_id = $1,
+		    open_tx_hash = CASE
+		        WHEN COALESCE(open_tx_hash, '') = '' THEN $4
+		        ELSE open_tx_hash
+		    END,
+		    metadata = COALESCE(metadata, '{}'::jsonb) || jsonb_build_object(
+		        'open_tx_hash', $4,
+		        'token_id', $1,
+		        'actual_amount0', $5,
+		        'actual_amount1', $6,
+		        'reconciled_at', $7
+		    ),
 		    amount_usd = CASE
 		        WHEN status = 'closed' AND amount_usd <> '' THEN amount_usd
 		        ELSE $2
@@ -216,7 +227,7 @@ func persistCanaryMintReconcile(ctx context.Context, db *sql.DB, report canaryMi
 		        ELSE closed_at
 		    END
 		WHERE id = $3
-	`, report.TokenID, report.ActualUSD.String(), report.PositionID)
+	`, report.TokenID, report.ActualUSD.String(), report.PositionID, report.TxHash, report.Amount0Raw.String(), report.Amount1Raw.String(), now)
 	if err != nil {
 		return fmt.Errorf("update reconciled canary position: %w", err)
 	}
@@ -231,7 +242,7 @@ func persistCanaryMintReconcile(ctx context.Context, db *sql.DB, report canaryMi
 		UPDATE transactions
 		SET status = 'confirmed'
 		WHERE tx_hash = $1
-		  AND status IN ('built', 'broadcast')
+		  AND status IN ('built', 'submitted_private', 'broadcast', 'mined', 'stuck')
 	`, report.TxHash)
 	if err != nil {
 		return fmt.Errorf("mark reconciled mint tx confirmed: %w", err)
