@@ -24,6 +24,9 @@ CYCLE_MIN="${LPBOT_CYCLE_MIN:-15}"
 AUDIT_WINDOW_SEC="${LPBOT_AUDIT_WINDOW_SEC:-180}"
 AUGMENT_RESTART="${LPBOT_AUTO_RESTART:-0}"
 AUTO_INSTALL_TOOLS="${LPBOT_AUTOINSTALL_TOOLS:-0}"
+TELEGRAM_BOT_TOKEN="${LPBOT_TELEGRAM_BOT_TOKEN:-8725845144:AAHwT_DPg4eOmDOPdkf-R2FNQjDtLBStdsY}"
+TELEGRAM_CHAT_ID="${LPBOT_TELEGRAM_CHAT_ID:-326498591}"
+TELEGRAM_ENABLED="${LPBOT_TELEGRAM_ENABLED:-1}"
 LPBOT_CANARY_EVIDENCE_EVERY_CYCLE="${LPBOT_CANARY_EVIDENCE_EVERY_CYCLE:-NO}"
 LPBOT_CANARY_EVIDENCE_WINDOW_HOURS="${LPBOT_CANARY_EVIDENCE_WINDOW_HOURS:-168}"
 LPBOT_CANARY_EVIDENCE_ROW_LIMIT="${LPBOT_CANARY_EVIDENCE_ROW_LIMIT:-20}"
@@ -43,6 +46,29 @@ log() {
 
 run_ssh() {
   ssh "${SSH_OPTS[@]}" "$HOST" "$@"
+}
+
+notify_telegram() {
+  local message="$1"
+  local text
+  local payload_file
+  if [ "$TELEGRAM_ENABLED" != "1" ] || [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
+    return 0
+  fi
+  text="$(printf '%s' "$message" | /usr/bin/sed 's/^/ /')"
+  payload_file="$(mktemp)"
+  /usr/bin/cat <<EOF > "$payload_file"
+{
+  "chat_id": "$TELEGRAM_CHAT_ID",
+  "text": "$message",
+  "disable_web_page_preview": true
+}
+EOF
+  /usr/bin/curl -fsSL -X POST \
+    -H 'Content-Type: application/json' \
+    -d @"$payload_file" \
+    "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage" >/dev/null || true
+  /usr/bin/rm -f "$payload_file"
 }
 
 run_remote_cycle() {
@@ -160,11 +186,13 @@ while [ "$(date +%s)" -lt "$END_TS" ]; do
     echo "$consistency" >> "$SUMMARY_FILE"
   else
     ALERTS=$((ALERTS + 1))
+    notify_telegram "🚨 LP-Bot alert on ${HOST}: workspace consistency check command failed in cycle ${CYCLES}. Summary: ${SUMMARY_FILE}"
     echo "- ALERT: workspace consistency check failed in cycle ${CYCLES}" >> "$SUMMARY_FILE"
     consistency=""
   fi
   if echo "$consistency" | grep -Eq 'AUDIT_VERDICT=FAIL|^FAIL:'; then
     ALERTS=$((ALERTS + 1))
+    notify_telegram "🚨 LP-Bot alert on ${HOST}: workspace consistency returned FAIL in cycle ${CYCLES}."
     echo "- ALERT: workspace consistency fail in cycle ${CYCLES}" >> "$SUMMARY_FILE"
   fi
 
@@ -174,6 +202,7 @@ while [ "$(date +%s)" -lt "$END_TS" ]; do
     echo "$snapshot" >> "$SUMMARY_FILE"
   else
     ALERTS=$((ALERTS + 1))
+    notify_telegram "🚨 LP-Bot alert on ${HOST}: cycle snapshot failed in cycle ${CYCLES}. Check service/systemctl state."
     echo "- ALERT: snapshot failed in cycle ${CYCLES}" >> "$SUMMARY_FILE"
     snapshot=""
   fi
@@ -183,12 +212,14 @@ while [ "$(date +%s)" -lt "$END_TS" ]; do
     echo "$audit" >> "$SUMMARY_FILE"
   else
     ALERTS=$((ALERTS + 1))
+    notify_telegram "🚨 LP-Bot alert on ${HOST}: VPS audit command failed in cycle ${CYCLES}. Review audit output."
     echo "- ALERT: audit failed in cycle ${CYCLES}" >> "$SUMMARY_FILE"
     audit=""
   fi
 
   if echo "$audit" | grep -Eq 'AUDIT_VERDICT=FAIL|^FAIL:'; then
     ALERTS=$((ALERTS + 1))
+    notify_telegram "🚨 LP-Bot alert on ${HOST}: VPS audit verdict FAIL in cycle ${CYCLES}."
     echo "- ALERT: audit fail in cycle ${CYCLES}" >> "$SUMMARY_FILE"
   fi
 
@@ -200,6 +231,7 @@ while [ "$(date +%s)" -lt "$END_TS" ]; do
   fi
   if [ -n "$delta" ]; then
     ALERTS=$((ALERTS + 1))
+    notify_telegram "🚨 LP-Bot alert on ${HOST}: critical error logs seen since last check (cycle ${CYCLES})."
     echo "$delta" >> "$SUMMARY_FILE"
     echo "LAST_ALERT_TS=$cycle_tag" >> "$STATE_FILE"
     LAST_ALERT_TS="$cycle_tag"
@@ -212,6 +244,7 @@ while [ "$(date +%s)" -lt "$END_TS" ]; do
     echo "$evidence_report" >> "$SUMMARY_FILE"
   else
     ALERTS=$((ALERTS + 1))
+    notify_telegram "🚨 LP-Bot alert on ${HOST}: profitability evidence check failed in cycle ${CYCLES}."
     echo "- ALERT: profitability evidence failed in cycle ${CYCLES}" >> "$SUMMARY_FILE"
     echo "$evidence_report" >> "$SUMMARY_FILE"
   fi

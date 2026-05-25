@@ -138,6 +138,9 @@ User=lpbot
 WorkingDirectory=/opt/lpbot/lp-bot-v3
 EnvironmentFile=/opt/lpbot/lp-bot-v3/.env.postgres
 EnvironmentFile=/opt/lpbot/lp-bot-v3/.env.redis
+EnvironmentFile=/opt/lpbot/lp-bot-v3/.env.dashboard
+EnvironmentFile=/opt/lpbot/lp-bot-v3/.env.chain
+ExecStartPre=/opt/lpbot/lp-bot-v3/scripts/validate-shadow-binary.sh /opt/lpbot/lp-bot-v3
 ExecStart=/opt/lpbot/lp-bot-v3/bin/lpbot-shadow --config=/opt/lpbot/lp-bot-v3/configs/config.shadow.toml
 Restart=always
 RestartSec=5
@@ -147,10 +150,18 @@ WantedBy=multi-user.target
 ```
 
 ```bash
+cd /opt/lpbot/lp-bot-v3
+cp deploy/systemd/lpbot-shadow.service /etc/systemd/system/lpbot-shadow.service
 sudo systemctl daemon-reload
 sudo systemctl enable --now lpbot-shadow
 sudo systemctl restart lpbot-shadow
 ```
+
+关键说明：
+- `ExecStartPre` 使用 `/opt/lpbot/lp-bot-v3/scripts/validate-shadow-binary.sh` 做启动前自检：
+  - 校验 `bin/lpbot-shadow --version` 返回 `mode: shadow`
+  - 校验 `configs/config.shadow.toml` 的 `[mode].expected = "shadow"`
+- 如检查失败，systemd 会停止并持续重试，你会在 `journalctl -u lpbot-shadow` 里看到明确的检查失败日志。
 
 ## 7.1 Canary service 预装但不启动
 

@@ -200,6 +200,13 @@ exec 2>&1
   else
     fail "service ExecStart unexpected: ${exec_start:-<empty>}"
   fi
+  if "$ROOT_DIR/scripts/validate-shadow-binary.sh" "$ROOT_DIR" >/tmp/lpbot-shadow-validate.log 2>&1; then
+    pass "validate-shadow-binary.sh passed for lpbot-shadow"
+  else
+    fail "validate-shadow-binary.sh failed for lpbot-shadow"
+    echo "INFO: validation output:"
+    sed 's/^/  /' /tmp/lpbot-shadow-validate.log 2>/dev/null || true
+  fi
 
   cfg="$ROOT_DIR/configs/config.shadow.toml"
   require_file "$cfg" "config.shadow.toml"

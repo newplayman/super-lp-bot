@@ -1,0 +1,18 @@
+[Unit]
+Description=LP Bot Shadow Mode
+After=network.target
+
+[Service]
+Type=simple
+User=lpbot
+WorkingDirectory=/opt/lpbot/lp-bot-v3
+ExecStartPre=/opt/lpbot/lp-bot-v3/scripts/validate-shadow-binary.sh /opt/lpbot/lp-bot-v3
+ExecStart=/opt/lpbot/lp-bot-v3/bin/lpbot-shadow --config=/opt/lpbot/lp-bot-v3/configs/config.shadow.toml
+Restart=always
+RestartSec=5
+RestartPreventExitStatus=0
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
