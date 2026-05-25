@@ -10,8 +10,10 @@ MIN_GOOSE_VERSION="${LPBOT_SHADOW_MIN_GOOSE_VERSION:-10}"
 load_env() {
   cd "$ROOT_DIR"
   if [[ -f ./.env.postgres ]]; then set -a; . ./.env.postgres; set +a; fi
+  if [[ -f ./.env.redis ]]; then set -a; . ./.env.redis; set +a; fi
   if [[ -f ./.env.shadow ]]; then set -a; . ./.env.shadow; set +a; fi
   if [[ -f ./.env.dashboard ]]; then set -a; . ./.env.dashboard; set +a; fi
+  if [[ -f ./.env.chain ]]; then set -a; . ./.env.chain; set +a; fi
   export POSTGRES_DSN="${POSTGRES_DSN:-${DATABASE_URL:-}}"
 }
 
