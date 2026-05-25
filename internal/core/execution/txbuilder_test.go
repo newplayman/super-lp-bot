@@ -1,6 +1,7 @@
 package execution
 
 import (
+	"context"
 	"math/big"
 	"strings"
 	"testing"
@@ -132,12 +133,12 @@ func TestBuildMintCalldata_NormalPath(t *testing.T) {
 	data, err := ab.Pack("mint",
 		token0,
 		token1,
-		big.NewInt(3000),        // fee (uint24)
-		big.NewInt(-100000),     // tickLower (int24)
-		big.NewInt(100000),      // tickUpper (int24)
-		big.NewInt(1000000),     // amount0Desired
-		big.NewInt(1000000),     // amount1Desired
-		big.NewInt(900000),     // slippage 10%
+		big.NewInt(3000),    // fee (uint24)
+		big.NewInt(-100000), // tickLower (int24)
+		big.NewInt(100000),  // tickUpper (int24)
+		big.NewInt(1000000), // amount0Desired
+		big.NewInt(1000000), // amount1Desired
+		big.NewInt(900000),  // slippage 10%
 		big.NewInt(900000),
 		recipient,
 	)
@@ -159,7 +160,7 @@ func TestBuildMintCalldata_TickLowerGTE_TickUpper(t *testing.T) {
 
 	// tickLower >= tickUpper should error
 	intent := OpenIntent{
-		TickLower:   100000,  // tickLower = tickUpper (invalid)
+		TickLower:   100000, // tickLower = tickUpper (invalid)
 		TickUpper:   100000,
 		SlippageBps: 50,
 		Token0:      domain.MustParseAddress("0x1234567890123456789012345678901234567890"),
@@ -283,6 +284,21 @@ func TestBuildIncreaseLiquidityCalldata_AmountMinZero(t *testing.T) {
 	assert.Error(t, err, "zero amount desired should error")
 }
 
+func TestBuildIncreaseLiquidityCalldata_InvalidTokenID(t *testing.T) {
+	builder := &TxBuilder{}
+
+	intent := IncreaseLiquidityIntent{
+		TokenId:     "not-a-number",
+		Amount0:     domain.MustDecimal("1"),
+		Amount1:     domain.MustDecimal("1"),
+		SlippageBps: 50,
+		Deadline:    time.Now().Add(10 * time.Minute).Unix(),
+	}
+
+	_, _, err := builder.BuildIncreaseLiquidityCalldata(intent)
+	assert.Error(t, err)
+}
+
 // TestBuildDecreaseLiquidityCalldata_NormalPath tests decreaseLiquidity with valid params.
 func TestBuildDecreaseLiquidityCalldata_NormalPath(t *testing.T) {
 	ab := parseTestABI(t)
@@ -344,6 +360,20 @@ func TestBuildDecreaseLiquidityCalldata_AmountMinZero(t *testing.T) {
 	assert.Error(t, err, "no slippage protection should error")
 }
 
+func TestBuildDecreaseLiquidityCalldata_InvalidTokenID(t *testing.T) {
+	builder := &TxBuilder{}
+
+	intent := DecreaseLiquidityIntent{
+		TokenId:     "not-a-number",
+		Liquidity:   domain.MustDecimal("1"),
+		SlippageBps: 50,
+		Deadline:    time.Now().Add(10 * time.Minute).Unix(),
+	}
+
+	_, _, err := builder.BuildDecreaseLiquidityCalldata(intent)
+	assert.Error(t, err)
+}
+
 // TestBuildCollectCalldata_NormalPath tests collect with valid params.
 func TestBuildCollectCalldata_NormalPath(t *testing.T) {
 	ab := parseTestABI(t)
@@ -351,7 +381,7 @@ func TestBuildCollectCalldata_NormalPath(t *testing.T) {
 	recipient := common.HexToAddress("0xabcdefabcdefabcdefabcdefabcdefabcdefabcd")
 
 	data, err := ab.Pack("collect",
-		big.NewInt(12345),  // tokenId
+		big.NewInt(12345), // tokenId
 		recipient,
 		big.NewInt(0).Mul(big.NewInt(0), common.Big257), // amount0Max (0 = collect all)
 		big.NewInt(0).Mul(big.NewInt(0), common.Big257),
@@ -362,6 +392,16 @@ func TestBuildCollectCalldata_NormalPath(t *testing.T) {
 
 	// Verify selector matches expected
 	assert.Equal(t, collectSelector[:], data[:4], "collect selector should match")
+}
+
+func TestBuildCollectCalldata_InvalidTokenID(t *testing.T) {
+	builder := &TxBuilder{}
+
+	_, _, err := builder.BuildCollectCalldata(CollectIntent{
+		TokenId:   "not-a-number",
+		Recipient: domain.MustParseAddress("0xabcdefabcdefabcdefabcdefabcdefabcdefabcd"),
+	})
+	assert.Error(t, err)
 }
 
 // TestBuildBurnCalldata_NormalPath tests burn with valid tokenId.
@@ -377,12 +417,26 @@ func TestBuildBurnCalldata_NormalPath(t *testing.T) {
 	assert.Equal(t, burnSelector[:], data[:4], "burn selector should match")
 }
 
+func TestBuildBurnCalldata_InvalidTokenID(t *testing.T) {
+	builder := &TxBuilder{}
+
+	_, _, err := builder.BuildBurnCalldata(BurnIntent{TokenId: "not-a-number"})
+	assert.Error(t, err)
+}
+
 // TestBuildBurnCalldata_RequiresZeroLiquidity tests that burn only allowed when liquidity=0.
 func TestBuildBurnCalldata_RequiresZeroLiquidity(t *testing.T) {
 	// This is a documentation test - burn should only be called after
 	// decreaseLiquidity(liquidity) where liquidity = 0 (full removal).
 	// The check is done at the execution level, not in calldata building.
 	assert.True(t, true, "burn validation happens in execution flow, not calldata building")
+}
+
+func TestBuildRebalanceTxs_NotImplemented(t *testing.T) {
+	builder := &TxBuilder{}
+
+	_, _, err := builder.BuildRebalanceTxs(context.Background(), RebalanceIntent{})
+	assert.Error(t, err)
 }
 
 // TestSlippageCalculation tests the slippage protection formula.

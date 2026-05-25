@@ -108,6 +108,47 @@ rpc_primary = "${NONEXISTENT_VAR_12345}"
 	assert.Contains(t, err.Error(), "NONEXISTENT_VAR_12345")
 }
 
+func Test_EnvInterpolationOptionalDefaultValue(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config.toml")
+	configContent := `
+[mode]
+expected = "dryrun"
+
+[platform]
+dashboard_token = "${MISSING_DASHBOARD_TOKEN:-disabled}"
+
+[chains.base]
+rpc_primary = "${BASE_RPC_PRIMARY:-https://mainnet.base.org}"
+mev = "flashbots-protect"
+mev_strict = true
+`
+	require.NoError(t, os.WriteFile(configPath, []byte(configContent), 0644))
+
+	cfg, err := Load(configPath, "dryrun")
+	require.NoError(t, err)
+	assert.Equal(t, "disabled", cfg.Platform.DashboardToken)
+	assert.Equal(t, "https://mainnet.base.org", cfg.Chains.Base.RPCPrimary)
+	assert.True(t, cfg.Chains.Base.MEVStrict)
+}
+
+func Test_EnvInterpolationOptionalEmptyValue(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config.toml")
+	configContent := `
+[mode]
+expected = "dryrun"
+
+[redis]
+url = "${MISSING_REDIS_URL:-}"
+`
+	require.NoError(t, os.WriteFile(configPath, []byte(configContent), 0644))
+
+	cfg, err := Load(configPath, "dryrun")
+	require.NoError(t, err)
+	assert.Equal(t, "", cfg.Redis.URL)
+}
+
 func Test_SHA256MismatchReturnsError(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "config.live.toml")

@@ -3,6 +3,7 @@ package sqlite
 import (
 	"context"
 	"database/sql"
+	"path/filepath"
 	"testing"
 
 	"github.com/lpbot/lpbot/internal/domain"
@@ -175,6 +176,46 @@ func TestPositionRepo_FindByChainAndStatus(t *testing.T) {
 	solana, err := repo.FindByChainAndStatus(context.Background(), domain.ChainSolana, domain.StatusOpen)
 	require.NoError(t, err)
 	assert.Len(t, solana, 1)
+}
+
+func TestPositionRepo_SaveRejectsDuplicateActivePoolPosition(t *testing.T) {
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "positions.db")
+	require.NoError(t, MigrateUp(dbPath, "test_"))
+
+	db, err := sql.Open("sqlite3", dbPath)
+	require.NoError(t, err)
+	defer db.Close()
+
+	repo := NewPositionRepo(db, "test_")
+	ctx := context.Background()
+
+	first := &domain.Position{
+		ID:        "pos_active_1",
+		Chain:     domain.ChainBase,
+		PoolID:    "pool_dup",
+		Status:    domain.StatusOpen,
+		Tier:      domain.TierA,
+		AmountUSD: domain.MustDecimal("100"),
+		TickLower: -10,
+		TickUpper: 10,
+		OpenedAt:  1,
+	}
+	second := &domain.Position{
+		ID:        "pos_active_2",
+		Chain:     domain.ChainBase,
+		PoolID:    "pool_dup",
+		Status:    domain.StatusOpening,
+		Tier:      domain.TierA,
+		AmountUSD: domain.MustDecimal("100"),
+		TickLower: -20,
+		TickUpper: 20,
+		OpenedAt:  2,
+	}
+
+	require.NoError(t, repo.Save(ctx, first))
+	err = repo.Save(ctx, second)
+	require.Error(t, err)
 }
 
 // Test LedgerRepo with schema matching

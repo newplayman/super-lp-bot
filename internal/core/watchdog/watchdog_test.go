@@ -6,9 +6,36 @@ import (
 	"time"
 
 	"github.com/lpbot/lpbot/internal/core/risk"
+	"github.com/lpbot/lpbot/internal/domain"
 	"github.com/lpbot/lpbot/internal/ports"
 	"github.com/stretchr/testify/require"
 )
+
+type txRepoStub struct {
+	stuck []domain.SignedTx
+	err   error
+}
+
+func (t *txRepoStub) UpsertTx(context.Context, domain.SignedTx) error { return nil }
+func (t *txRepoStub) GetTxByHash(context.Context, domain.ChainID, string) (domain.SignedTx, error) {
+	return domain.SignedTx{}, nil
+}
+func (t *txRepoStub) ListTxsByStatus(context.Context, domain.ChainID, domain.TxStatus) ([]domain.SignedTx, error) {
+	return nil, nil
+}
+func (t *txRepoStub) UpdateTxStatus(context.Context, domain.ChainID, string, domain.TxStatus, *domain.BlockRef) error {
+	return nil
+}
+func (t *txRepoStub) ListPendingTxs(context.Context, domain.ChainID) ([]domain.SignedTx, error) {
+	return nil, nil
+}
+func (t *txRepoStub) ListStuckTxs(context.Context, domain.ChainID, int64) ([]domain.SignedTx, error) {
+	return t.stuck, t.err
+}
+func (t *txRepoStub) IncrementRFBAttempts(context.Context, domain.ChainID, string) error { return nil }
+func (t *txRepoStub) GetRFBAttempts(context.Context, domain.ChainID, string) (int, error) {
+	return 0, nil
+}
 
 func TestDefaultWatchdogNew(t *testing.T) {
 	w := NewDefaultWatchdog()
@@ -42,6 +69,26 @@ func TestDefaultWatchdogWithRiskGate(t *testing.T) {
 		}
 	}
 	require.True(t, foundTotalExposure, "TotalExposure check should be present when RiskGate is set")
+}
+
+func TestDefaultWatchdogWithDependencies_StuckTxsFailInvariant(t *testing.T) {
+	rg := risk.NewRiskGate(nil)
+	w := NewDefaultWatchdogWithDependencies(rg, &txRepoStub{
+		stuck: []domain.SignedTx{{Hash: "0xstuck"}},
+	})
+
+	results, err := w.RunChecks(context.Background(), CheckNormal)
+	require.NoError(t, err)
+
+	found := false
+	for _, result := range results {
+		if result.Type == CheckTypeExecutionStuck {
+			found = true
+			require.False(t, result.Passed)
+			require.Contains(t, result.Reason, "stuck tx")
+		}
+	}
+	require.True(t, found, "execution_stuck check should be present")
 }
 
 func TestDefaultWatchdogLastCheckTime(t *testing.T) {

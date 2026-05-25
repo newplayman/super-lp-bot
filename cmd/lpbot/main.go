@@ -860,7 +860,11 @@ func (app *App) wireMainLoop(ctx context.Context) error {
 	if app.logger != nil {
 		app.logger.Info("Main loop wired successfully")
 	}
-	app.watchdog = watchdog.NewDefaultWatchdogWithRiskGate(riskGate)
+	var txRepo ports.TxRepo
+	if app.store != nil {
+		txRepo = app.store.TxRepo()
+	}
+	app.watchdog = watchdog.NewDefaultWatchdogWithDependencies(riskGate, txRepo)
 
 	return nil
 }
@@ -1601,8 +1605,8 @@ func (o *orderManagerAdapter) Open(ctx context.Context, pool domain.Pool, amount
 		signed.ID = tx.ID
 		signed.Status = domain.TxBuilt
 		position.Status = domain.StatusApproved
-		if err := o.store.PositionRepo().Save(ctx, position); err != nil {
-			return loop.ExecutionResult{}, err
+		if result, handled, err := o.saveNewPosition(ctx, pool.ID, position); handled {
+			return result, err
 		}
 		if err := o.store.TxRepo().UpsertTx(ctx, signed); err != nil {
 			return loop.ExecutionResult{}, err
@@ -1635,8 +1639,8 @@ func (o *orderManagerAdapter) Open(ctx context.Context, pool domain.Pool, amount
 		tx = signed
 		txHash = signed.Hash
 	} else {
-		if err := o.store.PositionRepo().Save(ctx, position); err != nil {
-			return loop.ExecutionResult{}, err
+		if result, handled, err := o.saveNewPosition(ctx, pool.ID, position); handled {
+			return result, err
 		}
 		if shadowExecution {
 			if err := o.store.PositionRepo().UpdateStatus(ctx, positionID, domain.StatusOpen); err != nil {
@@ -1655,6 +1659,56 @@ func (o *orderManagerAdapter) Open(ctx context.Context, pool domain.Pool, amount
 		PositionID:  positionID,
 		FinalStatus: position.Status,
 	}, nil
+}
+
+func (o *orderManagerAdapter) saveNewPosition(ctx context.Context, poolID string, position *domain.Position) (loop.ExecutionResult, bool, error) {
+	if err := o.store.PositionRepo().Save(ctx, position); err != nil {
+		if !isActivePositionConstraintError(err) {
+			return loop.ExecutionResult{}, true, err
+		}
+		existing, lookupErr := o.findExistingActivePosition(ctx, poolID)
+		if lookupErr != nil {
+			return loop.ExecutionResult{}, true, lookupErr
+		}
+		if existing == nil {
+			return loop.ExecutionResult{}, true, err
+		}
+		return loop.ExecutionResult{
+			Success:     true,
+			PositionID:  existing.ID,
+			FinalStatus: existing.Status,
+		}, true, nil
+	}
+	return loop.ExecutionResult{}, false, nil
+}
+
+func (o *orderManagerAdapter) findExistingActivePosition(ctx context.Context, poolID string) (*domain.Position, error) {
+	for _, status := range []domain.PositionStatus{
+		domain.StatusIntended,
+		domain.StatusApproved,
+		domain.StatusOpening,
+		domain.StatusOpen,
+		domain.StatusExiting,
+	} {
+		existing, err := o.store.PositionRepo().FindByPoolAndStatus(ctx, poolID, status)
+		if err != nil {
+			return nil, err
+		}
+		if len(existing) > 0 {
+			return existing[0], nil
+		}
+	}
+	return nil, nil
+}
+
+func isActivePositionConstraintError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "idx_positions_one_active_per_pool") ||
+		(strings.Contains(msg, ".chain, ") && strings.Contains(msg, ".pool_id")) ||
+		strings.Contains(msg, "positions.chain, positions.pool_id")
 }
 
 func (o *orderManagerAdapter) Close(ctx context.Context, positionID string) (loop.ExecutionResult, error) {

@@ -35,7 +35,7 @@ var (
 	ErrNoPrivateKey   = errors.New("private key not available")
 	ErrInvalidChainID = errors.New("invalid chain ID")
 	ErrKeyMismatch    = errors.New("address does not match keystore")
-	ErrNoRPCProvider = errors.New("RPC provider required for nonce queries")
+	ErrNoRPCProvider  = errors.New("RPC provider required for nonce queries")
 )
 
 // GasOracle interface for suggesting gas tip
@@ -55,9 +55,9 @@ type keystoreWallet struct {
 	key         *keystore.Key
 	address     domain.Address
 	chainID     domain.ChainID
-	rpcProvider RPCProvider  // For nonce queries (legacy, use chain instead)
-	chain       ChainReader   // For EIP-1559 gas estimation
-	gasOracle   GasOracle     // For gas tip suggestion
+	rpcProvider RPCProvider // For nonce queries (legacy, use chain instead)
+	chain       ChainReader // For EIP-1559 gas estimation
+	gasOracle   GasOracle   // For gas tip suggestion
 }
 
 // RPCProvider interface for getting nonces
@@ -93,14 +93,14 @@ func New(_ context.Context, config ports.WalletConfig) (*WalletProvider, error) 
 
 // WalletProvider creates keystoreWallet instances.
 type WalletProvider struct {
-	keyDir     string
-	keyFile    string
-	passphrase string
-	chainID    domain.ChainID
-	address    domain.Address
+	keyDir      string
+	keyFile     string
+	passphrase  string
+	chainID     domain.ChainID
+	address     domain.Address
 	rpcProvider RPCProvider
-	chain      ChainReader
-	gasOracle  GasOracle
+	chain       ChainReader
+	gasOracle   GasOracle
 }
 
 // SetRPCProvider sets the RPC provider for nonce queries.
@@ -293,7 +293,7 @@ func (w *keystoreWallet) ApproveExact(ctx context.Context, token, spender domain
 	)
 	data = append(data, common.LeftPadBytes(amount.Bytes(), 32)...)
 
-	nonce, err := w.getNonce(ctx, token)
+	nonce, err := w.getNonce(ctx, w.address)
 	if err != nil {
 		return domain.UnsignedTx{}, fmt.Errorf("failed to get nonce: %w", err)
 	}

@@ -45,15 +45,15 @@ func TestTxRepo_UpsertTx(t *testing.T) {
 
 	tx := domain.SignedTx{
 		UnsignedTx: domain.UnsignedTx{
-			ID:      "tx-001",
-			Chain:   domain.ChainBase,
-			From:    fromAddr,
-			To:      toAddr,
-			Data:    []byte{0x12, 0x34, 0x56},
-			Value:   decimal.NewFromInt(100),
-			Nonce:   42,
+			ID:       "tx-001",
+			Chain:    domain.ChainBase,
+			From:     fromAddr,
+			To:       toAddr,
+			Data:     []byte{0x12, 0x34, 0x56},
+			Value:    decimal.NewFromInt(100),
+			Nonce:    42,
 			Deadline: time.Now().Unix() + 300,
-			MinOut:  decimal.NewFromFloat(0.01),
+			MinOut:   decimal.NewFromFloat(0.01),
 		},
 		Signature:   []byte{0xab, 0xcd, 0xef},
 		Hash:        "0xtesthash001",
@@ -81,11 +81,11 @@ func TestTxRepo_UpdateTxStatus(t *testing.T) {
 
 	tx := domain.SignedTx{
 		UnsignedTx: domain.UnsignedTx{
-			ID:      "tx-002",
-			Chain:   domain.ChainBase,
-			From:    fromAddr,
-			To:      toAddr,
-			Nonce:   42,
+			ID:       "tx-002",
+			Chain:    domain.ChainBase,
+			From:     fromAddr,
+			To:       toAddr,
+			Nonce:    42,
 			Deadline: time.Now().Unix() + 300,
 		},
 		Hash:   "0xtesthash002",
@@ -118,18 +118,18 @@ func TestTxRepo_ListTxsByStatus(t *testing.T) {
 	txs := []domain.SignedTx{
 		{
 			UnsignedTx: domain.UnsignedTx{ID: "tx-003a", Chain: domain.ChainBase, From: fromAddr, To: toAddr, Nonce: 1, Deadline: 0},
-			Hash:   "0xtesthash003a",
-			Status: domain.TxBuilt,
+			Hash:       "0xtesthash003a",
+			Status:     domain.TxBuilt,
 		},
 		{
 			UnsignedTx: domain.UnsignedTx{ID: "tx-003b", Chain: domain.ChainBase, From: fromAddr, To: toAddr, Nonce: 2, Deadline: 0},
-			Hash:   "0xtesthash003b",
-			Status: domain.TxBroadcast,
+			Hash:       "0xtesthash003b",
+			Status:     domain.TxBroadcast,
 		},
 		{
 			UnsignedTx: domain.UnsignedTx{ID: "tx-003c", Chain: domain.ChainBase, From: fromAddr, To: toAddr, Nonce: 3, Deadline: 0},
-			Hash:   "0xtesthash003c",
-			Status: domain.TxBroadcast,
+			Hash:       "0xtesthash003c",
+			Status:     domain.TxBroadcast,
 		},
 	}
 
@@ -159,8 +159,8 @@ func TestTxRepo_IncrementRFBAttempts(t *testing.T) {
 
 	tx := domain.SignedTx{
 		UnsignedTx: domain.UnsignedTx{ID: "tx-004", Chain: domain.ChainBase, From: fromAddr, To: toAddr, Nonce: 1, Deadline: 0},
-		Hash:   "0xtesthash004",
-		Status: domain.TxBroadcast,
+		Hash:       "0xtesthash004",
+		Status:     domain.TxBroadcast,
 	}
 
 	err := repo.UpsertTx(ctx, tx)
@@ -182,6 +182,32 @@ func TestTxRepo_IncrementRFBAttempts(t *testing.T) {
 	require.Equal(t, 2, attempts)
 }
 
+func TestTxRepo_IncrementRFBAttempts_StopsAtLimit(t *testing.T) {
+	_, repo, cleanup := setupTxRepoTest(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	fromAddr := domain.MustParseAddress("0x1111111111111111111111111111111111111111")
+	toAddr := domain.MustParseAddress("0x2222222222222222222222222222222222222222")
+
+	tx := domain.SignedTx{
+		UnsignedTx:  domain.UnsignedTx{ID: "tx-004-limit", Chain: domain.ChainBase, From: fromAddr, To: toAddr, Nonce: 1, Deadline: 0},
+		Hash:        "0xtesthash004limit",
+		Status:      domain.TxBroadcast,
+		RFBAttempts: domain.MaxRBFAttempts(),
+	}
+
+	err := repo.UpsertTx(ctx, tx)
+	require.NoError(t, err)
+
+	err = repo.IncrementRFBAttempts(ctx, domain.ChainBase, "0xtesthash004limit")
+	require.ErrorIs(t, err, ports.ErrMaxRFBAttemptsExceeded)
+
+	attempts, err := repo.GetRFBAttempts(ctx, domain.ChainBase, "0xtesthash004limit")
+	require.NoError(t, err)
+	require.Equal(t, domain.MaxRBFAttempts(), attempts, "RBF attempts must not increment past the cap")
+}
+
 func TestTxRepo_ListStuckTxs(t *testing.T) {
 	_, repo, cleanup := setupTxRepoTest(t)
 	defer cleanup()
@@ -193,8 +219,8 @@ func TestTxRepo_ListStuckTxs(t *testing.T) {
 	// Insert a tx that's been broadcast (needs broadcast_at set for stuck detection)
 	tx := domain.SignedTx{
 		UnsignedTx: domain.UnsignedTx{ID: "tx-005", Chain: domain.ChainBase, From: fromAddr, To: toAddr, Nonce: 1, Deadline: 0},
-		Hash:   "0xtesthash005",
-		Status: domain.TxBroadcast,
+		Hash:       "0xtesthash005",
+		Status:     domain.TxBroadcast,
 	}
 	err := repo.UpsertTx(ctx, tx)
 	require.NoError(t, err)
@@ -216,8 +242,8 @@ func TestTxRepo_InvalidTransition(t *testing.T) {
 
 	tx := domain.SignedTx{
 		UnsignedTx: domain.UnsignedTx{ID: "tx-006", Chain: domain.ChainBase, From: fromAddr, To: toAddr, Nonce: 1, Deadline: 0},
-		Hash:   "0xtesthash006",
-		Status: domain.TxBuilt,
+		Hash:       "0xtesthash006",
+		Status:     domain.TxBuilt,
 	}
 
 	err := repo.UpsertTx(ctx, tx)
@@ -250,18 +276,18 @@ func TestTxRepo_ListPendingTxs(t *testing.T) {
 	txs := []domain.SignedTx{
 		{
 			UnsignedTx: domain.UnsignedTx{ID: "tx-007a", Chain: domain.ChainBase, From: fromAddr, To: toAddr, Nonce: 1, Deadline: 0},
-			Hash:   "0xtesthash007a",
-			Status: domain.TxBuilt,
+			Hash:       "0xtesthash007a",
+			Status:     domain.TxBuilt,
 		},
 		{
 			UnsignedTx: domain.UnsignedTx{ID: "tx-007b", Chain: domain.ChainBase, From: fromAddr, To: toAddr, Nonce: 2, Deadline: 0},
-			Hash:   "0xtesthash007b",
-			Status: domain.TxBroadcast,
+			Hash:       "0xtesthash007b",
+			Status:     domain.TxBroadcast,
 		},
 		{
 			UnsignedTx: domain.UnsignedTx{ID: "tx-007c", Chain: domain.ChainBase, From: fromAddr, To: toAddr, Nonce: 3, Deadline: 0},
-			Hash:   "0xtesthash007c",
-			Status: domain.TxConfirmed, // Not pending
+			Hash:       "0xtesthash007c",
+			Status:     domain.TxConfirmed, // Not pending
 		},
 	}
 

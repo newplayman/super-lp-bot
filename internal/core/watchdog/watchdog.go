@@ -20,17 +20,19 @@ import (
 	"time"
 
 	"github.com/lpbot/lpbot/internal/core/risk"
+	"github.com/lpbot/lpbot/internal/domain"
 	"github.com/lpbot/lpbot/internal/ports"
 )
 
 // defaultWatchdog is the implementation of Watchdog.
 type defaultWatchdog struct {
-	config   WatchdogConfig
-	riskGate *risk.RiskGate
-	mu       sync.RWMutex
+	config    WatchdogConfig
+	riskGate  *risk.RiskGate
+	txRepo    ports.TxRepo
+	mu        sync.RWMutex
 	lastCheck map[CheckInterval]time.Time
-	running  bool
-	stopCh   chan struct{}
+	running   bool
+	stopCh    chan struct{}
 }
 
 // NewDefaultWatchdog creates a new watchdog with default config.
@@ -54,6 +56,16 @@ func NewDefaultWatchdogWithRiskGate(rg *risk.RiskGate) Watchdog {
 	return &defaultWatchdog{
 		config:    DefaultWatchdogConfig(),
 		riskGate:  rg,
+		lastCheck: make(map[CheckInterval]time.Time),
+	}
+}
+
+// NewDefaultWatchdogWithDependencies creates a watchdog backed by RiskGate and TxRepo runtime state.
+func NewDefaultWatchdogWithDependencies(rg *risk.RiskGate, txRepo ports.TxRepo) Watchdog {
+	return &defaultWatchdog{
+		config:    DefaultWatchdogConfig(),
+		riskGate:  rg,
+		txRepo:    txRepo,
 		lastCheck: make(map[CheckInterval]time.Time),
 	}
 }
@@ -159,7 +171,14 @@ func (w *defaultWatchdog) runInvariantChecks(ctx context.Context) ([]CheckResult
 			Type:      CheckTypeExecutionStuck,
 			Passed:    true,
 			Level:     ports.AlertP2,
-			Reason:    "no execution-stuck source active",
+			Reason:    "no stuck transactions detected",
+			Timestamp: now,
+		},
+		{
+			Type:      CheckTypePendingTimeout,
+			Passed:    true,
+			Level:     ports.AlertP2,
+			Reason:    "no pending timeout detected",
 			Timestamp: now,
 		},
 		{
@@ -172,7 +191,27 @@ func (w *defaultWatchdog) runInvariantChecks(ctx context.Context) ([]CheckResult
 	}
 
 	if ctx.Err() != nil {
-		results[1].Reason = ctx.Err().Error()
+		results[2].Reason = ctx.Err().Error()
+	}
+
+	if w.txRepo != nil {
+		stuckTxs, err := w.txRepo.ListStuckTxs(ctx, domain.ChainBase, int64(w.config.ExecutionStuckThreshold/time.Second))
+		if err != nil {
+			results[0].Passed = false
+			results[0].Level = ports.AlertP1
+			results[0].Reason = fmt.Sprintf("stuck tx query failed: %v", err)
+			results[1].Passed = false
+			results[1].Level = ports.AlertP1
+			results[1].Reason = fmt.Sprintf("pending timeout query failed: %v", err)
+		} else if len(stuckTxs) > 0 {
+			reason := fmt.Sprintf("%d stuck tx(s) older than %s", len(stuckTxs), w.config.ExecutionStuckThreshold)
+			results[0].Passed = false
+			results[0].Level = ports.AlertP1
+			results[0].Reason = reason
+			results[1].Passed = false
+			results[1].Level = ports.AlertP1
+			results[1].Reason = reason
+		}
 	}
 
 	if w.riskGate == nil {
@@ -187,6 +226,9 @@ func (w *defaultWatchdog) runInvariantChecks(ctx context.Context) ([]CheckResult
 		results[1].Passed = false
 		results[1].Level = ports.AlertP1
 		results[1].Reason = fmt.Sprintf("risk state unavailable: %v", err)
+		results[2].Passed = false
+		results[2].Level = ports.AlertP1
+		results[2].Reason = fmt.Sprintf("risk state unavailable: %v", err)
 		return results, nil
 	}
 
@@ -197,9 +239,9 @@ func (w *defaultWatchdog) runInvariantChecks(ctx context.Context) ([]CheckResult
 			results[0].Level = ports.AlertP1
 			results[0].Reason = "execution_stuck source active in kill state"
 		case ports.RiskSourceDatasource:
-			results[1].Passed = false
-			results[1].Level = ports.AlertP1
-			results[1].Reason = "datasource source active in kill state"
+			results[2].Passed = false
+			results[2].Level = ports.AlertP1
+			results[2].Reason = "datasource source active in kill state"
 		}
 	}
 

@@ -280,29 +280,32 @@ func (r *TxRepo) ListStuckTxs(ctx context.Context, chain domain.ChainID, stuckTi
 
 // IncrementRFBAttempts increments the RFB attempt counter for a tx.
 func (r *TxRepo) IncrementRFBAttempts(ctx context.Context, chain domain.ChainID, hash string) error {
+	maxAttempts := domain.MaxRBFAttempts()
 	result, err := r.db.ExecContext(ctx, `
 		UPDATE transactions
 		SET rfb_attempts = rfb_attempts + 1, updated_at = $1
-		WHERE chain = $2 AND tx_hash = $3
-	`, time.Now().UnixMilli(), string(chain), hash)
+		WHERE chain = $2 AND tx_hash = $3 AND rfb_attempts < $4
+	`, time.Now().UnixMilli(), string(chain), hash, maxAttempts)
 	if err != nil {
 		return fmt.Errorf("failed to increment rfb attempts: %w", err)
 	}
 	rowsAffected, _ := result.RowsAffected()
 	if rowsAffected == 0 {
+		var attempts int
+		err = r.db.QueryRowContext(ctx,
+			"SELECT rfb_attempts FROM transactions WHERE chain = $1 AND tx_hash = $2",
+			string(chain), hash,
+		).Scan(&attempts)
+		if err == sql.ErrNoRows {
+			return ports.ErrTxNotFound
+		}
+		if err != nil {
+			return fmt.Errorf("failed to check rfb attempts: %w", err)
+		}
+		if attempts >= maxAttempts {
+			return ports.ErrMaxRFBAttemptsExceeded
+		}
 		return ports.ErrTxNotFound
-	}
-
-	var attempts int
-	err = r.db.QueryRowContext(ctx,
-		"SELECT rfb_attempts FROM transactions WHERE chain = $1 AND tx_hash = $2",
-		string(chain), hash,
-	).Scan(&attempts)
-	if err != nil {
-		return fmt.Errorf("failed to check rfb attempts: %w", err)
-	}
-	if attempts > domain.MaxRBFAttempts() {
-		return ports.ErrMaxRFBAttemptsExceeded
 	}
 	return nil
 }

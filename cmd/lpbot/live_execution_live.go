@@ -8,8 +8,10 @@ import (
 	"math/big"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 
 	livebroadcast "github.com/lpbot/lpbot/internal/adapters/broadcast/live"
+	flashbotsprotect "github.com/lpbot/lpbot/internal/adapters/mev/flashbots-protect"
 	"github.com/lpbot/lpbot/internal/adapters/rpc"
 	keystorewallet "github.com/lpbot/lpbot/internal/adapters/wallet/keystore"
 	"github.com/lpbot/lpbot/internal/domain"
@@ -34,10 +36,7 @@ func configureLiveExecution(ctx context.Context, app *App, orderManager *orderMa
 		return nil
 	}
 
-	broadcaster, err := livebroadcast.New(ctx, livebroadcast.BroadcastConfig{
-		BaseRPCURL:    liveBaseRPCURL(app),
-		Confirmations: app.config.Chains.Base.Confirmations,
-	})
+	broadcaster, transport, err := buildLiveBroadcaster(ctx, app)
 	if err != nil {
 		_ = wallet.Close()
 		if app.liveGate.enabled {
@@ -53,9 +52,48 @@ func configureLiveExecution(ctx context.Context, app *App, orderManager *orderMa
 	app.liveGate.executionBackendWired = true
 	app.logger.Info("live execution path wired",
 		zap.String("backend", app.liveGate.executionBackend),
+		zap.String("transport", transport),
 		zap.String("wallet", maskAddress(wallet.Address().String())),
 		zap.String("base_rpc", sanitizeEndpointForLog(liveBaseRPCURL(app))))
 	return nil
+}
+
+func buildLiveBroadcaster(ctx context.Context, app *App) (ports.Broadcaster, string, error) {
+	baseCfg := app.config.Chains.Base
+	if strings.TrimSpace(baseCfg.MEV) == "flashbots-protect" && baseCfg.MEVStrict && strings.TrimSpace(baseCfg.MEVEndpoint) == "" {
+		return nil, "", fmt.Errorf("chains.base.mev_strict=true but chains.base.mev_endpoint is empty")
+	}
+
+	publicBroadcaster, err := livebroadcast.New(ctx, livebroadcast.BroadcastConfig{
+		BaseRPCURL:          liveBaseRPCURL(app),
+		SolanaRPCURL:        strings.TrimSpace(app.config.Chains.Solana.RPCPrimary),
+		Confirmations:       app.config.Chains.Base.Confirmations,
+		SolanaSkipPreflight: app.config.Chains.Solana.SkipPreflight,
+	})
+	if err != nil {
+		return nil, "", err
+	}
+
+	if strings.TrimSpace(baseCfg.MEV) != "flashbots-protect" {
+		return publicBroadcaster, "public-rpc", nil
+	}
+
+	mevEndpoint := strings.TrimSpace(baseCfg.MEVEndpoint)
+	if mevEndpoint == "" {
+		return publicBroadcaster, "public-rpc", nil
+	}
+
+	submitter, err := flashbotsprotect.NewFlashbotsMEVStrict(flashbotsprotect.StrictConfig{
+		StrictMode:          baseCfg.MEVStrict,
+		BundleEndpoint:      mevEndpoint,
+		FallbackBroadcaster: publicBroadcaster,
+		Logger:              app.logger,
+	})
+	if err != nil {
+		return nil, "", err
+	}
+
+	return &mevBroadcaster{submitter: submitter}, "flashbots-protect", nil
 }
 
 func openLiveWallet(ctx context.Context, app *App) (ports.Wallet, error) {
@@ -112,4 +150,22 @@ func (o roundRobinGasOracle) SuggestGasTip(ctx context.Context) (*big.Int, error
 		return nil, fmt.Errorf("base rpc provider not configured")
 	}
 	return o.provider.SuggestGasTipCap(ctx)
+}
+
+type mevBroadcaster struct {
+	submitter ports.MEVSubmitter
+	callCount atomic.Int64
+}
+
+func (b *mevBroadcaster) Send(ctx context.Context, tx domain.SignedTx) error {
+	b.callCount.Add(1)
+	if b.submitter == nil {
+		return fmt.Errorf("mev submitter not configured")
+	}
+	_, err := b.submitter.Submit(ctx, tx, ports.MEVSubmitOpts{})
+	return err
+}
+
+func (b *mevBroadcaster) CallCount() int64 {
+	return b.callCount.Load()
 }

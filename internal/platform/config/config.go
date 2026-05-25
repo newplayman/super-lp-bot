@@ -31,6 +31,8 @@ type ChainConfig struct {
 	RPCFallback   []string `toml:"rpc_fallback"`
 	WS            string   `toml:"ws"`
 	MEV           string   `toml:"mev"`
+	MEVEndpoint   string   `toml:"mev_endpoint"`
+	MEVStrict     bool     `toml:"mev_strict"`
 	Confirmations int      `toml:"confirmations"`
 	Commitment    string   `toml:"commitment"`
 	SkipPreflight bool     `toml:"skip_preflight"`
@@ -71,24 +73,24 @@ type Bus struct {
 
 // Alerting represents alert routing configuration.
 type Alerting struct {
-	TelegramToken         string `toml:"telegram_token"`
-	TelegramChatID        string `toml:"telegram_chat_id"`
-	MinIntervalSeconds    int    `toml:"min_interval_seconds"`
+	TelegramToken      string `toml:"telegram_token"`
+	TelegramChatID     string `toml:"telegram_chat_id"`
+	MinIntervalSeconds int    `toml:"min_interval_seconds"`
 }
 
 // Execution represents execution backend configuration for live/canary mode.
 type Execution struct {
-	Backend        string `toml:"backend"`
-	OKXAPIKey      string `toml:"okx_api_key"`
-	OKXAPISecret   string `toml:"okx_api_secret"`
-	OKXPassphrase  string `toml:"okx_api_passphrase"`
-	OKXProjectID   string `toml:"okx_project_id"`
-	NPMBaseAddress string `toml:"npm_base_address"`
-	TxDeadlineSeconds   int `toml:"tx_deadline_seconds"`
-	ExitDeadlineSeconds int `toml:"exit_deadline_seconds"`
-	SignTimeoutSeconds  int `toml:"sign_timeout_seconds"`
-	SendTimeoutSeconds  int `toml:"send_timeout_seconds"`
-	MintSlippageBps     int `toml:"mint_slippage_bps"`
+	Backend             string `toml:"backend"`
+	OKXAPIKey           string `toml:"okx_api_key"`
+	OKXAPISecret        string `toml:"okx_api_secret"`
+	OKXPassphrase       string `toml:"okx_api_passphrase"`
+	OKXProjectID        string `toml:"okx_project_id"`
+	NPMBaseAddress      string `toml:"npm_base_address"`
+	TxDeadlineSeconds   int    `toml:"tx_deadline_seconds"`
+	ExitDeadlineSeconds int    `toml:"exit_deadline_seconds"`
+	SignTimeoutSeconds  int    `toml:"sign_timeout_seconds"`
+	SendTimeoutSeconds  int    `toml:"send_timeout_seconds"`
+	MintSlippageBps     int    `toml:"mint_slippage_bps"`
 }
 
 // Live represents the live execution safety configuration.
@@ -122,20 +124,20 @@ type TierConfig struct {
 
 // Config represents the full application configuration.
 type Config struct {
-	Mode     Mode       `toml:"mode"`
-	Platform Platform   `toml:"platform"`
-	Chains   Chains     `toml:"chains"`
-	Store    Store      `toml:"store"`
-	Redis    Redis      `toml:"redis"`
-	Wallet   Wallet     `toml:"wallet"`
-	Bus      Bus        `toml:"bus"`
-	Alerting Alerting   `toml:"alerting"`
-	Execution Execution `toml:"execution"`
-	Live     Live       `toml:"live"`
-	Risk     Risk       `toml:"risk"`
-	TierA    TierConfig `toml:"tier_a"`
-	TierB    TierConfig `toml:"tier_b"`
-	TierC    TierConfig `toml:"tier_c"`
+	Mode      Mode       `toml:"mode"`
+	Platform  Platform   `toml:"platform"`
+	Chains    Chains     `toml:"chains"`
+	Store     Store      `toml:"store"`
+	Redis     Redis      `toml:"redis"`
+	Wallet    Wallet     `toml:"wallet"`
+	Bus       Bus        `toml:"bus"`
+	Alerting  Alerting   `toml:"alerting"`
+	Execution Execution  `toml:"execution"`
+	Live      Live       `toml:"live"`
+	Risk      Risk       `toml:"risk"`
+	TierA     TierConfig `toml:"tier_a"`
+	TierB     TierConfig `toml:"tier_b"`
+	TierC     TierConfig `toml:"tier_c"`
 }
 
 // Loader provides configuration loading functionality.
@@ -161,21 +163,54 @@ func resolveEnvValue(varName string, lookup func(string) string) string {
 	}
 }
 
+type envExpr struct {
+	name            string
+	defaultValue    string
+	hasDefault      bool
+	explicitRequire bool
+}
+
+func parseEnvExpr(raw string) envExpr {
+	expr := envExpr{name: raw}
+	if name, fallback, ok := strings.Cut(raw, ":-"); ok {
+		expr.name = name
+		expr.defaultValue = fallback
+		expr.hasDefault = true
+		return expr
+	}
+	if strings.HasSuffix(raw, "?") {
+		expr.name = strings.TrimSuffix(raw, "?")
+		expr.explicitRequire = true
+	}
+	return expr
+}
+
+func resolveEnvExpr(expr envExpr, lookup func(string) string) (string, bool) {
+	if value := resolveEnvValue(expr.name, lookup); value != "" {
+		return value, true
+	}
+	if expr.hasDefault {
+		return expr.defaultValue, true
+	}
+	return "", false
+}
+
 func interpolateEnvVarsWithLookup(data []byte, lookup func(string) string) ([]byte, error) {
 	matches := envVarPattern.FindAllSubmatch(data, -1)
 	for _, match := range matches {
 		if len(match) < 2 {
 			continue
 		}
-		varName := string(match[1])
-		if resolveEnvValue(varName, lookup) == "" {
-			return nil, fmt.Errorf("missing required environment variable %q", varName)
+		expr := parseEnvExpr(string(match[1]))
+		if _, ok := resolveEnvExpr(expr, lookup); !ok {
+			return nil, fmt.Errorf("missing required environment variable %q", expr.name)
 		}
 	}
 
 	interpolated := envVarPattern.ReplaceAllFunc(data, func(match []byte) []byte {
-		varName := string(match[2 : len(match)-1])
-		return []byte(resolveEnvValue(varName, lookup))
+		expr := parseEnvExpr(string(match[2 : len(match)-1]))
+		value, _ := resolveEnvExpr(expr, lookup)
+		return []byte(value)
 	})
 	return interpolated, nil
 }

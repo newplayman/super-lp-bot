@@ -60,13 +60,13 @@ func (r *TxRepo) UpsertTx(ctx context.Context, tx domain.SignedTx) error {
 	_, err := r.db.ExecContext(ctx, query,
 		tx.ID, tx.Chain, tx.Hash, tx.From.String(), tx.To.String(), tx.Data, tx.Value.String(),
 		tx.Nonce, tx.Deadline, tx.MinOut.String(), tx.Signature,
-		status, // Initial status
+		status,        // Initial status
 		nil, nil, nil, // block refs
 		nil, nil, nil, // gas
 		tx.RFBAttempts,
-		nil,           // error_msg
-		nil,           // trace_id
-		now, now,      // created_at, updated_at
+		nil,      // error_msg
+		nil,      // trace_id
+		now, now, // created_at, updated_at
 	)
 	if err != nil {
 		return fmt.Errorf("failed to upsert tx: %w", err)
@@ -263,33 +263,34 @@ func (r *TxRepo) ListStuckTxs(ctx context.Context, chain domain.ChainID, stuckTi
 // IncrementRFBAttempts increments the RFB attempt counter for a tx.
 func (r *TxRepo) IncrementRFBAttempts(ctx context.Context, chain domain.ChainID, hash string) error {
 	table := r.prefix + "transactions"
+	maxAttempts := domain.MaxRBFAttempts()
 
 	result, err := r.db.ExecContext(ctx, fmt.Sprintf(`
 		UPDATE %s
 		SET rfb_attempts = rfb_attempts + 1, updated_at = ?
-		WHERE chain = ? AND tx_hash = ?
-	`, table), time.Now().UnixMilli(), chain, hash)
+		WHERE chain = ? AND tx_hash = ? AND rfb_attempts < ?
+	`, table), time.Now().UnixMilli(), chain, hash, maxAttempts)
 	if err != nil {
 		return fmt.Errorf("failed to increment RFB attempts: %w", err)
 	}
 
 	rowsAffected, _ := result.RowsAffected()
 	if rowsAffected == 0 {
+		var attempts int
+		err = r.db.QueryRowContext(ctx,
+			fmt.Sprintf("SELECT rfb_attempts FROM %s WHERE chain = ? AND tx_hash = ?", table),
+			chain, hash,
+		).Scan(&attempts)
+		if err == sql.ErrNoRows {
+			return ports.ErrTxNotFound
+		}
+		if err != nil {
+			return fmt.Errorf("failed to check RFB attempts: %w", err)
+		}
+		if attempts >= maxAttempts {
+			return ports.ErrMaxRFBAttemptsExceeded
+		}
 		return ports.ErrTxNotFound
-	}
-
-	// Check if max attempts exceeded
-	var attempts int
-	err = r.db.QueryRowContext(ctx,
-		fmt.Sprintf("SELECT rfb_attempts FROM %s WHERE chain = ? AND tx_hash = ?", table),
-		chain, hash,
-	).Scan(&attempts)
-	if err != nil {
-		return fmt.Errorf("failed to check RFB attempts: %w", err)
-	}
-
-	if attempts > domain.MaxRBFAttempts() {
-		return ports.ErrMaxRFBAttemptsExceeded
 	}
 
 	return nil

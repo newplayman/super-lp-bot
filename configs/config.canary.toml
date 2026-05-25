@@ -4,18 +4,19 @@ expected = "live"
 [platform]
 log_level = "info"
 metrics_addr = ":9092"
-dashboard_token = "${DASHBOARD_TOKEN}"
+dashboard_token = "${DASHBOARD_TOKEN:-}"
 
 [alerting]
-telegram_token = "${TELEGRAM_BOT_TOKEN}"
-telegram_chat_id = "${TELEGRAM_CHAT_ID}"
+telegram_token = "${TELEGRAM_BOT_TOKEN:-}"
+telegram_chat_id = "${TELEGRAM_CHAT_ID:-}"
 min_interval_seconds = 60
 
 [chains.base]
 rpc_primary = "${BASE_RPC_PRIMARY}"
-rpc_fallback = ["${BASE_RPC_FALLBACK}"]
+rpc_fallback = ["${BASE_RPC_FALLBACK:-}"]
 ws = "${BASE_WS}"
 mev = "flashbots-protect"
+mev_endpoint = "${FLASHBOTS_RPC_URL:-}"
 confirmations = 10
 
 [chains.solana]
@@ -31,7 +32,7 @@ backend = "postgres"
 postgres_dsn = "${POSTGRES_DSN}"
 
 [redis]
-url = "${REDIS_URL}"
+url = "${REDIS_URL:-}"
 prefix = "lpbot-canary"
 heartbeat_interval_seconds = 15
 heartbeat_ttl_seconds = 60
@@ -46,10 +47,10 @@ backend = "inproc"
 
 [execution]
 backend = "native-rpc"
-okx_api_key = "${OKX_API_KEY}"
-okx_api_secret = "${OKX_API_SECRET}"
-okx_api_passphrase = "${OKX_API_PASSPHRASE}"
-okx_project_id = "${OKX_PROJECT_ID}"
+okx_api_key = "${OKX_API_KEY:-}"
+okx_api_secret = "${OKX_API_SECRET:-}"
+okx_api_passphrase = "${OKX_API_PASSPHRASE:-}"
+okx_project_id = "${OKX_PROJECT_ID:-}"
 npm_base_address = "${NPM_BASE_ADDRESS}"
 tx_deadline_seconds = 300
 exit_deadline_seconds = 600

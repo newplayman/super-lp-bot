@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"math/big"
+	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -18,6 +19,8 @@ var (
 	ErrDeadlineExpired   = errors.New("deadline must be in the future")
 	ErrSlippageTooHigh   = errors.New("slippageBps must be less than 10000 (100%)")
 	ErrZeroAmountDesired = errors.New("amount desired must be greater than 0")
+	ErrTokenIDInvalid    = errors.New("token id must be a valid base-10 integer")
+	ErrRebalancePending  = errors.New("rebalance tx building is not implemented")
 )
 
 // TxBuilder builds unsigned transactions for position operations.
@@ -82,7 +85,7 @@ func (b *TxBuilder) BuildAddLiquidityTx(ctx context.Context, intent OpenIntent) 
 		Value:    domain.ZeroDecimal(),
 		Nonce:    0, // Will be set by nonce manager
 		Deadline: intent.Deadline,
-		MinOut:   domain.ZeroDecimal(),
+		MinOut:   domain.NewDecimalFromInt(1),
 	}
 
 	return tx, nil
@@ -112,7 +115,7 @@ func (b *TxBuilder) BuildRemoveLiquidityTx(ctx context.Context, intent ExitInten
 		Value:    domain.ZeroDecimal(),
 		Nonce:    0,
 		Deadline: intent.Deadline,
-		MinOut:   domain.ZeroDecimal(),
+		MinOut:   domain.NewDecimalFromInt(1),
 	}
 
 	return tx, nil
@@ -120,12 +123,9 @@ func (b *TxBuilder) BuildRemoveLiquidityTx(ctx context.Context, intent ExitInten
 
 // BuildRebalanceTxs builds remove and add transactions for rebalancing.
 func (b *TxBuilder) BuildRebalanceTxs(ctx context.Context, intent RebalanceIntent) (removeTx, addTx domain.UnsignedTx, err error) {
-	from := b.wallet.Address()
-
-	// TODO: Implement rebalance calldata building
-	_ = from
-
-	return removeTx, addTx, nil
+	_ = ctx
+	_ = intent
+	return removeTx, addTx, ErrRebalancePending
 }
 
 // BuildCollectFeesTx builds a collect fees transaction.
@@ -150,7 +150,7 @@ func (b *TxBuilder) BuildCollectFeesTx(ctx context.Context, positionID string) (
 		Value:    domain.ZeroDecimal(),
 		Nonce:    0,
 		Deadline: 0,
-		MinOut:   domain.ZeroDecimal(),
+		MinOut:   domain.NewDecimalFromInt(1),
 	}
 
 	return tx, nil
@@ -227,9 +227,9 @@ func (b *TxBuilder) BuildIncreaseLiquidityCalldata(intent IncreaseLiquidityInten
 	amount1Min := calculateSlippageAmount(amount1Desired, intent.SlippageBps)
 
 	// Parse token ID
-	tokenId, ok := new(big.Int).SetString(intent.TokenId, 10)
-	if !ok {
-		tokenId = big.NewInt(0)
+	tokenId, err := parseTokenID(intent.TokenId)
+	if err != nil {
+		return nil, common.Address{}, err
 	}
 
 	// Pack the increaseLiquidity call
@@ -273,9 +273,9 @@ func (b *TxBuilder) BuildDecreaseLiquidityCalldata(intent DecreaseLiquidityInten
 	}
 
 	// Parse token ID
-	tokenId, ok := new(big.Int).SetString(intent.TokenId, 10)
-	if !ok {
-		tokenId = big.NewInt(0)
+	tokenId, err := parseTokenID(intent.TokenId)
+	if err != nil {
+		return nil, common.Address{}, err
 	}
 
 	// Parse liquidity
@@ -299,9 +299,9 @@ func (b *TxBuilder) BuildDecreaseLiquidityCalldata(intent DecreaseLiquidityInten
 // BuildCollectCalldata builds calldata for collecting fees from a position.
 func (b *TxBuilder) BuildCollectCalldata(intent CollectIntent) ([]byte, common.Address, error) {
 	// Parse token ID
-	tokenId, ok := new(big.Int).SetString(intent.TokenId, 10)
-	if !ok {
-		tokenId = big.NewInt(0)
+	tokenId, err := parseTokenID(intent.TokenId)
+	if err != nil {
+		return nil, common.Address{}, err
 	}
 
 	// For amount0Max/amount1Max, use max uint128 to collect all
@@ -335,9 +335,9 @@ func (b *TxBuilder) BuildCollectCalldata(intent CollectIntent) ([]byte, common.A
 // Should only be called after liquidity has been fully removed (liquidity = 0).
 func (b *TxBuilder) BuildBurnCalldata(intent BurnIntent) ([]byte, common.Address, error) {
 	// Parse token ID
-	tokenId, ok := new(big.Int).SetString(intent.TokenId, 10)
-	if !ok {
-		tokenId = big.NewInt(0)
+	tokenId, err := parseTokenID(intent.TokenId)
+	if err != nil {
+		return nil, common.Address{}, err
 	}
 
 	// Pack the burn call
@@ -358,6 +358,14 @@ func calculateSlippageAmount(amount *big.Int, slippageBps int64) *big.Int {
 	result.Mul(amount, result)
 	result.Div(result, big.NewInt(10000))
 	return result
+}
+
+func parseTokenID(raw string) (*big.Int, error) {
+	tokenID, ok := new(big.Int).SetString(strings.TrimSpace(raw), 10)
+	if !ok || tokenID.Sign() < 0 {
+		return nil, ErrTokenIDInvalid
+	}
+	return tokenID, nil
 }
 
 // SetNonce sets the nonce for a transaction.

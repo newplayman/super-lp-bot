@@ -23,7 +23,7 @@ type mockWallet struct {
 }
 
 func (m *mockWallet) Open(ctx context.Context) error { return nil }
-func (m *mockWallet) Close() error                  { return nil }
+func (m *mockWallet) Close() error                   { return nil }
 func (m *mockWallet) Address() domain.Address        { return m.address }
 func (m *mockWallet) Chain() domain.ChainID          { return m.chain }
 func (m *mockWallet) Sign(ctx context.Context, tx domain.UnsignedTx) (domain.SignedTx, error) {
@@ -43,7 +43,7 @@ type mockChain struct {
 	info ports.ChainInfo
 }
 
-func (m *mockChain) Info() ports.ChainInfo                                     { return m.info }
+func (m *mockChain) Info() ports.ChainInfo { return m.info }
 func (m *mockChain) GetBlock(ctx context.Context, ref domain.BlockRef) (ports.Block, error) {
 	return ports.Block{Ref: domain.BlockRef{Chain: domain.ChainBase, Number: 1}}, nil
 }
@@ -70,8 +70,8 @@ func (m *mockSimulator) SimulateAndValidate(ctx context.Context, req simulation.
 	}
 	return &simulation.SimulationResponse{
 		Result: &domain.SimulationResult{
-			Success:      true,
-			GasUsed:      150000,
+			Success:       true,
+			GasUsed:       150000,
 			OutputAmounts: []domain.TokenAmount{},
 		},
 		HoneypotDetected: false,
@@ -87,8 +87,8 @@ func (m *mockSimulator) SimulateSequenceAndValidate(ctx context.Context, reqs []
 	for i := range reqs {
 		results[i] = simulation.SimulationResponse{
 			Result: &domain.SimulationResult{
-				Success:      true,
-				GasUsed:      150000,
+				Success:       true,
+				GasUsed:       150000,
 				OutputAmounts: []domain.TokenAmount{},
 			},
 			HoneypotDetected: false,
@@ -112,26 +112,26 @@ func TestOrderManager_Open_Success(t *testing.T) {
 	om := execution.NewDefaultOrderManager(deps, config, sim)
 
 	intent := execution.OpenIntent{
-		PositionID: "pos-1",
-		PoolID:     "pool-1",
-		Chain:      "base",
-		Tier:       domain.TierC,
-		AmountUSD:  domain.MustDecimal("50"),
-		TickLower:  100,
-		TickUpper:  200,
-		TraceID:    "trace-123",
-		Token0:     domain.MustParseAddress("0x0000000000000000000000000000000000000002"),
-		Token1:     domain.MustParseAddress("0x0000000000000000000000000000000000000003"),
-		Recipient:  domain.MustParseAddress("0x0000000000000000000000000000000000000001"),
-		Amount0:    domain.MustDecimal("1"),
-		Amount1:    domain.MustDecimal("2000"),
-		SlippageBps: 50, // 0.5% slippage tolerance
-		Deadline:   time.Now().Add(10 * time.Minute).Unix(), // 10 minutes from now
+		PositionID:  "pos-1",
+		PoolID:      "pool-1",
+		Chain:       "base",
+		Tier:        domain.TierC,
+		AmountUSD:   domain.MustDecimal("50"),
+		TickLower:   100,
+		TickUpper:   200,
+		TraceID:     "trace-123",
+		Token0:      domain.MustParseAddress("0x0000000000000000000000000000000000000002"),
+		Token1:      domain.MustParseAddress("0x0000000000000000000000000000000000000003"),
+		Recipient:   domain.MustParseAddress("0x0000000000000000000000000000000000000001"),
+		Amount0:     domain.MustDecimal("1"),
+		Amount1:     domain.MustDecimal("2000"),
+		SlippageBps: 50,                                      // 0.5% slippage tolerance
+		Deadline:    time.Now().Add(10 * time.Minute).Unix(), // 10 minutes from now
 		Simulation: &domain.SimulationResult{
 			Success: true,
 			BlockRef: domain.BlockRef{
-				Chain:    domain.ChainBase,
-				Number:   1,
+				Chain:  domain.ChainBase,
+				Number: 1,
 			},
 			OutputAmounts: []domain.TokenAmount{
 				{Token: domain.Token{Address: domain.MustParseAddress("0x0000000000000000000000000000000000000002"), Symbol: "ETH", Decimals: 18}, Amount: domain.MustDecimal("1")},
@@ -165,7 +165,7 @@ func TestOrderManager_Open_HoneypotDetected(t *testing.T) {
 		simulateFunc: func(ctx context.Context, req simulation.SimulationRequest) (*simulation.SimulationResponse, error) {
 			return &simulation.SimulationResponse{
 				Result: &domain.SimulationResult{
-					Success: true,
+					Success:       true,
 					OutputAmounts: []domain.TokenAmount{},
 				},
 				HoneypotDetected: true,
@@ -177,20 +177,20 @@ func TestOrderManager_Open_HoneypotDetected(t *testing.T) {
 	om := execution.NewDefaultOrderManager(deps, config, sim)
 
 	intent := execution.OpenIntent{
-		PositionID: "pos-honeypot",
-		PoolID:     "pool-1",
-		Chain:      "base",
-		TickLower:  100,
-		TickUpper:  200,
-		Token0:     domain.MustParseAddress("0x0000000000000000000000000000000000000002"),
-		Token1:     domain.MustParseAddress("0x0000000000000000000000000000000000000003"),
-		Recipient:  domain.MustParseAddress("0x0000000000000000000000000000000000000001"),
-		Amount0:    domain.MustDecimal("1"),
-		Amount1:    domain.MustDecimal("2000"),
+		PositionID:  "pos-honeypot",
+		PoolID:      "pool-1",
+		Chain:       "base",
+		TickLower:   100,
+		TickUpper:   200,
+		Token0:      domain.MustParseAddress("0x0000000000000000000000000000000000000002"),
+		Token1:      domain.MustParseAddress("0x0000000000000000000000000000000000000003"),
+		Recipient:   domain.MustParseAddress("0x0000000000000000000000000000000000000001"),
+		Amount0:     domain.MustDecimal("1"),
+		Amount1:     domain.MustDecimal("2000"),
 		SlippageBps: 50,
-		Deadline:   time.Now().Add(10 * time.Minute).Unix(),
+		Deadline:    time.Now().Add(10 * time.Minute).Unix(),
 		Simulation: &domain.SimulationResult{
-			Success: true,
+			Success:  true,
 			BlockRef: domain.BlockRef{Chain: domain.ChainBase, Number: 1},
 			OutputAmounts: []domain.TokenAmount{
 				{Token: domain.Token{Address: domain.MustParseAddress("0x0000000000000000000000000000000000000002")}, Amount: domain.MustDecimal("1")},
@@ -221,7 +221,7 @@ func TestOrderManager_Open_SlippageInvalid(t *testing.T) {
 		simulateFunc: func(ctx context.Context, req simulation.SimulationRequest) (*simulation.SimulationResponse, error) {
 			return &simulation.SimulationResponse{
 				Result: &domain.SimulationResult{
-					Success: true,
+					Success:       true,
 					OutputAmounts: []domain.TokenAmount{},
 				},
 				HoneypotDetected: false,
@@ -233,20 +233,20 @@ func TestOrderManager_Open_SlippageInvalid(t *testing.T) {
 	om := execution.NewDefaultOrderManager(deps, config, sim)
 
 	intent := execution.OpenIntent{
-		PositionID: "pos-slippage",
-		PoolID:     "pool-1",
-		Chain:      "base",
-		TickLower:  100,
-		TickUpper:  200,
-		Token0:     domain.MustParseAddress("0x0000000000000000000000000000000000000002"),
-		Token1:     domain.MustParseAddress("0x0000000000000000000000000000000000000003"),
-		Recipient:  domain.MustParseAddress("0x0000000000000000000000000000000000000001"),
-		Amount0:    domain.MustDecimal("1"),
-		Amount1:    domain.MustDecimal("2000"),
+		PositionID:  "pos-slippage",
+		PoolID:      "pool-1",
+		Chain:       "base",
+		TickLower:   100,
+		TickUpper:   200,
+		Token0:      domain.MustParseAddress("0x0000000000000000000000000000000000000002"),
+		Token1:      domain.MustParseAddress("0x0000000000000000000000000000000000000003"),
+		Recipient:   domain.MustParseAddress("0x0000000000000000000000000000000000000001"),
+		Amount0:     domain.MustDecimal("1"),
+		Amount1:     domain.MustDecimal("2000"),
 		SlippageBps: 50,
-		Deadline:   time.Now().Add(10 * time.Minute).Unix(),
+		Deadline:    time.Now().Add(10 * time.Minute).Unix(),
 		Simulation: &domain.SimulationResult{
-			Success: true,
+			Success:  true,
 			BlockRef: domain.BlockRef{Chain: domain.ChainBase, Number: 1},
 			OutputAmounts: []domain.TokenAmount{
 				{Token: domain.Token{Address: domain.MustParseAddress("0x0000000000000000000000000000000000000002")}, Amount: domain.MustDecimal("1")},
@@ -303,20 +303,20 @@ func TestOrderManager_Close_Success(t *testing.T) {
 
 	// First open a position
 	openIntent := execution.OpenIntent{
-		PositionID: "pos-close-test",
-		PoolID:     "pool-1",
-		Chain:      "base",
-		TickLower:  100,
-		TickUpper:  200,
-		Token0:     domain.MustParseAddress("0x0000000000000000000000000000000000000002"),
-		Token1:     domain.MustParseAddress("0x0000000000000000000000000000000000000003"),
-		Recipient:  domain.MustParseAddress("0x0000000000000000000000000000000000000001"),
-		Amount0:    domain.MustDecimal("1"),
-		Amount1:    domain.MustDecimal("2000"),
+		PositionID:  "pos-close-test",
+		PoolID:      "pool-1",
+		Chain:       "base",
+		TickLower:   100,
+		TickUpper:   200,
+		Token0:      domain.MustParseAddress("0x0000000000000000000000000000000000000002"),
+		Token1:      domain.MustParseAddress("0x0000000000000000000000000000000000000003"),
+		Recipient:   domain.MustParseAddress("0x0000000000000000000000000000000000000001"),
+		Amount0:     domain.MustDecimal("1"),
+		Amount1:     domain.MustDecimal("2000"),
 		SlippageBps: 50,
-		Deadline:   time.Now().Add(10 * time.Minute).Unix(),
+		Deadline:    time.Now().Add(10 * time.Minute).Unix(),
 		Simulation: &domain.SimulationResult{
-			Success: true,
+			Success:  true,
 			BlockRef: domain.BlockRef{Chain: domain.ChainBase, Number: 1},
 			OutputAmounts: []domain.TokenAmount{
 				{Token: domain.Token{Address: domain.MustParseAddress("0x0000000000000000000000000000000000000002")}, Amount: domain.MustDecimal("1")},
@@ -327,19 +327,19 @@ func TestOrderManager_Close_Success(t *testing.T) {
 
 	// Now close the position
 	closeIntent := execution.ExitIntent{
-		PositionID: "pos-close-test",
-		Chain:      "base",
-		Reason:     "stop_loss",
-		TraceID:    "trace-456",
-		TokenId:    "1",
-		Liquidity:  domain.MustDecimal("1000000"),
+		PositionID:  "pos-close-test",
+		Chain:       "base",
+		Reason:      "stop_loss",
+		TraceID:     "trace-456",
+		TokenId:     "1",
+		Liquidity:   domain.MustDecimal("1000000"),
 		SlippageBps: 50,
-		Deadline:   time.Now().Add(10 * time.Minute).Unix(),
-		Recipient:  domain.MustParseAddress("0x0000000000000000000000000000000000000001"),
-		Amount0Min: domain.ZeroDecimal(),
-		Amount1Min: domain.ZeroDecimal(),
+		Deadline:    time.Now().Add(10 * time.Minute).Unix(),
+		Recipient:   domain.MustParseAddress("0x0000000000000000000000000000000000000001"),
+		Amount0Min:  domain.ZeroDecimal(),
+		Amount1Min:  domain.ZeroDecimal(),
 		Simulation: &domain.SimulationResult{
-			Success: true,
+			Success:  true,
 			BlockRef: domain.BlockRef{Chain: domain.ChainBase, Number: 1},
 			OutputAmounts: []domain.TokenAmount{
 				{Token: domain.Token{Address: domain.MustParseAddress("0x0000000000000000000000000000000000000002")}, Amount: domain.MustDecimal("1")},
@@ -372,7 +372,7 @@ func TestOrderManager_Close_PositionNotFound(t *testing.T) {
 		PositionID: "non-existent-pos",
 		Chain:      "base",
 		Simulation: &domain.SimulationResult{
-			Success: true,
+			Success:  true,
 			BlockRef: domain.BlockRef{Chain: domain.ChainBase, Number: 1},
 		},
 	}
@@ -397,20 +397,20 @@ func TestOrderManager_Rebalance_Success(t *testing.T) {
 
 	// First open a position
 	openIntent := execution.OpenIntent{
-		PositionID: "pos-rebalance-test",
-		PoolID:     "pool-1",
-		Chain:      "base",
-		TickLower:  100,
-		TickUpper:  200,
-		Token0:     domain.MustParseAddress("0x0000000000000000000000000000000000000002"),
-		Token1:     domain.MustParseAddress("0x0000000000000000000000000000000000000003"),
-		Recipient:  domain.MustParseAddress("0x0000000000000000000000000000000000000001"),
-		Amount0:    domain.MustDecimal("1"),
-		Amount1:    domain.MustDecimal("2000"),
+		PositionID:  "12345",
+		PoolID:      "pool-1",
+		Chain:       "base",
+		TickLower:   100,
+		TickUpper:   200,
+		Token0:      domain.MustParseAddress("0x0000000000000000000000000000000000000002"),
+		Token1:      domain.MustParseAddress("0x0000000000000000000000000000000000000003"),
+		Recipient:   domain.MustParseAddress("0x0000000000000000000000000000000000000001"),
+		Amount0:     domain.MustDecimal("1"),
+		Amount1:     domain.MustDecimal("2000"),
 		SlippageBps: 50,
-		Deadline:   time.Now().Add(10 * time.Minute).Unix(),
+		Deadline:    time.Now().Add(10 * time.Minute).Unix(),
 		Simulation: &domain.SimulationResult{
-			Success: true,
+			Success:  true,
 			BlockRef: domain.BlockRef{Chain: domain.ChainBase, Number: 1},
 			OutputAmounts: []domain.TokenAmount{
 				{Token: domain.Token{Address: domain.MustParseAddress("0x0000000000000000000000000000000000000002")}, Amount: domain.MustDecimal("1")},
@@ -421,24 +421,24 @@ func TestOrderManager_Rebalance_Success(t *testing.T) {
 
 	// Now rebalance the position
 	rebalanceIntent := execution.RebalanceIntent{
-		PositionID:   "pos-rebalance-test",
+		PositionID:   "12345",
 		Chain:        "base",
 		NewTickLower: 150,
 		NewTickUpper: 250,
 		TraceID:      "trace-789",
 		Simulation: &domain.SimulationResult{
-			Success: true,
+			Success:  true,
 			BlockRef: domain.BlockRef{Chain: domain.ChainBase, Number: 1},
 		},
 	}
 
 	result := om.Rebalance(ctx, rebalanceIntent)
 
-	if !result.Success {
-		t.Errorf("Expected Rebalance to succeed, got error: %s", result.Error)
+	if result.Success {
+		t.Errorf("Expected Rebalance to fail closed until implemented")
 	}
-	if result.FinalStatus != domain.StatusOpen {
-		t.Errorf("Expected final status to be %s after rebalance, got %s", domain.StatusOpen, result.FinalStatus)
+	if result.Error == "" {
+		t.Errorf("Expected Rebalance to return an implementation error")
 	}
 }
 
@@ -459,7 +459,7 @@ func TestOrderManager_Rebalance_PositionNotFound(t *testing.T) {
 		NewTickLower: 150,
 		NewTickUpper: 250,
 		Simulation: &domain.SimulationResult{
-			Success: true,
+			Success:  true,
 			BlockRef: domain.BlockRef{Chain: domain.ChainBase, Number: 1},
 		},
 	}
@@ -484,20 +484,20 @@ func TestOrderManager_CollectFees_Success(t *testing.T) {
 
 	// First open a position
 	openIntent := execution.OpenIntent{
-		PositionID: "pos-collect-test",
-		PoolID:     "pool-1",
-		Chain:      "base",
-		TickLower:  100,
-		TickUpper:  200,
-		Token0:     domain.MustParseAddress("0x0000000000000000000000000000000000000002"),
-		Token1:     domain.MustParseAddress("0x0000000000000000000000000000000000000003"),
-		Recipient:  domain.MustParseAddress("0x0000000000000000000000000000000000000001"),
-		Amount0:    domain.MustDecimal("1"),
-		Amount1:    domain.MustDecimal("2000"),
+		PositionID:  "12346",
+		PoolID:      "pool-1",
+		Chain:       "base",
+		TickLower:   100,
+		TickUpper:   200,
+		Token0:      domain.MustParseAddress("0x0000000000000000000000000000000000000002"),
+		Token1:      domain.MustParseAddress("0x0000000000000000000000000000000000000003"),
+		Recipient:   domain.MustParseAddress("0x0000000000000000000000000000000000000001"),
+		Amount0:     domain.MustDecimal("1"),
+		Amount1:     domain.MustDecimal("2000"),
 		SlippageBps: 50,
-		Deadline:   time.Now().Add(10 * time.Minute).Unix(),
+		Deadline:    time.Now().Add(10 * time.Minute).Unix(),
 		Simulation: &domain.SimulationResult{
-			Success: true,
+			Success:  true,
 			BlockRef: domain.BlockRef{Chain: domain.ChainBase, Number: 1},
 			OutputAmounts: []domain.TokenAmount{
 				{Token: domain.Token{Address: domain.MustParseAddress("0x0000000000000000000000000000000000000002")}, Amount: domain.MustDecimal("1")},
@@ -507,13 +507,13 @@ func TestOrderManager_CollectFees_Success(t *testing.T) {
 	om.Open(ctx, openIntent)
 
 	// Now collect fees
-	result := om.CollectFees(ctx, "pos-collect-test")
+	result := om.CollectFees(ctx, "12346")
 
 	if !result.Success {
 		t.Errorf("Expected CollectFees to succeed, got error: %s", result.Error)
 	}
-	if result.PositionID != "pos-collect-test" {
-		t.Errorf("Expected position ID to be pos-collect-test, got %s", result.PositionID)
+	if result.PositionID != "12346" {
+		t.Errorf("Expected position ID to be 12346, got %s", result.PositionID)
 	}
 }
 
@@ -658,20 +658,20 @@ func TestOrderManager_Close_SimulationReverted(t *testing.T) {
 
 	// Open first
 	openIntent := execution.OpenIntent{
-		PositionID: "pos-revert-test",
-		PoolID:     "pool-1",
-		Chain:      "base",
-		TickLower:  100,
-		TickUpper:  200,
-		Token0:     domain.MustParseAddress("0x0000000000000000000000000000000000000002"),
-		Token1:     domain.MustParseAddress("0x0000000000000000000000000000000000000003"),
-		Recipient:  domain.MustParseAddress("0x0000000000000000000000000000000000000001"),
-		Amount0:    domain.MustDecimal("1"),
-		Amount1:    domain.MustDecimal("2000"),
+		PositionID:  "pos-revert-test",
+		PoolID:      "pool-1",
+		Chain:       "base",
+		TickLower:   100,
+		TickUpper:   200,
+		Token0:      domain.MustParseAddress("0x0000000000000000000000000000000000000002"),
+		Token1:      domain.MustParseAddress("0x0000000000000000000000000000000000000003"),
+		Recipient:   domain.MustParseAddress("0x0000000000000000000000000000000000000001"),
+		Amount0:     domain.MustDecimal("1"),
+		Amount1:     domain.MustDecimal("2000"),
 		SlippageBps: 50,
-		Deadline:   time.Now().Add(10 * time.Minute).Unix(),
+		Deadline:    time.Now().Add(10 * time.Minute).Unix(),
 		Simulation: &domain.SimulationResult{
-			Success: true,
+			Success:  true,
 			BlockRef: domain.BlockRef{Chain: domain.ChainBase, Number: 1},
 			OutputAmounts: []domain.TokenAmount{
 				{Token: domain.Token{Address: domain.MustParseAddress("0x0000000000000000000000000000000000000002")}, Amount: domain.MustDecimal("1")},
@@ -682,17 +682,17 @@ func TestOrderManager_Close_SimulationReverted(t *testing.T) {
 
 	// Try to close
 	closeIntent := execution.ExitIntent{
-		PositionID: "pos-revert-test",
-		Chain:      "base",
-		TokenId:    "1",
-		Liquidity:  domain.MustDecimal("1000000"),
+		PositionID:  "pos-revert-test",
+		Chain:       "base",
+		TokenId:     "1",
+		Liquidity:   domain.MustDecimal("1000000"),
 		SlippageBps: 50,
-		Deadline:   time.Now().Add(10 * time.Minute).Unix(),
-		Recipient:  domain.MustParseAddress("0x0000000000000000000000000000000000000001"),
-		Amount0Min: domain.ZeroDecimal(),
-		Amount1Min: domain.ZeroDecimal(),
+		Deadline:    time.Now().Add(10 * time.Minute).Unix(),
+		Recipient:   domain.MustParseAddress("0x0000000000000000000000000000000000000001"),
+		Amount0Min:  domain.ZeroDecimal(),
+		Amount1Min:  domain.ZeroDecimal(),
 		Simulation: &domain.SimulationResult{
-			Success: true,
+			Success:  true,
 			BlockRef: domain.BlockRef{Chain: domain.ChainBase, Number: 1},
 			OutputAmounts: []domain.TokenAmount{
 				{Token: domain.Token{Address: domain.MustParseAddress("0x0000000000000000000000000000000000000002")}, Amount: domain.MustDecimal("1")},
@@ -733,7 +733,7 @@ func TestOrderManager_Rebalance_SimulationFailed(t *testing.T) {
 		PoolID:     "pool-1",
 		Chain:      "base",
 		Simulation: &domain.SimulationResult{
-			Success: true,
+			Success:  true,
 			BlockRef: domain.BlockRef{Chain: domain.ChainBase, Number: 1},
 			OutputAmounts: []domain.TokenAmount{
 				{Token: domain.Token{Address: domain.MustParseAddress("0x0000000000000000000000000000000000000001")}, Amount: domain.MustDecimal("1")},
@@ -749,7 +749,7 @@ func TestOrderManager_Rebalance_SimulationFailed(t *testing.T) {
 		NewTickLower: 150,
 		NewTickUpper: 250,
 		Simulation: &domain.SimulationResult{
-			Success: true,
+			Success:  true,
 			BlockRef: domain.BlockRef{Chain: domain.ChainBase, Number: 1},
 		},
 	}

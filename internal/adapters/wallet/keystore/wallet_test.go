@@ -165,10 +165,12 @@ func TestWallet_Sign(t *testing.T) {
 
 // mockRPCProvider implements RPCProvider for testing
 type mockRPCProvider struct {
-	nonce uint64
+	nonce    uint64
+	lastAddr domain.Address
 }
 
-func (m *mockRPCProvider) PendingNonceAt(_ context.Context, _ domain.Address) (uint64, error) {
+func (m *mockRPCProvider) PendingNonceAt(_ context.Context, addr domain.Address) (uint64, error) {
+	m.lastAddr = addr
 	return m.nonce, nil
 }
 
@@ -210,6 +212,7 @@ func TestWallet_ApproveExact(t *testing.T) {
 	assert.Equal(t, tokenAddr, approveTx.To)
 	assert.NotEmpty(t, approveTx.Data)
 	assert.Equal(t, domain.ZeroDecimal(), approveTx.Value)
+	assert.Equal(t, wallet.Address(), mockRPC.lastAddr, "approval nonce must be queried for wallet address")
 
 	// Verify approve calldata (should start with 0x095ea7b3)
 	assert.Equal(t, []byte{0x09, 0x5e, 0xa7, 0xb3}, approveTx.Data[:4])
@@ -459,13 +462,13 @@ func (m *mockGasOracle) SuggestGasTip(_ context.Context) (*big.Int, error) {
 
 // mockChainForWallet implements ChainReader for testing
 type mockChainForWallet struct {
-	nonce     uint64
-	nonceErr  error
-	head      *types.Header
-	headErr   error
-	estimate  uint64
+	nonce       uint64
+	nonceErr    error
+	head        *types.Header
+	headErr     error
+	estimate    uint64
 	estimateErr error
-	callErr   error
+	callErr     error
 }
 
 func (m *mockChainForWallet) PendingNonceAt(_ context.Context, _ domain.Address) (uint64, error) {
@@ -603,8 +606,8 @@ func TestSign_MaxFeeFormula(t *testing.T) {
 	require.NoError(t, err)
 
 	// Set up with specific baseFee and tip
-	baseFee := big.NewInt(1000000000)  // 1 gwei
-	tip := big.NewInt(100000000)       // 0.1 gwei
+	baseFee := big.NewInt(1000000000) // 1 gwei
+	tip := big.NewInt(100000000)      // 0.1 gwei
 	expectedMaxFee := big.NewInt(0).Add(
 		big.NewInt(0).Mul(baseFee, big.NewInt(2)),
 		tip,
@@ -662,7 +665,7 @@ func TestSign_NonceFromPending(t *testing.T) {
 	// Set up mock with specific nonce
 	expectedNonce := uint64(5)
 	mockChain := &mockChainForWallet{
-		nonce:  expectedNonce,
+		nonce: expectedNonce,
 		head: &types.Header{
 			BaseFee: big.NewInt(1000000000),
 		},
@@ -759,7 +762,7 @@ func TestSign_HeaderError_Propagates(t *testing.T) {
 	// Set up mock with header error
 	headerErr := errors.New("header not found")
 	mockChain := &mockChainForWallet{
-		nonce: 0,
+		nonce:   0,
 		headErr: headerErr,
 	}
 

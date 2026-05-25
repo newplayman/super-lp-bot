@@ -5,6 +5,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 )
 
 // init sets the build mode for live builds.
@@ -17,6 +18,8 @@ func validateMode() error {
 	fmt.Println("=== LIVE MODE ===")
 	fmt.Println("WARNING: Real transactions will be sent to the blockchain!")
 	fmt.Println("Configure via: configs/config.live.toml")
-	fmt.Println("Press Ctrl+C to abort within 10 seconds...")
+	if os.Getenv("LPBOT_CONFIRM_LIVE") != "YES" {
+		return fmt.Errorf("live mode requires LPBOT_CONFIRM_LIVE=YES")
+	}
 	return nil
 }

@@ -21,9 +21,9 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 
+	bin "github.com/gagliardetto/binary"
 	"github.com/gagliardetto/solana-go"
 	"github.com/gagliardetto/solana-go/rpc"
-	bin "github.com/gagliardetto/binary"
 
 	"github.com/lpbot/lpbot/internal/domain"
 	"github.com/lpbot/lpbot/internal/ports"
@@ -184,7 +184,15 @@ func (b *broadcaster) sendSolana(ctx context.Context, tx domain.SignedTx) error 
 	if err != nil {
 		// Check for specific Solana RPC errors
 		if strings.Contains(err.Error(), "already processed") {
-			// Transaction already confirmed, not an error
+			sig, sigErr := firstSolanaSignature(&solTx)
+			if sigErr != nil {
+				return fmt.Errorf("solana transaction already processed but signature is unavailable: %w", sigErr)
+			}
+			if b.confirmations > 0 {
+				if err := b.waitForSolanaConfirmations(ctx, sig); err != nil {
+					return fmt.Errorf("failed to wait for Solana confirmations: %w", err)
+				}
+			}
 			return nil
 		}
 		return fmt.Errorf("failed to broadcast Solana transaction: %w", err)
@@ -291,7 +299,16 @@ func (b *broadcaster) broadcastSolana(ctx context.Context, signedTx []byte) (str
 	)
 	if err != nil {
 		if strings.Contains(err.Error(), "already processed") {
-			return "", nil
+			sig, sigErr := firstSolanaSignature(&solTx)
+			if sigErr != nil {
+				return "", fmt.Errorf("solana transaction already processed but signature is unavailable: %w", sigErr)
+			}
+			if b.confirmations > 0 {
+				if err := b.waitForSolanaConfirmations(ctx, sig); err != nil {
+					return sig.String(), fmt.Errorf("failed to wait for Solana confirmations: %w", err)
+				}
+			}
+			return sig.String(), nil
 		}
 		return "", fmt.Errorf("failed to broadcast Solana transaction: %w", err)
 	}
@@ -304,6 +321,13 @@ func (b *broadcaster) broadcastSolana(ctx context.Context, signedTx []byte) (str
 	}
 
 	return result.String(), nil
+}
+
+func firstSolanaSignature(tx *solana.Transaction) (solana.Signature, error) {
+	if tx == nil || len(tx.Signatures) == 0 || tx.Signatures[0].IsZero() {
+		return solana.Signature{}, errors.New("missing primary signature")
+	}
+	return tx.Signatures[0], nil
 }
 
 // GetTransactionReceipt retrieves the receipt for a broadcast transaction.
