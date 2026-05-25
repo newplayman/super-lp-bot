@@ -135,6 +135,7 @@ func applySchemaPrefix(sql string, prefix string) string {
 		`(?i)\b(pools)\b`,
 		`(?i)\b(pool_score_history)\b`,
 		`(?i)\b(pnl_ledger)\b`,
+		`(?i)\b(position_marks)\b`,
 		`(?i)\b(processed_events)\b`,
 		`(?i)\b(config_snapshots)\b`,
 		`(?i)\b(portfolio_snapshots)\b`,

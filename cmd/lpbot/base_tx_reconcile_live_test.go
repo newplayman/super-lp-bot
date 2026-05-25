@@ -97,6 +97,10 @@ func TestReconcileBasePendingTxs_MintReceiptConfirmsAndOpensPosition(t *testing.
 	require.NoError(t, err)
 	require.Equal(t, domain.StatusOpen, rechecked.Status)
 	require.Equal(t, "123", rechecked.TokenID)
+
+	var openLedgerRows int
+	require.NoError(t, store.DB().QueryRow(`SELECT COUNT(*) FROM live_reconcile_pnl_ledger WHERE position_id = ?`, position.ID).Scan(&openLedgerRows))
+	require.Equal(t, 1, openLedgerRows)
 }
 
 func TestReconcileBasePendingTxs_RevertedMintRejectsOpeningPosition(t *testing.T) {
@@ -289,6 +293,10 @@ func TestReconcileBasePendingTxs_CollectReceiptClosesExitingPosition(t *testing.
 	updated, err := store.PositionRepo().FindByID(ctx, position.ID)
 	require.NoError(t, err)
 	require.Equal(t, domain.StatusClosed, updated.Status)
+
+	var closeLedgerRows int
+	require.NoError(t, store.DB().QueryRow(`SELECT COUNT(*) FROM live_reconcile_pnl_ledger WHERE position_id = ?`, position.ID).Scan(&closeLedgerRows))
+	require.Equal(t, 1, closeLedgerRows)
 }
 
 func TestReconcileBasePendingTxs_StuckRevertedExitingPositionBecomesExitFailed(t *testing.T) {

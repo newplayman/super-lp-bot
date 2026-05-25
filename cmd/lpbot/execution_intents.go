@@ -13,9 +13,9 @@ import (
 	"github.com/lpbot/lpbot/internal/ports"
 )
 
-func newExecutionIntent(mode string, chain domain.ChainID, poolID string, positionID string, action string, reason string, strategyTime time.Time) *domain.ExecutionIntent {
+func newExecutionIntent(mode string, chain domain.ChainID, poolID string, positionID string, action string, reason string, strategyTime time.Time, extraKeyParts ...string) *domain.ExecutionIntent {
 	epoch := strategyEpoch(strategyTime)
-	key := buildExecutionIntentKey(mode, chain, poolID, positionID, action, epoch)
+	key := buildExecutionIntentKey(mode, chain, poolID, positionID, action, epoch, extraKeyParts...)
 	return &domain.ExecutionIntent{
 		ID:                 "intent-" + shortHash(key),
 		Mode:               mode,
@@ -33,15 +33,22 @@ func newExecutionIntent(mode string, chain domain.ChainID, poolID string, positi
 	}
 }
 
-func buildExecutionIntentKey(mode string, chain domain.ChainID, poolID string, positionID string, action string, epoch string) string {
-	return strings.Join([]string{
+func buildExecutionIntentKey(mode string, chain domain.ChainID, poolID string, positionID string, action string, epoch string, extraKeyParts ...string) string {
+	parts := []string{
 		strings.TrimSpace(mode),
 		string(chain),
 		strings.TrimSpace(poolID),
 		strings.TrimSpace(positionID),
 		strings.TrimSpace(action),
 		strings.TrimSpace(epoch),
-	}, ":")
+	}
+	for _, part := range extraKeyParts {
+		trimmed := strings.TrimSpace(part)
+		if trimmed != "" {
+			parts = append(parts, trimmed)
+		}
+	}
+	return strings.Join(parts, ":")
 }
 
 func strategyEpoch(ts time.Time) string {

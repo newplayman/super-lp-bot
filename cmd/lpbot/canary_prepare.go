@@ -113,21 +113,21 @@ func runCanaryPrepare(ctx context.Context, cfg *config.Config) (err error) {
 		return fmt.Errorf("npm base address is invalid")
 	}
 	if report.WrapRequiredWei.Sign() > 0 {
-		intent := newExecutionIntent("canary_prepare", pool.Chain, pool.ID, "", "wrap_weth", "manual canary prepare", time.Now())
+		intent := newExecutionIntent("canary_prepare", pool.Chain, pool.ID, "", "wrap_weth", "manual canary prepare", time.Now(), baseWETHAddress, report.WrapRequiredWei.String())
 		intent.SizingSnapshotJSON = buildSizingSnapshotJSON(amountUSD, map[string]string{"wrap_required_wei": report.WrapRequiredWei.String()})
 		if err := sendCanaryPrepareWrap(ctx, provider, wallet, broadcaster, state, pool, report.WrapRequiredWei, intent); err != nil {
 			return err
 		}
 	}
 	if report.USDCAllowance.Cmp(report.RequiredUSDC) < 0 {
-		intent := newExecutionIntent("canary_prepare", pool.Chain, pool.ID, "", "approve_usdc", "manual canary prepare", time.Now())
+		intent := newExecutionIntent("canary_prepare", pool.Chain, pool.ID, "", "approve_usdc", "manual canary prepare", time.Now(), baseUSDCAddress, spender.String(), report.RequiredUSDC.String())
 		intent.SizingSnapshotJSON = buildSizingSnapshotJSON(amountUSD, map[string]string{"required_raw": report.RequiredUSDC.String(), "token": baseUSDCAddress})
 		if err := sendCanaryPrepareApproval(ctx, provider, wallet, broadcaster, state, pool, domain.MustParseAddress(baseUSDCAddress), spender, report.RequiredUSDC, "approve_usdc", intent); err != nil {
 			return err
 		}
 	}
 	if report.WETHAllowance.Cmp(report.RequiredWETH) < 0 {
-		intent := newExecutionIntent("canary_prepare", pool.Chain, pool.ID, "", "approve_weth", "manual canary prepare", time.Now())
+		intent := newExecutionIntent("canary_prepare", pool.Chain, pool.ID, "", "approve_weth", "manual canary prepare", time.Now(), baseWETHAddress, spender.String(), report.RequiredWETH.String())
 		intent.SizingSnapshotJSON = buildSizingSnapshotJSON(amountUSD, map[string]string{"required_raw": report.RequiredWETH.String(), "token": baseWETHAddress})
 		if err := sendCanaryPrepareApproval(ctx, provider, wallet, broadcaster, state, pool, domain.MustParseAddress(baseWETHAddress), spender, report.RequiredWETH, "approve_weth", intent); err != nil {
 			return err

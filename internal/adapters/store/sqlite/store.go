@@ -147,8 +147,54 @@ func (s *Store) migrate() error {
 			submitted_private_exposure_usd TEXT NOT NULL DEFAULT '0',
 			realized_pnl_usd TEXT NOT NULL DEFAULT '0',
 			unrealized_pnl_usd TEXT NOT NULL DEFAULT '0',
+			stuck_tx_count INTEGER NOT NULL DEFAULT 0,
+			exit_failed_position_count INTEGER NOT NULL DEFAULT 0,
+			unreconciled_opening_count INTEGER NOT NULL DEFAULT 0,
+			unreconciled_opening_timeout_count INTEGER NOT NULL DEFAULT 0,
 			balances_json TEXT NOT NULL DEFAULT '{}',
 			positions_json TEXT NOT NULL DEFAULT '[]',
+			created_at INTEGER NOT NULL
+		)`, tablePrefix),
+		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %spnl_ledger (
+			id TEXT PRIMARY KEY,
+			position_id TEXT NOT NULL,
+			pool_id TEXT NOT NULL DEFAULT '',
+			kind TEXT NOT NULL DEFAULT '',
+			amount TEXT NOT NULL DEFAULT '0',
+			token_symbol TEXT NOT NULL DEFAULT 'USD',
+			chain TEXT NOT NULL,
+			block_number INTEGER NOT NULL DEFAULT 0,
+			block_hash TEXT,
+			block_time INTEGER NOT NULL,
+			tx_hash TEXT,
+			source TEXT NOT NULL DEFAULT '',
+			position_value_usd TEXT NOT NULL DEFAULT '0',
+			fee_collected_usd TEXT NOT NULL DEFAULT '0',
+			fee_uncollected_usd TEXT NOT NULL DEFAULT '0',
+			gas_usd TEXT NOT NULL DEFAULT '0',
+			il_usd TEXT NOT NULL DEFAULT '0',
+			lvr_usd TEXT NOT NULL DEFAULT '0',
+			net_pnl_usd TEXT NOT NULL DEFAULT '0',
+			trace_id TEXT
+		)`, tablePrefix),
+		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %sposition_marks (
+			id TEXT PRIMARY KEY,
+			position_id TEXT NOT NULL,
+			pool_id TEXT NOT NULL,
+			chain TEXT NOT NULL,
+			token_id TEXT,
+			status TEXT NOT NULL,
+			amount_usd TEXT NOT NULL DEFAULT '0',
+			position_value_usd TEXT NOT NULL DEFAULT '0',
+			fee_collected_usd TEXT NOT NULL DEFAULT '0',
+			fee_uncollected_usd TEXT NOT NULL DEFAULT '0',
+			gas_usd TEXT NOT NULL DEFAULT '0',
+			il_usd TEXT NOT NULL DEFAULT '0',
+			lvr_usd TEXT NOT NULL DEFAULT '0',
+			net_pnl_usd TEXT NOT NULL DEFAULT '0',
+			source TEXT NOT NULL DEFAULT '',
+			metadata_json TEXT NOT NULL DEFAULT '{}',
+			mark_time INTEGER NOT NULL,
 			created_at INTEGER NOT NULL
 		)`, tablePrefix),
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %spositions (
@@ -278,6 +324,42 @@ func (s *Store) runMigrations() error {
 	for _, col := range riskCols {
 		if err := s.addColumnIfNotExists(s.prefix+"_risk_events", col.name, col.colType); err != nil {
 			return fmt.Errorf("failed to add column %s to risk_events: %w", col.name, err)
+		}
+	}
+
+	portfolioCols := []struct {
+		name    string
+		colType string
+	}{
+		{"stuck_tx_count", "INTEGER NOT NULL DEFAULT 0"},
+		{"exit_failed_position_count", "INTEGER NOT NULL DEFAULT 0"},
+		{"unreconciled_opening_count", "INTEGER NOT NULL DEFAULT 0"},
+		{"unreconciled_opening_timeout_count", "INTEGER NOT NULL DEFAULT 0"},
+	}
+	for _, col := range portfolioCols {
+		if err := s.addColumnIfNotExists(s.prefix+"_portfolio_snapshots", col.name, col.colType); err != nil {
+			return fmt.Errorf("failed to add column %s to portfolio_snapshots: %w", col.name, err)
+		}
+	}
+
+	pnlCols := []struct {
+		name    string
+		colType string
+	}{
+		{"pool_id", "TEXT NOT NULL DEFAULT ''"},
+		{"kind", "TEXT NOT NULL DEFAULT ''"},
+		{"amount", "TEXT NOT NULL DEFAULT '0'"},
+		{"token_symbol", "TEXT NOT NULL DEFAULT 'USD'"},
+		{"source", "TEXT NOT NULL DEFAULT ''"},
+		{"position_value_usd", "TEXT NOT NULL DEFAULT '0'"},
+		{"fee_collected_usd", "TEXT NOT NULL DEFAULT '0'"},
+		{"fee_uncollected_usd", "TEXT NOT NULL DEFAULT '0'"},
+		{"gas_usd", "TEXT NOT NULL DEFAULT '0'"},
+		{"lvr_usd", "TEXT NOT NULL DEFAULT '0'"},
+	}
+	for _, col := range pnlCols {
+		if err := s.addColumnIfNotExists(s.prefix+"_pnl_ledger", col.name, col.colType); err != nil {
+			return fmt.Errorf("failed to add column %s to pnl_ledger: %w", col.name, err)
 		}
 	}
 

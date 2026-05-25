@@ -222,6 +222,7 @@ func TestValidateLiveSchemaState_MissingUniqueIndexBlocksStartup(t *testing.T) {
 		"transactions":                      true,
 		"execution_intents":                 true,
 		"portfolio_snapshots":               true,
+		"position_marks":                    true,
 		"canary_events":                     true,
 		"pnl_ledger":                        true,
 		"shadow_decision_trace":             true,

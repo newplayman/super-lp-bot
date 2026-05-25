@@ -102,6 +102,7 @@ func (c *dashboardSnapshotCache) set(snapshot dashboardSnapshot, ttl time.Durati
 
 type liveSafetyGate struct {
 	buildMode                  string
+	store                      ports.Store
 	enabled                    bool
 	canary                     bool
 	manualCanaryOverride       bool
@@ -124,13 +125,15 @@ type liveSafetyGate struct {
 	npmBaseAddress             string
 	npmBaseConfigured          bool
 	sizingPathReady            bool
+	snapshotMaxAge             time.Duration
 }
 
 func newLiveSafetyGate(buildMode string, cfg *config.Config) *liveSafetyGate {
 	gate := &liveSafetyGate{
-		buildMode:     buildMode,
-		allowedChains: make(map[string]struct{}),
-		allowedPools:  make(map[string]struct{}),
+		buildMode:      buildMode,
+		allowedChains:  make(map[string]struct{}),
+		allowedPools:   make(map[string]struct{}),
+		snapshotMaxAge: 5 * time.Minute,
 	}
 	if cfg == nil {
 		return gate
@@ -401,6 +404,58 @@ func (g *liveSafetyGate) checkOpen(pool domain.Pool, amountUSD domain.Decimal) e
 		return fmt.Errorf("live gate blocked: amount %s exceeds max_order_usd %s", amountUSD.String(), maxOrder.String())
 	}
 
+	if err := g.checkPortfolioSnapshot(context.Background(), amountUSD); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (g *liveSafetyGate) checkPortfolioSnapshot(ctx context.Context, amountUSD domain.Decimal) error {
+	if g == nil || g.store == nil {
+		return nil
+	}
+	snapshot, ok, err := loadLatestPortfolioSnapshot(ctx, g.store)
+	if err != nil {
+		return fmt.Errorf("live gate blocked: read portfolio snapshot: %w", err)
+	}
+	if !ok {
+		return nil
+	}
+	if g.snapshotMaxAge > 0 {
+		age := time.Since(time.UnixMilli(snapshot.CreatedAt))
+		if age > g.snapshotMaxAge {
+			return fmt.Errorf("live gate blocked: latest portfolio snapshot is stale (%s)", age.Round(time.Second))
+		}
+	}
+	if snapshot.StuckTxCount > 0 {
+		return fmt.Errorf("live gate blocked: %d stuck tx pending reconcile", snapshot.StuckTxCount)
+	}
+	if snapshot.ExitFailedPositionCount > 0 {
+		return fmt.Errorf("live gate blocked: %d exit_failed positions require intervention", snapshot.ExitFailedPositionCount)
+	}
+	if snapshot.UnreconciledOpeningTimeoutCount > 0 {
+		return fmt.Errorf("live gate blocked: %d unreconciled openings exceeded timeout", snapshot.UnreconciledOpeningTimeoutCount)
+	}
+	nativeBalance := decimalFromStringSafe(snapshot.NativeBalanceWei)
+	gasReserve := decimalFromStringSafe(snapshot.GasReserveWei)
+	if !gasReserve.IsZero() && nativeBalance.LessThan(gasReserve) {
+		return fmt.Errorf("live gate blocked: native gas balance %s below reserve %s", nativeBalance.String(), gasReserve.String())
+	}
+	submittedPrivateExposure := decimalFromStringSafe(snapshot.SubmittedPrivateExposureUSD)
+	if submittedPrivateExposure.GreaterThan(domain.ZeroDecimal()) {
+		return fmt.Errorf("live gate blocked: submitted_private exposure %s pending confirm", submittedPrivateExposure.String())
+	}
+	exposureCapUSD := domain.NewDecimalFromFloat(g.dailyLossLimitUSD)
+	if exposureCapUSD.GreaterThan(domain.ZeroDecimal()) {
+		currentExposure := decimalFromStringSafe(snapshot.OpenPositionExposureUSD).
+			Add(decimalFromStringSafe(snapshot.PendingExposureUSD)).
+			Add(decimalFromStringSafe(snapshot.SubmittedPrivateExposureUSD))
+		projectedExposure := currentExposure.Add(amountUSD)
+		if projectedExposure.GreaterThan(exposureCapUSD) {
+			return fmt.Errorf("live gate blocked: projected exposure %s exceeds provisional cap %s", projectedExposure.String(), exposureCapUSD.String())
+		}
+	}
 	return nil
 }
 
@@ -637,6 +692,9 @@ func (app *App) initAdapters(ctx context.Context) error {
 	default:
 		return fmt.Errorf("unsupported store backend: %s", app.config.Store.Backend)
 	}
+	if app.liveGate != nil {
+		app.liveGate.store = app.store
+	}
 	if err := app.ensureLiveSchema(ctx); err != nil {
 		return err
 	}
@@ -722,6 +780,7 @@ func loadLiveSchemaState(ctx context.Context, db *sql.DB) (map[string]bool, erro
 		"transactions",
 		"execution_intents",
 		"portfolio_snapshots",
+		"position_marks",
 		"canary_events",
 		"pnl_ledger",
 		"shadow_decision_trace",
@@ -744,6 +803,7 @@ func validateLiveSchemaState(state map[string]bool) error {
 		"transactions",
 		"execution_intents",
 		"portfolio_snapshots",
+		"position_marks",
 		"canary_events",
 		"pnl_ledger",
 		"shadow_decision_trace",
@@ -986,6 +1046,13 @@ func (app *App) startWorkers(ctx context.Context) {
 		go func() {
 			defer app.wg.Done()
 			app.runPortfolioSnapshotLoop(ctx)
+		}()
+	}
+	if app.shouldRunLivePositionMarkLoop() {
+		app.wg.Add(1)
+		go func() {
+			defer app.wg.Done()
+			app.runLivePositionMarkLoop(ctx)
 		}()
 	}
 
@@ -1495,18 +1562,38 @@ func (a *approveTrackerAdapter) EnsureApproval(ctx context.Context, pool domain.
 		if err != nil {
 			return fmt.Errorf("build %s exact approval: %w", item.name, err)
 		}
+		intent := newExecutionIntent("live_prepare", pool.Chain, pool.ID, "", "approve", "live exact approval", time.Now(), item.token.String(), spender.String(), item.amount.String())
+		intent.SizingSnapshotJSON = buildSizingSnapshotJSON(amountUSD, map[string]string{
+			"token":        item.token.String(),
+			"spender":      spender.String(),
+			"required_raw": item.amount.String(),
+		})
+		if a.store != nil {
+			if err := reserveExecutionIntent(ctx, a.store.ExecutionIntentRepo(), intent); err != nil {
+				return fmt.Errorf("reserve %s approval intent: %w", item.name, err)
+			}
+		}
 		tx.ID = shadowID("approve-tx", fmt.Sprintf("%s:%s", pool.Key(), item.token.String()), time.Now().Unix())
 		tx.Deadline = time.Now().Add(5 * time.Minute).Unix()
 		tx.MinOut = domain.NewDecimalFromInt(1)
 		if err := a.preflightApprovalTx(ctx, tx); err != nil {
+			if a.store != nil {
+				_ = updateExecutionIntent(ctx, a.store.ExecutionIntentRepo(), intent, domain.IntentStatusFailed, tx.ID, "", "", "preflight failed")
+			}
 			return fmt.Errorf("preflight %s approval: %w", item.name, err)
 		}
 		signed, err := a.wallet.Sign(ctx, tx)
 		if err != nil {
+			if a.store != nil {
+				_ = updateExecutionIntent(ctx, a.store.ExecutionIntentRepo(), intent, domain.IntentStatusFailed, tx.ID, "", "", "sign failed")
+			}
 			return fmt.Errorf("sign %s approval: %w", item.name, err)
 		}
 		signed.ID = tx.ID
 		signed.Status = domain.TxBuilt
+		if a.store != nil {
+			_ = updateExecutionIntent(ctx, a.store.ExecutionIntentRepo(), intent, domain.IntentStatusSigned, tx.ID, signed.Hash, signed.Hash, "approval signed")
+		}
 		if a.store != nil {
 			_ = a.store.TxRepo().UpsertTx(ctx, signed)
 		}
@@ -1514,12 +1601,14 @@ func (a *approveTrackerAdapter) EnsureApproval(ctx context.Context, pool domain.
 			signed.Status = domain.TxFailed
 			if a.store != nil {
 				_ = a.store.TxRepo().UpsertTx(ctx, signed)
+				_ = updateExecutionIntent(ctx, a.store.ExecutionIntentRepo(), intent, domain.IntentStatusFailed, tx.ID, signed.Hash, signed.Hash, "approval broadcast failed")
 			}
 			return fmt.Errorf("broadcast %s approval: %w", item.name, err)
 		}
 		signed.Status = domain.TxBroadcast
 		if a.store != nil {
 			_ = a.store.TxRepo().UpsertTx(ctx, signed)
+			_ = updateExecutionIntent(ctx, a.store.ExecutionIntentRepo(), intent, intentStatusFromTxStatus(signed.Status), tx.ID, signed.Hash, signed.Hash, "approval broadcast")
 		}
 	}
 	return nil
@@ -1547,28 +1636,47 @@ func (a *approveTrackerAdapter) wrapWETH(ctx context.Context, pool domain.Pool, 
 		Deadline: time.Now().Add(5 * time.Minute).Unix(),
 		MinOut:   domain.NewDecimalFromInt(1),
 	}
+	intent := newExecutionIntent("live_prepare", pool.Chain, pool.ID, "", "wrap_weth", "live weth wrap", time.Now(), baseWETHAddress, amountWei.String())
+	intent.SizingSnapshotJSON = buildSizingSnapshotJSON(domain.ZeroDecimal(), map[string]string{
+		"token":        baseWETHAddress,
+		"required_raw": amountWei.String(),
+	})
+	if a.store != nil {
+		if err := reserveExecutionIntent(ctx, a.store.ExecutionIntentRepo(), intent); err != nil {
+			return fmt.Errorf("reserve WETH wrap intent: %w", err)
+		}
+	}
 	if err := a.preflightApprovalTx(ctx, tx); err != nil {
+		if a.store != nil {
+			_ = updateExecutionIntent(ctx, a.store.ExecutionIntentRepo(), intent, domain.IntentStatusFailed, tx.ID, "", "", "preflight failed")
+		}
 		return fmt.Errorf("preflight WETH wrap: %w", err)
 	}
 	signed, err := a.wallet.Sign(ctx, tx)
 	if err != nil {
+		if a.store != nil {
+			_ = updateExecutionIntent(ctx, a.store.ExecutionIntentRepo(), intent, domain.IntentStatusFailed, tx.ID, "", "", "sign failed")
+		}
 		return fmt.Errorf("sign WETH wrap: %w", err)
 	}
 	signed.ID = tx.ID
 	signed.Status = domain.TxBuilt
 	if a.store != nil {
 		_ = a.store.TxRepo().UpsertTx(ctx, signed)
+		_ = updateExecutionIntent(ctx, a.store.ExecutionIntentRepo(), intent, domain.IntentStatusSigned, tx.ID, signed.Hash, signed.Hash, "wrap signed")
 	}
 	if err := a.broadcaster.Send(ctx, signed); err != nil {
 		signed.Status = domain.TxFailed
 		if a.store != nil {
 			_ = a.store.TxRepo().UpsertTx(ctx, signed)
+			_ = updateExecutionIntent(ctx, a.store.ExecutionIntentRepo(), intent, domain.IntentStatusFailed, tx.ID, signed.Hash, signed.Hash, "wrap broadcast failed")
 		}
 		return fmt.Errorf("broadcast WETH wrap: %w", err)
 	}
 	signed.Status = domain.TxBroadcast
 	if a.store != nil {
 		_ = a.store.TxRepo().UpsertTx(ctx, signed)
+		_ = updateExecutionIntent(ctx, a.store.ExecutionIntentRepo(), intent, intentStatusFromTxStatus(signed.Status), tx.ID, signed.Hash, signed.Hash, "wrap broadcast")
 	}
 	return nil
 }

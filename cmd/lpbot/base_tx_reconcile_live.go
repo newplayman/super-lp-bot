@@ -238,7 +238,10 @@ func reconcileSuccessfulBasePosition(ctx context.Context, cfg *config.Config, st
 		if position == nil {
 			return fmt.Errorf("no opening position found for mint tx %s", tx.Hash)
 		}
-		return persistSuccessfulMintReconcile(ctx, store.PositionRepo(), position, tx.Hash, tokenID, liquidity, amount0, amount1, receipt)
+		if err := persistSuccessfulMintReconcile(ctx, store.PositionRepo(), position, tx.Hash, tokenID, liquidity, amount0, amount1, receipt); err != nil {
+			return err
+		}
+		return appendBaseOpenPnLRecord(ctx, store, position, tx.Hash, receipt)
 	}
 
 	action, parsedTokenID := classifyNPMTx(tx)
@@ -264,6 +267,9 @@ func reconcileSuccessfulBasePosition(ctx context.Context, cfg *config.Config, st
 			"last_collect_tx_hash": tx.Hash,
 			"last_receipt_block":   receipt.BlockHash.Hex(),
 		}); err != nil {
+			return err
+		}
+		if err := appendBaseCollectPnLRecord(ctx, store, position, tx.Hash, receipt, position.Status == domain.StatusExiting); err != nil {
 			return err
 		}
 		if position.Status == domain.StatusExiting {
@@ -477,4 +483,78 @@ func attachOpenTxHashToPosition(ctx context.Context, repo ports.PositionRepo, po
 	}
 	position.MetadataJSON = merged
 	return repo.Save(ctx, position)
+}
+
+func appendBaseOpenPnLRecord(ctx context.Context, store ports.Store, position *domain.Position, txHash string, receipt *types.Receipt) error {
+	if position == nil || receipt == nil {
+		return nil
+	}
+	tables, err := newRuntimeSQLTables(store)
+	if err != nil {
+		return err
+	}
+	blockNumber := uint64(0)
+	if receipt.BlockNumber != nil {
+		blockNumber = receipt.BlockNumber.Uint64()
+	}
+	return tables.insertPnLLedger(ctx, pnlLedgerRecord{
+		ID:               newLedgerEventID("base-open", position.ID, time.Now().Unix()),
+		PositionID:       position.ID,
+		PoolID:           position.PoolID,
+		Kind:             "open",
+		Amount:           domain.ZeroDecimal(),
+		TokenSymbol:      "USD",
+		Chain:            position.Chain,
+		BlockNumber:      blockNumber,
+		BlockHash:        receipt.BlockHash.Hex(),
+		BlockTime:        time.Now().Unix(),
+		TxHash:           txHash,
+		Source:           "base_open",
+		PositionValueUSD: position.AmountUSD,
+		NetPnLUSD:        domain.ZeroDecimal(),
+	})
+}
+
+func appendBaseCollectPnLRecord(ctx context.Context, store ports.Store, position *domain.Position, txHash string, receipt *types.Receipt, closing bool) error {
+	if position == nil || receipt == nil {
+		return nil
+	}
+	tables, err := newRuntimeSQLTables(store)
+	if err != nil {
+		return err
+	}
+	netPnL := domain.ZeroDecimal()
+	positionValueUSD := domain.ZeroDecimal()
+	if closing {
+		if latest, ok, err := tables.loadLatestPositionMark(ctx, position.ID); err == nil && ok {
+			netPnL = latest.NetPnLUSD
+			positionValueUSD = latest.PositionValueUSD
+		}
+	}
+	source := "base_collect"
+	kind := "collect"
+	if closing {
+		source = "base_close"
+		kind = "close"
+	}
+	blockNumber := uint64(0)
+	if receipt.BlockNumber != nil {
+		blockNumber = receipt.BlockNumber.Uint64()
+	}
+	return tables.insertPnLLedger(ctx, pnlLedgerRecord{
+		ID:               newLedgerEventID(source, position.ID, time.Now().Unix()),
+		PositionID:       position.ID,
+		PoolID:           position.PoolID,
+		Kind:             kind,
+		Amount:           netPnL,
+		TokenSymbol:      "USD",
+		Chain:            position.Chain,
+		BlockNumber:      blockNumber,
+		BlockHash:        receipt.BlockHash.Hex(),
+		BlockTime:        time.Now().Unix(),
+		TxHash:           txHash,
+		Source:           source,
+		PositionValueUSD: positionValueUSD,
+		NetPnLUSD:        netPnL,
+	})
 }
