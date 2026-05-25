@@ -171,6 +171,24 @@ sudo systemctl stop lpbot-canary 2>/dev/null || true
 - 默认保持 `disabled/inactive`
 - readiness 会显示在现有 `9090` dashboard 上，即使服务尚未启动
 
+### 7.2 VPS canary 盈利审计
+
+执行 canary 动作后建议立刻跑一次：
+
+```bash
+cd /opt/lpbot/lp-bot-v3
+scripts/canary_profitability_evidence.sh
+```
+
+可选参数：
+
+- `LPBOT_CANARY_EVIDENCE_WINDOW_HOURS=168`
+- `LPBOT_CANARY_EVIDENCE_ROW_LIMIT=50`
+- `LPBOT_CANARY_EVIDENCE_POOL_ID=<pool_id>`
+- `LPBOT_CANARY_EVIDENCE_OUTPUT=/path/to/xxx.md`
+
+将报告与 `canary_readiness_report.sh`/`canary_cycle.sh` 输出并存储，可形成一次完整动作链路的证据。
+
 ## 8. 每次发布更新
 
 ```bash
@@ -200,6 +218,7 @@ sudo systemctl restart lpbot-shadow
 - `redis-cli --scan --pattern 'lpbot:*:heartbeat:*'`
 - `ss -lnt | grep 5432`
 - 本地/GitHub/VPS 一致性：`make audit-consistency`
+- Canary 证据：`scripts/canary_profitability_evidence.sh`
 
 ## 11. 全量审计脚本（v3）
 

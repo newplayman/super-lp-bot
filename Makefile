@@ -8,6 +8,7 @@ BUILD_DATE ?= $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 GO_LDFLAGS := -X main.BuildCommit=$(BUILD_COMMIT) -X main.BuildDate=$(BUILD_DATE)
 
 .PHONY: lint test test-property test-fork test-chaos test-all audit-consistency \
+        canary-profitability-evidence \
         build-dryrun build-shadow build-live build-all \
         run-dryrun run-shadow run-live \
         backtest tidy clean
@@ -34,6 +35,9 @@ test-all: test test-property test-fork test-chaos
 
 audit-consistency:
 	./scripts/audit_workspace_consistency.sh
+
+canary-profitability-evidence:
+	./scripts/canary_profitability_evidence.sh
 
 build-dryrun:
 	$(GO) build -ldflags "$(GO_LDFLAGS)" -tags=$(BUILD_TAGS_DRYRUN) -o bin/lpbot-dryrun ./cmd/lpbot

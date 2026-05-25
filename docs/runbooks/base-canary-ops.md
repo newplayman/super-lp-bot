@@ -86,6 +86,29 @@ LPBOT_CONFIRM_CANARY_EXIT=YES \
 - Dashboard：`http://<vps-ip>:9090/?token=<DashboardToken>`
 - Prometheus metrics：`http://<vps-ip>:9092/metrics`
 
+### 5.1 期望/实现利润差异证据（建议每次 cycle 后补跑）
+
+```bash
+scripts/canary_profitability_evidence.sh
+```
+
+可选参数（环境变量）：
+
+```bash
+LPBOT_CANARY_EVIDENCE_WINDOW_HOURS=168 \
+LPBOT_CANARY_EVIDENCE_ROW_LIMIT=50 \
+LPBOT_CANARY_EVIDENCE_POOL_ID=<pool_id> \
+LPBOT_CANARY_EVIDENCE_OUTPUT=run/audits/xxx.md \
+./scripts/canary_profitability_evidence.sh
+```
+
+输出字段主要用于对账：
+
+- `preflight_expected_net_usd` 与 `realized_net_usd`
+- `net_error_usd`
+- 费用拆分（`fee/il/swap/gas/slippage`）
+- 预估/关闭相关 tx 与最新事件
+
 重点看：
 - `base_canary.opened / closed`
 - `base_canary.active_token_id`
@@ -126,6 +149,7 @@ LPBOT_CONFIRM_CANARY_EXIT=YES \
 - 安全 readiness：`scripts/canary_readiness_report.sh`
 - 闭环执行：`scripts/canary_cycle.sh`
 - 环境装载包装：`scripts/run_canary_with_env.sh`
+- 收益审计：`scripts/canary_profitability_evidence.sh`
 
 原则：
 - 先 `readiness`
