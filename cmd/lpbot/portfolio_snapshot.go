@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/lpbot/lpbot/internal/domain"
+	"github.com/lpbot/lpbot/internal/platform/config"
 	"github.com/lpbot/lpbot/internal/ports"
 	"go.uber.org/zap"
 )
@@ -51,6 +52,7 @@ type portfolioSnapshotService struct {
 	store    ports.Store
 	provider portfolioBalanceSource
 	wallet   domain.Address
+	config   *config.Config
 	db       *sql.DB
 	dialect  string
 	table    string
@@ -81,6 +83,7 @@ func newPortfolioSnapshotService(app *App) (*portfolioSnapshotService, error) {
 		store:    app.store,
 		provider: app.rpc["base"],
 		wallet:   parseAddressOrZero(strings.TrimSpace(app.config.Live.WalletAddress)),
+		config:   app.config,
 		db:       dbHolder.DB(),
 		dialect:  dialect,
 		table:    table,
@@ -117,6 +120,9 @@ func (s *portfolioSnapshotService) buildRecord(ctx context.Context, now time.Tim
 		nativeBalance = balance
 	}
 	gasReserveWei := estimatePortfolioGasReserveWei(ctx, s.provider)
+	if configured := configuredMinGasReserveWei(s.config); configured.Sign() > 0 && gasReserveWei.Cmp(configured) < 0 {
+		gasReserveWei = configured
+	}
 
 	openPositions, err := s.store.PositionRepo().FindByChainAndStatus(ctx, domain.ChainBase, domain.StatusOpen)
 	if err != nil {
@@ -177,6 +183,9 @@ func (s *portfolioSnapshotService) buildRecord(ctx context.Context, now time.Tim
 	}
 	openingTimeoutCount := 0
 	openingTimeoutSeconds := int64(180)
+	if s.config != nil {
+		openingTimeoutSeconds = int64(positiveOrDefault(s.config.LiveRisk.MaxUnreconciledOpeningAgeSeconds, 180))
+	}
 	for _, position := range openingPositions {
 		if position == nil {
 			continue
@@ -313,6 +322,21 @@ func estimatePortfolioGasReserveWei(ctx context.Context, provider portfolioBalan
 		return minimum
 	}
 	return buffered
+}
+
+func configuredMinGasReserveWei(cfg *config.Config) *big.Int {
+	if cfg == nil {
+		return big.NewInt(0)
+	}
+	value := strings.TrimSpace(cfg.LiveRisk.MinGasReserveWei)
+	if value == "" {
+		return big.NewInt(0)
+	}
+	out, ok := new(big.Int).SetString(value, 10)
+	if !ok || out.Sign() < 0 {
+		return big.NewInt(0)
+	}
+	return out
 }
 
 func countTxsByStatus(ctx context.Context, store ports.Store, chain domain.ChainID, status domain.TxStatus) (int, error) {

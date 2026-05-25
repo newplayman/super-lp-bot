@@ -112,6 +112,11 @@ type liveSafetyGate struct {
 	allowedPools               map[string]struct{}
 	maxOrderUSD                float64
 	dailyLossLimitUSD          float64
+	maxTotalExposureUSD        float64
+	maxPendingExposureUSD      float64
+	maxSubmittedPrivateUSD     float64
+	minGasReserveWei           domain.Decimal
+	maxOpeningAge              time.Duration
 	executionBackend           string
 	executionBackendConfigured bool
 	executionBackendWired      bool
@@ -146,6 +151,11 @@ func newLiveSafetyGate(buildMode string, cfg *config.Config) *liveSafetyGate {
 	gate.walletAddress = strings.TrimSpace(cfg.Live.WalletAddress)
 	gate.maxOrderUSD = cfg.Live.MaxOrderUSD
 	gate.dailyLossLimitUSD = cfg.Live.DailyLossLimitUSD
+	gate.maxTotalExposureUSD = cfg.LiveRisk.MaxTotalExposureUSD
+	gate.maxPendingExposureUSD = cfg.LiveRisk.MaxPendingExposureUSD
+	gate.maxSubmittedPrivateUSD = cfg.LiveRisk.MaxSubmittedPrivateExposureUSD
+	gate.minGasReserveWei = decimalFromStringSafe(strings.TrimSpace(cfg.LiveRisk.MinGasReserveWei))
+	gate.maxOpeningAge = time.Duration(positiveOrDefault(cfg.LiveRisk.MaxUnreconciledOpeningAgeSeconds, 180)) * time.Second
 	gate.executionBackend = normalizeExecutionBackend(cfg.Execution.Backend)
 	gate.rpcPrimaryConfigured = strings.TrimSpace(cfg.Chains.Base.RPCPrimary) != "" || rpc.ResolveQuickNodeAPIKey() != ""
 	gate.okxAPIConfigured = strings.TrimSpace(cfg.Execution.OKXAPIKey) != "" &&
@@ -259,6 +269,21 @@ func (g *liveSafetyGate) blockers() []string {
 	}
 	if g.dailyLossLimitUSD <= 0 {
 		blockers = append(blockers, "live.daily_loss_limit_usd must be > 0")
+	}
+	if g.maxTotalExposureUSD <= 0 {
+		blockers = append(blockers, "live_risk.max_total_exposure_usd must be > 0")
+	}
+	if g.maxPendingExposureUSD <= 0 {
+		blockers = append(blockers, "live_risk.max_pending_exposure_usd must be > 0")
+	}
+	if g.maxSubmittedPrivateUSD < 0 {
+		blockers = append(blockers, "live_risk.max_submitted_private_exposure_usd must be >= 0")
+	}
+	if g.minGasReserveWei.LessThan(domain.ZeroDecimal()) {
+		blockers = append(blockers, "live_risk.min_gas_reserve_wei must be >= 0")
+	}
+	if g.maxOpeningAge <= 0 {
+		blockers = append(blockers, "live_risk.max_unreconciled_opening_age_seconds must be > 0")
 	}
 	if g.walletBackend == "keystore" {
 		if g.keystorePath == "" {
@@ -439,21 +464,28 @@ func (g *liveSafetyGate) checkPortfolioSnapshot(ctx context.Context, amountUSD d
 	}
 	nativeBalance := decimalFromStringSafe(snapshot.NativeBalanceWei)
 	gasReserve := decimalFromStringSafe(snapshot.GasReserveWei)
+	if g.minGasReserveWei.GreaterThan(gasReserve) {
+		gasReserve = g.minGasReserveWei
+	}
 	if !gasReserve.IsZero() && nativeBalance.LessThan(gasReserve) {
 		return fmt.Errorf("live gate blocked: native gas balance %s below reserve %s", nativeBalance.String(), gasReserve.String())
 	}
-	submittedPrivateExposure := decimalFromStringSafe(snapshot.SubmittedPrivateExposureUSD)
-	if submittedPrivateExposure.GreaterThan(domain.ZeroDecimal()) {
-		return fmt.Errorf("live gate blocked: submitted_private exposure %s pending confirm", submittedPrivateExposure.String())
+	pendingExposure := decimalFromStringSafe(snapshot.PendingExposureUSD)
+	if g.maxPendingExposureUSD > 0 && pendingExposure.GreaterThan(domain.NewDecimalFromFloat(g.maxPendingExposureUSD)) {
+		return fmt.Errorf("live gate blocked: pending exposure %s exceeds cap %s", pendingExposure.String(), domain.NewDecimalFromFloat(g.maxPendingExposureUSD).String())
 	}
-	exposureCapUSD := domain.NewDecimalFromFloat(g.dailyLossLimitUSD)
+	submittedPrivateExposure := decimalFromStringSafe(snapshot.SubmittedPrivateExposureUSD)
+	if g.maxSubmittedPrivateUSD >= 0 && submittedPrivateExposure.GreaterThan(domain.NewDecimalFromFloat(g.maxSubmittedPrivateUSD)) {
+		return fmt.Errorf("live gate blocked: submitted_private exposure %s exceeds cap %s", submittedPrivateExposure.String(), domain.NewDecimalFromFloat(g.maxSubmittedPrivateUSD).String())
+	}
+	exposureCapUSD := domain.NewDecimalFromFloat(g.maxTotalExposureUSD)
 	if exposureCapUSD.GreaterThan(domain.ZeroDecimal()) {
 		currentExposure := decimalFromStringSafe(snapshot.OpenPositionExposureUSD).
-			Add(decimalFromStringSafe(snapshot.PendingExposureUSD)).
-			Add(decimalFromStringSafe(snapshot.SubmittedPrivateExposureUSD))
+			Add(pendingExposure).
+			Add(submittedPrivateExposure)
 		projectedExposure := currentExposure.Add(amountUSD)
 		if projectedExposure.GreaterThan(exposureCapUSD) {
-			return fmt.Errorf("live gate blocked: projected exposure %s exceeds provisional cap %s", projectedExposure.String(), exposureCapUSD.String())
+			return fmt.Errorf("live gate blocked: projected exposure %s exceeds total cap %s", projectedExposure.String(), exposureCapUSD.String())
 		}
 	}
 	return nil

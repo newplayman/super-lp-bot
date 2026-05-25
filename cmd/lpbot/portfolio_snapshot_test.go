@@ -145,8 +145,8 @@ func TestPortfolioSnapshotService_CaptureIncludesPnLFromMarksAndLedger(t *testin
 			tx_hash, source, position_value_usd, fee_collected_usd, fee_uncollected_usd, gas_usd,
 			il_usd, lvr_usd, net_pnl_usd, trace_id
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, "ledger-1", "pos-open-pnl", "pool-open-pnl", "collect", "2", "USD", "base", 1, "", 1700000000,
-		"0xabc", "base_collect", "0", "2", "0", "0", "0", "0", "2", "test")
+	`, "ledger-1", "pos-open-pnl", "pool-open-pnl", "settle", "2", "USD", "base", 1, "", 1700000000,
+		"0xabc", "base_settle", "0", "2", "0", "0", "0", "0", "2", "test")
 	require.NoError(t, err)
 
 	service := &portfolioSnapshotService{

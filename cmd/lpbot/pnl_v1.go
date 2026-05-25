@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -104,7 +105,7 @@ func (t *runtimeSQLTables) insertPnLLedger(ctx context.Context, record pnlLedger
 	switch t.dialect {
 	case "sqlite":
 		_, err := t.db.ExecContext(ctx, fmt.Sprintf(`
-			INSERT INTO %s (
+			INSERT OR IGNORE INTO %s (
 				id, position_id, pool_id, kind, amount, token_symbol, chain, block_number, block_hash, block_time,
 				tx_hash, source, position_value_usd, fee_collected_usd, fee_uncollected_usd, gas_usd,
 				il_usd, lvr_usd, net_pnl_usd, trace_id
@@ -216,12 +217,12 @@ func (t *runtimeSQLTables) sumRealizedPnL(ctx context.Context) (domain.Decimal, 
 	if t == nil || t.db == nil {
 		return domain.ZeroDecimal(), fmt.Errorf("pnl ledger store not configured")
 	}
-	query := fmt.Sprintf(`SELECT COALESCE(SUM(CAST(net_pnl_usd AS NUMERIC)), 0)::text FROM %s WHERE source <> %s`, t.pnlLedgerTable, t.placeholder(1))
+	query := fmt.Sprintf(`SELECT COALESCE(SUM(CAST(net_pnl_usd AS NUMERIC)), 0)::text FROM %s WHERE kind = %s`, t.pnlLedgerTable, t.placeholder(1))
 	if t.dialect == "sqlite" {
-		query = fmt.Sprintf(`SELECT COALESCE(SUM(CAST(net_pnl_usd AS NUMERIC)), 0) FROM %s WHERE source <> ?`, t.pnlLedgerTable)
+		query = fmt.Sprintf(`SELECT COALESCE(SUM(CAST(net_pnl_usd AS NUMERIC)), 0) FROM %s WHERE kind = ?`, t.pnlLedgerTable)
 	}
 	var total string
-	if err := t.db.QueryRowContext(ctx, query, "position_mark").Scan(&total); err != nil {
+	if err := t.db.QueryRowContext(ctx, query, "settle").Scan(&total); err != nil {
 		return domain.ZeroDecimal(), err
 	}
 	return decimalFromStringSafe(total), nil
@@ -237,8 +238,8 @@ func (t *runtimeSQLTables) loadPositionRealizedTotals(ctx context.Context, posit
 			COALESCE(SUM(CAST(gas_usd AS NUMERIC)), 0)::text,
 			COALESCE(SUM(CAST(net_pnl_usd AS NUMERIC)), 0)::text
 		FROM %s
-		WHERE position_id = %s AND source <> %s
-	`, t.pnlLedgerTable, t.placeholder(1), t.placeholder(2))
+		WHERE position_id = %s AND source <> %s AND kind <> %s
+	`, t.pnlLedgerTable, t.placeholder(1), t.placeholder(2), t.placeholder(3))
 	if t.dialect == "sqlite" {
 		query = fmt.Sprintf(`
 			SELECT
@@ -246,11 +247,11 @@ func (t *runtimeSQLTables) loadPositionRealizedTotals(ctx context.Context, posit
 				COALESCE(SUM(CAST(gas_usd AS NUMERIC)), 0),
 				COALESCE(SUM(CAST(net_pnl_usd AS NUMERIC)), 0)
 			FROM %s
-			WHERE position_id = ? AND source <> ?
+			WHERE position_id = ? AND source <> ? AND kind <> ?
 		`, t.pnlLedgerTable)
 	}
 	var feeText, gasText, netText string
-	if err := t.db.QueryRowContext(ctx, query, positionID, "position_mark").Scan(&feeText, &gasText, &netText); err != nil {
+	if err := t.db.QueryRowContext(ctx, query, positionID, "position_mark", "settle").Scan(&feeText, &gasText, &netText); err != nil {
 		return domain.ZeroDecimal(), domain.ZeroDecimal(), domain.ZeroDecimal(), err
 	}
 	return decimalFromStringSafe(feeText), decimalFromStringSafe(gasText), decimalFromStringSafe(netText), nil
@@ -302,4 +303,36 @@ func newLedgerEventID(prefix string, positionID string, blockTime int64) string 
 
 func nowUnixMilli() int64 {
 	return time.Now().UnixMilli()
+}
+
+func loadPositionMetadata(raw string) map[string]any {
+	payload := map[string]any{}
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" || trimmed == "{}" {
+		return payload
+	}
+	if err := json.Unmarshal([]byte(trimmed), &payload); err != nil {
+		return map[string]any{}
+	}
+	return payload
+}
+
+func metadataString(payload map[string]any, key string) string {
+	if payload == nil {
+		return ""
+	}
+	value, ok := payload[key]
+	if !ok || value == nil {
+		return ""
+	}
+	switch typed := value.(type) {
+	case string:
+		return strings.TrimSpace(typed)
+	default:
+		return strings.TrimSpace(fmt.Sprintf("%v", typed))
+	}
+}
+
+func metadataDecimal(payload map[string]any, key string) domain.Decimal {
+	return decimalFromStringSafe(metadataString(payload, key))
 }

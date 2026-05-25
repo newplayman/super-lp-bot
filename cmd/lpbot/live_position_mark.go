@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/lpbot/lpbot/internal/domain"
@@ -89,7 +90,11 @@ func (s *livePositionMarkService) buildRecord(ctx context.Context, position *dom
 	if err != nil {
 		return positionMarkRecord{}, err
 	}
-	netPnLUSD := positionValueUSD.Add(feeUncollectedUSD).Sub(position.AmountUSD)
+	entryValueUSD, holdValueUSD, currentPrice0USD, currentPrice1USD, err := s.estimateEntryAndHoldValues(ctx, position, state)
+	if err != nil {
+		return positionMarkRecord{}, err
+	}
+	ilUSD, netPnLUSD := computeLivePositionMarkPnL(entryValueUSD, positionValueUSD, feeCollectedUSD, feeUncollectedUSD, gasUSD, holdValueUSD)
 	liquidity := "0"
 	if state.Liquidity != nil {
 		liquidity = state.Liquidity.String()
@@ -97,6 +102,10 @@ func (s *livePositionMarkService) buildRecord(ctx context.Context, position *dom
 	metadata, err := json.Marshal(map[string]string{
 		"token_id":            position.TokenID,
 		"liquidity":           liquidity,
+		"entry_value_usd":     entryValueUSD.String(),
+		"hold_value_usd":      holdValueUSD.String(),
+		"current_token0_usd":  currentPrice0USD.String(),
+		"current_token1_usd":  currentPrice1USD.String(),
 		"fee_collected_usd":   feeCollectedUSD.String(),
 		"fee_uncollected_usd": feeUncollectedUSD.String(),
 	})
@@ -115,7 +124,7 @@ func (s *livePositionMarkService) buildRecord(ctx context.Context, position *dom
 		FeeCollectedUSD:   feeCollectedUSD,
 		FeeUncollectedUSD: feeUncollectedUSD,
 		GasUSD:            gasUSD,
-		ILUSD:             domain.ZeroDecimal(),
+		ILUSD:             ilUSD,
 		LVRUSD:            domain.ZeroDecimal(),
 		NetPnLUSD:         netPnLUSD,
 		Source:            "position_mark",
@@ -153,4 +162,73 @@ func (app *App) runLivePositionMarkLoop(ctx context.Context) {
 		case <-ticker.C:
 		}
 	}
+}
+
+func (s *livePositionMarkService) estimateEntryAndHoldValues(ctx context.Context, position *domain.Position, state npmPositionState) (entryValueUSD, holdValueUSD, currentPrice0USD, currentPrice1USD domain.Decimal, err error) {
+	entryValueUSD = position.AmountUSD
+	metadata := loadPositionMetadata(position.MetadataJSON)
+	if value := metadataDecimal(metadata, "entry_value_usd"); value.GreaterThan(domain.ZeroDecimal()) {
+		entryValueUSD = value
+	}
+
+	rawAmount0 := metadataString(metadata, "actual_amount0")
+	rawAmount1 := metadataString(metadata, "actual_amount1")
+	if rawAmount0 == "" || rawAmount1 == "" {
+		return entryValueUSD, domain.ZeroDecimal(), domain.ZeroDecimal(), domain.ZeroDecimal(), nil
+	}
+
+	provider := s.app.rpcProviderForChain(domain.ChainBase)
+	if provider == nil {
+		return entryValueUSD, domain.ZeroDecimal(), domain.ZeroDecimal(), domain.ZeroDecimal(), fmt.Errorf("base rpc provider is not configured")
+	}
+	poolAddress, parseErr := domain.ParseAddress(position.PoolID)
+	if parseErr != nil {
+		return entryValueUSD, domain.ZeroDecimal(), domain.ZeroDecimal(), domain.ZeroDecimal(), parseErr
+	}
+	slot0, readErr := readV3PoolSlot0ForMark(ctx, provider, poolAddress)
+	if readErr != nil {
+		return entryValueUSD, domain.ZeroDecimal(), domain.ZeroDecimal(), domain.ZeroDecimal(), readErr
+	}
+	decimals0, decErr := tokenDecimals(ctx, provider, state.Token0)
+	if decErr != nil {
+		return entryValueUSD, domain.ZeroDecimal(), domain.ZeroDecimal(), domain.ZeroDecimal(), decErr
+	}
+	decimals1, decErr := tokenDecimals(ctx, provider, state.Token1)
+	if decErr != nil {
+		return entryValueUSD, domain.ZeroDecimal(), domain.ZeroDecimal(), domain.ZeroDecimal(), decErr
+	}
+	currentPrice0USD, currentPrice1USD, err = inferBaseTokenPricesUSD(domain.Pool{
+		ID:       position.PoolID,
+		Chain:    position.Chain,
+		Protocol: "uniswap_v3",
+		Token0:   state.Token0,
+		Token1:   state.Token1,
+		FeeBPS:   uint(state.Fee / 100),
+		Tick:     slot0.Tick,
+	}, decimals0, decimals1)
+	if err != nil {
+		return entryValueUSD, domain.ZeroDecimal(), domain.ZeroDecimal(), domain.ZeroDecimal(), err
+	}
+
+	amount0Raw, ok := new(big.Int).SetString(rawAmount0, 10)
+	if !ok {
+		return entryValueUSD, domain.ZeroDecimal(), domain.ZeroDecimal(), domain.ZeroDecimal(), fmt.Errorf("invalid actual_amount0 for position %s", position.ID)
+	}
+	amount1Raw, ok := new(big.Int).SetString(rawAmount1, 10)
+	if !ok {
+		return entryValueUSD, domain.ZeroDecimal(), domain.ZeroDecimal(), domain.ZeroDecimal(), fmt.Errorf("invalid actual_amount1 for position %s", position.ID)
+	}
+	amount0 := decimalFromRawAmount(amount0Raw, decimals0)
+	amount1 := decimalFromRawAmount(amount1Raw, decimals1)
+	holdValueUSD = amount0.Mul(currentPrice0USD).Add(amount1.Mul(currentPrice1USD))
+	return entryValueUSD, holdValueUSD, currentPrice0USD, currentPrice1USD, nil
+}
+
+func computeLivePositionMarkPnL(entryValueUSD, positionValueUSD, feeCollectedUSD, feeUncollectedUSD, gasUSD, holdValueUSD domain.Decimal) (ilUSD, netPnLUSD domain.Decimal) {
+	lpGrossValueUSD := positionValueUSD.Add(feeCollectedUSD).Add(feeUncollectedUSD)
+	if holdValueUSD.GreaterThan(domain.ZeroDecimal()) {
+		ilUSD = lpGrossValueUSD.Sub(holdValueUSD)
+	}
+	netPnLUSD = lpGrossValueUSD.Sub(entryValueUSD).Sub(gasUSD)
+	return ilUSD, netPnLUSD
 }

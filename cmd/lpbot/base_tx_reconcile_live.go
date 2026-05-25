@@ -16,6 +16,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/lpbot/lpbot/internal/domain"
+	"github.com/lpbot/lpbot/internal/adapters/rpc"
 	"github.com/lpbot/lpbot/internal/platform/config"
 	"github.com/lpbot/lpbot/internal/ports"
 	"go.uber.org/zap"
@@ -32,6 +33,10 @@ var (
 
 type baseReceiptSource interface {
 	TransactionReceipt(ctx context.Context, hash common.Hash) (*types.Receipt, error)
+}
+
+type baseETHPriceSource interface {
+	EstimateBaseWETHPriceUSD(ctx context.Context, poolID string) (domain.Decimal, error)
 }
 
 func (app *App) shouldRunBaseTxConfirmer() bool {
@@ -154,7 +159,7 @@ func reconcileOneBaseTx(ctx context.Context, cfg *config.Config, store ports.Sto
 	}
 
 	if receipt.Status != types.ReceiptStatusSuccessful {
-		return reconcileBaseRevertedTx(ctx, store, tx, ref)
+		return reconcileBaseRevertedTx(ctx, store, provider, tx, receipt, ref)
 	}
 
 	if tx.Status != domain.TxMined {
@@ -163,7 +168,10 @@ func reconcileOneBaseTx(ctx context.Context, cfg *config.Config, store ports.Sto
 		}
 	}
 
-	if err := reconcileSuccessfulBasePosition(ctx, cfg, store, tx, receipt); err != nil {
+	if err := appendBaseTxGasRecord(ctx, store, provider, tx, receipt); err != nil {
+		return err
+	}
+	if err := reconcileSuccessfulBasePosition(ctx, cfg, store, provider, tx, receipt); err != nil {
 		return err
 	}
 
@@ -180,7 +188,7 @@ func reconcileOneBaseTx(ctx context.Context, cfg *config.Config, store ports.Sto
 	return markExecutionIntentByTxHash(ctx, store, domain.ChainBase, tx.Hash, domain.IntentStatusReconciled, "receipt confirmed and reconciled")
 }
 
-func reconcileBaseRevertedTx(ctx context.Context, store ports.Store, tx domain.SignedTx, ref *domain.BlockRef) error {
+func reconcileBaseRevertedTx(ctx context.Context, store ports.Store, provider baseReceiptSource, tx domain.SignedTx, receipt *types.Receipt, ref *domain.BlockRef) error {
 	latest, err := store.TxRepo().GetTxByHash(ctx, domain.ChainBase, tx.Hash)
 	if err != nil {
 		return err
@@ -191,6 +199,9 @@ func reconcileBaseRevertedTx(ctx context.Context, store ports.Store, tx domain.S
 		}
 	}
 	if err := markExecutionIntentByTxHash(ctx, store, domain.ChainBase, tx.Hash, domain.IntentStatusFailed, "receipt reverted"); err != nil {
+		return err
+	}
+	if err := appendBaseTxGasRecord(ctx, store, provider, tx, receipt); err != nil {
 		return err
 	}
 
@@ -222,7 +233,7 @@ func reconcileBaseRevertedTx(ctx context.Context, store ports.Store, tx domain.S
 	return nil
 }
 
-func reconcileSuccessfulBasePosition(ctx context.Context, cfg *config.Config, store ports.Store, tx domain.SignedTx, receipt *types.Receipt) error {
+func reconcileSuccessfulBasePosition(ctx context.Context, cfg *config.Config, store ports.Store, provider baseReceiptSource, tx domain.SignedTx, receipt *types.Receipt) error {
 	npmAddress := strings.TrimSpace(cfg.Execution.NPMBaseAddress)
 	if npmAddress == "" {
 		npmAddress = defaultBaseUniswapV3NPMAddress
@@ -239,6 +250,9 @@ func reconcileSuccessfulBasePosition(ctx context.Context, cfg *config.Config, st
 			return fmt.Errorf("no opening position found for mint tx %s", tx.Hash)
 		}
 		if err := persistSuccessfulMintReconcile(ctx, store.PositionRepo(), position, tx.Hash, tokenID, liquidity, amount0, amount1, receipt); err != nil {
+			return err
+		}
+		if err := hydrateBaseOpenEntryMetadata(ctx, provider, store.PositionRepo(), position); err != nil {
 			return err
 		}
 		return appendBaseOpenPnLRecord(ctx, store, position, tx.Hash, receipt)
@@ -485,6 +499,59 @@ func attachOpenTxHashToPosition(ctx context.Context, repo ports.PositionRepo, po
 	return repo.Save(ctx, position)
 }
 
+func hydrateBaseOpenEntryMetadata(ctx context.Context, provider baseReceiptSource, repo ports.PositionRepo, position *domain.Position) error {
+	if position == nil {
+		return nil
+	}
+	metadata := loadPositionMetadata(position.MetadataJSON)
+	entryValueUSD := metadataDecimal(metadata, "entry_value_usd")
+	if entryValueUSD.IsZero() {
+		entryValueUSD = position.AmountUSD
+	}
+	updates := map[string]string{
+		"entry_value_usd": entryValueUSD.String(),
+	}
+
+	rawAmount0 := metadataString(metadata, "actual_amount0")
+	rawAmount1 := metadataString(metadata, "actual_amount1")
+	if rawAmount0 == "" || rawAmount1 == "" {
+		position.MetadataJSON, _ = mergePositionMetadata(position.MetadataJSON, updates)
+		return repo.Save(ctx, position)
+	}
+
+	price0USD, price1USD, decimals0, decimals1, err := estimateBasePoolTokenPricesUSD(ctx, provider, position.PoolID)
+	if err != nil {
+		position.MetadataJSON, _ = mergePositionMetadata(position.MetadataJSON, updates)
+		return repo.Save(ctx, position)
+	}
+	amount0Raw, ok := new(big.Int).SetString(rawAmount0, 10)
+	if !ok {
+		return fmt.Errorf("invalid actual_amount0 for position %s", position.ID)
+	}
+	amount1Raw, ok := new(big.Int).SetString(rawAmount1, 10)
+	if !ok {
+		return fmt.Errorf("invalid actual_amount1 for position %s", position.ID)
+	}
+	amount0 := decimalFromRawAmount(amount0Raw, decimals0)
+	amount1 := decimalFromRawAmount(amount1Raw, decimals1)
+	computedEntryValue := amount0.Mul(price0USD).Add(amount1.Mul(price1USD))
+	if computedEntryValue.GreaterThan(domain.ZeroDecimal()) {
+		entryValueUSD = computedEntryValue
+	}
+	updates["entry_amount0_display"] = amount0.String()
+	updates["entry_amount1_display"] = amount1.String()
+	updates["entry_token0_usd"] = price0USD.String()
+	updates["entry_token1_usd"] = price1USD.String()
+	updates["entry_value_usd"] = entryValueUSD.String()
+
+	merged, err := mergePositionMetadata(position.MetadataJSON, updates)
+	if err != nil {
+		return err
+	}
+	position.MetadataJSON = merged
+	return repo.Save(ctx, position)
+}
+
 func appendBaseOpenPnLRecord(ctx context.Context, store ports.Store, position *domain.Position, txHash string, receipt *types.Receipt) error {
 	if position == nil || receipt == nil {
 		return nil
@@ -497,8 +564,13 @@ func appendBaseOpenPnLRecord(ctx context.Context, store ports.Store, position *d
 	if receipt.BlockNumber != nil {
 		blockNumber = receipt.BlockNumber.Uint64()
 	}
+	metadata := loadPositionMetadata(position.MetadataJSON)
+	entryValueUSD := metadataDecimal(metadata, "entry_value_usd")
+	if entryValueUSD.IsZero() {
+		entryValueUSD = position.AmountUSD
+	}
 	return tables.insertPnLLedger(ctx, pnlLedgerRecord{
-		ID:               newLedgerEventID("base-open", position.ID, time.Now().Unix()),
+		ID:               fmt.Sprintf("base-open:%s", txHash),
 		PositionID:       position.ID,
 		PoolID:           position.PoolID,
 		Kind:             "open",
@@ -510,7 +582,7 @@ func appendBaseOpenPnLRecord(ctx context.Context, store ports.Store, position *d
 		BlockTime:        time.Now().Unix(),
 		TxHash:           txHash,
 		Source:           "base_open",
-		PositionValueUSD: position.AmountUSD,
+		PositionValueUSD: entryValueUSD,
 		NetPnLUSD:        domain.ZeroDecimal(),
 	})
 }
@@ -523,14 +595,6 @@ func appendBaseCollectPnLRecord(ctx context.Context, store ports.Store, position
 	if err != nil {
 		return err
 	}
-	netPnL := domain.ZeroDecimal()
-	positionValueUSD := domain.ZeroDecimal()
-	if closing {
-		if latest, ok, err := tables.loadLatestPositionMark(ctx, position.ID); err == nil && ok {
-			netPnL = latest.NetPnLUSD
-			positionValueUSD = latest.PositionValueUSD
-		}
-	}
 	source := "base_collect"
 	kind := "collect"
 	if closing {
@@ -541,12 +605,20 @@ func appendBaseCollectPnLRecord(ctx context.Context, store ports.Store, position
 	if receipt.BlockNumber != nil {
 		blockNumber = receipt.BlockNumber.Uint64()
 	}
-	return tables.insertPnLLedger(ctx, pnlLedgerRecord{
-		ID:               newLedgerEventID(source, position.ID, time.Now().Unix()),
+	feeCollectedUSD := domain.ZeroDecimal()
+	positionValueUSD := position.AmountUSD
+	ilUSD := domain.ZeroDecimal()
+	if latest, ok, err := tables.loadLatestPositionMark(ctx, position.ID); err == nil && ok {
+		feeCollectedUSD = latest.FeeUncollectedUSD
+		positionValueUSD = latest.PositionValueUSD
+		ilUSD = latest.ILUSD
+	}
+	if err := tables.insertPnLLedger(ctx, pnlLedgerRecord{
+		ID:               fmt.Sprintf("%s:%s", source, txHash),
 		PositionID:       position.ID,
 		PoolID:           position.PoolID,
 		Kind:             kind,
-		Amount:           netPnL,
+		Amount:           feeCollectedUSD,
 		TokenSymbol:      "USD",
 		Chain:            position.Chain,
 		BlockNumber:      blockNumber,
@@ -555,6 +627,264 @@ func appendBaseCollectPnLRecord(ctx context.Context, store ports.Store, position
 		TxHash:           txHash,
 		Source:           source,
 		PositionValueUSD: positionValueUSD,
-		NetPnLUSD:        netPnL,
+		FeeCollectedUSD:  feeCollectedUSD,
+		ILUSD:            ilUSD,
+		NetPnLUSD:        feeCollectedUSD,
+	}); err != nil {
+		return err
+	}
+	if !closing {
+		return nil
+	}
+
+	totalFeeCollectedUSD, gasUSD, _, err := tables.loadPositionRealizedTotals(ctx, position.ID)
+	if err != nil {
+		return err
+	}
+	entryValueUSD := metadataDecimal(loadPositionMetadata(position.MetadataJSON), "entry_value_usd")
+	if entryValueUSD.IsZero() {
+		entryValueUSD = position.AmountUSD
+	}
+	settleNetPnLUSD := positionValueUSD.Add(totalFeeCollectedUSD).Sub(entryValueUSD).Sub(gasUSD)
+	if err := tables.insertPnLLedger(ctx, pnlLedgerRecord{
+		ID:                fmt.Sprintf("base-settle:%s", txHash),
+		PositionID:        position.ID,
+		PoolID:            position.PoolID,
+		Kind:              "settle",
+		Amount:            settleNetPnLUSD,
+		TokenSymbol:       "USD",
+		Chain:             position.Chain,
+		BlockNumber:       blockNumber,
+		BlockHash:         receipt.BlockHash.Hex(),
+		BlockTime:         time.Now().Unix(),
+		TxHash:            txHash,
+		Source:            "base_settle",
+		PositionValueUSD:  positionValueUSD,
+		FeeCollectedUSD:   totalFeeCollectedUSD,
+		GasUSD:            gasUSD,
+		ILUSD:             ilUSD,
+		LVRUSD:            domain.ZeroDecimal(),
+		NetPnLUSD:         settleNetPnLUSD,
+	}); err != nil {
+		return err
+	}
+	merged, err := mergePositionMetadata(position.MetadataJSON, map[string]string{
+		"settled_at_block":       fmt.Sprintf("%d", blockNumber),
+		"settled_tx_hash":        txHash,
+		"realized_net_pnl_usd":   settleNetPnLUSD.String(),
+		"realized_fee_usd":       totalFeeCollectedUSD.String(),
+		"realized_gas_usd":       gasUSD.String(),
+		"final_position_value_usd": positionValueUSD.String(),
 	})
+	if err != nil {
+		return err
+	}
+	position.MetadataJSON = merged
+	return store.PositionRepo().Save(ctx, position)
+}
+
+func appendBaseTxGasRecord(ctx context.Context, store ports.Store, provider baseReceiptSource, tx domain.SignedTx, receipt *types.Receipt) error {
+	if store == nil || receipt == nil || receipt.EffectiveGasPrice == nil || receipt.GasUsed == 0 {
+		return nil
+	}
+	tables, err := newRuntimeSQLTables(store)
+	if err != nil {
+		return err
+	}
+	intent, _ := findExecutionIntentByTxHash(ctx, store, tx.Hash)
+	positionID := ""
+	poolID := ""
+	action := "tx"
+	if intent != nil {
+		positionID = strings.TrimSpace(intent.PositionID)
+		poolID = strings.TrimSpace(intent.PoolID)
+		action = strings.TrimSpace(intent.Action)
+	}
+	if positionID == "" || poolID == "" {
+		if position := inferPositionForGasLedger(ctx, store, tx); position != nil {
+			if positionID == "" {
+				positionID = position.ID
+			}
+			if poolID == "" {
+				poolID = position.PoolID
+			}
+		}
+	}
+	gasUSD, err := estimateBaseReceiptGasUSD(ctx, provider, poolID, receipt)
+	if err != nil {
+		return err
+	}
+	blockNumber := uint64(0)
+	if receipt.BlockNumber != nil {
+		blockNumber = receipt.BlockNumber.Uint64()
+	}
+	source := "base_tx_gas"
+	if action != "" {
+		source = "base_" + strings.ToLower(action) + "_gas"
+	}
+	return tables.insertPnLLedger(ctx, pnlLedgerRecord{
+		ID:          fmt.Sprintf("gas:%s", tx.Hash),
+		PositionID:  positionID,
+		PoolID:      poolID,
+		Kind:        "gas",
+		Amount:      gasUSD.Neg(),
+		TokenSymbol: "USD",
+		Chain:       domain.ChainBase,
+		BlockNumber: blockNumber,
+		BlockHash:   receipt.BlockHash.Hex(),
+		BlockTime:   time.Now().Unix(),
+		TxHash:      tx.Hash,
+		Source:      source,
+		GasUSD:      gasUSD,
+		NetPnLUSD:   gasUSD.Neg(),
+	})
+}
+
+func findExecutionIntentByTxHash(ctx context.Context, store ports.Store, txHash string) (*domain.ExecutionIntent, error) {
+	if store == nil || store.ExecutionIntentRepo() == nil || strings.TrimSpace(txHash) == "" {
+		return nil, nil
+	}
+	intent, err := store.ExecutionIntentRepo().FindByTxHash(ctx, domain.ChainBase, txHash)
+	if errors.Is(err, ports.ErrExecutionIntentNotFound) {
+		return nil, nil
+	}
+	return intent, err
+}
+
+func inferPositionForGasLedger(ctx context.Context, store ports.Store, tx domain.SignedTx) *domain.Position {
+	if store == nil {
+		return nil
+	}
+	position, err := findOpeningPositionByOpenTxHash(ctx, store.PositionRepo(), tx.Hash)
+	if err == nil && position != nil {
+		return position
+	}
+	_, tokenID := classifyNPMTx(tx)
+	if tokenID == "" {
+		return nil
+	}
+	position, err = findPositionByTokenID(ctx, store.PositionRepo(), tokenID, domain.StatusOpening, domain.StatusOpen, domain.StatusExiting)
+	if err != nil {
+		return nil
+	}
+	return position
+}
+
+func estimateBaseReceiptGasUSD(ctx context.Context, provider baseReceiptSource, poolID string, receipt *types.Receipt) (domain.Decimal, error) {
+	if receipt == nil || receipt.EffectiveGasPrice == nil || receipt.GasUsed == 0 {
+		return domain.ZeroDecimal(), nil
+	}
+	wei := new(big.Int).Mul(new(big.Int).SetUint64(receipt.GasUsed), receipt.EffectiveGasPrice)
+	gasETH := decimalFromWei(wei, 18)
+	if gasETH.IsZero() {
+		return domain.ZeroDecimal(), nil
+	}
+	ethPriceUSD, err := estimateBaseWETHPriceUSDForPool(ctx, provider, poolID)
+	if err != nil {
+		return domain.ZeroDecimal(), err
+	}
+	if ethPriceUSD.IsZero() {
+		return domain.ZeroDecimal(), nil
+	}
+	return gasETH.Mul(ethPriceUSD), nil
+}
+
+func estimateBaseWETHPriceUSDForPool(ctx context.Context, provider baseReceiptSource, poolID string) (domain.Decimal, error) {
+	if priceSource, ok := provider.(baseETHPriceSource); ok {
+		return priceSource.EstimateBaseWETHPriceUSD(ctx, poolID)
+	}
+	rr, ok := provider.(*rpc.RoundRobinProvider)
+	if !ok {
+		return domain.ZeroDecimal(), nil
+	}
+	return estimateBaseWETHPriceUSDFromProvider(ctx, rr, poolID)
+}
+
+func estimateBaseWETHPriceUSDFromProvider(ctx context.Context, provider *rpc.RoundRobinProvider, poolID string) (domain.Decimal, error) {
+	poolID = strings.TrimSpace(poolID)
+	if provider == nil || poolID == "" {
+		return domain.ZeroDecimal(), nil
+	}
+	poolAddr := parseAddressOrZero(poolID)
+	if poolAddr.IsZero() {
+		return domain.ZeroDecimal(), nil
+	}
+	tick, err := dashboardReadV3PoolTick(ctx, provider, poolAddr)
+	if err != nil {
+		return domain.ZeroDecimal(), err
+	}
+	token0, err := callAddressMethod(ctx, provider, poolAddr, "token0()")
+	if err != nil {
+		return domain.ZeroDecimal(), err
+	}
+	token1, err := callAddressMethod(ctx, provider, poolAddr, "token1()")
+	if err != nil {
+		return domain.ZeroDecimal(), err
+	}
+	decimals0, err := tokenDecimals(ctx, provider, token0)
+	if err != nil {
+		return domain.ZeroDecimal(), err
+	}
+	decimals1, err := tokenDecimals(ctx, provider, token1)
+	if err != nil {
+		return domain.ZeroDecimal(), err
+	}
+	price0, price1, err := inferBaseTokenPricesUSD(domain.Pool{
+		ID:     poolID,
+		Chain:  domain.ChainBase,
+		Token0: token0,
+		Token1: token1,
+		Tick:   tick,
+	}, decimals0, decimals1)
+	if err != nil {
+		return domain.ZeroDecimal(), err
+	}
+	switch {
+	case strings.EqualFold(token0.String(), baseWETHAddress):
+		return price0, nil
+	case strings.EqualFold(token1.String(), baseWETHAddress):
+		return price1, nil
+	default:
+		return domain.ZeroDecimal(), nil
+	}
+}
+
+func estimateBasePoolTokenPricesUSD(ctx context.Context, provider baseReceiptSource, poolID string) (price0USD, price1USD domain.Decimal, decimals0, decimals1 uint8, err error) {
+	rr, ok := provider.(*rpc.RoundRobinProvider)
+	if !ok {
+		return domain.ZeroDecimal(), domain.ZeroDecimal(), 0, 0, fmt.Errorf("rpc provider does not support pool price reads")
+	}
+	poolID = strings.TrimSpace(poolID)
+	poolAddr := parseAddressOrZero(poolID)
+	if poolAddr.IsZero() {
+		return domain.ZeroDecimal(), domain.ZeroDecimal(), 0, 0, fmt.Errorf("invalid pool id %q", poolID)
+	}
+	tick, err := dashboardReadV3PoolTick(ctx, rr, poolAddr)
+	if err != nil {
+		return domain.ZeroDecimal(), domain.ZeroDecimal(), 0, 0, err
+	}
+	token0, err := callAddressMethod(ctx, rr, poolAddr, "token0()")
+	if err != nil {
+		return domain.ZeroDecimal(), domain.ZeroDecimal(), 0, 0, err
+	}
+	token1, err := callAddressMethod(ctx, rr, poolAddr, "token1()")
+	if err != nil {
+		return domain.ZeroDecimal(), domain.ZeroDecimal(), 0, 0, err
+	}
+	decimals0, err = tokenDecimals(ctx, rr, token0)
+	if err != nil {
+		return domain.ZeroDecimal(), domain.ZeroDecimal(), 0, 0, err
+	}
+	decimals1, err = tokenDecimals(ctx, rr, token1)
+	if err != nil {
+		return domain.ZeroDecimal(), domain.ZeroDecimal(), 0, 0, err
+	}
+	price0USD, price1USD, err = inferBaseTokenPricesUSD(domain.Pool{
+		ID:     poolID,
+		Chain:  domain.ChainBase,
+		Token0: token0,
+		Token1: token1,
+		Tick:   tick,
+	}, decimals0, decimals1)
+	return price0USD, price1USD, decimals0, decimals1, err
 }

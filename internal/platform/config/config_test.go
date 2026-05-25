@@ -149,6 +149,36 @@ url = "${MISSING_REDIS_URL:-}"
 	assert.Equal(t, "", cfg.Redis.URL)
 }
 
+func Test_LiveRiskConfigLoads(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config.toml")
+	configContent := `
+[mode]
+expected = "dryrun"
+
+[live]
+enabled = true
+max_order_usd = 20
+daily_loss_limit_usd = 10
+
+[live_risk]
+max_total_exposure_usd = 50
+max_pending_exposure_usd = 20
+max_submitted_private_exposure_usd = 0
+min_gas_reserve_wei = "300000000000000"
+max_unreconciled_opening_age_seconds = 180
+`
+	require.NoError(t, os.WriteFile(configPath, []byte(configContent), 0644))
+
+	cfg, err := Load(configPath, "dryrun")
+	require.NoError(t, err)
+	assert.Equal(t, 50.0, cfg.LiveRisk.MaxTotalExposureUSD)
+	assert.Equal(t, 20.0, cfg.LiveRisk.MaxPendingExposureUSD)
+	assert.Equal(t, 0.0, cfg.LiveRisk.MaxSubmittedPrivateExposureUSD)
+	assert.Equal(t, "300000000000000", cfg.LiveRisk.MinGasReserveWei)
+	assert.Equal(t, 180, cfg.LiveRisk.MaxUnreconciledOpeningAgeSeconds)
+}
+
 func Test_SHA256MismatchReturnsError(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "config.live.toml")

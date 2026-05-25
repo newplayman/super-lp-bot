@@ -105,6 +105,15 @@ type Live struct {
 	DailyLossLimitUSD float64  `toml:"daily_loss_limit_usd"`
 }
 
+// LiveRisk represents live portfolio exposure and reconciliation guardrails.
+type LiveRisk struct {
+	MaxTotalExposureUSD             float64 `toml:"max_total_exposure_usd"`
+	MaxPendingExposureUSD           float64 `toml:"max_pending_exposure_usd"`
+	MaxSubmittedPrivateExposureUSD  float64 `toml:"max_submitted_private_exposure_usd"`
+	MinGasReserveWei                string  `toml:"min_gas_reserve_wei"`
+	MaxUnreconciledOpeningAgeSeconds int    `toml:"max_unreconciled_opening_age_seconds"`
+}
+
 // Risk represents the risk configuration.
 type Risk struct {
 	TotalExposurePct  int `toml:"total_exposure_pct"`
@@ -134,6 +143,7 @@ type Config struct {
 	Alerting  Alerting   `toml:"alerting"`
 	Execution Execution  `toml:"execution"`
 	Live      Live       `toml:"live"`
+	LiveRisk  LiveRisk   `toml:"live_risk"`
 	Risk      Risk       `toml:"risk"`
 	TierA     TierConfig `toml:"tier_a"`
 	TierB     TierConfig `toml:"tier_b"`

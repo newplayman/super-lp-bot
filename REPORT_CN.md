@@ -1,11 +1,17 @@
 # PnL Ledger v1 说明
 
-本轮新增的目标不是一次性完成策略正期望证明，而是把 live/canary 的收益归因数据流补成可继续审计的底座。
+当前版本的目标不是一次性完成策略正期望证明，而是把 Base live/canary 的收益归因补成可继续审计的底座，并把 snapshot 风控从“观察面”推进到“真实阻断输入”。
 
 ## 新增数据面
 
 - `pnl_ledger`
   - 继续作为动作级账本
+  - 现已包含：
+    - `open`
+    - `collect`
+    - `close`
+    - `settle`
+    - `gas`
   - 新增字段：
     - `source`
     - `position_value_usd`
@@ -22,6 +28,7 @@
     - 未收手续费估值
     - 已实现手续费累计
     - gas 成本累计
+    - IL v1 估值
     - 未实现净盈亏
 - `portfolio_snapshots`
   - 新增健康字段：
@@ -39,15 +46,20 @@
 - `fee_uncollected_usd`
   - 基于链上 fee growth / tokens owed 估算的未收手续费 USD
 - `gas_usd`
-  - 当前版本数据流已预留；部分路径仍可能为 `0`
+  - Base receipt 路径已按 `gasUsed * effectiveGasPrice * ETH/USD` 写入
+  - 若 receipt 缺失 `effectiveGasPrice`，或无法解析出可用 ETH/USD 上下文，仍可能为 `0`
 - `il_usd`
-  - 当前版本保留字段，默认 `0`
+  - Position mark 已接入 IL v1：
+    - `current_lp_gross_value_usd - current_hold_value_usd`
+  - 仍不是更严格的 LVR/退出后完整归因
 - `lvr_usd`
   - 当前版本保留字段，默认 `0`
 - `net_pnl_usd`
   - v1 含义分两类：
     - `position_marks` 中表示未实现净盈亏近似值
-    - `pnl_ledger` 动作行中表示该动作确认时记入的已实现净盈亏
+    - `pnl_ledger` 中：
+      - `gas/open/collect/close` 表示动作级记账
+      - `settle` 表示 position close 后的 realized PnL 汇总口径
 
 ## 真实链上值 vs 估算值
 
@@ -64,19 +76,23 @@
   - `positions(tokenId)` 读取到的 `liquidity`
   - pool `slot0()`
   - fee growth / tokens owed
+- Base receipt 上游所用：
+  - `receipt.gas_used`
+  - `receipt.effective_gas_price`
 
 ### 当前仍为估算或占位
 
 - `gas_usd`
-  - 字段与写入路径已存在，但并非所有动作都能稳定得到真实 USD 成本
+  - Base receipt 路径已真实化
+  - 仍依赖 ETH/USD 价格上下文；没有可用 pool/context 时可能退化为 `0`
 - `il_usd`
-  - 当前为保留字段，默认 `0`
+  - 已接入 IL v1，但仍是 mark-to-market 估算，不是最终 settle 后的严格会计口径
 - `lvr_usd`
   - 当前为保留字段，默认 `0`
 - `portfolio_snapshots.unrealized_pnl_usd`
-  - 目前来自 `position_marks` 的未实现近似值
+  - 当前来自 `position_marks` 的未实现近似值
 - `portfolio_snapshots.realized_pnl_usd`
-  - 目前来自 `pnl_ledger` 的动作累计值
+  - 当前仅汇总 `pnl_ledger.kind = settle` 的 realized PnL
 
 ## 当前可依赖的用途
 
@@ -84,22 +100,24 @@
   - `stuck_tx_count > 0`
   - `exit_failed_position_count > 0`
   - `unreconciled_opening_timeout_count > 0`
-  - `submitted_private_exposure_usd > 0`
-  - `open + pending + submitted_private + new order` 超过当前临时 cap
+  - `pending_exposure_usd` 超过 `live_risk.max_pending_exposure_usd`
+  - `submitted_private_exposure_usd` 超过 `live_risk.max_submitted_private_exposure_usd`
+  - `open + pending + submitted_private + new order` 超过 `live_risk.max_total_exposure_usd`
+  - native balance 低于 `live_risk.min_gas_reserve_wei`
 - 对 open positions 做周期性 mark
 - 在 dashboard / 报表 / 后续 shadow 回填里消费已实现与未实现 PnL 基础字段
 
 ## 当前未完成项
 
-- `gas_usd` 全路径真实化
-- `il_usd` 真实计算
+- `gas_usd` 对非 Base receipt 路径、缺上下文价格路径的覆盖仍不完整
+- `il_usd` 仍是 v1 估算，不是最终完整会计归因
 - `lvr_usd` 真实计算
-- close 时更严格的 realized/unrealized 切换归集
-- 把 `PortfolioSnapshot` 风控 cap 从当前临时口径升级为真正的账户级预算口径
+- shadow outcome 回填和 edge 统计还未接上
+- close settle 仍依赖 latest mark/entry metadata，尚未做到完全事件级精算
 
 ## 下一步建议
 
-1. 把 `gas_usd` 在 mint / collect / close / RBF 路径补成真实值
-2. 做 `calculateILFromPosition()` 的真实实现
-3. 给 `position_marks` 增加 close 前最后一笔 settle 逻辑
-4. 用 `shadow_decision_trace + position_marks + pnl_ledger` 回填 1h/6h/24h 策略样本
+1. 继续补 `gas_usd` 在缺 pool 上下文、manual reconcile、非 Base 路径的覆盖
+2. 把 `IL v1` 升级为 close 后更严格的 realized IL 归因
+3. 实现 `lvr_usd` 和更细的 fee/principal 拆分
+4. 用 `shadow_decision_trace + position_marks + pnl_ledger + portfolio_snapshots` 回填 1h/6h/24h 策略样本

@@ -68,6 +68,13 @@ allowed_pools = ["0x6c561b446416e1a00e8e93e221854d6ea4171372"]
 max_order_usd = 20
 daily_loss_limit_usd = 10
 
+[live_risk]
+max_total_exposure_usd = 20
+max_pending_exposure_usd = 20
+max_submitted_private_exposure_usd = 0
+min_gas_reserve_wei = "300000000000000"
+max_unreconciled_opening_age_seconds = 180
+
 [risk]
 total_exposure_pct = 30
 var_warn_pct = 8
