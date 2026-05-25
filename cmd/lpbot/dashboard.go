@@ -496,13 +496,38 @@ type dashboardDecision struct {
 }
 
 func (app *App) registerDashboardRoutes(mux *http.ServeMux) {
-	mux.Handle("/web/", http.StripPrefix("/web/", http.FileServer(http.Dir("web"))))
+	mux.Handle("/web/", http.StripPrefix("/web/", http.FileServer(http.Dir(lpbotDashboardWebDir()))))
 	mux.HandleFunc("/web", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/web/", http.StatusFound)
 	})
 	mux.HandleFunc("/", app.dashboardAuth(app.redirectToWebDashboard))
 	mux.HandleFunc("/dashboard", app.dashboardAuth(app.redirectToWebDashboard))
 	mux.HandleFunc("/api/dashboard", app.dashboardAuth(app.handleDashboardAPI))
+}
+
+func lpbotDashboardWebDir() string {
+	exePath, err := os.Executable()
+	if err == nil {
+		exeDir := filepath.Dir(exePath)
+		candidates := []string{
+			filepath.Join(exeDir, "web"),
+			filepath.Join(exeDir, "..", "web"),
+		}
+		for _, candidate := range candidates {
+			if info, err := os.Stat(candidate); err == nil && info.IsDir() {
+				return candidate
+			}
+		}
+	}
+
+	if wd, err := os.Getwd(); err == nil {
+		candidate := filepath.Join(wd, "web")
+		if info, err := os.Stat(candidate); err == nil && info.IsDir() {
+			return candidate
+		}
+	}
+
+	return "web"
 }
 
 func (app *App) dashboardAuth(next http.HandlerFunc) http.HandlerFunc {
