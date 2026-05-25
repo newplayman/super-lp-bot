@@ -109,6 +109,21 @@ LPBOT_CANARY_EVIDENCE_OUTPUT=run/audits/xxx.md \
 - 费用拆分（`fee/il/swap/gas/slippage`）
 - 预估/关闭相关 tx 与最新事件
 
+### 5.2 关闭/开启 cycle 后自动证据
+
+`scripts/canary_cycle.sh` 默认会自动执行一次 `scripts/canary_profitability_evidence.sh`（窗口默认 168 小时）。
+
+可用环境变量：
+
+- `LPBOT_CANARY_RUN_EVIDENCE=NO`：关闭自动执行
+- `LPBOT_CANARY_EVIDENCE_GATE=YES`：开启门禁风控阈值
+- `LPBOT_CANARY_MAX_AVG_NET_ERROR_USD=<abs>`
+- `LPBOT_CANARY_MAX_TOTAL_NET_ERROR_USD=<abs>`
+- `LPBOT_CANARY_MAX_MISSING_LEDGER_ROWS=<abs>`
+- `LPBOT_CANARY_EVIDENCE_WINDOW_HOURS=168`
+- `LPBOT_CANARY_EVIDENCE_ROW_LIMIT=50`
+- `LPBOT_CANARY_EVIDENCE_POOL_ID=<pool_id>`
+
 重点看：
 - `base_canary.opened / closed`
 - `base_canary.active_token_id`

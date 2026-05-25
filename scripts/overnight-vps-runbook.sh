@@ -24,6 +24,10 @@ CYCLE_MIN="${LPBOT_CYCLE_MIN:-15}"
 AUDIT_WINDOW_SEC="${LPBOT_AUDIT_WINDOW_SEC:-180}"
 AUGMENT_RESTART="${LPBOT_AUTO_RESTART:-0}"
 AUTO_INSTALL_TOOLS="${LPBOT_AUTOINSTALL_TOOLS:-0}"
+LPBOT_CANARY_EVIDENCE_EVERY_CYCLE="${LPBOT_CANARY_EVIDENCE_EVERY_CYCLE:-NO}"
+LPBOT_CANARY_EVIDENCE_WINDOW_HOURS="${LPBOT_CANARY_EVIDENCE_WINDOW_HOURS:-168}"
+LPBOT_CANARY_EVIDENCE_ROW_LIMIT="${LPBOT_CANARY_EVIDENCE_ROW_LIMIT:-20}"
+LPBOT_CANARY_EVIDENCE_POOL_ID="${LPBOT_CANARY_EVIDENCE_POOL_ID:-}"
 
 TS="$(date +%Y%m%d-%H%M%S)"
 RUN_DIR="${LPBOT_RUN_DIR:-$HOME/.lpbot-ops}"
@@ -80,6 +84,33 @@ run_journal_delta() {
     set -euo pipefail
     /usr/bin/journalctl -u '$SERVICE_NAME' --since '$since' --no-pager | /usr/bin/grep -Ei 'panic|INVARIANT|failed|fatal|error' || true
   "
+}
+
+run_remote_profitability_evidence() {
+  if [ "$LPBOT_CANARY_EVIDENCE_EVERY_CYCLE" != "YES" ]; then
+    return 0
+  fi
+
+  local evidence_file="/tmp/lpbot-canary-profitability-$(date -u +%Y%m%d-%H%M%SZ).md"
+  local result
+  local remote_cmd
+  local safe_pool_id
+  safe_pool_id="$(printf "%s" "$LPBOT_CANARY_EVIDENCE_POOL_ID" | sed "s/'/'\\\\''/g")"
+
+  remote_cmd="/usr/bin/cd '$LPBOT_ROOT' && /usr/bin/env \
+    LPBOT_CANARY_EVIDENCE_WINDOW_HOURS='$LPBOT_CANARY_EVIDENCE_WINDOW_HOURS' \
+    LPBOT_CANARY_EVIDENCE_ROW_LIMIT='$LPBOT_CANARY_EVIDENCE_ROW_LIMIT' \
+    LPBOT_CANARY_EVIDENCE_OUTPUT='$evidence_file' \
+    LPBOT_CANARY_EVIDENCE_POOL_ID='$safe_pool_id' \
+    ./scripts/canary_profitability_evidence.sh"
+
+  if result="$(run_ssh "$remote_cmd" 2>&1)"; then
+    printf '%s\n' "$result"
+    return 0
+  else
+    printf '%s\n' "$result"
+    return 1
+  fi
 }
 
 now_utc() {
@@ -183,6 +214,15 @@ while [ "$(date +%s)" -lt "$END_TS" ]; do
         run_ssh "sudo systemctl restart '$SERVICE_NAME' && sudo systemctl is-active '$SERVICE_NAME'"
       } >> "$SUMMARY_FILE"
     fi
+  fi
+
+  echo "### 4) Canary profitability evidence" >> "$SUMMARY_FILE"
+  if evidence_report="$(run_remote_profitability_evidence)"; then
+    echo "$evidence_report" >> "$SUMMARY_FILE"
+  else
+    ALERTS=$((ALERTS + 1))
+    echo "- ALERT: profitability evidence failed in cycle ${CYCLES}" >> "$SUMMARY_FILE"
+    echo "$evidence_report" >> "$SUMMARY_FILE"
   fi
 
   echo "Cycle ${CYCLES} complete. next at +${CYCLE_MIN}m" >> "$SUMMARY_FILE"
