@@ -231,6 +231,224 @@ FROM classified
 WHERE invalid_reason <> 'ok'
 GROUP BY horizon, invalid_reason
 ORDER BY horizon, invalid_reason;
+
+-- score_distribution.csv
+WITH horizons AS (
+  SELECT '1h'::TEXT AS horizon
+  UNION ALL SELECT '6h'::TEXT
+  UNION ALL SELECT '24h'::TEXT
+),
+agg AS (
+  SELECT
+    horizon,
+    COUNT(*) AS score_count,
+    ROUND(MIN(score_total)::NUMERIC, 6) AS score_min,
+    ROUND((percentile_cont(0.10) WITHIN GROUP (ORDER BY score_total))::NUMERIC, 6) AS score_p10,
+    ROUND((percentile_cont(0.25) WITHIN GROUP (ORDER BY score_total))::NUMERIC, 6) AS score_p25,
+    ROUND((percentile_cont(0.50) WITHIN GROUP (ORDER BY score_total))::NUMERIC, 6) AS score_p50,
+    ROUND((percentile_cont(0.75) WITHIN GROUP (ORDER BY score_total))::NUMERIC, 6) AS score_p75,
+    ROUND((percentile_cont(0.90) WITHIN GROUP (ORDER BY score_total))::NUMERIC, 6) AS score_p90,
+    ROUND(MAX(score_total)::NUMERIC, 6) AS score_max
+  FROM shadow_outcome_labels
+  GROUP BY horizon
+)
+SELECT
+  h.horizon,
+  COALESCE(a.score_count, 0) AS score_count,
+  COALESCE(a.score_min, 0) AS score_min,
+  COALESCE(a.score_p10, 0) AS score_p10,
+  COALESCE(a.score_p25, 0) AS score_p25,
+  COALESCE(a.score_p50, 0) AS score_p50,
+  COALESCE(a.score_p75, 0) AS score_p75,
+  COALESCE(a.score_p90, 0) AS score_p90,
+  COALESCE(a.score_max, 0) AS score_max,
+  CASE
+    WHEN COALESCE(a.score_max, 0) < 80 THEN '80+ bucket empty in current horizon'
+    ELSE '80+ bucket active'
+  END AS bucket_80plus_assessment
+FROM horizons h
+LEFT JOIN agg a ON a.horizon = h.horizon
+ORDER BY h.horizon;
+
+-- score_edge_diagnostics.csv
+WITH realized AS (
+  SELECT
+    horizon,
+    score_total,
+    label,
+    CAST(simulated_net_pnl_usd AS NUMERIC) AS net_pnl_usd
+  FROM shadow_outcome_labels
+  WHERE label IN ('win', 'loss')
+),
+ranked AS (
+  SELECT
+    horizon,
+    score_total,
+    label,
+    net_pnl_usd,
+    NTILE(5) OVER (PARTITION BY horizon ORDER BY score_total ASC, decision_trace_id) AS score_ntile
+  FROM shadow_outcome_labels
+  WHERE label IN ('win', 'loss')
+),
+pair_70_60 AS (
+  SELECT
+    horizon,
+    '70-79_vs_60-69'::TEXT AS comparison,
+    '70-79'::TEXT AS cohort_a,
+    '60-69'::TEXT AS cohort_b,
+    COUNT(*) FILTER (WHERE score_total >= 70 AND score_total < 80) AS a_count,
+    COUNT(*) FILTER (WHERE score_total >= 60 AND score_total < 70) AS b_count,
+    COUNT(*) FILTER (WHERE score_total >= 70 AND score_total < 80) AS a_realized_count,
+    COUNT(*) FILTER (WHERE score_total >= 60 AND score_total < 70) AS b_realized_count,
+    ROUND((AVG(net_pnl_usd) FILTER (WHERE score_total >= 70 AND score_total < 80))::NUMERIC, 6) AS a_avg,
+    ROUND((AVG(net_pnl_usd) FILTER (WHERE score_total >= 60 AND score_total < 70))::NUMERIC, 6) AS b_avg,
+    ROUND((percentile_cont(0.5) WITHIN GROUP (ORDER BY net_pnl_usd) FILTER (WHERE score_total >= 70 AND score_total < 80))::NUMERIC, 6) AS a_median,
+    ROUND((percentile_cont(0.5) WITHIN GROUP (ORDER BY net_pnl_usd) FILTER (WHERE score_total >= 60 AND score_total < 70))::NUMERIC, 6) AS b_median,
+    ROUND((percentile_cont(0.1) WITHIN GROUP (ORDER BY net_pnl_usd) FILTER (WHERE score_total >= 70 AND score_total < 80))::NUMERIC, 6) AS a_p10,
+    ROUND((percentile_cont(0.1) WITHIN GROUP (ORDER BY net_pnl_usd) FILTER (WHERE score_total >= 60 AND score_total < 70))::NUMERIC, 6) AS b_p10,
+    ROUND((AVG(CASE WHEN label = 'win' THEN 1.0 ELSE 0.0 END) FILTER (WHERE score_total >= 70 AND score_total < 80))::NUMERIC, 6) AS a_win_rate,
+    ROUND((AVG(CASE WHEN label = 'win' THEN 1.0 ELSE 0.0 END) FILTER (WHERE score_total >= 60 AND score_total < 70))::NUMERIC, 6) AS b_win_rate
+  FROM realized
+  GROUP BY horizon
+),
+pair_top_bottom AS (
+  SELECT
+    horizon,
+    'top20_vs_bottom20'::TEXT AS comparison,
+    'top20%'::TEXT AS cohort_a,
+    'bottom20%'::TEXT AS cohort_b,
+    COUNT(*) FILTER (WHERE score_ntile = 5) AS a_count,
+    COUNT(*) FILTER (WHERE score_ntile = 1) AS b_count,
+    COUNT(*) FILTER (WHERE score_ntile = 5) AS a_realized_count,
+    COUNT(*) FILTER (WHERE score_ntile = 1) AS b_realized_count,
+    ROUND((AVG(net_pnl_usd) FILTER (WHERE score_ntile = 5))::NUMERIC, 6) AS a_avg,
+    ROUND((AVG(net_pnl_usd) FILTER (WHERE score_ntile = 1))::NUMERIC, 6) AS b_avg,
+    ROUND((percentile_cont(0.5) WITHIN GROUP (ORDER BY net_pnl_usd) FILTER (WHERE score_ntile = 5))::NUMERIC, 6) AS a_median,
+    ROUND((percentile_cont(0.5) WITHIN GROUP (ORDER BY net_pnl_usd) FILTER (WHERE score_ntile = 1))::NUMERIC, 6) AS b_median,
+    ROUND((percentile_cont(0.1) WITHIN GROUP (ORDER BY net_pnl_usd) FILTER (WHERE score_ntile = 5))::NUMERIC, 6) AS a_p10,
+    ROUND((percentile_cont(0.1) WITHIN GROUP (ORDER BY net_pnl_usd) FILTER (WHERE score_ntile = 1))::NUMERIC, 6) AS b_p10,
+    ROUND((AVG(CASE WHEN label = 'win' THEN 1.0 ELSE 0.0 END) FILTER (WHERE score_ntile = 5))::NUMERIC, 6) AS a_win_rate,
+    ROUND((AVG(CASE WHEN label = 'win' THEN 1.0 ELSE 0.0 END) FILTER (WHERE score_ntile = 1))::NUMERIC, 6) AS b_win_rate
+  FROM ranked
+  GROUP BY horizon
+),
+combined AS (
+  SELECT * FROM pair_70_60
+  UNION ALL
+  SELECT * FROM pair_top_bottom
+)
+SELECT
+  horizon,
+  comparison,
+  cohort_a,
+  cohort_b,
+  COALESCE(a_count, 0) AS cohort_a_count,
+  COALESCE(b_count, 0) AS cohort_b_count,
+  COALESCE(a_realized_count, 0) AS cohort_a_realized_count,
+  COALESCE(b_realized_count, 0) AS cohort_b_realized_count,
+  COALESCE(a_avg, 0) AS cohort_a_avg_net_pnl_usd,
+  COALESCE(a_median, 0) AS cohort_a_median_net_pnl_usd,
+  COALESCE(a_p10, 0) AS cohort_a_p10_net_pnl_usd,
+  COALESCE(a_win_rate, 0) AS cohort_a_win_rate,
+  COALESCE(b_avg, 0) AS cohort_b_avg_net_pnl_usd,
+  COALESCE(b_median, 0) AS cohort_b_median_net_pnl_usd,
+  COALESCE(b_p10, 0) AS cohort_b_p10_net_pnl_usd,
+  COALESCE(b_win_rate, 0) AS cohort_b_win_rate,
+  CASE
+    WHEN COALESCE(a_realized_count, 0) = 0 THEN 'insufficient'
+    WHEN COALESCE(b_realized_count, 0) = 0 THEN 'insufficient'
+    WHEN COALESCE(a_avg, 0) > COALESCE(b_avg, 0)
+      AND COALESCE(a_median, 0) >= COALESCE(b_median, 0)
+      AND COALESCE(a_p10, 0) >= COALESCE(b_p10, 0)
+      AND COALESCE(a_win_rate, 0) >= COALESCE(b_win_rate, 0) THEN 'better'
+    WHEN COALESCE(a_avg, 0) < COALESCE(b_avg, 0)
+      AND COALESCE(a_median, 0) <= COALESCE(b_median, 0)
+      AND COALESCE(a_p10, 0) <= COALESCE(b_p10, 0)
+      AND COALESCE(a_win_rate, 0) <= COALESCE(b_win_rate, 0) THEN 'worse'
+    ELSE 'flat'
+  END AS score_rank_signal,
+  CASE
+    WHEN COALESCE(a_realized_count, 0) = 0 THEN cohort_a || '_realized_count=0'
+    WHEN COALESCE(b_realized_count, 0) = 0 THEN cohort_b || '_realized_count=0'
+    ELSE ''
+  END AS insufficient_reason
+FROM combined
+ORDER BY horizon, comparison;
+
+-- outlier_concentration.csv
+WITH realized AS (
+  SELECT
+    horizon,
+    CAST(simulated_net_pnl_usd AS NUMERIC) AS net_pnl_usd,
+    ROW_NUMBER() OVER (PARTITION BY horizon ORDER BY CAST(simulated_net_pnl_usd AS NUMERIC) DESC, decision_trace_id) AS rn_desc,
+    ROW_NUMBER() OVER (PARTITION BY horizon ORDER BY CAST(simulated_net_pnl_usd AS NUMERIC) ASC, decision_trace_id) AS rn_asc,
+    COUNT(*) OVER (PARTITION BY horizon) AS total_count
+  FROM shadow_outcome_labels
+  WHERE label IN ('win', 'loss')
+),
+agg AS (
+  SELECT
+    horizon,
+    MAX(total_count) AS realized_count,
+    ROUND(AVG(net_pnl_usd)::NUMERIC, 6) AS avg_net_pnl_usd,
+    ROUND(SUM(net_pnl_usd)::NUMERIC, 6) AS total_net_pnl_usd,
+    ROUND(
+      COALESCE(SUM(net_pnl_usd) FILTER (WHERE rn_desc <= GREATEST(1, CEIL(total_count * 0.01))), 0)::NUMERIC,
+      6
+    ) AS top_1pct_net_pnl_usd,
+    ROUND(
+      COALESCE(
+        SUM(net_pnl_usd) FILTER (WHERE rn_desc <= GREATEST(1, CEIL(total_count * 0.01))) /
+        NULLIF(SUM(net_pnl_usd), 0),
+        0
+      )::NUMERIC,
+      6
+    ) AS top_1pct_pnl_share,
+    ROUND(
+      AVG(net_pnl_usd) FILTER (
+        WHERE rn_asc > GREATEST(1, CEIL(total_count * 0.05))
+          AND rn_desc > GREATEST(1, CEIL(total_count * 0.05))
+      )::NUMERIC,
+      6
+    ) AS trimmed_mean_5pct
+  FROM realized
+  GROUP BY horizon
+)
+SELECT
+  horizon,
+  COALESCE(realized_count, 0) AS realized_count,
+  COALESCE(avg_net_pnl_usd, 0) AS avg_net_pnl_usd,
+  COALESCE(trimmed_mean_5pct, 0) AS trimmed_mean_5pct,
+  COALESCE(top_1pct_net_pnl_usd, 0) AS top_1pct_net_pnl_usd,
+  COALESCE(top_1pct_pnl_share, 0) AS top_1pct_pnl_share,
+  CASE
+    WHEN COALESCE(realized_count, 0) = 0 THEN 'insufficient'
+    WHEN COALESCE(top_1pct_pnl_share, 0) >= 0.50 THEN 'WARN'
+    WHEN ABS(COALESCE(avg_net_pnl_usd, 0) - COALESCE(trimmed_mean_5pct, 0)) > ABS(COALESCE(avg_net_pnl_usd, 0)) * 0.5 THEN 'WARN'
+    ELSE 'OK'
+  END AS outlier_warning
+FROM agg
+ORDER BY horizon;
+
+-- stale_mark_summary.csv
+SELECT
+  COALESCE(MIN(mark_time), 0) AS min_mark_time,
+  COALESCE(MAX(mark_time), 0) AS max_mark_time,
+  COALESCE(COUNT(*), 0) AS mark_count,
+  COALESCE(COUNT(DISTINCT pool_id), 0) AS distinct_pool_count,
+  COALESCE(COUNT(DISTINCT position_id), 0) AS distinct_position_count
+FROM shadow_position_marks;
+
+-- stale_mark_pools.csv
+SELECT
+  pool_id,
+  COUNT(*) AS mark_count,
+  COALESCE(MIN(mark_time), 0) AS min_mark_time,
+  COALESCE(MAX(mark_time), 0) AS max_mark_time
+FROM shadow_position_marks
+GROUP BY pool_id
+ORDER BY mark_count ASC, max_mark_time ASC, pool_id ASC
+LIMIT 30;
 EOF
 }
 
@@ -353,6 +571,11 @@ write_summary() {
 - [bucket_stats.csv](${SNAPSHOT_DIR}/bucket_stats.csv)
 - [high_low_score_diagnostics.csv](${SNAPSHOT_DIR}/high_low_score_diagnostics.csv)
 - [invalid_reason_counts.csv](${SNAPSHOT_DIR}/invalid_reason_counts.csv)
+- [score_distribution.csv](${SNAPSHOT_DIR}/score_distribution.csv)
+- [score_edge_diagnostics.csv](${SNAPSHOT_DIR}/score_edge_diagnostics.csv)
+- [outlier_concentration.csv](${SNAPSHOT_DIR}/outlier_concentration.csv)
+- [stale_mark_summary.csv](${SNAPSHOT_DIR}/stale_mark_summary.csv)
+- [stale_mark_pools.csv](${SNAPSHOT_DIR}/stale_mark_pools.csv)
 - [RAW_SQL_QUERIES.sql](${SNAPSHOT_DIR}/RAW_SQL_QUERIES.sql)
 EOF
 }
@@ -406,6 +629,11 @@ run_query_to_csv "${SNAPSHOT_DIR}/RAW_SQL_QUERIES.sql" "-- outcome_counts.csv" "
 run_query_to_csv "${SNAPSHOT_DIR}/RAW_SQL_QUERIES.sql" "-- bucket_stats.csv" "${SNAPSHOT_DIR}/bucket_stats.csv"
 run_query_to_csv "${SNAPSHOT_DIR}/RAW_SQL_QUERIES.sql" "-- high_low_score_diagnostics.csv" "${SNAPSHOT_DIR}/high_low_score_diagnostics.csv"
 run_query_to_csv "${SNAPSHOT_DIR}/RAW_SQL_QUERIES.sql" "-- invalid_reason_counts.csv" "${SNAPSHOT_DIR}/invalid_reason_counts.csv"
+run_query_to_csv "${SNAPSHOT_DIR}/RAW_SQL_QUERIES.sql" "-- score_distribution.csv" "${SNAPSHOT_DIR}/score_distribution.csv"
+run_query_to_csv "${SNAPSHOT_DIR}/RAW_SQL_QUERIES.sql" "-- score_edge_diagnostics.csv" "${SNAPSHOT_DIR}/score_edge_diagnostics.csv"
+run_query_to_csv "${SNAPSHOT_DIR}/RAW_SQL_QUERIES.sql" "-- outlier_concentration.csv" "${SNAPSHOT_DIR}/outlier_concentration.csv"
+run_query_to_csv "${SNAPSHOT_DIR}/RAW_SQL_QUERIES.sql" "-- stale_mark_summary.csv" "${SNAPSHOT_DIR}/stale_mark_summary.csv"
+run_query_to_csv "${SNAPSHOT_DIR}/RAW_SQL_QUERIES.sql" "-- stale_mark_pools.csv" "${SNAPSHOT_DIR}/stale_mark_pools.csv"
 generate_trend_summary
 write_summary "$readiness_status" "$backfill_status" "$report_status"
 
