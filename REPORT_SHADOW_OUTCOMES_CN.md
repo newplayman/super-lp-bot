@@ -3,6 +3,12 @@
 当前文件作为占位模板存在。实际报告请运行：
 
 ```bash
+set -a
+. ./.env.postgres
+. ./.env.redis
+. ./.env.dashboard
+. ./.env.chain
+set +a
 go run -tags shadow ./cmd/lpbot --config=configs/config.shadow.toml --shadow-outcomes-backfill --report-shadow-outcomes
 ```
 

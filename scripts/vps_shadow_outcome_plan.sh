@@ -41,6 +41,12 @@ psql "\$POSTGRES_DSN" -c "SELECT to_regclass('public.idx_positions_one_active_pe
 ## 4. 研究 readiness 与只读 shadow 回填
 
 ./scripts/shadow_research_readiness_check.sh
+set -a
+. ./.env.postgres
+. ./.env.redis
+. ./.env.dashboard
+. ./.env.chain
+set +a
 go run -tags shadow ./cmd/lpbot --config=${CONFIG_PATH} --shadow-outcomes-backfill --report-shadow-outcomes
 
 ## 5. 观察重点
