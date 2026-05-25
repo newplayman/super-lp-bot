@@ -22,6 +22,7 @@ const (
 	shadowReadinessReportDefaultPath = "READINESS_REPORT_CN.md"
 	shadowOutcomeMintGasUnits        = uint64(300000)
 	shadowOutcomeExitGasUnits        = uint64(260000)
+	shadowOutcomeDefaultP10LossUSD   = "-1.000000"
 )
 
 type shadowOutcomeHorizon struct {
@@ -94,17 +95,25 @@ type shadowOutcomeReportRow struct {
 }
 
 type shadowOutcomeReportStats struct {
-	Count        int
-	Wins         int
-	Losses       int
-	Invalid      int
-	Skips        int
-	WinRate      float64
-	AvgNetPnL    domain.Decimal
-	MedianNetPnL domain.Decimal
-	P10NetPnL    domain.Decimal
-	P90NetPnL    domain.Decimal
-	MaxDrawdown  domain.Decimal
+	Count                   int
+	SelectedSampleCount     int
+	RealizedSampleCount     int
+	Wins                    int
+	Losses                  int
+	Invalid                 int
+	Skips                   int
+	InvalidRate             float64
+	WinRate                 float64
+	GasAdjustedPositiveRate float64
+	AvgNetPnL               domain.Decimal
+	MedianNetPnL            domain.Decimal
+	P10NetPnL               domain.Decimal
+	P90NetPnL               domain.Decimal
+	MaxDrawdown             domain.Decimal
+	P10ThresholdUSD         domain.Decimal
+	HighScoreAvgNetPnL      domain.Decimal
+	LowScoreAvgNetPnL       domain.Decimal
+	HighScoreVsLow          string
 }
 
 func (app *App) ensureShadowOutcomeLabelsTable(ctx context.Context) error {
@@ -543,6 +552,7 @@ func (app *App) loadShadowOutcomeReportRows(ctx context.Context, tables *runtime
 
 func renderShadowOutcomeReport(rows []shadowOutcomeReportRow, generatedAt time.Time) string {
 	var b strings.Builder
+	p10Threshold := shadowOutcomeP10ThresholdUSD()
 	b.WriteString("# Shadow Outcome 回填报告\n\n")
 	b.WriteString(fmt.Sprintf("- 生成时间: %s\n", generatedAt.Format(time.RFC3339)))
 	b.WriteString("- 口径: `simulated_net_pnl_usd` 当前是 shadow mark 净值减去估算 gas；`lvr` 仍未纳入。\n")
@@ -557,12 +567,22 @@ func renderShadowOutcomeReport(rows []shadowOutcomeReportRow, generatedAt time.T
 		stats := computeShadowOutcomeStats(subset)
 		b.WriteString(fmt.Sprintf("## %s\n\n", horizon.Name))
 		b.WriteString(fmt.Sprintf("- 样本数: %d\n", stats.Count))
+		b.WriteString(fmt.Sprintf("- selected_sample_count: %d\n", stats.SelectedSampleCount))
+		b.WriteString(fmt.Sprintf("- realized_sample_count: %d\n", stats.RealizedSampleCount))
 		b.WriteString(fmt.Sprintf("- 标签分布: win=%d loss=%d skip=%d invalid=%d\n", stats.Wins, stats.Losses, stats.Skips, stats.Invalid))
+		b.WriteString(fmt.Sprintf("- invalid_rate: %.2f%%\n", stats.InvalidRate*100))
 		b.WriteString(fmt.Sprintf("- 胜率: %.2f%%\n", stats.WinRate*100))
+		b.WriteString(fmt.Sprintf("- gas_adjusted_positive_rate: %.2f%%\n", stats.GasAdjustedPositiveRate*100))
 		b.WriteString(fmt.Sprintf("- 平均净收益: %s USD\n", stats.AvgNetPnL.StringFixed(6)))
 		b.WriteString(fmt.Sprintf("- 中位数净收益: %s USD\n", stats.MedianNetPnL.StringFixed(6)))
 		b.WriteString(fmt.Sprintf("- P10 / P90: %s / %s USD\n", stats.P10NetPnL.StringFixed(6), stats.P90NetPnL.StringFixed(6)))
+		b.WriteString(fmt.Sprintf("- p10 阈值: %s USD\n", p10Threshold.StringFixed(6)))
 		b.WriteString(fmt.Sprintf("- 最大回撤样本值: %s USD\n", stats.MaxDrawdown.StringFixed(6)))
+		b.WriteString(fmt.Sprintf("- high_score_vs_low_score: %s (high=%s, low=%s)\n",
+			stats.HighScoreVsLow,
+			stats.HighScoreAvgNetPnL.StringFixed(6),
+			stats.LowScoreAvgNetPnL.StringFixed(6),
+		))
 		b.WriteString(fmt.Sprintf("- 结论: %s\n\n", classifyShadowOutcomeVerdict(stats)))
 
 		appendShadowOutcomeBucketTable(&b, "按 Score Bucket", subset, scoreBucketLabel)
@@ -616,12 +636,22 @@ func filterShadowOutcomeRows(rows []shadowOutcomeReportRow, keep func(shadowOutc
 }
 
 func computeShadowOutcomeStats(rows []shadowOutcomeReportRow) shadowOutcomeReportStats {
-	stats := shadowOutcomeReportStats{Count: len(rows), MaxDrawdown: domain.ZeroDecimal()}
+	stats := shadowOutcomeReportStats{
+		Count:           len(rows),
+		MaxDrawdown:     domain.ZeroDecimal(),
+		P10ThresholdUSD: shadowOutcomeP10ThresholdUSD(),
+		HighScoreVsLow:  "insufficient",
+	}
 	if len(rows) == 0 {
 		return stats
 	}
 	realized := make([]domain.Decimal, 0, len(rows))
+	highScore := make([]domain.Decimal, 0)
+	lowScore := make([]domain.Decimal, 0)
 	for _, row := range rows {
+		if row.Selected && row.Label != "skip" {
+			stats.SelectedSampleCount++
+		}
 		switch row.Label {
 		case "win":
 			stats.Wins++
@@ -638,19 +668,37 @@ func computeShadowOutcomeStats(rows []shadowOutcomeReportRow) shadowOutcomeRepor
 			if row.MaxDrawdownUSD.LessThan(stats.MaxDrawdown) {
 				stats.MaxDrawdown = row.MaxDrawdownUSD
 			}
+			if row.ScoreTotal >= 80 {
+				highScore = append(highScore, row.SimulatedNetPnL)
+			}
+			if row.ScoreTotal < 70 {
+				lowScore = append(lowScore, row.SimulatedNetPnL)
+			}
 		}
 	}
+	actionable := stats.Wins + stats.Losses + stats.Invalid
+	if actionable > 0 {
+		stats.InvalidRate = float64(stats.Invalid) / float64(actionable)
+	}
 	if stats.Wins+stats.Losses > 0 {
+		stats.RealizedSampleCount = stats.Wins + stats.Losses
 		stats.WinRate = float64(stats.Wins) / float64(stats.Wins+stats.Losses)
+		stats.GasAdjustedPositiveRate = stats.WinRate
 		stats.AvgNetPnL = stats.AvgNetPnL.Div(domain.NewDecimalFromInt(int64(stats.Wins + stats.Losses)))
 	}
 	if len(realized) == 0 {
+		stats.HighScoreAvgNetPnL = averageDecimal(highScore)
+		stats.LowScoreAvgNetPnL = averageDecimal(lowScore)
+		stats.HighScoreVsLow = compareShadowOutcomeBuckets(stats.HighScoreAvgNetPnL, len(highScore), stats.LowScoreAvgNetPnL, len(lowScore))
 		return stats
 	}
 	sort.Slice(realized, func(i, j int) bool { return realized[i].LessThan(realized[j]) })
 	stats.MedianNetPnL = quantileDecimal(realized, 0.5)
 	stats.P10NetPnL = quantileDecimal(realized, 0.1)
 	stats.P90NetPnL = quantileDecimal(realized, 0.9)
+	stats.HighScoreAvgNetPnL = averageDecimal(highScore)
+	stats.LowScoreAvgNetPnL = averageDecimal(lowScore)
+	stats.HighScoreVsLow = compareShadowOutcomeBuckets(stats.HighScoreAvgNetPnL, len(highScore), stats.LowScoreAvgNetPnL, len(lowScore))
 	return stats
 }
 
@@ -675,14 +723,66 @@ func quantileDecimal(values []domain.Decimal, q float64) domain.Decimal {
 }
 
 func classifyShadowOutcomeVerdict(stats shadowOutcomeReportStats) string {
-	realizedCount := stats.Wins + stats.Losses
+	realizedCount := stats.RealizedSampleCount
+	if realizedCount == 0 {
+		return "FAIL"
+	}
+	if realizedCount < 20 {
+		if stats.AvgNetPnL.IsPositive() || stats.MedianNetPnL.IsPositive() {
+			return "WARN"
+		}
+		return "FAIL"
+	}
 	switch {
-	case realizedCount >= 20 && stats.AvgNetPnL.IsPositive() && stats.MedianNetPnL.IsPositive():
+	case stats.InvalidRate > 0.30:
+		return "FAIL"
+	case stats.AvgNetPnL.LessThanOrEqual(domain.ZeroDecimal()):
+		return "FAIL"
+	case stats.MedianNetPnL.LessThanOrEqual(domain.ZeroDecimal()):
+		return "FAIL"
+	case stats.P10NetPnL.LessThan(stats.P10ThresholdUSD):
+		return "FAIL"
+	case stats.HighScoreVsLow == "worse":
+		return "FAIL"
+	case stats.HighScoreVsLow == "better":
 		return "PASS"
-	case realizedCount >= 5 && (stats.AvgNetPnL.IsPositive() || stats.MedianNetPnL.IsPositive()):
+	case stats.HighScoreVsLow == "flat" || stats.HighScoreVsLow == "insufficient":
 		return "WARN"
 	default:
 		return "FAIL"
+	}
+}
+
+func shadowOutcomeP10ThresholdUSD() domain.Decimal {
+	value := strings.TrimSpace(os.Getenv("LPBOT_SHADOW_MAX_P10_LOSS_USD"))
+	if value == "" {
+		value = shadowOutcomeDefaultP10LossUSD
+	}
+	return decimalFromStringSafe(value)
+}
+
+func averageDecimal(values []domain.Decimal) domain.Decimal {
+	if len(values) == 0 {
+		return domain.ZeroDecimal()
+	}
+	total := domain.ZeroDecimal()
+	for _, value := range values {
+		total = total.Add(value)
+	}
+	return total.Div(domain.NewDecimalFromInt(int64(len(values))))
+}
+
+func compareShadowOutcomeBuckets(high domain.Decimal, highCount int, low domain.Decimal, lowCount int) string {
+	if highCount == 0 || lowCount == 0 {
+		return "insufficient"
+	}
+	switch {
+	case high.GreaterThan(low):
+		return "better"
+	case high.LessThan(low):
+		return "worse"
+	default:
+		return "flat"
 	}
 }
 

@@ -140,7 +140,9 @@ for name in "${REQUIRED_VARS[@]}"; do
     OVERALL="FAIL"
   fi
 done
-if [[ "$SNAPSHOT_STATUS" != "OK" ]]; then
+# Readiness precedence is strict: once FAIL is reached, later soft issues cannot
+# downgrade it to WARN.
+if [[ "$SNAPSHOT_STATUS" != "OK" && "$OVERALL" != "FAIL" ]]; then
   OVERALL="WARN"
 fi
 

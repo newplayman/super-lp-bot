@@ -227,4 +227,30 @@ func TestRenderShadowOutcomeReport(t *testing.T) {
 	require.True(t, strings.Contains(report, "## 1h"))
 	require.True(t, strings.Contains(report, "按 Score Bucket"))
 	require.True(t, strings.Contains(report, "30 bps"))
+	require.True(t, strings.Contains(report, "invalid_rate"))
+	require.True(t, strings.Contains(report, "high_score_vs_low_score"))
+}
+
+func TestClassifyShadowOutcomeVerdict_SampleInsufficientIsWarn(t *testing.T) {
+	stats := shadowOutcomeReportStats{
+		RealizedSampleCount: 5,
+		AvgNetPnL:           decimalFromStringSafe("0.25"),
+		MedianNetPnL:        decimalFromStringSafe("0.20"),
+		P10ThresholdUSD:     decimalFromStringSafe("-1.0"),
+		HighScoreVsLow:      "better",
+	}
+	require.Equal(t, "WARN", classifyShadowOutcomeVerdict(stats))
+}
+
+func TestClassifyShadowOutcomeVerdict_RejectsHighInvalidRate(t *testing.T) {
+	stats := shadowOutcomeReportStats{
+		RealizedSampleCount: 25,
+		InvalidRate:         0.35,
+		AvgNetPnL:           decimalFromStringSafe("0.25"),
+		MedianNetPnL:        decimalFromStringSafe("0.10"),
+		P10NetPnL:           decimalFromStringSafe("-0.50"),
+		P10ThresholdUSD:     decimalFromStringSafe("-1.0"),
+		HighScoreVsLow:      "better",
+	}
+	require.Equal(t, "FAIL", classifyShadowOutcomeVerdict(stats))
 }
