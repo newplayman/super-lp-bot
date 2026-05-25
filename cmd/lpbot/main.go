@@ -751,6 +751,9 @@ func (app *App) initAdapters(ctx context.Context) error {
 	if err := app.ensureShadowExitActionsTable(ctx); err != nil {
 		return fmt.Errorf("failed to initialize exit action schema: %w", err)
 	}
+	if err := app.ensureShadowOutcomeLabelsTable(ctx); err != nil {
+		return fmt.Errorf("failed to initialize shadow outcome schema: %w", err)
+	}
 
 	// Initialize datasource
 	app.datasource = geckoterminal.NewAdapter()
@@ -1085,6 +1088,13 @@ func (app *App) startWorkers(ctx context.Context) {
 		go func() {
 			defer app.wg.Done()
 			app.runLivePositionMarkLoop(ctx)
+		}()
+	}
+	if app.shouldRunShadowOutcomeLoop() {
+		app.wg.Add(1)
+		go func() {
+			defer app.wg.Done()
+			app.runShadowOutcomeLoop(ctx)
 		}()
 	}
 
@@ -2847,6 +2857,9 @@ func main() {
 	canaryExit := flag.Bool("canary-exit", false, "Run a single guarded Base canary Uniswap V3 exit")
 	canaryTokenID := flag.String("token-id", "", "Uniswap V3 NFT token ID for canary exit preflight")
 	canaryTxHash := flag.String("tx-hash", "", "Transaction hash for canary receipt reconciliation")
+	shadowOutcomesBackfill := flag.Bool("shadow-outcomes-backfill", false, "Backfill matured 1h/6h/24h shadow outcome labels without starting long-running workers")
+	shadowOutcomesReport := flag.Bool("report-shadow-outcomes", false, "Generate REPORT_SHADOW_OUTCOMES_CN.md from shadow outcome labels")
+	shadowOutcomesReportPath := flag.String("report-shadow-outcomes-path", shadowOutcomeReportDefaultPath, "Path to write the shadow outcomes markdown report")
 	flag.Parse()
 
 	if *configPath == "" {
@@ -3100,6 +3113,28 @@ func main() {
 		if err := runCanaryExit(ctx, cfg, *canaryTokenID); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
+		}
+		return
+	}
+	if *shadowOutcomesBackfill || *shadowOutcomesReport {
+		app := &App{logger: logger, config: cfg, liveGate: newLiveSafetyGate(BuildMode, cfg)}
+		app.alerter = initAlerter(logger, cfg)
+		defer app.cleanup()
+		if err := app.initAdapters(ctx); err != nil {
+			fmt.Fprintf(os.Stderr, "Error initializing adapters: %v\n", err)
+			os.Exit(1)
+		}
+		if *shadowOutcomesBackfill {
+			if err := app.backfillShadowOutcomes(ctx, time.Now().UTC()); err != nil {
+				fmt.Fprintf(os.Stderr, "Error backfilling shadow outcomes: %v\n", err)
+				os.Exit(1)
+			}
+		}
+		if *shadowOutcomesReport {
+			if err := app.generateShadowOutcomeReport(ctx, *shadowOutcomesReportPath); err != nil {
+				fmt.Fprintf(os.Stderr, "Error generating shadow outcome report: %v\n", err)
+				os.Exit(1)
+			}
 		}
 		return
 	}

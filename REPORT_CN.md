@@ -121,3 +121,24 @@
 2. 把 `IL v1` 升级为 close 后更严格的 realized IL 归因
 3. 实现 `lvr_usd` 和更细的 fee/principal 拆分
 4. 用 `shadow_decision_trace + position_marks + pnl_ledger + portfolio_snapshots` 回填 1h/6h/24h 策略样本
+
+## Shadow Outcome 新增说明
+
+- 新增 `shadow_outcome_labels`
+  - 用于按 `1h / 6h / 24h` 回填 shadow 决策结果
+  - 字段包含：
+    - `entry_value_usd`
+    - `simulated_position_value_usd`
+    - `simulated_fee_usd`
+    - `simulated_gas_usd`
+    - `simulated_il_usd`
+    - `simulated_net_pnl_usd`
+    - `max_drawdown_usd`
+    - `label`
+- 当前 `simulated_gas_usd`
+  - 优先走 Base 当前 gas price 与池内 WETH/USD 估值做近似
+  - 若缺少可用 RPC / pool 上下文，会退化为 `0`
+- 当前 `label`
+  - `win` / `loss` 基于 gas 后 `simulated_net_pnl_usd`
+  - `skip` 用于未选中或未 intent open 的样本
+  - `invalid` 用于缺少足够 mark 数据的样本

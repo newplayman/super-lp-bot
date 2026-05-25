@@ -18,6 +18,7 @@ type runtimeSQLTables struct {
 	pnlLedgerTable         string
 	positionMarksTable     string
 	portfolioSnapshotTable string
+	shadowOutcomeTable     string
 }
 
 type pnlLedgerRecord struct {
@@ -78,6 +79,7 @@ func newRuntimeSQLTables(store ports.Store) (*runtimeSQLTables, error) {
 		pnlLedgerTable:         "pnl_ledger",
 		positionMarksTable:     "position_marks",
 		portfolioSnapshotTable: "portfolio_snapshots",
+		shadowOutcomeTable:     "shadow_outcome_labels",
 	}
 	if prefixed, ok := any(store).(interface{ Prefix() string }); ok {
 		prefix := strings.TrimSpace(prefixed.Prefix())
