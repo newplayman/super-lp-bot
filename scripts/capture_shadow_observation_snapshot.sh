@@ -125,6 +125,105 @@ SELECT
 FROM bucketed
 GROUP BY bucket_family, horizon, bucket_name
 ORDER BY bucket_family, horizon, bucket_name;
+
+-- high_low_score_diagnostics.csv
+WITH scored AS (
+  SELECT
+    horizon,
+    score_total,
+    label,
+    CAST(simulated_net_pnl_usd AS NUMERIC) AS net_pnl_usd
+  FROM shadow_outcome_labels
+),
+agg AS (
+  SELECT
+    horizon,
+    COUNT(*) FILTER (WHERE score_total >= 80) AS high_score_count,
+    COUNT(*) FILTER (WHERE score_total < 70) AS low_score_count,
+    COUNT(*) FILTER (WHERE score_total >= 80 AND label IN ('win', 'loss')) AS high_score_realized_count,
+    COUNT(*) FILTER (WHERE score_total < 70 AND label IN ('win', 'loss')) AS low_score_realized_count,
+    ROUND((AVG(net_pnl_usd) FILTER (WHERE score_total >= 80 AND label IN ('win', 'loss')))::NUMERIC, 6) AS high_score_avg_net_pnl_usd,
+    ROUND((AVG(net_pnl_usd) FILTER (WHERE score_total < 70 AND label IN ('win', 'loss')))::NUMERIC, 6) AS low_score_avg_net_pnl_usd,
+    ROUND((
+      percentile_cont(0.5) WITHIN GROUP (ORDER BY net_pnl_usd)
+      FILTER (WHERE score_total >= 80 AND label IN ('win', 'loss'))
+    )::NUMERIC, 6) AS high_score_median_net_pnl_usd,
+    ROUND((
+      percentile_cont(0.5) WITHIN GROUP (ORDER BY net_pnl_usd)
+      FILTER (WHERE score_total < 70 AND label IN ('win', 'loss'))
+    )::NUMERIC, 6) AS low_score_median_net_pnl_usd
+  FROM scored
+  GROUP BY horizon
+)
+SELECT
+  horizon,
+  COALESCE(high_score_count, 0) AS high_score_count,
+  COALESCE(low_score_count, 0) AS low_score_count,
+  COALESCE(high_score_realized_count, 0) AS high_score_realized_count,
+  COALESCE(low_score_realized_count, 0) AS low_score_realized_count,
+  COALESCE(high_score_avg_net_pnl_usd, 0) AS high_score_avg_net_pnl_usd,
+  COALESCE(high_score_median_net_pnl_usd, 0) AS high_score_median_net_pnl_usd,
+  COALESCE(low_score_avg_net_pnl_usd, 0) AS low_score_avg_net_pnl_usd,
+  COALESCE(low_score_median_net_pnl_usd, 0) AS low_score_median_net_pnl_usd,
+  CASE
+    WHEN COALESCE(high_score_count, 0) = 0 THEN 'high_score_count=0'
+    WHEN COALESCE(high_score_realized_count, 0) = 0 THEN 'high_score_realized_count=0'
+    WHEN COALESCE(low_score_count, 0) = 0 THEN 'low_score_count=0'
+    WHEN COALESCE(low_score_realized_count, 0) = 0 THEN 'low_score_realized_count=0'
+    ELSE ''
+  END AS insufficient_reason
+FROM agg
+ORDER BY horizon;
+
+-- invalid_reason_counts.csv
+WITH horizons AS (
+  SELECT '1h'::TEXT AS horizon, 3600::BIGINT AS horizon_seconds
+  UNION ALL SELECT '6h'::TEXT, 21600::BIGINT
+  UNION ALL SELECT '24h'::TEXT, 86400::BIGINT
+),
+eligible AS (
+  SELECT
+    h.horizon,
+    h.horizon_seconds,
+    d.trace_id,
+    d.pool_id,
+    d.chain,
+    d.tick_time,
+    COALESCE(NULLIF(BTRIM(d.position_id), ''), '') AS position_id
+  FROM shadow_decision_trace d
+  CROSS JOIN horizons h
+  WHERE d.selected = TRUE
+    AND d.intent_open = TRUE
+    AND d.final_action IN ('open_shadow_position', 'reuse_shadow_position')
+),
+latest_marks AS (
+  SELECT position_id, MAX(mark_time) AS latest_mark_time
+  FROM shadow_position_marks
+  GROUP BY position_id
+),
+classified AS (
+  SELECT
+    e.horizon,
+    CASE
+      WHEN e.tick_time > EXTRACT(EPOCH FROM NOW())::BIGINT - e.horizon_seconds THEN 'horizon not mature'
+      WHEN e.position_id = '' THEN 'other'
+      WHEN p.pool_id IS NULL THEN 'missing pool metadata'
+      WHEN e.chain = 'base' AND e.pool_id !~* '^0x[0-9a-f]{40}$' THEN 'missing gas estimate'
+      WHEN lm.latest_mark_time IS NULL THEN 'missing mark'
+      WHEN lm.latest_mark_time < e.tick_time + e.horizon_seconds THEN 'stale mark'
+      ELSE 'other'
+    END AS invalid_reason
+  FROM eligible e
+  LEFT JOIN pools p ON p.pool_id = e.pool_id
+  LEFT JOIN latest_marks lm ON lm.position_id = e.position_id
+)
+SELECT
+  horizon,
+  invalid_reason,
+  COUNT(*) AS samples
+FROM classified
+GROUP BY horizon, invalid_reason
+ORDER BY horizon, invalid_reason;
 EOF
 }
 
@@ -137,6 +236,89 @@ run_query_to_csv() {
     /^-- / && capture {exit}
     capture {print}
   ' "$sql_file" | psql "$POSTGRES_DSN" -X -A -F, -P pager=off -f - >"$output_csv"
+}
+
+generate_trend_summary() {
+  local trend_tsv="${SNAPSHOT_DIR}/trend_metrics.tsv"
+  local generated_at
+  generated_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  : >"$trend_tsv"
+
+  shopt -s nullglob
+  local report
+  for report in "$REPORT_BASE_DIR"/*/REPORT_SHADOW_OUTCOMES_CN.md; do
+    local snapshot
+    snapshot="$(basename "$(dirname "$report")")"
+    awk -v snap="$snapshot" '
+      function trim(val) {
+        gsub(/^[ \t]+|[ \t]+$/, "", val)
+        return val
+      }
+      function emit() {
+        if (h != "") {
+          print snap "\t" h "\t" samples "\t" selected "\t" realized "\t" invalid_rate "\t" median "\t" p10 "\t" gas_rate "\t" high_low
+        }
+      }
+      /^## / {
+        if (h != "") emit()
+        h = $2
+        samples = selected = realized = invalid_rate = median = p10 = gas_rate = high_low = ""
+        next
+      }
+      /^- 样本数: / { sub(/^- 样本数: /, "", $0); samples = trim($0); next }
+      /^- selected_sample_count: / { sub(/^- selected_sample_count: /, "", $0); selected = trim($0); next }
+      /^- realized_sample_count: / { sub(/^- realized_sample_count: /, "", $0); realized = trim($0); next }
+      /^- invalid_rate: / { sub(/^- invalid_rate: /, "", $0); sub(/%$/, "", $0); invalid_rate = trim($0); next }
+      /^- 中位数净收益: / { sub(/^- 中位数净收益: /, "", $0); sub(/ USD$/, "", $0); median = trim($0); next }
+      /^- P10 \/ P90: / {
+        sub(/^- P10 \/ P90: /, "", $0)
+        split($0, parts, " / ")
+        p10 = trim(parts[1])
+        next
+      }
+      /^- gas_adjusted_positive_rate: / { sub(/^- gas_adjusted_positive_rate: /, "", $0); sub(/%$/, "", $0); gas_rate = trim($0); next }
+      /^- high_score_vs_low_score: / {
+        sub(/^- high_score_vs_low_score: /, "", $0)
+        split($0, parts, " ")
+        high_low = trim(parts[1])
+        next
+      }
+      END {
+        if (h != "") emit()
+      }
+    ' "$report" >>"$trend_tsv"
+  done
+  shopt -u nullglob
+
+  awk -F '\t' -v generated_at="$generated_at" '
+    BEGIN {
+      print "# Trend Summary"
+      print ""
+      print "- 生成时间: " generated_at
+      print "- 来源目录: reports/shadow_outcomes/*"
+      print ""
+    }
+    {
+      rows[$2] = rows[$2] sprintf("| %s | %s | %s | %s | %s%% | %s | %s | %s%% | %s |\n", $1, $3, $4, $5, $6, $7, $8, $9, $10)
+      seen[$2] = 1
+    }
+    END {
+      split("1h 6h 24h", order, " ")
+      for (i = 1; i <= 3; i++) {
+        h = order[i]
+        print "## " h
+        print ""
+        print "| Snapshot | Samples | Selected | Realized | Invalid Rate | Median | P10 | Gas+ Positive | High vs Low |"
+        print "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |"
+        if (seen[h]) {
+          printf "%s", rows[h]
+        } else {
+          print "| <none> | 0 | 0 | 0 | 0.00% | 0.000000 | 0.000000 | 0.00% | insufficient |"
+        }
+        print ""
+      }
+    }
+  ' "$trend_tsv" >"${SNAPSHOT_DIR}/TREND_SUMMARY_CN.md"
 }
 
 write_summary() {
@@ -159,8 +341,11 @@ write_summary() {
 
 - [SHADOW_RESEARCH_READINESS_CN.md](${SNAPSHOT_DIR}/SHADOW_RESEARCH_READINESS_CN.md)
 - [REPORT_SHADOW_OUTCOMES_CN.md](${SNAPSHOT_DIR}/REPORT_SHADOW_OUTCOMES_CN.md)
+- [TREND_SUMMARY_CN.md](${SNAPSHOT_DIR}/TREND_SUMMARY_CN.md)
 - [outcome_counts.csv](${SNAPSHOT_DIR}/outcome_counts.csv)
 - [bucket_stats.csv](${SNAPSHOT_DIR}/bucket_stats.csv)
+- [high_low_score_diagnostics.csv](${SNAPSHOT_DIR}/high_low_score_diagnostics.csv)
+- [invalid_reason_counts.csv](${SNAPSHOT_DIR}/invalid_reason_counts.csv)
 - [RAW_SQL_QUERIES.sql](${SNAPSHOT_DIR}/RAW_SQL_QUERIES.sql)
 EOF
 }
@@ -212,6 +397,9 @@ fi
 
 run_query_to_csv "${SNAPSHOT_DIR}/RAW_SQL_QUERIES.sql" "-- outcome_counts.csv" "${SNAPSHOT_DIR}/outcome_counts.csv"
 run_query_to_csv "${SNAPSHOT_DIR}/RAW_SQL_QUERIES.sql" "-- bucket_stats.csv" "${SNAPSHOT_DIR}/bucket_stats.csv"
+run_query_to_csv "${SNAPSHOT_DIR}/RAW_SQL_QUERIES.sql" "-- high_low_score_diagnostics.csv" "${SNAPSHOT_DIR}/high_low_score_diagnostics.csv"
+run_query_to_csv "${SNAPSHOT_DIR}/RAW_SQL_QUERIES.sql" "-- invalid_reason_counts.csv" "${SNAPSHOT_DIR}/invalid_reason_counts.csv"
+generate_trend_summary
 write_summary "$readiness_status" "$backfill_status" "$report_status"
 
 printf '[shadow-observation] dir=%s readiness=%s backfill=%s report=%s\n' \
