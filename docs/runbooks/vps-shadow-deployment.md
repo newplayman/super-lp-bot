@@ -199,6 +199,7 @@ sudo systemctl restart lpbot-shadow
 - `curl http://127.0.0.1:9090/metrics | head -20`
 - `redis-cli --scan --pattern 'lpbot:*:heartbeat:*'`
 - `ss -lnt | grep 5432`
+- 本地/GitHub/VPS 一致性：`make audit-consistency`
 
 ## 11. 全量审计脚本（v3）
 
@@ -216,6 +217,7 @@ cd /opt/lpbot/lp-bot-v3
 
 - `900`：审计采样窗口（秒，默认 15 分钟）
 - `60`：采样间隔（秒）
+- `scripts/overnight-vps-runbook.sh` 每轮会先运行本地一致性审计，再运行 VPS 内部审计。
 
 ## 12. 无人值守巡检（8-10 小时）
 

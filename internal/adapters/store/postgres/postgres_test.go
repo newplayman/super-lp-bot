@@ -343,11 +343,14 @@ func TestPostgresAdapter_DockerIntegration_RoundTrip(t *testing.T) {
 		token_id TEXT NOT NULL DEFAULT '',
 		pool_id TEXT NOT NULL,
 		chain INTEGER NOT NULL,
+		protocol TEXT,
 		status TEXT NOT NULL,
 		tier TEXT NOT NULL,
 		tick_lower BIGINT NOT NULL,
 		tick_upper BIGINT NOT NULL,
 		amount_usd TEXT NOT NULL,
+		open_tx_hash TEXT,
+		metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
 		opened_at BIGINT NOT NULL,
 		closed_at BIGINT NOT NULL DEFAULT 0
 	)`)

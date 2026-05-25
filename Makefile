@@ -7,7 +7,7 @@ BUILD_COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo local)
 BUILD_DATE ?= $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 GO_LDFLAGS := -X main.BuildCommit=$(BUILD_COMMIT) -X main.BuildDate=$(BUILD_DATE)
 
-.PHONY: lint test test-property test-fork test-chaos test-all \
+.PHONY: lint test test-property test-fork test-chaos test-all audit-consistency \
         build-dryrun build-shadow build-live build-all \
         run-dryrun run-shadow run-live \
         backtest tidy clean
@@ -31,6 +31,9 @@ test-chaos:
 	$(GO) test -tags=chaos ./tests/chaos/...
 
 test-all: test test-property test-fork test-chaos
+
+audit-consistency:
+	./scripts/audit_workspace_consistency.sh
 
 build-dryrun:
 	$(GO) build -ldflags "$(GO_LDFLAGS)" -tags=$(BUILD_TAGS_DRYRUN) -o bin/lpbot-dryrun ./cmd/lpbot

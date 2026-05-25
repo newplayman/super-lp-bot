@@ -63,7 +63,7 @@ func (m *mockRiskGate) GetState(ctx context.Context) (ports.KillState, error) {
 }
 
 func (m *mockRiskGate) RaiseKill(ctx context.Context, reason string) error { return nil }
-func (m *mockRiskGate) LowerWarn(ctx context.Context) error               { return nil }
+func (m *mockRiskGate) LowerWarn(ctx context.Context) error                { return nil }
 func (m *mockRiskGate) RecordRiskEvent(ctx context.Context, event ports.RiskEvent) error {
 	return nil
 }
@@ -73,7 +73,7 @@ type mockAllocationManager struct {
 	perPoolLimit       decimal.Decimal
 	totalLimit         decimal.Decimal
 	currentExposure    decimal.Decimal
-	shouldBlockPerPool  bool
+	shouldBlockPerPool bool
 	shouldBlockTotal   bool
 }
 
@@ -88,7 +88,7 @@ func (m *mockAllocationManager) CheckTotalExposure(current, budget decimal.Decim
 	if m.shouldBlockTotal {
 		return false
 	}
-	if budget.IsZero() {
+	if budget.IsZero() || m.totalLimit.IsZero() {
 		return true
 	}
 	return current.Div(budget).LessThanOrEqual(m.totalLimit)
@@ -207,20 +207,20 @@ func TestLoop_RiskGateBlocks_NoBroadcast(t *testing.T) {
 	riskGate := &mockRiskGate{shouldBlock: true, blockedLevel: ports.KillLevelKill}
 
 	loop := NewMainLoop(MainLoopConfig{
-		TickInterval:     1 * time.Minute,
-		Broadcaster:      broadcaster,
-		RiskGate:         riskGate,
+		TickInterval:      1 * time.Minute,
+		Broadcaster:       broadcaster,
+		RiskGate:          riskGate,
 		AllocationManager: &mockAllocationManager{perPoolLimit: decimal.NewFromInt(50)},
-		Simulator:        &mockSimulator{resultValid: true},
-		ApproveTracker:   &mockApproveTracker{approved: true},
-		OrderManager:     &mockOrderManager{},
-		Scanner:          &mockScanner{},
-		Metrics:          &mockMetrics{},
+		Simulator:         &mockSimulator{resultValid: true},
+		ApproveTracker:    &mockApproveTracker{approved: true},
+		OrderManager:      &mockOrderManager{},
+		Scanner:           &mockScanner{},
+		Metrics:           &mockMetrics{},
 	})
 
 	pool := domain.Pool{
-		ID:    "pool-1",
-		Tier_: domain.TierC,
+		ID:     "pool-1",
+		Tier_:  domain.TierC,
 		TVLUSD: domain.MustDecimal("10000"),
 	}
 
@@ -246,7 +246,7 @@ func TestLoop_RiskGateBlocks_NoBroadcast(t *testing.T) {
 func TestLoop_AllocationOverLimit_NoBroadcast(t *testing.T) {
 	broadcaster := &mockBroadcaster{}
 	allocMgr := &mockAllocationManager{
-		perPoolLimit:      decimal.NewFromInt(50),
+		perPoolLimit:       decimal.NewFromInt(50),
 		shouldBlockPerPool: true,
 	}
 
@@ -256,7 +256,7 @@ func TestLoop_AllocationOverLimit_NoBroadcast(t *testing.T) {
 		RiskGate:          &mockRiskGate{},
 		AllocationManager: allocMgr,
 		Simulator:         &mockSimulator{resultValid: true},
-		ApproveTracker:     &mockApproveTracker{approved: true},
+		ApproveTracker:    &mockApproveTracker{approved: true},
 		OrderManager:      &mockOrderManager{},
 		Scanner:           &mockScanner{},
 		Metrics:           &mockMetrics{},
@@ -264,8 +264,8 @@ func TestLoop_AllocationOverLimit_NoBroadcast(t *testing.T) {
 
 	// Pool with amount exceeding limit
 	pool := domain.Pool{
-		ID:    "pool-1",
-		Tier_: domain.TierC,
+		ID:     "pool-1",
+		Tier_:  domain.TierC,
 		TVLUSD: domain.MustDecimal("10000"),
 	}
 
@@ -290,7 +290,7 @@ func TestLoop_AllocationOverLimit_NoBroadcast(t *testing.T) {
 func TestLoop_TotalExposureExceeded_NoBroadcast(t *testing.T) {
 	broadcaster := &mockBroadcaster{}
 	allocMgr := &mockAllocationManager{
-		totalLimit:      decimal.NewFromFloat(0.3), // 30% max
+		totalLimit:       decimal.NewFromFloat(0.3), // 30% max
 		shouldBlockTotal: true,
 	}
 
@@ -300,15 +300,15 @@ func TestLoop_TotalExposureExceeded_NoBroadcast(t *testing.T) {
 		RiskGate:          &mockRiskGate{},
 		AllocationManager: allocMgr,
 		Simulator:         &mockSimulator{resultValid: true},
-		ApproveTracker:     &mockApproveTracker{approved: true},
+		ApproveTracker:    &mockApproveTracker{approved: true},
 		OrderManager:      &mockOrderManager{},
 		Scanner:           &mockScanner{},
 		Metrics:           &mockMetrics{},
 	})
 
 	pool := domain.Pool{
-		ID:    "pool-1",
-		Tier_: domain.TierC,
+		ID:     "pool-1",
+		Tier_:  domain.TierC,
 		TVLUSD: domain.MustDecimal("10000"),
 	}
 
@@ -335,15 +335,15 @@ func TestLoop_SimulateFails_NoBroadcast(t *testing.T) {
 		RiskGate:          &mockRiskGate{},
 		AllocationManager: &mockAllocationManager{perPoolLimit: decimal.NewFromInt(50)},
 		Simulator:         simulator,
-		ApproveTracker:     &mockApproveTracker{approved: true},
+		ApproveTracker:    &mockApproveTracker{approved: true},
 		OrderManager:      &mockOrderManager{},
 		Scanner:           &mockScanner{},
 		Metrics:           &mockMetrics{},
 	})
 
 	pool := domain.Pool{
-		ID:    "pool-1",
-		Tier_: domain.TierC,
+		ID:     "pool-1",
+		Tier_:  domain.TierC,
 		TVLUSD: domain.MustDecimal("10000"),
 	}
 
@@ -385,8 +385,8 @@ func TestLoop_ApproveFails_NoBroadcast(t *testing.T) {
 	})
 
 	pool := domain.Pool{
-		ID:    "pool-1",
-		Tier_: domain.TierC,
+		ID:     "pool-1",
+		Tier_:  domain.TierC,
 		TVLUSD: domain.MustDecimal("10000"),
 	}
 
@@ -424,8 +424,8 @@ func TestLoop_HappyPath_OrderSubmittedOnce(t *testing.T) {
 	})
 
 	pool := domain.Pool{
-		ID:    "pool-1",
-		Tier_: domain.TierC,
+		ID:     "pool-1",
+		Tier_:  domain.TierC,
 		TVLUSD: domain.MustDecimal("10000"),
 	}
 
@@ -458,8 +458,8 @@ func TestLoop_BroadcasterError_FeedbackToRiskGate(t *testing.T) {
 	})
 
 	pool := domain.Pool{
-		ID:    "pool-1",
-		Tier_: domain.TierC,
+		ID:     "pool-1",
+		Tier_:  domain.TierC,
 		TVLUSD: domain.MustDecimal("10000"),
 	}
 
@@ -505,7 +505,7 @@ func TestMainLoop_Run_StopOnContextCancel(t *testing.T) {
 		Simulator:         &mockSimulator{resultValid: true},
 		ApproveTracker:    &mockApproveTracker{approved: true},
 		OrderManager:      &mockOrderManager{},
-		Scanner:          &mockScanner{},
+		Scanner:           &mockScanner{},
 		Metrics:           &mockMetrics{},
 	})
 
@@ -543,7 +543,7 @@ func TestMainLoop_Run_EvaluatesPool(t *testing.T) {
 		Simulator:         &mockSimulator{resultValid: true},
 		ApproveTracker:    &mockApproveTracker{approved: true},
 		OrderManager:      orderMgr,
-		Scanner:          &mockScanner{},
+		Scanner:           &mockScanner{},
 		Metrics:           metrics,
 	})
 

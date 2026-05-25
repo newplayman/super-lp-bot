@@ -161,7 +161,7 @@ func (s *simulator) startAnvil(blockRef domain.BlockRef) (*anvilProcess, error) 
 	// Add fork URL if configured
 	if s.forkURL != "" {
 		args = append(args, "--fork-url", s.forkURL)
-	} else if blockRef.Hash != "" {
+	} else if blockRef.Hash != "" || blockRef.Number > 0 {
 		// Fork from specific block hash if RPC URL is configured
 		// This requires an RPC URL to be set
 		return nil, fmt.Errorf("fork-url is required for real simulation")
@@ -303,9 +303,9 @@ func (s *simulator) ethCall(ctx context.Context, tx domain.UnsignedTx) (*domain.
 // rpcResponse represents a JSON-RPC response.
 type rpcResponse struct {
 	JSONRPC string          `json:"jsonrpc"`
-	ID     int             `json:"id"`
-	Result json.RawMessage `json:"result,omitempty"`
-	Error  *rpcError       `json:"error,omitempty"`
+	ID      int             `json:"id"`
+	Result  json.RawMessage `json:"result,omitempty"`
+	Error   *rpcError       `json:"error,omitempty"`
 }
 
 type rpcError struct {

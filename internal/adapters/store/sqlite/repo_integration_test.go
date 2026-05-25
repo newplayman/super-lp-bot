@@ -20,6 +20,7 @@ func setupRepoTestDB(t *testing.T, prefix string) (*sql.DB, func()) {
 	tables := []string{
 		`CREATE TABLE IF NOT EXISTS ` + prefix + `positions (
 			id TEXT PRIMARY KEY,
+			token_id TEXT,
 			chain TEXT NOT NULL,
 			pool_id TEXT NOT NULL,
 			token0 TEXT NOT NULL,
@@ -184,12 +185,12 @@ func TestLedgerRepo_AppendAndRead(t *testing.T) {
 	repo := NewLedgerRepo(db, "test_")
 
 	entry := ports.LedgerEntry{
-		ID:         "ledger_test_1",
-		PositionID: "pos_001",
-		Kind:       ports.LedgerEntryFee,
-		Amount:     domain.MustDecimal("100.50"),
+		ID:          "ledger_test_1",
+		PositionID:  "pos_001",
+		Kind:        ports.LedgerEntryFee,
+		Amount:      domain.MustDecimal("100.50"),
 		TokenSymbol: "USDC",
-		TxHash:     "0xtx123",
+		TxHash:      "0xtx123",
 	}
 
 	result, err := repo.Append(context.Background(), entry)
@@ -368,7 +369,7 @@ func TestRiskRepo_UpsertKillState(t *testing.T) {
 
 	// Upsert initial warn state
 	err = repo.UpsertKillState(context.Background(), ports.KillState{
-		Level: ports.KillLevelWarn,
+		Level:  ports.KillLevelWarn,
 		Reason: "Initial warn",
 	})
 	require.NoError(t, err)
@@ -380,7 +381,7 @@ func TestRiskRepo_UpsertKillState(t *testing.T) {
 
 	// Upsert to kill state - this should update switch_type and triggered_at
 	err = repo.UpsertKillState(context.Background(), ports.KillState{
-		Level: ports.KillLevelKill,
+		Level:  ports.KillLevelKill,
 		Reason: "Escalated to kill",
 	})
 	require.NoError(t, err)
