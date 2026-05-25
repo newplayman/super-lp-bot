@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 EXPECTED_COMMIT="${LPBOT_VPS_EXPECT_COMMIT:-}"
-CONFIG_PATH="${LPBOT_VPS_CONFIG_PATH:-configs/config.shadow.toml}"
+CONFIG_PATH="${LPBOT_VPS_CONFIG_PATH:-configs/config.shadow.research.toml}"
 
 cat <<EOF
 # VPS Shadow Outcome 只读执行计划

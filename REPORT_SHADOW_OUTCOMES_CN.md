@@ -9,7 +9,7 @@ set -a
 . ./.env.dashboard
 . ./.env.chain
 set +a
-go run -tags shadow ./cmd/lpbot --config=configs/config.shadow.toml --shadow-outcomes-backfill --report-shadow-outcomes
+go run -tags shadow ./cmd/lpbot --config=configs/config.shadow.research.toml --shadow-outcomes-backfill --report-shadow-outcomes
 ```
 
 默认输出仍会覆盖本文件。

@@ -14,6 +14,7 @@
 - `goose_db_version` 是否至少到 `000010`
 - `shadow_decision_trace / shadow_position_marks / shadow_outcome_labels` 是否存在
 - 研究表是否已经开始产生样本
+- 默认配置文件: `configs/config.shadow.research.toml`
 
 ## PASS / FAIL 语义
 
