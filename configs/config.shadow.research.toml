@@ -3,7 +3,7 @@ expected = "shadow"
 
 [platform]
 log_level = "info"
-metrics_addr = ":9090"
+metrics_addr = ""
 dashboard_token = "${DASHBOARD_TOKEN:-}"
 
 [alerting]
