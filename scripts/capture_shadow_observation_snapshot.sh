@@ -127,7 +127,12 @@ GROUP BY bucket_family, horizon, bucket_name
 ORDER BY bucket_family, horizon, bucket_name;
 
 -- high_low_score_diagnostics.csv
-WITH scored AS (
+WITH horizons AS (
+  SELECT '1h'::TEXT AS horizon
+  UNION ALL SELECT '6h'::TEXT
+  UNION ALL SELECT '24h'::TEXT
+),
+scored AS (
   SELECT
     horizon,
     score_total,
@@ -156,24 +161,25 @@ agg AS (
   GROUP BY horizon
 )
 SELECT
-  horizon,
-  COALESCE(high_score_count, 0) AS high_score_count,
-  COALESCE(low_score_count, 0) AS low_score_count,
-  COALESCE(high_score_realized_count, 0) AS high_score_realized_count,
-  COALESCE(low_score_realized_count, 0) AS low_score_realized_count,
-  COALESCE(high_score_avg_net_pnl_usd, 0) AS high_score_avg_net_pnl_usd,
-  COALESCE(high_score_median_net_pnl_usd, 0) AS high_score_median_net_pnl_usd,
-  COALESCE(low_score_avg_net_pnl_usd, 0) AS low_score_avg_net_pnl_usd,
-  COALESCE(low_score_median_net_pnl_usd, 0) AS low_score_median_net_pnl_usd,
+  h.horizon,
+  COALESCE(a.high_score_count, 0) AS high_score_count,
+  COALESCE(a.low_score_count, 0) AS low_score_count,
+  COALESCE(a.high_score_realized_count, 0) AS high_score_realized_count,
+  COALESCE(a.low_score_realized_count, 0) AS low_score_realized_count,
+  COALESCE(a.high_score_avg_net_pnl_usd, 0) AS high_score_avg_net_pnl_usd,
+  COALESCE(a.high_score_median_net_pnl_usd, 0) AS high_score_median_net_pnl_usd,
+  COALESCE(a.low_score_avg_net_pnl_usd, 0) AS low_score_avg_net_pnl_usd,
+  COALESCE(a.low_score_median_net_pnl_usd, 0) AS low_score_median_net_pnl_usd,
   CASE
-    WHEN COALESCE(high_score_count, 0) = 0 THEN 'high_score_count=0'
-    WHEN COALESCE(high_score_realized_count, 0) = 0 THEN 'high_score_realized_count=0'
-    WHEN COALESCE(low_score_count, 0) = 0 THEN 'low_score_count=0'
-    WHEN COALESCE(low_score_realized_count, 0) = 0 THEN 'low_score_realized_count=0'
+    WHEN COALESCE(a.high_score_count, 0) = 0 THEN 'high_score_count=0'
+    WHEN COALESCE(a.high_score_realized_count, 0) = 0 THEN 'high_score_realized_count=0'
+    WHEN COALESCE(a.low_score_count, 0) = 0 THEN 'low_score_count=0'
+    WHEN COALESCE(a.low_score_realized_count, 0) = 0 THEN 'low_score_realized_count=0'
     ELSE ''
   END AS insufficient_reason
-FROM agg
-ORDER BY horizon;
+FROM horizons h
+LEFT JOIN agg a ON a.horizon = h.horizon
+ORDER BY h.horizon;
 
 -- invalid_reason_counts.csv
 WITH horizons AS (
@@ -211,7 +217,7 @@ classified AS (
       WHEN e.chain = 'base' AND e.pool_id !~* '^0x[0-9a-f]{40}$' THEN 'missing gas estimate'
       WHEN lm.latest_mark_time IS NULL THEN 'missing mark'
       WHEN lm.latest_mark_time < e.tick_time + e.horizon_seconds THEN 'stale mark'
-      ELSE 'other'
+      ELSE 'ok'
     END AS invalid_reason
   FROM eligible e
   LEFT JOIN pools p ON p.pool_id = e.pool_id
@@ -222,6 +228,7 @@ SELECT
   invalid_reason,
   COUNT(*) AS samples
 FROM classified
+WHERE invalid_reason <> 'ok'
 GROUP BY horizon, invalid_reason
 ORDER BY horizon, invalid_reason;
 EOF
