@@ -55,7 +55,7 @@ func discoverNativeSolanaPools(ctx context.Context, protocolFilter string, minTV
 		return dedupePoolDiscovery(all), "native:" + strings.Join(sources, ","), nil
 	}
 	if len(errs) > 0 {
-		return nil, "", fmt.Errorf(strings.Join(errs, "; "))
+		return nil, "", fmt.Errorf("failed to discover native pools: %s", strings.Join(errs, "; "))
 	}
 	return nil, "", nil
 }

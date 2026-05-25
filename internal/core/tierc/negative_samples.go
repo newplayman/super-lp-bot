@@ -2,7 +2,10 @@ package tierc
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 
@@ -36,10 +39,11 @@ var (
 func loadNegativeSampleMatcher() negativeSampleMatcher {
 	negativeSamplesOnce.Do(func() {
 		path := strings.TrimSpace(os.Getenv("LPBOT_TIERC_NEGATIVE_SAMPLES_PATH"))
+		usingDefaultPath := path == ""
 		if path == "" {
 			path = DefaultNegativeSamplesPath
 		}
-		raw, err := os.ReadFile(path)
+		raw, err := readNegativeSampleFile(path, usingDefaultPath)
 		if err != nil {
 			negativeSamplesMatcher = negativeSampleMatcher{byPoolID: map[string]NegativeSample{}, byToken: map[string]NegativeSample{}}
 			return
@@ -68,6 +72,79 @@ func loadNegativeSampleMatcher() negativeSampleMatcher {
 		negativeSamplesMatcher = matcher
 	})
 	return negativeSamplesMatcher
+}
+
+func readNegativeSampleFile(path string, usingDefaultPath bool) ([]byte, error) {
+	candidates := uniqueCandidateNegativeSamplePaths(path)
+	if usingDefaultPath {
+		if fallback := resolvePathFromSourceRoot(DefaultNegativeSamplesPath); fallback != "" {
+			candidates = append(candidates, fallback)
+		}
+	}
+	candidates = uniqueStrings(candidates)
+
+	var lastErr error
+	for _, candidate := range candidates {
+		raw, err := os.ReadFile(candidate)
+		if err == nil {
+			return raw, nil
+		}
+		lastErr = fmt.Errorf("read negative sample file: %w", err)
+	}
+	return nil, lastErr
+}
+
+func resolvePathFromSourceRoot(relativePath string) string {
+	_, currentFile, _, ok := runtime.Caller(0)
+	if !ok {
+		return ""
+	}
+	relativePath = filepath.FromSlash(strings.TrimSpace(relativePath))
+	if relativePath == "" {
+		return ""
+	}
+	dir := filepath.Dir(currentFile)
+	for depth := 0; depth < 10; depth++ {
+		candidate := filepath.Clean(filepath.Join(dir, relativePath))
+		if _, err := os.Stat(candidate); err == nil {
+			return candidate
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+	return ""
+}
+
+func uniqueCandidateNegativeSamplePaths(path string) []string {
+	clean := filepath.FromSlash(strings.TrimSpace(path))
+	candidates := []string{clean}
+	if filepath.IsAbs(clean) {
+		return candidates
+	}
+	if abs, err := filepath.Abs(clean); err == nil {
+		candidates = append(candidates, abs)
+	}
+	if cwd, err := os.Getwd(); err == nil {
+		candidates = append(candidates, filepath.Join(cwd, clean))
+	}
+	return candidates
+}
+
+func uniqueStrings(input []string) []string {
+	seen := make(map[string]struct{}, len(input))
+	task := make([]string, 0, len(input))
+	for _, value := range input {
+		key := filepath.Clean(value)
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		task = append(task, key)
+	}
+	return task
 }
 
 func knownNegativeSample(pool domain.Pool) (NegativeSample, bool) {
