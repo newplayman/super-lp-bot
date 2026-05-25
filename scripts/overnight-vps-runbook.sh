@@ -207,15 +207,6 @@ while [ "$(date +%s)" -lt "$END_TS" ]; do
     echo "(none)" >> "$SUMMARY_FILE"
   fi
 
-  if [ "$AUGMENT_RESTART" = "1" ]; then
-    if echo "$snapshot" | /usr/bin/grep -q "inactive" ; then
-      {
-        echo "### 4) Auto-restart (enabled)"
-        run_ssh "sudo systemctl restart '$SERVICE_NAME' && sudo systemctl is-active '$SERVICE_NAME'"
-      } >> "$SUMMARY_FILE"
-    fi
-  fi
-
   echo "### 4) Canary profitability evidence" >> "$SUMMARY_FILE"
   if evidence_report="$(run_remote_profitability_evidence)"; then
     echo "$evidence_report" >> "$SUMMARY_FILE"
@@ -223,6 +214,15 @@ while [ "$(date +%s)" -lt "$END_TS" ]; do
     ALERTS=$((ALERTS + 1))
     echo "- ALERT: profitability evidence failed in cycle ${CYCLES}" >> "$SUMMARY_FILE"
     echo "$evidence_report" >> "$SUMMARY_FILE"
+  fi
+
+  if [ "$AUGMENT_RESTART" = "1" ]; then
+    if echo "$snapshot" | /usr/bin/grep -q "inactive" ; then
+      {
+        echo "### 5) Auto-restart (enabled)"
+        run_ssh "sudo systemctl restart '$SERVICE_NAME' && sudo systemctl is-active '$SERVICE_NAME'"
+      } >> "$SUMMARY_FILE"
+    fi
   fi
 
   echo "Cycle ${CYCLES} complete. next at +${CYCLE_MIN}m" >> "$SUMMARY_FILE"
