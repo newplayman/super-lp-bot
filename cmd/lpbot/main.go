@@ -2858,6 +2858,7 @@ func main() {
 	canaryTokenID := flag.String("token-id", "", "Uniswap V3 NFT token ID for canary exit preflight")
 	canaryTxHash := flag.String("tx-hash", "", "Transaction hash for canary receipt reconciliation")
 	shadowOutcomesBackfill := flag.Bool("shadow-outcomes-backfill", false, "Backfill matured 1h/6h/24h shadow outcome labels without starting long-running workers")
+	shadowOutcomesBackfillHorizon := flag.String("shadow-outcomes-backfill-horizon", "", "Optional horizon filter for shadow outcome backfill: 1h, 6h, or 24h")
 	shadowOutcomesReport := flag.Bool("report-shadow-outcomes", false, "Generate REPORT_SHADOW_OUTCOMES_CN.md from shadow outcome labels")
 	shadowOutcomesReportPath := flag.String("report-shadow-outcomes-path", shadowOutcomeReportDefaultPath, "Path to write the shadow outcomes markdown report")
 	flag.Parse()
@@ -3125,7 +3126,7 @@ func main() {
 			os.Exit(1)
 		}
 		if *shadowOutcomesBackfill {
-			if err := app.backfillShadowOutcomes(ctx, time.Now().UTC()); err != nil {
+			if err := app.backfillShadowOutcomes(ctx, time.Now().UTC(), *shadowOutcomesBackfillHorizon); err != nil {
 				fmt.Fprintf(os.Stderr, "Error backfilling shadow outcomes: %v\n", err)
 				os.Exit(1)
 			}

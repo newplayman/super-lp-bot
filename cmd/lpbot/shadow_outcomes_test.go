@@ -181,8 +181,8 @@ func TestBackfillShadowOutcomes_WritesOutcomeIdempotently(t *testing.T) {
 		store: store,
 	}
 	require.NoError(t, app.ensureShadowOutcomeLabelsTable(context.Background()))
-	require.NoError(t, app.backfillShadowOutcomes(context.Background(), now))
-	require.NoError(t, app.backfillShadowOutcomes(context.Background(), now))
+	require.NoError(t, app.backfillShadowOutcomes(context.Background(), now, "1h"))
+	require.NoError(t, app.backfillShadowOutcomes(context.Background(), now, "1h"))
 
 	var count int
 	var label, horizon, netPnL string
@@ -195,6 +195,20 @@ func TestBackfillShadowOutcomes_WritesOutcomeIdempotently(t *testing.T) {
 	require.Equal(t, "win", label)
 	require.Equal(t, "1h", horizon)
 	require.Equal(t, "1.5", netPnL)
+}
+
+func TestResolveShadowOutcomeHorizons(t *testing.T) {
+	all, err := resolveShadowOutcomeHorizons("")
+	require.NoError(t, err)
+	require.Len(t, all, 3)
+
+	only6h, err := resolveShadowOutcomeHorizons("6h")
+	require.NoError(t, err)
+	require.Len(t, only6h, 1)
+	require.Equal(t, "6h", only6h[0].Name)
+
+	_, err = resolveShadowOutcomeHorizons("2h")
+	require.Error(t, err)
 }
 
 func TestRenderShadowOutcomeReport(t *testing.T) {

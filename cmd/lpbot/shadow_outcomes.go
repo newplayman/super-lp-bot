@@ -167,7 +167,7 @@ func (app *App) shouldRunShadowOutcomeLoop() bool {
 }
 
 func (app *App) runShadowOutcomeLoop(ctx context.Context) {
-	app.backfillShadowOutcomes(ctx, time.Now().UTC())
+	app.backfillShadowOutcomes(ctx, time.Now().UTC(), "")
 	ticker := time.NewTicker(shadowOutcomeWorkerInterval)
 	defer ticker.Stop()
 	for {
@@ -175,7 +175,7 @@ func (app *App) runShadowOutcomeLoop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case tick := <-ticker.C:
-			if err := app.backfillShadowOutcomes(ctx, tick.UTC()); err != nil && ctx.Err() == nil {
+			if err := app.backfillShadowOutcomes(ctx, tick.UTC(), ""); err != nil && ctx.Err() == nil {
 				app.logger.Warn("shadow outcome backfill failed", zap.Error(err))
 			}
 		}
@@ -196,12 +196,29 @@ func classifyShadowOutcomeLabel(selected bool, intentOpen bool, action string, v
 	return "loss"
 }
 
-func (app *App) backfillShadowOutcomes(ctx context.Context, now time.Time) error {
+func resolveShadowOutcomeHorizons(filter string) ([]shadowOutcomeHorizon, error) {
+	normalized := strings.ToLower(strings.TrimSpace(filter))
+	if normalized == "" {
+		return shadowOutcomeHorizons, nil
+	}
+	for _, horizon := range shadowOutcomeHorizons {
+		if normalized == strings.ToLower(horizon.Name) {
+			return []shadowOutcomeHorizon{horizon}, nil
+		}
+	}
+	return nil, fmt.Errorf("unsupported shadow outcome horizon filter %q", filter)
+}
+
+func (app *App) backfillShadowOutcomes(ctx context.Context, now time.Time, filter string) error {
 	tables, err := newRuntimeSQLTables(app.store)
 	if err != nil || tables == nil || tables.db == nil {
 		return nil
 	}
-	for _, horizon := range shadowOutcomeHorizons {
+	horizons, err := resolveShadowOutcomeHorizons(filter)
+	if err != nil {
+		return err
+	}
+	for _, horizon := range horizons {
 		matured, err := app.loadMaturedShadowDecisions(ctx, tables, horizon, now)
 		if err != nil {
 			return err

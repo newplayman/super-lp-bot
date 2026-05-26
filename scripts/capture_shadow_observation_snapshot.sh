@@ -567,6 +567,7 @@ write_summary() {
 - [SHADOW_RESEARCH_READINESS_CN.md](${SNAPSHOT_DIR}/SHADOW_RESEARCH_READINESS_CN.md)
 - [REPORT_SHADOW_OUTCOMES_CN.md](${SNAPSHOT_DIR}/REPORT_SHADOW_OUTCOMES_CN.md)
 - [TREND_SUMMARY_CN.md](${SNAPSHOT_DIR}/TREND_SUMMARY_CN.md)
+- [BACKFILL_MATERIALIZATION_DIAG_CN.md](${SNAPSHOT_DIR}/BACKFILL_MATERIALIZATION_DIAG_CN.md)
 - [outcome_counts.csv](${SNAPSHOT_DIR}/outcome_counts.csv)
 - [bucket_stats.csv](${SNAPSHOT_DIR}/bucket_stats.csv)
 - [high_low_score_diagnostics.csv](${SNAPSHOT_DIR}/high_low_score_diagnostics.csv)
@@ -577,6 +578,144 @@ write_summary() {
 - [stale_mark_summary.csv](${SNAPSHOT_DIR}/stale_mark_summary.csv)
 - [stale_mark_pools.csv](${SNAPSHOT_DIR}/stale_mark_pools.csv)
 - [RAW_SQL_QUERIES.sql](${SNAPSHOT_DIR}/RAW_SQL_QUERIES.sql)
+EOF
+}
+
+run_backfill_for_horizon() {
+  local horizon="$1"
+  local stderr_log="${SNAPSHOT_DIR}/backfill_${horizon}.stderr.log"
+  if ! command -v timeout >/dev/null 2>&1; then
+    echo "SKIPPED(no-timeout)"
+    return 0
+  fi
+  if timeout --signal=TERM "${BACKFILL_TIMEOUT_SECONDS}" \
+    go run -tags shadow ./cmd/lpbot \
+      --config="${CONFIG_PATH}" \
+      --shadow-outcomes-backfill \
+      --shadow-outcomes-backfill-horizon="${horizon}" \
+      >/dev/null 2>"${stderr_log}"; then
+    echo "OK"
+    return 0
+  fi
+  local rc=$?
+  if [[ "$rc" == "124" || "$rc" == "143" ]]; then
+    echo "TIMEBOXED"
+  else
+    echo "ERROR(${rc})"
+  fi
+}
+
+generate_backfill_materialization_diag() {
+  local mature_row labels_by_horizon missing_6h missing_24h
+  mature_row="$(psql "$POSTGRES_DSN" -X -A -t -F '|' -c "
+    SELECT
+      COUNT(*) FILTER (WHERE tick_time <= EXTRACT(EPOCH FROM NOW())::BIGINT - 3600) AS mature_1h,
+      COUNT(*) FILTER (WHERE tick_time <= EXTRACT(EPOCH FROM NOW())::BIGINT - 21600) AS mature_6h,
+      COUNT(*) FILTER (WHERE tick_time <= EXTRACT(EPOCH FROM NOW())::BIGINT - 86400) AS mature_24h,
+      MIN(tick_time),
+      MAX(tick_time),
+      COUNT(*)
+    FROM shadow_decision_trace;
+  ")"
+  IFS='|' read -r mature_1h mature_6h mature_24h min_tick_time max_tick_time total_traces <<<"${mature_row}"
+
+  labels_by_horizon="$(psql "$POSTGRES_DSN" -X -A -t -F '|' -c "
+    SELECT horizon, label, COUNT(*)
+    FROM shadow_outcome_labels
+    GROUP BY horizon, label
+    ORDER BY horizon, label;
+  ")"
+
+  local label_count_rows
+  label_count_rows="$(psql "$POSTGRES_DSN" -X -A -t -F '|' -c "
+    SELECT horizon, COUNT(*)
+    FROM shadow_outcome_labels
+    GROUP BY horizon
+    ORDER BY horizon;
+  ")"
+  local labels_1h=0 labels_6h=0 labels_24h=0
+  while IFS='|' read -r horizon count; do
+    [[ -z "${horizon:-}" ]] && continue
+    case "$horizon" in
+      1h) labels_1h="$count" ;;
+      6h) labels_6h="$count" ;;
+      24h) labels_24h="$count" ;;
+    esac
+  done <<<"${label_count_rows}"
+
+  missing_6h="$(psql "$POSTGRES_DSN" -X -A -t -c "
+    SELECT COUNT(*)
+    FROM shadow_decision_trace d
+    WHERE d.tick_time <= EXTRACT(EPOCH FROM NOW())::BIGINT - 21600
+      AND NOT EXISTS (
+        SELECT 1 FROM shadow_outcome_labels o
+        WHERE o.decision_trace_id = d.trace_id
+          AND o.horizon = '6h'
+      );
+  " | tr -d '[:space:]')"
+  missing_24h="$(psql "$POSTGRES_DSN" -X -A -t -c "
+    SELECT COUNT(*)
+    FROM shadow_decision_trace d
+    WHERE d.tick_time <= EXTRACT(EPOCH FROM NOW())::BIGINT - 86400
+      AND NOT EXISTS (
+        SELECT 1 FROM shadow_outcome_labels o
+        WHERE o.decision_trace_id = d.trace_id
+          AND o.horizon = '24h'
+      );
+  " | tr -d '[:space:]')"
+
+  local need_horizon_filter="yes"
+  local bottleneck="unknown"
+  local conclusion="这是数据链路问题，需要优先修复 materialization/backfill。"
+  if [[ "${mature_6h:-0}" == "0" && "${mature_24h:-0}" == "0" ]]; then
+    need_horizon_filter="no"
+    bottleneck="no mature 6h/24h decisions yet"
+    conclusion="当前不是策略问题，也不是 materialization bug；6h/24h 样本尚未成熟。"
+  elif [[ "${labels_6h:-0}" == "0" || "${labels_24h:-0}" == "0" ]]; then
+    bottleneck="mature decisions exist but 6h/24h labels are missing"
+  fi
+
+  cat >"${SNAPSHOT_DIR}/BACKFILL_MATERIALIZATION_DIAG_CN.md" <<EOF
+# Backfill Materialization Diagnostic
+
+- 生成时间: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+- snapshot 目录: \`${SNAPSHOT_DIR}\`
+
+## Matured Decision Counts
+
+- mature_1h: ${mature_1h:-0}
+- mature_6h: ${mature_6h:-0}
+- mature_24h: ${mature_24h:-0}
+- min_tick_time: ${min_tick_time:-0}
+- max_tick_time: ${max_tick_time:-0}
+- shadow_decision_trace total: ${total_traces:-0}
+
+## Materialized Label Counts
+
+- labels_1h: ${labels_1h:-0}
+- labels_6h: ${labels_6h:-0}
+- labels_24h: ${labels_24h:-0}
+- missing_6h: ${missing_6h:-0}
+- missing_24h: ${missing_24h:-0}
+
+## Horizon Label Breakdown
+
+\`\`\`
+${labels_by_horizon}
+\`\`\`
+
+## Backfill Execution
+
+- backfill_1h_status: ${BACKFILL_1H_STATUS}
+- backfill_6h_status: ${BACKFILL_6H_STATUS}
+- backfill_24h_status: ${BACKFILL_24H_STATUS}
+- previous single-60s backfill likely only completed 1h: $( [[ "${mature_6h:-0}" != "0" && "${labels_6h:-0}" == "0" ]] && echo "yes" || echo "no" )
+- horizon-filter needed: ${need_horizon_filter}
+
+## Diagnosis
+
+- bottleneck: ${bottleneck}
+- conclusion: ${conclusion}
 EOF
 }
 
@@ -597,24 +736,10 @@ fi
 
 write_queries
 
-backfill_status="SKIPPED"
-if command -v timeout >/dev/null 2>&1; then
-  if timeout --signal=TERM "${BACKFILL_TIMEOUT_SECONDS}" \
-    go run -tags shadow ./cmd/lpbot \
-      --config="${CONFIG_PATH}" \
-      --shadow-outcomes-backfill >/dev/null 2>"${SNAPSHOT_DIR}/backfill.stderr.log"; then
-    backfill_status="OK"
-  else
-    backfill_rc=$?
-    if [[ "$backfill_rc" == "124" || "$backfill_rc" == "143" ]]; then
-      backfill_status="TIMEBOXED"
-    else
-      backfill_status="ERROR(${backfill_rc})"
-    fi
-  fi
-else
-  backfill_status="SKIPPED(no-timeout)"
-fi
+BACKFILL_1H_STATUS="$(run_backfill_for_horizon "1h")"
+BACKFILL_6H_STATUS="$(run_backfill_for_horizon "6h")"
+BACKFILL_24H_STATUS="$(run_backfill_for_horizon "24h")"
+backfill_status="1h=${BACKFILL_1H_STATUS},6h=${BACKFILL_6H_STATUS},24h=${BACKFILL_24H_STATUS}"
 
 report_status="OK"
 if ! go run -tags shadow ./cmd/lpbot \
@@ -635,6 +760,7 @@ run_query_to_csv "${SNAPSHOT_DIR}/RAW_SQL_QUERIES.sql" "-- outlier_concentration
 run_query_to_csv "${SNAPSHOT_DIR}/RAW_SQL_QUERIES.sql" "-- stale_mark_summary.csv" "${SNAPSHOT_DIR}/stale_mark_summary.csv"
 run_query_to_csv "${SNAPSHOT_DIR}/RAW_SQL_QUERIES.sql" "-- stale_mark_pools.csv" "${SNAPSHOT_DIR}/stale_mark_pools.csv"
 generate_trend_summary
+generate_backfill_materialization_diag
 write_summary "$readiness_status" "$backfill_status" "$report_status"
 
 printf '[shadow-observation] dir=%s readiness=%s backfill=%s report=%s\n' \
