@@ -7,6 +7,15 @@ TIMESTAMP_UTC="$(date -u +%Y%m%d_%H%M)"
 SNAPSHOT_DIR="${LPBOT_SHADOW_OBS_SNAPSHOT_DIR:-${REPORT_BASE_DIR}/${TIMESTAMP_UTC}}"
 CONFIG_PATH="${LPBOT_SHADOW_OBS_CONFIG:-configs/config.shadow.research.toml}"
 BACKFILL_TIMEOUT_SECONDS="${LPBOT_SHADOW_OBS_BACKFILL_TIMEOUT_SECONDS:-900}"
+BACKFILL_LOCK_FILE="${LPBOT_SHADOW_BACKFILL_LOCK_FILE:-/tmp/lpbot_shadow_backfill.lock}"
+BACKFILL_LOCK_WAIT_SECONDS="${LPBOT_SHADOW_BACKFILL_LOCK_WAIT_SECONDS:-5}"
+
+BEFORE_LABELS_6H=0
+BEFORE_LABELS_24H=0
+AFTER_LABELS_6H=0
+AFTER_LABELS_24H=0
+RUN_STARTED_EPOCH=0
+RUN_ENDED_EPOCH=0
 
 load_env() {
   cd "$ROOT_DIR"
@@ -449,6 +458,44 @@ FROM shadow_position_marks
 GROUP BY pool_id
 ORDER BY mark_count ASC, max_mark_time ASC, pool_id ASC
 LIMIT 30;
+
+-- materialized_time_distribution.csv
+WITH ranked AS (
+  SELECT
+    horizon,
+    to_char(date_trunc('hour', to_timestamp(decision_time)), 'YYYY-MM-DD HH24:00') AS hour_bucket,
+    COUNT(*) AS samples,
+    ROW_NUMBER() OVER (
+      PARTITION BY horizon
+      ORDER BY COUNT(*) DESC, date_trunc('hour', to_timestamp(decision_time)) DESC
+    ) AS bucket_rank
+  FROM shadow_outcome_labels
+  WHERE horizon IN ('6h', '24h')
+  GROUP BY horizon, date_trunc('hour', to_timestamp(decision_time))
+)
+SELECT horizon, hour_bucket, samples
+FROM ranked
+WHERE bucket_rank <= 12
+ORDER BY horizon, samples DESC, hour_bucket DESC;
+
+-- materialized_pool_distribution.csv
+WITH ranked AS (
+  SELECT
+    horizon,
+    pool_id,
+    COUNT(*) AS samples,
+    ROW_NUMBER() OVER (
+      PARTITION BY horizon
+      ORDER BY COUNT(*) DESC, pool_id ASC
+    ) AS pool_rank
+  FROM shadow_outcome_labels
+  WHERE horizon IN ('6h', '24h')
+  GROUP BY horizon, pool_id
+)
+SELECT horizon, pool_id, samples
+FROM ranked
+WHERE pool_rank <= 12
+ORDER BY horizon, samples DESC, pool_id ASC;
 EOF
 }
 
@@ -461,6 +508,39 @@ run_query_to_csv() {
     /^-- / && capture {exit}
     capture {print}
   ' "$sql_file" | psql "$POSTGRES_DSN" -X -A -F, -P pager=off -f - >"$output_csv"
+}
+
+read_label_count_for_horizon() {
+  local horizon="$1"
+  psql "$POSTGRES_DSN" -X -A -t -c "SELECT COUNT(*) FROM shadow_outcome_labels WHERE horizon = '${horizon}';" | tr -d '[:space:]'
+}
+
+format_pct() {
+  local numerator="${1:-0}"
+  local denominator="${2:-0}"
+  awk -v n="$numerator" -v d="$denominator" 'BEGIN { if (d <= 0) printf "0.00%%"; else printf "%.2f%%", (n*100.0)/d; }'
+}
+
+format_rate_per_min() {
+  local delta="${1:-0}"
+  local seconds="${2:-0}"
+  awk -v d="$delta" -v s="$seconds" 'BEGIN { if (s <= 0) printf "0.00"; else printf "%.2f", d / (s/60.0); }'
+}
+
+estimate_catchup_time() {
+  local missing="${1:-0}"
+  local delta="${2:-0}"
+  local seconds="${3:-0}"
+  awk -v missing="$missing" -v delta="$delta" -v seconds="$seconds" '
+    BEGIN {
+      if (delta <= 0 || seconds <= 0) {
+        printf "unknown";
+      } else {
+        mins = missing / (delta / (seconds / 60.0));
+        printf "%.0f min (~%.1f h)", mins, mins/60.0;
+      }
+    }
+  '
 }
 
 generate_trend_summary() {
@@ -568,6 +648,7 @@ write_summary() {
 - [REPORT_SHADOW_OUTCOMES_CN.md](${SNAPSHOT_DIR}/REPORT_SHADOW_OUTCOMES_CN.md)
 - [TREND_SUMMARY_CN.md](${SNAPSHOT_DIR}/TREND_SUMMARY_CN.md)
 - [BACKFILL_MATERIALIZATION_DIAG_CN.md](${SNAPSHOT_DIR}/BACKFILL_MATERIALIZATION_DIAG_CN.md)
+- [BACKLOG_CATCHUP_SUMMARY_CN.md](${SNAPSHOT_DIR}/BACKLOG_CATCHUP_SUMMARY_CN.md)
 - [outcome_counts.csv](${SNAPSHOT_DIR}/outcome_counts.csv)
 - [bucket_stats.csv](${SNAPSHOT_DIR}/bucket_stats.csv)
 - [high_low_score_diagnostics.csv](${SNAPSHOT_DIR}/high_low_score_diagnostics.csv)
@@ -577,6 +658,8 @@ write_summary() {
 - [outlier_concentration.csv](${SNAPSHOT_DIR}/outlier_concentration.csv)
 - [stale_mark_summary.csv](${SNAPSHOT_DIR}/stale_mark_summary.csv)
 - [stale_mark_pools.csv](${SNAPSHOT_DIR}/stale_mark_pools.csv)
+- [materialized_time_distribution.csv](${SNAPSHOT_DIR}/materialized_time_distribution.csv)
+- [materialized_pool_distribution.csv](${SNAPSHOT_DIR}/materialized_pool_distribution.csv)
 - [RAW_SQL_QUERIES.sql](${SNAPSHOT_DIR}/RAW_SQL_QUERIES.sql)
 EOF
 }
@@ -645,6 +728,8 @@ generate_backfill_materialization_diag() {
       24h) labels_24h="$count" ;;
     esac
   done <<<"${label_count_rows}"
+  AFTER_LABELS_6H="${labels_6h:-0}"
+  AFTER_LABELS_24H="${labels_24h:-0}"
 
   missing_6h="$(psql "$POSTGRES_DSN" -X -A -t -c "
     SELECT COUNT(*)
@@ -728,9 +813,117 @@ ${labels_by_horizon}
 EOF
 }
 
+generate_backlog_catchup_summary() {
+  local mature_row
+  mature_row="$(psql "$POSTGRES_DSN" -X -A -t -F '|' -c "
+    SELECT
+      COUNT(*) FILTER (WHERE tick_time <= EXTRACT(EPOCH FROM NOW())::BIGINT - 21600) AS mature_6h,
+      COUNT(*) FILTER (WHERE tick_time <= EXTRACT(EPOCH FROM NOW())::BIGINT - 86400) AS mature_24h
+    FROM shadow_decision_trace;
+  ")"
+  local mature_6h mature_24h
+  IFS='|' read -r mature_6h mature_24h <<<"${mature_row}"
+
+  local labels_6h labels_24h missing_6h missing_24h delta_6h delta_24h
+  labels_6h="${AFTER_LABELS_6H:-0}"
+  labels_24h="${AFTER_LABELS_24H:-0}"
+  missing_6h=$(( ${mature_6h:-0} - ${labels_6h:-0} ))
+  missing_24h=$(( ${mature_24h:-0} - ${labels_24h:-0} ))
+  if (( missing_6h < 0 )); then missing_6h=0; fi
+  if (( missing_24h < 0 )); then missing_24h=0; fi
+  delta_6h=$(( ${labels_6h:-0} - ${BEFORE_LABELS_6H:-0} ))
+  delta_24h=$(( ${labels_24h:-0} - ${BEFORE_LABELS_24H:-0} ))
+
+  local coverage_6h coverage_24h elapsed_seconds labels_per_min_6h labels_per_min_24h catchup_eta_6h catchup_eta_24h
+  coverage_6h="$(format_pct "${labels_6h:-0}" "${mature_6h:-0}")"
+  coverage_24h="$(format_pct "${labels_24h:-0}" "${mature_24h:-0}")"
+  elapsed_seconds=$(( RUN_ENDED_EPOCH - RUN_STARTED_EPOCH ))
+  labels_per_min_6h="$(format_rate_per_min "${delta_6h:-0}" "${elapsed_seconds:-0}")"
+  labels_per_min_24h="$(format_rate_per_min "${delta_24h:-0}" "${elapsed_seconds:-0}")"
+  catchup_eta_6h="$(estimate_catchup_time "${missing_6h:-0}" "${delta_6h:-0}" "${elapsed_seconds:-0}")"
+  catchup_eta_24h="$(estimate_catchup_time "${missing_24h:-0}" "${delta_24h:-0}" "${elapsed_seconds:-0}")"
+
+  local edge_csv="${SNAPSHOT_DIR}/score_edge_diagnostics.csv"
+  local invalid_csv="${SNAPSHOT_DIR}/invalid_reason_counts.csv"
+  local time_csv="${SNAPSHOT_DIR}/materialized_time_distribution.csv"
+  local pool_csv="${SNAPSHOT_DIR}/materialized_pool_distribution.csv"
+  local six_quantile twentyfour_quantile six_adjacent twentyfour_adjacent
+  six_quantile="$(awk -F, '$1=="6h" && $2=="top20_vs_bottom20" {printf "avg=%s median=%s p10=%s win_rate=%s signal=%s", $9, $10, $11, $12, $17}' "$edge_csv")"
+  twentyfour_quantile="$(awk -F, '$1=="24h" && $2=="top20_vs_bottom20" {printf "avg=%s median=%s p10=%s win_rate=%s signal=%s", $9, $10, $11, $12, $17}' "$edge_csv")"
+  six_adjacent="$(awk -F, '$1=="6h" && $2=="70-79_vs_60-69" {printf "avg=%s median=%s p10=%s win_rate=%s signal=%s", $9, $10, $11, $12, $17}' "$edge_csv")"
+  twentyfour_adjacent="$(awk -F, '$1=="24h" && $2=="70-79_vs_60-69" {printf "avg=%s median=%s p10=%s win_rate=%s signal=%s", $9, $10, $11, $12, $17}' "$edge_csv")"
+
+  local invalid_6h invalid_24h stale_6h stale_24h stale_share_6h stale_share_24h
+  invalid_6h="$(awk -F'[ :%]+' '/## 6h/{seen=1} seen && /- invalid_rate:/{print $3; exit}' "${SNAPSHOT_DIR}/REPORT_SHADOW_OUTCOMES_CN.md")"
+  invalid_24h="$(awk -F'[ :%]+' '/## 24h/{seen=1} seen && /- invalid_rate:/{print $3; exit}' "${SNAPSHOT_DIR}/REPORT_SHADOW_OUTCOMES_CN.md")"
+  stale_6h="$(awk -F, '$1=="6h" && $2=="stale mark" {print $3}' "$invalid_csv")"
+  stale_24h="$(awk -F, '$1=="24h" && $2=="stale mark" {print $3}' "$invalid_csv")"
+  stale_share_6h="$(format_pct "${stale_6h:-0}" "${mature_6h:-0}")"
+  stale_share_24h="$(format_pct "${stale_24h:-0}" "${mature_24h:-0}")"
+
+  local top_pool_share_6h top_pool_share_24h top_hour_share_6h top_hour_share_24h sample_bias_warn="OK"
+  top_pool_share_6h="$(awk -F, -v labels="${labels_6h:-0}" '$1=="6h" { if (labels > 0) { printf "%.2f%%", ($3*100.0)/labels; exit } }' "$pool_csv")"
+  top_pool_share_24h="$(awk -F, -v labels="${labels_24h:-0}" '$1=="24h" { if (labels > 0) { printf "%.2f%%", ($3*100.0)/labels; exit } }' "$pool_csv")"
+  top_hour_share_6h="$(awk -F, -v labels="${labels_6h:-0}" '$1=="6h" { if (labels > 0) { printf "%.2f%%", ($3*100.0)/labels; exit } }' "$time_csv")"
+  top_hour_share_24h="$(awk -F, -v labels="${labels_24h:-0}" '$1=="24h" { if (labels > 0) { printf "%.2f%%", ($3*100.0)/labels; exit } }' "$time_csv")"
+  if awk -v p6="${top_pool_share_6h%%%}" -v p24="${top_pool_share_24h%%%}" -v h6="${top_hour_share_6h%%%}" -v h24="${top_hour_share_24h%%%}" 'BEGIN { exit !((p6+0)>=50 || (p24+0)>=50 || (h6+0)>=50 || (h24+0)>=50) }'; then
+    sample_bias_warn="SAMPLE_BIAS_WARN"
+  fi
+
+  cat >"${SNAPSHOT_DIR}/BACKLOG_CATCHUP_SUMMARY_CN.md" <<EOF
+# Backlog Catch-up Summary
+
+- 生成时间: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+- latest report directory: \`${SNAPSHOT_DIR}\`
+- verdict: EARLY_SIGNAL_ONLY
+
+## Coverage
+
+- mature_6h: ${mature_6h:-0}
+- labels_6h: ${labels_6h:-0}
+- missing_6h: ${missing_6h:-0}
+- coverage_6h: ${coverage_6h}
+- mature_24h: ${mature_24h:-0}
+- labels_24h: ${labels_24h:-0}
+- missing_24h: ${missing_24h:-0}
+- coverage_24h: ${coverage_24h}
+
+## This Run
+
+- delta_labels_6h: ${delta_6h:-0}
+- delta_labels_24h: ${delta_24h:-0}
+- labels_per_min_6h: ${labels_per_min_6h}
+- labels_per_min_24h: ${labels_per_min_24h}
+- estimated_catchup_time_6h: ${catchup_eta_6h}
+- estimated_catchup_time_24h: ${catchup_eta_24h}
+
+## Early Signal
+
+- 6h top20 vs bottom20: ${six_quantile:-unavailable}
+- 24h top20 vs bottom20: ${twentyfour_quantile:-unavailable}
+- 6h 70-79 vs 60-69: ${six_adjacent:-unavailable}
+- 24h 70-79 vs 60-69: ${twentyfour_adjacent:-unavailable}
+- 6h invalid_rate: ${invalid_6h:-0}%
+- 24h invalid_rate: ${invalid_24h:-0}%
+- 6h stale_mark_share: ${stale_share_6h}
+- 24h stale_mark_share: ${stale_share_24h}
+
+## Sample Bias
+
+- top_pool_share_6h: ${top_pool_share_6h:-0.00%}
+- top_pool_share_24h: ${top_pool_share_24h:-0.00%}
+- top_hour_share_6h: ${top_hour_share_6h:-0.00%}
+- top_hour_share_24h: ${top_hour_share_24h:-0.00%}
+- sample_bias: ${sample_bias_warn}
+EOF
+}
+
 load_env
 cd "$ROOT_DIR"
 mkdir -p "$SNAPSHOT_DIR"
+BEFORE_LABELS_6H="$(read_label_count_for_horizon "6h")"
+BEFORE_LABELS_24H="$(read_label_count_for_horizon "24h")"
+RUN_STARTED_EPOCH="$(date +%s)"
 
 readiness_status="PASS"
 if ! LPBOT_SHADOW_RESEARCH_REPORT_PATH="${SNAPSHOT_DIR}/SHADOW_RESEARCH_READINESS_CN.md" \
@@ -745,10 +938,19 @@ fi
 
 write_queries
 
-BACKFILL_1H_STATUS="$(run_backfill_for_horizon "1h")"
-BACKFILL_6H_STATUS="$(run_backfill_for_horizon "6h")"
-BACKFILL_24H_STATUS="$(run_backfill_for_horizon "24h")"
+exec 9>"${BACKFILL_LOCK_FILE}"
+if flock -w "${BACKFILL_LOCK_WAIT_SECONDS}" 9; then
+  BACKFILL_24H_STATUS="$(run_backfill_for_horizon "24h")"
+  BACKFILL_6H_STATUS="$(run_backfill_for_horizon "6h")"
+  BACKFILL_1H_STATUS="$(run_backfill_for_horizon "1h")"
+  flock -u 9
+else
+  BACKFILL_24H_STATUS="LOCKED"
+  BACKFILL_6H_STATUS="LOCKED"
+  BACKFILL_1H_STATUS="LOCKED"
+fi
 backfill_status="1h=${BACKFILL_1H_STATUS},6h=${BACKFILL_6H_STATUS},24h=${BACKFILL_24H_STATUS}"
+RUN_ENDED_EPOCH="$(date +%s)"
 
 report_status="OK"
 if ! go run -tags shadow ./cmd/lpbot \
@@ -768,8 +970,11 @@ run_query_to_csv "${SNAPSHOT_DIR}/RAW_SQL_QUERIES.sql" "-- score_edge_diagnostic
 run_query_to_csv "${SNAPSHOT_DIR}/RAW_SQL_QUERIES.sql" "-- outlier_concentration.csv" "${SNAPSHOT_DIR}/outlier_concentration.csv"
 run_query_to_csv "${SNAPSHOT_DIR}/RAW_SQL_QUERIES.sql" "-- stale_mark_summary.csv" "${SNAPSHOT_DIR}/stale_mark_summary.csv"
 run_query_to_csv "${SNAPSHOT_DIR}/RAW_SQL_QUERIES.sql" "-- stale_mark_pools.csv" "${SNAPSHOT_DIR}/stale_mark_pools.csv"
+run_query_to_csv "${SNAPSHOT_DIR}/RAW_SQL_QUERIES.sql" "-- materialized_time_distribution.csv" "${SNAPSHOT_DIR}/materialized_time_distribution.csv"
+run_query_to_csv "${SNAPSHOT_DIR}/RAW_SQL_QUERIES.sql" "-- materialized_pool_distribution.csv" "${SNAPSHOT_DIR}/materialized_pool_distribution.csv"
 generate_trend_summary
 generate_backfill_materialization_diag
+generate_backlog_catchup_summary
 write_summary "$readiness_status" "$backfill_status" "$report_status"
 
 printf '[shadow-observation] dir=%s readiness=%s backfill=%s report=%s\n' \
