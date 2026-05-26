@@ -588,16 +588,19 @@ run_backfill_for_horizon() {
     echo "SKIPPED(no-timeout)"
     return 0
   fi
-  if timeout --signal=TERM "${BACKFILL_TIMEOUT_SECONDS}" \
+  set +e
+  timeout --signal=TERM "${BACKFILL_TIMEOUT_SECONDS}" \
     go run -tags shadow ./cmd/lpbot \
       --config="${CONFIG_PATH}" \
       --shadow-outcomes-backfill \
       --shadow-outcomes-backfill-horizon="${horizon}" \
-      >/dev/null 2>"${stderr_log}"; then
+      >/dev/null 2>"${stderr_log}"
+  local rc=$?
+  set -e
+  if [[ "$rc" == "0" ]]; then
     echo "OK"
     return 0
   fi
-  local rc=$?
   if [[ "$rc" == "124" || "$rc" == "143" ]]; then
     echo "TIMEBOXED"
   else
@@ -667,12 +670,18 @@ generate_backfill_materialization_diag() {
   local need_horizon_filter="yes"
   local bottleneck="unknown"
   local conclusion="这是数据链路问题，需要优先修复 materialization/backfill。"
+  local prior_single_timebox_1h_only="no"
   if [[ "${mature_6h:-0}" == "0" && "${mature_24h:-0}" == "0" ]]; then
     need_horizon_filter="no"
     bottleneck="no mature 6h/24h decisions yet"
     conclusion="当前不是策略问题，也不是 materialization bug；6h/24h 样本尚未成熟。"
   elif [[ "${labels_6h:-0}" == "0" || "${labels_24h:-0}" == "0" ]]; then
     bottleneck="mature decisions exist but 6h/24h labels are missing"
+    prior_single_timebox_1h_only="yes"
+  elif [[ "${missing_6h:-0}" != "0" || "${missing_24h:-0}" != "0" ]]; then
+    bottleneck="6h/24h started materializing but backlog remains after per-horizon backfill"
+    conclusion="这不是策略问题；这是 backfill 吞吐/时间预算问题。旧的单次 60s backfill 会让 1h 优先吃掉预算，新的 horizon-filter 已经证明 6h/24h 可以落表，但当前 timebox 仍不足以清空 backlog。"
+    prior_single_timebox_1h_only="yes"
   fi
 
   cat >"${SNAPSHOT_DIR}/BACKFILL_MATERIALIZATION_DIAG_CN.md" <<EOF
@@ -709,7 +718,7 @@ ${labels_by_horizon}
 - backfill_1h_status: ${BACKFILL_1H_STATUS}
 - backfill_6h_status: ${BACKFILL_6H_STATUS}
 - backfill_24h_status: ${BACKFILL_24H_STATUS}
-- previous single-60s backfill likely only completed 1h: $( [[ "${mature_6h:-0}" != "0" && "${labels_6h:-0}" == "0" ]] && echo "yes" || echo "no" )
+- previous single-60s backfill likely only completed 1h: ${prior_single_timebox_1h_only}
 - horizon-filter needed: ${need_horizon_filter}
 
 ## Diagnosis
