@@ -7,6 +7,7 @@ TIMESTAMP_UTC="$(date -u +%Y%m%d_%H%M)"
 SNAPSHOT_DIR="${LPBOT_SHADOW_OBS_SNAPSHOT_DIR:-${REPORT_BASE_DIR}/${TIMESTAMP_UTC}}"
 CONFIG_PATH="${LPBOT_SHADOW_OBS_CONFIG:-configs/config.shadow.research.toml}"
 BACKFILL_TIMEOUT_SECONDS="${LPBOT_SHADOW_OBS_BACKFILL_TIMEOUT_SECONDS:-900}"
+BACKFILL_SEQUENCE="${LPBOT_SHADOW_OBS_BACKFILL_SEQUENCE:-24h 6h 6h 1h}"
 BACKFILL_LOCK_FILE="${LPBOT_SHADOW_BACKFILL_LOCK_FILE:-/tmp/lpbot_shadow_backfill.lock}"
 BACKFILL_LOCK_WAIT_SECONDS="${LPBOT_SHADOW_BACKFILL_LOCK_WAIT_SECONDS:-5}"
 
@@ -527,6 +528,32 @@ format_rate_per_min() {
   awk -v d="$delta" -v s="$seconds" 'BEGIN { if (s <= 0) printf "0.00"; else printf "%.2f", d / (s/60.0); }'
 }
 
+estimate_target_time() {
+  local total="${1:-0}"
+  local current="${2:-0}"
+  local delta="${3:-0}"
+  local seconds="${4:-0}"
+  local target_pct="${5:-0}"
+  awk -v total="$total" -v current="$current" -v delta="$delta" -v seconds="$seconds" -v target_pct="$target_pct" '
+    BEGIN {
+      if (delta <= 0 || seconds <= 0) {
+        printf "unknown";
+      } else if (total <= 0) {
+        printf "unknown";
+      } else {
+        target_count = (target_pct / 100.0) * total;
+        missing = target_count - current;
+        if (missing <= 0) {
+          printf "reached";
+        } else {
+          mins = missing / (delta / (seconds / 60.0));
+          printf "%.0f min (~%.1f h)", mins, mins/60.0;
+        }
+      }
+    }
+  '
+}
+
 estimate_catchup_time() {
   local missing="${1:-0}"
   local delta="${2:-0}"
@@ -541,6 +568,24 @@ estimate_catchup_time() {
       }
     }
   '
+}
+
+read_timeout_for_horizon() {
+  local horizon="$1"
+  local key=""
+  case "$horizon" in
+    1h) key="LPBOT_SHADOW_OBS_BACKFILL_TIMEOUT_SECONDS_1H" ;;
+    6h) key="LPBOT_SHADOW_OBS_BACKFILL_TIMEOUT_SECONDS_6H" ;;
+    24h) key="LPBOT_SHADOW_OBS_BACKFILL_TIMEOUT_SECONDS_24H" ;;
+  esac
+  if [[ -n "$key" ]]; then
+    local value="${!key:-}"
+    if [[ -n "$value" ]]; then
+      printf '%s\n' "$value"
+      return 0
+    fi
+  fi
+  printf '%s\n' "$BACKFILL_TIMEOUT_SECONDS"
 }
 
 generate_trend_summary() {
@@ -667,12 +712,14 @@ EOF
 run_backfill_for_horizon() {
   local horizon="$1"
   local stderr_log="${SNAPSHOT_DIR}/backfill_${horizon}.stderr.log"
+  local timeout_seconds
+  timeout_seconds="$(read_timeout_for_horizon "$horizon")"
   if ! command -v timeout >/dev/null 2>&1; then
     echo "SKIPPED(no-timeout)"
     return 0
   fi
   set +e
-  timeout --signal=TERM "${BACKFILL_TIMEOUT_SECONDS}" \
+  timeout --signal=TERM "${timeout_seconds}" \
     go run -tags shadow ./cmd/lpbot \
       --config="${CONFIG_PATH}" \
       --shadow-outcomes-backfill \
@@ -834,14 +881,24 @@ generate_backlog_catchup_summary() {
   delta_6h=$(( ${labels_6h:-0} - ${BEFORE_LABELS_6H:-0} ))
   delta_24h=$(( ${labels_24h:-0} - ${BEFORE_LABELS_24H:-0} ))
 
-  local coverage_6h coverage_24h elapsed_seconds labels_per_min_6h labels_per_min_24h catchup_eta_6h catchup_eta_24h
+  local coverage_6h coverage_24h coverage_before_6h coverage_before_24h coverage_delta_6h coverage_delta_24h
+  local elapsed_seconds labels_per_min_6h labels_per_min_24h catchup_eta_6h catchup_eta_24h
+  local eta_30_6h eta_30_24h eta_70_6h eta_70_24h
   coverage_6h="$(format_pct "${labels_6h:-0}" "${mature_6h:-0}")"
   coverage_24h="$(format_pct "${labels_24h:-0}" "${mature_24h:-0}")"
+  coverage_before_6h="$(format_pct "${BEFORE_LABELS_6H:-0}" "${mature_6h:-0}")"
+  coverage_before_24h="$(format_pct "${BEFORE_LABELS_24H:-0}" "${mature_24h:-0}")"
   elapsed_seconds=$(( RUN_ENDED_EPOCH - RUN_STARTED_EPOCH ))
   labels_per_min_6h="$(format_rate_per_min "${delta_6h:-0}" "${elapsed_seconds:-0}")"
   labels_per_min_24h="$(format_rate_per_min "${delta_24h:-0}" "${elapsed_seconds:-0}")"
   catchup_eta_6h="$(estimate_catchup_time "${missing_6h:-0}" "${delta_6h:-0}" "${elapsed_seconds:-0}")"
   catchup_eta_24h="$(estimate_catchup_time "${missing_24h:-0}" "${delta_24h:-0}" "${elapsed_seconds:-0}")"
+  coverage_delta_6h="$(awk -v before="${BEFORE_LABELS_6H:-0}" -v after="${labels_6h:-0}" -v total="${mature_6h:-0}" 'BEGIN { if (total <= 0) printf "0.00pp"; else printf "%.2fpp", ((after-before)*100.0)/total; }')"
+  coverage_delta_24h="$(awk -v before="${BEFORE_LABELS_24H:-0}" -v after="${labels_24h:-0}" -v total="${mature_24h:-0}" 'BEGIN { if (total <= 0) printf "0.00pp"; else printf "%.2fpp", ((after-before)*100.0)/total; }')"
+  eta_30_6h="$(estimate_target_time "${mature_6h:-0}" "${labels_6h:-0}" "${delta_6h:-0}" "${elapsed_seconds:-0}" "30")"
+  eta_30_24h="$(estimate_target_time "${mature_24h:-0}" "${labels_24h:-0}" "${delta_24h:-0}" "${elapsed_seconds:-0}" "30")"
+  eta_70_6h="$(estimate_target_time "${mature_6h:-0}" "${labels_6h:-0}" "${delta_6h:-0}" "${elapsed_seconds:-0}" "70")"
+  eta_70_24h="$(estimate_target_time "${mature_24h:-0}" "${labels_24h:-0}" "${delta_24h:-0}" "${elapsed_seconds:-0}" "70")"
 
   local edge_csv="${SNAPSHOT_DIR}/score_edge_diagnostics.csv"
   local invalid_csv="${SNAPSHOT_DIR}/invalid_reason_counts.csv"
@@ -870,6 +927,15 @@ generate_backlog_catchup_summary() {
     sample_bias_warn="SAMPLE_BIAS_WARN"
   fi
 
+  local bucket_csv="${SNAPSHOT_DIR}/bucket_stats.csv"
+  local top_24h_score_buckets top_24h_pools top_24h_hours
+  top_24h_score_buckets="$(awk -F, '$1=="score" && $2=="24h" {printf "- %s: samples=%s win_rate=%s avg=%s median=%s\n", $3, $4, $8, $9, $10}' "$bucket_csv" | head -n 5)"
+  top_24h_pools="$(awk -F, '$1=="24h" {printf "- %s: labels=%s share=%s%%\n", $2, $3, $5}' "$pool_csv" | head -n 5)"
+  top_24h_hours="$(awk -F, '$1=="24h" {printf "- %s: labels=%s share=%s%%\n", $2, $3, $5}' "$time_csv" | head -n 5)"
+  if [[ -z "${top_24h_score_buckets}" ]]; then top_24h_score_buckets="- unavailable"; fi
+  if [[ -z "${top_24h_pools}" ]]; then top_24h_pools="- unavailable"; fi
+  if [[ -z "${top_24h_hours}" ]]; then top_24h_hours="- unavailable"; fi
+
   cat >"${SNAPSHOT_DIR}/BACKLOG_CATCHUP_SUMMARY_CN.md" <<EOF
 # Backlog Catch-up Summary
 
@@ -882,11 +948,15 @@ generate_backlog_catchup_summary() {
 - mature_6h: ${mature_6h:-0}
 - labels_6h: ${labels_6h:-0}
 - missing_6h: ${missing_6h:-0}
+- coverage_6h_before: ${coverage_before_6h}
 - coverage_6h: ${coverage_6h}
+- coverage_delta_6h: ${coverage_delta_6h}
 - mature_24h: ${mature_24h:-0}
 - labels_24h: ${labels_24h:-0}
 - missing_24h: ${missing_24h:-0}
+- coverage_24h_before: ${coverage_before_24h}
 - coverage_24h: ${coverage_24h}
+- coverage_delta_24h: ${coverage_delta_24h}
 
 ## This Run
 
@@ -896,6 +966,10 @@ generate_backlog_catchup_summary() {
 - labels_per_min_24h: ${labels_per_min_24h}
 - estimated_catchup_time_6h: ${catchup_eta_6h}
 - estimated_catchup_time_24h: ${catchup_eta_24h}
+- estimated_time_to_30pct_6h: ${eta_30_6h}
+- estimated_time_to_30pct_24h: ${eta_30_24h}
+- estimated_time_to_70pct_6h: ${eta_70_6h}
+- estimated_time_to_70pct_24h: ${eta_70_24h}
 
 ## Early Signal
 
@@ -907,6 +981,16 @@ generate_backlog_catchup_summary() {
 - 24h invalid_rate: ${invalid_24h:-0}%
 - 6h stale_mark_share: ${stale_share_6h}
 - 24h stale_mark_share: ${stale_share_24h}
+
+## 24h Detail
+
+- verdict: EARLY_SIGNAL_ONLY
+- 24h score bucket:
+${top_24h_score_buckets}
+- 24h pool_id distribution:
+${top_24h_pools}
+- 24h time bucket distribution:
+${top_24h_hours}
 
 ## Sample Bias
 
@@ -940,9 +1024,37 @@ write_queries
 
 exec 9>"${BACKFILL_LOCK_FILE}"
 if flock -w "${BACKFILL_LOCK_WAIT_SECONDS}" 9; then
-  BACKFILL_24H_STATUS="$(run_backfill_for_horizon "24h")"
-  BACKFILL_6H_STATUS="$(run_backfill_for_horizon "6h")"
-  BACKFILL_1H_STATUS="$(run_backfill_for_horizon "1h")"
+  BACKFILL_24H_STATUS="SKIPPED"
+  BACKFILL_6H_STATUS="SKIPPED"
+  BACKFILL_1H_STATUS="SKIPPED"
+  for horizon in ${BACKFILL_SEQUENCE}; do
+    case "$horizon" in
+      24h)
+        current_status="$(run_backfill_for_horizon "24h")"
+        if [[ "${BACKFILL_24H_STATUS}" == "SKIPPED" ]]; then
+          BACKFILL_24H_STATUS="${current_status}"
+        else
+          BACKFILL_24H_STATUS="${BACKFILL_24H_STATUS}+${current_status}"
+        fi
+        ;;
+      6h)
+        current_status="$(run_backfill_for_horizon "6h")"
+        if [[ "${BACKFILL_6H_STATUS}" == "SKIPPED" ]]; then
+          BACKFILL_6H_STATUS="${current_status}"
+        else
+          BACKFILL_6H_STATUS="${BACKFILL_6H_STATUS}+${current_status}"
+        fi
+        ;;
+      1h)
+        current_status="$(run_backfill_for_horizon "1h")"
+        if [[ "${BACKFILL_1H_STATUS}" == "SKIPPED" ]]; then
+          BACKFILL_1H_STATUS="${current_status}"
+        else
+          BACKFILL_1H_STATUS="${BACKFILL_1H_STATUS}+${current_status}"
+        fi
+        ;;
+    esac
+  done
   flock -u 9
 else
   BACKFILL_24H_STATUS="LOCKED"
