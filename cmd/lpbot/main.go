@@ -2861,6 +2861,9 @@ func main() {
 	shadowOutcomesBackfillHorizon := flag.String("shadow-outcomes-backfill-horizon", "", "Optional horizon filter for shadow outcome backfill: 1h, 6h, or 24h")
 	shadowOutcomesReport := flag.Bool("report-shadow-outcomes", false, "Generate REPORT_SHADOW_OUTCOMES_CN.md from shadow outcome labels")
 	shadowOutcomesReportPath := flag.String("report-shadow-outcomes-path", shadowOutcomeReportDefaultPath, "Path to write the shadow outcomes markdown report")
+	shadowTokenRPCAudit := flag.Bool("shadow-token-rpc-audit", false, "Run read-only ERC20 metadata RPC audit from CSV input")
+	shadowTokenRPCAuditInput := flag.String("shadow-token-rpc-audit-input", "", "CSV input path for read-only ERC20 metadata RPC audit")
+	shadowTokenRPCAuditOutput := flag.String("shadow-token-rpc-audit-output", "", "CSV output path for read-only ERC20 metadata RPC audit")
 	flag.Parse()
 
 	if *configPath == "" {
@@ -3117,7 +3120,7 @@ func main() {
 		}
 		return
 	}
-	if *shadowOutcomesBackfill || *shadowOutcomesReport {
+	if *shadowOutcomesBackfill || *shadowOutcomesReport || *shadowTokenRPCAudit {
 		app := &App{logger: logger, config: cfg, liveGate: newLiveSafetyGate(BuildMode, cfg)}
 		app.alerter = initAlerter(logger, cfg)
 		defer app.cleanup()
@@ -3134,6 +3137,16 @@ func main() {
 		if *shadowOutcomesReport {
 			if err := app.generateShadowOutcomeReport(ctx, *shadowOutcomesReportPath); err != nil {
 				fmt.Fprintf(os.Stderr, "Error generating shadow outcome report: %v\n", err)
+				os.Exit(1)
+			}
+		}
+		if *shadowTokenRPCAudit {
+			if strings.TrimSpace(*shadowTokenRPCAuditInput) == "" || strings.TrimSpace(*shadowTokenRPCAuditOutput) == "" {
+				fmt.Fprintln(os.Stderr, "Error: --shadow-token-rpc-audit requires both --shadow-token-rpc-audit-input and --shadow-token-rpc-audit-output")
+				os.Exit(1)
+			}
+			if err := app.generateShadowTokenRPCAudit(ctx, *shadowTokenRPCAuditInput, *shadowTokenRPCAuditOutput); err != nil {
+				fmt.Fprintf(os.Stderr, "Error generating shadow token RPC audit: %v\n", err)
 				os.Exit(1)
 			}
 		}

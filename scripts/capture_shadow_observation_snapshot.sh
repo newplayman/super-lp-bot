@@ -694,6 +694,14 @@ write_summary() {
 - [TREND_SUMMARY_CN.md](${SNAPSHOT_DIR}/TREND_SUMMARY_CN.md)
 - [BACKFILL_MATERIALIZATION_DIAG_CN.md](${SNAPSHOT_DIR}/BACKFILL_MATERIALIZATION_DIAG_CN.md)
 - [BACKLOG_CATCHUP_SUMMARY_CN.md](${SNAPSHOT_DIR}/BACKLOG_CATCHUP_SUMMARY_CN.md)
+- [HIGH_IMPACT_DECIMALS_AUDIT_CN.md](${SNAPSHOT_DIR}/HIGH_IMPACT_DECIMALS_AUDIT_CN.md)
+- [DECIMALS_JOIN_AUDIT_CN.md](${SNAPSHOT_DIR}/DECIMALS_JOIN_AUDIT_CN.md)
+- [TOKEN_DECIMAL_PRICE_AUDIT_CN.md](${SNAPSHOT_DIR}/TOKEN_DECIMAL_PRICE_AUDIT_CN.md)
+- [STALE_MARK_POOL_AUDIT_CN.md](${SNAPSHOT_DIR}/STALE_MARK_POOL_AUDIT_CN.md)
+- [INVALID_ORIGINAL_LABEL_DEEPDIVE_CN.md](${SNAPSHOT_DIR}/INVALID_ORIGINAL_LABEL_DEEPDIVE_CN.md)
+- [VALID_ENTRY_OUTCOME_CN.md](${SNAPSHOT_DIR}/VALID_ENTRY_OUTCOME_CN.md)
+- [PNL_REALITY_AUDIT_CN.md](${SNAPSHOT_DIR}/PNL_REALITY_AUDIT_CN.md)
+- [GATE_CONCLUSION_CN.md](${SNAPSHOT_DIR}/GATE_CONCLUSION_CN.md)
 - [outcome_counts.csv](${SNAPSHOT_DIR}/outcome_counts.csv)
 - [bucket_stats.csv](${SNAPSHOT_DIR}/bucket_stats.csv)
 - [high_low_score_diagnostics.csv](${SNAPSHOT_DIR}/high_low_score_diagnostics.csv)
@@ -1087,6 +1095,8 @@ run_query_to_csv "${SNAPSHOT_DIR}/RAW_SQL_QUERIES.sql" "-- materialized_pool_dis
 generate_trend_summary
 generate_backfill_materialization_diag
 generate_backlog_catchup_summary
+LPBOT_SHADOW_OBS_SNAPSHOT_DIR="${SNAPSHOT_DIR}" LPBOT_SHADOW_OBS_CONFIG="${CONFIG_PATH}" \
+  ./scripts/generate_shadow_reality_audits.sh >/dev/null 2>"${SNAPSHOT_DIR}/reality_audit.stderr.log" || true
 write_summary "$readiness_status" "$backfill_status" "$report_status"
 
 printf '[shadow-observation] dir=%s readiness=%s backfill=%s report=%s\n' \
