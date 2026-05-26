@@ -333,7 +333,7 @@ EOF
           NTILE(5) OVER (PARTITION BY r.horizon ORDER BY r.score_total ASC, r.original_decision_trace_id) AS score_ntile,
           lower(p.token0) AS token0,
           lower(p.token1) AS token1,
-          lower(COALESCE(p.chain, '')) AS pool_chain,
+          lower(COALESCE(d.chain, '')) AS pool_chain,
           p.pool_id
         FROM shadow_outcome_labels_repaired r
         JOIN shadow_decision_trace d ON d.trace_id = r.original_decision_trace_id

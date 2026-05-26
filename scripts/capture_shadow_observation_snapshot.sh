@@ -696,12 +696,23 @@ write_summary() {
 - [BACKLOG_CATCHUP_SUMMARY_CN.md](${SNAPSHOT_DIR}/BACKLOG_CATCHUP_SUMMARY_CN.md)
 - [HIGH_IMPACT_DECIMALS_AUDIT_CN.md](${SNAPSHOT_DIR}/HIGH_IMPACT_DECIMALS_AUDIT_CN.md)
 - [DECIMALS_JOIN_AUDIT_CN.md](${SNAPSHOT_DIR}/DECIMALS_JOIN_AUDIT_CN.md)
+- [DECIMALS_JOIN_FIX_AUDIT_CN.md](${SNAPSHOT_DIR}/DECIMALS_JOIN_FIX_AUDIT_CN.md)
 - [TOKEN_DECIMAL_PRICE_AUDIT_CN.md](${SNAPSHOT_DIR}/TOKEN_DECIMAL_PRICE_AUDIT_CN.md)
 - [STALE_MARK_POOL_AUDIT_CN.md](${SNAPSHOT_DIR}/STALE_MARK_POOL_AUDIT_CN.md)
+- [STALE_MARK_TARGET_WINDOW_AUDIT_CN.md](${SNAPSHOT_DIR}/STALE_MARK_TARGET_WINDOW_AUDIT_CN.md)
 - [INVALID_ORIGINAL_LABEL_DEEPDIVE_CN.md](${SNAPSHOT_DIR}/INVALID_ORIGINAL_LABEL_DEEPDIVE_CN.md)
+- [REPAIRED_V2_MATERIALIZATION_CN.md](${SNAPSHOT_DIR}/REPAIRED_V2_MATERIALIZATION_CN.md)
+- [TARGET_WINDOW_SENSITIVITY_CN.md](${SNAPSHOT_DIR}/TARGET_WINDOW_SENSITIVITY_CN.md)
+- [POSITION_ID_REPAIR_AUDIT_CN.md](${SNAPSHOT_DIR}/POSITION_ID_REPAIR_AUDIT_CN.md)
+- [POOL_TOKEN_CANONICAL_MAPPING_CN.md](${SNAPSHOT_DIR}/POOL_TOKEN_CANONICAL_MAPPING_CN.md)
+- [ORIGINAL_LABEL_LOGIC_INVALID_AUDIT_CN.md](${SNAPSHOT_DIR}/ORIGINAL_LABEL_LOGIC_INVALID_AUDIT_CN.md)
 - [VALID_ENTRY_OUTCOME_CN.md](${SNAPSHOT_DIR}/VALID_ENTRY_OUTCOME_CN.md)
 - [PNL_REALITY_AUDIT_CN.md](${SNAPSHOT_DIR}/PNL_REALITY_AUDIT_CN.md)
 - [GATE_CONCLUSION_CN.md](${SNAPSHOT_DIR}/GATE_CONCLUSION_CN.md)
+- [OVERNIGHT_FINAL_SUMMARY_CN.md](${SNAPSHOT_DIR}/OVERNIGHT_FINAL_SUMMARY_CN.md)
+- [target_window_sensitivity.csv](${SNAPSHOT_DIR}/target_window_sensitivity.csv)
+- [position_id_lineage_breakdown.csv](${SNAPSHOT_DIR}/position_id_lineage_breakdown.csv)
+- [original_label_logic_invalid_breakdown.csv](${SNAPSHOT_DIR}/original_label_logic_invalid_breakdown.csv)
 - [outcome_counts.csv](${SNAPSHOT_DIR}/outcome_counts.csv)
 - [bucket_stats.csv](${SNAPSHOT_DIR}/bucket_stats.csv)
 - [high_low_score_diagnostics.csv](${SNAPSHOT_DIR}/high_low_score_diagnostics.csv)
@@ -1097,6 +1108,8 @@ generate_backfill_materialization_diag
 generate_backlog_catchup_summary
 LPBOT_SHADOW_OBS_SNAPSHOT_DIR="${SNAPSHOT_DIR}" LPBOT_SHADOW_OBS_CONFIG="${CONFIG_PATH}" \
   ./scripts/generate_shadow_reality_audits.sh >/dev/null 2>"${SNAPSHOT_DIR}/reality_audit.stderr.log" || true
+LPBOT_SHADOW_OBS_SNAPSHOT_DIR="${SNAPSHOT_DIR}" LPBOT_SHADOW_OBS_CONFIG="${CONFIG_PATH}" \
+  ./scripts/generate_shadow_reality_audits_v2.sh >/dev/null 2>"${SNAPSHOT_DIR}/reality_audit_v2.stderr.log" || true
 write_summary "$readiness_status" "$backfill_status" "$report_status"
 
 printf '[shadow-observation] dir=%s readiness=%s backfill=%s report=%s\n' \
