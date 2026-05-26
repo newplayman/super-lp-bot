@@ -930,8 +930,8 @@ generate_backlog_catchup_summary() {
   local bucket_csv="${SNAPSHOT_DIR}/bucket_stats.csv"
   local top_24h_score_buckets top_24h_pools top_24h_hours
   top_24h_score_buckets="$(awk -F, '$1=="score" && $2=="24h" {printf "- %s: samples=%s win_rate=%s avg=%s median=%s\n", $3, $4, $8, $9, $10}' "$bucket_csv" | head -n 5)"
-  top_24h_pools="$(awk -F, '$1=="24h" {printf "- %s: labels=%s share=%s%%\n", $2, $3, $5}' "$pool_csv" | head -n 5)"
-  top_24h_hours="$(awk -F, '$1=="24h" {printf "- %s: labels=%s share=%s%%\n", $2, $3, $5}' "$time_csv" | head -n 5)"
+  top_24h_pools="$(awk -F, -v labels="${labels_24h:-0}" '$1=="24h" { if (labels > 0) { printf "- %s: labels=%s share=%.2f%%\n", $2, $3, ($3*100.0)/labels } else { printf "- %s: labels=%s share=0.00%%\n", $2, $3 } }' "$pool_csv" | head -n 5)"
+  top_24h_hours="$(awk -F, -v labels="${labels_24h:-0}" '$1=="24h" { if (labels > 0) { printf "- %s: labels=%s share=%.2f%%\n", $2, $3, ($3*100.0)/labels } else { printf "- %s: labels=%s share=0.00%%\n", $2, $3 } }' "$time_csv" | head -n 5)"
   if [[ -z "${top_24h_score_buckets}" ]]; then top_24h_score_buckets="- unavailable"; fi
   if [[ -z "${top_24h_pools}" ]]; then top_24h_pools="- unavailable"; fi
   if [[ -z "${top_24h_hours}" ]]; then top_24h_hours="- unavailable"; fi
