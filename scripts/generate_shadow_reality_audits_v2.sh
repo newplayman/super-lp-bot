@@ -5,6 +5,10 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SNAPSHOT_DIR="${LPBOT_SHADOW_OBS_SNAPSHOT_DIR:-}"
 CONFIG_PATH="${LPBOT_SHADOW_OBS_CONFIG:-configs/config.shadow.research.toml}"
 REPAIR_VERSION="${LPBOT_SHADOW_REPAIR_VERSION:-v2_rpc_lineage_window}"
+HORIZON_BUCKET_SECONDS="${LPBOT_SHADOW_HORIZON_BUCKET_SECONDS:-3600}"
+REPAIRED_V2_INSERT_TIMEOUT_SECONDS="${LPBOT_SHADOW_REPAIRED_V2_INSERT_TIMEOUT_SECONDS:-2700}"
+REPAIRED_V2_NO_PROGRESS_SECONDS="${LPBOT_SHADOW_REPAIRED_V2_NO_PROGRESS_SECONDS:-3600}"
+REPAIRED_V2_PERIODIC_CHECKPOINT_SECONDS="${LPBOT_SHADOW_REPAIRED_V2_PERIODIC_CHECKPOINT_SECONDS:-1800}"
 
 if [[ -z "${SNAPSHOT_DIR}" ]]; then
   echo "LPBOT_SHADOW_OBS_SNAPSHOT_DIR is required" >&2
@@ -32,6 +36,13 @@ psql_csv() {
 }
 
 table_exists() {
+  local table_name="$1"
+  local count
+  count="$(psql_q "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public' AND table_name='${table_name}';" | tr -d '[:space:]')"
+  [[ "${count:-0}" != "0" ]]
+}
+
+table_exists_in_schema() {
   local table_name="$1"
   local count
   count="$(psql_q "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public' AND table_name='${table_name}';" | tr -d '[:space:]')"
@@ -85,10 +96,17 @@ build_rpc_values_sql() {
 }
 
 apply_repaired_v2_migration() {
-  psql "$POSTGRES_DSN" -v ON_ERROR_STOP=1 -f "${ROOT_DIR}/migrations/postgres/000012_shadow_outcome_repaired_v2.sql" >/dev/null
+  awk '
+    /-- \+goose Down/ { exit }
+    !/^-- \+goose / { print }
+  ' "${ROOT_DIR}/migrations/postgres/000012_shadow_outcome_repaired_v2.sql" \
+    | psql "$POSTGRES_DSN" -v ON_ERROR_STOP=1 >/dev/null
 }
 
-materialize_repaired_v2() {
+materialize_repaired_v2_bucket() {
+  local horizon="$1"
+  local bucket_start="$2"
+  local bucket_end="$3"
   local rpc_values_sql
   local upsert_stats
   rpc_values_sql="$(build_rpc_values_sql)"
@@ -98,8 +116,8 @@ materialize_repaired_v2() {
     return 1
   fi
 
-  upsert_stats="$(
-    psql "$POSTGRES_DSN" -X -A -F '|' -P pager=off -t <<SQL
+  if ! upsert_stats="$(
+    timeout "${REPAIRED_V2_INSERT_TIMEOUT_SECONDS}" psql "$POSTGRES_DSN" -X -A -F '|' -P pager=off -t <<SQL
 WITH rpc_audit(token_symbol, token_address, chain, decimals_result, symbol_result, metadata_trusted) AS (
   VALUES
   ${rpc_values_sql}
@@ -150,7 +168,9 @@ base AS (
   JOIN shadow_decision_trace d ON d.trace_id = r.original_decision_trace_id
   JOIN pools p ON p.pool_id = d.pool_id
   LEFT JOIN pool_token_metadata ptm ON ptm.pool_id = p.pool_id
-  WHERE r.horizon IN ('6h', '24h')
+  WHERE r.horizon = '${horizon}'
+    AND d.tick_time >= ${bucket_start}
+    AND d.tick_time < ${bucket_end}
 ),
 with_rpc AS (
   SELECT
@@ -360,7 +380,7 @@ final_rows AS (
     EXTRACT(EPOCH FROM NOW())::BIGINT AS created_at,
     EXTRACT(EPOCH FROM NOW())::BIGINT AS updated_at
   FROM marks_enriched
-  WHERE horizon IN ('6h', '24h')
+  WHERE horizon = '${horizon}'
 ),
 upserted AS (
   INSERT INTO shadow_outcome_labels_repaired_v2 (
@@ -441,14 +461,345 @@ upserted AS (
     updated_at = EXCLUDED.updated_at
   RETURNING (xmax = 0) AS inserted
 )
-SELECT
+  SELECT
   COUNT(*) FILTER (WHERE inserted) AS inserted_rows,
   COUNT(*) FILTER (WHERE NOT inserted) AS updated_rows
 FROM upserted;
 SQL
-  )"
+  )"; then
+    printf "0|0"
+    return 1
+  fi
 
-  printf "%s" "${upsert_stats}" >"${SNAPSHOT_DIR}/repaired_v2_upsert_stats.tsv"
+  printf "%s" "${upsert_stats}"
+}
+
+diagnose_repaired_v2_performance() {
+  local horizon="$1"
+  local bucket_start="$2"
+  local bucket_end="$3"
+  local diag_path="${SNAPSHOT_DIR}/repaired_v2_performance_diag_${horizon}_${bucket_start}_${bucket_end}.md"
+  local idx
+
+  cat >"${diag_path}" <<EOF
+# Repaired V2 Performance + Index Diagnostics
+
+- horizon: \`${horizon}\`
+- time_bucket: \`${bucket_start} -> ${bucket_end}\`
+- generated_at: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+## Index presence check
+
+| target_index | present |
+| --- | --- |
+EOF
+
+  for idx in \
+    "shadow_outcome_labels:decision_trace_id,horizon" \
+    "shadow_decision_trace:trace_id" \
+    "shadow_position_marks:position_id,mark_time" \
+    "positions:id" \
+    "pool_token_metadata:lower(token_address),chain" \
+    "price_snapshots:lower(token_address),price_timestamp"; do
+    if [[ "${idx}" == "pool_token_metadata:lower(token_address),chain" ]]; then
+      local present
+      present="$(psql_q "SELECT EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='public' AND tablename='pool_token_metadata' AND indexdef ILIKE '%lower(token_address)%' AND indexdef ILIKE '%chain%')::TEXT;" | tr -d '[:space:]')"
+      printf "| %s | %s |\n" "${idx}" "${present:-false}" >>"${diag_path}"
+    elif [[ "${idx}" == "price_snapshots:lower(token_address),price_timestamp" ]]; then
+      local present
+      present="$(psql_q "SELECT EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='public' AND tablename='price_snapshots' AND indexdef ILIKE '%lower(token_address)%' AND indexdef ILIKE '%price_timestamp%')::TEXT;" | tr -d '[:space:]')"
+      printf "| %s | %s |\n" "${idx}" "${present:-false}" >>"${diag_path}"
+    else
+      local tbl cols
+      tbl="${idx%%:*}"
+      cols="${idx#*:}"
+      local where
+      where="table_name='${tbl}'"
+      IFS=',' read -ra _cols <<<"${cols}"
+      local col
+      for col in "${_cols[@]}"; do
+        local safe
+        safe="$(printf "%s" "${col}" | sed -E 's/[[:space:]]+//g')"
+        where="${where} AND lower(indexdef) LIKE '%${safe}%'"
+      done
+      local present
+      present="$(psql_q "SELECT EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='public' AND ${where})::TEXT;" | tr -d '[:space:]')"
+      printf "| %s | %s |\n" "${idx}" "${present:-false}" >>"${diag_path}"
+    fi
+  done
+
+  {
+    echo
+    echo "## Recommendation"
+    echo
+    echo "- If any target index is missing, consider adding a research-only migration and rerun."
+    echo "- Next run should start with a warmed cache window and small bucket cadence."
+  } >>"${diag_path}"
+}
+
+explain_repaired_v2_bucket() {
+  local horizon="$1"
+  local bucket_start="$2"
+  local bucket_end="$3"
+  local explain_path="${SNAPSHOT_DIR}/repaired_v2_explain_${horizon}_${bucket_start}_${bucket_end}.txt"
+
+  timeout 900 psql "$POSTGRES_DSN" -X -A -t <<SQL >"${explain_path}" 2>/dev/null
+EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
+WITH rpc_audit(token_symbol, token_address, chain, decimals_result, symbol_result, metadata_trusted) AS (
+  VALUES
+  $(
+    build_rpc_values_sql \
+      | sed "s/^/  /g"
+  )
+),
+base AS (
+  SELECT
+    r.original_decision_trace_id AS decision_trace_id,
+    r.horizon,
+    r.pool_id,
+    COALESCE(NULLIF(BTRIM(d.position_id), ''), '') AS raw_position_id,
+    r.score_total,
+    r.selected,
+    r.intent_open,
+    r.label AS original_label,
+    COALESCE(NULLIF(r.entry_value_usd_repaired, ''), '0') AS entry_value_usd_repaired,
+    COALESCE(NULLIF(r.entry_value_source, ''), 'unknown') AS entry_value_source,
+    COALESCE(NULLIF(r.entry_value_confidence, ''), 'unknown') AS entry_value_confidence,
+    COALESCE(NULLIF(r.token_metadata_status, ''), 'missing_token_metadata') AS token_metadata_status,
+    COALESCE(NULLIF(r.price_status, ''), 'missing_price') AS price_status,
+    COALESCE(NULLIF(r.invalid_reason_repaired, ''), 'unknown') AS invalid_reason_repaired_v1,
+    COALESCE(NULLIF(r.net_pnl_usd, ''), '0') AS net_pnl_usd_repaired,
+    COALESCE(NULLIF(r.net_pnl_pct_repaired, ''), '0') AS net_pnl_pct_repaired,
+    d.tick_time,
+    COALESCE(NULLIF(d.chain, ''), 'base') AS chain,
+    COALESCE(NULLIF(d.position_id, ''), '') AS decision_position_id,
+    COALESCE(d.strategy_epoch, 0) AS strategy_epoch,
+    COALESCE(NULLIF(d.intended_notional_usd, ''), '0') AS intended_notional_usd,
+    lower(p.token0) AS pool_token0_l,
+    lower(p.token1) AS pool_token1_l,
+    COALESCE(ptm.token0, '') AS scanner_token0,
+    COALESCE(ptm.token1, '') AS scanner_token1,
+    ptm.token0_decimals,
+    ptm.token1_decimals,
+    COALESCE(NULLIF(ptm.decimals_source, ''), 'missing') AS ptm_decimals_source,
+    CASE r.horizon
+      WHEN '6h' THEN 21600::BIGINT
+      WHEN '24h' THEN 86400::BIGINT
+      ELSE 3600::BIGINT
+    END AS horizon_seconds,
+    CASE
+      WHEN lower(COALESCE(ptm.token0, '')) = lower(p.token0)
+       AND lower(COALESCE(ptm.token1, '')) = lower(p.token1)
+      THEN 'exact_match'
+      WHEN COALESCE(ptm.pool_id, '') = '' THEN 'pool_metadata_missing'
+      ELSE 'scanner_mismatch'
+    END AS mapping_status
+  FROM shadow_outcome_labels_repaired r
+  JOIN shadow_decision_trace d ON d.trace_id = r.original_decision_trace_id
+  JOIN pools p ON p.pool_id = d.pool_id
+  LEFT JOIN pool_token_metadata ptm ON ptm.pool_id = p.pool_id
+  WHERE r.horizon = '${horizon}'
+    AND d.tick_time >= ${bucket_start}
+    AND d.tick_time < ${bucket_end}
+)
+SELECT count(*) FROM base;
+SQL
+  local explain_exit=$?
+  if (( explain_exit != 0 )); then
+    echo "EXPLAIN failed (exit=${explain_exit}), see ${explain_path}" >&2
+    return 1
+  fi
+  return 0
+}
+
+materialize_repaired_v2() {
+  local inserted_total=0
+  local updated_total=0
+  local horizon_rows_before
+  local horizon_rows_after
+  local materialize_start_ts
+  local total_rows_after
+  local error_file
+  local batch_exit
+  local horizon_start_ts
+  local horizon_end_ts
+  local total_seconds
+  local horizon_rows
+  local horizon
+  local bucket_start
+  local bucket_end
+  local next_bucket_end
+  local bucket_index=0
+  local total_buckets
+  local buckets_remaining
+  local horizon_inserted
+  local horizon_updated
+  local batch_rows
+  local batch_label
+  local batch_start_time
+  local batch_end_time
+  local batch_elapsed
+  local rows_per_sec
+  local estimated_remaining_sec
+  local checkpoint_path
+  local last_error="none"
+  local progress_guard_ts
+  local periodic_checkpoint_ts
+
+  : >"${SNAPSHOT_DIR}/repaired_v2_upsert_stats.tsv"
+  printf "%s\n" "horizon|time_bucket|inserted_rows|updated_rows|elapsed_seconds|rows_per_sec|total_v2_rows|estimated_remaining_sec" >"${SNAPSHOT_DIR}/repaired_v2_upsert_stats.tsv"
+  materialize_start_ts="$(date +%s)"
+  progress_guard_ts="${materialize_start_ts}"
+  periodic_checkpoint_ts="${materialize_start_ts}"
+
+  for horizon in 24h 6h 1h; do
+    horizon_rows="$(psql_q "SELECT COUNT(*) FROM shadow_outcome_labels_repaired WHERE horizon = '${horizon}';" | tr -d '[:space:]')"
+    horizon_rows="${horizon_rows:-0}"
+    if (( horizon_rows == 0 )); then
+      continue
+    fi
+
+    horizon_rows_before="$(psql_q "SELECT COUNT(*) FROM shadow_outcome_labels_repaired_v2 WHERE repair_version = '${REPAIR_VERSION}' AND horizon = '${horizon}';" | tr -d '[:space:]')"
+    horizon_rows_before="${horizon_rows_before:-0}"
+
+    horizon_start_ts="$(psql_q "SELECT COALESCE(MIN(d.tick_time), 0) FROM shadow_outcome_labels_repaired r JOIN shadow_decision_trace d ON d.trace_id = r.original_decision_trace_id WHERE r.horizon = '${horizon}';" | tr -d '[:space:]')"
+    horizon_end_ts="$(psql_q "SELECT COALESCE(MAX(d.tick_time), 0) FROM shadow_outcome_labels_repaired r JOIN shadow_decision_trace d ON d.trace_id = r.original_decision_trace_id WHERE r.horizon = '${horizon}';" | tr -d '[:space:]')"
+    horizon_start_ts="${horizon_start_ts:-0}"
+    horizon_end_ts="${horizon_end_ts:-0}"
+
+    if (( horizon_start_ts == 0 )) || (( horizon_end_ts < horizon_start_ts )); then
+      continue
+    fi
+
+    bucket_start="${horizon_start_ts}"
+    total_seconds="$(( horizon_end_ts - horizon_start_ts ))"
+    total_buckets="$(( (total_seconds + HORIZON_BUCKET_SECONDS - 1) / HORIZON_BUCKET_SECONDS ))"
+    if (( total_buckets <= 0 )); then
+      total_buckets=1
+    fi
+    bucket_index=0
+    horizon_inserted=0
+    horizon_updated=0
+
+    while (( bucket_start <= horizon_end_ts )); do
+      bucket_index=$(( bucket_index + 1 ))
+      next_bucket_end=$(( bucket_start + HORIZON_BUCKET_SECONDS ))
+      if (( next_bucket_end > (horizon_end_ts + 1) )); then
+        next_bucket_end=$(( horizon_end_ts + 1 ))
+      fi
+
+      batch_label="$(date -d "@${bucket_start}" "+%Y-%m-%d %H:%M:%S")-$(date -d "@${next_bucket_end}" "+%Y-%m-%d %H:%M:%S")"
+      batch_start_time="$(date +%s)"
+      error_file="${SNAPSHOT_DIR}/repaired_v2_materialize_error_${horizon}_${bucket_start}.log"
+      rm -f "${error_file}"
+      stats="$(materialize_repaired_v2_bucket "${horizon}" "${bucket_start}" "${next_bucket_end}" 2>"${error_file}")"
+      batch_exit=$?
+      batch_end_time="$(date +%s)"
+      batch_elapsed=$(( batch_end_time - batch_start_time ))
+      if (( batch_elapsed <= 0 )); then
+        batch_elapsed=1
+      fi
+
+      if (( batch_exit != 0 )); then
+        last_error="timeout or SQL error on ${horizon} ${batch_label}; code=${batch_exit}"
+        explain_repaired_v2_bucket "${horizon}" "${bucket_start}" "${next_bucket_end}" || true
+        diagnose_repaired_v2_performance "${horizon}" "${bucket_start}" "${next_bucket_end}"
+      fi
+
+      if [[ -f "${SNAPSHOT_DIR}/repaired_v2_materialize_error_${horizon}_${bucket_start}.log" ]]; then
+        if [[ -s "${SNAPSHOT_DIR}/repaired_v2_materialize_error_${horizon}_${bucket_start}.log" ]]; then
+          last_error="error: $(cat "${SNAPSHOT_DIR}/repaired_v2_materialize_error_${horizon}_${bucket_start}.log")"
+        fi
+      fi
+
+      IFS='|' read -r horizon_inserted_batch horizon_updated_batch <<<"${stats}"
+      horizon_inserted_batch="${horizon_inserted_batch:-0}"
+      horizon_updated_batch="${horizon_updated_batch:-0}"
+      batch_rows=$(( horizon_inserted_batch + horizon_updated_batch ))
+
+      inserted_total=$(( inserted_total + horizon_inserted_batch ))
+      updated_total=$(( updated_total + horizon_updated_batch ))
+      horizon_inserted=$(( horizon_inserted + horizon_inserted_batch ))
+      horizon_updated=$(( horizon_updated + horizon_updated_batch ))
+
+      sleep 0.5
+      total_rows_after="$(psql_q "SELECT COUNT(*) FROM shadow_outcome_labels_repaired_v2 WHERE repair_version = '${REPAIR_VERSION}' AND horizon = '${horizon}';" | tr -d '[:space:]')"
+      total_rows_after="${total_rows_after:-0}"
+      rows_per_sec="$(awk -v rows="${batch_rows}" -v secs="${batch_elapsed}" 'BEGIN { if (secs <= 0) secs = 1; printf "%.2f", rows / secs }')"
+
+      if (( batch_rows > 0 )); then
+        progress_guard_ts="${batch_end_time}"
+      elif (( (batch_end_time - progress_guard_ts) >= REPAIRED_V2_NO_PROGRESS_SECONDS )); then
+        last_error="stopped due to no-progress timeout of ${REPAIRED_V2_NO_PROGRESS_SECONDS}s (no inserted/updated rows)."
+        echo "${last_error}" >&2
+        return 1
+      fi
+
+      buckets_remaining=$(( total_buckets - bucket_index ))
+      if awk -v x="${rows_per_sec}" 'BEGIN { exit !(x <= 0.000001) }'; then
+        estimated_remaining_sec="unknown"
+      else
+        if (( buckets_remaining > 0 )); then
+          estimated_remaining_sec="$(( buckets_remaining * batch_elapsed ))"
+        else
+          estimated_remaining_sec="0"
+        fi
+      fi
+
+      checkpoint_path="${SNAPSHOT_DIR}/CHECKPOINT_${horizon}_${bucket_index}_CN.md"
+      cat >"${checkpoint_path}" <<EOF_CHK
+# Checkpoint $(date '+%Y-%m-%d %H:%M:%S')
+
+- phase: repaired_v2_materialization
+- current_horizon: \`${horizon}\`
+- current_time_bucket: ${batch_label}
+- inserted_rows: ${horizon_inserted_batch}
+- updated_rows: ${horizon_updated_batch}
+- batch_rows: ${batch_rows}
+- inserted_total: ${inserted_total}
+- updated_total: ${updated_total}
+- total_repaired_v2_rows: ${total_rows_after}
+- rows_per_sec: ${rows_per_sec}
+- estimated_remaining_sec: ${estimated_remaining_sec}
+- last_error: ${last_error}
+- last_progress_ts: $(date -d "@${progress_guard_ts}" "+%Y-%m-%d %H:%M:%S")
+EOF_CHK
+
+      printf "%s\n" "${horizon}|${bucket_label}|${horizon_inserted_batch}|${horizon_updated_batch}|${batch_elapsed}|${rows_per_sec}|${total_rows_after}|${estimated_remaining_sec}" >>"${SNAPSHOT_DIR}/repaired_v2_upsert_stats.tsv"
+
+      if (( batch_exit != 0 && batch_elapsed >= REPAIRED_V2_INSERT_TIMEOUT_SECONDS )); then
+        last_error="timeout while materializing ${horizon} ${batch_label}; see ${error_file}"
+        return 1
+      fi
+
+      if (( batch_end_time - periodic_checkpoint_ts >= REPAIRED_V2_PERIODIC_CHECKPOINT_SECONDS )); then
+        local periodic_checkpoint_path
+        periodic_checkpoint_path="${SNAPSHOT_DIR}/CHECKPOINT_$(date +%Y%m%d_%H%M%S)_CN.md"
+        {
+          echo "# Checkpoint $(date '+%Y-%m-%d %H:%M:%S')"
+          echo ""
+          echo "- phase: repaired_v2_materialization"
+          echo "- checkpoint_type: periodic"
+          echo "- current_horizon: ${horizon}"
+          echo "- current_time_bucket: ${batch_label}"
+          echo "- batch_rows: ${batch_rows}"
+          echo "- total_repaired_v2_rows: ${total_rows_after}"
+          echo "- rows_per_sec: ${rows_per_sec}"
+          echo "- estimated_remaining_sec: ${estimated_remaining_sec}"
+          echo "- last_error: ${last_error}"
+          echo "- last_progress_ts: $(date -d "@${progress_guard_ts}" "+%Y-%m-%d %H:%M:%S")"
+        } >"${periodic_checkpoint_path}"
+        periodic_checkpoint_ts="${batch_end_time}"
+      fi
+
+      bucket_start="${next_bucket_end}"
+    done
+
+    horizon_rows_after="$(psql_q "SELECT COUNT(*) FROM shadow_outcome_labels_repaired_v2 WHERE repair_version = '${REPAIR_VERSION}' AND horizon = '${horizon}';" | tr -d '[:space:]')"
+    horizon_rows_after="${horizon_rows_after:-0}"
+  done
+
+  printf "%s\n" "TOTAL|all|${inserted_total}|${updated_total}|$(( $(date +%s) - materialize_start_ts ))|0|$(psql_q "SELECT COUNT(*) FROM shadow_outcome_labels_repaired_v2 WHERE repair_version = '${REPAIR_VERSION}';" | tr -d '[:space:]')|0" >>"${SNAPSHOT_DIR}/repaired_v2_upsert_stats.tsv"
 }
 
 generate_repaired_v2_materialization_report() {
@@ -464,8 +815,14 @@ generate_repaired_v2_materialization_report() {
   local usad_recovered=0
   local total_rows=0
 
-  stats="$(cat "${SNAPSHOT_DIR}/repaired_v2_upsert_stats.tsv" 2>/dev/null || printf '0|0')"
-  IFS='|' read -r inserted_rows updated_rows <<<"${stats}"
+  if [[ -f "${SNAPSHOT_DIR}/repaired_v2_upsert_stats.tsv" ]]; then
+    while IFS='|' read -r horizon_label _ _ inserted_rows_tmp updated_rows_tmp _ _ _ _; do
+      if [[ "${horizon_label}" == "TOTAL" ]]; then
+        inserted_rows="${inserted_rows_tmp:-0}"
+        updated_rows="${updated_rows_tmp:-0}"
+      fi
+    done <"${SNAPSHOT_DIR}/repaired_v2_upsert_stats.tsv"
+  fi
 
   before_missing="$(psql_q "SELECT COUNT(*) FROM shadow_outcome_labels_repaired WHERE horizon IN ('6h','24h') AND selected = TRUE AND intent_open = TRUE AND invalid_reason_repaired = 'token_decimals_missing';" | tr -d '[:space:]')"
   after_missing="$(psql_q "SELECT COUNT(*) FROM shadow_outcome_labels_repaired_v2 WHERE repair_version = '${REPAIR_VERSION}' AND horizon IN ('6h','24h') AND selected = TRUE AND intent_open = TRUE AND invalid_reason_repaired = 'token_decimals_missing';" | tr -d '[:space:]')"
