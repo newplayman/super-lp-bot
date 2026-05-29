@@ -1,0 +1,20 @@
+{
+  "status": "FAIL",
+  "stage": "FIXED_HORIZON_VPS_POSITION_LIFECYCLE_MATERIALIZATION_V1",
+  "primary_proof_unit": "position_lifecycle",
+  "data_source": "vps_postgres",
+  "db_ready": false,
+  "fixed_horizon_hypothesis": "collecting_oos",
+  "sample_sufficiency": "",
+  "position_count_6h": 0,
+  "position_count_12h": 0,
+  "position_count_24h": 0,
+  "completed_6h_count": 0,
+  "completed_12h_count": 0,
+  "completed_24h_count": 0,
+  "fixed_horizon_gate": "FAIL",
+  "edge_proven": "no",
+  "tiny_canary_candidate": "no",
+  "tiny_canary_allowed": "no",
+  "recommended_next_stage": "FIXED_HORIZON_DB_OR_SCHEMA_FIX"
+}
