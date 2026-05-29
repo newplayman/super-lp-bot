@@ -1,0 +1,2 @@
+Error loading config: mode mismatch: config expects "shadow" but expected "dev"
+exit status 1

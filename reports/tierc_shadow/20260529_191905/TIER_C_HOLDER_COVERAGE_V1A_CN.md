@@ -1,0 +1,39 @@
+# Tier C Holder Coverage V1A
+
+- token_rows: `30`
+- covered_rows: `1`
+- source_attempted: `existing snapshot + BaseScan refresh path`
+- note: BaseScan refresh path returned 403 for all candidate tokens in this run.
+
+| pool_id | token_address | token_symbol | top10_holder_pct | holder_source | data_quality_status |
+|---|---|---|---:|---|---|
+| `0xe47f7dba68a00dc1a6f11458bcdfca810e1cfebf` | `0xAB6363DA0C80CEF3AE105BD6241E30872355D021` | 0xAB6363 |  | candidate_seed | source_blocked_or_missing |
+| `0xe47f7dba68a00dc1a6f11458bcdfca810e1cfebf` | `0x833589FCD6EDB6E08F4C7C32D4F71B54BDA02913` | USDC |  | candidate_seed | source_blocked_or_missing |
+| `0xc200f21efe67c7f41b81a854c26f9cda80593065` | `0x0B3E328455C4059EEB9E3F84B5543F74E24E7E1B` | 0x0B3E32 |  | candidate_seed | source_blocked_or_missing |
+| `0xc200f21efe67c7f41b81a854c26f9cda80593065` | `0x4200000000000000000000000000000000000006` | WETH |  | candidate_seed | source_blocked_or_missing |
+| `0x659be70647b0f63217d60e077f4417b1ecc65064` | `0x16EE7ECAC70D1028E7712751E2EE6BA808A7DD92` | 0x16EE7E |  | candidate_seed | source_blocked_or_missing |
+| `0x659be70647b0f63217d60e077f4417b1ecc65064` | `0x833589FCD6EDB6E08F4C7C32D4F71B54BDA02913` | USDC |  | candidate_seed | source_blocked_or_missing |
+| `0xe8f16fbf4eafec04bcf0c06d768e7ba325f9d6de` | `0xDCF5130274753C8050AB061B1A1DCBF583F5BFD0` | 0xDCF513 |  | candidate_seed | source_blocked_or_missing |
+| `0xe8f16fbf4eafec04bcf0c06d768e7ba325f9d6de` | `0x833589FCD6EDB6E08F4C7C32D4F71B54BDA02913` | USDC |  | candidate_seed | source_blocked_or_missing |
+| `0xc9034c3e7f58003e6ae0c8438e7c8f4598d5acaa` | `0x4ED4E862860BED51A9570B96D89AF5E1B0EFEFED` | 0x4ED4E8 |  | candidate_seed | source_blocked_or_missing |
+| `0xc9034c3e7f58003e6ae0c8438e7c8f4598d5acaa` | `0x4200000000000000000000000000000000000006` | WETH |  | candidate_seed | source_blocked_or_missing |
+| `0x82dbe18346a8656dbb5e76f74bf3ae279cc16b29` | `0x4200000000000000000000000000000000000006` | WETH |  | candidate_seed | source_blocked_or_missing |
+| `0x82dbe18346a8656dbb5e76f74bf3ae279cc16b29` | `0x833589FCD6EDB6E08F4C7C32D4F71B54BDA02913` | USDC |  | candidate_seed | source_blocked_or_missing |
+| `0x0ba69825c4c033e72309f6ac0bde0023b15cc97c` | `0x833589FCD6EDB6E08F4C7C32D4F71B54BDA02913` | USDC |  | candidate_seed | source_blocked_or_missing |
+| `0x0ba69825c4c033e72309f6ac0bde0023b15cc97c` | `0xCBB7C0000AB88B473B1F5AFD9EF808440EED33BF` | cbBTC |  | candidate_seed | source_blocked_or_missing |
+| `0x7cb770d0513c30e0cb45e4899e4a2cbeed6f9830` | `0x0B3E328455C4059EEB9E3F84B5543F74E24E7E1B` | 0x0B3E32 |  | candidate_seed | source_blocked_or_missing |
+| `0x7cb770d0513c30e0cb45e4899e4a2cbeed6f9830` | `0x833589FCD6EDB6E08F4C7C32D4F71B54BDA02913` | USDC |  | candidate_seed | source_blocked_or_missing |
+| `0x9c087eb773291e50cf6c6a90ef0f4500e349b903` | `0x0B3E328455C4059EEB9E3F84B5543F74E24E7E1B` | 0x0B3E32 |  | candidate_seed | source_blocked_or_missing |
+| `0x9c087eb773291e50cf6c6a90ef0f4500e349b903` | `0x4200000000000000000000000000000000000006` | WETH |  | candidate_seed | source_blocked_or_missing |
+| `0x20cb8f872ae894f7c9e32e621c186e5afce82fd0` | `0x940181A94A35A4569E4529A3CDFB74E38FD98631` | 0x940181 |  | candidate_seed | source_blocked_or_missing |
+| `0x20cb8f872ae894f7c9e32e621c186e5afce82fd0` | `0x4200000000000000000000000000000000000006` | WETH |  | candidate_seed | source_blocked_or_missing |
+| `0x3f9b863ef4b295d6ba370215bcca3785fcc44f44` | `0x4200000000000000000000000000000000000006` | WETH |  | candidate_seed | source_blocked_or_missing |
+| `0x3f9b863ef4b295d6ba370215bcca3785fcc44f44` | `0xCBB7C0000AB88B473B1F5AFD9EF808440EED33BF` | cbBTC |  | candidate_seed | source_blocked_or_missing |
+| `0xe640781d47992636fe7dd4822f2cdf6cb7d5e331f346bc58776a577ecd493fea` | `0xE66E242725EB87CC014B186474AB5189906457D6` | 0xE66E24 |  | candidate_seed | source_blocked_or_missing |
+| `0xe640781d47992636fe7dd4822f2cdf6cb7d5e331f346bc58776a577ecd493fea` | `0x4200000000000000000000000000000000000006` | WETH |  | candidate_seed | source_blocked_or_missing |
+| `0x3c4384f3664b37a3cb5a5cb3452b4b4a3aa1256f` | `0x9126236476EFBA9AD8AB77855C60EB5BF37586EB` | 0x912623 | 91.39 | basescan_manual_snapshot | ok |
+| `0x3c4384f3664b37a3cb5a5cb3452b4b4a3aa1256f` | `0x833589FCD6EDB6E08F4C7C32D4F71B54BDA02913` | USDC |  | candidate_seed | source_blocked_or_missing |
+| `0x263dd54f58cedff35c85a98a61fda06f3bba55a567de33fe9f884d851652e37a` | `0x0000000000000000000000000000000000000000` | 0x000000 |  | invalid_zero_address | invalid_zero_address |
+| `0x263dd54f58cedff35c85a98a61fda06f3bba55a567de33fe9f884d851652e37a` | `0x0B3E328455C4059EEB9E3F84B5543F74E24E7E1B` | 0x0B3E32 |  | candidate_seed | source_blocked_or_missing |
+| `0xdc5a40b5be693afb1864c558da73e7d51b70579e53689cb3a41f85e6cdd6a7f6` | `0x832B55B0FA6397CA9E63B8C15DADEF3F6E44614C` | 0x832B55 |  | candidate_seed | source_blocked_or_missing |
+| `0xdc5a40b5be693afb1864c558da73e7d51b70579e53689cb3a41f85e6cdd6a7f6` | `0x0000000000000000000000000000000000000000` | 0x000000 |  | invalid_zero_address | invalid_zero_address |

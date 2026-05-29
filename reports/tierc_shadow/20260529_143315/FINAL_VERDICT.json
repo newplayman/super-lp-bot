@@ -1,0 +1,18 @@
+{
+  "status": "WARN",
+  "tierc_research_stage": "TIER_C_SHADOW_RESEARCH_SAMPLE_ACCUMULATION",
+  "tierc_candidate_pool_count": 4,
+  "tierc_micro_candidate_count": 1,
+  "tierc_watch_count": 3,
+  "tierc_reject_count": 2,
+  "position_count": 0,
+  "sample_sufficiency": "INSUFFICIENT",
+  "edge_proven": "no",
+  "tiny_canary_allowed": "no",
+  "top_blockers": [
+    "not_selected_score_lt_60",
+    "not_ranked_in_shadow_top_cutoff",
+    "no_position_lifecycle_samples"
+  ],
+  "recommended_next_stage": "CONTINUE_TIER_C_SHADOW_SAMPLE_ACCUMULATION"
+}

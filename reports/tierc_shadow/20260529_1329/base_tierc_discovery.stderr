@@ -1,0 +1,2 @@
+Error loading config: missing required environment variable "SOL_RPC_PRIMARY"
+exit status 1

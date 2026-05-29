@@ -1,0 +1,265 @@
+[
+  {
+    "pool_id": "0x7cb770d0513c30e0cb45e4899e4a2cbeed6f9830",
+    "verdict": "canary_allowed",
+    "risk_score": 0,
+    "flags": [],
+    "estimated_fee_apr": "0.8397339335463075",
+    "volume_to_tvl": "4.60128182765098",
+    "protocol": "pancakeswap-v3-base",
+    "fee_bps": 5,
+    "tvl_usd": "263618.9936",
+    "vol_24h_usd": "1212985.28467532",
+    "token0": "0x0B3E328455C4059EEB9E3F84B5543F74E24E7E1B",
+    "token1": "0x833589FCD6EDB6E08F4C7C32D4F71B54BDA02913",
+    "lp_plan": {
+      "budget_usd": "",
+      "range_lower_pct": "",
+      "range_upper_pct": "",
+      "range_lower_price": "",
+      "range_upper_price": "",
+      "est_fee_per_day_usd": "",
+      "cost_cap_usd": "",
+      "min_hold_days": "",
+      "exit_trigger": ""
+    },
+    "quote": {
+      "forward_ok": false,
+      "reverse_ok": false,
+      "reason": "",
+      "forward_impact_pct": "",
+      "reverse_impact_pct": "",
+      "error": ""
+    },
+    "market_quality": {
+      "buyers_24h": 1915,
+      "sellers_24h": 1794,
+      "buy_count_24h": 15945,
+      "sell_count_24h": 8445,
+      "volume_cv_5m": "0",
+      "median_abs_price_move_5m": "0",
+      "top10_holder_pct": "0"
+    }
+  },
+  {
+    "pool_id": "0xe47f7dba68a00dc1a6f11458bcdfca810e1cfebf",
+    "verdict": "watch",
+    "risk_score": 20,
+    "flags": [
+      "market_quality_incomplete"
+    ],
+    "estimated_fee_apr": "16.5704402328557805",
+    "volume_to_tvl": "15.1328221304619018",
+    "protocol": "uniswap-v3-base",
+    "fee_bps": 30,
+    "tvl_usd": "29361.9543",
+    "vol_24h_usd": "444329.231824651",
+    "token0": "0xAB6363DA0C80CEF3AE105BD6241E30872355D021",
+    "token1": "0x833589FCD6EDB6E08F4C7C32D4F71B54BDA02913",
+    "lp_plan": {
+      "budget_usd": "",
+      "range_lower_pct": "",
+      "range_upper_pct": "",
+      "range_lower_price": "",
+      "range_upper_price": "",
+      "est_fee_per_day_usd": "",
+      "cost_cap_usd": "",
+      "min_hold_days": "",
+      "exit_trigger": ""
+    },
+    "quote": {
+      "forward_ok": false,
+      "reverse_ok": false,
+      "reason": "",
+      "forward_impact_pct": "",
+      "reverse_impact_pct": "",
+      "error": ""
+    },
+    "market_quality": {
+      "buyers_24h": 0,
+      "sellers_24h": 0,
+      "buy_count_24h": 0,
+      "sell_count_24h": 0,
+      "volume_cv_5m": "0",
+      "median_abs_price_move_5m": "0",
+      "top10_holder_pct": "0"
+    }
+  },
+  {
+    "pool_id": "0xc9034c3e7f58003e6ae0c8438e7c8f4598d5acaa",
+    "verdict": "watch",
+    "risk_score": 20,
+    "flags": [
+      "market_quality_incomplete"
+    ],
+    "estimated_fee_apr": "3.389683567682008",
+    "volume_to_tvl": "3.095601431673062",
+    "protocol": "uniswap-v3-base",
+    "fee_bps": 30,
+    "tvl_usd": "964974.2994",
+    "vol_24h_usd": "2987175.82275035",
+    "token0": "0x4ED4E862860BED51A9570B96D89AF5E1B0EFEFED",
+    "token1": "0x4200000000000000000000000000000000000006",
+    "lp_plan": {
+      "budget_usd": "",
+      "range_lower_pct": "",
+      "range_upper_pct": "",
+      "range_lower_price": "",
+      "range_upper_price": "",
+      "est_fee_per_day_usd": "",
+      "cost_cap_usd": "",
+      "min_hold_days": "",
+      "exit_trigger": ""
+    },
+    "quote": {
+      "forward_ok": false,
+      "reverse_ok": false,
+      "reason": "",
+      "forward_impact_pct": "",
+      "reverse_impact_pct": "",
+      "error": ""
+    },
+    "market_quality": {
+      "buyers_24h": 0,
+      "sellers_24h": 0,
+      "buy_count_24h": 0,
+      "sell_count_24h": 0,
+      "volume_cv_5m": "0",
+      "median_abs_price_move_5m": "0",
+      "top10_holder_pct": "0"
+    }
+  },
+  {
+    "pool_id": "0x82dbe18346a8656dbb5e76f74bf3ae279cc16b29",
+    "verdict": "watch",
+    "risk_score": 20,
+    "flags": [
+      "market_quality_incomplete"
+    ],
+    "estimated_fee_apr": "1.2576049031868775",
+    "volume_to_tvl": "6.8909857708869936",
+    "protocol": "hydrex-integral",
+    "fee_bps": 5,
+    "tvl_usd": "417748.0288",
+    "vol_24h_usd": "2878695.72227689",
+    "token0": "0x4200000000000000000000000000000000000006",
+    "token1": "0x833589FCD6EDB6E08F4C7C32D4F71B54BDA02913",
+    "lp_plan": {
+      "budget_usd": "",
+      "range_lower_pct": "",
+      "range_upper_pct": "",
+      "range_lower_price": "",
+      "range_upper_price": "",
+      "est_fee_per_day_usd": "",
+      "cost_cap_usd": "",
+      "min_hold_days": "",
+      "exit_trigger": ""
+    },
+    "quote": {
+      "forward_ok": false,
+      "reverse_ok": false,
+      "reason": "",
+      "forward_impact_pct": "",
+      "reverse_impact_pct": "",
+      "error": ""
+    },
+    "market_quality": {
+      "buyers_24h": 0,
+      "sellers_24h": 0,
+      "buy_count_24h": 0,
+      "sell_count_24h": 0,
+      "volume_cv_5m": "0",
+      "median_abs_price_move_5m": "0",
+      "top10_holder_pct": "0"
+    }
+  },
+  {
+    "pool_id": "0x3c4384f3664b37a3cb5a5cb3452b4b4a3aa1256f",
+    "verdict": "reject",
+    "risk_score": 80,
+    "flags": [
+      "known_negative_check",
+      "high_holder_concentration"
+    ],
+    "estimated_fee_apr": "2.893143857223016",
+    "volume_to_tvl": "3.1705686106553586",
+    "protocol": "aerodrome-slipstream-3",
+    "fee_bps": 25,
+    "tvl_usd": "1038067.8919",
+    "vol_24h_usd": "3291265.47378732",
+    "token0": "0x9126236476EFBA9AD8AB77855C60EB5BF37586EB",
+    "token1": "0x833589FCD6EDB6E08F4C7C32D4F71B54BDA02913",
+    "lp_plan": {
+      "budget_usd": "",
+      "range_lower_pct": "",
+      "range_upper_pct": "",
+      "range_lower_price": "",
+      "range_upper_price": "",
+      "est_fee_per_day_usd": "",
+      "cost_cap_usd": "",
+      "min_hold_days": "",
+      "exit_trigger": ""
+    },
+    "quote": {
+      "forward_ok": false,
+      "reverse_ok": false,
+      "reason": "",
+      "forward_impact_pct": "",
+      "reverse_impact_pct": "",
+      "error": ""
+    },
+    "market_quality": {
+      "buyers_24h": 0,
+      "sellers_24h": 0,
+      "buy_count_24h": 0,
+      "sell_count_24h": 0,
+      "volume_cv_5m": "0",
+      "median_abs_price_move_5m": "0",
+      "top10_holder_pct": "91.39"
+    }
+  },
+  {
+    "pool_id": "0xdc5a40b5be693afb1864c558da73e7d51b70579e53689cb3a41f85e6cdd6a7f6",
+    "verdict": "reject",
+    "risk_score": 40,
+    "flags": [
+      "native_zero_token"
+    ],
+    "estimated_fee_apr": "0.2761935754383295",
+    "volume_to_tvl": "7.5669472722827991",
+    "protocol": "uniswap-v4-base",
+    "fee_bps": 1,
+    "tvl_usd": "35680.8125",
+    "vol_24h_usd": "269994.826819709",
+    "token0": "0x832B55B0FA6397CA9E63B8C15DADEF3F6E44614C",
+    "token1": "0x0000000000000000000000000000000000000000",
+    "lp_plan": {
+      "budget_usd": "",
+      "range_lower_pct": "",
+      "range_upper_pct": "",
+      "range_lower_price": "",
+      "range_upper_price": "",
+      "est_fee_per_day_usd": "",
+      "cost_cap_usd": "",
+      "min_hold_days": "",
+      "exit_trigger": ""
+    },
+    "quote": {
+      "forward_ok": false,
+      "reverse_ok": false,
+      "reason": "",
+      "forward_impact_pct": "",
+      "reverse_impact_pct": "",
+      "error": ""
+    },
+    "market_quality": {
+      "buyers_24h": 0,
+      "sellers_24h": 0,
+      "buy_count_24h": 0,
+      "sell_count_24h": 0,
+      "volume_cv_5m": "0",
+      "median_abs_price_move_5m": "0",
+      "top10_holder_pct": "0"
+    }
+  }
+]

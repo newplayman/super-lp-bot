@@ -1,0 +1,2 @@
+Error loading config: missing required environment variable "DASHBOARD_TOKEN"
+exit status 1

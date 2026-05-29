@@ -1,0 +1,16 @@
+pool_id,current_verdict,trader_proxy_available,exit_depth_available,holder_available,stability_available,missing_fields,blocker_rank,whether_fixing_holder_would_make_data_ready,whether_fixing_stability_would_make_data_ready,whether_unique_trader_missing_blocks_micro
+0xe47f7dba68a00dc1a6f11458bcdfca810e1cfebf,REJECT,yes,yes,yes,yes,,4,no,no,no
+0xc200f21efe67c7f41b81a854c26f9cda80593065,WATCH_DATA_MISSING,yes,yes,yes,yes,,4,no,no,no
+0x659be70647b0f63217d60e077f4417b1ecc65064,WATCH_DATA_MISSING,yes,yes,yes,yes,,4,no,no,no
+0xe8f16fbf4eafec04bcf0c06d768e7ba325f9d6de,WATCH_DATA_MISSING,yes,yes,yes,no,tvl_change_1h;volume_change_1h;price_move_5m/15m/30m,3,no,yes,no
+0xc9034c3e7f58003e6ae0c8438e7c8f4598d5acaa,REJECT,yes,yes,yes,yes,,4,no,no,no
+0x82dbe18346a8656dbb5e76f74bf3ae279cc16b29,REJECT,yes,yes,yes,yes,unique_traders;trader_concentration,1,no,no,yes
+0x0ba69825c4c033e72309f6ac0bde0023b15cc97c,WATCH_DATA_MISSING,yes,yes,yes,yes,unique_traders;trader_concentration,1,no,no,yes
+0x7cb770d0513c30e0cb45e4899e4a2cbeed6f9830,REJECT,yes,yes,yes,yes,unique_traders;trader_concentration,1,no,no,yes
+0x9c087eb773291e50cf6c6a90ef0f4500e349b903,WATCH_DATA_MISSING,yes,yes,yes,yes,,4,no,no,no
+0x20cb8f872ae894f7c9e32e621c186e5afce82fd0,WATCH_DATA_MISSING,yes,yes,yes,no,unique_traders;trader_concentration;tvl_change_1h;volume_change_1h;price_move_5m/15m/30m,1,no,no,yes
+0x3f9b863ef4b295d6ba370215bcca3785fcc44f44,WATCH_DATA_MISSING,yes,yes,yes,yes,unique_traders;trader_concentration,1,no,no,yes
+0xe640781d47992636fe7dd4822f2cdf6cb7d5e331f346bc58776a577ecd493fea,WATCH_DATA_MISSING,no,no,yes,yes,buyers_24h;sellers_24h;buy_count_24h;sell_count_24h;exit_depth_usd;slippage_10usd;unique_traders;trader_concentration,1,no,no,yes
+0x3c4384f3664b37a3cb5a5cb3452b4b4a3aa1256f,REJECT,yes,yes,yes,no,tvl_change_1h;volume_change_1h;price_move_5m/15m/30m,3,no,yes,no
+0x263dd54f58cedff35c85a98a61fda06f3bba55a567de33fe9f884d851652e37a,REJECT,yes,yes,yes,yes,unique_traders;trader_concentration,1,no,no,yes
+0xdc5a40b5be693afb1864c558da73e7d51b70579e53689cb3a41f85e6cdd6a7f6,REJECT,yes,yes,yes,yes,unique_traders;trader_concentration,1,no,no,yes

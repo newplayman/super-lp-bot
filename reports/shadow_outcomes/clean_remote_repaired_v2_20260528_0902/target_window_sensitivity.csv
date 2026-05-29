@@ -1,0 +1,9 @@
+window_label,horizon,recovered_count,invalid_rate_pct,future_mark_missing_count,true_stale_mark_count,median_net_pnl_pct,p10_net_pnl_pct,pct_signal,selected_strict_valid_count,sample_bias
+±15m,24h,88,0.000000,0,13959,0.157332,0.007943,better,10178,OK
+±30m,24h,174,0.000000,0,13873,0.157332,0.007943,better,10178,OK
+±5m,24h,29,0.000000,0,14018,0.157332,0.007943,better,10178,OK
+±60m,24h,344,0.000000,0,13703,0.157332,0.007943,better,10178,OK
+±15m,6h,154,0.000000,0,5529,0.155199,0.003778,better,18618,OK
+±30m,6h,309,0.000000,0,5374,0.155199,0.003778,better,18618,OK
+±5m,6h,48,0.000000,0,5635,0.155199,0.003778,better,18618,OK
+±60m,6h,661,0.000000,0,5022,0.155199,0.003778,better,18618,OK

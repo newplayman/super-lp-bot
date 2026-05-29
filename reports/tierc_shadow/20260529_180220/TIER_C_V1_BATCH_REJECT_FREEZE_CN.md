@@ -1,0 +1,11 @@
+# Tier C V1 Batch Reject Freeze
+
+- Scope: research-only freeze labels for the 4 V1-tested pools.
+- These labels do not write into production strategy and do not change current_full_strategy or fixed_horizon gates.
+
+| pool_id | previous_verdict | final_review_verdict | root_cause | best_horizon | best_entry_size | median | p10 | p5 | quarantine_trigger_rate | exit_depth_fail_rate | survival_rate | reject_reason |
+|---|---:|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| `0x7cb770d0513c30e0cb45e4899e4a2cbeed6f9830` | MICRO_CANDIDATE | REJECTED_BATCH_V1 | TAIL_TOO_HEAVY | 30m | 10.00 | 0.001924 | -0.019040 | -0.021230 | 0.000000 | 0.020408 | 0.979592 | TAIL_TOO_HEAVY |
+| `0x82dbe18346a8656dbb5e76f74bf3ae279cc16b29` | WATCH | REJECTED_BATCH_V1 | EXIT_DEPTH_BAD | 2h | 10.00 | -0.000273 | -0.009440 | -0.016855 | 1.000000 | 0.068182 | 0.931818 | EXIT_DEPTH_BAD |
+| `0xc9034c3e7f58003e6ae0c8438e7c8f4598d5acaa` | WATCH | REJECTED_BATCH_V1 | EXIT_DEPTH_BAD | 6h | 10.00 | 0.037044 | -0.054554 | -0.068894 | 1.000000 | 0.583333 | 0.416667 | EXIT_DEPTH_BAD |
+| `0xe47f7dba68a00dc1a6f11458bcdfca810e1cfebf` | WATCH | REJECTED_BATCH_V1 | EXIT_DEPTH_BAD | 6h | 10.00 | 0.038812 | -0.007769 | -0.021183 | 1.000000 | 0.368421 | 0.631579 | EXIT_DEPTH_BAD |

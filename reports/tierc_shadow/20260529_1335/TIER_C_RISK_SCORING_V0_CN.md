@@ -1,0 +1,13 @@
+# Tier C Risk Scoring V0
+
+- This is a research-only decomposition layered on top of existing Base Tier C discovery output.
+- MICRO_CANDIDATE means research candidate only. It is not allowed to trade.
+
+| pool_id | research_verdict | fee_opportunity_score | volatility_risk_score | holder_concentration_risk | liquidity_exit_risk | data_quality_score | source_risk_score |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 0x7cb770d0513c30e0cb45e4899e4a2cbeed6f9830 | MICRO_CANDIDATE | 8.40 | 0.00 | 0.00 | 0.00 | 0.00 | 0 |
+| 0xe47f7dba68a00dc1a6f11458bcdfca810e1cfebf | WATCH | 100.00 | 0.00 | 0.00 | 88.26 | 100.00 | 20 |
+| 0xc9034c3e7f58003e6ae0c8438e7c8f4598d5acaa | WATCH | 33.90 | 0.00 | 0.00 | 0.00 | 100.00 | 20 |
+| 0x82dbe18346a8656dbb5e76f74bf3ae279cc16b29 | WATCH | 12.58 | 0.00 | 0.00 | 0.00 | 100.00 | 20 |
+| 0x3c4384f3664b37a3cb5a5cb3452b4b4a3aa1256f | REJECT | 28.93 | 0.00 | 91.39 | 0.00 | 0.00 | 80 |
+| 0xdc5a40b5be693afb1864c558da73e7d51b70579e53689cb3a41f85e6cdd6a7f6 | REJECT | 2.76 | 0.00 | 0.00 | 85.73 | 100.00 | 40 |

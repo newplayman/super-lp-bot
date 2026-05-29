@@ -1,0 +1,13 @@
+{
+  "status": "FAIL",
+  "tierc_stage": "TIER_C_COUNTERFACTUAL_REVIEW_AND_MANUAL_CANDIDATE_AUDIT",
+  "current_micro_candidate_keep": "no",
+  "watch_pool_continue_count": 0,
+  "downgrade_reject_count": 4,
+  "best_short_horizon_found": "no",
+  "strict_filter_edge_retained": "no",
+  "edge_proven": "no",
+  "tiny_canary_candidate": "no",
+  "tiny_canary_allowed": "no",
+  "recommended_next_stage": "TIER_C_BATCH_REJECT_AND_REDISCOVER"
+}

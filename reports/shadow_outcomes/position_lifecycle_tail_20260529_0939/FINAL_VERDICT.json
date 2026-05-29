@@ -1,0 +1,15 @@
+{
+  "status": "FAIL",
+  "primary_proof_unit": "position_lifecycle",
+  "current_full_strategy": "FAIL",
+  "fixed_horizon_hypothesis": "not_ready",
+  "tiny_canary_allowed": "no",
+  "tiny_canary_candidate": "no",
+  "edge_proven": "no",
+  "top_blockers": [
+    "position_level_tail_not_acceptable",
+    "terminal_or_lifecycle_tail_risk",
+    "recent_oos_position_count_insufficient"
+  ],
+  "recommended_next_stage": "POSITION_LIFECYCLE_TAIL_REPAIR_OR_FIXED_HORIZON_OOS"
+}

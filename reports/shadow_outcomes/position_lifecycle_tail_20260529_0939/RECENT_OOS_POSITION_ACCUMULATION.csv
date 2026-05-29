@@ -1,0 +1,6 @@
+window_label,new_position_count,completed_terminal_count,active_future_count,position_id_present_rate,entry_trusted_rate,clean_position_rate,terminal_future_split,position_level_top20_bottom20_signal,median,p10,p5,sample_sufficiency
+recent 2h,1,0,1,0.000000,0.000000,0.000000,0/0,insufficient,,,,INSUFFICIENT
+recent 4h,1,0,1,0.000000,0.000000,0.000000,0/0,insufficient,,,,INSUFFICIENT
+recent 8h,1,0,1,0.000000,0.000000,0.000000,0/0,insufficient,,,,INSUFFICIENT
+recent 12h,2,0,2,0.000000,0.000000,0.000000,0/0,insufficient,,,,INSUFFICIENT
+recent 24h,9,7,2,0.000000,0.000000,0.000000,0/0,insufficient,,,,INSUFFICIENT

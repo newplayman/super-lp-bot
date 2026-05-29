@@ -1,0 +1,10 @@
+# Original Label Logic Invalid Audit
+
+| horizon | bucket | samples | share_pct |
+| --- | --- | ---: | ---: |
+| 24h | repaired invalid | 12302 | 50.24 |
+| 24h | other | 10178 | 41.57 |
+| 24h | selected=true but position_id missing | 2005 | 8.19 |
+| 6h | other | 18618 | 70.86 |
+| 6h | repaired invalid | 5638 | 21.46 |
+| 6h | selected=true but position_id missing | 2019 | 7.68 |

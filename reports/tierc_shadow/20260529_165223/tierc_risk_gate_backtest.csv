@@ -1,0 +1,8 @@
+filter_name,remaining_pool_count,remaining_position_count,median,p10,p5,p1,win_rate,best_horizon,verdict
+baseline,4,124,-0.000482,-0.023882,-0.037223,-0.071154,0.474695,1h,REJECT
+exclude_volume_collapse_high,2,93,-0.000748,-0.020452,-0.033176,-0.059363,0.454751,30m,REJECT
+exclude_price_spike_down_high,4,124,-0.000482,-0.023882,-0.037223,-0.071154,0.474695,1h,REJECT
+exclude_quarantine_gt_30pct,1,49,-0.000143,-0.031213,-0.044279,-0.070544,0.493562,30m,REJECT
+exclude_holder_risk_high,4,124,-0.000482,-0.023882,-0.037223,-0.071154,0.474695,1h,REJECT
+exclude_liquidity_exit_risk_high,3,105,-0.000842,-0.021744,-0.037387,-0.060117,0.451020,30m,REJECT
+combined_strict_filter,1,49,-0.000143,-0.031213,-0.044279,-0.070544,0.493562,30m,REJECT

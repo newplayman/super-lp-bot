@@ -1,0 +1,11 @@
+# Clean Proof Surface v2
+
+- source: `shadow_outcome_labels_repaired_terminal_v1`
+- based on `PROOF_EXCLUSION_POLICY_CN.md`
+
+## Summary
+
+| Horizon | raw count | excluded count | clean count | selected clean count | top20 clean count | median_net_pnl_pct | p10_net_pnl_pct | p5_net_pnl_pct | p1_net_pnl_pct | top20 vs bottom20 pct_signal | top20 p10 | bottom20 p10 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | ---: | ---: |
+| 6h | 26275 | 9761 | 16514 | 16514 | 3436 | 0.110705 | 0.003071 | 0.000458 | 0.000078 | better | 0.233600 | 0.028041 |
+| 24h | 24485 | 16295 | 8190 | 8190 | 1875 | 0.118443 | 0.007121 | 0.000441 | 0.000193 | better | 3.591802 | 0.093351 |

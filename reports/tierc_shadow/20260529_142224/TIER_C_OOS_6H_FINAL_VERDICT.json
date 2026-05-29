@@ -1,0 +1,18 @@
+{
+  "status": "WARN",
+  "tierc_research_stage": "TIER_C_FIXED_HORIZON_POSITION_OOS_6H",
+  "tierc_micro_candidate_count": 1,
+  "position_count": 0,
+  "completed_15m_count": 0,
+  "completed_30m_count": 0,
+  "completed_1h_count": 0,
+  "completed_2h_count": 0,
+  "completed_6h_count": 0,
+  "sample_sufficiency": "INSUFFICIENT",
+  "tail_risk_status": "WARN",
+  "quarantine_count": 2,
+  "edge_proven": "no",
+  "tiny_canary_candidate": "no",
+  "tiny_canary_allowed": "no",
+  "recommended_next_stage": "TIER_C_SHADOW_POSITION_SAMPLE_ACCUMULATION"
+}

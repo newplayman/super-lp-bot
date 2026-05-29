@@ -1,0 +1,31 @@
+# Stale Mark Target Window Audit
+
+| pool_id | horizon | stale_bucket | samples | target_gap_sec_p50 | target_gap_sec_p90 | target_gap_sec_p99 |
+| --- | --- | --- | ---: | ---: | ---: | ---: |
+| 0x4e962bb3889bf030368f56810a9c96b83cb3e778 | 24h | mark_window_too_narrow | 2786 | 45502.50 | 80537.00 | 85844.60 |
+| 0x4e962bb3889bf030368f56810a9c96b83cb3e778 | 24h | valid | 2477 | 15.00 | 30.00 | 334.68 |
+| 0x4e962bb3889bf030368f56810a9c96b83cb3e778 | 6h | mark_window_too_narrow | 801 | 12426.00 | 19925.00 | 21472.00 |
+| 0x4e962bb3889bf030368f56810a9c96b83cb3e778 | 6h | valid | 4909 | 18.00 | 55.00 | 18395.32 |
+| 0x6c561b446416e1a00e8e93e221854d6ea4171372 | 24h | mark_window_too_narrow | 928 | 58632.00 | 82499.40 | 86132.71 |
+| 0x6c561b446416e1a00e8e93e221854d6ea4171372 | 24h | position_id_join_failed | 4 | 9843.00 | 40740.40 | 52599.34 |
+| 0x6c561b446416e1a00e8e93e221854d6ea4171372 | 24h | valid | 1128 | 14.00 | 29.00 | 59.73 |
+| 0x6c561b446416e1a00e8e93e221854d6ea4171372 | 6h | mark_window_too_narrow | 387 | 11683.00 | 20452.80 | 21492.90 |
+| 0x6c561b446416e1a00e8e93e221854d6ea4171372 | 6h | position_id_join_failed | 4 | 7.50 | 23.90 | 28.49 |
+| 0x6c561b446416e1a00e8e93e221854d6ea4171372 | 6h | valid | 1669 | 17.00 | 30.00 | 76.00 |
+| 0x70acdf2ad0bf2402c957154f944c19ef4e1cbae1 | 24h | mark_window_too_narrow | 1441 | 52837.00 | 81993.00 | 85951.00 |
+| 0x70acdf2ad0bf2402c957154f944c19ef4e1cbae1 | 24h | position_id_join_failed | 80 | 11.00 | 29.10 | 51.21 |
+| 0x70acdf2ad0bf2402c957154f944c19ef4e1cbae1 | 6h | mark_window_too_narrow | 522 | 13661.50 | 19969.10 | 21415.79 |
+| 0x70acdf2ad0bf2402c957154f944c19ef4e1cbae1 | 6h | position_id_join_failed | 80 | 12.00 | 29.00 | 38.46 |
+| 0x70acdf2ad0bf2402c957154f944c19ef4e1cbae1 | 6h | valid | 919 | 23.00 | 16025.00 | 19591.54 |
+| 0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38 | 24h | mark_window_too_narrow | 3607 | 60750.00 | 83663.20 | 86128.82 |
+| 0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38 | 24h | valid | 1436 | 14.00 | 30.50 | 84.90 |
+| 0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38 | 6h | mark_window_too_narrow | 1982 | 14896.00 | 20266.20 | 21469.76 |
+| 0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38 | 6h | valid | 3509 | 18.00 | 485.00 | 18816.24 |
+| 0x9a993fc0eec60faaa0c391ff11b840ce16685150 | 24h | mark_window_too_narrow | 2089 | 54690.00 | 83218.40 | 86082.44 |
+| 0x9a993fc0eec60faaa0c391ff11b840ce16685150 | 24h | valid | 3155 | 15.00 | 31.00 | 3085.60 |
+| 0x9a993fc0eec60faaa0c391ff11b840ce16685150 | 6h | mark_window_too_narrow | 894 | 14688.50 | 20254.80 | 21473.07 |
+| 0x9a993fc0eec60faaa0c391ff11b840ce16685150 | 6h | valid | 4797 | 19.00 | 56.00 | 18414.88 |
+| 0xb2cc224c1c9fee385f8ad6a55b4d94e92359dc59 | 24h | mark_window_too_narrow | 3105 | 46657.00 | 78289.00 | 85736.88 |
+| 0xb2cc224c1c9fee385f8ad6a55b4d94e92359dc59 | 24h | valid | 2158 | 17.00 | 31.30 | 385.86 |
+| 0xb2cc224c1c9fee385f8ad6a55b4d94e92359dc59 | 6h | mark_window_too_narrow | 1097 | 11429.00 | 19914.20 | 21413.12 |
+| 0xb2cc224c1c9fee385f8ad6a55b4d94e92359dc59 | 6h | valid | 4614 | 18.00 | 43.00 | 18471.31 |
