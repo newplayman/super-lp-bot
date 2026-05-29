@@ -1,0 +1,28 @@
+{
+  "status": "WARN",
+  "stage": "TIER_C_ONCHAIN_LOGS_FALLBACK_V1",
+  "candidate_count": 15,
+  "onchain_logs_supported_count": 5,
+  "onchain_logs_success_count": 1,
+  "trader_concentration_coverage_before": 7,
+  "trader_concentration_coverage_after": 7,
+  "data_ready_count": 0,
+  "micro_candidate_research_only_count": 0,
+  "shadow_only_data_ready_count": 0,
+  "watch_count": 5,
+  "reject_count": 10,
+  "top_missing_fields": [
+    "buyers_24h",
+    "sellers_24h",
+    "trader_concentration",
+    "unique_traders",
+    "price_move_5m/15m/30m",
+    "volume_change_1h",
+    "tvl_change_1h",
+    "buy_count_24h"
+  ],
+  "edge_proven": "no",
+  "tiny_canary_candidate": "no",
+  "tiny_canary_allowed": "no",
+  "recommended_next_stage": "TIER_C_DATA_SOURCE_IMPLEMENTATION_REPEAT"
+}

@@ -1,0 +1,17 @@
+# TIER_C_ONCHAIN_LOGS_TARGETS
+
+- `0xe47f7dba68a00dc1a6f11458bcdfca810e1cfebf` REJECT priority=99 missing=none
+- `0xc200f21efe67c7f41b81a854c26f9cda80593065` WATCH_RISK_HIGH priority=2 missing=none
+- `0x659be70647b0f63217d60e077f4417b1ecc65064` REJECT priority=99 missing=none
+- `0xe8f16fbf4eafec04bcf0c06d768e7ba325f9d6de` WATCH_DATA_MISSING priority=1 missing=buyers_24h;sellers_24h
+- `0xc9034c3e7f58003e6ae0c8438e7c8f4598d5acaa` REJECT priority=99 missing=buyers_24h;sellers_24h
+- `0x82dbe18346a8656dbb5e76f74bf3ae279cc16b29` REJECT priority=99 missing=unique_traders;trader_concentration;buyers_24h;sellers_24h
+- `0x0ba69825c4c033e72309f6ac0bde0023b15cc97c` WATCH_DATA_MISSING priority=1 missing=unique_traders;trader_concentration;buyers_24h;sellers_24h
+- `0x7cb770d0513c30e0cb45e4899e4a2cbeed6f9830` REJECT priority=99 missing=unique_traders;trader_concentration;buyers_24h;sellers_24h
+- `0x9c087eb773291e50cf6c6a90ef0f4500e349b903` REJECT priority=99 missing=buyers_24h;sellers_24h
+- `0x20cb8f872ae894f7c9e32e621c186e5afce82fd0` WATCH_DATA_MISSING priority=1 missing=unique_traders;trader_concentration;buyers_24h;sellers_24h
+- `0x3f9b863ef4b295d6ba370215bcca3785fcc44f44` WATCH_DATA_MISSING priority=1 missing=unique_traders;trader_concentration;buyers_24h;sellers_24h
+- `0xe640781d47992636fe7dd4822f2cdf6cb7d5e331f346bc58776a577ecd493fea` WATCH_DATA_MISSING priority=1 missing=unique_traders;trader_concentration;buyers_24h;sellers_24h
+- `0x3c4384f3664b37a3cb5a5cb3452b4b4a3aa1256f` REJECT priority=99 missing=buyers_24h;sellers_24h
+- `0x263dd54f58cedff35c85a98a61fda06f3bba55a567de33fe9f884d851652e37a` REJECT priority=99 missing=unique_traders;trader_concentration;buyers_24h;sellers_24h
+- `0xdc5a40b5be693afb1864c558da73e7d51b70579e53689cb3a41f85e6cdd6a7f6` REJECT priority=99 missing=unique_traders;trader_concentration;buyers_24h;sellers_24h
