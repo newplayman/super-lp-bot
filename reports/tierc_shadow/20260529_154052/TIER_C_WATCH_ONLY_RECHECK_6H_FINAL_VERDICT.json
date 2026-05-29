@@ -1,0 +1,15 @@
+{
+  "status": "WARN",
+  "stage": "TIER_C_WATCH_ONLY_RECHECK_6H_V1",
+  "watch_rechecked_count": 5,
+  "micro_candidate_research_only_count": 0,
+  "shadow_only_data_ready_count": 0,
+  "watch_count": 0,
+  "reject_locked_count": 5,
+  "improved_pool_count": 0,
+  "worsened_pool_count": 5,
+  "edge_proven": "no",
+  "tiny_canary_candidate": "no",
+  "tiny_canary_allowed": "no",
+  "recommended_next_stage": "TIER_C_WATCH_ONLY_RECHECK_12H"
+}
