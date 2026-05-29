@@ -40,6 +40,15 @@ def rpc_post(payload):
     return resp.json()
 
 
+def rpc_post_batch(payloads):
+    resp = requests.post(BASE_RPC_URL, json=payloads, timeout=60)
+    resp.raise_for_status()
+    data = resp.json()
+    if not isinstance(data, list):
+        raise RuntimeError(f"batch rpc expected list, got {type(data)!r}")
+    return {item["id"]: item for item in data}
+
+
 def rpc_block_number():
     data = rpc_post({"jsonrpc": "2.0", "id": 1, "method": "eth_blockNumber", "params": []})
     return int(data["result"], 16)
@@ -136,17 +145,44 @@ def topic_address(topic_word):
     return "0x" + word[-40:]
 
 
-def actor_from_log(log):
+def actor_candidates_from_log(protocol, log):
     topics = log.get("topics") or []
-    if len(topics) >= 2:
-        actor = topic_address(topics[1])
-        if actor and actor != "0x" + ("0" * 40):
-            return actor
-    if len(topics) >= 3:
-        actor = topic_address(topics[2])
-        if actor and actor != "0x" + ("0" * 40):
-            return actor
-    return ""
+    zero = "0x" + ("0" * 40)
+    actors = []
+    # Uniswap V3 Swap(sender indexed, recipient indexed, ...)
+    # Uniswap V2 Swap(sender indexed, ..., to indexed)
+    if protocol in {"uniswap_v2_like", "uniswap_v3_like"}:
+        if len(topics) >= 2:
+            actor = topic_address(topics[1])
+            if actor and actor != zero:
+                actors.append(actor)
+        if len(topics) >= 3:
+            actor = topic_address(topics[2])
+            if actor and actor != zero and actor not in actors:
+                actors.append(actor)
+    return actors
+
+
+def fetch_tx_from_map(tx_hashes):
+    out = {}
+    tx_hashes = sorted(set(tx_hashes))
+    for i in range(0, len(tx_hashes), 100):
+        batch = tx_hashes[i:i + 100]
+        payloads = [
+            {"jsonrpc": "2.0", "id": idx + 1, "method": "eth_getTransactionByHash", "params": [txh]}
+            for idx, txh in enumerate(batch)
+        ]
+        try:
+            results = rpc_post_batch(payloads)
+        except Exception:
+            continue
+        for idx, txh in enumerate(batch, start=1):
+            item = results.get(idx, {})
+            result = item.get("result") or {}
+            trader = (result.get("from") or "").lower()
+            if trader:
+                out[txh] = trader
+    return out
 
 
 def concentration_status(top1, top5):
@@ -174,25 +210,44 @@ def analyze_window(logs, protocol, block_cutoff):
             "concentration_status": "missing",
             "data_quality_status": "missing",
             "failure_reason": "no_swap_logs",
+            "trader_proxy_method": "unavailable",
         }
     trader_counts = Counter()
     buyers = set()
     sellers = set()
     buy_count = 0
     sell_count = 0
+    event_actor_seen = False
     for log in window_logs:
-        trader = actor_from_log(log)
-        if trader:
-            trader_counts[trader] += 1
+        actors = actor_candidates_from_log(protocol, log)
+        if actors:
+            event_actor_seen = True
+            for trader in actors:
+                trader_counts[trader] += 1
         direction = decode_v2_direction(log) if protocol == "uniswap_v2_like" else decode_v3_direction(log)
         if direction == "buy":
             buy_count += 1
-            if trader:
+            for trader in actors[:1]:
                 buyers.add(trader)
         elif direction == "sell":
             sell_count += 1
-            if trader:
+            for trader in actors[:1]:
                 sellers.add(trader)
+    trader_proxy_method = "event_sender_recipient" if protocol == "uniswap_v3_like" else "event_sender_to"
+    if not trader_counts:
+        tx_from_map = fetch_tx_from_map([log.get("transactionHash", "") for log in window_logs if log.get("transactionHash")])
+        for log in window_logs:
+            trader = tx_from_map.get(log.get("transactionHash", ""))
+            if not trader:
+                continue
+            trader_counts[trader] += 1
+            direction = decode_v2_direction(log) if protocol == "uniswap_v2_like" else decode_v3_direction(log)
+            if direction == "buy":
+                buyers.add(trader)
+            elif direction == "sell":
+                sellers.add(trader)
+        if trader_counts:
+            trader_proxy_method = "tx_from"
     if not trader_counts:
         return {
             "log_count": len(window_logs),
@@ -205,7 +260,8 @@ def analyze_window(logs, protocol, block_cutoff):
             "top5_trader_volume_share": "",
             "concentration_status": "missing",
             "data_quality_status": "missing",
-            "failure_reason": "actor_proxy_unavailable",
+            "failure_reason": "tx_sender_unavailable" if event_actor_seen else "actor_proxy_unavailable",
+            "trader_proxy_method": "unavailable",
         }
     total = sum(trader_counts.values())
     ordered = trader_counts.most_common()
@@ -223,6 +279,7 @@ def analyze_window(logs, protocol, block_cutoff):
         "concentration_status": concentration_status(top1, top5),
         "data_quality_status": "ok",
         "failure_reason": "",
+        "trader_proxy_method": trader_proxy_method,
     }
 
 
