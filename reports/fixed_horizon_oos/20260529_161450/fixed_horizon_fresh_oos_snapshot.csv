@@ -1,0 +1,7 @@
+window_label,new_position_count,completed_6h_count,completed_12h_count,completed_24h_count,entry_trusted_rate,future_position_mark_coverage,invalid_position_count,sample_sufficiency,note
+recent 2h,1,0,0,0,0.000000,0.000000,1,INSUFFICIENT,SAMPLE_INSUFFICIENT
+recent 4h,1,0,0,0,0.000000,0.000000,1,INSUFFICIENT,SAMPLE_INSUFFICIENT
+recent 8h,2,0,0,0,0.000000,0.000000,2,INSUFFICIENT,SAMPLE_INSUFFICIENT
+recent 12h,2,0,0,0,0.000000,0.000000,2,INSUFFICIENT,SAMPLE_INSUFFICIENT
+recent 24h,7,0,0,0,0.000000,0.000000,7,INSUFFICIENT,SAMPLE_INSUFFICIENT
+recent 48h,,,,,,,,not_available,48h window not available in current read-only artifacts

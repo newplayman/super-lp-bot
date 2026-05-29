@@ -1,0 +1,4 @@
+horizon,position_count,completed_count,invalid_count,median_net_pnl_pct,p10_net_pnl_pct,p5_net_pnl_pct,p1_net_pnl_pct,win_rate,top20_position_count,bottom20_position_count,top20_median_net_pnl_pct,bottom20_median_net_pnl_pct,top20_vs_bottom20_signal,top1pct_loss_share,top5pct_loss_share,worst_position_contribution,worst_pool_contribution,source_note
+6h,35,26,3,0.014793,-2.356639,-2.531888,-3.408496,0.812500,,,,,better,,,,,baseline position-level proof from latest position_lifecycle tail package
+12h,0,0,0,,,,,,,,,,insufficient,,,,,12h fixed-horizon proof is not materialized in current local read-only artifacts
+24h,33,29,3,0.014793,-2.242177,-2.454014,-2.537614,0.833333,,,,,insufficient,,,,,baseline position-level proof from latest position_lifecycle tail package

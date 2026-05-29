@@ -1,0 +1,14 @@
+{
+  "status": "WARN",
+  "stage": "FIXED_HORIZON_HYPOTHESIS_GATE_V1",
+  "sample_sufficiency": "INSUFFICIENT",
+  "gate_result": "INSUFFICIENT",
+  "gating_reasons": [
+    "sample_sufficiency_below_preliminary",
+    "12h_horizon_not_materialized_in_current_local_artifacts",
+    "p10_or_p5_still_negative_on_available_horizons"
+  ],
+  "better_horizon_count": 1,
+  "edge_proven": "no",
+  "tiny_canary_allowed": "no"
+}
