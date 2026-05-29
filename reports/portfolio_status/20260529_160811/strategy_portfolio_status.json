@@ -1,0 +1,11 @@
+{
+  "status": "PASS",
+  "primary_proof_unit": "position_lifecycle",
+  "current_full_strategy": "FAIL",
+  "fixed_horizon_hypothesis": "collecting_oos",
+  "tier_c_shadow_research": "BATCH_REJECTED",
+  "edge_proven": "no",
+  "tiny_canary_candidate": "no",
+  "tiny_canary_allowed": "no",
+  "recommended_primary_next_stage": "FIXED_HORIZON_FRESH_OOS_ACCUMULATION"
+}
