@@ -1,0 +1,12 @@
+{
+  "status": "PASS",
+  "stage": "SYNC_RECOVERY_BEFORE_TIERC_ONCHAIN_LOGS_V1",
+  "local_dirty_backed_up": true,
+  "local_dirty_stashed": true,
+  "vps_artifacts_pushed": true,
+  "local_synced_to_origin": true,
+  "go_test_cmd_lpbot": "PASS",
+  "canary_live_process_found": false,
+  "tiny_canary_allowed": "no",
+  "recommended_next_stage": "TIER_C_ONCHAIN_LOGS_FALLBACK_V1"
+}
