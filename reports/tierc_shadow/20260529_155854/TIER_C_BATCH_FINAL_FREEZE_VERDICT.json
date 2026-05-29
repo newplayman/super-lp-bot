@@ -1,0 +1,13 @@
+{
+  "status": "PASS",
+  "stage": "TIER_C_BATCH_FINAL_FREEZE_AND_REDISCOVERY_POLICY_V1",
+  "batch_status": "REJECTED",
+  "watch_recheck_12h_recommended": "no",
+  "reject_locked_count": 14,
+  "micro_candidate_research_only_count": 0,
+  "shadow_only_data_ready_count": 0,
+  "edge_proven": "no",
+  "tiny_canary_candidate": "no",
+  "tiny_canary_allowed": "no",
+  "recommended_next_stage": "TIER_C_REDISCOVERY_AFTER_MARKET_CHANGE"
+}
