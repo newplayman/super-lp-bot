@@ -1,0 +1,4 @@
+run_id,horizon,total_rows,future_rows,invalid_rows
+20260530_134500,12h,68,40,28
+20260530_134500,24h,68,8,60
+20260530_134500,6h,68,42,26
