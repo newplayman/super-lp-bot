@@ -1,0 +1,30 @@
+{
+  "stage": "TIER_B_DATA_SOURCE_FIX_REPEAT_V2",
+  "inputs": [
+    {
+      "path": "reports/tierb_discovery_expand/20260530_110720/FINAL_VERDICT.json",
+      "exists": true
+    },
+    {
+      "path": "reports/tierb_discovery_expand/20260530_110720/tier_b_expanded_discovery_candidates.csv",
+      "exists": true
+    },
+    {
+      "path": "reports/tierb_discovery_expand/20260530_110720/tier_b_expanded_risk_signal_enrichment.csv",
+      "exists": true
+    },
+    {
+      "path": "reports/tierb_discovery_expand/20260530_110720/tier_b_expanded_reclassification.csv",
+      "exists": true
+    },
+    {
+      "path": "reports/tierb_discovery_expand/20260530_110720/tier_b_expanded_counterfactual_readiness.json",
+      "exists": true
+    }
+  ],
+  "missing_inputs": [],
+  "enough_for_data_source_fix_repeat": true,
+  "watch_pools_extractable": true,
+  "edge_proven": "no",
+  "tiny_canary_allowed": "no"
+}

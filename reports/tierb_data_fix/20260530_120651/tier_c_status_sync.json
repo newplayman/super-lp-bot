@@ -1,0 +1,8 @@
+{
+  "tier_c_current_batch": "REJECTED",
+  "recheck_12h": "no",
+  "oos": "no",
+  "micro_candidate": "no",
+  "next_tier_c_action": "TIER_C_REDISCOVERY_AFTER_MARKET_CHANGE",
+  "tiny_canary_allowed": "no"
+}

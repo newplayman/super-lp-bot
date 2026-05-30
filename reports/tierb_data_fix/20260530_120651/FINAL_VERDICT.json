@@ -1,0 +1,19 @@
+{
+  "status": "PASS",
+  "stage": "TIER_B_DATA_SOURCE_FIX_REPEAT_V2",
+  "watch_pool_count": 77,
+  "processed_pool_count": 16,
+  "one_field_away_count": 3,
+  "two_fields_away_count": 13,
+  "data_ready_count": 0,
+  "research_candidate_count": 0,
+  "shadow_only_data_ready_count": 0,
+  "watch_count": 77,
+  "reject_count": 0,
+  "can_run_counterfactual_now": false,
+  "tier_c_status": "BATCH_REJECTED",
+  "edge_proven": "no",
+  "tiny_canary_candidate": "no",
+  "tiny_canary_allowed": "no",
+  "recommended_next_stage": "TIER_B_DATA_SOURCE_FIX_REPEAT"
+}

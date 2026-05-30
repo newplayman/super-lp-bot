@@ -1,0 +1,13 @@
+{
+  "watch_pool_count": 77,
+  "processed_pool_count": 16,
+  "data_ready_count": 0,
+  "research_candidate_count": 0,
+  "shadow_only_data_ready_count": 0,
+  "watch_count": 77,
+  "reject_count": 0,
+  "risk_signal_coverage": 0.7188,
+  "position_lifecycle_data_available": true,
+  "fixed_horizon_baseline_available": true,
+  "can_run_counterfactual_now": false
+}

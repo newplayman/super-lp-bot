@@ -1,0 +1,78 @@
+pool_id,token_pair,watch_reason,missing_fields,available_fields,exit_depth_available,holder_available,trader_available,stability_available,missing_count,one_field_away,two_fields_away,hard_risk_already_visible,data_fix_priority,likely_next_status_if_fixed
+0x26e263efdc91f0d3279e2ec2bd58a7ca5c2fce62,cbBTC/USDC,trader_concentration_missing,trader,exit_depth;holder;stability,yes,yes,no,yes,1,yes,no,no,HIGH,SHADOW_ONLY_DATA_READY
+0x4e962bb3889bf030368f56810a9c96b83cb3e778,cbBTC / USDC 0.05%,trader_concentration_missing,trader,exit_depth;holder;stability,yes,yes,no,yes,1,yes,no,no,HIGH,SHADOW_ONLY_DATA_READY
+0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38,WETH / USDC 0.01%,trader_concentration_missing,trader,exit_depth;holder;stability,yes,yes,no,yes,1,yes,no,no,HIGH,SHADOW_ONLY_DATA_READY
+0x0ab02e160f0df68dc049b012c514857306960eae,CTR / USDC 0.015%,trader_concentration_missing,holder;trader,exit_depth;stability,yes,no,no,yes,2,no,yes,no,MEDIUM,SHADOW_ONLY_DATA_READY
+0x1131db5977242a03ebead1acd18f80a9a29e5922,SOL/USDC,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,yes,no,MEDIUM,SHADOW_ONLY_DATA_READY
+0x24bddff0577d1ee32f92a0b92296ca9702611c6a,PROS / USDC,trader_concentration_missing,holder;trader,exit_depth;stability,yes,no,no,yes,2,no,yes,no,MEDIUM,SHADOW_ONLY_DATA_READY
+0x29183f918920a2aef0115a9c7374945589968aea,SOSO / USDC 0.01%,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,yes,no,MEDIUM,SHADOW_ONLY_DATA_READY
+0x5d0bc342178c8fe2c2f9a9fcc9d52555c99936db,USDC/USDbC,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,yes,no,MEDIUM,SHADOW_ONLY_DATA_READY
+0x85f1aa3a70fedd1c52705c15baed143e675cd626,NOCK / USDC,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,yes,no,MEDIUM,SHADOW_ONLY_DATA_READY
+0x8a8e4170c09074b109352190d47e54d7c1f61e4e,PROS / USDC 0.01%,trader_concentration_missing,holder;trader,exit_depth;stability,yes,no,no,yes,2,no,yes,no,MEDIUM,SHADOW_ONLY_DATA_READY
+0xaf15cd1f9c3874bbcfddfc2b544544612c9de8c8bae28ba21c129c6b286c1e19,ETH / USDC 0.009%,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,yes,no,MEDIUM,SHADOW_ONLY_DATA_READY
+0xedc625b74537ee3a10874f53d170e9c17a906b9c,ZORA / USDC 0.3%,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,yes,no,MEDIUM,SHADOW_ONLY_DATA_READY
+0xf13203ddbf2c9816a79b656a1a952521702715d92fea465b84ae2ed6e94a7f22,USDT / USDC,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,yes,no,MEDIUM,SHADOW_ONLY_DATA_READY
+0xf1cacd7e005b9337c58aae77bc88d93c635cdf4d,PLAY / USDC 0.01%,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,yes,no,MEDIUM,SHADOW_ONLY_DATA_READY
+0xf6e81e5d16a7274d273905e0068f9f607b840c20bec23b2e442976ee03b29d91,ETH / USDC 0.005%,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,yes,no,MEDIUM,SHADOW_ONLY_DATA_READY
+0xfc971cb1c9327d6a6f84b4a6fceaff20d7a7719fa1564f1bed47198716dbec7d,OpenJarvis / WETH 0.01%,trader_concentration_missing,holder;trader,exit_depth;stability,yes,no,no,yes,2,no,yes,no,MEDIUM,SHADOW_ONLY_DATA_READY
+0x253b86118992ef0feb43a846e9a5a50abdd8b271ca4d5c7295d55f18041b888c,PROS / ETH 0.05%,holder_concentration_missing,holder;trader;stability,exit_depth,yes,no,no,no,3,no,no,no,LOW,WATCH_DATA_MISSING
+0xacd168b06cfb4ed3a7701d64752e7667f1e6063e05144cec1883b5b5fd91633a,PITCH / ETH 1%,holder_concentration_missing,holder;trader;stability,exit_depth,yes,no,no,no,3,no,no,no,LOW,WATCH_DATA_MISSING
+0x0ba69825c4c033e72309f6ac0bde0023b15cc97c,USDC / cbBTC 0.05%,trader_concentration_missing,trader,exit_depth;holder;stability,yes,yes,no,yes,1,no,no,yes,DO_NOT_FIX,REJECT
+0x0d01e3e996ffb83cf990b67b2df83d4e5eaeacdf1cb6fa67b6cccf1a2c94cc02,SAOS / WETH 0.01%,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,no,yes,DO_NOT_FIX,REJECT
+0x12d76c5c8ec8edffd3c143995b0aa43fe44a6d71eb9113796272909e54b8e078,cbBTC/USDC,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,no,yes,DO_NOT_FIX,REJECT
+0x13a34cd910c51814c518a0f38331118259330696a6dd6aaddd92eea786d31eee,SAOS / WETH 0.01%,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,no,yes,DO_NOT_FIX,REJECT
+0x160d7e9d948b16c163332a277b393c288408eb12,cbBTC / USDC 0.05%,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,no,yes,DO_NOT_FIX,REJECT
+0x1674ad20f7740e1bc0d21efa6425136971478cb4,ALLO / USDT 0.05%,holder_concentration_missing,holder;trader;stability,exit_depth,yes,no,no,no,3,no,no,yes,DO_NOT_FIX,REJECT
+0x1dcfc51e30b05a523c806ed835202fdff2f29167f734189ab7a4ae0664e440b2,THESIS / WETH,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,no,yes,DO_NOT_FIX,REJECT
+0x2055cfc1624411a84b544ac3c68886810397c511888e31de60695b416a8a492e,Brain / WETH 0.01%,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,no,yes,DO_NOT_FIX,REJECT
+0x20cb8f872ae894f7c9e32e621c186e5afce82fd0,AERO / WETH 0.05%,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,no,yes,DO_NOT_FIX,REJECT
+0x22aee3699b6a0fed71490c103bd4e5f3309891d5,cbBTC/WETH,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,no,yes,DO_NOT_FIX,REJECT
+0x22c8e4b5a5d2361b32ab8c6c7937644856708995,NSEC / WETH,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,no,yes,DO_NOT_FIX,REJECT
+0x25424bf60fbb8b43bdf2efee7bb9b89b1ff991f0256f8e1e5206fd23cd6fe2db,ETH / cbBTC 0.005%,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,no,yes,DO_NOT_FIX,REJECT
+0x263dd54f58cedff35c85a98a61fda06f3bba55a567de33fe9f884d851652e37a,ETH / VIRTUAL 0.045%,trader_concentration_missing,trader,exit_depth;holder;stability,yes,yes,no,yes,1,no,no,yes,DO_NOT_FIX,REJECT
+0x31d7860963a8f9c3138a2fd84aa769b3119f17b38f1fc21b329a47fab2856dbd,SAOS / WETH 0.01%,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,no,yes,DO_NOT_FIX,REJECT
+0x3e66e55e97ce60096f74b7c475e8249f2d31a9fb,cbBTC/USDC,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,no,yes,DO_NOT_FIX,REJECT
+0x3e97c5ec8c73e7d566aca606472141a9b9a8c1fa,DEUS / VIRTUAL,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,no,yes,DO_NOT_FIX,REJECT
+0x3edda68feaec4ca870ec5ebacdd50f92af6ad747828a8b4a287f692ca4ea7b3c,WAKE / WETH,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,no,yes,DO_NOT_FIX,REJECT
+0x3f0296bf652e19bca772ec3df08b32732f93014a,VIRTUAL / WETH 0.05%,trader_concentration_missing,trader,exit_depth;holder;stability,yes,yes,no,yes,1,no,no,yes,DO_NOT_FIX,REJECT
+0x3f9b863ef4b295d6ba370215bcca3785fcc44f44,WETH / cbBTC 0.05%,trader_concentration_missing,trader,exit_depth;holder;stability,yes,yes,no,yes,1,no,no,yes,DO_NOT_FIX,REJECT
+0x3fe04a59ebd38cf06080a6f60a98d124eb59392a,WETH / USDC 0.05%,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,no,yes,DO_NOT_FIX,REJECT
+0x42d4a22cad0f5a49681a5715ce994af73a43b76b,cbBTC / WETH 0.05%,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,no,yes,DO_NOT_FIX,REJECT
+0x4676505f75ef3cf95cf30d6e56134e39fe1f4c325ed29e52a5e28e350bee268c,BASEMATE / WETH,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,no,yes,DO_NOT_FIX,REJECT
+0x4ca59b56965385e14b3fd4d48cd1741dc21e7343,cbBTC/USDC,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,no,yes,DO_NOT_FIX,REJECT
+0x4e392fbfe4d0557c82d2f97f02ec39daa31516dd,WETH / USDC 0.008%,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,no,yes,DO_NOT_FIX,REJECT
+0x4e506648d493c8870f55e870480f92f2f33ece51,AERO/WETH,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,no,yes,DO_NOT_FIX,REJECT
+0x4f13908968a7acef4738bf5f306fd269dcc1c94a80e7e084bbd41e5055ab31c4,Katch / WETH,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,no,yes,DO_NOT_FIX,REJECT
+0x57713f7716e0b0f65ec116912f834e49805480d2,WETH/USDC,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,no,yes,DO_NOT_FIX,REJECT
+0x5a9ad2bb92b0b3e5c571fdd5125114e04e02be1a,WETH/USDC,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,no,yes,DO_NOT_FIX,REJECT
+0x5ec8fd9b09454e7e2662a2c4c0432f95e896ea79,VCNT / WETH 0.3%,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,no,yes,DO_NOT_FIX,REJECT
+0x6aa4525e601f65f498a3b06cdc3c144bfeba76045f99557fe17369047e337d72,HALO / WETH,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,no,yes,DO_NOT_FIX,REJECT
+0x7016371c9642e346094b51b9603e429828d3f8063537770020115af81b019145,SUPERGEMMA / WETH,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,no,yes,DO_NOT_FIX,REJECT
+0x70acdf2ad0bf2402c957154f944c19ef4e1cbae1,cbBTC / WETH 0.05%,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,no,yes,DO_NOT_FIX,REJECT
+0x7a97e4a45f5ae858ba5e96fb1e279dce4aa6751caf844a2bf6c7f7ea520e34f4,Tessera / WETH 1%,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,no,yes,DO_NOT_FIX,REJECT
+0x7aea2e8a3843516afa07293a10ac8e49906dabd1,cbBTC/WETH,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,no,yes,DO_NOT_FIX,REJECT
+0x7c7420dd105e2779316423ba3e973f434315efa9,cbBTC / WETH 0.009%,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,no,yes,DO_NOT_FIX,REJECT
+0x82321f3beb69f503380d6b233857d5c43562e2d0,AERO/WETH,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,no,yes,DO_NOT_FIX,REJECT
+0x8fe985a6a484e89af85189f7efc20de0183d0c3415bf2a9ceefa5a7d1af879e5,ETH / cbBTC 0.009%,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,no,yes,DO_NOT_FIX,REJECT
+0x91a06c8f90cc4a21f47d20ff6b81ddef508fe483f1b11e02457836b2467e1351,rootai / WETH,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,no,yes,DO_NOT_FIX,REJECT
+0x9520e1a3bfd86da6c1e9e5ee4b9c2f11c413358f,VIRTUAL / WETH,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,no,yes,DO_NOT_FIX,REJECT
+0x9d14ff91ae2c6e3d1a760542248b6c7f206894b0,cbBTC / USDC 0.021%,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,no,yes,DO_NOT_FIX,REJECT
+0xa4fdd479eda160671636e2ecf8f993cbf86258a8,AERO/USDC,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,no,yes,DO_NOT_FIX,REJECT
+0xaec085e5a5ce8d96a7bdd3eb3a62445d4f6ce703,BNKR / WETH 1%,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,no,yes,DO_NOT_FIX,REJECT
+0xb2cc224c1c9fee385f8ad6a55b4d94e92359dc59,WETH / USDC 0.05%,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,no,yes,DO_NOT_FIX,REJECT
+0xb4cb800910b228ed3d0834cf79d697127bbb00e5,WETH / USDC 0.01%,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,no,yes,DO_NOT_FIX,REJECT
+0xb775272e537cc670c65dc852908ad47015244eaf,WETH/USDC,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,no,yes,DO_NOT_FIX,REJECT
+0xb94b22332abf5f89877a14cc88f2abc48c34b3df,cbBTC / USDC 0.01%,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,no,yes,DO_NOT_FIX,REJECT
+0xc211e1f853a898bd1302385ccde55f33a8c4b3f3,cbBTC / WETH 0.01%,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,no,yes,DO_NOT_FIX,REJECT
+0xca0ce175bbcb04b2e9f8789a73ff0c94185434ac32ee33ab11fde41ddeafa497,Brain / WETH,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,no,yes,DO_NOT_FIX,REJECT
+0xcbdc5128889aa8477cb9267d735029bc02087aeef3dd3c3e0be458bce741c6c0,QUILL / ETH 1.025%,holder_concentration_missing,holder;trader;stability,exit_depth,yes,no,no,no,3,no,no,yes,DO_NOT_FIX,REJECT
+0xd0b53d9277642d899df5c87a3966a349a798f224,USDC / WETH 0.05%,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,no,yes,DO_NOT_FIX,REJECT
+0xd2192fca14cf782e6c32e4872c1c5c1aeecec8d1aa98529b8e8628f40f45092c,CASS / WETH 0.01%,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,no,yes,DO_NOT_FIX,REJECT
+0xd974d59e30054cf1abeded0c9947b0d8baf90029,cbBTC/WETH,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,no,yes,DO_NOT_FIX,REJECT
+0xdbc6998296caa1652a810dc8d3baf4a8294330f1,WETH / USDC 0.01%,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,no,yes,DO_NOT_FIX,REJECT
+0xdeaaeaf48f3b02df130b6e1035c4740158ed9a8ece951edd7a2ac19d80742072,SAOS / WETH 0.01%,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,no,yes,DO_NOT_FIX,REJECT
+0xdfe5f275020def30993f042174fc2d335678b626,AERO/cbBTC,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,no,yes,DO_NOT_FIX,REJECT
+0xe5b5f522e98b5a2baae212d4da66b865b781db97,AERO/USDC,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,no,yes,DO_NOT_FIX,REJECT
+0xe8f16fbf4eafec04bcf0c06d768e7ba325f9d6de,VCNT / USDC 0.3%,stability_missing,stability,exit_depth;holder;trader,yes,yes,yes,no,1,no,no,yes,DO_NOT_FIX,REJECT
+0xf6ca0d69c0a93d4dea32af5f1f2115bd5fe4f14cdba6ec35ca45bd8d29d947d1,MYTHOS / WETH,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,no,yes,DO_NOT_FIX,REJECT
+0xfbb6eed8e7aa03b138556eedaf5d271a5e1e43ef,cbBTC/USDC,trader_concentration_missing,trader;stability,exit_depth;holder,yes,yes,no,no,2,no,no,yes,DO_NOT_FIX,REJECT
