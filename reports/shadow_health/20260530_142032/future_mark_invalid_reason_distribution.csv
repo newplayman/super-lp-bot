@@ -1,0 +1,4 @@
+horizon,invalid_reason,count
+6h,no_future_mark,1
+12h,no_future_mark,2
+24h,no_future_mark,12

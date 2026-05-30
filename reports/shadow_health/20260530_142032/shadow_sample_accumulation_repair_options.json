@@ -1,0 +1,42 @@
+[
+  {
+    "option": "Continue OOS accumulation only",
+    "applicable": "no",
+    "evidence": "recent positions exist but some horizons may not have matured",
+    "risk": "may wait without fixing actual mark gap",
+    "recommended": "no",
+    "next_stage": "CONTINUE_OOS_ACCUMULATION"
+  },
+  {
+    "option": "Shadow selector / position writer audit",
+    "applicable": "no",
+    "evidence": "intent_open=5619 vs position join success=5619",
+    "risk": "may inspect writer semantics not mark path",
+    "recommended": "no",
+    "next_stage": "SHADOW_INTENT_POSITION_WRITER_AUDIT"
+  },
+  {
+    "option": "Mark coverage fix",
+    "applicable": "yes",
+    "evidence": "recent_24h positions=",
+    "risk": "may not address intent->position compression",
+    "recommended": "yes",
+    "next_stage": "SHADOW_MARK_COVERAGE_FIX"
+  },
+  {
+    "option": "Materializer semantics fix",
+    "applicable": "yes",
+    "evidence": "semantics_status=OVER_STRICT_RESEARCH_FALLBACK_POSSIBLE",
+    "risk": "research semantics drift from strict proof",
+    "recommended": "yes",
+    "next_stage": "MATERIALIZER_SEMANTICS_FIX"
+  },
+  {
+    "option": "Add research-only synthetic lifecycle from unique intent",
+    "applicable": "no",
+    "evidence": "many intent_open rows but tiny position creation",
+    "risk": "new research proof unit diverges from production positions",
+    "recommended": "no",
+    "next_stage": "RESEARCH_INTENT_LIFECYCLE_MATERIALIZER"
+  }
+]

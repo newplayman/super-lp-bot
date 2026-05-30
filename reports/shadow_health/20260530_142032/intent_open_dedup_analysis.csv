@@ -1,0 +1,6 @@
+window,intent_open_rows,distinct_pool_id,distinct_token_pair,distinct_score_bucket,repeated_same_pool_same_tick_count,repeated_same_intended_position_count
+recent_2h,480,4,4,3,0,475
+recent_6h,1440,4,4,3,0,1435
+recent_12h,2880,4,4,3,0,2874
+recent_24h,5619,4,4,3,0,5609
+recent_48h,10832,4,4,4,0,10816

@@ -1,0 +1,6 @@
+window,trace_count,selected_count,intent_open_count,open_or_reuse_count,unique_pool_count,unique_position_id_count,unique_intent_key_count,unique_candidate_key_count,distinct_intent_pool_count,repeated_same_pool_same_tick_count,distinct_score_bucket_count,position_id_present_count,positions_join_success_count
+recent_2h,2400,480,480,0,20,5,480,4,4,0,3,480,480
+recent_6h,7200,1440,1440,0,20,5,1440,4,4,0,3,1440,1440
+recent_12h,14391,2880,2880,0,21,6,2880,4,4,0,3,2880,2880
+recent_24h,28052,5756,5619,0,23,10,5619,4,4,0,3,5619,5619
+recent_48h,73141,11516,10832,0,51,16,10832,4,4,0,4,10832,8397

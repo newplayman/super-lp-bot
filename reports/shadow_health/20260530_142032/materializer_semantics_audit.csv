@@ -1,0 +1,4 @@
+horizon,row_count,strict_future_mark_count,no_future_mark_count,horizon_not_mature_count,terminal_before_target_count,pool_mark_only_count,position_mark_outside_window_count,nearest_mark_fallback_possible_count,terminal_excluded_count
+6h,68,42,26,0,4,13,2,0,3
+12h,68,40,28,0,4,14,4,0,2
+24h,68,8,60,0,12,41,1,0,0
