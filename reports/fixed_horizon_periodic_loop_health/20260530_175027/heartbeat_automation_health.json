@@ -1,0 +1,7 @@
+{
+  "automation_id_found": "yes",
+  "heartbeat_process_found": "unknown",
+  "duplicate_loop_process_found": "no",
+  "last_heartbeat_evidence": "automation.toml updated_at=2026-05-30T15:11:42.246000+00:00, rrule=FREQ=HOURLY;INTERVAL=6",
+  "automation_health": "ON_TRACK"
+}

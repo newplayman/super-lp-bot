@@ -1,0 +1,9 @@
+{
+  "checkpoint_0h_complete": true,
+  "checkpoint_6h_exists": true,
+  "checkpoint_6h_complete": "pending",
+  "checkpoint_12h_exists": true,
+  "checkpoint_12h_complete": "pending",
+  "missing_files": [],
+  "artifact_health": "OK"
+}

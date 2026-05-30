@@ -1,0 +1,14 @@
+# Loop State Health
+
+- automation_id: `fixed-horizon-12h-loop-20260530-150736`
+- run_id: `20260530_150736`
+- active_dir: `reports/fixed_horizon_periodic_loop/20260530_150736`
+- created_at: `2026-05-30T15:11:42.246000+00:00`
+- checkpoint_0h_status: complete
+- checkpoint_6h_status: pending
+- checkpoint_12h_status: pending
+- next_checkpoint: `checkpoint_6h`
+- next_due_time: `2026-05-30T21:11:42.246000+00:00`
+- last_heartbeat_time: `2026-05-30T15:11:42.246000+00:00`
+- final_verdict_exists: no
+- loop_state_health: `ON_TRACK`

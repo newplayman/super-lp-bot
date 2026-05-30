@@ -1,0 +1,7 @@
+{
+  "shadow_daemon_running": true,
+  "db_connect": "ok",
+  "forbidden_process_found": false,
+  "live_or_canary_found": false,
+  "vps_health": "OK"
+}
