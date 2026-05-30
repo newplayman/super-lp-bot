@@ -1,0 +1,19 @@
+{
+  "status": "PASS",
+  "stage": "TIER_B_TARGETED_DATA_FIX_V3",
+  "targeted_pool_count": 16,
+  "processed_pool_count": 16,
+  "trader_fix_success_count": 7,
+  "stability_fix_success_count": 11,
+  "data_ready_count": 0,
+  "research_candidate_count": 0,
+  "shadow_only_data_ready_count": 0,
+  "watch_count": 16,
+  "reject_count": 0,
+  "can_run_counterfactual_now": false,
+  "tier_c_status": "BATCH_REJECTED",
+  "edge_proven": "no",
+  "tiny_canary_candidate": "no",
+  "tiny_canary_allowed": "no",
+  "recommended_next_stage": "FIXED_HORIZON_DB_OR_SCHEMA_FIX"
+}

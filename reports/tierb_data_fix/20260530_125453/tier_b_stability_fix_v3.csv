@@ -1,0 +1,17 @@
+pool_id,price_move_5m,price_move_15m,price_move_30m,tvl_change_1h,volume_change_1h,stability_status,data_source,confidence,failure_reason
+0x26e263efdc91f0d3279e2ec2bd58a7ca5c2fce62,0.006222,0.040559,0.141079,snapshot_only,-0.85655,risk_high,geckoterminal,medium,
+0x4e962bb3889bf030368f56810a9c96b83cb3e778,0.052188,0.066312,0.03845,snapshot_only,0.083785,ok,geckoterminal,medium,
+0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38,0.045122,0.13698,0.075392,snapshot_only,-0.762581,ok,geckoterminal,medium,
+0x0ab02e160f0df68dc049b012c514857306960eae,1.18,,,,-0.421134,partial,dexscreener,low,
+0x1131db5977242a03ebead1acd18f80a9a29e5922,0.11,,,,-0.590292,partial,dexscreener,low,
+0x24bddff0577d1ee32f92a0b92296ca9702611c6a,0.14,,,,0.446532,partial,dexscreener,low,
+0x29183f918920a2aef0115a9c7374945589968aea,-0.03,,,,0.106863,partial,dexscreener,low,
+0x5d0bc342178c8fe2c2f9a9fcc9d52555c99936db,,,,,-0.66646,missing,dexscreener,low,
+0x85f1aa3a70fedd1c52705c15baed143e675cd626,-2.78,,,,-0.564416,risk_high,dexscreener,low,
+0x8a8e4170c09074b109352190d47e54d7c1f61e4e,0.15,,,,0.86765,partial,dexscreener,low,
+0xaf15cd1f9c3874bbcfddfc2b544544612c9de8c8bae28ba21c129c6b286c1e19,,,,,,missing,missing,none,unsupported_pool_id
+0xedc625b74537ee3a10874f53d170e9c17a906b9c,0.07,,,,-0.472231,partial,dexscreener,low,
+0xf13203ddbf2c9816a79b656a1a952521702715d92fea465b84ae2ed6e94a7f22,,,,,,missing,missing,none,unsupported_pool_id
+0xf1cacd7e005b9337c58aae77bc88d93c635cdf4d,0.11,,,,-0.59287,partial,dexscreener,low,
+0xf6e81e5d16a7274d273905e0068f9f607b840c20bec23b2e442976ee03b29d91,,,,,,missing,missing,none,unsupported_pool_id
+0xfc971cb1c9327d6a6f84b4a6fceaff20d7a7719fa1564f1bed47198716dbec7d,,,,,,missing,missing,none,unsupported_pool_id

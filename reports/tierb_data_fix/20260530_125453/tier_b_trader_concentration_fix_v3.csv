@@ -1,0 +1,49 @@
+pool_id,token_pair,protocol_detected,window,log_count,unique_traders_24h,top1_trader_share,top5_trader_share,buyers_24h,sellers_24h,buy_count_24h,sell_count_24h,data_source,confidence,failure_reason
+0x26e263efdc91f0d3279e2ec2bd58a7ca5c2fce62,cbBTC/USDC,,1h,0,,,,,,,,onchain_logs,none,no_swap_logs
+0x26e263efdc91f0d3279e2ec2bd58a7ca5c2fce62,cbBTC/USDC,,6h,0,,,,,,,,onchain_logs,none,no_swap_logs
+0x26e263efdc91f0d3279e2ec2bd58a7ca5c2fce62,cbBTC/USDC,,24h,0,,,,,,,,onchain_logs,none,no_swap_logs
+0x4e962bb3889bf030368f56810a9c96b83cb3e778,cbBTC / USDC 0.05%,uniswap_v3_like,1h,2152,78,22.91,65.9,33,27,1349,803,onchain_logs,high,
+0x4e962bb3889bf030368f56810a9c96b83cb3e778,cbBTC / USDC 0.05%,uniswap_v3_like,6h,9644,170,19.63,61.3,48,50,6102,3541,onchain_logs,high,
+0x4e962bb3889bf030368f56810a9c96b83cb3e778,cbBTC / USDC 0.05%,uniswap_v3_like,24h,56056,386,16.07,59.45,79,78,33409,22645,onchain_logs,high,
+0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38,WETH / USDC 0.01%,,1h,0,,,,,,,,onchain_logs,none,no_swap_logs
+0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38,WETH / USDC 0.01%,,6h,0,,,,,,,,onchain_logs,none,no_swap_logs
+0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38,WETH / USDC 0.01%,,24h,0,,,,,,,,onchain_logs,none,no_swap_logs
+0x0ab02e160f0df68dc049b012c514857306960eae,CTR / USDC 0.015%,uniswap_v3_like,1h,988,29,49.68,81.88,15,16,506,482,onchain_logs,high,
+0x0ab02e160f0df68dc049b012c514857306960eae,CTR / USDC 0.015%,uniswap_v3_like,6h,8671,66,44.8,79.81,29,27,4430,4241,onchain_logs,high,
+0x0ab02e160f0df68dc049b012c514857306960eae,CTR / USDC 0.015%,uniswap_v3_like,24h,46347,163,39.53,76.9,44,42,23426,22921,onchain_logs,high,
+0x1131db5977242a03ebead1acd18f80a9a29e5922,SOL/USDC,uniswap_v3_like,1h,66,14,22.68,81.44,6,7,36,30,onchain_logs,high,
+0x1131db5977242a03ebead1acd18f80a9a29e5922,SOL/USDC,uniswap_v3_like,6h,556,33,22.57,78.15,13,19,268,288,onchain_logs,high,
+0x1131db5977242a03ebead1acd18f80a9a29e5922,SOL/USDC,uniswap_v3_like,24h,6565,100,28.77,76.95,39,41,3096,3469,onchain_logs,high,
+0x24bddff0577d1ee32f92a0b92296ca9702611c6a,PROS / USDC,uniswap_v3_like,1h,4363,73,17.01,67.55,28,24,2144,2219,onchain_logs,high,
+0x24bddff0577d1ee32f92a0b92296ca9702611c6a,PROS / USDC,uniswap_v3_like,6h,28105,177,18.76,72.56,35,36,13915,14190,onchain_logs,high,
+0x24bddff0577d1ee32f92a0b92296ca9702611c6a,PROS / USDC,uniswap_v3_like,24h,67379,287,16.98,69.78,47,51,33468,33911,onchain_logs,high,
+0x29183f918920a2aef0115a9c7374945589968aea,SOSO / USDC 0.01%,uniswap_v3_like,1h,894,24,31.45,67.86,10,9,478,416,onchain_logs,high,
+0x29183f918920a2aef0115a9c7374945589968aea,SOSO / USDC 0.01%,uniswap_v3_like,6h,4196,33,35.26,67.68,11,14,2141,2055,onchain_logs,high,
+0x29183f918920a2aef0115a9c7374945589968aea,SOSO / USDC 0.01%,uniswap_v3_like,24h,13242,49,40.49,66.4,19,18,6653,6589,onchain_logs,high,
+0x5d0bc342178c8fe2c2f9a9fcc9d52555c99936db,USDC/USDbC,,1h,0,,,,,,,,onchain_logs,none,no_swap_logs
+0x5d0bc342178c8fe2c2f9a9fcc9d52555c99936db,USDC/USDbC,,6h,0,,,,,,,,onchain_logs,none,no_swap_logs
+0x5d0bc342178c8fe2c2f9a9fcc9d52555c99936db,USDC/USDbC,,24h,0,,,,,,,,onchain_logs,none,no_swap_logs
+0x85f1aa3a70fedd1c52705c15baed143e675cd626,NOCK / USDC,,1h,0,,,,,,,,onchain_logs,none,no_swap_logs
+0x85f1aa3a70fedd1c52705c15baed143e675cd626,NOCK / USDC,,6h,0,,,,,,,,onchain_logs,none,no_swap_logs
+0x85f1aa3a70fedd1c52705c15baed143e675cd626,NOCK / USDC,,24h,0,,,,,,,,onchain_logs,none,no_swap_logs
+0x8a8e4170c09074b109352190d47e54d7c1f61e4e,PROS / USDC 0.01%,uniswap_v3_like,1h,14663,118,32.46,78.96,30,33,7264,7399,onchain_logs,high,
+0x8a8e4170c09074b109352190d47e54d7c1f61e4e,PROS / USDC 0.01%,uniswap_v3_like,6h,73900,276,34.31,79.17,41,46,36799,37101,onchain_logs,high,
+0x8a8e4170c09074b109352190d47e54d7c1f61e4e,PROS / USDC 0.01%,uniswap_v3_like,24h,202330,444,34.38,78.93,53,55,100278,102052,onchain_logs,high,
+0xaf15cd1f9c3874bbcfddfc2b544544612c9de8c8bae28ba21c129c6b286c1e19,ETH / USDC 0.009%,,1h,,,,,,,,,missing,none,unsupported_pool_id
+0xaf15cd1f9c3874bbcfddfc2b544544612c9de8c8bae28ba21c129c6b286c1e19,ETH / USDC 0.009%,,6h,,,,,,,,,missing,none,unsupported_pool_id
+0xaf15cd1f9c3874bbcfddfc2b544544612c9de8c8bae28ba21c129c6b286c1e19,ETH / USDC 0.009%,,24h,,,,,,,,,missing,none,unsupported_pool_id
+0xedc625b74537ee3a10874f53d170e9c17a906b9c,ZORA / USDC 0.3%,uniswap_v3_like,1h,205,26,52.48,88.84,7,6,146,59,onchain_logs,high,
+0xedc625b74537ee3a10874f53d170e9c17a906b9c,ZORA / USDC 0.3%,uniswap_v3_like,6h,1228,117,52.77,74.62,23,16,797,431,onchain_logs,high,
+0xedc625b74537ee3a10874f53d170e9c17a906b9c,ZORA / USDC 0.3%,uniswap_v3_like,24h,8605,439,62.34,80.07,53,39,3999,4606,onchain_logs,high,
+0xf13203ddbf2c9816a79b656a1a952521702715d92fea465b84ae2ed6e94a7f22,USDT / USDC,,1h,,,,,,,,,missing,none,unsupported_pool_id
+0xf13203ddbf2c9816a79b656a1a952521702715d92fea465b84ae2ed6e94a7f22,USDT / USDC,,6h,,,,,,,,,missing,none,unsupported_pool_id
+0xf13203ddbf2c9816a79b656a1a952521702715d92fea465b84ae2ed6e94a7f22,USDT / USDC,,24h,,,,,,,,,missing,none,unsupported_pool_id
+0xf1cacd7e005b9337c58aae77bc88d93c635cdf4d,PLAY / USDC 0.01%,,1h,0,,,,,,,,onchain_logs,none,no_swap_logs
+0xf1cacd7e005b9337c58aae77bc88d93c635cdf4d,PLAY / USDC 0.01%,,6h,0,,,,,,,,onchain_logs,none,no_swap_logs
+0xf1cacd7e005b9337c58aae77bc88d93c635cdf4d,PLAY / USDC 0.01%,,24h,0,,,,,,,,onchain_logs,none,no_swap_logs
+0xf6e81e5d16a7274d273905e0068f9f607b840c20bec23b2e442976ee03b29d91,ETH / USDC 0.005%,,1h,,,,,,,,,missing,none,unsupported_pool_id
+0xf6e81e5d16a7274d273905e0068f9f607b840c20bec23b2e442976ee03b29d91,ETH / USDC 0.005%,,6h,,,,,,,,,missing,none,unsupported_pool_id
+0xf6e81e5d16a7274d273905e0068f9f607b840c20bec23b2e442976ee03b29d91,ETH / USDC 0.005%,,24h,,,,,,,,,missing,none,unsupported_pool_id
+0xfc971cb1c9327d6a6f84b4a6fceaff20d7a7719fa1564f1bed47198716dbec7d,OpenJarvis / WETH 0.01%,,1h,,,,,,,,,missing,none,unsupported_pool_id
+0xfc971cb1c9327d6a6f84b4a6fceaff20d7a7719fa1564f1bed47198716dbec7d,OpenJarvis / WETH 0.01%,,6h,,,,,,,,,missing,none,unsupported_pool_id
+0xfc971cb1c9327d6a6f84b4a6fceaff20d7a7719fa1564f1bed47198716dbec7d,OpenJarvis / WETH 0.01%,,24h,,,,,,,,,missing,none,unsupported_pool_id
