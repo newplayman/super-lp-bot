@@ -1,0 +1,4 @@
+horizon,v2_strict_completed_count,v2_no_future_mark_count,v3_active_nearest_count,v3_terminal_pool_counterfactual_count,v3_clean_fixed_horizon_count,coverage_gain_clean,coverage_gain_counterfactual,terminal_excluded_count,pool_mark_only_counterfactual_count
+6h,42,0,42,21,42,0,21,25,21
+12h,40,0,40,19,40,0,19,26,19
+24h,8,0,8,44,8,0,44,54,44

@@ -1,0 +1,9 @@
+{
+  "keep_v2_strict_as_canonical_proof": true,
+  "add_v3_research_only_proof": true,
+  "v3_clean_fixed_horizon_adds_meaningful_samples": false,
+  "pool_mark_only_counterfactual_only": true,
+  "terminal_before_target_excluded_from_clean_proof": true,
+  "worth_entering_hypothesis_review": false,
+  "recommended_next_stage": "MATERIALIZER_FIX"
+}

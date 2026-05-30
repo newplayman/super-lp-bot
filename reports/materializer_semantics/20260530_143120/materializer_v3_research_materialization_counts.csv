@@ -1,0 +1,13 @@
+horizon,proof_variant,row_count,completed_count,pool_mark_only_count,active_nearest_count,terminal_before_target_count,confidence_high,confidence_medium,confidence_low
+6h,v2_strict_baseline,68,42,0,0,25,42,0,0
+6h,v3_active_nearest_position_mark,68,42,0,0,25,42,0,0
+6h,v3_terminal_pool_counterfactual,68,21,21,0,25,0,0,21
+6h,v3_clean_fixed_horizon,68,42,0,0,25,42,0,0
+12h,v2_strict_baseline,68,40,0,0,26,40,0,0
+12h,v3_active_nearest_position_mark,68,40,0,0,26,40,0,0
+12h,v3_terminal_pool_counterfactual,68,19,19,0,26,0,0,19
+12h,v3_clean_fixed_horizon,68,40,0,0,26,40,0,0
+24h,v2_strict_baseline,68,8,0,0,54,8,0,0
+24h,v3_active_nearest_position_mark,68,8,0,0,54,8,0,0
+24h,v3_terminal_pool_counterfactual,68,44,44,0,54,0,0,44
+24h,v3_clean_fixed_horizon,68,8,0,0,54,8,0,0
