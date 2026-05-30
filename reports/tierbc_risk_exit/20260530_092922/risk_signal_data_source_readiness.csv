@@ -1,0 +1,29 @@
+signal_name,available_now,source,coverage,required_for_counterfactual,missing_reason,confidence,data_fix_needed
+price_move_5m,partial,short_window_stability_reports,partial,yes,present only on subset of pools,medium,yes
+price_move_15m,partial,short_window_stability_reports,partial,yes,present only on subset of pools,medium,yes
+price_move_30m,partial,short_window_stability_reports,partial,yes,present only on subset of pools,medium,yes
+range_distance,no,range analytics,no,yes,not materialized in current read-only artifacts,none,yes
+volatility_spike,partial,derived from short-window moves,partial,yes,threshold layer not materialized,low,yes
+volume_collapse_15m,no,pool snapshots / OHLCV,no,yes,15m collapse not materialized,none,yes
+volume_collapse_30m,no,pool snapshots / OHLCV,no,yes,30m collapse not materialized,none,yes
+volume_collapse_1h,partial,volume_change_1h,partial,yes,coverage incomplete on candidate universe,medium,yes
+fee_velocity_decay,no,fee velocity derived metric,no,no,not materialized,none,yes
+abnormal_volume_spike,partial,volume snapshots,partial,no,rule not materialized,low,yes
+tvl_drop_15m,no,pool snapshots,no,yes,15m tvl delta unavailable,none,yes
+tvl_drop_30m,no,pool snapshots,no,yes,30m tvl delta unavailable,none,yes
+tvl_drop_1h,partial,tvl_change_1h,partial,yes,coverage incomplete on candidate universe,medium,yes
+lp_outflow,no,liquidity event flow,no,no,not materialized,none,yes
+exit_depth_drop,partial,exit depth estimate vs baseline,partial,yes,baseline drop layer not materialized,low,yes
+exit_depth_unknown,yes,exit depth estimates,yes,yes,,high,yes
+unique_traders_1h,partial,onchain logs / proxy,partial,yes,available for supported pools only,medium,yes
+unique_traders_6h,partial,onchain logs / proxy,partial,yes,available for supported pools only,medium,yes
+unique_traders_24h,partial,onchain logs / proxy,partial,yes,available for supported pools only,medium,yes
+top1_trader_share,partial,onchain logs / proxy,partial,yes,available for supported pools only,high,yes
+top5_trader_share,partial,onchain logs / proxy,partial,yes,available for supported pools only,high,yes
+buyer_seller_imbalance,partial,proxy / onchain logs,partial,yes,buyers/sellers missing on some pools,medium,yes
+top10_holder_pct,yes,holder snapshots,yes,yes,,high,yes
+holder_concentration_spike,no,holder trend snapshots,no,no,only point-in-time snapshot available,none,yes
+mark_stale,partial,position marks / research reports,partial,yes,not joined into Tier B candidate universe,medium,yes
+price_missing,partial,price snapshots / reports,partial,yes,not centrally summarized for Tier B,medium,yes
+exit_depth_missing,partial,exit depth estimates,partial,yes,still missing on unsupported pools,high,yes
+unsupported_pool_type,yes,onchain parser coverage,yes,yes,,high,no

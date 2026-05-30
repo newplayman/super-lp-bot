@@ -1,0 +1,30 @@
+# RISK_SIGNAL_DATA_SOURCE_READINESS
+
+- price_move_5m: available_now=partial source=short_window_stability_reports confidence=medium missing_reason=present only on subset of pools
+- price_move_15m: available_now=partial source=short_window_stability_reports confidence=medium missing_reason=present only on subset of pools
+- price_move_30m: available_now=partial source=short_window_stability_reports confidence=medium missing_reason=present only on subset of pools
+- range_distance: available_now=no source=range analytics confidence=none missing_reason=not materialized in current read-only artifacts
+- volatility_spike: available_now=partial source=derived from short-window moves confidence=low missing_reason=threshold layer not materialized
+- volume_collapse_15m: available_now=no source=pool snapshots / OHLCV confidence=none missing_reason=15m collapse not materialized
+- volume_collapse_30m: available_now=no source=pool snapshots / OHLCV confidence=none missing_reason=30m collapse not materialized
+- volume_collapse_1h: available_now=partial source=volume_change_1h confidence=medium missing_reason=coverage incomplete on candidate universe
+- fee_velocity_decay: available_now=no source=fee velocity derived metric confidence=none missing_reason=not materialized
+- abnormal_volume_spike: available_now=partial source=volume snapshots confidence=low missing_reason=rule not materialized
+- tvl_drop_15m: available_now=no source=pool snapshots confidence=none missing_reason=15m tvl delta unavailable
+- tvl_drop_30m: available_now=no source=pool snapshots confidence=none missing_reason=30m tvl delta unavailable
+- tvl_drop_1h: available_now=partial source=tvl_change_1h confidence=medium missing_reason=coverage incomplete on candidate universe
+- lp_outflow: available_now=no source=liquidity event flow confidence=none missing_reason=not materialized
+- exit_depth_drop: available_now=partial source=exit depth estimate vs baseline confidence=low missing_reason=baseline drop layer not materialized
+- exit_depth_unknown: available_now=yes source=exit depth estimates confidence=high missing_reason=
+- unique_traders_1h: available_now=partial source=onchain logs / proxy confidence=medium missing_reason=available for supported pools only
+- unique_traders_6h: available_now=partial source=onchain logs / proxy confidence=medium missing_reason=available for supported pools only
+- unique_traders_24h: available_now=partial source=onchain logs / proxy confidence=medium missing_reason=available for supported pools only
+- top1_trader_share: available_now=partial source=onchain logs / proxy confidence=high missing_reason=available for supported pools only
+- top5_trader_share: available_now=partial source=onchain logs / proxy confidence=high missing_reason=available for supported pools only
+- buyer_seller_imbalance: available_now=partial source=proxy / onchain logs confidence=medium missing_reason=buyers/sellers missing on some pools
+- top10_holder_pct: available_now=yes source=holder snapshots confidence=high missing_reason=
+- holder_concentration_spike: available_now=no source=holder trend snapshots confidence=none missing_reason=only point-in-time snapshot available
+- mark_stale: available_now=partial source=position marks / research reports confidence=medium missing_reason=not joined into Tier B candidate universe
+- price_missing: available_now=partial source=price snapshots / reports confidence=medium missing_reason=not centrally summarized for Tier B
+- exit_depth_missing: available_now=partial source=exit depth estimates confidence=high missing_reason=still missing on unsupported pools
+- unsupported_pool_type: available_now=yes source=onchain parser coverage confidence=high missing_reason=

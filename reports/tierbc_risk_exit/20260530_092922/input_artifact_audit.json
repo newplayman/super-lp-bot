@@ -1,0 +1,54 @@
+{
+  "inputs": [
+    {
+      "path": "reports/tierbc_risk_exit/20260530_082037/FINAL_VERDICT.json",
+      "exists": "yes"
+    },
+    {
+      "path": "reports/tierbc_risk_exit/20260530_082037/ARTIFACT_INDEX.md",
+      "exists": "yes"
+    },
+    {
+      "path": "reports/tierbc_risk_exit/20260530_082037/RISK_SIGNAL_CATALOG_CN.md",
+      "exists": "yes"
+    },
+    {
+      "path": "reports/tierbc_risk_exit/20260530_082037/risk_signal_catalog.csv",
+      "exists": "yes"
+    },
+    {
+      "path": "reports/tierbc_risk_exit/20260530_082037/RISK_AWARE_EXIT_POLICY_V0_CN.md",
+      "exists": "yes"
+    },
+    {
+      "path": "reports/tierbc_risk_exit/20260530_082037/risk_aware_exit_policy_v0.json",
+      "exists": "yes"
+    },
+    {
+      "path": "reports/tierbc_risk_exit/20260530_082037/RISK_AWARE_EXIT_DATA_GAP_CN.md",
+      "exists": "yes"
+    },
+    {
+      "path": "reports/tierbc_risk_exit/20260530_082037/risk_aware_exit_data_gap.csv",
+      "exists": "yes"
+    },
+    {
+      "path": "reports/tierbc_risk_exit/20260530_082037/TIER_B_DISCOVERY_AUDIT_CN.md",
+      "exists": "yes"
+    },
+    {
+      "path": "reports/tierbc_risk_exit/20260530_082037/tier_b_candidates.csv",
+      "exists": "yes"
+    },
+    {
+      "path": "reports/tierc_shadow/20260529_155854/TIER_C_BATCH_FINAL_FREEZE_VERDICT.json",
+      "exists": "yes"
+    },
+    {
+      "path": "docs/TIER_C_HARD_REJECTION_POLICY_V1_CN.md",
+      "exists": "yes"
+    }
+  ],
+  "missing": [],
+  "enough_to_continue_data_source_fix": true
+}
