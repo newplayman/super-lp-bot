@@ -1,0 +1,29 @@
+# RISK_SIGNAL_CATALOG
+
+- price_move_5m: source=GeckoTerminal OHLCV / snapshots available_now=yes threshold=abs(move)>1%
+- price_move_15m: source=GeckoTerminal OHLCV / snapshots available_now=partial threshold=abs(move)>2%
+- price_move_30m: source=GeckoTerminal OHLCV / snapshots available_now=partial threshold=abs(move)>3%
+- range_distance: source=range/price analytics available_now=no threshold=tbd
+- volatility_spike: source=OHLCV derived available_now=partial threshold=spike_vs_prev_window
+- volume_collapse_15m: source=pool snapshots / OHLCV available_now=partial threshold=drop>60%
+- volume_collapse_30m: source=pool snapshots / OHLCV available_now=partial threshold=drop>60%
+- volume_collapse_1h: source=pool snapshots / OHLCV available_now=yes threshold=drop>70%
+- fee_velocity_decay: source=fee + volume derivative available_now=no threshold=tbd
+- abnormal_volume_spike: source=pool snapshots / OHLCV available_now=partial threshold=spike>3x baseline
+- tvl_drop_15m: source=pool snapshots available_now=partial threshold=drop>10%
+- tvl_drop_30m: source=pool snapshots available_now=partial threshold=drop>15%
+- tvl_drop_1h: source=pool snapshots available_now=partial threshold=drop>20%
+- lp_outflow: source=liquidity events available_now=no threshold=tbd
+- exit_depth_drop: source=exit depth estimates available_now=partial threshold=depth<100 usd or sharp fall
+- exit_depth_unknown: source=exit depth estimates available_now=yes threshold=missing
+- unique_traders_drop: source=onchain logs / proxy available_now=partial threshold=drop vs baseline
+- top1_trader_share_spike: source=onchain logs / proxy available_now=partial threshold=>50% B, >90% C
+- top5_trader_share_spike: source=onchain logs / proxy available_now=partial threshold=>75% B, >95% C
+- buyer_seller_imbalance: source=proxy / onchain logs available_now=partial threshold=buyers/sellers ratio extreme
+- top10_holder_pct: source=holder snapshot available_now=yes threshold=>25% B/C block micro; >40% reject
+- holder_concentration_spike: source=holder snapshot trend available_now=no threshold=tbd
+- known_whale_risk: source=manual / known wallets available_now=no threshold=tbd
+- mark_stale: source=position marks available_now=partial threshold=stale=true
+- price_missing: source=price snapshots available_now=partial threshold=missing
+- exit_depth_missing: source=exit depth estimates available_now=partial threshold=missing
+- unsupported_pool_type: source=pool parser coverage available_now=yes threshold=unsupported

@@ -1,0 +1,28 @@
+signal_name,available_now,coverage,missing_fields,recommended_data_fix,can_run_counterfactual_now
+price_move_5m,yes,yes,15m/30m windows incomplete on some pools,Gecko/local candle backfill,partial
+price_move_15m,partial,partial,15m/30m windows incomplete on some pools,Gecko/local candle backfill,partial
+price_move_30m,partial,partial,15m/30m windows incomplete on some pools,Gecko/local candle backfill,partial
+range_distance,no,no,requires multi-source join,counterfactual materialization join,no
+volatility_spike,partial,partial,15m/30m windows incomplete on some pools,Gecko/local candle backfill,partial
+volume_collapse_15m,partial,partial,1h collapse coverage incomplete,snapshot delta collection,partial
+volume_collapse_30m,partial,partial,1h collapse coverage incomplete,snapshot delta collection,partial
+volume_collapse_1h,yes,yes,1h collapse coverage incomplete,snapshot delta collection,partial
+fee_velocity_decay,no,no,1h collapse coverage incomplete,snapshot delta collection,partial
+abnormal_volume_spike,partial,partial,1h collapse coverage incomplete,snapshot delta collection,partial
+tvl_drop_15m,partial,partial,1h drop coverage incomplete,snapshot delta collection,partial
+tvl_drop_30m,partial,partial,1h drop coverage incomplete,snapshot delta collection,partial
+tvl_drop_1h,partial,partial,1h drop coverage incomplete,snapshot delta collection,partial
+lp_outflow,no,no,1h drop coverage incomplete,snapshot delta collection,partial
+exit_depth_drop,partial,partial,unknown on unsupported pools,improve read-only depth estimation,partial
+exit_depth_unknown,yes,yes,unknown on unsupported pools,improve read-only depth estimation,partial
+unique_traders_drop,partial,partial,missing for no_swap_logs / unsupported pools,onchain parser/data source fix,partial
+top1_trader_share_spike,partial,partial,missing for no_swap_logs / unsupported pools,onchain parser/data source fix,partial
+top5_trader_share_spike,partial,partial,missing for no_swap_logs / unsupported pools,onchain parser/data source fix,partial
+buyer_seller_imbalance,partial,partial,missing for no_swap_logs / unsupported pools,onchain parser/data source fix,partial
+top10_holder_pct,yes,yes,"trend not available, only snapshot",add holder trend snapshots,yes
+holder_concentration_spike,no,no,"trend not available, only snapshot",add holder trend snapshots,yes
+known_whale_risk,no,no,requires multi-source join,counterfactual materialization join,no
+mark_stale,partial,partial,mark_stale / future-only coverage incomplete,refresh future mark materialization,partial
+price_missing,partial,partial,15m/30m windows incomplete on some pools,Gecko/local candle backfill,partial
+exit_depth_missing,partial,partial,unknown on unsupported pools,improve read-only depth estimation,partial
+unsupported_pool_type,yes,yes,requires multi-source join,counterfactual materialization join,no

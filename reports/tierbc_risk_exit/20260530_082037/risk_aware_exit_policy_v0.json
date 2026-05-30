@@ -1,0 +1,85 @@
+{
+  "status": "research_only",
+  "triggers": [
+    {
+      "trigger_name": "price_move_15m_down",
+      "threshold": "< -2%",
+      "tier_b_threshold": "< -2%",
+      "tier_c_threshold": "< -1.5%",
+      "expected_false_positive_risk": "medium",
+      "expected_tail_protection": "medium",
+      "data_required": "price_move_15m",
+      "status": "research_only"
+    },
+    {
+      "trigger_name": "tvl_drop_1h",
+      "threshold": "> 20%",
+      "tier_b_threshold": "> 20%",
+      "tier_c_threshold": "> 10%",
+      "expected_false_positive_risk": "medium",
+      "expected_tail_protection": "high",
+      "data_required": "tvl_drop_1h",
+      "status": "research_only"
+    },
+    {
+      "trigger_name": "volume_collapse_1h",
+      "threshold": "> 70% drop",
+      "tier_b_threshold": "> 70% drop",
+      "tier_c_threshold": "> 50% drop",
+      "expected_false_positive_risk": "medium",
+      "expected_tail_protection": "medium",
+      "data_required": "volume_change_1h",
+      "status": "research_only"
+    },
+    {
+      "trigger_name": "trader_share_spike",
+      "threshold": "top1 > 50% or top5 > 75%",
+      "tier_b_threshold": "top1 > 50% or top5 > 75%",
+      "tier_c_threshold": "top1 > 90% or top5 > 95%",
+      "expected_false_positive_risk": "low",
+      "expected_tail_protection": "high",
+      "data_required": "top1/top5 trader share",
+      "status": "research_only"
+    },
+    {
+      "trigger_name": "exit_depth_bad",
+      "threshold": "THIN or UNKNOWN",
+      "tier_b_threshold": "THIN/UNKNOWN",
+      "tier_c_threshold": "THIN/UNKNOWN",
+      "expected_false_positive_risk": "low",
+      "expected_tail_protection": "high",
+      "data_required": "exit_depth_status",
+      "status": "research_only"
+    },
+    {
+      "trigger_name": "mark_stale",
+      "threshold": "true",
+      "tier_b_threshold": "true",
+      "tier_c_threshold": "true",
+      "expected_false_positive_risk": "low",
+      "expected_tail_protection": "high",
+      "data_required": "mark_stale",
+      "status": "research_only"
+    },
+    {
+      "trigger_name": "fee_velocity_decay",
+      "threshold": "drop vs trailing baseline",
+      "tier_b_threshold": "high decay",
+      "tier_c_threshold": "medium decay",
+      "expected_false_positive_risk": "high",
+      "expected_tail_protection": "medium",
+      "data_required": "fee_velocity_decay",
+      "status": "research_only"
+    },
+    {
+      "trigger_name": "max_hold_time",
+      "threshold": "6h/12h/24h by experiment",
+      "tier_b_threshold": "6h/12h/24h",
+      "tier_c_threshold": "15m/30m/1h/2h",
+      "expected_false_positive_risk": "low",
+      "expected_tail_protection": "medium",
+      "data_required": "clock only",
+      "status": "research_only"
+    }
+  ]
+}

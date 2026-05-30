@@ -1,0 +1,23 @@
+{
+  "tier_b": {
+    "role": "current small-cap LP primary research direction",
+    "tvl": "medium",
+    "volume_to_tvl": "medium_high",
+    "fee_apr": "medium_high",
+    "exit_depth": "acceptable",
+    "holder_concentration": "acceptable",
+    "trader_concentration": "not_extreme",
+    "proof_unit": "position_lifecycle"
+  },
+  "tier_c": {
+    "role": "strict watchlist / counterfactual only",
+    "tvl": "small",
+    "fee": "high",
+    "volatility": "high",
+    "tail_risk": "high",
+    "hard_rejection_policy_applies": true,
+    "proof_unit": "position_lifecycle"
+  },
+  "decision_trace_primary_proof_allowed": false,
+  "tiny_canary_allowed": "no"
+}

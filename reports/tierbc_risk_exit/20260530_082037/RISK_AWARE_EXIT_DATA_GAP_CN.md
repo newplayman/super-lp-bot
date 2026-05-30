@@ -1,0 +1,32 @@
+# RISK_AWARE_EXIT_DATA_GAP
+
+- current assessment: can_run_counterfactual_now = no
+- reason: fixed-horizon VPS lifecycle proof and several short-window / trader signals remain incomplete
+
+- price_move_5m: available_now=yes missing=15m/30m windows incomplete on some pools fix=Gecko/local candle backfill
+- price_move_15m: available_now=partial missing=15m/30m windows incomplete on some pools fix=Gecko/local candle backfill
+- price_move_30m: available_now=partial missing=15m/30m windows incomplete on some pools fix=Gecko/local candle backfill
+- range_distance: available_now=no missing=requires multi-source join fix=counterfactual materialization join
+- volatility_spike: available_now=partial missing=15m/30m windows incomplete on some pools fix=Gecko/local candle backfill
+- volume_collapse_15m: available_now=partial missing=1h collapse coverage incomplete fix=snapshot delta collection
+- volume_collapse_30m: available_now=partial missing=1h collapse coverage incomplete fix=snapshot delta collection
+- volume_collapse_1h: available_now=yes missing=1h collapse coverage incomplete fix=snapshot delta collection
+- fee_velocity_decay: available_now=no missing=1h collapse coverage incomplete fix=snapshot delta collection
+- abnormal_volume_spike: available_now=partial missing=1h collapse coverage incomplete fix=snapshot delta collection
+- tvl_drop_15m: available_now=partial missing=1h drop coverage incomplete fix=snapshot delta collection
+- tvl_drop_30m: available_now=partial missing=1h drop coverage incomplete fix=snapshot delta collection
+- tvl_drop_1h: available_now=partial missing=1h drop coverage incomplete fix=snapshot delta collection
+- lp_outflow: available_now=no missing=1h drop coverage incomplete fix=snapshot delta collection
+- exit_depth_drop: available_now=partial missing=unknown on unsupported pools fix=improve read-only depth estimation
+- exit_depth_unknown: available_now=yes missing=unknown on unsupported pools fix=improve read-only depth estimation
+- unique_traders_drop: available_now=partial missing=missing for no_swap_logs / unsupported pools fix=onchain parser/data source fix
+- top1_trader_share_spike: available_now=partial missing=missing for no_swap_logs / unsupported pools fix=onchain parser/data source fix
+- top5_trader_share_spike: available_now=partial missing=missing for no_swap_logs / unsupported pools fix=onchain parser/data source fix
+- buyer_seller_imbalance: available_now=partial missing=missing for no_swap_logs / unsupported pools fix=onchain parser/data source fix
+- top10_holder_pct: available_now=yes missing=trend not available, only snapshot fix=add holder trend snapshots
+- holder_concentration_spike: available_now=no missing=trend not available, only snapshot fix=add holder trend snapshots
+- known_whale_risk: available_now=no missing=requires multi-source join fix=counterfactual materialization join
+- mark_stale: available_now=partial missing=mark_stale / future-only coverage incomplete fix=refresh future mark materialization
+- price_missing: available_now=partial missing=15m/30m windows incomplete on some pools fix=Gecko/local candle backfill
+- exit_depth_missing: available_now=partial missing=unknown on unsupported pools fix=improve read-only depth estimation
+- unsupported_pool_type: available_now=yes missing=requires multi-source join fix=counterfactual materialization join

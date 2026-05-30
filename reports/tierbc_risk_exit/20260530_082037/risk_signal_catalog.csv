@@ -1,0 +1,28 @@
+signal_name,data_source,expected_latency,available_now,applicable_to_tier_b,applicable_to_tier_c,risk_direction,candidate_threshold,confidence
+price_move_5m,GeckoTerminal OHLCV / snapshots,minutes,yes,yes,yes,down_spike_bad,abs(move)>1%,medium
+price_move_15m,GeckoTerminal OHLCV / snapshots,minutes,partial,yes,yes,down_spike_bad,abs(move)>2%,medium
+price_move_30m,GeckoTerminal OHLCV / snapshots,minutes,partial,yes,yes,down_spike_bad,abs(move)>3%,medium
+range_distance,range/price analytics,unknown,no,yes,yes,far_from_range_bad,tbd,low
+volatility_spike,OHLCV derived,minutes,partial,yes,yes,higher_bad,spike_vs_prev_window,medium
+volume_collapse_15m,pool snapshots / OHLCV,minutes,partial,yes,yes,lower_bad,drop>60%,medium
+volume_collapse_30m,pool snapshots / OHLCV,minutes,partial,yes,yes,lower_bad,drop>60%,medium
+volume_collapse_1h,pool snapshots / OHLCV,minutes,yes,yes,yes,lower_bad,drop>70%,medium
+fee_velocity_decay,fee + volume derivative,minutes,no,yes,yes,lower_bad,tbd,low
+abnormal_volume_spike,pool snapshots / OHLCV,minutes,partial,yes,yes,higher_bad,spike>3x baseline,medium
+tvl_drop_15m,pool snapshots,minutes,partial,yes,yes,lower_bad,drop>10%,medium
+tvl_drop_30m,pool snapshots,minutes,partial,yes,yes,lower_bad,drop>15%,medium
+tvl_drop_1h,pool snapshots,minutes,partial,yes,yes,lower_bad,drop>20%,medium
+lp_outflow,liquidity events,minutes,no,yes,yes,higher_bad,tbd,low
+exit_depth_drop,exit depth estimates,minutes,partial,yes,yes,lower_bad,depth<100 usd or sharp fall,medium
+exit_depth_unknown,exit depth estimates,minutes,yes,yes,yes,unknown_bad,missing,high
+unique_traders_drop,onchain logs / proxy,minutes-hours,partial,yes,yes,lower_bad,drop vs baseline,medium
+top1_trader_share_spike,onchain logs / proxy,minutes-hours,partial,yes,yes,higher_bad,">50% B, >90% C",high
+top5_trader_share_spike,onchain logs / proxy,minutes-hours,partial,yes,yes,higher_bad,">75% B, >95% C",high
+buyer_seller_imbalance,proxy / onchain logs,minutes-hours,partial,yes,yes,imbalance_bad,buyers/sellers ratio extreme,medium
+top10_holder_pct,holder snapshot,hours,yes,yes,yes,higher_bad,>25% B/C block micro; >40% reject,high
+holder_concentration_spike,holder snapshot trend,hours,no,yes,yes,higher_bad,tbd,low
+known_whale_risk,manual / known wallets,hours,no,no,yes,higher_bad,tbd,low
+mark_stale,position marks,minutes,partial,yes,yes,stale_bad,stale=true,high
+price_missing,price snapshots,minutes,partial,yes,yes,missing_bad,missing,high
+exit_depth_missing,exit depth estimates,minutes,partial,yes,yes,missing_bad,missing,high
+unsupported_pool_type,pool parser coverage,static,yes,yes,yes,unsupported_bad,unsupported,high
