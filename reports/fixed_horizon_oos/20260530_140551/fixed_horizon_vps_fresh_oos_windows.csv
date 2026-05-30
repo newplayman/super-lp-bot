@@ -1,0 +1,7 @@
+window,new_position_count,completed_6h_count,completed_12h_count,completed_24h_count,entry_trusted_rate,future_position_mark_coverage,sample_sufficiency,sample_note
+recent_2h,1,0,0,0,1.0,0.0,INSUFFICIENT,SAMPLE_INSUFFICIENT
+recent_4h,1,0,0,0,1.0,0.0,INSUFFICIENT,SAMPLE_INSUFFICIENT
+recent_8h,1,0,0,0,1.0,0.0,INSUFFICIENT,SAMPLE_INSUFFICIENT
+recent_12h,2,1,0,0,1.0,0.5,INSUFFICIENT,SAMPLE_INSUFFICIENT
+recent_24h,6,5,4,0,1.0,0.8333333333333334,INSUFFICIENT,SAMPLE_INSUFFICIENT
+recent_48h,12,11,10,0,1.0,0.9166666666666666,INSUFFICIENT,SAMPLE_INSUFFICIENT

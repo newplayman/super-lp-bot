@@ -1,0 +1,35 @@
+{
+  "stage": "FIXED_HORIZON_OOS_ACCUMULATION_MONITOR_V1",
+  "overall_sample_gate": "INSUFFICIENT",
+  "horizon_status": {
+    "6h": {
+      "position_count": 68,
+      "completed_count": 42,
+      "count_gate": "EARLY",
+      "completed_gate": "PASS_MIN_COUNT"
+    },
+    "12h": {
+      "position_count": 68,
+      "completed_count": 40,
+      "count_gate": "EARLY",
+      "completed_gate": "PASS_MIN_COUNT"
+    },
+    "24h": {
+      "position_count": 68,
+      "completed_count": 8,
+      "count_gate": "EARLY",
+      "completed_gate": "INSUFFICIENT"
+    }
+  },
+  "hypothesis_review_ready": false,
+  "blocking_reasons": [
+    "completed_6h_below_100",
+    "completed_12h_below_100",
+    "completed_24h_below_100",
+    "12h_tail_risk_still_dangerous",
+    "not_enough_better_horizons",
+    "tail_concentration_still_high"
+  ],
+  "recommended_next_stage": "FIXED_HORIZON_CONTINUE_OOS_ACCUMULATION"
+}
+

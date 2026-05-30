@@ -1,0 +1,14 @@
+metric,previous_run_id,current_run_id,previous_value,current_value,delta,status
+position_count_6h,20260530_134500,20260530_140551,68,68,0,flat
+position_count_12h,20260530_134500,20260530_140551,68,68,0,flat
+position_count_24h,20260530_134500,20260530_140551,68,68,0,flat
+completed_6h_count,20260530_134500,20260530_140551,42,42,0,flat
+completed_12h_count,20260530_134500,20260530_140551,40,40,0,flat
+completed_24h_count,20260530_134500,20260530_140551,8,8,0,flat
+recent_24h_new_position_count,20260530_134500,20260530_140551,6,6,0,flat
+recent_48h_new_position_count,20260530_134500,20260530_140551,12,12,0,flat
+sample_sufficiency,20260530_134500,20260530_140551,INSUFFICIENT,INSUFFICIENT,0,flat
+signal_6h,20260530_134500,20260530_140551,better,better,0,flat
+signal_12h,20260530_134500,20260530_140551,worse,worse,0,flat
+signal_24h,20260530_134500,20260530_140551,insufficient,insufficient,0,flat
+

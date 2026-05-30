@@ -1,0 +1,24 @@
+{
+  "status": "WARN",
+  "stage": "FIXED_HORIZON_OOS_ACCUMULATION_MONITOR_V1",
+  "data_source": "vps_postgres",
+  "db_ready": true,
+  "primary_proof_unit": "position_lifecycle",
+  "fixed_horizon_hypothesis": "collecting_oos",
+  "previous_run_id": "20260530_134500",
+  "current_run_id": "20260530_140551",
+  "position_count_6h": 68,
+  "position_count_12h": 68,
+  "position_count_24h": 68,
+  "completed_6h_count": 42,
+  "completed_12h_count": 40,
+  "completed_24h_count": 8,
+  "sample_sufficiency": "INSUFFICIENT",
+  "fixed_horizon_gate": "INSUFFICIENT",
+  "trend_status": "FLAT",
+  "edge_proven": "no",
+  "tiny_canary_candidate": "no",
+  "tiny_canary_allowed": "no",
+  "recommended_next_stage": "FIXED_HORIZON_CONTINUE_OOS_ACCUMULATION"
+}
+
