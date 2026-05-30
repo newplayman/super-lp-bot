@@ -1,0 +1,38 @@
+{
+  "canonical_proof": {
+    "name": "v2_strict_fixed_horizon",
+    "accepted_mark_source": [
+      "future_position_mark"
+    ],
+    "accepted_position_status": [
+      "active_at_target"
+    ],
+    "excluded": [
+      "terminal_before_target",
+      "pool_mark_only",
+      "terminal_exit_mark",
+      "decision_trace-level samples"
+    ]
+  },
+  "research_only_diagnostic": {
+    "name": "v3_terminal_pool_counterfactual",
+    "purpose": "estimate terminal-before-target outcomes under pool-level-mark counterfactual holding",
+    "accepted_mark_source": [
+      "pool_mark_only"
+    ],
+    "confidence": [
+      "low",
+      "medium"
+    ],
+    "not_allowed_for": [
+      "clean proof",
+      "edge_proven",
+      "canary decision"
+    ]
+  },
+  "v3_clean_adds_meaningful_samples": false,
+  "v3_clean_replaces_v2_strict": false,
+  "pool_mark_only_allowed_in_clean_proof": false,
+  "terminal_before_target_allowed_in_clean_proof": false,
+  "more_materializer_semantics_variants_without_bug": false
+}

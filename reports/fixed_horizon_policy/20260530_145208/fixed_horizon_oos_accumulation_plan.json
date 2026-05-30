@@ -1,0 +1,42 @@
+{
+  "canonical_counts": {
+    "completed_6h": 42,
+    "completed_12h": 40,
+    "completed_24h": 8
+  },
+  "minimum_review_thresholds": {
+    "completed_6h_gte": 100,
+    "completed_12h_gte": 100,
+    "completed_24h_gte": 100,
+    "or_two_horizons_completed_gte": 100
+  },
+  "usable_thresholds": {
+    "completed_per_horizon_gte": 300
+  },
+  "monitor_cadence": {
+    "materialize_every_hours": [
+      6,
+      12
+    ],
+    "materialize_every_30m": false,
+    "wait_full_24h_cycle_if_24h_growth_slow": true
+  },
+  "must_report_each_run": [
+    "completed_6h_count",
+    "completed_12h_count",
+    "completed_24h_count",
+    "p10",
+    "p5",
+    "p1",
+    "top20_vs_bottom20_signal",
+    "worst_position_contribution",
+    "worst_pool_contribution",
+    "new_position_count",
+    "future_position_mark_coverage"
+  ],
+  "before_thresholds": {
+    "hypothesis_review_ready": false,
+    "edge_proven": "no",
+    "tiny_canary_allowed": "no"
+  }
+}

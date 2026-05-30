@@ -1,0 +1,11 @@
+{
+  "current_full_strategy": "FAIL",
+  "fixed_horizon_hypothesis": "collecting_oos",
+  "fixed_horizon_canonical_proof": "v2_strict_fixed_horizon",
+  "v3_terminal_pool_counterfactual": "diagnostic_only",
+  "tier_b": "no_research_candidate",
+  "tier_c": "batch_rejected",
+  "edge_proven": "no",
+  "tiny_canary_allowed": "no",
+  "primary_next_stage": "FIXED_HORIZON_CONTINUE_OOS_ACCUMULATION"
+}

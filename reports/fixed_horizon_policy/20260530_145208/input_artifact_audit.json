@@ -1,0 +1,16 @@
+{
+  "source_dir": "reports/materializer_semantics/20260530_143120",
+  "inputs": {
+    "FINAL_VERDICT.json": true,
+    "MATERIALIZER_SEMANTICS_DECISION_CN.md": true,
+    "MATERIALIZER_V3_PROOF_QUALITY_CN.md": true,
+    "materializer_v3_proof_quality.csv": true,
+    "V2_VS_V3_COVERAGE_COMPARISON_CN.md": true,
+    "v2_vs_v3_coverage_comparison.csv": true,
+    "MATERIALIZER_V3_RESEARCH_MATERIALIZATION_CN.md": true,
+    "materializer_v3_research_materialization_counts.csv": true
+  },
+  "missing_inputs": [],
+  "enough_to_freeze_proof_policy": true,
+  "enough_to_hard_judge_edge": false
+}

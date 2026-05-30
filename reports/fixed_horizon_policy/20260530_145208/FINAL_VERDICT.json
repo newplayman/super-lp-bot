@@ -1,0 +1,17 @@
+{
+  "status": "PASS",
+  "stage": "FIXED_HORIZON_PROOF_POLICY_FREEZE_AND_OOS_ACCUMULATION_PLAN_V1",
+  "canonical_proof": "v2_strict_fixed_horizon",
+  "v3_clean_adds_samples": false,
+  "pool_mark_only_allowed_in_clean_proof": false,
+  "terminal_before_target_allowed_in_clean_proof": false,
+  "v3_counterfactual_diagnostic_only": true,
+  "completed_6h_current": 42,
+  "completed_12h_current": 40,
+  "completed_24h_current": 8,
+  "hypothesis_review_ready": false,
+  "edge_proven": "no",
+  "tiny_canary_candidate": "no",
+  "tiny_canary_allowed": "no",
+  "recommended_next_stage": "FIXED_HORIZON_CONTINUE_OOS_ACCUMULATION"
+}
