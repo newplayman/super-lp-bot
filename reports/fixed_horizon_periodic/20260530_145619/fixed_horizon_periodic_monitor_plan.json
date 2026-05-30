@@ -1,0 +1,16 @@
+{
+  "materialize_every_hours": [
+    6,
+    12
+  ],
+  "materialize_every_30_minutes": false,
+  "each_run_outputs": [
+    "completed_delta",
+    "review_gate",
+    "new_position_count",
+    "future_position_mark_coverage"
+  ],
+  "flat_run_followup_after_2_to_3": "check_shadow_position_generation",
+  "completed_over_100_then_review": true,
+  "tiny_canary_allowed_without_manual_approval": "no"
+}
