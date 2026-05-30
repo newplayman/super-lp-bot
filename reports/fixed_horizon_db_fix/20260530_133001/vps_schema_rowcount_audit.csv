@@ -1,0 +1,10 @@
+table_name,exists,row_count,latest_timestamp,enough_for_fixed_horizon_materialization
+shadow_decision_trace,True,398832,1780148079,yes
+shadow_position_marks,True,53949,1780148107,yes
+positions,True,68,,yes
+shadow_exit_decisions,True,53796,1780148107,yes
+shadow_exit_actions,True,67,1780144449735,yes
+shadow_outcome_labels,True,734863,1779867359024,yes
+shadow_outcome_labels_repaired_terminal_v1,True,50760,1779964434,yes
+shadow_terminal_position_marks_repaired_v1,True,19730,,yes
+shadow_position_lifecycle_proof_v1,True,68,1779985075,yes

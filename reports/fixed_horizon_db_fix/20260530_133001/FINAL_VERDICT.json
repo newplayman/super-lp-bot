@@ -1,0 +1,15 @@
+{
+  "status": "WARN",
+  "stage": "FIXED_HORIZON_DB_OR_SCHEMA_FIX_V2",
+  "vps_git_fetch_fixed": false,
+  "postgres_dsn_found": true,
+  "postgres_dsn_loaded_without_leak": true,
+  "db_connectivity": "PASS",
+  "schema_audit_ready": true,
+  "can_materialize_fixed_horizon_next": false,
+  "tier_b_status": "NO_RESEARCH_CANDIDATE",
+  "tier_c_status": "BATCH_REJECTED",
+  "edge_proven": "no",
+  "tiny_canary_allowed": "no",
+  "recommended_next_stage": "FIXED_HORIZON_DB_OR_SCHEMA_FIX_REPEAT"
+}
