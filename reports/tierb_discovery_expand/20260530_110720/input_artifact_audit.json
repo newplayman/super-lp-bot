@@ -1,0 +1,29 @@
+{
+  "stage": "TIER_B_DISCOVERY_EXPAND_SOURCE_V1",
+  "inputs": [
+    {
+      "path": "reports/tierb_diagnosis/20260530_103214/FINAL_VERDICT.json",
+      "exists": true
+    },
+    {
+      "path": "reports/tierb_diagnosis/20260530_103214/tier_b_reject_root_cause_matrix.csv",
+      "exists": true
+    },
+    {
+      "path": "reports/tierb_diagnosis/20260530_103214/tier_b_threshold_sensitivity.csv",
+      "exists": true
+    },
+    {
+      "path": "reports/tierb_diagnosis/20260530_103214/tier_b_discovery_source_audit.csv",
+      "exists": true
+    },
+    {
+      "path": "reports/tierb_diagnosis/20260530_103214/tier_b_next_path_decision.json",
+      "exists": true
+    }
+  ],
+  "missing_inputs": [],
+  "enough_for_expand_source": true,
+  "edge_proven": "no",
+  "tiny_canary_allowed": "no"
+}

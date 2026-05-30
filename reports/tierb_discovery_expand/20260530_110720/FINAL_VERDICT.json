@@ -1,0 +1,18 @@
+{
+  "status": "PASS",
+  "stage": "TIER_B_DISCOVERY_EXPAND_SOURCE_V1",
+  "expanded_pool_count": 85,
+  "new_pool_count": 79,
+  "old_hard_reject_pool_count": 6,
+  "data_ready_count": 0,
+  "research_candidate_count": 0,
+  "shadow_only_data_ready_count": 0,
+  "watch_count": 77,
+  "reject_count": 8,
+  "can_run_counterfactual_now": false,
+  "tier_c_status": "BATCH_REJECTED",
+  "edge_proven": "no",
+  "tiny_canary_candidate": "no",
+  "tiny_canary_allowed": "no",
+  "recommended_next_stage": "TIER_B_DATA_SOURCE_FIX_REPEAT"
+}

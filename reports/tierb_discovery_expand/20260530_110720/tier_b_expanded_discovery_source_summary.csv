@@ -1,0 +1,14 @@
+source,observation_count
+store_snapshot_cached_pools,6
+geckoterminal_pools,60
+geckoterminal_trending_pools,40
+geckoterminal_new_pools,20
+dexscreener_token_usdc,30
+dexscreener_token_weth,20
+dexscreener_token_cbbtc,28
+dexscreener_token_aero,30
+local_sqlite:shadow_decision_trace,0
+local_sqlite:shadow_position_marks,0
+local_sqlite:positions,0
+local_sqlite:shadow_pools,0
+local_sqlite:shadow_positions,0

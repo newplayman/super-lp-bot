@@ -1,0 +1,21 @@
+# Artifact Index
+
+- `INPUT_ARTIFACT_AUDIT_CN.md`
+- `input_artifact_audit.json`
+- `TIER_B_EXPANDED_UNIVERSE_SPEC_CN.md`
+- `tier_b_expanded_universe_spec.json`
+- `TIER_B_EXPANDED_DISCOVERY_CN.md`
+- `tier_b_expanded_discovery_candidates.csv`
+- `tier_b_expanded_discovery_source_summary.csv`
+- `TIER_B_EXPANDED_RISK_SIGNAL_ENRICHMENT_CN.md`
+- `tier_b_expanded_risk_signal_enrichment.csv`
+- `TIER_B_EXPANDED_RECLASSIFICATION_CN.md`
+- `tier_b_expanded_reclassification.csv`
+- `TIER_B_EXPANDED_COUNTERFACTUAL_READINESS_CN.md`
+- `tier_b_expanded_counterfactual_readiness.json`
+- `TIER_B_EXPANDED_NEXT_PATH_DECISION_CN.md`
+- `tier_b_expanded_next_path_decision.json`
+- `TIER_C_STATUS_SYNC_CN.md`
+- `tier_c_status_sync.json`
+- `FINAL_VERDICT.json`
+- `ONEPAGE_CN.md`

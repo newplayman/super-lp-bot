@@ -1,0 +1,24 @@
+{
+  "stage": "TIER_B_DISCOVERY_EXPAND_SOURCE_V1",
+  "proof_unit": "position_lifecycle",
+  "avoid_tierc_like_small_pools": true,
+  "raw_sources_attempted": [
+    "store_snapshot_cached_pools",
+    "geckoterminal_base_pools_pagination",
+    "geckoterminal_base_trending_pools",
+    "geckoterminal_base_new_pools",
+    "dexscreener_token_pairs",
+    "local_shadow_sqlite_tables"
+  ],
+  "coarse_universe_filter": {
+    "chain": "base",
+    "min_tvl_usd": 25000,
+    "max_tvl_usd": 25000000,
+    "min_vol24h_usd": 100000,
+    "min_volume_to_tvl": 0.5
+  },
+  "candidate_semantics": {
+    "RESEARCH_CANDIDATE": "research only, not tradable",
+    "SHADOW_ONLY_DATA_READY": "data-complete but not counterfactual-ready"
+  }
+}
