@@ -1,0 +1,8 @@
+table_name,total_rows,latest_timestamp,rows_last_2h,rows_last_6h,rows_last_12h,rows_last_24h,rows_last_48h,freshness_status
+shadow_decision_trace,399732,2026-05-30 14:19:39+00:00,2400,7200,14381,28042,73311,HEALTHY
+shadow_position_marks,54129,2026-05-30 14:20:07+00:00,481,1441,2882,5766,11532,HEALTHY
+positions,68,2026-05-30 12:34:45+00:00,1,1,2,6,12,HEALTHY
+shadow_exit_decisions,53976,2026-05-30 14:20:07.445000+00:00,480,1440,2880,5760,11520,HEALTHY
+shadow_exit_actions,67,2026-05-30 12:34:09.735000+00:00,1,1,2,6,12,HEALTHY
+shadow_outcome_labels,734863,2026-05-27 07:35:59.024000+00:00,0,0,0,0,0,STALE
+shadow_position_lifecycle_proof_v2,408,2026-05-30 14:06:54.987561+00:00,408,408,408,408,408,HEALTHY

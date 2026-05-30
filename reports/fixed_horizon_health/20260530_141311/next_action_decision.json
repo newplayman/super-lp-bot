@@ -1,0 +1,8 @@
+{
+  "recommended_next_stage": "SHADOW_MARK_COVERAGE_FIX",
+  "root_cause": [
+    "INTENT_OPEN_EXISTS_BUT_NO_POSITION",
+    "POSITIONS_EXIST_BUT_NO_FUTURE_MARKS",
+    "HORIZONS_NOT_MATURE_YET"
+  ]
+}

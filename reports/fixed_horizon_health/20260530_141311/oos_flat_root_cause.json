@@ -1,0 +1,25 @@
+{
+  "root_cause": [
+    {
+      "root_cause": "INTENT_OPEN_EXISTS_BUT_NO_POSITION",
+      "table": "shadow_decision_trace/positions",
+      "metric": "intent_open_rows_last_24h vs new_positions_last_24h",
+      "time_window": "24h",
+      "observed_value": "5607 vs 6"
+    },
+    {
+      "root_cause": "POSITIONS_EXIST_BUT_NO_FUTURE_MARKS",
+      "table": "shadow_position_lifecycle_proof_v2",
+      "metric": "position_with_future_mark_count",
+      "time_window": "24h",
+      "observed_value": "6h=0,12h=0,24h=0 for 6 new positions"
+    },
+    {
+      "root_cause": "HORIZONS_NOT_MATURE_YET",
+      "table": "positions/shadow_position_lifecycle_proof_v2",
+      "metric": "future_24h_coverage",
+      "time_window": "24h",
+      "observed_value": "0/6"
+    }
+  ]
+}

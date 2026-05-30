@@ -1,0 +1,6 @@
+window,new_position_count,open_position_count,closed_position_count,position_with_marks_count,position_with_future_6h_mark_count,position_with_future_12h_mark_count,position_with_future_24h_mark_count,position_without_future_mark_count,mark_distance_p50_seconds,mark_distance_p90_seconds,mark_distance_p99_seconds
+recent_2h,1,0,1,1,0,0,0,1,,,
+recent_6h,1,0,1,1,0,0,0,1,,,
+recent_12h,2,0,2,2,0,0,0,2,,,
+recent_24h,6,0,6,6,0,0,0,6,,,
+recent_48h,12,0,12,12,0,0,0,12,,,
