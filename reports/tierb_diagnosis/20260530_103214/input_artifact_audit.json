@@ -1,0 +1,58 @@
+{
+  "stage": "TIER_B_DISCOVERY_FAILURE_DIAGNOSIS_AND_THRESHOLD_SENSITIVITY_V1",
+  "inputs": [
+    {
+      "path": "reports/tierb_discovery/20260530_092922/FINAL_VERDICT.json",
+      "exists": true
+    },
+    {
+      "path": "reports/tierb_discovery/20260530_092922/ARTIFACT_INDEX.md",
+      "exists": true
+    },
+    {
+      "path": "reports/tierb_discovery/20260530_092922/TIER_B_PREVIOUS_CANDIDATE_FAILURE_REVIEW_CN.md",
+      "exists": true
+    },
+    {
+      "path": "reports/tierb_discovery/20260530_092922/tier_b_previous_candidate_failure_review.csv",
+      "exists": true
+    },
+    {
+      "path": "reports/tierb_discovery/20260530_092922/TIER_B_REDISCOVERY_V1_CN.md",
+      "exists": true
+    },
+    {
+      "path": "reports/tierb_discovery/20260530_092922/tier_b_rediscovery_v1_candidates.csv",
+      "exists": true
+    },
+    {
+      "path": "reports/tierb_discovery/20260530_092922/TIER_B_RISK_SIGNAL_REFRESH_V1_CN.md",
+      "exists": true
+    },
+    {
+      "path": "reports/tierb_discovery/20260530_092922/tier_b_risk_signal_refresh_v1.csv",
+      "exists": true
+    },
+    {
+      "path": "reports/tierb_discovery/20260530_092922/TIER_B_DATA_READY_RECLASSIFICATION_V1_CN.md",
+      "exists": true
+    },
+    {
+      "path": "reports/tierb_discovery/20260530_092922/tier_b_data_ready_reclassification_v1.csv",
+      "exists": true
+    },
+    {
+      "path": "reports/tierb_discovery/20260530_092922/TIER_B_COUNTERFACTUAL_READINESS_GATE_CN.md",
+      "exists": true
+    },
+    {
+      "path": "reports/tierb_discovery/20260530_092922/tier_b_counterfactual_readiness_gate.json",
+      "exists": true
+    }
+  ],
+  "missing_inputs": [],
+  "enough_for_failure_diagnosis": true,
+  "enough_for_threshold_sensitivity": true,
+  "edge_proven": "no",
+  "tiny_canary_allowed": "no"
+}

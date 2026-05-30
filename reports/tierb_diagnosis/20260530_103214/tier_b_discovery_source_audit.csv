@@ -1,0 +1,5 @@
+source,available,scanned_pool_count,notes
+tierc_candidates_base_universe,yes,6,current Tier B repeat inherited Tier C candidate universe
+store_snapshot_cached_enrichment,yes,6,used for risk signal refresh and rediscovery scoring
+geckoterminal_live,partial,6,not evident that broad pagination was used in current repeat
+dex_screener,no_direct_evidence,0,not present in current artifacts as discovery-expansion source

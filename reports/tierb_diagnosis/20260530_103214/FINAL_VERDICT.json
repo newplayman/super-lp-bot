@@ -1,0 +1,16 @@
+{
+  "status": "PASS",
+  "stage": "TIER_B_DISCOVERY_FAILURE_DIAGNOSIS_AND_THRESHOLD_SENSITIVITY_V1",
+  "tier_b_previous_candidate_count": 6,
+  "hard_reject_count": 6,
+  "data_missing_only_count": 0,
+  "potentially_recoverable_count": 0,
+  "research_candidate_under_current_rules": 0,
+  "research_candidate_under_moderate_research": 0,
+  "can_run_counterfactual_now": false,
+  "tier_c_status": "BATCH_REJECTED",
+  "edge_proven": "no",
+  "tiny_canary_candidate": "no",
+  "tiny_canary_allowed": "no",
+  "recommended_next_stage": "TIER_B_DISCOVERY_EXPAND_SOURCE"
+}
