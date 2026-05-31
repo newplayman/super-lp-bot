@@ -1,0 +1,13 @@
+{
+  "tail_improved": false,
+  "risk_exit_helpful": false,
+  "no_entry_quarantine_helpful": true,
+  "fee_proxy_sufficient": "yes",
+  "data_quality_sufficient": true,
+  "false_exit_rate": 0.0022205773501110288,
+  "missed_profit_rate": 0.006661732050333087,
+  "continue_research": true,
+  "best_horizon": "",
+  "best_proof_unit": "",
+  "recommended_next_stage": "RISK_SIGNAL_DEFINITION_FIX"
+}

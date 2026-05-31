@@ -1,0 +1,31 @@
+{
+  "status": "WARN",
+  "stage": "RISK_AWARE_SHORT_HOLD_COUNTERFACTUAL_V1",
+  "data_source": "vps_postgres",
+  "db_ready": true,
+  "proof_units_tested": [
+    "pool_window",
+    "intent_window"
+  ],
+  "horizons_tested": [
+    "15m",
+    "30m",
+    "1h",
+    "2h"
+  ],
+  "valid_sample_count": 21655,
+  "tail_improved": false,
+  "risk_exit_helpful": false,
+  "no_entry_quarantine_helpful": true,
+  "fee_proxy_sufficient": "yes",
+  "data_quality_sufficient": true,
+  "false_exit_rate": 0.0022205773501110288,
+  "missed_profit_rate": 0.006661732050333087,
+  "best_horizon": "30m",
+  "best_proof_unit": "pool_window",
+  "best_window": "recent_72h",
+  "edge_proven": "no",
+  "tiny_canary_candidate": "no",
+  "tiny_canary_allowed": "no",
+  "recommended_next_stage": "RISK_SIGNAL_DEFINITION_FIX"
+}

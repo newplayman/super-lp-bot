@@ -1,0 +1,34 @@
+# Risk Aware Short Hold Materialization
+
+- recent_24h intent_window 15m: raw=388 valid=384 invalid=4 quarantine=4 fee_proxy_coverage=1 exit_cost_coverage=1
+- recent_24h intent_window 1h: raw=388 valid=372 invalid=16 quarantine=16 fee_proxy_coverage=1 exit_cost_coverage=1
+- recent_24h intent_window 2h: raw=388 valid=356 invalid=32 quarantine=32 fee_proxy_coverage=1 exit_cost_coverage=1
+- recent_24h intent_window 30m: raw=388 valid=380 invalid=8 quarantine=8 fee_proxy_coverage=1 exit_cost_coverage=1
+- recent_24h pool_window 15m: raw=388 valid=380 invalid=8 quarantine=8 fee_proxy_coverage=1 exit_cost_coverage=1
+- recent_24h pool_window 1h: raw=388 valid=368 invalid=20 quarantine=20 fee_proxy_coverage=1 exit_cost_coverage=1
+- recent_24h pool_window 2h: raw=388 valid=352 invalid=36 quarantine=36 fee_proxy_coverage=1 exit_cost_coverage=1
+- recent_24h pool_window 30m: raw=388 valid=376 invalid=12 quarantine=12 fee_proxy_coverage=1 exit_cost_coverage=1
+- recent_48h intent_window 15m: raw=355 valid=355 invalid=0 quarantine=0 fee_proxy_coverage=1 exit_cost_coverage=1
+- recent_48h intent_window 1h: raw=355 valid=355 invalid=0 quarantine=0 fee_proxy_coverage=1 exit_cost_coverage=1
+- recent_48h intent_window 2h: raw=355 valid=355 invalid=0 quarantine=0 fee_proxy_coverage=1 exit_cost_coverage=1
+- recent_48h intent_window 30m: raw=355 valid=355 invalid=0 quarantine=0 fee_proxy_coverage=1 exit_cost_coverage=1
+- recent_48h pool_window 15m: raw=380 valid=380 invalid=0 quarantine=0 fee_proxy_coverage=1 exit_cost_coverage=1
+- recent_48h pool_window 1h: raw=380 valid=380 invalid=0 quarantine=0 fee_proxy_coverage=1 exit_cost_coverage=1
+- recent_48h pool_window 2h: raw=380 valid=380 invalid=0 quarantine=0 fee_proxy_coverage=1 exit_cost_coverage=1
+- recent_48h pool_window 30m: raw=380 valid=380 invalid=0 quarantine=0 fee_proxy_coverage=1 exit_cost_coverage=1
+- recent_72h intent_window 15m: raw=384 valid=384 invalid=0 quarantine=0 fee_proxy_coverage=1 exit_cost_coverage=1
+- recent_72h intent_window 1h: raw=384 valid=384 invalid=0 quarantine=0 fee_proxy_coverage=1 exit_cost_coverage=1
+- recent_72h intent_window 2h: raw=384 valid=384 invalid=0 quarantine=0 fee_proxy_coverage=1 exit_cost_coverage=1
+- recent_72h intent_window 30m: raw=384 valid=384 invalid=0 quarantine=0 fee_proxy_coverage=1 exit_cost_coverage=1
+- recent_72h pool_window 15m: raw=388 valid=388 invalid=0 quarantine=0 fee_proxy_coverage=1 exit_cost_coverage=1
+- recent_72h pool_window 1h: raw=388 valid=388 invalid=0 quarantine=0 fee_proxy_coverage=1 exit_cost_coverage=1
+- recent_72h pool_window 2h: raw=388 valid=388 invalid=0 quarantine=0 fee_proxy_coverage=1 exit_cost_coverage=1
+- recent_72h pool_window 30m: raw=388 valid=388 invalid=0 quarantine=0 fee_proxy_coverage=1 exit_cost_coverage=1
+- recent_168h intent_window 15m: raw=1353 valid=1352 invalid=1 quarantine=1 fee_proxy_coverage=1 exit_cost_coverage=1
+- recent_168h intent_window 1h: raw=1353 valid=1349 invalid=4 quarantine=4 fee_proxy_coverage=1 exit_cost_coverage=1
+- recent_168h intent_window 2h: raw=1353 valid=1345 invalid=8 quarantine=8 fee_proxy_coverage=1 exit_cost_coverage=1
+- recent_168h intent_window 30m: raw=1353 valid=1351 invalid=2 quarantine=2 fee_proxy_coverage=1 exit_cost_coverage=1
+- recent_168h pool_window 15m: raw=1824 valid=1819 invalid=5 quarantine=5 fee_proxy_coverage=1 exit_cost_coverage=1
+- recent_168h pool_window 1h: raw=1824 valid=1816 invalid=8 quarantine=8 fee_proxy_coverage=1 exit_cost_coverage=1
+- recent_168h pool_window 2h: raw=1824 valid=1809 invalid=15 quarantine=15 fee_proxy_coverage=1 exit_cost_coverage=1
+- recent_168h pool_window 30m: raw=1824 valid=1818 invalid=6 quarantine=6 fee_proxy_coverage=1 exit_cost_coverage=1

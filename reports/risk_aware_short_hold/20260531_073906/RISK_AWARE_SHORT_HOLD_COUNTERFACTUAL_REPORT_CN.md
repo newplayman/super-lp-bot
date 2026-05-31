@@ -1,0 +1,34 @@
+# Risk Aware Short Hold Counterfactual Report
+
+- recent_168h intent_window 15m: sample=1353 valid=1352 invalid=1 hold_p10=0.000614608180157461 risk_p10=0.000614608180157461 tail_improve_p10=0.0 false_exit_rate=0.0 missed_profit_rate=0.0
+- recent_168h pool_window 15m: sample=1824 valid=1819 invalid=5 hold_p10=-0.01591348329244936 risk_p10=-0.01591348329244936 tail_improve_p10=0.0 false_exit_rate=0.0005497526113249038 missed_profit_rate=0.002748763056624519
+- recent_168h intent_window 1h: sample=1353 valid=1349 invalid=4 hold_p10=0.000614608180157461 risk_p10=0.0004878284060083615 tail_improve_p10=-0.00012677977414909947 false_exit_rate=0.0037064492216456633 missed_profit_rate=0.02001482579688658
+- recent_168h pool_window 1h: sample=1824 valid=1816 invalid=8 hold_p10=-0.2876195492331995 risk_p10=-0.2703461785217567 tail_improve_p10=0.017273370711442804 false_exit_rate=0.003854625550660793 missed_profit_rate=0.019823788546255508
+- recent_168h intent_window 2h: sample=1353 valid=1345 invalid=8 hold_p10=0.00047140650588062277 risk_p10=0.00044853381430698386 tail_improve_p10=-2.2872691573638912e-05 false_exit_rate=0.0037174721189591076 missed_profit_rate=0.03717472118959108
+- recent_168h pool_window 2h: sample=1824 valid=1809 invalid=15 hold_p10=-0.6369160414961897 risk_p10=-0.6151129948775202 tail_improve_p10=0.021803046618669497 false_exit_rate=0.004975124378109453 missed_profit_rate=0.037589828634604756
+- recent_168h intent_window 30m: sample=1353 valid=1351 invalid=2 hold_p10=0.0014596921414948838 risk_p10=0.0012012002007395495 tail_improve_p10=-0.0002584919407553343 false_exit_rate=0.0022205773501110288 missed_profit_rate=0.006661732050333087
+- recent_168h pool_window 30m: sample=1824 valid=1818 invalid=6 hold_p10=-0.09968294852319409 risk_p10=-0.09920277830471375 tail_improve_p10=0.0004801702184803469 false_exit_rate=0.0033003300330033004 missed_profit_rate=0.00935093509350935
+- recent_24h intent_window 15m: sample=388 valid=384 invalid=4 hold_p10=0.009343176069677384 risk_p10=0.009343176069677384 tail_improve_p10=0.0 false_exit_rate=0.0 missed_profit_rate=0.0
+- recent_24h pool_window 15m: sample=388 valid=380 invalid=8 hold_p10=-0.0030931087678473645 risk_p10=-0.0030931087678473645 tail_improve_p10=0.0 false_exit_rate=0.0 missed_profit_rate=0.0
+- recent_24h intent_window 1h: sample=388 valid=372 invalid=16 hold_p10=0.010074518390410958 risk_p10=0.010074518390410958 tail_improve_p10=0.0 false_exit_rate=0.0 missed_profit_rate=0.0
+- recent_24h pool_window 1h: sample=388 valid=368 invalid=20 hold_p10=-0.045106041189391176 risk_p10=-0.045106041189391176 tail_improve_p10=0.0 false_exit_rate=0.0 missed_profit_rate=0.0
+- recent_24h intent_window 2h: sample=388 valid=356 invalid=32 hold_p10=0.008868099192170575 risk_p10=0.008868099192170575 tail_improve_p10=0.0 false_exit_rate=0.0 missed_profit_rate=0.0
+- recent_24h pool_window 2h: sample=388 valid=352 invalid=36 hold_p10=-0.17323414748712623 risk_p10=-0.17323414748712623 tail_improve_p10=0.0 false_exit_rate=0.0 missed_profit_rate=0.0
+- recent_24h intent_window 30m: sample=388 valid=380 invalid=8 hold_p10=0.008868099192170575 risk_p10=0.008868099192170575 tail_improve_p10=0.0 false_exit_rate=0.0 missed_profit_rate=0.0
+- recent_24h pool_window 30m: sample=388 valid=376 invalid=12 hold_p10=-0.01415881823161648 risk_p10=-0.01415881823161648 tail_improve_p10=0.0 false_exit_rate=0.0 missed_profit_rate=0.0
+- recent_48h intent_window 15m: sample=355 valid=355 invalid=0 hold_p10=0.011472012257740971 risk_p10=0.011472012257740971 tail_improve_p10=0.0 false_exit_rate=0.0 missed_profit_rate=0.0
+- recent_48h pool_window 15m: sample=380 valid=380 invalid=0 hold_p10=-0.0008728076085881593 risk_p10=-0.0008728076085881593 tail_improve_p10=0.0 false_exit_rate=0.0 missed_profit_rate=0.0
+- recent_48h intent_window 1h: sample=355 valid=355 invalid=0 hold_p10=0.011571741820617376 risk_p10=0.010598549236433996 tail_improve_p10=-0.00097319258418338 false_exit_rate=0.0 missed_profit_rate=0.04225352112676056
+- recent_48h pool_window 1h: sample=380 valid=380 invalid=0 hold_p10=-0.3958013269462675 risk_p10=-0.3958013269462675 tail_improve_p10=0.0 false_exit_rate=0.0 missed_profit_rate=0.02631578947368421
+- recent_48h intent_window 2h: sample=355 valid=355 invalid=0 hold_p10=0.011830755333107845 risk_p10=0.010598549236433996 tail_improve_p10=-0.001232206096673849 false_exit_rate=0.0 missed_profit_rate=0.08450704225352113
+- recent_48h pool_window 2h: sample=380 valid=380 invalid=0 hold_p10=-0.6999284120486339 risk_p10=-0.6999284120486339 tail_improve_p10=0.0 false_exit_rate=0.0 missed_profit_rate=0.039473684210526314
+- recent_48h intent_window 30m: sample=355 valid=355 invalid=0 hold_p10=0.011472012257740971 risk_p10=0.011472012257740971 tail_improve_p10=0.0 false_exit_rate=0.0 missed_profit_rate=0.014084507042253521
+- recent_48h pool_window 30m: sample=380 valid=380 invalid=0 hold_p10=-0.11380922303903633 risk_p10=-0.11380922303903633 tail_improve_p10=0.0 false_exit_rate=0.0 missed_profit_rate=0.005263157894736842
+- recent_72h intent_window 15m: sample=384 valid=384 invalid=0 hold_p10=0.0032892951888783273 risk_p10=0.0032892951888783273 tail_improve_p10=0.0 false_exit_rate=0.0 missed_profit_rate=0.0
+- recent_72h pool_window 15m: sample=388 valid=388 invalid=0 hold_p10=-0.05763642029926805 risk_p10=-0.056384970735746484 tail_improve_p10=0.0012514495635215644 false_exit_rate=0.0 missed_profit_rate=0.0
+- recent_72h intent_window 1h: sample=384 valid=384 invalid=0 hold_p10=0.006761423166040003 risk_p10=0.00844087402818161 tail_improve_p10=0.001679450862141608 false_exit_rate=0.0 missed_profit_rate=0.0
+- recent_72h pool_window 1h: sample=388 valid=388 invalid=0 hold_p10=-0.2953070986366093 risk_p10=-0.2953070986366093 tail_improve_p10=0.0 false_exit_rate=0.0 missed_profit_rate=0.0
+- recent_72h intent_window 2h: sample=384 valid=384 invalid=0 hold_p10=0.009658780763160735 risk_p10=0.011162164529039842 tail_improve_p10=0.0015033837658791072 false_exit_rate=0.0 missed_profit_rate=0.0
+- recent_72h pool_window 2h: sample=388 valid=388 invalid=0 hold_p10=-0.5065601895967846 risk_p10=-0.5065601895967846 tail_improve_p10=0.0 false_exit_rate=0.0 missed_profit_rate=0.0
+- recent_72h intent_window 30m: sample=384 valid=384 invalid=0 hold_p10=0.006432440981413379 risk_p10=0.006506291708058143 tail_improve_p10=7.385072664476463e-05 false_exit_rate=0.0 missed_profit_rate=0.0
+- recent_72h pool_window 30m: sample=388 valid=388 invalid=0 hold_p10=-0.19400430373186153 risk_p10=-0.13956314439026166 tail_improve_p10=0.054441159341599876 false_exit_rate=0.0 missed_profit_rate=0.0

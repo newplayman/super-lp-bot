@@ -1,0 +1,50 @@
+{
+  "sample_id": "pool_id + token_pair + start_time bucket",
+  "proof_unit_types": [
+    "pool_window",
+    "intent_window"
+  ],
+  "horizons": [
+    "15m",
+    "30m",
+    "1h",
+    "2h"
+  ],
+  "entry_price_or_pool_value_source": [
+    "trace_intended_notional_usd",
+    "joined_position_amount_usd",
+    "first_position_mark_amount_usd",
+    "pool_mark_valuation_usd"
+  ],
+  "target_price_or_pool_value_source": [
+    "future pool mark valuation",
+    "nearest future pool mark after target time"
+  ],
+  "fee_proxy_source": [
+    "pools.fee_bps",
+    "pools.vol_24h",
+    "pools.tvl_usd"
+  ],
+  "exit_depth_source": [
+    "pools.tvl_usd proxy",
+    "shadow_position_marks.current_tvl_usd proxy"
+  ],
+  "risk_signal_source": [
+    "shadow_position_marks.price_change_pct",
+    "shadow_position_marks.current_vol24h_usd",
+    "shadow_position_marks.current_tvl_usd"
+  ],
+  "data_quality_requirements": [
+    "entry_value must exist",
+    "future pool mark must exist for horizon",
+    "deduped intent signal only; no raw decision_trace rows as samples",
+    "pool-window and intent-window must be deduplicated to avoid repeated tick inflation",
+    "single pool cannot dominate the sample set"
+  ],
+  "why_not_position_lifecycle": "P0 is about pool_window / intent_window counterfactuals, not position lifecycle outcomes.",
+  "duplication_control": [
+    "use 15m dedup bucket",
+    "separate open vs reuse intent types",
+    "dedup by pool_id + token_pair + strategy_epoch + bucket + intent_type"
+  ]
+}

@@ -1,0 +1,13 @@
+data_name,available,source_table,coverage,confidence,blocker,required_for_v1
+pool_id,yes,shadow_decision_trace / shadow_position_marks,100%,high,,yes
+token_pair,yes,pool_token_metadata / pools,100%,high,,yes
+start_time,yes,shadow_decision_trace / shadow_position_marks,100%,high,,yes
+horizon,yes,script config,100%,high,,yes
+entry pool value / price proxy,partial,shadow_decision_trace / positions / shadow_position_marks,100.0%,medium,some entries require fallback source,yes
+future pool value / price proxy,partial,shadow_position_marks,100.0%,medium,no_future_pool_mark remains the dominant invalid reason,yes
+price_move_5m/15m/30m,partial,shadow_position_marks,100.0%,medium,"price_change_pct is proxy-quality, not an independent price tape",yes
+volume_change_15m/30m/1h,partial,shadow_position_marks,100.0%,medium,uses rolling vol24h proxy from marks,yes
+tvl_change_1h,partial,shadow_position_marks,100.0%,medium,proxy from mark snapshots,yes
+exit_depth 10/20/50 USD,partial,pools / shadow_position_marks,100.0%,low,proxy only; no route API used in v1,yes
+risk event labels,partial,derived from marks,derived,medium,no native risk_events rows; derived labels only,yes
+fee proxy or fee velocity proxy,partial,pools,100.0%,medium,uses pool vol/tvl and fee_bps proxy,yes

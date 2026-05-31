@@ -1,0 +1,24 @@
+# Artifact Index
+
+- `risk_aware_short_hold_counterfactual_v1_readonly.py`
+- `INPUT_ARTIFACT_AUDIT_CN.md`
+- `input_artifact_audit.json`
+- `VPS_DB_QUICK_CHECK_CN.md`
+- `SHORT_HOLD_SAMPLE_UNIT_SPEC_CN.md`
+- `short_hold_sample_unit_spec.json`
+- `RISK_AWARE_SHORT_HOLD_DATA_READINESS_CN.md`
+- `risk_aware_short_hold_data_readiness.csv`
+- `RISK_SIGNAL_DEFINITION_V1_CN.md`
+- `risk_signal_definition_v1.json`
+- `RISK_AWARE_SHORT_HOLD_SCHEMA_CN.md`
+- `risk_aware_short_hold_schema.json`
+- `RISK_AWARE_SHORT_HOLD_MATERIALIZATION_CN.md`
+- `risk_aware_short_hold_materialization_counts.csv`
+- `RISK_AWARE_SHORT_HOLD_COUNTERFACTUAL_REPORT_CN.md`
+- `risk_aware_short_hold_counterfactual_report.csv`
+- `RISK_AWARE_SHORT_HOLD_FAILURE_ATTRIBUTION_CN.md`
+- `risk_aware_short_hold_failure_attribution.csv`
+- `RISK_AWARE_SHORT_HOLD_NEXT_STAGE_DECISION_CN.md`
+- `risk_aware_short_hold_next_stage_decision.json`
+- `FINAL_VERDICT.json`
+- `ONEPAGE_CN.md`

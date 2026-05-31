@@ -1,0 +1,12 @@
+category,count,share,examples,fixability
+data_quality_missing,0,0.0,,easy
+fee_proxy_missing,0,0.0,,easy
+exit_depth_missing,0,0.0,,hard
+risk_signal_too_late,0,0.0,,hard
+risk_signal_false_positive,0,0.0,,hard
+tail_not_improved,0,0.0,,hard
+false_exit_too_high,0,0.0,,hard
+missed_profit_too_high,0,0.0,,hard
+pool_concentration,0,0.0,,hard
+event_concentration,0,0.0,,hard
+insufficient_sample,185,1.0,intent:0x9a993fc0eec60faaa0c391ff11b840ce16685150|base:0x9a993fc0eec60faaa0c391ff11b840ce16685150|0|tb15|1977529|reuse;intent:0x9a993fc0eec60faaa0c391ff11b840ce16685150|base:0x9a993fc0eec60faaa0c391ff11b840ce16685150|0|tb15|1977530|reuse;intent:0x9a993fc0eec60faaa0c391ff11b840ce16685150|base:0x9a993fc0eec60faaa0c391ff11b840ce16685150|0|tb15|1977531|reuse,medium

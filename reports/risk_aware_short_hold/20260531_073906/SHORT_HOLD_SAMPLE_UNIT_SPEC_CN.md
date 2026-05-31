@@ -1,0 +1,28 @@
+# Short Hold Sample Unit Spec
+
+- sample_id: pool_id + token_pair + start_time bucket
+- proof_unit_types: pool_window, intent_window
+- horizons: 15m, 30m, 1h, 2h
+- why_not_position_lifecycle: P0 is about pool_window / intent_window counterfactuals, not position lifecycle outcomes.
+- entry_source: trace_intended_notional_usd
+- entry_source: joined_position_amount_usd
+- entry_source: first_position_mark_amount_usd
+- entry_source: pool_mark_valuation_usd
+- target_source: future pool mark valuation
+- target_source: nearest future pool mark after target time
+- fee_proxy_source: pools.fee_bps
+- fee_proxy_source: pools.vol_24h
+- fee_proxy_source: pools.tvl_usd
+- exit_depth_source: pools.tvl_usd proxy
+- exit_depth_source: shadow_position_marks.current_tvl_usd proxy
+- risk_signal_source: shadow_position_marks.price_change_pct
+- risk_signal_source: shadow_position_marks.current_vol24h_usd
+- risk_signal_source: shadow_position_marks.current_tvl_usd
+- dq_requirement: entry_value must exist
+- dq_requirement: future pool mark must exist for horizon
+- dq_requirement: deduped intent signal only; no raw decision_trace rows as samples
+- dq_requirement: pool-window and intent-window must be deduplicated to avoid repeated tick inflation
+- dq_requirement: single pool cannot dominate the sample set
+- dedup: use 15m dedup bucket
+- dedup: separate open vs reuse intent types
+- dedup: dedup by pool_id + token_pair + strategy_epoch + bucket + intent_type

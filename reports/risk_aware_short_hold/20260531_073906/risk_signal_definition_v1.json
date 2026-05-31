@@ -1,0 +1,83 @@
+[
+  {
+    "signal_name": "price_spike_down",
+    "trigger_condition": "price_change_pct <= -10 high; <= -5 medium within window",
+    "required_data": "shadow_position_marks.price_change_pct",
+    "severity": "high",
+    "exit_action": "exit_now",
+    "confidence": "medium",
+    "known_limitations": "proxy-quality price change; may reflect aggregated mark noise"
+  },
+  {
+    "signal_name": "price_spike_up",
+    "trigger_condition": "price_change_pct >= 15",
+    "required_data": "shadow_position_marks.price_change_pct",
+    "severity": "low",
+    "exit_action": "hold",
+    "confidence": "medium",
+    "known_limitations": "used as instability marker, not direct loss trigger"
+  },
+  {
+    "signal_name": "volume_collapse",
+    "trigger_condition": "current_vol24h_usd <= 60% of previous mark",
+    "required_data": "shadow_position_marks.current_vol24h_usd",
+    "severity": "high",
+    "exit_action": "exit_now",
+    "confidence": "medium",
+    "known_limitations": "uses rolling vol24h proxy, not raw window volume tape"
+  },
+  {
+    "signal_name": "tvl_drop",
+    "trigger_condition": "current_tvl_usd <= 85% of previous mark",
+    "required_data": "shadow_position_marks.current_tvl_usd",
+    "severity": "high",
+    "exit_action": "exit_now",
+    "confidence": "medium",
+    "known_limitations": "pool-level proxy; may lag real reserve updates"
+  },
+  {
+    "signal_name": "exit_depth_drop",
+    "trigger_condition": "entry_size / pool_tvl_proxy > 0.1 or tvl proxy thin",
+    "required_data": "pools.tvl_usd + shadow_position_marks.current_tvl_usd",
+    "severity": "high",
+    "exit_action": "quarantine_no_entry",
+    "confidence": "low",
+    "known_limitations": "not a route simulation; proxy only"
+  },
+  {
+    "signal_name": "trader_concentration_spike",
+    "trigger_condition": "not available in v1, reserved for later enrichment",
+    "required_data": "future enrichment",
+    "severity": "medium",
+    "exit_action": "hold",
+    "confidence": "unknown",
+    "known_limitations": "not measured in v1"
+  },
+  {
+    "signal_name": "holder_concentration_spike",
+    "trigger_condition": "not available in v1, reserved for later enrichment",
+    "required_data": "future enrichment",
+    "severity": "medium",
+    "exit_action": "hold",
+    "confidence": "unknown",
+    "known_limitations": "not measured in v1"
+  },
+  {
+    "signal_name": "abnormal_volume_spike",
+    "trigger_condition": "current_vol24h_usd >= 180% of previous mark",
+    "required_data": "shadow_position_marks.current_vol24h_usd",
+    "severity": "low",
+    "exit_action": "hold",
+    "confidence": "medium",
+    "known_limitations": "used as regime instability marker"
+  },
+  {
+    "signal_name": "pool_mark_gap / stale data",
+    "trigger_condition": "mark gap > 1h or future mark missing beyond horizon",
+    "required_data": "shadow_position_marks.mark_time",
+    "severity": "high",
+    "exit_action": "quarantine_no_entry",
+    "confidence": "high",
+    "known_limitations": "staleness may reflect sampling and not real pool failure"
+  }
+]
