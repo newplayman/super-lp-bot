@@ -1,0 +1,11 @@
+{
+  "recommended_next_stage": "POOL_REGIME_AWARE_SHORT_HOLD_REVIEW_V2",
+  "best_variant_name": "regime_score_threshold_loose",
+  "best_window": "recent_72h",
+  "best_horizon": "2h",
+  "best_proof_unit": "pool_window",
+  "tail_improved": true,
+  "robustness_status": "WARN",
+  "overfit_risk": "HIGH",
+  "review_ready": true
+}

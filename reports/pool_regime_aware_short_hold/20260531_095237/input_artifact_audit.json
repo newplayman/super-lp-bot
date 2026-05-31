@@ -1,0 +1,23 @@
+{
+  "pool_regime_classifier_final": true,
+  "pool_regime_taxonomy": true,
+  "pool_regime_taxonomy_json": true,
+  "pool_regime_features": true,
+  "pool_regime_features_csv": true,
+  "pool_regime_materialization": true,
+  "pool_regime_materialization_csv": true,
+  "pool_regime_tail_audit": true,
+  "pool_regime_tail_audit_csv": true,
+  "pool_regime_quarantine_backtest": true,
+  "pool_regime_quarantine_backtest_csv": true,
+  "pool_regime_best_filter": true,
+  "pool_regime_best_filter_json": true,
+  "pool_regime_next_stage": true,
+  "pool_regime_next_stage_json": true,
+  "pool_regime_classifier_review_ready": true,
+  "best_filter_name_is_exclude_DATA_STALE_OR_INCOMPLETE": true,
+  "tail_improved_confirmed": true,
+  "tiny_canary_allowed_confirmed": true,
+  "regime_aware_short_hold_counterfactual_possible": true,
+  "edge_proven": "no"
+}

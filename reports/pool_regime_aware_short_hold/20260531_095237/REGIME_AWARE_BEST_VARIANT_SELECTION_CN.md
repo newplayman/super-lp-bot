@@ -1,0 +1,23 @@
+# Regime Aware Best Variant Selection
+
+- best_variant_name: regime_score_threshold_loose
+- best_window: recent_72h
+- best_horizon: 2h
+- best_proof_unit: pool_window
+- baseline_p10: -0.5647946339
+- baseline_p5: -2.7790014233
+- baseline_p1: -11.2625424398
+- filtered_p10: -0.1891621178
+- filtered_p5: -0.4966973904
+- filtered_p1: -2.7578900598
+- tail_improvement_p10: 0.3756325161
+- tail_improvement_p5: 2.2823040329
+- tail_improvement_p1: 8.50465238
+- retained_sample_count: 384
+- opportunity_retention_rate: 0.7938931298
+- false_quarantine_rate: 0.140625
+- missed_profit_rate: 0.2516057705
+- loss_avoidance_rate: 0.3524590164
+- worst_pool_contribution: 0.5794260852
+- data_quality_status: sufficient
+- review_ready: yes

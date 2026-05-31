@@ -1,0 +1,22 @@
+# Artifact Index
+
+- INPUT_ARTIFACT_AUDIT_CN.md
+- VPS_DB_QUICK_CHECK_CN.md
+- REGIME_AWARE_SHORT_HOLD_VARIANTS_CN.md
+- REGIME_AWARE_SHORT_HOLD_SCHEMA_CN.md
+- REGIME_AWARE_SHORT_HOLD_MATERIALIZATION_CN.md
+- REGIME_AWARE_SHORT_HOLD_COUNTERFACTUAL_REPORT_CN.md
+- REGIME_AWARE_BEST_VARIANT_SELECTION_CN.md
+- REGIME_AWARE_ROBUSTNESS_AUDIT_CN.md
+- REGIME_AWARE_NEXT_STAGE_DECISION_CN.md
+- FINAL_VERDICT.json
+- ONEPAGE_CN.md
+- input_artifact_audit.json
+- regime_aware_short_hold_variants.json
+- regime_aware_short_hold_schema.json
+- regime_aware_short_hold_materialization_counts.csv
+- regime_aware_short_hold_counterfactual_report.csv
+- regime_aware_best_variant_selection.json
+- regime_aware_robustness_audit.csv
+- regime_aware_next_stage_decision.json
+- pool_regime_aware_short_hold_counterfactual_v1_readonly.py

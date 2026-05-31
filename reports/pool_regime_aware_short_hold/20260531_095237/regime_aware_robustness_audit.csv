@@ -1,0 +1,5 @@
+dimension,summary,positive_rate
+window,"{""recent_24h"": 4, ""recent_48h"": 4, ""recent_72h"": 4, ""recent_7d"": 4}",1.0
+horizon,"{""15m"": 4, ""1h"": 4, ""2h"": 4, ""30m"": 4}",1.0
+proof_unit,"{""intent_window"": 0, ""pool_window"": 16}",0.5
+dominance,"{""best_pool_contribution"": 1.0, ""best_regime_contribution"": 1.0}",

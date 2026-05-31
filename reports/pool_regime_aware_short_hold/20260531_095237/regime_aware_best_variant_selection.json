@@ -1,0 +1,23 @@
+{
+  "best_variant_name": "regime_score_threshold_loose",
+  "best_window": "recent_72h",
+  "best_horizon": "2h",
+  "best_proof_unit": "pool_window",
+  "baseline_p10": -0.564794633898852,
+  "baseline_p5": -2.7790014233184,
+  "baseline_p1": -11.2625424398271,
+  "filtered_p10": -0.189162117753304,
+  "filtered_p5": -0.496697390370627,
+  "filtered_p1": -2.75789005978613,
+  "tail_improvement_p10": 0.375632516145548,
+  "tail_improvement_p5": 2.282304032947773,
+  "tail_improvement_p1": 8.504652380040971,
+  "retained_sample_count": 384,
+  "opportunity_retention_rate": 0.7938931297709924,
+  "false_quarantine_rate": 0.140625,
+  "missed_profit_rate": 0.2516057705284425,
+  "loss_avoidance_rate": 0.3524590163934426,
+  "worst_pool_contribution": 0.5794260851570112,
+  "data_quality_status": "sufficient",
+  "review_ready": true
+}

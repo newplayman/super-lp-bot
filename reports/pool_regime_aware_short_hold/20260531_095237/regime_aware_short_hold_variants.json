@@ -1,0 +1,130 @@
+{
+  "variants": [
+    {
+      "variant_name": "baseline_hold_all",
+      "entry_filter_rule": "none",
+      "no_entry_quarantine_rule": "none",
+      "risk_exit_rule": "none",
+      "expected_false_quarantine_risk": "none",
+      "expected_missed_profit_risk": "none",
+      "data_requirements": [
+        "hold_to_horizon_pnl_pct"
+      ],
+      "known_limitations": "Baseline only."
+    },
+    {
+      "variant_name": "risk_signal_v2_quarantine_first",
+      "entry_filter_rule": "quarantine on quarantine-first price/volume/depth signal",
+      "no_entry_quarantine_rule": "price_spike_down, volume_collapse, tvl_drop, exit_depth_drop, pool_mark_gap / stale data",
+      "risk_exit_rule": "none",
+      "expected_false_quarantine_risk": "medium",
+      "expected_missed_profit_risk": "low",
+      "data_requirements": [
+        "first_risk_signal",
+        "hold_to_horizon_pnl_pct"
+      ],
+      "known_limitations": "Uses precomputed signal classification only."
+    },
+    {
+      "variant_name": "regime_exclude_data_stale",
+      "entry_filter_rule": "exclude DATA_STALE_OR_INCOMPLETE",
+      "no_entry_quarantine_rule": "DATA_STALE_OR_INCOMPLETE",
+      "risk_exit_rule": "none",
+      "expected_false_quarantine_risk": "medium",
+      "expected_missed_profit_risk": "low",
+      "data_requirements": [
+        "regime_primary",
+        "data_quality_score"
+      ],
+      "known_limitations": "Single-factor freshness filter."
+    },
+    {
+      "variant_name": "regime_enter_only_healthy",
+      "entry_filter_rule": "enter HEALTHY_SHORT_HOLD only",
+      "no_entry_quarantine_rule": "all others",
+      "risk_exit_rule": "none",
+      "expected_false_quarantine_risk": "high",
+      "expected_missed_profit_risk": "high",
+      "data_requirements": [
+        "regime_primary"
+      ],
+      "known_limitations": "Very selective."
+    },
+    {
+      "variant_name": "regime_enter_healthy_or_stable_fee",
+      "entry_filter_rule": "enter HEALTHY_SHORT_HOLD or STABLE_FEE",
+      "no_entry_quarantine_rule": "all others",
+      "risk_exit_rule": "none",
+      "expected_false_quarantine_risk": "medium",
+      "expected_missed_profit_risk": "medium",
+      "data_requirements": [
+        "regime_primary"
+      ],
+      "known_limitations": "May still admit volatile but liquid pools."
+    },
+    {
+      "variant_name": "regime_exclude_bad_all",
+      "entry_filter_rule": "exclude all bad regimes",
+      "no_entry_quarantine_rule": "bad regimes",
+      "risk_exit_rule": "none",
+      "expected_false_quarantine_risk": "medium",
+      "expected_missed_profit_risk": "medium",
+      "data_requirements": [
+        "regime_primary"
+      ],
+      "known_limitations": "Relies on regime classifier quality."
+    },
+    {
+      "variant_name": "regime_score_threshold_loose",
+      "entry_filter_rule": "risk_score <= 35",
+      "no_entry_quarantine_rule": "risk_score > 35",
+      "risk_exit_rule": "none",
+      "expected_false_quarantine_risk": "medium",
+      "expected_missed_profit_risk": "medium",
+      "data_requirements": [
+        "risk_score"
+      ],
+      "known_limitations": "Threshold chosen from prior classifier range."
+    },
+    {
+      "variant_name": "regime_score_threshold_strict",
+      "entry_filter_rule": "risk_score <= 20",
+      "no_entry_quarantine_rule": "risk_score > 20",
+      "risk_exit_rule": "none",
+      "expected_false_quarantine_risk": "high",
+      "expected_missed_profit_risk": "high",
+      "data_requirements": [
+        "risk_score"
+      ],
+      "known_limitations": "May over-filter and shrink sample too much."
+    },
+    {
+      "variant_name": "hybrid_regime_plus_signal",
+      "entry_filter_rule": "regime not bad and signal not quarantine",
+      "no_entry_quarantine_rule": "bad regimes + quarantine-first signal",
+      "risk_exit_rule": "none",
+      "expected_false_quarantine_risk": "medium",
+      "expected_missed_profit_risk": "low",
+      "data_requirements": [
+        "regime_primary",
+        "first_risk_signal"
+      ],
+      "known_limitations": "Two-stage filter can overfit if signal dominates."
+    },
+    {
+      "variant_name": "hybrid_regime_plus_signal_plus_fee",
+      "entry_filter_rule": "regime not bad, signal not quarantine, fee_proxy > exit_cost_proxy",
+      "no_entry_quarantine_rule": "bad regimes + quarantine signal + fee proxy weak",
+      "risk_exit_rule": "none",
+      "expected_false_quarantine_risk": "medium",
+      "expected_missed_profit_risk": "medium",
+      "data_requirements": [
+        "regime_primary",
+        "first_risk_signal",
+        "fee_proxy",
+        "exit_cost_proxy"
+      ],
+      "known_limitations": "Most conservative; sample may shrink quickly."
+    }
+  ]
+}
