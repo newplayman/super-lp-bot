@@ -1,0 +1,34 @@
+# Risk Signal V1 Failure Diagnosis
+
+- recent_168h intent_window 15m: sample=1352 valid=120 hold_p10=-0.017650107782074542 risk_p10=-0.017650107782074542 primary_failure_reason=risk_signal_too_late
+- recent_168h pool_window 15m: sample=1822 valid=1819 hold_p10=-0.01676422797585305 risk_p10=-0.01676422797585305 primary_failure_reason=risk_signal_too_late
+- recent_168h intent_window 1h: sample=1352 valid=120 hold_p10=-0.01954181599786864 risk_p10=-0.01954181599786864 primary_failure_reason=risk_signal_too_late
+- recent_168h pool_window 1h: sample=1822 valid=1816 hold_p10=-0.2876195492331995 risk_p10=-0.2594746501673419 primary_failure_reason=unknown
+- recent_168h intent_window 2h: sample=1352 valid=120 hold_p10=-0.021278177443804225 risk_p10=-0.021278177443804225 primary_failure_reason=risk_signal_too_late
+- recent_168h pool_window 2h: sample=1822 valid=1809 hold_p10=-0.6409071859143017 risk_p10=-0.6237092180165539 primary_failure_reason=risk_signal_false_positive
+- recent_168h intent_window 30m: sample=1352 valid=120 hold_p10=-0.017138191714124673 risk_p10=-0.017138191714124673 primary_failure_reason=risk_signal_too_late
+- recent_168h pool_window 30m: sample=1822 valid=1818 hold_p10=-0.11125046939591521 risk_p10=-0.10790882737384182 primary_failure_reason=unknown
+- recent_24h intent_window 15m: sample=388 valid=20 hold_p10=0.0005499732427693971 risk_p10=0.0005499732427693971 primary_failure_reason=insufficient_tail_cases
+- recent_24h pool_window 15m: sample=388 valid=380 hold_p10=-0.00286126082657879 risk_p10=-0.00286126082657879 primary_failure_reason=risk_signal_too_late
+- recent_24h intent_window 1h: sample=388 valid=20 hold_p10=0.0017784702051955037 risk_p10=0.0017784702051955037 primary_failure_reason=insufficient_tail_cases
+- recent_24h pool_window 1h: sample=388 valid=368 hold_p10=-0.04153192652399556 risk_p10=-0.04153192652399556 primary_failure_reason=risk_signal_too_late
+- recent_24h intent_window 2h: sample=388 valid=20 hold_p10=0.004022389305745833 risk_p10=0.004022389305745833 primary_failure_reason=insufficient_tail_cases
+- recent_24h pool_window 2h: sample=388 valid=352 hold_p10=-0.17323414748712623 risk_p10=-0.17323414748712623 primary_failure_reason=risk_signal_too_late
+- recent_24h intent_window 30m: sample=388 valid=20 hold_p10=0.0007773597600788662 risk_p10=0.0007773597600788662 primary_failure_reason=insufficient_tail_cases
+- recent_24h pool_window 30m: sample=388 valid=376 hold_p10=-0.012768857469854449 risk_p10=-0.012768857469854449 primary_failure_reason=risk_signal_too_late
+- recent_48h intent_window 15m: sample=357 valid=31 hold_p10=0.0014385390418141242 risk_p10=0.0014385390418141242 primary_failure_reason=risk_signal_too_late
+- recent_48h pool_window 15m: sample=384 valid=384 hold_p10=-0.0016006412936204004 risk_p10=-0.0016006412936204004 primary_failure_reason=risk_signal_too_late
+- recent_48h intent_window 1h: sample=357 valid=31 hold_p10=0.00416996692430871 risk_p10=0.004049352795036043 primary_failure_reason=risk_signal_too_late
+- recent_48h pool_window 1h: sample=384 valid=384 hold_p10=-0.40842082211722575 risk_p10=-0.40842082211722575 primary_failure_reason=risk_signal_too_late
+- recent_48h intent_window 2h: sample=357 valid=31 hold_p10=0.008950015282351842 risk_p10=0.008580133892351682 primary_failure_reason=risk_signal_too_late
+- recent_48h pool_window 2h: sample=384 valid=384 hold_p10=-0.6786761254600302 risk_p10=-0.6906223338734889 primary_failure_reason=unknown
+- recent_48h intent_window 30m: sample=357 valid=31 hold_p10=0.002393530659020371 risk_p10=0.002393530659020371 primary_failure_reason=risk_signal_too_late
+- recent_48h pool_window 30m: sample=384 valid=384 hold_p10=-0.08533931332381811 risk_p10=-0.08533931332381811 primary_failure_reason=risk_signal_too_late
+- recent_72h intent_window 15m: sample=381 valid=36 hold_p10=-0.011791022684917607 risk_p10=-0.011791022684917607 primary_failure_reason=risk_signal_too_late
+- recent_72h pool_window 15m: sample=384 valid=384 hold_p10=-0.05763642029926805 risk_p10=-0.05763642029926805 primary_failure_reason=risk_signal_too_late
+- recent_72h intent_window 1h: sample=381 valid=36 hold_p10=-0.01127048055815294 risk_p10=-0.01127048055815294 primary_failure_reason=risk_signal_too_late
+- recent_72h pool_window 1h: sample=384 valid=384 hold_p10=-0.29511448749555924 risk_p10=-0.29511448749555924 primary_failure_reason=risk_signal_too_late
+- recent_72h intent_window 2h: sample=381 valid=36 hold_p10=-0.010643634614012853 risk_p10=-0.010643634614012853 primary_failure_reason=risk_signal_too_late
+- recent_72h pool_window 2h: sample=384 valid=384 hold_p10=-0.506520668752117 risk_p10=-0.506520668752117 primary_failure_reason=risk_signal_too_late
+- recent_72h intent_window 30m: sample=381 valid=36 hold_p10=-0.011215457792388861 risk_p10=-0.011215457792388861 primary_failure_reason=risk_signal_too_late
+- recent_72h pool_window 30m: sample=384 valid=384 hold_p10=-0.19400430373186153 risk_p10=-0.19400430373186153 primary_failure_reason=risk_signal_too_late

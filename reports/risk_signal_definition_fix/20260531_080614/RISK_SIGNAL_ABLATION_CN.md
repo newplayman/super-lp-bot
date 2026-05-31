@@ -1,0 +1,226 @@
+# Risk Signal Ablation
+
+- recent_168h abnormal_volume_spike 15m intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_168h exit_depth_drop 15m intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_168h pool_mark_gap / stale data 15m intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_168h price_spike_down 15m intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_168h price_spike_up 15m intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_168h tvl_drop 15m intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_168h volume_collapse 15m intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_168h abnormal_volume_spike 15m pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_168h exit_depth_drop 15m pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_168h pool_mark_gap / stale data 15m pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_168h price_spike_down 15m pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_168h price_spike_up 15m pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_168h tvl_drop 15m pool_window: trigger_count=8 trigger_rate=0.0044 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_168h volume_collapse 15m pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_168h abnormal_volume_spike 1h intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_168h exit_depth_drop 1h intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_168h pool_mark_gap / stale data 1h intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_168h price_spike_down 1h intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_168h price_spike_up 1h intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_168h tvl_drop 1h intent_window: trigger_count=26 trigger_rate=0.0192 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_168h volume_collapse 1h intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_168h abnormal_volume_spike 1h pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_168h exit_depth_drop 1h pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_168h pool_mark_gap / stale data 1h pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_168h price_spike_down 1h pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_168h price_spike_up 1h pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_168h tvl_drop 1h pool_window: trigger_count=46 trigger_rate=0.0252 tail_improve_p10=0.028144899065857598 tail_improve_p5=0.014350398963729472 signal_quality=WEAK
+- recent_168h volume_collapse 1h pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_168h abnormal_volume_spike 2h intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_168h exit_depth_drop 2h intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_168h pool_mark_gap / stale data 2h intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_168h price_spike_down 2h intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_168h price_spike_up 2h intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_168h tvl_drop 2h intent_window: trigger_count=50 trigger_rate=0.0370 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=WEAK
+- recent_168h volume_collapse 2h intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_168h abnormal_volume_spike 2h pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_168h exit_depth_drop 2h pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_168h pool_mark_gap / stale data 2h pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_168h price_spike_down 2h pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_168h price_spike_up 2h pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_168h tvl_drop 2h pool_window: trigger_count=91 trigger_rate=0.0499 tail_improve_p10=0.017197967897747857 tail_improve_p5=0.12458228211641864 signal_quality=WEAK
+- recent_168h volume_collapse 2h pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_168h abnormal_volume_spike 30m intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_168h exit_depth_drop 30m intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_168h pool_mark_gap / stale data 30m intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_168h price_spike_down 30m intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_168h price_spike_up 30m intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_168h tvl_drop 30m intent_window: trigger_count=9 trigger_rate=0.0067 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_168h volume_collapse 30m intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_168h abnormal_volume_spike 30m pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_168h exit_depth_drop 30m pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_168h pool_mark_gap / stale data 30m pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_168h price_spike_down 30m pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_168h price_spike_up 30m pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_168h tvl_drop 30m pool_window: trigger_count=23 trigger_rate=0.0126 tail_improve_p10=0.0033416420220733906 tail_improve_p5=0.0024471186530071742 signal_quality=INSUFFICIENT
+- recent_168h volume_collapse 30m pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_24h abnormal_volume_spike 15m intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_24h exit_depth_drop 15m intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_24h pool_mark_gap / stale data 15m intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_24h price_spike_down 15m intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_24h price_spike_up 15m intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_24h tvl_drop 15m intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_24h volume_collapse 15m intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_24h abnormal_volume_spike 15m pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_24h exit_depth_drop 15m pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_24h pool_mark_gap / stale data 15m pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_24h price_spike_down 15m pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_24h price_spike_up 15m pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_24h tvl_drop 15m pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_24h volume_collapse 15m pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_24h abnormal_volume_spike 1h intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_24h exit_depth_drop 1h intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_24h pool_mark_gap / stale data 1h intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_24h price_spike_down 1h intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_24h price_spike_up 1h intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_24h tvl_drop 1h intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_24h volume_collapse 1h intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_24h abnormal_volume_spike 1h pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_24h exit_depth_drop 1h pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_24h pool_mark_gap / stale data 1h pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_24h price_spike_down 1h pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_24h price_spike_up 1h pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_24h tvl_drop 1h pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_24h volume_collapse 1h pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_24h abnormal_volume_spike 2h intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_24h exit_depth_drop 2h intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_24h pool_mark_gap / stale data 2h intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_24h price_spike_down 2h intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_24h price_spike_up 2h intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_24h tvl_drop 2h intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_24h volume_collapse 2h intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_24h abnormal_volume_spike 2h pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_24h exit_depth_drop 2h pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_24h pool_mark_gap / stale data 2h pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_24h price_spike_down 2h pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_24h price_spike_up 2h pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_24h tvl_drop 2h pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_24h volume_collapse 2h pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_24h abnormal_volume_spike 30m intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_24h exit_depth_drop 30m intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_24h pool_mark_gap / stale data 30m intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_24h price_spike_down 30m intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_24h price_spike_up 30m intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_24h tvl_drop 30m intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_24h volume_collapse 30m intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_24h abnormal_volume_spike 30m pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_24h exit_depth_drop 30m pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_24h pool_mark_gap / stale data 30m pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_24h price_spike_down 30m pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_24h price_spike_up 30m pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_24h tvl_drop 30m pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_24h volume_collapse 30m pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_48h abnormal_volume_spike 15m intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_48h exit_depth_drop 15m intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_48h pool_mark_gap / stale data 15m intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_48h price_spike_down 15m intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_48h price_spike_up 15m intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_48h tvl_drop 15m intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_48h volume_collapse 15m intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_48h abnormal_volume_spike 15m pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_48h exit_depth_drop 15m pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_48h pool_mark_gap / stale data 15m pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_48h price_spike_down 15m pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_48h price_spike_up 15m pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_48h tvl_drop 15m pool_window: trigger_count=1 trigger_rate=0.0026 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_48h volume_collapse 15m pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_48h abnormal_volume_spike 1h intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_48h exit_depth_drop 1h intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_48h pool_mark_gap / stale data 1h intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_48h price_spike_down 1h intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_48h price_spike_up 1h intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_48h tvl_drop 1h intent_window: trigger_count=16 trigger_rate=0.0448 tail_improve_p10=-0.00012061412927266701 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_48h volume_collapse 1h intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_48h abnormal_volume_spike 1h pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_48h exit_depth_drop 1h pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_48h pool_mark_gap / stale data 1h pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_48h price_spike_down 1h pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_48h price_spike_up 1h pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_48h tvl_drop 1h pool_window: trigger_count=17 trigger_rate=0.0443 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_48h volume_collapse 1h pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_48h abnormal_volume_spike 2h intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_48h exit_depth_drop 2h intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_48h pool_mark_gap / stale data 2h intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_48h price_spike_down 2h intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_48h price_spike_up 2h intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_48h tvl_drop 2h intent_window: trigger_count=37 trigger_rate=0.1036 tail_improve_p10=-0.0003698813900001596 tail_improve_p5=-0.001370017434240367 signal_quality=WEAK
+- recent_48h volume_collapse 2h intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_48h abnormal_volume_spike 2h pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_48h exit_depth_drop 2h pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_48h pool_mark_gap / stale data 2h pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_48h price_spike_down 2h pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_48h price_spike_up 2h pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_48h tvl_drop 2h pool_window: trigger_count=37 trigger_rate=0.0964 tail_improve_p10=-0.011946208413458725 tail_improve_p5=0.054939475019592066 signal_quality=WEAK
+- recent_48h volume_collapse 2h pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_48h abnormal_volume_spike 30m intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_48h exit_depth_drop 30m intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_48h pool_mark_gap / stale data 30m intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_48h price_spike_down 30m intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_48h price_spike_up 30m intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_48h tvl_drop 30m intent_window: trigger_count=6 trigger_rate=0.0168 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_48h volume_collapse 30m intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_48h abnormal_volume_spike 30m pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_48h exit_depth_drop 30m pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_48h pool_mark_gap / stale data 30m pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_48h price_spike_down 30m pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_48h price_spike_up 30m pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_48h tvl_drop 30m pool_window: trigger_count=8 trigger_rate=0.0208 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_48h volume_collapse 30m pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_72h abnormal_volume_spike 15m intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_72h exit_depth_drop 15m intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_72h pool_mark_gap / stale data 15m intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_72h price_spike_down 15m intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_72h price_spike_up 15m intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_72h tvl_drop 15m intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_72h volume_collapse 15m intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_72h abnormal_volume_spike 15m pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_72h exit_depth_drop 15m pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_72h pool_mark_gap / stale data 15m pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_72h price_spike_down 15m pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_72h price_spike_up 15m pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_72h tvl_drop 15m pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_72h volume_collapse 15m pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_72h abnormal_volume_spike 1h intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_72h exit_depth_drop 1h intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_72h pool_mark_gap / stale data 1h intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_72h price_spike_down 1h intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_72h price_spike_up 1h intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_72h tvl_drop 1h intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_72h volume_collapse 1h intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_72h abnormal_volume_spike 1h pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_72h exit_depth_drop 1h pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_72h pool_mark_gap / stale data 1h pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_72h price_spike_down 1h pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_72h price_spike_up 1h pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_72h tvl_drop 1h pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_72h volume_collapse 1h pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_72h abnormal_volume_spike 2h intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_72h exit_depth_drop 2h intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_72h pool_mark_gap / stale data 2h intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_72h price_spike_down 2h intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_72h price_spike_up 2h intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_72h tvl_drop 2h intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_72h volume_collapse 2h intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_72h abnormal_volume_spike 2h pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_72h exit_depth_drop 2h pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_72h pool_mark_gap / stale data 2h pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_72h price_spike_down 2h pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_72h price_spike_up 2h pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_72h tvl_drop 2h pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_72h volume_collapse 2h pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_72h abnormal_volume_spike 30m intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_72h exit_depth_drop 30m intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_72h pool_mark_gap / stale data 30m intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_72h price_spike_down 30m intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_72h price_spike_up 30m intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_72h tvl_drop 30m intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_72h volume_collapse 30m intent_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_72h abnormal_volume_spike 30m pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_72h exit_depth_drop 30m pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_72h pool_mark_gap / stale data 30m pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_72h price_spike_down 30m pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_72h price_spike_up 30m pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_72h tvl_drop 30m pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT
+- recent_72h volume_collapse 30m pool_window: trigger_count=0 trigger_rate=0.0000 tail_improve_p10=0.0 tail_improve_p5=0.0 signal_quality=INSUFFICIENT

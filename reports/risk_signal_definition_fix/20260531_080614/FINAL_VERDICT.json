@@ -1,0 +1,22 @@
+{
+  "status": "WARN",
+  "stage": "RISK_SIGNAL_DEFINITION_FIX_V1",
+  "data_source": "vps_postgres",
+  "db_ready": true,
+  "tested_signal_count": 7,
+  "tested_combo_count": 16,
+  "best_signal_combo": "price_plus_exit_depth",
+  "best_horizon": "1h",
+  "best_proof_unit": "pool_window",
+  "tail_improved_after_fix": true,
+  "risk_exit_helpful_after_fix": false,
+  "quarantine_helpful": true,
+  "best_timing_mode": "quarantine_only",
+  "false_exit_rate": 0.028645833333333332,
+  "missed_profit_rate": 0.028645833333333332,
+  "recommended_signal_mode": "quarantine_first_price_volume_depth",
+  "edge_proven": "no",
+  "tiny_canary_candidate": "no",
+  "tiny_canary_allowed": "no",
+  "recommended_next_stage": "POOL_REGIME_CLASSIFIER_V1"
+}

@@ -1,0 +1,34 @@
+# Quarantine vs Exit Timing
+
+- recent_168h 15m intent_window: hold_tail=-0.017650107782074542 quarantine_tail=-0.017650107782074542 exit_tail=-0.017650107782074542 hybrid_tail=-0.017650107782074542 best_timing_mode=quarantine_only
+- recent_168h 15m pool_window: hold_tail=-0.01676422797585305 quarantine_tail=-0.01591348329244936 exit_tail=-0.01676422797585305 hybrid_tail=-0.01591348329244936 best_timing_mode=quarantine_only
+- recent_168h 1h intent_window: hold_tail=-0.01954181599786864 quarantine_tail=-0.016924062840033116 exit_tail=-0.01954181599786864 hybrid_tail=-0.016924062840033116 best_timing_mode=quarantine_only
+- recent_168h 1h pool_window: hold_tail=-0.2876195492331995 quarantine_tail=-0.2528169313014823 exit_tail=-0.2594746501673419 hybrid_tail=-0.2528169313014823 best_timing_mode=quarantine_only
+- recent_168h 2h intent_window: hold_tail=-0.021278177443804225 quarantine_tail=-0.018626734667194 exit_tail=-0.021278177443804225 hybrid_tail=-0.018626734667194 best_timing_mode=quarantine_only
+- recent_168h 2h pool_window: hold_tail=-0.6409071859143017 quarantine_tail=-0.5975834918287573 exit_tail=-0.6237092180165539 hybrid_tail=-0.5975834918287573 best_timing_mode=quarantine_only
+- recent_168h 30m intent_window: hold_tail=-0.017138191714124673 quarantine_tail=-0.01682085353914431 exit_tail=-0.017138191714124673 hybrid_tail=-0.01682085353914431 best_timing_mode=quarantine_only
+- recent_168h 30m pool_window: hold_tail=-0.11125046939591521 quarantine_tail=-0.09920277830471375 exit_tail=-0.10790882737384182 hybrid_tail=-0.09920277830471375 best_timing_mode=quarantine_only
+- recent_24h 15m intent_window: hold_tail=0.0005499732427693971 quarantine_tail=0.0005499732427693971 exit_tail=0.0005499732427693971 hybrid_tail=0.0005499732427693971 best_timing_mode=quarantine_only
+- recent_24h 15m pool_window: hold_tail=-0.00286126082657879 quarantine_tail=-0.00286126082657879 exit_tail=-0.00286126082657879 hybrid_tail=-0.00286126082657879 best_timing_mode=quarantine_only
+- recent_24h 1h intent_window: hold_tail=0.0017784702051955037 quarantine_tail=0.0017784702051955037 exit_tail=0.0017784702051955037 hybrid_tail=0.0017784702051955037 best_timing_mode=quarantine_only
+- recent_24h 1h pool_window: hold_tail=-0.04153192652399556 quarantine_tail=-0.04153192652399556 exit_tail=-0.04153192652399556 hybrid_tail=-0.04153192652399556 best_timing_mode=quarantine_only
+- recent_24h 2h intent_window: hold_tail=0.004022389305745833 quarantine_tail=0.004022389305745833 exit_tail=0.004022389305745833 hybrid_tail=0.004022389305745833 best_timing_mode=quarantine_only
+- recent_24h 2h pool_window: hold_tail=-0.17323414748712623 quarantine_tail=-0.17323414748712623 exit_tail=-0.17323414748712623 hybrid_tail=-0.17323414748712623 best_timing_mode=quarantine_only
+- recent_24h 30m intent_window: hold_tail=0.0007773597600788662 quarantine_tail=0.0007773597600788662 exit_tail=0.0007773597600788662 hybrid_tail=0.0007773597600788662 best_timing_mode=quarantine_only
+- recent_24h 30m pool_window: hold_tail=-0.012768857469854449 quarantine_tail=-0.012768857469854449 exit_tail=-0.012768857469854449 hybrid_tail=-0.012768857469854449 best_timing_mode=quarantine_only
+- recent_48h 15m intent_window: hold_tail=0.0014385390418141242 quarantine_tail=0.0014385390418141242 exit_tail=0.0014385390418141242 hybrid_tail=0.0014385390418141242 best_timing_mode=quarantine_only
+- recent_48h 15m pool_window: hold_tail=-0.0016006412936204004 quarantine_tail=-0.0016006412936204004 exit_tail=-0.0016006412936204004 hybrid_tail=-0.0016006412936204004 best_timing_mode=quarantine_only
+- recent_48h 1h intent_window: hold_tail=0.00416996692430871 quarantine_tail=0.0 exit_tail=0.004049352795036043 hybrid_tail=0.0 best_timing_mode=hold
+- recent_48h 1h pool_window: hold_tail=-0.40842082211722575 quarantine_tail=-0.27980738705815617 exit_tail=-0.40842082211722575 hybrid_tail=-0.27980738705815617 best_timing_mode=quarantine_only
+- recent_48h 2h intent_window: hold_tail=0.008950015282351842 quarantine_tail=0.0 exit_tail=0.008580133892351682 hybrid_tail=0.0 best_timing_mode=hold
+- recent_48h 2h pool_window: hold_tail=-0.6786761254600302 quarantine_tail=-0.5506940611528042 exit_tail=-0.6906223338734889 hybrid_tail=-0.5506940611528042 best_timing_mode=quarantine_only
+- recent_48h 30m intent_window: hold_tail=0.002393530659020371 quarantine_tail=0.0 exit_tail=0.002393530659020371 hybrid_tail=0.0 best_timing_mode=exit_only
+- recent_48h 30m pool_window: hold_tail=-0.08533931332381811 quarantine_tail=-0.05176834570227952 exit_tail=-0.08533931332381811 hybrid_tail=-0.05176834570227952 best_timing_mode=quarantine_only
+- recent_72h 15m intent_window: hold_tail=-0.011791022684917607 quarantine_tail=-0.011791022684917607 exit_tail=-0.011791022684917607 hybrid_tail=-0.011791022684917607 best_timing_mode=quarantine_only
+- recent_72h 15m pool_window: hold_tail=-0.05763642029926805 quarantine_tail=-0.05763642029926805 exit_tail=-0.05763642029926805 hybrid_tail=-0.05763642029926805 best_timing_mode=quarantine_only
+- recent_72h 1h intent_window: hold_tail=-0.01127048055815294 quarantine_tail=-0.01127048055815294 exit_tail=-0.01127048055815294 hybrid_tail=-0.01127048055815294 best_timing_mode=quarantine_only
+- recent_72h 1h pool_window: hold_tail=-0.29511448749555924 quarantine_tail=-0.29511448749555924 exit_tail=-0.29511448749555924 hybrid_tail=-0.29511448749555924 best_timing_mode=quarantine_only
+- recent_72h 2h intent_window: hold_tail=-0.010643634614012853 quarantine_tail=-0.010643634614012853 exit_tail=-0.010643634614012853 hybrid_tail=-0.010643634614012853 best_timing_mode=quarantine_only
+- recent_72h 2h pool_window: hold_tail=-0.506520668752117 quarantine_tail=-0.506520668752117 exit_tail=-0.506520668752117 hybrid_tail=-0.506520668752117 best_timing_mode=quarantine_only
+- recent_72h 30m intent_window: hold_tail=-0.011215457792388861 quarantine_tail=-0.011215457792388861 exit_tail=-0.011215457792388861 hybrid_tail=-0.011215457792388861 best_timing_mode=quarantine_only
+- recent_72h 30m pool_window: hold_tail=-0.19400430373186153 quarantine_tail=-0.19400430373186153 exit_tail=-0.19400430373186153 hybrid_tail=-0.19400430373186153 best_timing_mode=quarantine_only

@@ -1,0 +1,22 @@
+{
+  "best_combo": "",
+  "best_horizon": "",
+  "best_proof_unit": "",
+  "sample_count": 0,
+  "hold_p10": null,
+  "hold_p5": null,
+  "hold_p1": null,
+  "v2_p10": null,
+  "v2_p5": null,
+  "v2_p1": null,
+  "tail_improve_p10": null,
+  "tail_improve_p5": null,
+  "tail_improve_p1": null,
+  "false_exit_rate": null,
+  "missed_profit_rate": null,
+  "no_entry_quarantine_helpful": false,
+  "risk_exit_helpful": false,
+  "hybrid_helpful": false,
+  "data_quality_status": "insufficient",
+  "preview_verdict": "FIX_DATA"
+}
