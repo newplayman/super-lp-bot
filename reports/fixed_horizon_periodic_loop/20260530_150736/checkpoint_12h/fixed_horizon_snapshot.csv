@@ -1,0 +1,4 @@
+horizon,completed_count,position_count,invalid_count,future_position_mark_coverage,p10_net_pnl_pct,p5_net_pnl_pct,p1_net_pnl_pct,top20_vs_bottom20_signal,worst_position_contribution,worst_pool_contribution,sample_sufficiency
+6h,41,70,29,0.6285714285714286,0.021267795342581053,7.133237845380336e-05,-3.7968926830533434,better,1.0,1.0,EARLY
+12h,40,70,30,0.6,-7.496623900508085,-7.732506535753577,-8.218048987367093,worse,0.13091246378690335,0.8241980080963308,EARLY
+24h,8,70,62,0.14285714285714285,0.007943368776594184,0.007943368776594184,0.007943368776594184,worse,,,INSUFFICIENT

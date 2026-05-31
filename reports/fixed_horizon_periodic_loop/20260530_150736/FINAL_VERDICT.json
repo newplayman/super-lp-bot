@@ -1,0 +1,23 @@
+{
+  "status": "WARN",
+  "stage": "FIXED_HORIZON_PERIODIC_OOS_MONITOR_12H_LOOP_V1",
+  "canonical_proof": "v2_strict_fixed_horizon",
+  "checkpoint_count": 3,
+  "completed_6h_final": 41,
+  "completed_12h_final": 40,
+  "completed_24h_final": 8,
+  "completed_6h_delta_from_baseline": -1,
+  "completed_12h_delta_from_baseline": 0,
+  "completed_24h_delta_from_baseline": 0,
+  "hypothesis_review_ready": false,
+  "trend_status": "INSUFFICIENT",
+  "root_cause": [
+    "HORIZONS_NOT_MATURE",
+    "FUTURE_MARK_COVERAGE_LOW",
+    "SHADOW_POSITION_REUSE_DOMINANT"
+  ],
+  "edge_proven": "no",
+  "tiny_canary_candidate": "no",
+  "tiny_canary_allowed": "no",
+  "recommended_next_stage": "FIXED_HORIZON_CONTINUE_OOS_ACCUMULATION"
+}

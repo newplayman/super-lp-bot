@@ -1,0 +1,20 @@
+{
+  "inputs": {
+    "reports/fixed_horizon_policy/20260530_145208/FINAL_VERDICT.json": true,
+    "reports/fixed_horizon_policy/20260530_145208/FIXED_HORIZON_PROOF_POLICY_FREEZE_CN.md": true,
+    "reports/fixed_horizon_policy/20260530_145208/FIXED_HORIZON_OOS_ACCUMULATION_PLAN_CN.md": true,
+    "reports/materializer_semantics/20260530_143120/FINAL_VERDICT.json": true,
+    "reports/fixed_horizon_oos/20260530_140551/FINAL_VERDICT.json": true,
+    "reports/shadow_health/20260530_142032/FINAL_VERDICT.json": true
+  },
+  "canonical_proof_frozen": true,
+  "canonical_proof": "v2_strict_fixed_horizon",
+  "baseline_completed": {
+    "6h": 42,
+    "12h": 40,
+    "24h": 8
+  },
+  "tier_b_paused": true,
+  "tier_c_frozen": true,
+  "edge_hard_judgment_in_this_run": false
+}
