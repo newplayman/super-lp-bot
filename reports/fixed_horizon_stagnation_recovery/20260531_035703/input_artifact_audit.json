@@ -1,0 +1,139 @@
+{
+  "run_id": "20260531_035703",
+  "audit_time_utc": "2026-05-31T04:09:48.364648+00:00",
+  "failed_run_id": "20260531_034610",
+  "failed_dir": "reports/fixed_horizon_stagnation/20260531_034610",
+  "periodic_final": {
+    "status": "WARN",
+    "stage": "FIXED_HORIZON_24H_OOS_ACCUMULATION_MONITOR_V1",
+    "canonical_proof": "v2_strict_fixed_horizon",
+    "position_count_6h": 68,
+    "position_count_12h": 68,
+    "position_count_24h": 68,
+    "completed_6h_count": 42,
+    "completed_12h_count": 40,
+    "completed_24h_count": 8,
+    "fixed_horizon_gate": "INSUFFICIENT",
+    "edge_proven": "no",
+    "tiny_canary_candidate": "no",
+    "tiny_canary_allowed": "no",
+    "trend_status": "INSUFFICIENT",
+    "root_cause": [
+      "HORIZONS_NOT_MATURE",
+      "FUTURE_MARK_COVERAGE_LOW",
+      "SHADOW_POSITION_REUSE_DOMINANT",
+      "TAIL_NEGATIVE_SEVERE"
+    ],
+    "recommended_next_stage": "FIXED_HORIZON_EXTEND_SHADOW_RUNTIME"
+  },
+  "review_gate": {
+    "stage": "FIXED_HORIZON_PERIODIC_OOS_MONITOR_24H_MONITOR_V1",
+    "canonical_proof": "v2_strict_fixed_horizon",
+    "completed_6h": 42,
+    "completed_12h": 40,
+    "completed_24h": 8,
+    "future_mark_coverage_6h": 0.6176470588235294,
+    "future_mark_coverage_12h": 0.5882352941176471,
+    "future_mark_coverage_24h": 0.11764705882352941,
+    "p10_6h": 0.0214157416986751,
+    "p10_12h": -7.49662390050808,
+    "p10_24h": 0.00794336877659418,
+    "p5_6h": 7.13323784538034e-05,
+    "p5_12h": -7.73250653575358,
+    "p5_24h": 0.00794336877659418,
+    "better_horizon_count_at_24h": 1,
+    "worse_horizon_count_at_24h": 2,
+    "tail_concentration_issues": {
+      "worst_position_contributions": {
+        "6h": 1.0,
+        "12h": 0.15088595356053772,
+        "24h": null
+      },
+      "worst_pool_contributions": {
+        "6h": 1.0,
+        "12h": 0.8215449379272465,
+        "24h": null
+      }
+    },
+    "sample_sufficiency_6h": "EARLY",
+    "sample_sufficiency_12h": "EARLY",
+    "sample_sufficiency_24h": "INSUFFICIENT",
+    "hypothesis_review_ready": false,
+    "trend_status": "INSUFFICIENT"
+  },
+  "root_cause": {
+    "root_cause": [
+      "HORIZONS_NOT_MATURE",
+      "FUTURE_MARK_COVERAGE_LOW",
+      "SHADOW_POSITION_REUSE_DOMINANT",
+      "TAIL_NEGATIVE_SEVERE"
+    ],
+    "completed_delta": {
+      "6h": 0,
+      "12h": 0,
+      "24h": 0
+    },
+    "future_mark_coverage": {
+      "6h": 0.6176470588235294,
+      "12h": 0.5882352941176471,
+      "24h": 0.11764705882352941
+    },
+    "tail_concentration_issues": {
+      "worst_position_contribution": {
+        "6h": 1.0,
+        "12h": 0.15088595356053772,
+        "24h": null
+      },
+      "worst_pool_contribution": {
+        "6h": 1.0,
+        "12h": 0.8215449379272465,
+        "24h": null
+      }
+    },
+    "window_status": {
+      "recent_24h_new_position_count": 2,
+      "recent_48h_new_position_count": 10
+    },
+    "shadow_daemon_status": "healthy",
+    "db_writes_freshness": "assumed_fresh_from prior shadow checks"
+  },
+  "policy": {
+    "status": "PASS",
+    "stage": "FIXED_HORIZON_PROOF_POLICY_FREEZE_AND_OOS_ACCUMULATION_PLAN_V1",
+    "canonical_proof": "v2_strict_fixed_horizon",
+    "v3_clean_adds_samples": false,
+    "pool_mark_only_allowed_in_clean_proof": false,
+    "terminal_before_target_allowed_in_clean_proof": false,
+    "v3_counterfactual_diagnostic_only": true,
+    "completed_6h_current": 42,
+    "completed_12h_current": 40,
+    "completed_24h_current": 8,
+    "hypothesis_review_ready": false,
+    "edge_proven": "no",
+    "tiny_canary_candidate": "no",
+    "tiny_canary_allowed": "no",
+    "recommended_next_stage": "FIXED_HORIZON_CONTINUE_OOS_ACCUMULATION"
+  },
+  "shadow_health": {
+    "status": "PASS",
+    "stage": "SHADOW_INTENT_POSITION_AND_MARK_COVERAGE_AUDIT_V1",
+    "data_source": "vps_postgres",
+    "db_ready": true,
+    "intent_open_rows_last_24h": 5619,
+    "new_positions_last_24h": 6,
+    "intent_to_position_root_cause": [
+      "POSITION_REUSE_EXPECTED",
+      "INTENT_OPEN_SEMANTIC_MISLABELED"
+    ],
+    "future_mark_root_cause": [
+      "POSITION_TERMINAL_BEFORE_TARGET",
+      "POOL_MARK_ONLY",
+      "HORIZON_NOT_MATURE"
+    ],
+    "materializer_semantics_status": "OVER_STRICT_RESEARCH_FALLBACK_POSSIBLE",
+    "recommended_next_stage": "MATERIALIZER_SEMANTICS_FIX",
+    "edge_proven": "no",
+    "tiny_canary_candidate": "no",
+    "tiny_canary_allowed": "no"
+  }
+}

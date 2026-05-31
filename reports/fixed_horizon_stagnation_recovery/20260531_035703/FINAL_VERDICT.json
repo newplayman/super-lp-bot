@@ -1,0 +1,20 @@
+{
+  "status": "WARN",
+  "stage": "FIXED_HORIZON_DB_ENV_RECOVERY_AND_STAGNATION_AUDIT_RESUME_V1",
+  "db_env_recovery_status": "PASS",
+  "db_ready": true,
+  "canonical_proof": "v2_strict_fixed_horizon",
+  "completed_6h": 42,
+  "completed_12h": 40,
+  "completed_24h": 8,
+  "completed_growth_status": "GROWTH_STALLED",
+  "new_position_generation_status": "LOW_NEW_POSITION_FLOW",
+  "position_reuse_status": "REUSE_DOMINANT",
+  "future_mark_coverage_status": "LOW_FUTURE_MARK_COVERAGE",
+  "tail_risk_status": "12H_FAIL_24H_INSUFFICIENT",
+  "hypothesis_review_ready": false,
+  "edge_proven": "no",
+  "tiny_canary_candidate": "no",
+  "tiny_canary_allowed": "no",
+  "recommended_next_stage": "SHADOW_MARK_COVERAGE_FIX"
+}

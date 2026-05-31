@@ -1,0 +1,30 @@
+{
+  "cwd": "/opt/lpbot/lp-bot-v3-origin-check",
+  "files": {
+    ".runtime.shadow.env": {
+      "exists": true,
+      "mode": "0o600",
+      "postgres_dsn_present": false,
+      "database_url_present": true,
+      "pghost_present": false,
+      "pgdatabase_present": false,
+      "pguser_present": false,
+      "supabase_present": false
+    },
+    ".env": {
+      "exists": false
+    },
+    ".env.chain": {
+      "exists": false
+    },
+    ".env.local": {
+      "exists": false
+    }
+  },
+  "systemd_environment_file_references_found": true,
+  "running_process_env_has_db_vars": false,
+  "process_env_status": "permission_denied",
+  "systemd_reference_count": 4,
+  "lpbot_shadow_pid_found": true,
+  "likely_dsn_source": "runtime_env_file"
+}

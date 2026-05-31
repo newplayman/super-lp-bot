@@ -1,0 +1,10 @@
+{
+  "selected_decision": "SHADOW_MARK_COVERAGE_FIX",
+  "completed_growth_status": "GROWTH_STALLED",
+  "new_position_generation_status": "LOW_NEW_POSITION_FLOW",
+  "position_reuse_status": "REUSE_DOMINANT",
+  "future_mark_coverage_status": "LOW_FUTURE_MARK_COVERAGE",
+  "tail_risk_status": "12H_FAIL_24H_INSUFFICIENT",
+  "hypothesis_review_ready": false,
+  "status": "WARN"
+}

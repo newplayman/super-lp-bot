@@ -1,0 +1,9 @@
+{
+  "runtime_env_created_or_reused": true,
+  "runtime_env_readable": true,
+  "postgres_dsn_present": false,
+  "database_url_present": true,
+  "secret_leaked": "no",
+  "recovery_status": "PASS",
+  "recovery_action": "reused_existing_runtime_env"
+}

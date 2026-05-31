@@ -1,0 +1,3 @@
+run_id,created_at,completed_6h,invalid_6h,no_future_mark_6h,terminal_before_target_6h,pool_mark_only_6h,strict_future_mark_6h,completed_12h,invalid_12h,no_future_mark_12h,terminal_before_target_12h,pool_mark_only_12h,strict_future_mark_12h,completed_24h,invalid_24h,no_future_mark_24h,terminal_before_target_24h,pool_mark_only_24h,strict_future_mark_24h
+20260530_140551,2026-05-30 14:06:54.987561+00:00,42,26,26,0,0,42,40,28,28,0,0,40,8,60,60,0,0,8
+20260530_134500,2026-05-30 13:55:25.215534+00:00,42,26,26,0,0,42,40,28,28,0,0,40,8,60,60,0,0,8
