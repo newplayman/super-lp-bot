@@ -1,0 +1,13 @@
+window,horizon,sample_count,valid_count,invalid_count,median_net_pnl_pct,p10,p5,p1,win_rate,top20_by_score_count,bottom20_by_score_count,top20_median,bottom20_median,top20_p10,bottom20_p10,top20_vs_bottom20_signal,worst_pool_contribution,worst_dedup_key_contribution,duplicate_risk_status,sample_sufficiency
+last_24h,6h,100,0,100,,,,,,0,0,,,,,insufficient,,,FAIL,PRELIMINARY
+last_24h,12h,100,0,100,,,,,,0,0,,,,,insufficient,,,FAIL,PRELIMINARY
+last_24h,24h,100,0,100,,,,,,0,0,,,,,insufficient,,,FAIL,PRELIMINARY
+last_48h,6h,186,0,186,,,,,,0,0,,,,,insufficient,,,FAIL,PRELIMINARY
+last_48h,12h,186,0,186,,,,,,0,0,,,,,insufficient,,,FAIL,PRELIMINARY
+last_48h,24h,186,0,186,,,,,,0,0,,,,,insufficient,,,FAIL,PRELIMINARY
+last_72h,6h,283,0,283,,,,,,0,0,,,,,insufficient,,,FAIL,PRELIMINARY
+last_72h,12h,283,0,283,,,,,,0,0,,,,,insufficient,,,FAIL,PRELIMINARY
+last_72h,24h,283,0,283,,,,,,0,0,,,,,insufficient,,,FAIL,PRELIMINARY
+last_7d,6h,623,0,623,,,,,,0,0,,,,,insufficient,,,FAIL,USABLE
+last_7d,12h,623,0,623,,,,,,0,0,,,,,insufficient,,,FAIL,USABLE
+last_7d,24h,623,0,623,,,,,,0,0,,,,,insufficient,,,FAIL,USABLE

@@ -1,0 +1,13 @@
+window,horizon,source_trace_count_distribution,max_traces_per_dedup_key,top_10_dedup_keys_by_trace_count,top_pool_contribution,top_position_contribution,one_position_dominates,one_pool_dominates,repeated_ticks_inflate_sample_count,dedup_policy_prevents_decision_trace_duplication,duplication_control_status
+last_24h,6h,"18,18,18,18,42,42,42,42,60,60,60,60,60,60,60,60,60,60,60,60",60,,,,no,no,yes,no,FAIL
+last_24h,12h,"18,18,18,18,42,42,42,42,60,60,60,60,60,60,60,60,60,60,60,60",60,,,,no,no,yes,no,FAIL
+last_24h,24h,"18,18,18,18,42,42,42,42,60,60,60,60,60,60,60,60,60,60,60,60",60,,,,no,no,yes,no,FAIL
+last_48h,6h,"5,12,18,18,18,42,42,42,42,59,59,59,60,60,60,60,60,60,60,60",60,,,,no,no,yes,no,FAIL
+last_48h,12h,"5,12,18,18,18,42,42,42,42,59,59,59,60,60,60,60,60,60,60,60",60,,,,no,no,yes,no,FAIL
+last_48h,24h,"5,12,18,18,18,42,42,42,42,59,59,59,60,60,60,60,60,60,60,60",60,,,,no,no,yes,no,FAIL
+last_72h,6h,"5,12,18,18,18,18,18,42,42,42,42,59,59,59,60,60,60,60,60,60",60,,,,no,no,yes,no,FAIL
+last_72h,12h,"5,12,18,18,18,18,18,42,42,42,42,59,59,59,60,60,60,60,60,60",60,,,,no,no,yes,no,FAIL
+last_72h,24h,"5,12,18,18,18,18,18,42,42,42,42,59,59,59,60,60,60,60,60,60",60,,,,no,no,yes,no,FAIL
+last_7d,6h,"5,12,14,14,15,15,15,15,15,15,17,17,17,17,17,17,18,37,37,37",60,,,,no,no,yes,no,FAIL
+last_7d,12h,"5,12,14,14,15,15,15,15,15,15,17,17,17,17,17,17,18,37,37,37",60,,,,no,no,yes,no,FAIL
+last_7d,24h,"5,12,14,14,15,15,15,15,15,15,17,17,17,17,17,17,18,37,37,37",60,,,,no,no,yes,no,FAIL

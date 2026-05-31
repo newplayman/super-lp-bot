@@ -1,0 +1,13 @@
+window,horizon,raw_intent_rows,deduped_intent_count,valid_intent_lifecycle_count,invalid_count,entry_value_trusted_count,future_pool_mark_exists_count,trace_compression_ratio,invalid_reason_distribution,data_quality_status_distribution,top_duplicate_source_pool
+last_24h,6h,5760,100,0,100,0,76,57.6,{'missing_entry_notional': 100},{'invalid': 100},0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38
+last_24h,12h,5760,100,0,100,0,52,57.6,{'missing_entry_notional': 100},{'invalid': 100},0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38
+last_24h,24h,5760,100,0,100,0,0,57.6,{'missing_entry_notional': 100},{'invalid': 100},0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38
+last_48h,6h,10856,186,0,186,0,162,58.365591397849464,{'missing_entry_notional': 186},{'invalid': 186},0xb2cc224c1c9fee385f8ad6a55b4d94e92359dc59
+last_48h,12h,10856,186,0,186,0,138,58.365591397849464,{'missing_entry_notional': 186},{'invalid': 186},0xb2cc224c1c9fee385f8ad6a55b4d94e92359dc59
+last_48h,24h,10856,186,0,186,0,90,58.365591397849464,{'missing_entry_notional': 186},{'invalid': 186},0xb2cc224c1c9fee385f8ad6a55b4d94e92359dc59
+last_72h,6h,16592,283,0,283,0,259,58.628975265017665,{'missing_entry_notional': 283},{'invalid': 283},0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38
+last_72h,12h,16592,283,0,283,0,235,58.628975265017665,{'missing_entry_notional': 283},{'invalid': 283},0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38
+last_72h,24h,16592,283,0,283,0,187,58.628975265017665,{'missing_entry_notional': 283},{'invalid': 283},0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38
+last_7d,6h,36146,623,0,623,0,593,58.01926163723917,{'missing_entry_notional': 623},{'invalid': 623},0xb2cc224c1c9fee385f8ad6a55b4d94e92359dc59
+last_7d,12h,36146,623,0,623,0,562,58.01926163723917,{'missing_entry_notional': 623},{'invalid': 623},0xb2cc224c1c9fee385f8ad6a55b4d94e92359dc59
+last_7d,24h,36146,623,0,623,0,500,58.01926163723917,{'missing_entry_notional': 623},{'invalid': 623},0xb2cc224c1c9fee385f8ad6a55b4d94e92359dc59

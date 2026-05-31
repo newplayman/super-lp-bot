@@ -1,0 +1,22 @@
+# ARTIFACT_INDEX
+
+- INPUT_ARTIFACT_AUDIT_CN.md
+- input_artifact_audit.json
+- VPS_DB_QUICK_CHECK_CN.md
+- INTENT_LIFECYCLE_DEDUP_POLICY_CN.md
+- intent_lifecycle_dedup_policy.json
+- INTENT_LIFECYCLE_SCHEMA_CN.md
+- intent_lifecycle_schema.json
+- INTENT_LIFECYCLE_MATERIALIZATION_CN.md
+- intent_lifecycle_materialization_counts.csv
+- INTENT_LIFECYCLE_PROOF_REPORT_CN.md
+- intent_lifecycle_proof_report.csv
+- INTENT_LIFECYCLE_ANTI_DUPLICATION_AUDIT_CN.md
+- intent_lifecycle_anti_duplication_audit.csv
+- INTENT_VS_POSITION_LIFECYCLE_COMPARISON_CN.md
+- intent_vs_position_lifecycle_comparison.csv
+- INTENT_LIFECYCLE_NEXT_STAGE_DECISION_CN.md
+- intent_lifecycle_next_stage_decision.json
+- FINAL_VERDICT.json
+- ONEPAGE_CN.md
+- intent_lifecycle_materializer_v1_readonly.py

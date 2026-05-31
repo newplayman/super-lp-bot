@@ -1,0 +1,49 @@
+{
+  "primary_dedup_policy": "pool_time_bucket_1h",
+  "policies": [
+    {
+      "dedup_key_name": "pool_time_bucket_15m",
+      "raw_intent_rows": 36146,
+      "deduped_intent_count": 2448,
+      "compression_ratio": 14.765522875816993,
+      "duplicate_risk": "medium",
+      "sample_size": 2448,
+      "expected_bias": "higher_repeat_tick_risk",
+      "whether_avoids_decision_trace_duplication": "yes",
+      "recommended": "no"
+    },
+    {
+      "dedup_key_name": "pool_time_bucket_1h",
+      "raw_intent_rows": 36146,
+      "deduped_intent_count": 623,
+      "compression_ratio": 58.01926163723917,
+      "duplicate_risk": "low",
+      "sample_size": 623,
+      "expected_bias": "moderate_bucketing_bias",
+      "whether_avoids_decision_trace_duplication": "yes",
+      "recommended": "yes"
+    },
+    {
+      "dedup_key_name": "pool_score_event",
+      "raw_intent_rows": 36146,
+      "deduped_intent_count": 9,
+      "compression_ratio": 4016.222222222222,
+      "duplicate_risk": "medium",
+      "sample_size": 9,
+      "expected_bias": "score_event_repetition",
+      "whether_avoids_decision_trace_duplication": "no",
+      "recommended": "no"
+    },
+    {
+      "dedup_key_name": "position_reuse_session",
+      "raw_intent_rows": 36146,
+      "deduped_intent_count": 185,
+      "compression_ratio": 195.38378378378377,
+      "duplicate_risk": "high",
+      "sample_size": 185,
+      "expected_bias": "reuse_session_depends_on_position",
+      "whether_avoids_decision_trace_duplication": "no",
+      "recommended": "no"
+    }
+  ]
+}

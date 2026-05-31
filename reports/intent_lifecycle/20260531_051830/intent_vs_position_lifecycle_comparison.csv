@@ -1,0 +1,4 @@
+horizon,position_lifecycle_sample_count,intent_lifecycle_sample_count,position_lifecycle_tail_risk,intent_lifecycle_tail_risk,position_lifecycle_signal,intent_lifecycle_signal,sample_growth_rate,data_quality,bias_risk
+6h,42,623,WARN,FAIL,better,insufficient,89.0,research_only_pool_mark,bucketed_intent_counterfactual
+12h,40,623,FAIL,FAIL,worse,insufficient,89.0,research_only_pool_mark,bucketed_intent_counterfactual
+24h,8,623,INSUFFICIENT,FAIL,worse,insufficient,89.0,research_only_pool_mark,bucketed_intent_counterfactual

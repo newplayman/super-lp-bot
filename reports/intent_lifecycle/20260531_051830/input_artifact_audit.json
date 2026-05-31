@@ -1,0 +1,42 @@
+{
+  "run_id": "20260531_051830",
+  "audit_time_utc": "2026-05-31T05:42:25.511756+00:00",
+  "inputs": [
+    {
+      "path": "reports/position_reuse_review/20260531_050614/FINAL_VERDICT.json",
+      "exists": true
+    },
+    {
+      "path": "reports/position_reuse_review/20260531_050614/POSITION_REUSE_POLICY_DECISION_CN.md",
+      "exists": true
+    },
+    {
+      "path": "reports/position_reuse_review/20260531_050614/INTENT_OPEN_REUSE_RATIO_AUDIT_CN.md",
+      "exists": true
+    },
+    {
+      "path": "reports/position_reuse_review/20260531_050614/intent_open_reuse_ratio_audit.csv",
+      "exists": true
+    },
+    {
+      "path": "reports/position_reuse_review/20260531_050614/RESEARCH_INTENT_LIFECYCLE_FEASIBILITY_CN.md",
+      "exists": true
+    },
+    {
+      "path": "reports/position_reuse_review/20260531_050614/research_intent_lifecycle_feasibility.csv",
+      "exists": true
+    },
+    {
+      "path": "reports/materializer_classification/20260531_044242/FINAL_VERDICT.json",
+      "exists": true
+    },
+    {
+      "path": "reports/fixed_horizon_policy/20260530_145208/FINAL_VERDICT.json",
+      "exists": true
+    }
+  ],
+  "position_lifecycle_oos_not_viable": true,
+  "intent_lifecycle_feasible": true,
+  "canonical_proof_is_v2_strict_fixed_horizon": true,
+  "edge_proven": "no"
+}

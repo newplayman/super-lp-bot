@@ -1,0 +1,6 @@
+{
+  "recommended_next_stage": "INTENT_LIFECYCLE_DATA_QUALITY_FIX",
+  "duplication_control_status": "FAIL",
+  "intent_lifecycle_sample_sufficiency": "USABLE",
+  "intent_lifecycle_signal_status": "insufficient"
+}
