@@ -1,0 +1,4 @@
+horizon,total_positions,completed_strict_future_mark_count,no_future_mark_count,terminal_before_target_count,horizon_not_mature_count,pool_mark_only_count,active_at_target_but_no_future_mark_count,terminal_before_target_but_labeled_no_future_mark_count,pool_mark_exists_at_target_count,position_mark_exists_before_target_count,position_mark_exists_after_target_count,nearest_position_mark_distance_p50_seconds,nearest_position_mark_distance_p90_seconds,nearest_position_mark_distance_p99_seconds,nearest_pool_mark_distance_p50_seconds,nearest_pool_mark_distance_p90_seconds,nearest_pool_mark_distance_p99_seconds
+12h,68,42,28,26,0,0,0,26,57,68,42,22,79,24948,104,133288,185821
+24h,68,10,60,57,1,0,0,57,54,68,10,14,36,36,51,90088,142621
+6h,68,43,26,25,0,0,0,25,60,68,43,22,119,23538,21681,154888,207421

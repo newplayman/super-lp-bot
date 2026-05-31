@@ -1,0 +1,4 @@
+horizon,row_count,clean_proof_eligible_count,counterfactual_only_count,mark_coverage_gap_candidate_count,class_completed_strict_future_mark,class_terminal_before_target
+12h,68,42,0,0,42,26
+24h,68,10,0,0,10,57
+6h,68,43,0,0,43,25

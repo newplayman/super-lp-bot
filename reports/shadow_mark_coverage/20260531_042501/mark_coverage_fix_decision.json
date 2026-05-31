@@ -1,0 +1,7 @@
+{
+  "mark_worker_fix_needed": false,
+  "materializer_classification_fix_needed": true,
+  "position_reuse_policy_review_needed": false,
+  "fixed_horizon_stop_research_candidate": false,
+  "recommended_next_stage": "MATERIALIZER_INVALID_REASON_CLASSIFICATION_FIX"
+}

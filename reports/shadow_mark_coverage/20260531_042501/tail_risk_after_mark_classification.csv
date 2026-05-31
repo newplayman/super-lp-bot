@@ -1,0 +1,4 @@
+horizon,canonical_completed_count,clean_proof_eligible_after_classification,terminal_before_target_excluded_count,counterfactual_only_count,canonical_p10,canonical_p5,canonical_p1,counterfactual_p10,counterfactual_p5,counterfactual_p1,negative_tail_status,interpretation
+12h,40,42,26,0,-7.49662390050808,-7.73250653575358,-8.21804898736709,,,,FAIL,counterfactual_not_edge_proof
+24h,8,10,57,0,0.00794336877659418,0.00794336877659418,0.00794336877659418,,,,INSUFFICIENT,counterfactual_not_edge_proof
+6h,42,43,25,0,0.0214157416986751,7.13323784538034e-05,-3.79689268305334,,,,WARN,counterfactual_not_edge_proof
