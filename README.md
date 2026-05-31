@@ -14,6 +14,13 @@
 
 Phase 0 — 历史回测 + 全套测试基础设施 + 代码骨架。
 
+## Current Research Status
+
+- LP strategy research is currently frozen.
+- No live/canary/paper execution is allowed.
+- See `/Users/bendu/lp-bot/v3/docs/LPBOT_RESEARCH_STATUS_CN.md`.
+- Latest final freeze: `/Users/bendu/lp-bot/v3/reports/final_freeze/20260531_124000/FINAL_VERDICT.json`.
+
 ## 快速命令
 
 ```bash

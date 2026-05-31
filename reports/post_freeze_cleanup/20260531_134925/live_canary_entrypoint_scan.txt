@@ -1,0 +1,303 @@
+docs/TIER_C_SHADOW_RESEARCH_PHASE_0_1_CN.md:8:- tiny_canary_allowed: no
+docs/runbooks/base-canary-ops.md:6:- 把 Base canary 的“检查、执行、观测、退出”收成固定入口
+docs/runbooks/base-canary-ops.md:12:- 已存在 `.env.canary`
+docs/runbooks/base-canary-ops.md:13:- 二进制可执行：`./bin/lpbot-live`
+docs/runbooks/base-canary-ops.md:14:- 配置文件默认：`configs/config.canary.toml`
+docs/runbooks/base-canary-ops.md:18:- `.env.canary`
+docs/runbooks/base-canary-ops.md:25:scripts/canary_readiness_report.sh
+docs/runbooks/base-canary-ops.md:31:- 运行 `--canary-preflight`
+docs/runbooks/base-canary-ops.md:33:- 结束后直接打印最近 canary event / open position / 可选 exit preflight 摘要
+docs/runbooks/base-canary-ops.md:40:scripts/canary_readiness_report.sh
+docs/runbooks/base-canary-ops.md:43:## 3. 跑一轮 Base canary 闭环
+docs/runbooks/base-canary-ops.md:49:scripts/canary_cycle.sh
+docs/runbooks/base-canary-ops.md:66:scripts/canary_cycle.sh
+docs/runbooks/base-canary-ops.md:75:./bin/lpbot-live --config=configs/config.canary.toml --canary-exit --token-id=<token_id>
+docs/runbooks/base-canary-ops.md:81:./bin/lpbot-live --config=configs/config.canary.toml --canary-exit-preflight --token-id=<token_id>
+docs/runbooks/base-canary-ops.md:92:scripts/canary_profitability_evidence.sh
+docs/runbooks/base-canary-ops.md:102:./scripts/canary_profitability_evidence.sh
+docs/runbooks/base-canary-ops.md:110:- 预估/关闭相关 tx 与最新事件
+docs/runbooks/base-canary-ops.md:114:`scripts/canary_cycle.sh` 默认会自动执行一次 `scripts/canary_profitability_evidence.sh`（窗口默认 168 小时）。
+docs/runbooks/base-canary-ops.md:128:- `base_canary.opened / closed`
+docs/runbooks/base-canary-ops.md:129:- `base_canary.active_token_id`
+docs/runbooks/base-canary-ops.md:140:- `canary_preflight`
+docs/runbooks/base-canary-ops.md:141:- `canary_prepare`
+docs/runbooks/base-canary-ops.md:142:- `canary_mint`
+docs/runbooks/base-canary-ops.md:153:现在 live canary-safe 路径会把失败状态写成：
+docs/runbooks/base-canary-ops.md:164:- 安全 readiness：`scripts/canary_readiness_report.sh`
+docs/runbooks/base-canary-ops.md:165:- 闭环执行：`scripts/canary_cycle.sh`
+docs/runbooks/base-canary-ops.md:166:- 环境装载包装：`scripts/run_canary_with_env.sh`
+docs/runbooks/base-canary-ops.md:167:- 收益审计：`scripts/canary_profitability_evidence.sh`
+docs/runbooks/vps-shadow-deployment.md:5:目标：统一本地与 VPS 的仓库来源、分支与配置入口，避免因为目录名差异/手工 `.env` 覆盖造成数据库混淆，并为后续 canary/live 保留统一入口。
+docs/runbooks/vps-shadow-deployment.md:83:cp .env.canary.example .env.canary
+docs/runbooks/vps-shadow-deployment.md:84:cp .env.live.example .env.live
+docs/runbooks/vps-shadow-deployment.md:85:chmod 600 .env.canary .env.live
+docs/runbooks/vps-shadow-deployment.md:89:- `configs/config.canary.toml` 默认 `execution.backend = "native-rpc"`，只需要 QuickNode/RPC 即可。
+docs/runbooks/vps-shadow-deployment.md:169:`deploy/systemd/lpbot-canary.service`
+docs/runbooks/vps-shadow-deployment.md:174:sudo cp deploy/systemd/lpbot-canary.service /etc/systemd/system/lpbot-canary.service
+docs/runbooks/vps-shadow-deployment.md:176:sudo systemctl disable lpbot-canary
+docs/runbooks/vps-shadow-deployment.md:177:sudo systemctl stop lpbot-canary 2>/dev/null || true
+docs/runbooks/vps-shadow-deployment.md:181:- `lpbot-canary` 使用 `bin/lpbot-live` + `configs/config.canary.toml`
+docs/runbooks/vps-shadow-deployment.md:185:### 7.2 VPS canary 盈利审计
+docs/runbooks/vps-shadow-deployment.md:187:执行 canary 动作后建议立刻跑一次：
+docs/runbooks/vps-shadow-deployment.md:191:scripts/canary_profitability_evidence.sh
+docs/runbooks/vps-shadow-deployment.md:201:将报告与 `canary_readiness_report.sh`/`canary_cycle.sh` 输出并存储，可形成一次完整动作链路的证据。
+docs/runbooks/vps-shadow-deployment.md:232:- Canary 证据：`scripts/canary_profitability_evidence.sh`
+docs/TIER_C_HARD_REJECTION_POLICY_V1_CN.md:13:- tiny_canary_allowed: no
+docs/LPBOT_RESEARCH_STATUS_CN.md:7:- tiny_canary_allowed = `no`
+docs/LPBOT_RESEARCH_STATUS_CN.md:20:- 当前不得运行 live / canary / paper。
+docs/LPBOT_RESEARCH_STATUS_CN.md:21:- 当前不得把任何研究结论转成 micro-live。
+docs/ops/project-cleanup-snapshot-2026-05-25.md:10:- `cmd/lpbot/canary_mint.go`
+docs/ops/project-cleanup-snapshot-2026-05-25.md:11:- `cmd/lpbot/canary_state.go`
+docs/ops/project-cleanup-snapshot-2026-05-25.md:16:- `configs/config.canary.toml`
+docs/ops/project-cleanup-snapshot-2026-05-25.md:17:- `configs/config.canary.toml.sha256`
+docs/ops/project-cleanup-snapshot-2026-05-25.md:31:- `cmd/lpbot/solana_lp_close_canary_live.go`
+docs/ops/project-cleanup-snapshot-2026-05-25.md:32:- `cmd/lpbot/solana_lp_close_canary_stub.go`
+docs/ops/project-cleanup-snapshot-2026-05-25.md:35:- `cmd/lpbot/solana_lp_open_canary_gate.go`
+docs/ops/project-cleanup-snapshot-2026-05-25.md:36:- `cmd/lpbot/solana_lp_open_canary_live.go`
+docs/ops/project-cleanup-snapshot-2026-05-25.md:37:- `cmd/lpbot/solana_lp_open_canary_stub.go`
+docs/ops/project-cleanup-snapshot-2026-05-25.md:38:- `cmd/lpbot/solana_lp_open_canary_test.go`
+docs/ops/project-cleanup-snapshot-2026-05-25.md:40:- `cmd/lpbot/solana_lp_prefund_canary_live.go`
+docs/ops/project-cleanup-snapshot-2026-05-25.md:41:- `cmd/lpbot/solana_lp_prefund_canary_stub.go`
+docs/ops/project-cleanup-snapshot-2026-05-25.md:51:- `docs/runbooks/base-canary-ops.md`
+docs/ops/solana-meteora-dlmm-lp-preflight.md:5:This note records the read-only preflight path for a Solana Meteora DLMM Tier C candidate before any live LP open.
+docs/ops/solana-meteora-dlmm-lp-preflight.md:7:It does not sign or broadcast transactions. A `ready=true` result only means the audited candidate, wallet funding, quote routes, price range, cost model, and exit trigger inputs are internally consistent enough to consider the next implementation step.
+docs/ops/solana-meteora-dlmm-lp-preflight.md:12:GOTOOLCHAIN=auto go run -tags live ./cmd/lpbot \
+docs/ops/solana-meteora-dlmm-lp-preflight.md:13:  --config=/opt/lpbot/lp-bot-v3/configs/config.live.toml \
+docs/ops/solana-meteora-dlmm-lp-preflight.md:24:GOTOOLCHAIN=auto go run -tags live ./cmd/lpbot \
+docs/ops/solana-meteora-dlmm-lp-preflight.md:25:  --config=/opt/lpbot/lp-bot-v3/configs/config.live.toml \
+docs/ops/solana-meteora-dlmm-lp-preflight.md:60:The preflight uses same-chain wallet assets only.
+docs/ops/solana-meteora-dlmm-lp-preflight.md:107:- Serialized tx size (base64 length): `1252`
+docs/ops/solana-meteora-dlmm-lp-preflight.md:120:- sign the Meteora transaction with the real wallet key in a guarded canary path;
+docs/ops/solana-meteora-dlmm-lp-preflight.md:125:No live TROLL/SOL LP should be opened until the guarded sign/broadcast path and the exit readiness path both exist and pass.
+docs/ops/solana-pancake-lp-exit-lessons.md:7:A 10 USD SOL/USDC PancakeSwap V3 Solana LP position could be removed from the PancakeSwap UI up to wallet signing, but the bot close preflight blocked on invalid reward accounts and then close-position simulation failure.
+docs/ops/solana-pancake-lp-exit-lessons.md:37:- If Pancake UI can construct a wallet transaction but bot cannot build/simulate, treat bot instruction/account layout as suspect before labeling the pool toxic.
+docs/ops/solana-pancake-lp-exit-lessons.md:38:- For full exit, use ordered steps:
+docs/ops/solana-pancake-lp-exit-lessons.md:45:## Confirmed live transactions
+docs/ops/solana-pancake-lp-exit-lessons.md:74:- canary event log for signed/broadcast/complete stages
+docs/ops/solana-pancake-lp-exit-lessons.md:75:- wallet same-chain balance snapshot after close
+docs/V11_POSITION_LIFECYCLE_PROOF_VERDICT_CN.md:7:- tiny_canary_allowed = no。
+docs/V11_FIXED_HORIZON_HYPOTHESIS_SPEC_CN.md:21:- 不做 canary
+docs/superpowers/plans/2026-05-20-business-loop.md:11:- Execution 创建/管理仓位（shadow 模式模拟，live 模式真实执行）
+docs/superpowers/plans/2026-05-20-business-loop.md:28:func (s *defaultScanner) Run(ctx context.Context) error {
+docs/superpowers/plans/2026-05-20-business-loop.md:33:        score, _ := s.Score(ctx, pool)
+docs/superpowers/plans/2026-05-20-business-loop.md:37:        err := s.poolRepo.UpsertPool(ctx, ports.PoolWithScore{
+docs/superpowers/plans/2026-05-20-business-loop.md:57:func (s *defaultScanner) Run(ctx context.Context) error {
+docs/superpowers/plans/2026-05-20-business-loop.md:103:func (s *defaultStrategy) evaluateStrategies(ctx context.Context) []strategy.Candidate {
+docs/superpowers/plans/2026-05-20-business-loop.md:105:    pools, _ := s.config.PoolRepo.ListPools(ctx, ports.PoolFilter{
+docs/superpowers/plans/2026-05-20-business-loop.md:112:        candidate := s.evaluatePool(ctx, pool)
+docs/superpowers/plans/2026-05-20-business-loop.md:141:func (app *App) evaluateStrategies(ctx context.Context) {
+docs/superpowers/plans/2026-05-20-business-loop.md:143:    killState, err := app.store.RiskRepo().GetKillState(ctx)
+docs/superpowers/plans/2026-05-20-business-loop.md:198:        err := app.store.PositionRepo().Save(ctx, pos)
+docs/superpowers/plans/2026-05-20-business-loop.md:237:    _, err := app.store.LedgerRepo().Append(ctx, entry)
+docs/superpowers/plans/2026-05-20-business-loop.md:267:    pools, _ := app.store.PoolRepo().ListPools(ctx, ports.PoolFilter{Limit: 10})
+docs/superpowers/plans/2026-05-20-business-loop.md:275:        ctx, domain.ChainBase, domain.StatusIntended)
+docs/superpowers/plans/2026-05-24-tier-c-audit-pack.md:5:**Goal:** Build a Base Tier C LP audit pack that rejects CHECK-style bot-volume traps before any small-capital canary LP is considered.
+docs/superpowers/plans/2026-05-24-tier-c-audit-pack.md:19:- Do not modify live mint, prepare, exit, signer, or broadcaster code in this task.
+docs/superpowers/plans/2026-05-24-tier-c-audit-pack.md:35:	VerdictCanaryAllowed Verdict = "canary_allowed"
+docs/superpowers/plans/2026-05-24-tier-c-audit-pack.md:116:canary_allowed: otherwise
+docs/superpowers/plans/2026-05-24-tier-c-audit-pack.md:163:Create `internal/core/tierc/audit_pack_test.go` with tests for CHECK reject, normal watch, native zero token reject, and clean canary allowed.
+docs/superpowers/plans/2026-05-24-tier-c-audit-pack.md:245:canary_allowed before watch before reject
+docs/superpowers/plans/2026-05-24-tier-c-audit-pack.md:277:  - `txns` windows and total volume windows
+docs/superpowers/plans/2026-05-24-tier-c-audit-pack.md:316:    Collect(ctx context.Context, pool domain.Pool) (tierc.MarketQuality, error)
+docs/superpowers/plans/2026-05-24-tier-c-audit-pack.md:349:    Top10HolderPct(ctx context.Context, chain domain.ChainID, token domain.Address) (domain.Decimal, error)
+docs/superpowers/plans/2026-05-24-tier-c-audit-pack.md:353:    Concentration(ctx context.Context, chain domain.ChainID, poolID string) (map[string]string, error)
+docs/superpowers/plans/2026-05-24-tier-c-audit-pack.md:520:CHECK-like pools no longer surface as top canary suggestions when their risk pack is reject
+docs/superpowers/plans/2026-05-24-tier-c-audit-pack.md:528:- [ ] No live transaction path is changed.
+docs/superpowers/plans/2026-05-24-solana-same-chain-funding-plan.md:5:**Goal:** Add a Solana same-chain funding planner and make swap readiness use it before assuming the wallet already holds the exact input mint.
+docs/superpowers/plans/2026-05-24-solana-same-chain-funding-plan.md:9:**Tech Stack:** Go, existing Jupiter quote/build helpers, existing Solana RPC wallet snapshot helper
+docs/superpowers/plans/2026-05-24-solana-same-chain-funding-plan.md:28:- [ ] Resolve the Solana wallet public key from CLI/env.
+docs/superpowers/plans/2026-05-24-solana-same-chain-funding-plan.md:29:- [ ] Read same-chain balances only from the existing Solana wallet snapshot helper.
+docs/superpowers/plans/2026-05-24-solana-same-chain-funding-plan.md:51:- [ ] Document that this first implementation only supports current Solana wallet assets `SOL` and `USDC`.
+docs/superpowers/specs/2026-05-24-solana-same-chain-funding-design.md:12:- First implementation is scoped to the current Solana wallet asset set: `SOL` and `USDC`.
+docs/superpowers/specs/2026-05-24-solana-same-chain-funding-design.md:19:  - wallet public key
+docs/superpowers/specs/2026-05-24-solana-same-chain-funding-design.md:25:- Planner reads only Solana wallet balances and only values Solana assets.
+docs/superpowers/specs/2026-05-24-solana-same-chain-funding-design.md:48:- Do not expand to non-SOL/non-USDC wallet assets yet.
+docs/superpowers/task-lists/lpbot-readiness-task-list.md:15:- [x] **P0-01 接口风险闸门对齐**：`live.enabled=false` 时禁止 canary 入口广播交易，避免 CLI 与可观测状态不一致。
+docs/superpowers/task-lists/lpbot-readiness-task-list.md:17:  - 关联文件：`/Users/bendu/lp-bot/v3/configs/config.canary.toml`、`/Users/bendu/lp-bot/v3/cmd/lpbot/canary_mint.go`、`/Users/bendu/lp-bot/v3/cmd/lpbot/canary_preflight.go`
+docs/superpowers/task-lists/lpbot-readiness-task-list.md:19:  - 下一步：定义明确的 manual_canary_override 语义，默认 fail-closed；dashboard/readiness 与 cli 行为一致。
+docs/superpowers/task-lists/lpbot-readiness-task-list.md:20:  - 记录：`2026-05-23` 已完成：引入 `LPBOT_MANUAL_CANARY_OVERRIDE` 显式人工覆盖开关，`canary_preflight`/`prepare`/`mint`/`exit` 与 `canary_readiness` 已共用同一 gate 语义。
+docs/superpowers/task-lists/lpbot-readiness-task-list.md:22:- [x] **P0-02 真实可控 live 路径必须读取 DB KillState**：主循环 risk gate 使用 `riskRepo`/`killState`，不应只依赖内存配置。
+docs/superpowers/task-lists/lpbot-readiness-task-list.md:29:- [x] **P0-03 完整 live 状态机**：`open -> open_in_progress -> open_confirmed -> hold -> close -> settle` 的状态链路与幂等性。
+docs/superpowers/task-lists/lpbot-readiness-task-list.md:33:  - 下一步：重构 live path，让 DB 与链上状态二次确认。
+docs/superpowers/task-lists/lpbot-readiness-task-list.md:34:  - 记录：`2026-05-23` 已完成：主 live 开仓已改为“先构建/签名，再落库 approved/opening”，确认后自动转 `tx=confirmed` 与 `position=open`；live close / collect / rebalance 全部接入 canary-safe Base V3 路径，失败时统一落 `exit_failed/rejected`，reopen 失败也会留下可审计的新仓位记录。
+docs/superpowers/task-lists/lpbot-readiness-task-list.md:36:- [ ] **P0-04 事务记录可观测性**：`broadcast_at` 必须落库，支持失败重试、超时和重复 tx 去重。
+docs/superpowers/task-lists/lpbot-readiness-task-list.md:38:  - 关联文件：`/Users/bendu/lp-bot/v3/internal/adapters/store/postgres/tx_repo.go`
+docs/superpowers/task-lists/lpbot-readiness-task-list.md:39:  - 证据：`main.go` 与 `tx_repo.go` 在广播后状态链未闭环。
+docs/superpowers/task-lists/lpbot-readiness-task-list.md:41:  - 记录：`2026-05-23` 已完成：`TxRepo.UpsertTx()` 和 `UpdateTxStatus()` 开始自动写入 `broadcast_at`，空 hash 时退回 `tx.ID` 防止 built 记录冲突。
+docs/superpowers/task-lists/lpbot-readiness-task-list.md:47:  - 下一步：改用稳定唯一 ID（如 tx hash + 事件类型 + 链上 nonce/log index）并补写入场景。
+docs/superpowers/task-lists/lpbot-readiness-task-list.md:48:  - 记录：`2026-05-23` 已完成：`LedgerRepo.Append()` 改为稳定哈希 ID（position/kind/amount/block/tx 组合），去掉 `le-{block}` 冲突。
+docs/superpowers/task-lists/lpbot-readiness-task-list.md:52:  - 关联文件：`/Users/bendu/lp-bot/v3/internal/adapters/broadcast/live/broadcast.go`
+docs/superpowers/task-lists/lpbot-readiness-task-list.md:55:  - 记录：`2026-05-23` 已完成：live broadcaster 默认不再跳过 Solana preflight；如确需跳过，必须显式传入 `BroadcastConfig.SolanaSkipPreflight=true`。
+docs/superpowers/task-lists/lpbot-readiness-task-list.md:66:- [ ] **P1-02 去除主循环阻塞扫描**：`Scanner.Run(ctx)` 在 `evaluate` tick 中阻塞应改为异步 worker。
+docs/superpowers/task-lists/lpbot-readiness-task-list.md:70:  - 记录：`2026-05-23` 已完成：`internal/core/loop` 不再在 tick 中调用阻塞式 `Scanner.Run(ctx)`，扫描职责留给外层 app strategy loop。
+docs/superpowers/task-lists/lpbot-readiness-task-list.md:88:  - 下一步：至少实现安全版 stub 的实际调用链（dry-run→shadow→canary→live）。
+docs/superpowers/task-lists/lpbot-readiness-task-list.md:89:  - 记录：`2026-05-23` 已完成：shadow 模式下 `Close/Rebalance/CollectFees` 全部改为 repo-backed 实现；live 模式下三者也已接入 canary-safe Base V3 真实链路，不再假成功。
+docs/superpowers/task-lists/lpbot-readiness-task-list.md:99:- [x] **P2-01 Shadow 与 dashboard 指标同步**：Base/Solana canary 指标读取 DB 并写入面板。
+docs/superpowers/task-lists/lpbot-readiness-task-list.md:103:- [x] **P2-02 WETH/USDC pool 强制与可控 canary**：约束可执行池，支持<=5U安全测试。
+docs/superpowers/task-lists/lpbot-readiness-task-list.md:105:  - 记录：`2026-05-23` 已完成 7 次 Base canary 开平仓
+docs/superpowers/task-lists/lpbot-readiness-task-list.md:121:  - 记录：`2026-05-23` 已完成：dashboard snapshot 增加 15s 进程内缓存，显著减少 canary readiness 和链上余额/allowance 重复读取。
+docs/superpowers/task-lists/lpbot-readiness-task-list.md:125:  - 关联文件：`/Users/bendu/lp-bot/v3/cmd/lpbot/canary_state.go`
+docs/superpowers/task-lists/lpbot-readiness-task-list.md:127:  - 记录：`2026-05-23` 已完成：新增 `migrations/postgres/000002_canary_state.sql`，`canary_state.ensure()` 改为只校验 schema，不再业务路径里 `CREATE/ALTER TABLE`。
+docs/superpowers/task-lists/lpbot-readiness-task-list.md:141:  - 记录：`2026-05-23` 已完成：除 `stableLedgerEntryID`、`txBroadcastTimestamp` 外，新增 docker-postgres 最小集成测试，真实覆盖 `PositionRepo`、`TxRepo`、`PoolRepo` round-trip，已执行通过。
+docs/superpowers/task-lists/lpbot-readiness-task-list.md:145:  - 关联文件：`/Users/bendu/lp-bot/v3/configs/config.canary.toml`、`/Users/bendu/lp-bot/v3/cmd/lpbot`
+docs/superpowers/task-lists/lpbot-readiness-task-list.md:147:  - 记录：`2026-05-23` 已完成：`config.ChainConfig` 的 `skip_preflight` 已落地；`execution` 配置新增 `tx_deadline_seconds`、`exit_deadline_seconds`、`sign_timeout_seconds`、`send_timeout_seconds`、`mint_slippage_bps`，Base live open/close/rebalance/collect 已切到配置驱动。
+docs/superpowers/task-lists/lpbot-readiness-task-list.md:151:- Base canary 已完成 7 轮 mint/exit（同池 `0x6c561b446416e1a00e8e93e221854d6ea4171372`）
+docs/superpowers/task-lists/lpbot-readiness-task-list.md:152:- Solana canary 完成 3 笔小额 swap（可继续做链路验证）
+docs/superpowers/task-lists/lpbot-readiness-task-list.md:155:- `scripts/run_canary_with_env.sh` 统一运行环境装载
+docs/superpowers/task-lists/lpbot-readiness-task-list.md:161:- 主要结果：Base canary `opened=7 / closed=7`, `transactions=53`。
+docs/superpowers/task-lists/lpbot-readiness-task-list.md:165:- 当前结论：已完成 `P0-01`、`P0-02`，并推进 `P0-03` 的 live 开仓状态持久化顺序修复。
+docs/superpowers/task-lists/lpbot-readiness-task-list.md:166:- 编译记录：`2026-05-23` 执行 `go test -run '^$' -tags=live ./cmd/lpbot` 通过（仅编译校验，不跑测试）。
+docs/superpowers/task-lists/lpbot-readiness-task-list.md:170:- 本轮补充：`P1-05` 的 shadow `close/rebalance/collect` 已从空 stub 改为真实 repo-backed 状态流，并开始写入确认态 tx 审计记录。
+docs/superpowers/task-lists/lpbot-readiness-task-list.md:173:- 本轮补充：`main.go` 已补 canary-safe live close helper，并确认 `go test ./cmd/lpbot -run 'TestWire_|TestOrderManagerAdapter_'` 与 `go test -run '^$' -tags=live ./cmd/lpbot` 均通过。
+docs/superpowers/task-lists/lpbot-readiness-task-list.md:174:- 本轮补充：`main.go` 已继续补 canary-safe live `CollectFees`，并再次确认 `go test ./cmd/lpbot -run 'TestWire_|TestOrderManagerAdapter_'` 与 `go test -run '^$' -tags=live ./cmd/lpbot` 均通过。
+docs/superpowers/task-lists/lpbot-readiness-task-list.md:176:- 本轮补充：`live_sizing.go` 已新增自定义 ticks 的 mint builder，`main.go` 已接 canary-safe live `Rebalance`，并再次确认 `go test -run '^$' -tags=live ./cmd/lpbot` 与 `go test ./cmd/lpbot -run 'TestWire_|TestOrderManagerAdapter_'` 均通过。
+docs/superpowers/task-lists/lpbot-readiness-task-list.md:181:1. 先做 P0-01、P0-02、P0-03（一次性收口 canary 与 live 风控边界）。
+scripts/audit_shadow_vps.sh:353:    tmp_metrics="/tmp/lpbot-shadow-metrics.txt"
+scripts/canary_profitability_evidence.sh:7:OUTPUT_DEFAULT="${RUN_DIR}/canary-profitability-evidence-$(date -u +%Y%m%d-%H%M%SZ).md"
+scripts/canary_profitability_evidence.sh:13:CONFIG_PATH="${LPBOT_CANARY_EVIDENCE_CONFIG:-configs/config.canary.toml}"
+scripts/canary_profitability_evidence.sh:32:  if [[ -f ./.env.canary ]]; then
+scripts/canary_profitability_evidence.sh:34:    . ./.env.canary
+scripts/canary_profitability_evidence.sh:37:  if [[ -f ./.env.live ]]; then
+scripts/canary_profitability_evidence.sh:39:    . ./.env.live
+scripts/canary_profitability_evidence.sh:73:      -P border=0 \
+scripts/canary_profitability_evidence.sh:100:    AND p.id LIKE 'shadow-canary-live-pos-%'
+scripts/canary_profitability_evidence.sh:112:    COALESCE(decrease_tx_hash, '') AS decrease_tx_hash,
+scripts/canary_profitability_evidence.sh:113:    COALESCE(collect_tx_hash, '') AS collect_tx_hash,
+scripts/canary_profitability_evidence.sh:115:  FROM canary_exit_preflights
+scripts/canary_profitability_evidence.sh:129:  WHERE position_id LIKE 'shadow-canary-live-pos-%'
+scripts/canary_profitability_evidence.sh:147:  COUNT(*) AS total_closed_canary_positions,
+scripts/canary_profitability_evidence.sh:163:  local order_clause="${2:-}"
+scripts/canary_profitability_evidence.sh:175:    AND p.id LIKE 'shadow-canary-live-pos-%'
+scripts/canary_profitability_evidence.sh:187:    COALESCE(decrease_tx_hash, '') AS decrease_tx_hash,
+scripts/canary_profitability_evidence.sh:188:    COALESCE(collect_tx_hash, '') AS collect_tx_hash,
+scripts/canary_profitability_evidence.sh:190:  FROM canary_exit_preflights
+scripts/canary_profitability_evidence.sh:206:  WHERE position_id LIKE 'shadow-canary-live-pos-%'
+scripts/canary_profitability_evidence.sh:215:    COALESCE(tx_hash, '') AS tx_hash
+scripts/canary_profitability_evidence.sh:216:  FROM canary_events
+scripts/canary_profitability_evidence.sh:217:  WHERE position_id LIKE 'shadow-canary-live-pos-%'
+scripts/canary_profitability_evidence.sh:233:    COALESCE(ep.decrease_tx_hash, '') AS decrease_tx_hash,
+scripts/canary_profitability_evidence.sh:234:    COALESCE(ep.collect_tx_hash, '') AS collect_tx_hash,
+scripts/canary_profitability_evidence.sh:248:    COALESCE(re.tx_hash, '') AS last_event_tx_hash
+scripts/canary_profitability_evidence.sh:279:  p.decrease_tx_hash,
+scripts/canary_profitability_evidence.sh:280:  p.collect_tx_hash,
+scripts/canary_profitability_evidence.sh:285:  p.last_event_tx_hash,
+scripts/canary_profitability_evidence.sh:288:ORDER BY ${order_clause}
+scripts/canary_profitability_evidence.sh:320:  run_query "Summary (closed canary positions in window)" "$summary_sql"
+scripts/canary_profitability_evidence.sh:323:  run_query "Closed shadow canary positions (worst net error first)" "$positions_sql"
+scripts/canary_profitability_evidence.sh:326:  run_query "Closed shadow canary positions (latest checked)" "$positions_sql"
+scripts/canary_readiness_report.sh:5:CONFIG_PATH="${LPBOT_CANARY_CONFIG:-configs/config.canary.toml}"
+scripts/canary_readiness_report.sh:6:BINARY="${LPBOT_CANARY_BINARY:-./bin/lpbot-live}"
+scripts/canary_readiness_report.sh:11:  printf '[canary-readiness] %s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"
+scripts/canary_readiness_report.sh:17:  if [[ -f ./.env.canary ]]; then set -a; . ./.env.canary; set +a; fi
+scripts/canary_readiness_report.sh:45:  print_summary_table "latest_canary_event" "
+scripts/canary_readiness_report.sh:46:    SELECT command, stage, status, COALESCE(token_id,''), COALESCE(tx_hash,''), created_at
+scripts/canary_readiness_report.sh:47:    FROM canary_events
+scripts/canary_readiness_report.sh:54:    WHERE id LIKE 'shadow-canary-live-pos-%'
+scripts/canary_readiness_report.sh:61:      FROM canary_exit_preflights
+scripts/canary_readiness_report.sh:88:run_step preflight "$BINARY" --config="$CONFIG_PATH" --canary-preflight
+scripts/canary_readiness_report.sh:95:  run_step exit_preflight "$BINARY" --config="$CONFIG_PATH" --canary-exit-preflight --token-id="$TOKEN_ID"
+scripts/canary_readiness_report.sh:101:log "ready next='scripts/canary_cycle.sh' config=${CONFIG_PATH}"
+scripts/generate_shadow_reality_audits_v2.sh:544:  local explain_path="${SNAPSHOT_DIR}/repaired_v2_explain_${horizon}_${bucket_start}_${bucket_end}.txt"
+scripts/generate_shadow_reality_audits_v2.sh:1625:  local tiny_canary_candidate="no"
+scripts/generate_shadow_reality_audits_v2.sh:1740:    tiny_canary_candidate="yes"
+scripts/generate_shadow_reality_audits_v2.sh:1751:- tiny_canary_candidate: ${tiny_canary_candidate}
+scripts/generate_shadow_reality_audits_v2.sh:1752:- tiny_canary_allowed: no
+scripts/generate_shadow_reality_audits_v2.sh:1776:    echo "- tiny_canary_allowed remains no by safety rule."
+scripts/generate_shadow_reality_audits_v2.sh:1790:- tiny_canary_allowed: no
+scripts/generate_shadow_reality_audits_v2.sh:1811:- tiny_canary_candidate: no
+scripts/generate_shadow_reality_audits_v2.sh:1812:- tiny_canary_allowed: no
+scripts/shadow_research_readiness_check.sh:225:1. 本检查只服务于 shadow research，只验证只读研究链，不验证 live wallet / Flashbots / live 交易门禁。
+scripts/apply_postgres_migrations.sh:18:load_env_file ./.env.canary
+scripts/overnight-vps-runbook.sh:120:  local evidence_file="/tmp/lpbot-canary-profitability-$(date -u +%Y%m%d-%H%M%SZ).md"
+scripts/overnight-vps-runbook.sh:131:    ./scripts/canary_profitability_evidence.sh"
+scripts/preflight.sh:43:if make build-dryrun && make build-shadow && make build-live && make backtest; then
+scripts/vps_shadow_outcome_plan.sh:11:本脚本只输出计划，不执行任何交易，不启动 live mint。
+scripts/vps_shadow_outcome_plan.sh:25:go test -tags live ./cmd/lpbot ./internal/adapters/broadcast/live ./internal/adapters/mev/flashbots-protect
+scripts/vps_shadow_outcome_plan.sh:60:- 不运行 --canary-mint
+scripts/vps_shadow_outcome_plan.sh:61:- 不运行 daemon live open
+scripts/run_canary_with_env.sh:17:  ".env.canary"
+scripts/run_canary_with_env.sh:30:  scripts/run_canary_with_env.sh ./bin/lpbot-live --config configs/config.canary.toml ...
+scripts/run_canary_with_env.sh:36:  .env.canary
+scripts/run_canary_with_env.sh:45:. "${ROOT_DIR}/.env.canary"
+scripts/capture_shadow_observation_snapshot.sh:656:      split("1h 6h 24h", order, " ")
+scripts/capture_shadow_observation_snapshot.sh:658:        h = order[i]
+scripts/live_readiness_check.sh:5:CONFIG_PATH="${LPBOT_LIVE_READINESS_CONFIG:-configs/config.live.toml}"
+scripts/live_readiness_check.sh:12:  if [[ -f ./.env.live ]]; then set -a; . ./.env.live; set +a; fi
+scripts/live_readiness_check.sh:13:  if [[ -f ./.env.canary ]]; then set -a; . ./.env.canary; set +a; fi
+scripts/live_readiness_check.sh:115:      COALESCE(stuck_tx_count,0),
+scripts/live_readiness_check.sh:197:3. 只有在 shadow outcome 样本足够且 gas 后净收益不为负时，再考虑 tiny canary。
+scripts/live_readiness_check.sh:200:printf '[live-readiness] report=%s overall=%s\n' "$REPORT_PATH" "$OVERALL"
+scripts/tierc_onchain_logs_fallback_v1.py:166:def fetch_tx_from_map(tx_hashes):
+scripts/tierc_onchain_logs_fallback_v1.py:168:    tx_hashes = sorted(set(tx_hashes))
+scripts/tierc_onchain_logs_fallback_v1.py:169:    for i in range(0, len(tx_hashes), 100):
+scripts/tierc_onchain_logs_fallback_v1.py:170:        batch = tx_hashes[i:i + 100]
+scripts/tierc_onchain_logs_fallback_v1.py:172:            {"jsonrpc": "2.0", "id": idx + 1, "method": "eth_getTransactionByHash", "params": [txh]}
+scripts/tierc_onchain_logs_fallback_v1.py:173:            for idx, txh in enumerate(batch)
+scripts/tierc_onchain_logs_fallback_v1.py:179:        for idx, txh in enumerate(batch, start=1):
+scripts/tierc_onchain_logs_fallback_v1.py:184:                out[txh] = trader
+scripts/tierc_onchain_logs_fallback_v1.py:238:        tx_from_map = fetch_tx_from_map([log.get("transactionHash", "") for log in window_logs if log.get("transactionHash")])
+scripts/tierc_onchain_logs_fallback_v1.py:240:            trader = tx_from_map.get(log.get("transactionHash", ""))
+scripts/tierc_onchain_logs_fallback_v1.py:250:            trader_proxy_method = "tx_from"
+scripts/tierc_onchain_logs_fallback_v1.py:263:            "failure_reason": "tx_sender_unavailable" if event_actor_seen else "actor_proxy_unavailable",
+scripts/tierc_onchain_logs_fallback_v1.py:267:    ordered = trader_counts.most_common()
+scripts/tierc_onchain_logs_fallback_v1.py:268:    top1 = round(ordered[0][1] * 100.0 / total, 2)
+scripts/tierc_onchain_logs_fallback_v1.py:269:    top5 = round(sum(v for _, v in ordered[:5]) * 100.0 / total, 2)
+scripts/tierc_onchain_logs_fallback_v1.py:537:        "- note: trader concentration uses on-chain tx sender as read-only trader proxy; volume share is tx-share proxy within each pool/window.",
+scripts/tierc_onchain_logs_fallback_v1.py:644:        "tiny_canary_candidate": "no",
+scripts/tierc_onchain_logs_fallback_v1.py:645:        "tiny_canary_allowed": "no",
+scripts/tierc_onchain_logs_fallback_v1.py:667:        "- tiny_canary_candidate: no",
+scripts/tierc_onchain_logs_fallback_v1.py:668:        "- tiny_canary_allowed: no",
+scripts/tierc_onchain_logs_fallback_v1.py:683:        "- touched_wallet_tx_bridge_live_paper: no",
+scripts/tierc_onchain_logs_fallback_v1.py:684:        "- tiny_canary_allowed: no",
+scripts/canary_cycle.sh:5:CONFIG_PATH="${LPBOT_CANARY_CONFIG:-configs/config.canary.toml}"
+scripts/canary_cycle.sh:6:BINARY="${LPBOT_CANARY_BINARY:-./bin/lpbot-live}"
+scripts/canary_cycle.sh:20:  printf '[canary-cycle] %s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"
+scripts/canary_cycle.sh:33:  if [[ -f ./.env.canary ]]; then set -a; . ./.env.canary; set +a; fi
+scripts/canary_cycle.sh:75:  if ! "${evidence_args[@]}" ./scripts/canary_profitability_evidence.sh; then
+scripts/canary_cycle.sh:110:    AND p.id LIKE 'shadow-canary-live-pos-%'
+scripts/canary_cycle.sh:119:  FROM canary_exit_preflights p
+scripts/canary_cycle.sh:128:  WHERE position_id LIKE 'shadow-canary-live-pos-%'
+scripts/canary_cycle.sh:154:  if ! metrics="$(psql "$POSTGRES_DSN" -X -A -F $'\t' -P pager=off -P border=0 -t -c "$query" 2>/tmp/lpbot-canary-cycle-gate.log)"; then
+scripts/canary_cycle.sh:155:    log "profitability_gate failed: cannot query summary, see /tmp/lpbot-canary-cycle-gate.log"
+scripts/canary_cycle.sh:156:    cat /tmp/lpbot-canary-cycle-gate.log
+scripts/canary_cycle.sh:157:    rm -f /tmp/lpbot-canary-cycle-gate.log
+scripts/canary_cycle.sh:161:  rm -f /tmp/lpbot-canary-cycle-gate.log
+scripts/canary_cycle.sh:203:print_canary_summary() {
+scripts/canary_cycle.sh:211:    WHERE id LIKE 'shadow-canary-live-pos-%'
+scripts/canary_cycle.sh:216:    SELECT command, stage, status, COALESCE(token_id,''), COALESCE(tx_hash,''), created_at
+scripts/canary_cycle.sh:217:    FROM canary_events
+scripts/canary_cycle.sh:222:    SELECT token_id, status, COALESCE(decrease_tx_hash,''), COALESCE(collect_tx_hash,''), updated_at
+scripts/canary_cycle.sh:223:    FROM canary_exit_preflights
+scripts/canary_cycle.sh:244:run_step preflight "$BINARY" --config="$CONFIG_PATH" --canary-preflight
+scripts/canary_cycle.sh:248:  LPBOT_CONFIRM_CANARY_PREPARE=YES "$BINARY" --config="$CONFIG_PATH" --canary-prepare
+scripts/canary_cycle.sh:252:  mint_output="$(LPBOT_CONFIRM_CANARY_MINT=YES "$BINARY" --config="$CONFIG_PATH" --canary-mint 2>&1)" || {
+scripts/canary_cycle.sh:255:    if printf '%s\n' "$mint_output" | grep -q "canary quality gate blocked"; then
+scripts/canary_cycle.sh:265:    log "stage=mint failed: could not parse tx hash"
+scripts/canary_cycle.sh:268:  log "stage=mint ok tx_hash=${TX_HASH}"
+scripts/canary_cycle.sh:270:  log "stage=mint skipped tx_hash=${TX_HASH}"
+scripts/canary_cycle.sh:274:  log "stage=reconcile_mint started tx_hash=${TX_HASH}"
+scripts/canary_cycle.sh:275:  reconcile_output="$($BINARY --config="$CONFIG_PATH" --canary-reconcile-mint --tx-hash="$TX_HASH" 2>&1)" || {
+scripts/canary_cycle.sh:292:run_step exit_preflight "$BINARY" --config="$CONFIG_PATH" --canary-exit-preflight --token-id="$TOKEN_ID"
+scripts/canary_cycle.sh:296:  LPBOT_CONFIRM_CANARY_EXIT=YES "$BINARY" --config="$CONFIG_PATH" --canary-exit --token-id="$TOKEN_ID"
+scripts/canary_cycle.sh:302:print_canary_summary
+scripts/canary_cycle.sh:304:log "complete tx_hash=${TX_HASH} token_id=${TOKEN_ID} exit=${RUN_EXIT}"
+scripts/gen-tasks.sh:18:T-007|M0.0|configs toml 模板|§2.4|configs/config.dryrun.toml configs/config.shadow.toml configs/config.live.toml|T-006|
+scripts/gen-tasks.sh:27:T-017|M0.1|domain Tx 状态机|§4.3|internal/domain/tx.go internal/domain/tx_test.go|T-016|
+scripts/gen-tasks.sh:55:T-046|M0.5|ports.TxRepo|§4.4|internal/ports/store_tx.go internal/ports/store_tx_test.go|T-017|
+scripts/gen-tasks.sh:58:T-049|M0.5|ports.Wallet + WalletProvider|§6.6|internal/ports/wallet.go internal/ports/wallet_test.go|T-040|
+scripts/gen-tasks.sh:97:T-101|M0.8|adapters/broadcast/live stub（build tag live）|§6.7|internal/adapters/broadcast/live/broadcaster.go|T-050|
+scripts/gen-tasks.sh:100:T-104|M0.8|adapters/wallet/none（panic + counter）|§2.4|internal/adapters/wallet/none/wallet.go internal/adapters/wallet/none/wallet_test.go|T-049|
+scripts/gen-tasks.sh:101:T-105|M0.8|adapters/wallet/keystore stub|§3.6|internal/adapters/wallet/keystore/README.md internal/adapters/wallet/keystore/wallet.go|T-049|
+scripts/gen-tasks.sh:102:T-106|M0.8|adapters/wallet/kms stub|§3.6|internal/adapters/wallet/kms/README.md internal/adapters/wallet/kms/wallet.go|T-049|
+scripts/gen-tasks.sh:121:T-129|M0.9|TxRepo 实装|§4.4|internal/adapters/store/sqlite/repo_tx.go internal/adapters/store/sqlite/repo_tx_test.go|T-122 T-046|
+scripts/generate_shadow_reality_audits.sh:1043:    echo "- tiny_canary_candidate: no"
+scripts/generate_shadow_reality_audits.sh:1044:    echo "- tiny_canary_allowed: no"
+scripts/generate_shadow_reality_audits.sh:1063:    echo "- tiny_canary_allowed remains no by instruction."
+README.md:3:链上 AMM LP 自动套利机器人。Go + TypeScript，六边形模块化单体架构，build tag 隔离 dryrun/shadow/live 三种运行模式。
+README.md:20:- No live/canary/paper execution is allowed.
+README.md:39:- `configs/config.canary.toml`：默认保守 canary 模板，仍是 `fail-closed`，不会因为填了环境变量就自动实单。
+README.md:40:- `configs/config.live.toml`：完整 live 模板，必须配套 `.sha256`，并且当前 `cmd/lpbot` 仍未接入真实执行器。
+README.md:45:- 推荐先从 [`.env.canary.example`](/Users/bendu/lp-bot/v3/.env.canary.example) 衍生实例环境，再由 systemd `EnvironmentFile=` 注入。
+README.md:49:| 模式 | build tag | broadcaster | wallet | DB 前缀 |
+README.md:53:| live | `live` | live | keystore/kms | `live_*` |
+README.md:63:  adapters/  # 接口实现（chain/pool/store/bus/wallet/...）
