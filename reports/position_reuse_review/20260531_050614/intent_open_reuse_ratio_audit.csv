@@ -1,0 +1,5 @@
+window,intent_open_rows,open_shadow_position_rows,reuse_shadow_position_rows,open_ratio,reuse_ratio,distinct_position_id,distinct_pool_id,distinct_token_pair,distinct_strategy_epoch,distinct_score_bucket,repeated_intent_rows,repeated_pool_position_rows,selected_rows,intent_open_to_new_position_ratio,new_position_count
+recent_24h,5756,4,5752,0.0006949270326615705,0.9993050729673384,8,4,4,1,2,5756,8,5756,1439.0,4
+recent_48h,10828,11,10817,0.0010158847432582194,0.9989841152567418,15,4,4,1,2,10828,15,10828,984.3636363636364,11
+recent_72h,16588,19,16569,0.001145406317820111,0.9988545936821799,23,4,4,1,2,16588,23,16588,873.0526315789474,19
+recent_7d,36178,43,36016,0.0011885676377909227,0.9955221405273923,48,6,6,1,2,36059,48,36178,822.2272727272727,44

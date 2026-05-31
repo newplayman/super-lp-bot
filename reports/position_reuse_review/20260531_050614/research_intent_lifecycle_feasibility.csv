@@ -1,0 +1,5 @@
+window,unique_intent_count,unique_pool_time_bucket_count,unique_pool_score_event_count,unique_intent_with_entry_value_estimate,unique_intent_with_future_pool_mark_6h,unique_intent_with_future_pool_mark_12h,unique_intent_with_future_pool_mark_24h,unique_intent_with_position_join,unique_intent_lineage_trusted_count,estimated_research_sample_count_6h,estimated_research_sample_count_12h,estimated_research_sample_count_24h,primary_data_gaps,feasibility_status
+recent_24h,5756,100,100,5756,100,100,100,5756,5756,100,100,100,"entry_value_trust,dedup,bucketing,lineage",FEASIBLE
+recent_48h,10828,187,243,10828,187,187,187,10828,10828,187,187,187,"entry_value_trust,dedup,bucketing,lineage",FEASIBLE
+recent_72h,16588,283,856,16588,283,283,283,16588,16588,283,283,283,"entry_value_trust,dedup,bucketing,lineage",FEASIBLE
+recent_7d,36178,623,1847,36059,623,623,623,36059,36059,623,623,623,"entry_value_trust,dedup,bucketing,lineage",FEASIBLE

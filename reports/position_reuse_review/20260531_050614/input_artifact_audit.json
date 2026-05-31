@@ -1,0 +1,42 @@
+{
+  "run_id": "20260531_050614",
+  "audit_time_utc": "2026-05-31T05:10:44.748235+00:00",
+  "inputs": [
+    {
+      "path": "reports/materializer_classification/20260531_044242/FINAL_VERDICT.json",
+      "exists": true
+    },
+    {
+      "path": "reports/materializer_classification/20260531_044242/NEXT_STAGE_DECISION_CN.md",
+      "exists": true
+    },
+    {
+      "path": "reports/fixed_horizon_stagnation_recovery/20260531_035703/CLEAN_POSITION_GENERATION_AUDIT_CN.md",
+      "exists": true
+    },
+    {
+      "path": "reports/fixed_horizon_stagnation_recovery/20260531_035703/clean_position_generation_audit.csv",
+      "exists": true
+    },
+    {
+      "path": "reports/fixed_horizon_stagnation_recovery/20260531_035703/COMPLETED_SAMPLE_STAGNATION_AUDIT_CN.md",
+      "exists": true
+    },
+    {
+      "path": "reports/fixed_horizon_stagnation_recovery/20260531_035703/completed_sample_stagnation_audit.csv",
+      "exists": true
+    },
+    {
+      "path": "reports/fixed_horizon_stagnation_recovery/20260531_035703/CANONICAL_PROOF_TAIL_RISK_AUDIT_CN.md",
+      "exists": true
+    },
+    {
+      "path": "reports/fixed_horizon_policy/20260530_145208/FINAL_VERDICT.json",
+      "exists": true
+    }
+  ],
+  "enough_for_position_reuse_policy_audit": true,
+  "canonical_proof_is_v2_strict_fixed_horizon": true,
+  "materializer_mark_worker_ruled_out_as_primary": true,
+  "edge_proven": "no"
+}

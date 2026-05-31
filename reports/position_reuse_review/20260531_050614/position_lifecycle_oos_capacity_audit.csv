@@ -1,0 +1,4 @@
+horizon,existing_position_count,new_position_count_24h,new_position_count_48h,new_position_count_7d,completed_count,completed_growth_rate_per_day,estimated_days_to_completed_100,estimated_days_to_completed_300,active_at_target_count,terminal_before_target_count,future_position_mark_count,clean_proof_eligible_count,tail_status,signal_status
+6h,68,4,11,44,42,6.0,9.227272727272727,41.04545454545455,26,0,42,42,OK,better
+12h,68,4,11,44,40,5.714285714285714,9.545454545454545,41.36363636363637,28,0,40,40,FAIL,worse
+24h,68,4,11,44,8,1.1428571428571428,14.636363636363637,46.45454545454545,60,0,8,8,INSUFFICIENT,worse

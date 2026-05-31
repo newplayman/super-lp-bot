@@ -1,0 +1,7 @@
+{
+  "recommended_next_stage": "RESEARCH_INTENT_LIFECYCLE_MATERIALIZER",
+  "reuse_dominant": true,
+  "position_lifecycle_oos_viable": false,
+  "intent_lifecycle_feasibility": "FEASIBLE",
+  "tail_risk_status": "12H_FAIL_24H_INSUFFICIENT"
+}

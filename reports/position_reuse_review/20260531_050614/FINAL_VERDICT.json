@@ -1,0 +1,20 @@
+{
+  "status": "WARN",
+  "stage": "SHADOW_POSITION_REUSE_POLICY_REVIEW_V1",
+  "data_source": "vps_postgres",
+  "db_ready": true,
+  "canonical_proof": "v2_strict_fixed_horizon",
+  "reuse_dominant": true,
+  "open_new_ratio_24h": 0.0006949270326615705,
+  "reuse_ratio_24h": 0.9993050729673384,
+  "estimated_days_to_completed_100": 9.545454545454545,
+  "estimated_days_to_completed_300": 41.36363636363637,
+  "intent_lifecycle_feasibility": "FEASIBLE",
+  "position_lifecycle_oos_viable": false,
+  "tail_risk_status": "12H_FAIL_24H_INSUFFICIENT",
+  "hypothesis_review_ready": false,
+  "edge_proven": "no",
+  "tiny_canary_candidate": "no",
+  "tiny_canary_allowed": "no",
+  "recommended_next_stage": "RESEARCH_INTENT_LIFECYCLE_MATERIALIZER"
+}
