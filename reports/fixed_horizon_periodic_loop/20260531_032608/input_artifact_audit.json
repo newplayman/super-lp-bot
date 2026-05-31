@@ -1,0 +1,33 @@
+{
+  "run_id": "20260531_032608",
+  "stage": "FIXED_HORIZON_24H_OOS_ACCUMULATION_MONITOR_V1",
+  "canonical_proof": "v2_strict_fixed_horizon",
+  "inputs": {
+    "previous_final_verdict_exists": true,
+    "previous_final_verdict_path": "reports/fixed_horizon_periodic_loop/20260530_150736/FINAL_VERDICT.json",
+    "previous_12h_trend_exists": true,
+    "previous_12h_trend_path": "reports/fixed_horizon_periodic_loop/20260530_150736/FIXED_HORIZON_12H_TREND_CN.md",
+    "fixed_horizon_policy_verdict_exists": true,
+    "fixed_horizon_policy_path": "reports/fixed_horizon_policy/20260530_145208/FINAL_VERDICT.json",
+    "materializer_verdict_exists": true,
+    "materializer_path": "reports/materializer_semantics/20260530_143120/FINAL_VERDICT.json"
+  },
+  "previous_completed_6h": 41,
+  "previous_completed_12h": 40,
+  "previous_completed_24h": 8,
+  "previous_trend_status": "INSUFFICIENT",
+  "previous_signals": {
+    "6h": "better",
+    "12h": "worse",
+    "24h": "worse"
+  },
+  "policy_completed_6h_current": 42,
+  "policy_completed_12h_current": 40,
+  "policy_completed_24h_current": 8,
+  "materializer_v2_strict_completed_6h": 42,
+  "materializer_v2_strict_completed_12h": 40,
+  "materializer_v2_strict_completed_24h": 8,
+  "edge_proven": "no",
+  "tiny_canary_allowed": "no",
+  "cannot_hard_judge_edge": true
+}

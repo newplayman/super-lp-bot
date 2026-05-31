@@ -1,0 +1,35 @@
+{
+  "stage": "FIXED_HORIZON_PERIODIC_OOS_MONITOR_24H_MONITOR_V1",
+  "canonical_proof": "v2_strict_fixed_horizon",
+  "completed_6h": 42,
+  "completed_12h": 40,
+  "completed_24h": 8,
+  "future_mark_coverage_6h": 0.6176470588235294,
+  "future_mark_coverage_12h": 0.5882352941176471,
+  "future_mark_coverage_24h": 0.11764705882352941,
+  "p10_6h": 0.0214157416986751,
+  "p10_12h": -7.49662390050808,
+  "p10_24h": 0.00794336877659418,
+  "p5_6h": 7.13323784538034e-05,
+  "p5_12h": -7.73250653575358,
+  "p5_24h": 0.00794336877659418,
+  "better_horizon_count_at_24h": 1,
+  "worse_horizon_count_at_24h": 2,
+  "tail_concentration_issues": {
+    "worst_position_contributions": {
+      "6h": 1.0,
+      "12h": 0.15088595356053772,
+      "24h": null
+    },
+    "worst_pool_contributions": {
+      "6h": 1.0,
+      "12h": 0.8215449379272465,
+      "24h": null
+    }
+  },
+  "sample_sufficiency_6h": "EARLY",
+  "sample_sufficiency_12h": "EARLY",
+  "sample_sufficiency_24h": "INSUFFICIENT",
+  "hypothesis_review_ready": false,
+  "trend_status": "INSUFFICIENT"
+}

@@ -1,0 +1,36 @@
+{
+  "root_cause": [
+    "HORIZONS_NOT_MATURE",
+    "FUTURE_MARK_COVERAGE_LOW",
+    "SHADOW_POSITION_REUSE_DOMINANT",
+    "TAIL_NEGATIVE_SEVERE"
+  ],
+  "completed_delta": {
+    "6h": 0,
+    "12h": 0,
+    "24h": 0
+  },
+  "future_mark_coverage": {
+    "6h": 0.6176470588235294,
+    "12h": 0.5882352941176471,
+    "24h": 0.11764705882352941
+  },
+  "tail_concentration_issues": {
+    "worst_position_contribution": {
+      "6h": 1.0,
+      "12h": 0.15088595356053772,
+      "24h": null
+    },
+    "worst_pool_contribution": {
+      "6h": 1.0,
+      "12h": 0.8215449379272465,
+      "24h": null
+    }
+  },
+  "window_status": {
+    "recent_24h_new_position_count": 2,
+    "recent_48h_new_position_count": 10
+  },
+  "shadow_daemon_status": "healthy",
+  "db_writes_freshness": "assumed_fresh_from prior shadow checks"
+}
