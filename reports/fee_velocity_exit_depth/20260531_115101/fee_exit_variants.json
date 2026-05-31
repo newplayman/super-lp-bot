@@ -1,0 +1,98 @@
+[
+  {
+    "variant_name": "baseline_hold_all",
+    "goal": "keep more opportunity while improving p10/p5/p1",
+    "proof_unit": "pool_window",
+    "capacity_scope": "10/20/50 USD"
+  },
+  {
+    "variant_name": "fee_velocity_top_20pct",
+    "goal": "keep more opportunity while improving p10/p5/p1",
+    "proof_unit": "pool_window",
+    "capacity_scope": "10/20/50 USD"
+  },
+  {
+    "variant_name": "fee_velocity_top_10pct",
+    "goal": "keep more opportunity while improving p10/p5/p1",
+    "proof_unit": "pool_window",
+    "capacity_scope": "10/20/50 USD"
+  },
+  {
+    "variant_name": "exit_depth_min_10usd",
+    "goal": "keep more opportunity while improving p10/p5/p1",
+    "proof_unit": "pool_window",
+    "capacity_scope": "10/20/50 USD"
+  },
+  {
+    "variant_name": "exit_depth_min_20usd",
+    "goal": "keep more opportunity while improving p10/p5/p1",
+    "proof_unit": "pool_window",
+    "capacity_scope": "10/20/50 USD"
+  },
+  {
+    "variant_name": "exit_depth_min_50usd",
+    "goal": "keep more opportunity while improving p10/p5/p1",
+    "proof_unit": "pool_window",
+    "capacity_scope": "10/20/50 USD"
+  },
+  {
+    "variant_name": "fee_velocity_positive_net_loose",
+    "goal": "keep more opportunity while improving p10/p5/p1",
+    "proof_unit": "pool_window",
+    "capacity_scope": "10/20/50 USD"
+  },
+  {
+    "variant_name": "fee_velocity_positive_net_strict",
+    "goal": "keep more opportunity while improving p10/p5/p1",
+    "proof_unit": "pool_window",
+    "capacity_scope": "10/20/50 USD"
+  },
+  {
+    "variant_name": "fee_velocity_x_exit_depth_loose",
+    "goal": "keep more opportunity while improving p10/p5/p1",
+    "proof_unit": "pool_window",
+    "capacity_scope": "10/20/50 USD"
+  },
+  {
+    "variant_name": "fee_velocity_x_exit_depth_strict",
+    "goal": "keep more opportunity while improving p10/p5/p1",
+    "proof_unit": "pool_window",
+    "capacity_scope": "10/20/50 USD"
+  },
+  {
+    "variant_name": "small_cap_10usd_best",
+    "goal": "keep more opportunity while improving p10/p5/p1",
+    "proof_unit": "pool_window",
+    "capacity_scope": "10/20/50 USD"
+  },
+  {
+    "variant_name": "small_cap_20usd_best",
+    "goal": "keep more opportunity while improving p10/p5/p1",
+    "proof_unit": "pool_window",
+    "capacity_scope": "10/20/50 USD"
+  },
+  {
+    "variant_name": "small_cap_50usd_best",
+    "goal": "keep more opportunity while improving p10/p5/p1",
+    "proof_unit": "pool_window",
+    "capacity_scope": "10/20/50 USD"
+  },
+  {
+    "variant_name": "fee_depth_score_threshold_loose",
+    "goal": "keep more opportunity while improving p10/p5/p1",
+    "proof_unit": "pool_window",
+    "capacity_scope": "10/20/50 USD"
+  },
+  {
+    "variant_name": "fee_depth_score_threshold_strict",
+    "goal": "keep more opportunity while improving p10/p5/p1",
+    "proof_unit": "pool_window",
+    "capacity_scope": "10/20/50 USD"
+  },
+  {
+    "variant_name": "fee_depth_plus_entry_safe_regime",
+    "goal": "keep more opportunity while improving p10/p5/p1",
+    "proof_unit": "pool_window",
+    "capacity_scope": "10/20/50 USD"
+  }
+]

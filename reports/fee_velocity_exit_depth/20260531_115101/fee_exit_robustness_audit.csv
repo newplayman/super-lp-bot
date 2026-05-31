@@ -1,0 +1,17 @@
+variant_name,window,horizon,capacity_usd,tail_improved,tail_improvement_p10,tail_improvement_p5,tail_improvement_p1,opportunity_retention_rate,false_filter_rate,missed_profit_rate,fee_minus_exit_cost_median
+exit_depth_min_20usd,recent_24h,15m,10,False,,,,0.0,1.0,1.0,
+exit_depth_min_20usd,recent_24h,30m,10,False,,,,0.0,1.0,1.0,
+exit_depth_min_20usd,recent_24h,1h,10,False,,,,0.0,1.0,1.0,
+exit_depth_min_20usd,recent_24h,2h,10,False,,,,0.0,1.0,1.0,
+exit_depth_min_20usd,recent_48h,15m,10,False,,,,0.0,1.0,1.0,
+exit_depth_min_20usd,recent_48h,30m,10,False,,,,0.0,1.0,1.0,
+exit_depth_min_20usd,recent_48h,1h,10,False,,,,0.0,1.0,1.0,
+exit_depth_min_20usd,recent_48h,2h,10,False,,,,0.0,1.0,1.0,
+exit_depth_min_20usd,recent_72h,15m,10,False,,,,0.0,1.0,1.0,
+exit_depth_min_20usd,recent_72h,30m,10,False,,,,0.0,1.0,1.0,
+exit_depth_min_20usd,recent_72h,1h,10,False,,,,0.0,1.0,1.0,
+exit_depth_min_20usd,recent_72h,2h,10,False,,,,0.0,1.0,1.0,
+exit_depth_min_20usd,recent_7d,15m,10,True,0.013417920321965694,0.4107715380890008,2.7122864879579818,0.11053984575835475,0.8894601542416453,0.9989739441754515,-0.03019356786112797
+exit_depth_min_20usd,recent_7d,30m,10,True,0.09036297695924622,0.7125266864049238,3.424620876061015,0.10789473684210527,0.8921052631578947,0.9990326237842815,-0.03019330133513913
+exit_depth_min_20usd,recent_7d,1h,10,True,0.25208269841900627,1.0565172953858653,4.392263825920321,0.10006854009595613,0.8999314599040439,0.9991515163508846,-0.030192705865822865
+exit_depth_min_20usd,recent_7d,2h,10,True,0.6136355995844137,1.3417539761886572,4.697793198926697,0.09586056644880174,0.9041394335511983,0.9993396666482526,-0.03019162661271542

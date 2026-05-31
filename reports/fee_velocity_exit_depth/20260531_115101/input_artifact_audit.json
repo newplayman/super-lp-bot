@@ -1,0 +1,72 @@
+{
+  "inputs": [
+    {
+      "path": "/tmp/fee_exit_repo/reports/pool_regime_rule_fix/20260531_113056/FINAL_VERDICT.json",
+      "exists": true
+    },
+    {
+      "path": "/tmp/fee_exit_repo/reports/pool_regime_rule_fix/20260531_113056/POOL_REGIME_RULE_FIX_DECISION_CN.md",
+      "exists": true
+    },
+    {
+      "path": "/tmp/fee_exit_repo/reports/pool_regime_rule_fix/20260531_113056/ENTRY_SAFE_REGIME_FEATURE_POLICY_CN.md",
+      "exists": true
+    },
+    {
+      "path": "/tmp/fee_exit_repo/reports/pool_regime_rule_fix/20260531_113056/ENTRY_SAFE_REGIME_AWARE_COUNTERFACTUAL_CN.md",
+      "exists": true
+    },
+    {
+      "path": "/tmp/fee_exit_repo/reports/pool_regime_rule_fix/20260531_113056/entry_safe_regime_aware_counterfactual.csv",
+      "exists": true
+    },
+    {
+      "path": "/tmp/fee_exit_repo/reports/pool_regime_rule_fix/20260531_113056/LEAKY_VS_ENTRY_SAFE_COMPARISON_CN.md",
+      "exists": true
+    },
+    {
+      "path": "/tmp/fee_exit_repo/reports/pool_regime_rule_fix/20260531_113056/leaky_vs_entry_safe_comparison.csv",
+      "exists": true
+    },
+    {
+      "path": "/tmp/fee_exit_repo/reports/pool_regime_rule_fix/20260531_113056/ENTRY_SAFE_ROBUSTNESS_AUDIT_CN.md",
+      "exists": true
+    },
+    {
+      "path": "/tmp/fee_exit_repo/reports/pool_regime_rule_fix/20260531_113056/entry_safe_robustness_audit.csv",
+      "exists": true
+    },
+    {
+      "path": "/tmp/fee_exit_repo/reports/pool_regime_aware_review/20260531_110005/FINAL_VERDICT.json",
+      "exists": true
+    },
+    {
+      "path": "/tmp/fee_exit_repo/reports/pool_regime_aware_short_hold/20260531_095237/FINAL_VERDICT.json",
+      "exists": true
+    },
+    {
+      "path": "/tmp/fee_exit_repo/reports/pool_regime_classifier/20260531_092109/FINAL_VERDICT.json",
+      "exists": true
+    },
+    {
+      "path": "/tmp/fee_exit_repo/reports/risk_signal_definition_fix/20260531_080614/FINAL_VERDICT.json",
+      "exists": true
+    },
+    {
+      "path": "/tmp/fee_exit_repo/reports/risk_aware_short_hold/20260531_073906/FINAL_VERDICT.json",
+      "exists": true
+    },
+    {
+      "path": "/tmp/fee_exit_repo/reports/new_strategy_hypothesis/20260531_071724/FINAL_VERDICT.json",
+      "exists": true
+    }
+  ],
+  "previous_stage_confirmed": true,
+  "leakage_found_after_fix": false,
+  "recommended_next_stage_ok": true,
+  "regime_retention_too_low": true,
+  "regime_false_quarantine_too_high": true,
+  "regime_missed_profit_too_high": true,
+  "enough_to_run_fee_exit_counterfactual": true,
+  "edge_proven": "no"
+}
