@@ -1,0 +1,9 @@
+policy_name,dedup_key_definition,expected_strength,expected_weakness,duplicate_risk_expected,sample_size_expected,recommended_for_test
+pool_time_bucket_15m,pool_id + token_pair + strategy_epoch + 15m time bucket + intent type,High sample retention with reduced tick inflation,May still overcount repeated traces within short bursts,medium,high,yes
+pool_time_bucket_30m,pool_id + token_pair + strategy_epoch + 30m time bucket + intent type,Balances compression and sample size,May still repeat within half-hour market state,medium,high,yes
+pool_time_bucket_1h,pool_id + token_pair + strategy_epoch + 1h time bucket + intent type,Matches prior baseline and is easy to interpret,Known to over-compress repeated ticks,high,high,yes
+pool_time_bucket_2h,pool_id + token_pair + strategy_epoch + 2h time bucket + intent type,Stronger anti-repeat control than 1h,May remove legitimate state transitions,medium,medium,yes
+pool_score_event_refined,pool_id + token_pair + strategy_epoch + 1h time bucket + score quantile bucket + intent type,Captures score regime while avoiding coarse collapse,Sensitive to score noise in same pool,medium,medium,yes
+position_reuse_session_refined,position_id + pool_id + strategy_epoch + 6h session bucket + intent type,Controls reuse-driven inflation at position level,May still merge distinct market states within a session,high,medium,yes
+hybrid_pool_time_score,pool_id + token_pair + strategy_epoch + 30m bucket + score quantile bucket + intent type,Better separation than pure time bucket,Could still over-compress score plateaus,medium,medium,yes
+strict_unique_market_state,pool_id + token_pair + strategy_epoch + 1h bucket + score bucket + volatility bucket + liquidity bucket + intent type,Strictest market-state separation,Most likely to under-count valid lifecycle opportunities,low,low,yes

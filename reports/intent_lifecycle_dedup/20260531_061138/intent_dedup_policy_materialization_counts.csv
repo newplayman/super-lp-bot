@@ -1,0 +1,97 @@
+policy_name,window,horizon,raw_intent_rows,deduped_count,valid_lifecycle_count,invalid_count,compression_ratio,entry_valid_rate,future_mark_coverage,invalid_reason_distribution
+pool_time_bucket_15m,last_24h,6h,5764,388,10,378,14.855670103092784,0.05154639175257732,0.02577319587628866,"{'position_join_missing': 368, 'no_future_pool_mark': 10}"
+pool_time_bucket_15m,last_24h,12h,5764,388,10,378,14.855670103092784,0.05154639175257732,0.02577319587628866,"{'position_join_missing': 368, 'no_future_pool_mark': 10}"
+pool_time_bucket_15m,last_24h,24h,5764,388,0,388,14.855670103092784,0.05154639175257732,0.0,"{'position_join_missing': 368, 'no_future_pool_mark': 20}"
+pool_time_bucket_15m,last_48h,6h,10892,737,41,696,14.778833107191316,0.06919945725915876,0.05563093622795115,"{'position_join_missing': 686, 'no_future_pool_mark': 10}"
+pool_time_bucket_15m,last_48h,12h,10892,737,41,696,14.778833107191316,0.06919945725915876,0.05563093622795115,"{'position_join_missing': 686, 'no_future_pool_mark': 10}"
+pool_time_bucket_15m,last_48h,24h,10892,737,31,706,14.778833107191316,0.06919945725915876,0.04206241519674356,"{'position_join_missing': 686, 'no_future_pool_mark': 20}"
+pool_time_bucket_15m,last_72h,6h,16596,1127,82,1045,14.725820763087844,0.08163265306122448,0.07275953859804792,"{'position_join_missing': 1035, 'no_future_pool_mark': 10}"
+pool_time_bucket_15m,last_72h,12h,16596,1127,82,1045,14.725820763087844,0.08163265306122448,0.07275953859804792,"{'position_join_missing': 1035, 'no_future_pool_mark': 10}"
+pool_time_bucket_15m,last_72h,24h,16596,1127,72,1055,14.725820763087844,0.08163265306122448,0.06388642413487133,"{'position_join_missing': 1035, 'no_future_pool_mark': 20}"
+pool_time_bucket_15m,last_7d,6h,36128,2487,206,2281,14.526739043023724,0.08685162846803378,0.08283071974266185,"{'position_join_missing': 2270, 'intended_notional_missing': 1, 'no_future_pool_mark': 10}"
+pool_time_bucket_15m,last_7d,12h,36128,2487,204,2283,14.526739043023724,0.08685162846803378,0.08202653799758745,"{'position_join_missing': 2270, 'intended_notional_missing': 1, 'no_future_pool_mark': 12}"
+pool_time_bucket_15m,last_7d,24h,36128,2487,190,2297,14.526739043023724,0.08685162846803378,0.07639726578206675,"{'position_join_missing': 2270, 'intended_notional_missing': 1, 'no_future_pool_mark': 26}"
+pool_time_bucket_30m,last_24h,6h,5764,196,6,190,29.408163265306122,0.061224489795918366,0.030612244897959183,"{'position_join_missing': 184, 'no_future_pool_mark': 6}"
+pool_time_bucket_30m,last_24h,12h,5764,196,6,190,29.408163265306122,0.061224489795918366,0.030612244897959183,"{'position_join_missing': 184, 'no_future_pool_mark': 6}"
+pool_time_bucket_30m,last_24h,24h,5764,196,0,196,29.408163265306122,0.061224489795918366,0.0,"{'position_join_missing': 184, 'no_future_pool_mark': 12}"
+pool_time_bucket_30m,last_48h,6h,10892,374,25,349,29.122994652406415,0.08288770053475936,0.06684491978609626,"{'position_join_missing': 343, 'no_future_pool_mark': 6}"
+pool_time_bucket_30m,last_48h,12h,10892,374,25,349,29.122994652406415,0.08288770053475936,0.06684491978609626,"{'position_join_missing': 343, 'no_future_pool_mark': 6}"
+pool_time_bucket_30m,last_48h,24h,10892,374,19,355,29.122994652406415,0.08288770053475936,0.05080213903743316,"{'position_join_missing': 343, 'no_future_pool_mark': 12}"
+pool_time_bucket_30m,last_72h,6h,16596,573,49,524,28.963350785340314,0.09598603839441536,0.08551483420593368,"{'position_join_missing': 518, 'no_future_pool_mark': 6}"
+pool_time_bucket_30m,last_72h,12h,16596,573,49,524,28.963350785340314,0.09598603839441536,0.08551483420593368,"{'position_join_missing': 518, 'no_future_pool_mark': 6}"
+pool_time_bucket_30m,last_72h,24h,16596,573,43,530,28.963350785340314,0.09598603839441536,0.07504363001745201,"{'position_join_missing': 518, 'no_future_pool_mark': 12}"
+pool_time_bucket_30m,last_7d,6h,36128,1271,125,1146,28.42486231313926,0.10306845003933911,0.0983477576711251,"{'position_join_missing': 1139, 'intended_notional_missing': 1, 'no_future_pool_mark': 6}"
+pool_time_bucket_30m,last_7d,12h,36128,1271,124,1147,28.42486231313926,0.10306845003933911,0.0975609756097561,"{'position_join_missing': 1139, 'intended_notional_missing': 1, 'no_future_pool_mark': 7}"
+pool_time_bucket_30m,last_7d,24h,36128,1271,115,1156,28.42486231313926,0.10306845003933911,0.0904799370574351,"{'position_join_missing': 1139, 'intended_notional_missing': 1, 'no_future_pool_mark': 16}"
+pool_time_bucket_1h,last_24h,6h,5764,100,4,96,57.64,0.08,0.04,"{'position_join_missing': 92, 'no_future_pool_mark': 4}"
+pool_time_bucket_1h,last_24h,12h,5764,100,4,96,57.64,0.08,0.04,"{'position_join_missing': 92, 'no_future_pool_mark': 4}"
+pool_time_bucket_1h,last_24h,24h,5764,100,0,100,57.64,0.08,0.0,"{'position_join_missing': 92, 'no_future_pool_mark': 8}"
+pool_time_bucket_1h,last_48h,6h,10892,193,16,177,56.43523316062176,0.10362694300518134,0.08290155440414508,"{'position_join_missing': 173, 'no_future_pool_mark': 4}"
+pool_time_bucket_1h,last_48h,12h,10892,193,16,177,56.43523316062176,0.10362694300518134,0.08290155440414508,"{'position_join_missing': 173, 'no_future_pool_mark': 4}"
+pool_time_bucket_1h,last_48h,24h,10892,193,12,181,56.43523316062176,0.10362694300518134,0.06217616580310881,"{'position_join_missing': 173, 'no_future_pool_mark': 8}"
+pool_time_bucket_1h,last_72h,6h,16596,297,32,265,55.878787878787875,0.12121212121212122,0.10774410774410774,"{'position_join_missing': 261, 'no_future_pool_mark': 4}"
+pool_time_bucket_1h,last_72h,12h,16596,297,32,265,55.878787878787875,0.12121212121212122,0.10774410774410774,"{'position_join_missing': 261, 'no_future_pool_mark': 4}"
+pool_time_bucket_1h,last_72h,24h,16596,297,28,269,55.878787878787875,0.12121212121212122,0.09427609427609428,"{'position_join_missing': 261, 'no_future_pool_mark': 8}"
+pool_time_bucket_1h,last_7d,6h,36128,664,84,580,54.40963855421687,0.13253012048192772,0.12650602409638553,"{'position_join_missing': 576, 'no_future_pool_mark': 4}"
+pool_time_bucket_1h,last_7d,12h,36128,664,84,580,54.40963855421687,0.13253012048192772,0.12650602409638553,"{'position_join_missing': 576, 'no_future_pool_mark': 4}"
+pool_time_bucket_1h,last_7d,24h,36128,664,77,587,54.40963855421687,0.13253012048192772,0.11596385542168675,"{'position_join_missing': 576, 'no_future_pool_mark': 11}"
+pool_time_bucket_2h,last_24h,6h,5764,52,2,50,110.84615384615384,0.07692307692307693,0.038461538461538464,"{'position_join_missing': 48, 'no_future_pool_mark': 2}"
+pool_time_bucket_2h,last_24h,12h,5764,52,2,50,110.84615384615384,0.07692307692307693,0.038461538461538464,"{'position_join_missing': 48, 'no_future_pool_mark': 2}"
+pool_time_bucket_2h,last_24h,24h,5764,52,0,52,110.84615384615384,0.07692307692307693,0.0,"{'position_join_missing': 48, 'no_future_pool_mark': 4}"
+pool_time_bucket_2h,last_48h,6h,10892,102,10,92,106.7843137254902,0.11764705882352941,0.09803921568627451,"{'position_join_missing': 90, 'no_future_pool_mark': 2}"
+pool_time_bucket_2h,last_48h,12h,10892,102,10,92,106.7843137254902,0.11764705882352941,0.09803921568627451,"{'position_join_missing': 90, 'no_future_pool_mark': 2}"
+pool_time_bucket_2h,last_48h,24h,10892,102,8,94,106.7843137254902,0.11764705882352941,0.0784313725490196,"{'position_join_missing': 90, 'no_future_pool_mark': 4}"
+pool_time_bucket_2h,last_72h,6h,16596,158,21,137,105.0379746835443,0.14556962025316456,0.13291139240506328,"{'position_join_missing': 135, 'no_future_pool_mark': 2}"
+pool_time_bucket_2h,last_72h,12h,16596,158,21,137,105.0379746835443,0.14556962025316456,0.13291139240506328,"{'position_join_missing': 135, 'no_future_pool_mark': 2}"
+pool_time_bucket_2h,last_72h,24h,16596,158,19,139,105.0379746835443,0.14556962025316456,0.12025316455696203,"{'position_join_missing': 135, 'no_future_pool_mark': 4}"
+pool_time_bucket_2h,last_7d,6h,36128,361,53,308,100.07756232686981,0.1523545706371191,0.14681440443213298,"{'position_join_missing': 306, 'no_future_pool_mark': 2}"
+pool_time_bucket_2h,last_7d,12h,36128,361,53,308,100.07756232686981,0.1523545706371191,0.14681440443213298,"{'position_join_missing': 306, 'no_future_pool_mark': 2}"
+pool_time_bucket_2h,last_7d,24h,36128,361,49,312,100.07756232686981,0.1523545706371191,0.13573407202216067,"{'position_join_missing': 306, 'no_future_pool_mark': 6}"
+pool_score_event_refined,last_24h,6h,5764,0,0,0,,,,{}
+pool_score_event_refined,last_24h,12h,5764,0,0,0,,,,{}
+pool_score_event_refined,last_24h,24h,5764,0,0,0,,,,{}
+pool_score_event_refined,last_48h,6h,10892,0,0,0,,,,{}
+pool_score_event_refined,last_48h,12h,10892,0,0,0,,,,{}
+pool_score_event_refined,last_48h,24h,10892,0,0,0,,,,{}
+pool_score_event_refined,last_72h,6h,16596,1,0,1,16596.0,0.0,0.0,{'position_join_missing': 1}
+pool_score_event_refined,last_72h,12h,16596,1,0,1,16596.0,0.0,0.0,{'position_join_missing': 1}
+pool_score_event_refined,last_72h,24h,16596,1,0,1,16596.0,0.0,0.0,{'position_join_missing': 1}
+pool_score_event_refined,last_7d,6h,36128,14,7,7,2580.5714285714284,0.5,0.5,{'position_join_missing': 7}
+pool_score_event_refined,last_7d,12h,36128,14,7,7,2580.5714285714284,0.5,0.5,{'position_join_missing': 7}
+pool_score_event_refined,last_7d,24h,36128,14,5,9,2580.5714285714284,0.5,0.35714285714285715,"{'position_join_missing': 7, 'no_future_pool_mark': 2}"
+position_reuse_session_refined,last_24h,6h,5764,24,4,20,240.16666666666666,0.3333333333333333,0.16666666666666666,"{'position_join_missing': 16, 'no_future_pool_mark': 4}"
+position_reuse_session_refined,last_24h,12h,5764,24,4,20,240.16666666666666,0.3333333333333333,0.16666666666666666,"{'position_join_missing': 16, 'no_future_pool_mark': 4}"
+position_reuse_session_refined,last_24h,24h,5764,24,0,24,240.16666666666666,0.3333333333333333,0.0,"{'position_join_missing': 16, 'no_future_pool_mark': 8}"
+position_reuse_session_refined,last_48h,6h,10892,52,16,36,209.46153846153845,0.38461538461538464,0.3076923076923077,"{'position_join_missing': 32, 'no_future_pool_mark': 4}"
+position_reuse_session_refined,last_48h,12h,10892,52,16,36,209.46153846153845,0.38461538461538464,0.3076923076923077,"{'position_join_missing': 32, 'no_future_pool_mark': 4}"
+position_reuse_session_refined,last_48h,24h,10892,52,12,40,209.46153846153845,0.38461538461538464,0.23076923076923078,"{'position_join_missing': 32, 'no_future_pool_mark': 8}"
+position_reuse_session_refined,last_72h,6h,16596,84,33,51,197.57142857142858,0.44047619047619047,0.39285714285714285,"{'position_join_missing': 47, 'no_future_pool_mark': 4}"
+position_reuse_session_refined,last_72h,12h,16596,84,33,51,197.57142857142858,0.44047619047619047,0.39285714285714285,"{'position_join_missing': 47, 'no_future_pool_mark': 4}"
+position_reuse_session_refined,last_72h,24h,16596,84,29,55,197.57142857142858,0.44047619047619047,0.34523809523809523,"{'position_join_missing': 47, 'no_future_pool_mark': 8}"
+position_reuse_session_refined,last_7d,6h,36128,225,84,141,160.5688888888889,0.39111111111111113,0.37333333333333335,"{'position_join_missing': 112, 'intended_notional_missing': 25, 'no_future_pool_mark': 4}"
+position_reuse_session_refined,last_7d,12h,36128,225,84,141,160.5688888888889,0.39111111111111113,0.37333333333333335,"{'position_join_missing': 112, 'intended_notional_missing': 25, 'no_future_pool_mark': 4}"
+position_reuse_session_refined,last_7d,24h,36128,225,78,147,160.5688888888889,0.39111111111111113,0.3466666666666667,"{'position_join_missing': 112, 'intended_notional_missing': 25, 'no_future_pool_mark': 10}"
+hybrid_pool_time_score,last_24h,6h,5764,0,0,0,,,,{}
+hybrid_pool_time_score,last_24h,12h,5764,0,0,0,,,,{}
+hybrid_pool_time_score,last_24h,24h,5764,0,0,0,,,,{}
+hybrid_pool_time_score,last_48h,6h,10892,0,0,0,,,,{}
+hybrid_pool_time_score,last_48h,12h,10892,0,0,0,,,,{}
+hybrid_pool_time_score,last_48h,24h,10892,0,0,0,,,,{}
+hybrid_pool_time_score,last_72h,6h,16596,0,0,0,,,,{}
+hybrid_pool_time_score,last_72h,12h,16596,0,0,0,,,,{}
+hybrid_pool_time_score,last_72h,24h,16596,0,0,0,,,,{}
+hybrid_pool_time_score,last_7d,6h,36128,11,7,4,3284.3636363636365,0.6363636363636364,0.6363636363636364,{'position_join_missing': 4}
+hybrid_pool_time_score,last_7d,12h,36128,11,7,4,3284.3636363636365,0.6363636363636364,0.6363636363636364,{'position_join_missing': 4}
+hybrid_pool_time_score,last_7d,24h,36128,11,5,6,3284.3636363636365,0.6363636363636364,0.45454545454545453,"{'position_join_missing': 4, 'no_future_pool_mark': 2}"
+strict_unique_market_state,last_24h,6h,5764,0,0,0,,,,{}
+strict_unique_market_state,last_24h,12h,5764,0,0,0,,,,{}
+strict_unique_market_state,last_24h,24h,5764,0,0,0,,,,{}
+strict_unique_market_state,last_48h,6h,10892,0,0,0,,,,{}
+strict_unique_market_state,last_48h,12h,10892,0,0,0,,,,{}
+strict_unique_market_state,last_48h,24h,10892,0,0,0,,,,{}
+strict_unique_market_state,last_72h,6h,16596,0,0,0,,,,{}
+strict_unique_market_state,last_72h,12h,16596,0,0,0,,,,{}
+strict_unique_market_state,last_72h,24h,16596,0,0,0,,,,{}
+strict_unique_market_state,last_7d,6h,36128,11,7,4,3284.3636363636365,0.6363636363636364,0.6363636363636364,{'position_join_missing': 4}
+strict_unique_market_state,last_7d,12h,36128,11,7,4,3284.3636363636365,0.6363636363636364,0.6363636363636364,{'position_join_missing': 4}
+strict_unique_market_state,last_7d,24h,36128,11,5,6,3284.3636363636365,0.6363636363636364,0.45454545454545453,"{'position_join_missing': 4, 'no_future_pool_mark': 2}"

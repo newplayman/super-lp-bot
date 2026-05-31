@@ -1,0 +1,21 @@
+# ARTIFACT_INDEX
+
+- INPUT_ARTIFACT_AUDIT_CN.md
+- input_artifact_audit.json
+- VPS_DB_QUICK_CHECK_CN.md
+- INTENT_DEDUP_POLICY_CANDIDATES_CN.md
+- intent_dedup_policy_candidates.csv
+- intent_dedup_policy_candidates.json
+- INTENT_DEDUP_POLICY_MATERIALIZATION_CN.md
+- intent_dedup_policy_materialization_counts.csv
+- INTENT_DEDUP_QUALITY_SCORE_CN.md
+- intent_dedup_quality_score.csv
+- INTENT_DEDUP_POLICY_PROOF_COMPARISON_CN.md
+- intent_dedup_policy_proof_comparison.csv
+- INTENT_DEDUP_BEST_POLICY_SELECTION_CN.md
+- intent_dedup_best_policy_selection.json
+- INTENT_DEDUP_NEXT_STAGE_DECISION_CN.md
+- intent_dedup_next_stage_decision.json
+- FINAL_VERDICT.json
+- ONEPAGE_CN.md
+- intent_lifecycle_dedup_policy_fix_v1_readonly.py

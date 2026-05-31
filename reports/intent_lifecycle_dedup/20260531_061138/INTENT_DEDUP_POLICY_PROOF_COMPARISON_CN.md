@@ -1,0 +1,26 @@
+# INTENT_DEDUP_POLICY_PROOF_COMPARISON_CN
+
+- `pool_time_bucket_15m 6h` valid=206 signal=insufficient tail=WARN p10=-0.009839122166738434 p5=-0.017511431841370495
+- `pool_time_bucket_15m 12h` valid=204 signal=insufficient tail=WARN p10=-0.01062085657008538 p5=-5.402576855288521
+- `pool_time_bucket_15m 24h` valid=190 signal=insufficient tail=WARN p10=-0.0005250369752047845 p5=-0.0030288763828849596
+- `pool_time_bucket_30m 6h` valid=125 signal=insufficient tail=WARN p10=-0.010950894965262137 p5=-0.016711514229569957
+- `pool_time_bucket_30m 12h` valid=124 signal=insufficient tail=WARN p10=-3.9989606078309237 p5=-6.472338398104921
+- `pool_time_bucket_30m 24h` valid=115 signal=insufficient tail=WARN p10=-0.0005820545230221796 p5=-0.005841160145791946
+- `pool_time_bucket_1h 6h` valid=84 signal=insufficient tail=WARN p10=-0.006668044210186963 p5=-0.013918246958198212
+- `pool_time_bucket_1h 12h` valid=84 signal=insufficient tail=WARN p10=-5.601534808961944 p5=-6.9934571105757755
+- `pool_time_bucket_1h 24h` valid=77 signal=insufficient tail=WARN p10=-0.001118245265544715 p5=-0.005841160145791946
+- `pool_time_bucket_2h 6h` valid=53 signal=insufficient tail=WARN p10=-0.0016177538171433525 p5=-0.013696166783148557
+- `pool_time_bucket_2h 12h` valid=53 signal=insufficient tail=WARN p10=-6.5819342706872845 p5=-7.388324661220196
+- `pool_time_bucket_2h 24h` valid=49 signal=insufficient tail=WARN p10=-0.001118245265544715 p5=-0.0030288763828849596
+- `pool_score_event_refined 6h` valid=7 signal=insufficient tail=WARN p10=-3.7968926830533434 p5=-3.7968926830533434
+- `pool_score_event_refined 12h` valid=7 signal=insufficient tail=WARN p10=-3.7968926830533434 p5=-3.7968926830533434
+- `pool_score_event_refined 24h` valid=5 signal=insufficient tail=WARN p10=-0.001118245265544715 p5=-0.001118245265544715
+- `position_reuse_session_refined 6h` valid=84 signal=insufficient tail=WARN p10=-0.0016177538171433525 p5=-0.011720397769906299
+- `position_reuse_session_refined 12h` valid=84 signal=insufficient tail=WARN p10=-6.9934571105757755 p5=-7.496623900508085
+- `position_reuse_session_refined 24h` valid=78 signal=insufficient tail=WARN p10=-5.402576855288521 p5=-6.260753720167657
+- `hybrid_pool_time_score 6h` valid=7 signal=insufficient tail=WARN p10=-3.7968926830533434 p5=-3.7968926830533434
+- `hybrid_pool_time_score 12h` valid=7 signal=insufficient tail=WARN p10=-3.7968926830533434 p5=-3.7968926830533434
+- `hybrid_pool_time_score 24h` valid=5 signal=insufficient tail=WARN p10=-0.001118245265544715 p5=-0.001118245265544715
+- `strict_unique_market_state 6h` valid=7 signal=insufficient tail=WARN p10=-3.7968926830533434 p5=-3.7968926830533434
+- `strict_unique_market_state 12h` valid=7 signal=insufficient tail=WARN p10=-3.7968926830533434 p5=-3.7968926830533434
+- `strict_unique_market_state 24h` valid=5 signal=insufficient tail=WARN p10=-0.001118245265544715 p5=-0.001118245265544715

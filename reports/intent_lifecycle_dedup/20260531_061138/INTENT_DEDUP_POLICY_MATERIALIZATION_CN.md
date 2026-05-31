@@ -1,0 +1,26 @@
+# INTENT_DEDUP_POLICY_MATERIALIZATION_CN
+
+- `pool_time_bucket_15m 6h` raw=36128 deduped=2487 valid=206 invalid=2281 compression=14.526739043023724
+- `pool_time_bucket_15m 12h` raw=36128 deduped=2487 valid=204 invalid=2283 compression=14.526739043023724
+- `pool_time_bucket_15m 24h` raw=36128 deduped=2487 valid=190 invalid=2297 compression=14.526739043023724
+- `pool_time_bucket_30m 6h` raw=36128 deduped=1271 valid=125 invalid=1146 compression=28.42486231313926
+- `pool_time_bucket_30m 12h` raw=36128 deduped=1271 valid=124 invalid=1147 compression=28.42486231313926
+- `pool_time_bucket_30m 24h` raw=36128 deduped=1271 valid=115 invalid=1156 compression=28.42486231313926
+- `pool_time_bucket_1h 6h` raw=36128 deduped=664 valid=84 invalid=580 compression=54.40963855421687
+- `pool_time_bucket_1h 12h` raw=36128 deduped=664 valid=84 invalid=580 compression=54.40963855421687
+- `pool_time_bucket_1h 24h` raw=36128 deduped=664 valid=77 invalid=587 compression=54.40963855421687
+- `pool_time_bucket_2h 6h` raw=36128 deduped=361 valid=53 invalid=308 compression=100.07756232686981
+- `pool_time_bucket_2h 12h` raw=36128 deduped=361 valid=53 invalid=308 compression=100.07756232686981
+- `pool_time_bucket_2h 24h` raw=36128 deduped=361 valid=49 invalid=312 compression=100.07756232686981
+- `pool_score_event_refined 6h` raw=36128 deduped=14 valid=7 invalid=7 compression=2580.5714285714284
+- `pool_score_event_refined 12h` raw=36128 deduped=14 valid=7 invalid=7 compression=2580.5714285714284
+- `pool_score_event_refined 24h` raw=36128 deduped=14 valid=5 invalid=9 compression=2580.5714285714284
+- `position_reuse_session_refined 6h` raw=36128 deduped=225 valid=84 invalid=141 compression=160.5688888888889
+- `position_reuse_session_refined 12h` raw=36128 deduped=225 valid=84 invalid=141 compression=160.5688888888889
+- `position_reuse_session_refined 24h` raw=36128 deduped=225 valid=78 invalid=147 compression=160.5688888888889
+- `hybrid_pool_time_score 6h` raw=36128 deduped=11 valid=7 invalid=4 compression=3284.3636363636365
+- `hybrid_pool_time_score 12h` raw=36128 deduped=11 valid=7 invalid=4 compression=3284.3636363636365
+- `hybrid_pool_time_score 24h` raw=36128 deduped=11 valid=5 invalid=6 compression=3284.3636363636365
+- `strict_unique_market_state 6h` raw=36128 deduped=11 valid=7 invalid=4 compression=3284.3636363636365
+- `strict_unique_market_state 12h` raw=36128 deduped=11 valid=7 invalid=4 compression=3284.3636363636365
+- `strict_unique_market_state 24h` raw=36128 deduped=11 valid=5 invalid=6 compression=3284.3636363636365
