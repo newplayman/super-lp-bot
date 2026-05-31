@@ -1,0 +1,19 @@
+{
+  "risk_signal_definition_fix_final": true,
+  "risk_signal_fix_next_stage": true,
+  "risk_signal_ablation": true,
+  "risk_signal_ablation_csv": true,
+  "risk_signal_combo_grid": true,
+  "risk_signal_combo_grid_csv": true,
+  "quarantine_vs_exit_timing": true,
+  "quarantine_vs_exit_timing_csv": true,
+  "risk_signal_definition_v2": true,
+  "risk_signal_definition_v2_json": true,
+  "risk_aware_short_hold_preview": true,
+  "risk_aware_short_hold_preview_csv": true,
+  "risk_exit_helpful_confirmed": false,
+  "quarantine_helpful_confirmed": true,
+  "recommended_next_stage_confirmed": true,
+  "sufficient_for_pool_regime_classifier": true,
+  "edge_proven": "no"
+}

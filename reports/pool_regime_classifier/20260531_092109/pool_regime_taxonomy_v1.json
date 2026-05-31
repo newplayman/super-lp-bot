@@ -1,0 +1,168 @@
+{
+  "regimes": [
+    {
+      "name": "HEALTHY_SHORT_HOLD",
+      "rule": "exit depth is acceptable, price movement controlled, volume not collapsing, data fresh, and no extreme concentration proxy.",
+      "required_data": [
+        "valuation_usd",
+        "current_tvl_usd",
+        "current_vol24h_usd",
+        "price_move_5m",
+        "price_move_15m",
+        "price_move_30m",
+        "price_move_1h"
+      ],
+      "confidence": "high",
+      "should_enter": true,
+      "should_quarantine": false,
+      "should_research": true,
+      "known_false_positive_risk": "Low-risk pools with muted price movement may still hide latent liquidity fragility."
+    },
+    {
+      "name": "STABLE_FEE",
+      "rule": "fee proxy is attractive while price and TVL remain stable and exit depth is acceptable.",
+      "required_data": [
+        "current_tvl_usd",
+        "current_vol24h_usd",
+        "fee_proxy",
+        "fee_velocity_proxy"
+      ],
+      "confidence": "high",
+      "should_enter": true,
+      "should_quarantine": false,
+      "should_research": true,
+      "known_false_positive_risk": "Fee-rich periods can fade quickly and reverse into thin-liquidity regimes."
+    },
+    {
+      "name": "VOLATILE_BUT_LIQUID",
+      "rule": "price movement is elevated but exit depth remains acceptable and data is fresh.",
+      "required_data": [
+        "price_move_15m",
+        "price_move_30m",
+        "exit_depth_50usd"
+      ],
+      "confidence": "medium",
+      "should_enter": false,
+      "should_quarantine": false,
+      "should_research": true,
+      "known_false_positive_risk": "Liquidity can deteriorate right after the volatility spike is observed."
+    },
+    {
+      "name": "TOXIC_FLOW",
+      "rule": "abnormal volume spike co-occurs with adverse price move and elevated concentration proxy.",
+      "required_data": [
+        "volume_change_15m",
+        "volume_change_1h",
+        "price_move_15m",
+        "price_move_30m",
+        "trader_concentration",
+        "holder_concentration"
+      ],
+      "confidence": "medium",
+      "should_enter": false,
+      "should_quarantine": true,
+      "should_research": true,
+      "known_false_positive_risk": "Organic flow bursts may look toxic before the price mean-reverts."
+    },
+    {
+      "name": "EXIT_DEPTH_THIN",
+      "rule": "slippage at 10/20/50 USD is too high or safe exit depth is too small.",
+      "required_data": [
+        "exit_depth_10usd",
+        "exit_depth_20usd",
+        "exit_depth_50usd",
+        "slippage_10usd",
+        "slippage_20usd",
+        "slippage_50usd"
+      ],
+      "confidence": "high",
+      "should_enter": false,
+      "should_quarantine": true,
+      "should_research": true,
+      "known_false_positive_risk": "Depth can recover rapidly on a thin but active pool."
+    },
+    {
+      "name": "VOLUME_COLLAPSE",
+      "rule": "volume decays hard over 15m/30m/1h and fee proxy becomes unreliable.",
+      "required_data": [
+        "volume_change_15m",
+        "volume_change_30m",
+        "volume_change_1h",
+        "fee_proxy"
+      ],
+      "confidence": "high",
+      "should_enter": false,
+      "should_quarantine": true,
+      "should_research": true,
+      "known_false_positive_risk": "Short-term lull can precede a new fee regime."
+    },
+    {
+      "name": "TVL_DROP",
+      "rule": "TVL suddenly drops and liquidity pull risk rises.",
+      "required_data": [
+        "tvl_change_1h",
+        "current_tvl_usd"
+      ],
+      "confidence": "high",
+      "should_enter": false,
+      "should_quarantine": true,
+      "should_research": true,
+      "known_false_positive_risk": "Transient TVL dips from rebalancing can mimic a pull."
+    },
+    {
+      "name": "PRICE_SPIKE_VOLATILE",
+      "rule": "price moves exceed thresholds and IL risk is elevated, even when exit depth may still be available.",
+      "required_data": [
+        "price_move_5m",
+        "price_move_15m",
+        "price_move_30m",
+        "price_move_1h"
+      ],
+      "confidence": "medium",
+      "should_enter": false,
+      "should_quarantine": true,
+      "should_research": true,
+      "known_false_positive_risk": "Fast momentum may briefly overshoot before mean reversion."
+    },
+    {
+      "name": "WHALE_OR_HOLDER_CONCENTRATED",
+      "rule": "holder/trader concentration proxy is high and one actor dominates the pool.",
+      "required_data": [
+        "holder_concentration",
+        "trader_concentration",
+        "SecurityScore proxy"
+      ],
+      "confidence": "medium",
+      "should_enter": false,
+      "should_quarantine": true,
+      "should_research": true,
+      "known_false_positive_risk": "Proxy concentration may overstate risk when direct holder data is unavailable."
+    },
+    {
+      "name": "DATA_STALE_OR_INCOMPLETE",
+      "rule": "mark data is stale or core risk fields are missing.",
+      "required_data": [
+        "valuation_usd",
+        "current_tvl_usd",
+        "current_vol24h_usd"
+      ],
+      "confidence": "high",
+      "should_enter": false,
+      "should_quarantine": true,
+      "should_research": true,
+      "known_false_positive_risk": "Temporary ingestion delays may create false stale signals."
+    },
+    {
+      "name": "UNKNOWN",
+      "rule": "no regime can be assigned confidently from available evidence.",
+      "required_data": [
+        "any available pool window data"
+      ],
+      "confidence": "low",
+      "should_enter": false,
+      "should_quarantine": false,
+      "should_research": true,
+      "known_false_positive_risk": "Unknown may conceal both good and bad pools; treat as research-only."
+    }
+  ]
+}

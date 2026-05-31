@@ -1,0 +1,23 @@
+{
+  "status": "PASS",
+  "stage": "POOL_REGIME_CLASSIFIER_V1",
+  "data_source": "vps_postgres",
+  "db_ready": true,
+  "regime_count": 11,
+  "classified_window_count": 4653,
+  "healthy_short_hold_count": 1010,
+  "quarantine_count": 3484,
+  "unknown_count": 38,
+  "best_filter_name": "exclude_DATA_STALE_OR_INCOMPLETE",
+  "best_window": "recent_7d",
+  "best_horizon": "2h",
+  "tail_improved": true,
+  "false_quarantine_rate": 0.29411764705882354,
+  "missed_profit_rate": 0.005,
+  "opportunity_retention_rate": 0.995,
+  "review_ready": true,
+  "edge_proven": "no",
+  "tiny_canary_candidate": "no",
+  "tiny_canary_allowed": "no",
+  "recommended_next_stage": "POOL_REGIME_AWARE_SHORT_HOLD_COUNTERFACTUAL_V1"
+}

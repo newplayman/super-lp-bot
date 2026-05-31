@@ -1,0 +1,18 @@
+{
+  "recommended_next_stage": "POOL_REGIME_AWARE_SHORT_HOLD_COUNTERFACTUAL_V1",
+  "best_filter_name": "exclude_DATA_STALE_OR_INCOMPLETE",
+  "best_window": "recent_7d",
+  "best_horizon": "2h",
+  "sample_count_after": 1344,
+  "tail_improvement_p10": 0.04557774589803498,
+  "tail_improvement_p5": 0.12407480889188993,
+  "tail_improvement_p1": 0.8015806029331101,
+  "false_quarantine_rate": 0.29411764705882354,
+  "missed_profit_rate": 0.005,
+  "opportunity_retention_rate": 0.995,
+  "loss_avoidance_rate": 0.02586206896551724,
+  "tail_status": "PASS",
+  "data_quality_status": "sufficient",
+  "review_ready": true,
+  "tail_improved": true
+}
