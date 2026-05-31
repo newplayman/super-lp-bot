@@ -1,0 +1,2 @@
+missed_profit_count,missed_profit_rate,missed_profit_count_rate,missed_profit_p50,missed_profit_p90,missed_profit_p99,false_quarantine_count,false_quarantine_rate,false_quarantine_count_rate,loss_avoided_count,loss_avoidance_rate,loss_avoided_p50,loss_avoided_p90,loss_avoided_p99,net_tradeoff_score,acceptable
+54,0.2516057705284425,0.20610687022900764,0.04079995232139455,2.98373692345623,12.5987154092168,54,0.140625,0.140625,43,0.3524590163934426,0.985684351763019,11.2625424398271,12.8713129742092,103.07320575922908,False

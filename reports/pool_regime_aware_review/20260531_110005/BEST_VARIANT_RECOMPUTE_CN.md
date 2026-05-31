@@ -1,0 +1,23 @@
+# Best Variant Recompute
+
+- best_variant_reported: regime_score_threshold_loose
+- best_variant_recomputed_from_report_ranking: regime_score_threshold_loose
+- best_variant_recomputed_corrected: regime_score_threshold_loose
+- best_variant_still_same: yes
+- best_variant_still_same_corrected: yes
+- recompute_window: recent_72h
+- recompute_horizon: 2h
+- recompute_proof_unit: pool_window
+- data_quality_status: sufficient
+- sample_count: 384
+- retained_sample_count: 287
+- baseline_p10/p5/p1: -0.5647946339 / -2.7790014233 / -11.2625424398
+- filtered_p10/p5/p1: -0.2586029639 / -0.5656279759 / -2.7790014233
+- tail_improvement_p10/p5/p1: 0.30619167 / 2.2133734474 / 8.4835410165
+- opportunity_retention_rate: 0.7938931298
+- false_quarantine_rate: 0.140625
+- missed_profit_rate: 0.2516057705
+- worst_pool_contribution: 0.5794260852
+- worst_regime_contribution: 0.6076346306
+- differences_explainable: no
+- recompute_note: prior V1 report mixed quarantine 0.0 into filtered distribution and used filtered_values length as retained_sample_count.

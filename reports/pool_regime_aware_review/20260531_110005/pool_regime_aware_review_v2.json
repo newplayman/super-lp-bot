@@ -1,0 +1,11 @@
+{
+  "tail_improvement_reproduced": false,
+  "time_window_robustness": "BROAD",
+  "horizon_robustness": "BROAD",
+  "missed_profit_rate": 0.2516057705284425,
+  "false_quarantine_rate": 0.140625,
+  "lookahead_risk": "HIGH",
+  "leakage_found": true,
+  "review_v2_status": "FAIL",
+  "recommended_next_stage": "POOL_REGIME_RULE_FIX"
+}

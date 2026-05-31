@@ -1,0 +1,21 @@
+{
+  "prior_final_verdict": true,
+  "prior_counterfactual_md": true,
+  "prior_counterfactual_csv": true,
+  "prior_best_md": true,
+  "prior_best_json": true,
+  "prior_robust_md": true,
+  "prior_robust_csv": true,
+  "prior_next_md": true,
+  "prior_next_json": true,
+  "classifier_final": true,
+  "risk_signal_final": true,
+  "risk_aware_final": true,
+  "new_strategy_final": true,
+  "prior_stage_ok": true,
+  "best_variant_ok": true,
+  "review_ready_yes": true,
+  "overfit_risk_high": true,
+  "enough_for_v2_review": true,
+  "edge_proven": "no"
+}
