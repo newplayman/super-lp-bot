@@ -1,0 +1,15 @@
+{
+  "status": "PASS",
+  "stage": "NEW_STRATEGY_HYPOTHESIS_DESIGN_V1",
+  "failed_lines_frozen": "yes",
+  "new_hypothesis_count": 7,
+  "p0_hypothesis": "Risk-Aware Short-Hold LP",
+  "p1_hypothesis": "Pool Regime Classifier",
+  "p2_hypothesis": "Fee-Velocity / Exit-Depth Spread Capture",
+  "p0_next_stage": "RISK_AWARE_SHORT_HOLD_COUNTERFACTUAL_V1",
+  "can_run_p0_readonly_now": "yes",
+  "recommended_next_stage": "RISK_AWARE_SHORT_HOLD_COUNTERFACTUAL_V1",
+  "edge_proven": "no",
+  "tiny_canary_candidate": "no",
+  "tiny_canary_allowed": "no"
+}
