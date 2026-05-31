@@ -1,0 +1,4 @@
+horizon,before_no_future_mark,after_true_active_at_target_no_future_position_mark,after_terminal_before_target,after_horizon_not_mature,after_pool_mark_only_counterfactual,clean_proof_count_before,clean_proof_count_after,counterfactual_count,unknown_count
+6h,26,0,25,0,0,42,42,0,0
+12h,28,0,26,0,0,40,40,0,0
+24h,60,0,57,1,0,8,8,0,0

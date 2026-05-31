@@ -1,0 +1,4 @@
+horizon,row_count,canonical_no_future_mark_count,corrected_terminal_before_target_count,corrected_horizon_not_mature_count,corrected_active_at_target_no_future_position_mark_count,corrected_pool_mark_only_counterfactual_count,completed_strict_future_mark_count,entry_untrusted_count,unknown_count
+6h,67,26,25,0,0,0,42,0,0
+12h,66,28,26,0,0,0,40,0,0
+24h,66,60,57,1,0,0,8,0,0

@@ -1,0 +1,21 @@
+{
+  "status": "WARN",
+  "stage": "MATERIALIZER_INVALID_REASON_CLASSIFICATION_FIX_V1",
+  "data_source": "vps_postgres",
+  "db_ready": true,
+  "canonical_proof": "v2_strict_fixed_horizon",
+  "terminal_misclassified_as_no_future_mark_before": 108,
+  "terminal_misclassified_as_no_future_mark_after": 0,
+  "active_at_target_no_future_position_mark_count": 0,
+  "mark_worker_fix_needed": false,
+  "clean_completed_6h": 42,
+  "clean_completed_12h": 40,
+  "clean_completed_24h": 8,
+  "clean_proof_count_changed": false,
+  "tail_risk_status": "12H_FAIL_24H_INSUFFICIENT",
+  "hypothesis_review_ready": false,
+  "edge_proven": "no",
+  "tiny_canary_candidate": "no",
+  "tiny_canary_allowed": "no",
+  "recommended_next_stage": "SHADOW_POSITION_REUSE_POLICY_REVIEW"
+}

@@ -1,0 +1,32 @@
+{
+  "completed_strict_future_mark": {
+    "active_at_target": true,
+    "entry_trusted": true,
+    "future_position_mark_exists": true
+  },
+  "horizon_not_mature": {
+    "target_time_gt_now": true
+  },
+  "terminal_before_target": {
+    "close_time_lt_target": true
+  },
+  "active_at_target_no_future_position_mark": {
+    "active_at_target": true,
+    "horizon_mature": true,
+    "future_position_mark_exists": false
+  },
+  "pool_mark_only_counterfactual": {
+    "pool_mark_exists_near_target": true,
+    "no_future_position_mark": true,
+    "counterfactual_only": true
+  },
+  "no_mark_available": {
+    "no_position_or_pool_mark": true
+  },
+  "entry_untrusted": {
+    "entry_trusted": false
+  },
+  "unknown": {
+    "fallback": true
+  }
+}

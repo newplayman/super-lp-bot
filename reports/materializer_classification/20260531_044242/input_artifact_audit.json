@@ -1,0 +1,41 @@
+{
+  "run_id": "20260531_044242",
+  "audit_time_utc": "2026-05-31T04:48:56.709713+00:00",
+  "inputs": [
+    {
+      "path": "reports/shadow_mark_coverage/20260531_042501/FINAL_VERDICT.json",
+      "exists": true
+    },
+    {
+      "path": "reports/shadow_mark_coverage/20260531_042501/MARK_COVERAGE_FIX_DECISION_CN.md",
+      "exists": true
+    },
+    {
+      "path": "reports/shadow_mark_coverage/20260531_042501/CANONICAL_MARK_CLASSIFICATION_AUDIT_CN.md",
+      "exists": true
+    },
+    {
+      "path": "reports/shadow_mark_coverage/20260531_042501/canonical_mark_classification_audit.csv",
+      "exists": true
+    },
+    {
+      "path": "reports/shadow_mark_coverage/20260531_042501/RESEARCH_MARK_CLASSIFICATION_TABLE_CN.md",
+      "exists": true
+    },
+    {
+      "path": "reports/shadow_mark_coverage/20260531_042501/research_mark_classification_counts.csv",
+      "exists": true
+    },
+    {
+      "path": "reports/shadow_mark_coverage/20260531_042501/TAIL_RISK_AFTER_MARK_CLASSIFICATION_CN.md",
+      "exists": true
+    },
+    {
+      "path": "reports/shadow_mark_coverage/20260531_042501/tail_risk_after_mark_classification.csv",
+      "exists": true
+    }
+  ],
+  "enough_for_invalid_reason_classification_fix": true,
+  "canonical_proof_is_v2_strict_fixed_horizon": true,
+  "edge_proven": "no"
+}
