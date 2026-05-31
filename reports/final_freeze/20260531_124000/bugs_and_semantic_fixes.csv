@@ -1,0 +1,10 @@
+issue,root_cause,fixed,fix_location_or_report,residual_risk,lessons_learned
+terminal_exit_mark / pool_mark_only 误读,terminal / future mark 语义未分清,yes,/Users/bendu/lp-bot/v3/reports/materializer_classification/20260531_044242/FINAL_VERDICT.json,low,terminal 和 no_future_mark 必须分开统计
+decision_trace_id join 到 trace_id 而不是 id,连接键理解偏差,yes,/Users/bendu/lp-bot/v3/reports/portfolio_status/20260529_160811/FINAL_VERDICT.json,medium,trace surfaces 要先验 schema semantics
+decision_trace 重复计数污染,把 trace 当独立 proof unit,yes,/Users/bendu/lp-bot/v3/reports/portfolio_status/20260529_160811/FINAL_VERDICT.json,low,proof unit 必须先冻结
+terminal_before_target 被归入 no_future_mark,invalid_reason 分类顺序错误,yes,/Users/bendu/lp-bot/v3/reports/materializer_classification/20260531_044242/FINAL_VERDICT.json,low,invalid_reason 是研究结论的一部分，不只是标签
+hardcoded 10 USD entry notional 伪信号,missing intended_notional 被默认值掩盖,yes,/Users/bendu/lp-bot/v3/reports/intent_lifecycle_dq/20260531_055521/FINAL_VERDICT.json,low,缺失值不能用乐观默认值补
+pool regime temporal leakage,同 bucket post-entry feature 混入 classifier,yes,/Users/bendu/lp-bot/v3/reports/pool_regime_aware_review/20260531_110005/LOOKAHEAD_LEAKAGE_AUDIT_CN.md,medium,entry-safe cutoff 要显式定义
+retained_sample_count / quarantine 0.0 混入口径,filtered summary 混了 quarantine sentinel,yes,/Users/bendu/lp-bot/v3/reports/pool_regime_aware_review/20260531_110005/FINAL_VERDICT.json,low,summary 之前先分开 retained 与 quarantine
+VPS runtime env / DB DSN 加载问题,runtime env 路径和 workspace 依赖不稳定,yes,/Users/bendu/lp-bot/v3/reports/portfolio_status/20260529_160811/FINAL_VERDICT.json,medium,DB readiness 检查必须前置
+Git sync / artifact publish workflow 改进,本地/VPS 研究产物不同步,yes,/Users/bendu/lp-bot/v3/reports/portfolio_status/20260529_160811/FINAL_VERDICT.json,low,report-first git flow 要标准化

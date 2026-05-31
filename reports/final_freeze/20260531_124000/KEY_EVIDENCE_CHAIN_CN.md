@@ -1,0 +1,50 @@
+# 关键证据链总结
+
+- finding: terminal tail / proof surface 问题
+  - evidence_report: `/Users/bendu/lp-bot/v3/reports/portfolio_status/20260529_160811/FINAL_VERDICT.json`
+  - implication: 主策略 proof surface 需要收敛到可信单位
+  - decision: 放弃 decision_trace 作为 primary proof
+- finding: decision_trace 重复计数污染
+  - evidence_report: `/Users/bendu/lp-bot/v3/reports/portfolio_status/20260529_160811/FINAL_VERDICT.json`
+  - implication: 旧 edge 判断不可信
+  - decision: position_lifecycle 成为 primary proof
+- finding: position reuse dominant 导致 position-level OOS 不可行
+  - evidence_report: `/Users/bendu/lp-bot/v3/reports/position_reuse_review/20260531_050614/FINAL_VERDICT.json`
+  - implication: 继续等待 position lifecycle 新样本效率极低
+  - decision: fixed horizon 主线暂停/停止
+- finding: intent lifecycle DQ 修正，hardcoded 10 USD 伪信号被消除
+  - evidence_report: `/Users/bendu/lp-bot/v3/reports/intent_lifecycle_dq/20260531_055521/FINAL_VERDICT.json`
+  - implication: 先前 intent positive signal 有伪信号成分
+  - decision: intent lifecycle 不进入 review
+- finding: dedup 修复后仍无法进入 review
+  - evidence_report: `/Users/bendu/lp-bot/v3/reports/intent_lifecycle_dedup/20260531_061138/FINAL_VERDICT.json`
+  - implication: intent line 没有稳定实用 edge
+  - decision: 暂停 intent line
+- finding: risk-aware exit 不 helpful
+  - evidence_report: `/Users/bendu/lp-bot/v3/reports/risk_aware_short_hold/20260531_073906/FINAL_VERDICT.json`
+  - implication: 靠 exit timing 修不出可用 LP edge
+  - decision: 转向 quarantine / regime filtering
+- finding: quarantine 有帮助
+  - evidence_report: `/Users/bendu/lp-bot/v3/reports/risk_signal_definition_fix/20260531_080614/FINAL_VERDICT.json`
+  - implication: 尾部风险有可过滤结构
+  - decision: 进入 regime classifier 研究
+- finding: pool regime classifier 有尾部解释力
+  - evidence_report: `/Users/bendu/lp-bot/v3/reports/pool_regime_classifier/20260531_092109/FINAL_VERDICT.json`
+  - implication: 数据 stale / incomplete 对 tail 有显著影响
+  - decision: 尝试 regime-aware short-hold
+- finding: temporal leakage 被发现并修正
+  - evidence_report: `/Users/bendu/lp-bot/v3/reports/pool_regime_aware_review/20260531_110005/LOOKAHEAD_LEAKAGE_AUDIT_CN.md`
+  - implication: same-bucket/post-entry feature 使用会制造伪改善
+  - decision: entry-safe previous closed bucket rule 固化
+- finding: entry-safe regime 仍机会保留率太低、误杀太高
+  - evidence_report: `/Users/bendu/lp-bot/v3/reports/pool_regime_rule_fix/20260531_113056/FINAL_VERDICT.json`
+  - implication: 虽然 tail improved，但不可实用
+  - decision: 不继续 regime-aware 主线
+- finding: fee velocity / exit depth rule fix 无 practical variant
+  - evidence_report: `/Users/bendu/lp-bot/v3/reports/fee_velocity_rule_fix/20260531_122413/FINAL_VERDICT.json`
+  - implication: P2 也只是过滤器，不是可继续 review 的策略候选
+  - decision: STOP_RESEARCH
+- finding: 最终 STOP_RESEARCH
+  - evidence_report: `/Users/bendu/lp-bot/v3/reports/fee_velocity_rule_fix/20260531_122413/FINAL_VERDICT.json`
+  - implication: 当前 LP 研究线不应继续小修参数
+  - decision: 收口并 handoff

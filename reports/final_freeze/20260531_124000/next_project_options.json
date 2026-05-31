@@ -1,0 +1,27 @@
+{
+  "options": [
+    {
+      "option": "STOP_LP_RESEARCH_NOW",
+      "reason": "P0/P1/P2 都没有 practical candidate"
+    },
+    {
+      "option": "NEW_DATA_PIPELINE_FIRST",
+      "reason": "先补 fee/depth/holder/trader/entry-safe 高频数据"
+    },
+    {
+      "option": "NEW_STRATEGY_HYPOTHESIS_DESIGN_REPEAT",
+      "reason": "完全重开题，避开已有失败路径"
+    },
+    {
+      "option": "NON_LP_STRATEGY_RESEARCH",
+      "reason": "转向非 LP 方向，例如纯扫描/异常检测"
+    },
+    {
+      "option": "PRODUCTION_INFRA_CLEANUP_ONLY",
+      "reason": "不继续研究，只做工程清理"
+    }
+  ],
+  "primary_next_option": "STOP_LP_RESEARCH_NOW",
+  "secondary_next_option": "NEW_DATA_PIPELINE_FIRST",
+  "why_not_continue_same_line": "当前所有 LP 研究分支都只证明了过滤价值，没有形成 practical variant"
+}

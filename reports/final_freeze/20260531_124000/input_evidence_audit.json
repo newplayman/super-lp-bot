@@ -1,0 +1,129 @@
+{
+  "inputs": [
+    {
+      "input_name": "final_p2_verdict",
+      "path": "/Users/bendu/lp-bot/v3/reports/fee_velocity_rule_fix/20260531_122413/FINAL_VERDICT.json",
+      "exists": true
+    },
+    {
+      "input_name": "final_p2_stop",
+      "path": "/Users/bendu/lp-bot/v3/reports/fee_velocity_rule_fix/20260531_122413/FEE_RULE_FIX_STOP_OR_CONTINUE_CN.md",
+      "exists": true
+    },
+    {
+      "input_name": "final_p2_best",
+      "path": "/Users/bendu/lp-bot/v3/reports/fee_velocity_rule_fix/20260531_122413/FEE_RULE_BEST_PRACTICAL_VARIANT_CN.md",
+      "exists": true
+    },
+    {
+      "input_name": "final_p2_gate",
+      "path": "/Users/bendu/lp-bot/v3/reports/fee_velocity_rule_fix/20260531_122413/FEE_RULE_PRACTICALITY_GATE_CN.md",
+      "exists": true
+    },
+    {
+      "input_name": "p2_v1_verdict",
+      "path": "/Users/bendu/lp-bot/v3/reports/fee_velocity_exit_depth/20260531_115101/FINAL_VERDICT.json",
+      "exists": true
+    },
+    {
+      "input_name": "regime_rule_fix_verdict",
+      "path": "/Users/bendu/lp-bot/v3/reports/pool_regime_rule_fix/20260531_113056/FINAL_VERDICT.json",
+      "exists": true
+    },
+    {
+      "input_name": "regime_review_verdict",
+      "path": "/Users/bendu/lp-bot/v3/reports/pool_regime_aware_review/20260531_110005/FINAL_VERDICT.json",
+      "exists": true
+    },
+    {
+      "input_name": "regime_review_leakage",
+      "path": "/Users/bendu/lp-bot/v3/reports/pool_regime_aware_review/20260531_110005/LOOKAHEAD_LEAKAGE_AUDIT_CN.md",
+      "exists": true
+    },
+    {
+      "input_name": "regime_counterfactual_verdict",
+      "path": "/Users/bendu/lp-bot/v3/reports/pool_regime_aware_short_hold/20260531_095237/FINAL_VERDICT.json",
+      "exists": true
+    },
+    {
+      "input_name": "regime_classifier_verdict",
+      "path": "/Users/bendu/lp-bot/v3/reports/pool_regime_classifier/20260531_092109/FINAL_VERDICT.json",
+      "exists": true
+    },
+    {
+      "input_name": "risk_signal_verdict",
+      "path": "/Users/bendu/lp-bot/v3/reports/risk_signal_definition_fix/20260531_080614/FINAL_VERDICT.json",
+      "exists": true
+    },
+    {
+      "input_name": "risk_aware_verdict",
+      "path": "/Users/bendu/lp-bot/v3/reports/risk_aware_short_hold/20260531_073906/FINAL_VERDICT.json",
+      "exists": true
+    },
+    {
+      "input_name": "new_hypothesis_verdict",
+      "path": "/Users/bendu/lp-bot/v3/reports/new_strategy_hypothesis/20260531_071724/FINAL_VERDICT.json",
+      "exists": true
+    },
+    {
+      "input_name": "new_hypothesis_priority",
+      "path": "/Users/bendu/lp-bot/v3/reports/new_strategy_hypothesis/20260531_071724/NEW_STRATEGY_PRIORITY_RANKING_CN.md",
+      "exists": true
+    },
+    {
+      "input_name": "intent_dedup_verdict",
+      "path": "/Users/bendu/lp-bot/v3/reports/intent_lifecycle_dedup/20260531_061138/FINAL_VERDICT.json",
+      "exists": true
+    },
+    {
+      "input_name": "intent_dq_verdict",
+      "path": "/Users/bendu/lp-bot/v3/reports/intent_lifecycle_dq/20260531_055521/FINAL_VERDICT.json",
+      "exists": true
+    },
+    {
+      "input_name": "position_reuse_verdict",
+      "path": "/Users/bendu/lp-bot/v3/reports/position_reuse_review/20260531_050614/FINAL_VERDICT.json",
+      "exists": true
+    },
+    {
+      "input_name": "materializer_verdict",
+      "path": "/Users/bendu/lp-bot/v3/reports/materializer_classification/20260531_044242/FINAL_VERDICT.json",
+      "exists": true
+    },
+    {
+      "input_name": "fixed_horizon_verdict",
+      "path": "/Users/bendu/lp-bot/v3/reports/fixed_horizon_policy/20260530_145208/FINAL_VERDICT.json",
+      "exists": true
+    },
+    {
+      "input_name": "tierb_data_fix_verdict",
+      "path": "/Users/bendu/lp-bot/v3/reports/tierb_data_fix/20260530_125453/FINAL_VERDICT.json",
+      "exists": true
+    },
+    {
+      "input_name": "tierb_diagnosis_verdict",
+      "path": "/Users/bendu/lp-bot/v3/reports/tierb_diagnosis/20260530_103214/FINAL_VERDICT.json",
+      "exists": true
+    },
+    {
+      "input_name": "tierc_freeze_verdict",
+      "path": "/Users/bendu/lp-bot/v3/reports/tierc_shadow/20260529_155854/TIER_C_BATCH_FINAL_FREEZE_VERDICT.json",
+      "exists": true
+    },
+    {
+      "input_name": "portfolio_verdict",
+      "path": "/Users/bendu/lp-bot/v3/reports/portfolio_status/20260529_160811/FINAL_VERDICT.json",
+      "exists": true
+    }
+  ],
+  "missing_input_list": [],
+  "latest_available_report_per_strategy_line": {
+    "final_p2": "/Users/bendu/lp-bot/v3/reports/fee_velocity_rule_fix/20260531_122413/FINAL_VERDICT.json",
+    "pool_regime": "/Users/bendu/lp-bot/v3/reports/pool_regime_rule_fix/20260531_113056/FINAL_VERDICT.json",
+    "risk_aware_short_hold": "/Users/bendu/lp-bot/v3/reports/risk_aware_short_hold/20260531_073906/FINAL_VERDICT.json",
+    "intent_lifecycle": "/Users/bendu/lp-bot/v3/reports/intent_lifecycle_dedup/20260531_061138/FINAL_VERDICT.json",
+    "tier_c": "/Users/bendu/lp-bot/v3/reports/tierc_shadow/20260529_155854/TIER_C_BATCH_FINAL_FREEZE_VERDICT.json"
+  },
+  "enough_evidence_to_freeze_research": true,
+  "must_not_add_new_strategy_conclusion": true
+}

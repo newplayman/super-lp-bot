@@ -1,0 +1,25 @@
+# 未来重启条件
+
+## new_data_source_conditions
+- 更可信的 fee APR / LP fee accrual 数据
+- 更精确的 exit depth / quote route simulation
+- 完整 holder / trader concentration
+- 更高频且 entry-safe 的 pool snapshots
+- 可证明无 lookahead 的 feature pipeline
+
+## new_strategy_conditions
+- 不再从 fixed-horizon / simple short-hold 出发
+- 必须先定义容量、退出路径、fee-cost 覆盖
+- 必须先设 tail gate，再看 median
+- 必须支持小资金实际容量
+
+## proof_conditions
+- sample_count >= 300
+- p10 / p5 / p1 不危险
+- opportunity retention 不低
+- false filter / missed profit 可接受
+- fee_minus_exit_cost p10 不明显负
+- worst pool/event 不集中
+- 无 lookahead
+- go/no-go gate 清晰
+
