@@ -1,0 +1,162 @@
+[
+  {
+    "variant_name": "retention_floor_30pct",
+    "entry_rule": "fee/depth 软筛，目标保留率 >= 30%",
+    "capacity_usd": "10/20/50",
+    "hard_filters": "fresh data, mark gap <= 600s, not invalid",
+    "soft_scores": "fee_velocity + exit_depth + low slippage + stable price",
+    "expected_opportunity_retention": ">=30%",
+    "expected_risk": "medium",
+    "known_limitation": "可能仍 fee<cost"
+  },
+  {
+    "variant_name": "retention_floor_50pct",
+    "entry_rule": "更宽松的 score 保留率 >= 50%",
+    "capacity_usd": "10/20/50",
+    "hard_filters": "fresh data only",
+    "soft_scores": "low score threshold",
+    "expected_opportunity_retention": ">=50%",
+    "expected_risk": "high",
+    "known_limitation": "tail 可能回撤"
+  },
+  {
+    "variant_name": "false_filter_cap_50pct",
+    "entry_rule": "优先降低 false filter",
+    "capacity_usd": "10/20/50",
+    "hard_filters": "仅剔除 stale/极端差 depth",
+    "soft_scores": "none",
+    "expected_opportunity_retention": ">=50%",
+    "expected_risk": "medium-high",
+    "known_limitation": "fee proxy 无改善"
+  },
+  {
+    "variant_name": "missed_profit_cap_30pct",
+    "entry_rule": "尽量不误杀正收益样本",
+    "capacity_usd": "10/20/50",
+    "hard_filters": "轻度 depth / slippage / freshness",
+    "soft_scores": "balanced score",
+    "expected_opportunity_retention": ">=70%",
+    "expected_risk": "medium-high",
+    "known_limitation": "tail 改善可能有限"
+  },
+  {
+    "variant_name": "fee_cost_nonnegative_median",
+    "entry_rule": "只保留 fee_minus_exit_cost_median 有望非负的窗口",
+    "capacity_usd": "10/20/50",
+    "hard_filters": "fee velocity high, depth ok",
+    "soft_scores": "fee_minus_exit_cost proxy",
+    "expected_opportunity_retention": "low",
+    "expected_risk": "medium",
+    "known_limitation": "过筛风险高"
+  },
+  {
+    "variant_name": "fee_cost_nonnegative_p10",
+    "entry_rule": "更严格要求 fee_minus_exit_cost p10 近非负",
+    "capacity_usd": "10/20/50",
+    "hard_filters": "high fee velocity, low slippage",
+    "soft_scores": "fee cost conservative",
+    "expected_opportunity_retention": "very low",
+    "expected_risk": "low",
+    "known_limitation": "几乎必然过筛"
+  },
+  {
+    "variant_name": "exit_depth_soft_10usd",
+    "entry_rule": "仅要求 10 USD depth 基本可出",
+    "capacity_usd": "10",
+    "hard_filters": "depth_10 >= 70, fresh",
+    "soft_scores": "none",
+    "expected_opportunity_retention": "high",
+    "expected_risk": "medium-high",
+    "known_limitation": "20/50 无法继承"
+  },
+  {
+    "variant_name": "exit_depth_soft_20usd",
+    "entry_rule": "20 USD depth 可出，slippage 宽松",
+    "capacity_usd": "20",
+    "hard_filters": "depth_20 >= 120, slippage cap relaxed",
+    "soft_scores": "none",
+    "expected_opportunity_retention": "medium",
+    "expected_risk": "medium-high",
+    "known_limitation": "可能成本仍为负"
+  },
+  {
+    "variant_name": "fee_velocity_rank_top30",
+    "entry_rule": "fee velocity 前 30%",
+    "capacity_usd": "10/20/50",
+    "hard_filters": "fresh",
+    "soft_scores": "rank only",
+    "expected_opportunity_retention": "~30%",
+    "expected_risk": "medium",
+    "known_limitation": "rank 不看成本"
+  },
+  {
+    "variant_name": "fee_velocity_rank_top50",
+    "entry_rule": "fee velocity 前 50%",
+    "capacity_usd": "10/20/50",
+    "hard_filters": "fresh",
+    "soft_scores": "rank only",
+    "expected_opportunity_retention": "~50%",
+    "expected_risk": "medium-high",
+    "known_limitation": "tail 可能接近 baseline"
+  },
+  {
+    "variant_name": "fee_depth_balanced_score",
+    "entry_rule": "fee/depth/slippage/price 风险加权",
+    "capacity_usd": "10/20/50",
+    "hard_filters": "fresh, not invalid",
+    "soft_scores": "balanced composite score",
+    "expected_opportunity_retention": "30-60%",
+    "expected_risk": "medium",
+    "known_limitation": "score threshold 需调参"
+  },
+  {
+    "variant_name": "fee_depth_tail_guard",
+    "entry_rule": "只过滤最差 depth/slippage tail",
+    "capacity_usd": "10/20/50",
+    "hard_filters": "tail guard only",
+    "soft_scores": "none",
+    "expected_opportunity_retention": "high",
+    "expected_risk": "medium-high",
+    "known_limitation": "fee proxy 不一定改善"
+  },
+  {
+    "variant_name": "small_cap_10usd_lenient",
+    "entry_rule": "10 USD 专用宽松门槛",
+    "capacity_usd": "10",
+    "hard_filters": "mild depth/slippage gate",
+    "soft_scores": "small-cap friendly",
+    "expected_opportunity_retention": "medium-high",
+    "expected_risk": "medium",
+    "known_limitation": "只能说明最小仓位"
+  },
+  {
+    "variant_name": "small_cap_20usd_lenient",
+    "entry_rule": "20 USD 专用宽松门槛",
+    "capacity_usd": "20",
+    "hard_filters": "mild depth/slippage gate",
+    "soft_scores": "small-cap friendly",
+    "expected_opportunity_retention": "medium",
+    "expected_risk": "medium-high",
+    "known_limitation": "仍可能 fee<cost"
+  },
+  {
+    "variant_name": "hybrid_fee_depth_plus_data_freshness",
+    "entry_rule": "fee/depth 主导 + freshness 软约束",
+    "capacity_usd": "10/20/50",
+    "hard_filters": "not stale",
+    "soft_scores": "fee-depth plus freshness penalty",
+    "expected_opportunity_retention": "medium",
+    "expected_risk": "medium",
+    "known_limitation": "不处理 regime 风险"
+  },
+  {
+    "variant_name": "hybrid_fee_depth_plus_regime_soft",
+    "entry_rule": "fee/depth 主导 + regime soft penalty",
+    "capacity_usd": "10/20/50",
+    "hard_filters": "not stale",
+    "soft_scores": "fee-depth score with soft regime penalty",
+    "expected_opportunity_retention": "medium-low",
+    "expected_risk": "medium",
+    "known_limitation": "soft regime 仍可能过筛"
+  }
+]

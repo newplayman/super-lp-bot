@@ -1,0 +1,14 @@
+{
+  "minimum_conditions": {
+    "retained_sample_count": ">=100",
+    "opportunity_retention_rate": ">=0.30",
+    "false_filter_rate": "<=0.50",
+    "missed_profit_rate": "<=0.30",
+    "fee_minus_exit_cost_median": ">=0",
+    "fee_minus_exit_cost_p10": "not materially negative",
+    "tail": "not worse than baseline",
+    "single_pool_domination": "<0.75"
+  },
+  "passing_variant_count": 0,
+  "practical_gate_any_pass": false
+}

@@ -1,0 +1,35 @@
+{
+  "original_fee_exit_best": {
+    "variant_name": "exit_depth_min_20usd",
+    "opportunity_retention_rate": 0.09586056644880174,
+    "false_filter_rate": 0.9041394335511983,
+    "missed_profit_rate": 0.9993396666482526,
+    "fee_minus_exit_cost_median": -0.03019162661271542
+  },
+  "entry_safe_regime_aware_best": {
+    "opportunity_retention_rate": 0.0962800875273523,
+    "false_quarantine_rate": 0.6629213483146067,
+    "missed_profit_rate": 0.3204584098371212
+  },
+  "rule_fix_best_practical_variant": {
+    "variant_name": "",
+    "capacity_usd": null,
+    "window": "",
+    "horizon": "",
+    "retained_sample_count": 0,
+    "opportunity_retention_rate": null,
+    "false_filter_rate": null,
+    "missed_profit_rate": null,
+    "fee_minus_exit_cost_median": null,
+    "fee_minus_exit_cost_p10": null,
+    "tail_improvement_p10": null,
+    "tail_improvement_p5": null,
+    "tail_improvement_p1": null,
+    "practical_gate_pass": false,
+    "reason": "no variant reached retention>=30% and fee_minus_exit_cost>=0 simultaneously"
+  },
+  "rule_fix_improves_opportunity_retention": false,
+  "fee_minus_exit_cost_turns_positive": false,
+  "more_practical_than_regime_aware": false,
+  "should_stop_p2": true
+}

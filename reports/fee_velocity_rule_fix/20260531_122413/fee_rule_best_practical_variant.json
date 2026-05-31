@@ -1,0 +1,17 @@
+{
+  "variant_name": "",
+  "capacity_usd": null,
+  "window": "",
+  "horizon": "",
+  "retained_sample_count": 0,
+  "opportunity_retention_rate": null,
+  "false_filter_rate": null,
+  "missed_profit_rate": null,
+  "fee_minus_exit_cost_median": null,
+  "fee_minus_exit_cost_p10": null,
+  "tail_improvement_p10": null,
+  "tail_improvement_p5": null,
+  "tail_improvement_p1": null,
+  "practical_gate_pass": false,
+  "reason": "no variant reached retention>=30% and fee_minus_exit_cost>=0 simultaneously"
+}

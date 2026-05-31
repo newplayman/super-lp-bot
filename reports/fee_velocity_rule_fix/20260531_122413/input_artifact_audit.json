@@ -1,0 +1,80 @@
+{
+  "inputs": [
+    {
+      "path": "/tmp/fee_rule_repo/reports/fee_velocity_exit_depth/20260531_115101/FINAL_VERDICT.json",
+      "exists": true
+    },
+    {
+      "path": "/tmp/fee_rule_repo/reports/fee_velocity_exit_depth/20260531_115101/FEE_EXIT_COUNTERFACTUAL_REPORT_CN.md",
+      "exists": true
+    },
+    {
+      "path": "/tmp/fee_rule_repo/reports/fee_velocity_exit_depth/20260531_115101/fee_exit_counterfactual_report.csv",
+      "exists": true
+    },
+    {
+      "path": "/tmp/fee_rule_repo/reports/fee_velocity_exit_depth/20260531_115101/FEE_EXIT_BEST_VARIANT_SELECTION_CN.md",
+      "exists": true
+    },
+    {
+      "path": "/tmp/fee_rule_repo/reports/fee_velocity_exit_depth/20260531_115101/fee_exit_best_variant_selection.json",
+      "exists": true
+    },
+    {
+      "path": "/tmp/fee_rule_repo/reports/fee_velocity_exit_depth/20260531_115101/SMALL_CAPACITY_AUDIT_CN.md",
+      "exists": true
+    },
+    {
+      "path": "/tmp/fee_rule_repo/reports/fee_velocity_exit_depth/20260531_115101/small_capacity_audit.csv",
+      "exists": true
+    },
+    {
+      "path": "/tmp/fee_rule_repo/reports/fee_velocity_exit_depth/20260531_115101/FEE_EXIT_VS_REGIME_AWARE_COMPARISON_CN.md",
+      "exists": true
+    },
+    {
+      "path": "/tmp/fee_rule_repo/reports/fee_velocity_exit_depth/20260531_115101/fee_exit_vs_regime_aware_comparison.csv",
+      "exists": true
+    },
+    {
+      "path": "/tmp/fee_rule_repo/reports/fee_velocity_exit_depth/20260531_115101/FEE_EXIT_ROBUSTNESS_AUDIT_CN.md",
+      "exists": true
+    },
+    {
+      "path": "/tmp/fee_rule_repo/reports/fee_velocity_exit_depth/20260531_115101/fee_exit_robustness_audit.csv",
+      "exists": true
+    },
+    {
+      "path": "/tmp/fee_rule_repo/reports/fee_velocity_exit_depth/20260531_115101/FEE_EXIT_NEXT_STAGE_DECISION_CN.md",
+      "exists": true
+    },
+    {
+      "path": "/tmp/fee_rule_repo/reports/fee_velocity_exit_depth/20260531_115101/fee_exit_next_stage_decision.json",
+      "exists": true
+    },
+    {
+      "path": "/tmp/fee_rule_repo/reports/pool_regime_rule_fix/20260531_113056/FINAL_VERDICT.json",
+      "exists": true
+    },
+    {
+      "path": "/tmp/fee_rule_repo/reports/pool_regime_aware_review/20260531_110005/FINAL_VERDICT.json",
+      "exists": true
+    },
+    {
+      "path": "/tmp/fee_rule_repo/reports/risk_signal_definition_fix/20260531_080614/FINAL_VERDICT.json",
+      "exists": true
+    },
+    {
+      "path": "/tmp/fee_rule_repo/reports/new_strategy_hypothesis/20260531_071724/FINAL_VERDICT.json",
+      "exists": true
+    }
+  ],
+  "previous_stage_ok": true,
+  "recommended_next_stage_ok": true,
+  "retention_too_low": true,
+  "false_filter_too_high": true,
+  "missed_profit_too_high": true,
+  "fee_minus_exit_cost_negative": true,
+  "enough_to_run_rule_fix": true,
+  "edge_proven": "no"
+}
