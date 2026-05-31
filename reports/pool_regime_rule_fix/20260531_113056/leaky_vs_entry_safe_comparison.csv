@@ -1,0 +1,3 @@
+mode,best_variant_name,best_window,best_horizon,best_proof_unit,retained_sample_count,tail_improvement_p10,tail_improvement_p5,tail_improvement_p1,opportunity_retention_rate,false_quarantine_rate,missed_profit_rate,lookahead_risk,leakage_found,review_ready
+leaky_best,regime_score_threshold_loose,recent_72h,2h,pool_window,384,0.375632516145548,2.282304032947773,8.504652380040971,0.7938931297709924,0.140625,0.2516057705284425,HIGH,yes,yes
+entry_safe_best,entry_safe_enter_HEALTHY_or_STABLE_FEE,recent_7d,2h,pool_window,220,0.613932880450303,1.3421482561707778,4.671636495920617,0.0962800875273523,0.6629213483146067,0.3204584098371212,LOW,no,yes

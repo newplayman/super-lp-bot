@@ -1,0 +1,23 @@
+{
+  "review_final": true,
+  "best_variant_md": true,
+  "best_variant_csv": true,
+  "time_window_md": true,
+  "time_window_csv": true,
+  "horizon_md": true,
+  "horizon_csv": true,
+  "lookahead_md": true,
+  "lookahead_json": true,
+  "decision_md": true,
+  "decision_json": true,
+  "leaky_final": true,
+  "classifier_final": true,
+  "risk_signal_final": true,
+  "risk_aware_final": true,
+  "prior_stage_ok": true,
+  "prior_leakage_found_yes": true,
+  "prior_lookahead_risk_high": true,
+  "prior_next_stage_rule_fix": true,
+  "enough_for_rule_fix": true,
+  "edge_proven": "no"
+}

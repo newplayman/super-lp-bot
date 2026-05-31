@@ -1,0 +1,17 @@
+dimension,key,count
+window,recent_24h,1312
+window,recent_48h,1536
+window,recent_72h,1536
+window,recent_7d,7536
+bucket,15m,2980
+bucket,1h,2980
+bucket,2h,2980
+bucket,30m,2980
+regime,DATA_STALE_OR_INCOMPLETE,336
+regime,EXIT_DEPTH_THIN,3744
+regime,HEALTHY_SHORT_HOLD,912
+regime,PRICE_SPIKE_VOLATILE,272
+regime,TVL_DROP,32
+regime,UNKNOWN,6616
+regime,VOLUME_COLLAPSE,8
+leakage_risk,LOW,11920

@@ -1,0 +1,23 @@
+# Entry Safe Regime Materialization
+
+- window recent_24h: 1312
+- window recent_48h: 1536
+- window recent_72h: 1536
+- window recent_7d: 7536
+- bucket 15m: 2980
+- bucket 1h: 2980
+- bucket 2h: 2980
+- bucket 30m: 2980
+- regime DATA_STALE_OR_INCOMPLETE: 336
+- regime EXIT_DEPTH_THIN: 3744
+- regime HEALTHY_SHORT_HOLD: 912
+- regime PRICE_SPIKE_VOLATILE: 272
+- regime TVL_DROP: 32
+- regime UNKNOWN: 6616
+- regime VOLUME_COLLAPSE: 8
+- lookahead_safe_count: 11920
+- leakage_risk_distribution: {"LOW": 11920}
+- diagnostic_only_feature_count: 71520
+- missing_feature_distribution: {"15": 248, "7": 24, "5": 24, "3": 48, "0": 11576}
+- original_regime_distribution: {"MISSING": 2380, "HEALTHY_SHORT_HOLD": 3836, "WHALE_OR_HOLDER_CONCENTRATED": 2312, "VOLATILE_BUT_LIQUID": 484, "EXIT_DEPTH_THIN": 2460, "DATA_STALE_OR_INCOMPLETE": 68, "VOLUME_COLLAPSE": 4, "UNKNOWN": 152, "PRICE_SPIKE_VOLATILE": 192, "TVL_DROP": 32}
+- entry_safe_regime_distribution: {"DATA_STALE_OR_INCOMPLETE": 336, "UNKNOWN": 6616, "HEALTHY_SHORT_HOLD": 912, "PRICE_SPIKE_VOLATILE": 272, "EXIT_DEPTH_THIN": 3744, "VOLUME_COLLAPSE": 8, "TVL_DROP": 32}
