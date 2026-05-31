@@ -1,0 +1,49 @@
+{
+  "run_id": "20260531_055521",
+  "inputs": [
+    {
+      "path": "reports/intent_lifecycle/20260531_051830/FINAL_VERDICT.json",
+      "exists": true
+    },
+    {
+      "path": "reports/intent_lifecycle/20260531_051830/INTENT_LIFECYCLE_MATERIALIZATION_CN.md",
+      "exists": true
+    },
+    {
+      "path": "reports/intent_lifecycle/20260531_051830/intent_lifecycle_materialization_counts.csv",
+      "exists": true
+    },
+    {
+      "path": "reports/intent_lifecycle/20260531_051830/INTENT_LIFECYCLE_PROOF_REPORT_CN.md",
+      "exists": true
+    },
+    {
+      "path": "reports/intent_lifecycle/20260531_051830/intent_lifecycle_proof_report.csv",
+      "exists": true
+    },
+    {
+      "path": "reports/intent_lifecycle/20260531_051830/INTENT_LIFECYCLE_ANTI_DUPLICATION_AUDIT_CN.md",
+      "exists": true
+    },
+    {
+      "path": "reports/intent_lifecycle/20260531_051830/intent_lifecycle_anti_duplication_audit.csv",
+      "exists": true
+    },
+    {
+      "path": "reports/intent_lifecycle/20260531_051830/INTENT_LIFECYCLE_NEXT_STAGE_DECISION_CN.md",
+      "exists": true
+    },
+    {
+      "path": "reports/intent_lifecycle/20260531_051830/intent_lifecycle_next_stage_decision.json",
+      "exists": true
+    },
+    {
+      "path": "reports/position_reuse_review/20260531_050614/FINAL_VERDICT.json",
+      "exists": true
+    }
+  ],
+  "enough_for_data_quality_fix": true,
+  "confirmed_prior_valid_zero": true,
+  "confirmed_old_better_signal_invalidated": true,
+  "edge_proven": "no"
+}

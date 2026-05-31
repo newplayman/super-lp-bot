@@ -1,0 +1,20 @@
+{
+  "status": "WARN",
+  "stage": "INTENT_LIFECYCLE_DATA_QUALITY_FIX_V1",
+  "data_source": "vps_postgres",
+  "db_ready": true,
+  "primary_dedup_policy": "pool_time_bucket_1h",
+  "raw_intent_rows_7d": 36142,
+  "deduped_intent_count_7d": 622,
+  "valid_entry_count_7d": 622,
+  "valid_intent_lifecycle_6h": 592,
+  "valid_intent_lifecycle_12h": 561,
+  "valid_intent_lifecycle_24h": 499,
+  "entry_notional_recovery_status": "PARTIAL_VALID_ENTRY_RECOVERED",
+  "duplication_control_status": "FAIL",
+  "intent_lifecycle_signal_status": "mixed",
+  "edge_proven": "no",
+  "tiny_canary_candidate": "no",
+  "tiny_canary_allowed": "no",
+  "recommended_next_stage": "INTENT_LIFECYCLE_DEDUP_POLICY_FIX"
+}

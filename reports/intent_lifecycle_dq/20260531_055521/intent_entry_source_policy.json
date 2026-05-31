@@ -1,0 +1,30 @@
+{
+  "valid_sources": [
+    {
+      "name": "trace_intended_notional_usd",
+      "trust": "high",
+      "condition": "non-null, positive, numeric"
+    },
+    {
+      "name": "joined_position_amount_usd",
+      "trust": "medium/high",
+      "condition": "position_id joins cleanly, opened near intent, same pool, no ambiguity"
+    },
+    {
+      "name": "first_position_mark_amount_usd",
+      "trust": "medium",
+      "condition": "same position, near entry time, positive, not stale"
+    }
+  ],
+  "invalid_sources": [
+    "config_default_notional",
+    "hardcoded_default_10",
+    "pool_valuation_without_position_linkage",
+    "valuation_usd_absolute_without_matching_entry_notional",
+    "null_or_zero_fallback"
+  ],
+  "requires_confidence": [
+    "high",
+    "medium"
+  ]
+}

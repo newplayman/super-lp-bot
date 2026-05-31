@@ -1,0 +1,6 @@
+# INTENT_LIFECYCLE_DQ_NEXT_STAGE_DECISION_CN
+
+- entry_notional_recovery_status: PARTIAL_VALID_ENTRY_RECOVERED
+- duplication_control_status: FAIL
+- intent_lifecycle_signal_status: mixed
+- recommended_next_stage: INTENT_LIFECYCLE_DEDUP_POLICY_FIX

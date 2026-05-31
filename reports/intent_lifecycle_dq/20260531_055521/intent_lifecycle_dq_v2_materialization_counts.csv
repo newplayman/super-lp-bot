@@ -1,0 +1,13 @@
+window,horizon,raw_intent_rows,deduped_intent_count,valid_entry_count,valid_lifecycle_count,invalid_count,invalid_reason_distribution,entry_source_distribution,confidence_distribution
+last_24h,6h,5764,96,96,72,24,{'no_future_pool_mark': 24},"{'first_position_mark_amount_usd': 92, 'joined_position_amount_usd': 4}",{'medium': 96}
+last_24h,12h,5764,96,96,48,48,{'no_future_pool_mark': 48},"{'first_position_mark_amount_usd': 92, 'joined_position_amount_usd': 4}",{'medium': 96}
+last_24h,24h,5764,96,96,0,96,{'no_future_pool_mark': 96},"{'first_position_mark_amount_usd': 92, 'joined_position_amount_usd': 4}",{'medium': 96}
+last_48h,6h,10883,184,184,160,24,{'no_future_pool_mark': 24},"{'first_position_mark_amount_usd': 174, 'joined_position_amount_usd': 10}","{'medium': 182, 'high': 2}"
+last_48h,12h,10883,184,184,136,48,{'no_future_pool_mark': 48},"{'first_position_mark_amount_usd': 174, 'joined_position_amount_usd': 10}","{'medium': 182, 'high': 2}"
+last_48h,24h,10883,184,184,88,96,{'no_future_pool_mark': 96},"{'first_position_mark_amount_usd': 174, 'joined_position_amount_usd': 10}","{'medium': 182, 'high': 2}"
+last_72h,6h,16596,279,279,255,24,{'no_future_pool_mark': 24},"{'joined_position_amount_usd': 18, 'first_position_mark_amount_usd': 261}","{'medium': 275, 'high': 4}"
+last_72h,12h,16596,279,279,231,48,{'no_future_pool_mark': 48},"{'joined_position_amount_usd': 18, 'first_position_mark_amount_usd': 261}","{'medium': 275, 'high': 4}"
+last_72h,24h,16596,279,279,183,96,{'no_future_pool_mark': 96},"{'joined_position_amount_usd': 18, 'first_position_mark_amount_usd': 261}","{'medium': 275, 'high': 4}"
+last_7d,6h,36142,622,622,592,30,{'no_future_pool_mark': 30},"{'first_position_mark_amount_usd': 577, 'joined_position_amount_usd': 45}","{'medium': 613, 'high': 9}"
+last_7d,12h,36142,622,622,561,61,{'no_future_pool_mark': 61},"{'first_position_mark_amount_usd': 577, 'joined_position_amount_usd': 45}","{'medium': 613, 'high': 9}"
+last_7d,24h,36142,622,622,499,123,{'no_future_pool_mark': 123},"{'first_position_mark_amount_usd': 577, 'joined_position_amount_usd': 45}","{'medium': 613, 'high': 9}"
