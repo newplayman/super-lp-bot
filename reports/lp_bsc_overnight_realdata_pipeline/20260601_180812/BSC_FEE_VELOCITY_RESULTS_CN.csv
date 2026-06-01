@@ -1,0 +1,9 @@
+pool_id,token_pair,window,from_block,to_block,log_count,unique_traders,buyer_count,seller_count,buy_count,sell_count,token0_amount_usd_proxy,token1_amount_usd_proxy,approx_volume_usd,fee_tier_raw,fee_rate_fraction,pool_fee_usd_proxy,fee_velocity_rate_15m,fee_velocity_rate_30m,fee_velocity_rate_1h,fee_velocity_rate_2h,fee_source,partial,query_count,confidence
+0xf2688Fb5B81049DFB7703aDa5e770543770612C4,WBNB/USDC,24h,101706388,101735188,0,0,0,0,0,0,0.0,0.0,0.0,100,0.0001,0.0,0.0,0.0,0.0,0.0,onchain_swap_logs,False,8,low
+0x81A9b5F18179cE2bf8f001b8a634Db80771F1824,WBNB/USDC,24h,101706388,101735188,0,0,0,0,0,0,0.0,0.0,0.0,500,0.0005,0.0,0.0,0.0,0.0,0.0,onchain_swap_logs,False,8,low
+0xc721dECCD986D54B39e8c29428A1f06155c3671e,WBNB/USDC,24h,101706388,101735188,0,0,0,0,0,0,0.0,0.0,0.0,2500,0.0025,0.0,0.0,0.0,0.0,0.0,onchain_swap_logs,False,8,low
+0x18C5aFFA481e7EDbF37405AdE553827d6387899f,WBNB/USDC,24h,101706388,101735188,0,0,0,0,0,0,0.0,0.0,0.0,10000,0.01,0.0,0.0,0.0,0.0,0.0,onchain_swap_logs,False,8,low
+0x172fcD41E0913e95784454622d1c3724f546f849,WBNB/USDT,24h,101706388,101735188,0,0,0,0,0,0,0.0,0.0,0.0,100,0.0001,0.0,0.0,0.0,0.0,0.0,onchain_swap_logs,False,8,low
+0x36696169C63e42cd08ce11f5deeBbCeBae652050,WBNB/USDT,24h,101706388,101735188,0,0,0,0,0,0,0.0,0.0,0.0,500,0.0005,0.0,0.0,0.0,0.0,0.0,onchain_swap_logs,False,8,low
+0x1401ff943D08a7E098328C1d3a9d388923B115D2,WBNB/USDT,24h,101706388,101735188,0,0,0,0,0,0,0.0,0.0,0.0,2500,0.0025,0.0,0.0,0.0,0.0,0.0,onchain_swap_logs,False,8,low
+0x6805E0E5333c5c3acCF2930Be4734E2b98f4Ce06,WBNB/USDT,24h,101706388,101735188,0,0,0,0,0,0,0.0,0.0,0.0,10000,0.01,0.0,0.0,0.0,0.0,0.0,onchain_swap_logs,False,8,low

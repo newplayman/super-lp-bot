@@ -1,0 +1,17 @@
+{
+  "private_key_loaded": false,
+  "wallet_loaded": false,
+  "signer_created": false,
+  "transaction_sent": false,
+  "eth_sendTransaction_called": false,
+  "eth_sendRawTransaction_called": false,
+  "swap_called": false,
+  "mint_called": false,
+  "burn_called": false,
+  "collect_called": false,
+  "approve_called": false,
+  "quoter_staticcall_only": true,
+  "read_only_eth_call_only": true,
+  "event_logs_read_only": true,
+  "wallet_or_tx_touched": false
+}

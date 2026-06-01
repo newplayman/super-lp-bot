@@ -1,0 +1,22 @@
+# BSC Real-Data Economics Preview
+
+- row_count: `960`
+- positive_proxy_count_total: `0`
+- positive_proxy_count_realistic: `0`
+- positive_proxy_count_zero_il_lvr: `0`
+- positive_proxy_count_pool_level_fee: `0`
+- positive_proxy_count_actual_fee: `0`
+- best_pool: `0x172fcD41E0913e95784454622d1c3724f546f849`
+- best_pair: `WBNB/USDT`
+- best_fee_tier: `100`
+- best_notional: `20`
+- best_hold_window: `15m`
+- best_net_ev_proxy_usd: `-0.0190265041`
+- best_net_ev_proxy_pct: `-0.0951325205`
+- near_break_even_count: `896`
+- capacity_fail_count: `0`
+- data_insufficient_count: `0`
+- confidence_adjusted_candidate_count: `0`
+- positive proxy from pool-level fee cannot be edge_proven
+- no actual fee without tokenId
+- no probe allowed

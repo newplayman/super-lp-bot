@@ -1,0 +1,4 @@
+{
+  "recommended_next_stage": "LP_BSC_PANCAKESWAP_V3_FEE_VELOCITY_FIX_REPEAT",
+  "reason": "derived_from_readonly_bsc_overnight_pipeline"
+}
