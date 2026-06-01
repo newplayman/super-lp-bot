@@ -1,0 +1,293 @@
+{
+  "rows": [
+    {
+      "chain": "BSC",
+      "protocol": "PancakeSwap V3",
+      "contract_role": "Factory",
+      "address": "0x0BFbCF9fa4f9C56B0F40a671Ad40E0805A091865",
+      "code_exists": "yes",
+      "selected_for_discovery": "yes",
+      "selected_rpc": "https://bsc-dataseed.binance.org"
+    },
+    {
+      "chain": "BSC",
+      "protocol": "PancakeSwap V3",
+      "contract_role": "QuoterV2",
+      "address": "0xB048Bbc1Ee6b733FFfCFb9e9CeF7375518e25997",
+      "code_exists": "yes",
+      "selected_for_discovery": "no",
+      "selected_rpc": "https://bsc-dataseed.binance.org"
+    },
+    {
+      "chain": "BSC",
+      "protocol": "PancakeSwap V3",
+      "contract_role": "NonfungiblePositionManager",
+      "address": "0x46A15B0b27311cedF172AB29E4f4766fbE7F4364",
+      "code_exists": "yes",
+      "selected_for_discovery": "no",
+      "selected_rpc": "https://bsc-dataseed.binance.org"
+    },
+    {
+      "chain": "BSC",
+      "protocol": "PancakeSwap V3",
+      "contract_role": "TickLens",
+      "address": "0x9a489505a00cE272eAa5e07Dba6491314CaE3796",
+      "code_exists": "yes",
+      "selected_for_discovery": "no",
+      "selected_rpc": "https://bsc-dataseed.binance.org"
+    },
+    {
+      "chain": "BSC",
+      "protocol": "Uniswap V3",
+      "contract_role": "Factory",
+      "address": "",
+      "code_exists": "unknown",
+      "selected_for_discovery": "no",
+      "selected_rpc": "https://bsc-dataseed.binance.org"
+    },
+    {
+      "chain": "BSC",
+      "protocol": "Uniswap V3",
+      "contract_role": "QuoterV2",
+      "address": "",
+      "code_exists": "unknown",
+      "selected_for_discovery": "no",
+      "selected_rpc": "https://bsc-dataseed.binance.org"
+    },
+    {
+      "chain": "BSC",
+      "protocol": "Uniswap V3",
+      "contract_role": "NonfungiblePositionManager",
+      "address": "",
+      "code_exists": "unknown",
+      "selected_for_discovery": "no",
+      "selected_rpc": "https://bsc-dataseed.binance.org"
+    },
+    {
+      "chain": "BSC",
+      "protocol": "Uniswap V3",
+      "contract_role": "TickLens",
+      "address": "",
+      "code_exists": "unknown",
+      "selected_for_discovery": "no",
+      "selected_rpc": "https://bsc-dataseed.binance.org"
+    },
+    {
+      "chain": "Arbitrum",
+      "protocol": "Uniswap V3",
+      "contract_role": "Factory",
+      "address": "0x1F98431c8aD98523631AE4a59f267346ea31F984",
+      "code_exists": "unknown",
+      "selected_for_discovery": "yes",
+      "selected_rpc": ""
+    },
+    {
+      "chain": "Arbitrum",
+      "protocol": "Uniswap V3",
+      "contract_role": "QuoterV2",
+      "address": "",
+      "code_exists": "unknown",
+      "selected_for_discovery": "no",
+      "selected_rpc": ""
+    },
+    {
+      "chain": "Arbitrum",
+      "protocol": "Uniswap V3",
+      "contract_role": "NonfungiblePositionManager",
+      "address": "",
+      "code_exists": "unknown",
+      "selected_for_discovery": "no",
+      "selected_rpc": ""
+    },
+    {
+      "chain": "Arbitrum",
+      "protocol": "Uniswap V3",
+      "contract_role": "TickLens",
+      "address": "",
+      "code_exists": "unknown",
+      "selected_for_discovery": "no",
+      "selected_rpc": ""
+    },
+    {
+      "chain": "Optimism",
+      "protocol": "Uniswap V3",
+      "contract_role": "Factory",
+      "address": "0x1F98431c8aD98523631AE4a59f267346ea31F984",
+      "code_exists": "yes",
+      "selected_for_discovery": "yes",
+      "selected_rpc": "https://mainnet.optimism.io"
+    },
+    {
+      "chain": "Optimism",
+      "protocol": "Uniswap V3",
+      "contract_role": "QuoterV2",
+      "address": "",
+      "code_exists": "unknown",
+      "selected_for_discovery": "no",
+      "selected_rpc": "https://mainnet.optimism.io"
+    },
+    {
+      "chain": "Optimism",
+      "protocol": "Uniswap V3",
+      "contract_role": "NonfungiblePositionManager",
+      "address": "",
+      "code_exists": "unknown",
+      "selected_for_discovery": "no",
+      "selected_rpc": "https://mainnet.optimism.io"
+    },
+    {
+      "chain": "Optimism",
+      "protocol": "Uniswap V3",
+      "contract_role": "TickLens",
+      "address": "",
+      "code_exists": "unknown",
+      "selected_for_discovery": "no",
+      "selected_rpc": "https://mainnet.optimism.io"
+    },
+    {
+      "chain": "Base",
+      "protocol": "Uniswap V3",
+      "contract_role": "Factory",
+      "address": "0x1F98431c8aD98523631AE4a59f267346ea31F984",
+      "code_exists": "unknown",
+      "selected_for_discovery": "yes",
+      "selected_rpc": ""
+    },
+    {
+      "chain": "Base",
+      "protocol": "Uniswap V3",
+      "contract_role": "QuoterV2",
+      "address": "",
+      "code_exists": "unknown",
+      "selected_for_discovery": "no",
+      "selected_rpc": ""
+    },
+    {
+      "chain": "Base",
+      "protocol": "Uniswap V3",
+      "contract_role": "NonfungiblePositionManager",
+      "address": "",
+      "code_exists": "unknown",
+      "selected_for_discovery": "no",
+      "selected_rpc": ""
+    },
+    {
+      "chain": "Base",
+      "protocol": "Uniswap V3",
+      "contract_role": "TickLens",
+      "address": "",
+      "code_exists": "unknown",
+      "selected_for_discovery": "no",
+      "selected_rpc": ""
+    },
+    {
+      "chain": "Base",
+      "protocol": "PancakeSwap V3",
+      "contract_role": "Factory",
+      "address": "",
+      "code_exists": "unknown",
+      "selected_for_discovery": "no",
+      "selected_rpc": ""
+    },
+    {
+      "chain": "Base",
+      "protocol": "PancakeSwap V3",
+      "contract_role": "QuoterV2",
+      "address": "",
+      "code_exists": "unknown",
+      "selected_for_discovery": "no",
+      "selected_rpc": ""
+    },
+    {
+      "chain": "Base",
+      "protocol": "PancakeSwap V3",
+      "contract_role": "NonfungiblePositionManager",
+      "address": "",
+      "code_exists": "unknown",
+      "selected_for_discovery": "no",
+      "selected_rpc": ""
+    },
+    {
+      "chain": "Base",
+      "protocol": "PancakeSwap V3",
+      "contract_role": "TickLens",
+      "address": "",
+      "code_exists": "unknown",
+      "selected_for_discovery": "no",
+      "selected_rpc": ""
+    },
+    {
+      "chain": "Ethereum",
+      "protocol": "Uniswap V3",
+      "contract_role": "Factory",
+      "address": "0x1F98431c8aD98523631AE4a59f267346ea31F984",
+      "code_exists": "unknown",
+      "selected_for_discovery": "yes",
+      "selected_rpc": ""
+    },
+    {
+      "chain": "Ethereum",
+      "protocol": "Uniswap V3",
+      "contract_role": "QuoterV2",
+      "address": "",
+      "code_exists": "unknown",
+      "selected_for_discovery": "no",
+      "selected_rpc": ""
+    },
+    {
+      "chain": "Ethereum",
+      "protocol": "Uniswap V3",
+      "contract_role": "NonfungiblePositionManager",
+      "address": "",
+      "code_exists": "unknown",
+      "selected_for_discovery": "no",
+      "selected_rpc": ""
+    },
+    {
+      "chain": "Ethereum",
+      "protocol": "Uniswap V3",
+      "contract_role": "TickLens",
+      "address": "",
+      "code_exists": "unknown",
+      "selected_for_discovery": "no",
+      "selected_rpc": ""
+    },
+    {
+      "chain": "Polygon",
+      "protocol": "Uniswap V3",
+      "contract_role": "Factory",
+      "address": "0x1F98431c8aD98523631AE4a59f267346ea31F984",
+      "code_exists": "unknown",
+      "selected_for_discovery": "yes",
+      "selected_rpc": ""
+    },
+    {
+      "chain": "Polygon",
+      "protocol": "Uniswap V3",
+      "contract_role": "QuoterV2",
+      "address": "",
+      "code_exists": "unknown",
+      "selected_for_discovery": "no",
+      "selected_rpc": ""
+    },
+    {
+      "chain": "Polygon",
+      "protocol": "Uniswap V3",
+      "contract_role": "NonfungiblePositionManager",
+      "address": "",
+      "code_exists": "unknown",
+      "selected_for_discovery": "no",
+      "selected_rpc": ""
+    },
+    {
+      "chain": "Polygon",
+      "protocol": "Uniswap V3",
+      "contract_role": "TickLens",
+      "address": "",
+      "code_exists": "unknown",
+      "selected_for_discovery": "no",
+      "selected_rpc": ""
+    }
+  ],
+  "checked_at": "2026-06-01T16:13:29Z"
+}

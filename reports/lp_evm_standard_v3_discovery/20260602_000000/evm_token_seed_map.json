@@ -1,0 +1,302 @@
+{
+  "rows": [
+    {
+      "chain": "BSC",
+      "symbol": "WBNB",
+      "address": "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
+      "decimals": "",
+      "metadata_confidence": "medium",
+      "invalid_reason": "",
+      "selected_rpc": "https://bsc-dataseed.binance.org"
+    },
+    {
+      "chain": "BSC",
+      "symbol": "USDT",
+      "address": "0x55d398326f99059fF775485246999027B3197955",
+      "decimals": "",
+      "metadata_confidence": "medium",
+      "invalid_reason": "",
+      "selected_rpc": "https://bsc-dataseed.binance.org"
+    },
+    {
+      "chain": "BSC",
+      "symbol": "USDC",
+      "address": "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d",
+      "decimals": "",
+      "metadata_confidence": "medium",
+      "invalid_reason": "",
+      "selected_rpc": "https://bsc-dataseed.binance.org"
+    },
+    {
+      "chain": "BSC",
+      "symbol": "ETH",
+      "address": "",
+      "decimals": "",
+      "metadata_confidence": "low",
+      "invalid_reason": "missing_token_seed",
+      "selected_rpc": "https://bsc-dataseed.binance.org"
+    },
+    {
+      "chain": "BSC",
+      "symbol": "WETH",
+      "address": "",
+      "decimals": "",
+      "metadata_confidence": "low",
+      "invalid_reason": "missing_token_seed",
+      "selected_rpc": "https://bsc-dataseed.binance.org"
+    },
+    {
+      "chain": "BSC",
+      "symbol": "BTCB",
+      "address": "",
+      "decimals": "",
+      "metadata_confidence": "low",
+      "invalid_reason": "missing_token_seed",
+      "selected_rpc": "https://bsc-dataseed.binance.org"
+    },
+    {
+      "chain": "BSC",
+      "symbol": "CAKE",
+      "address": "",
+      "decimals": "",
+      "metadata_confidence": "low",
+      "invalid_reason": "missing_token_seed",
+      "selected_rpc": "https://bsc-dataseed.binance.org"
+    },
+    {
+      "chain": "BSC",
+      "symbol": "FDUSD",
+      "address": "",
+      "decimals": "",
+      "metadata_confidence": "low",
+      "invalid_reason": "missing_token_seed",
+      "selected_rpc": "https://bsc-dataseed.binance.org"
+    },
+    {
+      "chain": "BSC",
+      "symbol": "DAI",
+      "address": "0x1af3f329e8be154074D8769D1FFA4ee58e1fF2F8",
+      "decimals": "",
+      "metadata_confidence": "medium",
+      "invalid_reason": "",
+      "selected_rpc": "https://bsc-dataseed.binance.org"
+    },
+    {
+      "chain": "Arbitrum",
+      "symbol": "WETH",
+      "address": "",
+      "decimals": "",
+      "metadata_confidence": "low",
+      "invalid_reason": "missing_token_seed",
+      "selected_rpc": ""
+    },
+    {
+      "chain": "Arbitrum",
+      "symbol": "USDC",
+      "address": "",
+      "decimals": "",
+      "metadata_confidence": "low",
+      "invalid_reason": "missing_token_seed",
+      "selected_rpc": ""
+    },
+    {
+      "chain": "Arbitrum",
+      "symbol": "USDT",
+      "address": "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9",
+      "decimals": "",
+      "metadata_confidence": "medium",
+      "invalid_reason": "",
+      "selected_rpc": ""
+    },
+    {
+      "chain": "Arbitrum",
+      "symbol": "WBTC",
+      "address": "",
+      "decimals": "",
+      "metadata_confidence": "low",
+      "invalid_reason": "missing_token_seed",
+      "selected_rpc": ""
+    },
+    {
+      "chain": "Arbitrum",
+      "symbol": "DAI",
+      "address": "0xdA10009Cbd5d07Dd0CeCC66161FC93D7c900205a",
+      "decimals": "",
+      "metadata_confidence": "medium",
+      "invalid_reason": "",
+      "selected_rpc": ""
+    },
+    {
+      "chain": "Optimism",
+      "symbol": "WETH",
+      "address": "0x4200000000000000000000000000000000000006",
+      "decimals": "",
+      "metadata_confidence": "medium",
+      "invalid_reason": "",
+      "selected_rpc": "https://mainnet.optimism.io"
+    },
+    {
+      "chain": "Optimism",
+      "symbol": "USDC",
+      "address": "",
+      "decimals": "",
+      "metadata_confidence": "low",
+      "invalid_reason": "missing_token_seed",
+      "selected_rpc": "https://mainnet.optimism.io"
+    },
+    {
+      "chain": "Optimism",
+      "symbol": "USDT",
+      "address": "",
+      "decimals": "",
+      "metadata_confidence": "low",
+      "invalid_reason": "missing_token_seed",
+      "selected_rpc": "https://mainnet.optimism.io"
+    },
+    {
+      "chain": "Optimism",
+      "symbol": "WBTC",
+      "address": "",
+      "decimals": "",
+      "metadata_confidence": "low",
+      "invalid_reason": "missing_token_seed",
+      "selected_rpc": "https://mainnet.optimism.io"
+    },
+    {
+      "chain": "Optimism",
+      "symbol": "OP",
+      "address": "0x4200000000000000000000000000000000000042",
+      "decimals": "",
+      "metadata_confidence": "medium",
+      "invalid_reason": "",
+      "selected_rpc": "https://mainnet.optimism.io"
+    },
+    {
+      "chain": "Optimism",
+      "symbol": "DAI",
+      "address": "0xdA10009Cbd5d07Dd0CeCC66161FC93D7c900205a",
+      "decimals": "",
+      "metadata_confidence": "medium",
+      "invalid_reason": "",
+      "selected_rpc": "https://mainnet.optimism.io"
+    },
+    {
+      "chain": "Base",
+      "symbol": "WETH",
+      "address": "0x4200000000000000000000000000000000000006",
+      "decimals": "",
+      "metadata_confidence": "medium",
+      "invalid_reason": "",
+      "selected_rpc": ""
+    },
+    {
+      "chain": "Base",
+      "symbol": "USDC",
+      "address": "",
+      "decimals": "",
+      "metadata_confidence": "low",
+      "invalid_reason": "missing_token_seed",
+      "selected_rpc": ""
+    },
+    {
+      "chain": "Ethereum",
+      "symbol": "WETH",
+      "address": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+      "decimals": "",
+      "metadata_confidence": "medium",
+      "invalid_reason": "",
+      "selected_rpc": ""
+    },
+    {
+      "chain": "Ethereum",
+      "symbol": "USDC",
+      "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+      "decimals": "",
+      "metadata_confidence": "medium",
+      "invalid_reason": "",
+      "selected_rpc": ""
+    },
+    {
+      "chain": "Ethereum",
+      "symbol": "USDT",
+      "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+      "decimals": "",
+      "metadata_confidence": "medium",
+      "invalid_reason": "",
+      "selected_rpc": ""
+    },
+    {
+      "chain": "Ethereum",
+      "symbol": "WBTC",
+      "address": "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",
+      "decimals": "",
+      "metadata_confidence": "medium",
+      "invalid_reason": "",
+      "selected_rpc": ""
+    },
+    {
+      "chain": "Ethereum",
+      "symbol": "DAI",
+      "address": "",
+      "decimals": "",
+      "metadata_confidence": "low",
+      "invalid_reason": "missing_token_seed",
+      "selected_rpc": ""
+    },
+    {
+      "chain": "Polygon",
+      "symbol": "WMATIC",
+      "address": "0x0000000000000000000000000000000000001010",
+      "decimals": "",
+      "metadata_confidence": "medium",
+      "invalid_reason": "",
+      "selected_rpc": ""
+    },
+    {
+      "chain": "Polygon",
+      "symbol": "USDC",
+      "address": "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+      "decimals": "",
+      "metadata_confidence": "medium",
+      "invalid_reason": "",
+      "selected_rpc": ""
+    },
+    {
+      "chain": "Polygon",
+      "symbol": "USDT",
+      "address": "",
+      "decimals": "",
+      "metadata_confidence": "low",
+      "invalid_reason": "missing_token_seed",
+      "selected_rpc": ""
+    },
+    {
+      "chain": "Polygon",
+      "symbol": "WETH",
+      "address": "0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619",
+      "decimals": "",
+      "metadata_confidence": "medium",
+      "invalid_reason": "",
+      "selected_rpc": ""
+    },
+    {
+      "chain": "Polygon",
+      "symbol": "WBTC",
+      "address": "",
+      "decimals": "",
+      "metadata_confidence": "low",
+      "invalid_reason": "missing_token_seed",
+      "selected_rpc": ""
+    },
+    {
+      "chain": "Polygon",
+      "symbol": "DAI",
+      "address": "0x8F3cF7Ad23Cd3CadBd9735AFF7580230Aa72F4f1",
+      "decimals": "",
+      "metadata_confidence": "medium",
+      "invalid_reason": "",
+      "selected_rpc": ""
+    }
+  ],
+  "checked_at": "2026-06-01T16:13:29Z"
+}

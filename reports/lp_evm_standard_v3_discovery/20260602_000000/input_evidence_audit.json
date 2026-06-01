@@ -1,0 +1,69 @@
+{
+  "inputs": [
+    {
+      "path": "/Users/bendu/lp-bot/v3/reports/lp_evm_universe_expansion_design/20260601_155703/FINAL_VERDICT.json",
+      "exists": true
+    },
+    {
+      "path": "/Users/bendu/lp-bot/v3/reports/lp_evm_universe_expansion_design/20260601_155703/BSC_PANCAKESWAP_V3_EXPANSION_DESIGN_CN.md",
+      "exists": true
+    },
+    {
+      "path": "/Users/bendu/lp-bot/v3/reports/lp_evm_universe_expansion_design/20260601_155703/bsc_pancakeswap_v3_expansion_design.json",
+      "exists": true
+    },
+    {
+      "path": "/Users/bendu/lp-bot/v3/reports/lp_evm_universe_expansion_design/20260601_155703/BSC_DATA_SOURCE_FEASIBILITY_CN.md",
+      "exists": true
+    },
+    {
+      "path": "/Users/bendu/lp-bot/v3/reports/lp_evm_universe_expansion_design/20260601_155703/bsc_data_source_feasibility.json",
+      "exists": true
+    },
+    {
+      "path": "/Users/bendu/lp-bot/v3/reports/lp_evm_universe_expansion_design/20260601_155703/EVM_EXPANSION_CHAIN_PROTOCOL_PRIORITY_CN.md",
+      "exists": true
+    },
+    {
+      "path": "/Users/bendu/lp-bot/v3/reports/lp_evm_universe_expansion_design/20260601_155703/EVM_UNIVERSE_EXPANSION_SCHEMA_CN.md",
+      "exists": true
+    },
+    {
+      "path": "/Users/bendu/lp-bot/v3/reports/lp_evm_universe_expansion_design/20260601_155703/EVM_POOL_DISCOVERY_IMPLEMENTATION_PLAN_CN.md",
+      "exists": true
+    },
+    {
+      "path": "/Users/bendu/lp-bot/v3/reports/lp_evm_universe_expansion_design/20260601_155703/METADATA_GAP_POLICY_CN.md",
+      "exists": true
+    },
+    {
+      "path": "/Users/bendu/lp-bot/v3/reports/lp_evm_universe_expansion_design/20260601_155703/EVM_UNIVERSE_EXPANSION_NEXT_STAGE_DECISION_CN.md",
+      "exists": true
+    },
+    {
+      "path": "/Users/bendu/lp-bot/v3/reports/lp_universe_scope_audit/20260601_154136/FINAL_VERDICT.json",
+      "exists": true
+    },
+    {
+      "path": "/Users/bendu/lp-bot/v3/reports/lp_universe_scope_audit/20260601_154136/POOL_UNIVERSE_EXPANSION_PLAN_CN.md",
+      "exists": true
+    },
+    {
+      "path": "/Users/bendu/lp-bot/v3/reports/lp_real_data_final_freeze/20260601_150954/FINAL_VERDICT.json",
+      "exists": true
+    },
+    {
+      "path": "/Users/bendu/lp-bot/v3/docs/LPBOT_RESEARCH_STATUS_CN.md",
+      "exists": true
+    }
+  ],
+  "summary": {
+    "all_inputs_present": true,
+    "missing_inputs": [],
+    "previous_stage_is_design_v1": true,
+    "universe_targeting": "multi_chain_v3_standard",
+    "bsc_p0_required": true,
+    "solana_deferred_this_round": true,
+    "checked_at": "2026-06-01T16:13:29Z"
+  }
+}

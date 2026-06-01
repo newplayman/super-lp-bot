@@ -1,0 +1,89 @@
+{
+  "rows": [
+    {
+      "chain": "BSC",
+      "protocol": "PancakeSwap V3",
+      "pool_address": "0x172fcD41E0913e95784454622d1c3724f546f849",
+      "tick_bitmap_success": "yes",
+      "initialized_ticks_found": 1,
+      "tick_read_success_count": 1,
+      "tick_confidence": "medium",
+      "invalid_reason": ""
+    },
+    {
+      "chain": "BSC",
+      "protocol": "PancakeSwap V3",
+      "pool_address": "0x36696169C63e42cd08ce11f5deeBbCeBae652050",
+      "tick_bitmap_success": "yes",
+      "initialized_ticks_found": 1,
+      "tick_read_success_count": 1,
+      "tick_confidence": "medium",
+      "invalid_reason": ""
+    },
+    {
+      "chain": "BSC",
+      "protocol": "PancakeSwap V3",
+      "pool_address": "0x1401ff943D08a7E098328C1d3a9d388923B115D2",
+      "tick_bitmap_success": "yes",
+      "initialized_ticks_found": 1,
+      "tick_read_success_count": 1,
+      "tick_confidence": "medium",
+      "invalid_reason": ""
+    },
+    {
+      "chain": "BSC",
+      "protocol": "PancakeSwap V3",
+      "pool_address": "0x6805E0E5333c5c3acCF2930Be4734E2b98f4Ce06",
+      "tick_bitmap_success": "yes",
+      "initialized_ticks_found": 1,
+      "tick_read_success_count": 1,
+      "tick_confidence": "medium",
+      "invalid_reason": ""
+    },
+    {
+      "chain": "BSC",
+      "protocol": "PancakeSwap V3",
+      "pool_address": "0xf2688Fb5B81049DFB7703aDa5e770543770612C4",
+      "tick_bitmap_success": "yes",
+      "initialized_ticks_found": 1,
+      "tick_read_success_count": 1,
+      "tick_confidence": "medium",
+      "invalid_reason": ""
+    },
+    {
+      "chain": "BSC",
+      "protocol": "PancakeSwap V3",
+      "pool_address": "0x81A9b5F18179cE2bf8f001b8a634Db80771F1824",
+      "tick_bitmap_success": "yes",
+      "initialized_ticks_found": 1,
+      "tick_read_success_count": 1,
+      "tick_confidence": "medium",
+      "invalid_reason": ""
+    },
+    {
+      "chain": "BSC",
+      "protocol": "PancakeSwap V3",
+      "pool_address": "0xc721dECCD986D54B39e8c29428A1f06155c3671e",
+      "tick_bitmap_success": "yes",
+      "initialized_ticks_found": 1,
+      "tick_read_success_count": 1,
+      "tick_confidence": "medium",
+      "invalid_reason": ""
+    },
+    {
+      "chain": "BSC",
+      "protocol": "PancakeSwap V3",
+      "pool_address": "0x18C5aFFA481e7EDbF37405AdE553827d6387899f",
+      "tick_bitmap_success": "yes",
+      "initialized_ticks_found": 1,
+      "tick_read_success_count": 1,
+      "tick_confidence": "medium",
+      "invalid_reason": ""
+    }
+  ],
+  "checked_at": "2026-06-01T16:13:29Z",
+  "summary": {
+    "pool_count": 8,
+    "success_pool_count": 8
+  }
+}

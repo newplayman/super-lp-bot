@@ -1,0 +1,366 @@
+{
+  "rows": [
+    {
+      "chain": "BSC",
+      "protocol": "PancakeSwap V3",
+      "pool_address": "0x172fcD41E0913e95784454622d1c3724f546f849",
+      "virtual_notional_usd": 20,
+      "quote_direction": "t0_to_t1",
+      "quote_success": "yes",
+      "amount_out": "29521548104497136",
+      "invalid_reason": "",
+      "quote_confidence": "medium"
+    },
+    {
+      "chain": "BSC",
+      "protocol": "PancakeSwap V3",
+      "pool_address": "0x172fcD41E0913e95784454622d1c3724f546f849",
+      "virtual_notional_usd": 100,
+      "quote_direction": "t0_to_t1",
+      "quote_success": "yes",
+      "amount_out": "147586772510513704",
+      "invalid_reason": "",
+      "quote_confidence": "medium"
+    },
+    {
+      "chain": "BSC",
+      "protocol": "PancakeSwap V3",
+      "pool_address": "0x172fcD41E0913e95784454622d1c3724f546f849",
+      "virtual_notional_usd": 500,
+      "quote_direction": "t1_to_t0",
+      "quote_success": "yes",
+      "amount_out": "337513603005001322630188",
+      "invalid_reason": "",
+      "quote_confidence": "medium"
+    },
+    {
+      "chain": "BSC",
+      "protocol": "PancakeSwap V3",
+      "pool_address": "0x172fcD41E0913e95784454622d1c3724f546f849",
+      "virtual_notional_usd": 1000,
+      "quote_direction": "t0_to_t1",
+      "quote_success": "yes",
+      "amount_out": "1475961587091054152",
+      "invalid_reason": "",
+      "quote_confidence": "medium"
+    },
+    {
+      "chain": "BSC",
+      "protocol": "PancakeSwap V3",
+      "pool_address": "0x36696169C63e42cd08ce11f5deeBbCeBae652050",
+      "virtual_notional_usd": 20,
+      "quote_direction": "t0_to_t1",
+      "quote_success": "yes",
+      "amount_out": "29510162752728061",
+      "invalid_reason": "",
+      "quote_confidence": "medium"
+    },
+    {
+      "chain": "BSC",
+      "protocol": "PancakeSwap V3",
+      "pool_address": "0x36696169C63e42cd08ce11f5deeBbCeBae652050",
+      "virtual_notional_usd": 100,
+      "quote_direction": "t0_to_t1",
+      "quote_success": "yes",
+      "amount_out": "147550610449103599",
+      "invalid_reason": "",
+      "quote_confidence": "medium"
+    },
+    {
+      "chain": "BSC",
+      "protocol": "PancakeSwap V3",
+      "pool_address": "0x36696169C63e42cd08ce11f5deeBbCeBae652050",
+      "virtual_notional_usd": 500,
+      "quote_direction": "t1_to_t0",
+      "quote_success": "yes",
+      "amount_out": "336571952095271032246222",
+      "invalid_reason": "",
+      "quote_confidence": "medium"
+    },
+    {
+      "chain": "BSC",
+      "protocol": "PancakeSwap V3",
+      "pool_address": "0x36696169C63e42cd08ce11f5deeBbCeBae652050",
+      "virtual_notional_usd": 1000,
+      "quote_direction": "t0_to_t1",
+      "quote_success": "yes",
+      "amount_out": "1475483231991735978",
+      "invalid_reason": "",
+      "quote_confidence": "medium"
+    },
+    {
+      "chain": "BSC",
+      "protocol": "PancakeSwap V3",
+      "pool_address": "0x1401ff943D08a7E098328C1d3a9d388923B115D2",
+      "virtual_notional_usd": 20,
+      "quote_direction": "t0_to_t1",
+      "quote_success": "yes",
+      "amount_out": "29507451938048896",
+      "invalid_reason": "",
+      "quote_confidence": "medium"
+    },
+    {
+      "chain": "BSC",
+      "protocol": "PancakeSwap V3",
+      "pool_address": "0x1401ff943D08a7E098328C1d3a9d388923B115D2",
+      "virtual_notional_usd": 100,
+      "quote_direction": "t0_to_t1",
+      "quote_success": "yes",
+      "amount_out": "147476823571700737",
+      "invalid_reason": "",
+      "quote_confidence": "medium"
+    },
+    {
+      "chain": "BSC",
+      "protocol": "PancakeSwap V3",
+      "pool_address": "0x1401ff943D08a7E098328C1d3a9d388923B115D2",
+      "virtual_notional_usd": 500,
+      "quote_direction": "t1_to_t0",
+      "quote_success": "yes",
+      "amount_out": "14978191293314074032047",
+      "invalid_reason": "",
+      "quote_confidence": "medium"
+    },
+    {
+      "chain": "BSC",
+      "protocol": "PancakeSwap V3",
+      "pool_address": "0x1401ff943D08a7E098328C1d3a9d388923B115D2",
+      "virtual_notional_usd": 1000,
+      "quote_direction": "t0_to_t1",
+      "quote_success": "yes",
+      "amount_out": "1468097900349763391",
+      "invalid_reason": "",
+      "quote_confidence": "medium"
+    },
+    {
+      "chain": "BSC",
+      "protocol": "PancakeSwap V3",
+      "pool_address": "0x6805E0E5333c5c3acCF2930Be4734E2b98f4Ce06",
+      "virtual_notional_usd": 20,
+      "quote_direction": "t0_to_t1",
+      "quote_success": "yes",
+      "amount_out": "29037828151353273",
+      "invalid_reason": "",
+      "quote_confidence": "medium"
+    },
+    {
+      "chain": "BSC",
+      "protocol": "PancakeSwap V3",
+      "pool_address": "0x6805E0E5333c5c3acCF2930Be4734E2b98f4Ce06",
+      "virtual_notional_usd": 100,
+      "quote_direction": "t0_to_t1",
+      "quote_success": "yes",
+      "amount_out": "144651425881111418",
+      "invalid_reason": "",
+      "quote_confidence": "medium"
+    },
+    {
+      "chain": "BSC",
+      "protocol": "PancakeSwap V3",
+      "pool_address": "0x6805E0E5333c5c3acCF2930Be4734E2b98f4Ce06",
+      "virtual_notional_usd": 500,
+      "quote_direction": "t1_to_t0",
+      "quote_success": "yes",
+      "amount_out": "2279050971450403067121",
+      "invalid_reason": "",
+      "quote_confidence": "medium"
+    },
+    {
+      "chain": "BSC",
+      "protocol": "PancakeSwap V3",
+      "pool_address": "0x6805E0E5333c5c3acCF2930Be4734E2b98f4Ce06",
+      "virtual_notional_usd": 1000,
+      "quote_direction": "t0_to_t1",
+      "quote_success": "yes",
+      "amount_out": "1342268956089558559",
+      "invalid_reason": "",
+      "quote_confidence": "medium"
+    },
+    {
+      "chain": "BSC",
+      "protocol": "PancakeSwap V3",
+      "pool_address": "0xf2688Fb5B81049DFB7703aDa5e770543770612C4",
+      "virtual_notional_usd": 20,
+      "quote_direction": "t0_to_t1",
+      "quote_success": "yes",
+      "amount_out": "29546970306091712",
+      "invalid_reason": "",
+      "quote_confidence": "medium"
+    },
+    {
+      "chain": "BSC",
+      "protocol": "PancakeSwap V3",
+      "pool_address": "0xf2688Fb5B81049DFB7703aDa5e770543770612C4",
+      "virtual_notional_usd": 100,
+      "quote_direction": "t0_to_t1",
+      "quote_success": "yes",
+      "amount_out": "147756832343492829",
+      "invalid_reason": "",
+      "quote_confidence": "medium"
+    },
+    {
+      "chain": "BSC",
+      "protocol": "PancakeSwap V3",
+      "pool_address": "0xf2688Fb5B81049DFB7703aDa5e770543770612C4",
+      "virtual_notional_usd": 500,
+      "quote_direction": "t1_to_t0",
+      "quote_success": "yes",
+      "amount_out": "329473180450070423451639",
+      "invalid_reason": "",
+      "quote_confidence": "medium"
+    },
+    {
+      "chain": "BSC",
+      "protocol": "PancakeSwap V3",
+      "pool_address": "0xf2688Fb5B81049DFB7703aDa5e770543770612C4",
+      "virtual_notional_usd": 1000,
+      "quote_direction": "t0_to_t1",
+      "quote_success": "yes",
+      "amount_out": "1476517416665955473",
+      "invalid_reason": "",
+      "quote_confidence": "medium"
+    },
+    {
+      "chain": "BSC",
+      "protocol": "PancakeSwap V3",
+      "pool_address": "0x81A9b5F18179cE2bf8f001b8a634Db80771F1824",
+      "virtual_notional_usd": 20,
+      "quote_direction": "t0_to_t1",
+      "quote_success": "yes",
+      "amount_out": "29535468867299029",
+      "invalid_reason": "",
+      "quote_confidence": "medium"
+    },
+    {
+      "chain": "BSC",
+      "protocol": "PancakeSwap V3",
+      "pool_address": "0x81A9b5F18179cE2bf8f001b8a634Db80771F1824",
+      "virtual_notional_usd": 100,
+      "quote_direction": "t0_to_t1",
+      "quote_success": "yes",
+      "amount_out": "147655637297123950",
+      "invalid_reason": "",
+      "quote_confidence": "medium"
+    },
+    {
+      "chain": "BSC",
+      "protocol": "PancakeSwap V3",
+      "pool_address": "0x81A9b5F18179cE2bf8f001b8a634Db80771F1824",
+      "virtual_notional_usd": 500,
+      "quote_direction": "t1_to_t0",
+      "quote_success": "yes",
+      "amount_out": "38115041848957324769475",
+      "invalid_reason": "",
+      "quote_confidence": "medium"
+    },
+    {
+      "chain": "BSC",
+      "protocol": "PancakeSwap V3",
+      "pool_address": "0x81A9b5F18179cE2bf8f001b8a634Db80771F1824",
+      "virtual_notional_usd": 1000,
+      "quote_direction": "t0_to_t1",
+      "quote_success": "yes",
+      "amount_out": "1474119589093454346",
+      "invalid_reason": "",
+      "quote_confidence": "medium"
+    },
+    {
+      "chain": "BSC",
+      "protocol": "PancakeSwap V3",
+      "pool_address": "0xc721dECCD986D54B39e8c29428A1f06155c3671e",
+      "virtual_notional_usd": 20,
+      "quote_direction": "t0_to_t1",
+      "quote_success": "yes",
+      "amount_out": "29474855479304527",
+      "invalid_reason": "",
+      "quote_confidence": "medium"
+    },
+    {
+      "chain": "BSC",
+      "protocol": "PancakeSwap V3",
+      "pool_address": "0xc721dECCD986D54B39e8c29428A1f06155c3671e",
+      "virtual_notional_usd": 100,
+      "quote_direction": "t0_to_t1",
+      "quote_success": "yes",
+      "amount_out": "146766600056945253",
+      "invalid_reason": "",
+      "quote_confidence": "medium"
+    },
+    {
+      "chain": "BSC",
+      "protocol": "PancakeSwap V3",
+      "pool_address": "0xc721dECCD986D54B39e8c29428A1f06155c3671e",
+      "virtual_notional_usd": 500,
+      "quote_direction": "t1_to_t0",
+      "quote_success": "yes",
+      "amount_out": "1496764001249926733372",
+      "invalid_reason": "",
+      "quote_confidence": "medium"
+    },
+    {
+      "chain": "BSC",
+      "protocol": "PancakeSwap V3",
+      "pool_address": "0xc721dECCD986D54B39e8c29428A1f06155c3671e",
+      "virtual_notional_usd": 1000,
+      "quote_direction": "t0_to_t1",
+      "quote_success": "yes",
+      "amount_out": "541033079122987188",
+      "invalid_reason": "",
+      "quote_confidence": "medium"
+    },
+    {
+      "chain": "BSC",
+      "protocol": "PancakeSwap V3",
+      "pool_address": "0x18C5aFFA481e7EDbF37405AdE553827d6387899f",
+      "virtual_notional_usd": 20,
+      "quote_direction": "t0_to_t1",
+      "quote_success": "yes",
+      "amount_out": "2308177659575",
+      "invalid_reason": "",
+      "quote_confidence": "medium"
+    },
+    {
+      "chain": "BSC",
+      "protocol": "PancakeSwap V3",
+      "pool_address": "0x18C5aFFA481e7EDbF37405AdE553827d6387899f",
+      "virtual_notional_usd": 100,
+      "quote_direction": "t0_to_t1",
+      "quote_success": "yes",
+      "amount_out": "2308177659575",
+      "invalid_reason": "",
+      "quote_confidence": "medium"
+    },
+    {
+      "chain": "BSC",
+      "protocol": "PancakeSwap V3",
+      "pool_address": "0x18C5aFFA481e7EDbF37405AdE553827d6387899f",
+      "virtual_notional_usd": 500,
+      "quote_direction": "t1_to_t0",
+      "quote_success": "yes",
+      "amount_out": "10660745433087325011",
+      "invalid_reason": "",
+      "quote_confidence": "medium"
+    },
+    {
+      "chain": "BSC",
+      "protocol": "PancakeSwap V3",
+      "pool_address": "0x18C5aFFA481e7EDbF37405AdE553827d6387899f",
+      "virtual_notional_usd": 1000,
+      "quote_direction": "t0_to_t1",
+      "quote_success": "yes",
+      "amount_out": "2308177659575",
+      "invalid_reason": "",
+      "quote_confidence": "medium"
+    }
+  ],
+  "summary": {
+    "quote_attempt_count": 32,
+    "quote_success_count": 32,
+    "quote_fail_count": 0,
+    "BSC": {
+      "attempt": 32,
+      "success": 32
+    }
+  },
+  "checked_at": "2026-06-01T16:13:29Z"
+}

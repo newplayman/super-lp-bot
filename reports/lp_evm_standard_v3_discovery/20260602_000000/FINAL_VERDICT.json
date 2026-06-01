@@ -1,0 +1,18 @@
+{
+  "status": "PASS",
+  "stage": "LP_EVM_STANDARD_V3_UNIVERSE_DISCOVERY_V1",
+  "tiny_canary_candidate": "no",
+  "tiny_canary_allowed": "no",
+  "chain_count_attempted": 6,
+  "chain_count_rpc_ready": 2,
+  "protocol_count_attempted": 2,
+  "token_seed_count": 33,
+  "pair_fee_combo_tested_count": 72,
+  "discovered_pool_count": 8,
+  "metadata_valid_pool_count": 8,
+  "quote_readiness_pool_count": 8,
+  "tick_readiness_pool_count": 8,
+  "edge_proven": "no",
+  "recommended_next_stage": "LP_BSC_PANCAKESWAP_V3_PRECISE_QUOTE_PIPELINE_V1",
+  "bsc_included": true
+}

@@ -1,0 +1,24 @@
+{
+  "coverage_summary": {
+    "discovered_pool_count": 8,
+    "metadata_rows": 8,
+    "metadata_valid_pool_count": 8,
+    "quote_ready_pool_count": 8,
+    "tick_ready_pool_count": 8,
+    "discovered_by_chain": {
+      "BSC": 8
+    },
+    "discovered_by_protocol": {
+      "PancakeSwap V3": 8
+    }
+  },
+  "multi_chain_discovery_ready": true,
+  "chain_rpc_not_ready": [
+    "Arbitrum",
+    "Base",
+    "Ethereum",
+    "Polygon"
+  ],
+  "recommended_next_stage": "LP_BSC_PANCAKESWAP_V3_PRECISE_QUOTE_PIPELINE_V1",
+  "checked_at": "2026-06-01T16:13:29Z"
+}

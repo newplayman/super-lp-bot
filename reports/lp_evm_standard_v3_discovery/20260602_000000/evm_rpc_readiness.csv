@@ -1,0 +1,7 @@
+chain,chain_id_expected,rpc_present,fallback_rpc_used,chain_id_read,latest_block,rpc_read_only_ready,confidence,invalid_reason,selected_rpc
+BSC,56,True,False,56,101719699,True,high,,https://bsc-dataseed.binance.org
+Arbitrum,42161,False,False,,,False,none,chainid_invalid_payload,
+Optimism,10,True,False,10,152365819,True,high,,https://mainnet.optimism.io
+Base,8453,False,False,,,False,none,chainid_invalid_payload,
+Ethereum,1,False,False,,,False,none,rpc_fail:HTTP Error 403: Forbidden,
+Polygon,137,False,False,,,False,none,chainid_invalid_payload,

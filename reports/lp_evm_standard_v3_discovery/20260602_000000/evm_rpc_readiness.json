@@ -1,0 +1,77 @@
+{
+  "rows": [
+    {
+      "selected_rpc": "https://bsc-dataseed.binance.org",
+      "rpc_read_only_ready": true,
+      "chain_id_read": 56,
+      "latest_block": 101719699,
+      "fallback_rpc_used": false,
+      "invalid_reason": "",
+      "confidence": "high",
+      "rpc_present": true,
+      "chain": "BSC",
+      "chain_id_expected": 56
+    },
+    {
+      "selected_rpc": "",
+      "rpc_read_only_ready": false,
+      "chain_id_read": null,
+      "latest_block": null,
+      "fallback_rpc_used": false,
+      "invalid_reason": "chainid_invalid_payload",
+      "confidence": "none",
+      "rpc_present": false,
+      "chain": "Arbitrum",
+      "chain_id_expected": 42161
+    },
+    {
+      "selected_rpc": "https://mainnet.optimism.io",
+      "rpc_read_only_ready": true,
+      "chain_id_read": 10,
+      "latest_block": 152365819,
+      "fallback_rpc_used": false,
+      "invalid_reason": "",
+      "confidence": "high",
+      "rpc_present": true,
+      "chain": "Optimism",
+      "chain_id_expected": 10
+    },
+    {
+      "selected_rpc": "",
+      "rpc_read_only_ready": false,
+      "chain_id_read": null,
+      "latest_block": null,
+      "fallback_rpc_used": false,
+      "invalid_reason": "chainid_invalid_payload",
+      "confidence": "none",
+      "rpc_present": false,
+      "chain": "Base",
+      "chain_id_expected": 8453
+    },
+    {
+      "selected_rpc": "",
+      "rpc_read_only_ready": false,
+      "chain_id_read": null,
+      "latest_block": null,
+      "fallback_rpc_used": false,
+      "invalid_reason": "rpc_fail:HTTP Error 403: Forbidden",
+      "confidence": "none",
+      "rpc_present": false,
+      "chain": "Ethereum",
+      "chain_id_expected": 1
+    },
+    {
+      "selected_rpc": "",
+      "rpc_read_only_ready": false,
+      "chain_id_read": null,
+      "latest_block": null,
+      "fallback_rpc_used": false,
+      "invalid_reason": "chainid_invalid_payload",
+      "confidence": "none",
+      "rpc_present": false,
+      "chain": "Polygon",
+      "chain_id_expected": 137
+    }
+  ],
+  "checked_at": "2026-06-01T16:13:29Z"
+}
