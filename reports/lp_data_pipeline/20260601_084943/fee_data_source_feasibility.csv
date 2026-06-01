@@ -1,0 +1,7 @@
+source_name,supports_per_pool,supports_entry_safe_time_bucket,supports_15m_30m_1h_2h,confidence,blocker,recommended
+realized_lp_fee_accrual_from_positions,partial,no,no,low,"marks fee_usd is proxy-like, not realized clean lineage",no
+pool_volume_x_fee_tier_proxy,yes,partial,yes,medium,needs snapshot alignment and parser for vol/tvl/liquidity,yes
+protocol_subgraph_or_api,unknown,unknown,unknown,medium,not currently configured,no
+geckoterminal_or_dexscreener_volume_proxy,yes,partial,partial,medium,proxy only and external API dependency,fallback
+onchain_swap_logs_by_fee_tier,yes,yes,yes,medium,parser complexity and pool type coverage,yes
+no_source,no,no,no,none,not acceptable,no

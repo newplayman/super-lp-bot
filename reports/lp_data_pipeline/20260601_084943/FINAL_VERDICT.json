@@ -1,0 +1,20 @@
+{
+  "status": "PASS",
+  "stage": "LP_DATA_PIPELINE_FIRST_V1",
+  "data_source": "vps_postgres",
+  "db_ready": true,
+  "data_readiness_before": "PARTIAL",
+  "quote_depth_source_feasible": true,
+  "fee_velocity_source_feasible": true,
+  "entry_safe_snapshot_feasible": true,
+  "research_schema_proposed": true,
+  "feasibility_probe_pool_count": 7,
+  "data_ready_pool_count": 0,
+  "can_run_virtual_notional_next": false,
+  "can_run_probe_now": false,
+  "manual_approval_required_for_probe": true,
+  "edge_proven": "no",
+  "tiny_canary_candidate": "no",
+  "tiny_canary_allowed": "no",
+  "recommended_next_stage": "LP_QUOTE_DEPTH_CURVE_IMPLEMENTATION_V1"
+}

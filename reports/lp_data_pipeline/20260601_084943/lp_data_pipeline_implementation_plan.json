@@ -1,0 +1,73 @@
+[
+  {
+    "phase": "Phase 1",
+    "objective": "quote/depth curve design and read-only feasibility",
+    "required_files_scripts": [
+      "lp_quote_depth_curve_v1_readonly.py"
+    ],
+    "data_output": [
+      "lp_quote_depth_curve_v1"
+    ],
+    "tests": [
+      "unit math checks",
+      "no signing"
+    ],
+    "risks": [
+      "pool type coverage"
+    ],
+    "expected_verdict": "depth source feasible / infeasible"
+  },
+  {
+    "phase": "Phase 2",
+    "objective": "fee velocity proxy and onchain swap log option",
+    "required_files_scripts": [
+      "lp_fee_velocity_v1_readonly.py"
+    ],
+    "data_output": [
+      "lp_fee_velocity_v1"
+    ],
+    "tests": [
+      "bucket alignment"
+    ],
+    "risks": [
+      "fee proxy drift"
+    ],
+    "expected_verdict": "fee source feasible / partial"
+  },
+  {
+    "phase": "Phase 3",
+    "objective": "entry-safe snapshots and anti-lookahead checks",
+    "required_files_scripts": [
+      "lp_pool_snapshot_entry_safe_v1_readonly.py"
+    ],
+    "data_output": [
+      "lp_pool_snapshot_entry_safe_v1",
+      "lp_pool_quality_features_v1"
+    ],
+    "tests": [
+      "feature_cutoff <= sample_start"
+    ],
+    "risks": [
+      "timestamp mismatch"
+    ],
+    "expected_verdict": "entry-safe safe / unsafe"
+  },
+  {
+    "phase": "Phase 4",
+    "objective": "virtual notional economics v1",
+    "required_files_scripts": [
+      "lp_virtual_notional_economics_v1_readonly.py"
+    ],
+    "data_output": [
+      "lp_virtual_notional_economics_v1"
+    ],
+    "tests": [
+      "break-even sanity",
+      "capacity gate"
+    ],
+    "risks": [
+      "curve extrapolation"
+    ],
+    "expected_verdict": "virtual notional ready / blocked"
+  }
+]

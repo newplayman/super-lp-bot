@@ -1,0 +1,7 @@
+{
+  "recommended_next_stage": "LP_QUOTE_DEPTH_CURVE_IMPLEMENTATION_V1",
+  "reason": "quote/depth source is feasible and is the primary blocker before virtual notional economics can be upgraded",
+  "quote_depth_source_feasible": true,
+  "fee_velocity_source_feasible": true,
+  "entry_safe_snapshot_feasible": true
+}

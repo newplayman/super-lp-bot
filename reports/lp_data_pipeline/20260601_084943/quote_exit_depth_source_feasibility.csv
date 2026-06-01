@@ -1,0 +1,8 @@
+source_name,supports_20_100_500_1000_2000,supports_base_chain,requires_secrets,requires_transaction_signing,read_only_safe,expected_accuracy,implementation_complexity,rate_limit_risk,recommended,notes
+onchain_reserve_approximation,partial,yes,no,no,yes,medium_low,medium,low,yes,needs parser for pools.liquidity/tick plus protocol-specific math
+uniswap_v2_v3_math_from_pool_state,yes,yes,no,no,yes,medium,high,low,yes,best no-signing path if pool type coverage is good
+dex_aggregator_dry_quote_api,partial,unknown,possibly,no,yes,high,medium,medium_high,no,not preferred until existing configured API is confirmed
+router_quoteStatic_callStatic,partial,yes,no,no,yes,high,high,medium,no,"safe if pure eth_call only, but protocol coverage still incomplete"
+geckoterminal_dexscreener_liquidity_proxy,partial,yes,no,no,yes,low,low,medium,fallback,"good coarse fallback, not enough alone"
+existing_exit_depth_research_tables,partial,yes,no,no,yes,low,low,low,fallback,currently only small-cap and Tier C oriented
+no_source,no,unknown,no,no,yes,none,none,none,no,not acceptable

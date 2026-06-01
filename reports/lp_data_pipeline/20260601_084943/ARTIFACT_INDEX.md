@@ -1,0 +1,26 @@
+# Artifact Index
+
+- `INPUT_EVIDENCE_AUDIT_CN.md`
+- `input_evidence_audit.json`
+- `VPS_DB_QUICK_CHECK_CN.md`
+- `LP_DATA_REQUIREMENT_SPEC_CN.md`
+- `lp_data_requirement_spec.json`
+- `CURRENT_SCHEMA_DATA_COVERAGE_AUDIT_CN.md`
+- `current_schema_data_coverage_audit.csv`
+- `QUOTE_EXIT_DEPTH_SOURCE_FEASIBILITY_CN.md`
+- `quote_exit_depth_source_feasibility.json`
+- `quote_exit_depth_source_feasibility.csv`
+- `FEE_DATA_SOURCE_FEASIBILITY_CN.md`
+- `fee_data_source_feasibility.json`
+- `fee_data_source_feasibility.csv`
+- `LP_DATA_PIPELINE_SCHEMA_PROPOSAL_CN.md`
+- `lp_data_pipeline_schema_proposal.json`
+- `LP_DATA_PIPELINE_IMPLEMENTATION_PLAN_CN.md`
+- `lp_data_pipeline_implementation_plan.json`
+- `LP_DATA_PIPELINE_FEASIBILITY_PROBE_CN.md`
+- `lp_data_pipeline_feasibility_probe.csv`
+- `LP_DATA_PIPELINE_NEXT_STAGE_DECISION_CN.md`
+- `lp_data_pipeline_next_stage_decision.json`
+- `FINAL_VERDICT.json`
+- `ONEPAGE_CN.md`
+- `lp_data_pipeline_first_v1_readonly.py`

@@ -1,0 +1,60 @@
+{
+  "primary_source": "pool_volume_x_fee_tier_proxy",
+  "fallback_source": "onchain_swap_logs_by_fee_tier",
+  "rows": [
+    {
+      "source_name": "realized_lp_fee_accrual_from_positions",
+      "supports_per_pool": "partial",
+      "supports_entry_safe_time_bucket": "no",
+      "supports_15m_30m_1h_2h": "no",
+      "confidence": "low",
+      "blocker": "marks fee_usd is proxy-like, not realized clean lineage",
+      "recommended": "no"
+    },
+    {
+      "source_name": "pool_volume_x_fee_tier_proxy",
+      "supports_per_pool": "yes",
+      "supports_entry_safe_time_bucket": "partial",
+      "supports_15m_30m_1h_2h": "yes",
+      "confidence": "medium",
+      "blocker": "needs snapshot alignment and parser for vol/tvl/liquidity",
+      "recommended": "yes"
+    },
+    {
+      "source_name": "protocol_subgraph_or_api",
+      "supports_per_pool": "unknown",
+      "supports_entry_safe_time_bucket": "unknown",
+      "supports_15m_30m_1h_2h": "unknown",
+      "confidence": "medium",
+      "blocker": "not currently configured",
+      "recommended": "no"
+    },
+    {
+      "source_name": "geckoterminal_or_dexscreener_volume_proxy",
+      "supports_per_pool": "yes",
+      "supports_entry_safe_time_bucket": "partial",
+      "supports_15m_30m_1h_2h": "partial",
+      "confidence": "medium",
+      "blocker": "proxy only and external API dependency",
+      "recommended": "fallback"
+    },
+    {
+      "source_name": "onchain_swap_logs_by_fee_tier",
+      "supports_per_pool": "yes",
+      "supports_entry_safe_time_bucket": "yes",
+      "supports_15m_30m_1h_2h": "yes",
+      "confidence": "medium",
+      "blocker": "parser complexity and pool type coverage",
+      "recommended": "yes"
+    },
+    {
+      "source_name": "no_source",
+      "supports_per_pool": "no",
+      "supports_entry_safe_time_bucket": "no",
+      "supports_15m_30m_1h_2h": "no",
+      "confidence": "none",
+      "blocker": "not acceptable",
+      "recommended": "no"
+    }
+  ]
+}

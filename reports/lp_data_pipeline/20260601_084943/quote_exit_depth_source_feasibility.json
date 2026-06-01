@@ -1,0 +1,97 @@
+{
+  "primary_source": "uniswap_v2_v3_math_from_pool_state",
+  "fallback_source": "existing_exit_depth_research_tables",
+  "rows": [
+    {
+      "source_name": "onchain_reserve_approximation",
+      "supports_20_100_500_1000_2000": "partial",
+      "supports_base_chain": "yes",
+      "requires_secrets": "no",
+      "requires_transaction_signing": "no",
+      "read_only_safe": "yes",
+      "expected_accuracy": "medium_low",
+      "implementation_complexity": "medium",
+      "rate_limit_risk": "low",
+      "recommended": "yes",
+      "notes": "needs parser for pools.liquidity/tick plus protocol-specific math"
+    },
+    {
+      "source_name": "uniswap_v2_v3_math_from_pool_state",
+      "supports_20_100_500_1000_2000": "yes",
+      "supports_base_chain": "yes",
+      "requires_secrets": "no",
+      "requires_transaction_signing": "no",
+      "read_only_safe": "yes",
+      "expected_accuracy": "medium",
+      "implementation_complexity": "high",
+      "rate_limit_risk": "low",
+      "recommended": "yes",
+      "notes": "best no-signing path if pool type coverage is good"
+    },
+    {
+      "source_name": "dex_aggregator_dry_quote_api",
+      "supports_20_100_500_1000_2000": "partial",
+      "supports_base_chain": "unknown",
+      "requires_secrets": "possibly",
+      "requires_transaction_signing": "no",
+      "read_only_safe": "yes",
+      "expected_accuracy": "high",
+      "implementation_complexity": "medium",
+      "rate_limit_risk": "medium_high",
+      "recommended": "no",
+      "notes": "not preferred until existing configured API is confirmed"
+    },
+    {
+      "source_name": "router_quoteStatic_callStatic",
+      "supports_20_100_500_1000_2000": "partial",
+      "supports_base_chain": "yes",
+      "requires_secrets": "no",
+      "requires_transaction_signing": "no",
+      "read_only_safe": "yes",
+      "expected_accuracy": "high",
+      "implementation_complexity": "high",
+      "rate_limit_risk": "medium",
+      "recommended": "no",
+      "notes": "safe if pure eth_call only, but protocol coverage still incomplete"
+    },
+    {
+      "source_name": "geckoterminal_dexscreener_liquidity_proxy",
+      "supports_20_100_500_1000_2000": "partial",
+      "supports_base_chain": "yes",
+      "requires_secrets": "no",
+      "requires_transaction_signing": "no",
+      "read_only_safe": "yes",
+      "expected_accuracy": "low",
+      "implementation_complexity": "low",
+      "rate_limit_risk": "medium",
+      "recommended": "fallback",
+      "notes": "good coarse fallback, not enough alone"
+    },
+    {
+      "source_name": "existing_exit_depth_research_tables",
+      "supports_20_100_500_1000_2000": "partial",
+      "supports_base_chain": "yes",
+      "requires_secrets": "no",
+      "requires_transaction_signing": "no",
+      "read_only_safe": "yes",
+      "expected_accuracy": "low",
+      "implementation_complexity": "low",
+      "rate_limit_risk": "low",
+      "recommended": "fallback",
+      "notes": "currently only small-cap and Tier C oriented"
+    },
+    {
+      "source_name": "no_source",
+      "supports_20_100_500_1000_2000": "no",
+      "supports_base_chain": "unknown",
+      "requires_secrets": "no",
+      "requires_transaction_signing": "no",
+      "read_only_safe": "yes",
+      "expected_accuracy": "none",
+      "implementation_complexity": "none",
+      "rate_limit_risk": "none",
+      "recommended": "no",
+      "notes": "not acceptable"
+    }
+  ]
+}

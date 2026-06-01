@@ -1,0 +1,182 @@
+[
+  {
+    "data_name": "quote_exit_depth_20",
+    "why_required": "20U exit depth / quote",
+    "source_candidate": "existing exit-depth proxy + new quote-depth curve",
+    "existing_source": "partial",
+    "must_be_entry_safe": "yes",
+    "can_be_proxy": "yes",
+    "minimum_quality_bar": "pool-specific 20U depth with timestamp",
+    "blocking_if_missing": "yes"
+  },
+  {
+    "data_name": "quote_exit_depth_100",
+    "why_required": "100U exit depth / quote",
+    "source_candidate": "new quote-depth curve",
+    "existing_source": "no",
+    "must_be_entry_safe": "yes",
+    "can_be_proxy": "yes",
+    "minimum_quality_bar": "pool-specific 100U depth",
+    "blocking_if_missing": "yes"
+  },
+  {
+    "data_name": "quote_exit_depth_500",
+    "why_required": "500U exit depth / quote",
+    "source_candidate": "new quote-depth curve",
+    "existing_source": "no",
+    "must_be_entry_safe": "yes",
+    "can_be_proxy": "yes",
+    "minimum_quality_bar": "pool-specific 500U depth",
+    "blocking_if_missing": "yes"
+  },
+  {
+    "data_name": "quote_exit_depth_1000",
+    "why_required": "1000U exit depth / quote",
+    "source_candidate": "new quote-depth curve",
+    "existing_source": "no",
+    "must_be_entry_safe": "yes",
+    "can_be_proxy": "yes",
+    "minimum_quality_bar": "pool-specific 1000U depth",
+    "blocking_if_missing": "yes"
+  },
+  {
+    "data_name": "quote_exit_depth_2000",
+    "why_required": "2000U exit depth / quote",
+    "source_candidate": "new quote-depth curve",
+    "existing_source": "no",
+    "must_be_entry_safe": "yes",
+    "can_be_proxy": "yes",
+    "minimum_quality_bar": "pool-specific 2000U depth",
+    "blocking_if_missing": "yes"
+  },
+  {
+    "data_name": "entry_slippage_curve",
+    "why_required": "entry slippage by notional",
+    "source_candidate": "pool math / dry quote",
+    "existing_source": "partial",
+    "must_be_entry_safe": "yes",
+    "can_be_proxy": "yes",
+    "minimum_quality_bar": "20/100/500/1000/2000 curve",
+    "blocking_if_missing": "yes"
+  },
+  {
+    "data_name": "exit_slippage_curve",
+    "why_required": "exit slippage by notional",
+    "source_candidate": "pool math / dry quote",
+    "existing_source": "partial",
+    "must_be_entry_safe": "yes",
+    "can_be_proxy": "yes",
+    "minimum_quality_bar": "20/100/500/1000/2000 curve",
+    "blocking_if_missing": "yes"
+  },
+  {
+    "data_name": "realized_fee_accrual",
+    "why_required": "true LP fee accrual",
+    "source_candidate": "positions/accounting",
+    "existing_source": "partial",
+    "must_be_entry_safe": "yes",
+    "can_be_proxy": "no",
+    "minimum_quality_bar": "per-position realized fee lineage",
+    "blocking_if_missing": "no"
+  },
+  {
+    "data_name": "fee_apr",
+    "why_required": "fee earning proxy",
+    "source_candidate": "pools.fee_apr_24h",
+    "existing_source": "yes",
+    "must_be_entry_safe": "no",
+    "can_be_proxy": "yes",
+    "minimum_quality_bar": "recent per-pool fee apr",
+    "blocking_if_missing": "no"
+  },
+  {
+    "data_name": "fee_velocity_proxy",
+    "why_required": "short-hold fee velocity",
+    "source_candidate": "fee_velocity_exit_depth_counterfactual_v1",
+    "existing_source": "yes",
+    "must_be_entry_safe": "yes",
+    "can_be_proxy": "yes",
+    "minimum_quality_bar": "entry-safe fee velocity proxy",
+    "blocking_if_missing": "yes"
+  },
+  {
+    "data_name": "volume_x_fee_tier_proxy",
+    "why_required": "diagnostic fee proxy",
+    "source_candidate": "marks + pools fee_bps",
+    "existing_source": "yes",
+    "must_be_entry_safe": "yes",
+    "can_be_proxy": "yes",
+    "minimum_quality_bar": "entry-safe vol * fee tier",
+    "blocking_if_missing": "yes"
+  },
+  {
+    "data_name": "entry_safe_pool_snapshot",
+    "why_required": "anti-lookahead snapshot",
+    "source_candidate": "pool_regime_classifier_entry_safe_v1",
+    "existing_source": "yes",
+    "must_be_entry_safe": "yes",
+    "can_be_proxy": "no",
+    "minimum_quality_bar": "bucket_end < sample_start",
+    "blocking_if_missing": "yes"
+  },
+  {
+    "data_name": "gas_fixed_cost_proxy",
+    "why_required": "fixed execution cost",
+    "source_candidate": "research proxy",
+    "existing_source": "yes",
+    "must_be_entry_safe": "no",
+    "can_be_proxy": "yes",
+    "minimum_quality_bar": "capacity bucket gas proxy",
+    "blocking_if_missing": "yes"
+  },
+  {
+    "data_name": "il_lvr_proxy",
+    "why_required": "LP adverse price component",
+    "source_candidate": "marks-based proxy",
+    "existing_source": "partial",
+    "must_be_entry_safe": "yes",
+    "can_be_proxy": "yes",
+    "minimum_quality_bar": "documented price/volatility-based proxy",
+    "blocking_if_missing": "no"
+  },
+  {
+    "data_name": "holder_concentration",
+    "why_required": "tail / rug concentration",
+    "source_candidate": "tierc_holder_concentration_v1",
+    "existing_source": "partial",
+    "must_be_entry_safe": "no",
+    "can_be_proxy": "no",
+    "minimum_quality_bar": "top10 holder pct or equivalent",
+    "blocking_if_missing": "no"
+  },
+  {
+    "data_name": "trader_concentration",
+    "why_required": "flow concentration",
+    "source_candidate": "tierc_market_quality_enrichment_v1 / onchain logs outputs",
+    "existing_source": "partial",
+    "must_be_entry_safe": "no",
+    "can_be_proxy": "yes",
+    "minimum_quality_bar": "buyers/sellers/unique trader concentration",
+    "blocking_if_missing": "no"
+  },
+  {
+    "data_name": "market_regime_volatility",
+    "why_required": "regime filter features",
+    "source_candidate": "pool_regime_classifier_entry_safe_v1 + marks",
+    "existing_source": "yes",
+    "must_be_entry_safe": "yes",
+    "can_be_proxy": "yes",
+    "minimum_quality_bar": "entry-safe regime features",
+    "blocking_if_missing": "yes"
+  },
+  {
+    "data_name": "data_freshness_stale_flags",
+    "why_required": "quality gating",
+    "source_candidate": "pool_regime_classifier_entry_safe_v1",
+    "existing_source": "yes",
+    "must_be_entry_safe": "yes",
+    "can_be_proxy": "no",
+    "minimum_quality_bar": "stale flag and mark gap",
+    "blocking_if_missing": "yes"
+  }
+]

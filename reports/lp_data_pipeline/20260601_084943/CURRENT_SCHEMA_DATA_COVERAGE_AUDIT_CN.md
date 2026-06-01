@@ -1,0 +1,25 @@
+# Current Schema Data Coverage Audit
+
+- `pool_catalog` -> `pools.pool_id` exists=`yes` recent_7d=`91` entry_safe=`yes` blocker=``
+- `pool_liquidity` -> `pools.liquidity` exists=`yes` recent_7d=`91` entry_safe=`yes` blocker=`text field needs parser`
+- `pool_tvl` -> `pools.tvl_usd` exists=`yes` recent_7d=`91` entry_safe=`yes` blocker=`text field`
+- `pool_volume_24h` -> `pools.vol_24h` exists=`yes` recent_7d=`91` entry_safe=`yes` blocker=`24h roll only`
+- `pool_fee_apr_24h` -> `pools.fee_apr_24h` exists=`yes` recent_7d=`91` entry_safe=`yes` blocker=`24h roll only`
+- `pool_fee_bps` -> `pools.fee_bps` exists=`yes` recent_7d=`91` entry_safe=`yes` blocker=``
+- `mark_price_snapshot` -> `shadow_position_marks.valuation_usd` exists=`yes` recent_7d=`39348` entry_safe=`yes` blocker=``
+- `mark_fee_proxy` -> `shadow_position_marks.fee_usd` exists=`yes` recent_7d=`39348` entry_safe=`yes` blocker=`position-level not realized LP accrual`
+- `mark_il_proxy` -> `shadow_position_marks.il_usd` exists=`yes` recent_7d=`39348` entry_safe=`yes` blocker=`proxy only`
+- `mark_tvl_snapshot` -> `shadow_position_marks.current_tvl_usd` exists=`yes` recent_7d=`39348` entry_safe=`yes` blocker=``
+- `mark_volume_snapshot` -> `shadow_position_marks.current_vol24h_usd` exists=`yes` recent_7d=`39348` entry_safe=`yes` blocker=``
+- `mark_price_change` -> `shadow_position_marks.price_change_pct` exists=`yes` recent_7d=`39348` entry_safe=`yes` blocker=``
+- `position_amount` -> `positions.amount_usd` exists=`yes` recent_7d=`37` entry_safe=`unknown` blocker=``
+- `decision_intended_notional` -> `shadow_decision_trace.intended_notional_usd` exists=`yes` recent_7d=`279137` entry_safe=`yes` blocker=`historically sparse`
+- `entry_safe_classifier` -> `pool_regime_classifier_entry_safe_v1.risk_score` exists=`yes` recent_7d=`8952` entry_safe=`yes` blocker=``
+- `entry_safe_feature_cutoff` -> `pool_regime_classifier_entry_safe_v1.classifier_feature_cutoff_time` exists=`yes` recent_7d=`8952` entry_safe=`yes` blocker=``
+- `fee_velocity_proxy` -> `fee_velocity_exit_depth_counterfactual_v1.fee_velocity_proxy` exists=`yes` recent_7d=`429696` entry_safe=`yes` blocker=``
+- `exit_depth_proxy` -> `fee_velocity_exit_depth_counterfactual_v1.exit_depth_usd` exists=`yes` recent_7d=`429696` entry_safe=`yes` blocker=`20/50 only from existing run`
+- `slippage_proxy` -> `fee_velocity_exit_depth_counterfactual_v1.slippage_pct` exists=`yes` recent_7d=`429696` entry_safe=`yes` blocker=`20/50 only from existing run`
+- `fee_proxy_daily_usd` -> `fee_velocity_exit_depth_counterfactual_v1.fee_proxy_daily_usd` exists=`yes` recent_7d=`429696` entry_safe=`yes` blocker=`proxy only`
+- `holder_concentration` -> `tierc_holder_concentration_v1.top10_holder_pct` exists=`yes` recent_7d=`30` entry_safe=`unknown` blocker=`not full universe`
+- `trader_concentration` -> `tierc_market_quality_enrichment_v1.unique_traders_24h` exists=`yes` recent_7d=`15` entry_safe=`unknown` blocker=`not full universe`
+- `tierc_exit_depth_estimate` -> `tierc_exit_depth_estimates_v1.exit_depth_usd` exists=`yes` recent_7d=`15` entry_safe=`unknown` blocker=`small-cap research only`
