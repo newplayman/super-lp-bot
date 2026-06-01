@@ -1,0 +1,26 @@
+# Artifact Index
+
+- `INPUT_EVIDENCE_AUDIT_CN.md`
+- `input_evidence_audit.json`
+- `LP_SCALE_RESEARCH_PROBLEM_DEFINITION_CN.md`
+- `lp_scale_research_problem_definition.json`
+- `TIER_ABC_LP_POOL_PROFILE_CN.md`
+- `tier_abc_lp_pool_profile.json`
+- `LP_POOL_SCORING_SYSTEM_V1_CN.md`
+- `lp_pool_scoring_system_v1.json`
+- `lp_pool_score_features.csv`
+- `VIRTUAL_NOTIONAL_ECONOMICS_MODEL_CN.md`
+- `virtual_notional_economics_model.json`
+- `PROBE_CAPITAL_POLICY_CN.md`
+- `probe_capital_policy.json`
+- `SCALE_ECONOMICS_DATA_READINESS_CN.md`
+- `scale_economics_data_readiness.csv`
+- `LP_SCALE_CANDIDATE_POOL_AUDIT_CN.md`
+- `lp_scale_candidate_pool_audit.csv`
+- `VIRTUAL_NOTIONAL_FIRST_PASS_RESULTS_CN.md`
+- `virtual_notional_first_pass_results.csv`
+- `LP_SCALE_NEXT_STAGE_DECISION_CN.md`
+- `lp_scale_next_stage_decision.json`
+- `FINAL_VERDICT.json`
+- `ONEPAGE_CN.md`
+- `lp_scale_economics_and_probe_design_v1_readonly.py`

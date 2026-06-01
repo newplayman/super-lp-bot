@@ -1,0 +1,18 @@
+feature_name,available,source,coverage,confidence,blocker,can_use_for_v1,needs_fix
+fee_velocity_data,yes,fee_velocity_exit_depth_counterfactual_v1,0.9758389261744966,medium,,yes,no
+fee_accrual_data,partial,fee_proxy_daily_usd,0.9758389261744966,low,proxy_only_no_real_fee_accrual,yes,yes
+exit_depth_20,yes,fee_velocity_exit_depth_counterfactual_v1,0.9758389261744966,medium,proxy_only,yes,yes
+exit_depth_100,partial,extrapolated_from_20_50,0,low,no_direct_100_quote,yes,yes
+exit_depth_500_1000_2000,no,missing_direct_curve,0,low,no_direct_large_notional_depth,no,yes
+quote_route_simulation,no,not_in_current_pipeline,0,none,route_api_not_materialized,no,yes
+slippage_curve,partial,slippage_20_50_proxy,,low,only_small_cap_proxy_points,yes,yes
+gas_fixed_cost_proxy,yes,research_proxy,1,low,proxy_not_chain_observed,yes,yes
+il_lvr_proxy,partial,price_move_proxy,,low,no_direct_lvr,yes,yes
+price_volatility,yes,shadow_position_marks,,medium,,yes,no
+volume_stability,yes,shadow_position_marks,0.9677852348993289,medium,,yes,no
+tvl_stability,partial,shadow_position_marks,0.9677852348993289,medium,snapshot_only_partial,yes,yes
+holder_concentration,partial,tier_b/tier_c point audits,0.870968,medium,not_full_pool_universe,yes,yes
+trader_concentration,partial,tier_b/tier_c point audits,0.451613,medium,not_full_pool_universe,yes,yes
+data_freshness,yes,fee_velocity_exit_depth_counterfactual_v1,1,medium,,yes,no
+pool_marks,yes,shadow_position_marks,1,high,,yes,no
+entry_safe_timestamps,yes,pool_regime_classifier_entry_safe_v1,1,high,,yes,no

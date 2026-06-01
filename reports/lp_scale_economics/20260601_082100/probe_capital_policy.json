@@ -1,0 +1,11 @@
+{
+  "probe_sizes": [
+    10,
+    20
+  ],
+  "probe_role": "execution_path_quote_accounting_fee_observation_slippage_exit_safety_logs_only",
+  "not_for_edge_proof": true,
+  "manual_approval_required": true,
+  "recommended_future_stage": "LP_PROBE_PREFLIGHT_10_20U_V1",
+  "run_now": false
+}

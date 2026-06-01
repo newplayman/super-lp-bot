@@ -1,0 +1,22 @@
+{
+  "old_question": "10U / 20U 小资金 LP 是否能直接正 EV",
+  "new_question": "什么资金规模、退出深度、费速和 IL/LVR 组合下，LP 才可能正 EV",
+  "probe_capital_role": "execution_validation_only",
+  "virtual_notionals": [
+    20,
+    100,
+    500,
+    1000,
+    2000
+  ],
+  "core_outputs": [
+    "virtual_notional_ev",
+    "break_even_notional_usd",
+    "no_size_can_fix",
+    "capacity_limit_usd",
+    "fee_minus_cost_curve",
+    "tail_risk_by_notional",
+    "tier_score",
+    "probe_readiness"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "virtual_notionals": [
+    20,
+    100,
+    500,
+    1000,
+    2000
+  ],
+  "gross_fee_formula": "virtual_notional * fee_velocity_rate * hold_time_factor",
+  "il_lvr_cost_formula": "virtual_notional * il_lvr_proxy_rate",
+  "proportional_slippage_formula": "virtual_notional * slippage_rate_for_notional",
+  "fixed_cost_formula": "gas/fixed execution proxy per trade",
+  "exit_cost_formula": "quote/slippage proxy + fixed cost",
+  "net_ev_formula": "gross_fee - il_lvr_cost - proportional_slippage - fixed_cost - exit_cost",
+  "break_even_formula": "fixed_cost / variable_edge_rate if variable_edge_rate > 0 else NO_SIZE_CAN_FIX",
+  "capacity_limit_formula": "min(depth bound, slippage bound)",
+  "warning": "cannot linearly scale 20U observations into 100-2000U"
+}

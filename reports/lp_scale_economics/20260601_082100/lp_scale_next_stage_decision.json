@@ -1,0 +1,6 @@
+{
+  "recommended_next_stage": "NEW_DATA_PIPELINE_FIRST",
+  "reason": "current proxies support framework design but not enough direct fee/depth/route evidence for 100-2000U or probe preflight",
+  "can_run_probe_now": false,
+  "manual_approval_required_for_probe": true
+}

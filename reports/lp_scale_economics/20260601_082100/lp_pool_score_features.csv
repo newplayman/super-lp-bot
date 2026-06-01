@@ -1,0 +1,11 @@
+feature_name,weight,higher_is_better,notes
+fee_velocity_score,0.14,yes,short-hold fee proxy from existing research table
+exit_depth_score,0.18,yes,capacity bound from depth/slippage proxy
+slippage_score,0.12,yes,small-cap slippage proxy; large notional needs extrapolation
+volatility_score,0.1,yes,abs 1h move inverse
+tvl_stability_score,0.1,yes,1h TVL drop inverse
+volume_stability_score,0.08,yes,1h volume collapse inverse
+holder_concentration_score,0.1,yes,top10 holder lower is better
+trader_concentration_score,0.08,yes,top5 trader share lower is better
+data_freshness_score,0.05,yes,fresh mark share
+tail_risk_score,0.05,yes,p10/p1 tail inverse

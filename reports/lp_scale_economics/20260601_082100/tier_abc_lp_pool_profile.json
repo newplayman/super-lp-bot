@@ -1,0 +1,78 @@
+{
+  "Tier A": {
+    "required_data": [
+      "exit_depth",
+      "slippage",
+      "fee_velocity",
+      "stability"
+    ],
+    "risk_gates": [
+      "no extreme holder concentration",
+      "no extreme trader concentration",
+      "capacity_limit >= 500"
+    ],
+    "size_range_candidate": "500-2000",
+    "expected_failure_modes": [
+      "fee too low to clear fixed cost",
+      "under-earning despite depth"
+    ],
+    "score_weights": {
+      "exit_depth": 0.3,
+      "slippage": 0.2,
+      "stability": 0.2,
+      "fee_velocity": 0.15,
+      "tail_risk": 0.15
+    }
+  },
+  "Tier B": {
+    "required_data": [
+      "exit_depth",
+      "fee_velocity",
+      "price/tvl/volume stability",
+      "trader concentration"
+    ],
+    "risk_gates": [
+      "capacity_limit >= 100",
+      "top5_trader_share not extreme",
+      "tail p10 not dangerous"
+    ],
+    "size_range_candidate": "100-500",
+    "expected_failure_modes": [
+      "depth degrades above 100-500",
+      "volatility wipes fee"
+    ],
+    "score_weights": {
+      "fee_velocity": 0.22,
+      "exit_depth": 0.22,
+      "slippage": 0.16,
+      "stability": 0.2,
+      "tail_risk": 0.2
+    }
+  },
+  "Tier C": {
+    "required_data": [
+      "holder concentration",
+      "trader concentration",
+      "exit depth",
+      "stability"
+    ],
+    "risk_gates": [
+      "top10_holder_pct <= 25",
+      "top1_trader_share <= 90",
+      "capacity_limit >= 20"
+    ],
+    "size_range_candidate": "20-100",
+    "expected_failure_modes": [
+      "holder/trader concentration",
+      "fragile exit depth",
+      "tail events dominate"
+    ],
+    "score_weights": {
+      "concentration": 0.3,
+      "exit_depth": 0.25,
+      "slippage": 0.15,
+      "stability": 0.15,
+      "tail_risk": 0.15
+    }
+  }
+}

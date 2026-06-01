@@ -1,0 +1,18 @@
+{
+  "score_dimensions": [
+    "fee_velocity_score",
+    "exit_depth_score",
+    "slippage_score",
+    "volatility_score",
+    "tvl_stability_score",
+    "volume_stability_score",
+    "holder_concentration_score",
+    "trader_concentration_score",
+    "data_freshness_score",
+    "tail_risk_score"
+  ],
+  "lp_scale_score_0_100": "weighted_sum",
+  "tier_fit_score": "tier-based fit overlay",
+  "probe_candidate": "manual policy gate only",
+  "virtual_notional_candidate": "score >= 60 and no hard reject and capacity >= 20"
+}
