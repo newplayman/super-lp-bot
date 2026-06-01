@@ -1,0 +1,11 @@
+# Universe Gap
+
+- applies_to_current_universe_only: true
+- does_not_disprove_all_lp: true
+- 过度集中 Base
+- 非 EVM 链缺失
+- Solana/Meteora 覆盖不足
+- Ethereum/Arbitrum/Optimism 主流 V3 覆盖不足
+- Aerodrome Slipstream 解析/slot0 非标准
+- pool universe 扩展需新增 connector/parser/API
+- 当前 pipeline 偏向标准 EVM V3

@@ -1,0 +1,40 @@
+{
+  "plans": [
+    {
+      "priority": "P0",
+      "plan": "标准 EVM V3 扩展",
+      "items": "Base UniswapV3;Base PancakeSwapV3;Arbitrum UniswapV3;Optimism UniswapV3;Ethereum UniswapV3;Polygon UniswapV3",
+      "why": "修复覆盖偏窄",
+      "needed_data_source": "ticks/quotes/snapshot",
+      "parser_needed": "否",
+      "quote_method": "v3-quoter/stateless",
+      "fee_method": "现有池费率",
+      "cost_model_changes": "无",
+      "implementation_complexity": "中"
+    },
+    {
+      "priority": "P1",
+      "plan": "非标准 EVM",
+      "items": "Aerodrome Slipstream Base;Velodrome Optimism",
+      "why": "修复 slot0 差异和风险字段",
+      "needed_data_source": "slot0+tick bitmap",
+      "parser_needed": "是",
+      "quote_method": "增强 adapter",
+      "fee_method": "自定义",
+      "cost_model_changes": "小",
+      "implementation_complexity": "中高"
+    },
+    {
+      "priority": "P2",
+      "plan": "非 EVM",
+      "items": "Solana Meteora/Orca/Raydium",
+      "why": "避免结论外推",
+      "needed_data_source": "Solana RPC/quotes",
+      "parser_needed": "是",
+      "quote_method": "SDK/Adapter",
+      "fee_method": "新接入",
+      "cost_model_changes": "高",
+      "implementation_complexity": "高"
+    }
+  ]
+}

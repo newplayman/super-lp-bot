@@ -1,0 +1,27 @@
+{
+  "status": "PASS",
+  "stage": "LP_UNIVERSE_SCOPE_AUDIT_V1",
+  "universe_audit_complete": true,
+  "unique_pool_count": 94,
+  "chain_count": 2,
+  "protocol_count": 12,
+  "base_pool_count": 24,
+  "solana_pool_count": 1,
+  "standard_evm_v3_pool_count": 19,
+  "slipstream_pool_count": 30,
+  "precise_quote_pool_count": 20,
+  "v3_tick_pool_count": 5,
+  "real_cost_pool_count": 5,
+  "real_fee_pool_count": 5,
+  "pool_level_positive_proxy_count": 0,
+  "actual_fee_ready_pool_count": 0,
+  "current_negative_conclusion_scope": "current_universe_only",
+  "solana_meteora_covered": false,
+  "universe_likely_too_narrow": true,
+  "recommended_next_stage": "LP_EVM_UNIVERSE_EXPANSION_DESIGN_V1",
+  "notes": {
+    "db_audit_ok": true,
+    "input_ready": true,
+    "pool_level_positive_total": 6
+  }
+}

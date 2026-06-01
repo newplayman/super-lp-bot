@@ -1,0 +1,200 @@
+{
+  "rows": [
+    {
+      "type": "chain",
+      "name": "Base",
+      "covered": "yes",
+      "pool_count": 24,
+      "reached_real_data_pipeline": "yes",
+      "reason_if_not_covered": "",
+      "required_new_connector_or_parser": "no",
+      "priority_to_add": "not_now"
+    },
+    {
+      "type": "chain",
+      "name": "Ethereum",
+      "covered": "no",
+      "pool_count": 0,
+      "reached_real_data_pipeline": "no",
+      "reason_if_not_covered": "未纳入该链池",
+      "required_new_connector_or_parser": "yes",
+      "priority_to_add": "P2"
+    },
+    {
+      "type": "chain",
+      "name": "Arbitrum",
+      "covered": "no",
+      "pool_count": 0,
+      "reached_real_data_pipeline": "no",
+      "reason_if_not_covered": "未纳入该链池",
+      "required_new_connector_or_parser": "yes",
+      "priority_to_add": "P1"
+    },
+    {
+      "type": "chain",
+      "name": "Optimism",
+      "covered": "no",
+      "pool_count": 0,
+      "reached_real_data_pipeline": "no",
+      "reason_if_not_covered": "未纳入该链池",
+      "required_new_connector_or_parser": "yes",
+      "priority_to_add": "P1"
+    },
+    {
+      "type": "chain",
+      "name": "Polygon",
+      "covered": "no",
+      "pool_count": 0,
+      "reached_real_data_pipeline": "no",
+      "reason_if_not_covered": "未纳入该链池",
+      "required_new_connector_or_parser": "yes",
+      "priority_to_add": "P2"
+    },
+    {
+      "type": "chain",
+      "name": "Bsc",
+      "covered": "no",
+      "pool_count": 0,
+      "reached_real_data_pipeline": "no",
+      "reason_if_not_covered": "未纳入该链池",
+      "required_new_connector_or_parser": "yes",
+      "priority_to_add": "P2"
+    },
+    {
+      "type": "chain",
+      "name": "Solana",
+      "covered": "yes",
+      "pool_count": 1,
+      "reached_real_data_pipeline": "yes",
+      "reason_if_not_covered": "",
+      "required_new_connector_or_parser": "no",
+      "priority_to_add": "not_now"
+    },
+    {
+      "type": "chain",
+      "name": "Other",
+      "covered": "yes",
+      "pool_count": 69,
+      "reached_real_data_pipeline": "yes",
+      "reason_if_not_covered": "",
+      "required_new_connector_or_parser": "no",
+      "priority_to_add": "not_now"
+    },
+    {
+      "type": "protocol",
+      "name": "Uniswap V2",
+      "covered": "yes",
+      "pool_count": 1,
+      "reached_real_data_pipeline": "yes",
+      "reason_if_not_covered": "",
+      "required_new_connector_or_parser": "no",
+      "priority_to_add": "not_now"
+    },
+    {
+      "type": "protocol",
+      "name": "Uniswap V3",
+      "covered": "yes",
+      "pool_count": 11,
+      "reached_real_data_pipeline": "yes",
+      "reason_if_not_covered": "",
+      "required_new_connector_or_parser": "no",
+      "priority_to_add": "not_now"
+    },
+    {
+      "type": "protocol",
+      "name": "PancakeSwap V3",
+      "covered": "yes",
+      "pool_count": 7,
+      "reached_real_data_pipeline": "yes",
+      "reason_if_not_covered": "",
+      "required_new_connector_or_parser": "no",
+      "priority_to_add": "not_now"
+    },
+    {
+      "type": "protocol",
+      "name": "Aerodrome Slipstream",
+      "covered": "yes",
+      "pool_count": 30,
+      "reached_real_data_pipeline": "yes",
+      "reason_if_not_covered": "",
+      "required_new_connector_or_parser": "no",
+      "priority_to_add": "not_now"
+    },
+    {
+      "type": "protocol",
+      "name": "Sushi",
+      "covered": "yes",
+      "pool_count": 1,
+      "reached_real_data_pipeline": "yes",
+      "reason_if_not_covered": "",
+      "required_new_connector_or_parser": "no",
+      "priority_to_add": "not_now"
+    },
+    {
+      "type": "protocol",
+      "name": "Curve",
+      "covered": "no",
+      "pool_count": 0,
+      "reached_real_data_pipeline": "no",
+      "reason_if_not_covered": "未纳入该协议池",
+      "required_new_connector_or_parser": "yes",
+      "priority_to_add": "P2"
+    },
+    {
+      "type": "protocol",
+      "name": "Balancer",
+      "covered": "no",
+      "pool_count": 0,
+      "reached_real_data_pipeline": "no",
+      "reason_if_not_covered": "未纳入该协议池",
+      "required_new_connector_or_parser": "yes",
+      "priority_to_add": "P2"
+    },
+    {
+      "type": "protocol",
+      "name": "Meteora",
+      "covered": "no",
+      "pool_count": 0,
+      "reached_real_data_pipeline": "no",
+      "reason_if_not_covered": "未纳入该协议池",
+      "required_new_connector_or_parser": "yes",
+      "priority_to_add": "P2"
+    },
+    {
+      "type": "protocol",
+      "name": "Orca",
+      "covered": "no",
+      "pool_count": 0,
+      "reached_real_data_pipeline": "no",
+      "reason_if_not_covered": "未纳入该协议池",
+      "required_new_connector_or_parser": "yes",
+      "priority_to_add": "P2"
+    },
+    {
+      "type": "protocol",
+      "name": "Raydium",
+      "covered": "no",
+      "pool_count": 0,
+      "reached_real_data_pipeline": "no",
+      "reason_if_not_covered": "未纳入该协议池",
+      "required_new_connector_or_parser": "yes",
+      "priority_to_add": "P2"
+    },
+    {
+      "type": "protocol",
+      "name": "其他",
+      "covered": "yes",
+      "pool_count": 44,
+      "reached_real_data_pipeline": "yes",
+      "reason_if_not_covered": "",
+      "required_new_connector_or_parser": "no",
+      "priority_to_add": "P2"
+    }
+  ],
+  "summary": {
+    "solana_covered": true,
+    "base_uniswap_v3_covered": true,
+    "base_pancakeswap_v3_covered": true,
+    "aerodrome_covered": true
+  }
+}

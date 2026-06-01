@@ -1,0 +1,20 @@
+type,name,covered,pool_count,reached_real_data_pipeline,reason_if_not_covered,required_new_connector_or_parser,priority_to_add
+chain,Base,yes,24,yes,,no,not_now
+chain,Ethereum,no,0,no,未纳入该链池,yes,P2
+chain,Arbitrum,no,0,no,未纳入该链池,yes,P1
+chain,Optimism,no,0,no,未纳入该链池,yes,P1
+chain,Polygon,no,0,no,未纳入该链池,yes,P2
+chain,Bsc,no,0,no,未纳入该链池,yes,P2
+chain,Solana,yes,1,yes,,no,not_now
+chain,Other,yes,69,yes,,no,not_now
+protocol,Uniswap V2,yes,1,yes,,no,not_now
+protocol,Uniswap V3,yes,11,yes,,no,not_now
+protocol,PancakeSwap V3,yes,7,yes,,no,not_now
+protocol,Aerodrome Slipstream,yes,30,yes,,no,not_now
+protocol,Sushi,yes,1,yes,,no,not_now
+protocol,Curve,no,0,no,未纳入该协议池,yes,P2
+protocol,Balancer,no,0,no,未纳入该协议池,yes,P2
+protocol,Meteora,no,0,no,未纳入该协议池,yes,P2
+protocol,Orca,no,0,no,未纳入该协议池,yes,P2
+protocol,Raydium,no,0,no,未纳入该协议池,yes,P2
+protocol,其他,yes,44,yes,,no,P2

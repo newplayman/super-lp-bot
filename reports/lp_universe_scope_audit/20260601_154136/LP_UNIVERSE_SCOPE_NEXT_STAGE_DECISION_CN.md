@@ -1,0 +1,3 @@
+# 下一阶段决议
+
+建议下一阶段: LP_EVM_UNIVERSE_EXPANSION_DESIGN_V1

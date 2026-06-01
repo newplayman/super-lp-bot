@@ -1,0 +1,114 @@
+{
+  "rows": [
+    {
+      "stage": "raw_discovered",
+      "pool_count": 94,
+      "chain_count": 3,
+      "protocol_count": 13,
+      "main_chains": "base,solana,unknown",
+      "main_protocols": "Aerodrome Slipstream,PancakeSwap V3,Sushi,Uniswap V2,Uniswap V3,alien-base,hydrex-integral,pancakeswap,pancakeswap-infinity-clmm-base,quickswap,uniswap,uniswap-v4-base,unknown",
+      "notes": "来自任一阶段源的原始池",
+      "label": "raw_discovered"
+    },
+    {
+      "stage": "tierb_discovery",
+      "pool_count": 85,
+      "chain_count": 2,
+      "protocol_count": 12,
+      "main_chains": "base,unknown",
+      "main_protocols": "Aerodrome Slipstream,PancakeSwap V3,Sushi,Uniswap V2,Uniswap V3,alien-base,hydrex-integral,pancakeswap,pancakeswap-infinity-clmm-base,quickswap,uniswap,uniswap-v4-base",
+      "notes": "Tier B discovery 产物",
+      "label": "tierb_discovery"
+    },
+    {
+      "stage": "tierc",
+      "pool_count": 15,
+      "chain_count": 2,
+      "protocol_count": 6,
+      "main_chains": "base,unknown",
+      "main_protocols": "Aerodrome Slipstream,PancakeSwap V3,Uniswap V3,hydrex-integral,uniswap-v4-base,unknown",
+      "notes": "Tier C 批次历史",
+      "label": "tierc"
+    },
+    {
+      "stage": "scale_economics",
+      "pool_count": 6,
+      "chain_count": 1,
+      "protocol_count": 3,
+      "main_chains": "base",
+      "main_protocols": "Aerodrome Slipstream,PancakeSwap V3,Uniswap V3",
+      "notes": "scale 阶段候选",
+      "label": "scale_economics"
+    },
+    {
+      "stage": "quote_depth_v2",
+      "pool_count": 25,
+      "chain_count": 2,
+      "protocol_count": 5,
+      "main_chains": "base,solana",
+      "main_protocols": "Aerodrome Slipstream,PancakeSwap V3,Uniswap V3,hydrex-integral,uniswap-v4-base",
+      "notes": "quote/depth v2",
+      "label": "quote_depth_v2"
+    },
+    {
+      "stage": "precise_quote",
+      "pool_count": 20,
+      "chain_count": 1,
+      "protocol_count": 3,
+      "main_chains": "base",
+      "main_protocols": "Aerodrome Slipstream,PancakeSwap V3,Uniswap V3",
+      "notes": "precise quote",
+      "label": "precise_quote"
+    },
+    {
+      "stage": "v3_tick_liquidity",
+      "pool_count": 5,
+      "chain_count": 1,
+      "protocol_count": 2,
+      "main_chains": "base",
+      "main_protocols": "PancakeSwap V3,Uniswap V3",
+      "notes": "v3 tick liquidity",
+      "label": "v3_tick_liquidity"
+    },
+    {
+      "stage": "real_cost_model",
+      "pool_count": 5,
+      "chain_count": 1,
+      "protocol_count": 2,
+      "main_chains": "base",
+      "main_protocols": "PancakeSwap V3,Uniswap V3",
+      "notes": "real cost model",
+      "label": "real_cost_model"
+    },
+    {
+      "stage": "real_fee_accrual",
+      "pool_count": 5,
+      "chain_count": 1,
+      "protocol_count": 2,
+      "main_chains": "base",
+      "main_protocols": "PancakeSwap V3,Uniswap V3",
+      "notes": "real fee accrual",
+      "label": "real_fee_accrual"
+    },
+    {
+      "stage": "pool_level_positive_proxy",
+      "pool_count": 0,
+      "chain_count": 0,
+      "protocol_count": 0,
+      "main_chains": "",
+      "main_protocols": "",
+      "notes": "pool-level proxy positive",
+      "label": "pool_level_positive"
+    },
+    {
+      "stage": "actual_fee_ready",
+      "pool_count": 0,
+      "chain_count": 0,
+      "protocol_count": 0,
+      "main_chains": "",
+      "main_protocols": "",
+      "notes": "actual fee lineage ready",
+      "label": "actual_fee_ready"
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+# VPS pool universe DB audit
+
+database=lpbot_shadow
+user=lpbot
+- config_snapshots row_count=0 usable=False
+- fee_velocity_exit_depth_counterfactual_v1 row_count=572160 usable=False
+- fee_velocity_rule_fix_counterfactual_v1 row_count=572160 usable=False
+- lp_fee_accrual_readiness_v1 row_count=13 usable=False
+- lp_fee_velocity_v1 row_count=24 usable=True
+- lp_fee_velocity_v2 row_count=100 usable=False
+- lp_position_lineage_recovery_v1 row_count=0 usable=True
+- lp_precise_quote_v1 row_count=200 usable=True
+- lp_quote_depth_curve_v2 row_count=125 usable=True
+- lp_real_fee_accrual_v1 row_count=26 usable=False
+- lp_v3_tick_liquidity_snapshot_v1 row_count=55 usable=True
+- lp_v3_tick_liquidity_snapshot_v2 row_count=50 usable=True
+- lp_virtual_notional_economics_fee_v2_fixedcost_sensitivity row_count=3000 usable=False
+- lp_virtual_notional_economics_real_fee_lineage_v2_preview row_count=200 usable=False
+- lp_virtual_notional_economics_real_fee_preview_v1 row_count=100 usable=False
+- pool_regime_aware_short_hold_counterfactual_v1 row_count=218400 usable=False
+- pool_regime_aware_short_hold_entry_safe_v1 row_count=95360 usable=False
+- pool_regime_classifier_entry_safe_v1 row_count=11920 usable=False
+- pool_regime_classifier_v1 row_count=4653 usable=False
+- pool_score_history row_count=460652 usable=True
+- pool_token_metadata row_count=104 usable=True
+- pools row_count=151 usable=True
+- portfolio_snapshots row_count=0 usable=False
+- position_marks row_count=0 usable=True
+- positions row_count=77 usable=True
+- price_snapshots row_count=0 usable=False
+- shadow_position_lifecycle_invalid_reason_v1 row_count=204 usable=False
+- shadow_position_lifecycle_mark_classification_v1 row_count=204 usable=False
+- shadow_position_lifecycle_proof_v1 row_count=68 usable=False
+- shadow_position_lifecycle_proof_v2 row_count=408 usable=False
+- shadow_position_lifecycle_proof_v3_research row_count=816 usable=False
+- shadow_position_mark_gap_scope_research_v1 row_count=19898 usable=True
+- shadow_position_marks row_count=65990 usable=True
+- shadow_terminal_position_marks_repaired_v1 row_count=0 usable=False
+- solana_pool_risk row_count=6 usable=True
+- tierc_exit_depth_estimates_v1 row_count=15 usable=False
+- tierc_holder_concentration_v1 row_count=30 usable=False
+- tierc_market_quality_enrichment_v1 row_count=15 usable=False
+- tierc_research_oos_results_v1 row_count=1860 usable=False
+- tierc_research_position_marks_v1 row_count=1860 usable=False
+- tierc_research_positions_v1 row_count=372 usable=False

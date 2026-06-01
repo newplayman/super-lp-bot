@@ -1,0 +1,21 @@
+# 链/协议覆盖
+
+- [chain] Base: 覆盖=yes, 池数=24, 优先级=not_now
+- [chain] Ethereum: 覆盖=no, 池数=0, 优先级=P2
+- [chain] Arbitrum: 覆盖=no, 池数=0, 优先级=P1
+- [chain] Optimism: 覆盖=no, 池数=0, 优先级=P1
+- [chain] Polygon: 覆盖=no, 池数=0, 优先级=P2
+- [chain] Bsc: 覆盖=no, 池数=0, 优先级=P2
+- [chain] Solana: 覆盖=yes, 池数=1, 优先级=not_now
+- [chain] Other: 覆盖=yes, 池数=69, 优先级=not_now
+- [protocol] Uniswap V2: 覆盖=yes, 池数=1, 优先级=not_now
+- [protocol] Uniswap V3: 覆盖=yes, 池数=11, 优先级=not_now
+- [protocol] PancakeSwap V3: 覆盖=yes, 池数=7, 优先级=not_now
+- [protocol] Aerodrome Slipstream: 覆盖=yes, 池数=30, 优先级=not_now
+- [protocol] Sushi: 覆盖=yes, 池数=1, 优先级=not_now
+- [protocol] Curve: 覆盖=no, 池数=0, 优先级=P2
+- [protocol] Balancer: 覆盖=no, 池数=0, 优先级=P2
+- [protocol] Meteora: 覆盖=no, 池数=0, 优先级=P2
+- [protocol] Orca: 覆盖=no, 池数=0, 优先级=P2
+- [protocol] Raydium: 覆盖=no, 池数=0, 优先级=P2
+- [protocol] 其他: 覆盖=yes, 池数=44, 优先级=P2

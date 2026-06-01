@@ -1,0 +1,27 @@
+# Artifact Index
+- INPUT_EVIDENCE_AUDIT_CN.md
+- input_evidence_audit.json
+- UNIVERSE_EXTRACTION_CN.md
+- universe_extraction_raw.csv
+- universe_extraction_raw.json
+- VPS_POOL_UNIVERSE_DB_AUDIT_CN.md
+- vps_pool_universe_db_audit.csv
+- vps_pool_universe_db_audit.json
+- LP_UNIVERSE_NORMALIZED_POOL_LIST_CN.md
+- lp_universe_normalized_pool_list.csv
+- lp_universe_normalized_pool_list.json
+- LP_UNIVERSE_STAGE_COVERAGE_MATRIX_CN.md
+- lp_universe_stage_coverage_matrix.csv
+- CHAIN_PROTOCOL_COVERAGE_CN.md
+- chain_protocol_coverage.csv
+- chain_protocol_coverage.json
+- CURRENT_SCREENED_POOL_SUMMARY_CN.md
+- current_screened_pool_summary.json
+- UNIVERSE_GAP_ANALYSIS_CN.md
+- universe_gap_analysis.json
+- POOL_UNIVERSE_EXPANSION_PLAN_CN.md
+- pool_universe_expansion_plan.json
+- LP_UNIVERSE_SCOPE_NEXT_STAGE_DECISION_CN.md
+- lp_universe_scope_next_stage_decision.json
+- FINAL_VERDICT.json
+- ONEPAGE_CN.md
