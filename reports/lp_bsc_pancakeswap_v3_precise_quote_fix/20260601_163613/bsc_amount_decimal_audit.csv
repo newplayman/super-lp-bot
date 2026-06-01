@@ -1,0 +1,4 @@
+token_symbol,token_address,decimals,price_source,price_confidence,amount_raw_conversion_ok,blocker
+WBNB,0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c,,sqrt_price_anchor_or_stablecoin,low,no,missing_decimals
+USDT,0x55d398326f99059fF775485246999027B3197955,,sqrt_price_anchor_or_stablecoin,low,no,missing_decimals
+USDC,0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d,,sqrt_price_anchor_or_stablecoin,low,no,missing_decimals

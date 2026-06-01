@@ -1,0 +1,4 @@
+{
+  "recommended_next_stage": "LP_BSC_PANCAKESWAP_V3_PRECISE_QUOTE_FIX_REPEAT",
+  "reason": "derived_from_bsc_precision_quote_coverage_confidence"
+}

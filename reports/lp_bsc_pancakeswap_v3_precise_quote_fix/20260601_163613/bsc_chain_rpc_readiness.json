@@ -1,0 +1,7 @@
+{
+  "rpc_env_key": "public_fallback",
+  "rpc_read_only_test_pass": true,
+  "chain_id": "56",
+  "latest_block": "101728067",
+  "secret_leak_check_pass": true
+}

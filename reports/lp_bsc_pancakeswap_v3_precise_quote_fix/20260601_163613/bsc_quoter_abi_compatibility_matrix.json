@@ -1,0 +1,40 @@
+{
+  "rows": [
+    {
+      "variant_name": "pancakeswap_v3_struct",
+      "function_signature": "quoteExactInputSingle((address,address,uint24,uint256,uint160))",
+      "selector": "0xb3b11b7e",
+      "calldata_build_success": "yes",
+      "staticcall_success_count": 0,
+      "decode_success_count": 0,
+      "revert_count": 0,
+      "decode_error_count": 0,
+      "selected_for_v2": "yes",
+      "notes": "sampled on first two pools and 20 usd notional"
+    },
+    {
+      "variant_name": "uniswap_v3_struct_alt",
+      "function_signature": "quoteExactInputSingle((address,address,uint24,uint160,uint256))",
+      "selector": "0x6feb1e1a",
+      "calldata_build_success": "yes",
+      "staticcall_success_count": 0,
+      "decode_success_count": 0,
+      "revert_count": 0,
+      "decode_error_count": 0,
+      "selected_for_v2": "no",
+      "notes": "sampled on first two pools and 20 usd notional"
+    },
+    {
+      "variant_name": "legacy_quoter",
+      "function_signature": "quoteExactInputSingle(address,address,uint24,uint256,uint160)",
+      "selector": "0xf7729d43",
+      "calldata_build_success": "yes",
+      "staticcall_success_count": 0,
+      "decode_success_count": 0,
+      "revert_count": 0,
+      "decode_error_count": 0,
+      "selected_for_v2": "no",
+      "notes": "sampled on first two pools and 20 usd notional"
+    }
+  ]
+}

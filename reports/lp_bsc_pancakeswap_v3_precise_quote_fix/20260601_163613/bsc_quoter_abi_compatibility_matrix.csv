@@ -1,0 +1,4 @@
+variant_name,function_signature,selector,calldata_build_success,staticcall_success_count,decode_success_count,revert_count,decode_error_count,selected_for_v2,notes
+pancakeswap_v3_struct,"quoteExactInputSingle((address,address,uint24,uint256,uint160))",0xb3b11b7e,yes,0,0,0,0,yes,sampled on first two pools and 20 usd notional
+uniswap_v3_struct_alt,"quoteExactInputSingle((address,address,uint24,uint160,uint256))",0x6feb1e1a,yes,0,0,0,0,no,sampled on first two pools and 20 usd notional
+legacy_quoter,"quoteExactInputSingle(address,address,uint24,uint256,uint160)",0xf7729d43,yes,0,0,0,0,no,sampled on first two pools and 20 usd notional

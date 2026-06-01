@@ -1,0 +1,62 @@
+[
+  {
+    "contract_role": "factory",
+    "address": "0x0BFbCF9fa4f9C56B0F40a671Ad40E0805A091865",
+    "required": false,
+    "abi_known": true,
+    "selected_for_v1": false,
+    "read_only_safe": true,
+    "supports_quoteExactInputSingle": false,
+    "blocked_by_stage": ""
+  },
+  {
+    "contract_role": "quoterv2",
+    "address": "0xB048Bbc1Ee6b733FFfCFb9e9CeF7375518e25997",
+    "required": false,
+    "abi_known": true,
+    "selected_for_v1": false,
+    "read_only_safe": true,
+    "supports_quoteExactInputSingle": false,
+    "blocked_by_stage": ""
+  },
+  {
+    "contract_role": "nonfungiblepositionmanager",
+    "address": "0x46A15B0b27311cedF172AB29E4f4766fbE7F4364",
+    "required": false,
+    "abi_known": true,
+    "selected_for_v1": false,
+    "read_only_safe": true,
+    "supports_quoteExactInputSingle": false,
+    "blocked_by_stage": ""
+  },
+  {
+    "contract_role": "ticklens",
+    "address": "0x9a489505a00cE272eAa5e07Dba6491314CaE3796",
+    "required": false,
+    "abi_known": true,
+    "selected_for_v1": false,
+    "read_only_safe": true,
+    "supports_quoteExactInputSingle": false,
+    "blocked_by_stage": ""
+  },
+  {
+    "contract_role": "quoter",
+    "address": "0xB048Bbc1Ee6b733FFfCFb9e9CeF7375518e25997",
+    "required": true,
+    "abi_known": true,
+    "selected_for_v1": true,
+    "read_only_safe": true,
+    "supports_quoteExactInputSingle": true,
+    "blocked_by_stage": ""
+  },
+  {
+    "contract_role": "router",
+    "address": "",
+    "required": false,
+    "abi_known": false,
+    "selected_for_v1": false,
+    "read_only_safe": false,
+    "supports_quoteExactInputSingle": false,
+    "blocked_by_stage": "forbidden_execution_surface"
+  }
+]
