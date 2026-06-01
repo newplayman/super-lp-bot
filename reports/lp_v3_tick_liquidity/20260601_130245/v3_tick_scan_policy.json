@@ -1,0 +1,17 @@
+{
+  "current_tick_source": "slot0",
+  "tick_spacing_source": "tickSpacing",
+  "scan_range_ticks": {
+    "narrow_words_per_side": 2,
+    "medium_words_per_side": 4,
+    "hard_cap_words_per_side": 8,
+    "target_initialized_ticks": 50
+  },
+  "tick_bitmap_policy": {
+    "scan_center": "current compressed tick word",
+    "expand_until": "target initialized ticks or hard cap"
+  },
+  "entry_safe_timestamp": "quote_block_number or latest readonly block at snapshot",
+  "no_lookahead_rule": "latest read-only chain state only; no future outcome or realized pnl data",
+  "fallback": "slot0+liquidity only if tickBitmap or ticks fail; confidence lowers"
+}

@@ -1,0 +1,29 @@
+# V3 Tick Liquidity Schema
+
+- `run_id`
+- `pool_id`
+- `token_pair`
+- `chain`
+- `block_number`
+- `snapshot_ts`
+- `token0`
+- `token1`
+- `fee_tier`
+- `tick_spacing`
+- `sqrt_price_x96`
+- `current_tick`
+- `current_liquidity`
+- `tick_index`
+- `initialized`
+- `liquidity_gross`
+- `liquidity_net`
+- `fee_growth_outside0_x128`
+- `fee_growth_outside1_x128`
+- `seconds_outside`
+- `tick_distance_from_current`
+- `scan_method`
+- `confidence`
+- `invalid_reason`
+- `read_only_safe`
+- `wallet_or_tx_touched`
+- `created_at`

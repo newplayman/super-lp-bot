@@ -1,0 +1,7 @@
+pool_id,token_pair,current_tick,current_liquidity,initialized_tick_count_nearby,liquidity_net_density,nearest_tick_distance,precise_quote_capacity_pass_20,precise_quote_capacity_pass_100,precise_quote_capacity_pass_500,precise_quote_capacity_pass_1000,precise_quote_capacity_pass_2000,tick_liquidity_supports_20,tick_liquidity_supports_100,tick_liquidity_supports_500,tick_liquidity_supports_1000,tick_liquidity_supports_2000,capacity_confidence,main_capacity_risk
+0x4e962bb3889bf030368f56810a9c96b83cb3e778,cbBTC/USDC,,,0,0,,yes,yes,yes,yes,yes,unknown,unknown,unknown,unknown,unknown,low,unknown_range
+0xb2cc224c1c9fee385f8ad6a55b4d94e92359dc59,WETH/USDC,,,0,0,,yes,yes,yes,yes,yes,unknown,unknown,unknown,unknown,unknown,low,unknown_range
+0x70acdf2ad0bf2402c957154f944c19ef4e1cbae1,cbBTC/WETH,,,0,0,,yes,yes,yes,yes,yes,unknown,unknown,unknown,unknown,unknown,low,unknown_range
+0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38,WETH/USDC,-200434,517120156344851039,50,255547345476546.12,1,yes,yes,yes,yes,yes,yes,yes,yes,yes,yes,high,ok
+0x3f0296bf652e19bca772ec3df08b32732f93014a,VIRTUAL/WETH,,,0,0,,yes,yes,yes,yes,yes,unknown,unknown,unknown,unknown,unknown,low,unknown_range
+0x7ec6c9d993d9832aa654593f2dbc21303650bc6c,0xACFE6019ED1A7DC6F7B508C02D1B04EC88CC21BF/WETH,,,0,0,,yes,yes,yes,yes,yes,unknown,unknown,unknown,unknown,unknown,low,unknown_range

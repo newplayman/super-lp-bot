@@ -1,0 +1,4 @@
+# LP V3 Tick Next Stage Decision
+
+- recommended_next_stage: `LP_V3_TICK_LIQUIDITY_PIPELINE_FIX_REPEAT`
+- reason: `snapshot_coverage_insufficient`

@@ -1,0 +1,13 @@
+{
+  "db_ready": true,
+  "rpc_present": true,
+  "rpc_read_only_ready": true,
+  "secret_leak_check_pass": true,
+  "dsn_present": "yes",
+  "db_connect": "ok",
+  "db_name": "lpbot_shadow",
+  "db_user": "lpbot",
+  "rpc_env_key": "public_fallback",
+  "chain_id": "8453",
+  "latest_block": "46765314"
+}

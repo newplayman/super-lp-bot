@@ -1,0 +1,164 @@
+[
+  {
+    "method": "token0()",
+    "abi_available": true,
+    "read_only_safe": true,
+    "requires_wallet": false,
+    "requires_signature": false,
+    "selected_for_v1": true,
+    "notes": "pool token0 address"
+  },
+  {
+    "method": "token1()",
+    "abi_available": true,
+    "read_only_safe": true,
+    "requires_wallet": false,
+    "requires_signature": false,
+    "selected_for_v1": true,
+    "notes": "pool token1 address"
+  },
+  {
+    "method": "fee()",
+    "abi_available": true,
+    "read_only_safe": true,
+    "requires_wallet": false,
+    "requires_signature": false,
+    "selected_for_v1": true,
+    "notes": "fee tier for v3-like pool"
+  },
+  {
+    "method": "tickSpacing()",
+    "abi_available": true,
+    "read_only_safe": true,
+    "requires_wallet": false,
+    "requires_signature": false,
+    "selected_for_v1": true,
+    "notes": "tick spacing and compression"
+  },
+  {
+    "method": "liquidity()",
+    "abi_available": true,
+    "read_only_safe": true,
+    "requires_wallet": false,
+    "requires_signature": false,
+    "selected_for_v1": true,
+    "notes": "current in-range liquidity"
+  },
+  {
+    "method": "slot0()",
+    "abi_available": true,
+    "read_only_safe": true,
+    "requires_wallet": false,
+    "requires_signature": false,
+    "selected_for_v1": true,
+    "notes": "current tick and sqrtPriceX96"
+  },
+  {
+    "method": "ticks(int24)",
+    "abi_available": true,
+    "read_only_safe": true,
+    "requires_wallet": false,
+    "requires_signature": false,
+    "selected_for_v1": true,
+    "notes": "liquidityGross/liquidityNet and feeGrowthOutside"
+  },
+  {
+    "method": "tickBitmap(int16)",
+    "abi_available": true,
+    "read_only_safe": true,
+    "requires_wallet": false,
+    "requires_signature": false,
+    "selected_for_v1": true,
+    "notes": "initialized tick bitset per word"
+  },
+  {
+    "method": "observe(uint32[])",
+    "abi_available": true,
+    "read_only_safe": true,
+    "requires_wallet": false,
+    "requires_signature": false,
+    "selected_for_v1": true,
+    "notes": "twap-like observation and liquidity cumulatives"
+  },
+  {
+    "method": "observations(uint256)",
+    "abi_available": true,
+    "read_only_safe": true,
+    "requires_wallet": false,
+    "requires_signature": false,
+    "selected_for_v1": false,
+    "notes": "optional, only if direct observation row needed"
+  },
+  {
+    "method": "mint",
+    "abi_available": true,
+    "read_only_safe": false,
+    "requires_wallet": true,
+    "requires_signature": true,
+    "selected_for_v1": false,
+    "notes": "forbidden state-changing"
+  },
+  {
+    "method": "burn",
+    "abi_available": true,
+    "read_only_safe": false,
+    "requires_wallet": true,
+    "requires_signature": true,
+    "selected_for_v1": false,
+    "notes": "forbidden state-changing"
+  },
+  {
+    "method": "collect",
+    "abi_available": true,
+    "read_only_safe": false,
+    "requires_wallet": true,
+    "requires_signature": true,
+    "selected_for_v1": false,
+    "notes": "forbidden state-changing"
+  },
+  {
+    "method": "swap",
+    "abi_available": true,
+    "read_only_safe": false,
+    "requires_wallet": true,
+    "requires_signature": true,
+    "selected_for_v1": false,
+    "notes": "forbidden state-changing"
+  },
+  {
+    "method": "flash",
+    "abi_available": true,
+    "read_only_safe": false,
+    "requires_wallet": true,
+    "requires_signature": true,
+    "selected_for_v1": false,
+    "notes": "forbidden state-changing"
+  },
+  {
+    "method": "increaseLiquidity",
+    "abi_available": true,
+    "read_only_safe": false,
+    "requires_wallet": true,
+    "requires_signature": true,
+    "selected_for_v1": false,
+    "notes": "forbidden state-changing"
+  },
+  {
+    "method": "decreaseLiquidity",
+    "abi_available": true,
+    "read_only_safe": false,
+    "requires_wallet": true,
+    "requires_signature": true,
+    "selected_for_v1": false,
+    "notes": "forbidden state-changing"
+  },
+  {
+    "method": "multicall(state-changing)",
+    "abi_available": true,
+    "read_only_safe": false,
+    "requires_wallet": true,
+    "requires_signature": true,
+    "selected_for_v1": false,
+    "notes": "forbidden if any subcall changes state"
+  }
+]
