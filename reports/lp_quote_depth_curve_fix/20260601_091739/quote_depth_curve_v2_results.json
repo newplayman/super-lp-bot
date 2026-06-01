@@ -1,0 +1,25 @@
+{
+  "selected_pool_count": 25,
+  "tested_notional_count": 125,
+  "quote_success_count": 120,
+  "quote_fail_count": 5,
+  "capacity_pass_20_count": 24,
+  "capacity_pass_100_count": 24,
+  "capacity_pass_500_count": 21,
+  "capacity_pass_1000_count": 0,
+  "capacity_pass_2000_count": 0,
+  "high_confidence_count": 28,
+  "medium_confidence_count": 0,
+  "low_confidence_count": 97,
+  "invalid_count": 5,
+  "monotonicity_fail_count": 0,
+  "pool_type_distribution": {
+    "concentrated_liquidity": 21,
+    "unknown": 4
+  },
+  "tier_distribution": {
+    "B": 13,
+    "A": 1,
+    "C": 11
+  }
+}

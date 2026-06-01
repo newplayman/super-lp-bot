@@ -1,0 +1,10 @@
+{
+  "slippage_monotonic_ok": true,
+  "negative_or_nan_count": 0,
+  "impossible_capacity_count": 0,
+  "lookahead_risk": "none",
+  "wallet_or_tx_usage_found": false,
+  "confidence_consistency_ok": true,
+  "invalid_reason_explicit_ok": true,
+  "issues": []
+}

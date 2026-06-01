@@ -1,0 +1,32 @@
+{
+  "table_name": "lp_quote_depth_curve_v2",
+  "required_fields": [
+    "run_id",
+    "pool_id",
+    "token_pair",
+    "inferred_tier",
+    "chain",
+    "pool_type",
+    "method",
+    "quote_side",
+    "virtual_notional_usd",
+    "quote_ts",
+    "feature_cutoff_time",
+    "entry_safe",
+    "reserve_liquidity_usd",
+    "tvl_proxy_usd",
+    "estimated_output_usd",
+    "estimated_slippage_pct",
+    "estimated_price_impact_pct",
+    "exit_depth_available",
+    "exit_depth_usd",
+    "capacity_pass",
+    "capacity_limit_usd",
+    "confidence",
+    "confidence_reason",
+    "invalid_reason",
+    "monotonicity_check",
+    "created_at"
+  ],
+  "overwrites_v1": false
+}

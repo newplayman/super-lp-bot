@@ -1,0 +1,9 @@
+{
+  "missing_input_list": [],
+  "previous_stage_ok": true,
+  "quote_depth_curve_built": true,
+  "can_run_virtual_notional_next": true,
+  "can_run_probe_now": true,
+  "recommended_next_stage_ok": true,
+  "can_execute_curve_fix_repeat": true
+}

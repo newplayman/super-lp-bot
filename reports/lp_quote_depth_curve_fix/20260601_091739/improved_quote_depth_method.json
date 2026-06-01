@@ -1,0 +1,6 @@
+{
+  "wallet_or_signature_required": false,
+  "router_submit_required": false,
+  "monotonicity_required": true,
+  "confidence_assigned_per_row": true
+}
