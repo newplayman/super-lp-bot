@@ -1,0 +1,42 @@
+[
+  {
+    "contract_family": "NonfungiblePositionManager",
+    "method_or_event": "positions(tokenId)",
+    "access_type": "eth_call",
+    "read_only_safe": true,
+    "actual_position_required": true,
+    "future_probe_only": false,
+    "status": "usable_if_token_id_exists",
+    "reason": "reads real nft position state without signing"
+  },
+  {
+    "contract_family": "V3Pool",
+    "method_or_event": "slot0() / ticks(int24) / feeGrowthGlobal{0,1}X128()",
+    "access_type": "eth_call",
+    "read_only_safe": true,
+    "actual_position_required": false,
+    "future_probe_only": false,
+    "status": "usable",
+    "reason": "pool state and fee growth are readable via staticcall"
+  },
+  {
+    "contract_family": "NonfungiblePositionManager",
+    "method_or_event": "Collect / IncreaseLiquidity / DecreaseLiquidity / Mint / Burn logs",
+    "access_type": "eth_getLogs",
+    "read_only_safe": true,
+    "actual_position_required": true,
+    "future_probe_only": false,
+    "status": "usable_if_position_lineage_exists",
+    "reason": "historical fee lineage needs tokenId or exact position mapping"
+  },
+  {
+    "contract_family": "Router / PositionManager",
+    "method_or_event": "mint / increaseLiquidity / decreaseLiquidity / collect / burn / approve",
+    "access_type": "transaction",
+    "read_only_safe": false,
+    "actual_position_required": true,
+    "future_probe_only": true,
+    "status": "rejected",
+    "reason": "requires signing or transaction execution"
+  }
+]

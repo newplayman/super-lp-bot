@@ -1,0 +1,9 @@
+{
+  "actual_position_lineage_pool_count": 5,
+  "token_id_available_count": 0,
+  "actual_fee_unavailable": true,
+  "pool_level_fee_only": true,
+  "pool_level_fee_insufficient_for_edge": true,
+  "preview_positive_count_pool_level_only": 6,
+  "main_remaining_blocker": "actual_position_fee_lineage_missing"
+}

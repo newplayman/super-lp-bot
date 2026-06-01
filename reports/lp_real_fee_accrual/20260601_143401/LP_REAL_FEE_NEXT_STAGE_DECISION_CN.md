@@ -1,0 +1,4 @@
+# LP Real Fee Next Stage Decision
+
+- recommended_next_stage: `LP_REAL_FEE_ACCRUAL_PIPELINE_FIX_REPEAT`
+- reason: `actual_position_fee_lineage_missing`

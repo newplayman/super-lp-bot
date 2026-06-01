@@ -1,0 +1,17 @@
+# LP Real Fee Accrual Artifact Index
+
+- [INPUT_EVIDENCE_AUDIT_CN.md](/Users/bendu/lp-bot/v3/reports/lp_real_fee_accrual/20260601_143401/INPUT_EVIDENCE_AUDIT_CN.md)
+- [VPS_DB_RPC_READINESS_CN.md](/Users/bendu/lp-bot/v3/reports/lp_real_fee_accrual/20260601_143401/VPS_DB_RPC_READINESS_CN.md)
+- [POSITION_LINEAGE_INVENTORY_CN.md](/Users/bendu/lp-bot/v3/reports/lp_real_fee_accrual/20260601_143401/POSITION_LINEAGE_INVENTORY_CN.md)
+- [FEE_ACCRUAL_CONTRACT_ABI_INVENTORY_CN.md](/Users/bendu/lp-bot/v3/reports/lp_real_fee_accrual/20260601_143401/FEE_ACCRUAL_CONTRACT_ABI_INVENTORY_CN.md)
+- [REAL_FEE_ACCRUAL_METHOD_POLICY_CN.md](/Users/bendu/lp-bot/v3/reports/lp_real_fee_accrual/20260601_143401/REAL_FEE_ACCRUAL_METHOD_POLICY_CN.md)
+- [REAL_FEE_ACCRUAL_SCHEMA_CN.md](/Users/bendu/lp-bot/v3/reports/lp_real_fee_accrual/20260601_143401/REAL_FEE_ACCRUAL_SCHEMA_CN.md)
+- [FEE_ACCRUAL_READINESS_RESULTS_CN.md](/Users/bendu/lp-bot/v3/reports/lp_real_fee_accrual/20260601_143401/FEE_ACCRUAL_READINESS_RESULTS_CN.md)
+- [REAL_FEE_ACCRUAL_RESULTS_CN.md](/Users/bendu/lp-bot/v3/reports/lp_real_fee_accrual/20260601_143401/REAL_FEE_ACCRUAL_RESULTS_CN.md)
+- [FEE_PROXY_VS_REAL_FEE_COMPARISON_CN.md](/Users/bendu/lp-bot/v3/reports/lp_real_fee_accrual/20260601_143401/FEE_PROXY_VS_REAL_FEE_COMPARISON_CN.md)
+- [REAL_FEE_ECONOMICS_PREVIEW_CN.md](/Users/bendu/lp-bot/v3/reports/lp_real_fee_accrual/20260601_143401/REAL_FEE_ECONOMICS_PREVIEW_CN.md)
+- [FEE_ACCRUAL_BLOCKER_DIAGNOSIS_CN.md](/Users/bendu/lp-bot/v3/reports/lp_real_fee_accrual/20260601_143401/FEE_ACCRUAL_BLOCKER_DIAGNOSIS_CN.md)
+- [REAL_FEE_ACCRUAL_SAFETY_AUDIT_CN.md](/Users/bendu/lp-bot/v3/reports/lp_real_fee_accrual/20260601_143401/REAL_FEE_ACCRUAL_SAFETY_AUDIT_CN.md)
+- [LP_REAL_FEE_NEXT_STAGE_DECISION_CN.md](/Users/bendu/lp-bot/v3/reports/lp_real_fee_accrual/20260601_143401/LP_REAL_FEE_NEXT_STAGE_DECISION_CN.md)
+- [FINAL_VERDICT.json](/Users/bendu/lp-bot/v3/reports/lp_real_fee_accrual/20260601_143401/FINAL_VERDICT.json)
+- [ONEPAGE_CN.md](/Users/bendu/lp-bot/v3/reports/lp_real_fee_accrual/20260601_143401/ONEPAGE_CN.md)
