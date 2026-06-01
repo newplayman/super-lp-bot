@@ -1,0 +1,13 @@
+{
+  "requests_session": true,
+  "timeout_per_eth_call": true,
+  "method_level_try_except": true,
+  "abi_decode_error_captured": true,
+  "revert_captured": true,
+  "rpc_timeout_captured": true,
+  "metadata_mismatch_captured": true,
+  "multi_rpc_fallback": true,
+  "per_pool_partial_success": true,
+  "observe_failure_keeps_medium_confidence": true,
+  "tickBitmap_without_slot0_not_high_confidence": true
+}

@@ -1,0 +1,81 @@
+{
+  "inputs": [
+    {
+      "path": "/Users/bendu/lp-bot/v3/reports/lp_v3_tick_liquidity/20260601_130245/FINAL_VERDICT.json",
+      "exists": "yes"
+    },
+    {
+      "path": "/Users/bendu/lp-bot/v3/reports/lp_v3_tick_liquidity/20260601_130245/V3_TICK_LIQUIDITY_RESULTS_CN.md",
+      "exists": "yes"
+    },
+    {
+      "path": "/Users/bendu/lp-bot/v3/reports/lp_v3_tick_liquidity/20260601_130245/v3_tick_liquidity_results.csv",
+      "exists": "yes"
+    },
+    {
+      "path": "/Users/bendu/lp-bot/v3/reports/lp_v3_tick_liquidity/20260601_130245/v3_tick_liquidity_results.json",
+      "exists": "yes"
+    },
+    {
+      "path": "/Users/bendu/lp-bot/v3/reports/lp_v3_tick_liquidity/20260601_130245/V3_TICK_DERIVED_CAPACITY_AUDIT_CN.md",
+      "exists": "yes"
+    },
+    {
+      "path": "/Users/bendu/lp-bot/v3/reports/lp_v3_tick_liquidity/20260601_130245/v3_tick_derived_capacity_audit.csv",
+      "exists": "yes"
+    },
+    {
+      "path": "/Users/bendu/lp-bot/v3/reports/lp_v3_tick_liquidity/20260601_130245/V3_TICK_LIQUIDITY_SAFETY_AUDIT_CN.md",
+      "exists": "yes"
+    },
+    {
+      "path": "/Users/bendu/lp-bot/v3/reports/lp_v3_tick_liquidity/20260601_130245/v3_tick_liquidity_safety_audit.json",
+      "exists": "yes"
+    },
+    {
+      "path": "/Users/bendu/lp-bot/v3/reports/lp_v3_tick_liquidity/20260601_130245/LP_V3_TICK_NEXT_STAGE_DECISION_CN.md",
+      "exists": "yes"
+    },
+    {
+      "path": "/Users/bendu/lp-bot/v3/reports/lp_v3_tick_liquidity/20260601_130245/lp_v3_tick_next_stage_decision.json",
+      "exists": "yes"
+    },
+    {
+      "path": "/Users/bendu/lp-bot/v3/reports/lp_precise_quote/20260601_120001/FINAL_VERDICT.json",
+      "exists": "yes"
+    },
+    {
+      "path": "/Users/bendu/lp-bot/v3/reports/lp_precise_quote/20260601_120001/precise_quote_results.csv",
+      "exists": "yes"
+    },
+    {
+      "path": "/Users/bendu/lp-bot/v3/reports/lp_real_data_reopen/20260601_112642/V3_TICK_LIQUIDITY_PIPELINE_DESIGN_CN.md",
+      "exists": "yes"
+    },
+    {
+      "path": "/Users/bendu/lp-bot/v3/reports/lp_real_data_reopen/20260601_112642/v3_tick_liquidity_pipeline_design.json",
+      "exists": "yes"
+    },
+    {
+      "path": "/Users/bendu/lp-bot/v3/reports/lp_real_data_reopen/20260601_112642/real_data_readiness_audit.csv",
+      "exists": "yes"
+    },
+    {
+      "path": "/Users/bendu/lp-bot/v3/scripts/lp_v3_tick_liquidity_pipeline_v1_readonly.py",
+      "exists": "yes"
+    },
+    {
+      "path": "/Users/bendu/lp-bot/v3/tests/test_lp_v3_tick_liquidity_pipeline_v1_readonly.py",
+      "exists": "yes"
+    }
+  ],
+  "summary": {
+    "missing_input_list": [],
+    "previous_stage_ok": true,
+    "previous_next_stage_ok": true,
+    "snapshot_success_pool_count_is_1": true,
+    "snapshot_fail_pool_count_is_5": true,
+    "wallet_or_tx_touched": false,
+    "can_execute_fix_repeat": true
+  }
+}

@@ -1,0 +1,7 @@
+metric,v1,v2,direction
+selected_pool_count,6,5,changed
+snapshot_success_pool_count,1,5,improved
+snapshot_fail_pool_count,5,0,improved
+high_confidence_count,1,5,improved
+medium_confidence_count,0,0,same_or_worse
+invalid_count,0,0,same_or_worse

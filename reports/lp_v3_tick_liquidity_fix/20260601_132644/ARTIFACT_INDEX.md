@@ -1,0 +1,16 @@
+# LP V3 Tick Liquidity Fix Artifact Index
+
+- [INPUT_ARTIFACT_AUDIT_CN.md](/Users/bendu/lp-bot/v3/reports/lp_v3_tick_liquidity_fix/20260601_132644/INPUT_ARTIFACT_AUDIT_CN.md)
+- [VPS_DB_RPC_READINESS_CN.md](/Users/bendu/lp-bot/v3/reports/lp_v3_tick_liquidity_fix/20260601_132644/VPS_DB_RPC_READINESS_CN.md)
+- [V3_POOL_STATE_FAILURE_DIAGNOSIS_CN.md](/Users/bendu/lp-bot/v3/reports/lp_v3_tick_liquidity_fix/20260601_132644/V3_POOL_STATE_FAILURE_DIAGNOSIS_CN.md)
+- [V3_TICK_CANDIDATE_POOL_SELECTION_V2_CN.md](/Users/bendu/lp-bot/v3/reports/lp_v3_tick_liquidity_fix/20260601_132644/V3_TICK_CANDIDATE_POOL_SELECTION_V2_CN.md)
+- [V3_RPC_ABI_ROBUSTNESS_FIX_CN.md](/Users/bendu/lp-bot/v3/reports/lp_v3_tick_liquidity_fix/20260601_132644/V3_RPC_ABI_ROBUSTNESS_FIX_CN.md)
+- [V3_TICK_LIQUIDITY_V2_SCHEMA_CN.md](/Users/bendu/lp-bot/v3/reports/lp_v3_tick_liquidity_fix/20260601_132644/V3_TICK_LIQUIDITY_V2_SCHEMA_CN.md)
+- [V3_TICK_LIQUIDITY_V2_IMPLEMENTATION_CN.md](/Users/bendu/lp-bot/v3/reports/lp_v3_tick_liquidity_fix/20260601_132644/V3_TICK_LIQUIDITY_V2_IMPLEMENTATION_CN.md)
+- [V3_TICK_LIQUIDITY_V2_RESULTS_CN.md](/Users/bendu/lp-bot/v3/reports/lp_v3_tick_liquidity_fix/20260601_132644/V3_TICK_LIQUIDITY_V2_RESULTS_CN.md)
+- [V3_TICK_V1_V2_COMPARISON_CN.md](/Users/bendu/lp-bot/v3/reports/lp_v3_tick_liquidity_fix/20260601_132644/V3_TICK_V1_V2_COMPARISON_CN.md)
+- [V3_TICK_CAPACITY_CONFIDENCE_UPDATE_CN.md](/Users/bendu/lp-bot/v3/reports/lp_v3_tick_liquidity_fix/20260601_132644/V3_TICK_CAPACITY_CONFIDENCE_UPDATE_CN.md)
+- [V3_TICK_LIQUIDITY_V2_SAFETY_AUDIT_CN.md](/Users/bendu/lp-bot/v3/reports/lp_v3_tick_liquidity_fix/20260601_132644/V3_TICK_LIQUIDITY_V2_SAFETY_AUDIT_CN.md)
+- [LP_V3_TICK_V2_NEXT_STAGE_DECISION_CN.md](/Users/bendu/lp-bot/v3/reports/lp_v3_tick_liquidity_fix/20260601_132644/LP_V3_TICK_V2_NEXT_STAGE_DECISION_CN.md)
+- [FINAL_VERDICT.json](/Users/bendu/lp-bot/v3/reports/lp_v3_tick_liquidity_fix/20260601_132644/FINAL_VERDICT.json)
+- [ONEPAGE_CN.md](/Users/bendu/lp-bot/v3/reports/lp_v3_tick_liquidity_fix/20260601_132644/ONEPAGE_CN.md)
