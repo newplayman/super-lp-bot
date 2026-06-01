@@ -1,13 +1,11 @@
 {
-  "status": "planned",
+  "status": "started",
   "run_id": "20260601_185436",
   "tmux_session_name": "lp_bsc_fee_velocity_overnight_20260601_185436",
-  "expected_checks": [
-    "tmux session exists",
-    "logs/run.log updating",
-    "checkpoint/state.json exists",
-    "no forbidden process exists",
-    "no transaction symbols appear in the log"
-  ],
-  "note": "bootstrap placeholder; update after tmux launch"
+  "tmux_session_exists": true,
+  "run_log_updating": true,
+  "checkpoint_state_exists": true,
+  "forbidden_process_found": false,
+  "transaction_symbols_found": false,
+  "note": "run is live in tmux and using read-only RPC only"
 }
