@@ -1,0 +1,10 @@
+{
+  "can_run_probe_now": false,
+  "can_reopen_probe_preflight": false,
+  "strict_probe_readiness_pass": false,
+  "edge_proven": "no",
+  "tiny_canary_allowed": "no",
+  "probe_can_create_token_id": true,
+  "probe_not_allowed_just_for_evidence": true
+}
+

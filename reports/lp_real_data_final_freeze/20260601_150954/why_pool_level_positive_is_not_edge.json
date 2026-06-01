@@ -1,0 +1,11 @@
+{
+  "pool_level_fee_is_pool_aggregate": true,
+  "simulated_fee_is_model_only": true,
+  "actual_position_fee_requires_token_id": true,
+  "token_id_available_count": 0,
+  "pool_level_positive_proxy_count": 6,
+  "actual_fee_positive_proxy_count": 0,
+  "edge_proven": "no",
+  "can_support_probe_or_canary": false
+}
+

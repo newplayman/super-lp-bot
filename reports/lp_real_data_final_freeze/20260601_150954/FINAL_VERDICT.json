@@ -1,0 +1,22 @@
+{
+  "status": "PASS",
+  "stage": "LP_REAL_DATA_REOPEN_FINAL_FREEZE_V1",
+  "real_data_research_freeze_complete": true,
+  "precise_quote_ready": true,
+  "v3_tick_liquidity_ready": true,
+  "real_cost_model_ready": true,
+  "pool_level_fee_positive_proxy_count": 6,
+  "actual_fee_positive_proxy_count": 0,
+  "token_id_recovered_count": 0,
+  "usable_actual_position_count": 0,
+  "strict_probe_readiness_pass": false,
+  "can_reopen_virtual_economics": false,
+  "can_reopen_probe_preflight": false,
+  "can_run_probe_now": false,
+  "overall_recommendation": "STOP_LP_RESEARCH_NOW",
+  "edge_proven": "no",
+  "tiny_canary_candidate": "no",
+  "tiny_canary_allowed": "no",
+  "recommended_next_stage": "STOP_LP_RESEARCH_NOW"
+}
+

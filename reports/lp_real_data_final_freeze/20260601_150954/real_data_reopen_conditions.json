@@ -1,0 +1,11 @@
+{
+  "requires_real_token_id": true,
+  "requires_actual_fee_accrual": true,
+  "requires_fee_growthinside_tokensowed_collect": true,
+  "requires_precise_quote_tick_liquidity_real_cost": true,
+  "requires_actual_fee_or_high_confidence_fee_near_break_even": true,
+  "requires_strict_probe_preflight": true,
+  "requires_manual_user_approval": true,
+  "pool_level_positive_only_means_watch": true
+}
+

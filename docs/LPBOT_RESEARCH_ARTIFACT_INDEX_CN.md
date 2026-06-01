@@ -146,3 +146,59 @@
 - final verdict path: `/Users/bendu/lp-bot/v3/reports/lp_scale_final_freeze/20260601_110649/FINAL_VERDICT.json`
 - status: `PASS`
 - one-line conclusion: 新 LP scale economics 研究线完成最终冻结和 handoff，不再继续 probe/canary/live。
+
+## lp_real_data_reopen
+
+- latest report dir: `/Users/bendu/lp-bot/v3/reports/lp_real_data_reopen/20260601_112642`
+- final verdict path: `/Users/bendu/lp-bot/v3/reports/lp_real_data_reopen/20260601_112642/FINAL_VERDICT.json`
+- status: `PASS`
+- one-line conclusion: real-data reopen prep 设计完成，但尚未形成可重开 economics 的真实数据集。
+
+## lp_precise_quote
+
+- latest report dir: `/Users/bendu/lp-bot/v3/reports/lp_precise_quote/20260601_120001`
+- final verdict path: `/Users/bendu/lp-bot/v3/reports/lp_precise_quote/20260601_120001/FINAL_VERDICT.json`
+- status: `PASS`
+- one-line conclusion: precise quote read-only pipeline 已打通。
+
+## lp_v3_tick_liquidity
+
+- latest report dir: `/Users/bendu/lp-bot/v3/reports/lp_v3_tick_liquidity/20260601_130245`
+- final verdict path: `/Users/bendu/lp-bot/v3/reports/lp_v3_tick_liquidity/20260601_130245/FINAL_VERDICT.json`
+- status: `PASS`
+- one-line conclusion: v1 只完成部分覆盖，后续进入 fix repeat。
+
+## lp_v3_tick_liquidity_fix
+
+- latest report dir: `/Users/bendu/lp-bot/v3/reports/lp_v3_tick_liquidity_fix/20260601_132644`
+- final verdict path: `/Users/bendu/lp-bot/v3/reports/lp_v3_tick_liquidity_fix/20260601_132644/FINAL_VERDICT.json`
+- status: `PASS`
+- one-line conclusion: 标准 V3 tick-liquidity 高置信快照已补齐。
+
+## lp_real_cost_model
+
+- latest report dir: `/Users/bendu/lp-bot/v3/reports/lp_real_cost_model/20260601_141103`
+- final verdict path: `/Users/bendu/lp-bot/v3/reports/lp_real_cost_model/20260601_141103/FINAL_VERDICT.json`
+- status: `PASS`
+- one-line conclusion: real cost model 打通后出现 `6` 个 positive proxy，但 fee 成为主阻断。
+
+## lp_real_fee_accrual
+
+- latest report dir: `/Users/bendu/lp-bot/v3/reports/lp_real_fee_accrual/20260601_143401`
+- final verdict path: `/Users/bendu/lp-bot/v3/reports/lp_real_fee_accrual/20260601_143401/FINAL_VERDICT.json`
+- status: `WARN`
+- one-line conclusion: pool-level / simulated fee 可用，但 actual fee lineage 缺失。
+
+## lp_real_fee_accrual_fix
+
+- latest report dir: `/Users/bendu/lp-bot/v3/reports/lp_real_fee_accrual_fix/20260601_145519`
+- final verdict path: `/Users/bendu/lp-bot/v3/reports/lp_real_fee_accrual_fix/20260601_145519/FINAL_VERDICT.json`
+- status: `PASS`
+- one-line conclusion: tokenId 无法从现有历史数据恢复，strict probe readiness 不通过，转 STOP。
+
+## lp_real_data_final_freeze
+
+- latest report dir: `/Users/bendu/lp-bot/v3/reports/lp_real_data_final_freeze/20260601_150954`
+- final verdict path: `/Users/bendu/lp-bot/v3/reports/lp_real_data_final_freeze/20260601_150954/FINAL_VERDICT.json`
+- status: `PASS`
+- one-line conclusion: real-data reopen 研究线正式收口，保持 `STOP_LP_RESEARCH_NOW`。

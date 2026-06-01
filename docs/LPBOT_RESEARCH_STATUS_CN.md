@@ -44,3 +44,14 @@
 - `IL/LVR = 0` 仍无 positive proxy。
 - 当前结论仍为 `STOP_LP_RESEARCH_NOW`。
 - 当前不允许 probe / canary / live。
+
+## Real Data Reopen Addendum
+
+- precise quote 已打通。
+- V3 tick-liquidity 已打通。
+- real cost model 已打通。
+- pool-level fee 下出现 `6` 个 positive proxy。
+- 但 actual position fee = `0`。
+- tokenId 无法从现有数据恢复。
+- 当前不允许 probe / canary / live。
+- recommended_next_stage = `STOP_LP_RESEARCH_NOW`。

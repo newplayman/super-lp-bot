@@ -1,0 +1,10 @@
+{
+  "missing_input_list": [],
+  "lp_real_fee_accrual_fix_repeat_completed": true,
+  "token_id_recovered_count_zero": true,
+  "positive_proxy_count_actual_fee_zero": true,
+  "positive_proxy_count_pool_level_fee_six": true,
+  "strict_probe_readiness_pass_false": true,
+  "recommended_next_stage_stop_lp_research_now": true
+}
+
