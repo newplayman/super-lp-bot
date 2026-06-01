@@ -1,0 +1,5 @@
+{
+  "primary_recommended_source": "mark_volume_x_fee_tier_proxy",
+  "fallback_source": "pool_score_history_fee_apr_score",
+  "swap_logs_available": false
+}

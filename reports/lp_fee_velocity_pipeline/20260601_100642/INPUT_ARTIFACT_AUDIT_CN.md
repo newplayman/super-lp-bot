@@ -1,0 +1,21 @@
+# Input Artifact Audit
+
+- `reports/lp_virtual_notional_economics/20260601_094238/FINAL_VERDICT.json`: `yes`
+- `reports/lp_virtual_notional_economics/20260601_094238/VIRTUAL_ECONOMICS_FORMULA_V1_CN.md`: `yes`
+- `reports/lp_virtual_notional_economics/20260601_094238/VIRTUAL_ECONOMICS_DATA_JOIN_AUDIT_CN.md`: `yes`
+- `reports/lp_virtual_notional_economics/20260601_094238/virtual_economics_data_join_audit.csv`: `yes`
+- `reports/lp_virtual_notional_economics/20260601_094238/VIRTUAL_NOTIONAL_ECONOMICS_RESULTS_CN.md`: `yes`
+- `reports/lp_virtual_notional_economics/20260601_094238/virtual_notional_economics_results.csv`: `yes`
+- `reports/lp_virtual_notional_economics/20260601_094238/BREAK_EVEN_AND_CAPACITY_ANALYSIS_CN.md`: `yes`
+- `reports/lp_virtual_notional_economics/20260601_094238/break_even_and_capacity_analysis.csv`: `yes`
+- `reports/lp_virtual_notional_economics/20260601_094238/VIRTUAL_NOTIONAL_CANDIDATE_RANKING_CN.md`: `yes`
+- `reports/lp_virtual_notional_economics/20260601_094238/virtual_notional_candidate_ranking.csv`: `yes`
+- `reports/lp_virtual_notional_economics/20260601_094238/LP_VIRTUAL_NOTIONAL_NEXT_STAGE_DECISION_CN.md`: `yes`
+- `reports/lp_virtual_notional_economics/20260601_094238/lp_virtual_notional_next_stage_decision.json`: `yes`
+- `reports/lp_quote_depth_curve_fix/20260601_091739/FINAL_VERDICT.json`: `yes`
+- `reports/lp_quote_depth_curve_fix/20260601_091739/QUOTE_DEPTH_CURVE_V2_RESULTS_CN.md`: `yes`
+- `reports/lp_quote_depth_curve_fix/20260601_091739/quote_depth_curve_v2_results.csv`: `yes`
+- `reports/lp_data_pipeline/20260601_084943/FEE_DATA_SOURCE_FEASIBILITY_CN.md`: `yes`
+- `reports/lp_scale_economics/20260601_082100/VIRTUAL_NOTIONAL_ECONOMICS_MODEL_CN.md`: `yes`
+- `reports/lp_scale_economics/20260601_082100/LP_POOL_SCORING_SYSTEM_V1_CN.md`: `yes`
+- `reports/final_freeze/20260531_124000/FINAL_VERDICT.json`: `yes`

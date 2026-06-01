@@ -1,0 +1,15 @@
+{
+  "pool_count": 6,
+  "row_count": 24,
+  "fee_source_distribution": {
+    "pool_score_history_fee_apr_score": 20,
+    "mark_volume_x_fee_tier_proxy": 4
+  },
+  "high_confidence_count": 1,
+  "medium_confidence_count": 3,
+  "low_confidence_count": 20,
+  "entry_safe_count": 24,
+  "invalid_count": 20,
+  "pool_coverage": 6,
+  "recent_7d_coverage": 1
+}

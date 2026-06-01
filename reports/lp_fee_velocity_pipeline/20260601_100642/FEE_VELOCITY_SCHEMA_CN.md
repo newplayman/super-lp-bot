@@ -1,0 +1,26 @@
+# Fee Velocity Schema
+
+- `run_id`
+- `pool_id`
+- `token_pair`
+- `chain`
+- `pool_type`
+- `fee_source`
+- `fee_tier_bps`
+- `bucket_start`
+- `bucket_end`
+- `feature_cutoff_time`
+- `entry_safe`
+- `volume_usd_proxy`
+- `swap_count`
+- `gross_fee_pool_usd_proxy`
+- `lp_fee_share_assumption`
+- `fee_velocity_rate_15m`
+- `fee_velocity_rate_30m`
+- `fee_velocity_rate_1h`
+- `fee_velocity_rate_2h`
+- `fee_apr_proxy`
+- `confidence`
+- `confidence_reason`
+- `invalid_reason`
+- `created_at`

@@ -1,0 +1,27 @@
+# LP Fee Velocity Pipeline V1
+
+- `status`: `WARN`
+- `stage`: `LP_FEE_VELOCITY_PIPELINE_V1`
+- `data_source`: `vps_postgres`
+- `db_ready`: `yes`
+- `fee_velocity_pipeline_built`: `yes`
+- `fee_ready_pool_count`: `1`
+- `fee_source_primary`: `pool_score_history_fee_apr_score`
+- `high_confidence_count`: `1`
+- `medium_confidence_count`: `3`
+- `low_confidence_count`: `20`
+- `entry_safe_count`: `24`
+- `economics_preview_ran`: `yes`
+- `previous_positive_proxy_count`: `0`
+- `new_positive_proxy_count`: `0`
+- `previous_best_net_ev_proxy_usd`: `-0.1219512645`
+- `new_best_net_ev_proxy_usd`: `-0.1210776769`
+- `ev_improved`: `yes`
+- `main_remaining_blocker`: `fixed_cost_now_main`
+- `can_run_virtual_notional_v2_next`: `no`
+- `can_run_probe_now`: `no`
+- `manual_approval_required_for_probe`: `yes`
+- `edge_proven`: `no`
+- `tiny_canary_candidate`: `no`
+- `tiny_canary_allowed`: `no`
+- `recommended_next_stage`: `LP_FEE_VELOCITY_PIPELINE_FIX_REPEAT`

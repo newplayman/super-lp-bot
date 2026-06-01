@@ -1,0 +1,8 @@
+source_name,table_or_path,available,time_bucket_support,entry_safe_possible,confidence,limitations,recommended_for_v1,row_count,fee_rows,recent_7d_count,pool_coverage
+realized_lp_fee_accrual,shadow_position_marks.fee_usd,partial,position_mark_only,no,low,fee_usd is post-position mark accrual and not safe for entry decision timing,no,64681,64681,64681,8
+mark_volume_x_fee_tier_proxy,shadow_position_marks.current_vol24h_usd/current_tvl_usd + pools.fee_bps,yes,mark_time_buckets,yes,medium,"rolling 24h volume snapshot, not raw swap logs; requires pre-cutoff mark selection",yes,64681,,64681,8
+pool_score_history_fee_apr_score,pool_score_history.score_json.FeeAPRScore,yes,block_time_buckets,yes,low,"score-only, not raw fee amount or raw volume",yes,454112,,276843,151
+onchain_swap_logs,not_present,no,none,no,low,no canonical swap log table found in current VPS Postgres,no,,,,
+pools_current_volume_cache,pools.vol_24h + fee_bps,partial,current_snapshot_only,no,low,"current snapshot only, not sample-time safe",diagnostic_only,151,,91,151
+existing_fee_velocity_research,fee_velocity_exit_depth_counterfactual_v1,partial,sample_windows,yes,low,fee fields mostly empty in current rows,no,572160,,572160,8
+missing_direct_fee_accrual,unavailable,no,none,no,low,no timestamp-clean feeGrowthInside/global fee accrual source found,no,,,,

@@ -1,0 +1,8 @@
+{
+  "missing_input_list": [],
+  "previous_stage_ok": true,
+  "positive_proxy_zero": true,
+  "recommended_next_stage_ok": true,
+  "main_blocker_fee_proxy": true,
+  "can_execute_fee_velocity_pipeline": true
+}
