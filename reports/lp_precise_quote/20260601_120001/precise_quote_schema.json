@@ -1,0 +1,32 @@
+{
+  "table_name": "lp_precise_quote_v1",
+  "required_fields": [
+    "run_id",
+    "pool_id",
+    "token_pair",
+    "chain",
+    "pool_type",
+    "quote_method",
+    "quote_side",
+    "virtual_notional_usd",
+    "input_token",
+    "output_token",
+    "amount_in_raw",
+    "amount_out_raw",
+    "amount_in_usd",
+    "amount_out_usd",
+    "estimated_slippage_pct",
+    "estimated_price_impact_pct",
+    "sqrt_price_x96_after",
+    "initialized_ticks_crossed",
+    "gas_estimate",
+    "quote_block_number",
+    "quote_ts",
+    "quote_success",
+    "confidence",
+    "invalid_reason",
+    "read_only_safe",
+    "wallet_or_tx_touched",
+    "created_at"
+  ]
+}

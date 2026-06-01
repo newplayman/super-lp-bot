@@ -1,0 +1,8 @@
+{
+  "db_ready": true,
+  "rpc_present": true,
+  "chain_id": "8453",
+  "latest_block": "46762933",
+  "rpc_read_only_test_pass": true,
+  "secret_leak_check_pass": true
+}

@@ -1,0 +1,72 @@
+[
+  {
+    "name": "Aerodrome Slipstream Quoter",
+    "address": "0x254cf9e1e6e233aa1ac962cb9b05b2cfeaae15b0",
+    "address_known": true,
+    "abi_available": true,
+    "supports_quoteExactInputSingle": true,
+    "supports_quoteExactOutputSingle": false,
+    "supports_gasEstimate_output": true,
+    "read_only_safe": true,
+    "requires_wallet": false,
+    "requires_signature": false,
+    "selected_for_v1": true,
+    "blocker": ""
+  },
+  {
+    "name": "Aerodrome Slipstream Mixed Quoter",
+    "address": "0x0a5aa5d3a4d28014f967bf0f29eaa3ff9807d5c6",
+    "address_known": true,
+    "abi_available": true,
+    "supports_quoteExactInputSingle": false,
+    "supports_quoteExactOutputSingle": false,
+    "supports_gasEstimate_output": true,
+    "read_only_safe": true,
+    "requires_wallet": false,
+    "requires_signature": false,
+    "selected_for_v1": false,
+    "blocker": "v1_not_using_mixed_routes"
+  },
+  {
+    "name": "Uniswap V3 pool ABI",
+    "address": "",
+    "address_known": false,
+    "abi_available": true,
+    "supports_quoteExactInputSingle": false,
+    "supports_quoteExactOutputSingle": false,
+    "supports_gasEstimate_output": false,
+    "read_only_safe": true,
+    "requires_wallet": false,
+    "requires_signature": false,
+    "selected_for_v1": true,
+    "blocker": ""
+  },
+  {
+    "name": "V2 pair ABI fallback",
+    "address": "",
+    "address_known": false,
+    "abi_available": true,
+    "supports_quoteExactInputSingle": false,
+    "supports_quoteExactOutputSingle": false,
+    "supports_gasEstimate_output": false,
+    "read_only_safe": true,
+    "requires_wallet": false,
+    "requires_signature": false,
+    "selected_for_v1": true,
+    "blocker": "fallback_only"
+  },
+  {
+    "name": "Router / swap functions",
+    "address": "",
+    "address_known": false,
+    "abi_available": false,
+    "supports_quoteExactInputSingle": false,
+    "supports_quoteExactOutputSingle": false,
+    "supports_gasEstimate_output": false,
+    "read_only_safe": false,
+    "requires_wallet": true,
+    "requires_signature": true,
+    "selected_for_v1": false,
+    "blocker": "forbidden_execution_surface"
+  }
+]

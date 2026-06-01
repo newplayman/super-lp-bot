@@ -1,0 +1,10 @@
+{
+  "missing_input_list": [],
+  "all_inputs_present": true,
+  "previous_stage_ok": true,
+  "precise_quote_design_ready": true,
+  "recommended_next_stage_ok": true,
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no",
+  "can_execute_precise_quote_pipeline": true
+}

@@ -1,0 +1,14 @@
+{
+  "secret_key_loaded": false,
+  "wallet_loaded": false,
+  "signer_created": false,
+  "transaction_sent": false,
+  "router_submit_called": false,
+  "swap_called": false,
+  "mint_called": false,
+  "burn_called": false,
+  "collect_called": false,
+  "eth_call_only": true,
+  "staticcall_only": true,
+  "wallet_or_tx_touched": false
+}

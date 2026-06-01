@@ -1,0 +1,4 @@
+# LP Precise Quote Next Stage Decision
+
+- recommended_next_stage: `LP_V3_TICK_LIQUIDITY_PIPELINE_V1`
+- reason: `tick-liquidity is the next detail blocker after precise static quote`
