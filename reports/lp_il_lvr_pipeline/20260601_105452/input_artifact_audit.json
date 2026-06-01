@@ -1,0 +1,10 @@
+{
+  "missing_input_list": [],
+  "all_inputs_ready": true,
+  "previous_stage": "LP_FEE_VELOCITY_PIPELINE_FIX_REPEAT_V1",
+  "previous_stage_ok": true,
+  "positive_proxy_count_fixed_cost_0_is_zero": true,
+  "positive_proxy_count_realistic_is_zero": true,
+  "main_remaining_blocker_is_data_confidence_low": true,
+  "enough_to_execute_il_lvr_pipeline": true
+}

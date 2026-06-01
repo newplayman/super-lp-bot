@@ -1,0 +1,55 @@
+{
+  "scenario_summary": [
+    {
+      "scenario_name": "zero_il_lvr",
+      "positive_proxy_count": 0,
+      "best_net_ev_proxy_usd": null,
+      "best_net_ev_proxy_pct": null,
+      "positive_proxy_by_notional": {},
+      "break_even_candidates": 0,
+      "no_size_can_fix_count": 0,
+      "capacity_fail_count": 0,
+      "primary_remaining_blocker": "data_confidence_low"
+    },
+    {
+      "scenario_name": "optimistic",
+      "positive_proxy_count": 0,
+      "best_net_ev_proxy_usd": null,
+      "best_net_ev_proxy_pct": null,
+      "positive_proxy_by_notional": {},
+      "break_even_candidates": 0,
+      "no_size_can_fix_count": 0,
+      "capacity_fail_count": 0,
+      "primary_remaining_blocker": "data_confidence_low"
+    },
+    {
+      "scenario_name": "realistic",
+      "positive_proxy_count": 0,
+      "best_net_ev_proxy_usd": null,
+      "best_net_ev_proxy_pct": null,
+      "positive_proxy_by_notional": {},
+      "break_even_candidates": 0,
+      "no_size_can_fix_count": 0,
+      "capacity_fail_count": 0,
+      "primary_remaining_blocker": "data_confidence_low"
+    },
+    {
+      "scenario_name": "conservative",
+      "positive_proxy_count": 0,
+      "best_net_ev_proxy_usd": null,
+      "best_net_ev_proxy_pct": null,
+      "positive_proxy_by_notional": {},
+      "break_even_candidates": 0,
+      "no_size_can_fix_count": 0,
+      "capacity_fail_count": 0,
+      "primary_remaining_blocker": "data_confidence_low"
+    }
+  ],
+  "summary": {
+    "positive_proxy_count_zero_il_lvr": 0,
+    "positive_proxy_count_optimistic": 0,
+    "positive_proxy_count_realistic": 0,
+    "best_realistic_net_ev_proxy_usd": null,
+    "best_realistic_net_ev_proxy_pct": null
+  }
+}

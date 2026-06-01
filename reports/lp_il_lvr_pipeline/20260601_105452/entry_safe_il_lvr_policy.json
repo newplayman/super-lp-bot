@@ -1,0 +1,23 @@
+{
+  "sample_start_time": "quote_depth_curve_v2.feature_cutoff_time",
+  "feature_cutoff_time": "<= sample_start_time",
+  "previous_fully_closed_bucket_rule": true,
+  "same_bucket_features_banned": true,
+  "banned_future_data": [
+    "future realized IL after sample_start",
+    "target horizon outcome",
+    "post-entry price path",
+    "exact LP pnl after horizon"
+  ],
+  "allowed_features": [
+    "previous bucket realized volatility proxy",
+    "previous bucket price movement proxy",
+    "previous bucket risk/adverse movement proxy",
+    "pool type known before entry"
+  ],
+  "confidence_levels": {
+    "high": "exact position or range known and timestamp safe",
+    "medium": "pool type plus entry-safe volatility proxy",
+    "low": "generic volatility fallback"
+  }
+}

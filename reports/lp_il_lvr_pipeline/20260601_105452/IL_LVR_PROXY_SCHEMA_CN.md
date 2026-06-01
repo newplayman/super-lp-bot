@@ -1,0 +1,24 @@
+# IL/LVR Proxy Schema
+
+- `run_id`
+- `pool_id`
+- `token_pair`
+- `pool_type`
+- `horizon`
+- `window_label`
+- `bucket_start`
+- `bucket_end`
+- `feature_cutoff_time`
+- `entry_safe`
+- `price_move_proxy`
+- `volatility_proxy`
+- `il_proxy_rate_conservative`
+- `il_proxy_rate_realistic`
+- `il_proxy_rate_optimistic`
+- `lvr_proxy_rate_conservative`
+- `lvr_proxy_rate_realistic`
+- `lvr_proxy_rate_optimistic`
+- `confidence`
+- `confidence_reason`
+- `invalid_reason`
+- `created_at`

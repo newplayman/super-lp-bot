@@ -1,0 +1,25 @@
+# Artifact Index
+
+- `INPUT_ARTIFACT_AUDIT_CN.md`
+- `input_artifact_audit.json`
+- `VPS_DB_QUICK_CHECK_CN.md`
+- `IL_LVR_SOURCE_INVENTORY_CN.md`
+- `il_lvr_source_inventory.csv`
+- `il_lvr_source_inventory.json`
+- `ENTRY_SAFE_IL_LVR_POLICY_CN.md`
+- `entry_safe_il_lvr_policy.json`
+- `IL_LVR_PROXY_SCHEMA_CN.md`
+- `il_lvr_proxy_schema.json`
+- `IL_LVR_PROXY_RESULTS_CN.md`
+- `il_lvr_proxy_results.csv`
+- `il_lvr_proxy_results.json`
+- `IL_LVR_SENSITIVITY_ECONOMICS_CN.md`
+- `il_lvr_sensitivity_economics.csv`
+- `il_lvr_sensitivity_economics.json`
+- `FINAL_BLOCKER_ATTRIBUTION_CN.md`
+- `final_blocker_attribution.csv`
+- `final_blocker_attribution.json`
+- `LP_IL_LVR_NEXT_STAGE_DECISION_CN.md`
+- `lp_il_lvr_next_stage_decision.json`
+- `FINAL_VERDICT.json`
+- `ONEPAGE_CN.md`

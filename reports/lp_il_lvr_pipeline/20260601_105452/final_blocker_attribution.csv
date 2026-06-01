@@ -1,0 +1,7 @@
+blocker,severity,fixability,evidence,next_action_if_any
+fee_velocity,medium,partial,fee v2 improved but not enough,none
+quote_depth_capacity,high,low,1000/2000U capacity still poor,none
+fixed_cost,low,partial,zero fixed-cost was already tested in prior run,none
+il_lvr,medium,low,scenario audit shows zero/optimistic/realistic all non-positive,none
+data_confidence,high,partial,best remaining blocker still linked to confidence chain,new_data_pipeline_if_reopened
+pool_quality,medium,low,quality-sensitive pools dominate retained set,none

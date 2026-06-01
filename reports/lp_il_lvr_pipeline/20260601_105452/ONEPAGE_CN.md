@@ -1,0 +1,26 @@
+# Onepage
+
+- `status`: `WARN`
+- `stage`: `LP_IL_LVR_PIPELINE_V1`
+- `data_source`: `vps_postgres`
+- `db_ready`: `yes`
+- `il_lvr_proxy_built`: `yes`
+- `il_lvr_ready_pool_count`: `6`
+- `high_confidence_count`: `5`
+- `medium_confidence_count`: `1`
+- `low_confidence_count`: `0`
+- `entry_safe_count`: `96`
+- `sensitivity_ran`: `yes`
+- `positive_proxy_count_zero_il_lvr`: `0`
+- `positive_proxy_count_optimistic`: `0`
+- `positive_proxy_count_realistic`: `0`
+- `best_realistic_net_ev_proxy_usd`: ``
+- `best_realistic_net_ev_proxy_pct`: ``
+- `main_remaining_blocker`: `data_confidence_low`
+- `can_run_virtual_notional_v2_next`: `no`
+- `can_run_probe_now`: `no`
+- `manual_approval_required_for_probe`: `yes`
+- `edge_proven`: `no`
+- `tiny_canary_candidate`: `no`
+- `tiny_canary_allowed`: `no`
+- `recommended_next_stage`: `STOP_LP_RESEARCH_NOW`

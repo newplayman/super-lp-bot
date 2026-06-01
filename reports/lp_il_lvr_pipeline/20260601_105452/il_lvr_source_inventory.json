@@ -1,0 +1,9 @@
+{
+  "target_pool_count": 6,
+  "context_pool_count": 6,
+  "recommended_sources": [
+    "current_virtual_economics_il_lvr_proxy",
+    "price_volatility_based_il_proxy",
+    "adverse_selection_lvr_proxy"
+  ]
+}
