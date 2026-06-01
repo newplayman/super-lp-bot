@@ -1,0 +1,89 @@
+{
+  "tables": [
+    {
+      "name": "lp_evm_pool_universe_v1",
+      "fields": [
+        "run_id",
+        "chain",
+        "chain_id",
+        "protocol",
+        "pool_type",
+        "factory_address",
+        "pool_address",
+        "token0",
+        "token1",
+        "token0_symbol",
+        "token1_symbol",
+        "fee_tier",
+        "tick_spacing",
+        "discovered_by",
+        "discovery_method",
+        "quote_ready",
+        "tick_ready",
+        "cost_ready",
+        "fee_ready",
+        "metadata_confidence",
+        "invalid_reason",
+        "created_at"
+      ]
+    },
+    {
+      "name": "lp_evm_pool_metadata_v1",
+      "fields": [
+        "run_id",
+        "chain",
+        "chain_id",
+        "pool_address",
+        "token0",
+        "token1",
+        "token0_symbol",
+        "token1_symbol",
+        "decimals0",
+        "decimals1",
+        "liquidity_proxy",
+        "tvl_proxy",
+        "updated_at",
+        "metadata_confidence",
+        "invalid_reason",
+        "created_at"
+      ]
+    },
+    {
+      "name": "lp_bsc_pancakeswap_v3_pool_candidates_v1",
+      "fields": [
+        "run_id",
+        "pool_address",
+        "token_pair",
+        "fee_tier",
+        "tvl_usd",
+        "liquidity_proxy",
+        "quote_ready",
+        "tick_ready",
+        "cost_ready",
+        "fee_ready",
+        "invalid_reason",
+        "created_at"
+      ]
+    },
+    {
+      "name": "lp_evm_pool_discovery_run_v1",
+      "fields": [
+        "run_id",
+        "stage",
+        "chain",
+        "protocol",
+        "pool_count",
+        "candidate_count",
+        "new_pool_count",
+        "coverage_status",
+        "notes",
+        "created_at"
+      ]
+    }
+  ],
+  "notes": [
+    "仅 research-only 表",
+    "仅记录离线/可读方法输出",
+    "不得覆盖 production positions"
+  ]
+}

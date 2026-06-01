@@ -1,0 +1,10 @@
+{
+  "status": "PASS",
+  "recommended_next_stage": "LP_BSC_PANCAKESWAP_V3_UNIVERSE_DISCOVERY_V1",
+  "reason": "BSC read-only feasibility and expansion intent",
+  "can_run_discovery_next": true,
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no",
+  "bsc_readonly_path_feasible": true,
+  "bsc_contract_map_ready": true
+}

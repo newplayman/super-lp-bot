@@ -1,0 +1,36 @@
+{
+  "recap": [
+    "当前主要集中 Base",
+    "Solana / Meteora 未覆盖",
+    "Ethereum / Arbitrum / Optimism / Polygon / BSC 主流池未充分覆盖",
+    "当前负结论仅适用于 current universe",
+    "real-data pipeline 已能服务标准 EVM V3"
+  ],
+  "chain_distribution": [
+    "base",
+    "solana",
+    "unknown"
+  ],
+  "protocol_distribution": [
+    "Aerodrome Slipstream",
+    "PancakeSwap V3",
+    "Sushi",
+    "Uniswap V2",
+    "Uniswap V3",
+    "alien-base",
+    "hydrex-integral",
+    "pancakeswap",
+    "pancakeswap-infinity-clmm-base",
+    "quickswap",
+    "uniswap",
+    "uniswap-v4-base",
+    "unknown"
+  ],
+  "scope_summary": {
+    "base_pool_count": 24,
+    "solana_pool_count": 1,
+    "standard_evm_v3_pool_count": 19
+  },
+  "solana_deferred": true,
+  "next_step": "优先扩标准 EVM V3；新增 BSC PancakeSwap V3"
+}

@@ -1,0 +1,71 @@
+{
+  "phases": [
+    {
+      "phase": 1,
+      "name": "BSC PancakeSwap V3 candidate discovery",
+      "required_contracts": [
+        "0x0BFbCF9fa4f9C56B0F40a671Ad40E0805A091865",
+        "0x41ff9AA7e16B8B1a8a8dc4f0eFacd93D02d071c9",
+        "0x1b81D678ffb9C0263b24A97847620C99d213eB14",
+        "0x46A15B0b27311cedF172AB29E4f4766fbE7F4364",
+        "0xB048Bbc1Ee6b733FFfCFb9e9CeF7375518e25997",
+        "0x9a489505a00cE272eAa5e07Dba6491314CaE3796",
+        "0x13f4EA83D0bd40E75C8222255bc855a974568Dd4"
+      ],
+      "required_rpc": "BSC readonly RPC",
+      "script_name": "lp_evm_universe_expansion_design_v1_readonly.py",
+      "output": "lp_bsc_pancakeswap_v3_pool_candidates_v1",
+      "safety_gate": "read-only",
+      "expected_next_stage": "LP_BSC_PANCAKESWAP_V3_UNIVERSE_DISCOVERY_V1"
+    },
+    {
+      "phase": 2,
+      "name": "Arb/OP Uniswap V3 candidate discovery",
+      "required_contracts": [
+        "UniswapV3Factory",
+        "QuoterV3"
+      ],
+      "required_rpc": "Arb/OP RPC",
+      "script_name": "lp_evm_universe_expansion_design_v1_readonly.py",
+      "output": "lp_evm_pool_universe_v1",
+      "safety_gate": "read-only",
+      "expected_next_stage": "LP_EVM_STANDARD_V3_UNIVERSE_DISCOVERY_V1"
+    },
+    {
+      "phase": 3,
+      "name": "Base missing standard V3补齐",
+      "required_contracts": [
+        "Base V3 pools"
+      ],
+      "required_rpc": "Base RPC",
+      "script_name": "lp_evm_universe_expansion_design_v1_readonly.py",
+      "output": "lp_evm_pool_discovery_run_v1",
+      "safety_gate": "read-only",
+      "expected_next_stage": "LP_EVM_STANDARD_V3_UNIVERSE_DISCOVERY_V1"
+    },
+    {
+      "phase": 4,
+      "name": "ETH/Polygon expansion",
+      "required_contracts": [
+        "ETH/Polygon V3 factories"
+      ],
+      "required_rpc": "ETH/POLYGON RPC",
+      "script_name": "lp_evm_universe_expansion_design_v1_readonly.py",
+      "output": "lp_evm_pool_universe_v1",
+      "safety_gate": "read-only",
+      "expected_next_stage": "LP_EVM_STANDARD_V3_UNIVERSE_DISCOVERY_V1"
+    },
+    {
+      "phase": 5,
+      "name": "Aerodrome parser design",
+      "required_contracts": [
+        "Aerodrome slot0 parser"
+      ],
+      "required_rpc": "Base RPC + docs",
+      "script_name": "lp_evm_universe_expansion_design_v1_readonly.py",
+      "output": "lp_evm_pool_universe_v1",
+      "safety_gate": "read-only",
+      "expected_next_stage": "LP_AERODROME_SLIPSTREAM_PARSER_DESIGN_V1"
+    }
+  ]
+}

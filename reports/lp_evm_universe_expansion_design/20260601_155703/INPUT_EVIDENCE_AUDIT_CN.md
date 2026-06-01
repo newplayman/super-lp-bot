@@ -1,0 +1,24 @@
+# 输入证据审计
+
+- /Users/bendu/lp-bot/v3/reports/lp_universe_scope_audit/20260601_154136/FINAL_VERDICT.json: 存在
+- /Users/bendu/lp-bot/v3/reports/lp_universe_scope_audit/20260601_154136/CURRENT_SCREENED_POOL_SUMMARY_CN.md: 存在
+- /Users/bendu/lp-bot/v3/reports/lp_universe_scope_audit/20260601_154136/LP_UNIVERSE_NORMALIZED_POOL_LIST_CN.md: 存在
+- /Users/bendu/lp-bot/v3/reports/lp_universe_scope_audit/20260601_154136/lp_universe_normalized_pool_list.csv: 存在
+- /Users/bendu/lp-bot/v3/reports/lp_universe_scope_audit/20260601_154136/LP_UNIVERSE_STAGE_COVERAGE_MATRIX_CN.md: 存在
+- /Users/bendu/lp-bot/v3/reports/lp_universe_scope_audit/20260601_154136/CHAIN_PROTOCOL_COVERAGE_CN.md: 存在
+- /Users/bendu/lp-bot/v3/reports/lp_universe_scope_audit/20260601_154136/UNIVERSE_GAP_ANALYSIS_CN.md: 存在
+- /Users/bendu/lp-bot/v3/reports/lp_universe_scope_audit/20260601_154136/POOL_UNIVERSE_EXPANSION_PLAN_CN.md: 存在
+- /Users/bendu/lp-bot/v3/reports/lp_universe_scope_audit/20260601_154136/LP_UNIVERSE_SCOPE_NEXT_STAGE_DECISION_CN.md: 存在
+- /Users/bendu/lp-bot/v3/reports/lp_real_data_final_freeze/20260601_150954/FINAL_VERDICT.json: 存在
+- /Users/bendu/lp-bot/v3/reports/lp_real_fee_accrual_fix/20260601_145519/FINAL_VERDICT.json: 存在
+- /Users/bendu/lp-bot/v3/reports/lp_precise_quote/20260601_120001/FINAL_VERDICT.json: 存在
+- /Users/bendu/lp-bot/v3/reports/lp_v3_tick_liquidity_fix/20260601_132644/FINAL_VERDICT.json: 存在
+- /Users/bendu/lp-bot/v3/reports/lp_real_cost_model/20260601_141103/FINAL_VERDICT.json: 存在
+- /Users/bendu/lp-bot/v3/docs/LPBOT_RESEARCH_STATUS_CN.md: 存在
+- /Users/bendu/lp-bot/v3/docs/LPBOT_RESEARCH_ARTIFACT_INDEX_CN.md: 存在
+- universe_likely_too_narrow: true
+- recommended_next_stage: LP_EVM_UNIVERSE_EXPANSION_DESIGN_V1
+- current_negative_conclusion_scope: current_universe_only
+- 本轮仅做 universe expansion design（只读）: 是
+- 暂不动 Solana: 是
+- BSC PancakeSwap V3 作为 P0/P1 对象: 是

@@ -1,0 +1,63 @@
+{
+  "rpc_audit": {
+    "data_source": "bsc_readonly_rpc",
+    "endpoint": "https://bsc-dataseed.binance.org/",
+    "available": "yes",
+    "read_only_safe": true,
+    "requires_wallet": false,
+    "requires_signature": false,
+    "implementation_risk": "low",
+    "chain_id": 56,
+    "latest_block": 101717564,
+    "sample_calls": {
+      "https://bsc-dataseed.binance.org/": {
+        "eth_chainId": 56,
+        "eth_getBlockByNumber": 101717564
+      }
+    },
+    "contract_code_checks": {
+      "PancakeV3Factory": {
+        "address": "0x0BFbCF9fa4f9C56B0F40a671Ad40E0805A091865",
+        "status": "has_code"
+      },
+      "PancakeV3PoolDeployer": {
+        "address": "0x41ff9AA7e16B8B1a8a8dc4f0eFacd93D02d071c9",
+        "status": "has_code"
+      },
+      "SwapRouterV3": {
+        "address": "0x1b81D678ffb9C0263b24A97847620C99d213eB14",
+        "status": "has_code"
+      },
+      "NonfungiblePositionManager": {
+        "address": "0x46A15B0b27311cedF172AB29E4f4766fbE7F4364",
+        "status": "has_code"
+      },
+      "QuoterV2": {
+        "address": "0xB048Bbc1Ee6b733FFfCFb9e9CeF7375518e25997",
+        "status": "has_code"
+      },
+      "TickLens": {
+        "address": "0x9a489505a00cE272eAa5e07Dba6491314CaE3796",
+        "status": "has_code"
+      },
+      "SmartRouter": {
+        "address": "0x13f4EA83D0bd40E75C8222255bc855a974568Dd4",
+        "status": "has_code"
+      }
+    },
+    "recommended_for_next_stage": true,
+    "blocker": ""
+  },
+  "rows": [
+    {
+      "data_source": "BSC RPC",
+      "available": "yes",
+      "read_only_safe": "yes",
+      "requires_wallet": "no",
+      "requires_signature": "no",
+      "implementation_risk": "low",
+      "recommended_for_next_stage": "yes",
+      "blocker": ""
+    }
+  ]
+}

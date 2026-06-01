@@ -1,0 +1,20 @@
+{
+  "status": "WARN",
+  "stage": "LP_EVM_UNIVERSE_EXPANSION_DESIGN_V1",
+  "evm_expansion_design_complete": true,
+  "bsc_pancakeswap_v3_included": true,
+  "solana_deferred": true,
+  "bsc_readonly_path_feasible": true,
+  "bsc_pancakeswap_contract_map_ready": true,
+  "target_chain_count": 8,
+  "target_protocol_count": 9,
+  "recommended_p0_chain_protocol": "BSC:PancakeSwap V3",
+  "can_run_discovery_next": true,
+  "can_run_probe_now": false,
+  "edge_proven": "no",
+  "tiny_canary_candidate": "no",
+  "tiny_canary_allowed": "no",
+  "recommended_next_stage": "LP_BSC_PANCAKESWAP_V3_UNIVERSE_DISCOVERY_V1",
+  "input_audit_complete": true,
+  "solana_deferred_note": "deferred"
+}

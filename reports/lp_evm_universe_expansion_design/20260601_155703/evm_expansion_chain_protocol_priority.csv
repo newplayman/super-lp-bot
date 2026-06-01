@@ -1,0 +1,13 @@
+chain,protocol,pool_type,priority,why,current_coverage,data_needed,parser_needed,quote_method,tick_liquidity_method,fee_method,cost_model_method,expected_complexity,recommended_action
+BSC,PancakeSwap V3,concentrated_liquidity,P0,本轮重点新增覆盖对象,absent,"chain_id, contracts, quoter",no,SwapRouterV3 + QuoterV2,pool slot0/liquidity + tickBitmap/ticks,volume × fee_tier (pipeline),real cost model reuse,中,Phase 1 discovery
+Arbitrum,Uniswap V3,concentrated_liquidity,P0,标准 EVM V3 扩展,low,factory + quoter,no,existing v3 quoter,slot0 + pool state,existing,existing,中,Phase 2 discovery
+Optimism,Uniswap V3,concentrated_liquidity,P0,标准 EVM V3 扩展,low,factory + quoter,no,existing v3 quoter,slot0 + pool state,existing,existing,中,Phase 2 discovery
+Base,Uniswap V3 / PancakeSwap V3,concentrated_liquidity,P0,补充当前 Base 缺口,partial,missing pools + metadata,no,standard v3,slot0 + ticks,existing,existing,低,Phase 3补齐
+Ethereum,Uniswap V3,concentrated_liquidity,P1,主网覆盖不足,low,factory + quoter,no,existing v3,slot0 + ticks,existing,existing,中,Phase 4
+Polygon,Uniswap V3,concentrated_liquidity,P1,主网覆盖不足,low,factory + quoter,no,existing v3,slot0 + ticks,existing,existing,中,Phase 4
+BSC,Uniswap-compatible V3,concentrated_liquidity,P1,BSC 其他 V3 兼容池,unknown,factory list,no,standard v3,slot0 + ticks,existing,existing,中,Phase 4
+Base,Aerodrome Slipstream,concentrated_liquidity,P1,仅在 parser 完成后,not_ready,slot0 parser,yes,custom adapter,custom,custom,custom extension,高,Phase 5
+Multi,Curve,curve_like,P2,当前研究重点外,not_covered,specialized protocol path,yes,future,future,unknown,future,高,future
+Multi,Balancer,weighted,P2,当前研究重点外,not_covered,specialized protocol path,yes,future,future,unknown,future,高,future
+BSC,PancakeSwap V2,stable,P2,暂不执行,limited,stable quotes,yes,future,future,future,future,高,future
+Solana,Meteora/Orca/Raydium,AMM,P2,暂不执行,none,solana path,yes,future,future,future,future,高,future_only

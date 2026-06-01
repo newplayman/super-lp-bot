@@ -1,0 +1,2 @@
+data_source,available,read_only_safe,requires_wallet,requires_signature,implementation_risk,recommended_for_next_stage,blocker
+BSC RPC,yes,yes,no,no,low,yes,
