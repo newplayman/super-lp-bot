@@ -1,0 +1,14 @@
+{
+  "actual_fee_gate": false,
+  "quote_confidence_gate": true,
+  "tick_liquidity_gate": true,
+  "real_cost_gate": true,
+  "fee_evidence_gate": false,
+  "economics_gate": false,
+  "safety_gate": true,
+  "strict_probe_readiness_pass": false,
+  "can_reopen_probe_preflight": false,
+  "can_run_probe_now": false,
+  "manual_approval_required_for_probe": true,
+  "reason": "no_actual_fee_lineage_and_pool_level_positive_not_sufficient"
+}

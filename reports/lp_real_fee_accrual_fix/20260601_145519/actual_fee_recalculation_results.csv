@@ -1,0 +1,1 @@
+token_id,pool_id,tick_lower,tick_upper,liquidity,tokens_owed0,tokens_owed1,estimated_uncollected_fee_usd,confidence,can_replace_pool_level_fee,invalid_reason
