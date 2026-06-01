@@ -1,0 +1,7 @@
+{
+  "recommended_next_stage": "LP_QUOTE_DEPTH_CURVE_FIX_REPEAT",
+  "quote_depth_curve_built": true,
+  "can_run_virtual_notional_next": false,
+  "can_run_probe_now": false,
+  "reason": "curve built with partial/low confidence and no data-ready pools for larger notionals"
+}

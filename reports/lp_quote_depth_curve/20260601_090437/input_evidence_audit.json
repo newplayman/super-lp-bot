@@ -1,0 +1,8 @@
+{
+  "missing_input_list": [],
+  "previous_stage_ok": true,
+  "quote_depth_source_feasible": true,
+  "can_run_virtual_notional_next": true,
+  "can_run_probe_now": true,
+  "can_execute_quote_depth_curve_implementation": true
+}
