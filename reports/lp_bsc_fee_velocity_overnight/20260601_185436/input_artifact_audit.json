@@ -1,0 +1,11 @@
+{
+  "missing_input_list": [],
+  "quoter_staticcall_ready": true,
+  "tick_ready_pool_count": 8,
+  "cost_ready_pool_count": 8,
+  "fee_ready_pool_count": 0,
+  "recommended_next_stage": "LP_BSC_PANCAKESWAP_V3_FEE_VELOCITY_FIX_REPEAT",
+  "selected_pool_count": 8,
+  "overnight_realdata_stage": "LP_BSC_PANCAKESWAP_V3_OVERNIGHT_REALDATA_PIPELINE_V1",
+  "suitable_for_fee_velocity_backfill": true
+}

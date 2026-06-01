@@ -1,0 +1,13 @@
+{
+  "status": "planned",
+  "run_id": "20260601_185436",
+  "tmux_session_name": "lp_bsc_fee_velocity_overnight_20260601_185436",
+  "expected_checks": [
+    "tmux session exists",
+    "logs/run.log updating",
+    "checkpoint/state.json exists",
+    "no forbidden process exists",
+    "no transaction symbols appear in the log"
+  ],
+  "note": "bootstrap placeholder; update after tmux launch"
+}

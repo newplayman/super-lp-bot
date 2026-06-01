@@ -1,0 +1,11 @@
+{
+  "rpc_env_key": "public_fallback",
+  "rpc_present": true,
+  "rpc_read_only_test_pass": true,
+  "chain_id": "56",
+  "latest_block": "101741147",
+  "eth_getLogs_smoke_pass": true,
+  "eth_getCode_smoke_pass": true,
+  "eth_getCode_ok_count": 8,
+  "rpc_error": ""
+}
