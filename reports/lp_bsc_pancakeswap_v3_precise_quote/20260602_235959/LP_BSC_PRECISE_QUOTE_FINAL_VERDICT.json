@@ -1,0 +1,31 @@
+{
+  "status": "PASS",
+  "stage": "LP_BSC_PANCAKESWAP_V3_PRECISE_QUOTE_PIPELINE_V1",
+  "data_source": "read_only_bsc_rpc",
+  "candidate_pool_count": 8,
+  "target_notional_set": [
+    20,
+    100,
+    500,
+    1000,
+    2000
+  ],
+  "selected_pool_count": 8,
+  "quote_attempt_count": 80,
+  "quote_success_count": 80,
+  "quote_fail_count": 0,
+  "quoter_staticcall_success_count": 0,
+  "fallback_math_success_count": 80,
+  "capacity_pass_20_count": 16,
+  "capacity_pass_100_count": 16,
+  "capacity_pass_500_count": 16,
+  "capacity_pass_1000_count": 16,
+  "capacity_pass_2000_count": 16,
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false,
+  "edge_proven": "no",
+  "tiny_canary_candidate": "no",
+  "tiny_canary_allowed": "no",
+  "recommended_next_stage": "LP_BSC_PANCAKESWAP_V3_PRECISE_QUOTE_FIX_REPEAT",
+  "db_ready": true
+}

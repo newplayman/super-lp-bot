@@ -1,0 +1,11 @@
+{
+  "expected_previous_stage": "LP_EVM_STANDARD_V3_UNIVERSE_DISCOVERY_V1",
+  "expected_previous_next_stage": "LP_BSC_PANCAKESWAP_V3_PRECISE_QUOTE_PIPELINE_V1",
+  "previous_stage": "LP_EVM_STANDARD_V3_UNIVERSE_DISCOVERY_V1",
+  "previous_recommended_next_stage": "LP_BSC_PANCAKESWAP_V3_PRECISE_QUOTE_PIPELINE_V1",
+  "stage_match": true,
+  "previous_discovery_status": "PASS",
+  "missing_input_count": 0,
+  "tiny_canary_allowed": "no",
+  "can_run_precise_quote": true
+}
