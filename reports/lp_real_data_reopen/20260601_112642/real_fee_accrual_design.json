@@ -1,0 +1,21 @@
+{
+  "before_probe": [
+    "pool feeGrowth globals and ticks via eth_call",
+    "swap log based fee velocity windows",
+    "historical pool state snapshots without owning position"
+  ],
+  "requires_actual_lp_nft": [
+    "NonfungiblePositionManager.positions(tokenId)",
+    "actual tokenId owner linkage",
+    "real claimed and unclaimed fee lineage by exact position"
+  ],
+  "historically_simulatable": [
+    "pool-level fee velocity proxy",
+    "range-free pool fee accrual approximations"
+  ],
+  "cannot_be_known_without_position": [
+    "exact tokensOwed0/tokensOwed1 for our position",
+    "exact feeGrowthInside deltas for unopened future position"
+  ],
+  "recommended_next_script": "LP_REAL_FEE_ACCRUAL_PIPELINE_V1"
+}

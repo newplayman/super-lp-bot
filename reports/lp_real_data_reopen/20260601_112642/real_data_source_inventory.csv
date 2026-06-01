@@ -1,0 +1,13 @@
+data_source_name,data_category,source_type,requires_wallet,requires_signature,requires_transaction,read_only_safe,available_now,required_credentials,implementation_complexity,confidence_if_available,blocker,recommended_priority
+NonfungiblePositionManager.positions(tokenId),real_fee_accrual,contract_read,no,no,no,yes,partial,base_rpc_readonly,medium,high,tokenId_unknown_without_real_position_nft,P2
+UniswapV3Pool.slot0/liquidity/ticks/tickBitmap,v3_tick_liquidity,contract_read,no,no,no,yes,yes,base_rpc_readonly,high,high,v3_pool_contract_mapping_needed,P1
+UniswapV3Pool.positions(positionKey),real_fee_accrual,contract_read,no,no,no,yes,partial,base_rpc_readonly,high,high,position_key_needs_owner_and_ticks,P2
+Mint/Burn/Collect/IncreaseLiquidity/DecreaseLiquidity logs,real_fee_accrual,event_logs,no,no,no,yes,partial,base_rpc_readonly,high,medium,actual_position_linkage_missing_without_tokenId_owner,P2
+Swap logs,real_fee_accrual,event_logs,no,no,no,yes,yes,base_rpc_readonly,medium,medium,needs_pool_abi_and_window_selection,P1
+QuoterV2 static quote,precise_quote,rpc_call,no,no,no,yes,yes,base_rpc_readonly,medium,high,quoter_contract_mapping_by_protocol,P0
+Pool math fallback,precise_quote,existing_db,no,no,no,yes,yes,existing_reports_and_db,medium,medium,approximation_only,P1
+External aggregator dry quote,precise_quote,external_api,no,no,no,yes,partial,public_api_or_api_key_if_provider_requires,medium,medium,provider_selection_and_rate_limits,P1
+eth_feeHistory / gas oracle,real_cost_model,rpc_call,no,no,no,yes,yes,base_rpc_readonly,low,medium,needs_cost_scenario_policy,P1
+eth_estimateGas dry add/remove liquidity,real_cost_model,rpc_call,no,no,no,yes,partial,base_rpc_readonly_and_calldata_builder,high,medium,requires_exact_calldata_and_position_params,P2
+Actual LP NFT fee accrual after probe,real_fee_accrual,future_probe_only,yes,yes,yes,no,no,wallet_nft_and_position_history,high,high,future_probe_only,REJECT
+Actual realized entry/exit receipts,real_cost_model,future_probe_only,yes,yes,yes,no,no,wallet_tx_history,medium,high,future_probe_only,REJECT

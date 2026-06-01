@@ -1,0 +1,6 @@
+{
+  "recommended_next_stage": "LP_PRECISE_QUOTE_PIPELINE_V1",
+  "why_not_fee_first": "exact fee accrual still blocked by tokenId and actual position lineage",
+  "why_not_cost_first": "cost model depends on more realistic quote path",
+  "why_not_stop_now": "read-only real-data path is feasible and still below execution threshold"
+}

@@ -1,0 +1,10 @@
+{
+  "all_inputs_present": true,
+  "missing_input_list": [],
+  "scale_economics_frozen": true,
+  "freeze_next_stage_stop": true,
+  "real_data_reopen_prep_only": true,
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no",
+  "wrong_stage_blocker": false
+}

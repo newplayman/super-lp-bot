@@ -1,0 +1,27 @@
+{
+  "phase_1": {
+    "name": "precise quote pipeline",
+    "output": "lp_precise_quote_v1",
+    "reason": "highest read-only feasibility and strongest immediate impact on economics realism"
+  },
+  "phase_2": {
+    "name": "v3 tick-liquidity snapshot",
+    "output": "lp_v3_tick_liquidity_snapshot_v1",
+    "reason": "needed to replace conservative liquidity proxy and improve route/capacity realism"
+  },
+  "phase_3": {
+    "name": "real fee accrual pipeline",
+    "output": "lp_real_fee_accrual_v1",
+    "reason": "valuable but blocked by tokenId / position lineage, so not first"
+  },
+  "phase_4": {
+    "name": "real cost model",
+    "output": "lp_real_cost_model_v1",
+    "reason": "depends on better quote path and partial tick/liquidity support"
+  },
+  "phase_5": {
+    "name": "rerun virtual notional with real data",
+    "output": "lp_virtual_notional_economics_v2",
+    "reason": "only after phases 1-4 land"
+  }
+}

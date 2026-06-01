@@ -1,0 +1,29 @@
+{
+  "primary_quote_method": "QuoterV2_static_eth_call",
+  "fallback_quote_method": "pool_math_fallback",
+  "route_simulation": [
+    "single_pool",
+    "multi_hop_if_readonly",
+    "external_aggregator_dry_quote_if_safe"
+  ],
+  "notionals": [
+    20,
+    100,
+    500,
+    1000,
+    2000
+  ],
+  "read_only_safe": true,
+  "expected_accuracy": "high_if_quoter_supported_medium_if_fallback",
+  "required_abi_contracts": [
+    "QuoterV2",
+    "UniswapV3Pool",
+    "Slipstream-compatible quoter if protocol requires"
+  ],
+  "required_rpc_access": [
+    "eth_call",
+    "eth_getLogs"
+  ],
+  "wallet_signature_guarantee": "no_wallet_no_signature_no_router_submit",
+  "recommended_next_script": "LP_PRECISE_QUOTE_PIPELINE_V1"
+}

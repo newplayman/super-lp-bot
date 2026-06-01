@@ -1,0 +1,22 @@
+{
+  "slot0_fields": [
+    "sqrtPriceX96",
+    "tick",
+    "observation data"
+  ],
+  "pool_liquidity": "current in_range liquidity",
+  "ticks_fields": [
+    "liquidityGross",
+    "liquidityNet",
+    "feeGrowthOutside",
+    "secondsOutside"
+  ],
+  "tick_bitmap_usage": "capture initialized ticks around current price",
+  "observe_usage": "TWAP and volatility proxy",
+  "position_range_support": "actual_or_simulated_tickLower_tickUpper",
+  "ticks_around_current_price": 256,
+  "lookahead_guard": "only prior fully closed bucket and current eth_call snapshot",
+  "capacity_slippage_goal": "improve precise exit depth and slippage estimation",
+  "expected_complexity": "high",
+  "recommended_next_script": "LP_V3_TICK_LIQUIDITY_PIPELINE_V1"
+}

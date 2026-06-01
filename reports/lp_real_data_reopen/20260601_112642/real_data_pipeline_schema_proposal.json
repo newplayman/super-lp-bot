@@ -1,0 +1,97 @@
+{
+  "tables": [
+    {
+      "table_name": "lp_real_fee_accrual_v1",
+      "purpose": "store research-only fee growth and tokens owed snapshots",
+      "primary_key": [
+        "run_id",
+        "pool_id",
+        "reference_key",
+        "snapshot_time"
+      ],
+      "source": "contract_read_and_event_logs",
+      "read_only_guarantee": true,
+      "timestamp_semantics": "snapshot_time_utc",
+      "entry_safe_guarantee": "feature_cutoff_time_must_precede_eval_time",
+      "future_probe_only_fields": [
+        "token_id",
+        "owner_address",
+        "claimed_fee_amounts"
+      ],
+      "confidence": "per-field"
+    },
+    {
+      "table_name": "lp_precise_quote_v1",
+      "purpose": "store static quotes across notionals and route variants",
+      "primary_key": [
+        "run_id",
+        "pool_id",
+        "notional_usd",
+        "quote_side",
+        "quote_method",
+        "snapshot_time"
+      ],
+      "source": "eth_call_or_external_dry_quote",
+      "read_only_guarantee": true,
+      "timestamp_semantics": "snapshot_time_utc",
+      "entry_safe_guarantee": "quote_snapshot_before_downstream_eval",
+      "future_probe_only_fields": [],
+      "confidence": "quote_method_level"
+    },
+    {
+      "table_name": "lp_v3_tick_liquidity_snapshot_v1",
+      "purpose": "store local pool state snapshots around current price",
+      "primary_key": [
+        "run_id",
+        "pool_id",
+        "snapshot_time",
+        "tick_index"
+      ],
+      "source": "slot0_liquidity_ticks_tickbitmap",
+      "read_only_guarantee": true,
+      "timestamp_semantics": "snapshot_time_utc",
+      "entry_safe_guarantee": "cutoff_before_eval",
+      "future_probe_only_fields": [
+        "actual_position_tick_lower",
+        "actual_position_tick_upper"
+      ],
+      "confidence": "snapshot_level"
+    },
+    {
+      "table_name": "lp_real_cost_model_v1",
+      "purpose": "store gas, slippage, route spread, and scenario costs",
+      "primary_key": [
+        "run_id",
+        "pool_id",
+        "notional_usd",
+        "scenario_name",
+        "snapshot_time"
+      ],
+      "source": "gas_rpc_and_quote_pipeline",
+      "read_only_guarantee": true,
+      "timestamp_semantics": "snapshot_time_utc",
+      "entry_safe_guarantee": "cost_inputs_before_eval",
+      "future_probe_only_fields": [
+        "actual_receipt_gas_used",
+        "actual_settlement_cost_usd"
+      ],
+      "confidence": "scenario_level"
+    },
+    {
+      "table_name": "lp_real_data_readiness_v1",
+      "purpose": "track per-pool readiness across all four real-data categories",
+      "primary_key": [
+        "run_id",
+        "pool_id"
+      ],
+      "source": "joined_inventory_and_pool_audit",
+      "read_only_guarantee": true,
+      "timestamp_semantics": "audit_time_utc",
+      "entry_safe_guarantee": "n_a_design_table",
+      "future_probe_only_fields": [
+        "probe_only_gate_reason"
+      ],
+      "confidence": "audit_level"
+    }
+  ]
+}

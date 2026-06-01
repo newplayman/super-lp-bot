@@ -1,0 +1,28 @@
+{
+  "estimable_now": [
+    "eth_feeHistory gas baseline",
+    "Quoter gasEstimate if exposed",
+    "quote-based slippage and route spread"
+  ],
+  "probe_only": [
+    "actual add/remove liquidity receipt gas",
+    "actual wallet balance path and exact settlement costs"
+  ],
+  "fixed_vs_proportional": {
+    "fixed": [
+      "gas",
+      "mint/remove tx overhead"
+    ],
+    "proportional": [
+      "slippage",
+      "route spread",
+      "balancing swap loss"
+    ]
+  },
+  "scenario_ranges": {
+    "conservative": "use upper gas band + wider slippage spread",
+    "realistic": "use median gas + quoted slippage",
+    "optimistic": "lower gas band and lower route spread"
+  },
+  "recommended_next_script": "LP_REAL_COST_MODEL_PIPELINE_V1"
+}
