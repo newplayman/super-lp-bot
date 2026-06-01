@@ -15,9 +15,8 @@ from collections import Counter, defaultdict
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
-
-import requests
-from eth_abi import decode as abi_decode
+from urllib import error as urllib_error
+from urllib import request as urllib_request
 
 
 def load_module(name: str, path: Path) -> Any:
@@ -30,6 +29,7 @@ def load_module(name: str, path: Path) -> Any:
 
 
 REPO_ROOT = Path(os.environ.get("REPO_ROOT_OVERRIDE", str(Path(__file__).resolve().parents[1]))).resolve()
+INPUT_REPO_ROOT = Path(os.environ.get("INPUT_REPO_ROOT_OVERRIDE", str(REPO_ROOT))).resolve()
 WORKSPACE = "/opt/lpbot/lp-bot-v3-origin-check"
 SWAP_TOPIC_V3 = "0xc42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115fbcca67"
 READONLY_RPC_FALLBACKS = [
@@ -63,13 +63,8 @@ ALLOWED_NEXT = {
 }
 STABLE_SYMBOLS = {"USDT", "USDC", "BUSD", "DAI", "FDUSD"}
 
-OVERNIGHT_REALDATA_DIR = REPO_ROOT / "reports" / "lp_bsc_overnight_realdata_pipeline" / "20260601_180812"
-QUOTER_AMOUNT_FIX_DIR = REPO_ROOT / "reports" / "lp_bsc_quoter_staticcall_amount_fix" / "20260601_173837"
-
-HTTP = requests.Session()
-HTTP.headers.update({"Content-Type": "application/json", "User-Agent": "Mozilla/5.0"})
-HTTP.trust_env = False
-
+OVERNIGHT_REALDATA_DIR = INPUT_REPO_ROOT / "reports" / "lp_bsc_overnight_realdata_pipeline" / "20260601_180812"
+QUOTER_AMOUNT_FIX_DIR = INPUT_REPO_ROOT / "reports" / "lp_bsc_quoter_staticcall_amount_fix" / "20260601_173837"
 
 def ensure_dir(path: Path) -> None:
     path.mkdir(parents=True, exist_ok=True)
@@ -146,8 +141,16 @@ def load_helper(name: str, rel: str) -> Any:
     return load_module(name, REPO_ROOT / "scripts" / rel)
 
 
-RPC_HELPER = load_helper("lp_bsc_pancakeswap_v3_precise_quote_v2_readonly", "lp_bsc_pancakeswap_v3_precise_quote_v2_readonly.py")
-TICK_HELPER = load_helper("lp_v3_tick_liquidity_pipeline_v1_readonly", "lp_v3_tick_liquidity_pipeline_v1_readonly.py")
+def call_simple_uint(rpc_url: str, address: str, signature: str) -> int:
+    selectors = {
+        "decimals()": "0x313ce567",
+    }
+    if signature not in selectors:
+        raise ValueError(f"unsupported signature: {signature}")
+    result = rpc_call(rpc_url, "eth_call", [{"to": address, "data": selectors[signature]}, "latest"], timeout=20)
+    if not isinstance(result, str) or not result.startswith("0x"):
+        raise RuntimeError(f"unexpected_eth_call_result:{type(result).__name__}")
+    return int(result, 16)
 
 
 def read_only_rpc() -> tuple[str, dict[str, Any]]:
@@ -201,9 +204,14 @@ def rpc_call(rpc_url: str, method: str, params: list[Any], timeout: int = 20) ->
     last_error: Exception | None = None
     for endpoint in endpoints:
         try:
-            resp = HTTP.post(endpoint, json=payload, timeout=(5, timeout))
-            resp.raise_for_status()
-            out = resp.json()
+            req = urllib_request.Request(
+                endpoint,
+                data=json.dumps(payload).encode("utf-8"),
+                headers={"Content-Type": "application/json", "User-Agent": "Mozilla/5.0"},
+                method="POST",
+            )
+            with urllib_request.urlopen(req, timeout=timeout) as resp:
+                out = json.loads(resp.read().decode("utf-8"))
             if "error" in out:
                 raise RuntimeError(str(out["error"]))
             return out.get("result")
@@ -220,7 +228,7 @@ def latest_report_dir(base: Path) -> Path | None:
 
 
 def latest_overnight_realdata_dir() -> Path:
-    latest = latest_report_dir(REPO_ROOT / "reports" / "lp_bsc_overnight_realdata_pipeline")
+    latest = latest_report_dir(INPUT_REPO_ROOT / "reports" / "lp_bsc_overnight_realdata_pipeline")
     if latest:
         return latest
     return OVERNIGHT_REALDATA_DIR
@@ -239,7 +247,7 @@ def input_audit() -> tuple[list[dict[str, Any]], dict[str, Any]]:
         QUOTER_AMOUNT_FIX_DIR / "FINAL_VERDICT.json",
         QUOTER_AMOUNT_FIX_DIR / "bsc_precise_quote_staticcall_v3_results.csv",
     ]
-    rows = [{"path": str(p.relative_to(REPO_ROOT)), "exists": p.exists()} for p in inputs]
+    rows = [{"path": str(p.relative_to(INPUT_REPO_ROOT)), "exists": p.exists()} for p in inputs]
     overnight_verdict = load_json(overnight / "FINAL_VERDICT.json")
     quoter_verdict = load_json(QUOTER_AMOUNT_FIX_DIR / "FINAL_VERDICT.json")
     summary = {
@@ -305,11 +313,11 @@ def build_pool_contexts(rpc_url: str, selected_rows: list[dict[str, str]], price
         token0_symbol = row.get("token0_symbol") or ""
         token1_symbol = row.get("token1_symbol") or ""
         try:
-            token0_decimals = decimals.get(token0) or TICK_HELPER.call_simple_uint(rpc_url, token0, "decimals()")
+            token0_decimals = decimals.get(token0) or call_simple_uint(rpc_url, token0, "decimals()")
         except Exception:
             token0_decimals = 18
         try:
-            token1_decimals = decimals.get(token1) or TICK_HELPER.call_simple_uint(rpc_url, token1, "decimals()")
+            token1_decimals = decimals.get(token1) or call_simple_uint(rpc_url, token1, "decimals()")
         except Exception:
             token1_decimals = 18
         if token0 not in prices and token0_symbol.upper() in STABLE_SYMBOLS:
@@ -346,7 +354,11 @@ def get_code_ok(rpc_url: str, address: str) -> bool:
 
 def decode_swap_v3(log: dict[str, Any]) -> dict[str, Any]:
     payload = bytes.fromhex(log["data"][2:])
-    amount0, amount1, sqrt_price_x96, liquidity, tick = abi_decode(["int256", "int256", "uint160", "uint128", "int24"], payload)
+    amount0 = int.from_bytes(payload[0:32], "big", signed=True)
+    amount1 = int.from_bytes(payload[32:64], "big", signed=True)
+    sqrt_price_x96 = int.from_bytes(payload[64:96], "big", signed=False)
+    liquidity = int.from_bytes(payload[96:128], "big", signed=False)
+    tick = int.from_bytes(payload[128:160][-3:], "big", signed=True)
     sender = "0x" + log["topics"][1][-40:] if len(log.get("topics") or []) > 1 else ""
     recipient = "0x" + log["topics"][2][-40:] if len(log.get("topics") or []) > 2 else ""
     return {
