@@ -1,0 +1,7 @@
+{
+  "old_fixed_cost_proxy_overstated": true,
+  "real_cost_lowers_total_cost": true,
+  "fixed_cost_median_realistic_usd": 0.010519764548691427,
+  "swap_quote_cost_median_usd": 0.027338383733471982,
+  "main_remaining_blocker": "fee"
+}

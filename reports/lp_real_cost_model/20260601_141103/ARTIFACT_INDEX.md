@@ -1,0 +1,15 @@
+# LP Real Cost Model Artifact Index
+
+- [INPUT_EVIDENCE_AUDIT_CN.md](/Users/bendu/lp-bot/v3/reports/lp_real_cost_model/20260601_141103/INPUT_EVIDENCE_AUDIT_CN.md)
+- [VPS_DB_RPC_READINESS_CN.md](/Users/bendu/lp-bot/v3/reports/lp_real_cost_model/20260601_141103/VPS_DB_RPC_READINESS_CN.md)
+- [REAL_COST_COMPONENT_INVENTORY_CN.md](/Users/bendu/lp-bot/v3/reports/lp_real_cost_model/20260601_141103/REAL_COST_COMPONENT_INVENTORY_CN.md)
+- [GAS_PRICE_SOURCE_AUDIT_CN.md](/Users/bendu/lp-bot/v3/reports/lp_real_cost_model/20260601_141103/GAS_PRICE_SOURCE_AUDIT_CN.md)
+- [SAFE_GAS_ESTIMATE_FEASIBILITY_CN.md](/Users/bendu/lp-bot/v3/reports/lp_real_cost_model/20260601_141103/SAFE_GAS_ESTIMATE_FEASIBILITY_CN.md)
+- [REAL_COST_MODEL_SCHEMA_CN.md](/Users/bendu/lp-bot/v3/reports/lp_real_cost_model/20260601_141103/REAL_COST_MODEL_SCHEMA_CN.md)
+- [REAL_COST_MODEL_RESULTS_CN.md](/Users/bendu/lp-bot/v3/reports/lp_real_cost_model/20260601_141103/REAL_COST_MODEL_RESULTS_CN.md)
+- [REAL_COST_ECONOMICS_PREVIEW_CN.md](/Users/bendu/lp-bot/v3/reports/lp_real_cost_model/20260601_141103/REAL_COST_ECONOMICS_PREVIEW_CN.md)
+- [REAL_COST_BLOCKER_DIAGNOSIS_CN.md](/Users/bendu/lp-bot/v3/reports/lp_real_cost_model/20260601_141103/REAL_COST_BLOCKER_DIAGNOSIS_CN.md)
+- [REAL_COST_MODEL_SAFETY_AUDIT_CN.md](/Users/bendu/lp-bot/v3/reports/lp_real_cost_model/20260601_141103/REAL_COST_MODEL_SAFETY_AUDIT_CN.md)
+- [LP_REAL_COST_NEXT_STAGE_DECISION_CN.md](/Users/bendu/lp-bot/v3/reports/lp_real_cost_model/20260601_141103/LP_REAL_COST_NEXT_STAGE_DECISION_CN.md)
+- [FINAL_VERDICT.json](/Users/bendu/lp-bot/v3/reports/lp_real_cost_model/20260601_141103/FINAL_VERDICT.json)
+- [ONEPAGE_CN.md](/Users/bendu/lp-bot/v3/reports/lp_real_cost_model/20260601_141103/ONEPAGE_CN.md)

@@ -1,0 +1,91 @@
+{
+  "inputs": [
+    {
+      "path": "/Users/bendu/lp-bot/v3/reports/lp_v3_tick_liquidity_fix/20260601_132644/FINAL_VERDICT.json",
+      "exists": "yes"
+    },
+    {
+      "path": "/Users/bendu/lp-bot/v3/reports/lp_v3_tick_liquidity_fix/20260601_132644/V3_TICK_LIQUIDITY_V2_RESULTS_CN.md",
+      "exists": "yes"
+    },
+    {
+      "path": "/Users/bendu/lp-bot/v3/reports/lp_v3_tick_liquidity_fix/20260601_132644/v3_tick_liquidity_v2_results.csv",
+      "exists": "yes"
+    },
+    {
+      "path": "/Users/bendu/lp-bot/v3/reports/lp_v3_tick_liquidity_fix/20260601_132644/V3_TICK_CAPACITY_CONFIDENCE_UPDATE_CN.md",
+      "exists": "yes"
+    },
+    {
+      "path": "/Users/bendu/lp-bot/v3/reports/lp_v3_tick_liquidity_fix/20260601_132644/v3_tick_capacity_confidence_update.csv",
+      "exists": "yes"
+    },
+    {
+      "path": "/Users/bendu/lp-bot/v3/reports/lp_v3_tick_liquidity_fix/20260601_132644/V3_TICK_LIQUIDITY_V2_SAFETY_AUDIT_CN.md",
+      "exists": "yes"
+    },
+    {
+      "path": "/Users/bendu/lp-bot/v3/reports/lp_v3_tick_liquidity_fix/20260601_132644/v3_tick_liquidity_v2_safety_audit.json",
+      "exists": "yes"
+    },
+    {
+      "path": "/Users/bendu/lp-bot/v3/reports/lp_v3_tick_liquidity_fix/20260601_132644/LP_V3_TICK_V2_NEXT_STAGE_DECISION_CN.md",
+      "exists": "yes"
+    },
+    {
+      "path": "/Users/bendu/lp-bot/v3/reports/lp_v3_tick_liquidity_fix/20260601_132644/lp_v3_tick_v2_next_stage_decision.json",
+      "exists": "yes"
+    },
+    {
+      "path": "/Users/bendu/lp-bot/v3/reports/lp_precise_quote/20260601_120001/FINAL_VERDICT.json",
+      "exists": "yes"
+    },
+    {
+      "path": "/Users/bendu/lp-bot/v3/reports/lp_precise_quote/20260601_120001/precise_quote_results.csv",
+      "exists": "yes"
+    },
+    {
+      "path": "/Users/bendu/lp-bot/v3/reports/lp_precise_quote/20260601_120001/PRECISE_QUOTE_VS_DEPTH_V2_COMPARISON_CN.md",
+      "exists": "yes"
+    },
+    {
+      "path": "/Users/bendu/lp-bot/v3/reports/lp_real_data_reopen/20260601_112642/REAL_COST_MODEL_DESIGN_CN.md",
+      "exists": "yes"
+    },
+    {
+      "path": "/Users/bendu/lp-bot/v3/reports/lp_real_data_reopen/20260601_112642/real_cost_model_design.json",
+      "exists": "yes"
+    },
+    {
+      "path": "/Users/bendu/lp-bot/v3/reports/lp_real_data_reopen/20260601_112642/REAL_DATA_READINESS_AUDIT_CN.md",
+      "exists": "yes"
+    },
+    {
+      "path": "/Users/bendu/lp-bot/v3/reports/lp_real_data_reopen/20260601_112642/real_data_readiness_audit.csv",
+      "exists": "yes"
+    },
+    {
+      "path": "/Users/bendu/lp-bot/v3/reports/lp_scale_final_freeze/20260601_110649/FINAL_VERDICT.json",
+      "exists": "yes"
+    },
+    {
+      "path": "/Users/bendu/lp-bot/v3/docs/LPBOT_RESEARCH_STATUS_CN.md",
+      "exists": "yes"
+    },
+    {
+      "path": "/Users/bendu/lp-bot/v3/docs/LPBOT_RESEARCH_ARTIFACT_INDEX_CN.md",
+      "exists": "yes"
+    }
+  ],
+  "summary": {
+    "missing_input_list": [],
+    "previous_stage_ok": true,
+    "v3_tick_liquidity_v2_built": true,
+    "snapshot_success_pool_count_gte_3": true,
+    "high_confidence_count_gte_3": true,
+    "recommended_next_stage_ok": true,
+    "can_run_probe_now_false": true,
+    "tiny_canary_allowed_no": true,
+    "can_execute_real_cost_model_pipeline": true
+  }
+}

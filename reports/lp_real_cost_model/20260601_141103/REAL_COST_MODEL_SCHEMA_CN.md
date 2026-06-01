@@ -1,0 +1,31 @@
+# Real Cost Model Schema
+
+- `run_id`
+- `pool_id`
+- `token_pair`
+- `chain`
+- `cost_scenario`
+- `virtual_notional_usd`
+- `quote_method`
+- `gas_price_wei`
+- `eth_usd`
+- `quote_gas_estimate`
+- `swap_gas_units`
+- `mint_gas_units`
+- `increase_liquidity_gas_units`
+- `decrease_liquidity_gas_units`
+- `collect_gas_units`
+- `entry_swap_cost_usd`
+- `exit_swap_cost_usd`
+- `lp_add_fixed_cost_usd`
+- `lp_remove_fixed_cost_usd`
+- `collect_fixed_cost_usd`
+- `total_fixed_cost_usd`
+- `proportional_slippage_cost_usd`
+- `total_cost_usd`
+- `confidence`
+- `future_probe_only_fields`
+- `invalid_reason`
+- `read_only_safe`
+- `wallet_or_tx_touched`
+- `created_at`

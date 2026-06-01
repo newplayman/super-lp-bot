@@ -1,0 +1,20 @@
+{
+  "db_ready": true,
+  "rpc_present": true,
+  "rpc_read_only_ready": true,
+  "secret_leak_check_pass": true,
+  "dsn_present": "yes",
+  "db_connect": "ok",
+  "db_name": "lpbot_shadow",
+  "db_user": "lpbot",
+  "stdout": "DSN_PRESENT= yes\nDB_CONNECT=ok\nDB_NAME= lpbot_shadow\nDB_USER= lpbot\nRPC_PRESENT= no\n",
+  "stderr": "",
+  "rpc_env_key": "public_fallback",
+  "chain_id": "8453",
+  "latest_block": "46766994",
+  "gas_price_wei": 6000000,
+  "gas_price_available": true,
+  "fee_history_available": true,
+  "base_fee_wei": 5000000,
+  "priority_fee_wei_assumption": 1150000
+}

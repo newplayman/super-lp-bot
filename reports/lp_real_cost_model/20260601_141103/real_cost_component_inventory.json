@@ -1,0 +1,80 @@
+[
+  {
+    "cost_component": "precise_quote_gas_estimate",
+    "current_source": "precise_quote_results.gas_estimate",
+    "available_now": "yes",
+    "read_only_safe": "yes",
+    "requires_wallet": "no",
+    "requires_signature": "no",
+    "requires_transaction": "no",
+    "can_estimate_now": "yes",
+    "future_probe_only": "no",
+    "confidence": "medium",
+    "recommended_model": "use as swap_gas_units proxy"
+  },
+  {
+    "cost_component": "quote_slippage_and_route_spread",
+    "current_source": "precise_quote_results.estimated_slippage_pct",
+    "available_now": "partial",
+    "read_only_safe": "yes",
+    "requires_wallet": "no",
+    "requires_signature": "no",
+    "requires_transaction": "no",
+    "can_estimate_now": "yes",
+    "future_probe_only": "no",
+    "confidence": "low",
+    "recommended_model": "use quoted slippage pct with scenario multipliers"
+  },
+  {
+    "cost_component": "lp_add_gas",
+    "current_source": "static scenario gas units",
+    "available_now": "partial",
+    "read_only_safe": "yes",
+    "requires_wallet": "no",
+    "requires_signature": "no",
+    "requires_transaction": "no",
+    "can_estimate_now": "yes",
+    "future_probe_only": "yes",
+    "confidence": "low",
+    "recommended_model": "static mint+increase+approval benchmark"
+  },
+  {
+    "cost_component": "lp_remove_collect_gas",
+    "current_source": "static scenario gas units",
+    "available_now": "partial",
+    "read_only_safe": "yes",
+    "requires_wallet": "no",
+    "requires_signature": "no",
+    "requires_transaction": "no",
+    "can_estimate_now": "yes",
+    "future_probe_only": "yes",
+    "confidence": "low",
+    "recommended_model": "static decrease+collect benchmark"
+  },
+  {
+    "cost_component": "base_chain_gas_price",
+    "current_source": "eth_gasPrice + eth_feeHistory",
+    "available_now": "yes",
+    "read_only_safe": "yes",
+    "requires_wallet": "no",
+    "requires_signature": "no",
+    "requires_transaction": "no",
+    "can_estimate_now": "yes",
+    "future_probe_only": "no",
+    "confidence": "medium",
+    "recommended_model": "gas price baseline per scenario multiplier"
+  },
+  {
+    "cost_component": "fixed_operational_cost",
+    "current_source": "diagnostic only",
+    "available_now": "partial",
+    "read_only_safe": "yes",
+    "requires_wallet": "no",
+    "requires_signature": "no",
+    "requires_transaction": "no",
+    "can_estimate_now": "no",
+    "future_probe_only": "yes",
+    "confidence": "low",
+    "recommended_model": "do not charge per position in v1"
+  }
+]

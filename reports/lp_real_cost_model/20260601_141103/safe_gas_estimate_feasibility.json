@@ -1,0 +1,46 @@
+[
+  {
+    "method": "quoter_returned_gasEstimate",
+    "applies_to": "swap_route_quote_and_exit_conversion",
+    "read_only_safe": "yes",
+    "requires_wallet": "no",
+    "requires_balance": "no",
+    "requires_signature": "no",
+    "can_execute_now": "yes",
+    "confidence": "medium",
+    "blocker": ""
+  },
+  {
+    "method": "eth_estimateGas_dummy_from",
+    "applies_to": "mint_remove_collect_dry_estimate",
+    "read_only_safe": "partial",
+    "requires_wallet": "no",
+    "requires_balance": "unknown",
+    "requires_signature": "no",
+    "can_execute_now": "no",
+    "confidence": "low",
+    "blocker": "may require realistic calldata and from context; keep future_probe_only in v1"
+  },
+  {
+    "method": "historical_gas_benchmark",
+    "applies_to": "mint_remove_collect",
+    "read_only_safe": "yes",
+    "requires_wallet": "no",
+    "requires_balance": "no",
+    "requires_signature": "no",
+    "can_execute_now": "no",
+    "confidence": "low",
+    "blocker": "no trusted prior receipt corpus in current repo state"
+  },
+  {
+    "method": "static_configured_gas_units",
+    "applies_to": "mint_remove_collect_and_approval",
+    "read_only_safe": "yes",
+    "requires_wallet": "no",
+    "requires_balance": "no",
+    "requires_signature": "no",
+    "can_execute_now": "yes",
+    "confidence": "low",
+    "blocker": "diagnostic only; must remain future_probe_only"
+  }
+]

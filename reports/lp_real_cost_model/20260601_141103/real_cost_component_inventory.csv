@@ -1,0 +1,7 @@
+cost_component,current_source,available_now,read_only_safe,requires_wallet,requires_signature,requires_transaction,can_estimate_now,future_probe_only,confidence,recommended_model
+precise_quote_gas_estimate,precise_quote_results.gas_estimate,yes,yes,no,no,no,yes,no,medium,use as swap_gas_units proxy
+quote_slippage_and_route_spread,precise_quote_results.estimated_slippage_pct,partial,yes,no,no,no,yes,no,low,use quoted slippage pct with scenario multipliers
+lp_add_gas,static scenario gas units,partial,yes,no,no,no,yes,yes,low,static mint+increase+approval benchmark
+lp_remove_collect_gas,static scenario gas units,partial,yes,no,no,no,yes,yes,low,static decrease+collect benchmark
+base_chain_gas_price,eth_gasPrice + eth_feeHistory,yes,yes,no,no,no,yes,no,medium,gas price baseline per scenario multiplier
+fixed_operational_cost,diagnostic only,partial,yes,no,no,no,no,yes,low,do not charge per position in v1

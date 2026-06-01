@@ -1,0 +1,5 @@
+method,applies_to,read_only_safe,requires_wallet,requires_balance,requires_signature,can_execute_now,confidence,blocker
+quoter_returned_gasEstimate,swap_route_quote_and_exit_conversion,yes,no,no,no,yes,medium,
+eth_estimateGas_dummy_from,mint_remove_collect_dry_estimate,partial,no,unknown,no,no,low,may require realistic calldata and from context; keep future_probe_only in v1
+historical_gas_benchmark,mint_remove_collect,yes,no,no,no,no,low,no trusted prior receipt corpus in current repo state
+static_configured_gas_units,mint_remove_collect_and_approval,yes,no,no,no,yes,low,diagnostic only; must remain future_probe_only
