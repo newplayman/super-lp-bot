@@ -1,0 +1,4 @@
+scenario_name,positive_proxy_count,best_pool,best_notional,best_horizon,best_net_ev_proxy_usd,best_net_ev_proxy_pct,break_even_notional,confidence,can_support_probe_preflight
+conservative,0,0x4e962bb3889bf030368f56810a9c96b83cb3e778,20,15m,-0.12195126452649521,-0.0060975632263247604,,high,no
+realistic,0,,,,,,,medium,no
+optimistic_diagnostic,0,,,,,,,low,no

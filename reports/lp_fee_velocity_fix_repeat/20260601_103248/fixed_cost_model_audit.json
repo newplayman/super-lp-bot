@@ -1,0 +1,88 @@
+{
+  "components": [
+    {
+      "fixed_cost_component": "gas_proxy",
+      "current_value_usd": 0.08,
+      "source": "lp_virtual_notional_economics_v1.base_chain_gas_proxy",
+      "confidence": "medium",
+      "applies_to_virtual": "yes",
+      "applies_to_probe": "no",
+      "maybe_overconservative": "yes",
+      "recommended_range_low": 0.0,
+      "recommended_range_mid": 0.02,
+      "recommended_range_high": 0.08
+    },
+    {
+      "fixed_cost_component": "fixed_routing_cost_concentrated",
+      "current_value_usd": 0.02,
+      "source": "lp_virtual_notional_economics_v1.pool_type_extra",
+      "confidence": "low",
+      "applies_to_virtual": "yes",
+      "applies_to_probe": "no",
+      "maybe_overconservative": "yes",
+      "recommended_range_low": 0.0,
+      "recommended_range_mid": 0.02,
+      "recommended_range_high": 0.05
+    },
+    {
+      "fixed_cost_component": "fixed_routing_cost_non_cl",
+      "current_value_usd": 0.01,
+      "source": "lp_virtual_notional_economics_v1.pool_type_extra",
+      "confidence": "low",
+      "applies_to_virtual": "yes",
+      "applies_to_probe": "no",
+      "maybe_overconservative": "yes",
+      "recommended_range_low": 0.0,
+      "recommended_range_mid": 0.01,
+      "recommended_range_high": 0.03
+    },
+    {
+      "fixed_cost_component": "operational_cost",
+      "current_value_usd": 0.0,
+      "source": "not_separately_modeled_in_v1",
+      "confidence": "low",
+      "applies_to_virtual": "no",
+      "applies_to_probe": "no",
+      "maybe_overconservative": "no",
+      "recommended_range_low": 0.0,
+      "recommended_range_mid": 0.0,
+      "recommended_range_high": 0.0
+    },
+    {
+      "fixed_cost_component": "probe_execution_fixed_cost",
+      "current_value_usd": 0.0,
+      "source": "out_of_scope_this_stage",
+      "confidence": "low",
+      "applies_to_virtual": "no",
+      "applies_to_probe": "yes",
+      "maybe_overconservative": "no",
+      "recommended_range_low": 0.02,
+      "recommended_range_mid": 0.05,
+      "recommended_range_high": 0.2
+    },
+    {
+      "fixed_cost_component": "live_trading_fixed_cost",
+      "current_value_usd": 0.0,
+      "source": "forbidden_this_stage",
+      "confidence": "none",
+      "applies_to_virtual": "no",
+      "applies_to_probe": "no",
+      "maybe_overconservative": "no",
+      "recommended_range_low": 0.0,
+      "recommended_range_mid": 0.0,
+      "recommended_range_high": 0.0
+    }
+  ],
+  "summary": {
+    "current_fixed_cost_values": [
+      0.09,
+      0.1,
+      0.13999999999999999
+    ],
+    "fixed_cost_now_main_is_plausible": true,
+    "fixed_cost_maybe_overconservative": true,
+    "twenty_u_fixed_cost_pct_is_high": true,
+    "hundred_five_hundred_should_dilute_fixed_cost": true,
+    "if_100_500_still_negative_variable_edge_insufficient": true
+  }
+}

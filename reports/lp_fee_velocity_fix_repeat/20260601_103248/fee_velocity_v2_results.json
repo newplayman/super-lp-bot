@@ -1,0 +1,28 @@
+{
+  "pool_count": 25,
+  "row_count": 100,
+  "fee_ready_pool_count": 6,
+  "fee_ready_pool_ids": [
+    "0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38",
+    "0x4e962bb3889bf030368f56810a9c96b83cb3e778",
+    "0xc211e1f853a898bd1302385ccde55f33a8c4b3f3",
+    "0x9a993fc0eec60faaa0c391ff11b840ce16685150",
+    "0x70acdf2ad0bf2402c957154f944c19ef4e1cbae1",
+    "0xb2cc224c1c9fee385f8ad6a55b4d94e92359dc59"
+  ],
+  "high_confidence_count": 6,
+  "medium_confidence_count": 24,
+  "low_confidence_count": 1,
+  "upgraded_pool_count": 23,
+  "unchanged_pool_count": 1,
+  "invalid_count": 0,
+  "source_distribution": {
+    "entry_safe_mark_volume_x_fee_tier_proxy": 21,
+    "pool_score_history_fee_apr_score": 79
+  },
+  "confidence_distribution": {
+    "medium": 85,
+    "high": 11,
+    "low": 4
+  }
+}

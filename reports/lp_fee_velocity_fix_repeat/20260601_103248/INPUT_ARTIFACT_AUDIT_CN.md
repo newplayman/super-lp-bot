@@ -1,0 +1,23 @@
+# Input Artifact Audit
+
+- `reports/lp_fee_velocity_pipeline/20260601_100642/FINAL_VERDICT.json`: `yes`
+- `reports/lp_fee_velocity_pipeline/20260601_100642/FEE_SOURCE_INVENTORY_CN.md`: `yes`
+- `reports/lp_fee_velocity_pipeline/20260601_100642/fee_source_inventory.csv`: `yes`
+- `reports/lp_fee_velocity_pipeline/20260601_100642/ENTRY_SAFE_FEE_VELOCITY_POLICY_CN.md`: `yes`
+- `reports/lp_fee_velocity_pipeline/20260601_100642/FEE_VELOCITY_RESULTS_CN.md`: `yes`
+- `reports/lp_fee_velocity_pipeline/20260601_100642/fee_velocity_results.csv`: `yes`
+- `reports/lp_fee_velocity_pipeline/20260601_100642/FEE_VELOCITY_QUALITY_GATE_CN.md`: `yes`
+- `reports/lp_fee_velocity_pipeline/20260601_100642/fee_velocity_quality_gate.json`: `yes`
+- `reports/lp_fee_velocity_pipeline/20260601_100642/VIRTUAL_ECONOMICS_FEE_V1_PREVIEW_CN.md`: `yes`
+- `reports/lp_fee_velocity_pipeline/20260601_100642/virtual_economics_fee_v1_preview.csv`: `yes`
+- `reports/lp_fee_velocity_pipeline/20260601_100642/FEE_BLOCKER_DIAGNOSIS_CN.md`: `yes`
+- `reports/lp_fee_velocity_pipeline/20260601_100642/fee_blocker_diagnosis.csv`: `yes`
+- `reports/lp_fee_velocity_pipeline/20260601_100642/LP_FEE_VELOCITY_NEXT_STAGE_DECISION_CN.md`: `yes`
+- `reports/lp_fee_velocity_pipeline/20260601_100642/lp_fee_velocity_next_stage_decision.json`: `yes`
+- `reports/lp_virtual_notional_economics/20260601_094238/FINAL_VERDICT.json`: `yes`
+- `reports/lp_virtual_notional_economics/20260601_094238/VIRTUAL_ECONOMICS_FORMULA_V1_CN.md`: `yes`
+- `reports/lp_virtual_notional_economics/20260601_094238/virtual_notional_economics_results.csv`: `yes`
+- `reports/lp_quote_depth_curve_fix/20260601_091739/FINAL_VERDICT.json`: `yes`
+- `reports/lp_quote_depth_curve_fix/20260601_091739/quote_depth_curve_v2_results.csv`: `yes`
+- `reports/lp_scale_economics/20260601_082100/VIRTUAL_NOTIONAL_ECONOMICS_MODEL_CN.md`: `yes`
+- `reports/final_freeze/20260531_124000/FINAL_VERDICT.json`: `yes`
