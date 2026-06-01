@@ -1,0 +1,11 @@
+{
+  "gross_fee_proxy_usd": "virtual_notional * fee_velocity_rate * hold_time_factor",
+  "il_lvr_proxy_usd": "virtual_notional * il_lvr_proxy_rate",
+  "slippage_cost_usd": "virtual_notional * slippage_rate",
+  "exit_cost_usd": "virtual_notional * exit_cost_rate",
+  "fixed_cost_usd": "gas_proxy + fixed_routing_operational_cost_proxy",
+  "net_ev_proxy_usd": "gross_fee_proxy_usd - il_lvr_proxy_usd - slippage_cost_usd - exit_cost_usd - fixed_cost_usd",
+  "net_ev_proxy_pct": "net_ev_proxy_usd / virtual_notional",
+  "variable_edge_rate": "(fee_velocity_rate * hold_time_factor) - il_lvr_proxy_rate - slippage_rate - exit_cost_rate",
+  "break_even_notional_usd": "fixed_cost_usd / variable_edge_rate if variable_edge_rate > 0 else NO_SIZE_CAN_FIX"
+}

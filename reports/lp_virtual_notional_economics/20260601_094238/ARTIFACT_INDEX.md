@@ -1,0 +1,24 @@
+# Artifact Index
+
+- `INPUT_ARTIFACT_AUDIT_CN.md`
+- `input_artifact_audit.json`
+- `VPS_DB_QUICK_CHECK_CN.md`
+- `VIRTUAL_ECONOMICS_FORMULA_V1_CN.md`
+- `virtual_economics_formula_v1.json`
+- `VIRTUAL_ECONOMICS_DATA_JOIN_AUDIT_CN.md`
+- `virtual_economics_data_join_audit.csv`
+- `VIRTUAL_NOTIONAL_ECONOMICS_SCHEMA_CN.md`
+- `virtual_notional_economics_schema.json`
+- `VIRTUAL_NOTIONAL_ECONOMICS_RESULTS_CN.md`
+- `virtual_notional_economics_results.csv`
+- `virtual_notional_economics_results.json`
+- `BREAK_EVEN_AND_CAPACITY_ANALYSIS_CN.md`
+- `break_even_and_capacity_analysis.csv`
+- `VIRTUAL_NOTIONAL_CANDIDATE_RANKING_CN.md`
+- `virtual_notional_candidate_ranking.csv`
+- `PROBE_READINESS_ASSESSMENT_CN.md`
+- `probe_readiness_assessment.json`
+- `LP_VIRTUAL_NOTIONAL_NEXT_STAGE_DECISION_CN.md`
+- `lp_virtual_notional_next_stage_decision.json`
+- `FINAL_VERDICT.json`
+- `ONEPAGE_CN.md`

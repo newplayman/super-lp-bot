@@ -1,0 +1,25 @@
+# LP Virtual Notional Economics V1
+
+- `status`: `WARN`
+- `stage`: `LP_VIRTUAL_NOTIONAL_ECONOMICS_V1`
+- `data_source`: `vps_postgres`
+- `db_ready`: `yes`
+- `tested_virtual_notionals`: `[20, 100, 500, 1000, 2000]`
+- `pool_count`: `25`
+- `row_count`: `500`
+- `positive_proxy_count`: `0`
+- `virtual_candidate_count`: `0`
+- `probe_candidate_count`: `0`
+- `best_pool_id`: `0x4e962bb3889bf030368f56810a9c96b83cb3e778`
+- `best_notional_usd`: `20`
+- `best_net_ev_proxy_usd`: `-0.1219512645`
+- `best_net_ev_proxy_pct`: `-0.0060975632`
+- `break_even_notional_usd`: ``
+- `capacity_limit_usd`: `791.1669433639`
+- `data_confidence`: `high`
+- `can_run_probe_now`: `no`
+- `manual_approval_required_for_probe`: `yes`
+- `edge_proven`: `no`
+- `tiny_canary_candidate`: `no`
+- `tiny_canary_allowed`: `no`
+- `recommended_next_stage`: `LP_FEE_VELOCITY_PIPELINE_V1`

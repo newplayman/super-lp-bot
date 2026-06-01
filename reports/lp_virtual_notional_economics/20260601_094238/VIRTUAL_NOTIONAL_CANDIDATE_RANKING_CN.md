@@ -1,0 +1,27 @@
+# Virtual Notional Candidate Ranking
+
+- `#1` `0x4e962bb3889bf030368f56810a9c96b83cb3e778` status=`REJECT` best_notional=`20` net_ev=`-0.1219512645`
+- `#2` `0x70acdf2ad0bf2402c957154f944c19ef4e1cbae1` status=`REJECT` best_notional=`20` net_ev=`-0.1230025368`
+- `#3` `0xb2cc224c1c9fee385f8ad6a55b4d94e92359dc59` status=`REJECT` best_notional=`20` net_ev=`-0.1232695418`
+- `#4` `0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38` status=`REJECT` best_notional=`20` net_ev=`-0.1233400662`
+- `#5` `0x9a993fc0eec60faaa0c391ff11b840ce16685150` status=`REJECT` best_notional=`20` net_ev=`-0.1234206303`
+- `#6` `0xc211e1f853a898bd1302385ccde55f33a8c4b3f3` status=`REJECT` best_notional=`20` net_ev=`-0.1321625117`
+- `#7` `0xd0b53d9277642d899df5c87a3966a349a798f224` status=`REJECT` best_notional=`20` net_ev=``
+- `#8` `0xb94b22332abf5f89877a14cc88f2abc48c34b3df` status=`REJECT` best_notional=`20` net_ev=``
+- `#9` `0x160d7e9d948b16c163332a277b393c288408eb12` status=`REJECT` best_notional=`20` net_ev=``
+- `#10` `0x8a8e4170c09074b109352190d47e54d7c1f61e4e` status=`REJECT` best_notional=`20` net_ev=``
+- `#11` `0x42d4a22cad0f5a49681a5715ce994af73a43b76b` status=`REJECT` best_notional=`20` net_ev=``
+- `#12` `0x7ec6c9d993d9832aa654593f2dbc21303650bc6c` status=`REJECT` best_notional=`20` net_ev=``
+- `#13` `0xa41bc0affba7fd420d186b84899d7ab2ac57fcd1` status=`REJECT` best_notional=`20` net_ev=``
+- `#14` `0x3f0296bf652e19bca772ec3df08b32732f93014a` status=`REJECT` best_notional=`20` net_ev=``
+- `#15` `0x0ab02e160f0df68dc049b012c514857306960eae` status=`REJECT` best_notional=`20` net_ev=``
+- `#16` `0x3f9b863ef4b295d6ba370215bcca3785fcc44f44` status=`REJECT` best_notional=`20` net_ev=``
+- `#17` `0x3c4384f3664b37a3cb5a5cb3452b4b4a3aa1256f` status=`REJECT` best_notional=`20` net_ev=``
+- `#18` `0xc9034c3e7f58003e6ae0c8438e7c8f4598d5acaa` status=`REJECT` best_notional=`20` net_ev=``
+- `#19` `0xf1cacd7e005b9337c58aae77bc88d93c635cdf4d` status=`REJECT` best_notional=`20` net_ev=``
+- `#20` `0x9c087eb773291e50cf6c6a90ef0f4500e349b903` status=`REJECT` best_notional=`20` net_ev=``
+- `#21` `0xdb7795a08556d75ff1cdae2839d4f81c4e3c7636c40fb8d47c84db361ec63015` status=`REJECT` best_notional=`20` net_ev=``
+- `#22` `0xe2444faa67022125a059c19d5737d8e4dad251fa` status=`REJECT` best_notional=`20` net_ev=``
+- `#23` `0x659be70647b0f63217d60e077f4417b1ecc65064` status=`REJECT` best_notional=`20` net_ev=``
+- `#24` `0x0fbcaaf346e1b812a63b2cf196841ed7664ae1d4fa3e9fd93b29266801c15f44` status=`REJECT` best_notional=`20` net_ev=``
+- `#25` `DJNtGuBGEQiUCWE8F981M2C3ZghZt2XLD8f2sQdZ6rsZ` status=`REJECT` best_notional=`20` net_ev=``

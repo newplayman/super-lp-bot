@@ -1,0 +1,8 @@
+{
+  "recommended_next_stage": "LP_FEE_VELOCITY_PIPELINE_V1",
+  "reason": "economics_blocked_mainly_by_missing_fee_proxy",
+  "probe_candidate_count": 0,
+  "probe_candidates": [],
+  "can_run_probe_now": false,
+  "manual_approval_required_for_probe": true
+}

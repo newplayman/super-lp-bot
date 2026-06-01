@@ -1,0 +1,28 @@
+# Virtual Notional Economics Schema
+
+- `run_id`
+- `pool_id`
+- `token_pair`
+- `inferred_tier`
+- `virtual_notional_usd`
+- `horizon`
+- `quote_depth_confidence`
+- `capacity_pass`
+- `capacity_limit_usd`
+- `gross_fee_proxy_usd`
+- `fee_velocity_rate`
+- `il_lvr_proxy_usd`
+- `il_lvr_proxy_rate`
+- `slippage_cost_usd`
+- `slippage_rate`
+- `exit_cost_usd`
+- `fixed_cost_usd`
+- `net_ev_proxy_usd`
+- `net_ev_proxy_pct`
+- `variable_edge_rate`
+- `break_even_notional_usd`
+- `no_size_can_fix`
+- `ev_status`
+- `confidence`
+- `primary_blocker`
+- `created_at`

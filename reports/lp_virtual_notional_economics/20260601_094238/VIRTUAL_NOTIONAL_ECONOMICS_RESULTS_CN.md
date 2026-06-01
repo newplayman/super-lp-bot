@@ -1,0 +1,13 @@
+# Virtual Notional Economics Results
+
+- `pool_count`: `25`
+- `row_count`: `500`
+- `positive_proxy_count`: `0`
+- `negative_proxy_count`: `0`
+- `below_break_even_count`: `0`
+- `capacity_fail_count`: `48`
+- `data_insufficient_count`: `380`
+- `no_size_can_fix_count`: `72`
+- `positive_proxy_by_notional`: `{}`
+- `capacity_pass_by_notional`: `{'20': 96, '100': 96, '500': 84}`
+- `confidence_distribution`: `{'high': 40, 'low': 452, 'medium': 8}`

@@ -1,0 +1,10 @@
+{
+  "missing_input_list": [],
+  "previous_stage_ok": true,
+  "quote_depth_curve_v2_built": true,
+  "data_ready_pool_count_ge_3": true,
+  "can_run_virtual_notional_next": true,
+  "can_run_probe_now": true,
+  "recommended_next_stage_ok": true,
+  "can_execute_virtual_notional_economics": true
+}
