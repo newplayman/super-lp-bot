@@ -474,10 +474,10 @@ def token_price_map(candidates: list[CandidatePool], states: dict[str, PoolState
             a = c.token_a.lower()
             b = c.token_b.lower()
             if a in prices and b not in prices:
-                prices[b] = prices[a] / p1_per_p0
+                prices[b] = prices[a] * p1_per_p0
                 changed = True
             elif b in prices and a not in prices:
-                prices[a] = prices[b] * p1_per_p0
+                prices[a] = prices[b] / p1_per_p0
                 changed = True
     return prices
 

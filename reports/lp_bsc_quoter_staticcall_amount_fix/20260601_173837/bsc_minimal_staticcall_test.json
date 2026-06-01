@@ -1,0 +1,18 @@
+{
+  "success": true,
+  "row": {
+    "selector": "0xc6a5026a",
+    "calldata_hash": "0x4f40f155bf23faeb872d248202bf9889e4fe2abfe4e9840baa488b8d206aac76",
+    "staticcall_success": "yes",
+    "decoded_output": [
+      29154827551042667,
+      3025112260143425817835416814,
+      1,
+      92698
+    ],
+    "revert_data_len": 0,
+    "revert_decoded": "",
+    "error_type": "",
+    "raw_revert": ""
+  }
+}

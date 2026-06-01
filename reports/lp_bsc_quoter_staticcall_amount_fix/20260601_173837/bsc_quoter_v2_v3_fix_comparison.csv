@@ -1,0 +1,5 @@
+metric,v2,v3,delta,improved
+quote_success_count,0,80,80,yes
+fallback_math_used_count,80,0,-80,yes
+amount_raw_invalid_count,0,0,0,no
+root_cause_shift,wrong_amount_input+abi_revert,amount_fix_applied+abi_struct_amount_first,,yes

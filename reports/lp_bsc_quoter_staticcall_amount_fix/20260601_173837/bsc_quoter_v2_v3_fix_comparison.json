@@ -1,0 +1,32 @@
+{
+  "rows": [
+    {
+      "metric": "quote_success_count",
+      "v2": 0,
+      "v3": 80,
+      "delta": 80,
+      "improved": "yes"
+    },
+    {
+      "metric": "fallback_math_used_count",
+      "v2": 80,
+      "v3": 0,
+      "delta": -80,
+      "improved": "yes"
+    },
+    {
+      "metric": "amount_raw_invalid_count",
+      "v2": 0,
+      "v3": 0,
+      "delta": 0,
+      "improved": "no"
+    },
+    {
+      "metric": "root_cause_shift",
+      "v2": "wrong_amount_input+abi_revert",
+      "v3": "amount_fix_applied+abi_struct_amount_first",
+      "delta": "",
+      "improved": "yes"
+    }
+  ]
+}

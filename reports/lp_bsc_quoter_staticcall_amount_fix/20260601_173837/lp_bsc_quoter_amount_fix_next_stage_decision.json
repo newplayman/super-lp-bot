@@ -1,0 +1,4 @@
+{
+  "recommended_next_stage": "LP_BSC_PANCAKESWAP_V3_TICK_LIQUIDITY_PIPELINE_V1",
+  "reason": "staticcall success with amount fix"
+}

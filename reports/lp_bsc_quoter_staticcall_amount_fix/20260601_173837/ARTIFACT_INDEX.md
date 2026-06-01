@@ -1,0 +1,18 @@
+# LP BSC Quoter staticcall amount fix artifact index
+
+- [INPUT_ARTIFACT_AUDIT_CN.md](/Users/bendu/lp-bot/v3/reports/lp_bsc_quoter_staticcall_amount_fix/20260601_173837/INPUT_ARTIFACT_AUDIT_CN.md)
+- [BSC_QUOTER_V2_ABI_GROUND_TRUTH_AUDIT_CN.md](/Users/bendu/lp-bot/v3/reports/lp_bsc_quoter_staticcall_amount_fix/20260601_173837/BSC_QUOTER_V2_ABI_GROUND_TRUTH_AUDIT_CN.md)
+- [BSC_AMOUNT_IN_RAW_CONVERSION_FIX_CN.md](/Users/bendu/lp-bot/v3/reports/lp_bsc_quoter_staticcall_amount_fix/20260601_173837/BSC_AMOUNT_IN_RAW_CONVERSION_FIX_CN.md)
+- [BSC_MINIMAL_STATICCALL_TEST_CN.md](/Users/bendu/lp-bot/v3/reports/lp_bsc_quoter_staticcall_amount_fix/20260601_173837/BSC_MINIMAL_STATICCALL_TEST_CN.md)
+- [BSC_STATICCALL_REVERT_DECODE_CN.md](/Users/bendu/lp-bot/v3/reports/lp_bsc_quoter_staticcall_amount_fix/20260601_173837/BSC_STATICCALL_REVERT_DECODE_CN.md)
+- [BSC_PRECISE_QUOTE_STATICCALL_V3_RESULTS_CN.md](/Users/bendu/lp-bot/v3/reports/lp_bsc_quoter_staticcall_amount_fix/20260601_173837/BSC_PRECISE_QUOTE_STATICCALL_V3_RESULTS_CN.md)
+- [BSC_QUOTER_V2_V3_FIX_COMPARISON_CN.md](/Users/bendu/lp-bot/v3/reports/lp_bsc_quoter_staticcall_amount_fix/20260601_173837/BSC_QUOTER_V2_V3_FIX_COMPARISON_CN.md)
+- [BSC_STATICCALL_AMOUNT_FIX_SAFETY_AUDIT_CN.md](/Users/bendu/lp-bot/v3/reports/lp_bsc_quoter_staticcall_amount_fix/20260601_173837/BSC_STATICCALL_AMOUNT_FIX_SAFETY_AUDIT_CN.md)
+- [LP_BSC_QUOTER_AMOUNT_FIX_NEXT_STAGE_DECISION_CN.md](/Users/bendu/lp-bot/v3/reports/lp_bsc_quoter_staticcall_amount_fix/20260601_173837/LP_BSC_QUOTER_AMOUNT_FIX_NEXT_STAGE_DECISION_CN.md)
+- [FINAL_VERDICT.json](/Users/bendu/lp-bot/v3/reports/lp_bsc_quoter_staticcall_amount_fix/20260601_173837/FINAL_VERDICT.json)
+- [ONEPAGE_CN.md](/Users/bendu/lp-bot/v3/reports/lp_bsc_quoter_staticcall_amount_fix/20260601_173837/ONEPAGE_CN.md)
+- [bsc_amount_in_raw_conversion_fix.csv](/Users/bendu/lp-bot/v3/reports/lp_bsc_quoter_staticcall_amount_fix/20260601_173837/bsc_amount_in_raw_conversion_fix.csv)
+- [bsc_minimal_staticcall_test.json](/Users/bendu/lp-bot/v3/reports/lp_bsc_quoter_staticcall_amount_fix/20260601_173837/bsc_minimal_staticcall_test.json)
+- [bsc_staticcall_revert_decode.csv](/Users/bendu/lp-bot/v3/reports/lp_bsc_quoter_staticcall_amount_fix/20260601_173837/bsc_staticcall_revert_decode.csv)
+- [bsc_precise_quote_staticcall_v3_results.csv](/Users/bendu/lp-bot/v3/reports/lp_bsc_quoter_staticcall_amount_fix/20260601_173837/bsc_precise_quote_staticcall_v3_results.csv)
+- [bsc_quoter_v2_v3_fix_comparison.csv](/Users/bendu/lp-bot/v3/reports/lp_bsc_quoter_staticcall_amount_fix/20260601_173837/bsc_quoter_v2_v3_fix_comparison.csv)

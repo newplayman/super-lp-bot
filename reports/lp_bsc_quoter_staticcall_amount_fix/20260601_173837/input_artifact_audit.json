@@ -1,0 +1,14 @@
+{
+  "expected_previous_stage": "LP_BSC_PANCAKESWAP_V3_PRECISE_QUOTE_FIX_REPEAT_V1",
+  "previous_stage": "LP_BSC_PANCAKESWAP_V3_PRECISE_QUOTE_FIX_REPEAT_V1",
+  "previous_recommended_next_stage": "LP_BSC_PANCAKESWAP_V3_PRECISE_QUOTE_FIX_REPEAT",
+  "previous_quoter_staticcall_success_count": 0,
+  "previous_fallback_math_success_count": 80,
+  "previous_selected_abi_variant": "pancakeswap_v3_struct",
+  "previous_selected_selector": "0xb3b11b7e",
+  "can_run_amount_fix": true,
+  "tiny_canary_allowed": "no",
+  "missing_inputs": [
+    "/Users/bendu/lp-bot/v3/reports/lp_bsc_pancakeswap_v3_precise_quote/20260602_235959/bsc_precise_quote_results.csv"
+  ]
+}

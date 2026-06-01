@@ -1,0 +1,40 @@
+{
+  "rows": [
+    {
+      "candidate_signature": "quoteExactInputSingle((address,address,uint24,uint256,uint160))",
+      "selector": "0xb3b11b7e",
+      "quote_side": "minimal_sample",
+      "notional_usd": 20,
+      "error_type": "empty_revert",
+      "revert_selector": "",
+      "revert_message": "",
+      "raw_revert_len": 0,
+      "decoded": "no",
+      "likely_root_cause": "wrong_abi_or_amount_order"
+    },
+    {
+      "candidate_signature": "quoteExactInputSingle(address,address,uint24,uint256,uint160)",
+      "selector": "0xf7729d43",
+      "quote_side": "minimal_sample",
+      "notional_usd": 20,
+      "error_type": "empty_revert",
+      "revert_selector": "",
+      "revert_message": "",
+      "raw_revert_len": 0,
+      "decoded": "no",
+      "likely_root_cause": "wrong_abi_or_amount_order"
+    },
+    {
+      "candidate_signature": "quoteExactInputSingle(address,address,uint256,uint24,uint160)",
+      "selector": "0x1296323f",
+      "quote_side": "minimal_sample",
+      "notional_usd": 20,
+      "error_type": "empty_revert",
+      "revert_selector": "",
+      "revert_message": "",
+      "raw_revert_len": 0,
+      "decoded": "no",
+      "likely_root_cause": "wrong_abi_or_amount_order"
+    }
+  ]
+}

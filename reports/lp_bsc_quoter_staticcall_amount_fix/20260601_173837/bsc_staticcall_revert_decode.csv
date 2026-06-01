@@ -1,0 +1,4 @@
+candidate_signature,selector,quote_side,notional_usd,error_type,revert_selector,revert_message,raw_revert_len,decoded,likely_root_cause
+"quoteExactInputSingle((address,address,uint24,uint256,uint160))",0xb3b11b7e,minimal_sample,20,empty_revert,,,0,no,wrong_abi_or_amount_order
+"quoteExactInputSingle(address,address,uint24,uint256,uint160)",0xf7729d43,minimal_sample,20,empty_revert,,,0,no,wrong_abi_or_amount_order
+"quoteExactInputSingle(address,address,uint256,uint24,uint160)",0x1296323f,minimal_sample,20,empty_revert,,,0,no,wrong_abi_or_amount_order
