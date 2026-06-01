@@ -1,0 +1,20 @@
+{
+  "quote_depth_v2_data_ready_pool_count": 14,
+  "virtual_notional_pool_count": 25,
+  "virtual_notional_row_count": 500,
+  "positive_proxy_count": 0,
+  "positive_proxy_count_fixed_cost_0": 0,
+  "positive_proxy_count_zero_il_lvr": 0,
+  "small_size_only_problem": false,
+  "tested_virtual_notionals": [
+    20,
+    100,
+    500,
+    1000,
+    2000
+  ],
+  "can_probe": false,
+  "can_canary": false,
+  "can_live": false,
+  "overall_recommendation": "STOP_LP_RESEARCH_NOW"
+}

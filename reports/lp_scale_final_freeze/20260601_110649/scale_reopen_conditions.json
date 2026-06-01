@@ -1,0 +1,8 @@
+{
+  "require_real_fee_accrual_data": true,
+  "require_more_realistic_quote_route": true,
+  "require_higher_confidence_market_data": true,
+  "require_new_strategy_hypothesis": true,
+  "require_positive_or_near_breakeven_proxy_before_probe": true,
+  "reopen_without_new_data_or_new_hypothesis": false
+}

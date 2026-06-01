@@ -1,0 +1,11 @@
+{
+  "scaling_only_dilutes_fixed_cost": true,
+  "variable_edge_rate_non_positive_implied": true,
+  "positive_proxy_count": 0,
+  "positive_proxy_count_fixed_cost_0": 0,
+  "positive_proxy_count_zero_il_lvr": 0,
+  "not_just_small_notional_problem": true,
+  "capacity_limits_high_notional": true,
+  "mid_small_notional_still_negative_under_current_proxy": true,
+  "probe_should_not_continue": true
+}

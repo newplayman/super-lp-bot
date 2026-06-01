@@ -1,0 +1,16 @@
+# LP Scale Economics Final Freeze Artifact Index
+
+- [INPUT_EVIDENCE_AUDIT_CN.md](/Users/bendu/lp-bot/v3/reports/lp_scale_final_freeze/20260601_110649/INPUT_EVIDENCE_AUDIT_CN.md)
+- [input_evidence_audit.json](/Users/bendu/lp-bot/v3/reports/lp_scale_final_freeze/20260601_110649/input_evidence_audit.json)
+- [SCALE_ECONOMICS_FREEZE_MATRIX_CN.md](/Users/bendu/lp-bot/v3/reports/lp_scale_final_freeze/20260601_110649/SCALE_ECONOMICS_FREEZE_MATRIX_CN.md)
+- [scale_economics_freeze_matrix.csv](/Users/bendu/lp-bot/v3/reports/lp_scale_final_freeze/20260601_110649/scale_economics_freeze_matrix.csv)
+- [SCALE_ECONOMICS_KEY_FINDINGS_CN.md](/Users/bendu/lp-bot/v3/reports/lp_scale_final_freeze/20260601_110649/SCALE_ECONOMICS_KEY_FINDINGS_CN.md)
+- [scale_economics_key_findings.json](/Users/bendu/lp-bot/v3/reports/lp_scale_final_freeze/20260601_110649/scale_economics_key_findings.json)
+- [WHY_SCALE_DID_NOT_FIX_EV_CN.md](/Users/bendu/lp-bot/v3/reports/lp_scale_final_freeze/20260601_110649/WHY_SCALE_DID_NOT_FIX_EV_CN.md)
+- [why_scale_did_not_fix_ev.json](/Users/bendu/lp-bot/v3/reports/lp_scale_final_freeze/20260601_110649/why_scale_did_not_fix_ev.json)
+- [WHY_NO_PROBE_CN.md](/Users/bendu/lp-bot/v3/reports/lp_scale_final_freeze/20260601_110649/WHY_NO_PROBE_CN.md)
+- [why_no_probe.json](/Users/bendu/lp-bot/v3/reports/lp_scale_final_freeze/20260601_110649/why_no_probe.json)
+- [SCALE_REOPEN_CONDITIONS_CN.md](/Users/bendu/lp-bot/v3/reports/lp_scale_final_freeze/20260601_110649/SCALE_REOPEN_CONDITIONS_CN.md)
+- [scale_reopen_conditions.json](/Users/bendu/lp-bot/v3/reports/lp_scale_final_freeze/20260601_110649/scale_reopen_conditions.json)
+- [FINAL_VERDICT.json](/Users/bendu/lp-bot/v3/reports/lp_scale_final_freeze/20260601_110649/FINAL_VERDICT.json)
+- [ONEPAGE_CN.md](/Users/bendu/lp-bot/v3/reports/lp_scale_final_freeze/20260601_110649/ONEPAGE_CN.md)

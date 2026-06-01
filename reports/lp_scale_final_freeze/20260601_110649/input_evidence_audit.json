@@ -1,0 +1,10 @@
+{
+  "run_id": "20260601_110649",
+  "all_inputs_present": true,
+  "missing_input_list": [],
+  "lp_il_lvr_pipeline_complete": true,
+  "recommended_next_stage_stop_lp_research_now": true,
+  "positive_proxy_count_zero_il_lvr": 0,
+  "can_run_probe_now": false,
+  "enough_to_freeze_scale_research": true
+}

@@ -34,3 +34,13 @@
 - `/Users/bendu/lp-bot/v3/reports/final_freeze/20260531_124000/LPBOT_FINAL_ONEPAGE_CN.md`
 - `/Users/bendu/lp-bot/v3/reports/final_freeze/20260531_124000/REOPEN_CONDITIONS_CN.md`
 - `/Users/bendu/lp-bot/v3/reports/final_freeze/20260531_124000/NEXT_PROJECT_OPTIONS_CN.md`
+
+## LP Scale Economics Addendum
+
+- scale economics 重开题已完成，且已走完整条只读验证链。
+- `20 / 100 / 500 / 1000 / 2000U` virtual notional 已测试。
+- quote/depth、fee velocity、fixed cost、IL/LVR 已分别拆解审计。
+- `fixed_cost = 0` 仍无 positive proxy。
+- `IL/LVR = 0` 仍无 positive proxy。
+- 当前结论仍为 `STOP_LP_RESEARCH_NOW`。
+- 当前不允许 probe / canary / live。

@@ -83,3 +83,66 @@
 - final verdict path: `/Users/bendu/lp-bot/v3/reports/final_freeze/20260531_124000/FINAL_VERDICT.json`
 - status: `PASS`
 - one-line conclusion: LP 策略研究正式冻结，推荐 `STOP_LP_RESEARCH_NOW`。
+
+## lp_scale_economics
+
+- latest report dir: `/Users/bendu/lp-bot/v3/reports/lp_scale_economics/20260601_082100`
+- final verdict path: `/Users/bendu/lp-bot/v3/reports/lp_scale_economics/20260601_082100/FINAL_VERDICT.json`
+- status: `WARN`
+- one-line conclusion: 新 LP scale economics 研究框架定义完成，但 first-pass data readiness 仅为 `PARTIAL`。
+
+## lp_data_pipeline
+
+- latest report dir: `/Users/bendu/lp-bot/v3/reports/lp_data_pipeline/20260601_084943`
+- final verdict path: `/Users/bendu/lp-bot/v3/reports/lp_data_pipeline/20260601_084943/FINAL_VERDICT.json`
+- status: `PASS`
+- one-line conclusion: quote/depth、fee velocity、entry-safe snapshot 路径均可行，但尚未达到 economics 可运行条件。
+
+## lp_quote_depth_curve
+
+- latest report dir: `/Users/bendu/lp-bot/v3/reports/lp_quote_depth_curve/20260601_090437`
+- final verdict path: `/Users/bendu/lp-bot/v3/reports/lp_quote_depth_curve/20260601_090437/FINAL_VERDICT.json`
+- status: `WARN`
+- one-line conclusion: quote/depth v1 已建成，但 coverage/confidence 不足，不能直接进入 virtual notional。
+
+## lp_quote_depth_curve_fix
+
+- latest report dir: `/Users/bendu/lp-bot/v3/reports/lp_quote_depth_curve_fix/20260601_091739`
+- final verdict path: `/Users/bendu/lp-bot/v3/reports/lp_quote_depth_curve_fix/20260601_091739/FINAL_VERDICT.json`
+- status: `PASS`
+- one-line conclusion: quote/depth v2 将 data-ready 池提升到 14 个，满足 virtual notional 前置条件。
+
+## lp_virtual_notional_economics
+
+- latest report dir: `/Users/bendu/lp-bot/v3/reports/lp_virtual_notional_economics/20260601_094238`
+- final verdict path: `/Users/bendu/lp-bot/v3/reports/lp_virtual_notional_economics/20260601_094238/FINAL_VERDICT.json`
+- status: `WARN`
+- one-line conclusion: 25 池、500 行 economics 结果里 `positive_proxy_count = 0`，最优 20U 仍为负 EV。
+
+## lp_fee_velocity_pipeline
+
+- latest report dir: `/Users/bendu/lp-bot/v3/reports/lp_fee_velocity_pipeline/20260601_100642`
+- final verdict path: `/Users/bendu/lp-bot/v3/reports/lp_fee_velocity_pipeline/20260601_100642/FINAL_VERDICT.json`
+- status: `WARN`
+- one-line conclusion: fee pipeline 跑通且 EV 略改善，但无任何 positive proxy，阻断转向 fixed cost。
+
+## lp_fee_velocity_fix_repeat
+
+- latest report dir: `/Users/bendu/lp-bot/v3/reports/lp_fee_velocity_fix_repeat/20260601_103248`
+- final verdict path: `/Users/bendu/lp-bot/v3/reports/lp_fee_velocity_fix_repeat/20260601_103248/FINAL_VERDICT.json`
+- status: `WARN`
+- one-line conclusion: 即使 `fixed_cost = 0` 仍无 positive proxy，主阻断收敛为 `data_confidence_low`。
+
+## lp_il_lvr_pipeline
+
+- latest report dir: `/Users/bendu/lp-bot/v3/reports/lp_il_lvr_pipeline/20260601_105452`
+- final verdict path: `/Users/bendu/lp-bot/v3/reports/lp_il_lvr_pipeline/20260601_105452/FINAL_VERDICT.json`
+- status: `WARN`
+- one-line conclusion: 即使 `IL/LVR = 0` 仍无 positive proxy，scale economics 新线正式收敛到 `STOP_LP_RESEARCH_NOW`。
+
+## lp_scale_final_freeze
+
+- latest report dir: `/Users/bendu/lp-bot/v3/reports/lp_scale_final_freeze/20260601_110649`
+- final verdict path: `/Users/bendu/lp-bot/v3/reports/lp_scale_final_freeze/20260601_110649/FINAL_VERDICT.json`
+- status: `PASS`
+- one-line conclusion: 新 LP scale economics 研究线完成最终冻结和 handoff，不再继续 probe/canary/live。
