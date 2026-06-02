@@ -1,0 +1,62 @@
+{
+  "stage": "LP_BASE_10_20U_PROBE_DRY_RUN_BUILDER_V1",
+  "phase": "D_base_rpc_and_contract_readiness",
+  "ts": 1780403490,
+  "rpc_url_source": "public_fallback:https://base-rpc.publicnode.com",
+  "rpc_url_host_hash": "7d4aef4d",
+  "chain_id_observed": 8453,
+  "chain_id_expected": 8453,
+  "chain_id_match": true,
+  "block_number": 46807072,
+  "contracts": [
+    {
+      "label": "pool_0x72ab388e",
+      "address": "0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38",
+      "code_length_bytes": 22962,
+      "has_code": true,
+      "read_success": true
+    },
+    {
+      "label": "uni_v3_npm_base",
+      "address": "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1",
+      "code_length_bytes": 24384,
+      "has_code": true,
+      "read_success": true
+    },
+    {
+      "label": "uni_v3_factory_base",
+      "address": "0x33128a8fC17869897dcE68Ed026d694621f6FDfD",
+      "code_length_bytes": 24535,
+      "has_code": true,
+      "read_success": true
+    },
+    {
+      "label": "uni_v3_quoter_v2_base",
+      "address": "0x3d4e44Eb1374240CE5F1B871ab261CD16335B76a",
+      "code_length_bytes": 8273,
+      "has_code": true,
+      "read_success": true
+    },
+    {
+      "label": "weth_base",
+      "address": "0x4200000000000000000000000000000000000006",
+      "code_length_bytes": 2041,
+      "has_code": true,
+      "read_success": true
+    },
+    {
+      "label": "usdc_base",
+      "address": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+      "code_length_bytes": 1852,
+      "has_code": true,
+      "read_success": true
+    }
+  ],
+  "all_contracts_have_code": true,
+  "rpc_ready": true,
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no",
+  "edge_proven": "no",
+  "fabrication_blocked": true
+}

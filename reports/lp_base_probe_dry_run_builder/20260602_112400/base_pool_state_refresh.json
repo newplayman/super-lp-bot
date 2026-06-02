@@ -1,0 +1,82 @@
+{
+  "stage": "LP_BASE_10_20U_PROBE_DRY_RUN_BUILDER_V1",
+  "phase": "F_base_pool_state_refresh",
+  "ts": 1780404616,
+  "frozen_pool": "0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38",
+  "wallet_address_masked": "0xb05b...d835",
+  "rpc_url_source": "public_fallback:https://base-rpc.publicnode.com",
+  "chain_id_observed": 8453,
+  "block_number": 46807634,
+  "block_number_hex": "0x2ca3a52",
+  "pool_token0": "0x4200000000000000000000000000000000000006",
+  "pool_token1": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+  "pool_fee": 100,
+  "pool_tick_spacing": 1,
+  "token0_match": true,
+  "token1_match": true,
+  "fee_match": true,
+  "token_order_consistent_with_freeze": true,
+  "sqrt_price_x96": 3519976964698468343876834,
+  "current_tick_signed_int24": -200443,
+  "observation_index": 755,
+  "observation_cardinality": 1000,
+  "observation_cardinality_next": 1000,
+  "fee_protocol": 216272100,
+  "unlocked": true,
+  "current_liquidity": 965864593201743462,
+  "price_token1_per_token0_raw": 1.9738787667178986e-09,
+  "price_token1_per_token0": 1973.8787667178985,
+  "weth_usd_anchor": 1973.8787667178985,
+  "quoter_v2_quotes": [
+    {
+      "notional_usd": 10,
+      "weth_in_raw": "5066167268533758",
+      "usdc_in_raw": "10000000",
+      "weth_to_usdc": {
+        "usdc_out_human": null,
+        "sqrt_price_x96_after": null,
+        "ticks_crossed": null,
+        "gas_estimate": null
+      },
+      "usdc_to_weth": {
+        "weth_out_human": null,
+        "sqrt_price_x96_after": null,
+        "ticks_crossed": null,
+        "gas_estimate": null
+      }
+    },
+    {
+      "notional_usd": 20,
+      "weth_in_raw": "10132334537067516",
+      "usdc_in_raw": "20000000",
+      "weth_to_usdc": {
+        "usdc_out_human": null,
+        "sqrt_price_x96_after": null,
+        "ticks_crossed": null,
+        "gas_estimate": null
+      },
+      "usdc_to_weth": {
+        "weth_out_human": null,
+        "sqrt_price_x96_after": null,
+        "ticks_crossed": null,
+        "gas_estimate": null
+      }
+    }
+  ],
+  "rpc_ready": true,
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no",
+  "edge_proven": "no",
+  "fabrication_blocked": true,
+  "quoter_v2_live_reread_status": "skipped_due_to_publicnode_revert",
+  "quoter_v2_live_reread_reason": "Uniswap V3 QuoterV2 (0x3d4e..) and Aerodrome Slipstream Quoter (0x254c..) both revert on the publicnode endpoint with the canonical selector f7729d43. Upstream precise_quote result is inherited instead. fabrication_blocked = true: no QuoterV2 result was fabricated.",
+  "quoter_v2_inherited_from": "reports/lp_precise_quote/20260601_120001/precise_quote_results.csv",
+  "quoter_v2_inherited_for_pool": "0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38",
+  "quoter_v2_inherited_block_number": 46762944,
+  "quoter_v2_inherited_weth_in_raw_20U": 10095282979808746,
+  "quoter_v2_inherited_usdc_out_raw_20U": 19966663,
+  "quoter_v2_inherited_gas_estimate_20U": 203739,
+  "quoter_v2_inherited_ticks_crossed_20U": 0,
+  "quoter_v2_inherited_confidence_20U": "high"
+}

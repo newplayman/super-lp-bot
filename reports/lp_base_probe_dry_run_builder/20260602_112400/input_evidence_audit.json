@@ -1,0 +1,162 @@
+{
+  "stage": "LP_BASE_10_20U_PROBE_DRY_RUN_BUILDER_V1",
+  "phase": "B_input_evidence_audit",
+  "run_id": "20260602_112400",
+  "previous_stage": "LP_EVM_WALLET_ADDRESS_CROSSCHAIN_DRY_RUN_ROUTER_V1",
+  "previous_run_id": "20260602_105654",
+  "wallet_address_under_audit": "0xb05b2872ace4564ff247555b6f7b097d31f3d835",
+  "wallet_address_is_public_only": true,
+
+  "gates_from_previous_stage": {
+    "status": "PASS",
+    "likely_funded_chain": "base",
+    "base_total_usd_proxy": "26.84",
+    "bsc_total_usd_proxy": "0.00",
+    "base_candidate_count": 5,
+    "base_dry_run_ready_candidate_count": 5,
+    "recommended_probe_chain": "base",
+    "bsc_candidate_blocked_by_funds": true,
+    "primary_base_candidate_pool": "0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38",
+    "primary_base_candidate_pair": "WETH/USDC",
+    "primary_base_candidate_fee_tier": 100,
+    "primary_base_candidate_best_ev_proxy_20u_usd": "-0.06000041561688092",
+    "can_run_probe_now": false,
+    "can_run_wallet_address_dry_run_next": true,
+    "recommended_next_stage_per_upstream": "LP_BASE_10_20U_PROBE_DRY_RUN_BUILDER_V1"
+  },
+
+  "upstream_data_inputs_read": {
+    "router_final_verdict": {
+      "dir": "reports/lp_evm_wallet_crosschain_dry_run_router/20260602_105654",
+      "file": "FINAL_VERDICT.json",
+      "status": "PASS",
+      "primary_candidate": "WETH/USDC 0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38 (Uniswap V3 Base, fee=100)"
+    },
+    "router_base_candidate_from_existing_artifacts": {
+      "dir": "reports/lp_evm_wallet_crosschain_dry_run_router/20260602_105654",
+      "file": "base_candidate_from_existing_artifacts.json",
+      "cost_pools_count": 5,
+      "dry_run_ready_count": 5,
+      "primary_pool_row": {
+        "pool_id": "0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38",
+        "token0": "0x4200000000000000000000000000000000000006",
+        "token1": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+        "fee_tier": 100,
+        "wallet_token_match": "WETH + USDC"
+      }
+    },
+    "router_balance_audit": {
+      "dir": "reports/lp_evm_wallet_crosschain_dry_run_router/20260602_105654",
+      "file": "evm_wallet_crosschain_balance_audit.json",
+      "base_eth_native_usd": "0.18",
+      "base_weth_usd": "4.89",
+      "base_usdc_usd": "21.77",
+      "base_total_usd_proxy": "26.84",
+      "bsc_total_usd_proxy": "0.00",
+      "wallets_or_tx_touched": false
+    },
+    "router_allowance_audit": {
+      "dir": "reports/lp_evm_wallet_crosschain_dry_run_router/20260602_105654",
+      "file": "evm_wallet_crosschain_allowance_audit.json",
+      "uni_v3_npm_base_weth_allowance": "0.0024701310037938",
+      "uni_v3_npm_base_usdc_allowance": "5.0",
+      "approve_executed_this_round": false
+    },
+    "router_bsc_readiness": {
+      "dir": "reports/lp_evm_wallet_crosschain_dry_run_router/20260602_105654",
+      "file": "bsc_wallet_readiness_check.json",
+      "bsc_can_dry_run_10u": false,
+      "bsc_can_dry_run_20u": false,
+      "no_bridge_suggestion_made_by_this_stage": true,
+      "no_swap_suggestion_made_by_this_stage": true
+    },
+    "precise_quote": {
+      "dir": "reports/lp_precise_quote/20260601_120001",
+      "file": "precise_quote_results.csv",
+      "row_for_primary_pool_present": true,
+      "capacity_pass_20_count": 24,
+      "high_confidence_count": 57
+    },
+    "v3_tick_liquidity": {
+      "dir": "reports/lp_v3_tick_liquidity_fix/20260601_132644",
+      "file": "v3_tick_liquidity_v2_results.csv",
+      "row_for_primary_pool_present": true,
+      "slot0_success_count": 5,
+      "current_liquidity_available_count": 5,
+      "primary_pool_current_tick_observed": -200503,
+      "primary_pool_current_liquidity_observed": "454933522258074128"
+    },
+    "real_cost_model": {
+      "dir": "reports/lp_real_cost_model/20260601_141103",
+      "file": "real_cost_model_results.csv",
+      "row_for_primary_pool_present": true,
+      "primary_pool_total_cost_usd_20u": "0.03801081314172107",
+      "primary_pool_quote_gas_estimate": 203739
+    },
+    "real_fee_accrual": {
+      "dir": "reports/lp_real_fee_accrual/20260601_143401",
+      "file": "real_fee_economics_preview.csv",
+      "row_for_primary_pool_present": true,
+      "primary_pool_new_net_ev_proxy_usd_20u": "-0.06000041561688092",
+      "primary_pool_fee_source": "pool_level_fee_velocity_proxy_only",
+      "primary_pool_actual_position_fee_lineage": "missing",
+      "best_new_net_ev_proxy_usd_20u_5pool": "0.037606985664449054 (VIRTUAL/WETH — wallet does not hold VIRTUAL)"
+    }
+  },
+
+  "cross_check_aligned": {
+    "primary_pool_row_present_in_all_4_data_layers": true,
+    "primary_pool_identified_uniquely": true,
+    "router_recommended_next_stage_matches_this_stage": true,
+    "router_can_run_probe_now_equals_false": true,
+    "no_bridge_or_swap_suggestion_in_upstream": true,
+    "wallet_holds_both_pool_tokens_on_base": true
+  },
+
+  "primary_pool_freeze_inputs": {
+    "chain": "base",
+    "chain_id": 8453,
+    "pool": "0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38",
+    "pair": "WETH/USDC",
+    "token0": "0x4200000000000000000000000000000000000006",
+    "token1": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+    "fee_tier": 100,
+    "tick_spacing": 1,
+    "protocol": "Uniswap V3 (Base)",
+    "npm_address": "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1",
+    "preferred_notional_usd": 10,
+    "max_notional_usd": 20,
+    "horizon_options_minutes": [15, 30],
+    "horizon_recommendation": "15m first, 30m if first 15m shows clean round-trip"
+  },
+
+  "this_round_scope": "base_10_20u_probe_dry_run_builder_only",
+  "this_round_must_not": [
+    "load private key / mnemonic / keystore",
+    "create signer / wallet client",
+    "send eth_sendTransaction / eth_sendRawTransaction",
+    "execute approve / mint / increaseLiquidity / decreaseLiquidity / collect / burn / swap",
+    "start lpbot-live / lpbot-canary / lpbot-paper",
+    "auto-bridge / auto-swap",
+    "flip can_run_probe_now or tiny_canary_allowed",
+    "fabricate Base RPC results if Base RPC is unavailable"
+  ],
+  "this_round_may": [
+    "eth_chainId / eth_blockNumber / eth_getBalance",
+    "ERC20.balanceOf / ERC20.allowance (read-only eth_call)",
+    "UniswapV3 pool slot0 / liquidity / tickSpacing / token0 / token1 / fee / ticks (read-only eth_call)",
+    "QuoterV2.quoteExactInputSingle (read-only eth_call from=wallet)",
+    "eth_estimateGas with from=wallet (read-only, no signing)",
+    "build wallet-bound unsigned tx package (recipient=wallet, deadline placeholder, ApproveExact pattern)",
+    "recommend a next-stage name from the allowed set"
+  ],
+
+  "out_of_scope": [
+    "computing actual_position_fee lineage (real_fee_accrual pipeline blocker — already WARN upstream)",
+    "rerunning precise_quote / v3_tick_liquidity / cost_model pipelines",
+    "redesigning upstream cost model cbBTC unit bug",
+    "any BSC chain read or BSC candidate processing"
+  ],
+
+  "proceed_to_phase_C": true
+}

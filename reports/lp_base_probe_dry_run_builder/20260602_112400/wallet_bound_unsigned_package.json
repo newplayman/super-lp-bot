@@ -1,0 +1,196 @@
+{
+  "stage": "LP_BASE_10_20U_PROBE_DRY_RUN_BUILDER_V1",
+  "phase": "I_wallet_bound_unsigned_package",
+  "ts": 1780405083,
+  "wallet_address_masked": "0xb05b...d835",
+  "frozen_pool": "0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38",
+  "npm": "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1",
+  "chain_id": 8453,
+  "deadline_placeholder": 4070908800,
+  "deadline_placeholder_iso": "2099-01-01T00:00:00Z",
+  "deadline_is_placeholder": true,
+  "packages": {
+    "10U": {
+      "notional_usd": 10,
+      "chain_id": 8453,
+      "wallet_address": "0xb05b2872ace4564ff247555b6f7b097d31f3d835",
+      "wallet_address_masked": "0xb05b...d835",
+      "pool": "0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38",
+      "npm": "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1",
+      "tx_sequence": [
+        {
+          "step": 1,
+          "action": "ERC20.approve",
+          "from": "0xb05b2872ace4564ff247555b6f7b097d31f3d835",
+          "to": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "value_wei": 0,
+          "data": "0x095ea7b300000000000000000000000003a520b32c04bf3beef7beb72e919cf822ed34f10000000000000000000000000000000000000000000000000000000000989680",
+          "data_meaning": {
+            "function": "approve(address,uint256)",
+            "selector": "0x095ea7b3",
+            "spender": "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1",
+            "amount_raw": 10000000,
+            "amount_human": "10.000000 USDC",
+            "policy": "ApproveExact (never ApproveMax)"
+          },
+          "invariant_check": "approve_never_max; amount equals LP-required USDC"
+        },
+        {
+          "step": 2,
+          "action": "NonfungiblePositionManager.mint",
+          "from": "0xb05b2872ace4564ff247555b6f7b097d31f3d835",
+          "to": "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1",
+          "value_wei": 0,
+          "data": "0x8831645600000000000000000000000000000000000000000000000000000000000000200000000000000000000000004200000000000000000000000000000000000006000000000000000000000000833589fcd6edb6e08f4c7c32d4f71b54bda029130000000000000000000000000000000000000000000000000000000000000064fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffcf03dfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffcf1cd000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000009896800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000097d32f000000000000000000000000b05b2872ace4564ff247555b6f7b097d31f3d83500000000000000000000000000000000000000000000000000000000f2a52380",
+          "data_meaning": {
+            "function": "mint((address,address,uint24,int24,int24,uint256,uint256,uint256,uint256,address,uint256))",
+            "selector": "0x88316456",
+            "token0": "0x4200000000000000000000000000000000000006",
+            "token1": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+            "fee": 100,
+            "tickLower": -200643,
+            "tickUpper": -200243,
+            "amount0Desired_wei": 0,
+            "amount1Desired_raw": 10000000,
+            "amount0Min_wei": 0,
+            "amount1Min_raw": 9949999,
+            "recipient": "0xb05b2872ace4564ff247555b6f7b097d31f3d835",
+            "deadline": 4070908800,
+            "deadline_iso": "2099-01-01T00:00:00Z",
+            "deadline_is_placeholder": true
+          },
+          "invariant_check": "recipient=wallet; deadline non-zero (far-future placeholder); amount0Min/amount1Min non-zero where amount>0"
+        },
+        {
+          "step": 3,
+          "action": "[decreaseLiquidity + collect + revoke (placeholder for next stage)]",
+          "from": "0xb05b2872ace4564ff247555b6f7b097d31f3d835",
+          "to": "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1",
+          "value_wei": 0,
+          "data": "<decreaseLiquidity call to be built when probe execution is approved>",
+          "data_meaning": {
+            "note": "decreaseLiquidity + collect + ERC20.approve(NPM, 0) revoke will be built by the next stage (LP_BASE_10_20U_PROBE_EXECUTION_SPEC_REVIEW_V1 or similar) when execution is approved. This stage only ships the mint+approve package.",
+            "post_exit_revoke_invariant_10": "approve(NPM, 0) for both WETH and USDC after collect"
+          }
+        },
+        {
+          "step": 4,
+          "action": "ERC20.approve (USDC revoke \u2014 per invariant #10, post-exit)",
+          "from": "0xb05b2872ace4564ff247555b6f7b097d31f3d835",
+          "to": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "value_wei": 0,
+          "data": "0x095ea7b300000000000000000000000003a520b32c04bf3beef7beb72e919cf822ed34f10000000000000000000000000000000000000000000000000000000000000000",
+          "data_meaning": {
+            "function": "approve(address,uint256)",
+            "selector": "0x095ea7b3",
+            "spender": "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1",
+            "amount_raw": 0,
+            "amount_human": "0 USDC",
+            "policy": "post-exit revoke (ApproveMax never used; revoke to 0)"
+          }
+        }
+      ],
+      "approval_phase_summary": {
+        "weth_approve_required": false,
+        "weth_approve_amount_wei": 0,
+        "usdc_approve_required": true,
+        "usdc_approve_amount_raw": 10000000,
+        "usdc_revoke_required": true
+      }
+    },
+    "20U": {
+      "notional_usd": 20,
+      "chain_id": 8453,
+      "wallet_address": "0xb05b2872ace4564ff247555b6f7b097d31f3d835",
+      "wallet_address_masked": "0xb05b...d835",
+      "pool": "0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38",
+      "npm": "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1",
+      "tx_sequence": [
+        {
+          "step": 1,
+          "action": "ERC20.approve",
+          "from": "0xb05b2872ace4564ff247555b6f7b097d31f3d835",
+          "to": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "value_wei": 0,
+          "data": "0x095ea7b300000000000000000000000003a520b32c04bf3beef7beb72e919cf822ed34f10000000000000000000000000000000000000000000000000000000001312d00",
+          "data_meaning": {
+            "function": "approve(address,uint256)",
+            "selector": "0x095ea7b3",
+            "spender": "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1",
+            "amount_raw": 20000000,
+            "amount_human": "20.000000 USDC",
+            "policy": "ApproveExact (never ApproveMax)"
+          },
+          "invariant_check": "approve_never_max; amount equals LP-required USDC"
+        },
+        {
+          "step": 2,
+          "action": "NonfungiblePositionManager.mint",
+          "from": "0xb05b2872ace4564ff247555b6f7b097d31f3d835",
+          "to": "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1",
+          "value_wei": 0,
+          "data": "0x8831645600000000000000000000000000000000000000000000000000000000000000200000000000000000000000004200000000000000000000000000000000000006000000000000000000000000833589fcd6edb6e08f4c7c32d4f71b54bda029130000000000000000000000000000000000000000000000000000000000000064fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffcf03dfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffcf1cd00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001312d00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000012fa65f000000000000000000000000b05b2872ace4564ff247555b6f7b097d31f3d83500000000000000000000000000000000000000000000000000000000f2a52380",
+          "data_meaning": {
+            "function": "mint((address,address,uint24,int24,int24,uint256,uint256,uint256,uint256,address,uint256))",
+            "selector": "0x88316456",
+            "token0": "0x4200000000000000000000000000000000000006",
+            "token1": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+            "fee": 100,
+            "tickLower": -200643,
+            "tickUpper": -200243,
+            "amount0Desired_wei": 0,
+            "amount1Desired_raw": 20000000,
+            "amount0Min_wei": 0,
+            "amount1Min_raw": 19899999,
+            "recipient": "0xb05b2872ace4564ff247555b6f7b097d31f3d835",
+            "deadline": 4070908800,
+            "deadline_iso": "2099-01-01T00:00:00Z",
+            "deadline_is_placeholder": true
+          },
+          "invariant_check": "recipient=wallet; deadline non-zero (far-future placeholder); amount0Min/amount1Min non-zero where amount>0"
+        },
+        {
+          "step": 3,
+          "action": "[decreaseLiquidity + collect + revoke (placeholder for next stage)]",
+          "from": "0xb05b2872ace4564ff247555b6f7b097d31f3d835",
+          "to": "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1",
+          "value_wei": 0,
+          "data": "<decreaseLiquidity call to be built when probe execution is approved>",
+          "data_meaning": {
+            "note": "decreaseLiquidity + collect + ERC20.approve(NPM, 0) revoke will be built by the next stage (LP_BASE_10_20U_PROBE_EXECUTION_SPEC_REVIEW_V1 or similar) when execution is approved. This stage only ships the mint+approve package.",
+            "post_exit_revoke_invariant_10": "approve(NPM, 0) for both WETH and USDC after collect"
+          }
+        },
+        {
+          "step": 4,
+          "action": "ERC20.approve (USDC revoke \u2014 per invariant #10, post-exit)",
+          "from": "0xb05b2872ace4564ff247555b6f7b097d31f3d835",
+          "to": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "value_wei": 0,
+          "data": "0x095ea7b300000000000000000000000003a520b32c04bf3beef7beb72e919cf822ed34f10000000000000000000000000000000000000000000000000000000000000000",
+          "data_meaning": {
+            "function": "approve(address,uint256)",
+            "selector": "0x095ea7b3",
+            "spender": "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1",
+            "amount_raw": 0,
+            "amount_human": "0 USDC",
+            "policy": "post-exit revoke (ApproveMax never used; revoke to 0)"
+          }
+        }
+      ],
+      "approval_phase_summary": {
+        "weth_approve_required": false,
+        "weth_approve_amount_wei": 0,
+        "usdc_approve_required": true,
+        "usdc_approve_amount_raw": 20000000,
+        "usdc_revoke_required": true
+      }
+    }
+  },
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no",
+  "edge_proven": "no",
+  "approval_max_never_used": true,
+  "post_exit_revoke_invariant_10_planned": true
+}

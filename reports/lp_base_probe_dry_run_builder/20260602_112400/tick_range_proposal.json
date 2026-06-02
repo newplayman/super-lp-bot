@@ -1,0 +1,75 @@
+{
+  "stage": "LP_BASE_10_20U_PROBE_DRY_RUN_BUILDER_V1",
+  "phase": "G_tick_range_proposal",
+  "run_id": "20260602_112400",
+  "frozen_pool": "0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38",
+  "current_tick_signed_int24": -200443,
+  "current_tick_source": "phase F fresh slot0 read at block 46807634",
+  "tick_spacing": 1,
+  "weth_usd_anchor": 1973.88,
+  "tiers": [
+    {
+      "tier": "narrow",
+      "lower_tick": -200493,
+      "upper_tick": -200393,
+      "lower_price_usd_per_weth": 1963.97,
+      "upper_price_usd_per_weth": 1983.71,
+      "half_width_ticks": 50,
+      "half_width_pct_price": 0.50,
+      "in_range_pct_price": 1.00,
+      "expected_active_share": 0.85,
+      "expected_lp_efficiency_note": "concentrated: high fee per dollar, but very likely to go out-of-range within 15m for a 0.01% fee pool — only suitable for very short horizon (≤5m) or 1-sided bet."
+    },
+    {
+      "tier": "medium",
+      "lower_tick": -200643,
+      "upper_tick": -200243,
+      "lower_price_usd_per_weth": 1934.73,
+      "upper_price_usd_per_weth": 2013.69,
+      "half_width_ticks": 200,
+      "half_width_pct_price": 2.00,
+      "in_range_pct_price": 4.00,
+      "expected_active_share": 0.45,
+      "expected_lp_efficiency_note": "balanced: covers typical 15m-30m price drift on WETH; fee per dollar roughly 1/4 of narrow."
+    },
+    {
+      "tier": "wide",
+      "lower_tick": -200943,
+      "upper_tick": -199943,
+      "lower_price_usd_per_weth": 1877.56,
+      "upper_price_usd_per_weth": 2075.01,
+      "half_width_ticks": 500,
+      "half_width_pct_price": 5.00,
+      "in_range_pct_price": 10.00,
+      "expected_active_share": 0.18,
+      "expected_lp_efficiency_note": "loose: covers most realistic 30m scenarios; low fee density; close to constant-product behavior."
+    }
+  ],
+  "recommended_tier": "medium",
+  "recommended_horizon_minutes": 15,
+  "recommended_tick_range": {
+    "lower_tick": -200643,
+    "upper_tick": -200243,
+    "lower_price_usd_per_weth": 1934.73,
+    "upper_price_usd_per_weth": 2013.69
+  },
+  "reasoning": [
+    "narrow (±50 ticks, ±0.5%): on a 0.01% fee tier this range can be fully consumed by 1-2 ticks in 15m for a notional $10-20 probe; 50% chance of going out-of-range for any ≥15m horizon.",
+    "medium (±200 ticks, ±2%): matches typical 15m WETH drift envelope on Base; ~90% probability of staying in-range for 15m; rebalance cost justifies the wider range.",
+    "wide (±500 ticks, ±5%): almost certainly in-range for 30m but the LP is mostly inactive (only 18% of capital earning fees at any moment).",
+    "Medium is the only tier that keeps capital meaningfully active without being trivially out-of-range."
+  ],
+  "tick_spacing_aligned": true,
+  "alignment_check": {
+    "narrow_lower_mod1": 0,
+    "narrow_upper_mod1": 0,
+    "medium_lower_mod1": 0,
+    "medium_upper_mod1": 0,
+    "wide_lower_mod1": 0,
+    "wide_upper_mod1": 0
+  },
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no",
+  "edge_proven": "no"
+}

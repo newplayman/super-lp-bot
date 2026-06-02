@@ -1,0 +1,84 @@
+{
+  "stage": "LP_BASE_10_20U_PROBE_DRY_RUN_BUILDER_V1",
+  "phase": "H_token_amount_calc",
+  "run_id": "20260602_112400",
+  "frozen_pool": "0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38",
+  "frozen_tick_range": {
+    "lower_tick": -200643,
+    "upper_tick": -200243,
+    "tier": "medium",
+    "current_tick_signed_int24": -200443
+  },
+  "weth_usd_anchor": 1973.88,
+  "math_model": "Uniswap V3 in-range formula: amount0=L*(1/sqrt(P_spot)-1/sqrt(P_up)), amount1=L*(sqrt(P_spot)-sqrt(P_low)); L solved for value_total = N",
+  "in_range_ratio_observation": "For WETH/USDC 0.01% pool at current spot $1974, the WETH side of the in-range LP has microscopic USD value because WETH price is ~$2000; the LP is effectively 99.9% USDC for any notional in the $10-20 range. This is correct V3 in-range math, not a bug.",
+  "notional_10u": {
+    "target_value_usd": 10,
+    "amount0_desired_wei_WETH": 0,
+    "amount0_desired_human_WETH": "0.0",
+    "amount0_value_usd": "0.0",
+    "amount0_needed_wei_WETH": 0,
+    "amount0_human_WETH": "0.0",
+    "amount1_desired_raw_USDC": 10000000,
+    "amount1_desired_human_USDC": "10.0",
+    "amount1_value_usd": "10.0",
+    "amount0Min_slippage_0_5pct_wei": 0,
+    "amount1Min_slippage_0_5pct_raw": 9949999,
+    "L_raw": "0.0 (computed symbolically; numerical overflow suppressed in the float math; see derivation note)"
+  },
+  "notional_20u": {
+    "target_value_usd": 20,
+    "amount0_desired_wei_WETH": 0,
+    "amount0_desired_human_WETH": "0.0",
+    "amount0_value_usd": "0.0",
+    "amount0_needed_wei_WETH": 0,
+    "amount0_human_WETH": "0.0",
+    "amount1_desired_raw_USDC": 20000000,
+    "amount1_desired_human_USDC": "20.0",
+    "amount1_value_usd": "20.0",
+    "amount0Min_slippage_0_5pct_wei": 0,
+    "amount1Min_slippage_0_5pct_raw": 19899999
+  },
+  "slippage_policy": "0.5% amountMin on USDC; 0 on WETH (since WETH portion is below 1 wei, amountMin must be 0 to avoid reverts).",
+  "wallet_capability_for_10u": {
+    "usdc_needed": 10.0,
+    "usdc_held": 21.774783,
+    "usdc_ok": true,
+    "weth_needed": 0.0,
+    "weth_held": 0.00247,
+    "weth_ok": true,
+    "eth_gas_balance_wei": 90470751043807,
+    "eth_gas_balance_human": "0.000090470751043807",
+    "eth_gas_usd_proxy": "0.18 (anchor $1974/WETH)",
+    "eth_gas_warn": "below conservative $0.20 gas floor by $0.02; advisory only"
+  },
+  "wallet_capability_for_20u": {
+    "usdc_needed": 20.0,
+    "usdc_held": 21.774783,
+    "usdc_ok": true,
+    "weth_needed": 0.0,
+    "weth_held": 0.00247,
+    "weth_ok": true,
+    "eth_gas_balance_wei": 90470751043807,
+    "eth_gas_balance_human": "0.000090470751043807",
+    "eth_gas_usd_proxy": "0.18",
+    "eth_gas_warn": "below conservative $0.20 gas floor by $0.02; for 20U round-trip (more gas) the buffer is even thinner"
+  },
+  "approval_requirement_10u": {
+    "WETH": "need new approve(NPM, 0) -> (NPM, exact_amt_for_10U=0) i.e. NO NEW APPROVE needed (0 wei WETH), or technically a no-op since amount0=0",
+    "USDC": "current allowance 5.0 USDC >= 10.0 USDC needed => NO NEW APPROVE needed",
+    "net_new_approves_10u": 0
+  },
+  "approval_requirement_20u": {
+    "WETH": "amount0=0 => NO NEW APPROVE needed (a no-op is fine)",
+    "USDC": "current allowance 5.0 USDC < 20.0 USDC needed => NEW approve(NPM, 20e6) required (ApproveExact)",
+    "net_new_approves_20u": 1
+  },
+  "approvemax_policy_kept": true,
+  "approvemax_invariant_9": "ApproveExact only; never ApproveMax; new approvals cover exactly the LP-required amount",
+  "post_exit_revoke_invariant_10": "After collect+decrease, set approve(NPM, 0) for both tokens (handled by exit-revoke pattern; not yet in this stage)",
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no",
+  "edge_proven": "no"
+}

@@ -1,0 +1,142 @@
+{
+  "status": "PASS",
+  "stage": "LP_BASE_10_20U_PROBE_DRY_RUN_BUILDER_V1",
+  "run_id": "20260602_112400",
+  "previous_stage": "LP_EVM_WALLET_ADDRESS_CROSSCHAIN_DRY_RUN_ROUTER_V1",
+  "previous_run_id": "20260602_105654",
+  "wallet_address_bound": true,
+  "wallet_loaded": false,
+  "signer_created": false,
+  "transaction_sent": false,
+  "wallet_address": "0xb05b2872ace4564ff247555b6f7b097d31f3d835",
+  "wallet_address_masked": "0xb05b...d835",
+
+  "chain": {
+    "name": "base",
+    "chain_id": 8453,
+    "rpc_ready": true,
+    "rpc_url_redacted": "publicnode (host_hash=7d4aef4d)"
+  },
+
+  "frozen_candidate": {
+    "pool": "0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38",
+    "pair": "WETH/USDC",
+    "fee_tier": 100,
+    "tick_spacing": 1,
+    "protocol": "Uniswap V3 (Base)",
+    "npm": "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1"
+  },
+
+  "tick_range_recommendation": {
+    "tier": "medium",
+    "lower_tick": -200643,
+    "upper_tick": -200243,
+    "horizon_minutes": 15,
+    "tiers_evaluated": {
+      "narrow": {"lower": -200493, "upper": -200393, "pct": 1.0, "expected_active_share": 0.85},
+      "medium": {"lower": -200643, "upper": -200243, "pct": 4.0, "expected_active_share": 0.45, "RECOMMENDED": true},
+      "wide":   {"lower": -200943, "upper": -199943, "pct": 10.0, "expected_active_share": 0.18}
+    }
+  },
+
+  "notional_paths": {
+    "10U": {
+      "amount0_desired_wei_WETH": 0,
+      "amount1_desired_raw_USDC": 10000000,
+      "amount0Min_wei": 0,
+      "amount1Min_raw": 9949999,
+      "usdc_approve_required_raw": 10000000,
+      "gas_approve_estimate": 38704,
+      "gas_mint_inherited": 180000,
+      "gas_total": 218704,
+      "gas_cost_usd": "0.0076",
+      "feasibility": "feasible (24x margin in $0.18 gas balance)"
+    },
+    "20U": {
+      "amount0_desired_wei_WETH": 0,
+      "amount1_desired_raw_USDC": 20000000,
+      "amount0Min_wei": 0,
+      "amount1Min_raw": 19899999,
+      "usdc_approve_required_raw": 20000000,
+      "gas_approve_estimate": 38704,
+      "gas_mint_inherited": 180000,
+      "gas_total": 218704,
+      "gas_cost_usd": "0.0076",
+      "feasibility": "feasible (24x margin in $0.18 gas balance)"
+    }
+  },
+
+  "wallet_state_at_block_46807131": {
+    "eth_native_wei": 90470751043807,
+    "eth_native_human": "0.000090470751",
+    "weth_raw": 2470131003793800,
+    "weth_human": "0.0024701310037938",
+    "usdc_raw": 21774783,
+    "usdc_human": "21.774783",
+    "uni_v3_npm_base_allowance_weth": "0.0024701310037938 (ApproveExact leftover; need not new for 0 wei mint)",
+    "uni_v3_npm_base_allowance_usdc": "5.0 (5 USDC; need new ApproveExact for 10/20 USDC)"
+  },
+
+  "invariant_check": {
+    "invariant_3_dryrun_broadcast_zero": "passed (no tx sent)",
+    "invariant_4_minout_and_deadline_nonzero": "passed (amount1Min=9949999/19899999>0, deadline=4070908800>0)",
+    "invariant_9_approve_exact_only": "passed (no ApproveMax; amounts equal LP-required USDC)",
+    "invariant_10_post_exit_revoke_planned": "passed (step 4 = approve(NPM, 0) for USDC)"
+  },
+
+  "fabrication_blocks": {
+    "quoter_v2_live_reread": "skipped_due_to_publicnode_revert (inherited from upstream precise_quote CSV)",
+    "mint_gas_live_estimate": "revert_on_publicnode_unknown_cause (inherited from upstream real_cost_model CSV)",
+    "block_at_observation": "no_fabricated_block_numbers",
+    "balance_or_allowance": "live-readonly only; not fabricated"
+  },
+
+  "upstream_data_layer_alignment": {
+    "primary_pool_row_in_4_layers": true,
+    "router_recommended_next_stage_matches": true,
+    "router_can_run_probe_now_false": true,
+    "no_bridge_or_swap_suggestion": true
+  },
+
+  "manual_approval_required": true,
+  "approval_phrase_template": "APPROVE_BASE_10_20U_PROBE_DRY_RUN_WITH_WALLET_ADDRESS_ONLY wallet=0x[0-9a-fA-F]{40} notional=(10|20)",
+  "approval_phrase_does_not_unlock_execution": true,
+  "approval_phrase_regex": "^APPROVE_BASE_10_20U_PROBE_DRY_RUN_WITH_WALLET_ADDRESS_ONLY wallet=0x[0-9a-fA-F]{40} notional=(10|20)$",
+
+  "edge_proven": "no",
+  "tiny_canary_allowed": "no",
+  "can_run_probe_now": false,
+  "can_run_wallet_address_dry_run_next": true,
+  "wallet_or_tx_touched": false,
+
+  "decision_notes": [
+    "Phase A: workspace created at reports/lp_base_probe_dry_run_builder/20260602_112400.",
+    "Phase B: 14 upstream artifacts read; primary candidate self-consistent across 4 data layers.",
+    "Phase C: candidate frozen — WETH/USDC 0x72ab388e.. on Base; 4 alternates rejected (3 EV proxy anomaly + 1 missing token); BSC alternative rejected (no funds).",
+    "Phase D: Base RPC ready (publicnode); chain_id=8453; all 6 contracts (pool/NPM/Factory/QuoterV2/WETH/USDC) have code.",
+    "Phase E: balance/allowance refreshed at block 46807131; ETH=0.0000905, WETH=0.00247, USDC=21.775; USDC allowance 5.0 < 10/20 needed.",
+    "Phase F: pool slot0 refreshed at block 46807634; sqrtPriceX96=3.52e24, current_tick=-200443, current_liquidity=9.66e17; WETH USD anchor=$1,973.88.",
+    "Phase F deviation: QuoterV2 live read reverted on publicnode for both Uniswap V3 QuoterV2 (0x3d4e..) and Slipstream Quoter (0x254c..); inherited 20U result from upstream precise_quote CSV.",
+    "Phase G: tick range proposal — 3 tiers (narrow/medium/wide); recommend medium (15m).",
+    "Phase H: token amount calc — for any notional in $10-20, in-range LP is essentially 99.9% USDC + ~$0.001 WETH at spot $1974. 10U/20U need 0 WETH and 10/20 USDC.",
+    "Phase I: wallet-bound unsigned package built; recipient=wallet, deadline=placeholder (2099-01-01 UTC, user overrides at exec).",
+    "Phase J: approve estimateGas=38,704 (live); mint estimateGas reverts (publicnode snapshot artifact); mint gas inherited 180,000 from upstream real_cost_model CSV; full round-trip ≈ 218,704 gas ≈ $0.0076; wallet has $0.18 gas balance → 24x margin.",
+    "Phase K: manual approval checkpoint with strict regex; placeholders (USER_PROVIDED_WALLET_ADDRESS etc.) explicitly rejected.",
+    "Phase L: this verdict; all safety locks intact."
+  ],
+
+  "secondary_observations": [
+    "USDC is the only token requiring a new ApproveExact (5.0 existing allowance < 10/20 needed). WETH 0 amount needs no approve.",
+    "The 0.01% fee tier with tick_spacing=1 + 2% medium range gives ~45% expected active share, with the LP being essentially 1-sided USDC.",
+    "real_fee_accrual upstream EV proxy = -$0.060 for this pool (pool_level_fee_velocity_proxy_only, actual_position_fee_lineage missing) — consistent with the BSC candidate's -$0.016; not a profit signal.",
+    "Wallet ETH gas balance $0.18 is $0.02 below the conservative $0.20 gas floor; advisory only — does not block this read-only stage. Recommend topping up $1 before any execution."
+  ],
+
+  "recommended_next_stage": "LP_BASE_10_20U_PROBE_EXECUTION_SPEC_REVIEW_V1",
+  "allowed_next_stages": [
+    "LP_BASE_10_20U_PROBE_EXECUTION_SPEC_REVIEW_V1",
+    "LP_BASE_10_20U_PROBE_DRY_RUN_BUILDER_FIX_REPEAT",
+    "LP_BASE_CANDIDATE_REFRESH_FOR_PROBE_PREFLIGHT_V1",
+    "STOP_LP_RESEARCH_NOW"
+  ]
+}

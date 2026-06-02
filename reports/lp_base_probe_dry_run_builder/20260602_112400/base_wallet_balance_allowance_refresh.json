@@ -1,0 +1,58 @@
+{
+  "stage": "LP_BASE_10_20U_PROBE_DRY_RUN_BUILDER_V1",
+  "phase": "E_base_wallet_balance_allowance_refresh",
+  "ts": 1780403610,
+  "wallet_address_masked": "0xb05b...d835",
+  "frozen_pool": "0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38",
+  "rpc_url_source": "public_fallback:https://base-rpc.publicnode.com",
+  "chain_id_observed": 8453,
+  "block_number": 46807131,
+  "block_number_hex": "0x2ca385b",
+  "block_tag": "latest",
+  "eth_native": {
+    "symbol": "ETH",
+    "raw": "90470751043807",
+    "human": "0.000090470751043807",
+    "read_success": true
+  },
+  "token_rows": [
+    {
+      "symbol": "WETH",
+      "address": "0x4200000000000000000000000000000000000006",
+      "decimals": 18,
+      "balance_raw": "2470131003793800",
+      "balance_human": "0.0024701310037938",
+      "read_success": true,
+      "allowances": {
+        "uni_v3_npm_base": {
+          "spender_address": "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1",
+          "raw": "2470131003793800",
+          "human": "0.0024701310037938",
+          "read_success": true
+        }
+      }
+    },
+    {
+      "symbol": "USDC",
+      "address": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+      "decimals": 6,
+      "balance_raw": "21774783",
+      "balance_human": "21.774782999999999333",
+      "read_success": true,
+      "allowances": {
+        "uni_v3_npm_base": {
+          "spender_address": "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1",
+          "raw": "5000000",
+          "human": "5",
+          "read_success": true
+        }
+      }
+    }
+  ],
+  "fabrication_blocked": true,
+  "rpc_ready": true,
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no",
+  "edge_proven": "no"
+}
