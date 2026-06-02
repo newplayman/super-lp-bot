@@ -1,0 +1,89 @@
+{
+  "stage": "LP_BASE_10U_PROBE_OPERATOR_EXECUTION_REQUEST_V1",
+  "phase": "E_final_operator_approval_phrase",
+  "run_id": "20260602_190720",
+
+  "phrases": {
+    "armed_runner_build_phrase": {
+      "value": "APPROVE_BUILD_BASE_10U_PROBE_EXECUTION_RUNNER wallet=0xb05b2872ace4564ff247555b6f7b097d31f3d835 pool=0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38 notional=10 hold=15m",
+      "purpose": "authorize LP_BASE_10U_PROBE_EXECUTION_RUNNER_ARMED_BUILD_V1 stage to build armed runner (including unsealing source-code hard-disable)",
+      "does_not_authorize": ["any send", "any tx broadcast", "any signer construction"],
+      "accepted_in_next_stage": true,
+      "accepted_in_this_stage": false,
+      "future_acceptance_conditions": [
+        "exact phrase match",
+        "argparse --mode build-armed-runner (assumed next-stage convention)",
+        "operator explicit consent",
+        "dry-run-only / no-send defaults still true"
+      ]
+    },
+    "one_shot_execution_phrase": {
+      "value": "APPROVE_BASE_10U_LP_PROBE_EXECUTION_ONE_SHOT wallet=0xb05b2872ace4564ff247555b6f7b097d31f3d835 pool=0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38 notional=10 hold=15m",
+      "purpose": "use at LP_BASE_10U_PROBE_FIRST_EXECUTION_RUN_V1 stage to authorize actual on-chain send",
+      "accepted_in_this_stage": false,
+      "accepted_in_armed_build_stage": false,
+      "accepted_in_first_execution_stage": "only if all gates pass",
+      "future_acceptance_conditions": [
+        "exact phrase match (see prior FINAL_HUMAN_APPROVAL_TEMPLATE_CN.md)",
+        "--mode execute-guarded",
+        "--i-understand-this-sends-real-transactions",
+        "dry-run-only / no-send explicitly overridden to false",
+        "send hard-disable must already be released by separate commit",
+        "all 27 pre-execution gates pass"
+      ]
+    }
+  },
+
+  "this_stage_accepts_no_phrase": {
+    "approves_phrase_for_execution": false,
+    "approves_phrase_for_build": false,
+    "validates_any_phrase_input": false,
+    "writes_chain_state": false
+  },
+
+  "comparison_table": {
+    "prefix": {
+      "armed_build": "APPROVE_BUILD_BASE_10U_PROBE_EXECUTION_RUNNER",
+      "one_shot": "APPROVE_BASE_10U_LP_PROBE_EXECUTION_ONE_SHOT"
+    },
+    "scope": {
+      "armed_build": "build armed runner (including hard-disable release)",
+      "one_shot": "actually broadcast mint/approve/decrease/collect"
+    },
+    "accept_stage": {
+      "armed_build": "LP_BASE_10U_PROBE_EXECUTION_RUNNER_ARMED_BUILD_V1",
+      "one_shot": "LP_BASE_10U_PROBE_FIRST_EXECUTION_RUN_V1"
+    },
+    "constructs_signer": {
+      "armed_build": false,
+      "one_shot": "yes (armed runner constructs, but still gated by 3-gate + 2-default)"
+    },
+    "broadcasts_tx": {
+      "armed_build": false,
+      "one_shot": "yes (after passing all gates)"
+    },
+    "failure_impact": {
+      "armed_build": "only build fails",
+      "one_shot": "real-money loss"
+    },
+    "cross_checks": {
+      "armed_build": ["wallet", "pool", "notional", "hold"],
+      "one_shot": ["wallet", "pool", "notional", "hold"]
+    }
+  },
+
+  "dangerous_word_safety": {
+    "armed_build_substring_EXECUTION": "not matched by \\bEXECUTE\\b because EXECUTION continues with N (word char)",
+    "armed_build_substring_RUNNER": "not in 27-word list",
+    "armed_build_substring_BUILD": "not in 27-word list",
+    "armed_build_substring_APPROVE": "not in 27-word list",
+    "armed_build_substring_10U": "matches \\b10U\\b which is NOT in dangerous list (only \\b20U\\b is)",
+    "next_stage_must_reuse_27_dangerous_word_list_plus_4_cross_check": true
+  },
+
+  "wallet_or_tx_touched": false,
+  "this_stage_accepts_phrase": false,
+  "build_phrase_can_execute_tx": false,
+  "execution_allowed_now": false,
+  "hard_disable_still_active": true
+}

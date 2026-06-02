@@ -1,0 +1,76 @@
+{
+  "stage": "LP_BASE_10U_PROBE_OPERATOR_EXECUTION_REQUEST_V1",
+  "phase": "C_operator_execution_request_summary",
+  "run_id": "20260602_190720",
+
+  "this_is_not": {
+    "positive_ev_bet": false,
+    "edge_proven": "no",
+    "tiny_canary_allowed": "no",
+    "historical_backtest_proved_positive_ev": false,
+    "lp_strategy_research_state": "FROZEN",
+    "ev_proof_sources": [
+      "reports/final_freeze/20260531_124000/",
+      "docs/LPBOT_RESEARCH_STATUS_CN.md",
+      "CLAUDE.md project status"
+    ]
+  },
+
+  "this_is": {
+    "kind": "10U small-amount channel probe",
+    "purpose": "buy data, not profit"
+  },
+
+  "purposes": [
+    {"id": "extract_real_tokenId", "expected_output": "mint receipt ERC721 Transfer -> tokenId in telemetry"},
+    {"id": "validate_mint_decrease_collect_revoke_channel", "expected_output": "4-5 tx receipts in telemetry; manual intervention on any fail"},
+    {"id": "record_actual_fee_accrual", "expected_output": "feeGrowthInsideLastX128 + tokensOwed across entry/hold/pre_exit/post_collect"},
+    {"id": "record_actual_pnl", "expected_output": "(exit_USDC + exit_WETH_USD) - (entry_USDC + entry_WETH_USD) - total_gas_USD"},
+    {"id": "calibrate_future_100_500_1000_2000_usd_ev_model", "expected_output": "actual fee + actual gas + actual slippage vs backtest/paper expectation -> reality-gap model"}
+  ],
+
+  "frozen_candidate": {
+    "chain": "Base",
+    "chain_id": 8453,
+    "protocol": "Uniswap V3",
+    "pool": "0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38",
+    "pair": "WETH/USDC",
+    "fee_tier": 100,
+    "npm": "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1",
+    "wallet": "0xb05b2872ace4564ff247555b6f7b097d31f3d835",
+    "notional_usd": 10,
+    "notional_usdc_raw": 10000000,
+    "hold_window": "15m",
+    "max_manual_extension": "none for first execution",
+    "any_deviation_rejected": true
+  },
+
+  "current_risks": [
+    {"id": "realistic_ev_not_proven_positive", "severity": "high", "mitigation": "accept; data collection not EV validation"},
+    {"id": "worst_case_loss_approx_20_usd", "severity": "medium", "mitigation": "sandbox scale; operator must accept"},
+    {"id": "tick_drift_may_abort", "severity": "medium", "mitigation": "27-gate checklist + fresh approval requirement"},
+    {"id": "any_tx_may_revert", "severity": "medium", "mitigation": "manual intervention path defined"},
+    {"id": "actual_fee_may_not_cover_gas", "severity": "medium", "mitigation": "accept; data acquisition cost"},
+    {"id": "pool_extreme_event", "severity": "low-medium", "mitigation": "single pool sandbox; no repeat"},
+    {"id": "rpc_failure_or_nonce_collision", "severity": "low", "mitigation": "rpc_call 5x retry; receipt timeout 120s -> manual intervention"},
+    {"id": "operator_typo_wrong_wallet_pool", "severity": "low", "mitigation": "4 cross-checks + 27 dangerous words + 27-gate checklist"}
+  ],
+
+  "cannot_execute_now_reasons": [
+    "executor v2 execute-guarded always raises hard-disable at line 974",
+    "no execution runner exists in this stage",
+    "prior stage marked hard_disable_still_active = true",
+    "unsealing requires separate commit + second audit (spec already defined)"
+  ],
+
+  "operator_next_step": "open OPERATOR_DECISION_MENU_CN.md and pick A / B / C",
+  "operator_must_not": "select 'execute now' (no such option exists in this stage)",
+
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false,
+  "execution_allowed_now": false,
+  "hard_disable_still_active": true,
+  "tiny_canary_allowed": "no",
+  "edge_proven": "no",
+  "this_stage_only_assembles_request": true
+}

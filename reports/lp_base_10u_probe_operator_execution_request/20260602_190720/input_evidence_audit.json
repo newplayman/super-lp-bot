@@ -1,0 +1,80 @@
+{
+  "stage": "LP_BASE_10U_PROBE_OPERATOR_EXECUTION_REQUEST_V1",
+  "phase": "B_input_evidence_audit",
+  "run_id": "20260602_190720",
+  "previous_stage": "LP_BASE_10U_PROBE_EXECUTION_AUTHORIZATION_PACKAGE_V1",
+  "previous_run_id": "20260602_184806",
+  "previous_commit": "f89c02c",
+  "previous_status": "PASS",
+
+  "upstream_artifacts_present": {
+    "FINAL_VERDICT.json": true,
+    "ONEPAGE_CN.md": true,
+    "BASE_10U_PROBE_AUTHORIZATION_SUMMARY_CN.md": true,
+    "base_10u_probe_authorization_summary.json": true,
+    "PRE_EXECUTION_FINAL_CHECKLIST_CN.md": true,
+    "pre_execution_final_checklist.json": true,
+    "AUTHORIZED_TRANSACTION_SEQUENCE_CN.md": true,
+    "authorized_transaction_sequence.json": true,
+    "MINT_RECEIPT_TOKENID_SCHEMA_CN.md": true,
+    "mint_receipt_tokenid_schema.json": true,
+    "ACTUAL_FEE_TELEMETRY_SCHEMA_CN.md": true,
+    "actual_fee_telemetry_schema.json": true,
+    "FINAL_HUMAN_APPROVAL_TEMPLATE_CN.md": true,
+    "final_human_approval_template.json": true,
+    "FINAL_RISK_ACCEPTANCE_PACKET_CN.md": true,
+    "final_risk_acceptance_packet.json": true,
+    "NEXT_EXECUTION_COMMAND_DRAFT_CN.md": true,
+    "next_execution_command_draft.json": true
+  },
+
+  "preconditions_satisfied": {
+    "previous_stage_correct": true,
+    "previous_status_pass": true,
+    "authorization_package_ready": true,
+    "execution_allowed_now": false,
+    "can_run_probe_now": false,
+    "hard_disable_still_active": true,
+    "recommended_next_stage_match": true,
+    "this_stage_is_request_not_execution": true
+  },
+
+  "deviations_resolved_in_prior_stage": [
+    "skip_approve_if_allowance_sufficient_not_wired",
+    "mint_receipt_schema_not_defined",
+    "feeGrowth_tokensOwed_telemetry_mode_not_implemented"
+  ],
+
+  "executor_v2_status": {
+    "file": "scripts/lp_base_10u_probe_executor_v2.py",
+    "hard_disable_class_present": true,
+    "hard_disable_raise_at_line": 974,
+    "hard_disable_unsealed_this_stage": false
+  },
+
+  "stage_chain": [
+    "implementation_v1 (20260602_163036, da6c012)",
+    "final_execution_review_v1 (20260602_182402, c18176f)",
+    "authorization_package_v1 (20260602_184806, f89c02c)",
+    "operator_execution_request_v1 (CURRENT, 20260602_190720)",
+    "armed_runner_build_v1 (FUTURE, requires operator pick A)",
+    "first_execution_run_v1 (FUTURE, requires unseal commit)"
+  ],
+
+  "verdict": {
+    "input_evidence_complete": true,
+    "previous_stage_pass": true,
+    "wrong_stage_blocker": false,
+    "dirty_workspace_blocker": false,
+    "ready_to_proceed": true
+  },
+
+  "safety_invariants_this_stage": {
+    "wallet_or_tx_touched": false,
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no",
+    "edge_proven": "no",
+    "execution_allowed_now": false,
+    "hard_disable_still_active": true
+  }
+}

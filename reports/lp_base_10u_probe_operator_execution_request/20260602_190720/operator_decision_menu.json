@@ -1,0 +1,96 @@
+{
+  "stage": "LP_BASE_10U_PROBE_OPERATOR_EXECUTION_REQUEST_V1",
+  "phase": "D_operator_decision_menu",
+  "run_id": "20260602_190720",
+  "total_options": 3,
+  "direct_execute_option_present": false,
+  "direct_execute_option_explicitly_forbidden": true,
+
+  "options": [
+    {
+      "key": "A",
+      "name": "APPROVE_BUILD_EXECUTION_RUNNER",
+      "next_stage": "LP_BASE_10U_PROBE_EXECUTION_RUNNER_ARMED_BUILD_V1",
+      "build_actions": [
+        "unseal send hard-disable in a separate commit (source code only)",
+        "construct armed runner (still default no-send / dry-run-only)",
+        "wire skip_approve_if_allowance_sufficient",
+        "wire mint_receipt schema parsing",
+        "wire actual_fee telemetry writes",
+        "wire abort_before_entry path",
+        "wire emergency_stop path"
+      ],
+      "will_not_do": [
+        "send any transaction",
+        "construct signer or load private key",
+        "accept the one-shot execution phrase",
+        "call eth_sendRawTransaction"
+      ],
+      "accept_phrase_in_next_stage": "APPROVE_BUILD_BASE_10U_PROBE_EXECUTION_RUNNER wallet=0xb05b2872ace4564ff247555b6f7b097d31f3d835 pool=0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38 notional=10 hold=15m",
+      "is_execution_authorization": false
+    },
+    {
+      "key": "B",
+      "name": "REQUEST_AUTH_PACKAGE_FIX",
+      "next_stage": "LP_BASE_10U_PROBE_EXECUTION_AUTHORIZATION_PACKAGE_FIX_REPEAT",
+      "good_for": [
+        "adjust gate thresholds in 27-item checklist",
+        "modify tick range margin (currently +/-200 ticks)",
+        "rewrite mint receipt schema or fee telemetry time points",
+        "edit 6-allow / 13-forbid tx whitelist",
+        "rewrite worst-case acceptance standard (currently ~20 USD)"
+      ],
+      "is_execution_authorization": false
+    },
+    {
+      "key": "C",
+      "name": "STOP",
+      "next_stage": "STOP_LP_RESEARCH_NOW",
+      "good_for": [
+        "operator decides probe not worth it",
+        "funds do not permit ~20 USD potential loss",
+        "operator decides LP research stops permanently / temporarily",
+        "operator finds a deviation that is unacceptable"
+      ],
+      "artifacts_preserved": true,
+      "is_execution_authorization": false
+    }
+  ],
+
+  "decision_matrix": {
+    "want_to_continue_with_more_safeguards": "A",
+    "want_to_fix_a_specific_item_in_the_package": "B",
+    "want_to_stop": "C",
+    "want_to_send_tx_now": "NOT_ALLOWED_IN_THIS_STAGE"
+  },
+
+  "post_choice_stage_chain": {
+    "A": [
+      "LP_BASE_10U_PROBE_EXECUTION_RUNNER_ARMED_BUILD_V1 (build only; still no-send by default)",
+      "LP_BASE_10U_PROBE_EXECUTION_RUNNER_FINAL_REVIEW_V1 (review armed runner)",
+      "LP_BASE_10U_PROBE_FIRST_EXECUTION_REQUEST_V1 (request operator confirmation to actually send)",
+      "LP_BASE_10U_PROBE_FIRST_EXECUTION_RUN_V1 (now and only now, actual send may happen)"
+    ],
+    "B": [
+      "LP_BASE_10U_PROBE_EXECUTION_AUTHORIZATION_PACKAGE_FIX_REPEAT",
+      "(repeat final review -> authorization package -> operator request)"
+    ],
+    "C": [
+      "STOP_LP_RESEARCH_NOW",
+      "(artifacts preserved; no further action)"
+    ]
+  },
+
+  "this_stage_does_not_parse_user_input": true,
+  "this_stage_does_not_execute_selected_branch": true,
+  "this_stage_does_not_write_chain_state": true,
+  "operator_choice_recorded_in_this_run": false,
+
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false,
+  "execution_allowed_now": false,
+  "hard_disable_still_active": true,
+  "tiny_canary_allowed": "no",
+  "edge_proven": "no",
+  "operator_choice_recorded": false
+}

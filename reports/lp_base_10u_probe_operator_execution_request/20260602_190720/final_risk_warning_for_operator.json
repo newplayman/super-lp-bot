@@ -1,0 +1,85 @@
+{
+  "stage": "LP_BASE_10U_PROBE_OPERATOR_EXECUTION_REQUEST_V1",
+  "phase": "F_final_risk_warning_for_operator",
+  "run_id": "20260602_190720",
+  "language_style": "plain, direct, no hedging",
+
+  "warnings": [
+    {
+      "id": "may_lose_money",
+      "headline": "this probe may lose money",
+      "worst_case_usd": 20,
+      "decision_if_not_acceptable": "C"
+    },
+    {
+      "id": "ev_not_proven",
+      "headline": "EV is NOT proven positive",
+      "evidence": "edge_proven=no; tiny_canary_allowed=no; LP research FROZEN",
+      "decision_if_user_wants_profit": "C or B"
+    },
+    {
+      "id": "purpose_is_data_not_profit",
+      "headline": "10U buys data, not profit",
+      "success_criteria_examples": [
+        "real tokenId",
+        "real fee accrual",
+        "real PnL (any sign)",
+        "real gas/slippage for 4-5 tx"
+      ],
+      "profit_is_not_a_success_criterion": true
+    },
+    {
+      "id": "do_not_continue_if_unwilling_to_lose_10u",
+      "headline": "if you cannot afford to lose 10U, do not continue",
+      "decision_if_uncomfortable": "C"
+    },
+    {
+      "id": "armed_runner_will_construct_signer",
+      "headline": "next stage builds an armed runner that constructs signer",
+      "still_gated_by": ["3 gates", "2 default safety flags"],
+      "decision_if_uncomfortable": "C or B"
+    },
+    {
+      "id": "data_records_may_fail",
+      "headline": "tokenId / actual fee / PnL records may fail",
+      "failure_modes": [
+        "mint receipt parse fail -> tokenId unavailable",
+        "positions(tokenId) mismatch -> manual intervention",
+        "decreaseLiquidity OK but collect fail -> tokens stuck",
+        "RPC failure -> fee state time point missed -> actual_fee_ready=false"
+      ],
+      "decision_if_uncomfortable_with_incomplete_data": "C"
+    },
+    {
+      "id": "on_chain_real_money",
+      "headline": "this is on-chain real-money experiment",
+      "not_testnet": true,
+      "not_simulation": true,
+      "not_dry_run_in_final_execution_stage": true,
+      "irreversible": true,
+      "consequences_per_tx": [
+        "consumes real ETH gas",
+        "involves real USDC balance from wallet 0xb05b...d835",
+        "creates irreversible state change on Base chain",
+        "permanently recorded on block explorer",
+        "cannot be undone / rolled back"
+      ],
+      "decision_if_uncomfortable": "C or B"
+    }
+  ],
+
+  "summary_decision_table": {
+    "accept_20usd_loss_and_data_purpose_and_continue": "A",
+    "see_a_specific_item_to_fix": "B",
+    "any_warning_uncomfortable": "C"
+  },
+
+  "default_when_no_choice": "C (treated equivalent to WAIT_FOR_OPERATOR_DECISION; does NOT enter armed build)",
+
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false,
+  "execution_allowed_now": false,
+  "hard_disable_still_active": true,
+  "edge_proven": "no",
+  "tiny_canary_allowed": "no"
+}

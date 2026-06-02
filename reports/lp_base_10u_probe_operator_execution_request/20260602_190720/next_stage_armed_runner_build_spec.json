@@ -1,0 +1,77 @@
+{
+  "stage": "LP_BASE_10U_PROBE_OPERATOR_EXECUTION_REQUEST_V1",
+  "phase": "G_next_stage_armed_runner_build_spec",
+  "run_id": "20260602_190720",
+  "this_is_a_documentation_spec_only": true,
+  "this_stage_does_not_create_runner": true,
+
+  "future_stage_name": "LP_BASE_10U_PROBE_EXECUTION_RUNNER_ARMED_BUILD_V1",
+  "future_stage_entry_condition": "operator picked option A in this stage",
+
+  "objectives": [
+    {"id": "build_armed_runner", "details": "new script scripts/lp_base_10u_probe_executor_v3_armed.py implementing send-capable version, default no-send"},
+    {"id": "unseal_send_hard_disable", "details": "armed runner does NOT raise ExecutionSendDisabledInImplementationBuildStage; conditional dispatch instead; MUST be in separate commit with 'unseal:' prefix"},
+    {"id": "default_no_send", "details": "argparse --dry-run-only / --no-send still default True; only operator explicit override can broadcast"},
+    {"id": "still_requires_one_shot_phrase", "details": "parse_one_shot_execution_phrase reuses regex + 27 dangerous words + 4 cross-check"},
+    {"id": "still_requires_i_understand_flag", "details": "argparse store_true, must be explicit"},
+    {"id": "abort_before_entry", "details": "any pre-mint gate fail -> immediate abort; no partial state"},
+    {"id": "record_tokenId", "details": "reuse Stage F MINT_RECEIPT_TOKENID_SCHEMA; any extraction fail -> manual intervention"},
+    {"id": "record_actual_fee", "details": "reuse Stage G ACTUAL_FEE_TELEMETRY_SCHEMA; 4 time points; if any miss -> actual_fee_ready=false"},
+    {"id": "record_final_pnl", "details": "formula from prior BASE_10U_PROBE_AUTHORIZATION_SUMMARY"},
+    {"id": "emergency_stop", "details": "SIGINT/SIGTERM -> stop in-flight broadcast, drop last-known telemetry, set emergency_stop=true, manual intervention"}
+  ],
+
+  "must_not_do": [
+    "accept one-shot execution phrase (that phrase belongs to FIRST_EXECUTION_RUN_V1 stage)",
+    "send any tx (armed build = build only)",
+    "flip dry-run-only / no-send defaults to false",
+    "skip 27-item pre-execution checklist",
+    "auto-loop iterations > 1",
+    "write production DB / shadow tables / positions",
+    "modify core/strategy execution path",
+    "cross-chain bridge or cross-pool swap"
+  ],
+
+  "file_conventions": {
+    "armed_runner_main": "scripts/lp_base_10u_probe_executor_v3_armed.py",
+    "executor_v2_must_remain_unchanged": true,
+    "test_file": "tests/test_lp_base_10u_probe_executor_v3_armed_build_v1.py",
+    "reports_dir": "reports/lp_base_10u_probe_execution_runner_armed_build/<RUN_ID>/"
+  },
+
+  "new_telemetry_schemas": [
+    {"name": "lp_probe_armed_runner_self_check_v1", "file": "armed_runner_self_check.json"},
+    {"name": "lp_probe_armed_runner_build_phrase_check_v1", "file": "build_phrase_check.json"},
+    {"name": "lp_probe_armed_runner_dry_run_simulation_v1", "file": "dry_run_simulation.json"}
+  ],
+
+  "commit_convention": {
+    "minimum_commits": 2,
+    "commit_1_unseal": {
+      "message_prefix": "unseal:",
+      "example": "unseal: release send hard-disable for armed build (executor v3)",
+      "scope": "source-only unseal of hard-disable raise; diff conditional dispatch"
+    },
+    "commit_2_build": {
+      "message_prefix": "research:",
+      "example": "research: build armed runner scaffold + tests <RUN_ID>",
+      "scope": "runner main + telemetry"
+    },
+    "pr_description_requires": "link to EXECUTION_HARD_DISABLE_RELEASE_AUDIT.md and explicit second-reviewer approval",
+    "unseal_commit_independently_revertable": true
+  },
+
+  "this_stage_constraints": {
+    "creates_armed_runner_file": false,
+    "modifies_executor_v2": false,
+    "unseals_send_hard_disable": false,
+    "writes_any_commit_to_armed_runner_dir": false,
+    "only_writes_documentation_spec": true
+  },
+
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false,
+  "execution_allowed_now": false,
+  "hard_disable_still_active": true,
+  "this_phase_is_doc_only": true
+}
