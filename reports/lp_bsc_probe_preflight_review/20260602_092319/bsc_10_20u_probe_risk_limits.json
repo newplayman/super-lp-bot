@@ -1,0 +1,117 @@
+{
+  "stage": "LP_BSC_10_20U_PROBE_PREFLIGHT_REVIEW_V1",
+  "phase": "D_probe_risk_limits",
+  "scope": "design_only_no_execution",
+  "fund_limits": {
+    "max_total_funds_usd": 20,
+    "preferred_probe_funds_usd": 10,
+    "max_single_pool_count": 1,
+    "max_concurrent_positions": 1,
+    "max_total_positions_per_day": 1,
+    "no_auto_repeat": true,
+    "no_multi_pool": true,
+    "no_compounding": true,
+    "no_hidden_approval": true,
+    "no_automatic_retry_if_mint_fails": true,
+    "no_automatic_swap_back_if_quote_unsafe": true
+  },
+  "hold_limits": {
+    "initial_hold_window": "15m",
+    "max_extension_hold_window": "30m",
+    "extension_requires_health_ok": true,
+    "health_ok_means": [
+      "tick still inside chosen [tickLower, tickUpper] range",
+      "quote drift below stop threshold",
+      "fee velocity 5m bucket non-zero",
+      "RPC last 10 calls all OK",
+      "no pending approval state",
+      "no pending decrease/collect state"
+    ],
+    "extension_decision_is_manual": true,
+    "default_action_at_initial_hold_expiry": "exit"
+  },
+  "stop_conditions": [
+    {
+      "id": "S1_quote_drift",
+      "description": "Mid-price has moved >0.40% (40 bps) vs the quote captured at mint.",
+      "threshold_bps": 40,
+      "action": "exit_immediately"
+    },
+    {
+      "id": "S2_gas_spike",
+      "description": "gas_price observed at exit-time is >5x the gas_price recorded at mint.",
+      "threshold_multiplier": 5.0,
+      "action": "exit_immediately_or_wait_5m_for_normalization"
+    },
+    {
+      "id": "S3_tick_out_of_range",
+      "description": "Current tick is outside [tickLower, tickUpper]. The position earns 0 fees while out-of-range and accumulates IL.",
+      "threshold_ticks_outside": 1,
+      "action": "exit_immediately"
+    },
+    {
+      "id": "S4_pool_liquidity_collapse",
+      "description": "Active-tick liquidity at exit time is <50% of the liquidity observed at mint.",
+      "threshold_pct": 50,
+      "action": "exit_immediately"
+    },
+    {
+      "id": "S5_fee_velocity_stale",
+      "description": "No new Swap events for the candidate pool in the last 5 minutes per eth_getLogs.",
+      "threshold_minutes": 5,
+      "action": "exit_immediately"
+    },
+    {
+      "id": "S6_rpc_unstable",
+      "description": "More than 1 of the last 5 eth_call / eth_getLogs requests fails.",
+      "threshold_failure_count_in_window": "2_of_5",
+      "action": "exit_immediately"
+    },
+    {
+      "id": "S7_token_approval_unexpected",
+      "description": "Token allowance observed before mint is non-zero and not equal to the planned ApproveExact amount.",
+      "action": "abort_before_mint"
+    },
+    {
+      "id": "S8_position_tokenId_not_detected",
+      "description": "After mint tx confirmation, no NFT Transfer event from PositionManager matching our recipient is found within 30 seconds.",
+      "threshold_seconds": 30,
+      "action": "alert_and_freeze_no_exit_until_human_review"
+    },
+    {
+      "id": "S9_exit_quote_unavailable",
+      "description": "QuoterV2 staticcall fails or returns 0 for the exit conversion path at exit time.",
+      "action": "wait_60s_retry_once_then_freeze_no_swap_back_until_human_review"
+    },
+    {
+      "id": "S10_negative_mark_to_market",
+      "description": "Mark-to-market loss exceeds the configured per-position USD threshold.",
+      "threshold_usd": 0.50,
+      "action": "exit_immediately"
+    }
+  ],
+  "approval_policy": {
+    "approve_strategy": "ApproveExact",
+    "approve_max_forbidden": true,
+    "post_exit_revoke_required": true,
+    "approval_recipient_allowlist": ["PancakeSwap V3 NonfungiblePositionManager (BSC)"],
+    "approval_amount_capped_at_probe_notional": true
+  },
+  "pre_mint_gates_required_all_true": [
+    "rpc_capability_matrix_passed",
+    "candidate_pool_tickLiquidity_present_in_active_range",
+    "real_cost_model_present_for_this_notional",
+    "fee_velocity_present_for_this_window",
+    "human_operator_typed_explicit_approval_phrase",
+    "dry_run_builder_produced_calldata_simulated_with_eth_call_only_no_signing",
+    "wallet_address_confirmed_in_allowlist",
+    "BSC_RPC_PRIMARY_env_var_set_to_paid_endpoint",
+    "gas_price_below_per_session_ceiling",
+    "no_active_lpbot_live_or_canary_or_paper_process_on_host"
+  ],
+  "no_auto_unlock": true,
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no",
+  "edge_proven": "no"
+}

@@ -1,0 +1,79 @@
+{
+  "stage": "LP_BSC_10_20U_PROBE_PREFLIGHT_REVIEW_V1",
+  "phase": "G_human_approval_packet",
+  "addressed_to": "human operator (you)",
+  "candidate": {
+    "chain": "BSC",
+    "protocol": "PancakeSwap V3",
+    "pool_address": "0x172fcd41e0913e95784454622d1c3724f546f849",
+    "pair": "USDT/WBNB",
+    "fee_tier_raw": 100,
+    "fee_tier_percent": "0.01"
+  },
+  "planned_funds": {
+    "preferred_usd": 10,
+    "max_usd": 20,
+    "single_pool_only": true,
+    "single_position": true,
+    "no_compounding": true
+  },
+  "max_loss_assumption": {
+    "fixed_cost_usd": "0.0153 (entry + exit + collect + approval gas)",
+    "realistic_il_lvr_usd_for_15m_20u": "0.0004",
+    "expected_pool_fee_proxy_usd_for_15m_20u": "0.0001",
+    "expected_net_ev_proxy_usd_for_15m_20u": "-0.0156",
+    "tail_loss_usd_if_S1_quote_drift_triggers_immediately": "~0.10 (40 bps × 20U)",
+    "tail_loss_usd_if_S10_mtm_stop_triggers": "0.50 (configured per-position threshold)",
+    "absolute_worst_case_usd": "~1.00 (full position locked OOR + swap-back drift + gas; assumes no catastrophic exploit)",
+    "note": "These exclude any catastrophic-exploit scenarios (rug, contract bug). Probe targets a known-good audited pool but no on-chain action is risk-free."
+  },
+  "why_not_positive_ev_proof": [
+    "At 20U notional the $0.0153 fixed_cost dominates every hold window's fee_proxy.",
+    "The only positive cell in the candidate pool's economics matrix is 100U / 24h / zero_il_lvr = +$0.038, and zero_il_lvr is an unrealistic scenario (it asserts no impermanent loss on a 24h WBNB/USDT LP, which we know to be false).",
+    "Realistic-scenario best for 20U is -$0.0156 at 15m and gets worse with hold.",
+    "There is therefore no claim that this probe is +EV."
+  ],
+  "why_still_worth_doing_as_channel_probe": [
+    "Channel validation: the entire open/close path (approve → mint → in-range hold → decreaseLiquidity → collect → revoke) has never been exercised end-to-end with a real wallet on BSC PancakeSwap V3 from this codebase.",
+    "tokenId retrieval: actual NFT position tokenId can only be observed from the NFT Transfer event after a real mint. This calibrates downstream telemetry.",
+    "Actual fee accrual: pool-level fee_proxy is an upper-bound estimate (assumes position takes (notional / TVL_proxy) of the pool fee, ignoring tick-range concentration). A 15m real probe measures actual feeGrowthInside / tokensOwed delta for the chosen tickLower/tickUpper, which is the single most important calibration input for sizing 100/500/1000/2000U next.",
+    "Exit-quote stability: a 15m hold lets us measure how much the swap-back quote drifts in a single 15m window for a real-sized LP, which is currently estimated only from event-stream stats."
+  ],
+  "estimated_hold_time": "15 minutes initial, up to 30 minutes with manual extension if health_ok",
+  "success_criteria_for_probe_execution_if_approved": [
+    "mint_tx confirmed",
+    "tokenId successfully observed from NFT Transfer event within 30s",
+    "in_range for entire hold",
+    "exit_tx (decreaseLiquidity + collect) confirmed",
+    "actual_fee_accrual_usd recorded (even if ~$0)",
+    "revoke_tx confirmed",
+    "net_pnl_usd within ±$1.00 of the worst-case loss model"
+  ],
+  "failure_criteria_for_probe_execution_if_approved": [
+    "any stop condition (S1..S10) triggers and forces unplanned exit",
+    "tokenId not retrievable within 30s of mint confirmation",
+    "exit quote unavailable longer than 60s + 1 retry",
+    "revoke fails after exit",
+    "net loss exceeds $1.00",
+    "any process other than the probe touches a wallet / private key / live order during the probe window"
+  ],
+  "human_must_explicitly_confirm": [
+    "I have read the candidate review, risk limits, telemetry spec, and dry-run builder spec.",
+    "I accept that the realistic EV is negative and the probe is a channel/telemetry investment, not a profit trade.",
+    "I have set BSC_RPC_PRIMARY to a paid endpoint (or explicitly accept publicnode for dry-run only).",
+    "I have prepared a wallet address with at most 25 USD equivalent (20U notional + ~5U gas/slippage buffer).",
+    "I confirm no lpbot-live, lpbot-canary, lpbot-paper, or other production process is running on this host.",
+    "I will run the dry-run builder FIRST and review its full unsigned tx package output BEFORE any execution stage.",
+    "I understand that approving this packet only unlocks LP_BSC_10_20U_PROBE_DRY_RUN_BUILDER_V1 — it does NOT unlock execution."
+  ],
+  "one_line_conclusion": "APPROVE_DRY_RUN_BUILDER",
+  "one_line_conclusion_alternatives": ["APPROVE_DRY_RUN_BUILDER", "DO_NOT_EXECUTE_PROBE_YET"],
+  "default_one_line_conclusion": "DO_NOT_EXECUTE_PROBE_YET",
+  "conclusion_means": "Approving moves us to the next read-only stage (build unsigned tx package + simulate via eth_call). Execution remains gated behind a further, separately-specified stage that this packet does not authorize.",
+
+  "can_run_probe_now": false,
+  "manual_approval_required_for_probe": true,
+  "tiny_canary_allowed": "no",
+  "edge_proven": "no",
+  "wallet_or_tx_touched": false
+}

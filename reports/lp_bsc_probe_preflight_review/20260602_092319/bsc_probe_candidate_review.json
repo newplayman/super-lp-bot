@@ -1,0 +1,131 @@
+{
+  "stage": "LP_BSC_10_20U_PROBE_PREFLIGHT_REVIEW_V1",
+  "phase": "C_candidate_pool_review",
+  "candidate": {
+    "chain": "BSC",
+    "chain_id": 56,
+    "protocol": "PancakeSwap V3",
+    "pool_address": "0x172fcd41e0913e95784454622d1c3724f546f849",
+    "pair": "USDT/WBNB",
+    "token0_symbol": "USDT",
+    "token1_symbol": "WBNB",
+    "fee_tier_raw": 100,
+    "fee_tier_percent": "0.01",
+    "notional_usd_min": 10,
+    "notional_usd_max": 20,
+    "hold_window_initial": "15m",
+    "hold_window_max_extension": "30m"
+  },
+  "readiness": {
+    "quote_ready": true,
+    "tick_liquidity_ready": true,
+    "real_cost_ready": true,
+    "fee_velocity_ready": true,
+    "_evidence": {
+      "quote_ready_source": "reports/lp_bsc_pancakeswap_v3_precise_quote/20260602_235959/ + lp_bsc_quoter_staticcall_amount_fix/20260601_173837/",
+      "tick_liquidity_ready_source": "reports/lp_bsc_overnight_realdata_pipeline/20260601_180812/BSC_TICK_LIQUIDITY_RESULTS_CN.csv (slot0/liquidity/tickBitmap/ticks/observe all yes)",
+      "real_cost_ready_source": "reports/lp_bsc_overnight_realdata_pipeline/20260601_180812/BSC_REAL_COST_MODEL_RESULTS_CN.csv",
+      "fee_velocity_ready_source": "reports/lp_bsc_fee_velocity_recovery_probe_preflight/20260602_060633/bsc_fee_velocity_short_backfill_results.csv (24h decoded=50860, 72h decoded=145642)"
+    }
+  },
+  "ev_status_realistic": {
+    "20u_15m": "-0.015560",
+    "20u_30m": "-0.015865",
+    "20u_1h": "-0.016475",
+    "20u_2h": "-0.017694",
+    "20u_6h": "-0.022570",
+    "20u_24h": "-0.044515",
+    "realistic_positive_ev": false,
+    "interpretation": "At 20U notional the $0.0153 fixed_cost dominates the fee_proxy across every hold window; the realistic IL/LVR component widens the gap as hold increases. There is no realistic-scenario hold window that turns positive at 20U on this pool."
+  },
+  "near_break_even_status": {
+    "20u_24h_zero_il_lvr": "-0.004515",
+    "100u_24h_zero_il_lvr": "+0.038445  (the ONLY positive cell in this pool/notional slice, only because IL/LVR is zeroed)",
+    "near_break_even": true,
+    "interpretation": "20U at 24h with zero IL/LVR drifts toward break-even (-$0.0045). 100U at 24h with zero IL/LVR goes positive (+$0.038), but that scenario is not realistic — it asserts no impermanent loss for a 24h WBNB/USDT 0.01% LP, which the realistic scenario contradicts."
+  },
+  "pool_fee_velocity_observed": {
+    "24h_decoded_swap_count": 50860,
+    "72h_decoded_swap_count": 145642,
+    "24h_volume_usd_proxy": "27153423.04",
+    "72h_volume_usd_proxy": "80550470.20",
+    "24h_unique_traders_approx": 1697,
+    "72h_unique_traders_approx": 3898,
+    "24h_pool_fee_usd_proxy": "2715.3423",
+    "72h_pool_fee_usd_proxy": "8055.0470",
+    "interpretation": "Pool is healthy: ~$27M/24h volume, ~1700 distinct traders/24h, ~$2.7K pool-level fees/24h. A 20U LP would expect (20/POOL_TVL_PROXY) × fee_velocity × hold of this — extremely small absolute fee, but the read-only signal is solid."
+  },
+  "capacity": {
+    "10u_capacity_ok": true,
+    "20u_capacity_ok": true,
+    "interpretation": "Capacity not a concern; the pool transacts $27M/24h. A 20U position is trivially small relative to the active-tick liquidity. The risk is not capacity, it's that the position will earn essentially zero in 15m due to its tiny share of the active range."
+  },
+  "expected_costs_usd": {
+    "entry_conversion_cost_usd": "0.0062",
+    "exit_conversion_cost_usd": "0.0051",
+    "collect_cost_usd": "0.0024",
+    "approval_cost_usd": "0.0015",
+    "total_fixed_cost_usd": "0.0153",
+    "_evidence": "reports/lp_bsc_overnight_realdata_pipeline/20260601_180812/BSC_REAL_COST_MODEL_RESULTS_CN.csv (diagnostic_low scenario, pool 0x172fcd41..., notional=20)"
+  },
+  "expected_fee_proxy_usd": {
+    "20u_15m": "0.000112",
+    "20u_30m": "0.000224",
+    "20u_1h": "0.000448",
+    "20u_2h": "0.000895",
+    "20u_24h": "0.010740",
+    "interpretation": "Pool-level fee proxy assumes (notional / $5M TVL_proxy) × pool_fee_per_sec × hold_sec. Real numbers will differ because actual position fee depends on tick-range concentration. For a $20 LP in the active range, expected actual fee at 15m is in the $0.0001-$0.001 range."
+  },
+  "expected_il_lvr_proxy_usd": {
+    "20u_15m_realistic": "0.000417",
+    "20u_30m_realistic": "0.000833",
+    "20u_1h_realistic": "0.001667",
+    "20u_2h_realistic": "0.003333",
+    "20u_6h_realistic": "0.010000",
+    "20u_24h_realistic": "0.040000",
+    "interpretation": "Realistic IL/LVR = 20 bps × notional × (hold/24h). For 20U/15m that's ~$0.0004 — small. The reason the probe is still net-negative is the $0.015 fixed cost, not IL/LVR."
+  },
+  "main_downside_risks": [
+    {
+      "id": "R1_fixed_cost_dominates",
+      "description": "Total fixed cost (~$0.0153) is 100x the expected 15m fee proxy. Even if real fee is 10x higher than the proxy, EV stays negative.",
+      "severity": "medium",
+      "mitigation": "This probe is NOT an EV bet — it's a channel/tokenId/actual-fee validation. Accept the small loss as a research cost."
+    },
+    {
+      "id": "R2_RPC_single_endpoint",
+      "description": "Only publicnode (1/5) supports bounded eth_getLogs reliably. If publicnode fails during probe, exit logic may stall.",
+      "severity": "high",
+      "mitigation": "Probe execution (future stage) MUST set BSC_RPC_PRIMARY to a paid endpoint before going live. Dry-run can use publicnode."
+    },
+    {
+      "id": "R3_actual_fee_unknown",
+      "description": "All EV numbers use pool-level proxy. Actual position fee accrual depends on tickLower/tickUpper choice, which is not yet validated against real position behavior.",
+      "severity": "medium",
+      "mitigation": "Probe's purpose is exactly to collect this data point. Dry-run builder must emit tickLower/tickUpper choice for human review before any tx is built."
+    },
+    {
+      "id": "R4_swap_back_unbounded",
+      "description": "If we mint with token0+token1 mix and exit when range moves, we need a swap to convert back to a single token. Swap quote drift could exceed fee earnings.",
+      "severity": "medium",
+      "mitigation": "Risk-limit design (Phase D) must include swap_back_quote_drift_max stop condition."
+    },
+    {
+      "id": "R5_approval_persistence",
+      "description": "Position manager / pool approvals persist across runs and create attack surface. Probe needs ApproveExact policy + post-exit revoke.",
+      "severity": "high",
+      "mitigation": "Telemetry spec (Phase E) requires approval tx + revoke tx. Dry-run builder spec (Phase F) requires ApproveExact only."
+    },
+    {
+      "id": "R6_reorg_or_failed_tx",
+      "description": "BSC reorgs are rare but possible. A failed mint tx still costs gas; a confirmed mint then unconfirmed exit is the worst case.",
+      "severity": "low",
+      "mitigation": "Single-pool, single-tx-per-side, no auto-retry."
+    }
+  ],
+  "probe_purpose_clarified": "The probe is NOT a +EV trade. Its purpose is to (1) validate the LP open/close channel end-to-end, (2) retrieve a real NFT position tokenId, (3) measure actual position fee accrual via feeGrowthInside / tokensOwed, (4) calibrate the EV model against real numbers so the next iteration can reason about 100/500/1000/2000U sizing with confidence.",
+  "execution_requires_manual_approval": true,
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no",
+  "edge_proven": "no"
+}
