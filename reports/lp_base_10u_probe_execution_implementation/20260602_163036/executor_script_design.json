@@ -1,0 +1,141 @@
+{
+  "stage": "LP_BASE_10U_PROBE_EXECUTION_IMPLEMENTATION_V1",
+  "phase": "C_executor_script_design",
+  "run_id": "20260602_163036",
+  "scope": "implement v2 executor skeleton with all real-send paths guarded by 3 gates + 2 default safety flags; send is HARD-DISABLED in this build stage",
+
+  "script_path": "scripts/lp_base_10u_probe_executor_v2.py",
+  "v1_path_preserved": "scripts/lp_base_10u_probe_executor_v1.py",
+  "v1_lines": 845,
+  "v2_lines": 961,
+  "v1_modified": false,
+  "v1_last_modified_commit": "9811257",
+
+  "modes_supported": {
+    "preflight": {
+      "purpose": "read-only on-chain state + dynamic tick range recompute",
+      "writes_to": "reports/lp_base_10u_probe_execution_runtime/<run_id>/preflight.json",
+      "exits": 0
+    },
+    "print-unsigned": {
+      "purpose": "build unsigned approve + mint tx packages with dynamically-computed tick range",
+      "writes_to": "reports/lp_base_10u_probe_execution_runtime/<run_id>/unsigned_{approve,mint}_package.json",
+      "exits": 0
+    },
+    "validate-approval": {
+      "purpose": "parse + validate approval phrase; compute 3-gate status (but send still blocked this stage)",
+      "writes_to": "reports/lp_base_10u_probe_execution_runtime/<run_id>/approval_check.json",
+      "exits": 0
+    },
+    "implementation-self-check": {
+      "purpose": "comprehensive self-check: preflight + print-unsigned + approve validation + execute-guarded abort; all without any real send",
+      "writes_to": "reports/lp_base_10u_probe_execution_runtime/<run_id>/{preflight,dynamic_tick_range,approval_check,unsigned_approve_package,unsigned_mint_package,stop_conditions,execution_gates}.json",
+      "exits": 0
+    },
+    "execute-guarded": {
+      "purpose": "validate 3-gate status; ALWAYS aborts with EXECUTION_SEND_DISABLED_IN_IMPLEMENTATION_BUILD_STAGE in this stage",
+      "exits": 1
+    }
+  },
+
+  "modes_rejected": {
+    "execute": {
+      "behavior": "REJECTED at argparse (not in choices)",
+      "rationale": "Use --mode execute-guarded (which itself aborts in this build stage)"
+    }
+  },
+
+  "three_execution_gates": {
+    "gate_1_explicit_mode": {
+      "name": "explicit --mode execute-guarded",
+      "implementation": "argparse choices=[\"execute-guarded\", ...] requires explicit mode selection",
+      "bypass": "impossible (argparse enforces)"
+    },
+    "gate_2_approval_phrase": {
+      "name": "approval phrase exact match",
+      "phrase_template": "APPROVE_BASE_10U_LP_PROBE_EXECUTION_ONE_SHOT wallet=0x[0-9a-fA-F]{40} pool=0x[0a-fA-F]{40} notional=10 hold=15m",
+      "regex": "^APPROVE_BASE_10U_LP_PROBE_EXECUTION_ONE_SHOT wallet=0x[0-9a-fA-F]{40} pool=0x[0-9a-fA-F]{40} notional=10 hold=15m$",
+      "whole_word_dangerous_word_check": true,
+      "27 patterns": ["EXECUTE", "EXEC", "NOW", "LIVE", "CANARY", "PAPER", "MINT", "SIGN", "BURN", "SWAP", "BRIDGE", "SEND", "DEPLOY", "GO", "SHIP", "PROCEED", "20U", "20u", "30M", "30m", "USER_PROVIDED", "USER_SELECTED", "YES", "EXECUTABLE", "FUND", "WITHDRAW", "TRANSFER_OUT"]
+    },
+    "gate_3_i_understand_flag": {
+      "name": "--i-understand-this-sends-real-transactions second flag",
+      "implementation": "argparse --i-understand-this-sends-real-transactions action='store_true'",
+      "bypass": "impossible without explicit flag"
+    }
+  },
+
+  "two_default_safety_flags": {
+    "dry_run_only": {
+      "default": true,
+      "implementation": "argparse default True; main() always respects it"
+    },
+    "no_send": {
+      "default": true,
+      "implementation": "argparse default True; main() always respects it"
+    }
+  },
+
+  "implemented_real_send_paths": {
+    "approve_exact_usdc_tx": "build_approve_exact_usdc_tx() returns structured tx object; NO broadcast; ApproveMax forbidden",
+    "revoke_usdc_tx": "build_revoke_usdc_tx() returns structured tx object",
+    "revoke_weth_tx": "build_revoke_weth_tx() returns structured tx object",
+    "mint_position_tx": "build_mint_position_tx() returns structured tx object with runtime-computed deadline (now+3600; NOT 2099-01-01)",
+    "decrease_liquidity_tx": "build_decrease_liquidity_tx() returns structured tx object",
+    "collect_tx": "build_collect_tx() returns structured tx object",
+    "revoke_allowance_tx": "build_revoke_allowance_tx() returns combined revoke-USDC + revoke-WETH"
+  },
+
+  "implemented_dry_run_paths": {
+    "monitor_position_loop_stub": "single-iteration stub; refuses iterations > 1 in this stage"
+  },
+
+  "dynamic_tick_range_recompute": {
+    "reads_slot0_at_runtime": true,
+    "uses_legacy_frozen_range_directly": false,
+    "computes_proposed_range_around_current_tick": "lower = current_tick - 200, upper = current_tick + 200",
+    "abort_conditions": [
+      "current_tick outside proposed range",
+      "drift from legacy center > 200 ticks (require fresh approval)"
+    ]
+  },
+
+  "approval_phrase_handling": {
+    "validates_exact_match": true,
+    "cross_checks_wallet_and_pool": true,
+    "whole_word_dangerous_word_check": true,
+    "valid_phrase_does_NOT_authorize_execution": true
+  },
+
+  "telemetry_runtime_writer": {
+    "writes_to": "reports/lp_base_10u_probe_execution_runtime/<run_id>/",
+    "files": [
+      "preflight.json",
+      "dynamic_tick_range.json",
+      "approval_check.json",
+      "unsigned_approve_package.json",
+      "unsigned_mint_package.json",
+      "stop_conditions.json",
+      "execution_gates.json"
+    ],
+    "writes_to_production_db": false,
+    "writes_to_shadow_tables": false,
+    "writes_to_positions": false
+  },
+
+  "executor_send_hard_disabled_in_this_stage": {
+    "execute_guarded_always_raises": "ExecutionSendDisabledInImplementationBuildStage",
+    "exits": 1,
+    "no_broadcast_ever": true,
+    "no_signing_ever": true,
+    "no_signer_constructed": true,
+    "no_wallet_client_constructed": true
+  },
+
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no",
+  "edge_proven": "no",
+  "executor_v2_built": true,
+  "executor_will_run_this_round": false
+}

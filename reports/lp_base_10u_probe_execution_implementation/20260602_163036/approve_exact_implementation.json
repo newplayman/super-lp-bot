@@ -1,0 +1,74 @@
+{
+  "stage": "LP_BASE_10U_PROBE_EXECUTION_IMPLEMENTATION_V1",
+  "phase": "E_approve_exact_builder",
+  "run_id": "20260602_163036",
+  "scope": "build_approve_exact_usdc_tx / build_revoke_usdc_tx / build_revoke_weth_tx; structured tx objects only; no send",
+
+  "implementation": {
+    "function_1": {
+      "name": "build_approve_exact_usdc_tx",
+      "signature": "(wallet: str, amount_raw: int) -> dict",
+      "validates": ["amount_raw > 0", "amount_raw < UINT256_MAX // 2"],
+      "returns": "structured tx object with function / selector / from / to / spender / amount_raw / amount_human / policy / data / value_wei / approvemax_forbidden / approve_exact_only / unsigned_only / no_send / transaction_sent",
+      "no_send": true,
+      "no_sign": true
+    },
+    "function_2": {
+      "name": "build_revoke_usdc_tx",
+      "signature": "(wallet: str) -> dict",
+      "validates": "amount_raw=0 (intentional revoke)",
+      "returns": "structured tx object with same flags; policy='post-exit revoke'",
+      "no_send": true
+    },
+    "function_3": {
+      "name": "build_revoke_weth_tx",
+      "signature": "(wallet: str) -> dict",
+      "validates": "amount_raw=0 (intentional revoke)",
+      "returns": "structured tx object with same flags; policy='post-exit revoke'",
+      "no_send": true
+    }
+  },
+
+  "invariants": {
+    "approvemax_forbidden": true,
+    "approve_exact_only": true,
+    "transaction_sent": false,
+    "all_txs_unsigned_only": true,
+    "all_txs_no_send": true,
+    "no_signer_created": true,
+    "no_wallet_client_created": true,
+    "no_eth_send_transaction_called": true,
+    "no_eth_send_raw_transaction_called": true
+  },
+
+  "test_results": {
+    "test_1_build_approve_exact_usdc_tx_10U": {
+      "amount_raw": 10000000,
+      "approvemax_forbidden": true,
+      "no_send": true,
+      "result": "PASS"
+    },
+    "test_2_build_revoke_usdc_tx_0": {
+      "amount_raw": 0,
+      "no_send": true,
+      "result": "PASS"
+    },
+    "test_3_build_revoke_weth_tx_0": {
+      "amount_raw": 0,
+      "no_send": true,
+      "result": "PASS"
+    },
+    "test_4_approvemax_rejected": {
+      "raised": "ValueError: approve_amount 57896044618658097711785492504343953926634992332820282019728792003956564819967 is too large (ApproveMax forbidden)",
+      "result": "PASS (rejected)"
+    },
+    "test_5_zero_amount_rejected": {
+      "raised": "ValueError: approve_amount must be > 0; got 0",
+      "result": "PASS (rejected for non-revoke paths)"
+    }
+  },
+
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no"
+}

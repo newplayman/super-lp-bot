@@ -1,0 +1,44 @@
+{
+  "stage": "LP_BASE_10U_PROBE_EXECUTION_IMPLEMENTATION_V1",
+  "phase": "H_telemetry_runtime_writer",
+  "run_id": "20260602_163036",
+  "scope": "write 7 schema files to local reports dir; no production DB; no shadow tables; no positions",
+
+  "implementation": {
+    "function": "write_telemetry_runtime",
+    "where": "scripts/lp_base_10u_probe_executor_v2.py",
+    "out_dir": "reports/lp_base_10u_probe_execution_runtime/<run_id>/",
+    "files_written": [
+      "preflight.json",
+      "dynamic_tick_range.json",
+      "approval_check.json",
+      "unsigned_approve_package.json",
+      "unsigned_mint_package.json",
+      "stop_conditions.json",
+      "execution_gates.json"
+    ]
+  },
+
+  "files_actually_written": {
+    "preflight.json": "1003 bytes (includes chain_id, dynamic_tick_range, no_send, dry_run_only flags)",
+    "dynamic_tick_range.json": "685 bytes (current_tick, drift, proposed_range, abort_reason)",
+    "approval_check.json": "208 bytes (phrase_valid, parsed fields)",
+    "unsigned_approve_package.json": "655 bytes (full tx object with ApproveMax forbidden flag)",
+    "unsigned_mint_package.json": "1775 bytes (full tx object with runtime-computed deadline, recipient=wallet)",
+    "stop_conditions.json": "61 bytes (overall_status, tick_drift_observed)",
+    "execution_gates.json": "188 bytes (3-gate status; send_disabled_in_implementation_build_stage=true)"
+  },
+
+  "checks": {
+    "writes_only_to_reports_dir": true,
+    "writes_to_production_db": false,
+    "writes_to_shadow_tables": false,
+    "writes_to_positions": false,
+    "all_files_have_human_readable_json": true,
+    "no_sensitive_data_leaked": true
+  },
+
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no"
+}

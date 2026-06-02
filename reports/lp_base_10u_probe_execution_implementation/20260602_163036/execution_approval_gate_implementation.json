@@ -1,0 +1,81 @@
+{
+  "stage": "LP_BASE_10U_PROBE_EXECUTION_IMPLEMENTATION_V1",
+  "phase": "I_execution_approval_gate",
+  "run_id": "20260602_163036",
+  "scope": "implement approval gate with 3 hard gates + 2 default safety flags; send is hard-disabled in this stage regardless of gate status",
+
+  "future_approval_phrase": "APPROVE_BASE_10U_LP_PROBE_EXECUTION_ONE_SHOT wallet=0xb05b2872ace4564ff247555b6f7b097d31f3d835 pool=0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38 notional=10 hold=15m",
+
+  "implementation": {
+    "function": "execution_approval_gate",
+    "where": "scripts/lp_base_10u_probe_executor_v2.py",
+    "validates": [
+      "approval phrase exact regex match",
+      "whole-word dangerous-word check (27 patterns)",
+      "wallet cross-check",
+      "pool cross-check",
+      "notional=10 cross-check",
+      "hold=15m cross-check"
+    ]
+  },
+
+  "three_hard_gates": {
+    "gate_1_explicit_mode": {
+      "name": "explicit --mode execute-guarded",
+      "implementation": "argparse choices forces explicit mode selection",
+      "bypass_impossible": true
+    },
+    "gate_2_approval_phrase_exact_match": {
+      "name": "approval phrase exact match",
+      "regex": "^APPROVE_BASE_10U_LP_PROBE_EXECUTION_ONE_SHOT wallet=0x[0-9a-fA-F]{40} pool=0x[0-9a-fA-F]{40} notional=10 hold=15m$",
+      "whole_word_dangerous_word_check": true,
+      "cross_checks": ["wallet", "pool", "notional", "hold"],
+      "bypass_impossible": true
+    },
+    "gate_3_i_understand_flag": {
+      "name": "--i-understand-this-sends-real-transactions second flag",
+      "implementation": "argparse action='store_true'",
+      "bypass_impossible": true
+    }
+  },
+
+  "two_default_safety_flags": {
+    "dry_run_only": {"default": true, "bypass_possible_only_via_argparse"},
+    "no_send": {"default": true, "bypass_possible_only_via_argparse"}
+  },
+
+  "send_hard_disabled_in_this_stage": {
+    "rationale": "even if all 3 gates pass AND both safety defaults hold, the execute-guarded mode raises ExecutionSendDisabledInImplementationBuildStage and exits 1; NO real send is ever triggered in this stage"
+  },
+
+  "test_results": {
+    "test_1_valid_phrase_all_3_gates_dry_run_no_send": {
+      "all_three_gates_pass": true,
+      "all_safety_defaults_hold": true,
+      "send_would_be_authorized_now": true,
+      "note": "this stage still hard-disables send regardless",
+      "result": "PASS"
+    },
+    "test_2_valid_phrase_no_i_understand_flag": {
+      "gate_3_pass": false,
+      "all_three_gates_pass": false,
+      "send_would_be_authorized_now": false,
+      "result": "PASS (correctly blocks send without second flag)"
+    },
+    "test_3_20U_phrase_invalid": {
+      "phrase_valid": false,
+      "reason": "phrase does not match the canonical regex",
+      "all_three_gates_pass": false,
+      "result": "PASS (correctly blocks 20U)"
+    },
+    "test_4_valid_phrase_dry_run_disabled": {
+      "all_safety_defaults_hold": false,
+      "send_would_be_authorized_now": false,
+      "result": "PASS (correctly blocks when safety defaults not held)"
+    }
+  },
+
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no"
+}

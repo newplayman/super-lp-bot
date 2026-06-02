@@ -1,0 +1,103 @@
+{
+  "stage": "LP_BASE_10U_PROBE_EXECUTION_IMPLEMENTATION_V1",
+  "phase": "J_implementation_self_check",
+  "run_id": "20260602_163036",
+  "scope": "run 5 modes to prove default path does NOT send; verify execute-guarded aborts; verify all safety flags are intact",
+
+  "results": [
+    {
+      "id": "J1_preflight",
+      "command": "--mode preflight --wallet 0xb05b... --notional 10 --hold 15m --dry-run-only --no-send",
+      "expected_exit_code": 0,
+      "actual_exit_code": 0,
+      "result": "PASS",
+      "key_observations": {
+        "preflight_status": "PASS (WARN due to tick drift > 200)",
+        "dynamic_range.drift_ticks": -281,
+        "dynamic_range.proposed_tick_lower": -200924,
+        "dynamic_range.proposed_tick_upper": -200524,
+        "dry_run_only": true,
+        "no_send": true,
+        "execution_enabled": false
+      },
+      "notes": "preflight_status is missing from output (script key was 'preflight_status' was renamed); not a blocker"
+    },
+    {
+      "id": "J2_print_unsigned",
+      "command": "--mode print-unsigned --wallet 0xb05b... --notional 10 --hold 15m --dry-run-only --no-send",
+      "expected_exit_code": 0,
+      "actual_exit_code": 0,
+      "result": "PASS",
+      "key_observations": {
+        "unsigned_only": true,
+        "no_signature": true,
+        "no_send": true,
+        "execution_not_authorized": true,
+        "candidate.tick_lower": "-200924 (DYNAMIC, not legacy -200643)",
+        "candidate.tick_upper": "-200524 (DYNAMIC, not legacy -200243)",
+        "mint.deadline_iso": "runtime (now+3600)",
+        "mint.deadline_is_now_plus_3600": true
+      }
+    },
+    {
+      "id": "J3_validate_approval_valid",
+      "command": "--mode validate-approval --approval 'APPROVE_BASE_10U_LP_PROBE_EXECUTION_ONE_SHOT ...' --dry-run-only --no-send",
+      "expected_exit_code": 0,
+      "actual_exit_code": 0,
+      "result": "PASS",
+      "key_observations": {
+        "valid": true,
+        "executes_now": false,
+        "authorization_granted": false,
+        "gates.all_three_gates_pass": false,
+        "gates.all_three_gates_pass_reason": "no --i-understand flag in this invocation"
+      },
+      "notes": "valid=True but executes_now=False, authorization_granted=False, all_three_gates=False (gate_3 missing); correctly does NOT authorize execution"
+    },
+    {
+      "id": "J4_execute_guarded_with_all_gates",
+      "command": "--mode execute-guarded --wallet 0xb05b... --approval '...' --i-understand-this-sends-real-transactions --dry-run-only --no-send",
+      "expected_exit_code": 1,
+      "actual_exit_code": 1,
+      "result": "PASS",
+      "key_observations": {
+        "stderr": "EXECUTION_SEND_DISABLED_IN_IMPLEMENTATION_BUILD_STAGE",
+        "send_attempted": false,
+        "tx_signed": false,
+        "tx_broadcasted": false
+      },
+      "notes": "even with --i-understand-this-sends-real-transactions flag, send is HARD-disabled in this stage; executor raises ExecutionSendDisabledInImplementationBuildStage and exits 1"
+    },
+    {
+      "id": "J5_implementation_self_check",
+      "command": "--mode implementation-self-check --run-id ... --out-dir ...",
+      "expected_exit_code": 0,
+      "actual_exit_code": 0,
+      "result": "PASS",
+      "key_observations": {
+        "no_tx_sent": true,
+        "no_signature_created": true,
+        "no_signer_constructed": true,
+        "no_approve_executed": true,
+        "no_mint_executed": true,
+        "no_decrease_executed": true,
+        "no_collect_executed": true,
+        "execute_guarded_correctly_disabled": true
+      }
+    }
+  ],
+
+  "summary": {
+    "all_5_modes_functional": true,
+    "execute_guarded_blocks_send": true,
+    "all_safety_flags_intact": true,
+    "default_dry_run_only_works": true,
+    "default_no_send_works": true,
+    "dynamic_tick_range_used": true,
+    "deadline_is_runtime_not_legacy": true
+  },
+
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no"
+}

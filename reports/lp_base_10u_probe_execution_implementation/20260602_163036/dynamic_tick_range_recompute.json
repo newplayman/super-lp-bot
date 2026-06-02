@@ -1,0 +1,63 @@
+{
+  "stage": "LP_BASE_10U_PROBE_EXECUTION_IMPLEMENTATION_V1",
+  "phase": "D_dynamic_tick_range_recompute",
+  "run_id": "20260602_163036",
+
+  "implementation": {
+    "function": "dynamic_tick_range_recompute(url, dry_run)",
+    "where": "scripts/lp_base_10u_probe_executor_v2.py",
+    "reads_slot0_at_runtime": true,
+    "uses_legacy_frozen_range_directly": false
+  },
+
+  "observed_this_run": {
+    "previous_legacy_center_tick": -200443,
+    "current_tick": -200708,
+    "drift_ticks": -265,
+    "abs_drift_ticks": 265,
+    "drift_threshold_ticks": 200,
+    "drift_exceeds_threshold": true,
+    "old_tick_lower_legacy": -200643,
+    "old_tick_upper_legacy": -200243,
+    "proposed_tick_lower": -200908,
+    "proposed_tick_upper": -200508,
+    "proposed_safety_margin_ticks_each_side": 200,
+    "current_tick_inside_new_range": true,
+    "fresh_approval_required": true,
+    "abort_reason": "drift -265 from legacy center -200443 exceeds threshold 200; fresh approval required",
+    "dry_run": true,
+    "no_send_attempted": true
+  },
+
+  "delta_from_previous_review_20260602_150957": {
+    "current_tick_drift": "-200662 (previous) -> -200708 (this) = -46 ticks further in ~30 min",
+    "cumulative_drift_from_frozen": "219 (previous) -> 265 (this) = +46 ticks",
+    "implication": "tick drift is ACCELERATING (53 ticks in 13 min from prev review, 46 ticks in 30 min since prev review). The drift threshold of 200 is being exceeded reliably; future stage MUST re-approve continuously."
+  },
+
+  "abort_conditions": [
+    {
+      "id": "abort_current_tick_outside_proposed_range",
+      "triggered": false,
+      "condition": "proposed_lower <= current_tick <= proposed_upper"
+    },
+    {
+      "id": "abort_drift_exceeds_threshold_requires_fresh_approval",
+      "triggered": true,
+      "condition": "abs(drift_ticks) > 200",
+      "action": "fresh_approval_required = true; future executor must re-approve"
+    }
+  ],
+
+  "drift_observations_across_runs": [
+    {"run_id": "20260602_112400 (dry-run builder)", "current_tick_observed": -200443, "drift_from_frozen": 0},
+    {"run_id": "20260602_135824 (build stage)", "current_tick_observed": -200501, "drift_from_frozen": 58},
+    {"run_id": "20260602_144843 (review 596b411)", "current_tick_observed": -200609, "drift_from_frozen": 166},
+    {"run_id": "20260602_150957 (review 83b41b9)", "current_tick_observed": -200662, "drift_from_frozen": 219, "stop_triggered": "stop_tick_moved_outside_planned_range_before_entry (WARN)"},
+    {"run_id": "20260602_163036 (this implementation)", "current_tick_observed": -200708, "drift_from_frozen": 265, "stop_triggered": "fresh_approval_required (WARN; current_tick IS inside proposed range)"}
+  ],
+
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no"
+}

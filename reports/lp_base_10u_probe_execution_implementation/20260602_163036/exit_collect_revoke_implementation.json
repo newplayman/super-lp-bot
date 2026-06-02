@@ -1,0 +1,78 @@
+{
+  "stage": "LP_BASE_10U_PROBE_EXECUTION_IMPLEMENTATION_V1",
+  "phase": "G_exit_collect_revoke_builders",
+  "run_id": "20260602_163036",
+  "scope": "monitor_position_loop_stub + build_decrease_liquidity_tx + build_collect_tx + build_revoke_allowance_tx; monitor only runs in dry-run self-check; decrease/collect/revoke only build structured tx objects",
+
+  "implemented_paths": {
+    "monitor_position_loop_stub": {
+      "iterations": 1,
+      "refuses_iterations_gt_1": true,
+      "raises_value_error_if_iterations_gt_1": true,
+      "ran_in_dry_run": true,
+      "long_loop_started": false,
+      "background_process_left": false
+    },
+    "build_decrease_liquidity_tx": {
+      "selector": "0x02751cec",
+      "deadline": "now+3600 (runtime)",
+      "params_locked": ["tokenId", "liquidity", "amount0Min", "amount1Min", "deadline"],
+      "unsigned_only": true,
+      "no_send": true,
+      "transaction_sent": false
+    },
+    "build_collect_tx": {
+      "selector": "0xfc6f7865",
+      "params_locked": ["tokenId", "recipient (wallet)", "amount0Max (uint128.max)", "amount1Max (uint128.max)"],
+      "unsigned_only": true,
+      "no_send": true,
+      "transaction_sent": false
+    },
+    "build_revoke_allowance_tx": {
+      "combines": ["build_revoke_usdc_tx", "build_revoke_weth_tx"],
+      "revoke_usdc_amount_raw": 0,
+      "revoke_weth_amount_raw": 0,
+      "approvemax_forbidden": true,
+      "policy": "post-exit revoke (ApproveMax never used; revoke to 0)",
+      "unsigned_only": true,
+      "no_send": true,
+      "transaction_sent": false
+    }
+  },
+
+  "test_results": {
+    "test_1_monitor_iterations_1": {
+      "token_id": 42,
+      "ran_in_dry_run": true,
+      "long_loop_started": false,
+      "result": "PASS"
+    },
+    "test_2_monitor_iterations_5_rejected": {
+      "raised": "ValueError: in this build stage, monitor only runs as a single-shot stub (iterations<=1)",
+      "result": "PASS (rejected long loop)"
+    },
+    "test_3_build_decrease_liquidity_tx": {
+      "selector_correct": true,
+      "deadline_runtime": true,
+      "unsigned_only": true,
+      "no_send": true,
+      "result": "PASS"
+    },
+    "test_4_build_collect_tx": {
+      "recipient_bound_to_wallet": true,
+      "amount0Max_uint128_max": true,
+      "amount1Max_uint128_max": true,
+      "result": "PASS"
+    },
+    "test_5_build_revoke_allowance_tx": {
+      "revoke_usdc_amount_raw": 0,
+      "revoke_weth_amount_raw": 0,
+      "approvemax_forbidden": true,
+      "result": "PASS"
+    }
+  },
+
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no"
+}

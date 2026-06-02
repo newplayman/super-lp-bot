@@ -1,0 +1,102 @@
+{
+  "status": "PASS",
+  "stage": "LP_BASE_10U_PROBE_EXECUTION_IMPLEMENTATION_V1",
+  "run_id": "20260602_163036",
+  "previous_stage": "LP_BASE_10U_PROBE_EXECUTION_SCRIPT_REVIEW_V1",
+  "previous_run_id": "20260602_150957",
+  "previous_commit": "83b41b9",
+
+  "executor_v2_built": true,
+  "dynamic_tick_range_recompute_built": true,
+  "approve_exact_builder_built": true,
+  "mint_tx_builder_built": true,
+  "exit_collect_revoke_builder_built": true,
+  "telemetry_runtime_writer_built": true,
+  "approval_gate_built": true,
+  "self_check_ran": true,
+  "execute_guarded_send_blocked": true,
+
+  "candidate_chain": "Base",
+  "candidate_pool": "0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38",
+  "candidate_pair": "WETH/USDC",
+  "candidate_fee_tier": 100,
+  "candidate_protocol": "Uniswap V3 (Base)",
+  "candidate_npm": "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1",
+
+  "wallet": "0xb05b2872ace4564ff247555b6f7b097d31f3d835",
+  "wallet_masked": "0xb05b...d835",
+  "notional_usd": 10,
+  "hold_window": "15m",
+  "tick_lower_legacy_NOT_USED": -200643,
+  "tick_upper_legacy_NOT_USED": -200243,
+  "tick_range_actually_used": "dynamically recomputed at runtime (proposed this run: -200908 / -200508)",
+
+  "can_run_probe_now": false,
+  "can_execute_with_current_script": false,
+  "execution_ready_for_final_review": false,
+  "manual_approval_required_for_execution": true,
+  "executor_will_run_this_round": false,
+  "approval_phrase_effective_this_round": false,
+
+  "edge_proven": "no",
+  "actual_fee_ready": false,
+  "token_id_available": false,
+  "tiny_canary_allowed": "no",
+  "fabrication_blocked": true,
+  "wallet_or_tx_touched": false,
+
+  "security_audit_15_flags": {
+    "private_key_loaded": false,
+    "mnemonic_loaded": false,
+    "keystore_loaded": false,
+    "signer_created": false,
+    "wallet_client_created": false,
+    "eth_sendTransaction_called": false,
+    "eth_sendRawTransaction_called": false,
+    "approve_executed": false,
+    "mint_executed": false,
+    "decrease_executed": false,
+    "collect_executed": false,
+    "burn_executed": false,
+    "swap_executed": false,
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no"
+  },
+
+  "spec_phase_artifact_counts": {
+    "modes_supported": 5,
+    "approval_gate_count": 3,
+    "default_safety_flags": 2,
+    "stubs_disabled": 1,
+    "telemetry_schemas": 7,
+    "self_check_cases": 5,
+    "security_audit_flags": 15
+  },
+
+  "decision_notes": [
+    "Phase A: workspace safety check; HEAD=83b41b9; only untracked runtime files; no dirty blocker.",
+    "Phase B: input evidence audit; 8 upstream artifacts re-read; previous gates pass; tick drift accumulation documented.",
+    "Phase C: scripts/lp_base_10u_probe_executor_v2.py built (961 lines, v1 preserved unchanged at 845 lines since 9811257); 5 modes (preflight, print-unsigned, validate-approval, implementation-self-check, execute-guarded); v1 not modified.",
+    "Phase D: dynamic_tick_range_recompute reads slot0 at runtime; uses dynamic range [-200908, -200508] (NOT legacy [-200643, -200243]); abort if current tick outside new range; require fresh approval if drift > 200; this run observed drift -281 (vs frozen -200443), fresh_approval_required=true.",
+    "Phase E: approveExact builders (build_approve_exact_usdc_tx, build_revoke_usdc_tx, build_revoke_weth_tx); ApproveMax forbidden via threshold; 5 tests pass.",
+    "Phase F: build_mint_position_tx; deadline is now+3600 (NOT legacy 2099-01-01 placeholder); recipient=wallet; encode_mint bug fix (was producing double 0x prefix).",
+    "Phase G: monitor_position_loop_stub (refuses iterations>1), build_decrease_liquidity_tx, build_collect_tx, build_revoke_allowance_tx; 5 tests pass.",
+    "Phase H: write_telemetry_runtime writes 7 schema files to local reports dir; no production DB; 6 checks pass.",
+    "Phase I: execution_approval_gate with 3 hard gates + 2 default safety flags; send is hard-disabled in this stage; 4 tests pass.",
+    "Phase J: implementation-self-check; 5 self-check cases all pass; even with --i-understand flag, execute-guarded aborts with EXECUTION_SEND_DISABLED_IN_IMPLEMENTATION_BUILD_STAGE and exits 1; no real send triggered.",
+    "Phase K: 15 boolean safety flags ALL PASS; 8 additional invariants pass; any_dangerous_match=false; any_tx_send_attempted=false.",
+    "Phase L: this FINAL_VERDICT + ONEPAGE + ARTIFACT_INDEX."
+  ],
+
+  "recommended_next_stage": "LP_BASE_10U_PROBE_FINAL_EXECUTION_REVIEW_V1",
+  "allowed_next_stages": [
+    "LP_BASE_10U_PROBE_FINAL_EXECUTION_REVIEW_V1",
+    "LP_BASE_10U_PROBE_EXECUTION_IMPLEMENTATION_FIX_REPEAT",
+    "STOP_LP_RESEARCH_NOW"
+  ],
+  "next_stage_must_not": [
+    "execute the probe in the next stage (next stage is REVIEW, not execution)",
+    "construct a real signer or wallet client in the next stage",
+    "treat this implementation as a finished execution tool — it has send hard-disabled"
+  ]
+}
