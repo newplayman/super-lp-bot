@@ -1,0 +1,104 @@
+{
+  "stage": "LP_BASE_10U_PROBE_EXECUTION_AUTHORIZATION_PACKAGE_V1",
+  "phase": "F_mint_receipt_tokenid_schema",
+  "run_id": "20260602_184806",
+  "deviation_landed": "mint_receipt_schema_not_defined",
+  "this_stage_does_not_execute": true,
+  "this_stage_does_not_query_real_receipt": true,
+
+  "expected_mint_tx_hash": {
+    "format": "0x[0-9a-f]{64}",
+    "source": "return value of eth_sendRawTransaction (future execution only; never invoked in this stage)"
+  },
+
+  "expected_receipt_fields": {
+    "status": {"expected": "0x1", "fail_action": "manual_intervention"},
+    "transactionHash": {"expected": "matches broadcast hash", "fail_action": "manual_intervention"},
+    "from": {"expected": "0xb05b2872ace4564ff247555b6f7b097d31f3d835", "fail_action": "manual_intervention"},
+    "to": {"expected": "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1", "fail_action": "manual_intervention"},
+    "contractAddress": {"expected": null, "fail_action": "manual_intervention"},
+    "gasUsed": {"expected": "< 800000 sanity", "fail_action": "warn"},
+    "logs": {"expected_min_count": 2, "expected_events": ["ERC721 Transfer", "IncreaseLiquidity"], "fail_action": "manual_intervention"},
+    "blockNumber": {"recorded_in_telemetry": true},
+    "blockHash": {"recorded_in_telemetry": true}
+  },
+
+  "expected_logs": {
+    "erc721_transfer": {
+      "signature": "Transfer(address indexed from, address indexed to, uint256 indexed tokenId)",
+      "topic0": "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+      "topic1_from_zero": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "topic2_to_wallet": "0x000000000000000000000000b05b2872ace4564ff247555b6f7b097d31f3d835",
+      "topic3_tokenId": "<32-byte big-endian uint256>",
+      "address": "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1"
+    },
+    "increase_liquidity": {
+      "signature": "IncreaseLiquidity(uint256 indexed tokenId, uint128 liquidity, uint256 amount0, uint256 amount1)",
+      "topic0": "0x3067048beee31b25b2f1681f88dac838c8bba36af25bfb2b7cf7473a5847e35f",
+      "address": "NPM",
+      "use": "secondary validation (tokenId cross-check; liquidity sanity)"
+    }
+  },
+
+  "token_id_extraction_method": [
+    "filter receipt.logs by address == NPM AND topic0 == ERC721_TRANSFER_TOPIC0",
+    "further filter by topic1 == padded(0x0) AND topic2 == padded(wallet)",
+    "if 0 matches: FAIL_TOKEN_ID_NOT_FOUND -> manual_intervention",
+    "if >1 matches: FAIL_MULTIPLE_TOKEN_TRANSFERS -> manual_intervention",
+    "tokenId = int(topic3, 16)",
+    "telemetry: token_id_extracted, token_id_decimal, token_id_hex, log_index"
+  ],
+
+  "validation_token_belongs_to_wallet": {
+    "method": "eth_call NPM.ownerOf(tokenId) and compare owner == wallet",
+    "fail_id": "FAIL_TOKEN_ID_NOT_OWNED_BY_WALLET",
+    "fail_action": "manual_intervention"
+  },
+
+  "validation_positions_params_match": {
+    "method": "eth_call NPM.positions(tokenId); decode 12-tuple",
+    "expected": {
+      "token0": "0x4200000000000000000000000000000000000006 (WETH)",
+      "token1": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913 (USDC)",
+      "fee": 100,
+      "tickLower": "matches mint call",
+      "tickUpper": "matches mint call",
+      "liquidity": "> 0"
+    },
+    "fail_ids": ["FAIL_POSITION_PARAMS_MISMATCH", "FAIL_POSITION_LIQUIDITY_ZERO"],
+    "fail_action": "manual_intervention"
+  },
+
+  "failure_handling": {
+    "FAIL_TOKEN_ID_NOT_FOUND": "manual_intervention; do not auto-retry mint; do not start hold",
+    "FAIL_MULTIPLE_TOKEN_TRANSFERS": "manual_intervention; investigate contract/RPC anomaly",
+    "FAIL_TOKEN_ID_NOT_OWNED_BY_WALLET": "manual_intervention; possible receipt tampering or RPC inconsistency",
+    "FAIL_POSITION_PARAMS_MISMATCH": "manual_intervention; mint params drifted",
+    "FAIL_POSITION_LIQUIDITY_ZERO": "manual_intervention; mint did not inject liquidity"
+  },
+
+  "manual_intervention_rules": {
+    "no_auto_retry_mint": true,
+    "no_auto_decrease": true,
+    "no_auto_collect": true,
+    "no_next_stage": true,
+    "telemetry_must_record_reason": true
+  },
+
+  "telemetry_artifact_schema": {
+    "path": "reports/lp_base_10u_probe_execution_runtime/<RUN_ID>/mint_receipt.json",
+    "schema_name": "lp_probe_mint_receipt_v1",
+    "required_fields": [
+      "tx_hash", "status", "block_number", "block_hash", "gas_used",
+      "from", "to", "tokenId", "tokenId_hex", "log_index_for_transfer",
+      "owner_of_token_id_observed", "positions_observed",
+      "validation_pass", "failure_id", "manual_intervention_required"
+    ]
+  },
+
+  "wallet_or_tx_touched": false,
+  "mint_executed": false,
+  "token_id_extracted_this_round": false,
+  "can_run_probe_now": false,
+  "execution_allowed_now": false
+}

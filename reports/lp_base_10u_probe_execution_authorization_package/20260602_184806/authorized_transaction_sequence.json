@@ -1,0 +1,122 @@
+{
+  "stage": "LP_BASE_10U_PROBE_EXECUTION_AUTHORIZATION_PACKAGE_V1",
+  "phase": "E_authorized_transaction_sequence",
+  "run_id": "20260602_184806",
+
+  "allowed_transactions": [
+    {
+      "step": 1,
+      "name": "optional_usdc_approve_exact",
+      "conditional": "USDC.allowance(wallet, NPM) < 10_000_000",
+      "function": "USDC.approve(NPM, 10_000_000)",
+      "selector": "0x095ea7b3",
+      "constraints": ["amount == 10_000_000 exactly", "amount > 0", "amount < UINT256_MAX/2"]
+    },
+    {
+      "step": 2,
+      "name": "optional_weth_approve_exact",
+      "conditional": "amount0Desired_wei > 0 (FALSE for this 10U probe; amount0Desired=0)",
+      "function": "WETH.approve(NPM, amount0Desired_wei)",
+      "default_for_this_probe": "SKIP"
+    },
+    {
+      "step": 3,
+      "name": "npm_mint",
+      "required": true,
+      "function": "NPM.mint",
+      "params": {
+        "token0": "WETH (0x4200...0006)",
+        "token1": "USDC (0x8335...2913)",
+        "fee": 100,
+        "tickLower": "dynamic_lower (current_tick - 200)",
+        "tickUpper": "dynamic_upper (current_tick + 200)",
+        "amount0Desired_wei": 0,
+        "amount1Desired_raw": 10000000,
+        "amount0Min_wei": 0,
+        "amount1Min_raw": 9950000,
+        "recipient": "wallet (bound)",
+        "deadline": "now + 3600 (runtime)"
+      }
+    },
+    {
+      "step": 4,
+      "name": "npm_decrease_liquidity",
+      "required": true,
+      "function": "NPM.decreaseLiquidity",
+      "tokenId_source": "this run's mint receipt only (NO historical token_id)",
+      "params": {
+        "tokenId": "from-current-run",
+        "liquidity": "all_of_this_position",
+        "amount0Min": "computed from quote (slippage 0.5%)",
+        "amount1Min": "computed from quote (slippage 0.5%)",
+        "deadline": "now + 3600"
+      }
+    },
+    {
+      "step": 5,
+      "name": "npm_collect",
+      "required": true,
+      "function": "NPM.collect",
+      "tokenId_source": "this run's mint receipt only",
+      "params": {
+        "tokenId": "from-current-run",
+        "recipient": "wallet (bound)",
+        "amount0Max": "(1<<128)-1",
+        "amount1Max": "(1<<128)-1"
+      }
+    },
+    {
+      "step": 6,
+      "name": "optional_revoke_usdc_to_zero",
+      "conditional": "step 1 executed",
+      "function": "USDC.approve(NPM, 0)",
+      "constraints": ["amount == 0 exactly"]
+    }
+  ],
+
+  "forbidden_transactions": {
+    "ApproveMax": "approve(NPM, UINT256_MAX) or any amount >= UINT256_MAX/2",
+    "multi_pool": "any mint/swap/approve targeting pool != POOL within same run",
+    "notional_over_10": "amount1Desired_raw > 10_000_000",
+    "hold_over_15m_without_new_approval": "any hold != 15m without regenerating approval phrase",
+    "swap_back": "any swap before or after mint to rebalance",
+    "bridge": "any cross-chain bridge of USDC/WETH",
+    "auto_repeat": "auto-starting second mint before first round completes",
+    "live_loop": "starting lpbot-live process",
+    "canary": "starting canary mode",
+    "paper": "starting paper mode",
+    "strategy_auto_selection": "executing core strategy auto-pool-selection",
+    "any_other_wallet": "wallet != 0xb05b2872ace4564ff247555b6f7b097d31f3d835",
+    "any_other_pool": "pool != 0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38",
+    "any_other_chain": "chain_id != 8453"
+  },
+
+  "skip_approve_if_allowance_sufficient_landing": {
+    "deviation_id": "skip_approve_if_allowance_sufficient_not_wired",
+    "rule": "if USDC.allowance(wallet, NPM) >= 10_000_000 then skip step 1; else MUST ApproveExact 10_000_000; NEVER ApproveMax",
+    "executor_v2_status": "encode_allowance helper exists at lines 209-210 but caller does not invoke; future runner MUST wire",
+    "required_in_runner": true
+  },
+
+  "tx_flow_dependencies": [
+    "preflight (R-O)",
+    "allowance check (R-O)",
+    "if allowance < 10M -> ApproveExact (tx) -> verify allowance >= 10M (R-O)",
+    "mint (tx)",
+    "extract tokenId from receipt (R-O)",
+    "validate positions(tokenId) matches expected (R-O)",
+    "hold monitor 15m (R-O, 60-180s interval)",
+    "pre-exit fee state read (R-O)",
+    "decreaseLiquidity (tx)",
+    "collect (tx)",
+    "post-collect fee state read (R-O)",
+    "revoke USDC allowance to 0 if step 1 executed (tx)",
+    "final PnL telemetry (R-O)"
+  ],
+
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no",
+  "execution_allowed_now": false,
+  "this_phase_only_whitelists_tx_for_future": true
+}

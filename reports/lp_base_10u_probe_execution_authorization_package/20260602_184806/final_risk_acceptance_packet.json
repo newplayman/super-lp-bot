@@ -1,0 +1,91 @@
+{
+  "stage": "LP_BASE_10U_PROBE_EXECUTION_AUTHORIZATION_PACKAGE_V1",
+  "phase": "I_final_risk_acceptance_packet",
+  "run_id": "20260602_184806",
+
+  "ev_not_proven_positive": {
+    "edge_proven": "no",
+    "tiny_canary_allowed": "no",
+    "lp_strategy_research_state": "FROZEN",
+    "evidence_source": [
+      "docs/LPBOT_RESEARCH_STATUS_CN.md",
+      "CLAUDE.md project status section",
+      "all upstream FINAL_VERDICT.json",
+      "reports/final_freeze/20260531_124000/"
+    ]
+  },
+
+  "what_this_probe_actually_is": {
+    "is_money_experiment_not_proven_to_profit": true,
+    "is_actual_fee_data_collection": true,
+    "is_channel_validation": true,
+    "is_one_shot_isolated": true,
+    "is_sandbox_scale": true
+  },
+
+  "what_this_probe_is_not": [
+    "profit experiment",
+    "strategy validation",
+    "canary launch",
+    "production scale"
+  ],
+
+  "loss_scenarios_enumerated": [
+    {"id": "gas_loss", "mode": "any tx wastes gas", "approx_loss_usd": "5-10"},
+    {"id": "slippage_loss", "mode": "amount1Min violated; mint reverts", "approx_loss_usd": "gas only"},
+    {"id": "impermanent_loss", "mode": "tick drifts out of range during hold", "approx_loss_usd": "0.x-1.x"},
+    {"id": "adverse_price_move", "mode": "exit gets more of the depreciated token", "approx_loss_usd": "depends on move"},
+    {"id": "failed_tx", "mode": "RPC failure / nonce collision / replacement", "approx_loss_usd": "gas + partial position stuck"},
+    {"id": "stuck_position", "mode": "decreaseLiquidity OK but collect fails", "approx_loss_usd": "tokens stuck pending manual collect"},
+    {"id": "approve_then_mint_fail", "mode": "USDC approved but mint reverts; revoke needed", "approx_loss_usd": "gas only"},
+    {"id": "worst_case", "mode": "extreme event in pool (hack/depeg/large adverse) during hold", "approx_loss_usd": "~20 (10U principal + ~10U gas)"}
+  ],
+
+  "worst_case_acceptance_required_usd": 20,
+
+  "success_criteria_are_data_not_profit": [
+    "token_id extracted",
+    "entry_fee_state recorded",
+    "hold_fee_state recorded at least once",
+    "pre_exit_fee_state recorded",
+    "post_collect_fee_state recorded",
+    "actual_fee_earned computed via collect-decrease delta",
+    "actual_PnL_USD computed",
+    "gas costs recorded for all 4 tx",
+    "all telemetry artifacts written"
+  ],
+
+  "success_does_not_depend_on_profit": true,
+  "data_destinations": {
+    "local_reports": "reports/lp_base_10u_probe_execution_runtime/<RUN_ID>/",
+    "production_positions_table": "NOT WRITTEN",
+    "shadow_raw_tables": "NOT OVERWRITTEN",
+    "strategy_scanner_audit_pnl_service": "NOT TRIGGERED"
+  },
+
+  "post_failure_operator_behavior": [
+    "accept up to ~20 USD loss (no emotional retry)",
+    "write post-mortem",
+    "do NOT auto-restart second round",
+    "choose calmly between STOP_LP_RESEARCH_NOW and AUTHORIZATION_PACKAGE_FIX_REPEAT",
+    "do NOT release hard-disable or modify approval gate while in hot state"
+  ],
+
+  "explicit_operator_confirmation_required": [
+    "I understand EV is not proven positive",
+    "I understand this probe is data collection, not strategy validation",
+    "I can bear total loss of ~20 USD (10U + ~10U gas)",
+    "I agree success means complete data, not profit",
+    "I will not auto-start a second round before first completes",
+    "I accept manual intervention as a legitimate outcome",
+    "I accept hard-disable must be released by a separate commit",
+    "I accept fresh approval must be re-typed for any drift > 200"
+  ],
+
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no",
+  "edge_proven": "no",
+  "execution_allowed_now": false,
+  "risk_acceptance_packet_is_documentation_only": true
+}

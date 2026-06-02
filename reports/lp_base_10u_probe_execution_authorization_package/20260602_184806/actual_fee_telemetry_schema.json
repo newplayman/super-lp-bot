@@ -1,0 +1,88 @@
+{
+  "stage": "LP_BASE_10U_PROBE_EXECUTION_AUTHORIZATION_PACKAGE_V1",
+  "phase": "G_actual_fee_telemetry_schema",
+  "run_id": "20260602_184806",
+  "deviation_landed": "feeGrowth_tokensOwed_telemetry_mode_not_implemented",
+  "this_stage_does_not_execute": true,
+
+  "required_reads": {
+    "NFPM_positions_tuple": [
+      "nonce", "operator", "token0", "token1", "fee",
+      "tickLower", "tickUpper", "liquidity",
+      "feeGrowthInside0LastX128", "feeGrowthInside1LastX128",
+      "tokensOwed0", "tokensOwed1"
+    ],
+    "POOL_slot0_tuple": [
+      "sqrtPriceX96", "tick",
+      "observationIndex", "observationCardinality", "observationCardinalityNext",
+      "feeProtocol", "unlocked"
+    ],
+    "POOL_feeGrowthGlobal": ["feeGrowthGlobal0X128", "feeGrowthGlobal1X128"],
+    "POOL_ticks_optional": ["ticks(tickLower)", "ticks(tickUpper)"]
+  },
+
+  "time_points": [
+    {"point": "entry_fee_state", "when": "right after mint receipt + tokenId validation"},
+    {"point": "hold_fee_state", "when": "at least once during hold (recommend 7-8 min)"},
+    {"point": "pre_exit_fee_state", "when": "right before decreaseLiquidity send"},
+    {"point": "post_collect_fee_state", "when": "right after collect receipt success (liquidity should be 0)"}
+  ],
+
+  "telemetry_artifacts": {
+    "actual_fee_state_per_point": {
+      "path": "reports/lp_base_10u_probe_execution_runtime/<RUN_ID>/actual_fee_state_{point}.json",
+      "schema_name": "lp_probe_actual_fee_state_v1",
+      "required_fields": [
+        "point", "ts_unix", "run_id", "tokenId",
+        "positions", "slot0",
+        "pool_feeGrowthGlobal0X128", "pool_feeGrowthGlobal1X128",
+        "computed_accrued_fee0_via_delta", "computed_accrued_fee1_via_delta",
+        "in_range", "read_ok", "read_error_repr"
+      ]
+    },
+    "collect_receipt": {
+      "path": "reports/lp_base_10u_probe_execution_runtime/<RUN_ID>/collect_receipt.json",
+      "schema_name": "lp_probe_collect_receipt_v1",
+      "required_fields": [
+        "tx_hash",
+        "amount0_collected_wei",
+        "amount1_collected_raw_USDC",
+        "via_decoded_event"
+      ],
+      "topic0_collect": "0x40d0efd1a53d60ecbf40971b9daf7dc90178c3aadc7aab1765632738fa8b8f01"
+    }
+  },
+
+  "failure_handling": {
+    "positions_rpc_failed": "read_ok=false; read_error_repr recorded; actual_fee_ready=false; no fabrication",
+    "slot0_rpc_failed": "same",
+    "feeGrowthGlobal_rpc_failed": "computed_accrued_fee*_via_delta=null; rest still recorded; actual_fee_ready=false",
+    "collect_tx_failed_or_receipt_timeout": "collect_failed=true; manual_intervention"
+  },
+
+  "forbidden": [
+    "writing pool-level feeGrowth as actual_fee_*",
+    "filling actual_fee_* with synthetic / estimated numbers",
+    "marking actual_fee_ready=true when any read failed"
+  ],
+
+  "actual_fee_ready_judgement": {
+    "formula": "entry_read_ok AND pre_exit_read_ok AND post_collect_read_ok AND collect_receipt_present AND not collect_failed",
+    "ui_when_false": "actual fee unavailable; round data incomplete"
+  },
+
+  "actual_fee_earned_compute": {
+    "amount0_principal_via_decreaseLiquidity": "from decreaseLiquidity tx event (amount0)",
+    "amount1_principal_via_decreaseLiquidity": "from decreaseLiquidity tx event (amount1)",
+    "amount0_total_via_collect": "from collect receipt",
+    "amount1_total_via_collect": "from collect receipt",
+    "fee_earned_WETH_wei": "amount0_collected - amount0_principal",
+    "fee_earned_USDC_raw": "amount1_collected - amount1_principal"
+  },
+
+  "wallet_or_tx_touched": false,
+  "positions_called_this_round": false,
+  "actual_fee_ready": false,
+  "can_run_probe_now": false,
+  "execution_allowed_now": false
+}

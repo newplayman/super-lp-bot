@@ -1,0 +1,62 @@
+{
+  "stage": "LP_BASE_10U_PROBE_EXECUTION_AUTHORIZATION_PACKAGE_V1",
+  "phase": "D_pre_execution_final_checklist",
+  "run_id": "20260602_184806",
+  "scope": "every item must re-pass at future execution time; any fail => abort",
+
+  "gates_param_and_channel": [
+    {"id": 1, "gate": "chain_id == 8453", "method": "eth_chainId compare to constant", "fail_action": "abort"},
+    {"id": 2, "gate": "wallet exact match", "method": "argparse --wallet == constant WALLET", "fail_action": "abort"},
+    {"id": 3, "gate": "pool exact match", "method": "approval phrase parse == constant POOL", "fail_action": "abort"},
+    {"id": 4, "gate": "notional == 10", "method": "argv + phrase + constant three-way", "fail_action": "abort"},
+    {"id": 5, "gate": "hold == 15m", "method": "argv + phrase + constant three-way", "fail_action": "abort"}
+  ],
+
+  "gates_chain_live_read": [
+    {"id": 6, "gate": "current_tick re-read", "method": "eth_call(POOL, slot0) live; no cached snapshot", "fail_action": "abort if RPC fail"},
+    {"id": 7, "gate": "dynamic range recomputed", "method": "proposed = [current-200, current+200]", "fail_action": "abort if compute fail"},
+    {"id": 8, "gate": "current_tick INSIDE proposed range", "method": "proposed_lower <= current_tick <= proposed_upper", "fail_action": "abort"},
+    {"id": 9, "gate": "drift threshold check", "method": "abs(current_tick - LEGACY_FROZEN_TICK) > 200 -> require fresh approval", "fail_action": "require fresh approval phrase"},
+    {"id": 10, "gate": "fresh approval re-input if drift exceeds", "method": "operator re-types exact phrase; old phrase never reused", "fail_action": "abort if same phrase reused"}
+  ],
+
+  "gates_balance_and_allowance": [
+    {"id": 11, "gate": "gas balance sufficient", "method": "eth_getBalance(wallet) >= MIN_NATIVE_FOR_GAS (0.001 ETH)", "fail_action": "abort"},
+    {"id": 12, "gate": "USDC balance sufficient", "method": "USDC.balanceOf(wallet) >= 10_000_000 raw", "fail_action": "abort"},
+    {"id": 13, "gate": "WETH balance check (record only)", "method": "USDC + WETH balances logged to telemetry", "fail_action": "warn-only"},
+    {"id": 14, "gate": "allowance check (skip-or-approve)", "method": "USDC.allowance(wallet, NPM); >= 10M skip; < 10M must ApproveExact; ApproveMax abort", "fail_action": "conditional"},
+    {"id": 15, "gate": "approve exact if needed", "method": "amount = 10_000_000 raw; > 0 and < UINT256_MAX/2", "fail_action": "abort if condition violated"}
+  ],
+
+  "gates_quote_and_slippage": [
+    {"id": 16, "gate": "quote valid", "method": "QuoterV2 or simulate returns non-zero", "fail_action": "abort"},
+    {"id": 17, "gate": "slippage within threshold", "method": "amount1Min_raw = floor(amount1Desired_raw * 0.995)", "fail_action": "abort if quote underfills"},
+    {"id": 18, "gate": "gas estimate within threshold", "method": "eth_estimateGas < MAX_GAS_LIMIT_PER_TX (600_000)", "fail_action": "abort"}
+  ],
+
+  "gates_contract_exists": [
+    {"id": 19, "gate": "NPM code exists", "method": "eth_getCode(NPM) != 0x", "fail_action": "abort"},
+    {"id": 20, "gate": "pool code exists", "method": "eth_getCode(POOL) != 0x", "fail_action": "abort"}
+  ],
+
+  "gates_process_and_env": [
+    {"id": 21, "gate": "no live/canary/paper process", "method": "ps aux | egrep 'lpbot-live|canary|paper' must be empty", "fail_action": "abort"},
+    {"id": 22, "gate": "no production dirty state", "method": "no DATABASE_URL / POSTGRES_DSN / SHADOW_POSTGRES_DSN in env; executor v2 already self-checks (exit 4)", "fail_action": "abort"},
+    {"id": 23, "gate": "telemetry path writable", "method": "mkdir -p reports/lp_base_10u_probe_execution_runtime/<run_id>/ succeeds", "fail_action": "abort"}
+  ],
+
+  "gates_approval": [
+    {"id": 24, "gate": "gate 1 — --mode execute-guarded explicit", "method": "argparse choices restriction", "fail_action": "abort (argparse error)"},
+    {"id": 25, "gate": "gate 2 — approval phrase exact match", "method": "parse_approval_phrase regex + 27 dangerous words + 4 cross-check", "fail_action": "abort"},
+    {"id": 26, "gate": "gate 3 — --i-understand-this-sends-real-transactions explicit", "method": "argparse store_true", "fail_action": "abort"},
+    {"id": 27, "gate": "dry-run-only / no-send must be explicitly unset (still requires send hard-disable release)", "method": "future runner will need a separate code change to release hard-disable", "fail_action": "abort (this stage will never set false)"}
+  ],
+
+  "total_gates": 27,
+  "fail_action_universal": "any gate fail => abort; no manual bypass; no hardcode; no retry-and-hope",
+
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no",
+  "execution_allowed_now": false
+}

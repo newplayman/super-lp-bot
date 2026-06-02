@@ -1,0 +1,59 @@
+{
+  "stage": "LP_BASE_10U_PROBE_EXECUTION_AUTHORIZATION_PACKAGE_V1",
+  "phase": "H_final_human_approval_template",
+  "run_id": "20260602_184806",
+
+  "future_approval_phrase": "APPROVE_BASE_10U_LP_PROBE_EXECUTION_ONE_SHOT wallet=0xb05b2872ace4564ff247555b6f7b097d31f3d835 pool=0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38 notional=10 hold=15m",
+  "regex_source": "scripts/lp_base_10u_probe_executor_v2.py line 77",
+  "regex": "^APPROVE_BASE_10U_LP_PROBE_EXECUTION_ONE_SHOT wallet=0x[0-9a-fA-F]{40} pool=0x[0-9a-fA-F]{40} notional=10 hold=15m$",
+  "variable_parts": ["wallet 40-hex", "pool 40-hex"],
+  "frozen_for_this_probe": true,
+
+  "when_phrase_does_not_work": [
+    {"stage": "LP_BASE_10U_PROBE_EXECUTION_AUTHORIZATION_PACKAGE_V1 (current)", "effective": false, "why": "no execution runner present"},
+    {"stage": "LP_BASE_10U_PROBE_EXECUTION_IMPLEMENTATION_V1 and earlier", "effective": false, "why": "executor v2 execute-guarded raises hard-disable"},
+    {"stage": "LP_BASE_10U_PROBE_OPERATOR_EXECUTION_REQUEST_V1 (future)", "effective": false, "why": "still a request; execution comes one stage later"},
+    {"stage": "LP_BASE_10U_PROBE_FIRST_EXECUTION_RUN_V1 (hypothetical future)", "effective": "only after hard-disable is released by separate commit + audit"}
+  ],
+
+  "execution_time_must_satisfy": [
+    "--mode execute-guarded (Gate 1)",
+    "approval phrase exact match (Gate 2)",
+    "--i-understand-this-sends-real-transactions explicit (Gate 3)",
+    "--dry-run-only=false and --no-send=false explicitly (defaults are true)",
+    "re-read current_tick; if drift > 200 the approval phrase MUST be re-typed",
+    "real-time USDC.allowance check; only ApproveExact if insufficient",
+    "send_hard_disabled = false (currently true; future commit must release)"
+  ],
+
+  "rejection_examples": [
+    {"phrase": "APPROVE_BASE_20U_LP_PROBE_EXECUTION_ONE_SHOT ... notional=20 hold=15m", "result": "rejected", "reasons": ["dangerous word \\b20U\\b", "regex mismatch", "notional cross-check"]},
+    {"phrase": "APPROVE_BASE_10U_LP_PROBE_EXECUTION_ONE_SHOT ... notional=10 hold=30m", "result": "rejected", "reasons": ["dangerous word \\b30m\\b", "regex mismatch", "hold cross-check"]},
+    {"phrase": "APPROVE_BASE_10U_LP_PROBE_EXECUTION_ONE_SHOT wallet=0xDEADBEEF... ...", "result": "rejected", "reasons": ["wallet cross-check"]},
+    {"phrase": "APPROVE_BASE_10U_LP_PROBE_EXECUTION_ONE_SHOT wallet=... pool=0xCAFEBABE... ...", "result": "rejected", "reasons": ["pool cross-check"]},
+    {"phrase": "EXECUTE NOW wallet=... pool=... notional=10 hold=15m", "result": "rejected", "reasons": ["dangerous words EXECUTE NOW", "regex mismatch"]},
+    {"phrase": "APPROVE BASE 10U LP PROBE EXECUTION ONE SHOT ...", "result": "rejected", "reasons": ["spaces instead of underscores; regex mismatch"]},
+    {"phrase": "LIVE BASE 10U ...", "result": "rejected", "reasons": ["dangerous word LIVE"]},
+    {"phrase": "APPROVE_BASE_10U_LP_PROBE_EXECUTION_ONE_SHOT ... GO", "result": "rejected", "reasons": ["dangerous word GO"]}
+  ],
+
+  "operator_input_flow_future_only": [
+    "read current_tick via eth_call slot0; compare to frozen center",
+    "if drift > 200 know you will re-type the phrase (each invocation = new session_id)",
+    "dry-run preflight: python3 scripts/.../executor_v2.py --mode preflight ...",
+    "manually inspect dynamic_tick_range.json and preflight.json against the 23-item checklist",
+    "manually type the exact phrase, no typos",
+    "manually add --i-understand-this-sends-real-transactions",
+    "even if all correct, executor v2 currently hard-disables; release requires separate commit + audit"
+  ],
+
+  "this_stage_does_not_accept_phrase": true,
+  "this_stage_does_not_validate_phrase": true,
+  "this_stage_does_not_cache_phrase": true,
+  "this_stage_does_not_trigger_execution": true,
+
+  "wallet_or_tx_touched": false,
+  "approval_phrase_effective_this_round": false,
+  "execution_allowed_now": false,
+  "can_run_probe_now": false
+}

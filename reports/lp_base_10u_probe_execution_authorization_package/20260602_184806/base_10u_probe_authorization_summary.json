@@ -1,0 +1,83 @@
+{
+  "stage": "LP_BASE_10U_PROBE_EXECUTION_AUTHORIZATION_PACKAGE_V1",
+  "phase": "C_authorization_summary",
+  "run_id": "20260602_184806",
+
+  "candidate": {
+    "chain": "Base",
+    "chain_id": 8453,
+    "protocol": "Uniswap V3",
+    "pool": "0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38",
+    "pair": "WETH/USDC",
+    "fee_tier": 100,
+    "tick_spacing": 1,
+    "npm": "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1",
+    "quoter_v2": "0x3d4e44Eb1374240CE5F1B871ab261CD16335B76a",
+    "weth": "0x4200000000000000000000000000000000000006",
+    "usdc": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+    "wallet": "0xb05b2872ace4564ff247555b6f7b097d31f3d835",
+    "notional_usd": 10,
+    "notional_usdc_raw": 10000000,
+    "hold_window": "15m",
+    "max_manual_extension": "NONE for first execution"
+  },
+
+  "expected_action_sequence": [
+    {"step": 1, "name": "preflight", "type": "read-only", "details": "chain_id, slot0, NPM/pool code, dynamic tick range, balances, allowance"},
+    {"step": 2, "name": "approve_exact_usdc", "type": "tx", "conditional": "only if USDC allowance(NPM) < 10_000_000", "amount_raw": 10000000, "approve_max_forbidden": true},
+    {"step": 3, "name": "mint_lp_position", "type": "tx", "function": "NPM.mint", "deadline": "now+3600", "amount0Desired_wei": 0, "amount1Desired_raw": 10000000, "amount0Min_wei": 0, "amount1Min_raw": 9950000},
+    {"step": 4, "name": "record_token_id", "type": "read-only", "source": "mint receipt ERC721 Transfer(0x0,wallet,tokenId)", "failure": "manual_intervention"},
+    {"step": 5, "name": "hold_monitor", "type": "read-only", "interval_seconds": "60-180", "duration": "15m", "no_chain_write": true},
+    {"step": 6, "name": "decrease_liquidity", "type": "tx", "function": "NPM.decreaseLiquidity", "liquidity": "all_of_this_position", "deadline": "now+3600"},
+    {"step": 7, "name": "collect", "type": "tx", "function": "NPM.collect", "recipient": "wallet", "amount_max": "(1<<128)-1"},
+    {"step": 8, "name": "revoke_allowance", "type": "tx", "conditional": "only if step 2 executed", "function": "approve(USDC, NPM, 0)"},
+    {"step": 9, "name": "final_pnl_report", "type": "read-only", "writes": "telemetry artifact"}
+  ],
+
+  "per_tx_invariants": {
+    "deadline": "runtime now + 3600",
+    "max_gas_limit_per_tx": 600000,
+    "max_gas_price_gwei": 2,
+    "telemetry_drop_on_receipt": true,
+    "receipt_timeout_seconds": 120,
+    "receipt_timeout_action": "manual_intervention"
+  },
+
+  "what_this_is_not": {
+    "positive_ev_proof": false,
+    "edge_proven": false,
+    "production_canary": false,
+    "tiny_canary_allowed": "no",
+    "expected_profit": "may lose 10U + gas"
+  },
+
+  "success_criteria_must_achieve": [
+    "token_id_extracted_from_mint_receipt",
+    "entry_fee_state_recorded",
+    "hold_fee_state_recorded_at_least_once",
+    "pre_exit_fee_state_recorded",
+    "post_collect_fee_state_recorded",
+    "actual_pnl_computed",
+    "telemetry_artifacts_dropped"
+  ],
+
+  "acceptable_failure_scenarios": [
+    "mint reverted, only gas lost; telemetry status=mint_failed",
+    "decreaseLiquidity reverted -> manual intervention (no auto retry)",
+    "collect returns 0 fee -> still record actual fee state"
+  ],
+
+  "must_escalate_scenarios": [
+    "tokenId parse failed",
+    "positions(tokenId) does not match expected params",
+    "decreaseLiquidity succeeded but collect failed (token stuck in NPM)",
+    "tick moved out of range AND IL > 1.0% during hold"
+  ],
+
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no",
+  "edge_proven": "no",
+  "execution_allowed_now": false,
+  "this_phase_only_assembles_doc": true
+}

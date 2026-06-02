@@ -1,0 +1,74 @@
+{
+  "stage": "LP_BASE_10U_PROBE_EXECUTION_AUTHORIZATION_PACKAGE_V1",
+  "phase": "B_input_evidence_audit",
+  "run_id": "20260602_184806",
+  "previous_stage": "LP_BASE_10U_PROBE_FINAL_EXECUTION_REVIEW_V1",
+  "previous_run_id": "20260602_182402",
+  "previous_commit": "c18176f",
+  "previous_status": "PASS",
+
+  "upstream_artifacts_present": {
+    "review_FINAL_VERDICT.json": true,
+    "review_ONEPAGE_CN.md": true,
+    "review_FINAL_EXECUTION_GATE_REVIEW_CN.md": true,
+    "review_final_execution_gate_review.json": true,
+    "review_DYNAMIC_TICK_RANGE_FINAL_REVIEW_CN.md": true,
+    "review_dynamic_tick_range_final_review.json": true,
+    "review_APPROVAL_GATE_FINAL_REVIEW_CN.md": true,
+    "review_approval_gate_final_review.json": true,
+    "implementation_FINAL_VERDICT.json": true,
+    "scripts/lp_base_10u_probe_executor_v2.py": true
+  },
+
+  "preconditions_satisfied": {
+    "previous_stage_correct": true,
+    "previous_status_pass": true,
+    "execution_authorization_package_allowed_next": true,
+    "can_run_probe_now": false,
+    "can_execute_with_current_script": false,
+    "recommended_next_stage_match": true,
+    "send_hard_disabled_in_executor_v2": true,
+    "this_stage_is_package_assembly_not_execution": true
+  },
+
+  "deviations_required_in_this_stage": {
+    "skip_approve_if_allowance_sufficient_not_wired": {
+      "handled_in_phase": ["E_authorized_tx_sequence", "D_pre_execution_checklist"],
+      "required_artifacts": [
+        "AUTHORIZED_TRANSACTION_SEQUENCE_CN.md",
+        "PRE_EXECUTION_FINAL_CHECKLIST_CN.md"
+      ]
+    },
+    "mint_receipt_schema_not_defined": {
+      "handled_in_phase": ["F_mint_receipt_tokenid_schema"],
+      "required_artifacts": ["MINT_RECEIPT_TOKENID_SCHEMA_CN.md", "mint_receipt_tokenid_schema.json"]
+    },
+    "feeGrowth_tokensOwed_telemetry_mode_not_implemented": {
+      "handled_in_phase": ["G_actual_fee_telemetry_schema"],
+      "required_artifacts": ["ACTUAL_FEE_TELEMETRY_SCHEMA_CN.md", "actual_fee_telemetry_schema.json"]
+    }
+  },
+
+  "key_facts": [
+    "this is documentation-only — no chain writes",
+    "doc explains how a future execution stage must re-read chain state, generate fresh approval, judge abort",
+    "this stage commit/push does NOT unseal the send hard-disable",
+    "next-next stage (actual execution runner) faces a separate hard-disable decision needing its own commit + audit"
+  ],
+
+  "verdict": {
+    "input_evidence_complete": true,
+    "previous_stage_pass": true,
+    "wrong_stage_blocker": false,
+    "dirty_workspace_blocker": false,
+    "ready_to_proceed": true
+  },
+
+  "safety_invariants_this_stage": {
+    "wallet_or_tx_touched": false,
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no",
+    "edge_proven": "no",
+    "execution_allowed_now": false
+  }
+}
