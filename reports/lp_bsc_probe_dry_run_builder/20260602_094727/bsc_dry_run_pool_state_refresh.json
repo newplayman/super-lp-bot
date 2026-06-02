@@ -1,0 +1,91 @@
+{
+  "stage": "LP_BSC_10_20U_PROBE_DRY_RUN_BUILDER_V1",
+  "phase": "D_pool_state_refresh",
+  "rpc_endpoint_redacted": "publicnode (host_hash=5a701356)",
+  "chain_id": 56,
+  "latest_block": 101860171,
+  "pool_address": "0x172fcD41E0913e95784454622d1c3724f546f849",
+  "pool_meta": {
+    "token0": "0x55d398326f99059ff775485246999027b3197955",
+    "token1": "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c",
+    "token0_symbol": "USDT",
+    "token1_symbol": "WBNB",
+    "token0_decimals": 18,
+    "token1_decimals": 18,
+    "fee_raw": 100,
+    "fee_percent": "0.0100",
+    "tick_spacing": 1,
+    "active_liquidity_at_current_tick": "3709045338100587065880575",
+    "slot0": {
+      "sqrtPriceX96": "3045067813973962401786646682",
+      "tick": -65180,
+      "observationIndex": 205,
+      "observationCardinality": 2400,
+      "observationCardinalityNext": 2400,
+      "feeProtocol": 228,
+      "unlocked": true
+    }
+  },
+  "price_at_current_tick": {
+    "wbnb_price_in_usdt": "676.96",
+    "raw_token1_per_token0": "0.001477184596105478",
+    "human_token1_per_token0": "0.00147718"
+  },
+  "quoter_v2": {
+    "address": "0xB048Bbc1Ee6b733FFfCFb9e9CeF7375518e25997",
+    "calldata_layout": "inline_tuple_no_offset (verified)"
+  },
+  "quotes": {
+    "5USD_USDT_in": {
+      "amount_in_wei": 5000000000000000000,
+      "ok": true,
+      "amountOut_wei": 7385209263169448,
+      "sqrtPriceX96After": 3045072863324784474184804811,
+      "initializedTicksCrossed": 1,
+      "gasEstimate": 92691
+    },
+    "5USD_WBNB_in": {
+      "amount_in_wei": 7385922980527387,
+      "ok": true,
+      "amountOut_wei": 4999483675533328528,
+      "sqrtPriceX96After": 3045072864270793035278866215,
+      "initializedTicksCrossed": 1,
+      "gasEstimate": 92219
+    },
+    "10USD_USDT_in": {
+      "amount_in_wei": 10000000000000000000,
+      "ok": true,
+      "amountOut_wei": 14770414709518662,
+      "sqrtPriceX96After": 3045072391009550341441887070,
+      "initializedTicksCrossed": 1,
+      "gasEstimate": 92691
+    },
+    "10USD_WBNB_in": {
+      "amount_in_wei": 14771845961054775,
+      "ok": true,
+      "amountOut_wei": 9998966833058948302,
+      "sqrtPriceX96After": 3045073022024213544309497603,
+      "initializedTicksCrossed": 1,
+      "gasEstimate": 115797
+    },
+    "20USD_USDT_in": {
+      "amount_in_wei": 20000000000000000000,
+      "ok": true,
+      "amountOut_wei": 29540826358236257,
+      "sqrtPriceX96After": 3045072075501793537784107678,
+      "initializedTicksCrossed": 1,
+      "gasEstimate": 116269
+    },
+    "20USD_WBNB_in": {
+      "amount_in_wei": 29543691922109550,
+      "ok": true,
+      "amountOut_wei": 19997931594087381589,
+      "sqrtPriceX96After": 3045073337531054562370760379,
+      "initializedTicksCrossed": 1,
+      "gasEstimate": 115797
+    }
+  },
+  "all_core_fields_present": true,
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false
+}

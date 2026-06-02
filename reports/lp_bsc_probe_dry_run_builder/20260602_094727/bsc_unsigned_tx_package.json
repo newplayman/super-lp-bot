@@ -1,0 +1,189 @@
+{
+  "stage": "LP_BSC_10_20U_PROBE_DRY_RUN_BUILDER_V1",
+  "phase": "G_unsigned_tx_package",
+  "package_kind": "structured_json_unsigned_only",
+  "package_is_signed": false,
+  "package_is_sent": false,
+  "package_is_executable": false,
+  "wallet_address_used_for_recipient": "PLACEHOLDER_USER_WALLET_NOT_SET",
+  "deadline_used": "PLACEHOLDER_MANUAL_SET",
+
+  "approval_needed_check": {
+    "kind": "static_unknown_without_wallet_address",
+    "explanation": "Because no wallet address was loaded in this phase, no on-chain allowance check was made. Future stage with a wallet address must call ERC20.allowance(owner=wallet, spender=NonfungiblePositionManager) for both USDT and WBNB. If allowance < amount0Desired (USDT) or allowance < amount1Desired (WBNB), an ApproveExact tx is needed for the missing one.",
+    "policy": "ApproveExact ONLY. ApproveMax forbidden. Post-exit revoke required.",
+    "approve_recipient_allowlist": ["PancakeSwap V3 NonfungiblePositionManager (BSC)"],
+    "approve_recipient_address": "0x46A15B0b27311cedF172AB29E4f4766fbE7F4364",
+    "this_round_calls_approve": false,
+    "this_round_calls_eth_call_allowance": false
+  },
+
+  "mint_or_increaseLiquidity_calldata_draft": {
+    "method_choice": "mint",
+    "method_choice_rationale": "This is the very first probe — there is no existing tokenId for the operator's wallet against this pool. mint(params) creates a NEW NFT position and returns its tokenId. increaseLiquidity(params) requires an existing tokenId. Choose mint.",
+    "target_contract": "PancakeSwap V3 NonfungiblePositionManager (BSC)",
+    "target_contract_address": "0x46A15B0b27311cedF172AB29E4f4766fbE7F4364",
+    "method_signature": "mint((address token0, address token1, uint24 fee, int24 tickLower, int24 tickUpper, uint256 amount0Desired, uint256 amount1Desired, uint256 amount0Min, uint256 amount1Min, address recipient, uint256 deadline))",
+    "method_selector_hint": "0x88316456",
+    "params_for_10u": {
+      "token0": "0x55d398326f99059fF775485246999027B3197955",
+      "token1": "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
+      "fee": 100,
+      "tickLower": -65280,
+      "tickUpper": -65080,
+      "amount0Desired": "4971672871026643667",
+      "amount1Desired": "7427805378417271",
+      "amount0Min": "4946814506671510449",
+      "amount1Min": "7390666351525185",
+      "recipient": "PLACEHOLDER_USER_WALLET_NOT_SET",
+      "deadline": "PLACEHOLDER_MANUAL_SET"
+    },
+    "params_for_20u": {
+      "token0": "0x55d398326f99059fF775485246999027B3197955",
+      "token1": "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
+      "fee": 100,
+      "tickLower": -65280,
+      "tickUpper": -65080,
+      "amount0Desired": "9943345742053287335",
+      "amount1Desired": "14855610756834543",
+      "amount0Min": "9893629013343020899",
+      "amount1Min": "14781332703050370",
+      "recipient": "PLACEHOLDER_USER_WALLET_NOT_SET",
+      "deadline": "PLACEHOLDER_MANUAL_SET"
+    },
+    "amounts_must_be_re_quoted_immediately_before_real_mint": true,
+    "amounts_are_stale_after_seconds": 60,
+    "full_abi_encoded_bytes_emitted": false,
+    "rationale_for_not_emitting_bytes": "Recipient is a placeholder, so ABI-encoding the full calldata now would yield bytes that could NEVER be sent (recipient slot would be all zeros — would revert or send to zero address). The next stage with a real wallet address must encode bytes after re-quoting."
+  },
+
+  "approve_calldata_draft_per_token": [
+    {
+      "token": "USDT",
+      "token_address": "0x55d398326f99059fF775485246999027B3197955",
+      "method": "approve(address spender, uint256 value)",
+      "method_selector": "0x095ea7b3",
+      "params": {
+        "spender": "0x46A15B0b27311cedF172AB29E4f4766fbE7F4364",
+        "value_for_10u": "4971672871026643667",
+        "value_for_20u": "9943345742053287335",
+        "_constraint": "value MUST equal amount0Desired EXACTLY (ApproveExact)."
+      },
+      "only_needed_if_existing_allowance_lt_amount0Desired": true,
+      "full_bytes_emitted": false
+    },
+    {
+      "token": "WBNB",
+      "token_address": "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
+      "method": "approve(address spender, uint256 value)",
+      "method_selector": "0x095ea7b3",
+      "params": {
+        "spender": "0x46A15B0b27311cedF172AB29E4f4766fbE7F4364",
+        "value_for_10u": "7427805378417271",
+        "value_for_20u": "14855610756834543",
+        "_constraint": "value MUST equal amount1Desired EXACTLY (ApproveExact)."
+      },
+      "only_needed_if_existing_allowance_lt_amount1Desired": true,
+      "full_bytes_emitted": false
+    }
+  ],
+
+  "post_exit_revoke_calldata_draft_per_token": [
+    {
+      "token": "USDT",
+      "method": "approve(address spender, uint256 value)",
+      "params": {"spender": "0x46A15B0b27311cedF172AB29E4f4766fbE7F4364", "value": "0"},
+      "purpose": "Revoke USDT allowance to PositionManager after exit. Mandatory per risk-limits policy.",
+      "full_bytes_emitted": false
+    },
+    {
+      "token": "WBNB",
+      "method": "approve(address spender, uint256 value)",
+      "params": {"spender": "0x46A15B0b27311cedF172AB29E4f4766fbE7F4364", "value": "0"},
+      "purpose": "Revoke WBNB allowance to PositionManager after exit. Mandatory per risk-limits policy.",
+      "full_bytes_emitted": false
+    }
+  ],
+
+  "exit_path_calldata_draft": {
+    "step1_decreaseLiquidity": {
+      "method": "decreaseLiquidity((uint256 tokenId, uint128 liquidity, uint256 amount0Min, uint256 amount1Min, uint256 deadline))",
+      "method_selector_hint": "0x0c49ccbe",
+      "params": {
+        "tokenId": "PLACEHOLDER_FROM_MINT_RESULT",
+        "liquidity": "FULL_POSITION_LIQUIDITY_AT_EXIT_TIME",
+        "amount0Min": "RECOMPUTED_AT_EXIT_TIME_WITH_50_BPS_SLIPPAGE",
+        "amount1Min": "RECOMPUTED_AT_EXIT_TIME_WITH_50_BPS_SLIPPAGE",
+        "deadline": "PLACEHOLDER_MANUAL_SET"
+      },
+      "full_bytes_emitted": false
+    },
+    "step2_collect": {
+      "method": "collect((uint256 tokenId, address recipient, uint128 amount0Max, uint128 amount1Max))",
+      "method_selector_hint": "0xfc6f7865",
+      "params": {
+        "tokenId": "PLACEHOLDER_FROM_MINT_RESULT",
+        "recipient": "PLACEHOLDER_USER_WALLET_NOT_SET",
+        "amount0Max": "0xffffffffffffffffffffffffffffffff (uint128.MAX — collect everything)",
+        "amount1Max": "0xffffffffffffffffffffffffffffffff (uint128.MAX — collect everything)"
+      },
+      "full_bytes_emitted": false
+    },
+    "step3_burn_optional": {
+      "method": "burn(uint256 tokenId)",
+      "method_selector_hint": "0x42966c68",
+      "params": {"tokenId": "PLACEHOLDER_FROM_MINT_RESULT"},
+      "note": "Optional. Burn the NFT after liquidity drained and fees collected to clean up wallet. Refunds a small amount of gas.",
+      "full_bytes_emitted": false
+    }
+  },
+
+  "swap_back_calldata_draft_if_needed": {
+    "applies_when": "Operator wants to consolidate residual balances back to a single token after exit (e.g. all-USDT or all-WBNB).",
+    "default_recommendation_for_probe": "DO NOT swap back. The 10/20U probe goal is to MEASURE the round-trip economics; an explicit swap-back adds another quote drift risk (S4 in risk_limits) and isn't needed for tokenId/fee data.",
+    "if_human_overrides": {
+      "method": "exactInputSingle((address tokenIn, address tokenOut, uint24 fee, address recipient, uint256 deadline, uint256 amountIn, uint256 amountOutMinimum, uint160 sqrtPriceLimitX96))",
+      "target_contract": "PancakeSwap V3 SwapRouter (BSC)",
+      "target_contract_address": "0x1b81D678ffb9C0263b24A97847620C99d213eB14",
+      "method_selector_hint": "0x04e45aaf",
+      "params": {
+        "tokenIn": "PICK_AT_EXIT_TIME",
+        "tokenOut": "PICK_AT_EXIT_TIME",
+        "fee": 100,
+        "recipient": "PLACEHOLDER_USER_WALLET_NOT_SET",
+        "deadline": "PLACEHOLDER_MANUAL_SET",
+        "amountIn": "RECOMPUTED_AT_EXIT_TIME",
+        "amountOutMinimum": "RECOMPUTED_AT_EXIT_TIME_WITH_50_BPS_SLIPPAGE_AGAINST_FRESH_QUOTE",
+        "sqrtPriceLimitX96": "0"
+      },
+      "full_bytes_emitted": false
+    }
+  },
+
+  "strict_constraints_satisfied": {
+    "recipient_never_real_wallet": true,
+    "deadline_never_real_value": true,
+    "no_private_key_or_seed_referenced": true,
+    "no_signer_constructed": true,
+    "no_transaction_sent": true,
+    "no_full_abi_encoded_bytes_emitted_for_execution": true,
+    "approval_strategy_is_ApproveExact_only": true,
+    "approval_max_forbidden": true,
+    "post_exit_revoke_required": true
+  },
+
+  "next_stage_must_do_before_any_real_tx": [
+    "verify wallet address is in operator's local allowlist",
+    "re-quote via QuoterV2 within 60s of mint tx submission",
+    "recompute amount0Min / amount1Min from fresh quote",
+    "encode full ABI bytes only AFTER recipient is filled and deadline is set",
+    "simulate full tx via eth_call with from=wallet BEFORE signing",
+    "human types explicit phrase to authorize signing",
+    "still NOT this round's responsibility — that's a future stage's gate"
+  ],
+
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no",
+  "edge_proven": "no"
+}

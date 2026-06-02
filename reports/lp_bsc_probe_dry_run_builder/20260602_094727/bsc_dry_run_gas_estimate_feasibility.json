@@ -1,0 +1,80 @@
+{
+  "stage": "LP_BSC_10_20U_PROBE_DRY_RUN_BUILDER_V1",
+  "phase": "H_gas_estimate_feasibility",
+  "can_estimate_without_wallet": false,
+  "needs_wallet_address_for_reliable_estimate": true,
+  "why_wallet_address_needed": [
+    "eth_estimateGas(approve) reverts when from=zero_address or from=an_address_with_zero_token_balance — most tokens (USDT included) check msg.sender's balance during approve transitions on some forks; even when approve doesn't revert, the gas estimate without a `from` field defaults to balance-dependent paths and gives misleading numbers.",
+    "eth_estimateGas(mint) MUST have allowance >= amount0Desired and amount1Desired AND sufficient balance, else the simulated execution reverts and no gas is returned.",
+    "eth_estimateGas(decreaseLiquidity/collect) requires the wallet to already own the tokenId; without a wallet, no tokenId exists, so estimate is undefined.",
+    "Therefore reliable gas estimation MUST happen in the next stage (LP_BSC_10_20U_PROBE_WALLET_ADDRESS_DRY_RUN_V1) where the operator provides a wallet address, balances and allowances can be queried, and eth_estimateGas can be called with from=wallet."
+  ],
+  "this_round_calls_eth_estimateGas": false,
+  "this_round_uses_static_conservative_gas_assumptions": true,
+  "conservative_gas_units_mint": 380000,
+  "conservative_gas_units_increaseLiquidity": 200000,
+  "conservative_gas_units_approve": 50000,
+  "conservative_gas_units_decreaseLiquidity": 180000,
+  "conservative_gas_units_collect": 80000,
+  "conservative_gas_units_burn_optional": 30000,
+  "conservative_gas_units_swap_exactInputSingle": 130000,
+  "conservative_gas_units_approve_revoke": 30000,
+  "conservative_gas_units_sources": [
+    "Pancake V3 NPM.mint() observed mainnet range: 250k-400k depending on whether the tickLower/tickUpper need new tick storage initialization",
+    "Pancake V3 NPM.decreaseLiquidity()+collect() observed: 120k-200k",
+    "ERC20.approve() observed: 30k-50k (USDT on BSC is a standard BEP-20, no proxy quirk)",
+    "PancakeSwap V3 SwapRouter.exactInputSingle(): 100k-160k depending on ticks crossed"
+  ],
+  "conservative_total_gas_units_round_trip_with_two_approves_one_revoke": 870000,
+  "_total_breakdown": "approve(USDT)=50k + approve(WBNB)=50k + mint=380k + decreaseLiquidity=180k + collect=80k + approve(USDT,0)=30k + approve(WBNB,0)=30k + buffer ≈ 870k. Burn optional adds ~30k.",
+  "gas_cost_usd_scenarios": [
+    {
+      "scenario": "current_baseline_low_gas",
+      "gas_price_gwei": "0.05",
+      "wbnb_price_usd": "676.96",
+      "total_gas_units": 870000,
+      "total_gas_cost_wbnb": "0.0000435",
+      "total_gas_cost_usd": "0.0294",
+      "note": "Phase D observed gas_price ≈ 0.05 gwei on BSC mainnet at proposal time"
+    },
+    {
+      "scenario": "modest_congestion_5x",
+      "gas_price_gwei": "0.25",
+      "wbnb_price_usd": "676.96",
+      "total_gas_units": 870000,
+      "total_gas_cost_wbnb": "0.0002175",
+      "total_gas_cost_usd": "0.1472",
+      "note": "5x baseline — moderate BSC congestion"
+    },
+    {
+      "scenario": "high_congestion_20x",
+      "gas_price_gwei": "1.0",
+      "wbnb_price_usd": "676.96",
+      "total_gas_units": 870000,
+      "total_gas_cost_wbnb": "0.00087",
+      "total_gas_cost_usd": "0.5890",
+      "note": "20x baseline — heavy BSC congestion (e.g., during airdrop spike); should trigger S2 stop"
+    },
+    {
+      "scenario": "extreme_outlier_100x",
+      "gas_price_gwei": "5.0",
+      "wbnb_price_usd": "676.96",
+      "total_gas_units": 870000,
+      "total_gas_cost_wbnb": "0.00435",
+      "total_gas_cost_usd": "2.9450",
+      "note": "100x baseline — should NEVER mint at this gas; S2 auto-aborts before submit"
+    }
+  ],
+  "recommended_gas_price_ceiling_for_probe_gwei": "0.50",
+  "recommended_gas_price_ceiling_rationale": "0.5 gwei keeps round-trip gas cost under ~$0.30, well below the $0.50 mark-to-market stop (S10) and within the probe's already-accepted ~$1 worst-case loss budget. Above 0.5 gwei, the gas spike consumes more than 1.6x of the expected total cost — probe should be aborted and retried in a low-congestion window.",
+  "confidence": "medium",
+  "confidence_rationale": "Gas units come from public observation ranges, not from a fresh eth_estimateGas. They're conservative upper bounds; real estimates with from=wallet will likely come in 10-30% lower. The CONFIDENCE is medium because no wallet address was used, not because the model is unsound.",
+  "next_stage_must_do": [
+    "call eth_estimateGas with from=operator_wallet for: approve(USDT), approve(WBNB), mint, decreaseLiquidity, collect, approve(USDT,0), approve(WBNB,0)",
+    "compare each estimate to the conservative ceiling above; flag any that exceeds the conservative ceiling for human review",
+    "fetch current gas_price (eth_gasPrice) and check it's below the per-session ceiling",
+    "compute total_gas_cost_usd at the moment of probe submission and reconfirm operator wants to proceed"
+  ],
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false
+}

@@ -1,0 +1,70 @@
+{
+  "stage": "LP_BSC_10_20U_PROBE_DRY_RUN_BUILDER_V1",
+  "phase": "B_input_evidence_audit",
+  "run_id": "20260602_094727",
+  "upstream_preflight_review": {
+    "source_run_id": "20260602_092319",
+    "source_dir": "reports/lp_bsc_probe_preflight_review/20260602_092319",
+    "status": "PASS",
+    "stage_name": "LP_BSC_10_20U_PROBE_PREFLIGHT_REVIEW_V1",
+    "recommended_next_stage": "LP_BSC_10_20U_PROBE_DRY_RUN_BUILDER_V1",
+    "gates": {
+      "dry_run_builder_allowed_next": true,
+      "can_run_probe_now": false,
+      "manual_approval_required_for_probe": true,
+      "realistic_positive_ev": false,
+      "near_break_even": true,
+      "actual_fee_ready": false,
+      "token_id_available": false
+    }
+  },
+  "upstream_recovery_economics": {
+    "source_run_id": "20260602_060633",
+    "source_dir": "reports/lp_bsc_fee_velocity_recovery_probe_preflight/20260602_060633",
+    "status": "PASS",
+    "fee_ready_pool_count": 7,
+    "best_pool": "0x172fcd41e0913e95784454622d1c3724f546f849",
+    "best_pair": "USDT/WBNB",
+    "best_fee_tier": 100,
+    "best_notional": "20",
+    "best_hold_window": "15m",
+    "best_net_ev_proxy_usd": "-0.015560"
+  },
+  "inputs_read": {
+    "preflight/FINAL_VERDICT.json": true,
+    "preflight/ONEPAGE_CN.md": true,
+    "preflight/BSC_10_20U_PROBE_APPROVAL_PACKET_CN.md": true,
+    "preflight/bsc_10_20u_probe_approval_packet.json": true,
+    "preflight/BSC_PROBE_DRY_RUN_BUILDER_SPEC_CN.md": true,
+    "preflight/bsc_probe_dry_run_builder_spec.json": true,
+    "preflight/BSC_PROBE_REQUIRED_TELEMETRY_CN.md": true,
+    "preflight/bsc_probe_required_telemetry.json": true,
+    "recovery/FINAL_VERDICT.json": true,
+    "recovery/bsc_realdata_economics_with_recovered_fee.csv": true
+  },
+  "this_round_scope": "dry_run_builder_only_no_wallet_no_signing_no_sending",
+  "must_not": [
+    "send any transaction",
+    "load private key / wallet seed",
+    "create signer",
+    "call eth_sendTransaction / eth_sendRawTransaction",
+    "execute approve / mint / increaseLiquidity / decreaseLiquidity / collect / swap / burn",
+    "write production positions",
+    "overwrite shadow tables",
+    "auto-trigger next stage",
+    "flip can_run_probe_now or tiny_canary_allowed"
+  ],
+  "may": [
+    "eth_call / staticcall (read-only)",
+    "read-only quote (QuoterV2)",
+    "read-only pool state (slot0/liquidity/fee/tickSpacing/ticks)",
+    "read-only token metadata (decimals/symbol)",
+    "compute tickLower/tickUpper proposals",
+    "compute token0/token1 amounts for 10U/20U",
+    "construct unsigned calldata as JSON (NOT signed, NOT sent)",
+    "produce manual approval packet"
+  ],
+  "all_inputs_verified": true,
+  "all_upstream_gates_aligned": true,
+  "proceed_to_phase_C": true
+}

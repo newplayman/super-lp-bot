@@ -1,0 +1,53 @@
+{
+  "stage": "LP_BSC_10_20U_PROBE_DRY_RUN_BUILDER_V1",
+  "phase": "F_token_amount_calculation",
+  "selected_range": {
+    "tickLower": -65280,
+    "tickUpper": -65080,
+    "sqrtPriceLowerX96": "3029795156245181873879102244",
+    "sqrtPriceUpperX96": "3060243573776080108472912492",
+    "sqrtPriceCurrentX96": "3045067813973962401786646682"
+  },
+  "notional_calcs": {
+    "10U": {
+      "notional_usd": "10",
+      "L_target": "38532348599457512490",
+      "amount0_desired_wei": "4971672871026643667",
+      "amount1_desired_wei": "7427805378417271",
+      "amount0_desired_human_USDT": "4.971673",
+      "amount1_desired_human_WBNB": "0.007427805",
+      "amount0_usd": "4.9717",
+      "amount1_usd": "5.0283",
+      "total_usd_check": "10.0000",
+      "amount0Min_wei_with_50bps_slippage": "4946814506671510449",
+      "amount1Min_wei_with_50bps_slippage": "7390666351525185",
+      "amount0Min_human": "4.946815",
+      "amount1Min_human": "0.007390666"
+    },
+    "20U": {
+      "notional_usd": "20",
+      "L_target": "77064697198915024980",
+      "amount0_desired_wei": "9943345742053287335",
+      "amount1_desired_wei": "14855610756834543",
+      "amount0_desired_human_USDT": "9.943346",
+      "amount1_desired_human_WBNB": "0.014855611",
+      "amount0_usd": "9.9433",
+      "amount1_usd": "10.0567",
+      "total_usd_check": "20.0000",
+      "amount0Min_wei_with_50bps_slippage": "9893629013343020899",
+      "amount1Min_wei_with_50bps_slippage": "14781332703050370",
+      "amount0Min_human": "9.893629",
+      "amount1Min_human": "0.014781333"
+    }
+  },
+  "slippage_algorithm": {
+    "kind": "fixed_bps_floor",
+    "bps_used": 50,
+    "rationale": "Probe uses 50 bps (0.5%) as a generous Min floor for 10/20U mint. Real-world mint slippage on a 0.01% PancakeSwap V3 pool with ~$3.7e24 active liquidity is essentially zero for sub-$100 notional; 50 bps is a defensive buffer for any tick movement between quote-time and mint-confirmation time. Operator may tighten to 10-20 bps in approval phrase if confident.",
+    "must_not_exceed": "100 bps for this probe (any tighter loss is unacceptable for a research probe of this size)"
+  },
+  "_note": "These amounts are estimates only. Real mint MUST re-quote via QuoterV2 immediately before tx build, since prices move continuously. Actual execution stage will recompute, not use these stale numbers.",
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false,
+  "this_round_executes_approve_or_mint": false
+}

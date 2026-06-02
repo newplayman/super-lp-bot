@@ -1,0 +1,74 @@
+{
+  "stage": "LP_BSC_10_20U_PROBE_DRY_RUN_BUILDER_V1",
+  "phase": "I_manual_approval_checkpoint",
+  "purpose": "Define the ONLY approval phrase the operator may use to unlock the next stage. This phrase does NOT authorize execution. It authorizes a strictly read-only wallet-address dry run.",
+
+  "approval_phrase_template": "APPROVE_BSC_10_20U_PROBE_DRY_RUN_WITH_WALLET_ADDRESS_ONLY wallet=0x<your_wallet_address> notional=<10|20>",
+  "approval_phrase_example_for_10u": "APPROVE_BSC_10_20U_PROBE_DRY_RUN_WITH_WALLET_ADDRESS_ONLY wallet=0xABCDEF0123456789ABCDEF0123456789ABCDEF01 notional=10",
+  "approval_phrase_example_for_20u": "APPROVE_BSC_10_20U_PROBE_DRY_RUN_WITH_WALLET_ADDRESS_ONLY wallet=0xABCDEF0123456789ABCDEF0123456789ABCDEF01 notional=20",
+
+  "what_approval_unlocks": [
+    "The next stage (LP_BSC_10_20U_PROBE_WALLET_ADDRESS_DRY_RUN_V1) may read the operator-supplied wallet address.",
+    "That next stage may call ERC20.allowance(owner=wallet, spender=NPM) to determine if approve is needed.",
+    "That next stage may call ERC20.balanceOf(wallet) for USDT and WBNB to confirm balance sufficient.",
+    "That next stage may call eth_estimateGas with from=wallet for approve / mint / decrease / collect / revoke.",
+    "That next stage produces a refined gas + cost forecast and a tighter unsigned tx package."
+  ],
+
+  "what_approval_does_NOT_unlock": [
+    "Loading a private key.",
+    "Constructing a signer.",
+    "Signing any transaction.",
+    "Sending any transaction (eth_sendTransaction / eth_sendRawTransaction).",
+    "Calling approve / mint / increaseLiquidity / decreaseLiquidity / collect / burn / swap.",
+    "Modifying any on-chain state.",
+    "Writing to any production lpbot table.",
+    "Starting lpbot-live / lpbot-canary / lpbot-paper.",
+    "Probe execution. Execution is a further stage that does not yet have a spec."
+  ],
+
+  "forbidden_alternative_phrases_must_be_rejected": [
+    "APPROVE_BSC_10_20U_PROBE_EXECUTE",
+    "APPROVE_BSC_10_20U_PROBE_NOW",
+    "APPROVE_BSC_10_20U_PROBE_MINT",
+    "APPROVE_BSC_10_20U_PROBE_SIGN",
+    "APPROVE_BSC_10_20U_PROBE_LIVE",
+    "APPROVE_BSC_10_20U_PROBE_PAPER",
+    "APPROVE_BSC_10_20U_PROBE_CANARY",
+    "GO",
+    "SHIP_IT",
+    "PROCEED",
+    "ANY phrase that does not match the regex ^APPROVE_BSC_10_20U_PROBE_DRY_RUN_WITH_WALLET_ADDRESS_ONLY wallet=0x[0-9a-fA-F]{40} notional=(10|20)$"
+  ],
+
+  "phrase_validation_regex": "^APPROVE_BSC_10_20U_PROBE_DRY_RUN_WITH_WALLET_ADDRESS_ONLY wallet=0x[0-9a-fA-F]{40} notional=(10|20)$",
+
+  "what_operator_must_confirm_BEFORE_typing_phrase": [
+    "I have read the candidate review, risk limits, telemetry spec, dry-run builder spec, this approval checkpoint, the unsigned tx package, and the gas feasibility report.",
+    "I accept that realistic_positive_ev = false; this probe is a channel/telemetry investment, not a profit trade.",
+    "The wallet address I am about to type:",
+    "  - is one I personally control",
+    "  - has a USDT + WBNB balance summing to AT MOST $25 (20U notional + ~$5 gas/slippage buffer)",
+    "  - holds no other significant value",
+    "  - is NOT a multi-sig, NOT a shared wallet, NOT a cold-storage main treasury",
+    "I confirm no lpbot-live / lpbot-canary / lpbot-paper / other production process is running on this host.",
+    "I have set BSC_RPC_PRIMARY to a paid endpoint, OR I explicitly accept publicnode for the upcoming wallet-address dry run only.",
+    "I understand approving this phrase does NOT authorize execution. A further stage with its own spec + approval is required before any tx is signed or sent."
+  ],
+
+  "after_approval_what_next_stage_logs": [
+    "The exact approval phrase typed (including the wallet address).",
+    "The block number at which the next stage starts.",
+    "The wallet's USDT balance + WBNB balance + USDT allowance + WBNB allowance for the NPM spender.",
+    "The eth_estimateGas results for each tx in the round-trip.",
+    "Refined gas_cost_usd at current gas_price.",
+    "A new unsigned tx package with the wallet address filled in (but recipient inside calldata still as that wallet ONLY for simulation; no signing, no sending)."
+  ],
+
+  "approval_recipient_for_logging": "lp_probe_preflight_review_v1.human_approval_received + human_approval_at (as defined in Phase E telemetry spec; table not yet created)",
+
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no",
+  "edge_proven": "no"
+}

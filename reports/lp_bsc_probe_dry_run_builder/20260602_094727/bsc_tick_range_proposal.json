@@ -1,0 +1,68 @@
+{
+  "stage": "LP_BSC_10_20U_PROBE_DRY_RUN_BUILDER_V1",
+  "phase": "E_tick_range_proposal",
+  "current_tick": -65180,
+  "tick_spacing": 1,
+  "wbnb_price_in_usdt_at_proposal_time": "676.96",
+  "ranges": [
+    {
+      "name": "narrow",
+      "half_width_ticks": 20,
+      "tickLower": -65200,
+      "tickUpper": -65160,
+      "width_ticks": 40,
+      "price_lower_wbnb_in_usdt": "675.65",
+      "price_upper_wbnb_in_usdt": "678.36",
+      "pct_range_low_pct": "-0.194",
+      "pct_range_high_pct": "0.206",
+      "il_worst_at_boundary_pct": "0.0001",
+      "fee_capture_proxy": "1.00",
+      "exit_risk_15m": "high",
+      "note": "ultra-tight; expect to spend most of 15m near the boundary"
+    },
+    {
+      "name": "medium",
+      "half_width_ticks": 100,
+      "tickLower": -65280,
+      "tickUpper": -65080,
+      "width_ticks": 200,
+      "price_lower_wbnb_in_usdt": "670.27",
+      "price_upper_wbnb_in_usdt": "683.81",
+      "pct_range_low_pct": "-0.989",
+      "pct_range_high_pct": "1.011",
+      "il_worst_at_boundary_pct": "0.0013",
+      "fee_capture_proxy": "0.20",
+      "exit_risk_15m": "medium",
+      "note": "balanced; ~1% width \u2014 typical defensive 0.01% LP"
+    },
+    {
+      "name": "wide",
+      "half_width_ticks": 500,
+      "tickLower": -65680,
+      "tickUpper": -64680,
+      "width_ticks": 1000,
+      "price_lower_wbnb_in_usdt": "643.99",
+      "price_upper_wbnb_in_usdt": "711.71",
+      "pct_range_low_pct": "-4.871",
+      "pct_range_high_pct": "5.133",
+      "il_worst_at_boundary_pct": "0.0313",
+      "fee_capture_proxy": "0.04",
+      "exit_risk_15m": "low",
+      "note": "lazy; ~5% width \u2014 minimal IL but minimal fee capture too"
+    }
+  ],
+  "recommendation": {
+    "selected_tier": "medium",
+    "selected_tickLower": -65280,
+    "selected_tickUpper": -65080,
+    "reasoning": [
+      "Narrow (\u00b120 ticks \u2248 \u00b10.20%) gives the highest fee_capture density but a 15m hold at 0.01% USDT/WBNB has high probability of exiting the range (the pair moves >0.20% intraday routinely). Exit-out-of-range means 0 fees + full IL \u2014 defeats the purpose of the probe.",
+      "Wide (\u00b1500 ticks \u2248 \u00b15%) is safe but earns negligible fees in 15m. The probe is supposed to MEASURE actual fee accrual; near-zero fees give us no signal.",
+      "Medium (\u00b1100 ticks \u2248 \u00b11%) is the goldilocks: very likely to stay in-range for 15m on a 0.01% major-pair pool, and concentrated enough that we'll observe non-zero feeGrowthInside delta to calibrate the EV model."
+    ],
+    "if_human_overrides_with_narrow": "Acceptable IF the operator wants to stress-test the exit logic (S3 tick_out_of_range stop). Document the choice in approval phrase.",
+    "if_human_overrides_with_wide": "Discouraged for probe; the fee-accrual signal will be too weak to calibrate sizing. Useful only if operator wants to test the pure 'channel' validation without fee-accrual measurement."
+  },
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false
+}
