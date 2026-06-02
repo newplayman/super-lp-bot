@@ -1,0 +1,366 @@
+{
+  "stage": "LP_BSC_FEE_VELOCITY_RECOVERY_AND_PROBE_PREFLIGHT_PIPELINE_V1",
+  "phase": "2_bsc_rpc_eth_getlogs_capability_matrix",
+  "endpoint_count": 5,
+  "usable_count": 1,
+  "high_confidence_count": 0,
+  "results": [
+    {
+      "endpoint_id": "pub_98edada9",
+      "source": "public_fallback:bsc-dataseed.binance.org",
+      "host_hash": "98edada9",
+      "chain_id_ok": true,
+      "latest_block_ok": true,
+      "latest_block": 101831273,
+      "getcode_ok": true,
+      "getcode_pools_with_bytecode": [
+        "WBNB/USDT-100",
+        "WBNB/USDC-100"
+      ],
+      "chunk_results": {
+        "500": {
+          "any_pool_ok": false,
+          "total_logs": 0,
+          "pool_outcomes": {
+            "WBNB/USDT-100": {
+              "ok": false,
+              "error": "rpc_error:{'code': -32005, 'message': 'limit exceeded'}"
+            },
+            "WBNB/USDC-100": {
+              "ok": false,
+              "error": "rpc_error:{'code': -32005, 'message': 'limit exceeded'}"
+            }
+          },
+          "from_block": 101830773,
+          "to_block": 101831273
+        },
+        "1000": {
+          "any_pool_ok": false,
+          "total_logs": 0,
+          "pool_outcomes": {
+            "WBNB/USDT-100": {
+              "ok": false,
+              "error": "rpc_error:{'code': -32005, 'message': 'limit exceeded'}"
+            },
+            "WBNB/USDC-100": {
+              "ok": false,
+              "error": "rpc_error:{'code': -32005, 'message': 'limit exceeded'}"
+            }
+          },
+          "from_block": 101830273,
+          "to_block": 101831273
+        },
+        "2000": {
+          "any_pool_ok": false,
+          "total_logs": 0,
+          "pool_outcomes": {
+            "WBNB/USDT-100": {
+              "ok": false,
+              "error": "rpc_error:{'code': -32005, 'message': 'limit exceeded'}"
+            },
+            "WBNB/USDC-100": {
+              "ok": false,
+              "error": "rpc_error:{'code': -32005, 'message': 'limit exceeded'}"
+            }
+          },
+          "from_block": 101829273,
+          "to_block": 101831273
+        },
+        "4000": {
+          "any_pool_ok": false,
+          "total_logs": 0,
+          "pool_outcomes": {
+            "WBNB/USDT-100": {
+              "ok": false,
+              "error": "rpc_error:{'code': -32005, 'message': 'limit exceeded'}"
+            },
+            "WBNB/USDC-100": {
+              "ok": false,
+              "error": "rpc_error:{'code': -32005, 'message': 'limit exceeded'}"
+            }
+          },
+          "from_block": 101827273,
+          "to_block": 101831273
+        }
+      },
+      "recommended_chunk_size": null,
+      "usable_for_backfill": false,
+      "confidence": "low",
+      "error_type": null,
+      "error_message_redacted": null,
+      "notes": []
+    },
+    {
+      "endpoint_id": "pub_54e95980",
+      "source": "public_fallback:bsc-dataseed1.defibit.io",
+      "host_hash": "54e95980",
+      "chain_id_ok": true,
+      "latest_block_ok": true,
+      "latest_block": 101831286,
+      "getcode_ok": true,
+      "getcode_pools_with_bytecode": [
+        "WBNB/USDT-100",
+        "WBNB/USDC-100"
+      ],
+      "chunk_results": {
+        "500": {
+          "any_pool_ok": false,
+          "total_logs": 0,
+          "pool_outcomes": {
+            "WBNB/USDT-100": {
+              "ok": false,
+              "error": "rpc_error:{'code': -32005, 'message': 'limit exceeded'}"
+            },
+            "WBNB/USDC-100": {
+              "ok": false,
+              "error": "rpc_error:{'code': -32005, 'message': 'limit exceeded'}"
+            }
+          },
+          "from_block": 101830786,
+          "to_block": 101831286
+        },
+        "1000": {
+          "any_pool_ok": false,
+          "total_logs": 0,
+          "pool_outcomes": {
+            "WBNB/USDT-100": {
+              "ok": false,
+              "error": "rpc_error:{'code': -32005, 'message': 'limit exceeded'}"
+            },
+            "WBNB/USDC-100": {
+              "ok": false,
+              "error": "rpc_error:{'code': -32005, 'message': 'limit exceeded'}"
+            }
+          },
+          "from_block": 101830286,
+          "to_block": 101831286
+        },
+        "2000": {
+          "any_pool_ok": false,
+          "total_logs": 0,
+          "pool_outcomes": {
+            "WBNB/USDT-100": {
+              "ok": false,
+              "error": "rpc_error:{'code': -32005, 'message': 'limit exceeded'}"
+            },
+            "WBNB/USDC-100": {
+              "ok": false,
+              "error": "rpc_error:{'code': -32005, 'message': 'limit exceeded'}"
+            }
+          },
+          "from_block": 101829286,
+          "to_block": 101831286
+        },
+        "4000": {
+          "any_pool_ok": false,
+          "total_logs": 0,
+          "pool_outcomes": {
+            "WBNB/USDT-100": {
+              "ok": false,
+              "error": "rpc_error:{'code': -32005, 'message': 'limit exceeded'}"
+            },
+            "WBNB/USDC-100": {
+              "ok": false,
+              "error": "rpc_error:{'code': -32005, 'message': 'limit exceeded'}"
+            }
+          },
+          "from_block": 101827286,
+          "to_block": 101831286
+        }
+      },
+      "recommended_chunk_size": null,
+      "usable_for_backfill": false,
+      "confidence": "low",
+      "error_type": null,
+      "error_message_redacted": null,
+      "notes": []
+    },
+    {
+      "endpoint_id": "pub_5a701356",
+      "source": "public_fallback:bsc-rpc.publicnode.com",
+      "host_hash": "5a701356",
+      "chain_id_ok": true,
+      "latest_block_ok": true,
+      "latest_block": 101831311,
+      "getcode_ok": true,
+      "getcode_pools_with_bytecode": [
+        "WBNB/USDT-100",
+        "WBNB/USDC-100"
+      ],
+      "chunk_results": {
+        "500": {
+          "any_pool_ok": true,
+          "total_logs": 1416,
+          "pool_outcomes": {
+            "WBNB/USDT-100": {
+              "ok": true,
+              "log_count": 985
+            },
+            "WBNB/USDC-100": {
+              "ok": true,
+              "log_count": 431
+            }
+          },
+          "from_block": 101830811,
+          "to_block": 101831311
+        },
+        "1000": {
+          "any_pool_ok": true,
+          "total_logs": 2482,
+          "pool_outcomes": {
+            "WBNB/USDT-100": {
+              "ok": true,
+              "log_count": 1738
+            },
+            "WBNB/USDC-100": {
+              "ok": true,
+              "log_count": 744
+            }
+          },
+          "from_block": 101830311,
+          "to_block": 101831311
+        },
+        "2000": {
+          "any_pool_ok": true,
+          "total_logs": 4538,
+          "pool_outcomes": {
+            "WBNB/USDT-100": {
+              "ok": true,
+              "log_count": 3215
+            },
+            "WBNB/USDC-100": {
+              "ok": true,
+              "log_count": 1323
+            }
+          },
+          "from_block": 101829311,
+          "to_block": 101831311
+        },
+        "4000": {
+          "any_pool_ok": true,
+          "total_logs": 8292,
+          "pool_outcomes": {
+            "WBNB/USDT-100": {
+              "ok": true,
+              "log_count": 5912
+            },
+            "WBNB/USDC-100": {
+              "ok": true,
+              "log_count": 2380
+            }
+          },
+          "from_block": 101827311,
+          "to_block": 101831311
+        }
+      },
+      "recommended_chunk_size": 4000,
+      "usable_for_backfill": true,
+      "confidence": "medium",
+      "error_type": null,
+      "error_message_redacted": null,
+      "notes": []
+    },
+    {
+      "endpoint_id": "pub_87a12a31",
+      "source": "public_fallback:rpc.ankr.com/bsc",
+      "host_hash": "87a12a31",
+      "chain_id_ok": false,
+      "latest_block_ok": false,
+      "latest_block": null,
+      "getcode_ok": false,
+      "getcode_pools_with_bytecode": [],
+      "chunk_results": {},
+      "recommended_chunk_size": null,
+      "usable_for_backfill": false,
+      "confidence": "low",
+      "error_type": "chainId_failed",
+      "error_message_redacted": "rpc_error:{'code': -32000, 'message': 'Unauthorized: You must authenticate your request with an API key. Create an account on <endpoint:c1f00276@ankr> and generate your personal API key for free.'}",
+      "notes": []
+    },
+    {
+      "endpoint_id": "pub_524b13a6",
+      "source": "public_fallback:binance.nodereal.io",
+      "host_hash": "524b13a6",
+      "chain_id_ok": true,
+      "latest_block_ok": true,
+      "latest_block": 101831434,
+      "getcode_ok": true,
+      "getcode_pools_with_bytecode": [
+        "WBNB/USDT-100",
+        "WBNB/USDC-100"
+      ],
+      "chunk_results": {
+        "500": {
+          "any_pool_ok": false,
+          "total_logs": 0,
+          "pool_outcomes": {
+            "WBNB/USDT-100": {
+              "ok": false,
+              "error": "rpc_error:{'code': -32005, 'message': 'limit exceeded'}"
+            },
+            "WBNB/USDC-100": {
+              "ok": false,
+              "error": "rpc_error:{'code': -32005, 'message': 'limit exceeded'}"
+            }
+          },
+          "from_block": 101830934,
+          "to_block": 101831434
+        },
+        "1000": {
+          "any_pool_ok": false,
+          "total_logs": 0,
+          "pool_outcomes": {
+            "WBNB/USDT-100": {
+              "ok": false,
+              "error": "rpc_error:{'code': -32005, 'message': 'limit exceeded'}"
+            },
+            "WBNB/USDC-100": {
+              "ok": false,
+              "error": "rpc_error:{'code': -32005, 'message': 'limit exceeded'}"
+            }
+          },
+          "from_block": 101830434,
+          "to_block": 101831434
+        },
+        "2000": {
+          "any_pool_ok": false,
+          "total_logs": 0,
+          "pool_outcomes": {
+            "WBNB/USDT-100": {
+              "ok": false,
+              "error": "rpc_error:{'code': -32005, 'message': 'limit exceeded'}"
+            },
+            "WBNB/USDC-100": {
+              "ok": false,
+              "error": "rpc_error:{'code': -32005, 'message': 'limit exceeded'}"
+            }
+          },
+          "from_block": 101829434,
+          "to_block": 101831434
+        },
+        "4000": {
+          "any_pool_ok": false,
+          "total_logs": 0,
+          "pool_outcomes": {
+            "WBNB/USDT-100": {
+              "ok": false,
+              "error": "rpc_error:{'code': -32005, 'message': 'limit exceeded'}"
+            },
+            "WBNB/USDC-100": {
+              "ok": false,
+              "error": "rpc_error:{'code': -32005, 'message': 'limit exceeded'}"
+            }
+          },
+          "from_block": 101827434,
+          "to_block": 101831434
+        }
+      },
+      "recommended_chunk_size": null,
+      "usable_for_backfill": false,
+      "confidence": "low",
+      "error_type": null,
+      "error_message_redacted": null,
+      "notes": []
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+endpoint_id,source,host_hash,chain_id_ok,latest_block_ok,latest_block,getcode_ok,getlogs_500_ok,getlogs_1000_ok,getlogs_2000_ok,getlogs_4000_ok,recommended_chunk_size,usable_for_backfill,confidence,error_type,error_message_redacted
+pub_98edada9,public_fallback:bsc-dataseed.binance.org,98edada9,yes,yes,101831273,yes,no,no,no,no,,no,low,,
+pub_54e95980,public_fallback:bsc-dataseed1.defibit.io,54e95980,yes,yes,101831286,yes,no,no,no,no,,no,low,,
+pub_5a701356,public_fallback:bsc-rpc.publicnode.com,5a701356,yes,yes,101831311,yes,yes,yes,yes,yes,4000,yes,medium,,
+pub_87a12a31,public_fallback:rpc.ankr.com/bsc,87a12a31,no,no,,no,no,no,no,no,,no,low,chainId_failed,"rpc_error:{'code': -32000, 'message': 'Unauthorized: You must authenticate your request with an API key. Create an account on <endpoint:c1f00276@ankr> and generate your personal API key for free.'}"
+pub_524b13a6,public_fallback:binance.nodereal.io,524b13a6,yes,yes,101831434,yes,no,no,no,no,,no,low,,

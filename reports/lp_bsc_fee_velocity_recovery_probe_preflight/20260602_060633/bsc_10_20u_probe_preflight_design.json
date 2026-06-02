@@ -1,0 +1,57 @@
+{
+  "stage": "LP_BSC_FEE_VELOCITY_RECOVERY_AND_PROBE_PREFLIGHT_PIPELINE_V1",
+  "phase": "6_probe_preflight_design",
+  "run_id": "20260602_060633",
+  "preflight_kind": "candidate_present_design_only",
+  "preflight_target": {
+    "pool": "0x172fcd41e0913e95784454622d1c3724f546f849",
+    "pair": "USDT/WBNB",
+    "fee_tier_raw": 100,
+    "hold_window": "15m",
+    "notional_usd_min": 10,
+    "notional_usd_max": 20,
+    "single_pool_only": true,
+    "low_risk_path_only": true
+  },
+  "gates_required_before_probe": {
+    "precise_quote_ready": true,
+    "tick_liquidity_ready": true,
+    "real_cost_ready": true,
+    "fee_velocity_ready": true,
+    "realistic_or_near_be_positive_candidate_present": true,
+    "manual_approval_required": true,
+    "dry_run_tx_builder_only_after_approval": true,
+    "no_auto_submit": true
+  },
+  "must_record": [
+    "tokenId",
+    "mint_tx_hash",
+    "feeGrowthInside (entry & exit)",
+    "tokensOwed (entry & exit)",
+    "exit_quote",
+    "actual_PnL_in_USD",
+    "actual_fee_accrual_in_USD"
+  ],
+  "execution_constraints": {
+    "max_funds_usd": 20,
+    "wallet_load_allowed_in_this_phase": false,
+    "signer_create_allowed_in_this_phase": false,
+    "eth_sendTransaction_allowed_in_this_phase": false,
+    "eth_sendRawTransaction_allowed_in_this_phase": false,
+    "increaseLiquidity_allowed_in_this_phase": false,
+    "decreaseLiquidity_allowed_in_this_phase": false,
+    "collect_allowed_in_this_phase": false,
+    "approve_allowed_in_this_phase": false
+  },
+  "best_net_ev_proxy_usd": "-0.015560",
+  "best_net_ev_proxy_pct": "-0.0778",
+  "fee_velocity_window_used": null,
+  "can_run_probe_now": false,
+  "manual_approval_required_for_probe": true,
+  "edge_proven": "no",
+  "tiny_canary_allowed": "no",
+  "wallet_or_tx_touched": false,
+  "actual_fee_ready": false,
+  "token_id_available": false,
+  "recommended_next_stage": "LP_BSC_10_20U_PROBE_PREFLIGHT_REVIEW_V1"
+}

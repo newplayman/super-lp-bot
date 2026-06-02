@@ -1,0 +1,2 @@
+run_id,pool,token_pair,fee_tier_raw,from_block,to_block,raw_log_count,decoded_log_count,decode_errors,unique_traders_approx,volume_usd_proxy,pool_fee_usd_proxy,eth_getLogs_success,decode_success,smoke_pass
+20260602_060633,0x172fcD41E0913e95784454622d1c3724f546f849,USDT/WBNB,100,101806396,101835196,49255,49255,0,1894,25416171.07,2541.6171,yes,yes,yes
