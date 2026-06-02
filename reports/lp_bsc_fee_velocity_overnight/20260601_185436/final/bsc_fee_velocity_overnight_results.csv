@@ -1,0 +1,1 @@
+run_id,pool_id,token_pair,best_window,log_count,swap_count,volume_usd_proxy,pool_fee_usd_proxy,fee_velocity_15m,fee_velocity_30m,fee_velocity_1h,fee_velocity_2h,fee_velocity_6h,fee_velocity_24h,partial,root_cause,confidence

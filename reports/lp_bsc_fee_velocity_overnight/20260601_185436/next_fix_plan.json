@@ -1,0 +1,16 @@
+{
+  "should_rerun_overnight": false,
+  "rerun_requires_smoke_first": true,
+  "smoke_requirements": [
+    "selected_pool_count = 8",
+    "first_pool_loaded = yes",
+    "eth_getLogs smoke pass",
+    "scan loop entered"
+  ],
+  "required_env": {
+    "INPUT_REPO_ROOT_OVERRIDE": "/opt/lpbot/lp-bot-v3-origin-check",
+    "REPO_ROOT_OVERRIDE": "/opt/lpbot/lp-bot-v3-origin-check"
+  },
+  "stale_final_cleanup_required": true,
+  "next_stage": "LP_BSC_FEE_VELOCITY_OVERNIGHT_INPUT_ROOT_FIX_AND_SMOKE_V1"
+}

@@ -1,0 +1,12 @@
+{
+  "root_cause": "unknown",
+  "final_is_stale": true,
+  "current_checkpoint_selected_pool_count": 8,
+  "final_selected_pool_count": 0,
+  "current_run_status": "running",
+  "notes": [
+    "final verdict file predates current checkpoint and log",
+    "current run still has active tmux session",
+    "selected pool file exists and was loaded"
+  ]
+}

@@ -1,0 +1,1 @@
+pool_id,token_pair,fee_tier_raw,notional_usd,hold_window,scenario,fee_proxy_usd,fixed_cost_usd,il_lvr_proxy_usd,net_ev_proxy_usd,net_ev_proxy_pct,capacity_ok,data_sufficient,confidence,fee_window_used

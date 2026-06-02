@@ -1,0 +1,15 @@
+{
+  "run_id": "20260601_185436",
+  "local_report_dir": "reports/lp_bsc_fee_velocity_overnight/20260601_185436",
+  "remote_run_dir": "/tmp/lp_bsc_fee_velocity_overnight_20260601_185436",
+  "data_synced": true,
+  "checkpoint_synced": true,
+  "logs_synced": true,
+  "final_synced": true,
+  "final_is_current": false,
+  "final_is_stale": true,
+  "selected_pool_count_checkpoint": 8,
+  "selected_pool_count_final": 0,
+  "swap_log_count_final": 0,
+  "fee_ready_pool_count_final": 0
+}
