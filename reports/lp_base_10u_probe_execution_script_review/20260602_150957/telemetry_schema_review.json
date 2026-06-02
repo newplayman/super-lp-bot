@@ -1,0 +1,51 @@
+{
+  "stage": "LP_BASE_10U_PROBE_EXECUTION_SCRIPT_REVIEW_V1",
+  "phase": "I_telemetry_schema_review",
+  "run_id": "20260602_150957",
+  "re_run_note": "re-verification; results identical to 596b411",
+
+  "schema_files_designed": [
+    {"filename": "entry_intent.json", "schema": "lp_probe_execution_ledger_v1", "written_by": "write_telemetry_skeleton() (internal helper)"},
+    {"filename": "preflight_checks.json", "schema": "lp_probe_preflight_v1", "written_by": "write_telemetry_skeleton() (internal helper)"},
+    {"filename": "stop_condition_checks.json", "schema": "lp_probe_stop_condition_checks_v1", "written_by": "write_telemetry_skeleton() (internal helper)"},
+    {"filename": "unsigned_package.json", "schema": "lp_probe_unsigned_package_v1", "written_by": "--mode print-unsigned"},
+    {"filename": "approval_validation.json", "schema": "lp_probe_approval_validation_v1", "written_by": "--mode validate-approval"}
+  ],
+
+  "files_actually_written_in_this_review": [
+    "preflight_result.json (3850 bytes; --mode preflight)",
+    "unsigned_package.json (3149 bytes; --mode print-unsigned)",
+    "approval_validation.json (530 bytes; --mode validate-approval)"
+  ],
+
+  "files_designed_but_only_via_internal_helper": [
+    "entry_intent.json (write_telemetry_skeleton)",
+    "stop_condition_checks.json (write_telemetry_skeleton)"
+  ],
+
+  "checks": {
+    "writes_only_to_reports_dir": {"writes_path_prefix": "reports/lp_base_10u_probe_execution_runtime/<run_id>/", "result": "PASS"},
+    "no_writes_to_production_db": {"result": "PASS"},
+    "no_writes_to_shadow_tables": {"result": "PASS"},
+    "no_writes_to_positions": {"result": "PASS"},
+    "all_files_under_local_reports_dir": {"result": "PASS"},
+    "files_have_human_readable_json": {"result": "PASS"},
+    "no_sensitive_data_leaked": {"result": "PASS"}
+  },
+
+  "telemetry_skeleton_5_files_design": {
+    "in_build_stage_design": "yes (per Phase G of build stage 20260602_135824)",
+    "auto_written_in_review": "3 of 5 (preflight_result, unsigned_package, approval_validation)",
+    "design_only_in_review": "2 of 5 (entry_intent, stop_condition_checks)"
+  },
+
+  "useful_for_future_execution_stage": true,
+  "future_stage_should": [
+    "call write_telemetry_skeleton() at execution-time to seed entry_intent.json and stop_condition_checks.json",
+    "use the existing 3 files as the runtime telemetry substrate"
+  ],
+
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no"
+}

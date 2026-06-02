@@ -1,0 +1,76 @@
+{
+  "stage": "LP_BASE_10U_PROBE_EXECUTION_SCRIPT_REVIEW_V1",
+  "phase": "J_next_execution_implementation_spec",
+  "run_id": "20260602_150957",
+  "re_run_note": "re-verification; spec identical to 596b411 with one important addition: a NOTE that the future implementation stage MUST re-read current_tick and re-approve the tick range, because this re-run observed tick drift crossing the 200-tick threshold (WARN)",
+
+  "next_stage_name": "LP_BASE_10U_PROBE_EXECUTION_IMPLEMENTATION_V1",
+  "next_stage_purpose": "implement the actual signer / wallet client / tx-send logic that the build-stage skeleton has stubbed out. The implementation MUST be gated by a fresh user approval phrase at execution time and MUST default to dry-run.",
+
+  "next_stage_allowed": [
+    "construct a real signer (Account.from_key or LocalAccount) using a key loaded ONLY at execution time from a path the user explicitly supplies",
+    "construct a real web3.py Web3 instance pointed at the user's chosen RPC",
+    "call contract.functions.<method>().transact() to send approve / mint / decrease / collect / revoke",
+    "wait for 12 block confirmations",
+    "decode ERC721 Transfer event for tokenId",
+    "record actual fee accrual and final PnL"
+  ],
+
+  "next_stage_still_forbidden": [
+    "auto-execute: the next stage does NOT run the probe by itself; it builds the implementation; the run after that requires user re-approval",
+    "skip the re-approval at execution time: any actual send requires the user to type the approval phrase AGAIN at the moment of execution",
+    "ApproveMax: the implementation MUST use ApproveExact only",
+    "swap-back: the implementation MUST NOT swap WETH back to USDC",
+    "bridge: the implementation MUST NOT initiate any cross-chain bridge",
+    "live / canary / paper: the implementation MUST NOT start any of these trading modes",
+    "no multi-pool: the implementation MUST touch ONLY the frozen 0x72ab388e..",
+    "no notional > approved: the implementation MUST NOT exceed the approved notional"
+  ],
+
+  "next_stage_must_default_to_dry_run": {
+    "default_mode": "dry-run",
+    "dry_run_does": ["load wallet (after explicit approval)", "build all tx calldata (approve + mint + decrease + collect + revoke)", "log every step", "DO NOT broadcast anything"],
+    "dry_run_does_NOT": ["broadcast any tx", "send any signed payload", "leave any background process"],
+    "dry_run_exit_code": 0
+  },
+
+  "next_stage_explicit_approval_gate": {
+    "gating_mechanism": "user must supply the approval phrase at execution time (NOT at build time)",
+    "phrase_unchanged": "APPROVE_BASE_10U_LP_PROBE_EXECUTION_ONE_SHOT wallet=0x<...> pool=0x<...> notional=10 hold=15m",
+    "validation": "regex match + whole-word dangerous-word check + cross-check against frozen candidate (same as build stage)",
+    "executes_now_after_phrase_match": "only if user ALSO confirms at a separate prompt ('type YES to broadcast'); this is a second gate",
+    "phrase_validity_window_minutes": 15,
+    "phrase_replay_protection": "session_id must be unique; re-using a session_id is rejected"
+  },
+
+  "next_stage_audit_trail": {
+    "every_step_logged": "structured JSON to local reports dir",
+    "no_concealable_state": "every signed tx hash is logged",
+    "no_silent_retry": "any retry requires new approval"
+  },
+
+  "next_stage_safety_invariants_inherited": {
+    "invariant_3_dryrun_broadcast_zero": "must hold at execution time too (separate dry-run confirmation phase)",
+    "invariant_4_minout_and_deadline_nonzero": "deadline MUST be now+3600 (NOT 2099-01-01 placeholder) at execution time",
+    "invariant_9_approve_exact_only": "must hold; ApproveMax rejected",
+    "invariant_10_post_exit_revoke": "must hold; approve(NPM, 0) for both WETH and USDC after collect"
+  },
+
+  "next_stage_extra_requirement_added_by_this_review_re_run": {
+    "reason": "this re-run observed that current_tick drifted from -200609 to -200662 (53 ticks) in ~13 minutes, crossing the 200-tick half-range envelope around frozen -200443 and triggering stop_tick_moved_outside_planned_range_before_entry (manual_intervention_required).",
+    "implication": "the future implementation stage MUST re-read current_tick and re-approve the tick range before any execution, NOT just blindly use the frozen -200643 / -200243.",
+    "suggested_new_tick_range": "lower_tick < -200862 (= -200662 - 200) AND upper_tick > -200462 (= -200662 + 200); for example lower=-200900, upper=-200400 (3x margin)",
+    "additional_phrase_field": "the future implementation stage may extend the approval phrase regex to allow operator-supplied new tick_lower / tick_upper; or add a separate 'tick_range_reapproval' gate"
+  },
+
+  "review_recommendation": {
+    "decision": "PASS",
+    "rationale": "All 7 review dimensions (static security / mode behavior / preflight / unsigned / approval / stubs / telemetry) passed. The build-stage skeleton is safe enough to serve as the basis for a future execution implementation stage. The preflight WARN observed in this re-run is correct behavior and demonstrates the stop condition engine working as designed.",
+    "next_stage_required_artifact": "LP_BASE_10U_PROBE_EXECUTION_IMPLEMENTATION_V1",
+    "if_review_fails": "recommended LP_BASE_10U_PROBE_EXECUTION_SCRIPT_BUILD_FIX_REPEAT"
+  },
+
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no"
+}

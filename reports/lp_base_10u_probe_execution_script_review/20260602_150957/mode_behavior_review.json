@@ -1,0 +1,155 @@
+{
+  "stage": "LP_BASE_10U_PROBE_EXECUTION_SCRIPT_REVIEW_V1",
+  "phase": "D_mode_behavior_review",
+  "run_id": "20260602_150957",
+  "re_run_note": "idempotent re-verification; one difference observed in D1: preflight now returns WARN (not PASS) because current_tick drifted to -200662 (219 ticks below frozen -200443), triggering stop_tick_moved_outside_planned_range_before_entry",
+
+  "results": [
+    {
+      "id": "D1",
+      "command": "python3 scripts/lp_base_10u_probe_executor_v1.py --mode preflight --run-id 20260602_150957",
+      "expected_exit_code": 0,
+      "actual_exit_code": 0,
+      "result": "PASS",
+      "preflight_status": "WARN",
+      "stops_triggered": 1,
+      "triggered_stop_id": "stop_tick_moved_outside_planned_range_before_entry",
+      "triggered_stop_handling": "manual_intervention_required",
+      "triggered_stop_reason": "current_tick=-200662 drifted > 200 from frozen -200443",
+      "block_number": 46811930,
+      "delta_from_previous_review": "current_tick moved from -200609 to -200662 (53 tick drift; crossed 200-tick threshold)",
+      "notes": "preflight_system_works_as_designed: tick drift > 200 ticks is flagged as manual_intervention_required (WARN, not FAIL). This is the correct outcome — the executor's stop condition engine correctly detected that the tick range proposal is no longer optimal and required operator review."
+    },
+    {
+      "id": "D2",
+      "command": "python3 scripts/lp_base_10u_probe_executor_v1.py --mode print-unsigned --run-id 20260602_150957",
+      "expected_exit_code": 0,
+      "actual_exit_code": 0,
+      "result": "PASS",
+      "unsigned_only": true,
+      "no_signature": true,
+      "no_send": true,
+      "execution_not_authorized": true,
+      "delta_from_previous_review": "identical to 596b411"
+    },
+    {
+      "id": "D3",
+      "command": "validate-approval valid canonical phrase",
+      "expected_exit_code": 0,
+      "actual_exit_code": 0,
+      "result": "PASS",
+      "valid": true,
+      "executes_now": false,
+      "authorization_granted": false,
+      "delta_from_previous_review": "identical to 596b411"
+    },
+    {
+      "id": "D4a",
+      "command": "validate-approval with notional=20",
+      "expected_exit_code": 0,
+      "actual_exit_code": 0,
+      "result": "PASS",
+      "valid": false,
+      "reason": "phrase does not match the canonical regex (notional=20 != 10)",
+      "delta_from_previous_review": "identical to 596b411"
+    },
+    {
+      "id": "D4b",
+      "command": "validate-approval with hold=30m",
+      "expected_exit_code": 0,
+      "actual_exit_code": 0,
+      "result": "PASS",
+      "valid": false,
+      "reason": "dangerous keyword detected (pattern: \\\\b30m\\\\b)",
+      "delta_from_previous_review": "identical to 596b411"
+    },
+    {
+      "id": "D4c",
+      "command": "validate-approval with wrong wallet",
+      "expected_exit_code": 0,
+      "actual_exit_code": 0,
+      "result": "PASS",
+      "valid": false,
+      "reason": "wallet 0xABCDEF0123456789ABCDEF0123456789ABCDEF01 != frozen 0xb05b2872ace4564ff247555b6f7b097d31f3d835",
+      "delta_from_previous_review": "identical to 596b411"
+    },
+    {
+      "id": "D4d",
+      "command": "validate-approval with wrong pool",
+      "expected_exit_code": 0,
+      "actual_exit_code": 0,
+      "result": "PASS",
+      "valid": false,
+      "reason": "pool 0x9c087eb773291e50cf6c6a90ef0f4500e349b903 != frozen 0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38",
+      "delta_from_previous_review": "identical to 596b411"
+    },
+    {
+      "id": "D4e",
+      "command": "validate-approval with dangerous word EXECUTE",
+      "expected_exit_code": 0,
+      "actual_exit_code": 0,
+      "result": "PASS",
+      "valid": false,
+      "reason": "phrase does not match the canonical regex (prefix is EXECUTE, not EXECUTION_ONE_SHOT)",
+      "delta_from_previous_review": "identical to 596b411"
+    },
+    {
+      "id": "D5",
+      "command": "python3 scripts/lp_base_10u_probe_executor_v1.py --mode execute-disabled --run-id 20260602_150957",
+      "expected_exit_code": "non-zero (1)",
+      "actual_exit_code": 1,
+      "result": "PASS",
+      "execution_disabled_in_build_stage": true,
+      "error": "EXECUTION_DISABLED_IN_BUILD_STAGE",
+      "delta_from_previous_review": "identical to 596b411"
+    },
+    {
+      "id": "D6",
+      "command": "python3 scripts/lp_base_10u_probe_executor_v1.py --mode execute --run-id 20260602_150957",
+      "expected_exit_code": "non-zero (argparse invalid choice; 2)",
+      "actual_exit_code": 2,
+      "result": "PASS",
+      "delta_from_previous_review": "identical to 596b411"
+    },
+    {
+      "id": "D7",
+      "command": "python3 scripts/lp_base_10u_probe_executor_v1.py --mode preflight --execute --run-id 20260602_150957",
+      "expected_exit_code": 3,
+      "actual_exit_code": 3,
+      "result": "PASS",
+      "delta_from_previous_review": "identical to 596b411"
+    }
+  ],
+
+  "delta_from_previous_review_summary": {
+    "D1_preflight_status_changed_PASS_to_WARN": {
+      "reason": "current_tick drifted from -200609 to -200662 (53 ticks; total drift 219 from frozen -200443, exceeds 200-tick threshold)",
+      "this_is_NOT_a_script_failure": true,
+      "this_proves_the_stop_condition_engine_works": true,
+      "implication": "the tick range proposal [-200643, -200243] is no longer optimal; a future execution stage would need a fresh tick range approval (lower_tick should be < -200662 - 200 = -200862; upper_tick should be > -200662 + 200 = -200462)"
+    },
+    "all_other_cases_identical": true
+  },
+
+  "summary": {
+    "all_4_modes_functional": true,
+    "execute_disabled_exits_nonzero": true,
+    "execute_rejected_at_argparse": true,
+    "execute_flag_rejected_with_exit_3": true,
+    "no_tx_sent": true,
+    "no_approval_executed": true,
+    "no_mint_executed": true,
+    "no_collect_executed": true,
+    "no_swap_executed": true,
+    "no_bridge_initiated": true,
+    "approval_parser_rejects_20U_30m_wrong_wallet_wrong_pool_dangerous_words": true,
+    "approval_parser_accepts_only_canonical": true,
+    "approved_phrase_does_not_authorize_execution": true,
+    "stop_condition_engine_correctly_detected_tick_drift": true,
+    "all_11_cases_pass": true
+  },
+
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no"
+}

@@ -1,0 +1,72 @@
+{
+  "stage": "LP_BASE_10U_PROBE_EXECUTION_SCRIPT_REVIEW_V1",
+  "phase": "H_execution_stubs_review",
+  "run_id": "20260602_150957",
+  "re_run_note": "re-verification; results identical to 596b411",
+
+  "stubs_reviewed": [
+    {
+      "id": "stub_approve_exact_usdc",
+      "function": "approve_exact_usdc",
+      "raises": "ExecutionDisabledInBuildStage",
+      "result": "PASS"
+    },
+    {
+      "id": "stub_approve_exact_weth",
+      "function": "approve_exact_weth",
+      "raises": "ExecutionDisabledInBuildStage",
+      "result": "PASS"
+    },
+    {
+      "id": "stub_mint_position",
+      "function": "mint_position",
+      "raises": "ExecutionDisabledInBuildStage",
+      "result": "PASS"
+    },
+    {
+      "id": "stub_monitor_position",
+      "function": "monitor_position",
+      "raises": "ExecutionDisabledInBuildStage",
+      "result": "PASS"
+    },
+    {
+      "id": "stub_decrease_liquidity",
+      "function": "decrease_liquidity",
+      "raises": "ExecutionDisabledInBuildStage",
+      "result": "PASS"
+    },
+    {
+      "id": "stub_collect_fees",
+      "function": "collect_fees",
+      "raises": "ExecutionDisabledInBuildStage",
+      "result": "PASS"
+    },
+    {
+      "id": "stub_revoke_allowance",
+      "function": "revoke_allowance",
+      "raises": "ExecutionDisabledInBuildStage",
+      "result": "PASS"
+    }
+  ],
+
+  "stub_count": 7,
+  "all_stubs_disabled": true,
+  "all_stubs_raise_ExecutionDisabledInBuildStage": true,
+  "no_stub_sends_tx": true,
+  "no_stub_creates_signer": true,
+  "no_stub_reads_key": true,
+
+  "test_coverage": {
+    "tests_asserting_each_stub_raises": "tests/test_lp_base_10u_probe_executor_v1_build.py has 7 dedicated test cases",
+    "all_7_stub_tests_pass": true
+  },
+
+  "summary": {
+    "all_7_stubs_disabled": true,
+    "no_execution_path_triggered": true
+  },
+
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no"
+}
