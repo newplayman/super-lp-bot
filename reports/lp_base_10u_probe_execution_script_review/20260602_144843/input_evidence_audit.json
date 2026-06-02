@@ -1,0 +1,150 @@
+{
+  "stage": "LP_BASE_10U_PROBE_EXECUTION_SCRIPT_REVIEW_V1",
+  "phase": "B_input_evidence_audit",
+  "run_id": "20260602_144843",
+
+  "gates_from_previous_stage": {
+    "previous_stage": "LP_BASE_10U_PROBE_EXECUTION_SCRIPT_BUILD_V1",
+    "previous_run_id": "20260602_135824",
+    "previous_status": "PASS",
+    "executor_script_built": true,
+    "preflight_mode_built": true,
+    "print_unsigned_mode_built": true,
+    "approval_parser_built": true,
+    "telemetry_writer_built": true,
+    "stop_condition_engine_built": true,
+    "execution_stubs_disabled": true,
+    "self_check_ran": true,
+    "can_run_probe_now": false,
+    "can_execute_with_current_script": false,
+    "execution_requires_fresh_user_approval": true,
+    "executor_will_run_this_round": false,
+    "approval_phrase_effective_this_round": false,
+    "edge_proven": "no",
+    "tiny_canary_allowed": "no",
+    "actual_fee_ready": false,
+    "token_id_available": false,
+    "fabrication_blocked": true,
+    "wallet_or_tx_touched": false,
+    "recommended_next_stage_per_upstream": "LP_BASE_10U_PROBE_EXECUTION_SCRIPT_REVIEW_V1"
+  },
+
+  "candidate_freeze_inherited": {
+    "chain": "Base",
+    "chain_id": 8453,
+    "pool": "0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38",
+    "pair": "WETH/USDC",
+    "fee_tier": 100,
+    "protocol": "Uniswap V3 (Base)",
+    "npm": "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1",
+    "quoter_v2": "0x3d4e44Eb1374240CE5F1B871ab261CD16335B76a",
+    "weth": "0x4200000000000000000000000000000000000006",
+    "usdc": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+    "wallet": "0xb05b2872ace4564ff247555b6f7b097d31f3d835",
+    "wallet_masked": "0xb05b...d835",
+    "notional": 10,
+    "hold": "15m",
+    "tick_lower": -200643,
+    "tick_upper": -200243
+  },
+
+  "upstream_artifacts_read": {
+    "build_FINAL_VERDICT": {
+      "file": "reports/lp_base_10u_probe_execution_script_build/20260602_135824/FINAL_VERDICT.json",
+      "status": "PASS"
+    },
+    "build_ONEPAGE": {
+      "file": "reports/lp_base_10u_probe_execution_script_build/20260602_135824/ONEPAGE_CN.md"
+    },
+    "build_executor_script_design_cn": {
+      "file": "reports/lp_base_10u_probe_execution_script_build/20260602_135824/EXECUTOR_SCRIPT_DESIGN_CN.md"
+    },
+    "build_executor_script_design_json": {
+      "file": "reports/lp_base_10u_probe_execution_script_build/20260602_135824/executor_script_design.json"
+    },
+    "build_preflight_cn": {
+      "file": "reports/lp_base_10u_probe_execution_script_build/20260602_135824/PREFLIGHT_COMMAND_SPEC_CN.md"
+    },
+    "build_preflight_json": {
+      "file": "reports/lp_base_10u_probe_execution_script_build/20260602_135824/preflight_command_spec.json"
+    },
+    "build_unsigned_mode_cn": {
+      "file": "reports/lp_base_10u_probe_execution_script_build/20260602_135824/UNSIGNED_PACKAGE_MODE_CN.md"
+    },
+    "build_unsigned_mode_json": {
+      "file": "reports/lp_base_10u_probe_execution_script_build/20260602_135824/unsigned_package_mode.json"
+    },
+    "build_approval_parser_cn": {
+      "file": "reports/lp_base_10u_probe_execution_script_build/20260602_135824/APPROVAL_PHRASE_PARSER_CN.md"
+    },
+    "build_approval_parser_json": {
+      "file": "reports/lp_base_10u_probe_execution_script_build/20260602_135824/approval_phrase_parser.json"
+    },
+    "build_stop_engine_cn": {
+      "file": "reports/lp_base_10u_probe_execution_script_build/20260602_135824/STOP_CONDITION_ENGINE_CN.md"
+    },
+    "build_stop_engine_json": {
+      "file": "reports/lp_base_10u_probe_execution_script_build/20260602_135824/stop_condition_engine.json"
+    },
+    "build_executor_script_source": {
+      "file": "scripts/lp_base_10u_probe_executor_v1.py",
+      "lines": 750
+    },
+    "build_executor_test_source": {
+      "file": "tests/test_lp_base_10u_probe_executor_v1_build.py",
+      "tests": 40
+    }
+  },
+
+  "cross_check_aligned": {
+    "previous_status_pass": true,
+    "executor_script_built": true,
+    "can_run_probe_now_false": true,
+    "can_execute_with_current_script_false": true,
+    "executor_will_run_this_round_false": true,
+    "approval_phrase_effective_this_round_false": true,
+    "fabrication_blocked": true,
+    "candidate_freeze_consistent_across_artifacts": true
+  },
+
+  "this_round_scope": "review_executor_skeleton_only",
+
+  "this_round_must_not": [
+    "load private key / mnemonic / keystore",
+    "create signer / wallet client",
+    "send eth_sendTransaction / eth_sendRawTransaction",
+    "execute approve / mint / increaseLiquidity / decreaseLiquidity / collect / burn / swap",
+    "start lpbot-live / lpbot-canary / lpbot-paper",
+    "auto-bridge / auto-swap",
+    "flip can_run_probe_now or tiny_canary_allowed or edge_proven",
+    "execute the probe via the executor script",
+    "implement real execution logic in this round",
+    "modify the build-stage executor script",
+    "write to any production lpbot table",
+    "modify any strategy execution path"
+  ],
+
+  "this_round_may": [
+    "static code review of scripts/lp_base_10u_probe_executor_v1.py",
+    "AST / grep security audit",
+    "run read-only preflight mode",
+    "run print-unsigned mode",
+    "run validate-approval mode (valid + invalid phrases)",
+    "run execute-disabled mode and confirm non-zero exit",
+    "inspect telemetry output files",
+    "inspect stop condition outputs",
+    "write review report",
+    "design next-stage execution implementation spec (still no execution)"
+  ],
+
+  "out_of_scope": [
+    "executing the actual probe",
+    "implementing real signer / wallet client / send",
+    "modifying the build-stage executor script",
+    "loading any private key, mnemonic, or keystore",
+    "writing to production lpbot tables",
+    "bridging or swapping assets"
+  ],
+
+  "proceed_to_phase_C": true
+}

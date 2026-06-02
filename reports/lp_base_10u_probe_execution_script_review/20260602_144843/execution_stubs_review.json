@@ -1,0 +1,80 @@
+{
+  "stage": "LP_BASE_10U_PROBE_EXECUTION_SCRIPT_REVIEW_V1",
+  "phase": "H_execution_stubs_review",
+  "run_id": "20260602_144843",
+
+  "stubs_reviewed": [
+    {
+      "id": "stub_approve_exact_usdc",
+      "function": "approve_exact_usdc",
+      "raises": "ExecutionDisabledInBuildStage",
+      "raise_message_contains": "EXECUTION_DISABLED_IN_BUILD_STAGE: approve_exact_usdc() is a stub. Real execution requires LP_BASE_10U_PROBE_EXECUTION_SCRIPT_REVIEW_V1 + fresh user approval.",
+      "result": "PASS"
+    },
+    {
+      "id": "stub_approve_exact_weth",
+      "function": "approve_exact_weth",
+      "raises": "ExecutionDisabledInBuildStage",
+      "raise_message_contains": "EXECUTION_DISABLED_IN_BUILD_STAGE: approve_exact_weth() is a stub.",
+      "result": "PASS"
+    },
+    {
+      "id": "stub_mint_position",
+      "function": "mint_position",
+      "raises": "ExecutionDisabledInBuildStage",
+      "raise_message_contains": "EXECUTION_DISABLED_IN_BUILD_STAGE: mint_position() is a stub.",
+      "result": "PASS"
+    },
+    {
+      "id": "stub_monitor_position",
+      "function": "monitor_position",
+      "raises": "ExecutionDisabledInBuildStage",
+      "raise_message_contains": "EXECUTION_DISABLED_IN_BUILD_STAGE: monitor_position() is a stub.",
+      "result": "PASS"
+    },
+    {
+      "id": "stub_decrease_liquidity",
+      "function": "decrease_liquidity",
+      "raises": "ExecutionDisabledInBuildStage",
+      "raise_message_contains": "EXECUTION_DISABLED_IN_BUILD_STAGE: decrease_liquidity() is a stub.",
+      "result": "PASS"
+    },
+    {
+      "id": "stub_collect_fees",
+      "function": "collect_fees",
+      "raises": "ExecutionDisabledInBuildStage",
+      "raise_message_contains": "EXECUTION_DISABLED_IN_BUILD_STAGE: collect_fees() is a stub.",
+      "result": "PASS"
+    },
+    {
+      "id": "stub_revoke_allowance",
+      "function": "revoke_allowance",
+      "raises": "ExecutionDisabledInBuildStage",
+      "raise_message_contains": "EXECUTION_DISABLED_IN_BUILD_STAGE: revoke_allowance() is a stub.",
+      "result": "PASS"
+    }
+  ],
+
+  "stub_count": 7,
+  "all_stubs_disabled": true,
+  "all_stubs_raise_ExecutionDisabledInBuildStage": true,
+  "no_stub_sends_tx": true,
+  "no_stub_creates_signer": true,
+  "no_stub_reads_key": true,
+
+  "test_coverage": {
+    "tests_asserting_each_stub_raises": "tests/test_lp_base_10u_probe_executor_v1_build.py has 7 dedicated test cases (test_approve_exact_usdc_raises, test_approve_exact_weth_raises, test_mint_position_raises, test_monitor_position_raises, test_decrease_liquidity_raises, test_collect_fees_raises, test_revoke_allowance_raises)",
+    "all_7_stub_tests_pass": true
+  },
+
+  "rationale": "Stubs are placeholders for the future executor's actual implementation. Any direct call to a stub in this build stage is a programming error; the test suite asserts each stub raises.",
+
+  "summary": {
+    "all_7_stubs_disabled": true,
+    "no_execution_path_triggered": true
+  },
+
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no"
+}

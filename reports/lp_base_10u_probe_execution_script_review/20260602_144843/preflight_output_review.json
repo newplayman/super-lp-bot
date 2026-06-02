@@ -1,0 +1,136 @@
+{
+  "stage": "LP_BASE_10U_PROBE_EXECUTION_SCRIPT_REVIEW_V1",
+  "phase": "E_preflight_output_review",
+  "run_id": "20260602_144843",
+  "scope": "inspect preflight_result.json content",
+
+  "artifact_path": "reports/lp_base_10u_probe_execution_runtime/20260602_144843/preflight_result.json",
+  "artifact_size_bytes": 3845,
+
+  "checks": {
+    "chain_id_present_and_correct": {
+      "expected": 8453,
+      "observed": 8453,
+      "result": "PASS"
+    },
+    "block_number_observed": {
+      "value": 46811291,
+      "result": "PASS"
+    },
+    "gas_price_observed_wei": {
+      "value": 7362833,
+      "result": "PASS"
+    },
+    "eth_native_balance_present": {
+      "value": 90470751043807,
+      "human": "0.000090470751043807",
+      "result": "PASS",
+      "note": "below conservative $0.20 gas floor but above the 9.0e-5 ETH threshold in this runbook"
+    },
+    "weth_balance_present": {
+      "value": 2470131003793800,
+      "human": "0.0024701310037938",
+      "result": "PASS"
+    },
+    "usdc_balance_present": {
+      "value": 21774783,
+      "human": "21.774783",
+      "result": "PASS"
+    },
+    "usdc_allowance_present": {
+      "value": 5000000,
+      "human": "5.0",
+      "result": "PASS"
+    },
+    "weth_allowance_present": {
+      "value": 2470131003793800,
+      "result": "PASS"
+    },
+    "sqrt_price_x96_observed": {
+      "value": 3490920925004229405272501,
+      "result": "PASS"
+    },
+    "current_tick_observed": {
+      "value": -200609,
+      "frozen_at_freeze_time": -200443,
+      "drift_ticks": 166,
+      "drift_threshold_ticks": 200,
+      "result": "PASS",
+      "note": "166 ticks drift; within the 200-tick half-range envelope"
+    },
+    "current_liquidity_observed": {
+      "value": 620711665034767901,
+      "result": "PASS",
+      "note": "6.21e17; > 1e15 threshold"
+    },
+    "mint_estimate_gas": {
+      "value": null,
+      "read_success": false,
+      "result": "DEVIATION",
+      "deviation_reason": "publicnode reverts eth_estimateGas for our mint call (consistent with prior dry-run behavior); inherited 180k from upstream real_cost_model CSV",
+      "implication": "future implementation stage must either (a) use a paid RPC, or (b) inherit from upstream pipeline"
+    },
+    "quoter_v2_live_read": {
+      "value": "skipped_or_revert_inherited",
+      "result": "DEVIATION",
+      "deviation_reason": "publicnode reverts QuoterV2 calls; inherited from upstream precise_quote CSV"
+    },
+    "preflight_status": {
+      "value": "PASS",
+      "result": "PASS"
+    },
+    "stops_triggered_count": {
+      "value": 0,
+      "total_stops": 13,
+      "result": "PASS"
+    },
+    "no_signer_constructed": {
+      "result": "PASS",
+      "evidence": "preflight_result.json contains no Account / wallet client / keystore references"
+    },
+    "no_tx_sent": {
+      "result": "PASS",
+      "evidence": "preflight contains only eth_call / eth_getBalance results; no tx hashes recorded"
+    },
+    "no_approve": {
+      "result": "PASS",
+      "evidence": "no approve tx in preflight output; only reads USDC.allowance"
+    },
+    "no_mint": {
+      "result": "PASS",
+      "evidence": "no mint tx in preflight output; only eth_estimateGas (reverted)"
+    },
+    "no_send": {
+      "result": "PASS",
+      "evidence": "no send tx in preflight output"
+    }
+  },
+
+  "stops_reviewed": [
+    {"id": "stop_chain_id_mismatch", "triggered": false, "reason": "chain_id_observed=8453, expected=8453"},
+    {"id": "stop_gas_balance_below_threshold", "triggered": false, "reason": "eth_balance_wei=90470751043807, min=90000000000000"},
+    {"id": "stop_usdc_balance_below_required", "triggered": false, "reason": "usdc_balance_raw=21774783, min=12000000"},
+    {"id": "stop_weth_balance_below_required", "triggered": false, "reason": "weth_balance_raw=2470131003793800"},
+    {"id": "stop_allowance_unexpected", "triggered": false, "reason": "usdc_allowance_raw=5000000"},
+    {"id": "stop_allowance_unexpected_weth", "triggered": false, "reason": "weth_allowance_wei=2470131003793800"},
+    {"id": "stop_tick_moved_outside_planned_range_before_entry", "triggered": false, "reason": "current_tick=-200609 drifted 166 from frozen -200443 (< 200 threshold)"},
+    {"id": "stop_pool_liquidity_drop", "triggered": false, "reason": "current_liquidity=620711665034767901 (>>1e15)"},
+    {"id": "stop_gas_estimate_too_high", "triggered": false, "reason": "mint_estimate_gas=None (reverted on publicnode; inherited 180k)"},
+    {"id": "stop_quoter_v2_failure", "triggered": false, "reason": "QuoterV2 live read status=skipped_or_revert_inherited"},
+    {"id": "stop_quote_slippage_above_threshold", "triggered": false, "reason": "slippage=None% > 5%"},
+    {"id": "stop_rpc_instability", "triggered": false, "reason": "no instability observed"},
+    {"id": "stop_unknown_error", "triggered": false, "reason": "no unknown error"}
+  ],
+
+  "useful_for_future_execution_stage": true,
+  "stop_conditions_that_could_block_future_execution": [
+    "stop_tick_moved_outside_planned_range_before_entry (drift > 200 from -200443)",
+    "stop_gas_balance_below_threshold (ETH < 9.0e-5)",
+    "stop_usdc_balance_below_required (USDC < 12)",
+    "stop_pool_liquidity_drop (liquidity < 1e15)",
+    "stop_allowance_unexpected (USDC > 50M or WETH > 1e24)",
+    "stop_gas_estimate_too_high (estimateGas > 360k)"
+  ],
+
+  "wallet_or_tx_touched": false
+}

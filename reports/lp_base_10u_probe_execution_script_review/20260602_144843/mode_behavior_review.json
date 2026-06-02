@@ -1,0 +1,139 @@
+{
+  "stage": "LP_BASE_10U_PROBE_EXECUTION_SCRIPT_REVIEW_V1",
+  "phase": "D_mode_behavior_review",
+  "run_id": "20260602_144843",
+  "scope": "live invocation of 4 read-only modes + 5 invalid approval phrases + execute-disabled + --mode execute rejection + --execute flag rejection",
+
+  "results": [
+    {
+      "id": "D1",
+      "command": "python3 scripts/lp_base_10u_probe_executor_v1.py --mode preflight --run-id 20260602_144843",
+      "expected_exit_code": 0,
+      "actual_exit_code": 0,
+      "result": "PASS",
+      "preflight_status": "PASS",
+      "stops_triggered": 0,
+      "notes": "preflight_status=PASS, 0/13 stops triggered, 0/13 stops aborted. Read-only mode confirmed."
+    },
+    {
+      "id": "D2",
+      "command": "python3 scripts/lp_base_10u_probe_executor_v1.py --mode print-unsigned --run-id 20260602_144843",
+      "expected_exit_code": 0,
+      "actual_exit_code": 0,
+      "result": "PASS",
+      "unsigned_only": true,
+      "no_signature": true,
+      "no_send": true,
+      "execution_not_authorized": true,
+      "notes": "all 4 top-level flags = true; structured JSON only."
+    },
+    {
+      "id": "D3",
+      "command": "validate-approval valid canonical phrase",
+      "expected_exit_code": 0,
+      "actual_exit_code": 0,
+      "result": "PASS",
+      "valid": true,
+      "executes_now": false,
+      "authorization_granted": false,
+      "notes": "valid=True; but executes_now=False and authorization_granted=False. Even valid phrase does NOT authorize execution."
+    },
+    {
+      "id": "D4a",
+      "command": "validate-approval with notional=20",
+      "expected_exit_code": 0,
+      "actual_exit_code": 0,
+      "result": "PASS",
+      "valid": false,
+      "reason": "phrase does not match the canonical regex (notional=20 != 10)",
+      "notes": "rejected correctly."
+    },
+    {
+      "id": "D4b",
+      "command": "validate-approval with hold=30m",
+      "expected_exit_code": 0,
+      "actual_exit_code": 0,
+      "result": "PASS",
+      "valid": false,
+      "reason": "dangerous keyword detected (pattern: \\\\b30m\\\\b)",
+      "notes": "rejected correctly via dangerous-word pre-check (whole-word regex)."
+    },
+    {
+      "id": "D4c",
+      "command": "validate-approval with wrong wallet (0xABCDEF...)",
+      "expected_exit_code": 0,
+      "actual_exit_code": 0,
+      "result": "PASS",
+      "valid": false,
+      "reason": "wallet 0xABCDEF0123456789ABCDEF0123456789ABCDEF01 != frozen 0xb05b2872ace4564ff247555b6f7b097d31f3d835",
+      "notes": "rejected correctly via cross-check step 5."
+    },
+    {
+      "id": "D4d",
+      "command": "validate-approval with wrong pool (0x9c087eb7...)",
+      "expected_exit_code": 0,
+      "actual_exit_code": 0,
+      "result": "PASS",
+      "valid": false,
+      "reason": "pool 0x9c087eb773291e50cf6c6a90ef0f4500e349b903 != frozen 0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38",
+      "notes": "rejected correctly via cross-check step 5."
+    },
+    {
+      "id": "D4e",
+      "command": "validate-approval with dangerous word EXECUTE in prefix",
+      "expected_exit_code": 0,
+      "actual_exit_code": 0,
+      "result": "PASS",
+      "valid": false,
+      "reason": "phrase does not match the canonical regex (prefix is EXECUTE, not EXECUTION_ONE_SHOT)",
+      "notes": "rejected correctly via regex mismatch (dangerous-word pre-check would also fire if EXECUTE appeared as a whole word)."
+    },
+    {
+      "id": "D5",
+      "command": "python3 scripts/lp_base_10u_probe_executor_v1.py --mode execute-disabled --run-id 20260602_144843",
+      "expected_exit_code": "non-zero (1)",
+      "actual_exit_code": 1,
+      "result": "PASS",
+      "execution_disabled_in_build_stage": true,
+      "error": "EXECUTION_DISABLED_IN_BUILD_STAGE",
+      "notes": "STUB OK; exit_code=1 with disabled-stub error as required."
+    },
+    {
+      "id": "D6",
+      "command": "python3 scripts/lp_base_10u_probe_executor_v1.py --mode execute --run-id 20260602_144843",
+      "expected_exit_code": "non-zero (argparse invalid choice; 2)",
+      "actual_exit_code": 2,
+      "result": "PASS",
+      "notes": "argparse rejects 'execute' as not in {preflight, print-unsigned, validate-approval, execute-disabled}. No execution path triggered."
+    },
+    {
+      "id": "D7",
+      "command": "python3 scripts/lp_base_10u_probe_executor_v1.py --mode preflight --execute --run-id 20260602_144843",
+      "expected_exit_code": 3,
+      "actual_exit_code": 3,
+      "result": "PASS",
+      "notes": "defense-in-depth abort with REJECTED message; exit_code=3."
+    }
+  ],
+
+  "summary": {
+    "all_4_modes_functional": true,
+    "execute_disabled_exits_nonzero": true,
+    "execute_rejected_at_argparse": true,
+    "execute_flag_rejected_with_exit_3": true,
+    "no_tx_sent": true,
+    "no_approval_executed": true,
+    "no_mint_executed": true,
+    "no_collect_executed": true,
+    "no_swap_executed": true,
+    "no_bridge_initiated": true,
+    "approval_parser_rejects_20U_30m_wrong_wallet_wrong_pool_dangerous_words": true,
+    "approval_parser_accepts_only_canonical": true,
+    "approved_phrase_does_not_authorize_execution": true,
+    "all_11_cases_pass": true
+  },
+
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no"
+}

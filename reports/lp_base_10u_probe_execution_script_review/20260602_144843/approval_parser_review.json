@@ -1,0 +1,98 @@
+{
+  "stage": "LP_BASE_10U_PROBE_EXECUTION_SCRIPT_REVIEW_V1",
+  "phase": "G_approval_parser_review",
+  "run_id": "20260602_144843",
+
+  "checks": {
+    "exact_phrase_accepted": {
+      "phrase": "APPROVE_BASE_10U_LP_PROBE_EXECUTION_ONE_SHOT wallet=0xb05b2872ace4564ff247555b6f7b097d31f3d835 pool=0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38 notional=10 hold=15m",
+      "valid": true,
+      "executes_now": false,
+      "authorization_granted": false,
+      "result": "PASS"
+    },
+    "20u_rejected": {
+      "phrase": "APPROVE_BASE_20U_LP_PROBE_EXECUTION_ONE_SHOT wallet=0xb05b... pool=0x72ab... notional=20 hold=15m",
+      "valid": false,
+      "reason": "phrase does not match the canonical regex (notional=20 != 10)",
+      "result": "PASS"
+    },
+    "30m_rejected": {
+      "phrase": "APPROVE_BASE_10U_LP_PROBE_EXECUTION_ONE_SHOT wallet=0xb05b... pool=0x72ab... notional=10 hold=30m",
+      "valid": false,
+      "reason": "dangerous keyword detected (pattern: \\\\b30m\\\\b)",
+      "result": "PASS"
+    },
+    "wrong_wallet_rejected": {
+      "phrase": "... wallet=0xABCDEF0123456789ABCDEF0123456789ABCDEF01 ...",
+      "valid": false,
+      "reason": "wallet 0xABCDEF0123456789ABCDEF0123456789ABCDEF01 != frozen 0xb05b2872ace4564ff247555b6f7b097d31f3d835",
+      "result": "PASS"
+    },
+    "wrong_pool_rejected": {
+      "phrase": "... pool=0x9c087eb773291e50cf6c6a90ef0f4500e349b903 ...",
+      "valid": false,
+      "reason": "pool 0x9c087eb773291e50cf6c6a90ef0f4500e349b903 != frozen 0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38",
+      "result": "PASS"
+    },
+    "placeholder_rejected": {
+      "phrase": "... wallet=0xUSER_PROVIDED_WALLET_ADDRESS ...",
+      "valid": false,
+      "reason": "phrase does not match the canonical regex (placeholder wallet is not 40 hex)",
+      "result": "PASS"
+    },
+    "dangerous_words_rejected": {
+      "EXECUTE": "rejected (regex mismatch on prefix EXECUTE vs EXECUTION_ONE_SHOT)",
+      "NOW": "rejected if appears as whole word (NOT inside EXECUTION)",
+      "MINT": "rejected if appears as whole word",
+      "LIVE": "rejected if appears as whole word",
+      "CANARY": "rejected if appears as whole word",
+      "PAPER": "rejected if appears as whole word",
+      "SIGN": "rejected if appears as whole word",
+      "BURN": "rejected if appears as whole word",
+      "SWAP": "rejected if appears as whole word",
+      "BRIDGE": "rejected if appears as whole word",
+      "SEND": "rejected if appears as whole word",
+      "DEPLOY": "rejected if appears as whole word",
+      "GO": "rejected if appears as whole word",
+      "SHIP": "rejected if appears as whole word",
+      "PROCEED": "rejected if appears as whole word",
+      "20U": "rejected (regex mismatch)",
+      "30M": "rejected if appears as whole word",
+      "USER_PROVIDED": "rejected if appears as whole word (and regex mismatch)",
+      "USER_SELECTED": "rejected if appears as whole word",
+      "YES": "rejected if appears as whole word",
+      "EXECUTABLE": "rejected if appears as whole word",
+      "FUND": "rejected if appears as whole word",
+      "WITHDRAW": "rejected if appears as whole word",
+      "TRANSFER_OUT": "rejected if appears as whole word",
+      "result": "PASS",
+      "note": "all 27 DANGEROUS_WORD_PATTERNS use \\b (whole-word) boundary so the canonical phrase 'EXECUTION' substring is NOT false-positived"
+    },
+    "accepted_phrase_does_not_execute": {
+      "valid_phrase_executes_now": false,
+      "authorization_granted": false,
+      "result": "PASS",
+      "note": "even on valid phrase, executes_now=False and authorization_granted=False; this round does not authorize execution"
+    },
+    "accepted_phrase_only_parses_fields": {
+      "output_fields_on_valid": ["valid", "reason", "parsed: {wallet, pool, notional, hold}", "executes_now", "authorization_granted", "next_step_even_if_valid"],
+      "no_side_effects": true,
+      "result": "PASS"
+    },
+    "approval_phrase_effective_this_round": {
+      "value": false,
+      "result": "PASS",
+      "note": "本轮审批短语**不**生效；future stage 才允许把该短语作为执行授权"
+    }
+  },
+
+  "summary": {
+    "all_9_test_cases_pass": true,
+    "valid_phrase_does_not_authorize_execution": true,
+    "dangerous_words_whole_word_match": true,
+    "no_false_positive_on_canonical_substring": true
+  },
+
+  "wallet_or_tx_touched": false
+}

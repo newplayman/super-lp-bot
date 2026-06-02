@@ -1,0 +1,80 @@
+{
+  "stage": "LP_BASE_10U_PROBE_EXECUTION_SCRIPT_REVIEW_V1",
+  "phase": "C_static_security_review",
+  "run_id": "20260602_144843",
+  "scope": "static code review of scripts/lp_base_10u_probe_executor_v1.py",
+
+  "script_path": "scripts/lp_base_10u_probe_executor_v1.py",
+  "script_lines": 845,
+  "script_bytes": 31493,
+
+  "checks": {
+    "private_key_loading": {
+      "search_terms": ["Account.from_key", "LocalAccount", "load_keyfile", "load_keystore", "from_key", "from_mnemonic", "from_seed", "PrivateKey", "privateKey", "Web3", "Web3Provider"],
+      "matches": 0,
+      "result": "PASS",
+      "rationale": "no signer / wallet client construction patterns present"
+    },
+    "eth_send_transaction": {
+      "search_terms": [".send_transaction(", ".sendRawTransaction(", ".send_transaction(", ".sendTransaction(", "w3.eth.send", "web3.eth.send"],
+      "matches": 0,
+      "result": "PASS",
+      "rationale": "no transaction-send patterns present"
+    },
+    "approve_mint_etc_execution": {
+      "search_terms": [".transact(", ".build_transaction(", ".build_and_send(", "contract.functions.approve", "contract.functions.mint", "contract.functions.decreaseLiquidity", "contract.functions.collect"],
+      "matches": 0,
+      "result": "PASS",
+      "rationale": "no .transact() or .build_transaction() calls; no contract.functions.<method>() execution"
+    },
+    "private_key_env_lookup": {
+      "search_terms": ["os.environ[\"PRIVATE_KEY\"]", "os.environ['PRIVATE_KEY'", "os.environ[\"MNEMONIC\"]", "os.environ['MNEMONIC'", "os.environ[\"SEED_PHRASE\"]", "os.environ['SEED_PHRASE'", "os.environ[\"KEYSTORE\"]", "os.environ['KEYSTORE'"],
+      "matches": 0,
+      "result": "PASS",
+      "rationale": "no direct os.environ lookup of any private-key-style var"
+    },
+    "default_mode_is_preflight": {
+      "result": "PASS",
+      "rationale": "the script's --mode argument is REQUIRED (argparse required=True); there is no implicit default; the safe mode 'preflight' must be explicitly chosen"
+    },
+    "mode_execute_rejected": {
+      "result": "PASS",
+      "rationale": "argparse choices=['preflight', 'print-unsigned', 'validate-approval', 'execute-disabled'] does NOT include 'execute'; argparse rejects with invalid choice; additionally the script has defense-in-depth: 'if args.execute or args.mode == \"execute\": reject with exit 3'"
+    },
+    "execution_stubs_disabled": {
+      "result": "PASS",
+      "stubs_checked": 7,
+      "all_raise_ExecutionDisabledInBuildStage": true,
+      "stubs": ["approve_exact_usdc", "approve_exact_weth", "mint_position", "monitor_position", "decrease_liquidity", "collect_fees", "revoke_allowance"]
+    },
+    "forbidden_env_var_patterns_listed": {
+      "result": "PASS",
+      "patterns_listed_count": "FORBIDDEN_ENV_PATTERNS list contains 15 crypto / wallet / secret-store regexes",
+      "enforcement": "main() scans os.environ at startup; if any pattern matches, script refuses to run with exit code 4"
+    },
+    "dangerous_word_patterns_listed": {
+      "result": "PASS",
+      "patterns_listed_count": "DANGEROUS_WORD_PATTERNS list contains 27 whole-word regexes",
+      "enforcement": "parse_approval_phrase() does re.search() for each pattern; any match => reject"
+    },
+    "no_hidden_autorun": {
+      "result": "PASS",
+      "rationale": "no __main__ block that auto-runs an entrypoint; __main__ block calls main() with explicit argparse args; no cron / nohup / subprocess.Popen for background execution paths"
+    },
+    "no_subprocess_invocation": {
+      "result": "PASS",
+      "rationale": "no subprocess / os.system / os.popen calls; the script uses only urllib.request for RPC and json for serialization"
+    },
+    "no_unsafe_deserialization": {
+      "result": "PASS",
+      "rationale": "no pickle / marshal / yaml.load (unsafe) / eval / exec; only json.loads (safe)"
+    }
+  },
+
+  "overall": "PASS",
+  "any_dangerous_match": false,
+
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no"
+}
