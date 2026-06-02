@@ -1,0 +1,28 @@
+{
+  "stage": "LP_BSC_FEE_VELOCITY_OVERNIGHT_VPS_LOCAL_FINALIZE_V1",
+  "phase": "C_local_tmux_process_status",
+  "run_id": "20260601_185436",
+  "environment": "vps_local",
+  "status_source": "local_vps_process_check",
+  "tmux_session_active": true,
+  "tmux_session_name": "lp_bsc_fee_velocity_overnight_20260601_185436",
+  "tmux_session_owner_user": "deploy",
+  "runner_process_active": true,
+  "runner_pid": 2982619,
+  "runner_user": "deploy",
+  "runner_started_local": "2026-06-01 21:13:13",
+  "runner_elapsed_seconds_approx": 36828,
+  "runner_max_hours": 10,
+  "runner_cpu_pct_sampled": 7.7,
+  "runner_stat": "R",
+  "process_list_redacted": [
+    {
+      "pid": 2982619,
+      "user": "deploy",
+      "cmd": "python3 scripts/lp_bsc_fee_velocity_overnight_runner.py --run-id 20260601_185436 --output-dir <run_dir> --max-hours 10 --checkpoint-minutes 60 --windows 24h,72h,7d,14d,30d"
+    }
+  ],
+  "current_shell_user": "root",
+  "tmux_visibility_note": "tmux daemon is per-user; the runner's session is owned by deploy (uid 1000) at /tmp/tmux-1000/default. From root, sudo -u deploy tmux ls confirms the session exists.",
+  "implication_for_final_authority": "final/FINAL_VERDICT.json MUST NOT be overwritten while the runner process is alive; checkpoint+run.log are the authoritative state source."
+}

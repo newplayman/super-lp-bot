@@ -1,0 +1,64 @@
+{
+  "stage": "LP_BSC_FEE_VELOCITY_OVERNIGHT_VPS_LOCAL_FINALIZE_V1",
+  "phase": "M_local_safety_audit",
+  "run_id": "20260601_185436",
+  "environment": "vps_local",
+  "forbidden_process_scan": {
+    "patterns_checked": ["canary", "lpbot-live", "lpbot-paper", "live-order", "live_order", "wallet-tx", "eth_sendRawTransaction"],
+    "matches_found": 0,
+    "result": "no_forbidden_processes"
+  },
+  "informational_scan": {
+    "patterns_checked": ["backfill", "catchup", "capture"],
+    "matches_found": 0,
+    "note": "No live trading-path processes matched. The lp_bsc_fee_velocity_overnight runner is read-only and does not appear under these patterns even when active."
+  },
+  "this_session_touched": {
+    "trading_path": false,
+    "wallet_or_tx_or_bridge_or_live_or_paper": false,
+    "wallet_or_tx_touched": false,
+    "private_keys_or_keystore_read": false,
+    "production_positions_or_shadow_tables_overwritten": false,
+    "final_verdict_overwritten": false
+  },
+  "permissions_state": {
+    "edge_proven": "no",
+    "tiny_canary_allowed": "no",
+    "can_run_probe_now": false
+  },
+  "files_changed_this_session": {
+    "scripts": [
+      "scripts/finalize_bsc_fee_velocity_overnight_run_v1_readonly.py (added)",
+      "scripts/collect_bsc_fee_velocity_overnight_artifacts.sh (rewritten dual-mode, no --delete, stale warning)"
+    ],
+    "tests": [
+      "tests/test_finalize_bsc_fee_velocity_overnight_run_v1_readonly.py (added)",
+      "tests/test_collect_bsc_fee_velocity_overnight_artifacts.py (added)"
+    ],
+    "report_dir": [
+      "reports/lp_bsc_fee_velocity_overnight/20260601_185436/VPS_LOCAL_RUN_DIR_AUDIT_CN.md",
+      "reports/lp_bsc_fee_velocity_overnight/20260601_185436/vps_local_run_dir_audit.json",
+      "reports/lp_bsc_fee_velocity_overnight/20260601_185436/VPS_LOCAL_TMUX_PROCESS_STATUS_CN.md",
+      "reports/lp_bsc_fee_velocity_overnight/20260601_185436/vps_local_tmux_process_status.json",
+      "reports/lp_bsc_fee_velocity_overnight/20260601_185436/LOCAL_VPS_ARTIFACT_SYNC_CN.md",
+      "reports/lp_bsc_fee_velocity_overnight/20260601_185436/local_vps_artifact_sync.json",
+      "reports/lp_bsc_fee_velocity_overnight/20260601_185436/CHECKPOINT_PROGRESS_AUDIT_CN.md",
+      "reports/lp_bsc_fee_velocity_overnight/20260601_185436/checkpoint_progress_audit.json",
+      "reports/lp_bsc_fee_velocity_overnight/20260601_185436/RUN_LOG_AUDIT_CN.md",
+      "reports/lp_bsc_fee_velocity_overnight/20260601_185436/run_log_audit.json",
+      "reports/lp_bsc_fee_velocity_overnight/20260601_185436/FINAL_AUTHORITY_AUDIT_CN.md",
+      "reports/lp_bsc_fee_velocity_overnight/20260601_185436/final_authority_audit.json",
+      "reports/lp_bsc_fee_velocity_overnight/20260601_185436/RUNNING_STATUS.json",
+      "reports/lp_bsc_fee_velocity_overnight/20260601_185436/RUNNING_STATUS_CN.md",
+      "reports/lp_bsc_fee_velocity_overnight/20260601_185436/LOCAL_SYNC_FINAL_VERDICT_V2.json",
+      "reports/lp_bsc_fee_velocity_overnight/20260601_185436/LOCAL_SYNC_FINAL_VERDICT_V2_CN.md",
+      "reports/lp_bsc_fee_velocity_overnight/20260601_185436/ARTIFACT_INDEX.md (updated)",
+      "reports/lp_bsc_fee_velocity_overnight/20260601_185436/ONEPAGE_STATUS_CN.md",
+      "reports/lp_bsc_fee_velocity_overnight/20260601_185436/VPS_LOCAL_SAFETY_AUDIT_CN.md",
+      "reports/lp_bsc_fee_velocity_overnight/20260601_185436/vps_local_safety_audit.json",
+      "+ checkpoint/state.json, hourly_*.json, logs/run.log, data/*.csv, final/*, scripts/* (synced from /tmp via rsync -av, no --delete)"
+    ],
+    "docs": [],
+    "root": ["CLAUDE.md (added in earlier turn)"]
+  }
+}
