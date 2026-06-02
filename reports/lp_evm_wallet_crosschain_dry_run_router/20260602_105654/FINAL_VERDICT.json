@@ -1,0 +1,42 @@
+{
+  "status": "PASS",
+  "stage": "LP_EVM_WALLET_ADDRESS_CROSSCHAIN_DRY_RUN_ROUTER_V1",
+  "run_id": "20260602_105654",
+  "wallet_address_bound": true,
+  "wallet_loaded": false,
+  "signer_created": false,
+  "transaction_sent": false,
+  "wallet_address": "0xb05b2872ace4564ff247555b6f7b097d31f3d835",
+  "wallet_address_masked": "0xb05b...d835",
+  "base_rpc_ready": true,
+  "bsc_rpc_ready": true,
+  "base_total_usd_proxy": "26.84",
+  "bsc_total_usd_proxy": "0.00",
+  "likely_funded_chain": "base",
+  "bsc_candidate_ready": true,
+  "bsc_candidate_blocked_by_funds": true,
+  "base_candidate_count": 5,
+  "base_dry_run_ready_candidate_count": 5,
+  "recommended_probe_chain": "base",
+  "can_run_probe_now": false,
+  "can_run_wallet_address_dry_run_next": true,
+  "manual_approval_required_for_any_execution": true,
+  "edge_proven": "no",
+  "tiny_canary_allowed": "no",
+  "wallet_or_tx_touched": false,
+  "recommended_next_stage": "LP_BASE_10_20U_PROBE_DRY_RUN_BUILDER_V1",
+  "decision_notes": [
+    "Phase D balance audit: wallet holds ~$26.84 on Base (ETH $0.18 + WETH $4.89 + USDC $21.77) and $0.00 on BSC.",
+    "Phase E allowance audit: wallet already has Uniswap V3 NPM (Base) ApproveExact-style allowance on WETH ($4.89) and USDC ($5); BSC NPM allowances all zero.",
+    "Phase F BSC readiness: bsc_candidate (USDT/WBNB 0.01%) is blocked because BSC has no funds.",
+    "Phase G Base discovery: 5 cost-ready Base V3 pools all match wallet tokens; recommended primary is WETH/USDC 0x72ab388e... (wallet holds both tokens, allowance partial, EV proxy -$0.06 in line with the BSC candidate's -$0.0156).",
+    "Phase H route decision: recommend Base because the wallet is funded on Base and a fully-ready Base candidate exists; BSC is not bridged or swapped to.",
+    "Phase I next-stage spec: LP_BASE_10_20U_PROBE_DRY_RUN_BUILDER_V1 — still read-only, still no execution.",
+    "Phase J recommended_next_stage = LP_BASE_10_20U_PROBE_DRY_RUN_BUILDER_V1, NOT execution."
+  ],
+  "secondary_observations": [
+    "Base ETH gas balance is $0.18, $0.02 below the conservative $0.20 gas floor; advisory only — does not block the next read-only stage.",
+    "Three of the 5 Base candidates (USDC/WETH 0xd0b53d92, cbBTC/USDC, cbBTC/WETH) show anomalously large negative EV proxy in the upstream cost model; this appears to be a pipeline unit bug for high-priced tokens, not a real economic signal.",
+    "VIRTUAL/WETH 0x9c087eb7... is the only candidate with positive EV proxy (+$0.038) but wallet does not hold VIRTUAL; acquiring it is out of scope for this router."
+  ]
+}

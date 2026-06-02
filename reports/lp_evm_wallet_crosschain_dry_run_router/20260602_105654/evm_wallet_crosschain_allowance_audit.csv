@@ -1,0 +1,11 @@
+chain,protocol,token_symbol,token_address,token_decimals,spender_label,spender_address,allowance_raw,allowance_human,approval_needed,read_success,confidence,invalid_reason
+base,Uniswap V3 NPM (Base),WETH,0x4200000000000000000000000000000000000006,18,uni_v3_npm_base,0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1,2470131003793800,0.0024701310037938,no,True,high,
+base,Uniswap V3 NPM (Base),USDC,0x833589fcd6edb6e08f4c7c32d4f71b54bda02913,6,uni_v3_npm_base,0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1,5000000,5,no,True,high,
+base,Uniswap V3 NPM (Base),USDT,0xfde4c96c8593536e31f229ea8f37b2ada2699bb2,6,uni_v3_npm_base,0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1,0,0,yes_for_any_mint,True,high,
+base,Uniswap V3 NPM (Base),cbBTC,0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf,8,uni_v3_npm_base,0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1,0,0,yes_for_any_mint,True,high,
+base,Aerodrome Slipstream NPM (Base),WETH,0x4200000000000000000000000000000000000006,18,aero_slipstream_npm_base,0x827922686190790b37229fd06084350E74485b72,0,0,yes_for_any_mint,True,high,
+base,Aerodrome Slipstream NPM (Base),USDC,0x833589fcd6edb6e08f4c7c32d4f71b54bda02913,6,aero_slipstream_npm_base,0x827922686190790b37229fd06084350E74485b72,0,0,yes_for_any_mint,True,high,
+base,Aerodrome Slipstream NPM (Base),cbBTC,0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf,8,aero_slipstream_npm_base,0x827922686190790b37229fd06084350E74485b72,0,0,yes_for_any_mint,True,high,
+bsc,PancakeSwap V3 NPM (BSC),USDT,0x55d398326f99059ff775485246999027b3197955,18,pcs_v3_npm_bsc,0x46A15B0b27311cedF172AB29E4f4766fbE7F4364,0,0,yes_for_any_mint,True,high,
+bsc,PancakeSwap V3 NPM (BSC),WBNB,0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c,18,pcs_v3_npm_bsc,0x46A15B0b27311cedF172AB29E4f4766fbE7F4364,0,0,yes_for_any_mint,True,high,
+bsc,PancakeSwap V3 NPM (BSC),USDC,0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d,18,pcs_v3_npm_bsc,0x46A15B0b27311cedF172AB29E4f4766fbE7F4364,0,0,yes_for_any_mint,True,high,

@@ -1,0 +1,73 @@
+{
+  "stage": "LP_EVM_WALLET_ADDRESS_CROSSCHAIN_DRY_RUN_ROUTER_V1",
+  "phase": "H_crosschain_dry_run_route_decision",
+
+  "wallet_balances_summary": {
+    "likely_funded_chain": "base",
+    "base_total_usd_proxy": "26.84",
+    "bsc_total_usd_proxy": "0.00",
+    "base_native_eth_usd": "0.18  (borderline below the $0.20 conservative gas floor by $0.02)",
+    "base_tokens_usd_total": "26.67  (WETH $4.89 + USDC $21.77)"
+  },
+
+  "bsc_candidate": {
+    "candidate_pool": "0x172fcd41e0913e95784454622d1c3724f546f849",
+    "candidate_pair": "USDT/WBNB",
+    "candidate_fee_tier": 100,
+    "bsc_candidate_blocked_by_funds_on_other_chain": true,
+    "explanation": "Phase F confirmed BSC balances are all $0; no dry-run path is possible on BSC for this wallet right now. This stage does NOT recommend bridging or swapping."
+  },
+
+  "base_candidates": {
+    "base_dry_run_ready_candidate_count": 5,
+    "primary_recommendation": {
+      "pool": "0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38",
+      "pair": "WETH/USDC",
+      "fee_tier": 100,
+      "reason": "Wallet holds BOTH tokens (WETH $4.89 + USDC $21.77); already has partial Uniswap V3 NPM allowance for WETH and USDC; cost/fee EV proxy matches the BSC candidate's order of magnitude (-$0.06 vs BSC -$0.0156), consistent with the 'channel-validation not +EV' purpose of the probe."
+    },
+    "secondary_observation": {
+      "pool": "0x9c087eb773291e50cf6c6a90ef0f4500e349b903",
+      "pair": "VIRTUAL/WETH",
+      "note": "Only candidate with positive EV proxy (+$0.038), but wallet does not hold VIRTUAL — would require operator to acquire VIRTUAL first. This stage does NOT recommend that swap."
+    },
+    "excluded_from_recommendation": [
+      "0xd0b53d9277642d899df5c87a3966a349a798f224 (USDC/WETH) — EV proxy anomalously -$16.58 (upstream cost-model unit bug)",
+      "0xb94b22332abf5f89877a14cc88f2abc48c34b3df (cbBTC/USDC) — EV proxy -$20.28 (same anomaly)",
+      "0xc211e1f853a898bd1302385ccde55f33a8c4b3f3 (cbBTC/WETH) — EV proxy -$20.61 (same anomaly)"
+    ]
+  },
+
+  "route_branch_taken": "base_dry_run_builder_recommended",
+  "route_branch_rationale": [
+    "Phase D balance audit: wallet has ≈ $26.84 on Base, $0 on BSC.",
+    "Phase G candidate discovery: 5 Base V3 pools meet quote+tick+cost+fee gates; 4 of them have wallet token matches; the WETH/USDC 0.01% pool has BOTH tokens.",
+    "Phase F BSC readiness: cannot dry-run BSC because no BSC funds (and this stage does NOT bridge / swap).",
+    "Per brief Phase H branch logic: 'Base wallet sufficient + Base candidate exists → output Base dry-run builder next-stage recommendation'."
+  ],
+
+  "no_automatic_bridge_suggestion": true,
+  "no_automatic_swap_suggestion": true,
+  "no_tx_executed_this_round": true,
+
+  "next_stage_only": "LP_BASE_10_20U_PROBE_DRY_RUN_BUILDER_V1",
+  "next_stage_is_read_only": true,
+  "next_stage_does_NOT_authorize_execution": true,
+
+  "gas_balance_advisory_for_operator": {
+    "current_base_eth_balance_usd": "0.18",
+    "conservative_gas_floor_for_full_round_trip_usd": "0.20-0.30",
+    "advisory": "Before any execution stage further down the line, operator should top up Base ETH by ~0.0005-0.001 ETH (≈ $1-$2) to give the round-trip a safety margin. The dry-run builder stage itself does NOT require this; it just reads via eth_call.",
+    "this_stage_does_not_top_up_or_bridge": true
+  },
+
+  "operator_decision_required_for_BSC_path": {
+    "if_operator_wants_BSC_probe_in_future": "Operator decides whether to acquire BSC funds (USDT + WBNB + BNB gas). Acquisition method is OUTSIDE the lpbot tooling scope. This router does NOT recommend a specific bridge or DEX.",
+    "if_operator_chooses_to_skip_BSC": "Proceed with Base path via LP_BASE_10_20U_PROBE_DRY_RUN_BUILDER_V1; the existing BSC dry-run builder artifacts remain valid and reusable if BSC funds appear later."
+  },
+
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no",
+  "edge_proven": "no"
+}

@@ -1,0 +1,42 @@
+{
+  "stage": "LP_EVM_WALLET_ADDRESS_CROSSCHAIN_DRY_RUN_ROUTER_V1",
+  "phase": "C_chain_rpc_readiness",
+  "chains_tested": [
+    "base",
+    "bsc"
+  ],
+  "base_rpc_ready": true,
+  "bsc_rpc_ready": true,
+  "results": {
+    "base": {
+      "chain": "base",
+      "expected_chain_id": 8453,
+      "rpc_present": true,
+      "fallback_rpc_used": true,
+      "source_redacted": "public_fallback:base-rpc.publicnode.com",
+      "host_hash": "1d9c12cd",
+      "fallback_attempts_redacted": [],
+      "chain_id_read": 8453,
+      "latest_block": 46804318,
+      "chain_id_match": true,
+      "rpc_readonly_ready": true,
+      "confidence": "medium",
+      "invalid_reason": null
+    },
+    "bsc": {
+      "chain": "bsc",
+      "expected_chain_id": 56,
+      "rpc_present": true,
+      "fallback_rpc_used": true,
+      "source_redacted": "public_fallback:bsc-rpc.publicnode.com",
+      "host_hash": "5a701356",
+      "fallback_attempts_redacted": [],
+      "chain_id_read": 56,
+      "latest_block": 101869207,
+      "chain_id_match": true,
+      "rpc_readonly_ready": true,
+      "confidence": "medium",
+      "invalid_reason": null
+    }
+  }
+}

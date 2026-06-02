@@ -1,0 +1,98 @@
+{
+  "stage": "LP_EVM_WALLET_ADDRESS_CROSSCHAIN_DRY_RUN_ROUTER_V1",
+  "phase": "B_input_evidence_audit",
+  "run_id": "20260602_105654",
+  "wallet_address_under_audit": "0xb05b2872ace4564ff247555b6f7b097d31f3d835",
+  "wallet_address_is_public_only": true,
+
+  "bsc_inputs": {
+    "all_present": true,
+    "bsc_dry_run_builder_status": "PASS",
+    "bsc_candidate_pool": "0x172fcd41e0913e95784454622d1c3724f546f849",
+    "bsc_candidate_pair": "USDT/WBNB",
+    "bsc_candidate_fee_tier": 100,
+    "bsc_preferred_notional_usd": 10,
+    "bsc_max_notional_usd": 20,
+    "bsc_can_run_probe_now": false,
+    "bsc_can_run_dry_run_with_wallet_address_next": true,
+    "bsc_recommended_next_stage_per_upstream": "LP_BSC_10_20U_PROBE_WALLET_ADDRESS_DRY_RUN_V1"
+  },
+
+  "base_inputs": {
+    "all_present": true,
+    "precise_quote": {
+      "dir": "reports/lp_precise_quote/20260601_120001",
+      "quote_attempt_count": 200,
+      "quote_success_count": 120,
+      "quote_fail_count": 80,
+      "capacity_pass_20_count": 24,
+      "capacity_pass_100_count": 24,
+      "high_confidence_count": 57,
+      "db_ready": true,
+      "edge_proven": "no",
+      "_observation": "amount_in_usd vs amount_out_usd unit anomaly in sample rows (e.g. cbBTC/USDC shows out_usd=3.4M for in_usd=20) — pre-existing pipeline bug in the precise_quote CSV; does not affect this stage's routing logic but the operator should know the CSV columns are not directly trustworthy as USD."
+    },
+    "v3_tick_liquidity": {
+      "dir": "reports/lp_v3_tick_liquidity_fix/20260601_132644",
+      "selected_v3_pool_count": 5,
+      "slot0_success_count": 5,
+      "current_liquidity_available_count": 5,
+      "high_confidence_count": 5,
+      "recommended_next_stage": "LP_REAL_COST_MODEL_PIPELINE_V1"
+    },
+    "real_cost_model": {
+      "dir": "reports/lp_real_cost_model/20260601_141103",
+      "pool_count": 5,
+      "cost_model_ready_pool_count": 5,
+      "cost_usd_ready_count": 75,
+      "positive_proxy_count_new": 6,
+      "best_new_net_ev_proxy_usd": "0.037606985664449054",
+      "economics_preview_ran": true,
+      "main_remaining_blocker": "fee"
+    },
+    "real_fee_accrual": {
+      "dir": "reports/lp_real_fee_accrual/20260601_143401",
+      "candidate_pool_count": 13,
+      "pool_level_fee_ready_count": 13,
+      "actual_position_fee_ready_count": 0,
+      "actual_fee_rows": 0,
+      "main_remaining_blocker": "actual_position_fee_lineage_missing",
+      "future_probe_only_count": 26,
+      "positive_proxy_count_pool_level_fee": 6,
+      "positive_proxy_count_actual_fee": 0
+    },
+    "universe_scope_audit": {
+      "dir": "reports/lp_universe_scope_audit/20260601_154136",
+      "_observation": "Has a normalized pool list for Base; many rows have reached_precise_quote=yes but reached_v3_tick_liquidity=no / reached_real_cost_model=no for the bulk of the universe. The 5 fully-ready v3 pools are the working set."
+    }
+  },
+
+  "cross_check_aligned": {
+    "bsc_dry_run_builder_complete": true,
+    "bsc_probe_still_blocked": true,
+    "base_data_layer_quote_tick_cost_ready_for_5_pools": true,
+    "base_actual_position_fee_lineage_missing": true,
+    "user_assertion_funds_on_base_needs_onchain_verification": true,
+    "this_round_must_verify_via_eth_getBalance_only": true
+  },
+
+  "this_round_scope": "crosschain_wallet_address_dry_run_routing_only",
+  "this_round_must_not": [
+    "load private key / mnemonic / keystore",
+    "create signer / wallet client",
+    "send eth_sendTransaction / eth_sendRawTransaction",
+    "execute approve / mint / increaseLiquidity / decreaseLiquidity / collect / burn / swap",
+    "start lpbot-live / lpbot-canary / lpbot-paper",
+    "auto-bridge / auto-swap",
+    "flip can_run_probe_now or tiny_canary_allowed",
+    "fabricate Base balance numbers if Base RPC is unavailable"
+  ],
+  "this_round_may": [
+    "eth_chainId / eth_blockNumber / eth_getBalance",
+    "ERC20.balanceOf / ERC20.allowance (read-only eth_call)",
+    "compute likely_funded_chain from observed balances",
+    "recommend a next-stage name from the allowed set"
+  ],
+
+  "proceed_to_phase_C": true
+}

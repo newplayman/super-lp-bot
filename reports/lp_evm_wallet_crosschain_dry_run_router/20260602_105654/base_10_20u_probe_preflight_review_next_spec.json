@@ -1,0 +1,48 @@
+{
+  "stage": "LP_EVM_WALLET_ADDRESS_CROSSCHAIN_DRY_RUN_ROUTER_V1",
+  "phase": "I_base_next_stage_spec",
+  "purpose": "Spec only for the next stage LP_BASE_10_20U_PROBE_DRY_RUN_BUILDER_V1. NOT execution. Mirrors the structure of LP_BSC_10_20U_PROBE_DRY_RUN_BUILDER_V1 but rebound to Base.",
+  "next_stage_name": "LP_BASE_10_20U_PROBE_DRY_RUN_BUILDER_V1",
+  "next_stage_inputs_required": [
+    "this_stage's crosschain_dry_run_route_decision.json (which Base pool to use)",
+    "Base RPC endpoint (BASE_RPC_PRIMARY env preferred; publicnode acceptable for dry-run only)",
+    "wallet_address_public = 0xb05b2872ace4564ff247555b6f7b097d31f3d835 (already proven funded on Base in Phase D)",
+    "notional = 10 (preferred) or 20 (max)"
+  ],
+  "next_stage_phases_proposed": [
+    {"phase": "A", "name": "workspace + RUN_ID"},
+    {"phase": "B", "name": "input evidence audit (must include this stage's FINAL_VERDICT)"},
+    {"phase": "C", "name": "Base candidate freeze (pool=0x72ab388e..., pair=WETH/USDC, fee=100, notional=10|20)"},
+    {"phase": "D", "name": "Base pool state refresh (read-only): slot0/liquidity/fee/tickSpacing/QuoterV2"},
+    {"phase": "E", "name": "Base tick range proposal (3 tiers narrow/medium/wide; recommend medium)"},
+    {"phase": "F", "name": "Base token amount calculation (10U/20U → WETH+USDC desired+min)"},
+    {"phase": "G", "name": "Base unsigned tx package (mint draft on Uniswap V3 NPM Base 0x03a520b3...; recipient=PLACEHOLDER_USER_WALLET_NOT_SET; deadline=PLACEHOLDER_MANUAL_SET; ApproveExact)"},
+    {"phase": "H", "name": "Base gas feasibility (eth_estimateGas with from=wallet; this is the first time wallet binding is used)"},
+    {"phase": "I", "name": "Base manual approval checkpoint (phrase template: APPROVE_BASE_10_20U_PROBE_DRY_RUN_WITH_WALLET_ADDRESS_ONLY wallet=0x<...> notional=<10|20>)"},
+    {"phase": "J", "name": "final verdict"},
+    {"phase": "K", "name": "tests"},
+    {"phase": "L", "name": "git publish"}
+  ],
+  "next_stage_must_not": [
+    "send any transaction",
+    "load private key / mnemonic / keystore",
+    "create signer",
+    "execute approve / mint / increaseLiquidity / decreaseLiquidity / collect / burn / swap",
+    "start lpbot-live / lpbot-canary / lpbot-paper",
+    "auto-bridge / auto-swap",
+    "flip can_run_probe_now / tiny_canary_allowed / edge_proven"
+  ],
+  "next_stage_inputs_already_in_repo": {
+    "this_stage_FINAL_VERDICT": "reports/lp_evm_wallet_crosschain_dry_run_router/20260602_105654/FINAL_VERDICT.json",
+    "wallet_balance_audit": "reports/lp_evm_wallet_crosschain_dry_run_router/20260602_105654/evm_wallet_crosschain_balance_audit.json",
+    "wallet_allowance_audit": "reports/lp_evm_wallet_crosschain_dry_run_router/20260602_105654/evm_wallet_crosschain_allowance_audit.json",
+    "base_v3_tick_liquidity_existing": "reports/lp_v3_tick_liquidity_fix/20260601_132644/v3_tick_liquidity_v2_results.csv",
+    "base_real_cost_model_existing": "reports/lp_real_cost_model/20260601_141103/real_cost_model_results.csv",
+    "base_real_fee_accrual_existing": "reports/lp_real_fee_accrual/20260601_143401/real_fee_economics_preview.csv",
+    "base_precise_quote_existing": "reports/lp_precise_quote/20260601_120001/precise_quote_results.csv"
+  },
+  "approval_phrase_for_NEXT_stage_only_when_dry_run_builder_complete": "APPROVE_BASE_10_20U_PROBE_DRY_RUN_WITH_WALLET_ADDRESS_ONLY wallet=0x[0-9a-fA-F]{40} notional=(10|20)",
+  "approval_phrase_does_not_unlock_execution": true,
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false
+}

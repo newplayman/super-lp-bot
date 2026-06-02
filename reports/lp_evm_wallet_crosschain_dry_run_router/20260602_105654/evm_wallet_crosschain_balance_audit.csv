@@ -1,0 +1,13 @@
+chain,wallet_address_masked,token_symbol,token_symbol_onchain,token_address,token_decimals,balance_raw,balance_human,usd_proxy,balance_read_success,confidence,invalid_reason,token_note
+base,0xb05b...d835,ETH_native,,,,90470751043807,0.000090470751,0.1791,True,high,,native
+base,0xb05b...d835,WETH,WETH,0x4200000000000000000000000000000000000006,18,2470131003793800,0.002470131004,4.8905,True,high,,Base canonical WETH
+base,0xb05b...d835,USDC,USDC,0x833589fcd6edb6e08f4c7c32d4f71b54bda02913,6,21774783,21.774783000000,21.7748,True,high,,Base canonical USDC
+base,0xb05b...d835,USDT,USDT,0xfde4c96c8593536e31f229ea8f37b2ada2699bb2,6,0,0E-12,0.0000,True,high,,Base Tether USD₮0
+base,0xb05b...d835,cbBTC,cbBTC,0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf,8,0,0E-12,0.0000,True,high,,Coinbase Wrapped BTC
+base,0xb05b...d835,DAI,DAI,0x50c5725949a6f0c72e6c4a641f24049a917db0cb,18,0,0E-12,0.0000,True,high,,Base DAI
+bsc,0xb05b...d835,BNB_native,,,,0,0E-12,0.0000,True,high,,native
+bsc,0xb05b...d835,WBNB,WBNB,0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c,18,0,0E-12,0.0000,True,high,,BSC canonical WBNB
+bsc,0xb05b...d835,USDT,USDT,0x55d398326f99059ff775485246999027b3197955,18,0,0E-12,0.0000,True,high,,BSC USDT
+bsc,0xb05b...d835,USDC,USDC,0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d,18,0,0E-12,0.0000,True,high,,BSC USDC
+bsc,0xb05b...d835,BUSD,BUSD,0xe9e7cea3dedca5984780bafc599bd69add087d56,18,0,0E-12,0.0000,True,high,,BSC BUSD
+bsc,0xb05b...d835,CAKE,Cake,0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82,18,0,0E-12,,True,high,,BSC CAKE

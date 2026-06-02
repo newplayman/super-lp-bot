@@ -1,0 +1,52 @@
+{
+  "stage": "LP_EVM_WALLET_ADDRESS_CROSSCHAIN_DRY_RUN_ROUTER_V1",
+  "phase": "F_bsc_wallet_readiness",
+  "wallet_address_masked": "0xb05b...d835",
+  "bsc_candidate": {
+    "pool": "0x172fcd41e0913e95784454622d1c3724f546f849",
+    "pair": "USDT/WBNB",
+    "fee_tier_raw": 100,
+    "preferred_notional_usd": 10,
+    "max_notional_usd": 20,
+    "source": "reports/lp_bsc_probe_dry_run_builder/20260602_094727/FINAL_VERDICT.json"
+  },
+  "bsc_balances_usd": {
+    "bnb_native": "0.00",
+    "wbnb": "0.00",
+    "usdt": "0.00",
+    "usdc": "0.00",
+    "busd": "0.00",
+    "cake_unknown_anchor_skipped": null,
+    "total": "0.00"
+  },
+  "bsc_required_for_10u_probe": {
+    "min_bnb_gas_balance_usd": "0.20 (covers ~870k gas units at 0.5 gwei ceiling on BSC; ~$0.30 at 1 gwei)",
+    "usdt_or_usdc_token_side_usd": "~5.0 (half of 10U LP, mostly stable side)",
+    "wbnb_token_side_usd": "~5.0 (other half, ≈ 0.0074 WBNB)",
+    "approx_total_usd_required": "10.20"
+  },
+  "bsc_required_for_20u_probe": {
+    "min_bnb_gas_balance_usd": "0.20",
+    "usdt_or_usdc_token_side_usd": "~10.0",
+    "wbnb_token_side_usd": "~10.0 (≈ 0.0148 WBNB)",
+    "approx_total_usd_required": "20.20"
+  },
+  "bsc_gas_sufficient": false,
+  "bsc_usdt_sufficient_for_10u": false,
+  "bsc_wbnb_sufficient_for_10u": false,
+  "bsc_can_dry_run_10u": false,
+  "bsc_can_dry_run_20u": false,
+  "bsc_candidate_blocked_by_funds_on_other_chain": true,
+  "evidence_of_funds_on_other_chain": "Base balance audit (Phase D) shows ETH=$0.18 + WETH=$4.89 + USDC=$21.77, total ≈ $26.84 on Base. BSC total = $0.00. likely_funded_chain = base.",
+  "no_bridge_suggestion_made_by_this_stage": true,
+  "no_swap_suggestion_made_by_this_stage": true,
+  "operator_decision_required_before_any_future_bsc_dry_run": [
+    "Operator decides whether to acquire BSC funds (acquire USDT + WBNB on BSC chain, plus BNB gas).",
+    "If operator decides yes, the funds-acquisition path (buy on CEX + withdraw to BSC, or bridge via a known bridge of operator's choice) is OUTSIDE the scope of this lpbot tooling.",
+    "This stage does NOT auto-bridge, auto-swap, or recommend any specific bridge."
+  ],
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no",
+  "edge_proven": "no"
+}

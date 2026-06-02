@@ -1,0 +1,239 @@
+{
+  "stage": "LP_EVM_WALLET_ADDRESS_CROSSCHAIN_DRY_RUN_ROUTER_V1",
+  "phase": "G_base_candidate_from_existing_artifacts",
+  "wallet_held_base_tokens": [
+    {
+      "symbol": "WETH",
+      "address": "0x4200000000000000000000000000000000000006",
+      "usd": "4.89"
+    },
+    {
+      "symbol": "USDC",
+      "address": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+      "usd": "21.77"
+    }
+  ],
+  "cost_pools_count": 5,
+  "tick_ready_pool_count": 5,
+  "fee_ready_pool_count": 5,
+  "pq_success_20U_pool_count": 13,
+  "schema_note": "real_cost_model and precise_quote test notionals = {20, 100, 500, 1000, 2000}; no 10U row. 20U capacity is a strict superset of 10U capacity given identical active liquidity.",
+  "candidates": [
+    {
+      "pool_id": "0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38",
+      "protocol": "Uniswap V3 (Base)",
+      "token_pair": "WETH/USDC",
+      "token0": "0x4200000000000000000000000000000000000006",
+      "token1": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+      "fee_tier": "100",
+      "quote_ready_20U": true,
+      "tick_ready": true,
+      "cost_ready": true,
+      "fee_ready": true,
+      "best_net_ev_proxy_usd_20U": "-0.06000041561688092",
+      "notional_supported_10": true,
+      "notional_supported_20": true,
+      "wallet_token_match": true,
+      "wallet_token_match_tokens": [
+        "WETH",
+        "USDC"
+      ],
+      "candidate_status": "BASE_DRY_RUN_READY"
+    },
+    {
+      "pool_id": "0x9c087eb773291e50cf6c6a90ef0f4500e349b903",
+      "protocol": "Uniswap V3 (Base)",
+      "token_pair": "VIRTUAL/WETH",
+      "token0": "0x0b3e328455c4059eeb9e3f84b5543f74e24e7e1b",
+      "token1": "0x4200000000000000000000000000000000000006",
+      "fee_tier": "500",
+      "quote_ready_20U": true,
+      "tick_ready": true,
+      "cost_ready": true,
+      "fee_ready": true,
+      "best_net_ev_proxy_usd_20U": "0.037606985664449054",
+      "notional_supported_10": true,
+      "notional_supported_20": true,
+      "wallet_token_match": true,
+      "wallet_token_match_tokens": [
+        "WETH"
+      ],
+      "candidate_status": "BASE_DRY_RUN_READY"
+    },
+    {
+      "pool_id": "0xb94b22332abf5f89877a14cc88f2abc48c34b3df",
+      "protocol": "Uniswap V3 (Base)",
+      "token_pair": "cbBTC/USDC",
+      "token0": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+      "token1": "0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+      "fee_tier": "100",
+      "quote_ready_20U": true,
+      "tick_ready": true,
+      "cost_ready": true,
+      "fee_ready": true,
+      "best_net_ev_proxy_usd_20U": "-20.282618654554327",
+      "notional_supported_10": true,
+      "notional_supported_20": true,
+      "wallet_token_match": true,
+      "wallet_token_match_tokens": [
+        "USDC"
+      ],
+      "candidate_status": "BASE_DRY_RUN_READY"
+    },
+    {
+      "pool_id": "0xc211e1f853a898bd1302385ccde55f33a8c4b3f3",
+      "protocol": "Uniswap V3 (Base)",
+      "token_pair": "cbBTC/WETH",
+      "token0": "0x4200000000000000000000000000000000000006",
+      "token1": "0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+      "fee_tier": "100",
+      "quote_ready_20U": true,
+      "tick_ready": true,
+      "cost_ready": true,
+      "fee_ready": true,
+      "best_net_ev_proxy_usd_20U": "-20.614979830369013",
+      "notional_supported_10": true,
+      "notional_supported_20": true,
+      "wallet_token_match": true,
+      "wallet_token_match_tokens": [
+        "WETH"
+      ],
+      "candidate_status": "BASE_DRY_RUN_READY"
+    },
+    {
+      "pool_id": "0xd0b53d9277642d899df5c87a3966a349a798f224",
+      "protocol": "Uniswap V3 (Base)",
+      "token_pair": "USDC/WETH",
+      "token0": "0x4200000000000000000000000000000000000006",
+      "token1": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+      "fee_tier": "500",
+      "quote_ready_20U": true,
+      "tick_ready": true,
+      "cost_ready": true,
+      "fee_ready": true,
+      "best_net_ev_proxy_usd_20U": "-16.579153689128066",
+      "notional_supported_10": true,
+      "notional_supported_20": true,
+      "wallet_token_match": true,
+      "wallet_token_match_tokens": [
+        "WETH",
+        "USDC"
+      ],
+      "candidate_status": "BASE_DRY_RUN_READY"
+    }
+  ],
+  "dry_run_ready_count": 5,
+  "dry_run_ready_pool_ids": [
+    "0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38",
+    "0x9c087eb773291e50cf6c6a90ef0f4500e349b903",
+    "0xb94b22332abf5f89877a14cc88f2abc48c34b3df",
+    "0xc211e1f853a898bd1302385ccde55f33a8c4b3f3",
+    "0xd0b53d9277642d899df5c87a3966a349a798f224"
+  ],
+  "ranked_by_best_ev_20U": [
+    {
+      "pool_id": "0x9c087eb773291e50cf6c6a90ef0f4500e349b903",
+      "protocol": "Uniswap V3 (Base)",
+      "token_pair": "VIRTUAL/WETH",
+      "token0": "0x0b3e328455c4059eeb9e3f84b5543f74e24e7e1b",
+      "token1": "0x4200000000000000000000000000000000000006",
+      "fee_tier": "500",
+      "quote_ready_20U": true,
+      "tick_ready": true,
+      "cost_ready": true,
+      "fee_ready": true,
+      "best_net_ev_proxy_usd_20U": "0.037606985664449054",
+      "notional_supported_10": true,
+      "notional_supported_20": true,
+      "wallet_token_match": true,
+      "wallet_token_match_tokens": [
+        "WETH"
+      ],
+      "candidate_status": "BASE_DRY_RUN_READY"
+    },
+    {
+      "pool_id": "0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38",
+      "protocol": "Uniswap V3 (Base)",
+      "token_pair": "WETH/USDC",
+      "token0": "0x4200000000000000000000000000000000000006",
+      "token1": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+      "fee_tier": "100",
+      "quote_ready_20U": true,
+      "tick_ready": true,
+      "cost_ready": true,
+      "fee_ready": true,
+      "best_net_ev_proxy_usd_20U": "-0.06000041561688092",
+      "notional_supported_10": true,
+      "notional_supported_20": true,
+      "wallet_token_match": true,
+      "wallet_token_match_tokens": [
+        "WETH",
+        "USDC"
+      ],
+      "candidate_status": "BASE_DRY_RUN_READY"
+    },
+    {
+      "pool_id": "0xd0b53d9277642d899df5c87a3966a349a798f224",
+      "protocol": "Uniswap V3 (Base)",
+      "token_pair": "USDC/WETH",
+      "token0": "0x4200000000000000000000000000000000000006",
+      "token1": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+      "fee_tier": "500",
+      "quote_ready_20U": true,
+      "tick_ready": true,
+      "cost_ready": true,
+      "fee_ready": true,
+      "best_net_ev_proxy_usd_20U": "-16.579153689128066",
+      "notional_supported_10": true,
+      "notional_supported_20": true,
+      "wallet_token_match": true,
+      "wallet_token_match_tokens": [
+        "WETH",
+        "USDC"
+      ],
+      "candidate_status": "BASE_DRY_RUN_READY"
+    },
+    {
+      "pool_id": "0xb94b22332abf5f89877a14cc88f2abc48c34b3df",
+      "protocol": "Uniswap V3 (Base)",
+      "token_pair": "cbBTC/USDC",
+      "token0": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+      "token1": "0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+      "fee_tier": "100",
+      "quote_ready_20U": true,
+      "tick_ready": true,
+      "cost_ready": true,
+      "fee_ready": true,
+      "best_net_ev_proxy_usd_20U": "-20.282618654554327",
+      "notional_supported_10": true,
+      "notional_supported_20": true,
+      "wallet_token_match": true,
+      "wallet_token_match_tokens": [
+        "USDC"
+      ],
+      "candidate_status": "BASE_DRY_RUN_READY"
+    },
+    {
+      "pool_id": "0xc211e1f853a898bd1302385ccde55f33a8c4b3f3",
+      "protocol": "Uniswap V3 (Base)",
+      "token_pair": "cbBTC/WETH",
+      "token0": "0x4200000000000000000000000000000000000006",
+      "token1": "0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+      "fee_tier": "100",
+      "quote_ready_20U": true,
+      "tick_ready": true,
+      "cost_ready": true,
+      "fee_ready": true,
+      "best_net_ev_proxy_usd_20U": "-20.614979830369013",
+      "notional_supported_10": true,
+      "notional_supported_20": true,
+      "wallet_token_match": true,
+      "wallet_token_match_tokens": [
+        "WETH"
+      ],
+      "candidate_status": "BASE_DRY_RUN_READY"
+    }
+  ],
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false
+}
