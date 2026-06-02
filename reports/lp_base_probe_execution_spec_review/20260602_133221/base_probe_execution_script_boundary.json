@@ -1,0 +1,116 @@
+{
+  "stage": "LP_BASE_10_20U_PROBE_EXECUTION_SPEC_REVIEW_V1",
+  "phase": "G_execution_script_boundary",
+  "run_id": "20260602_133221",
+  "scope": "future_execution_specification_only",
+  "wrote_to_production_tables": false,
+
+  "allowed_actions": {
+    "load_wallet_only_after_explicit_approval": {
+      "policy": "executor MUST load signer/wallet client only after verifying the approval phrase matches the regex and the timestamp is within the last 15 min",
+      "preconditions": [
+        "user-supplied phrase matches ^APPROVE_BASE_10U_LP_PROBE_EXECUTION_ONE_SHOT wallet=0x[0-9a-fA-F]{40} pool=0x[0-9a-fA-F]{40} notional=10 hold=15m$",
+        "the same session_id is unique (re-approval produces a new session_id)",
+        "fabrication_blocked = true",
+        "wallet_or_tx_touched before this executor = false (in this session)"
+      ],
+      "postconditions": [
+        "wallet_or_tx_touched = true (after this point the executor is in execution mode)"
+      ]
+    },
+    "sign_approve_exact_only_after_explicit_approval": {
+      "policy": "executor MUST only sign ERC20.approve(spender=NPM, amount=exact_notional_raw) when needed; amount MUST equal the chosen notional in raw USDC; NEVER uint256.max",
+      "preconditions": [
+        "load_wallet_only_after_explicit_approval completed",
+        "USDC.balanceOf(wallet) >= amount",
+        "current USDC.allowance(wallet, NPM) < amount (else skip this action entirely)"
+      ],
+      "postconditions": [
+        "recorded tx_hash, block_number, gas_used, post-allowance on-chain"
+      ]
+    },
+    "sign_mint_only_after_explicit_approval": {
+      "policy": "executor MUST only sign NPM.mint(...) with the locked-in tuple (token0, token1, fee=100, tickLower=-200643, tickUpper=-200243, amount0=0, amount1=10e6, amount0Min=0, amount1Min=9949999, recipient=wallet, deadline=now+3600); MUST NOT change any of these values except deadline which MUST be set to now+3600",
+      "preconditions": [
+        "sign_approve_exact_only completed (or skipped because allowance was sufficient)",
+        "Step 0 sanity all green",
+        "deadline is now+3600 (not 2099-01-01 placeholder; not 0)"
+      ],
+      "postconditions": [
+        "recorded tokenId, liquidity, actual_token0_deposited, actual_token1_deposited, feeGrowthInside, tokensOwed"
+      ]
+    },
+    "sign_decrease_collect_only_within_same_approved_probe": {
+      "policy": "executor MUST only sign decreaseLiquidity(tokenId, liquidity=full) and collect(tokenId, recipient=wallet) within the SAME session_id as the mint",
+      "preconditions": [
+        "session_id matches the mint's session_id",
+        "NPM.positions(tokenId) returns liquidity > 0 (position still open)"
+      ],
+      "postconditions": [
+        "liquidity_removed == entry.liquidity (sanity)",
+        "NPM.positions(tokenId) returns liquidity=0 and tokensOwed=0 after collect"
+      ]
+    },
+    "record_token_id": {
+      "policy": "executor MUST record tokenId from the ERC721 Transfer event in the mint tx receipt; this is the primary key for all downstream telemetry"
+    },
+    "record_actual_fee": {
+      "policy": "executor MUST record feeGrowthInside0/1 at entry and at each hold sample + at exit, to derive actual_position_fee lineage"
+    },
+    "exit_after_configured_hold": {
+      "policy": "executor MUST exit (Step 4) at end of hold_window OR earlier if any Phase E stop condition triggers"
+    }
+  },
+
+  "forbidden_actions": {
+    "no_automatic_repeat": "executor MUST NOT loop or schedule another probe; any next probe requires a new approval phrase + new session_id",
+    "no_multi_pool": "executor MUST NOT touch any pool other than the frozen 0x72ab388e..; any other pool requires new spec + new approval",
+    "no_notional_above_approved": "executor MUST NOT increase amount0/amount1 beyond the approved notional; if QuoterV2 requires more for the chosen range, HALT",
+    "no_approvemax": "executor MUST NOT call approve(spender, uint256.max); only ApproveExact",
+    "no_swap_back": "executor MUST NOT swap WETH back to USDC after collect; any swap requires a separate approval",
+    "no_bridge": "executor MUST NOT initiate any cross-chain bridge tx",
+    "no_live_loop": "executor MUST NOT start lpbot-live / lpbot-canary / lpbot-paper; the executor runs as a one-shot script and exits",
+    "no_background_unattended_trading": "executor MUST NOT leave any background process; the script MUST exit after Step 5 or on HALT",
+    "no_strategy_auto_selection": "executor MUST NOT auto-pick a different pool/range/notional; the strategy was decided in this spec",
+    "no_wallet_reuse_beyond_this_run": "executor MUST only sign for this session_id; even if a future 'similar' run is approved, the next run is a new session with new session_id",
+    "no_hidden_retry": "executor MUST NOT silently retry a failed tx; any retry requires a new approval"
+  },
+
+  "future_approval_phrase_template": {
+    "phrase": "APPROVE_BASE_10U_LP_PROBE_EXECUTION_ONE_SHOT wallet=0x[0-9a-fA-F]{40} pool=0x[0-9a-fA-F]{40} notional=10 hold=15m",
+    "regex": "^APPROVE_BASE_10U_LP_PROBE_EXECUTION_ONE_SHOT wallet=0x[0-9a-fA-F]{40} pool=0x[0-9a-fA-F]{40} notional=10 hold=15m$",
+    "this_round_non_effective": true,
+    "this_round_executor_must_reject_even_if_typed": true,
+    "next_stage_where_this_phrase_becomes_effective": "LP_BASE_10U_PROBE_EXECUTION_SCRIPT_BUILD_V1 (still not execution; builds the script and another layer of audit)"
+  },
+
+  "boundary_summary": {
+    "allowed": [
+      "load wallet only after explicit approval",
+      "sign approve exact only after explicit approval",
+      "sign mint only after explicit approval",
+      "sign decrease/collect only within same approved probe",
+      "record tokenId",
+      "record actual fee",
+      "exit after configured hold"
+    ],
+    "forbidden": [
+      "no automatic repeat",
+      "no multi-pool",
+      "no notional > approved",
+      "no ApproveMax",
+      "no swap-back unless separately approved",
+      "no bridge",
+      "no live loop",
+      "no background unattended trading",
+      "no strategy auto-selection",
+      "no wallet reuse beyond this run",
+      "no hidden retry"
+    ]
+  },
+
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no",
+  "edge_proven": "no"
+}

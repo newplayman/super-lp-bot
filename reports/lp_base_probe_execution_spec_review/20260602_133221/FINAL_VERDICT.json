@@ -1,0 +1,93 @@
+{
+  "status": "PASS",
+  "stage": "LP_BASE_10_20U_PROBE_EXECUTION_SPEC_REVIEW_V1",
+  "run_id": "20260602_133221",
+  "previous_stage": "LP_BASE_10_20U_PROBE_DRY_RUN_BUILDER_V1",
+  "previous_run_id": "20260602_112400",
+
+  "candidate_chain": "Base",
+  "candidate_pool": "0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38",
+  "candidate_pair": "WETH/USDC",
+  "candidate_fee_tier": 100,
+  "candidate_protocol": "Uniswap V3 (Base)",
+  "candidate_npm": "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1",
+
+  "wallet": "0xb05b2872ace4564ff247555b6f7b097d31f3d835",
+  "wallet_masked": "0xb05b...d835",
+
+  "recommended_first_notional_usd": 10,
+  "max_notional_usd": 20,
+  "recommended_first_hold_window": "15m",
+  "max_manual_extension": "30m",
+  "recommended_tick_range": {
+    "tier": "medium",
+    "lower_tick": -200643,
+    "upper_tick": -200243
+  },
+
+  "execution_runbook_ready": true,
+  "stop_conditions_ready": true,
+  "telemetry_spec_ready": true,
+  "execution_script_boundary_ready": true,
+  "approval_template_ready": true,
+  "risk_acceptance_ready": true,
+
+  "execution_script_allowed_next": true,
+  "executor_built_this_round": false,
+  "executor_will_run_this_round": false,
+
+  "can_run_probe_now": false,
+  "edge_proven": "no",
+  "tiny_canary_allowed": "no",
+  "actual_fee_ready": false,
+  "token_id_available": false,
+
+  "manual_approval_required_for_execution": true,
+  "approval_phrase_effective_this_round": false,
+  "approval_phrase_template": "APPROVE_BASE_10U_LP_PROBE_EXECUTION_ONE_SHOT wallet=0x[0-9a-fA-F]{40} pool=0x[0-9a-fA-F]{40} notional=10 hold=15m",
+  "approval_phrase_regex": "^APPROVE_BASE_10U_LP_PROBE_EXECUTION_ONE_SHOT wallet=0x[0-9a-fA-F]{40} pool=0x[0-9a-fA-F]{40} notional=10 hold=15m$",
+
+  "wallet_or_tx_touched": false,
+  "fabrication_blocked": true,
+
+  "spec_phase_artifact_counts": {
+    "execution_runbook_steps": 5,
+    "stop_conditions_count": 20,
+    "telemetry_schema_count": 6,
+    "execution_script_allowed_actions": 7,
+    "execution_script_forbidden_actions": 11,
+    "rejected_alternative_phrases": 17
+  },
+
+  "decision_notes": [
+    "Phase A: workspace created; HEAD=a4422d1; only untracked runtime files, no dirty blocker.",
+    "Phase B: 16 upstream artifacts read; all gates pass; previous_status=PASS; can_run_probe_now=false.",
+    "Phase C: candidate frozen — WETH/USDC 0.01% 0x72ab388e..; 10U first, 15m hold window, 30m max extension; not a profit bet.",
+    "Phase D: execution runbook designed with 5 steps (sanity / approve / mint / hold / exit / cleanup); not executed this round.",
+    "Phase E: 20 hard stop conditions catalogued with explicit handling actions; no_auto_retry policy.",
+    "Phase F: 6 telemetry schemas designed (entry / hold / fee_trace / exit / post_exit / actual_pnl); writes only to local run dir, not production tables.",
+    "Phase G: execution script boundary designed — 7 allowed actions, 11 forbidden actions; future approval phrase template published.",
+    "Phase H: human approval template published; phrase is template-only, non-effective this round; first round = 10U/15m only.",
+    "Phase I: risk acceptance statement published; EV is negative; loss potential $0.5-$12; success = complete telemetry, not profit.",
+    "Phase J: this FINAL_VERDICT + ONEPAGE + ARTIFACT_INDEX; all spec_*_ready flags true; execution_script_allowed_next=true."
+  ],
+
+  "secondary_observations": [
+    "Phase H vs Phase G approval phrases are intentionally DIFFERENT: G's is the executor's regex check; H's is what the user actually types. They share the same exact regex.",
+    "20U is intentionally not in the first-round approval phrase; it requires a fresh approval cycle after 10U completes.",
+    "30m is intentionally not in the first-round approval phrase; it is a future extension requiring fresh approval after 15m completes.",
+    "Token amount 0 wei WETH is a property of V3 in-range math on $2000 WETH + 2% range; if the future executor re-reads slot0 and finds a dramatically different tick, it must HALT and request fresh approval."
+  ],
+
+  "recommended_next_stage": "LP_BASE_10U_PROBE_EXECUTION_SCRIPT_BUILD_V1",
+  "allowed_next_stages": [
+    "LP_BASE_10U_PROBE_EXECUTION_SCRIPT_BUILD_V1",
+    "LP_BASE_10_20U_PROBE_EXECUTION_SPEC_FIX_REPEAT",
+    "STOP_LP_RESEARCH_NOW"
+  ],
+  "next_stage_must_not": [
+    "execute the probe in this build stage",
+    "build a wallet client or signer in this build stage",
+    "skip the re-approval at execution time (the build stage's approval is for build, not for execution)"
+  ]
+}

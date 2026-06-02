@@ -1,0 +1,179 @@
+{
+  "stage": "LP_BASE_10_20U_PROBE_EXECUTION_SPEC_REVIEW_V1",
+  "phase": "F_actual_telemetry_spec",
+  "run_id": "20260602_133221",
+  "scope": "future_execution_specification_only",
+  "wrote_to_production_tables": false,
+  "wrote_to_local_files_only": ["this report directory + future sub-sessions"],
+
+  "entry_telemetry_schema": {
+    "name": "lp_probe_execution_ledger_v1",
+    "fields": {
+      "run_id": "string, this run directory's run_id",
+      "session_id": "string, unique per execution attempt (re-approval = new session_id)",
+      "wallet": "0x-prefixed 40-hex address (public, not sensitive)",
+      "chain": "string, e.g. 'base'",
+      "chain_id": "uint64, 8453",
+      "pool": "0x-prefixed 40-hex address",
+      "token0": "0x-prefixed 40-hex address",
+      "token1": "0x-prefixed 40-hex address",
+      "fee_tier": "uint24",
+      "tick_lower": "int24 (sign-extended)",
+      "tick_upper": "int24 (sign-extended)",
+      "current_tick_at_entry": "int24 (sign-extended)",
+      "current_sqrt_price_x96_at_entry": "uint256",
+      "amount0_desired_wei": "uint256",
+      "amount1_desired_raw": "uint256",
+      "amount0_actual_wei": "uint256 (from balance delta)",
+      "amount1_actual_raw": "uint256 (from balance delta)",
+      "amount0_min_wei": "uint256",
+      "amount1_min_raw": "uint256",
+      "approve_tx_hash": "0x-prefixed 32-byte hash (or null if not sent)",
+      "approve_block_number": "uint64",
+      "approve_gas_used": "uint64",
+      "mint_tx_hash": "0x-prefixed 32-byte hash",
+      "mint_block_number": "uint64",
+      "mint_gas_used": "uint64",
+      "mint_effective_gas_price_wei": "uint256",
+      "token_id": "uint256 (ERC721 tokenId from NPM Transfer event)",
+      "liquidity_at_entry": "uint128",
+      "entry_block": "uint64",
+      "entry_timestamp_iso": "ISO 8601 UTC string",
+      "entry_unix_seconds": "uint64",
+      "entry_gas_total_wei": "uint256 (approve + mint)",
+      "entry_gas_total_usd": "decimal string",
+      "fee_growth_inside_0_last_x128_at_entry": "uint256",
+      "fee_growth_inside_1_last_x128_at_entry": "uint256",
+      "tokens_owed_0_at_entry": "uint256",
+      "tokens_owed_1_at_entry": "uint256",
+      "approved_phrase": "string, the exact human approval phrase (for audit)",
+      "approver_intent": "string, e.g. 'notional=10 hold=15m'",
+      "fabrication_blocked": "bool (must be true)",
+      "wallet_or_tx_touched": "bool (false at entry; becomes true after Step 1+)"
+    }
+  },
+
+  "hold_telemetry_schema": {
+    "name": "lp_probe_hold_monitor_v1",
+    "fields_per_minute": {
+      "session_id": "string (FK to ledger)",
+      "minute_index": "uint32 (1-based)",
+      "block_number": "uint64",
+      "tick": "int24 (sign-extended)",
+      "sqrt_price_x96": "uint256",
+      "liquidity": "uint128",
+      "fee_growth_inside_0_x128": "uint256",
+      "fee_growth_inside_1_x128": "uint256",
+      "tokens_owed_0": "uint256",
+      "tokens_owed_1": "uint256",
+      "usdc_quote_out_1usdc_in": "uint256 (1 USDC → ? WETH from QuoterV2)",
+      "weth_quote_out_0_001weth_in": "uint256 (0.001 WETH → ? USDC from QuoterV2)",
+      "mark_to_market_usd": "decimal string (tokensOwed valued in USDC at current spot)",
+      "mtm_pnl_usd_vs_entry": "decimal string (vs entry principal)",
+      "exit_quote_unavailable": "bool (true if QuoterV2 reverts)",
+      "stop_condition_status": "string (none | trigger:<id> | ok)"
+    },
+    "frequency": "every 60s for hold_window (15m default, 30m if extended)",
+    "persistence": "one row per minute to lp_probe_hold_monitor_v1 + JSON snapshot per minute in run dir"
+  },
+
+  "fee_trace_telemetry_schema": {
+    "name": "lp_probe_position_fee_trace_v1",
+    "purpose": "capture actual_position_fee (lineage for upstream real_fee_accrual blocker)",
+    "fields_per_sample": {
+      "session_id": "string (FK)",
+      "block_number": "uint64",
+      "fee_growth_inside_0_x128": "uint256",
+      "fee_growth_inside_1_x128": "uint256",
+      "delta_fee_0_wei": "uint256 (accrued since previous sample)",
+      "delta_fee_1_raw": "uint256 (accrued since previous sample)",
+      "delta_fee_0_usd": "decimal string (valued at current spot)",
+      "delta_fee_1_usd": "decimal string (1:1 with USDC)",
+      "pool_level_fee_proxy_for_comparison": "decimal string (from upstream real_fee_accrual at the same block if available)"
+    },
+    "frequency": "every 5 minutes during hold (less granular than hold monitor; enough to seed lineage)"
+  },
+
+  "exit_telemetry_schema": {
+    "name": "lp_probe_exit_trace_v1",
+    "fields": {
+      "session_id": "string (FK)",
+      "decrease_tx_hash": "0x-prefixed",
+      "decrease_block_number": "uint64",
+      "decrease_gas_used": "uint64",
+      "liquidity_removed": "uint128 (should == entry liquidity)",
+      "collect_tx_hash": "0x-prefixed",
+      "collect_block_number": "uint64",
+      "collect_gas_used": "uint64",
+      "collected_token0_wei": "uint256",
+      "collected_token1_raw": "uint256",
+      "exit_block": "uint64",
+      "exit_timestamp_iso": "ISO 8601",
+      "exit_unix_seconds": "uint64",
+      "exit_gas_total_wei": "uint256 (decrease + collect)",
+      "exit_gas_total_usd": "decimal string"
+    }
+  },
+
+  "post_exit_telemetry_schema": {
+    "name": "lp_probe_post_exit_v1",
+    "fields": {
+      "session_id": "string (FK)",
+      "usdc_revoke_tx_hash": "0x-prefixed",
+      "usdc_revoke_block_number": "uint64",
+      "usdc_revoke_gas_used": "uint64",
+      "usdc_allowance_post_revoke": "uint256 (should be 0)",
+      "weth_revoke_tx_hash": "0x-prefixed (or null if no WETH revoke needed)",
+      "weth_revoke_block_number": "uint64",
+      "weth_revoke_gas_used": "uint64",
+      "weth_allowance_post_revoke": "uint256 (should be 0)",
+      "final_eth_native_wei": "uint256",
+      "final_weth_wei": "uint256",
+      "final_usdc_raw": "uint256"
+    }
+  },
+
+  "actual_pnl_telemetry_schema": {
+    "name": "lp_probe_actual_pnl_v1",
+    "fields": {
+      "session_id": "string (FK)",
+      "entry_principal_usd": "decimal string (== notional)",
+      "fees_collected_token0_wei": "uint256",
+      "fees_collected_token1_raw": "uint256",
+      "fees_collected_usd_total": "decimal string (sum of fees_0 valued at exit spot + fees_1)",
+      "exit_principal_token0_wei": "uint256 (from collect)",
+      "exit_principal_token1_raw": "uint256 (from collect)",
+      "exit_principal_usd": "decimal string (valued at exit spot)",
+      "impermanent_loss_usd_proxy": "decimal string (vs hold-and-sell baseline)",
+      "lvr_proxy_usd": "decimal string (0 for in-range 0.01% tier; placeholder for future)",
+      "slippage_cost_usd": "decimal string (entry slippage + exit slippage, from QuoterV2 vs amountXxxActual)",
+      "gas_cost_total_usd": "decimal string (entry + exit + revoke)",
+      "net_pnl_usd": "decimal string (= exit_principal + fees_collected - entry_principal - gas - slippage - il_proxy)",
+      "net_pnl_usd_il_excluded": "decimal string (optional; net_pnl without IL to isolate LP mechanics)",
+      "hold_duration_seconds": "uint64",
+      "hold_duration_minutes": "decimal string",
+      "success_status": "string ('success' | 'halt_<id>' | 'exit_immediate_<id>')",
+      "halt_or_exit_reason_id": "string (FK to Phase E stop_conditions.id, if applicable)"
+    }
+  },
+
+  "summary_persistence": {
+    "in_run_dir": [
+      "entry.json",
+      "hold_<minute>.json (one per minute)",
+      "fee_trace_<sample>.json",
+      "exit.json",
+      "post_exit.json",
+      "actual_pnl.json",
+      "actual_pnl.csv (denormalized for human review)",
+      "session_summary.md (human-readable)"
+    ],
+    "not_in_production_tables": true,
+    "future_production_table_writes": "must be done by a separate, post-freeze, approved pipeline; not by this stage"
+  },
+
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no",
+  "edge_proven": "no"
+}

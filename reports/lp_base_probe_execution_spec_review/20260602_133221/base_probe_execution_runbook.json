@@ -1,0 +1,195 @@
+{
+  "stage": "LP_BASE_10_20U_PROBE_EXECUTION_SPEC_REVIEW_V1",
+  "phase": "D_execution_runbook_design",
+  "run_id": "20260602_133221",
+  "scope": "future_execution_specification_only",
+  "executed_this_round": false,
+
+  "operator_prerequisites": {
+    "op_step_0a": "Confirm execution approval phrase typed exactly (see Phase H); paste into a separate signed log file in this run directory",
+    "op_step_0b": "Confirm BASE_RPC_PRIMARY env var is set to a paid endpoint (recommended) OR explicitly accept publicnode for this run only",
+    "op_step_0c": "Confirm no lpbot-live / lpbot-canary / lpbot-paper / other trading processes are running on the host",
+    "op_step_0d": "Confirm wallet funding hasn't changed materially since dry-run Phase E (USDC > 22, ETH gas > $0.20)",
+    "op_step_0e": "Confirm operator can monitor for 15m (or 30m if extension) and respond to stop conditions"
+  },
+
+  "step_0_pre_execution_sanity": {
+    "purpose": "Validate every assumption in the dry-run builder is still true at execution time",
+    "actions": [
+      {"action": "eth_chainId from RPC", "expect": 8453, "halt_if": "!= 8453"},
+      {"action": "Read wallet ETH balance via eth_getBalance", "expect": ">= 9.0e-5 ETH (≈ $0.18)", "halt_if": "< 9.0e-5 ETH"},
+      {"action": "Read USDC balanceOf(wallet)", "expect": ">= 12 USDC for 10U probe (10 + 2 buffer)", "halt_if": "< 12 USDC for 10U; < 22 USDC for 20U"},
+      {"action": "Read WETH balanceOf(wallet)", "expect": ">= 0 (no minimum, but log)", "halt_if": "n/a (always log)"},
+      {"action": "Read USDC.allowance(wallet, NPM)", "expect": "current allowance (logged); for 10U: needs < 10; for 20U: needs < 20", "halt_if": "== 0 (would still pass — we just approve)"},
+      {"action": "Read WETH.allowance(wallet, NPM)", "expect": "logged", "halt_if": "n/a"},
+      {"action": "Read pool.slot0() — current tick and sqrtPriceX96", "expect": "current_tick inside or near frozen range [-200643, -200243]; if drifted more than half-range, halt and request fresh tick range approval", "halt_if": "current_tick outside the new half-range envelope"},
+      {"action": "Read pool.liquidity()", "expect": "> 1e15 (1e15 wei L = 1e15 / 1e6 USDC = 1e9 USDC of one-sided LP, plenty)", "halt_if": "< 1e15"},
+      {"action": "QuoterV2.quoteExactInputSingle(WETH→USDC, amount=10 USDC worth of WETH)", "expect": "out_amount ≈ 9.95-10.0 USDC (slippage < 0.5%)", "halt_if": "out_amount < 9.5 USDC (slippage > 5%)"},
+      {"action": "QuoterV2.quoteExactInputSingle(USDC→WETH, amount=10 USDC)", "expect": "out_amount ≈ 0.005 WETH", "halt_if": "out_amount < 0.004 WETH (slippage > 20%)"},
+      {"action": "eth_estimateGas for mint call (with current allowances)", "expect": "estimate_gas returned and within 2x of inherited 180,000", "halt_if": "revert or > 360,000"},
+      {"action": "Read current gas price; compute total cost USD = (approve_gas + mint_gas + decrease_gas + collect_gas + 2*revoke_gas) * gas_price * weth_usd", "expect": "< $0.10", "halt_if": ">= $0.20"},
+      {"action": "Set up hold timer (15m default; max 30m if extension approved)"}
+    ]
+  },
+
+  "step_1_approve_exact_only_if_needed": {
+    "purpose": "Ensure NPM has exact USDC allowance for the chosen notional; never ApproveMax",
+    "actions": [
+      {
+        "action": "Compute approve_amount_raw for chosen notional",
+        "rule": "10U → 10_000_000 raw USDC; 20U → 20_000_000 raw USDC. If current USDC allowance already >= approve_amount_raw, skip the approve tx entirely.",
+        "halt_if": "approve_amount_raw > 50_000_000 (sanity ceiling — anything bigger means notional was misconfigured)"
+      },
+      {
+        "action": "Build ERC20.approve(USDC, NPM, approve_amount_raw) tx",
+        "invariant": "amount_raw <= 50_000_000 AND amount_raw == chosen notional in raw USDC (ApproveExact; never uint256.max)"
+      },
+      {
+        "action": "Sign with wallet; broadcast via eth_sendRawTransaction",
+        "record": ["tx_hash", "block_number", "gas_used", "from", "to", "nonce", "value=0"]
+      },
+      {
+        "action": "Wait for >= 12 block confirmations",
+        "halt_if": "tx reverts OR mempool stall > 5 min"
+      },
+      {
+        "action": "Re-read USDC.allowance(wallet, NPM) on-chain",
+        "halt_if": "allowance != approve_amount_raw (record actual; if it matches, proceed)"
+      }
+    ],
+    "weth_approve": {
+      "default": "skip (WETH amount in mint is 0 wei, so no WETH approve needed)",
+      "exception": "if a Step 0 sanity check shows WETH balance > 0 AND the chosen range ends up needing non-zero WETH, do not silently approve — HALT and request new approval"
+    }
+  },
+
+  "step_2_mint_or_increaseLiquidity": {
+    "purpose": "Open the LP position; record tokenId for downstream telemetry",
+    "actions": [
+      {
+        "action": "Build NPM.mint(tuple) call with the values from the dry-run builder",
+        "parameters_locked": "token0, token1, fee=100, tickLower=-200643, tickUpper=-200243, amount0Desired=0, amount1Desired=10e6 (or 20e6), amount0Min=0, amount1Min=9949999 (or 19899999), recipient=wallet, deadline=now+1h"
+      },
+      {
+        "action": "Sign with wallet; broadcast via eth_sendRawTransaction",
+        "record": ["tx_hash", "block_number", "gas_used", "status (1=success)"]
+      },
+      {
+        "action": "Wait for >= 12 block confirmations",
+        "halt_if": "tx reverts OR mempool stall > 5 min"
+      },
+      {
+        "action": "Decode the ERC721 Transfer event log (NPM emits Transfer(from=0, to=wallet, tokenId=...))",
+        "record": ["tokenId (uint256)", "liquidity (uint128) from PositionManager.IncreaseLiquidity event if available"]
+      },
+      {
+        "action": "Call NPM.positions(tokenId) to read canonical position state",
+        "record": [
+          "tokenId", "nonce", "operator", "token0", "token1", "fee", "tickLower", "tickUpper",
+          "liquidity", "feeGrowthInside0LastX128", "feeGrowthInside1LastX128", "tokensOwed0", "tokensOwed1"
+        ]
+      },
+      {
+        "action": "Call ERC20.balanceOf(wallet) for WETH and USDC; record actual deposited amounts (delta vs pre-mint)",
+        "record": ["delta_weth_wei", "delta_usdc_raw"]
+      }
+    ],
+    "no_increaseLiquidity": "this run is single-mint only; increaseLiquidity on an existing position is a different future stage",
+    "no_increase_of_existing_position": true
+  },
+
+  "step_3_hold_monitoring": {
+    "purpose": "Record actual position state every minute for telemetry",
+    "actions": [
+      {
+        "action": "Every 60s for hold_window (15m default; 30m if extension approved):",
+        "sub_actions": [
+          "Read pool.slot0() — current_tick",
+          "Read NPM.positions(tokenId) — liquidity, feeGrowthInside, tokensOwed",
+          "QuoterV2.quoteExactInputSingle(USDC→WETH, 1 USDC) for spot reference",
+          "QuoterV2.quoteExactInputSingle(WETH→USDC, 0.001 WETH) for spot reference",
+          "Compute mark-to-market: tokensOwed0/1 valued in USDC at current spot",
+          "Record: block_number, tick, liquidity, feeGrowthInside0/1, tokensOwed0/1, mtm_usd, mtm_pnl_vs_entry"
+        ]
+      },
+      {
+        "action": "Continuously monitor for any Stop Condition in Phase E; on any stop, abort hold and jump to Step 4 immediately"
+      },
+      {
+        "action": "If hold completes without stop, proceed to Step 4 at end of hold_window"
+      }
+    ]
+  },
+
+  "step_4_exit_decrease_collect": {
+    "purpose": "Close the position; collect fees + principal back to wallet",
+    "actions": [
+      {
+        "action": "Build NPM.decreaseLiquidity(tokenId, liquidity=full, amount0Min=0, amount1Min=computed_with_slippage, deadline=now+1h)",
+        "record": ["tx_hash", "block_number", "gas_used", "liquidity_removed (should == position.liquidity)"]
+      },
+      {
+        "action": "Wait for >= 12 block confirmations; halt if revert"
+      },
+      {
+        "action": "Build NPM.collect(tokenId, recipient=wallet, amount0Max=uint128.max, amount1Max=uint128.max)",
+        "record": ["tx_hash", "block_number", "gas_used", "collected_token0_wei", "collected_token1_raw"]
+      },
+      {
+        "action": "Wait for >= 12 block confirmations; halt if revert"
+      },
+      {
+        "action": "Call NPM.positions(tokenId) again to confirm liquidity=0 and tokensOwed=0"
+      },
+      {
+        "action": "Call ERC20.balanceOf(wallet) for WETH and USDC; record post-collect balances; compute deltas"
+      },
+      {
+        "action": "DO NOT swap-back WETH → USDC. The probe exits in WETH+USDC. Swap-back requires a separate approval stage."
+      }
+    ],
+    "no_swap_back": true
+  },
+
+  "step_5_post_exit_cleanup": {
+    "purpose": "Revoke allowances; record final state",
+    "actions": [
+      {
+        "action": "Build ERC20.approve(USDC, NPM, 0) to revoke USDC allowance",
+        "record": ["tx_hash", "block_number", "gas_used", "post_allowance_raw (should be 0)"]
+      },
+      {
+        "action": "Build ERC20.approve(WETH, NPM, 0) IF the WETH allowance was non-zero (legacy ApproveExact leftover). Use the existing allowance() read to decide.",
+        "skip_rule": "skip if WETH.allowance == 0",
+        "record": ["tx_hash", "block_number", "gas_used", "post_allowance_wei (should be 0)"]
+      },
+      {
+        "action": "Wait for >= 12 block confirmations on each revoke"
+      },
+      {
+        "action": "Final balance snapshot: ETH native, WETH, USDC"
+      },
+      {
+        "action": "Generate final actual_pnl report (see Phase F telemetry spec): entry_principal_usd, gas_spent_usd, slippage_cost_usd, fees_collected_usd, il_proxy_usd, net_pnl_usd, hold_duration_seconds, success_status"
+      },
+      {
+        "action": "Commit all telemetry to this run directory; mark run as complete"
+      }
+    ]
+  },
+
+  "no_swap_back": true,
+  "no_auto_repeat": true,
+  "no_multi_pool": true,
+  "no_notional_above_approved": true,
+  "no_bridge": true,
+  "no_live_loop": true,
+  "no_strategy_auto_selection": true,
+  "no_wallet_reuse_beyond_this_run": true,
+  "no_hidden_retry": true,
+
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no",
+  "edge_proven": "no"
+}

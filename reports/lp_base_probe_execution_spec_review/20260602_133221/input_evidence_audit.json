@@ -1,0 +1,115 @@
+{
+  "stage": "LP_BASE_10_20U_PROBE_EXECUTION_SPEC_REVIEW_V1",
+  "phase": "B_input_evidence_audit",
+  "run_id": "20260602_133221",
+  "previous_stage": "LP_BASE_10_20U_PROBE_DRY_RUN_BUILDER_V1",
+  "previous_run_id": "20260602_112400",
+
+  "gates_from_previous_stage": {
+    "status": "PASS",
+    "can_run_probe_now": false,
+    "wallet_loaded": false,
+    "signer_created": false,
+    "transaction_sent": false,
+    "edge_proven": "no",
+    "tiny_canary_allowed": "no",
+    "recommended_next_stage_per_upstream": "LP_BASE_10_20U_PROBE_EXECUTION_SPEC_REVIEW_V1"
+  },
+
+  "frozen_inputs_inherited": {
+    "candidate_chain": "base",
+    "candidate_chain_id": 8453,
+    "candidate_pool": "0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38",
+    "candidate_pair": "WETH/USDC",
+    "candidate_fee_tier": 100,
+    "candidate_protocol": "Uniswap V3 (Base)",
+    "candidate_npm": "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1",
+    "wallet": "0xb05b2872ace4564ff247555b6f7b097d31f3d835",
+    "wallet_masked": "0xb05b...d835",
+    "preferred_notional_usd": 10,
+    "max_notional_usd": 20,
+    "recommended_first_notional_usd": 10,
+    "recommended_first_hold_window_minutes": 15,
+    "max_manual_extension_minutes": 30,
+    "tick_range_recommended": {
+      "tier": "medium",
+      "lower_tick": -200643,
+      "upper_tick": -200243
+    },
+    "token_amounts": {
+      "10U": {
+        "amount0_desired_wei_WETH": 0,
+        "amount1_desired_raw_USDC": 10000000,
+        "amount0Min_wei": 0,
+        "amount1Min_raw": 9949999
+      },
+      "20U": {
+        "amount0_desired_wei_WETH": 0,
+        "amount1_desired_raw_USDC": 20000000,
+        "amount0Min_wei": 0,
+        "amount1Min_raw": 19899999
+      }
+    },
+    "known_required_action": "USDC ApproveExact (existing allowance 5.0 USDC < 10/20 needed)",
+    "token_amounts_calculated": true,
+    "unsigned_tx_package_built": true,
+    "gas_estimate_feasibility_ready": true,
+    "manual_approval_checkpoint_ready": true
+  },
+
+  "upstream_artifacts_read": {
+    "FINAL_VERDICT.json": "PASS, primary candidate WETH/USDC 0x72ab388e.., status all green, can_run_probe_now=false",
+    "ONEPAGE_CN.md": "human-readable summary; same gates",
+    "base_candidate_freeze.json": "frozen_count=1, alternates rejected with reasons",
+    "base_wallet_balance_allowance_refresh.json": "ETH=9.05e-5; WETH=0.00247; USDC=21.775; USDC allowance=5.0",
+    "tick_range_proposal.json": "3 tiers; recommend medium; tick spacing aligned",
+    "token_amount_calc.json": "10U/20U = 0 WETH + 10/20 USDC; slippage 0.5%",
+    "wallet_bound_unsigned_package.json": "10U/20U package; deadline=2099-01-01 placeholder; approve_exact_only",
+    "gas_estimate_feasibility.json": "approve=38704 live; mint=180k inherited; total=218,704 gas; $0.0076; feasible"
+  },
+
+  "cross_check_aligned": {
+    "previous_stage_status_pass": true,
+    "previous_recommended_next_stage_matches_this_stage": true,
+    "wallet_loaded_false_preserved": true,
+    "signer_created_false_preserved": true,
+    "transaction_sent_false_preserved": true,
+    "all_upstream_4_data_layer_evidence_self_consistent": true,
+    "fabrication_blocks_preserved": true
+  },
+
+  "this_round_scope": "base_10u_lp_probe_execution_spec_review_only",
+  "this_round_must_not": [
+    "load private key / mnemonic / keystore",
+    "create signer / wallet client",
+    "send eth_sendTransaction / eth_sendRawTransaction",
+    "execute approve / mint / increaseLiquidity / decreaseLiquidity / collect / burn / swap",
+    "start lpbot-live / lpbot-canary / lpbot-paper",
+    "auto-bridge / auto-swap",
+    "flip can_run_probe_now or tiny_canary_allowed or edge_proven",
+    "execute any approval phrase this round",
+    "write to any production lpbot table",
+    "modify any strategy execution path"
+  ],
+  "this_round_may": [
+    "design execution runbook (no execution)",
+    "define stop conditions and handling",
+    "define telemetry schema (no writes)",
+    "define execution script boundary (allow/deny lists)",
+    "publish human approval template (template only, non-effective this round)",
+    "publish risk acceptance statement (no execution)",
+    "recommend next stage (spec only)"
+  ],
+
+  "out_of_scope": [
+    "executing the actual probe",
+    "implementing the execution script",
+    "rerunning any upstream pipeline",
+    "modifying upstream data",
+    "loading any private key, mnemonic, or keystore",
+    "bridging or swapping assets",
+    "writing to production lpbot tables"
+  ],
+
+  "proceed_to_phase_C": true
+}

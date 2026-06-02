@@ -1,0 +1,179 @@
+{
+  "stage": "LP_BASE_10_20U_PROBE_EXECUTION_SPEC_REVIEW_V1",
+  "phase": "E_hard_stop_conditions",
+  "run_id": "20260602_133221",
+  "scope": "future_execution_specification_only",
+
+  "handling_actions": {
+    "abort_before_entry": "halt immediately; do not submit any tx; write HALT_<reason>_CN.md; report operator; require new approval to retry",
+    "exit_immediately": "skip any remaining Step 1+ actions; jump to Step 4 (decreaseLiquidity+collect+revoke); do not wait for hold_window",
+    "manual_intervention_required": "halt; do not auto-exit; report operator; do not retry automatically; await explicit operator decision",
+    "do_not_retry_automatically": "any failed tx or stop condition must NOT be auto-retried; retry requires new approval + new session_id"
+  },
+
+  "stop_conditions": [
+    {
+      "id": "stop_chain_id_mismatch",
+      "phase": "step_0",
+      "condition": "eth_chainId != 8453",
+      "handling": "abort_before_entry",
+      "rationale": "wrong network; any tx would burn gas on a non-Base chain"
+    },
+    {
+      "id": "stop_wallet_mismatch",
+      "phase": "step_0",
+      "condition": "current wallet's pubkey-hash or nonce pattern differs from frozen wallet 0xb05b2872ace4564ff247555b6f7b097d31f3d835",
+      "handling": "abort_before_entry",
+      "rationale": "wallet was rotated or address was misconfigured"
+    },
+    {
+      "id": "stop_gas_balance_below_threshold",
+      "phase": "step_0",
+      "condition": "eth_getBalance(wallet) < 9.0e-5 ETH (~$0.18) OR < 1.5x expected total gas cost",
+      "handling": "abort_before_entry",
+      "rationale": "insufficient gas for the full round-trip"
+    },
+    {
+      "id": "stop_usdc_balance_below_required",
+      "phase": "step_0",
+      "condition": "USDC.balanceOf(wallet) < (chosen_notional + 2) USDC",
+      "handling": "abort_before_entry",
+      "rationale": "insufficient principal + slippage buffer"
+    },
+    {
+      "id": "stop_weth_balance_below_required",
+      "phase": "step_0",
+      "condition": "WETH.balanceOf(wallet) < 0 (impossible) OR for chosen notional != 0 WETH case, WETH.balance < required",
+      "handling": "abort_before_entry",
+      "rationale": "primary 10U/20U paths require 0 WETH; this stop is a guard against misconfiguration"
+    },
+    {
+      "id": "stop_allowance_unexpected",
+      "phase": "step_0",
+      "condition": "USDC.allowance(wallet, NPM) > 50_000_000 OR WETH.allowance(wallet, NPM) > 1e24 (suspicious dust from prior run / not properly revoked)",
+      "handling": "manual_intervention_required",
+      "rationale": "an over-large leftover allowance may be from a different protocol or a prior un-revoked approval; do not silently override"
+    },
+    {
+      "id": "stop_quote_slippage_above_threshold",
+      "phase": "step_0",
+      "condition": "QuoterV2 returns out_amount < 0.95 * expected_out for either direction",
+      "handling": "abort_before_entry",
+      "rationale": "current pool depth insufficient for chosen notional at acceptable slippage"
+    },
+    {
+      "id": "stop_tick_moved_outside_planned_range_before_entry",
+      "phase": "step_0",
+      "condition": "abs(current_tick - (-200443)) > 200 (i.e. current_tick outside the new half-range envelope around the original center)",
+      "handling": "manual_intervention_required",
+      "rationale": "drift > half-range means a 15m hold will almost certainly be out-of-range; need fresh tick range approval"
+    },
+    {
+      "id": "stop_pool_liquidity_drop",
+      "phase": "step_0",
+      "condition": "pool.liquidity() < 1e15 OR < 0.1 * frozen_value (≈ 1e17)",
+      "handling": "abort_before_entry",
+      "rationale": "liquidity drop > 10x implies pool state anomaly"
+    },
+    {
+      "id": "stop_quoter_v2_failure",
+      "phase": "step_0",
+      "condition": "QuoterV2.quoteExactInputSingle reverts OR returns 0 for either direction",
+      "handling": "abort_before_entry",
+      "rationale": "no spot reference = no safe entry"
+    },
+    {
+      "id": "stop_gas_estimate_too_high",
+      "phase": "step_0",
+      "condition": "eth_estimateGas(mint_call) > 360,000 OR estimateGas reverts",
+      "handling": "abort_before_entry",
+      "rationale": "anomalous gas suggests pool state changed or estimate gas node misreporting"
+    },
+    {
+      "id": "stop_approve_tx_pending_too_long",
+      "phase": "step_1",
+      "condition": "approve tx stays pending > 5 min OR is replaced in mempool unexpectedly OR nonce gap detected",
+      "handling": "manual_intervention_required",
+      "rationale": "mempool anomalies require operator decision; do not cancel and retry automatically"
+    },
+    {
+      "id": "stop_approve_revert",
+      "phase": "step_1",
+      "condition": "approve tx reverts on chain",
+      "handling": "abort_before_entry",
+      "rationale": "approve must succeed for any later step; do not retry with different amount (would mean a logic error)"
+    },
+    {
+      "id": "stop_mint_tx_pending_too_long",
+      "phase": "step_2",
+      "condition": "mint tx stays pending > 5 min OR is replaced unexpectedly OR nonce gap detected",
+      "handling": "manual_intervention_required",
+      "rationale": "a stuck mint with already-set USDC allowance is dangerous; operator decision required"
+    },
+    {
+      "id": "stop_mint_revert",
+      "phase": "step_2",
+      "condition": "mint tx reverts on chain (e.g. INSUFFICIENT_LIQUIDITY, INVALID_TICK_RANGE, POOL_NOT_FOUND)",
+      "handling": "exit_immediately",
+      "rationale": "if mint fails, no position exists; no exit needed; record failure and stop"
+    },
+    {
+      "id": "stop_token_id_not_found_after_mint",
+      "phase": "step_2",
+      "condition": "ERC721 Transfer event not found in mint tx receipt, OR NPM.positions(tokenId) returns liquidity=0 and tokensOwed=0 right after mint",
+      "handling": "manual_intervention_required",
+      "rationale": "we cannot trace the position; this is a data-integrity problem; operator must investigate"
+    },
+    {
+      "id": "stop_mtm_drawdown_beyond_threshold",
+      "phase": "step_3",
+      "condition": "mark-to-market drawdown vs entry > 20% of entry principal (i.e. < $8 for 10U probe; < $16 for 20U)",
+      "handling": "exit_immediately",
+      "rationale": "drawdown > 20% exceeds the probe's risk envelope; do not wait for hold to complete"
+    },
+    {
+      "id": "stop_tick_out_of_range_during_hold",
+      "phase": "step_3",
+      "condition": "current_tick moves outside [tickLower, tickUpper] during hold and stays out for > 2 consecutive minutes",
+      "handling": "exit_immediately",
+      "rationale": "out-of-range LP earns 0 fees; extending hold only compounds IL"
+    },
+    {
+      "id": "stop_exit_quote_unavailable",
+      "phase": "step_4",
+      "condition": "QuoterV2.quoteExactInputSingle for the close-direction reverts or returns 0 just before decreaseLiquidity",
+      "handling": "manual_intervention_required",
+      "rationale": "we cannot pre-compute a safe amount1Min; proceeding with amount1Min=0 risks sandwich attacks but exiting is also urgent"
+    },
+    {
+      "id": "stop_collect_failure",
+      "phase": "step_4",
+      "condition": "NPM.collect reverts",
+      "handling": "manual_intervention_required",
+      "rationale": "fees are stuck; need operator decision (likely retry collect with same args; do not auto-retry)"
+    },
+    {
+      "id": "stop_rpc_instability",
+      "phase": "any",
+      "condition": "any RPC call times out > 3 times in a row OR returns 5xx OR rate-limits consistently",
+      "handling": "manual_intervention_required",
+      "rationale": "we cannot safely track state; do not make irreversible moves (approve/mint/decrease) under RPC instability"
+    },
+    {
+      "id": "stop_unknown_error",
+      "phase": "any",
+      "condition": "any exception not covered by the above conditions",
+      "handling": "manual_intervention_required",
+      "rationale": "unknown errors must not be auto-handled; operator reviews"
+    }
+  ],
+
+  "stop_count": 22,
+  "all_stops_have_handling": true,
+  "no_auto_retry": true,
+
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no",
+  "edge_proven": "no"
+}

@@ -1,0 +1,72 @@
+{
+  "stage": "LP_BASE_10_20U_PROBE_EXECUTION_SPEC_REVIEW_V1",
+  "phase": "I_risk_acceptance",
+  "run_id": "20260602_133221",
+
+  "realistic_ev_is_not_positive": true,
+  "upstream_pool_level_ev_proxy_20u_usd": "-0.06000041561688092",
+  "upstream_actual_position_fee_lineage": "missing (real_fee_accrual WARN)",
+  "expected_realistic_outcome": "negative PnL (gas + slippage + IL likely > fees_collected in a 15m window)",
+
+  "this_is_not_a_profit_strategy_validation": true,
+  "rationale": [
+    "Pool-level fee proxy is based on pool-level fee velocity / TVL, not on actual_position_fee lineage (which is missing)",
+    "EV proxy = -$0.0600 for 20U, computed in upstream real_fee_accrual as the difference between expected fee and gas+slippage",
+    "A 15m hold window is unlikely to collect enough fees to overcome the round-trip gas cost + the LP's IL exposure",
+    "Even a successful 15m hold with WETH staying inside the medium range [-200643, -200243] produces only a few hundredths of a cent in fees; the gas + slippage dominate",
+    "A 10U probe CAN lose the full $10 if the position is closed below entry due to IL or if mint reverts and the allowance is partially spent"
+  ],
+
+  "probe_objective": [
+    "validate the full round-trip execution path on a real on-chain position (mint → hold → decreaseLiquidity → collect → revoke)",
+    "capture tokenId so downstream pipelines can trace the position",
+    "capture actual_position_fee lineage data (the missing input for upstream real_fee_accrual)",
+    "measure real PnL for a $10 in-range LP position to calibrate the cost model",
+    "success criteria = complete round-trip + complete telemetry, NOT profit"
+  ],
+
+  "loss_potential": {
+    "worst_case_loss_usd": 12,
+    "components": [
+      "gas cost: ~$0.01 - $0.02 at current Base gas (0.0148 gwei)",
+      "slippage: up to $0.05 in a 10U entry (QuoterV2 estimate)",
+      "IL/LVR: 0 to $1 depending on WETH movement during 15m",
+      "fees_collected: 0 to $0.05 in 15m (low-activity pool)",
+      "WETH residual if any: 0 to 0.0025 WETH = $0 to $5 (depending on price drift)"
+    ],
+    "expected_realistic_loss_usd": "0.5 - 2.0",
+    "balance_buffer_required": {
+      "usdc_min": 12,
+      "eth_gas_min_usd": 0.20,
+      "rationale": "$10 notional + $2 buffer for slippage/IL; $0.20 gas for safety beyond the live 218,704 gas ≈ $0.0076 estimate"
+    }
+  },
+
+  "user_must_understand_before_approving": [
+    "EV is negative; you are paying for telemetry, not making money",
+    "10U is not a small amount of money; if it goes to 0 you have lost it",
+    "The probe exits in WETH+USDC; if WETH price moves during the 15m, the residual WETH may be worth more or less than the original USDC-equivalent at entry",
+    "The pool's actual_position_fee is unknown; the pool-level proxy says the EV is -$0.06 but actual could be better or worse",
+    "There is no automatic retry. If the probe fails for any reason (RPC outage, mempool issue, slippage exceed), you need to manually re-approve to retry",
+    "There is no live loop. The probe is one-shot. If you want another probe, you need a new approval",
+    "The wallet must be one you personally control; do not use a multi-sig, shared wallet, or cold-storage main treasury",
+    "There must be no lpbot-live / lpbot-canary / lpbot-paper / other production trading process running on the host during the probe",
+    "You should be prepared to monitor the probe for 15-30 minutes and respond to stop conditions"
+  ],
+
+  "explicitly_disclaimed": {
+    "no_profit_guarantee": true,
+    "no_ev_positive_claim": true,
+    "no_real_fee_data": true,
+    "no_scaling_recommendation": "10U/20U is a probe; not a recommendation to scale to $100/$1000/...",
+    "not_strategy_validation": "this probe does NOT validate that an LP strategy is profitable on Base; it only validates the execution path"
+  },
+
+  "approval_phrase_does_not_unlock_execution": true,
+  "user_must_reapprove_at_execution_time": true,
+
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no",
+  "edge_proven": "no"
+}

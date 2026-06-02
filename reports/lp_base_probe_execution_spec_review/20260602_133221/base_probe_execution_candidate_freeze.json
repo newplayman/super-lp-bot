@@ -1,0 +1,112 @@
+{
+  "stage": "LP_BASE_10_20U_PROBE_EXECUTION_SPEC_REVIEW_V1",
+  "phase": "C_execution_candidate_freeze",
+  "run_id": "20260602_133221",
+
+  "frozen": true,
+  "frozen_scope": "future_execution_specification_only",
+  "freeze_reason": "mirror the upstream dry-run builder freeze but scoped to a one-shot future execution spec; not an execution authorization.",
+
+  "chain": {
+    "name": "base",
+    "chain_id": 8453
+  },
+
+  "pool": {
+    "address": "0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38",
+    "protocol": "Uniswap V3 (Base)",
+    "pair": "WETH/USDC",
+    "fee_tier": 100,
+    "tick_spacing": 1
+  },
+
+  "wallet": {
+    "address": "0xb05b2872ace4564ff247555b6f7b097d31f3d835",
+    "masked": "0xb05b...d835",
+    "wallet_loaded_this_round": false,
+    "private_key_loaded_this_round": false
+  },
+
+  "notional": {
+    "options_usd": [10, 20],
+    "recommended_first_notional_usd": 10,
+    "first_notional_rationale": "10U is the conservative first probe; 20U is reserved for a follow-up run only after 10U round-trip completes cleanly."
+  },
+
+  "hold_window": {
+    "initial_minutes": 15,
+    "max_manual_extension_minutes": 30,
+    "extension_requires_fresh_approval": true
+  },
+
+  "tick_range": {
+    "tier": "medium",
+    "lower_tick": -200643,
+    "upper_tick": -200243,
+    "current_tick_at_freeze": -200443,
+    "note": "Tick may have drifted since the dry-run read; future execution must re-read slot0 and re-validate range just before mint (Step 0)."
+  },
+
+  "token_amounts_per_notional": {
+    "10": {
+      "amount0_desired_wei_WETH": 0,
+      "amount1_desired_raw_USDC": 10000000,
+      "amount0Min_wei": 0,
+      "amount1Min_raw": 9949999,
+      "slippage_policy": "0.5% on USDC; 0 on WETH (since WETH portion is sub-1-wei)"
+    },
+    "20": {
+      "amount0_desired_wei_WETH": 0,
+      "amount1_desired_raw_USDC": 20000000,
+      "amount0Min_wei": 0,
+      "amount1Min_raw": 19899999,
+      "slippage_policy": "0.5% on USDC; 0 on WETH"
+    }
+  },
+
+  "known_required_action": {
+    "usdc_approve_required": true,
+    "usdc_approve_amount_for_10U_raw": 10000000,
+    "usdc_approve_amount_for_20U_raw": 20000000,
+    "weth_approve_required": false,
+    "approve_exact_only": true,
+    "approve_max_never_used": true
+  },
+
+  "objective": {
+    "is_profit_strategy": false,
+    "expected_realistic_ev_usd": "negative (upstream pool-level EV proxy = -$0.06; actual_position_fee_lineage missing)",
+    "probe_purpose": [
+      "validate the full mint → hold → decrease → collect → revoke round-trip path on a real on-chain position",
+      "capture tokenId for the position so future pipelines can trace it",
+      "capture actual fee accrual at the position level (not pool-level proxy) to seed real_fee_accrual lineage",
+      "measure real PnL (gas + slippage + IL/LVR + fees) for a $10 in-range LP position to calibrate the cost model"
+    ],
+    "success_criteria": "complete entry + hold + exit + telemetry, not profit"
+  },
+
+  "execution_authorization": {
+    "authorized_this_round": false,
+    "authorized_by_this_artifact": false,
+    "next_required_artifact": "LP_BASE_10U_PROBE_EXECUTION_SCRIPT_BUILD_V1 (build the executor, not run it)",
+    "execution_still_requires_user_approval_at_execution_time": true
+  },
+
+  "alternates_not_frozen": [
+    {"pool": "0x9c087eb7...", "pair": "VIRTUAL/WETH", "reason": "wallet does not hold VIRTUAL; swap needed, out of scope"},
+    {"pool": "0xd0b53d92...", "pair": "USDC/WETH", "reason": "upstream EV proxy anomalous for high-priced tokens"},
+    {"pool": "0xb94b2233...", "pair": "cbBTC/USDC", "reason": "no cbBTC in wallet + EV anomaly"},
+    {"pool": "0xc211e1f8...", "pair": "cbBTC/WETH", "reason": "no cbBTC in wallet + EV anomaly"}
+  ],
+
+  "freeze_validation": {
+    "frozen_count": 1,
+    "expected": 1,
+    "match": true
+  },
+
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no",
+  "edge_proven": "no"
+}
