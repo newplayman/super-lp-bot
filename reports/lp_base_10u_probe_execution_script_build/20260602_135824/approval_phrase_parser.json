@@ -1,0 +1,52 @@
+{
+  "stage": "LP_BASE_10U_PROBE_EXECUTION_SCRIPT_BUILD_V1",
+  "phase": "F_approval_phrase_parser",
+  "run_id": "20260602_135824",
+  "script": "scripts/lp_base_10u_probe_executor_v1.py",
+  "mode": "validate-approval",
+  "scope": "parse + validate future execution approval phrase; success does NOT authorize execution",
+
+  "approval_phrase_regex": "^APPROVE_BASE_10U_LP_PROBE_EXECUTION_ONE_SHOT wallet=0x[0-9a-fA-F]{40} pool=0x[0-9a-fA-F]{40} notional=10 hold=15m$",
+
+  "validation_steps": [
+    "1. type-check: phrase must be a non-empty string",
+    "2. dangerous-word pre-check: any of DANGEROUS_WORDS in phrase => reject with reason",
+    "3. regex match against canonical template",
+    "4. extract wallet / pool / notional / hold fields from the matched phrase",
+    "5. cross-check against frozen candidate (wallet == WALLET, pool == POOL, notional == 10, hold == 15m)"
+  ],
+
+  "dangerous_words_list": [
+    "EXECUTE", "NOW", "LIVE", "CANARY", "PAPER", "MINT", "SIGN", "BURN",
+    "SWAP", "BRIDGE", "SEND", "DEPLOY", "EXEC", "GO", "SHIP", "PROCEED",
+    "20U", "20u", "30M", "30m", "USER_PROVIDED", "USER_SELECTED", "YES",
+    "EXECUTABLE", "FUND", "WITHDRAW", "TRANSFER_OUT"
+  ],
+
+  "rejected_alternative_examples": [
+    "APPROVE_BASE_10U_LP_PROBE_EXECUTE (bad prefix)",
+    "APPROVE_BASE_10U_LP_PROBE_NOW (dangerous word)",
+    "APPROVE_BASE_10U_LP_PROBE_MINT (dangerous word)",
+    "APPROVE_BASE_10U_LP_PROBE_LIVE (dangerous word)",
+    "APPROVE_BASE_10U_LP_PROBE_CANARY (dangerous word)",
+    "APPROVE_BASE_20U_LP_PROBE_EXECUTION_ONE_SHOT wallet=... notional=20 hold=15m (notional 20)",
+    "APPROVE_BASE_10U_LP_PROBE_EXECUTION_ONE_SHOT wallet=... notional=10 hold=30m (hold 30m)",
+    "APPROVE_BASE_10U_LP_PROBE_EXECUTION_ONE_SHOT wallet=0xUSER_PROVIDED_WALLET_ADDRESS ... (placeholder)",
+    "GO / SHIP_IT / PROCEED (no prefix)"
+  ],
+
+  "valid_example": "APPROVE_BASE_10U_LP_PROBE_EXECUTION_ONE_SHOT wallet=0xb05b2872ace4564ff247555b6f7b097d31f3d835 pool=0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38 notional=10 hold=15m",
+
+  "output_top_level": {
+    "valid": "bool (true if regex+cross-check passed; false otherwise)",
+    "reason": "string (failure reason if valid=false)",
+    "parsed": "{wallet, pool, notional, hold} (only if valid=true)",
+    "executes_now": "ALWAYS false in build stage",
+    "authorization_granted": "ALWAYS false in build stage",
+    "next_step_even_if_valid": "user_must_reapprove_at_execution_time_after_review_stage"
+  },
+
+  "writes_to": "reports/lp_base_10u_probe_execution_runtime/<run_id>/approval_validation.json (local only)",
+
+  "wallet_or_tx_touched": false
+}

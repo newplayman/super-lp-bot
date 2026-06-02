@@ -1,0 +1,111 @@
+{
+  "stage": "LP_BASE_10U_PROBE_EXECUTION_SCRIPT_BUILD_V1",
+  "phase": "J_executor_self_check",
+  "run_id": "20260602_135824",
+  "scope": "read-only self-check of executor script via 4 modes + 1 rejection path + 1 disabled-stub mode",
+
+  "self_check_results": {
+    "1_preflight": {
+      "status": "PASS",
+      "chain_id_observed": 8453,
+      "block_number_observed": 46810094,
+      "current_tick": -200501,
+      "current_liquidity": 611751674894800076,
+      "usdc_balance_human": "21.774783",
+      "weth_balance_human": "0.0024701310037938",
+      "usdc_allowance_human": "5.0",
+      "eth_native_eth": "0.000090470751043807",
+      "preflight_status": "PASS",
+      "stops_triggered_count": 0,
+      "stops_total": 13,
+      "exit_code": 0,
+      "artifact": "reports/lp_base_10u_probe_execution_runtime/20260602_135824/preflight_result.json"
+    },
+    "2_print_unsigned": {
+      "status": "PASS",
+      "unsigned_only": true,
+      "no_signature": true,
+      "no_send": true,
+      "execution_not_authorized": true,
+      "exit_code": 0,
+      "artifact": "reports/lp_base_10u_probe_execution_runtime/20260602_135824/unsigned_package.json"
+    },
+    "3_validate_approval_valid": {
+      "status": "PASS (valid phrase, but executes_now=false, authorization_granted=false)",
+      "phrase": "APPROVE_BASE_10U_LP_PROBE_EXECUTION_ONE_SHOT wallet=0xb05b2872ace4564ff247555b6f7b097d31f3d835 pool=0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38 notional=10 hold=15m",
+      "valid": true,
+      "executes_now": false,
+      "authorization_granted": false,
+      "exit_code": 0
+    },
+    "4_validate_approval_20U_reject": {
+      "status": "REJECTED",
+      "valid": false,
+      "reason": "phrase does not match the canonical regex (notional=20 != 10)",
+      "exit_code": 0
+    },
+    "5_validate_approval_EXECUTE_reject": {
+      "status": "REJECTED",
+      "valid": false,
+      "reason": "phrase does not match the canonical regex (prefix is APPROVE_BASE_10U_LP_PROBE_EXECUTE; canonical expects EXECUTION_ONE_SHOT)",
+      "exit_code": 0
+    },
+    "6_validate_approval_30m_reject": {
+      "status": "REJECTED",
+      "valid": false,
+      "reason": "dangerous keyword detected (pattern: \\b30m\\b)",
+      "exit_code": 0
+    },
+    "7_validate_approval_wrong_wallet_reject": {
+      "status": "REJECTED",
+      "valid": false,
+      "reason": "wallet 0xABCDEF0123456789ABCDEF0123456789ABCDEF01 != frozen 0xb05b2872ace4564ff247555b6f7b097d31f3d835",
+      "exit_code": 0
+    },
+    "8_validate_approval_wrong_pool_reject": {
+      "status": "REJECTED",
+      "valid": false,
+      "reason": "pool 0x9c087eb773291e50cf6c6a90ef0f4500e349b903 != frozen 0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38",
+      "exit_code": 0
+    },
+    "9_validate_approval_placeholder_reject": {
+      "status": "REJECTED",
+      "valid": false,
+      "reason": "phrase does not match the canonical regex (placeholder wallet 0xUSER_PROVIDED_WALLET_ADDRESS not 40 hex)",
+      "exit_code": 0
+    },
+    "10_execute_disabled_mode": {
+      "status": "STUB OK (always aborts with EXECUTION_DISABLED_IN_BUILD_STAGE)",
+      "exit_code": 1,
+      "rationale": "Per spec, execute-disabled always exits non-zero with the disabled-stub error"
+    },
+    "11_mode_execute_rejected": {
+      "status": "REJECTED (argparse invalid choice; no execution path triggered)",
+      "exit_code": 2,
+      "rationale": "argparse rejects 'execute' as not in {preflight, print-unsigned, validate-approval, execute-disabled}"
+    }
+  },
+
+  "self_check_summary": {
+    "all_4_modes_functional": true,
+    "execute_rejected_at_argparse": true,
+    "execute_disabled_exits_nonzero": true,
+    "no_tx_sent": true,
+    "no_approval_executed": true,
+    "no_mint_executed": true,
+    "no_collect_executed": true,
+    "no_swap_executed": true,
+    "no_bridge_initiated": true,
+    "approval_parser_rejects_20U_30m_wrong_wallet_wrong_pool_placeholders_dangerous_words": true,
+    "approval_parser_accepts_only_canonical_phrase": true,
+    "wallet_or_tx_touched": false
+  },
+
+  "deviation_during_self_check": {
+    "fix_applied": "DANGEROUS_WORD_PATTERNS were initially substring matches which false-positived on the canonical phrase (containing 'EXEC' as part of 'EXECUTION'). Switched to whole-word regex patterns via re.search(pat, phrase). All 9 test cases now produce correct accept/reject outcomes."
+  },
+
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no"
+}

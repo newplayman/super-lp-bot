@@ -1,0 +1,132 @@
+{
+  "stage": "LP_BASE_10U_PROBE_EXECUTION_SCRIPT_BUILD_V1",
+  "phase": "B_input_evidence_audit",
+  "run_id": "20260602_135824",
+
+  "gates_from_previous_stage": {
+    "previous_stage": "LP_BASE_10_20U_PROBE_EXECUTION_SPEC_REVIEW_V1",
+    "previous_run_id": "20260602_133221",
+    "previous_status": "PASS",
+    "execution_script_allowed_next": true,
+    "can_run_probe_now": false,
+    "approval_phrase_effective_this_round": false,
+    "recommended_next_stage_per_upstream": "LP_BASE_10U_PROBE_EXECUTION_SCRIPT_BUILD_V1",
+    "executor_built_this_round_upstream": false,
+    "executor_will_run_this_round_upstream": false,
+    "edge_proven": "no",
+    "tiny_canary_allowed": "no",
+    "actual_fee_ready": false,
+    "token_id_available": false,
+    "fabrication_blocked": true
+  },
+
+  "frozen_inputs_inherited": {
+    "candidate_chain": "Base",
+    "candidate_chain_id": 8453,
+    "candidate_pool": "0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38",
+    "candidate_pair": "WETH/USDC",
+    "candidate_fee_tier": 100,
+    "candidate_tick_spacing": 1,
+    "candidate_protocol": "Uniswap V3 (Base)",
+    "candidate_npm": "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1",
+    "candidate_quoter_v2": "0x3d4e44Eb1374240CE5F1B871ab261CD16335B76a",
+    "candidate_weth": "0x4200000000000000000000000000000000000006",
+    "candidate_usdc": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+    "wallet": "0xb05b2872ace4564ff247555b6f7b097d31f3d835",
+    "wallet_masked": "0xb05b...d835",
+    "notional_first": 10,
+    "notional_max": 20,
+    "hold_initial": "15m",
+    "hold_max_extension": "30m",
+    "tick_lower": -200643,
+    "tick_upper": -200243,
+    "tick_tier": "medium",
+    "current_tick_at_freeze": -200443,
+    "weth_usd_anchor": 1973.88
+  },
+
+  "upstream_artifacts_read": {
+    "spec_review_FINAL_VERDICT": {
+      "file": "reports/lp_base_probe_execution_spec_review/20260602_133221/FINAL_VERDICT.json",
+      "status": "PASS",
+      "execution_script_allowed_next": true
+    },
+    "spec_review_candidate_freeze": {
+      "file": "reports/lp_base_probe_execution_spec_review/20260602_133221/base_probe_execution_candidate_freeze.json",
+      "frozen": true,
+      "authorized_this_round": false
+    },
+    "spec_review_runbook": {
+      "file": "reports/lp_base_probe_execution_spec_review/20260602_133221/base_probe_execution_runbook.json",
+      "steps": 6
+    },
+    "spec_review_stop_conditions": {
+      "file": "reports/lp_base_probe_execution_spec_review/20260602_133221/base_probe_stop_conditions.json",
+      "stop_count": 22
+    },
+    "spec_review_telemetry_spec": {
+      "file": "reports/lp_base_probe_execution_spec_review/20260602_133221/base_probe_actual_telemetry_spec.json",
+      "schemas": 6
+    },
+    "spec_review_script_boundary": {
+      "file": "reports/lp_base_probe_execution_spec_review/20260602_133221/base_probe_execution_script_boundary.json",
+      "allowed": 7,
+      "forbidden": 11
+    },
+    "spec_review_approval_template": {
+      "file": "reports/lp_base_probe_execution_spec_review/20260602_133221/base_probe_execution_approval_template.json",
+      "phrase_regex": "^APPROVE_BASE_10U_LP_PROBE_EXECUTION_ONE_SHOT wallet=0x[0-9a-fA-F]{40} pool=0x[0-9a-fA-F]{40} notional=10 hold=15m$"
+    },
+    "spec_review_risk_acceptance": {
+      "file": "reports/lp_base_probe_execution_spec_review/20260602_133221/base_probe_risk_acceptance.json",
+      "realistic_ev_is_not_positive": true
+    }
+  },
+
+  "cross_check_aligned": {
+    "previous_status_pass": true,
+    "execution_script_allowed_next": true,
+    "can_run_probe_now_false": true,
+    "approval_phrase_effective_this_round_false": true,
+    "frozen_candidate_consistent_across_artifacts": true,
+    "spec_all_ready_flags_true": true
+  },
+
+  "this_round_scope": "build_base_10u_probe_executor_skeleton_only",
+  "this_round_must_not": [
+    "load private key / mnemonic / keystore",
+    "create signer / wallet client",
+    "send eth_sendTransaction / eth_sendRawTransaction",
+    "execute approve / mint / increaseLiquidity / decreaseLiquidity / collect / burn / swap",
+    "start lpbot-live / lpbot-canary / lpbot-paper",
+    "auto-bridge / auto-swap",
+    "flip can_run_probe_now or tiny_canary_allowed or edge_proven",
+    "execute any approval phrase this round even if it matches regex",
+    "implement the actual --mode execute logic (must remain disabled stub)",
+    "write to any production lpbot table",
+    "modify any strategy execution path"
+  ],
+  "this_round_may": [
+    "create scripts/lp_base_10u_probe_executor_v1.py skeleton",
+    "implement --mode preflight (read-only eth_call + balanceOf + allowance + slot0 + QuoterV2 + estimateGas + stop condition checks)",
+    "implement --mode print-unsigned (structured JSON; no signing, no send)",
+    "implement --mode validate-approval (regex parser; success does NOT authorize execution)",
+    "implement --mode execute-disabled (stub that aborts with EXECUTION_DISABLED_IN_BUILD_STAGE)",
+    "abort --mode execute with a clear error",
+    "read public on-chain state (eth_call, eth_getBalance, balanceOf, allowance, slot0)",
+    "call eth_estimateGas (no signing, no send)",
+    "construct structured unsigned tx JSON",
+    "write telemetry to local reports/ dir only (no production tables)",
+    "run a self-check preflight on a live read-only basis"
+  ],
+
+  "out_of_scope": [
+    "executing the actual probe",
+    "loading any private key, mnemonic, or keystore",
+    "bridging or swapping assets",
+    "writing to production lpbot tables",
+    "modifying upstream data"
+  ],
+
+  "proceed_to_phase_C": true
+}

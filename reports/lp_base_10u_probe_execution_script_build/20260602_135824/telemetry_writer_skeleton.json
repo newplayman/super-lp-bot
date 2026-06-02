@@ -1,0 +1,47 @@
+{
+  "stage": "LP_BASE_10U_PROBE_EXECUTION_SCRIPT_BUILD_V1",
+  "phase": "G_telemetry_writer_skeleton",
+  "run_id": "20260602_135824",
+  "scope": "telemetry writer skeleton; writes only to local reports dir, not production tables",
+
+  "writes_only_to": "reports/lp_base_10u_probe_execution_runtime/<run_id>/",
+
+  "schema_files": [
+    {
+      "filename": "entry_intent.json",
+      "schema": "lp_probe_execution_ledger_v1",
+      "purpose": "skeleton entry intent with frozen candidate, deadline placeholder, fabrication_blocked flag",
+      "fields": ["run_id", "stage", "wallet", "chain", "chain_id", "pool", "token0", "token1", "fee_tier", "tick_lower", "tick_upper", "notional_usd", "hold_window", "deadline_placeholder", "fabrication_blocked", "wallet_or_tx_touched", "build_stage_only"]
+    },
+    {
+      "filename": "preflight_checks.json",
+      "schema": "lp_probe_preflight_v1",
+      "purpose": "skeleton placeholder; real preflight result written by --mode preflight"
+    },
+    {
+      "filename": "stop_condition_checks.json",
+      "schema": "lp_probe_stop_condition_checks_v1",
+      "purpose": "skeleton placeholder for stop condition evaluation result"
+    },
+    {
+      "filename": "unsigned_package.json",
+      "schema": "lp_probe_unsigned_package_v1",
+      "purpose": "skeleton = run_print_unsigned() output; includes unsigned_only / no_signature / no_send / execution_not_authorized flags",
+      "build_stage_only": true
+    },
+    {
+      "filename": "approval_validation.json",
+      "schema": "lp_probe_approval_validation_v1",
+      "purpose": "skeleton = run_validate_approval() result; includes executes_now=false, authorization_granted=false",
+      "build_stage_only": true
+    }
+  ],
+
+  "production_table_writes": "NONE (no writes to lp_probe_execution_ledger_v1, lp_probe_hold_monitor_v1, lp_probe_position_fee_trace_v1, lp_probe_exit_trace_v1, lp_probe_post_exit_v1, lp_probe_actual_pnl_v1 tables; these are schema proposals only)",
+
+  "shadow_table_overwrites": "NONE (no writes to any shadow_* table; no production positions; no strategy execution paths)",
+
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no"
+}

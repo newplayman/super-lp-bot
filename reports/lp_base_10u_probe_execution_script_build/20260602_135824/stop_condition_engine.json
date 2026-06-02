@@ -1,0 +1,91 @@
+{
+  "stage": "LP_BASE_10U_PROBE_EXECUTION_SCRIPT_BUILD_V1",
+  "phase": "H_stop_condition_engine",
+  "run_id": "20260602_135824",
+  "scope": "evaluate upstream-defined hard stop conditions on the preflight result",
+
+  "evaluation_input": "the preflight dict produced by run_preflight()",
+
+  "stops_evaluated_in_build_stage": [
+    {
+      "id": "stop_chain_id_mismatch",
+      "triggered": "chain_id_observed != 8453",
+      "handling": "abort_before_entry"
+    },
+    {
+      "id": "stop_gas_balance_below_threshold",
+      "triggered": "eth_balance_wei < 9.0e-5 ETH (9e13 wei)",
+      "handling": "abort_before_entry"
+    },
+    {
+      "id": "stop_usdc_balance_below_required",
+      "triggered": "usdc_balance_raw < (notional + 2) * 1e6 = 12e6",
+      "handling": "abort_before_entry"
+    },
+    {
+      "id": "stop_weth_balance_below_required",
+      "triggered": "weth_balance_raw < 0 (mathematically impossible; guard)",
+      "handling": "abort_before_entry"
+    },
+    {
+      "id": "stop_allowance_unexpected",
+      "triggered": "usdc_allowance_raw > 50_000_000",
+      "handling": "manual_intervention_required"
+    },
+    {
+      "id": "stop_allowance_unexpected_weth",
+      "triggered": "weth_allowance_wei > 1e24",
+      "handling": "manual_intervention_required"
+    },
+    {
+      "id": "stop_tick_moved_outside_planned_range_before_entry",
+      "triggered": "abs(current_tick - (-200443)) > 200",
+      "handling": "manual_intervention_required"
+    },
+    {
+      "id": "stop_pool_liquidity_drop",
+      "triggered": "current_liquidity < 1e15",
+      "handling": "abort_before_entry"
+    },
+    {
+      "id": "stop_gas_estimate_too_high",
+      "triggered": "mint_estimate_gas <= 0 OR > 360_000",
+      "handling": "abort_before_entry"
+    },
+    {
+      "id": "stop_quoter_v2_failure",
+      "triggered": "QuoterV2 returned 0 OR reverted for either direction",
+      "handling": "abort_before_entry"
+    },
+    {
+      "id": "stop_quote_slippage_above_threshold",
+      "triggered": "slippage_pct > 5.0%",
+      "handling": "abort_before_entry"
+    },
+    {
+      "id": "stop_rpc_instability",
+      "triggered": "RPC instability observed (multiple timeouts / 5xx / rate-limit)",
+      "handling": "manual_intervention_required"
+    },
+    {
+      "id": "stop_unknown_error",
+      "triggered": "any unhandled exception during preflight",
+      "handling": "manual_intervention_required"
+    }
+  ],
+
+  "stop_count": 13,
+  "all_stops_have_handling": true,
+  "any_abort_before_entry_triggered": "preflight_status = FAIL",
+  "any_manual_intervention_required_triggered": "preflight_status = WARN (no auto-handle)",
+  "no_triggered": "preflight_status = PASS",
+
+  "guarantees": {
+    "any_hard_stop_blocks_execution": true,
+    "warnings_do_not_become_execution": true,
+    "no_auto_retry": true,
+    "no_auto_execution": true
+  },
+
+  "wallet_or_tx_touched": false
+}

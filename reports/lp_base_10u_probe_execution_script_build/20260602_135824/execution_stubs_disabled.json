@@ -1,0 +1,40 @@
+{
+  "stage": "LP_BASE_10U_PROBE_EXECUTION_SCRIPT_BUILD_V1",
+  "phase": "I_execution_stubs_disabled",
+  "run_id": "20260602_135824",
+  "scope": "execution stubs that always raise; do not sign, do not send, do not construct signer",
+
+  "stubs": [
+    {"name": "approve_exact_usdc", "raises": "ExecutionDisabledInBuildStage(EXECUTION_DISABLED_IN_BUILD_STAGE: approve_exact_usdc() is a stub. Real execution requires LP_BASE_10U_PROBE_EXECUTION_SCRIPT_REVIEW_V1 + fresh user approval.)"},
+    {"name": "approve_exact_weth", "raises": "ExecutionDisabledInBuildStage(EXECUTION_DISABLED_IN_BUILD_STAGE: approve_exact_weth() is a stub.)"},
+    {"name": "mint_position", "raises": "ExecutionDisabledInBuildStage(EXECUTION_DISABLED_IN_BUILD_STAGE: mint_position() is a stub.)"},
+    {"name": "monitor_position", "raises": "ExecutionDisabledInBuildStage(EXECUTION_DISABLED_IN_BUILD_STAGE: monitor_position() is a stub.)"},
+    {"name": "decrease_liquidity", "raises": "ExecutionDisabledInBuildStage(EXECUTION_DISABLED_IN_BUILD_STAGE: decrease_liquidity() is a stub.)"},
+    {"name": "collect_fees", "raises": "ExecutionDisabledInBuildStage(EXECUTION_DISABLED_IN_BUILD_STAGE: collect_fees() is a stub.)"},
+    {"name": "revoke_allowance", "raises": "ExecutionDisabledInBuildStage(EXECUTION_DISABLED_IN_BUILD_STAGE: revoke_allowance() is a stub.)"}
+  ],
+
+  "stub_count": 7,
+
+  "exception_class": "ExecutionDisabledInBuildStage",
+
+  "guarantees": {
+    "no_signer_constructed": true,
+    "no_wallet_client_constructed": true,
+    "no_tx_sent": true,
+    "no_approval_executed": true,
+    "no_mint_executed": true,
+    "no_collect_executed": true,
+    "no_swap_executed": true,
+    "no_bridge_initiated": true,
+    "no_live_loop_started": true,
+    "no_background_process_left": true
+  },
+
+  "rationale": "Stubs are placeholders for the future executor's actual implementation. The future executor must be built by a separate review stage AND require a fresh human approval phrase at execution time. Any direct call to a stub in this build stage is a programming error; the test suite asserts each stub raises.",
+
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no",
+  "edge_proven": "no"
+}

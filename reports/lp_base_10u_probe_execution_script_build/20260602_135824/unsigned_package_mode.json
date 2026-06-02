@@ -1,0 +1,34 @@
+{
+  "stage": "LP_BASE_10U_PROBE_EXECUTION_SCRIPT_BUILD_V1",
+  "phase": "E_unsigned_package_mode",
+  "run_id": "20260602_135824",
+  "script": "scripts/lp_base_10u_probe_executor_v1.py",
+  "mode": "print-unsigned",
+  "scope": "emit structured unsigned-tx package as JSON; no signing, no send",
+
+  "output_includes": {
+    "candidate": "chain / chain_id / pool / pair / protocol / fee_tier / tick_lower / tick_upper / tick_spacing / npm / quoter_v2 / weth / usdc",
+    "wallet": "address / from / recipient",
+    "notional": "usd / amount0_desired_wei_WETH / amount1_desired_raw_USDC / amount0_min_wei / amount1_min_raw",
+    "approve_usdc_if_needed": "to / function / selector / spender / amount_raw / amount_human / policy / data / value_wei / from",
+    "approve_weth_if_needed": "skipped=true, reason='amount0_desired=0; WETH approve unnecessary'",
+    "mint_params": "to / function / selector / data / value_wei / from / deadline / deadline_iso / deadline_is_placeholder / note"
+  },
+
+  "asserts": {
+    "unsigned_only": true,
+    "no_signature": true,
+    "no_send": true,
+    "execution_not_authorized": true
+  },
+
+  "no_signature": true,
+  "no_send": true,
+  "unsigned_only": true,
+  "execution_not_authorized": true,
+  "no_abi_bytes_unless_marked": true,
+
+  "writes_to": "reports/lp_base_10u_probe_execution_runtime/<run_id>/unsigned_package.json (local only)",
+
+  "wallet_or_tx_touched": false
+}

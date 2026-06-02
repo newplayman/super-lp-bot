@@ -1,0 +1,49 @@
+{
+  "stage": "LP_BASE_10U_PROBE_EXECUTION_SCRIPT_BUILD_V1",
+  "phase": "D_preflight_command_spec",
+  "run_id": "20260602_135824",
+  "script": "scripts/lp_base_10u_probe_executor_v1.py",
+  "mode": "preflight",
+  "scope": "read-only on-chain state checks; no signing/sending/approve/mint/collect/swap",
+
+  "preflight_actions": [
+    {"action": "eth_chainId", "expect": 8453, "halt_if": "!= 8453"},
+    {"action": "eth_blockNumber", "expect": "logged"},
+    {"action": "eth_gasPrice", "expect": "logged"},
+    {"action": "eth_getBalance(wallet)", "expect": ">= 9.0e-5 ETH"},
+    {"action": "ERC20.balanceOf(wallet, USDC)", "expect": ">= 12 USDC"},
+    {"action": "ERC20.balanceOf(wallet, WETH)", "expect": ">= 0 (logged)"},
+    {"action": "ERC20.allowance(wallet, NPM, USDC)", "expect": "logged; < 10 = need new ApproveExact"},
+    {"action": "ERC20.allowance(wallet, NPM, WETH)", "expect": "logged"},
+    {"action": "pool.slot0() — current_tick", "expect": "inside or near [-200643, -200243]"},
+    {"action": "pool.liquidity()", "expect": "> 1e15"},
+    {"action": "QuoterV2.quoteExactInputSingle WETH->USDC", "expect": "out ~ 9.95-10.0 USDC"},
+    {"action": "QuoterV2.quoteExactInputSingle USDC->WETH", "expect": "out ~ 0.005 WETH"},
+    {"action": "eth_estimateGas(mint_call)", "expect": "in 180k +/- 2x range"},
+    {"action": "stop_condition evaluation", "expect": "all PASS or all documented WARNs"}
+  ],
+
+  "preflight_forbidden": [
+    "no signing",
+    "no sending",
+    "no approve",
+    "no mint",
+    "no collect",
+    "no decrease",
+    "no increase",
+    "no swap",
+    "no bridge"
+  ],
+
+  "writes_to": "reports/lp_base_10u_probe_execution_runtime/<run_id>/preflight_result.json (local only)",
+
+  "exits": {
+    "all_green": 0,
+    "any_abort": 0,
+    "rpc_unavailable": 0,
+    "forbidden_env_var_present": 4,
+    "--mode execute rejected": 3
+  },
+
+  "wallet_or_tx_touched": false
+}

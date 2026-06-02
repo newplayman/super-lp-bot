@@ -1,0 +1,103 @@
+{
+  "status": "PASS",
+  "stage": "LP_BASE_10U_PROBE_EXECUTION_SCRIPT_BUILD_V1",
+  "run_id": "20260602_135824",
+  "previous_stage": "LP_BASE_10_20U_PROBE_EXECUTION_SPEC_REVIEW_V1",
+  "previous_run_id": "20260602_133221",
+
+  "executor_script_built": true,
+  "preflight_mode_built": true,
+  "print_unsigned_mode_built": true,
+  "approval_parser_built": true,
+  "telemetry_writer_built": true,
+  "stop_condition_engine_built": true,
+  "execution_stubs_disabled": true,
+  "self_check_ran": true,
+  "self_check_exit_codes": {
+    "preflight": 0,
+    "print_unsigned": 0,
+    "validate_approval_valid": 0,
+    "validate_approval_20U_reject": 0,
+    "validate_approval_EXECUTE_reject": 0,
+    "validate_approval_30m_reject": 0,
+    "validate_approval_wrong_wallet_reject": 0,
+    "validate_approval_wrong_pool_reject": 0,
+    "validate_approval_placeholder_reject": 0,
+    "execute_disabled_mode": 1,
+    "mode_execute_rejected": 2
+  },
+
+  "candidate_chain": "Base",
+  "candidate_pool": "0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38",
+  "candidate_pair": "WETH/USDC",
+  "candidate_fee_tier": 100,
+  "candidate_protocol": "Uniswap V3 (Base)",
+  "candidate_npm": "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1",
+
+  "wallet": "0xb05b2872ace4564ff247555b6f7b097d31f3d835",
+  "wallet_masked": "0xb05b...d835",
+
+  "notional_usd": 10,
+  "hold_window": "15m",
+  "tick_lower": -200643,
+  "tick_upper": -200243,
+
+  "can_run_probe_now": false,
+  "can_execute_with_current_script": false,
+  "execution_requires_fresh_user_approval": true,
+  "executor_will_run_this_round": false,
+  "approval_phrase_effective_this_round": false,
+
+  "edge_proven": "no",
+  "actual_fee_ready": false,
+  "token_id_available": false,
+  "tiny_canary_allowed": "no",
+  "fabrication_blocked": true,
+  "wallet_or_tx_touched": false,
+
+  "approval_phrase_template": "APPROVE_BASE_10U_LP_PROBE_EXECUTION_ONE_SHOT wallet=0x[0-9a-fA-F]{40} pool=0x[0-9a-fA-F]{40} notional=10 hold=15m",
+  "approval_phrase_regex": "^APPROVE_BASE_10U_LP_PROBE_EXECUTION_ONE_SHOT wallet=0x[0-9a-fA-F]{40} pool=0x[0-9a-fA-F]{40} notional=10 hold=15m$",
+
+  "spec_phase_artifact_counts": {
+    "modes_supported": 4,
+    "stubs_disabled": 7,
+    "stop_conditions_evaluated": 13,
+    "telemetry_schemas": 5,
+    "forbidden_env_var_patterns": 15,
+    "dangerous_word_patterns": 27,
+    "self_check_cases": 11
+  },
+
+  "decision_notes": [
+    "Phase A: workspace safety check; HEAD=6f5566a; only untracked runtime files; no dirty blocker.",
+    "Phase B: 8 upstream spec review artifact categories read; all gates pass; previous_status=PASS; can_run_probe_now=false.",
+    "Phase C: scripts/lp_base_10u_probe_executor_v1.py built (700+ lines); hard-coded candidate freeze; supports 4 modes; rejects --mode execute.",
+    "Phase D: preflight mode runs eth_chainId, eth_getBalance, ERC20 balanceOf, allowance, pool.slot0, pool.liquidity, QuoterV2 (best-effort), eth_estimateGas; no signing/sending/approve/mint.",
+    "Phase E: print-unsigned mode emits structured JSON with unsigned_only / no_signature / no_send / execution_not_authorized all true.",
+    "Phase F: validate-approval mode parses regex; whole-word dangerous-word check; cross-checks wallet/pool/notional/hold against frozen; success does NOT authorize execution (executes_now=false).",
+    "Phase G: telemetry writer skeleton writes 5 schema files to local reports dir only; no production table writes.",
+    "Phase H: stop condition engine evaluates 13 stops; any abort_before_entry stop sets preflight_status=FAIL; no auto-retry.",
+    "Phase I: 7 execution stubs (approve_exact_usdc, approve_exact_weth, mint_position, monitor_position, decrease_liquidity, collect_fees, revoke_allowance); each raises ExecutionDisabledInBuildStage.",
+    "Phase J: 11-case self-check ran; all functional; deviation applied (substring -> whole-word regex) for DANGEROUS_WORD_PATTERNS.",
+    "Phase K: this FINAL_VERDICT + ONEPAGE + ARTIFACT_INDEX."
+  ],
+
+  "secondary_observations": [
+    "DANGEROUS_WORD_PATTERNS initial substring match false-positived on the canonical phrase; fixed by switching to whole-word regex (re.search). This is a 'deviation' that the self-check documents.",
+    "The env-var safety check is broad enough to refuse ANTHROPIC_API_KEY; narrowed to only block crypto / wallet / secret-store env names (private_key, mnemonic, keystore, wallet_key, signer_key, *_database_url, *_postgres_dsn, etc.) so legitimate AI tooling in the harness is not blocked.",
+    "executor_will_run_this_round = false even though self_check_ran = true; self_check only invokes read-only modes.",
+    "The build-stage artifact (this script) does NOT have a wallet client, signer, or any private-key loader. Any future executor that uses this build as a starting point must re-introduce those in a separate review stage."
+  ],
+
+  "recommended_next_stage": "LP_BASE_10U_PROBE_EXECUTION_SCRIPT_REVIEW_V1",
+  "allowed_next_stages": [
+    "LP_BASE_10U_PROBE_EXECUTION_SCRIPT_REVIEW_V1",
+    "LP_BASE_10U_PROBE_EXECUTION_SCRIPT_BUILD_FIX_REPEAT",
+    "STOP_LP_RESEARCH_NOW"
+  ],
+  "next_stage_must_not": [
+    "execute the probe in the next review stage",
+    "construct a wallet client or signer in the next review stage",
+    "treat this build as a finished execution tool — it is a skeleton only"
+  ]
+}
