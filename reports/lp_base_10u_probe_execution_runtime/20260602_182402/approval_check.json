@@ -1,0 +1,33 @@
+{
+  "valid": true,
+  "reason": null,
+  "parsed": {
+    "wallet": "0xb05b2872ace4564ff247555b6f7b097d31f3d835",
+    "pool": "0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38",
+    "notional": 10,
+    "hold": "15m"
+  },
+  "executes_now": false,
+  "authorization_granted": false,
+  "approval_phrase_effective_this_round": false,
+  "execution_gates_status": {
+    "approval_phrase_valid": true,
+    "approval_phrase_reason_if_invalid": null,
+    "parsed_phrase_fields": {
+      "wallet": "0xb05b2872ace4564ff247555b6f7b097d31f3d835",
+      "pool": "0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38",
+      "notional": 10,
+      "hold": "15m"
+    },
+    "gate_1_mode_execute_guarded": true,
+    "gate_2_approval_phrase_exact_match": true,
+    "gate_3_i_understand_this_sends_real_transactions": false,
+    "default_dry_run_only": true,
+    "default_no_send": true,
+    "all_three_gates_pass": false,
+    "all_safety_defaults_hold": true,
+    "send_would_be_authorized_now": false,
+    "note_implementation_stage": "in this implementation build stage, send is HARD-DISABLED regardless of gates; only future stages (after LP_BASE_10U_PROBE_FINAL_EXECUTION_REVIEW_V1) can enable send"
+  },
+  "next_step_even_if_valid": "user_must_reapprove_at_final_execution_time_after_review_stage"
+}

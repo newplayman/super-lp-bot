@@ -1,0 +1,108 @@
+{
+  "stage": "LP_BASE_10U_PROBE_FINAL_EXECUTION_REVIEW_V1",
+  "phase": "H_runtime_self_check_final_review",
+  "run_id": "20260602_182402",
+
+  "calls": {
+    "preflight": {
+      "command": "python3 scripts/lp_base_10u_probe_executor_v2.py --mode preflight --run-id 20260602_182402 --wallet 0xb05b... --notional 10 --hold 15m --dry-run-only --no-send",
+      "exit_code": 0,
+      "chain_id_observed": 8453,
+      "current_tick": -200747,
+      "drift_ticks": -304,
+      "proposed_tick_lower": -200947,
+      "proposed_tick_upper": -200547,
+      "current_tick_inside_new_range": true,
+      "fresh_approval_required": true,
+      "transaction_sent": false,
+      "no_send": true,
+      "dry_run_only": true
+    },
+    "print_unsigned": {
+      "command": "python3 scripts/lp_base_10u_probe_executor_v2.py --mode print-unsigned --run-id 20260602_182402 ... --dry-run-only --no-send",
+      "exit_code": 0,
+      "candidate_tick_lower": -200962,
+      "candidate_tick_upper": -200562,
+      "unsigned_approve_amount_raw": 10000000,
+      "approvemax_forbidden": true,
+      "unsigned_mint_deadline": 1780428774,
+      "unsigned_mint_deadline_relative_seconds": 3600,
+      "unsigned_mint_recipient_bound_to_wallet": true,
+      "mint_data_starts_with_selector": "0x88316456",
+      "transaction_sent": false,
+      "no_signature": true,
+      "no_send": true
+    },
+    "validate_approval": {
+      "command": "python3 scripts/lp_base_10u_probe_executor_v2.py --mode validate-approval --approval 'APPROVE_BASE_10U_...'",
+      "exit_code": 0,
+      "valid": true,
+      "executes_now": false,
+      "authorization_granted": false,
+      "approval_phrase_effective_this_round": false,
+      "gate_1_mode_execute_guarded": true,
+      "gate_2_approval_phrase_exact_match": true,
+      "gate_3_i_understand_this_sends_real_transactions": false,
+      "all_three_gates_pass": false,
+      "send_would_be_authorized_now": false,
+      "next_step_even_if_valid": "user_must_reapprove_at_final_execution_time_after_review_stage",
+      "transaction_sent": false
+    },
+    "execute_guarded_no_i_understand": {
+      "command": "python3 scripts/lp_base_10u_probe_executor_v2.py --mode execute-guarded --approval 'APPROVE_BASE_10U_...' --dry-run-only --no-send",
+      "exit_code": 1,
+      "stderr_contains_EXECUTION_SEND_DISABLED": true,
+      "transaction_sent": false,
+      "raised": "ExecutionSendDisabledInImplementationBuildStage"
+    },
+    "execute_guarded_with_i_understand": {
+      "command": "python3 scripts/lp_base_10u_probe_executor_v2.py --mode execute-guarded --approval 'APPROVE_BASE_10U_...' --dry-run-only --no-send --i-understand-this-sends-real-transactions",
+      "exit_code": 1,
+      "stderr_contains_EXECUTION_SEND_DISABLED": true,
+      "transaction_sent": false,
+      "raised": "ExecutionSendDisabledInImplementationBuildStage"
+    }
+  },
+
+  "summary_invariants": {
+    "any_mode_sent_tx": false,
+    "execute_guarded_returncode_without_flag": 1,
+    "execute_guarded_returncode_with_flag": 1,
+    "execute_guarded_stderr_contains_EXECUTION_SEND_DISABLED": true,
+    "any_signer_constructed_during_self_check": false,
+    "any_wallet_client_constructed_during_self_check": false,
+    "any_private_key_loaded_during_self_check": false,
+    "read_only_rpc_used": true,
+    "rpc_methods_invoked": ["eth_call (slot0)", "eth_chainId"],
+    "telemetry_files_written": [
+      "preflight.json",
+      "dynamic_tick_range.json",
+      "approval_check.json",
+      "unsigned_approve_package.json",
+      "unsigned_mint_package.json",
+      "stop_conditions.json",
+      "execution_gates.json"
+    ],
+    "telemetry_target_dir": "reports/lp_base_10u_probe_execution_runtime/20260602_182402/",
+    "production_db_written": false,
+    "shadow_table_written": false,
+    "positions_written": false
+  },
+
+  "verdict": {
+    "preflight_ran_ok": true,
+    "print_unsigned_ran_ok": true,
+    "validate_approval_returned_valid_but_blocked": true,
+    "execute_guarded_blocked_send_returncode_1": true,
+    "execute_guarded_blocked_send_with_i_understand": true,
+    "any_tx_send_attempted": false,
+    "runtime_self_check_pass": true,
+    "execute_guarded_send_blocked": true
+  },
+
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no",
+  "any_tx_send_attempted": false,
+  "execute_guarded_send_blocked": true
+}

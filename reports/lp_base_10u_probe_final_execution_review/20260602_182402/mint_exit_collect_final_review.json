@@ -1,0 +1,80 @@
+{
+  "stage": "LP_BASE_10U_PROBE_FINAL_EXECUTION_REVIEW_V1",
+  "phase": "G_mint_exit_collect_final_review",
+  "run_id": "20260602_182402",
+
+  "audited_functions": [
+    "build_mint_position_tx (lines 476-521)",
+    "encode_mint (lines 217-244)",
+    "monitor_position_loop_stub (lines 526-545)",
+    "build_decrease_liquidity_tx (lines 548-575)",
+    "build_collect_tx (lines 578-599)",
+    "build_revoke_allowance_tx (lines 602-613)"
+  ],
+
+  "mint_checks": {
+    "params_structurally_correct": {"expected": true, "observed": true, "evidence": "11-tuple token0/token1/fee/tickLower/tickUpper/amount0Desired/amount1Desired/amount0Min/amount1Min/recipient/deadline at lines 228-239 + 493", "result": "PASS"},
+    "recipient_bound_to_wallet": {"expected": true, "observed": true, "lines": "491, 514, 516", "result": "PASS"},
+    "deadline_runtime_generated": {"expected": true, "observed": true, "lines": "487 deadline = int(time.time()) + 3600", "result": "PASS"},
+    "amounts_desired_min_bounded": {"expected": true, "observed": true, "evidence": "print-unsigned uses amount1_min_raw = int(amount * 0.995) (line 904); self-check uses 9_949_999", "result": "PASS"},
+    "selector_correct": {"expected": "0x88316456", "observed": "0x88316456", "lines": "131, 494", "result": "PASS"},
+    "encode_mint_no_double_0x_prefix": {"expected": true, "observed": true, "lines": "242-244", "evidence": "previous round fix: strip leading 0x then concat with SEL_MINT", "result": "PASS"},
+    "fee_tier_locked": {"expected": 100, "observed": 100, "lines": "488", "result": "PASS"},
+    "token_order": {"expected": "WETH/USDC", "observed": "WETH/USDC", "lines": "65-66, 488", "result": "PASS"}
+  },
+
+  "exit_checks": {
+    "decrease_builder_exists": {"expected": true, "observed": true, "lines": "548-575", "result": "PASS"},
+    "decrease_selector": {"expected": "0x02751cec", "observed": "0x02751cec", "lines": "133, 558", "result": "PASS"},
+    "decrease_deadline_runtime": {"expected": "now+3600", "observed": "now+3600", "lines": "554", "result": "PASS"},
+    "collect_builder_exists": {"expected": true, "observed": true, "lines": "578-599", "result": "PASS"},
+    "collect_selector": {"expected": "0xfc6f7865", "observed": "0xfc6f7865", "lines": "135, 585", "result": "PASS"},
+    "collect_recipient_bound_to_wallet": {"expected": true, "observed": true, "lines": "582", "result": "PASS"},
+    "collect_amount_max_uint128_max": {"expected": "(1<<128)-1", "observed": "(1<<128)-1", "lines": "579-580", "result": "PASS"},
+    "revoke_builder_exists": {"expected": true, "observed": true, "lines": "602-613", "result": "PASS"},
+    "revoke_combines_usdc_and_weth": {"expected": true, "observed": true, "lines": "605-606", "result": "PASS"}
+  },
+
+  "monitor_checks": {
+    "iterations_capped_at_1": {"expected": true, "observed": true, "lines": "534-535", "result": "PASS"},
+    "no_long_loop_started": {"expected": true, "observed": true, "lines": "543", "result": "PASS"},
+    "no_background_process_left": {"expected": true, "observed": true, "lines": "544", "result": "PASS"}
+  },
+
+  "send_path_triggered_per_function": {
+    "build_mint_position_tx": false,
+    "build_decrease_liquidity_tx": false,
+    "build_collect_tx": false,
+    "build_revoke_allowance_tx": false,
+    "monitor_position_loop_stub": false
+  },
+
+  "tokenId_recording_planned": {
+    "current_status": "structurally ready (token_id is a parameter of all exit builders)",
+    "telemetry_schema_present": false,
+    "future_requirement": "authorization package stage should add mint_receipt.json schema with decoded tokenId"
+  },
+
+  "feeGrowth_tokensOwed_telemetry_planned": {
+    "current_status": "deviation — v2 does not read positions(tokenId) for feeGrowthInside0/1LastX128 or tokensOwed0/1",
+    "future_requirement": "authorization package stage should add read_position_state_for_fee_accrual mode",
+    "blocking_now": false
+  },
+
+  "this_review_did_not_trigger_any_send": true,
+
+  "verdict": {
+    "mint_exit_collect_review_pass": true,
+    "warnings_non_blocking": [
+      "mint_receipt schema with decoded tokenId not yet defined",
+      "feeGrowthInside / tokensOwed telemetry mode not yet implemented"
+    ]
+  },
+
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no",
+  "mint_executed": false,
+  "decrease_executed": false,
+  "collect_executed": false
+}

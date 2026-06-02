@@ -1,0 +1,71 @@
+{
+  "stage": "LP_BASE_10U_PROBE_FINAL_EXECUTION_REVIEW_V1",
+  "phase": "C_executor_v2_static_security_review",
+  "run_id": "20260602_182402",
+  "audited_script": "scripts/lp_base_10u_probe_executor_v2.py",
+  "audited_lines": 992,
+
+  "checks": {
+    "private_key_loaded": {"expected": false, "observed": false, "evidence": "docstring-only mentions at lines 34, 855", "result": "PASS"},
+    "mnemonic_loaded": {"expected": false, "observed": false, "evidence": "docstring-only", "result": "PASS"},
+    "keystore_loaded": {"expected": false, "observed": false, "evidence": "docstring-only", "result": "PASS"},
+    "signer_created": {"expected": false, "observed": false, "evidence": "only no_signer_constructed flag at line 815", "result": "PASS"},
+    "wallet_client_created": {"expected": false, "observed": false, "evidence": "only no_wallet_client_constructed flag at line 816", "result": "PASS"},
+    "eth_sendTransaction_called": {"expected": false, "observed": false, "evidence": "docstring forbidden-comment at line 36 only", "result": "PASS"},
+    "eth_sendRawTransaction_called": {"expected": false, "observed": false, "evidence": "docstring forbidden-comment at line 36 only", "result": "PASS"},
+    "approve_real_send_path": {"expected": false, "observed": false, "evidence": "build_approve_exact_usdc_tx returns dict only (lines 399-424)", "result": "PASS"},
+    "mint_real_send_path": {"expected": false, "observed": false, "evidence": "build_mint_position_tx returns dict only (lines 476-521)", "result": "PASS"},
+    "decrease_real_send_path": {"expected": false, "observed": false, "evidence": "build_decrease_liquidity_tx returns dict only (lines 548-575)", "result": "PASS"},
+    "collect_real_send_path": {"expected": false, "observed": false, "evidence": "build_collect_tx returns dict only (lines 578-599)", "result": "PASS"},
+    "burn_real_send_path": {"expected": false, "observed": false, "evidence": "no 'burn(' invocation in source", "result": "PASS"},
+    "swap_real_send_path": {"expected": false, "observed": false, "evidence": "no 'swap(' invocation in source", "result": "PASS"},
+    "send_hard_disabled": {"expected": true, "observed": true, "evidence": "execute-guarded raises ExecutionSendDisabledInImplementationBuildStage at line 974; caught in __main__ at line 989; sys.exit(1)", "result": "PASS"},
+    "execute_guarded_defaults_to_reject": {"expected": true, "observed": true, "evidence": "argparse choices restricted to 5 modes (line 834); execute-guarded always raises", "result": "PASS"},
+    "no_send_default_true": {"expected": true, "observed": true, "evidence": "argparse --no-send default=True (line 843)", "result": "PASS"},
+    "dry_run_only_default_true": {"expected": true, "observed": true, "evidence": "argparse --dry-run-only default=True (line 842)", "result": "PASS"},
+    "no_auto_retry_on_writes": {"expected": true, "observed": true, "evidence": "rpc_call retries only used for eth_call/eth_chainId (read-only)", "result": "PASS"},
+    "no_live_canary_paper_path": {"expected": true, "observed": true, "evidence": "only docstring forbidden-list at line 38", "result": "PASS"},
+    "monitor_long_loop_blocked": {"expected": true, "observed": true, "evidence": "monitor_position_loop_stub iterations>1 ValueError (line 534-535)", "result": "PASS"},
+    "forbidden_env_self_check": {"expected": true, "observed": true, "evidence": "is_forbidden_env() + main loop (lines 93-109, 852-856) blocks 15 sensitive patterns", "result": "PASS"}
+  },
+
+  "rpc_methods_used": ["eth_call (slot0 read)", "eth_chainId (preflight)"],
+  "rpc_methods_forbidden_observed": [],
+
+  "modes_audit": {
+    "preflight": {"reads": ["chain_id", "slot0"], "writes": ["telemetry only"], "send_possible": false},
+    "print-unsigned": {"reads": ["slot0"], "writes": ["telemetry only"], "send_possible": false},
+    "validate-approval": {"reads": ["nothing on-chain"], "writes": ["telemetry only"], "send_possible": false},
+    "implementation-self-check": {"reads": ["chain_id", "slot0"], "writes": ["telemetry only"], "send_possible": false},
+    "execute-guarded": {"reads": [], "writes": [], "behavior": "raises ExecutionSendDisabledInImplementationBuildStage and sys.exit(1)", "send_possible": false}
+  },
+
+  "three_gates_source_locations": {
+    "gate_1_explicit_mode": {"line": 834, "implementation": "argparse choices"},
+    "gate_2_phrase_exact_match": {"line": 285, "implementation": "parse_approval_phrase with 27 dangerous-word check + regex"},
+    "gate_3_i_understand_flag": {"line": 844, "implementation": "argparse action='store_true'"}
+  },
+
+  "risk_assessment": {
+    "accidental_send": "zero (hard-raise in execute-guarded; caught in __main__)",
+    "private_key_leak": "zero (no key load; env-pattern self-check)",
+    "long_loop_hang": "zero (monitor cap + rpc_call exponential backoff with 5-retry cap)",
+    "network_side_effects": "read-only RPC only",
+    "v1_misuse": "zero (v1 preserved unchanged; v2 is new file)"
+  },
+
+  "verdict": {
+    "any_real_send_path_triggerable": false,
+    "send_hard_disabled": true,
+    "dry_run_only_default": true,
+    "no_send_default": true,
+    "any_dangerous_grep_hit_in_executable_code": false,
+    "any_signer_constructed": false,
+    "any_wallet_client_constructed": false,
+    "static_security_pass": true
+  },
+
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no"
+}

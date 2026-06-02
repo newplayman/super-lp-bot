@@ -1,0 +1,66 @@
+{
+  "stage": "LP_BASE_10U_PROBE_FINAL_EXECUTION_REVIEW_V1",
+  "phase": "E_approval_gate_final_review",
+  "run_id": "20260602_182402",
+
+  "future_approval_phrase": "APPROVE_BASE_10U_LP_PROBE_EXECUTION_ONE_SHOT wallet=0xb05b2872ace4564ff247555b6f7b097d31f3d835 pool=0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38 notional=10 hold=15m",
+  "regex_canonical": "^APPROVE_BASE_10U_LP_PROBE_EXECUTION_ONE_SHOT wallet=0x[0-9a-fA-F]{40} pool=0x[0-9a-fA-F]{40} notional=10 hold=15m$",
+
+  "checks": {
+    "exact_phrase_only": {"expected": true, "observed": true, "lines": "77, 296-298", "result": "PASS"},
+    "wrong_wallet_rejected": {"expected": true, "observed": true, "lines": "310-311", "result": "PASS"},
+    "wrong_pool_rejected": {"expected": true, "observed": true, "lines": "312-313", "result": "PASS"},
+    "notional_20_rejected": {"expected": true, "observed": true, "lines": "77, 314-315", "evidence": "implementation test test_3 PASS rejected", "result": "PASS"},
+    "hold_30m_rejected": {"expected": true, "observed": true, "lines": "77, 87, 316-317", "evidence": "regex literal hold=15m + dangerous word 30m + parsed cross-check", "result": "PASS"},
+    "dangerous_words_rejected": {"expected": true, "observed": true, "lines": "81-90, 292-294", "evidence": "27 patterns including EXECUTE/EXEC/NOW/LIVE/CANARY/PAPER/MINT/SIGN/BURN/SWAP/BRIDGE/SEND/DEPLOY/GO/SHIP/PROCEED/20U/30m/etc", "result": "PASS"},
+    "approval_phrase_alone_not_enough": {"expected": true, "observed": true, "lines": "689, 691, 695", "evidence": "execution_approval_gate requires gate1 + gate2 + gate3", "result": "PASS"},
+    "second_flag_required_for_future_execution": {"expected": true, "observed": true, "lines": "844, 691", "evidence": "argparse --i-understand-this-sends-real-transactions store_true", "result": "PASS"},
+    "current_stage_does_not_execute_even_if_phrase_valid": {"expected": true, "observed": true, "lines": "964-980, 987-992", "evidence": "execute-guarded raises ExecutionSendDisabledInImplementationBuildStage and exits 1 regardless of gate state", "result": "PASS"},
+    "dry_run_only_default_true": {"expected": true, "observed": true, "lines": "842", "result": "PASS"},
+    "no_send_default_true": {"expected": true, "observed": true, "lines": "843", "result": "PASS"}
+  },
+
+  "dangerous_word_patterns": [
+    "\\bEXECUTE\\b", "\\bEXEC\\b", "\\bNOW\\b", "\\bLIVE\\b", "\\bCANARY\\b",
+    "\\bPAPER\\b", "\\bMINT\\b", "\\bSIGN\\b", "\\bBURN\\b",
+    "\\bSWAP\\b", "\\bBRIDGE\\b", "\\bSEND\\b", "\\bDEPLOY\\b",
+    "\\bGO\\b", "\\bSHIP\\b", "\\bPROCEED\\b",
+    "\\b20U\\b", "\\b20u\\b", "\\b30M\\b", "\\b30m\\b",
+    "\\bUSER_PROVIDED\\b", "\\bUSER_SELECTED\\b", "\\bYES\\b",
+    "\\bEXECUTABLE\\b", "\\bFUND\\b", "\\bWITHDRAW\\b",
+    "\\bTRANSFER_OUT\\b"
+  ],
+  "dangerous_word_count": 27,
+
+  "execution_token_in_phrase_not_word_match": {
+    "phrase_substring": "EXECUTION",
+    "word_pattern": "\\bEXECUTE\\b",
+    "matches": false,
+    "explanation": "EXECUTION ends with N (word char) so \\bEXECUTE\\b doesn't match the substring EXECUTE within EXECUTION"
+  },
+
+  "three_gates_cross_reference": {
+    "gate_1_mode_execute_guarded": {"line": 834, "bypass": "impossible (argparse choices)"},
+    "gate_2_approval_phrase_exact_match": {"line": 285, "bypass": "impossible (regex + 27 dangerous + 4 cross-checks)"},
+    "gate_3_i_understand_flag": {"line": 844, "bypass": "impossible (must be provided on argv)"}
+  },
+
+  "current_stage_behavior_for_execute_guarded": [
+    "argparse parses --mode execute-guarded",
+    "forbidden env check passes",
+    "enters if args.mode == execute-guarded branch at line 964",
+    "parses gate2/gate3 status (logging only)",
+    "raises ExecutionSendDisabledInImplementationBuildStage at line 974",
+    "__main__ except clause at line 989 catches and sys.exit(1)",
+    "no transaction ever sent regardless of phrase or flags"
+  ],
+
+  "verdict": {
+    "approval_gate_pass": true
+  },
+
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no",
+  "approval_phrase_effective_now": false
+}

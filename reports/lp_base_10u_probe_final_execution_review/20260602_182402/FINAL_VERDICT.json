@@ -1,0 +1,86 @@
+{
+  "status": "PASS",
+  "stage": "LP_BASE_10U_PROBE_FINAL_EXECUTION_REVIEW_V1",
+  "run_id": "20260602_182402",
+  "previous_stage": "LP_BASE_10U_PROBE_EXECUTION_IMPLEMENTATION_V1",
+  "previous_run_id": "20260602_163036",
+  "previous_commit": "da6c012",
+
+  "executor_v2_reviewed": true,
+  "static_security_pass": true,
+  "dynamic_tick_range_pass": true,
+  "approval_gate_pass": true,
+  "approve_exact_review_pass": true,
+  "mint_exit_collect_review_pass": true,
+  "runtime_self_check_pass": true,
+  "execute_guarded_send_blocked": true,
+  "telemetry_review_pass": true,
+  "final_execution_gate_review_pass": true,
+
+  "candidate_chain": "Base",
+  "candidate_pool": "0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38",
+  "candidate_pair": "WETH/USDC",
+  "candidate_fee_tier": 100,
+  "candidate_protocol": "Uniswap V3 (Base)",
+  "candidate_npm": "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1",
+  "wallet": "0xb05b2872ace4564ff247555b6f7b097d31f3d835",
+  "wallet_masked": "0xb05b...d835",
+  "notional_usd": 10,
+  "hold_window": "15m",
+
+  "tick_drift_observed_this_review": -304,
+  "current_tick_observed_this_review": -200747,
+  "proposed_tick_lower_this_review": -200947,
+  "proposed_tick_upper_this_review": -200547,
+  "current_tick_inside_new_range": true,
+  "fresh_approval_required_for_future_execution": true,
+
+  "can_run_probe_now": false,
+  "can_execute_with_current_script": false,
+  "execution_authorization_package_allowed_next": true,
+  "manual_approval_required_for_execution": true,
+
+  "edge_proven": "no",
+  "actual_fee_ready": false,
+  "token_id_available": false,
+  "wallet_or_tx_touched": false,
+  "tiny_canary_allowed": "no",
+
+  "this_stage_did_not_execute": true,
+  "this_stage_did_not_send_any_tx": true,
+  "this_stage_did_not_construct_signer": true,
+  "this_stage_did_not_load_private_key": true,
+  "this_stage_did_not_construct_wallet_client": true,
+  "this_stage_used_only_read_only_rpc": true,
+  "rpc_methods_used_this_stage": ["eth_call (slot0)", "eth_chainId"],
+
+  "deviations_required_for_authorization_package_stage": [
+    "skip_approve_if_allowance_sufficient_not_wired",
+    "mint_receipt_schema_not_defined",
+    "feeGrowth_tokensOwed_telemetry_mode_not_implemented"
+  ],
+
+  "review_phase_results": {
+    "B_input_evidence_audit": "PASS",
+    "C_executor_v2_static_security_review": "PASS",
+    "D_dynamic_tick_range_final_review": "PASS",
+    "E_approval_gate_final_review": "PASS",
+    "F_approve_exact_final_review": "PASS",
+    "G_mint_exit_collect_final_review": "PASS",
+    "H_runtime_self_check_final_review": "PASS",
+    "I_telemetry_and_artifact_final_review": "PASS",
+    "J_final_execution_gate_review": "PASS"
+  },
+
+  "recommended_next_stage": "LP_BASE_10U_PROBE_EXECUTION_AUTHORIZATION_PACKAGE_V1",
+  "allowed_next_stages": [
+    "LP_BASE_10U_PROBE_EXECUTION_AUTHORIZATION_PACKAGE_V1",
+    "LP_BASE_10U_PROBE_EXECUTION_IMPLEMENTATION_FIX_REPEAT",
+    "STOP_LP_RESEARCH_NOW"
+  ],
+  "next_stage_must_not": [
+    "execute the probe in the next stage (next stage is package assembly, NOT execution)",
+    "construct a real signer or wallet client in the next stage",
+    "treat this review as authorization — real send still requires a separate operator confirmation"
+  ]
+}

@@ -1,0 +1,77 @@
+{
+  "stage": "LP_BASE_10U_PROBE_FINAL_EXECUTION_REVIEW_V1",
+  "phase": "J_final_execution_gate_review",
+  "run_id": "20260602_182402",
+
+  "review_stages_summary": {
+    "B_input_evidence_audit": "PASS",
+    "C_executor_v2_static_security_review": "PASS",
+    "D_dynamic_tick_range_final_review": "PASS",
+    "E_approval_gate_final_review": "PASS",
+    "F_approve_exact_final_review": "PASS (non-blocking deviation: skip_approve_if_allowance_sufficient not wired)",
+    "G_mint_exit_collect_final_review": "PASS (non-blocking deviations: tokenId receipt schema; feeGrowth telemetry mode)",
+    "H_runtime_self_check_final_review": "PASS (execute-guarded blocked both with and without --i-understand)",
+    "I_telemetry_and_artifact_final_review": "PASS"
+  },
+
+  "safety_invariants": {
+    "execute_guarded_send_blocked": true,
+    "any_tx_send_attempted": false,
+    "any_signer_constructed": false,
+    "any_wallet_client_constructed": false,
+    "any_private_key_loaded": false,
+    "wallet_or_tx_touched": false,
+    "can_run_probe_now": false,
+    "can_execute_with_current_script": false,
+    "tiny_canary_allowed": "no",
+    "edge_proven": "no",
+    "approval_phrase_effective_this_round": false
+  },
+
+  "go_no_go_conditions": {
+    "static_security_pass": true,
+    "dynamic_tick_range_pass": true,
+    "approval_gate_pass": true,
+    "approve_exact_review_pass": true,
+    "mint_exit_collect_review_pass": true,
+    "runtime_self_check_pass": true,
+    "execute_guarded_send_blocked": true,
+    "telemetry_review_pass": true,
+    "no_wallet_signer_tx_touched": true,
+    "can_run_probe_now_remains_false": true,
+    "all_pass": true
+  },
+
+  "deviations_logged_for_authorization_package_stage": [
+    {
+      "id": "skip_approve_if_allowance_sufficient_not_wired",
+      "required_in_next_stage": true,
+      "blocking_this_stage": false
+    },
+    {
+      "id": "mint_receipt_schema_not_defined",
+      "required_in_next_stage": true,
+      "blocking_this_stage": false
+    },
+    {
+      "id": "feeGrowth_tokensOwed_telemetry_mode_not_implemented",
+      "required_in_next_stage": true,
+      "blocking_this_stage": false
+    }
+  ],
+
+  "decision": {
+    "status": "PASS",
+    "can_proceed_to_authorization_package": true,
+    "recommended_next_stage": "LP_BASE_10U_PROBE_EXECUTION_AUTHORIZATION_PACKAGE_V1",
+    "note": "This is NOT execution. The authorization package stage assembles the final review package for human approval; real send still requires a separate operator confirmation at execution time after that stage."
+  },
+
+  "final_execution_gate_review_pass": true,
+
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no",
+  "edge_proven": "no",
+  "execute_guarded_send_blocked": true
+}

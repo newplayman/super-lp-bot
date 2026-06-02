@@ -1,0 +1,53 @@
+{
+  "stage": "LP_BASE_10U_PROBE_FINAL_EXECUTION_REVIEW_V1",
+  "phase": "F_approve_exact_final_review",
+  "run_id": "20260602_182402",
+
+  "audited_functions": [
+    "build_approve_exact_usdc_tx (lines 399-424)",
+    "build_revoke_usdc_tx (lines 427-450)",
+    "build_revoke_weth_tx (lines 453-471)",
+    "build_revoke_allowance_tx (lines 602-613)",
+    "encode_allowance helper (lines 209-210)"
+  ],
+
+  "checks": {
+    "approvemax_forbidden": {"expected": true, "observed": true, "lines": "406-407", "evidence": "if amount_raw >= UINT256_MAX // 2: raise ValueError", "result": "PASS"},
+    "approve_exact_only": {"expected": true, "observed": true, "lines": "404-405, 420-421", "evidence": "amount must be > 0; output policy=ApproveExact", "result": "PASS"},
+    "usdc_amount_bounded": {"expected": true, "observed": true, "evidence": "lower bound amount > 0; upper bound amount < UINT256_MAX/2; typical 10_000_000 raw (10 USDC)", "result": "PASS"},
+    "weth_approval_only_if_required": {"expected": true, "observed": true, "evidence": "v2 only revokes WETH (build_revoke_weth_tx); does not approve WETH because amount0_desired_wei=0 (single-sided USDC deposit)", "result": "PASS"},
+    "post_exit_revoke_planned": {"expected": true, "observed": true, "evidence": "build_revoke_usdc_tx + build_revoke_weth_tx + build_revoke_allowance_tx; policy field marked post-exit revoke", "result": "PASS"},
+    "no_approve_execution_this_review": {"expected": true, "observed": true, "evidence": "all builders return dict with no_send=true, transaction_sent=false, unsigned_only=true", "result": "PASS"},
+    "approve_tx_can_be_built_not_sent": {"expected": true, "observed": true, "evidence": "build_approve_exact_usdc_tx returns structured dict only", "result": "PASS"},
+    "skip_approve_if_allowance_sufficient": {"expected": true, "observed": false, "evidence": "encode_allowance helper exists at line 209-210 but no caller-level skip logic; v2 always emits unsigned_approve_package", "result": "WARN (non-blocking deviation)"}
+  },
+
+  "deviation": {
+    "id": "approve_skip_if_already_sufficient_not_wired",
+    "symptom": "encode_allowance is implemented but no caller-level eth_call to check current allowance before emitting unsigned_approve_package",
+    "current_stage_impact": "none — send is hard-disabled this stage; build_approve_exact_usdc_tx has no side effects",
+    "future_stage_requirement": "authorization package stage MUST either (a) wire skip_approve_if_allowance_sufficient logic, OR (b) operator runbook requires manual eth_call check before signing the approve tx",
+    "blocking_now": false
+  },
+
+  "implementation_test_cross_reference": {
+    "test_1_build_approve_exact_10U": "PASS (amount_raw=10000000, approvemax_forbidden=True, no_send=True)",
+    "test_2_build_revoke_usdc": "PASS (amount_raw=0, no_send=True)",
+    "test_3_build_revoke_weth": "PASS (amount_raw=0, no_send=True)",
+    "test_4_approvemax_rejected": "PASS rejected (ValueError 'ApproveMax forbidden')",
+    "test_5_zero_amount_rejected": "PASS rejected (ValueError 'must be > 0')"
+  },
+
+  "this_review_unsigned_approve_package_path": "reports/lp_base_10u_probe_execution_runtime/20260602_182402/unsigned_approve_package.json",
+
+  "verdict": {
+    "approve_exact_review_pass": true,
+    "warnings_non_blocking": ["skip_approve_if_allowance_sufficient logic not wired in v2; required in authorization package stage"]
+  },
+
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no",
+  "approve_executed": false,
+  "allowance_check_executed_in_this_review": false
+}

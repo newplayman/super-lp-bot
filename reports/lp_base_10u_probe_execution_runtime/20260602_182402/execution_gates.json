@@ -1,0 +1,9 @@
+{
+  "schema": "lp_probe_execution_gates_v1",
+  "skeleton_only": true,
+  "run_id": "20260602_182402",
+  "gate_1_explicit_mode_execute_guarded": true,
+  "gate_2_approval_phrase_exact_match": true,
+  "gate_3_i_understand_this_sends_real_transactions_flag": true,
+  "send_disabled_in_implementation_build_stage": true
+}
