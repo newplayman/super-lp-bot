@@ -1,0 +1,15 @@
+{
+  "run_id": "20260602_193517",
+  "rpc_url": "https://base-rpc.publicnode.com",
+  "started_iso": "2026-06-02T19:44:19Z",
+  "interval_minutes": 10,
+  "max_hours": 8,
+  "consecutive_rpc_failures": 0,
+  "degraded": false,
+  "stopped_iso": null,
+  "stopped_reason": null,
+  "last_checkpoint_iso": "2026-06-02T19:54:21Z",
+  "last_tick": -200761,
+  "last_drift": -318,
+  "last_market_safe": false
+}

@@ -1,0 +1,3 @@
+ts_iso,iteration,chain_id,block_number,wallet_eth_wei,usdc_balance_raw,weth_balance_raw,usdc_allowance_raw,weth_allowance_raw,current_tick,drift_ticks,proposed_tick_lower,proposed_tick_upper,current_tick_inside_new_range,fresh_approval_required,any_stop_condition_active,gas_price_wei,market_safe_for_execution_candidate
+2026-06-02T19:44:19Z,1,8453,46820056,90470751043807,21774783,2470131003793800,5000000,2470131003793800,-200828,-385,-201028,-200628,True,True,True,14018528,False
+2026-06-02T19:54:21Z,2,8453,46820357,90470751043807,21774783,2470131003793800,5000000,2470131003793800,-200761,-318,-200961,-200561,True,True,True,6000000,False

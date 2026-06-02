@@ -1,0 +1,46 @@
+{
+  "stage": "armed_runner_v1_preflight",
+  "rpc_url": "https://base-rpc.publicnode.com",
+  "chain_id_observed": 8453,
+  "chain_id_match": true,
+  "wallet_eth_balance_wei": 90470751043807,
+  "usdc_address": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+  "weth_address": "0x4200000000000000000000000000000000000006",
+  "usdc_balance_raw": 21774783,
+  "weth_balance_raw": 2470131003793800,
+  "usdc_allowance_raw": 5000000,
+  "weth_allowance_raw": 2470131003793800,
+  "pool_slot0_raw": "0x00000000000000000000000000000000000000000002d9c2f17c55a50710f1fcfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffcef5d000000000000000000000000000000000000000000000000000000000000002200000000000000000000000000000000000000000000000000000000000003e800000000000000000000000000000000000000000000000000000000000003e8000000000000000000000000000000000000000000000000000000000ce40ce40000000000000000000000000000000000000000000000000000000000000001",
+  "pool_liquidity_raw": "0x00000000000000000000000000000000000000000000000005b9b2466a69add1",
+  "pool_tick_spacing_error": "RuntimeError(\"eth_call err: {'code': 3, 'message': 'execution reverted'}\")",
+  "dynamic_tick_range": {
+    "ts": 1780429328,
+    "previous_legacy_center_tick": -200443,
+    "previous_legacy_range": [
+      -200643,
+      -200243
+    ],
+    "current_tick": -200867,
+    "drift_ticks": -424,
+    "abs_drift_ticks": 424,
+    "drift_threshold_ticks": 200,
+    "drift_exceeds_threshold": true,
+    "old_tick_lower_legacy": -200643,
+    "old_tick_upper_legacy": -200243,
+    "proposed_tick_lower": -201067,
+    "proposed_tick_upper": -200667,
+    "proposed_safety_margin_ticks_each_side": 200,
+    "current_tick_inside_new_range": true,
+    "fresh_approval_required": true,
+    "abort_reason": "drift -424 from legacy center -200443 exceeds threshold 200; fresh approval required",
+    "dry_run": true,
+    "no_send_attempted": true
+  },
+  "stop_conditions": {
+    "tick_outside_new_range": false,
+    "fresh_approval_required": true,
+    "usdc_balance_below_threshold": false,
+    "weth_balance_below_threshold": false
+  },
+  "any_stop_condition_active": true
+}

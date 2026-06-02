@@ -1,0 +1,123 @@
+{
+  "status": "RUNNING",
+  "stage": "LP_BASE_10U_PROBE_OVERNIGHT_ARMED_RUNNER_BUILD_AND_READONLY_MONITOR_V1",
+  "run_id": "20260602_193517",
+  "branch": "feat/supabase-postgres-deployment",
+  "head_before_start": "f578e4a",
+
+  "operator_choice": "A_APPROVE_BUILD_EXECUTION_RUNNER",
+  "operator_choice_recorded_in_this_run": true,
+  "operator_choice_is_execution_authorization": false,
+  "upstream_previous_stage": "LP_BASE_10U_PROBE_OPERATOR_EXECUTION_REQUEST_V1",
+  "upstream_previous_status": "PASS",
+
+  "armed_runner_built": true,
+  "armed_runner_file": "scripts/lp_base_10u_probe_armed_runner_v1.py",
+  "armed_runner_version": "v1",
+  "v2_modified_by_this_stage": false,
+  "v2_line_count_unchanged": true,
+
+  "send_hard_disable_still_active": true,
+  "default_no_send": true,
+  "default_dry_run_only": true,
+  "execute_armed_cannot_send_this_stage": true,
+  "execute_armed_exit_code_in_this_stage": 1,
+  "execute_armed_abort_reason": "EXECUTION_NOT_AUTHORIZED_IN_OVERNIGHT_BUILD_STAGE",
+
+  "signer_path_not_called": true,
+  "wallet_client_not_created": true,
+  "private_key_loaded": false,
+  "mnemonic_loaded": false,
+  "keystore_loaded": false,
+  "eth_sendTransaction_called": false,
+  "eth_sendRawTransaction_called": false,
+  "approve_executed": false,
+  "mint_executed": false,
+  "decrease_executed": false,
+  "collect_executed": false,
+  "burn_executed": false,
+  "swap_executed": false,
+  "live_started": false,
+  "canary_started": false,
+  "paper_started": false,
+  "production_positions_written": false,
+  "shadow_tables_overwritten": false,
+  "strategy_execution_path_modified": false,
+  "auto_bridge_attempted": false,
+  "auto_swap_attempted": false,
+  "any_funds_spent": false,
+
+  "preflight_smoke_ran": true,
+  "preflight_smoke_pass": "WARN",
+  "preflight_smoke_reason": "fresh_approval_required=true; market drift -424 ticks from frozen center -200443 exceeds 200 threshold",
+  "preflight_blocks_monitor": false,
+
+  "monitor_started": true,
+  "monitor_session_name": "lp_base_10u_probe_readiness_monitor_20260602_193517",
+  "monitor_output_dir": "reports/lp_base_10u_probe_overnight_armed_runner/20260602_193517/monitor",
+  "monitor_interval_minutes": 10,
+  "monitor_max_hours": 8,
+  "monitor_first_checkpoint_seen": true,
+  "monitor_first_checkpoint_iteration": 1,
+  "monitor_first_checkpoint_chain_id": 8453,
+  "monitor_first_checkpoint_block_number": 46820056,
+  "monitor_first_checkpoint_current_tick": -200828,
+  "monitor_first_checkpoint_drift_ticks": -385,
+  "monitor_first_checkpoint_market_safe": false,
+
+  "candidate_chain": "Base",
+  "candidate_chain_id": 8453,
+  "candidate_protocol": "Uniswap V3 (Base)",
+  "candidate_pool": "0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38",
+  "candidate_pair": "WETH/USDC",
+  "candidate_fee_tier": 100,
+  "candidate_npm": "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1",
+  "wallet": "0xb05b2872ace4564ff247555b6f7b097d31f3d835",
+  "wallet_masked": "0xb05b...d835",
+  "notional_usd": 10,
+  "hold_window": "15m",
+
+  "can_run_probe_now": false,
+  "execution_allowed_now": false,
+  "tiny_canary_allowed": "no",
+  "edge_proven": "no",
+  "actual_fee_ready": false,
+  "token_id_available": false,
+  "wallet_or_tx_touched": false,
+  "manual_approval_required": true,
+
+  "phase_results": {
+    "C1_input_evidence_audit": "PASS",
+    "C2_armed_runner_build": "PASS",
+    "C3_armed_runner_gate_audit": "PASS (14 gates required for future execution; 5 sealed this stage)",
+    "C4_preflight_smoke": "WARN (fresh_approval_required=true; monitor continues)",
+    "C5_monitor_start": "PASS (tmux session alive; first checkpoint written)",
+    "C6_monitor_start_healthcheck": "PASS (8/8 checks)",
+    "C7_monitor_finalize_schema": "PASS (schema + decision tree documented; --finalize path tested with 1 checkpoint)"
+  },
+
+  "recommended_next_stage": "WAIT_FOR_MONITOR_COMPLETION",
+  "allowed_next_stages": [
+    "WAIT_FOR_MONITOR_COMPLETION",
+    "LP_BASE_10U_PROBE_FINAL_OPERATOR_AUTHORIZATION_REVIEW_V1",
+    "LP_BASE_10U_PROBE_ARMED_RUNNER_BUILD_FIX_REPEAT",
+    "STOP_LP_RESEARCH_NOW"
+  ],
+  "default_when_no_explicit_choice": "WAIT_FOR_MONITOR_COMPLETION",
+  "next_stage_must_not": [
+    "execute the probe automatically based on monitor greenness",
+    "release v2's send hard-disable",
+    "construct a signer / wallet client / load private key",
+    "treat GO_TO_FINAL_EXECUTION_AUTHORIZATION as auto-approval"
+  ],
+
+  "morning_finalize_command": "python3 scripts/lp_base_10u_probe_readiness_monitor_v1.py --run-id 20260602_193517 --output-dir reports/lp_base_10u_probe_overnight_armed_runner/20260602_193517/monitor --finalize",
+
+  "v2_self_check": {
+    "v2_path": "scripts/lp_base_10u_probe_executor_v2.py",
+    "class_defined": true,
+    "raise_site_present": true,
+    "execute_guarded_mode_present": true,
+    "v2_unmodified_by_this_build": true
+  }
+}

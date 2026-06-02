@@ -1,0 +1,45 @@
+{
+  "stage": "LP_BASE_10U_PROBE_OVERNIGHT_ARMED_RUNNER_BUILD_AND_READONLY_MONITOR_V1",
+  "run_id": "20260602_193517",
+  "phase": "C3_armed_runner_gate_audit",
+  "gates_required_for_future_execution": [
+    {"id": 1, "name": "exact_build_approval_phrase", "current_state": "parser_present_but_v2_regex_is_one_shot_only", "needs_future": "v3 adds build phrase regex branch"},
+    {"id": 2, "name": "one_shot_distinct_from_build", "current_state": "verified (is_build_phrase != is_one_shot_phrase)", "needs_future": "keep"},
+    {"id": 3, "name": "notional_eq_10", "current_state": "main() hard check (exit 2)", "needs_future": "keep"},
+    {"id": 4, "name": "hold_eq_15m", "current_state": "main() hard check (exit 2)", "needs_future": "keep"},
+    {"id": 5, "name": "wallet_eq_frozen", "current_state": "main() hard check (exit 2)", "needs_future": "keep"},
+    {"id": 6, "name": "pool_eq_frozen", "current_state": "v1 top-level constant + preflight comparison", "needs_future": "keep"},
+    {"id": 7, "name": "chain_eq_base_8453", "current_state": "preflight chain_id_match", "needs_future": "keep"},
+    {"id": 8, "name": "i_understand_flag_required", "current_state": "argparse store_true default False", "needs_future": "keep"},
+    {"id": 9, "name": "fresh_dynamic_tick_range", "current_state": "v2.dynamic_tick_range_recompute", "needs_future": "keep"},
+    {"id": 10, "name": "stop_conditions_clear", "current_state": "any_stop_condition_active computed", "needs_future": "keep"},
+    {"id": 11, "name": "future_no_send_false", "current_state": "true (default no-send); requires unseal", "needs_future": "flip only after unseal + i-understand + multi-gate"},
+    {"id": 12, "name": "future_hard_disable_released", "current_state": "true; requires unseal: prefixed commit", "needs_future": "unseal commit + second reviewer"},
+    {"id": 13, "name": "current_hard_disable_active", "current_state": "true", "needs_future": "n/a (must remain true this stage)"},
+    {"id": 14, "name": "current_cannot_execute", "current_state": "true (mode_execute_armed hard-abort exit 1)", "needs_future": "n/a (must remain true this stage)"}
+  ],
+  "gates_sealed_this_stage": [
+    "armed_runner_execute_armed_hard_abort",
+    "v2_hard_disable_class_unchanged",
+    "one_shot_phrase_explicitly_rejected",
+    "default_no_send_and_dry_run_only_kept",
+    "argparse_pre_dispatch_wallet_notional_hold_check"
+  ],
+  "alignment_with_upstream_objectives": {
+    "build_armed_runner": true,
+    "unseal_send_hard_disable": false,
+    "default_no_send": true,
+    "still_requires_one_shot_phrase": true,
+    "still_requires_i_understand_flag": true,
+    "abort_before_entry": true,
+    "record_tokenId": false,
+    "record_actual_fee": false,
+    "record_final_pnl": false,
+    "emergency_stop": false
+  },
+  "unseal_intentionally_deferred": true,
+  "deferred_to_stage": "LP_BASE_10U_PROBE_EXECUTION_RUNNER_ARMED_BUILD_V1",
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false,
+  "execution_allowed_now": false
+}

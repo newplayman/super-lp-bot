@@ -1,0 +1,58 @@
+{
+  "stage": "LP_BASE_10U_PROBE_OVERNIGHT_ARMED_RUNNER_BUILD_AND_READONLY_MONITOR_V1",
+  "run_id": "20260602_193517",
+  "phase": "C6_monitor_start_healthcheck",
+
+  "session_name": "lp_base_10u_probe_readiness_monitor_20260602_193517",
+  "output_dir": "reports/lp_base_10u_probe_overnight_armed_runner/20260602_193517/monitor",
+
+  "tmux_session_exists": true,
+  "monitor_log_updating": true,
+  "state_json_exists": true,
+  "first_checkpoint_exists": true,
+  "subsequent_checkpoints_scheduled": true,
+  "no_forbidden_process": true,
+  "no_transaction_symbols": true,
+  "no_private_key_loaded": true,
+
+  "first_checkpoint": {
+    "ts_iso": "2026-06-02T19:44:19Z",
+    "iteration": 1,
+    "chain_id": 8453,
+    "block_number": 46820056,
+    "wallet_eth_wei": 90470751043807,
+    "usdc_balance_raw": 21774783,
+    "weth_balance_raw": 2470131003793800,
+    "usdc_allowance_raw": 5000000,
+    "weth_allowance_raw": 2470131003793800,
+    "current_tick": -200828,
+    "drift_ticks": -385,
+    "proposed_tick_lower": -201028,
+    "proposed_tick_upper": -200628,
+    "current_tick_inside_new_range": true,
+    "fresh_approval_required": true,
+    "gas_price_wei": 14018528,
+    "any_stop_condition_active": true,
+    "market_safe_for_execution_candidate": false
+  },
+
+  "process_audit": {
+    "monitor_calls_eth_sendTransaction": false,
+    "monitor_calls_eth_sendRawTransaction": false,
+    "monitor_constructs_signer": false,
+    "monitor_reads_private_key": false,
+    "monitor_modifies_v2": false,
+    "monitor_touches_live_or_canary_or_paper": false
+  },
+
+  "known_non_blocking": [
+    "tickSpacing selector 0x6b4d3867 reverts on this pool; monitor does not call it (slot0+liquidity only)",
+    "fresh_approval_required=true on every checkpoint until USDC allowance >= 10 USDC (upstream state)"
+  ],
+
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false,
+  "execution_allowed_now": false,
+  "tiny_canary_allowed": "no",
+  "send_hard_disable_active": true
+}

@@ -1,0 +1,68 @@
+{
+  "stage": "LP_BASE_10U_PROBE_OVERNIGHT_ARMED_RUNNER_BUILD_AND_READONLY_MONITOR_V1",
+  "run_id": "20260602_193517",
+  "phase": "C4_preflight_smoke",
+  "mode": "preflight",
+  "read_only": true,
+  "sends_tx": false,
+  "constructs_signer": false,
+  "loads_private_key": false,
+
+  "preflight_smoke_ran": true,
+  "preflight_smoke_pass": "WARN",
+  "preflight_smoke_pass_reason": "any_stop_condition_active=true (fresh_approval_required=true; market drift -424 ticks from frozen center -200443 exceeds 200 threshold)",
+  "preflight_smoke_blocks_monitor": false,
+
+  "observed": {
+    "chain_id_observed": 8453,
+    "chain_id_match": true,
+    "wallet_eth_balance_wei": 90470751043807,
+    "wallet_eth_balance_eth_approx": 0.0905,
+    "usdc_address": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+    "weth_address": "0x4200000000000000000000000000000000000006",
+    "usdc_balance_raw": 21774783,
+    "usdc_balance_usd_approx": 21.77,
+    "weth_balance_raw": 2470131003793800,
+    "usdc_allowance_raw": 5000000,
+    "usdc_allowance_usd_approx": 5.0,
+    "weth_allowance_raw": 2470131003793800,
+    "pool_liquidity_raw": "0x00000000000000000000000000000000000000000000000005b9b2466a69add1"
+  },
+  "dynamic_tick_range": {
+    "current_tick": -200867,
+    "drift_ticks": -424,
+    "abs_drift_ticks": 424,
+    "drift_threshold_ticks": 200,
+    "drift_exceeds_threshold": true,
+    "proposed_tick_lower": -201067,
+    "proposed_tick_upper": -200667,
+    "current_tick_inside_new_range": true,
+    "fresh_approval_required": true
+  },
+  "stop_conditions": {
+    "tick_outside_new_range": false,
+    "fresh_approval_required": true,
+    "usdc_balance_below_threshold": false,
+    "weth_balance_below_threshold": false,
+    "any_stop_condition_active": true
+  },
+  "vs_upstream_review": {
+    "upstream_run_id": "20260602_182402",
+    "upstream_current_tick": -200747,
+    "upstream_drift": -304,
+    "this_run_current_tick": -200867,
+    "this_run_drift": -424,
+    "delta_drift_ticks": -120
+  },
+
+  "rpc_methods_used": ["eth_chainId", "eth_getBalance", "eth_call (slot0/liquidity/tickSpacing/balanceOf/allowance)"],
+  "rpc_methods_NOT_used": ["eth_estimateGas", "eth_sendTransaction", "eth_sendRawTransaction"],
+
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false,
+  "execution_allowed_now": false,
+  "send_hard_disable_active": true,
+  "tiny_canary_allowed": "no",
+  "edge_proven": "no",
+  "manual_approval_required": true
+}
