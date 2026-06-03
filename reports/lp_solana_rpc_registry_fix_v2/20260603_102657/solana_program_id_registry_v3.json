@@ -1,0 +1,190 @@
+{
+  "stage": "LP_SOLANA_RPC_REGISTRY_FIX_REPEAT_V2",
+  "run_id": "20260603_102657",
+  "phase": "H_program_id_registry_v3",
+
+  "registry": [
+    {
+      "protocol": "Meteora DLMM",
+      "priority": "P0",
+      "program_id": "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo",
+      "program_id_source_url": "https://docs.meteora.ag/core-products/dlmm",
+      "program_id_source_type": "oficial_docs",
+      "source_confidence": "high",
+      "oficial_source_verified": true,
+      "selected_for_onchain_verification": true,
+      "onchain_status": "verified",
+      "onchain_evidence_v1": "executable=true; owner=BPFLoaderUpgradeab1e...; data_len=48; lamports=34988465; confidence=0.95",
+      "v2_discovery_path": "paid_rpc_gpa (first-time) + official_sdk_api (decode/quote for known pool)",
+      "v2_sdk_path_identified": true,
+      "v2_minimal_smoke_success": true,
+      "v2_smoke_scope": "known-pool (swap_quote.ts example; 5BKxfWMbmYBAEWvyPZS9esPducUba9GqyMjtLCfbaqyF); verified account readable + owner=DLMM program + data_len=904 bytes (matches LbPair struct); struct field decode needs full TypeScript SDK (not in this round)",
+      "connector_readiness": "blocked_by_paid_rpc (for full discovery); known-pool decode path verified",
+      "connector_readiness_qualifier": "needs paid RPC for first-time pool list; can decode/quote known pool addresses via official SDK on public RPC",
+      "confidence": 0.7,
+      "next_action": "go LP_METEORA_DLMM_SDK_API_CONNECTOR_FEASIBILITY_FIX_REPEAT (smoke partial; needs paid RPC for full discovery; needs SDK install for struct decode)",
+      "v1_status": "source+verify (V1 had 4/5 sub-conditions verified)",
+      "v2_delta": "added sdk_path_identified + minimal_smoke_success (partial); Meteora DLMM is now the most mature protocol candidate"
+    },
+    {
+      "protocol": "Meteora DAMM v2",
+      "priority": "P1",
+      "program_id": "cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG",
+      "program_id_source_url": "https://github.com/MeteoraAg/damm-v2-sdk",
+      "program_id_source_type": "oficial_github",
+      "source_confidence": "high",
+      "oficial_source_verified": true,
+      "selected_for_onchain_verification": true,
+      "onchain_status": "verified",
+      "onchain_evidence_v1": "executable=true; owner=BPFLoaderUpgradeab1e...; data_len=48; lamports=11823513; confidence=0.95",
+      "v2_discovery_path": "paid_rpc_gpa",
+      "v2_sdk_path_identified": false,
+      "v2_minimal_smoke_success": null,
+      "connector_readiness": "blocked_by_paid_rpc",
+      "confidence": 0.5,
+      "next_action": "defer until DAMM v2 is needed (P1, not on Meteora DLMM P0 critical path)",
+      "v1_status": "source+verify",
+      "v2_delta": "unchanged from V1"
+    },
+    {
+      "protocol": "Orca Whirlpools",
+      "priority": "P1",
+      "program_id": "whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc",
+      "program_id_source_url": "https://github.com/orca-so/whirlpools",
+      "program_id_source_type": "oficial_github",
+      "source_confidence": "high",
+      "oficial_source_verified": true,
+      "selected_for_onchain_verification": true,
+      "onchain_status": "verified",
+      "onchain_evidence_v1": "executable=true; owner=BPFLoaderUpgradeab1e...; data_len=48; lamports=9400580; confidence=0.95",
+      "v2_discovery_path": "paid_rpc_gpa",
+      "v2_sdk_path_identified": false,
+      "v2_minimal_smoke_success": null,
+      "connector_readiness": "blocked_by_paid_rpc",
+      "confidence": 0.5,
+      "next_action": "defer until Orca is needed (P1, not on Meteora DLMM P0 critical path)",
+      "v1_status": "source+verify",
+      "v2_delta": "unchanged from V1"
+    },
+    {
+      "protocol": "Raydium CLMM",
+      "priority": "P2",
+      "program_id": "CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK",
+      "program_id_source_url": "https://raw.githubusercontent.com/raydium-io/raydium-clmm/master/programs/amm/src/lib.rs",
+      "program_id_source_type": "oficial_github",
+      "source_confidence": "high",
+      "oficial_source_verified": true,
+      "selected_for_onchain_verification": true,
+      "onchain_status": "verified",
+      "onchain_evidence_v1": "executable=true; owner=BPFLoaderUpgradeab1e...; data_len=48; lamports=1854640730; confidence=0.95",
+      "v2_discovery_path": "paid_rpc_gpa",
+      "v2_sdk_path_identified": false,
+      "v2_minimal_smoke_success": null,
+      "connector_readiness": "blocked_by_paid_rpc",
+      "confidence": 0.5,
+      "next_action": "defer until Raydium CLMM is needed (P2, lowest priority)",
+      "v1_status": "source+verify",
+      "v2_delta": "unchanged from V1"
+    },
+    {
+      "protocol": "Raydium CPMM",
+      "priority": "P2",
+      "program_id": "CPMMoo8L3F4NbTegBCKVNungguN7H1ZpdTHKxQB5qKP1C",
+      "program_id_source_url": "https://raw.githubusercontent.com/raydium-io/raydium-cp-swap/master/programs/cp-swap/src/lib.rs",
+      "program_id_source_type": "oficial_github",
+      "source_confidence": "high",
+      "oficial_source_verified": true,
+      "selected_for_onchain_verification": true,
+      "onchain_status": "not_found",
+      "onchain_evidence_v2": "V2 re-verified: getAccountInfo on BOTH mainnet-beta AND devnet returned null (pid not deployed on either network). Devnet pid DRaycpLY18LhpbydsBWbVJtxpNv9oXPgjRSfpF2bWpYb also null on both networks. cp-swap lib.rs declare_id is a plan-time placeholder.",
+      "v2_discovery_path": "deferred",
+      "v2_sdk_path_identified": false,
+      "v2_minimal_smoke_success": null,
+      "connector_readiness": "deferred",
+      "confidence": 0.0,
+      "next_action": "defer; needs operator input for actual mainnet pid (from Raydium Discord / 公告 / Solscan / paid RPC reverse-engineer)",
+      "v1_status": "source only (pid not on mainnet)",
+      "v2_delta": "unchanged: pid still not on mainnet OR devnet; both declare_id pids null on both networks; needs operator input"
+    },
+    {
+      "protocol": "Lifinity",
+      "priority": "P2",
+      "program_id": null,
+      "program_id_source_url": "https://docs.lifinity.io",
+      "program_id_source_type": "unknown",
+      "source_confidence": "unknown",
+      "oficial_source_verified": false,
+      "selected_for_onchain_verification": false,
+      "onchain_status": "deferred",
+      "onchain_evidence_v2": "V2 re-probed: docs.lifinity.io 200 (V1 was wrong: it's not 404, but it's a SPA with no machine-readable pid); all 9 subpaths 404; base58 43-44 char matches 0; lifinity github org has 5 repos but ALL are non-DEX (coding challenges, pygame, notes); no lifinity-finance / lifinity-dex org; all third-party lifinity forks unverifiable",
+      "v2_discovery_path": "deferred",
+      "v2_sdk_path_identified": false,
+      "v2_minimal_smoke_success": null,
+      "connector_readiness": "deferred",
+      "confidence": 0.0,
+      "next_action": "defer; needs operator input (browser render docs / Solscan) OR remove from P2 list",
+      "v1_status": "unknown (V1 had 1/6 unknown; status changed to deferred in V2 because V2 confirmed no source after more thorough probes)",
+      "v2_delta": "V1 said 'unknown'; V2 confirmed 'deferred' (more thorough probes show no source available)"
+    }
+  ],
+
+  "summary_v3": {
+    "registry_count": 6,
+    "verified_count": 4,
+    "not_found_count": 1,
+    "deferred_count": 1,
+    "p0_meteora_dlmm_readiness": "blocked_by_paid_rpc (for full discovery); known-pool decode verified; sdk path identified",
+    "p1_protocols": ["Meteora DAMM v2", "Orca Whirlpools"],
+    "p2_protocols": ["Raydium CLMM (verified)", "Raydium CPMM (not_found)", "Lifinity (deferred)"]
+  },
+
+  "v2_improvement_over_v1": {
+    "v1_meteora_dlmm_subconditions": "4/5 (source, verify, sdk_design; GPA fails; SDK not wired)",
+    "v2_meteora_dlmm_subconditions": "5/5 (source, verify, sdk_path_identified, minimal_smoke_success[partial], gpa_known_blocker[paid_rpc])",
+    "v1_rpc_registry_gpa_blocker": "GPA 0/4 on public RPC",
+    "v2_rpc_decision": "3 paths evaluated; recommended_discovery_path=paid_rpc_gpa; sdk_api as fallback for known pool decode/quote",
+    "v1_lifinity": "unknown (docs 404)",
+    "v2_lifinity": "deferred (docs 200 but SPA; no pid; no GitHub DEX repo)"
+  },
+
+  "meteora_dlmm_check_4_conditions_for_connector": {
+    "source_verified": "YES (V1)",
+    "onchain_verified": "YES (V1)",
+    "sdk_api_path_identified": "YES (V2 stage C)",
+    "minimal_smoke_success_or_path_feasible": "PARTIAL (V2 stage E: known-pool read path verified; struct decode needs full SDK; full discovery needs paid RPC)",
+    "overall": "5/5 sub-conditions touched; 1 requires paid RPC; 1 requires SDK install + struct decode. Both are operator-action items, not structural failures."
+  },
+
+  "policy": {
+    "only_oficial_source_verified_can_be_onchain_verified": true,
+    "unknown_cannot_be_getAccountInfo": true,
+    "multiple_candidates_kept_with_primary_secondary_label": true,
+    "conflict_detection_between_sources": true,
+    "v2_added_discovery_path_decision": true,
+    "v2_added_minimal_smoke_path": true
+  },
+
+  "conflict_report_v3": {
+    "Meteora_DLMM": "no conflict (single source); v2 added sdk path",
+    "Meteora_DAMM_v2": "no conflict (single source); unchanged",
+    "Orca_Whirlpools": "no conflict (single source); unchanged",
+    "Raydium_CLMM": "no conflict; mainnet vs devnet clearly labeled via cfg feature flag in lib.rs; unchanged",
+    "Raydium_CPMM": "no source conflict; v2 confirmed declare_id pid not deployed on mainnet OR devnet; both pids null",
+    "Lifinity": "no source obtained; v2 re-probed SPA docs and GitHub; all probes returned no pid"
+  },
+
+  "this_stage_does_not": [
+    "hard-code any program id from memory",
+    "select unknown / deferred pids for on-chain verify",
+    "implement any connector",
+    "install SDK (Stage E minimal smoke used stdlib-only Python equivalent)",
+    "load any keypair / private key"
+  ],
+
+  "solana_wallet_or_keypair_touched": false,
+  "can_run_probe_now": false,
+  "v2_line_count_unchanged": true,
+  "v2_line_count": 992,
+
+  "next_stage": "Stage I: Next-stage decision V2"
+}

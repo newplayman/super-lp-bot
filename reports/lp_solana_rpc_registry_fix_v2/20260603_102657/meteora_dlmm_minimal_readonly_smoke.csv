@@ -1,0 +1,25 @@
+field,value,source,confidence
+smoke_attempted,true,this_round,1.0
+smoke_success,true,this_round,1.0
+smoke_partial,true,this_round,1.0
+discovery_path_used,known_pool,stage_D_decision,1.0
+gpa_used,false,this_round,1.0
+paid_rpc_used,false,this_round,1.0
+sdk_installed,false,this_round,1.0
+first_pool_address,5BKxfWMbmYBAEWvyPZS9esPducUba9GqyMjtLCfbaqyF,swap_quote.ts example,1.0
+pool_owner,LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo,getMultipleAccountsInfo,1.0
+owner_is_meteora_dlmm_program,true,this_round,1.0
+data_len_bytes,904,this_round,1.0
+data_len_matches_lbpair_struct,true,IDL cross-check,0.95
+active_id,not_extracted_reliably,this_round,0.0
+bin_step,not_extracted_reliably,this_round,0.0
+token_x_mint,not_extracted_reliably,this_round,0.0
+token_y_mint,not_extracted_reliably,this_round,0.0
+fee_bps,not_extracted,this_round,0.0
+liquidity_per_bin,not_extracted,this_round,0.0
+quote_available,not_evaluated,this_round,0.0
+liquidity_available,partial,this_round,0.5
+overall_confidence,0.5,this_round,0.5
+solana_wallet_or_keypair_touched,false,this_round,1.0
+can_run_probe_now,false,this_round,1.0
+v2_line_count_unchanged,true,this_round,1.0

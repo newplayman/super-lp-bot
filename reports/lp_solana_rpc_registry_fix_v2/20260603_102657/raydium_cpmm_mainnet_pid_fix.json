@@ -1,0 +1,90 @@
+{
+  "stage": "LP_SOLANA_RPC_REGISTRY_FIX_REPEAT_V2",
+  "run_id": "20260603_102657",
+  "phase": "F_raydium_cpmm_mainnet_pid_fix",
+
+  "v1_candidate_pid": "CPMMoo8L3F4NbTegBCKVNungguN7H1ZpdTHKxQB5qKP1C",
+  "v1_candidate_source": "https://raw.githubusercontent.com/raydium-io/raydium-cp-swap/master/programs/cp-swap/src/lib.rs",
+  "v1_candidate_mainnet_declare": "declare_id!(\"CPMMoo8L3F4NbTegBCKVNungguN7H1ZpdTHKxQB5qKP1C\")  // cfg(not(feature=\"devnet\"))",
+
+  "v2_pid_char_by_char_check": {
+    "v1_pid": "CPMMoo8L3F4NbTegBCKVNungguN7H1ZpdTHKxQB5qKP1C",
+    "current_lib_rs_pid": "CPMMoo8L3F4NbTegBCKVNungguN7H1ZpdTHKxQB5qKP1C",
+    "equal": true,
+    "len": 45,
+    "verdict": "V1 pid is correct; source declare_id did not change"
+  },
+
+  "alternative_sources_probed": [
+    {
+      "source": "raydium-amm-v3/programs/amm/src/lib.rs declare_id!",
+      "url": "https://raw.githubusercontent.com/raydium-io/raydium-amm-v3/master/programs/amm/src/lib.rs",
+      "result": "found pid CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK (CLMM, not CPMM)",
+      "verdict": "raydium-amm-v3 is the CLMM repo, not CPMM. Same pid as V1 verified."
+    },
+    {
+      "source": "raydium-sdk-v2/src/raydium/cpmm/*.ts",
+      "url": "https://github.com/raydium-io/raydium-sdk-v2/tree/master/src/raydium/cpmm",
+      "result": "programId is a parameter, not hardcoded",
+      "verdict": "SDK deliberately does NOT hardcode CPMM mainnet pid"
+    },
+    {
+      "source": "raydium-cp-swap/README.md",
+      "url": "https://raw.githubusercontent.com/raydium-io/raydium-cp-swap/master/README.md",
+      "result": "no pid mentioned",
+      "verdict": "README does not publish deployed pid"
+    },
+    {
+      "source": "Raydium official docs (docs.raydium.io)",
+      "url": "https://docs.raydium.io/raydium/protocol/developers/addresses",
+      "result": "404 (page does not exist)",
+      "verdict": "official docs do not publish CPMM mainnet pid in machine-readable form"
+    }
+  ],
+
+  "onchain_verification": {
+    "candidate_pid_mainnet": {
+      "pid": "CPMMoo8L3F4NbTegBCKVNungguN7H1ZpdTHKxQB5qKP1C",
+      "rpc_mainnet": "https://api.mainnet-beta.solana.com",
+      "rpc_devnet": "https://api.devnet.solana.com",
+      "result_mainnet": "null (account does not exist)",
+      "result_devnet": "null (account does not exist)"
+    },
+    "candidate_pid_devnet": {
+      "pid": "DRaycpLY18LhpbydsBWbVJtxpNv9oXPgjRSfpF2bWpYb",
+      "rpc_mainnet": "https://api.mainnet-beta.solana.com",
+      "rpc_devnet": "https://api.devnet.solana.com",
+      "result_mainnet": "null (account does not exist)",
+      "result_devnet": "null (account does not exist)"
+    }
+  },
+
+  "verified": false,
+  "status": "deferred",
+  "does_not_block_meteora_dlmm": true,
+  "raydium_cpmm_priority": "P2 (not in Meteora DLMM P0 critical path)",
+
+  "honest_finding": "公开链上既没有 deploy mainnet declare_id pid 也没有 deploy devnet declare_id pid; cp-swap lib.rs 的 declare_id 是一个 plan-time 占位, 实际 program 可能在 (a) 另一个未公开 pid 上 deploy (Raydium 内部), 或 (b) 尚未 deploy, 或 (c) 用了不同 pid",
+
+  "follow_up_options": [
+    "operator 提供 Raydium CPMM mainnet pid (from Raydium Discord / 公告 / Solscan 等人类来源)",
+    "paid RPC + 已知 token pair 反查 (e.g. SOL/USDC CPMM pool owner pid)",
+    "接受 deferred; Raydium CPMM 不在 V1/V2 critical path",
+    "Solscan / explorer 抓 deployed program (Level A explorer; 仍需官方确认)"
+  ],
+
+  "this_stage_does_not": [
+    "hard-code pid from model memory",
+    "webfetch blog / Twitter / 论坛 / unofficial fork",
+    "run GPA",
+    "load any keypair / private key",
+    "construct any transaction"
+  ],
+
+  "solana_wallet_or_keypair_touched": false,
+  "can_run_probe_now": false,
+  "v2_line_count_unchanged": true,
+  "v2_line_count": 992,
+
+  "next_stage": "Stage G: Lifinity pid decision"
+}

@@ -1,0 +1,65 @@
+{
+  "stage": "LP_SOLANA_RPC_REGISTRY_FIX_REPEAT_V2",
+  "run_id": "20260603_102657",
+  "phase": "D_meteora_dlmm_readonly_discovery_path_decision",
+
+  "paths_evaluated": [
+    {
+      "path_id": "public_rpc_gpa",
+      "v1_evidence": "0/4 success (timeout / -32010 / 429)",
+      "feasibility": "not_feasible",
+      "needs_operator_action": "no",
+      "discovery_capable": "yes_but_blocked",
+      "decode_quote_capable": "n/a",
+      "bypass_public_rpc_gpa": "n/a (is public)",
+      "reason": "public RPC rate limit (5MB response cap, ~50 req/min); Meteora DLMM ~2000 LbPair accounts × 904 bytes ≈ 1.8MB raw > public RPC cap in practice; V1 evidence shows 0/4 feasible even with dataSlice 0 bytes"
+    },
+    {
+      "path_id": "paid_rpc_gpa",
+      "v1_evidence": "n/a (not attempted in V1; V1 stayed on public RPC)",
+      "feasibility": "likely_feasible",
+      "needs_operator_action": "yes (paid RPC URL + key)",
+      "discovery_capable": "yes",
+      "decode_quote_capable": "n/a",
+      "bypass_public_rpc_gpa": "yes",
+      "reason": "Helius/Triton/QuickNode paid tier supports higher rate limit (50-1000 req/s) and larger response (10-50MB); Meteora DLMM ~1.8MB raw fits in paid RPC cap; GPA is the canonical way to enumerate LbPair accounts and the SDK itself uses Anchor program.account.lbPair.all() = GPA"
+    },
+    {
+      "path_id": "official_sdk_api",
+      "v1_evidence": "dlmm-api.meteora.ag 404 on all probed paths (Stage C this round)",
+      "feasibility": "partial",
+      "needs_operator_action": "no (SDK npm install only); but needs known pool list",
+      "discovery_capable": "no (still needs GPA under the hood)",
+      "decode_quote_capable": "yes (DLMM.create + getActiveBin + swapQuote + getLbPairLockInfo + getBinArray + getFeeInfo)",
+      "bypass_public_rpc_gpa": "partial (decode/quote yes; discovery no)",
+      "reason": "DLMM.getLbPairs() implementation = program.account.lbPair.all() = GPA, so SDK does NOT bypass GPA for discovery. SDK DOES bypass GPA for decode/quote (uses getMultipleAccountsInfo on derived addresses) when pool address is known. Real-world workflow: (1) discovery via paid RPC GPA; (2) cache pool addresses; (3) decode/quote via SDK using known addresses"
+    }
+  ],
+
+  "selected_path": "paid_rpc_gpa",
+  "recommended_discovery_path": "paid_rpc_gpa",
+  "default_when_no_explicit_choice": "paid_rpc_gpa",
+  "fallback_path": "official_sdk_api (used for decode/quote of KNOWN pool addresses; NOT for first-time discovery)",
+
+  "connector_ready_if_path_available": "no (still requires paid RPC key from operator; this round has no key)",
+
+  "stage_E_plan": {
+    "approach": "known_pool_smoke (not full discovery)",
+    "rationale": "no paid RPC this round, so we cannot run full GPA discovery. Instead: take 1 hardcoded Meteora DLMM pool address (from V1 readiness artifact or official docs example) and run DLMM.create + getActiveBin + getBinArrayForSwap + swapQuote via public RPC to verify SDK wire + decode workflow",
+    "boundary": "read-only; no wallet; no keypair; no transaction; no signing; no swap; no LP open/close; no fee collect; no bridge",
+    "if_path_blocked": "smoke returns blocker; do NOT pretend success; mark sdk_api_connector_feasibility = partial"
+  },
+
+  "this_stage_does_not": [
+    "implement any connector",
+    "call paid RPC (no key)",
+    "install npm package (Stage E if needed)",
+    "load any keypair / private key",
+    "construct any transaction"
+  ],
+
+  "solana_wallet_or_keypair_touched": false,
+  "can_run_probe_now": false,
+
+  "next_stage": "Stage E: Meteora DLMM minimal read-only SDK smoke (known-pool path)"
+}

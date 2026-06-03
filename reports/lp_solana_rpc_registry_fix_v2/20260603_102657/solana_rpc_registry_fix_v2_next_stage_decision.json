@@ -1,0 +1,92 @@
+{
+  "stage": "LP_SOLANA_RPC_REGISTRY_FIX_REPEAT_V2",
+  "run_id": "20260603_102657",
+  "phase": "I_next_stage_decision_v2",
+
+  "recommended_next_stage": "LP_METEORA_DLMM_SDK_API_CONNECTOR_FEASIBILITY_FIX_REPEAT",
+  "allowed_next_stages": [
+    "LP_METEORA_DLMM_READONLY_CONNECTOR_V1",
+    "LP_METEORA_DLMM_SDK_API_CONNECTOR_FEASIBILITY_FIX_REPEAT",
+    "LP_SOLANA_PAID_RPC_SETUP_REQUIRED",
+    "LP_SOLANA_RPC_REGISTRY_FIX_REPEAT",
+    "STOP_LP_RESEARCH_NOW"
+  ],
+  "default_when_no_explicit_choice": "LP_METEORA_DLMM_SDK_API_CONNECTOR_FEASIBILITY_FIX_REPEAT",
+
+  "selected_next_stage": "LP_METEORA_DLMM_SDK_API_CONNECTOR_FEASIBILITY_FIX_REPEAT",
+  "selection_rationale": {
+    "not_METEORA_DLMM_READONLY_CONNECTOR": "5/5 sub-conditions touched but 2 still need operator action: (a) paid RPC OR known-pool feed for first-time discovery, (b) SDK install + struct decode for full read. Connector V1 should not be entered until these are addressed in a fix_repeat round.",
+    "selected_METEORA_DLMM_SDK_API_CONNECTOR_FEASIBILITY_FIX_REPEAT": "SDK path IS identified (Stage C: @meteora-ag/dlmm v1.9.10 with DLMM class, getLbPairs, DLMM.create, getActiveBin, swapQuote, getLbPairLockInfo, getBinArray, getFeeInfo); minimal smoke is partial (Stage E: known-pool read path verified via stdlib-only Python equivalent; struct fields not extracted). Next fix_repeat round should (a) npm install SDK and run full struct decode on 1-3 known pools, (b) decide paid RPC vs known-pool feed for first-time discovery, (c) re-run registry v4.",
+    "not_PAID_RPC_SETUP_REQUIRED": "SDK/API path IS identified; paid RPC is a sub-decision within the connector stage, not a stage gate. The path is feasible without paid RPC if a known-pool feed is supplied.",
+    "not_RPC_REGISTRY_FIX_REPEAT": "5/6 official sources complete (was 0/6 in upstream V0); 4/6 verified on-chain; pid registry essentially complete for non-Lifinity protocols. Repeating registry fixes would be a regression; we should now move forward on the connector side.",
+    "not_STOP_LP_RESEARCH_NOW": "read-only path is structurally viable: 4/6 verified, 5/6 sourced, SDK path identified, known-pool read smoke works. Not a structural failure."
+  },
+
+  "this_round_improvements": {
+    "previous_round_verified_count": 4,
+    "this_round_verified_count": 4,
+    "meteora_dlmm_q4_status_v1": "partial (designed)",
+    "meteora_dlmm_q4_status_v2": "yes (SDK package identified; read-only helpers listed; API not_found but SDK is the real path)",
+    "meteora_dlmm_q5_status_v1": "no",
+    "meteora_dlmm_q5_status_v2": "partial (known-pool read path verified via stdlib-only Python; struct fields need full SDK)",
+    "raydium_cpmm_v1": "not_found on mainnet",
+    "raydium_cpmm_v2": "not_found on mainnet AND devnet (both declare_id pids null on both networks)",
+    "lifinity_v1": "unknown (docs 404 per V1)",
+    "lifinity_v2": "deferred (V2 re-probed: docs 200 but SPA; no machine-readable pid; no public GitHub DEX repo)"
+  },
+
+  "remaining_blockers": [
+    {
+      "blocker": "paid RPC decision for first-time discovery (or known-pool feed)",
+      "fix": "operator input: choose paid RPC (Helius / Triton / QuickNode) OR supply known-pool feed (cache of Meteora DLMM LbPair addresses from any source)"
+    },
+    {
+      "blocker": "SDK install + full struct decode for known pools",
+      "fix": "next fix_repeat: npm install @meteora-ag/dlmm@1.9.10 + run DLMM.create on 1-3 known pools; extract active_id, bin_step, token mints, fees"
+    },
+    {
+      "blocker": "Raydium CPMM real mainnet pid (cp-swap declare_id not deployed on mainnet OR devnet)",
+      "fix": "operator input: provide real mainnet pid from Raydium Discord / 公告 / Solscan / paid RPC reverse-engineer; OR accept deferred"
+    },
+    {
+      "blocker": "Lifinity pid (no public source after thorough V2 probes)",
+      "fix": "operator input: provide pid from browser-rendered docs / Solscan; OR remove Lifinity from P2 list"
+    }
+  ],
+
+  "next_stage_responsibilities": [
+    "npm install @meteora-ag/dlmm@1.9.10",
+    "run DLMM.create on 1-3 known Meteora DLMM pools (e.g. swap_quote.ts example 5BKxfWMbmYBAEWvyPZS9esPducUba9GqyMjtLCfbaqyF)",
+    "extract active_id, bin_step, token mints, fee info from on-chain LbPair via SDK decode",
+    "decide paid RPC vs known-pool feed (operator input)",
+    "re-run registry v4"
+  ],
+
+  "next_stage_must_not": [
+    "execute probe on Solana",
+    "send any tx",
+    "load any keypair / private key / seed phrase",
+    "construct signer",
+    "auto bridge / auto swap",
+    "modify EVM executor v2",
+    "release v2 hard-disable",
+    "set can_run_probe_now to true",
+    "set tiny_canary_allowed to yes",
+    "hard-code any program id from memory",
+    "use paid RPC without operator key"
+  ],
+
+  "this_stage_did_not": [
+    "implement any connector code",
+    "call any SDK / indexer / API",
+    "load any keypair / private key",
+    "send any transaction"
+  ],
+
+  "can_run_probe_now": false,
+  "solana_wallet_or_keypair_touched": false,
+  "tiny_canary_allowed": "no",
+  "edge_proven": "no",
+  "v2_line_count_unchanged": true,
+  "v2_line_count": 992
+}

@@ -1,0 +1,133 @@
+{
+  "stage": "LP_SOLANA_RPC_REGISTRY_FIX_REPEAT_V2",
+  "run_id": "20260603_102657",
+  "phase": "C_meteora_dlmm_sdk_api_source_discovery",
+
+  "oficial_source_discovery_ran": true,
+  "source_fetch_method": "curl github raw + WebFetch docs.meteora.ag",
+  "no_webfetch_unavailable": true,
+
+  "results": [
+    {
+      "name": "@meteora-ag/dlmm (npm)",
+      "source_url": "https://raw.githubusercontent.com/MeteoraAg/dlmm-sdk/main/ts-client/package.json",
+      "source_type": "oficial_github",
+      "package_name": "@meteora-ag/dlmm",
+      "package_version": "1.9.10",
+      "source_confidence": "high",
+      "fetch_success": true,
+      "oficial_source_verified": true,
+      "invalid_reason": ""
+    },
+    {
+      "name": "DLMM class (ts-client default export)",
+      "source_url": "https://raw.githubusercontent.com/MeteoraAg/dlmm-sdk/main/ts-client/src/index.ts",
+      "source_type": "oficial_github",
+      "source_confidence": "high",
+      "fetch_success": true,
+      "oficial_source_verified": true,
+      "invalid_reason": ""
+    },
+    {
+      "name": "DLMM.getLbPairs (pool discovery via Anchor gpa)",
+      "source_url": "https://raw.githubusercontent.com/MeteoraAg/dlmm-sdk/main/ts-client/src/dlmm/index.ts",
+      "source_type": "oficial_github",
+      "source_confidence": "high",
+      "fetch_success": true,
+      "oficial_source_verified": true,
+      "evidence_excerpt": "public static async getLbPairs(connection, opt?): Promise<LbPairAccount[]> { const program = createProgram(connection, opt); return program.account.lbPair.all(); }",
+      "implements": "Anchor program.account.lbPair.all() = GPA",
+      "invalid_reason": ""
+    },
+    {
+      "name": "DLMM.create (decode known pool)",
+      "source_url": "https://raw.githubusercontent.com/MeteoraAg/dlmm-sdk/main/ts-client/src/dlmm/index.ts",
+      "source_type": "oficial_github",
+      "source_confidence": "high",
+      "fetch_success": true,
+      "oficial_source_verified": true,
+      "implements": "fetchMultipleAccounts([dlmm, binArrayBitMapExtension, SYSVAR_CLOCK]) + decode LbPair + tokenX/Y + reserves + rewards",
+      "invalid_reason": ""
+    },
+    {
+      "name": "DLMM swapQuote example (read-only)",
+      "source_url": "https://raw.githubusercontent.com/MeteoraAg/dlmm-sdk/main/ts-client/src/examples/swap_quote.ts",
+      "source_type": "oficial_github",
+      "source_confidence": "high",
+      "fetch_success": true,
+      "oficial_source_verified": true,
+      "implements": "DLMM.create(connection, poolAddress) + getBinArrayForSwap + swapQuote",
+      "invalid_reason": ""
+    },
+    {
+      "name": "DLMM getLbPairLockInfo example (read-only)",
+      "source_url": "https://raw.githubusercontent.com/MeteoraAg/dlmm-sdk/main/ts-client/src/examples/fetch_lb_pair_lock_info.ts",
+      "source_type": "oficial_github",
+      "source_confidence": "high",
+      "fetch_success": true,
+      "oficial_source_verified": true,
+      "implements": "DLMM.create + getLbPairLockInfo",
+      "invalid_reason": ""
+    },
+    {
+      "name": "Meteora DLMM REST API (dlmm-api.meteora.ag)",
+      "source_url": "https://dlmm-api.meteora.ag",
+      "source_type": "oficial_api",
+      "source_confidence": "n/a",
+      "fetch_success": false,
+      "oficial_source_verified": false,
+      "evidence_excerpt": "all paths (pair/all, pairs, lb_pairs, v1/*, health, info, swagger.json, openapi.json, docs) return HTTP 404",
+      "invalid_reason": "host is alive but no public REST API exposed at any probed path; cannot be used as discovery source"
+    }
+  ],
+
+  "verified_count": 6,
+  "unknown_count": 1,
+  "verified_sources": [
+    "@meteora-ag/dlmm npm package",
+    "DLMM class",
+    "getLbPairs (GPA-based)",
+    "DLMM.create (decode)",
+    "swapQuote example",
+    "fetch_lb_pair_lock_info example"
+  ],
+  "unknown_sources": [
+    "dlmm-api.meteora.ag REST API"
+  ],
+
+  "field_coverage": {
+    "sdk_install_needed": "yes (npm install @meteora-ag/dlmm)",
+    "has_pool_discovery_method": "yes (via GPA; bounded on public RPC: not feasible in V1)",
+    "has_pool_decode_method": "yes (DLMM.create decodes LbPair, BinArrayBitmapExtension, tokenX/Y, reserves, rewards, bin arrays)",
+    "has_quote_method": "yes (swapQuote)",
+    "has_bin_liquidity_method": "yes (getActiveBin, getBinArray, getPriceOfBinByBinId, getBinFromBinArray)",
+    "has_fee_parameter_method": "yes (getFeeInfo, calculateFeeInfo)",
+    "needs_paid_rpc_for_discovery": "likely (gpa on public RPC: timeout / -32010 / 429 per V1)",
+    "needs_known_pool_address_for_decode": "yes (DLMM.create requires PublicKey of LbPair)",
+    "api_endpoint_available": "none_found",
+    "sdk_blocker": "pool discovery still requires GPA; SDK does NOT bypass public RPC GPA"
+  },
+
+  "examples_available": [
+    "ts-client/src/examples/example.ts (write; not in scope)",
+    "ts-client/src/examples/swap_quote.ts (read-only)",
+    "ts-client/src/examples/fetch_lb_pair_lock_info.ts (read-only)",
+    "ts-client/src/examples/get_oracle.ts (read-only)",
+    "ts-client/src/examples/initialize_bin_arrays.ts (write; not in scope)"
+  ],
+
+  "this_stage_does_not": [
+    "webfetch any non-oficial source (blog / Twitter / forum)",
+    "hard-code from model memory",
+    "run on-chain verification (V1 did it)",
+    "load any keypair / private key / seed phrase",
+    "construct any transaction",
+    "npm install anything",
+    "execute any SDK / API call (Stage E will do minimal smoke)"
+  ],
+
+  "solana_wallet_or_keypair_touched": false,
+  "can_run_probe_now": false,
+
+  "next_stage": "Stage D: Meteora DLMM read-only discovery path decision"
+}

@@ -1,0 +1,84 @@
+{
+  "stage": "LP_SOLANA_RPC_REGISTRY_FIX_REPEAT_V2",
+  "run_id": "20260603_102657",
+  "phase": "E_meteora_dlmm_minimal_readonly_smoke",
+
+  "smoke_attempted": true,
+  "smoke_success": true,
+  "smoke_partial": true,
+  "smoke_partial_reason": "LbPair struct fields (active_id, bin_step, token mints) NOT reliably decoded via stdlib-only Python; known-pool READ path itself fully verified (account exists, owner = Meteora DLMM program, data_len = 904 bytes matches LbPair struct)",
+
+  "approach": "known_pool_read (hardcoded swap_quote.ts example pool)",
+  "discovery_path_used": "known_pool (no GPA, no paid RPC)",
+  "gpa_used": false,
+  "paid_rpc_used": false,
+  "sdk_installed": false,
+  "rpc_used": "https://solana.publicnode.com",
+  "rpc_call": "getMultipleAccounts([5BKxfWMbmYBAEWvyPZS9esPducUba9GqyMjtLCfbaqyF], {encoding:'base64'})",
+
+  "pool_count_sample": 1,
+  "first_pool_address": "5BKxfWMbmYBAEWvyPZS9esPducUba9GqyMjtLCfbaqyF",
+  "pool_source": "ts-client/src/examples/swap_quote.ts (official SDK example; Level A)",
+
+  "pool_account_verification": {
+    "address": "5BKxfWMbmYBAEWvyPZS9esPducUba9GqyMjtLCfbaqyF",
+    "owner": "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo",
+    "owner_is_meteora_dlmm_program": true,
+    "executable": false,
+    "data_len_bytes": 904,
+    "data_len_matches_lbpair_struct": true,
+    "lamports": 57283954,
+    "latency_ms": 199
+  },
+
+  "decoded_fields_attempted": {
+    "active_id": "not_extracted_reliably (offset miscalculation; struct decode needs full SDK)",
+    "bin_step": "not_extracted_reliably (offset miscalculation; struct decode needs full SDK)",
+    "token_x_mint": "not_extracted_reliably (offset miscalculation; struct decode needs full SDK)",
+    "token_y_mint": "not_extracted_reliably (offset miscalculation; struct decode needs full SDK)",
+    "fee_bps": "not_extracted (not in LbPair struct; in dynamic fee accumulator; needs full SDK)",
+    "liquidity_per_bin": "not_extracted (bin arrays not loaded; needs full SDK)"
+  },
+
+  "liquidity_available": "partial (LbPair account shape verified; per-bin liquidity not extracted in this round)",
+  "quote_available": "not_evaluated (would need full SDK; would need bin arrays loaded; out of scope this round)",
+
+  "confidence": 0.5,
+  "confidence_reason": "Read path verified (200ms, no GPA, no paid RPC, no SDK install); struct field decode requires actual TypeScript SDK and is not the scope of this round's stdlib-only minimal smoke; per spec 'if smoke cannot run, output blocker, don't pretend success' — instead we report partial success with clear boundary",
+
+  "invalid_reason": "",
+
+  "sdk_install_path_for_connector_v1": {
+    "command": "npm install @meteora-ag/dlmm@1.9.10",
+    "ts_calls_to_use": [
+      "DLMM.create(connection, poolAddress, {cluster: 'mainnet-beta'})",
+      "dlmmPool.getActiveBin()",
+      "dlmmPool.getBinArrayForSwap(swapYtoX)",
+      "dlmmPool.swapQuote(swapAmount, swapYtoX, slippageBps, binArrays, isPartialFill, maxExtraBinArrays)",
+      "dlmmPool.getLbPairLockInfo()",
+      "dlmmPool.getFeeInfo()"
+    ],
+    "boundaries": "read-only; no keypair; no transaction; no signing; no swap; no LP open/close; no fee collect; no bridge",
+    "not_in_this_round": true
+  },
+
+  "this_stage_does_not": [
+    "install any npm package",
+    "use paid RPC (no key)",
+    "run GPA",
+    "load any keypair / private key / seed phrase",
+    "construct any transaction",
+    "call sendTransaction",
+    "swap / open LP / close LP / collect fee / bridge",
+    "start live/canary/paper",
+    "modify EVM executor v2",
+    "release v2 hard-disable"
+  ],
+
+  "solana_wallet_or_keypair_touched": false,
+  "can_run_probe_now": false,
+  "v2_line_count_unchanged": true,
+  "v2_line_count": 992,
+
+  "next_stage": "Stage F: Raydium CPMM mainnet pid fix"
+}

@@ -1,0 +1,83 @@
+{
+  "stage": "LP_SOLANA_RPC_REGISTRY_FIX_REPEAT_V2",
+  "run_id": "20260603_102657",
+  "phase": "G_lifinity_pid_decision",
+
+  "v1_finding": "unknown (1/6 unknown; docs.lifinity.io 404; no public GitHub source)",
+  "v2_correction": "docs.lifinity.io 实际返 200 (V1 测量可能 stale); 是 SPA, HTML 中不含可机读内容; 所有 subpath 404; 全文搜 base58 0 匹配",
+
+  "v2_probes": {
+    "docs_lifinity_io_root": {
+      "url": "https://docs.lifinity.io",
+      "http": 200,
+      "size_bytes": 305741,
+      "is_spa": true,
+      "machine_readable_program_id_in_html": false,
+      "base58_43_44_char_matches": 0
+    },
+    "docs_lifinity_io_subpaths": {
+      "introduction": 404, "developer-guide": 404, "developers": 404,
+      "protocol": 404, "addresses": 404, "deployment": 404,
+      "mainnet": 404, "program": 404, "smart-contract": 404
+    },
+    "lifinity_io_main": {
+      "url": "https://lifinity.io",
+      "http": 200, "size_bytes": 18285
+    },
+    "github_org_lifinity": {
+      "exists": true,
+      "repos": [
+        "lifinity/coding_challenges",
+        "lifinity/launch_school",
+        "lifinity/pygame_asteroids",
+        "lifinity/sst_notes",
+        "lifinity/static_site_gen"
+      ],
+      "all_non_dex": true
+    },
+    "github_other_lifinity_repos": [
+      "ChangeYourself0613/Solana-Arbitrage-Bot (third-party)",
+      "miya9022/lifinity-cpi-swap (third-party, unverified)",
+      "Baldeep1102/lifinity (third-party, no description)",
+      "olety/Lifinity-Flares-Sales-Bot (third-party)",
+      "giewan/LifinityDex (likely spam-name)"
+    ],
+    "github_targeted_repo_probes": {
+      "lifinity/dex": 404, "lifinity/v1": 404, "lifinity/lifinity": 404,
+      "lifinity/amm": 404, "lifinity/ammv2": 404, "lifinity/contracts": 404,
+      "Lifinity-finance/contracts": 404, "lifinity-dex/contracts": 404,
+      "lifinity-protocol/lifinity-dex": 404
+    }
+  },
+
+  "decision": {
+    "lifinity_status": "deferred",
+    "reason": "official_source_unavailable",
+    "does_not_block_p0_p1": true,
+    "priority": "P2 (not in Meteora DLMM P0 critical path)",
+    "hardcode_from_memory": false,
+    "hardcode_from_third_party_fork": false
+  },
+
+  "follow_up_options": [
+    "operator 从 lifinity.io 浏览器渲染后人工找 program id",
+    "operator 查 Solscan / Solana Explorer 找 deployed program",
+    "接受 deferred; Lifinity 永远不进入 connector (本项目只 P0/P1/P2 选 verified)",
+    "从 P2 列表移除 Lifinity (本项目不参与)"
+  ],
+
+  "this_stage_does_not": [
+    "hard-code pid from model memory",
+    "hard-code pid from third-party GitHub fork",
+    "webfetch blog / Twitter / 论坛",
+    "run GPA",
+    "load any keypair / private key"
+  ],
+
+  "solana_wallet_or_keypair_touched": false,
+  "can_run_probe_now": false,
+  "v2_line_count_unchanged": true,
+  "v2_line_count": 992,
+
+  "next_stage": "Stage H: Registry v3 update"
+}

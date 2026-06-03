@@ -1,0 +1,102 @@
+{
+  "status": "WARN",
+  "stage": "LP_SOLANA_RPC_REGISTRY_FIX_REPEAT_V2",
+  "run_id": "20260603_102657",
+  "branch": "feat/supabase-postgres-deployment",
+  "head_before": "2ca2ab6",
+
+  "meteora_dlmm_sdk_api_source_discovery_ran": true,
+  "meteora_dlmm_sdk_api_source_discovery_method": "curl github raw (MeteoraAg/dlmm-sdk ts-client) + WebFetch docs.meteora.ag + dlmm-api.meteora.ag probe",
+
+  "meteora_dlmm_discovery_path_decided": true,
+  "meteora_dlmm_discovery_paths_evaluated": [
+    "public_rpc_gpa (0/4 in V1; not feasible)",
+    "paid_rpc_gpa (likely_feasible; needs operator key)",
+    "official_sdk_api (partial: decode/quote for known pool; no discovery)"
+  ],
+  "recommended_discovery_path": "paid_rpc_gpa",
+  "fallback_path": "official_sdk_api (for known pool decode/quote; not for first-time discovery)",
+
+  "meteora_dlmm_minimal_smoke_ran": true,
+  "meteora_dlmm_minimal_smoke_success": true,
+  "meteora_dlmm_minimal_smoke_partial": true,
+  "meteora_dlmm_minimal_smoke_path": "known_pool_read (hardcoded swap_quote.ts example pool 5BKxfWMbmYBAEWvyPZS9esPducUba9GqyMjtLCfbaqyF)",
+  "meteora_dlmm_minimal_smoke_evidence": {
+    "first_pool_address": "5BKxfWMbmYBAEWvyPZS9esPducUba9GqyMjtLCfbaqyF",
+    "pool_owner": "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo (Meteora DLMM program)",
+    "data_len_bytes": 904,
+    "data_len_matches_lbpair_struct": true,
+    "latency_ms": 199,
+    "struct_fields_extracted": false,
+    "struct_fields_extraction_reason": "stdlib-only Python borsh decode has offset miscalculation; needs full TypeScript SDK (out of scope this round)"
+  },
+
+  "raydium_cpmm_pid_fixed": false,
+  "raydium_cpmm_status": "deferred",
+  "raydium_cpmm_v2_finding": "cp-swap lib.rs declare_id pid CPMMoo8L3F4NbTegBCKVNungguN7H1ZpdTHKxQB5qKP1C is NOT on mainnet (re-confirmed V1) AND NOT on devnet (V2 new finding); DRaycpLY18LhpbydsBWbVJtxpNv9oXPgjRSfpF2bWpYb also null on both networks",
+
+  "lifinity_status": "deferred",
+  "lifinity_v2_finding": "docs.lifinity.io 200 (V1 was wrong: it's a SPA, not 404); all 9 subpaths 404; base58 43-44 char matches 0; lifinity GitHub org has 5 repos but ALL are non-DEX (coding challenges, pygame, notes); no lifinity-finance / lifinity-dex org; all third-party lifinity forks unverifiable",
+
+  "official_program_id_count": 5,
+  "verified_program_count": 4,
+  "not_found_count": 1,
+  "deferred_count": 1,
+
+  "meteora_dlmm_connector_ready": false,
+  "meteora_dlmm_connector_blocker": "paid_rpc OR known_pool_feed for first-time discovery; SDK install + struct decode for full read",
+  "meteora_dlmm_sub_conditions": {
+    "Q1_source_verified": "yes (V1)",
+    "Q2_onchain_verified": "yes (V1)",
+    "Q3_gpa_discovery": "blocked (public RPC 0/4; needs paid RPC or known-pool feed)",
+    "Q4_sdk_api_path_identified": "yes (V2 stage C: @meteora-ag/dlmm v1.9.10)",
+    "Q5_minimal_smoke": "partial (V2 stage E: known-pool read path verified; struct fields not extracted)"
+  },
+
+  "improvement_vs_v1": {
+    "v1_meteora_dlmm_q4": "partial (designed only)",
+    "v2_meteora_dlmm_q4": "yes (SDK package + helpers + examples identified)",
+    "v1_meteora_dlmm_q5": "no",
+    "v2_meteora_dlmm_q5": "partial (known-pool read verified)",
+    "v1_rpc_decision": "not_decided (3 paths implied; not formalized)",
+    "v2_rpc_decision": "decided: paid_rpc_gpa (with official_sdk_api as fallback)"
+  },
+
+  "can_run_probe_now": false,
+  "execution_allowed_now": false,
+  "transaction_sent": false,
+  "wallet_or_tx_touched": false,
+  "solana_wallet_or_keypair_touched": false,
+  "edge_proven": "no",
+  "tiny_canary_allowed": "no",
+  "manual_approval_required": true,
+  "send_hard_disable_still_active": true,
+
+  "v2_modified_by_this_task": false,
+  "v2_line_count_unchanged": true,
+  "v2_line_count": 992,
+
+  "phase_results": {
+    "A_workspace_safety": "PASS (HEAD=2ca2ab6; pre-existing dirty files unrelated)",
+    "B_input_evidence_audit": "PASS (14 upstream files)",
+    "C_meteora_dlmm_sdk_api_source_discovery": "PASS (SDK package identified; API not_found; 6 sources verified, 1 unknown)",
+    "D_meteora_dlmm_readonly_discovery_path_decision": "PASS (3 paths evaluated; paid_rpc_gpa recommended; sdk_api as fallback)",
+    "E_meteora_dlmm_minimal_readonly_smoke": "PARTIAL (known-pool read path verified; struct decode needs full SDK)",
+    "F_raydium_cpmm_mainnet_pid_fix": "FAIL (pid not on mainnet AND not on devnet; deferred)",
+    "G_lifinity_pid_decision": "DEFERRED (docs SPA; no public GitHub DEX repo)",
+    "H_program_id_registry_v3": "PASS (4 verified + 1 not_found + 1 deferred)",
+    "I_next_stage_decision": "PASS (LP_METEORA_DLMM_SDK_API_CONNECTOR_FEASIBILITY_FIX_REPEAT selected)"
+  },
+
+  "structural_finding": "Meteora DLMM now has all 5 sub-conditions touched (was 4/5 in V1). Two require operator action: (a) paid RPC or known-pool feed for first-time discovery, (b) SDK install + struct decode for full read. These are operator-input items, not structural failures. The other 5 protocols (DAMM v2, Orca, Raydium CLMM verified; Raydium CPMM not_found; Lifinity deferred) are stable from V1. The recommended next stage is LP_METEORA_DLMM_SDK_API_CONNECTOR_FEASIBILITY_FIX_REPEAT — wire the SDK in a contained round before the full connector stage. can_run_probe_now=false; tiny_canary_allowed=no; no keypair loaded; no transaction sent; no Solana wallet touched.",
+
+  "allowed_next_stages": [
+    "LP_METEORA_DLMM_READONLY_CONNECTOR_V1",
+    "LP_METEORA_DLMM_SDK_API_CONNECTOR_FEASIBILITY_FIX_REPEAT",
+    "LP_SOLANA_PAID_RPC_SETUP_REQUIRED",
+    "LP_SOLANA_RPC_REGISTRY_FIX_REPEAT",
+    "STOP_LP_RESEARCH_NOW"
+  ],
+  "recommended_next_stage": "LP_METEORA_DLMM_SDK_API_CONNECTOR_FEASIBILITY_FIX_REPEAT",
+  "default_when_no_explicit_choice": "LP_METEORA_DLMM_SDK_API_CONNECTOR_FEASIBILITY_FIX_REPEAT"
+}
