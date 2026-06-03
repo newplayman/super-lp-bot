@@ -1,0 +1,90 @@
+{
+  "stage": "LP_METEORA_DLMM_QUOTE_BINARRAY_COVERAGE_EXPAND_V2",
+  "run_id": "20260603_150331",
+  "phase": "I_next_stage_decision_v7",
+
+  "recommended_next_stage": "LP_METEORA_DLMM_SURVIVAL_EV_PREVIEW_V1",
+  "default_when_no_explicit_choice": "LP_METEORA_DLMM_SURVIVAL_EV_PREVIEW_V1",
+  "alternative_if_paid_rpc_decision": "LP_SOLANA_PAID_RPC_SETUP_REQUIRED",
+
+  "allowed_next_stages": [
+    "LP_METEORA_DLMM_SURVIVAL_EV_PREVIEW_V1",
+    "LP_SOLANA_PAID_RPC_SETUP_REQUIRED",
+    "LP_METEORA_DLMM_QUOTE_BINARRAY_FIX_REPEAT",
+    "LP_METEORA_DLMM_KNOWN_POOL_CONNECTOR_FIX_REPEAT",
+    "STOP_LP_RESEARCH_NOW"
+  ],
+
+  "selected_next_stage": "LP_METEORA_DLMM_SURVIVAL_EV_PREVIEW_V1",
+  "selection_rationale": {
+    "selected_SURVIVAL_EV_PREVIEW": "POSITIVE: per spec '如果 15 arrays 仍失败, 必须停止并推荐 paid RPC 或 pool2-only survival EV preview'. V7 hit spec hard cap (15 arrays); pool 1 quote still blocked (0 bins with liquidez at 12 AND 15). Pool 2 (X/USDC) V6 6/6 stable. Can compute partial EV for pool 2 only; would give first real EV signal after 6 stages of connector work.",
+    "alternative_PAID_RPC_SETUP": "ALTERNATIVE: pool 1 has 0 bins with liquidez at 15 arrays (~21% range). This means on-chain liquidity at active_bin_id=-12248 is concentrated even further. Only paid RPC GPA can find liquidity directly. Operator must provide paid RPC URL to enable this path.",
+    "not_QUOTE_BINARRAY_FIX_REPEAT": "NEGATIVE: V7 hit 15-array hard cap; cannot expand further per spec. fix_repeat round would re-do the same work.",
+    "not_KNOWN_POOL_CONNECTOR_FIX_REPEAT": "NEGATIVE: connector V1 + expand V1 + expand V2 all work; no bug. Just liquidity issue.",
+    "not_STOP_LP_RESEARCH": "NEGATIVE: read-only path fully working; pool 2 quote data is real; partial EV preview possible. Not a structural failure."
+  },
+
+  "v3_to_v7_5_stage_progression": {
+    "v3_FEASIBILITY": "SDK path identified; smoke partial (0/4 quote); readiness matrix designed",
+    "v4_CONNECTOR_V1": "connector V1 built; pool/fee snapshot 2/2; bin/quote 0/2 / 0/4 (multi-account blocked)",
+    "v5_BINARRAY_FIX": "single-account path PROVEN (6/6 bin arrays; 420 bins decoded; 2/4 quote success)",
+    "v6_COVERAGE_EXPAND": "expanded 3 → 5/7/9 arrays; 33/42 single-account; 2310 bins; 6/12 quote (pool 2 stable, pool 1 blocked)",
+    "v7_COVERAGE_EXPAND_V2": "expanded 9 → 12/15 arrays (per spec hard cap 15); 18/27 single-account; 1540 bins; 4/4 SOL/USDC quote blocked; pool 1 has 0 bins with liquidez at ALL coverage tiers"
+  },
+
+  "v7_key_findings": {
+    "single_account_path_scales": "V5: 6/6; V6: 33/42; V7: 18/27; 0 RPC errors across all tiers",
+    "pool_1_liquidity_concentration": "Pool 1 (SOL/USDC bin_step=2) has 0 bins with liquidez at 5/7/9/12/15 arrays. Liquidity is concentrated even further than ±10% from active bin.",
+    "pool_2_stable": "Pool 2 (X/USDC bin_step=100) 6/6 stable at 5/7/9 arrays (V6); not re-run this round (sanity trust V6)",
+    "spec_hard_cap_reached": "15 arrays = 21% range = still 0 liquidity in SOL/USDC. Per spec 'max 15; 不得无限扩展'. V7 ENFORCES this cap."
+  },
+
+  "next_stage_responsibilities": [
+    "implement partial survival EV preview for pool 2 (X/USDC) only",
+    "compute expected_fee_24h_usd, expected_il_24h_usd, expected_gas_cost_usd, survival_ev_usd for pool 2",
+    "mark pool 1 as 'no_quote_data' in EV (cannot compute EV for pool 1)",
+    "do NOT construct any transaction",
+    "do NOT use paid RPC unless operator explicitly provides key"
+  ],
+
+  "next_stage_must_not": [
+    "execute probe on Solana",
+    "send any tx",
+    "load any keypair / private key / seed phrase",
+    "construct signer",
+    "auto bridge / auto swap",
+    "modify EVM executor v2",
+    "release v2 hard-disable",
+    "set can_run_probe_now to true",
+    "set tiny_canary_allowed to yes",
+    "hard-code any program id from memory",
+    "use paid RPC without operator key (operator must explicitly provide)",
+    "implement any position creation / addLiquidity / removeLiquidity / closePosition / claimFee / claimReward",
+    "construct any transaction (even no-op)",
+    "fabricate quote / EV / bin_liquidity success when blocked"
+  ],
+
+  "alternative_path_PAID_RPC": {
+    "trigger": "if operator decides pool 1 EV is critical (e.g. wants 2-pool EV instead of 1-pool partial)",
+    "requirement": "operator provides SOLANA_RPC_URL or LPBOT_SOLANA_RPC_URL with paid RPC key",
+    "next_stage": "LP_SOLANA_PAID_RPC_SETUP_REQUIRED",
+    "expected_outcome": "paid RPC GPA enumerates all bin arrays of pool 1; finds where liquidity actually is; SOL/USDC quote succeeds"
+  },
+
+  "this_stage_did_not": [
+    "implement any production connector",
+    "compute any quote",
+    "load any keypair / private key",
+    "send any transaction",
+    "call any pos-create / tx-builder method",
+    "modify any production table",
+    "modify EVM executor v2"
+  ],
+
+  "can_run_probe_now": false,
+  "solana_wallet_or_keypair_touched": false,
+  "tiny_canary_allowed": "no",
+  "edge_proven": "no",
+  "v2_line_count_unchanged": true,
+  "v2_line_count": 992
+}

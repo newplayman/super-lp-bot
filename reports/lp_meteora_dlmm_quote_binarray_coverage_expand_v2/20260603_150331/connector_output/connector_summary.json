@@ -1,0 +1,37 @@
+{
+  "run_id": "20260603_150331",
+  "stage": "LP_METEORA_DLMM_QUOTE_BINARRAY_COVERAGE_EXPAND_V2",
+  "rpc_url_redacted_source": "<redacted_public_mainnet_beta_solana_com>",
+  "sdk_package": "@meteora-ag/dlmm",
+  "sdk_package_version": "1.9.10",
+  "cluster": "mainnet-beta",
+  "pools_attempted": 2,
+  "coverage_tiers_run_for_sol_usdc": [
+    12,
+    15
+  ],
+  "coverage_tiers_run_for_x_usdc_sanity": [
+    5
+  ],
+  "pda_derivation_total": 32,
+  "pda_derivation_success_count": 32,
+  "single_account_read_total": 32,
+  "single_account_read_success_count": 22,
+  "single_account_read_403_count": 0,
+  "bin_liquidity_decode_total": 1540,
+  "bin_liquidity_decode_with_liquidity": 231,
+  "quote_attempt_count": 4,
+  "quote_success_count": 0,
+  "sol_usdc_quote_success_by_tier": {
+    "12": 0,
+    "15": 0
+  },
+  "x_usdc_quote_from_v6": "6/6 at 5/7/9 arrays (V6 evidence)",
+  "timestamp_utc": "2026-06-03T15:07:59.143Z",
+  "solana_wallet_or_keypair_touched": false,
+  "transaction_sent": false,
+  "signer_used": false,
+  "wallet_adapter_used": false,
+  "swap_transaction_built": false,
+  "paid_rpc_used": false
+}

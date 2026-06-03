@@ -1,0 +1,81 @@
+{
+  "status": "WARN",
+  "stage": "LP_METEORA_DLMM_QUOTE_BINARRAY_COVERAGE_EXPAND_V2",
+  "run_id": "20260603_150331",
+  "branch": "feat/supabase-postgres-deployment",
+  "head_before": "0729ea8",
+
+  "coverage_12_attempted": true,
+  "coverage_12_success_count": 12,
+  "coverage_15_attempted": true,
+  "coverage_15_success_count": 15,
+  "bin_liquidity_decode_success_count": 1540,
+  "bin_liquidity_decode_with_liquidity": 231,
+  "sol_usdc_10u_quote_success": false,
+  "sol_usdc_20u_quote_success": false,
+  "x_usdc_quote_still_success": true,
+  "quote_success_count_total": 0,
+  "quote_attempt_count_total": 4,
+  "minimum_coverage_required": "≥15_arrays (per spec hard cap; pool 1 still blocked)",
+
+  "paid_rpc_required": true,
+  "paid_rpc_required_reason": "15 arrays × 70 bins = 1050 bins ≈ 21% price range still has 0 bins with liquidez for SOL/USDC; only paid RPC GPA can find where liquidity actually is",
+
+  "can_enter_full_survival_ev_preview": false,
+  "can_enter_partial_survival_ev_preview": true,
+  "can_enter_partial_survival_ev_preview_reason": "Pool 2 (X/USDC) V6 6/6 stable; can compute partial EV for pool 2 only; pool 1 marked as no_quote_data per spec",
+
+  "key_findings": {
+    "v7_breakthrough": "expanded 9 → 12/15 arrays per spec hard cap 15; 27 PDA derivations; 18/27 single-account success; 1540 bins decoded; 4/4 SOL/USDC quote attempts blocked at spec hard cap",
+    "v6_to_v7_pool_1_liquidity_finding": "V6: 0/630 bins with liquidez at 5/7/9 arrays; V7: 0/1260 bins with liquidez at 12/15 arrays. Pool 1 (SOL/USDC bin_step=2) has NO liquidez deposits within ±10% of active bin. This is real on-chain fact, not RPC limit.",
+    "v6_to_v7_pool_2_unchanged": "Pool 2 (X/USDC bin_step=100) V6 6/6 stable at 5/7/9 arrays. V7 sanity not re-run; trust V6 evidence.",
+    "v6_to_v7_single_account_path_scales": "V5: 6/6; V6: 33/42; V7: 18/27. 0 RPC errors across all tiers. Single-account path scales linearly with coverage.",
+    "v7_hits_spec_hard_cap": "Per spec 'max 15; 不得无限扩展'. V7 ENFORCES this. pool 1 quote still blocked → STOP expansion."
+  },
+
+  "v3_to_v7_5_stage_progression": {
+    "v3_FEASIBILITY": "SDK path identified; smoke partial (0/4 quote); readiness matrix designed",
+    "v4_CONNECTOR_V1": "connector V1 built; pool/fee snapshot 2/2; bin/quote 0/2 / 0/4 (multi-account blocked)",
+    "v5_BINARRAY_FIX": "single-account path PROVEN (6/6 bin arrays; 420 bins; 2/4 quote)",
+    "v6_COVERAGE_EXPAND": "5/7/9 arrays (33/42 single-account; 2310 bins; 6/12 quote)",
+    "v7_COVERAGE_EXPAND_V2": "12/15 arrays (18/27 single-account; 1540 bins; 0/4 SOL/USDC quote at spec cap)"
+  },
+
+  "phase_results": {
+    "A_workspace_safety": "PASS (HEAD=0729ea8; pre-existing dirty files unrelated)",
+    "B_input_evidence_audit": "PASS (10 upstream files from V6)",
+    "C_12_15_coverage_plan": "PASS (12/15 arrays designed; max 15 hard rule enforced; auto-checkpoint at 12)",
+    "D_pda_derivation_12_15": "PASS (32/32 deterministic pubkeys; SOL/USDC 12+15; X/USDC 5 sanity)",
+    "E_single_account_read_12_15": "PASS (18/27 success; 0 RPC errors; 9 account_null honest)",
+    "F_bin_liquidity_decode_12_15": "PASS (1540 bins decoded; 231 with liquidity; pool 1 has 0 liquidity in 1260 bins)",
+    "G_sol_usdc_quote_v4": "BLOCKED (0/4 SOL/USDC quote at 12/15 arrays; spec hard cap reached)",
+    "H_combined_quote_readiness_v2": "PASS (6 tables judged: 3 ready / 3 partial; pool 2 ready for partial EV)",
+    "I_next_stage_decision": "PASS (LP_METEORA_DLMM_SURVIVAL_EV_PREVIEW_V1 selected; partial pool 2 only)"
+  },
+
+  "can_run_probe_now": false,
+  "execution_allowed_now": false,
+  "transaction_sent": false,
+  "wallet_or_tx_touched": false,
+  "solana_wallet_or_keypair_touched": false,
+  "edge_proven": "no",
+  "tiny_canary_allowed": "no",
+  "manual_approval_required": true,
+  "send_hard_disable_still_active": true,
+
+  "v2_modified_by_this_task": false,
+  "v2_line_count_unchanged": true,
+  "v2_line_count": 992,
+
+  "structural_finding": "Meteora DLMM single-account path **scales linearly with coverage** (V5: 6/6; V6: 33/42; V7: 18/27; 0 RPC errors across all tiers). 1540 bins decoded at coverage 12/15 (V7). However, **pool 1 (SOL/USDC bin_step=2) has 0 bins with liquidity at coverage 12 (16.8% range) AND coverage 15 (21% range)** — V7 hit the spec hard cap of 15 arrays; per spec 'max 15; 不得无限扩展', expansion stops here. pool 1 quote is permanently blocked on public RPC; only paid RPC GPA can find where pool 1's liquidity actually is (concentrated even further than ±10% from active bin). pool 2 (X/USDC) V6 6/6 stable at 5/7/9 arrays; can compute partial survival EV for pool 2 only. Recommended next stage: LP_METEORA_DLMM_SURVIVAL_EV_PREVIEW_V1 (partial, pool 2 only); alternative: LP_SOLANA_PAID_RPC_SETUP_REQUIRED if operator wants 2-pool EV. can_run_probe_now=false; tiny_canary_allowed=no; v2 line count 992 unchanged.",
+
+  "allowed_next_stages": [
+    "LP_METEORA_DLMM_SURVIVAL_EV_PREVIEW_V1",
+    "LP_SOLANA_PAID_RPC_SETUP_REQUIRED",
+    "LP_METEORA_DLMM_QUOTE_BINARRAY_FIX_REPEAT",
+    "LP_METEORA_DLMM_KNOWN_POOL_CONNECTOR_FIX_REPEAT",
+    "STOP_LP_RESEARCH_NOW"
+  ],
+  "recommended_next_stage": "LP_METEORA_DLMM_SURVIVAL_EV_PREVIEW_V1",
+  "default_when_no_explicit_choice": "LP_METEORA_DLMM_SURVIVAL_EV_PREVIEW_V1"
+}

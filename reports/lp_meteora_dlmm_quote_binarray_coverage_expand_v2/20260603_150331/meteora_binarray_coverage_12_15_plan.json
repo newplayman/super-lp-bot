@@ -1,0 +1,98 @@
+{
+  "stage": "LP_METEORA_DLMM_QUOTE_BINARRAY_COVERAGE_EXPAND_V2",
+  "run_id": "20260603_150331",
+  "phase": "C_coverage_12_15_plan",
+
+  "policy": {
+    "expansion_bounded": true,
+    "max_coverage_arrays": 15,
+    "previous_max": 9,
+    "must_checkpoint_at_12": true,
+    "no_infinite_expansion": true,
+    "priority_pool": "5BKxfWMbmYBAEWvyPZS9esPducUba9GqyMjtLCfbaqyF (SOL/USDC, bin_step=2)",
+    "sanity_pool": "9DiruRpjnAnzhn6ts5HGLouHtJrT1JGsPbXNYCrFz2ad (X/USDC, bin_step=100)"
+  },
+
+  "coverage_tiers": [
+    {
+      "tier_id": "coverage_12_arrays",
+      "offsets": [-6, -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5],
+      "array_count": 12,
+      "bin_count_estimated": 840,
+      "estimated_price_range_for_pool1_sol_usdc_bin_step_2": "≈ 16.8% (12 × 64 × 0.02% = 15.36%)",
+      "estimated_price_range_for_pool2_x_usdc_bin_step_100": "≈ 76800% (12 × 64 × 100 = 76800%)",
+      "expected_rpc_calls_per_pool": 12,
+      "expected_total_latency_sec": 12.0,
+      "public_rpc_risk": "low-medium (V6 evidence: 33/42 single-account success on public RPC; 12 consecutive reads may slow but should work)",
+      "selected_for_run": true,
+      "note": "FIRST EXPANSION TARGET; if 12 achieves 2/2 SOL/USDC quote → STOP; coverage_12_arrays sufficient"
+    },
+    {
+      "tier_id": "coverage_15_arrays",
+      "offsets": [-7, -6, -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7],
+      "array_count": 15,
+      "bin_count_estimated": 1050,
+      "estimated_price_range_for_pool1_sol_usdc_bin_step_2": "≈ 21.0% (15 × 64 × 0.02% = 19.2%)",
+      "estimated_price_range_for_pool2_x_usdc_bin_step_100": "≈ 96000% (15 × 64 × 100 = 96000%)",
+      "expected_rpc_calls_per_pool": 15,
+      "expected_total_latency_sec": 15.0,
+      "public_rpc_risk": "medium (15 consecutive single-account reads; rate limit may kick in)",
+      "selected_for_run": "conditional (only if coverage_12_arrays insufficient for pool 1)",
+      "note": "LAST EXPANSION TIER; if 15 still fails, STOP and recommend paid_rpc_setup"
+    }
+  ],
+
+  "execution_order": [
+    "1. coverage_12_arrays (FIRST; auto-checkpoint: if SOL/USDC 10U+20U both success → STOP)",
+    "2. coverage_15_arrays (CONDITIONAL; only if 12 insufficient)",
+    "3. STOP (per spec 'max 15; 不得无限扩展')"
+  ],
+
+  "checkpoint_criteria": {
+    "after_12_arrays": "if pool 1 (SOL/USDC) 10U USDC quote success AND 20U USDC quote success → STOP; declare coverage_12_arrays sufficient",
+    "after_15_arrays": "if pool 1 quote still blocked → declare coverage_15_arrays insufficient; document paid_rpc_setup candidate; recommend Phase 2B paid RPC OR partial survival EV preview with pool 2 only"
+  },
+
+  "bin_step_analysis": {
+    "pool_1_sol_usdc_bin_step_2": {
+      "active_bin_id": -12248,
+      "issue": "tight bin_step=2 means each bin = 0.02% price change",
+      "10U_USDC_swap_required_range": "need at least ±0.5% to ±5% for typical tight pools; 9 arrays (12%) was insufficient; 12 (16.8%) or 15 (21%) may suffice",
+      "minimum_coverage_hypothesis": "12_arrays (16.8% range) should be enough for most 10U-20U USDC swaps; 15_arrays (21%) is the last-chance tier before paid_rpc_setup"
+    },
+    "pool_2_x_usdc_bin_step_100": {
+      "active_bin_id": -236,
+      "issue": "wide bin_step=100; even 1 array covers ±32% range; 12+ arrays overkill",
+      "V6_evidence": "3-9 arrays all 6/6 success; 12+ arrays not needed but won't break",
+      "v7_action": "sanity check only at coverage_12 (1 quote to confirm not broken)"
+    }
+  },
+
+  "expected_quote_success_by_tier": {
+    "coverage_12_arrays": {
+      "pool_1_sol_usdc": "expected 2/2 (16.8% range covers typical 10U-20U USDC swap)",
+      "pool_2_x_usdc": "expected success (sanity)",
+      "total": "expected 4/4 (2 SOL/USDC + 2 X/USDC)"
+    },
+    "coverage_15_arrays": {
+      "pool_1_sol_usdc": "expected 2/2 (21% range); if still blocked → pool 1 has unusually wide liquidity gap; document and recommend paid_rpc_setup",
+      "pool_2_x_usdc": "expected success (sanity)",
+      "total": "expected 4/4 (or 2/4 if pool 1 still blocked)"
+    }
+  },
+
+  "hard_rule_15_max": "Per spec: '不得超过 15 arrays; 如果 15 arrays 仍失败, 必须停止并推荐 paid RPC 或 pool2-only survival EV preview; 不得无限扩展'. V7 enforces this hard cap.",
+
+  "this_stage_does_not": [
+    "execute any RPC (this is plan design only)",
+    "modify EVM executor v2",
+    "release v2 hard-disable"
+  ],
+
+  "solana_wallet_or_keypair_touched": false,
+  "can_run_probe_now": false,
+  "v2_line_count_unchanged": true,
+  "v2_line_count": 992,
+
+  "next_stage": "Stage D: PDA derivation for 12/15 arrays (priority: SOL/USDC)"
+}

@@ -1,0 +1,92 @@
+{
+  "stage": "LP_METEORA_DLMM_QUOTE_BINARRAY_COVERAGE_EXPAND_V2",
+  "run_id": "20260603_150331",
+  "phase": "H_combined_quote_readiness_v2",
+
+  "v7_results_summary": {
+    "coverage_12_arrays": {
+      "pda_success": "12/12 (SOL/USDC)",
+      "single_account_read_success": "8/12 (4 account_null)",
+      "bins_decoded": 560,
+      "bins_with_liquidity": 0,
+      "quote_attempted": 2,
+      "quote_success": 0,
+      "sol_usdc_quote_10u": "failed (Insufficient liquidez)",
+      "sol_usdc_quote_20u": "failed (Insufficient liquidez)"
+    },
+    "coverage_15_arrays": {
+      "pda_success": "15/15 (SOL/USDC)",
+      "single_account_read_success": "10/15 (5 account_null)",
+      "bins_decoded": 700,
+      "bins_with_liquidity": 0,
+      "quote_attempted": 2,
+      "quote_success": 0,
+      "sol_usdc_quote_10u": "failed (Insufficient liquidez)",
+      "sol_usdc_quote_20u": "failed (Insufficient liquidez)"
+    }
+  },
+
+  "v6_to_v7_quote_progress": {
+    "v6_5_arrays_sol_usdc": "0/2 blocked",
+    "v6_7_arrays_sol_usdc": "0/2 blocked",
+    "v6_9_arrays_sol_usdc": "0/2 blocked",
+    "v7_12_arrays_sol_usdc": "0/2 blocked",
+    "v7_15_arrays_sol_usdc": "0/2 blocked (LAST TIER per spec 'max 15; 不得无限扩展')"
+  },
+
+  "v6_to_v7_single_account_path_progress": {
+    "v5_3_arrays": "6/6 success (V5 first proof)",
+    "v6_5/7/9_arrays": "33/42 success (0 RPC errors; 9 account_null)",
+    "v7_12_arrays": "8/12 success (0 RPC errors; 4 account_null)",
+    "v7_15_arrays": "10/15 success (0 RPC errors; 5 account_null)"
+  },
+
+  "key_finding_pool_1_honest_blocker": "Pool 1 (SOL/USDC) quote blocked even at 15 arrays × 70 bins = 1050 bins ≈ 21% price range. **0 bins with liquidity** at coverage 12 AND coverage 15. Root cause: on-chain liquidity at active_bin_id=-12248 is concentrated even further than ±10% from active bin. Single-account path works fine (0 RPC errors); the issue is genuinely no liquidity in the queried range.",
+
+  "6_table_readiness_update_v2": {
+    "meteora_dlmm_known_pool_universe_v1": "ready",
+    "meteora_dlmm_pool_snapshot_v1": "ready",
+    "meteora_dlmm_fee_snapshot_v1": "ready",
+    "meteora_dlmm_bin_liquidity_snapshot_v1": "partial (pool 1: 0 bins with liquidez at 12+15; pool 2: 231 bins with liquidez at 5; total 1540 decoded but only pool 2 has data)",
+    "meteora_dlmm_quote_snapshot_v1": "partial (pool 1: 0/4 quote at 12+15; pool 2: V6 6/6 stable at 5/7/9; V7 not re-run pool 2)",
+    "meteora_dlmm_survival_ev_preview_v1": "partial (only pool 2 quote data; pool 1 blocked at ALL coverage tiers 3-15)"
+  },
+
+  "judgments": {
+    "sol_usdc_quote_ready": false,
+    "x_usdc_quote_ready": true,
+    "bin_liquidity_ready": "partial (pool 1: 0 bins with liquidez; pool 2: 231 bins with liquidez)",
+    "quote_ready": "partial (pool 1 blocked at ALL coverage tiers 3-15; pool 2 V6 6/6 stable)",
+    "survival_ev_ready": "partial (only pool 2; pool 1 cannot compute EV)",
+    "paid_rpc_required": "true (15 arrays × 70 bins = 1050 bins ≈ 21% range still has 0 liquidity in SOL/USDC; only paid RPC GPA can find liquidity directly OR different active bin pick)",
+
+    "quote_success_count_total": 0,
+    "quote_attempt_count_total": 4,
+    "x_usdc_quote_still_success": true,
+    "sol_usdc_10u_quote_success": false,
+    "sol_usdc_20u_quote_success": false,
+
+    "can_enter_full_survival_ev_preview": false,
+    "can_enter_partial_survival_ev_preview": true,
+    "can_enter_partial_survival_ev_preview_reason": "Pool 2 (X/USDC) quote data V6 6/6 stable; can compute partial EV for pool 2 only",
+
+    "minimum_coverage_required": "≥15_arrays (per spec 'max 15; 不得无限扩展'; pool 1 still blocked at 15)"
+  },
+
+  "per_spec_hard_rule_15_max": "V7 hit the spec hard cap of 15 arrays. Pool 1 quote still blocked. Per spec: 'if 15 arrays 仍失败, 必须停止并推荐 paid RPC 或 pool2-only survival EV preview; 不得无限扩展'. V7 enforces this; next stage MUST be either LP_SOLANA_PAID_RPC_SETUP_REQUIRED or LP_METEORA_DLMM_SURVIVAL_EV_PREVIEW_V1 (partial, pool 2 only).",
+
+  "this_stage_does_not": [
+    "implement any production code",
+    "load any keypair / private key",
+    "send any transaction",
+    "modify EVM executor v2",
+    "release v2 hard-disable"
+  ],
+
+  "solana_wallet_or_keypair_touched": false,
+  "can_run_probe_now": false,
+  "v2_line_count_unchanged": true,
+  "v2_line_count": 992,
+
+  "next_stage": "Stage I: next-stage decision V7 (must be paid_rpc_setup or partial EV preview per spec hard cap)"
+}
