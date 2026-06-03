@@ -1,0 +1,19 @@
+priority,chain,chain_id,protocol,pool_type,factory,npm,fee_tiers,status
+P0,Base,8453,Uniswap V3,CL_V3,0x33128a8fC17869897dcE68Ed694621f6FDfD,0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1,100/500/3000/10000,active_candidate_no_go_drift_-722
+P0,Base,8453,PancakeSwap V3,CL_V3,0x0BFbCF9fa4f9C56B0F40a671Ad40E0805A091865,0x46A15B0bda11dd51589E78B4F8b815a9D2887F5e,100/500/2500/10000,discover_only
+P0,BSC,56,PancakeSwap V3,CL_V3,0x0BFbCF9fa4f9C56B0F40a671Ad40E0805A091865,0x46A15B0bda11dd51589E78B4F8b815a9D2887F5e,100/500/2500/10000,best_pool_USDT_WBNB_100_ev_-0.0156
+P0,Arbitrum,42161,Uniswap V3,CL_V3,0x1F98431c8aD98523631AE4a59f267346ea31F984,0xC36442b4a4522E871399CD717aBDD847Ab11FE88,100/500/3000/10000,discover_only
+P0,Arbitrum,42161,PancakeSwap V3,CL_V3,VERIFY,VERIFY,100/500/2500/10000,needs_data
+P0,Optimism,10,Uniswap V3,CL_V3,0x1F98431c8aD98523631AE4a59f267346ea31F984,0xC36442b4a4522E871399CD717aBDD847Ab11FE88,100/500/3000/10000,discover_only
+P0,Polygon,137,Uniswap V3,CL_V3,0x1F98431c8aD98523631AE4a59f267346ea31F984,0xC36442b4a4522E871399CD717aBDD847Ab11FE88,100/500/3000/10000,discover_only
+P0,Ethereum,1,Uniswap V3,CL_V3,0x1F98431c8aD98523631AE4a59f267346ea31F984,0xC36442b4a4522E871399CD717aBDD847Ab11FE88,100/500/3000/10000,discover_only_high_gas_warning
+P1,Base,,Aerodrome Slipstream,CL_V3_fork_with_hooks,SPEC_ONLY,SPEC_ONLY,n/a,spec_only_no_parser_v1
+P1,Optimism,,Velodrome V3,CL_V3_fork,SPEC_ONLY,SPEC_ONLY,n/a,spec_only_no_parser_v1
+P1,Ethereum,,Curve stable pools,stableswap,SPEC_ONLY,SPEC_ONLY,n/a,spec_only_no_parser_v1
+P1,Ethereum/Polygon/Optimism/Arbitrum,,Curve tricrypto,stableswap,SPEC_ONLY,SPEC_ONLY,n/a,spec_only_no_parser_v1
+P1,multi,,Balancer weighted/stable,weighted_math,SPEC_ONLY,SPEC_ONLY,n/a,spec_only_no_parser_v1
+P1,BSC,,PancakeSwap V2 / stable,constant_product,SPEC_ONLY,SPEC_ONLY,n/a,spec_only_no_parser_v1
+P2,Solana,,Meteora DLMM,bin_based_CLMM,CONNECTOR_DESIGN_ONLY,CONNECTOR_DESIGN_ONLY,n/a,connector_design_only
+P2,Solana,,Meteora DAMM v2,constant_product_dynamic_fee,CONNECTOR_DESIGN_ONLY,CONNECTOR_DESIGN_ONLY,n/a,connector_design_only
+P2,Solana,,Orca Whirlpool,CL_V3_fork,CONNECTOR_DESIGN_ONLY,CONNECTOR_DESIGN_ONLY,n/a,connector_design_only
+P2,Solana,,Raydium CLMM,CL_V3_fork,CONNECTOR_DESIGN_ONLY,CONNECTOR_DESIGN_ONLY,n/a,connector_design_only

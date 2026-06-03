@@ -1,0 +1,65 @@
+{
+  "stage": "LP_MULTICHAIN_DEX_LP_DISCOVERY_AND_SURVIVAL_EV_V1",
+  "run_id": "20260603_051605",
+  "phase": "C_multichain_universe_plan",
+
+  "p0_evm_standard_v3": [
+    {"chain": "Base", "chain_id": 8453, "protocol": "Uniswap V3", "factory": "0x33128a8fC17869897dcE68Ed694621f6FDfD", "npm": "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1", "fee_tiers": [100, 500, 3000, 10000], "priority": "P0", "status": "active_candidate_no_go_drift_-722"},
+    {"chain": "Base", "chain_id": 8453, "protocol": "PancakeSwap V3", "factory": "0x0BFbCF9fa4f9C56B0F40a671Ad40E0805A091865", "npm": "0x46A15B0bda11dd51589E78B4F8b815a9D2887F5e", "fee_tiers": [100, 500, 2500, 10000], "priority": "P0", "status": "discover_only"},
+    {"chain": "BSC", "chain_id": 56, "protocol": "PancakeSwap V3", "factory": "0x0BFbCF9fa4f9C56B0F40a671Ad40E0805A091865", "npm": "0x46A15B0bda11dd51589E78B4F8b815a9D2887F5e", "fee_tiers": [100, 500, 2500, 10000], "priority": "P0", "status": "best_pool_USDT_WBNB_100_ev_-0.0156"},
+    {"chain": "Arbitrum", "chain_id": 42161, "protocol": "Uniswap V3", "factory": "0x1F98431c8aD98523631AE4a59f267346ea31F984", "npm": "0xC36442b4a4522E871399CD717aBDD847Ab11FE88", "fee_tiers": [100, 500, 3000, 10000], "priority": "P0", "status": "discover_only"},
+    {"chain": "Arbitrum", "chain_id": 42161, "protocol": "PancakeSwap V3", "factory": "VERIFY", "npm": "VERIFY", "fee_tiers": [100, 500, 2500, 10000], "priority": "P0", "status": "needs_data"},
+    {"chain": "Optimism", "chain_id": 10, "protocol": "Uniswap V3", "factory": "0x1F98431c8aD98523631AE4a59f267346ea31F984", "npm": "0xC36442b4a4522E871399CD717aBDD847Ab11FE88", "fee_tiers": [100, 500, 3000, 10000], "priority": "P0", "status": "discover_only"},
+    {"chain": "Polygon", "chain_id": 137, "protocol": "Uniswap V3", "factory": "0x1F98431c8aD98523631AE4a59f267346ea31F984", "npm": "0xC36442b4a4522E871399CD717aBDD847Ab11FE88", "fee_tiers": [100, 500, 3000, 10000], "priority": "P0", "status": "discover_only"},
+    {"chain": "Ethereum", "chain_id": 1, "protocol": "Uniswap V3", "factory": "0x1F98431c8aD98523631AE4a59f267346ea31F984", "npm": "0xC36442b4a4522E871399CD717aBDD847Ab11FE88", "fee_tiers": [100, 500, 3000, 10000], "priority": "P0", "status": "discover_only_high_gas_warning"}
+  ],
+
+  "p1_evm_non_standard": [
+    {"chain": "Base", "protocol": "Aerodrome Slipstream", "pool_type": "CL_V3_fork_with_hooks", "priority": "P1", "status": "spec_only_no_parser_v1"},
+    {"chain": "Optimism", "protocol": "Velodrome V3", "pool_type": "CL_V3_fork", "priority": "P1", "status": "spec_only_no_parser_v1"},
+    {"chain": "Ethereum", "protocol": "Curve stable pools", "pool_type": "stableswap", "priority": "P1", "status": "spec_only_no_parser_v1"},
+    {"chain": "Ethereum/Polygon/Optimism/Arbitrum", "protocol": "Curve tricrypto", "pool_type": "stableswap", "priority": "P1", "status": "spec_only_no_parser_v1"},
+    {"chain": "multi", "protocol": "Balancer weighted/stable", "pool_type": "weighted_math", "priority": "P1", "status": "spec_only_no_parser_v1"},
+    {"chain": "BSC", "protocol": "PancakeSwap V2 / stable", "pool_type": "constant_product", "priority": "P1", "status": "spec_only_no_parser_v1"}
+  ],
+
+  "p2_non_evm": [
+    {"chain": "Solana", "protocol": "Meteora DLMM", "pool_type": "bin_based_CLMM", "priority": "P2", "status": "connector_design_only"},
+    {"chain": "Solana", "protocol": "Meteora DAMM v2", "pool_type": "constant_product_dynamic_fee", "priority": "P2", "status": "connector_design_only"},
+    {"chain": "Solana", "protocol": "Orca Whirlpool", "pool_type": "CL_V3_fork", "priority": "P2", "status": "connector_design_only"},
+    {"chain": "Solana", "protocol": "Raydium CLMM", "pool_type": "CL_V3_fork", "priority": "P2", "status": "connector_design_only"}
+  ],
+
+  "rpc_endpoints_public_only": {
+    "Base": ["https://mainnet.base.org", "https://base-rpc.publicnode.com"],
+    "BSC": ["https://bsc-dataseed.binance.org", "https://bsc.publicnode.com"],
+    "Arbitrum": ["https://arb1.arbitrum.io/rpc"],
+    "Optimism": ["https://mainnet.optimism.io"],
+    "Polygon": ["https://polygon-rpc.com"],
+    "Ethereum": ["https://eth.llamarpc.com", "https://cloudflare-eth.com"]
+  },
+
+  "candidate_pairs_per_chain": [
+    "wrapped_native / USDC",
+    "wrapped_native / USDT",
+    "WBTC_or_cbBTC / USDC",
+    "WBTC_or_cbBTC / wrapped_native",
+    "USDC / USDT",
+    "USDC / DAI (where DAI exists)",
+    "protocol_specific_high_volume_pair"
+  ],
+
+  "this_stage_does": [
+    "P0 discovery: 6 EVM chains × 2 protocols × 7 pairs × 4 fees = 336 candidate queries",
+    "P1 spec-only",
+    "P2 spec-only"
+  ],
+  "this_stage_does_not": [
+    "execute any chain tx",
+    "construct signer or load key",
+    "bridge / swap automatically",
+    "unseal v2 hard-disable",
+    "modify strategy execution path",
+    "modify production code"
+  ]
+}

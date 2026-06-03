@@ -1,0 +1,33 @@
+{
+  "stage": "LP_MULTICHAIN_DEX_LP_DISCOVERY_AND_SURVIVAL_EV_V1",
+  "run_id": "20260603_051605",
+  "phase": "I_multichain_probe_route_decision",
+
+  "answers": {
+    "1_continue_base_wait": "NO — wait does not fix cost structure; even at frozen center, $0.04 EV/10U/7d is negative",
+    "2_other_base_pool_better": "MARGINAL — Base PancakeSwap V3 WETH/DAI fee 500 score 0.638 at notional 10; still 'watch' class, not positive EV",
+    "3_bsc_better_than_base": "NO — BSC USDC/USDT only appears at $20+ top5; Base still preferred due to wallet_availability=1",
+    "4_other_l2_better": "CANNOT TEST — no wallet funding; model proxy still predicts negative EV on V3 simple LP",
+    "5_worth_funding_other_chains": "NO per model proxy — model shows V3 LP structurally negative on all 6 chains; bridge cost adds more loss",
+    "6_best_next_10u_candidate": "Base PancakeSwap V3 WETH/DAI fee 500 if forced; BUT model shows 0/19,980 positive EV so DO NOT EXECUTE",
+    "7_pause_live_continue_discovery": "YES — P0 V3 saturated with negative EV; P1 (Curve/Balancer) + P2 (Solana) are the structural-EV-frontier candidates"
+  },
+
+  "structural_finding": "0/19,980 realistic-scenario combinations produce positive net EV across 6 EVM chains × 74 state-ready V3 pools × 6 notionals × 9 hold windows. Cost structure (gas + slippage + failure buffer) dominates fee yield, not fee yield insufficiency. Even zero_il_lvr theoretical ceiling remains negative EV at $2000 notional.",
+
+  "no_auto_bridge_or_swap_recommended": true,
+  "any_tx_touched": false,
+  "wallet_or_tx_touched": false,
+  "signer_created": false,
+
+  "top_5_candidates_summary": {
+    "10u": "Base PancakeSwap V3 WETH/DAI fee 500 (score 0.638, watch)",
+    "20u": "Base PancakeSwap V3 WETH/DAI fee 500 (score 0.422, needs_data)",
+    "100u": "Base PancakeSwap V3 WETH/DAI fee 500 (score 0.422, needs_data)",
+    "500u": "Base PancakeSwap V3 WETH/DAI fee 500 (score 0.422, needs_data)",
+    "1000u": "Base PancakeSwap V3 WETH/DAI fee 500 (score 0.422, needs_data)",
+    "2000u": "Base PancakeSwap V3 WETH/DAI fee 500 (score 0.422, needs_data)"
+  },
+
+  "structural_next_step": "shift to P1 (Curve/Balancer low-IL venues) and P2 (Solana Meteora/Orca/Raydium CLMM/DLMM) for structural-EV-frontier discovery"
+}

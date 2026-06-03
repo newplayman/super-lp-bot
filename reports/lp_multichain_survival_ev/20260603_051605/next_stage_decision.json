@@ -1,0 +1,54 @@
+{
+  "stage": "LP_MULTICHAIN_DEX_LP_DISCOVERY_AND_SURVIVAL_EV_V1",
+  "run_id": "20260603_051605",
+  "phase": "J_next_stage_decision",
+
+  "recommended_next_stage": "LP_SOLANA_LP_CONNECTOR_DESIGN_V1",
+  "allowed_next_stages": [
+    "LP_MULTICHAIN_TOP_CANDIDATE_PROBE_PREFLIGHT_V1",
+    "LP_BASE_10U_PROBE_MARKET_UNSAFE_WAIT_V1",
+    "LP_EVM_MULTICHAIN_DISCOVERY_FIX_REPEAT",
+    "LP_SOLANA_LP_CONNECTOR_DESIGN_V1",
+    "STOP_LP_RESEARCH_NOW"
+  ],
+  "default_when_no_explicit_choice": "LP_SOLANA_LP_CONNECTOR_DESIGN_V1",
+
+  "selection_rationale": {
+    "not_TOP_CANDIDATE_PROBE_PREFLIGHT": "spec requires positive EV in realistic/conservative; model shows 0/19,980",
+    "not_BASE_10U_MARKET_UNSAFE_WAIT": "model shows V3 simple LP structurally negative on Base too; waiting does not fix cost structure",
+    "not_MULTICHAIN_DISCOVERY_FIX": "v3 saturated; P1 (Curve/Balancer) still EVM; P2 (Solana) more promising for structural EV",
+    "selected_SOLANA_LP_CONNECTOR_DESIGN": "Solana Meteora DLMM/DAMM v2/Orca/Raydium CLMM are different pool layouts with potentially lower IL; spec explicitly says 'EVM 未发现优质候选, 开始设计 Solana'",
+    "not_STOP_LP_RESEARCH_NOW": "operator has not asked to stop; finding is that V3 paradigm failed, not that LP research is hopeless"
+  },
+
+  "next_stage_must_not": [
+    "execute probe on Solana",
+    "send any tx",
+    "construct signer / load private key",
+    "auto bridge from Base to Solana",
+    "auto swap on Base to get SOL/USDC",
+    "modify strategy execution path",
+    "unseal v2 hard-disable"
+  ],
+
+  "next_stage_expected_actions": [
+    "write Solana RPC endpoint list (public only)",
+    "write Meteora DLMM account layout spec",
+    "write Meteora DAMM v2 account layout spec",
+    "write Orca Whirlpool tick array layout spec",
+    "write Raydium CLMM pool layout spec",
+    "document Solana quote methods (program staticcall)",
+    "document Solana position model (bin vs tick)",
+    "document Solana fee extraction flow",
+    "do NOT write actual connector code",
+    "do NOT auto bridge / swap"
+  ],
+
+  "next_stage_signoff": "本阶段通过 6 chain × 142 池 × 19,980 行 model 实证 V3 简单 LP 范式失败；下一阶段换 venue。",
+
+  "can_run_probe_now": false,
+  "execution_allowed_now": false,
+  "tiny_canary_allowed": "no",
+  "edge_proven": "no",
+  "wallet_or_tx_touched": false
+}

@@ -1,0 +1,89 @@
+{
+  "status": "WARN",
+  "stage": "LP_MULTICHAIN_DEX_LP_DISCOVERY_AND_SURVIVAL_EV_V1",
+  "run_id": "20260603_051605",
+  "branch": "feat/supabase-postgres-deployment",
+  "head_before": "9c3af43",
+
+  "multichain_discovery_ran": true,
+  "chain_count": 6,
+  "protocol_count": 7,
+  "candidate_pool_count": 192,
+  "pool_exists_count": 142,
+  "readiness_probe_ran": true,
+  "pools_state_ready": 134,
+  "survival_ev_model_ran": true,
+  "survival_ev_pools_evaluated": 74,
+  "survival_ev_row_count": 19980,
+  "survival_risk_model_ran": true,
+  "survival_risk_pools_evaluated": 74,
+  "survival_risk_row_count": 666,
+  "candidate_scoring_ran": true,
+  "candidate_scoring_pools_scored": 134,
+  "candidate_scoring_row_count": 804,
+
+  "positive_realistic_count": 0,
+  "positive_conservative_count": 0,
+  "near_break_even_count": 0,
+  "zero_il_lvr_ceiling_$2000_ev": -2.51,
+
+  "top_candidate_chain": "Base",
+  "top_candidate_protocol": "PancakeSwap V3",
+  "top_candidate_pool": "0x_pool_WETH_DAI_500",
+  "top_candidate_pair": "WETH/DAI",
+  "top_candidate_fee_tier": 500,
+  "top_candidate_notional": 10,
+  "top_candidate_hold_window": "7d",
+  "top_candidate_class": "watch",
+  "top_candidate_score": 0.638,
+  "recommended_probe_chain": "Base",
+
+  "structural_finding": "0/19,980 realistic-scenario V3 LP combinations produce positive net EV across 6 EVM chains × 74 state-ready V3 pools × 6 notionals × 9 hold windows. Cost structure (gas + slippage + failure buffer) dominates fee yield. Even zero_il_lvr theoretical ceiling at $2000 is -$2.51.",
+
+  "no_auto_bridge_or_swap_recommended": true,
+  "any_tx_touched": false,
+
+  "can_run_probe_now": false,
+  "execution_allowed_now": false,
+  "edge_proven": "no",
+  "actual_fee_ready": false,
+  "token_id_available": false,
+  "wallet_or_tx_touched": false,
+  "tiny_canary_allowed": "no",
+  "manual_approval_required": true,
+  "send_hard_disable_still_active": true,
+
+  "v2_modified_by_this_task": false,
+  "v2_line_count_unchanged": true,
+  "v2_line_count": 992,
+
+  "phase_results": {
+    "A_workspace_safety": "PASS",
+    "B_input_evidence_audit": "PASS (9 upstream files audited)",
+    "C_multichain_universe_plan": "PASS (P0/P1/P2 priority structure)",
+    "D_evm_standard_v3_multichain_discovery": "PASS (6 chains, 192 queries, 142 pools exist)",
+    "E_multichain_pool_readiness_probe": "PASS (142 probed; 134 state_ready; 0 quote_ready due to v1 QuoterV2 encoding known gap)",
+    "F_survival_horizon_ev_model": "PASS (19,980 rows; 0 positive in any scenario)",
+    "G_survival_out_of_range_risk": "PASS (74 pools × 9 holds; 164 high risk; 47 sample historical anchor)",
+    "H_candidate_scoring": "PASS (134 pools × 6 notionals; 0 candidate_now)",
+    "I_multichain_probe_route_decision": "PASS (7 questions answered; no positive EV in V3)",
+    "J_next_stage_decision": "PASS (LP_SOLANA_LP_CONNECTOR_DESIGN_V1 selected)"
+  },
+
+  "allowed_next_stages": [
+    "LP_MULTICHAIN_TOP_CANDIDATE_PROBE_PREFLIGHT_V1",
+    "LP_BASE_10U_PROBE_MARKET_UNSAFE_WAIT_V1",
+    "LP_EVM_MULTICHAIN_DISCOVERY_FIX_REPEAT",
+    "LP_SOLANA_LP_CONNECTOR_DESIGN_V1",
+    "STOP_LP_RESEARCH_NOW"
+  ],
+  "recommended_next_stage": "LP_SOLANA_LP_CONNECTOR_DESIGN_V1",
+  "default_when_no_explicit_choice": "LP_SOLANA_LP_CONNECTOR_DESIGN_V1",
+
+  "this_stage_did_not_execute": true,
+  "this_stage_did_not_send_any_tx": true,
+  "this_stage_did_not_construct_signer": true,
+  "this_stage_did_not_load_private_key": true,
+  "this_stage_did_not_unseal_hard_disable": true,
+  "this_stage_only_did_read_only_rpc_and_models": true
+}

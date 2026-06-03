@@ -1,0 +1,69 @@
+{
+  "stage": "LP_MULTICHAIN_DEX_LP_DISCOVERY_AND_SURVIVAL_EV_V1",
+  "run_id": "20260603_051605",
+  "branch": "feat/supabase-postgres-deployment",
+  "head_before": "9c3af43",
+
+  "upstream_files_audited": [
+    "reports/lp_base_10u_probe_monitor_finalize/20260603_040018/FINAL_VERDICT.json",
+    "reports/lp_base_10u_probe_monitor_finalize/20260603_040018/BASE_10U_PROBE_GO_NOGO_REVIEW_CN.md",
+    "reports/lp_base_10u_probe_monitor_finalize/20260603_040018/base_10u_probe_go_nogo_review.json",
+    "reports/lp_evm_wallet_crosschain_dry_run_router/20260602_105654/FINAL_VERDICT.json",
+    "reports/lp_bsc_fee_velocity_recovery_probe_preflight/20260602_060633/FINAL_VERDICT.json",
+    "reports/lp_universe_scope_audit/20260601_154136/FINAL_VERDICT.json",
+    "reports/lp_evm_standard_v3_discovery/20260602_000000/FINAL_VERDICT.json",
+    "docs/LPBOT_RESEARCH_STATUS_CN.md",
+    "docs/LPBOT_RESEARCH_ARTIFACT_INDEX_CN.md"
+  ],
+  "missing_files": [],
+
+  "key_findings": {
+    "base_10u_probe": "NO_GO",
+    "base_10u_drift_min": -722,
+    "base_10u_market_safe_count": 0,
+    "base_10u_total_checkpoints": 47,
+    "base_10u_recommended_next": "LP_BASE_10U_PROBE_MARKET_UNSAFE_WAIT_V1",
+
+    "bsc_best_pool": "0x172fcd41e0913e95784454622d1c3724f546f849",
+    "bsc_best_pair": "USDT/WBNB",
+    "bsc_best_fee_tier": 100,
+    "bsc_best_net_ev_proxy_usd": -0.01556,
+    "bsc_funded_in_test_wallet": false,
+
+    "wallet_address": "0xb05b2872ace4564ff247555b6f7b097d31f3d835",
+    "wallet_base_total_usd_proxy": 26.84,
+    "wallet_bsc_total_usd_proxy": 0.0,
+    "likely_funded_chain": "base",
+
+    "current_universe": {
+      "chain_count": 2,
+      "protocol_count": 12,
+      "unique_pool_count": 94,
+      "pool_level_positive_proxy_count": 0
+    },
+
+    "universe_likely_too_narrow": true,
+    "evm_v3_discovery_pool_count": 8,
+    "evm_v3_rpc_ready_chain_count": 2
+  },
+
+  "key_tensions": [
+    "wallet is funded only on Base; spec wants multichain",
+    "current universe is 2 chains; spec wants 6+ EVM + Solana design",
+    "0 positive_realistic pools in current universe",
+    "actual_fee_ready=false; all EV is proxy",
+    "BSC best pool has negative EV (-$0.0156)"
+  ],
+
+  "safety_locks_intact": {
+    "can_run_probe_now": false,
+    "execution_allowed_now": false,
+    "tiny_canary_allowed": "no",
+    "edge_proven": "no",
+    "actual_fee_ready": false,
+    "token_id_available": false,
+    "wallet_or_tx_touched": false,
+    "manual_approval_required": true,
+    "send_hard_disable_still_active": true
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "stage": "LP_MULTICHAIN_DEX_LP_DISCOVERY_AND_SURVIVAL_EV_V1",
+  "run_id": "20260603_051605",
+  "phase": "G_survival_out_of_range_risk",
+  "pools_evaluated": 74,
+  "row_count": 666,
+  "base_historical_anchor": {
+    "samples": 47,
+    "p50_abs_drift": 558,
+    "p90_abs_drift": 652,
+    "p95_abs_drift": 664,
+    "max_abs_drift": 722
+  },
+  "wallet_or_tx_touched": false,
+  "this_stage_only_runs_model": true
+}
