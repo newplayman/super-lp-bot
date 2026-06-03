@@ -1,0 +1,82 @@
+{
+  "stage": "LP_METEORA_DLMM_SDK_API_CONNECTOR_FEASIBILITY_FIX_REPEAT_V1",
+  "run_id": "20260603_130532",
+  "phase": "C_isolated_sdk_env_audit",
+
+  "package_name": "@meteora-ag/dlmm",
+  "resolved_version": "1.9.10",
+  "dist_tags": {"next": "1.9.5-rc.4", "beta": "1.9.8-rc.0", "latest": "1.9.10"},
+  "repository": {"type": "git", "url": "git+https://github.com/MeteoraAg/dlmm-sdk.git", "directory": "ts-client"},
+
+  "install_attempted": true,
+  "install_success": true,
+  "install_dir": "/tmp/lpbot_meteora_dlmm_sdk_probe_20260603_130532/node_modules/@meteora-ag/dlmm",
+  "install_in_isolated_tmp_dir": true,
+  "repo_root_touched": false,
+  "repo_node_modules_created": false,
+  "packages_count": 152,
+  "audit_warnings": "11 (7 moderate, 4 high) — not blocking, not in read-only path",
+
+  "has_dlmm_create": true,
+  "has_get_active_bin": true,
+  "has_swap_quote": true,
+  "has_get_fee_info": true,
+  "has_bin_array_helpers": true,
+  "has_get_lb_pair_lock_info": true,
+  "has_get_tokens_mint_from_pool_address": true,
+  "has_get_token_decimals": true,
+  "has_get_token_balance": true,
+  "has_lbclmm_program_ids_constant": true,
+  "lbclmm_program_ids_mainnet": "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo",
+
+  "wallet_related_imports_present": true,
+  "wallet_related_imports_used": false,
+  "wallet_adapter_imported": false,
+  "keypair_instantiated_by_us": false,
+
+  "position_creation_methods_avoided": [
+    "dlmmPool.initializePositionAndAddLiquidityByStrategy",
+    "dlmmPool.addLiquidityByStrategy",
+    "dlmmPool.removeLiquidity",
+    "dlmmPool.swap (tx builder)",
+    "dlmmPool.closePosition",
+    "dlmmPool.claimFee",
+    "dlmmPool.claimReward"
+  ],
+
+  "transitive_dependencies": [
+    "@coral-xyz/anchor@0.31.0",
+    "@coral-xyz/borsh@0.31.0",
+    "@solana/spl-token@^0.4.6",
+    "@solana/web3.js@^1.91.6",
+    "bn.js@^5.2.1",
+    "decimal.js@^10.4.2",
+    "express@^4.19.2 (optional)",
+    "gaussian@^1.3.0"
+  ],
+  "no_wallet_adapter_dependency": true,
+  "no_keychain_dependency": true,
+  "no_secret_manager_dependency": true,
+
+  "confidence": 0.95,
+  "invalid_reason": "",
+
+  "this_stage_does_not": [
+    "install in repo root",
+    "import @solana/wallet-adapter-*",
+    "instantiate Keypair",
+    "call any pos-create / tx-builder method",
+    "send any transaction",
+    "swap / open LP / close LP / collect fee / bridge",
+    "start live/canary/paper",
+    "modify EVM executor v2",
+    "release v2 hard-disable"
+  ],
+
+  "solana_wallet_or_keypair_touched": false,
+  "can_run_probe_now": false,
+  "v2_line_count_unchanged": true,
+  "v2_line_count": 992,
+
+  "next_stage": "Stage D: known-pool feed freeze"
+}

@@ -1,0 +1,186 @@
+{
+  "schema_version": "v1",
+  "stage": "LP_METEORA_DLMM_SDK_API_CONNECTOR_FEASIBILITY_FIX_REPEAT_V1",
+  "run_id": "20260603_130532",
+  "design_intent": "research-only connector; tables are read-only snapshots for known-pool feed; no execution paths",
+
+  "tables": [
+    {
+      "table_id": "meteora_dlmm_known_pool_universe_v1",
+      "purpose": "frozen list of Meteora DLMM LbPair addresses the connector knows about, with source provenance",
+      "primary_key": "pool_address",
+      "fields": [
+        {"name": "pool_address", "type": "pubkey", "required": true, "note": "mainnet LbPair account pubkey"},
+        {"name": "source", "type": "string", "required": true, "values": ["official_sdk_example", "official_docs", "indexer_cache", "human_curated"], "note": "never memory-only"},
+        {"name": "source_url", "type": "url", "required": false, "note": "e.g. https://raw.githubusercontent.com/MeteoraAg/dlmm-sdk/main/ts-client/src/examples/swap_quote.ts"},
+        {"name": "source_confidence", "type": "string", "values": ["high", "medium", "low"]},
+        {"name": "expected_owner_program", "type": "pubkey", "value_must_be": "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo"},
+        {"name": "mainnet_verified", "type": "bool", "value_must_be": true, "verification_method": "getAccountInfo on publicnode; owner + data_len == 904"},
+        {"name": "selected_for_sdk_smoke", "type": "bool", "value_must_be": true},
+        {"name": "added_at_utc", "type": "datetime"},
+        {"name": "added_by_stage", "type": "string", "note": "e.g. LP_METEORA_DLMM_SDK_API_CONNECTOR_FEASIBILITY_FIX_REPEAT_V1"},
+        {"name": "invalid_reason", "type": "string", "note": "empty when valid"}
+      ]
+    },
+    {
+      "table_id": "meteora_dlmm_pool_snapshot_v1",
+      "purpose": "per-pool on-chain LbPair state (from DLMM.create decode), refreshed read-only",
+      "primary_key": "pool_address + snapshot_at_utc",
+      "fields": [
+        {"name": "pool_address", "type": "pubkey", "required": true, "fk": "meteora_dlmm_known_pool_universe_v1.pool_address"},
+        {"name": "snapshot_at_utc", "type": "datetime", "required": true, "note": "refresh cadence: per connector run"},
+        {"name": "snapshot_slot", "type": "u64", "note": "slot at fetch time"},
+        {"name": "token_x", "type": "pubkey", "note": "from dlmmPool.tokenX.publicKey"},
+        {"name": "token_y", "type": "pubkey", "note": "from dlmmPool.tokenY.publicKey"},
+        {"name": "token_x_decimals", "type": "u8", "note": "from dlmmPool.tokenX.mint.decimals"},
+        {"name": "token_y_decimals", "type": "u8", "note": "from dlmmPool.tokenY.mint.decimals"},
+        {"name": "bin_step", "type": "u16", "note": "from dlmmPool.lbPair.binStep"},
+        {"name": "active_bin_id", "type": "i32", "note": "from getActiveBin"},
+        {"name": "active_bin_price", "type": "decimal_string", "note": "Decimal as string (no float); from getActiveBin.price"},
+        {"name": "active_bin_x_amount", "type": "u128_string", "note": "raw amount on X side at active bin"},
+        {"name": "active_bin_y_amount", "type": "u128_string", "note": "raw amount on Y side at active bin"},
+        {"name": "status", "type": "u8", "values": [0, 1, 2]},
+        {"name": "pair_type", "type": "u8", "note": "0=permissionless, 1=permissioned, 2=customizable"},
+        {"name": "reserve_x_amount", "type": "u128_string", "note": "from dlmmPool.tokenX.amount"},
+        {"name": "reserve_y_amount", "type": "u128_string", "note": "from dlmmPool.tokenY.amount"},
+        {"name": "data_confidence", "type": "string", "values": ["high", "medium", "low", "blocked"]},
+        {"name": "data_confidence_reason", "type": "string", "note": "e.g. 'rpc 403 on getMultipleAccounts for bin arrays'"},
+        {"name": "invalid_reason", "type": "string"}
+      ]
+    },
+    {
+      "table_id": "meteora_dlmm_bin_liquidity_snapshot_v1",
+      "purpose": "per-bin xAmount / yAmount within +/- N bins of active bin (research-only; for EV calc)",
+      "primary_key": "pool_address + bin_id + snapshot_at_utc",
+      "fields": [
+        {"name": "pool_address", "type": "pubkey", "fk": "meteora_dlmm_known_pool_universe_v1.pool_address"},
+        {"name": "bin_id", "type": "i32", "note": "Meteora DLMM bin ID; bin_id=0 corresponds to 1.0 price * (1+bin_step/10000)^bin_id"},
+        {"name": "bin_array_index", "type": "i32", "note": "bin_idToBinArrayIndex(bin_id); each bin_array holds 64 bins"},
+        {"name": "snapshot_at_utc", "type": "datetime"},
+        {"name": "x_amount", "type": "u128_string", "note": "raw token X in this bin"},
+        {"name": "y_amount", "type": "u128_string", "note": "raw token Y in this bin"},
+        {"name": "price", "type": "decimal_string", "note": "bin price = (1+bin_step/10000)^bin_id"},
+        {"name": "data_confidence", "type": "string"},
+        {"name": "data_confidence_reason", "type": "string", "note": "currently always 'blocked_by_public_rpc_bin_array_403' (V3 finding)"}
+      ],
+      "v3_data_confidence": "blocked_by_public_rpc_bin_array_403 (per Stage F); needs paid RPC"
+    },
+    {
+      "table_id": "meteora_dlmm_quote_snapshot_v1",
+      "purpose": "10U/20U quote attempts; useful for EV comparison across pools",
+      "primary_key": "pool_address + notional + direction + snapshot_at_utc",
+      "fields": [
+        {"name": "pool_address", "type": "pubkey", "fk": "meteora_dlmm_known_pool_universe_v1.pool_address"},
+        {"name": "snapshot_at_utc", "type": "datetime"},
+        {"name": "notional_usd_approx", "type": "string", "values": ["10U", "20U", "100U", "1000U"]},
+        {"name": "notional_amount_raw", "type": "u128_string", "note": "raw amount in (e.g. 10_000_000 for 10 USDC 6-dec)"},
+        {"name": "quote_token_in", "type": "string", "values": ["X", "Y"]},
+        {"name": "quote_token_out", "type": "string", "values": ["X", "Y"]},
+        {"name": "amount_in_raw", "type": "u128_string", "note": "actual consumed in amount (may be less than notional for partial fill)"},
+        {"name": "amount_out_raw", "type": "u128_string"},
+        {"name": "price_impact_pct", "type": "decimal_string"},
+        {"name": "fee_raw", "type": "u128_string", "note": "total fee in token_in units"},
+        {"name": "bin_crossed", "type": "u32", "note": "binArraysCovered from quote"},
+        {"name": "quote_method", "type": "string", "values": ["dlmmPool.swapQuote", "dlmmPool.swapQuoteExactOut"]},
+        {"name": "quote_success", "type": "bool"},
+        {"name": "quote_blocked_by", "type": "string", "values": ["", "bin_arrays_403_public_rpc", "rpc_410_gone", "unknown"]},
+        {"name": "data_confidence", "type": "string"},
+        {"name": "invalid_reason", "type": "string"}
+      ],
+      "v3_data_confidence": "quote_success_count=0/4 in V3; all blocked by bin_arrays_403_public_rpc"
+    },
+    {
+      "table_id": "meteora_dlmm_fee_snapshot_v1",
+      "purpose": "fee parameters for EV cost model",
+      "primary_key": "pool_address + snapshot_at_utc",
+      "fields": [
+        {"name": "pool_address", "type": "pubkey", "fk": "meteora_dlmm_known_pool_universe_v1.pool_address"},
+        {"name": "snapshot_at_utc", "type": "datetime"},
+        {"name": "base_fee_bps", "type": "decimal_string", "note": "from dlmmPool.getFeeInfo().baseFeeRatePercentage"},
+        {"name": "max_fee_bps", "type": "decimal_string"},
+        {"name": "protocol_fee_bps", "type": "decimal_string", "note": "V3 SDK returned null/undefined; may need to read from lbPair.parameters"},
+        {"name": "base_factor", "type": "u16", "note": "from lbPair.parameters.baseFactor"},
+        {"name": "volatility_accumulator", "type": "u32", "note": "from lbPair.vParameters.volatility_accumulator"},
+        {"name": "data_confidence", "type": "string"},
+        {"name": "invalid_reason", "type": "string"}
+      ]
+    },
+    {
+      "table_id": "meteora_dlmm_survival_ev_preview_v1",
+      "purpose": "research-only survival EV preview; for connector V1 + Phase 2A selection",
+      "primary_key": "pool_address + notional + direction + preview_at_utc",
+      "fields": [
+        {"name": "pool_address", "type": "pubkey", "fk": "meteora_dlmm_known_pool_universe_v1.pool_address"},
+        {"name": "preview_at_utc", "type": "datetime"},
+        {"name": "notional_usd_approx", "type": "string", "values": ["10U", "20U"]},
+        {"name": "direction", "type": "string", "values": ["X_to_Y", "Y_to_X"]},
+        {"name": "range_strategy", "type": "string", "values": ["spot", "balanced", "imbalance", "one_side"]},
+        {"name": "range_bins", "type": "u32", "note": "bins on each side of active bin"},
+        {"name": "expected_fee_24h_usd", "type": "decimal_string", "note": "rough estimate from volume x fee_bps; research only"},
+        {"name": "expected_il_24h_usd", "type": "decimal_string", "note": "impermanent loss estimate from price volatility"},
+        {"name": "expected_gas_cost_usd", "type": "decimal_string"},
+        {"name": "survival_ev_usd", "type": "decimal_string", "note": "= expected_fee - expected_il - expected_gas"},
+        {"name": "ev_confidence", "type": "string", "values": ["high", "medium", "low", "no_quote_data"]},
+        {"name": "selection_status", "type": "string", "values": ["candidate", "selected", "rejected", "no_quote_data"]},
+        {"name": "data_confidence", "type": "string"},
+        {"name": "invalid_reason", "type": "string"}
+      ],
+      "v3_data_confidence": "no_quote_data in V3 (all 4 quote attempts blocked); survival EV cannot be computed yet"
+    }
+  ],
+
+  "field_coverage_check": {
+    "pool_address": "covered (universe, pool_snapshot, bin_liquidity, quote, fee, ev)",
+    "token_x": "covered (pool_snapshot)",
+    "token_y": "covered (pool_snapshot)",
+    "bin_step": "covered (pool_snapshot)",
+    "active_bin": "covered (pool_snapshot.active_bin_id + active_bin_price)",
+    "active_price": "covered (pool_snapshot.active_bin_price)",
+    "fee_parameters": "covered (fee_snapshot.base_fee_bps, max_fee_bps, protocol_fee_bps)",
+    "reserve_x": "covered (pool_snapshot.reserve_x_amount)",
+    "reserve_y": "covered (pool_snapshot.reserve_y_amount)",
+    "bin_liquidity": "covered (bin_liquidity_snapshot, currently blocked on public RPC)",
+    "quote_10u": "covered (quote_snapshot with notional_usd_approx='10U')",
+    "quote_20u": "covered (quote_snapshot with notional_usd_approx='20U')",
+    "data_confidence": "covered (all tables)",
+    "invalid_reason": "covered (all tables)"
+  },
+
+  "v3_known_blockers": {
+    "bin_liquidity_data": "blocked on public RPC (getMultipleAccounts 403/410)",
+    "quote_data": "blocked on public RPC (same root cause)",
+    "lock_info": "blocked on public RPC (RPC 410 disabled)",
+    "ev_computation": "no_quote_data in V3; needs paid RPC to unblock"
+  },
+
+  "v3_known_works": {
+    "pool_universe": "works (Stage D: 2 pools from official SDK examples)",
+    "pool_snapshot_core": "works (Stage E: full LbPair decode succeeded for 2/2 pools)",
+    "fee_snapshot": "works (Stage E: base_fee_bps and max_fee_bps extracted for 2/2 pools)"
+  },
+
+  "design_principles": {
+    "read_only": "all tables are read-only snapshots; no execution / no position writes",
+    "no_wallet": "no keypair / signer / wallet adapter in any field",
+    "no_tx": "no transaction fields",
+    "decimal_string": "all amounts are u128 strings or decimal strings; no float64",
+    "frozen_provenance": "every pool address has a documented source",
+    "data_confidence_honest": "every table has data_confidence; defaults to 'blocked' when RPC fails"
+  },
+
+  "this_stage_does_not": [
+    "implement any of the 6 tables in real storage",
+    "connect to any live database",
+    "modify any production table",
+    "overwrite any shadow table",
+    "modify EVM executor v2",
+    "release v2 hard-disable"
+  ],
+
+  "solana_wallet_or_keypair_touched": false,
+  "can_run_probe_now": false,
+  "v2_line_count_unchanged": true,
+  "v2_line_count": 992,
+
+  "next_stage": "Stage H: paid RPC vs known-pool feed decision"
+}

@@ -1,0 +1,100 @@
+{
+  "stage": "LP_METEORA_DLMM_SDK_API_CONNECTOR_FEASIBILITY_FIX_REPEAT_V1",
+  "run_id": "20260603_130532",
+  "phase": "H_paid_rpc_vs_known_pool_feed_decision",
+
+  "strategies_evaluated": [
+    {
+      "strategy_id": "paid_rpc_gpa",
+      "description": "use paid RPC (Helius / Triton / QuickNode) for getProgramAccounts to enumerate ALL Meteora DLMM LbPair accounts; then apply known_pool_feed logic on the full set",
+      "can_do_first_time_discovery": true,
+      "needs_operator_action": "yes (paid RPC URL + key)",
+      "v3_status": "not attempted (no paid RPC key); V1 already proved public RPC 0/4 GPA",
+      "cost": "paid RPC subscription (Helius dev: ~$50/mo; Triton: ~$50/mo; QuickNode: ~$50/mo)",
+      "complexity": "low (single RPC swap; GPA already known to fit in paid RPC ~10MB cap)",
+      "next_action": "operator provides paid RPC URL + key; then run known_pool_universe_full_v2 = paid_rpc_gpa + decode",
+      "phase_recommendation": "Phase 2B (after Phase 2A is fully validated)"
+    },
+    {
+      "strategy_id": "known_pool_feed_sdk_decode",
+      "description": "use a frozen known-pool feed (Stage D: 2 pools from official SDK examples) + SDK decode (Stage E: full LbPair decode works) + accept bin liquidity / quote blocked on public RPC",
+      "can_do_first_time_discovery": false,
+      "needs_operator_action": "no (uses public RPC + frozen feed)",
+      "v3_status": "validated: 2/2 pools full pool_snapshot + fee_snapshot decoded via @meteora-ag/dlmm v1.9.10",
+      "cost": "free (public RPC + SDK)",
+      "complexity": "low (Stage E script is reusable)",
+      "what_works": [
+        "DLMM.create → full LbPair decode",
+        "getActiveBin → active bin + price + per-side amounts",
+        "getFeeInfo → base_fee_bps + max_fee_bps",
+        "reserve_x_amount + reserve_y_amount"
+      ],
+      "what_blocked": [
+        "getBinArrayForSwap → 403 on public RPC",
+        "swapQuote → blocked (needs bin arrays)",
+        "getLbPairLockInfo → 410 on public RPC"
+      ],
+      "phase_recommendation": "Phase 2A (current V3 path; lets us validate connector scaffolding + schema without paid RPC)"
+    },
+    {
+      "strategy_id": "official_rest_api",
+      "description": "use Meteora DLMM REST API at dlmm-api.meteora.ag for pool discovery",
+      "can_do_first_time_discovery": "unknown (API 404 on all probed paths in V2)",
+      "needs_operator_action": "no (HTTP only)",
+      "v3_status": "same as V2: API endpoint not found",
+      "cost": "free",
+      "complexity": "low (if available)",
+      "phase_recommendation": "deprecated for now; re-evaluate if Meteora publishes a public REST API later"
+    }
+  ],
+
+  "selected_strategy": "known_pool_feed_sdk_decode",
+  "selected_phase": "Phase 2A",
+  "selected_reason": "V3 验证 known_pool_feed + SDK decode 工作良好; 2/2 pools decoded; 6-table schema 完整. Bin liquidity + quote 阻断是 public RPC 限制, 不是 connector 设计问题. Connector V1 可以 Phase 2A 用 frozen feed 跑通 schema; Phase 2B 加 paid RPC 后才能跑 quote / bin liquidity / EV.",
+
+  "recommended_near_term_path": "known_pool_feed_sdk_decode",
+
+  "next_stage_recommendation": "LP_METEORA_DLMM_KNOWN_POOL_READONLY_CONNECTOR_V1 (Phase 2A: implement the 6-table schema + wire SDK smoke pipeline; do NOT yet compute quote or EV)",
+
+  "alternative_decision": {
+    "if operator_provides_paid_rpc": "can run connector V1 + quote + EV in one stage; skip fix_repeat",
+    "if operator_provides_paid_rpc_and_lifinity_pid": "can also do Raydium CPMM in parallel; risks complex stage",
+    "if operator_provides_known_pool_feed_larger": "can extend frozen feed to 10+ pools from human-curated list (e.g. Meteora UI top pools); still no paid RPC needed for read-only path"
+  },
+
+  "phase_2A_responsibilities": [
+    "implement 6-table schema in research-only Postgres (or shadow table) — Stage G provides design",
+    "wire SDK smoke pipeline to refresh pool_snapshot + fee_snapshot per pool on schedule",
+    "freeze known_pool_universe_v1 with 2 pools (or extend if operator gives more)",
+    "do NOT compute quote / EV / bin_liquidity (blocked on public RPC)"
+  ],
+  "phase_2A_blockers_documented": [
+    "bin_liquidity → blocked_by_public_rpc_bin_array_403",
+    "quote → blocked_by_public_rpc_bin_array_403",
+    "lock_info → blocked_by_public_rpc_lock_info_410",
+    "EV → no_quote_data (derived blocker)"
+  ],
+
+  "phase_2B_responsibilities": [
+    "operator provides paid RPC (Helius / Triton / QuickNode)",
+    "rerun getBinArrayForSwap with paid RPC",
+    "rerun swapQuote (10U/20U)",
+    "rerun getLbPairLockInfo",
+    "compute survival_ev_preview_v1 with real quote data",
+    "extend known_pool_universe via GPA on paid RPC"
+  ],
+
+  "this_stage_does_not": [
+    "implement the 6 tables (still design-only)",
+    "decide paid RPC vendor (operator input required)",
+    "extend known pool feed (operator input required)",
+    "connect to any live database"
+  ],
+
+  "solana_wallet_or_keypair_touched": false,
+  "can_run_probe_now": false,
+  "v2_line_count_unchanged": true,
+  "v2_line_count": 992,
+
+  "next_stage": "Stage I: next-stage decision V3"
+}

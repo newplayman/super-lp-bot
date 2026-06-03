@@ -1,0 +1,108 @@
+{
+  "stage": "LP_METEORA_DLMM_SDK_API_CONNECTOR_FEASIBILITY_FIX_REPEAT_V1",
+  "run_id": "20260603_130532",
+  "phase": "I_next_stage_decision_v3",
+
+  "recommended_next_stage": "LP_METEORA_DLMM_KNOWN_POOL_READONLY_CONNECTOR_V1",
+  "default_when_no_explicit_choice": "LP_METEORA_DLMM_KNOWN_POOL_READONLY_CONNECTOR_V1",
+
+  "allowed_next_stages": [
+    "LP_METEORA_DLMM_KNOWN_POOL_READONLY_CONNECTOR_V1",
+    "LP_METEORA_DLMM_SDK_API_CONNECTOR_FEASIBILITY_FIX_REPEAT",
+    "LP_SOLANA_PAID_RPC_SETUP_REQUIRED",
+    "STOP_LP_RESEARCH_NOW"
+  ],
+
+  "selected_next_stage": "LP_METEORA_DLMM_KNOWN_POOL_READONLY_CONNECTOR_V1",
+  "selection_rationale": {
+    "not_KNOWN_POOL_READONLY_CONNECTOR": "NEGATIVE: actually, this IS the right choice. V3 met all entry conditions: SDK installed (Stage C), known pool decode smoke succeeded for 2/2 pools (Stage E), discovery strategy decided (Stage H: known_pool_feed_sdk_decode), 6-table connector schema designed (Stage G), quote smoke partial (Stage F: blocked on bin arrays, documented; not blocking because connector V1 can write 3/6 tables without quotes).",
+    "not_SDK_API_CONNECTOR_FEASIBILITY_FIX_REPEAT": "NEGATIVE: V3 actually finished the feasibility work. SDK install + decode + schema + decision all complete. Repeating would be no-progress.",
+    "not_PAID_RPC_SETUP_REQUIRED": "NEGATIVE: paid RPC is a Phase 2B concern, not a stage gate. The near-term path doesn't require paid RPC because we can validate connector scaffolding + schema with 3/6 tables now.",
+    "not_STOP_LP_RESEARCH_NOW": "NEGATIVE: read-only path is fully viable. 2/2 pools decoded, full LbPair state extracted, 6-table schema designed. Not a structural failure."
+  },
+
+  "this_round_improvements": {
+    "previous_round_status_v2": "WARN; SDK path identified; smoke partial",
+    "this_round_status_v3": "WARN; SDK installed; SDK decode works for 2/2 pools; schema designed; strategy decided",
+    "v3_metric_sdk_install_or_pack_success": true,
+    "v3_metric_known_pool_feed_ready": true,
+    "v3_metric_known_pool_smoke_ran": true,
+    "v3_metric_known_pool_smoke_success": true,
+    "v3_metric_quote_smoke_ran": true,
+    "v3_metric_quote_smoke_success": false,
+    "v3_metric_connector_schema_ready": true,
+    "v3_metric_quote_blocker": "bin_arrays_403_public_rpc",
+    "v3_metric_decided_near_term_path": "known_pool_feed_sdk_decode"
+  },
+
+  "entry_conditions_for_known_POOL_READONLY_CONNECTOR_V1": {
+    "sdk_installed_or_inspected": "✅ (Stage C: npm install @meteora-ag/dlmm@1.9.10 in /tmp)",
+    "known_pool_decode_smoke_success": "✅ (Stage E: 2/2 pools full LbPair decode + active bin + fees + reserves)",
+    "quote_smoke_success_or_path_feasible": "⚠️ (Stage F: quote blocked on public RPC; but path is feasible with paid RPC or known bin array index; connector V1 can write 3/6 tables without quotes)",
+    "known_pool_feed_recommended": "✅ (Stage D: 2 pools from official SDK examples; Stage H: recommended as near-term path)"
+  },
+
+  "remaining_blockers": [
+    {
+      "blocker": "quote smoke blocked by public RPC (getBinArrayForSwap 403/410)",
+      "fix": "operator input: paid RPC OR known bin array cache",
+      "phase": "Phase 2B"
+    },
+    {
+      "blocker": "known pool feed size = 2 (only 2 verified SDK example pools)",
+      "fix": "operator input: human-curated pool list (Meteora UI top pools) OR paid RPC for GPA",
+      "phase": "Phase 2A (feed) + Phase 2B (full GPA)"
+    },
+    {
+      "blocker": "Raydium CPMM mainnet pid (unchanged from V1/V2; not on mainnet AND not on devnet)",
+      "fix": "operator input: real mainnet pid from Raydium Discord / 公告 / Solscan",
+      "phase": "P2 (separate from Meteora DLMM P0)"
+    },
+    {
+      "blocker": "Lifinity pid (unchanged from V1/V2; docs SPA; no public GitHub DEX repo)",
+      "fix": "operator input: pid from browser-rendered docs / Solscan OR remove from P2 list",
+      "phase": "P2 (separate from Meteora DLMM P0)"
+    }
+  ],
+
+  "next_stage_responsibilities": [
+    "implement 6-table schema in research-only storage (Postgres shadow / sqlite)",
+    "wire SDK smoke pipeline (Stage E script) to refresh pool_snapshot + fee_snapshot per pool",
+    "freeze known_pool_universe_v1 with 2 pools (or extend if operator gives more)",
+    "do NOT compute quote / EV / bin_liquidity (blocked on public RPC; Phase 2B concern)",
+    "do NOT call paid RPC (no key in this round)"
+  ],
+
+  "next_stage_must_not": [
+    "execute probe on Solana",
+    "send any tx",
+    "load any keypair / private key / seed phrase",
+    "construct signer",
+    "auto bridge / auto swap",
+    "modify EVM executor v2",
+    "release v2 hard-disable",
+    "set can_run_probe_now to true",
+    "set tiny_canary_allowed to yes",
+    "hard-code any program id from memory",
+    "use paid RPC without operator key",
+    "implement position creation / addLiquidity / removeLiquidity / closePosition / claimFee / claimReward",
+    "construct any transaction (even no-op)"
+  ],
+
+  "this_stage_did_not": [
+    "implement any connector",
+    "compute any quote",
+    "load any keypair / private key",
+    "send any transaction",
+    "call any pos-create / tx-builder method",
+    "modify any production table",
+    "modify EVM executor v2"
+  ],
+
+  "can_run_probe_now": false,
+  "solana_wallet_or_keypair_touched": false,
+  "tiny_canary_allowed": "no",
+  "edge_proven": "no",
+  "v2_line_count_unchanged": true,
+  "v2_line_count": 992
+}

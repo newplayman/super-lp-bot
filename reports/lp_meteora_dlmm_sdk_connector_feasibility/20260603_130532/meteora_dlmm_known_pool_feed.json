@@ -1,0 +1,91 @@
+{
+  "stage": "LP_METEORA_DLMM_SDK_API_CONNECTOR_FEASIBILITY_FIX_REPEAT_V1",
+  "run_id": "20260603_130532",
+  "phase": "D_known_pool_feed_freeze",
+
+  "policy": {
+    "pools_must_be_from_official_source": true,
+    "mainnet_verified_required_for_selected_for_sdk_smoke": true,
+    "owner_must_be_meteora_dlmm_program": true,
+    "data_len_must_be_904_for_lb_pair_struct": true
+  },
+
+  "pools": [
+    {
+      "pool_address": "5BKxfWMbmYBAEWvyPZS9esPducUba9GqyMjtLCfbaqyF",
+      "source": "official_sdk_example",
+      "source_file": "swap_quote.ts",
+      "source_url": "https://raw.githubusercontent.com/MeteoraAg/dlmm-sdk/main/ts-client/src/examples/swap_quote.ts",
+      "source_confidence": "high",
+      "expected_owner_program": "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo",
+      "mainnet_verified": true,
+      "onchain_data_len": 904,
+      "selected_for_sdk_smoke": true,
+      "invalid_reason": ""
+    },
+    {
+      "pool_address": "9DiruRpjnAnzhn6ts5HGLouHtJrT1JGsPbXNYCrFz2ad",
+      "source": "official_sdk_example",
+      "source_file": "fetch_lb_pair_lock_info.ts",
+      "source_url": "https://raw.githubusercontent.com/MeteoraAg/dlmm-sdk/main/ts-client/src/examples/fetch_lb_pair_lock_info.ts",
+      "source_confidence": "high",
+      "expected_owner_program": "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo",
+      "mainnet_verified": true,
+      "onchain_data_len": 904,
+      "selected_for_sdk_smoke": true,
+      "invalid_reason": ""
+    },
+    {
+      "pool_address": "3W2HKgUa96Z69zzG3LK1g8KdcRAWzAttiLiHfYnKuPw5",
+      "source": "official_sdk_example",
+      "source_file": "example.ts",
+      "source_url": "https://raw.githubusercontent.com/MeteoraAg/dlmm-sdk/main/ts-client/src/examples/example.ts",
+      "source_confidence": "high",
+      "expected_owner_program": "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo",
+      "mainnet_verified": false,
+      "onchain_data_len": 0,
+      "selected_for_sdk_smoke": false,
+      "invalid_reason": "getAccountInfo returned null on mainnet; pool from example.ts is not currently deployed; do not use in smoke (V3 honest finding; spec forbids memory-only pool hardcode)"
+    }
+  ],
+
+  "selected_count": 2,
+  "verified_count": 2,
+  "skipped_count": 1,
+
+  "mainnet_verification_method": "getAccountInfo on https://solana.publicnode.com (V1 verified primary endpoint) via stdlib-only Python; owner + data_len cross-checked against LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo and 904 bytes",
+
+  "this_stage_does_not": [
+    "fabricate any pool address",
+    "use memory-only pool list",
+    "include pool without official source",
+    "select pool that is not on mainnet",
+    "modify V2 (smoke pool 5BKxfWMbmYBAEWvyPZS9esPducUba9GqyMjtLCfbaqyF is already in V2 list; V3 adds the second confirmed example pool)"
+  ],
+
+  "v2_carryover_pools": [
+    {
+      "pool_address": "5BKxfWMbmYBAEWvyPZS9esPducUba9GqyMjtLCfbaqyF",
+      "v2_status": "minimal_read_only_smoke_success (partial: known-pool read path verified)"
+    }
+  ],
+
+  "v3_newly_added_pools": [
+    {
+      "pool_address": "9DiruRpjnAnzhn6ts5HGLouHtJrT1JGsPbXNYCrFz2ad",
+      "v3_status": "mainnet_verified; selected for SDK smoke; not yet decoded via full SDK"
+    }
+  ],
+
+  "v3_pools_skipped": [
+    {
+      "pool_address": "3W2HKgUa96Z69zzG3LK1g8KdcRAWzAttiLiHfYnKuPw5",
+      "v3_status": "skipped (not on mainnet)"
+    }
+  ],
+
+  "solana_wallet_or_keypair_touched": false,
+  "can_run_probe_now": false,
+
+  "next_stage": "Stage E: SDK known-pool read-only smoke (run DLMM.create + helpers on selected pools)"
+}

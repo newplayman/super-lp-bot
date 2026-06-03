@@ -1,0 +1,5 @@
+pool_address,notional_usd_approx,quote_success,amount_in_raw,amount_out_raw,error_stage,error_short,latency_ms
+5BKxfWMbmYBAEWvyPZS9esPducUba9GqyMjtLCfbaqyF,10USDC,False,10000000,,getBinArrayForSwap,403 Forbidden: {"jsonrpc":"2.0" "error":{"code":-32602 "message":"Request blocke,7959
+5BKxfWMbmYBAEWvyPZS9esPducUba9GqyMjtLCfbaqyF,20USDC,False,20000000,,getBinArrayForSwap,403 Forbidden: {"jsonrpc":"2.0" "error":{"code":-32602 "message":"Request blocke,6814
+9DiruRpjnAnzhn6ts5HGLouHtJrT1JGsPbXNYCrFz2ad,10USDC,False,10000000,,getBinArrayForSwap,403 Forbidden: {"jsonrpc":"2.0" "error":{"code":-32602 "message":"Request blocke,6560
+9DiruRpjnAnzhn6ts5HGLouHtJrT1JGsPbXNYCrFz2ad,20USDC,False,20000000,,getBinArrayForSwap,403 Forbidden: {"jsonrpc":"2.0" "error":{"code":-32602 "message":"Request blocke,6750

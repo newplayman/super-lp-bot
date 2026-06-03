@@ -1,0 +1,117 @@
+{
+  "stage": "LP_METEORA_DLMM_SDK_API_CONNECTOR_FEASIBILITY_FIX_REPEAT_V1",
+  "run_id": "20260603_130532",
+  "branch": "feat/supabase-postgres-deployment",
+  "head_before": "4099b13",
+
+  "upstream_files_audited": [
+    "reports/lp_solana_rpc_registry_fix_v2/20260603_102657/FINAL_VERDICT.json",
+    "reports/lp_solana_rpc_registry_fix_v2/20260603_102657/ONEPAGE_CN.md",
+    "reports/lp_solana_rpc_registry_fix_v2/20260603_102657/METEORA_DLMM_SDK_API_SOURCE_DISCOVERY_CN.md",
+    "reports/lp_solana_rpc_registry_fix_v2/20260603_102657/meteora_dlmm_sdk_api_source_discovery.json",
+    "reports/lp_solana_rpc_registry_fix_v2/20260603_102657/METEORA_DLMM_READONLY_DISCOVERY_PATH_DECISION_CN.md",
+    "reports/lp_solana_rpc_registry_fix_v2/20260603_102657/meteora_dlmm_readonly_discovery_path_decision.json",
+    "reports/lp_solana_rpc_registry_fix_v2/20260603_102657/METEORA_DLMM_MINIMAL_READONLY_SMOKE_CN.md",
+    "reports/lp_solana_rpc_registry_fix_v2/20260603_102657/meteora_dlmm_minimal_readonly_smoke.json",
+    "reports/lp_solana_rpc_registry_fix_v2/20260603_102657/SOLANA_PROGRAM_ID_REGISTRY_V3_CN.md",
+    "reports/lp_solana_rpc_registry_fix_v2/20260603_102657/solana_program_id_registry_v3.json",
+    "reports/lp_solana_rpc_registry_fix_v2/20260603_102657/solana_rpc_registry_fix_v2_next_stage_decision.json"
+  ],
+  "missing_files": [],
+
+  "key_findings": {
+    "previous_stage": "LP_SOLANA_RPC_REGISTRY_FIX_REPEAT_V2",
+    "previous_status": "WARN",
+    "previous_run_id": "20260603_102657",
+    "previous_commit": "4099b13",
+    "recommended_next_stage_from_upstream": "LP_METEORA_DLMM_SDK_API_CONNECTOR_FEASIBILITY_FIX_REPEAT",
+    "oficial_program_id_count": 5,
+    "verified_program_count": 4,
+    "meteora_dlmm_program_id": "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo",
+    "meteora_dlmm_onchain_verified": true,
+    "minimal_known_pool_read_smoke_success": "true/partial",
+    "minimal_smoke_pool": "5BKxfWMbmYBAEWvyPZS9esPducUba9GqyMjtLCfbaqyF",
+    "minimal_smoke_owner": "Meteora DLMM program",
+    "minimal_smoke_data_len": 904,
+    "public_rpc_gpa_blocked": true,
+    "dlmm_api_meteora_ag_404": true,
+    "sdk_path_identified_v2": true,
+    "recommended_near_term_path_v2": "paid_rpc_gpa (with official_sdk_api fallback)",
+    "can_run_probe_now": false,
+    "solana_wallet_or_keypair_touched": false,
+    "tiny_canary_allowed": "no",
+    "v2_line_count_unchanged": true
+  },
+
+  "this_stage_objectives": [
+    "isolated SDK env audit (npm view/pack/install @meteora-ag/dlmm in /tmp)",
+    "freeze known Meteora DLMM pool feed",
+    "run SDK DLMM.create + helpers on known pool via public RPC",
+    "extract active_bin / bin_step / token mints / fee / reserves / bin arrays",
+    "run SDK swapQuote (read-only) on known pool (10U/20U notional)",
+    "design 6-table connector schema v1 (research-only)",
+    "decide near-term discovery strategy (known_pool_feed vs paid_rpc)",
+    "decide next stage (connector V1 / fix_repeat / paid_rpc_setup / stop)"
+  ],
+
+  "v3_must_address_these_blockers": [
+    "actual SDK install + struct decode (V2 used stdlib-only Python; V3 must npm install)",
+    "quote smoke (V2 did not run quote; V3 must run swapQuote read-only)",
+    "connector schema design (V2 had no schema; V3 must design 6 tables)",
+    "near-term discovery strategy decision (V2 recommended paid_rpc_gpa; V3 must compare to known_pool_feed)"
+  ],
+
+  "this_stage_does_not": [
+    "implement production connector",
+    "load any keypair / private key / seed phrase / wallet adapter",
+    "construct any transaction",
+    "call sendTransaction or any signing method",
+    "swap / open LP / close LP / collect fee / bridge",
+    "start live/canary/paper",
+    "write production positions",
+    "overwrite shadow tables",
+    "modify EVM executor v2",
+    "release v2 hard-disable",
+    "set can_run_probe_now to true",
+    "set tiny_canary_allowed to yes",
+    "hard-code any program id from model memory",
+    "use blog / Twitter / forum / unofficial GitHub fork as source",
+    "use paid RPC (no key)",
+    "install any package in repo root (only in /tmp isolated dir)",
+    "call swapQuote if SDK requires constructing a transaction"
+  ],
+
+  "oficial_source_levels": {
+    "level_A": [
+      "protocol_oficial_docs_domain",
+      "protocol_oficial_github_org_or_repo",
+      "protocol_oficial_npm_package_or_SDK"
+    ],
+    "level_B_allowed": [
+      "protocol_oficial_SDK_constant",
+      "protocol_oficial_example_code"
+    ],
+    "forbidden": [
+      "blog",
+      "twitter_or_x_screenshot",
+      "forum_repeat",
+      "unofficial_github_fork",
+      "model_memory_hardcode",
+      "explorer_only_guess_protocol"
+    ]
+  },
+
+  "safety_locks_intact": {
+    "can_run_probe_now": false,
+    "execution_allowed_now": false,
+    "transaction_sent": false,
+    "wallet_or_tx_touched": false,
+    "solana_wallet_or_keypair_touched": false,
+    "tiny_canary_allowed": "no",
+    "edge_proven": "no",
+    "manual_approval_required": true,
+    "send_hard_disable_still_active": true,
+    "v2_modified_by_this_task": false,
+    "v2_line_count_unchanged": true
+  }
+}
