@@ -1,0 +1,37 @@
+{
+  "stage": "LP_METEORA_DLMM_KNOWN_POOL_FEED_EXPANSION_OVERNIGHT_V1",
+  "run_id": "20260603_174815",
+  "phase": "C_tmux_start_healthcheck",
+
+  "tmux_session": "lp_meteora_known_pool_expansion_20260603_174815",
+  "tmux_attach_command": "tmux attach -t lp_meteora_known_pool_expansion_20260603_174815",
+  "nohup_fallback_pid_file": "reports/lp_meteora_dlmm_known_pool_feed_expansion_overnight/20260603_174815/logs/runner.pid",
+
+  "smoke_checklist": [
+    {"step": 1, "check": "tmux session exists", "command": "tmux has-session -t lp_meteora_known_pool_expansion_20260603_174815", "expected": "exit 0"},
+    {"step": 2, "check": "run.log updating", "command": "tail -5 reports/lp_meteora_dlmm_known_pool_feed_expansion_overnight/20260603_174815/logs/run.log", "expected": "non-empty, recent timestamps"},
+    {"step": 3, "check": "checkpoint/state.json exists", "command": "cat reports/lp_meteora_dlmm_known_pool_feed_expansion_overnight/20260603_174815/checkpoint/state.json", "expected": "valid JSON"},
+    {"step": 4, "check": "no forbidden process", "command": "ps aux | egrep 'canary|lpbot-live|solana-keygen|sendTransaction|keypair' | grep -v grep", "expected": "no matches"},
+    {"step": 5, "check": "no wallet/keypair/transaction strings", "command": "grep -RE 'Keypair\\.|sendTransaction|signer|private_key' reports/lp_meteora_dlmm_known_pool_feed_expansion_overnight/20260603_174815/ | grep -v invalid_reason", "expected": "no matches"}
+  ],
+
+  "forbidden_process_list": [
+    "canary", "canary_cycle", "lpbot-canary",
+    "lpbot-live", "lpbot-live-trader",
+    "solana-keygen", "solana transfer",
+    "sendTransaction", "sendRawTransaction",
+    "Keypair.from_secret_key", "Keypair.generate",
+    "from_seed", "from_bytes", "from_mnemonic"
+  ],
+
+  "resume_behavior": "runner detects checkpoint/state.json; resumes from last completed phase; does not re-run completed work",
+
+  "this_stage_does_not": [
+    "execute any transaction",
+    "load any keypair",
+    "construct any signer",
+    "modify production tables"
+  ],
+
+  "next_stage": "Stage D: candidate source collection"
+}

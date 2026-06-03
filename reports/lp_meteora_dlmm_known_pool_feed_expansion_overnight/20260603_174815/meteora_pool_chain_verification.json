@@ -1,0 +1,178 @@
+[
+  {
+    "pool_address": "5BKxfWMbmYBAEWvyPZS9esPducUba9GqyMjtLCfbaqyF",
+    "account_exists": true,
+    "owner": "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo",
+    "owner_is_meteora_dlmm": true,
+    "data_len": 904,
+    "dlmm_sized": true,
+    "selected_for_sdk_decode": true,
+    "invalid_reason": "",
+    "latency_ms": 601
+  },
+  {
+    "pool_address": "9DiruRpjnAnzhn6ts5HGLouHtJrT1JGsPbXNYCrFz2ad",
+    "account_exists": true,
+    "owner": "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo",
+    "owner_is_meteora_dlmm": true,
+    "data_len": 904,
+    "dlmm_sized": true,
+    "selected_for_sdk_decode": true,
+    "invalid_reason": "",
+    "latency_ms": 49
+  },
+  {
+    "pool_address": "6eR5rRdexbht8aiiQmYq7yKb7EhdD3af22B4mHDmCp8x",
+    "account_exists": true,
+    "owner": "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo",
+    "owner_is_meteora_dlmm": true,
+    "data_len": 904,
+    "dlmm_sized": true,
+    "selected_for_sdk_decode": true,
+    "invalid_reason": "",
+    "latency_ms": 153
+  },
+  {
+    "pool_address": "H9b4sPAeiyN8DEcWa6MG2kvxqmCqBEpxmexwCh84jg4H",
+    "account_exists": true,
+    "owner": "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo",
+    "owner_is_meteora_dlmm": true,
+    "data_len": 904,
+    "dlmm_sized": true,
+    "selected_for_sdk_decode": true,
+    "invalid_reason": "",
+    "latency_ms": 192
+  },
+  {
+    "pool_address": "6qz7THwQvcjF3HyDGLuKaLBUk6EyJKeZXZMWLAeiwfjd",
+    "account_exists": true,
+    "owner": "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo",
+    "owner_is_meteora_dlmm": true,
+    "data_len": 904,
+    "dlmm_sized": true,
+    "selected_for_sdk_decode": true,
+    "invalid_reason": "",
+    "latency_ms": 27
+  },
+  {
+    "pool_address": "CnK82s8exdsK9nwqQ55kd9wcxoA22NwTchZJCBdu8LDa",
+    "account_exists": true,
+    "owner": "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo",
+    "owner_is_meteora_dlmm": true,
+    "data_len": 904,
+    "dlmm_sized": true,
+    "selected_for_sdk_decode": true,
+    "invalid_reason": "",
+    "latency_ms": 143
+  },
+  {
+    "pool_address": "9bL8Pptpb8M2jEAb63EoarA6Po6Akarpha3JPzQfXGS3",
+    "account_exists": true,
+    "owner": "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo",
+    "owner_is_meteora_dlmm": true,
+    "data_len": 904,
+    "dlmm_sized": true,
+    "selected_for_sdk_decode": true,
+    "invalid_reason": "",
+    "latency_ms": 41
+  },
+  {
+    "pool_address": "8ztFxjFPfVUtEf4SLSapcFj8GW2dxyUA9no2bLPq7H7V",
+    "account_exists": true,
+    "owner": "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo",
+    "owner_is_meteora_dlmm": true,
+    "data_len": 904,
+    "dlmm_sized": true,
+    "selected_for_sdk_decode": true,
+    "invalid_reason": "",
+    "latency_ms": 45
+  },
+  {
+    "pool_address": "2G7fxAhBo1sE4SmS9fXQ3BFPEpga3kLf4UyAVyCcp9uf",
+    "account_exists": true,
+    "owner": "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo",
+    "owner_is_meteora_dlmm": true,
+    "data_len": 904,
+    "dlmm_sized": true,
+    "selected_for_sdk_decode": true,
+    "invalid_reason": "",
+    "latency_ms": 76
+  },
+  {
+    "pool_address": "Cgnuirsk5dQ9Ka1Grnru7J8YW1sYncYUjiXvYxT7G4iZ",
+    "account_exists": true,
+    "owner": "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo",
+    "owner_is_meteora_dlmm": true,
+    "data_len": 904,
+    "dlmm_sized": true,
+    "selected_for_sdk_decode": true,
+    "invalid_reason": "",
+    "latency_ms": 62
+  },
+  {
+    "pool_address": "FhdW3Y6Ea6hXKbkGkt5YSAVtDNd5qJ8USevMaPyEr45S",
+    "account_exists": true,
+    "owner": "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo",
+    "owner_is_meteora_dlmm": true,
+    "data_len": 904,
+    "dlmm_sized": true,
+    "selected_for_sdk_decode": true,
+    "invalid_reason": "",
+    "latency_ms": 172
+  },
+  {
+    "pool_address": "6oFWm7KPLfxnwMb3z5xwBoXNSPP3JJyirAPqPSiVcnsp",
+    "account_exists": true,
+    "owner": "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo",
+    "owner_is_meteora_dlmm": true,
+    "data_len": 904,
+    "dlmm_sized": true,
+    "selected_for_sdk_decode": true,
+    "invalid_reason": "",
+    "latency_ms": 79
+  },
+  {
+    "pool_address": "BCv5Ggg5563AYfkrErdXok2hKfjgUNtQ1A4yKuNbTjQ9",
+    "account_exists": true,
+    "owner": "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo",
+    "owner_is_meteora_dlmm": true,
+    "data_len": 904,
+    "dlmm_sized": true,
+    "selected_for_sdk_decode": true,
+    "invalid_reason": "",
+    "latency_ms": 233
+  },
+  {
+    "pool_address": "6VxKTxaV4yY18rpzNLJwKMt3kyyiv4hjFixCbhs7j5gp",
+    "account_exists": true,
+    "owner": "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo",
+    "owner_is_meteora_dlmm": true,
+    "data_len": 904,
+    "dlmm_sized": true,
+    "selected_for_sdk_decode": true,
+    "invalid_reason": "",
+    "latency_ms": 73
+  },
+  {
+    "pool_address": "DJ8qzBm3ZoRi4YiVmpiLBBuc67cq737vqaTNbMRJGcvZ",
+    "account_exists": true,
+    "owner": "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo",
+    "owner_is_meteora_dlmm": true,
+    "data_len": 904,
+    "dlmm_sized": true,
+    "selected_for_sdk_decode": true,
+    "invalid_reason": "",
+    "latency_ms": 30
+  },
+  {
+    "pool_address": "8UYCgRrxZc3XKY8PBJDSKubAUP4mpbxoj1EZJ7A5G9wy",
+    "account_exists": true,
+    "owner": "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo",
+    "owner_is_meteora_dlmm": true,
+    "data_len": 904,
+    "dlmm_sized": true,
+    "selected_for_sdk_decode": true,
+    "invalid_reason": "",
+    "latency_ms": 92
+  }
+]

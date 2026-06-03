@@ -1,0 +1,40 @@
+{
+  "stage": "LP_METEORA_DLMM_KNOWN_POOL_FEED_EXPANSION_OVERNIGHT_V1",
+  "run_id": "20260603_174815",
+  "phase": "K_candidate_decision",
+  "candidate_raw_count": 50,
+  "verified_pool_count": 16,
+  "sdk_decode_success_count": 16,
+  "quote_ready_pool_count": 0,
+  "positive_realistic_any": false,
+  "positive_any": false,
+  "near_break_even_any": true,
+  "recommended_next_stage": "LP_METEORA_DLMM_KNOWN_POOL_FEED_EXPANSION_REPEAT",
+  "allowed_next_stages": [
+    "LP_METEORA_DLMM_10_20U_PROBE_PREFLIGHT_DESIGN_V1",
+    "LP_METEORA_DLMM_KNOWN_POOL_FEED_EXPANSION_REPEAT",
+    "LP_ORCA_WHIRLPOOL_READONLY_CONNECTOR_V1",
+    "LP_SOLANA_PAID_RPC_SETUP_REQUIRED",
+    "STOP_LP_RESEARCH_NOW"
+  ],
+  "this_stage_does_not": [
+    "execute any probe",
+    "send any tx",
+    "load any keypair / private key / seed phrase",
+    "construct signer",
+    "auto bridge / auto swap",
+    "modify EVM executor v2",
+    "release v2 hard-disable",
+    "set can_run_probe_now to true",
+    "set tiny_canary_allowed to yes",
+    "use paid RPC without operator key",
+    "implement any position creation / addLiquidity / removeLiquidity"
+  ],
+  "can_run_probe_now": false,
+  "solana_wallet_or_keypair_touched": false,
+  "transaction_sent": false,
+  "edge_proven": "no",
+  "tiny_canary_allowed": "no",
+  "v2_line_count_unchanged": true,
+  "v2_line_count": 992
+}

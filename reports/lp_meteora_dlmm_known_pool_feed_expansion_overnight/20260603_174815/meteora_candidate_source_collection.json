@@ -1,0 +1,452 @@
+[
+  {
+    "pool_address": "5BKxfWMbmYBAEWvyPZS9esPducUba9GqyMjtLCfbaqyF",
+    "source_url": "runner_collected",
+    "source_type": "combined",
+    "source_confidence": "raw",
+    "token_hint": "",
+    "selected_for_chain_verify": true,
+    "invalid_reason": ""
+  },
+  {
+    "pool_address": "9DiruRpjnAnzhn6ts5HGLouHtJrT1JGsPbXNYCrFz2ad",
+    "source_url": "runner_collected",
+    "source_type": "combined",
+    "source_confidence": "raw",
+    "token_hint": "",
+    "selected_for_chain_verify": true,
+    "invalid_reason": ""
+  },
+  {
+    "pool_address": "6eR5rRdexbht8aiiQmYq7yKb7EhdD3af22B4mHDmCp8x",
+    "source_url": "runner_collected",
+    "source_type": "combined",
+    "source_confidence": "raw",
+    "token_hint": "",
+    "selected_for_chain_verify": true,
+    "invalid_reason": ""
+  },
+  {
+    "pool_address": "H9b4sPAeiyN8DEcWa6MG2kvxqmCqBEpxmexwCh84jg4H",
+    "source_url": "runner_collected",
+    "source_type": "combined",
+    "source_confidence": "raw",
+    "token_hint": "",
+    "selected_for_chain_verify": true,
+    "invalid_reason": ""
+  },
+  {
+    "pool_address": "6qz7THwQvcjF3HyDGLuKaLBUk6EyJKeZXZMWLAeiwfjd",
+    "source_url": "runner_collected",
+    "source_type": "combined",
+    "source_confidence": "raw",
+    "token_hint": "",
+    "selected_for_chain_verify": true,
+    "invalid_reason": ""
+  },
+  {
+    "pool_address": "CnK82s8exdsK9nwqQ55kd9wcxoA22NwTchZJCBdu8LDa",
+    "source_url": "runner_collected",
+    "source_type": "combined",
+    "source_confidence": "raw",
+    "token_hint": "",
+    "selected_for_chain_verify": true,
+    "invalid_reason": ""
+  },
+  {
+    "pool_address": "9bL8Pptpb8M2jEAb63EoarA6Po6Akarpha3JPzQfXGS3",
+    "source_url": "runner_collected",
+    "source_type": "combined",
+    "source_confidence": "raw",
+    "token_hint": "",
+    "selected_for_chain_verify": true,
+    "invalid_reason": ""
+  },
+  {
+    "pool_address": "8ztFxjFPfVUtEf4SLSapcFj8GW2dxyUA9no2bLPq7H7V",
+    "source_url": "runner_collected",
+    "source_type": "combined",
+    "source_confidence": "raw",
+    "token_hint": "",
+    "selected_for_chain_verify": true,
+    "invalid_reason": ""
+  },
+  {
+    "pool_address": "2G7fxAhBo1sE4SmS9fXQ3BFPEpga3kLf4UyAVyCcp9uf",
+    "source_url": "runner_collected",
+    "source_type": "combined",
+    "source_confidence": "raw",
+    "token_hint": "",
+    "selected_for_chain_verify": true,
+    "invalid_reason": ""
+  },
+  {
+    "pool_address": "Cgnuirsk5dQ9Ka1Grnru7J8YW1sYncYUjiXvYxT7G4iZ",
+    "source_url": "runner_collected",
+    "source_type": "combined",
+    "source_confidence": "raw",
+    "token_hint": "",
+    "selected_for_chain_verify": true,
+    "invalid_reason": ""
+  },
+  {
+    "pool_address": "FhdW3Y6Ea6hXKbkGkt5YSAVtDNd5qJ8USevMaPyEr45S",
+    "source_url": "runner_collected",
+    "source_type": "combined",
+    "source_confidence": "raw",
+    "token_hint": "",
+    "selected_for_chain_verify": true,
+    "invalid_reason": ""
+  },
+  {
+    "pool_address": "6oFWm7KPLfxnwMb3z5xwBoXNSPP3JJyirAPqPSiVcnsp",
+    "source_url": "runner_collected",
+    "source_type": "combined",
+    "source_confidence": "raw",
+    "token_hint": "",
+    "selected_for_chain_verify": true,
+    "invalid_reason": ""
+  },
+  {
+    "pool_address": "BCv5Ggg5563AYfkrErdXok2hKfjgUNtQ1A4yKuNbTjQ9",
+    "source_url": "runner_collected",
+    "source_type": "combined",
+    "source_confidence": "raw",
+    "token_hint": "",
+    "selected_for_chain_verify": true,
+    "invalid_reason": ""
+  },
+  {
+    "pool_address": "6VxKTxaV4yY18rpzNLJwKMt3kyyiv4hjFixCbhs7j5gp",
+    "source_url": "runner_collected",
+    "source_type": "combined",
+    "source_confidence": "raw",
+    "token_hint": "",
+    "selected_for_chain_verify": true,
+    "invalid_reason": ""
+  },
+  {
+    "pool_address": "DJ8qzBm3ZoRi4YiVmpiLBBuc67cq737vqaTNbMRJGcvZ",
+    "source_url": "runner_collected",
+    "source_type": "combined",
+    "source_confidence": "raw",
+    "token_hint": "",
+    "selected_for_chain_verify": true,
+    "invalid_reason": ""
+  },
+  {
+    "pool_address": "8UYCgRrxZc3XKY8PBJDSKubAUP4mpbxoj1EZJ7A5G9wy",
+    "source_url": "runner_collected",
+    "source_type": "combined",
+    "source_confidence": "raw",
+    "token_hint": "",
+    "selected_for_chain_verify": true,
+    "invalid_reason": ""
+  },
+  {
+    "pool_address": "8sjV1AqBFvFuADBCQHhotaRq5DFFYSjjg1jMyVWMqXvZ",
+    "source_url": "runner_collected",
+    "source_type": "combined",
+    "source_confidence": "raw",
+    "token_hint": "",
+    "selected_for_chain_verify": true,
+    "invalid_reason": ""
+  },
+  {
+    "pool_address": "Czfq3xZZDmsdGdUyrNLtRhGc47cXcZtLG4crryfu44zE",
+    "source_url": "runner_collected",
+    "source_type": "combined",
+    "source_confidence": "raw",
+    "token_hint": "",
+    "selected_for_chain_verify": true,
+    "invalid_reason": ""
+  },
+  {
+    "pool_address": "8Aaeu6QJ5ZVjsgbiYgixMuQei7WhBWbGGSwJhBtq6C2",
+    "source_url": "runner_collected",
+    "source_type": "combined",
+    "source_confidence": "raw",
+    "token_hint": "",
+    "selected_for_chain_verify": true,
+    "invalid_reason": ""
+  },
+  {
+    "pool_address": "87X19JAy8HTh4ZyJKAv7dCrW2eHgB3j5U5yyNHWyMfjY",
+    "source_url": "runner_collected",
+    "source_type": "combined",
+    "source_confidence": "raw",
+    "token_hint": "",
+    "selected_for_chain_verify": true,
+    "invalid_reason": ""
+  },
+  {
+    "pool_address": "495yknJdXcVgaHUKLVbbDEV9xRPieZ5CeB7ioPpMTcse",
+    "source_url": "runner_collected",
+    "source_type": "combined",
+    "source_confidence": "raw",
+    "token_hint": "",
+    "selected_for_chain_verify": true,
+    "invalid_reason": ""
+  },
+  {
+    "pool_address": "8QPZE2WLBuA8LstKoY5tR1GFExLeK1dRpRKVPjfDkrYL",
+    "source_url": "runner_collected",
+    "source_type": "combined",
+    "source_confidence": "raw",
+    "token_hint": "",
+    "selected_for_chain_verify": true,
+    "invalid_reason": ""
+  },
+  {
+    "pool_address": "DXLyX2rDi4K5R9RoyKAnPZYoCRrtEcmCoJYrd5QmG9jD",
+    "source_url": "runner_collected",
+    "source_type": "combined",
+    "source_confidence": "raw",
+    "token_hint": "",
+    "selected_for_chain_verify": true,
+    "invalid_reason": ""
+  },
+  {
+    "pool_address": "FyFTNx1t8JJKPrN5NoEr9vrmLoZ2zicsHyBfokTj9dpw",
+    "source_url": "runner_collected",
+    "source_type": "combined",
+    "source_confidence": "raw",
+    "token_hint": "",
+    "selected_for_chain_verify": true,
+    "invalid_reason": ""
+  },
+  {
+    "pool_address": "GPRDwY1Vh4b5bZiPHqtJfG5JYrYnx7DhseRBuFAeuMs1",
+    "source_url": "runner_collected",
+    "source_type": "combined",
+    "source_confidence": "raw",
+    "token_hint": "",
+    "selected_for_chain_verify": true,
+    "invalid_reason": ""
+  },
+  {
+    "pool_address": "499qvoXo1sKfyYRE7nQTwWnkbhtR1ZE3DKuPydTpNAVL",
+    "source_url": "runner_collected",
+    "source_type": "combined",
+    "source_confidence": "raw",
+    "token_hint": "",
+    "selected_for_chain_verify": true,
+    "invalid_reason": ""
+  },
+  {
+    "pool_address": "8sKQHfjNhvmAw94PhfvfMcytmqW6jmxvwieYyzXCCPu",
+    "source_url": "runner_collected",
+    "source_type": "combined",
+    "source_confidence": "raw",
+    "token_hint": "",
+    "selected_for_chain_verify": true,
+    "invalid_reason": ""
+  },
+  {
+    "pool_address": "GVJfHJsvrsWZmVj2JVQ3KyY1n7azyi8Z2FdBPxucUe58",
+    "source_url": "runner_collected",
+    "source_type": "combined",
+    "source_confidence": "raw",
+    "token_hint": "",
+    "selected_for_chain_verify": true,
+    "invalid_reason": ""
+  },
+  {
+    "pool_address": "9KhHcDLBK6tdJQVYEjueMJn5ffZPwx3Zz594kHuBdQvH",
+    "source_url": "runner_collected",
+    "source_type": "combined",
+    "source_confidence": "raw",
+    "token_hint": "",
+    "selected_for_chain_verify": true,
+    "invalid_reason": ""
+  },
+  {
+    "pool_address": "9ER9GWjJJ2FSbkVP48sM8pagLo1yok1azCBhFBpVFtkf",
+    "source_url": "runner_collected",
+    "source_type": "combined",
+    "source_confidence": "raw",
+    "token_hint": "",
+    "selected_for_chain_verify": true,
+    "invalid_reason": ""
+  },
+  {
+    "pool_address": "8XWSygy4qJ31AZcp9mcGwTQfs8jjpTNFRP8EKZyG5jjK",
+    "source_url": "runner_collected",
+    "source_type": "combined",
+    "source_confidence": "raw",
+    "token_hint": "",
+    "selected_for_chain_verify": true,
+    "invalid_reason": ""
+  },
+  {
+    "pool_address": "HJJDswjqMmVEYddyfw4dCJZQpofLSQXbmqVPxnXhSEeo",
+    "source_url": "runner_collected",
+    "source_type": "combined",
+    "source_confidence": "raw",
+    "token_hint": "",
+    "selected_for_chain_verify": true,
+    "invalid_reason": ""
+  },
+  {
+    "pool_address": "HpLFqcAZHXbN1n1dM6VQLEYnX9G3JDdZVoSteW6kNfuN",
+    "source_url": "runner_collected",
+    "source_type": "combined",
+    "source_confidence": "raw",
+    "token_hint": "",
+    "selected_for_chain_verify": true,
+    "invalid_reason": ""
+  },
+  {
+    "pool_address": "2XT2pWEmiwXxyYEZLvGCLfotg5rPuH8jxxJY1PzPE8LP",
+    "source_url": "runner_collected",
+    "source_type": "combined",
+    "source_confidence": "raw",
+    "token_hint": "",
+    "selected_for_chain_verify": true,
+    "invalid_reason": ""
+  },
+  {
+    "pool_address": "J1q2A4RkBxhVEHqjgp9QJgXdy7X9Ec14U5pX8sM4p13i",
+    "source_url": "runner_collected",
+    "source_type": "combined",
+    "source_confidence": "raw",
+    "token_hint": "",
+    "selected_for_chain_verify": true,
+    "invalid_reason": ""
+  },
+  {
+    "pool_address": "2RZvYRbXHUwZu5ALUqNaotJrpXng8EERwQko5ztkPRzD",
+    "source_url": "runner_collected",
+    "source_type": "combined",
+    "source_confidence": "raw",
+    "token_hint": "",
+    "selected_for_chain_verify": true,
+    "invalid_reason": ""
+  },
+  {
+    "pool_address": "Hdh5jVfUktswc5cZwR7ZDcATCQLpXKUnXqeb4eKxkSxq",
+    "source_url": "runner_collected",
+    "source_type": "combined",
+    "source_confidence": "raw",
+    "token_hint": "",
+    "selected_for_chain_verify": true,
+    "invalid_reason": ""
+  },
+  {
+    "pool_address": "AaCgA74kYnZY8bGFqpHufpVSaPGDs3RnzSUpeZVMspkN",
+    "source_url": "runner_collected",
+    "source_type": "combined",
+    "source_confidence": "raw",
+    "token_hint": "",
+    "selected_for_chain_verify": true,
+    "invalid_reason": ""
+  },
+  {
+    "pool_address": "9B8xXGabWeEfCLzwHAwwbjZjQamiFsh7WC8Y5bkvPbqP",
+    "source_url": "runner_collected",
+    "source_type": "combined",
+    "source_confidence": "raw",
+    "token_hint": "",
+    "selected_for_chain_verify": true,
+    "invalid_reason": ""
+  },
+  {
+    "pool_address": "AnGFTTaFBxri6T85wtaej7C2JzZLRXgrP4KwN4w3AX3z",
+    "source_url": "runner_collected",
+    "source_type": "combined",
+    "source_confidence": "raw",
+    "token_hint": "",
+    "selected_for_chain_verify": true,
+    "invalid_reason": ""
+  },
+  {
+    "pool_address": "4Ko9FZXWLjqpzPbVhFbK91fVEhwj8zTXQX7uMZj9c6Wy",
+    "source_url": "runner_collected",
+    "source_type": "combined",
+    "source_confidence": "raw",
+    "token_hint": "",
+    "selected_for_chain_verify": true,
+    "invalid_reason": ""
+  },
+  {
+    "pool_address": "4C47JJgDHztupNHeU9da7MroH676eXbPoUhEvx3FpfR3",
+    "source_url": "runner_collected",
+    "source_type": "combined",
+    "source_confidence": "raw",
+    "token_hint": "",
+    "selected_for_chain_verify": true,
+    "invalid_reason": ""
+  },
+  {
+    "pool_address": "EcL9YDP3PsViKs2aDzDeTYdNXUCPLDodcKTbS4ayqf4N",
+    "source_url": "runner_collected",
+    "source_type": "combined",
+    "source_confidence": "raw",
+    "token_hint": "",
+    "selected_for_chain_verify": true,
+    "invalid_reason": ""
+  },
+  {
+    "pool_address": "H1HkFYy8ga3oYBkxK4hTieZFPBSdh8ot5BsbRjJqj79V",
+    "source_url": "runner_collected",
+    "source_type": "combined",
+    "source_confidence": "raw",
+    "token_hint": "",
+    "selected_for_chain_verify": true,
+    "invalid_reason": ""
+  },
+  {
+    "pool_address": "6oUJD1EHNVBNMeTpytmY2NxKWicz5C2JUbByUrHEsjhc",
+    "source_url": "runner_collected",
+    "source_type": "combined",
+    "source_confidence": "raw",
+    "token_hint": "",
+    "selected_for_chain_verify": true,
+    "invalid_reason": ""
+  },
+  {
+    "pool_address": "A9aWUTdyVV1RrCWWg4mWBMFmAsaPPpR8c5pJEnpxovBj",
+    "source_url": "runner_collected",
+    "source_type": "combined",
+    "source_confidence": "raw",
+    "token_hint": "",
+    "selected_for_chain_verify": true,
+    "invalid_reason": ""
+  },
+  {
+    "pool_address": "5gB4NPgFB3MHFHSeKN4sbaY6t9MB8ikCe9HyiKYid4Td",
+    "source_url": "runner_collected",
+    "source_type": "combined",
+    "source_confidence": "raw",
+    "token_hint": "",
+    "selected_for_chain_verify": true,
+    "invalid_reason": ""
+  },
+  {
+    "pool_address": "7ccKzmrXBpFHwyZGPqPuKL6bEyWAETSnHwnWe3jEneVc",
+    "source_url": "runner_collected",
+    "source_type": "combined",
+    "source_confidence": "raw",
+    "token_hint": "",
+    "selected_for_chain_verify": true,
+    "invalid_reason": ""
+  },
+  {
+    "pool_address": "7rQd8FhC1rimV3v9edCRZ6RNFsJN1puXM9UmjaURJRNj",
+    "source_url": "runner_collected",
+    "source_type": "combined",
+    "source_confidence": "raw",
+    "token_hint": "",
+    "selected_for_chain_verify": true,
+    "invalid_reason": ""
+  },
+  {
+    "pool_address": "4SBYWY5UuxybWuj8FwHdFXUN6mbtACrqbJwiZ9mXworP",
+    "source_url": "runner_collected",
+    "source_type": "combined",
+    "source_confidence": "raw",
+    "token_hint": "",
+    "selected_for_chain_verify": true,
+    "invalid_reason": ""
+  }
+]

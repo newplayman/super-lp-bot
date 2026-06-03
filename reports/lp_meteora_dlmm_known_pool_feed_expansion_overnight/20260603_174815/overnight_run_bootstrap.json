@@ -1,0 +1,65 @@
+{
+  "stage": "LP_METEORA_DLMM_KNOWN_POOL_FEED_EXPANSION_OVERNIGHT_V1",
+  "run_id": "20260603_174815",
+  "branch": "feat/supabase-postgres-deployment",
+  "head_before": "404ddd1",
+  "phase": "C_overnight_run_bootstrap",
+
+  "runner_script": "scripts/lp_meteora_dlmm_known_pool_feed_expansion_overnight_v1_readonly.sh",
+  "runner_inner": "scripts/lp_meteora_dlmm_known_pool_feed_expansion_overnight_v1_readonly.js",
+  "tmux_session": "lp_meteora_known_pool_expansion_20260603_174815",
+  "sdk_install_dir": "/tmp/lpbot_meteora_dlmm_sdk_overnight_20260603_174815",
+  "report_dir": "reports/lp_meteora_dlmm_known_pool_feed_expansion_overnight/20260603_174815",
+  "logs": "reports/lp_meteora_dlmm_known_pool_feed_expansion_overnight/20260603_174815/logs/run.log",
+  "checkpoint": "reports/lp_meteora_dlmm_known_pool_feed_expansion_overnight/20260603_174815/checkpoint/state.json",
+  "data_dir": "reports/lp_meteora_dlmm_known_pool_feed_expansion_overnight/20260603_174815/data",
+
+  "args": {
+    "max_hours": 10,
+    "checkpoint_minutes": 60,
+    "max_pools": 50,
+    "min_pools": 20,
+    "mode": "all"
+  },
+
+  "safety_invariants": {
+    "no_solana_keypair_read": true,
+    "no_signer_instantiated": true,
+    "no_transaction_constructed": true,
+    "no_send_transaction": true,
+    "no_swap_tx_builder": true,
+    "no_open_lp": true,
+    "no_close_lp": true,
+    "no_collect_fee": true,
+    "no_add_liquidity": true,
+    "no_remove_liquidity": true,
+    "no_bridge": true,
+    "no_live": true,
+    "no_canary": true,
+    "no_paper": true,
+    "no_production_position_write": true,
+    "no_shadow_table_overwrite": true,
+    "no_evm_executor_modify": true,
+    "no_v2_hard_disable_release": true,
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no",
+    "edge_proven": "no",
+    "send_hard_disable_still_active": true
+  },
+
+  "this_stage_does_not": [
+    "load any keypair / private key / seed phrase / wallet adapter",
+    "construct any transaction",
+    "call sendTransaction or any signing method",
+    "swap / open LP / close LP / collect fee / bridge",
+    "start live/canary/paper",
+    "write production positions",
+    "overwrite shadow tables",
+    "modify EVM executor v2",
+    "release v2 hard-disable",
+    "set can_run_probe_now to true",
+    "set tiny_canary_allowed to yes"
+  ],
+
+  "next_stage": "Stage D: candidate source collection"
+}

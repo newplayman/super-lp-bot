@@ -1,0 +1,17 @@
+pool_address,token_pair,base_fee_bps,max_fee_bps,quote_success,near_active_liquidity_bins,has_stable,score,score_bucket,reason,suggested_notional,suggested_hold_window,confidence
+H9b4sPAeiyN8DEcWa6MG2kvxqmCqBEpxmexwCh84jg4H,Axhcwf/EPjFWd,2.5,10,False,0,True,37,reject,REJECT: fee=2.5/10bps quote=0 near_liq=0 stable=true,20,15m,0.3
+9DiruRpjnAnzhn6ts5HGLouHtJrT1JGsPbXNYCrFz2ad,FUAfBo/EPjFWd,1.5,10,False,0,True,27,reject,REJECT: fee=1.5/10bps quote=0 near_liq=0 stable=true,20,15m,0.3
+6eR5rRdexbht8aiiQmYq7yKb7EhdD3af22B4mHDmCp8x,HfAFNs/So1111,2,10,False,0,False,27,reject,REJECT: fee=2/10bps quote=0 near_liq=0 stable=false,20,15m,0.3
+2G7fxAhBo1sE4SmS9fXQ3BFPEpga3kLf4UyAVyCcp9uf,CPV5ki/So1111,2,10,False,0,False,27,reject,REJECT: fee=2/10bps quote=0 near_liq=0 stable=false,20,15m,0.3
+6VxKTxaV4yY18rpzNLJwKMt3kyyiv4hjFixCbhs7j5gp,9gnq7q/So1111,2,10,False,0,False,27,reject,REJECT: fee=2/10bps quote=0 near_liq=0 stable=false,20,15m,0.3
+5BKxfWMbmYBAEWvyPZS9esPducUba9GqyMjtLCfbaqyF,So1111/EPjFWd,0.02,10,False,0,True,22,reject,REJECT: fee=0.02/10bps quote=0 near_liq=0 stable=true,20,15m,0.3
+6qz7THwQvcjF3HyDGLuKaLBUk6EyJKeZXZMWLAeiwfjd,BPxxfR/EPjFWd,0.25,10,False,0,True,22,reject,REJECT: fee=0.25/10bps quote=0 near_liq=0 stable=true,20,15m,0.3
+FhdW3Y6Ea6hXKbkGkt5YSAVtDNd5qJ8USevMaPyEr45S,3ZLekZ/EPjFWd,0.2,10,False,0,True,22,reject,REJECT: fee=0.2/10bps quote=0 near_liq=0 stable=true,20,15m,0.3
+CnK82s8exdsK9nwqQ55kd9wcxoA22NwTchZJCBdu8LDa,FeMbDo/So1111,1,10,False,0,False,17,reject,REJECT: fee=1/10bps quote=0 near_liq=0 stable=false,20,15m,0.3
+9bL8Pptpb8M2jEAb63EoarA6Po6Akarpha3JPzQfXGS3,DnnmrZ/So1111,1,10,False,0,False,17,reject,REJECT: fee=1/10bps quote=0 near_liq=0 stable=false,20,15m,0.3
+DJ8qzBm3ZoRi4YiVmpiLBBuc67cq737vqaTNbMRJGcvZ,6SjVTj/So1111,1,10,False,0,False,17,reject,REJECT: fee=1/10bps quote=0 near_liq=0 stable=false,20,15m,0.3
+8UYCgRrxZc3XKY8PBJDSKubAUP4mpbxoj1EZJ7A5G9wy,33eum8/So1111,1,10,False,0,False,17,reject,REJECT: fee=1/10bps quote=0 near_liq=0 stable=false,20,15m,0.3
+8ztFxjFPfVUtEf4SLSapcFj8GW2dxyUA9no2bLPq7H7V,Dz9mQ9/So1111,0.2,10,False,0,False,12,reject,REJECT: fee=0.2/10bps quote=0 near_liq=0 stable=false,20,15m,0.3
+Cgnuirsk5dQ9Ka1Grnru7J8YW1sYncYUjiXvYxT7G4iZ,5UUH9R/So1111,0.2,10,False,0,False,12,reject,REJECT: fee=0.2/10bps quote=0 near_liq=0 stable=false,20,15m,0.3
+6oFWm7KPLfxnwMb3z5xwBoXNSPP3JJyirAPqPSiVcnsp,DezXAZ/So1111,0.05,10,False,0,False,12,reject,REJECT: fee=0.05/10bps quote=0 near_liq=0 stable=false,20,15m,0.3
+BCv5Ggg5563AYfkrErdXok2hKfjgUNtQ1A4yKuNbTjQ9,SKRbvo/So1111,0.1,10,False,0,False,12,reject,REJECT: fee=0.1/10bps quote=0 near_liq=0 stable=false,20,15m,0.3
