@@ -1,0 +1,88 @@
+{
+  "status": "PASS",
+  "stage": "LP_SOLANA_LP_CONNECTOR_DESIGN_V1",
+  "run_id": "20260603_080347",
+  "branch": "feat/supabase-postgres-deployment",
+  "head_before": "e4deffb",
+
+  "evm_v3_path_paused": true,
+  "solana_connector_design_complete": true,
+  "target_protocol_count": 6,
+  "p0_protocol": "Meteora DLMM",
+  "p1_protocols": ["Orca Whirlpools", "Meteora DAMM v2"],
+  "p2_protocols": ["Raydium CLMM", "Raydium CPMM", "Lifinity"],
+  "schema_proposal_ready": true,
+  "survival_ev_adaptation_ready": true,
+  "probe_preflight_design_ready": true,
+  "implementation_roadmap_ready": true,
+  "implementation_status": "phase_1_pending (not yet started)",
+
+  "can_run_probe_now": false,
+  "execution_allowed_now": false,
+  "wallet_or_tx_touched": false,
+  "solana_wallet_or_keypair_touched": false,
+  "edge_proven": "no",
+  "tiny_canary_allowed": "no",
+  "manual_approval_required": true,
+  "send_hard_disable_still_active": true,
+
+  "v2_modified_by_this_task": false,
+  "v2_line_count_unchanged": true,
+  "v2_line_count": 992,
+
+  "phase_results": {
+    "A_workspace_safety": "PASS",
+    "B_input_evidence_audit": "PASS (10 upstream files audited; 0 missing)",
+    "C_solana_protocol_target_matrix": "PASS (6 protocols; P0/P1/P2 priority)",
+    "D_solana_data_source_feasibility": "PASS (RPC + 5 indexer/API designs)",
+    "E_meteora_dlmm_connector_design": "PASS (bin-based; full preflight)",
+    "F_orca_whirlpool_connector_design": "PASS (tick array; NFT position)",
+    "G_raydium_connector_design": "PASS (CLMM + CPMM; P2 priority)",
+    "H_solana_lp_schema_proposal": "PASS (7 tables; 20 spec fields all covered)",
+    "I_solana_survival_ev_model_adaptation": "PASS (EVM V3 reuse framework; Solana-specific cost model)",
+    "J_solana_10_20u_probe_preflight_design": "PASS (12 gates; read-only design)",
+    "K_solana_connector_implementation_roadmap": "PASS (6 phases; future 3 stages NOT this task)"
+  },
+
+  "allowed_next_stages": [
+    "LP_SOLANA_READONLY_RPC_AND_REGISTRY_V1",
+    "LP_METEORA_DLMM_READONLY_CONNECTOR_V1",
+    "LP_SOLANA_LP_CONNECTOR_DESIGN_FIX_REPEAT",
+    "STOP_LP_RESEARCH_NOW"
+  ],
+  "recommended_next_stage": "LP_SOLANA_READONLY_RPC_AND_REGISTRY_V1",
+  "default_when_no_explicit_choice": "LP_SOLANA_READONLY_RPC_AND_REGISTRY_V1",
+
+  "next_stage_must_not": [
+    "execute probe on Solana",
+    "send any tx",
+    "load any keypair / private key / seed phrase",
+    "construct signer",
+    "auto bridge from Base to Solana",
+    "auto swap on Base to get SOL",
+    "modify EVM executor execution path",
+    "release v2 hard-disable",
+    "set can_run_probe_now to true",
+    "set tiny_canary_allowed to yes"
+  ],
+
+  "this_stage_did_not": [
+    "implement any Solana connector code",
+    "run any Solana RPC",
+    "load any Solana wallet / keypair / private key",
+    "sign any transaction",
+    "send any transaction",
+    "construct any signer",
+    "open or close any LP position",
+    "collect any fee",
+    "swap any token",
+    "bridge any asset",
+    "start live/canary/paper",
+    "modify EVM executor v2 source",
+    "release v2 hard-disable",
+    "set can_run_probe_now to true",
+    "set tiny_canary_allowed to yes",
+    "write production positions",
+    "overwrite shadow tables"
+  ]
+}

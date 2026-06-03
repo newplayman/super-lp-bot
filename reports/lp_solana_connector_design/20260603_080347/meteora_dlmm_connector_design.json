@@ -1,0 +1,127 @@
+{
+  "stage": "LP_SOLANA_LP_CONNECTOR_DESIGN_V1",
+  "run_id": "20260603_080347",
+  "phase": "E_meteora_dlmm_connector_design",
+
+  "why_dlmm_better_than_evm_v3": [
+    "bin-discretized: LP can pick narrow bin range = full IL control (vs V3 gradual IL)",
+    "active liquidity per bin (Q64.64 amount) = precise exposure knowledge",
+    "dynamic fee (per bin, vol-based) can yield 3-10x V3 in volatile pairs",
+    "Solana rent + tx ~$0.003 round trip vs EVM Base $0.012 (4x cheaper)",
+    "position account closeable = rent recoverable (~0.0014 SOL per close)"
+  ],
+
+  "discovery": {
+    "entry_method": "getProgramAccounts (Meteora DLMM program)",
+    "filters": ["dataSize (LbPair exact size)", "optional memcmp by token mint"],
+    "lb_pair_state_struct": {
+      "parameters": "StaticParameters",
+      "vault_token_x": "Pubkey",
+      "vault_token_y": "Pubkey",
+      "oracle": "Pubkey",
+      "mint_x": "Pubkey",
+      "mint_y": "Pubkey",
+      "bin_step_bps": "u16",
+      "active_id": "i32",
+      "bin_array_bitmap": "u64[16]"
+    },
+    "lb_pair_size_bytes_approx": 900,
+    "bin_array_size_bytes_approx": 8000
+  },
+
+  "candidate_pairs": [
+    "SOL/USDC",
+    "SOL/USDT",
+    "USDC/USDT",
+    "JitoSOL/SOL",
+    "jupSOL/SOL",
+    "BONK/SOL",
+    "WIF/SOL",
+    "PYTH/USDC"
+  ],
+
+  "active_bin_liquidity": {
+    "active_id_field": "lb_pair.active_id",
+    "bin_step_field": "lb_pair.bin_step_bps",
+    "bin_array_size": 256,
+    "bin_array_pda": "derive_bin_array_pda(lb_pair_pubkey, bin_array_idx)",
+    "bin_liquidity_format": "Q64.64 amount per bin"
+  },
+
+  "fee_model": {
+    "base_fee_bps": "1-20 bps per pool (config)",
+    "dynamic_fee": "base_factor * (volatility / reference_volatility) * bin_step",
+    "expected_fee_apr_proxy": "30-100% APR for volatile pairs (vs V3 ~20% on Base)"
+  },
+
+  "position_model": {
+    "type": "bin range [lower_bin_id, upper_bin_id] including active bin",
+    "position_account_type": "PDA derived from lb_pair + bin range + owner",
+    "deposit_token_ratio": "amount_y = amount_x * price_in_bin_range(active, lower, upper)",
+    "fee_accrual": "position.unclaimedFeesX + position.unclaimedFeesY (direct state read)",
+    "exit": "removeLiquidity + claimFee + close_position"
+  },
+
+  "il_control": {
+    "mechanism": "binary IL: 0 IL until price exits range; then full IL",
+    "vs_v3": "V3 has gradual IL proportional to price move within range; DLMM has 0 IL inside chosen range"
+  },
+
+  "10_20u_probe_preflight": {
+    "balance_check": "getBalance(wallet) >= 2.0 SOL",
+    "token_balance": "USDC >= 10 + slippage",
+    "ata_readiness": "getAccountInfo(ata_usdc) existence or creation fee reserved",
+    "pool_metadata": "cached; bin_step, active_id known",
+    "bin_range_decision": "based on volatility forecast (heuristic)",
+    "deposit_quote": "simulateTransaction(removeLiquidityTx) returns 10U + 0.5U slippage OK",
+    "exit_quote": "simulateTransaction returns 9.5-11U OK",
+    "expected_fee_24h_threshold": ">= 0.05 USDC",
+    "expected_il_24h_threshold": "<= 0.10 USDC",
+    "preflight_pass": "all above"
+  },
+
+  "required_account_decoding": [
+    "LbPair state (~900 bytes)",
+    "BinArray state (~8000 bytes; 256 bins × 32 bytes)",
+    "Position state (~250 bytes)",
+    "Token vault accounts"
+  ],
+
+  "implementation_options": {
+    "raw_python_parser": {
+      "pros": "no extra dependency; full control",
+      "cons": "need exact LbPair / BinArray layout; usually from IDL or on-chain test",
+      "feasibility": "medium-high (IDL is public on Meteora GitHub)"
+    },
+    "node_js_helper": {
+      "pros": "Meteora SDK exists in TypeScript; can call from Python via JSON-RPC",
+      "cons": "operational complexity; not pure Python",
+      "feasibility": "high"
+    },
+    "subprocess_invocation": {
+      "pros": "can use TypeScript SDK; output JSON; Python reads",
+      "cons": "test complexity; not first-class Python",
+      "feasibility": "medium"
+    }
+  },
+
+  "data_confidence": {
+    "on_chain_decoded": "high (if account layout correct)",
+    "dynamic_fee_calibration": "medium",
+    "volume_fee_velocity": "medium (depends on source: Jupiter or decoded swap events)",
+    "il_24h_estimate": "low-medium (heuristic from price range × volatility)"
+  },
+
+  "this_stage_does": [
+    "design Meteora DLMM connector surface (read-only)",
+    "specify account layouts to decode",
+    "design preflight gates for 10/20U probe"
+  ],
+  "this_stage_does_not": [
+    "implement connector code",
+    "run any RPC",
+    "load any keypair",
+    "sign or send any tx",
+    "prepare SOL/USDC funding"
+  ]
+}

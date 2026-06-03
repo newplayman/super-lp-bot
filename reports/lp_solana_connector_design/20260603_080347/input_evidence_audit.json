@@ -1,0 +1,73 @@
+{
+  "stage": "LP_SOLANA_LP_CONNECTOR_DESIGN_V1",
+  "run_id": "20260603_080347",
+  "branch": "feat/supabase-postgres-deployment",
+  "head_before": "e4deffb",
+
+  "upstream_files_audited": [
+    "reports/lp_multichain_survival_ev/20260603_051605/FINAL_VERDICT.json",
+    "reports/lp_multichain_survival_ev/20260603_051605/ONEPAGE_CN.md",
+    "reports/lp_multichain_survival_ev/20260603_051605/ARTIFACT_INDEX.md",
+    "reports/lp_multichain_survival_ev/20260603_051605/survival_horizon_ev_model.json",
+    "reports/lp_multichain_survival_ev/20260603_051605/survival_horizon_ev_model.csv",
+    "reports/lp_multichain_survival_ev/20260603_051605/lp_candidate_scoring.json",
+    "reports/lp_multichain_survival_ev/20260603_051605/lp_candidate_scoring.csv",
+    "reports/lp_multichain_survival_ev/20260603_051605/survival_out_of_range_risk.json",
+    "reports/lp_multichain_survival_ev/20260603_051605/multichain_pool_readiness_probe.json",
+    "reports/lp_multichain_survival_ev/20260603_051605/evm_standard_v3_multichain_discovery.json",
+    "reports/lp_base_10u_probe_execution_script_build/20260602_135824/FINAL_VERDICT.json",
+    "reports/lp_base_probe_execution_spec_review/20260602_133221/FINAL_VERDICT.json",
+    "docs/LPBOT_RESEARCH_STATUS_CN.md",
+    "docs/LPBOT_RESEARCH_ARTIFACT_INDEX_CN.md"
+  ],
+  "missing_files": [],
+
+  "key_findings": {
+    "evm_v3_positive_realistic_count": 0,
+    "evm_v3_positive_conservative_count": 0,
+    "evm_v3_near_break_even_count": 0,
+    "evm_v3_pool_exists_count": 142,
+    "evm_v3_pools_state_ready": 134,
+    "evm_v3_survival_ev_row_count": 19980,
+    "evm_v3_zero_il_lvr_ceiling_$2000_ev": -2.51,
+    "recommended_next_stage_from_upstream": "LP_SOLANA_LP_CONNECTOR_DESIGN_V1",
+    "evm_v3_path_paused_inferred": true,
+    "base_10u_probe_execution_path_paused": true
+  },
+
+  "key_judgments": [
+    "EVM V3 simple LP paradigm is structurally negative EV per upstream model; cost structure dominates fee yield, not fee yield insufficiency",
+    "Base 10U probe upstream chain (build + spec + armed runner + monitor + go/nogo) is completed; v2 line 992 unchanged; hard-disable still active",
+    "This stage only designs Solana connector; does not implement code; does not read Solana wallet/keypair; does not broadcast transactions"
+  ],
+
+  "solana_vs_evm_differences_relevant_to_design": {
+    "account_model": "PDA (program derived address) vs contract address",
+    "position_model": "Position account (PDA or mint) vs NFT (token id)",
+    "token": "SPL token mint + ATA vs ERC20",
+    "fee_accrual": "Token balance in position account vs ERC20 transfer to address",
+    "tx_cost": "base_fee + priority_fee + one-time rent vs gas × gas_price",
+    "account_creation": "ATA create (~0.00204 SOL rent-exempt) vs contract deploy",
+    "block_time": "~0.4s vs 12s",
+    "quote": "simulateSwap / SDK simulate vs QuoterV2 staticcall",
+    "pool_discovery": "getProgramAccounts with filters vs factory.getPool",
+    "pool_layout": "Custom state struct per protocol vs slot0/liquidity/tickSpacing",
+    "position_close": "close_position + claim_fee vs ERC721.transferFrom + decreaseLiquidity",
+    "il_exposure": "bin range / tick range / weight vs tick range width"
+  },
+
+  "safety_locks_intact": {
+    "can_run_probe_now": false,
+    "execution_allowed_now": false,
+    "tiny_canary_allowed": "no",
+    "edge_proven": "no",
+    "actual_fee_ready": false,
+    "token_id_available": false,
+    "wallet_or_tx_touched": false,
+    "solana_wallet_or_keypair_touched": false,
+    "manual_approval_required": true,
+    "send_hard_disable_still_active": true,
+    "v2_modified_by_this_task": false,
+    "v2_line_count_unchanged": true
+  }
+}

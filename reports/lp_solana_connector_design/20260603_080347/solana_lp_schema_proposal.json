@@ -1,0 +1,131 @@
+{
+  "stage": "LP_SOLANA_LP_CONNECTOR_DESIGN_V1",
+  "run_id": "20260603_080347",
+  "phase": "H_solana_lp_schema_proposal",
+
+  "schema_name_prefix": "solana_lp",
+  "schema_version": "v1",
+  "storage": "local JSONL + CSV (research-only; not in production DB; not in shadow tables)",
+
+  "tables": [
+    {
+      "name": "solana_lp_pool_universe_v1",
+      "purpose": "pool discovery list",
+      "trigger": "discovery scan",
+      "ttl_seconds": 3600,
+      "fields": [
+        "chain", "protocol", "pool_address", "token_a_mint", "token_b_mint",
+        "token_a_symbol", "token_b_symbol", "pool_type", "discovered_at_iso",
+        "last_seen_iso", "pool_metadata", "invalid_reason"
+      ]
+    },
+    {
+      "name": "solana_lp_pool_metadata_v1",
+      "purpose": "pool detailed parameters (fee, decimals, vaults)",
+      "trigger": "per pool, on change",
+      "ttl_seconds": 3600,
+      "fields": [
+        "chain", "protocol", "pool_address", "fee_bps", "dynamic_fee_supported",
+        "bin_step", "tick_spacing", "token_a_decimals", "token_b_decimals",
+        "token_a_vault", "token_b_vault", "quote_token", "initializable",
+        "last_updated_iso", "data_confidence", "invalid_reason"
+      ]
+    },
+    {
+      "name": "solana_lp_liquidity_snapshot_v1",
+      "purpose": "bin/tick liquidity time-series",
+      "trigger": "per pool, every 5-10 min",
+      "ttl_seconds": 30,
+      "fields": [
+        "chain", "protocol", "pool_address", "snapshot_at_iso", "active_bin",
+        "current_tick", "bin_array_start", "tick_array_start", "liquidity",
+        "bin_liquidity_distribution", "tick_liquidity_distribution",
+        "data_confidence", "invalid_reason"
+      ]
+    },
+    {
+      "name": "solana_lp_fee_velocity_v1",
+      "purpose": "24h/7d volume + fee",
+      "trigger": "per pool, daily",
+      "ttl_seconds": 3600,
+      "fields": [
+        "chain", "protocol", "pool_address", "window", "volume_usd_proxy",
+        "fee_usd_proxy", "fee_apr_proxy", "swap_count", "source",
+        "last_updated_iso", "data_confidence", "invalid_reason"
+      ]
+    },
+    {
+      "name": "solana_lp_quote_snapshot_v1",
+      "purpose": "quote test results for various notionals",
+      "trigger": "per notional per pool",
+      "ttl_seconds": 30,
+      "fields": [
+        "chain", "protocol", "pool_address", "quote_at_iso", "notional_usd",
+        "amount_in_token", "amount_in_raw", "amount_out_raw", "price_impact_pct",
+        "quote_source", "data_confidence", "invalid_reason"
+      ]
+    },
+    {
+      "name": "solana_lp_virtual_position_preview_v1",
+      "purpose": "modeled virtual LP EV",
+      "trigger": "per (pool, notional, hold)",
+      "ttl_seconds": null,
+      "fields": [
+        "chain", "protocol", "pool_address", "virtual_at_iso", "notional_usd",
+        "hold_window", "bin_range", "tick_range", "virtual_liquidity",
+        "expected_fee_usd", "il_lvr_proxy_usd", "net_ev_proxy_usd",
+        "net_ev_proxy_pct", "cost_proxy_usd", "survival_probability",
+        "data_confidence", "invalid_reason"
+      ]
+    },
+    {
+      "name": "solana_lp_probe_preflight_v1",
+      "purpose": "10/20U probe preflight checks",
+      "trigger": "per probe attempt",
+      "ttl_seconds": null,
+      "fields": [
+        "chain", "protocol", "pool_address", "probe_at_iso", "notional_usd",
+        "hold_window", "wallet_pubkey", "sol_balance", "token_balance_usdc",
+        "ata_usdc_exists", "ata_creation_required", "rent_required_sol",
+        "expected_tx_fee_sol", "expected_priority_fee_sol", "simulated_open_tx",
+        "simulated_open_result", "simulated_close_tx", "simulated_close_result",
+        "preflight_pass", "blocker", "data_confidence", "invalid_reason"
+      ]
+    }
+  ],
+
+  "spec_required_core_fields_coverage": {
+    "chain": "all tables",
+    "protocol": "all tables",
+    "pool_address": "all tables",
+    "token_a": "universe, metadata",
+    "token_b": "universe, metadata",
+    "token_a_symbol": "universe",
+    "token_b_symbol": "universe",
+    "pool_type": "universe",
+    "active_bin_or_tick": "liquidity_snapshot",
+    "liquidity": "liquidity_snapshot",
+    "fee_bps": "metadata",
+    "dynamic_fee": "metadata (boolean)",
+    "volume_proxy": "fee_velocity",
+    "quote_10u": "quote_snapshot",
+    "quote_20u": "quote_snapshot",
+    "fee_velocity": "fee_velocity",
+    "il_lvr_proxy": "virtual_position_preview",
+    "cost_proxy": "virtual_position_preview",
+    "data_confidence": "all tables",
+    "invalid_reason": "all tables"
+  },
+
+  "spec_required_core_fields_all_covered": true,
+
+  "this_stage_does_not": [
+    "create tables in any DB",
+    "write JSONL/CSV in this stage",
+    "run any RPC",
+    "load any keypair"
+  ],
+
+  "solana_wallet_or_keypair_touched": false,
+  "can_run_probe_now": false
+}

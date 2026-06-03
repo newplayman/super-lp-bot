@@ -1,0 +1,80 @@
+{
+  "stage": "LP_SOLANA_LP_CONNECTOR_DESIGN_V1",
+  "run_id": "20260603_080347",
+  "phase": "J_solana_10_20u_probe_preflight_design",
+
+  "this_stage_only_design": true,
+  "this_stage_does_not_execute": true,
+  "this_stage_does_not_load_keypair": true,
+  "this_stage_does_not_sign": true,
+  "this_stage_does_not_send": true,
+  "this_stage_does_not_run_rpc": true,
+  "this_stage_does_not_bridge": true,
+  "this_stage_does_not_swap": true,
+  "this_stage_does_not_open_lp": true,
+  "this_stage_does_not_close_lp": true,
+  "this_stage_does_not_collect_fee": true,
+
+  "preflight_gates": [
+    {"id": 1, "name": "no_wallet_or_keypair_in_design", "kind": "design_constraint", "always_true": true, "future_stage": "always"},
+    {"id": 2, "name": "public_wallet_only_in_later_dry_run", "kind": "design_constraint", "future_stage": "read-only dry-run"},
+    {"id": 3, "name": "balance_check", "method": "getBalance(wallet_pubkey) >= 2.0 SOL", "future_stage": "read-only RPC"},
+    {"id": 4, "name": "token_account_readiness", "method": "getAccountInfo(ata) + getTokenAccountBalance", "future_stage": "read-only RPC"},
+    {"id": 5, "name": "rent_exemption", "method": "compute estimate; verify balance > rent + priority", "future_stage": "in-script calc"},
+    {"id": 6, "name": "transaction_simulation", "method": "simulateTransaction (NOT send)", "future_stage": "read-only RPC"},
+    {"id": 7, "name": "priority_fee", "method": "compute estimate; max 0.005 SOL typical", "future_stage": "in-script calc"},
+    {"id": 8, "name": "position_account_creation", "method": "PDA derivation only (no actual create)", "future_stage": "in-script derivation"},
+    {"id": 9, "name": "token_account_creation", "method": "ATA existence check (no actual create)", "future_stage": "read-only RPC"},
+    {"id": 10, "name": "deposit_token_ratio", "method": "Meteora getDepositQuote (simulate)", "future_stage": "SDK call"},
+    {"id": 11, "name": "exit_path", "method": "design only: removeLiquidity + claimFee + closePosition", "future_stage": "in-doc; actual signed tx much later"},
+    {"id": 12, "name": "fee_collection", "method": "read position.unclaimedFeesX/Y", "future_stage": "read-only RPC"}
+  ],
+
+  "preflight_pass_criteria": {
+    "yes": "all 12 gates pass; tx simulation ok; cost < $0.01 round trip",
+    "warn": "1-2 gates borderline (e.g. balance 1.5 SOL; ata_creation_required)",
+    "no": "any hard gate fail (e.g. balance < 0.5 SOL; pool not exist; token balance insufficient)"
+  },
+
+  "estimated_round_trip_cost_usd": {
+    "Meteora_DLMM": 0.0031,
+    "Orca_Whirlpools": 0.0048,
+    "Raydium_CLMM": 0.0050,
+    "Raydium_CPMM": 0.0015
+  },
+
+  "balance_requirement_sol": 2.0,
+  "usdc_balance_requirement_raw": 10500000,
+  "usdc_balance_requirement_usd": 10.5,
+
+  "estimated_open_position_tx_cu": 200000,
+  "estimated_close_position_tx_cu": 200000,
+  "estimated_claim_fee_tx_cu": 100000,
+  "estimated_close_position_account_tx_cu": 100000,
+  "total_estimated_cu_per_round_trip": 600000,
+
+  "priority_fee_default_micro_lamports_per_cu": 5000,
+  "estimated_priority_fee_per_round_trip_sol": 0.003,
+  "estimated_priority_fee_per_round_trip_usd": 0.45,
+
+  "future_execution_stages_NOT_THIS_STAGE": [
+    "LP_SOLANA_10_20U_PROBE_PREFLIGHT_REVIEW_V1 (run preflight against candidate)",
+    "LP_SOLANA_10_20U_PROBE_DRY_RUN_BUILDER_V1 (build unsigned tx, simulate)",
+    "LP_SOLANA_10_20U_PROBE_FIRST_EXECUTION_V1 (operator explicit approval -> actual send)"
+  ],
+
+  "this_stage_does_not": [
+    "execute probe",
+    "send any tx",
+    "load keypair",
+    "construct signer",
+    "modify EVM executor execution path",
+    "release send hard-disable",
+    "run any RPC",
+    "set can_run_probe_now to true",
+    "set tiny_canary_allowed to yes"
+  ],
+
+  "solana_wallet_or_keypair_touched": false,
+  "can_run_probe_now": false
+}

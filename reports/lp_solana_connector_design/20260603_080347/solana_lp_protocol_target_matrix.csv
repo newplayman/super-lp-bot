@@ -1,0 +1,7 @@
+priority,protocol,lp_type,position_model,fee_model,liquidity_model,il_control_model,position_identifier,complexity,recommended_next_action
+P0,Meteora DLMM,DLMM (Discretized Liquidity Market Maker),bin-range position account (PDA derived from lbPair + bin range + owner),base_fee_bps + dynamic_fee (per bin step),bin liquidity array (Q64.64 amounts per bin),narrow bin range = low IL; wide range = high fee + high IL,position pubkey (PDA from lbPair + bin range + owner),medium-high (bin math + Q64.64 amounts),design Stage E (this stage)
+P1,Meteora DAMM v2,DAMM (Dynamic AMM),position account (PDA),dynamic_fee (volatility based),constant product reserves,partial (oracles + dynamic fee),position pubkey,medium,design Stage E shared (Meteora family)
+P1,Orca Whirlpools,CLMM (Concentrated Liquidity),position NFT (mint),tiered fee (per Whirlpool config),sqrt_price_x64 + tick + liquidity (V3-like),tick range width,position NFT mint (PDA from bundle + bundleIndex),medium (V3-like math),design Stage F (this stage)
+P2,Raydium CLMM,CLMM,position NFT (mint),tiered fee,sqrt_price + tick + liquidity,tick range width,position NFT mint,medium,design Stage G (secondary)
+P2,Raydium CPMM,CPMM (Constant Product),LP token mint,flat fee (e.g. 25 bps),"reserve_a, reserve_b",n/a (constant product IL fixed),LP token mint,low,design Stage G (CPMM section)
+P2,Lifinity,PMM (Proactive Market Maker),position account,dynamic (oracle based),"reserve_a, reserve_b + oracle price",n/a (oracle anchored),position pubkey,high (limited public material),future stage (out of scope v1)

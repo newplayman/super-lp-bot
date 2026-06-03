@@ -1,0 +1,91 @@
+{
+  "stage": "LP_SOLANA_LP_CONNECTOR_DESIGN_V1",
+  "run_id": "20260603_080347",
+  "phase": "D_solana_data_source_feasibility",
+
+  "rpc_methods_read_only": [
+    "getAccountInfo",
+    "getProgramAccounts",
+    "getMultipleAccounts",
+    "getSignaturesForAddress",
+    "getTransaction",
+    "getTokenLargestAccounts",
+    "getTokenAccountBalance",
+    "getTokenSupply",
+    "getSlot",
+    "getBlockHeight",
+    "simulateTransaction"
+  ],
+
+  "indexers_apis_read_only": [
+    {"provider": "Meteora DLMM API", "endpoint": "https://dlmm-api.meteora.ag", "auth": "none", "read_only": true},
+    {"provider": "Meteora DAMM v2 API", "endpoint": "https://dammv2-api.meteora.ag", "auth": "none", "read_only": true},
+    {"provider": "Orca Whirlpools SDK", "endpoint": "(no public REST; SDK wraps RPC)", "auth": "none", "read_only": true},
+    {"provider": "Raydium CLMM API", "endpoint": "https://api.raydium.io/v2/", "auth": "none", "read_only": true},
+    {"provider": "Jupiter Quote API", "endpoint": "https://quote-api.jup.ag/v6/quote", "auth": "none", "read_only": true, "note": "price/route reference only; not for swap"},
+    {"provider": "Birdeye API", "auth": "API key required", "read_only": true, "v1_status": "skip", "reason": "key not held"},
+    {"provider": "DexScreener", "auth": "none", "read_only": true, "v1_status": "optional"},
+    {"provider": "GeckoTerminal", "auth": "none", "read_only": true, "v1_status": "optional"}
+  ],
+
+  "rate_limits": {
+    "api.mainnet-beta.solana.com": "40 req/10s per IP",
+    "solana.publicnode.com": "50 req/10s per IP",
+    "dlmm-api.meteora.ag": "60 req/min unauth",
+    "quote-api.jup.ag": "10 req/s unauth"
+  },
+
+  "cache_strategy": {
+    "pool_metadata_ttl_seconds": 3600,
+    "bin_tick_state_ttl_seconds": 30,
+    "fee_velocity_ttl_seconds": 3600,
+    "quote_snapshot_ttl_seconds": 30,
+    "format": "local JSONL"
+  },
+
+  "required_tables": [
+    "solana_lp_pool_universe_v1",
+    "solana_lp_pool_metadata_v1",
+    "solana_lp_liquidity_snapshot_v1",
+    "solana_lp_fee_velocity_v1",
+    "solana_lp_quote_snapshot_v1",
+    "solana_lp_virtual_position_preview_v1",
+    "solana_lp_probe_preflight_v1"
+  ],
+
+  "table_field_lists": {
+    "solana_lp_pool_universe_v1": ["chain", "protocol", "pool_address", "token_a_mint", "token_b_mint", "token_a_symbol", "token_b_symbol", "pool_type", "discovered_at_iso", "last_seen_iso", "pool_metadata"],
+    "solana_lp_pool_metadata_v1": ["pool_address", "protocol", "fee_bps", "dynamic_fee_supported", "bin_step", "tick_spacing", "token_a_decimals", "token_b_decimals", "token_a_vault", "token_b_vault", "quote_token", "initializable", "last_updated_iso"],
+    "solana_lp_liquidity_snapshot_v1": ["pool_address", "snapshot_at_iso", "active_bin", "current_tick", "bin_array", "tick_array", "liquidity", "bin_liquidity_distribution"],
+    "solana_lp_fee_velocity_v1": ["pool_address", "window", "volume_usd_proxy", "fee_usd_proxy", "fee_apr_proxy", "swap_count", "last_updated_iso"],
+    "solana_lp_quote_snapshot_v1": ["pool_address", "quote_at_iso", "notional_usd", "amount_in_token", "amount_out_token", "price_impact_pct", "quote_source"],
+    "solana_lp_virtual_position_preview_v1": ["pool_address", "virtual_at_iso", "bin_range", "tick_range", "virtual_liquidity", "expected_fee_24h_usd", "expected_il_24h_pct", "expected_net_ev_24h_usd", "confidence"],
+    "solana_lp_probe_preflight_v1": ["probe_at_iso", "pool_address", "notional_usd", "hold_window", "balance_check", "ata_readiness_check", "rent_required_sol", "expected_tx_fee_sol", "expected_priority_fee_sol", "simulated_open_tx", "simulated_close_tx", "preflight_pass", "blocker"]
+  },
+
+  "wallet_or_keypair_required": false,
+  "this_stage_runs_rpc": false,
+  "this_stage_uses_paid_rpc": false,
+
+  "this_stage_does": [
+    "design read-only RPC + API surface",
+    "design normalized schema for 7 tables",
+    "estimate cost structure for LP open/close on Solana vs EVM"
+  ],
+  "this_stage_does_not": [
+    "implement connector code",
+    "run Solana RPC",
+    "connect to any wallet",
+    "introduce solana-py / solders / pyserum dependency",
+    "load any private key / seed phrase / keypair"
+  ],
+
+  "known_gaps": [
+    "Meteora DLMM account layout not fully public; need on-chain inspection or SDK",
+    "Orca Whirlpools tick array layout bit offsets need empirical test",
+    "Jupiter Quote API rate limited; v1 should fall back to protocol-native quote"
+  ],
+
+  "solana_wallet_or_keypair_touched": false,
+  "can_run_probe_now": false
+}

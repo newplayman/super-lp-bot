@@ -1,0 +1,199 @@
+{
+  "stage": "LP_SOLANA_LP_CONNECTOR_DESIGN_V1",
+  "run_id": "20260603_080347",
+  "phase": "C_solana_protocol_target_matrix",
+
+  "target_protocols": [
+    {
+      "protocol": "Meteora DLMM",
+      "lp_type": "DLMM (Discretized Liquidity Market Maker)",
+      "why_relevant": "bin-based; LP chooses active bin range; dynamic fee; full IL control",
+      "position_model": "bin-range position account (PDA derived from lbPair + bin range + owner)",
+      "fee_model": "base_fee_bps + dynamic_fee (per bin step)",
+      "liquidity_model": "bin liquidity array (Q64.64 amounts per bin)",
+      "il_control_model": "narrow bin range = low IL; wide range = high fee + high IL",
+      "required_data_sources": [
+        "Solana RPC getProgramAccounts (DLMM program)",
+        "Meteora DLMM account decoder (or Meteora SDK)",
+        "Meteora DLMM indexer (if available)",
+        "public RPC only"
+      ],
+      "quote_method": "simulateSwap on LbPair via RPC simulate_transaction; or Meteora SDK",
+      "fee_accrual_method": "claimFee on position account; reads unclaimedFees in position state",
+      "position_identifier": "position pubkey (PDA from lbPair + bin range + owner)",
+      "complexity": "medium-high (bin math + Q64.64 amounts)",
+      "priority": "P0",
+      "recommended_next_action": "design Stage E (this stage)"
+    },
+    {
+      "protocol": "Meteora DAMM v2",
+      "lp_type": "DAMM (Dynamic AMM)",
+      "why_relevant": "2025 launch; dynamic fee; constant-product base; suitable for stable/mainstream pairs",
+      "position_model": "position account (PDA)",
+      "fee_model": "dynamic_fee (volatility based)",
+      "liquidity_model": "constant product reserves",
+      "il_control_model": "partial (oracles + dynamic fee)",
+      "required_data_sources": [
+        "Solana RPC getProgramAccounts (DAMM v2 program)",
+        "Meteora DAMM v2 SDK",
+        "public RPC only"
+      ],
+      "quote_method": "simulateSwap on Pool via RPC",
+      "fee_accrual_method": "claimFee on position",
+      "position_identifier": "position pubkey",
+      "complexity": "medium",
+      "priority": "P1",
+      "recommended_next_action": "design Stage E shared (Meteora family)"
+    },
+    {
+      "protocol": "Orca Whirlpools",
+      "lp_type": "CLMM (Concentrated Liquidity)",
+      "why_relevant": "Solana CLMM benchmark; tick array model similar to V3; high fee velocity",
+      "position_model": "position NFT (mint)",
+      "fee_model": "tiered fee (per Whirlpool config)",
+      "liquidity_model": "sqrt_price_x64 + tick + liquidity (V3-like)",
+      "il_control_model": "tick range width",
+      "required_data_sources": [
+        "Solana RPC getProgramAccounts (Whirlpool program)",
+        "Orca SDK (TypeScript; can call via JSON-RPC from Python)",
+        "Orca Whirlpools account decoder"
+      ],
+      "quote_method": "simulateSwap via Whirlpool quote function or SDK",
+      "fee_accrual_method": "collectFees on position NFT; reads feeOwedA/B",
+      "position_identifier": "position NFT mint (PDA from bundle + bundleIndex)",
+      "complexity": "medium (V3-like math)",
+      "priority": "P1",
+      "recommended_next_action": "design Stage F (this stage)"
+    },
+    {
+      "protocol": "Raydium CLMM",
+      "lp_type": "CLMM",
+      "why_relevant": "Secondary CL venue on Solana; similar to Orca",
+      "position_model": "position NFT (mint)",
+      "fee_model": "tiered fee",
+      "liquidity_model": "sqrt_price + tick + liquidity",
+      "il_control_model": "tick range width",
+      "required_data_sources": [
+        "Solana RPC getProgramAccounts (CLMM program)",
+        "Raydium SDK"
+      ],
+      "quote_method": "simulateSwap via Raydium quote or SDK",
+      "fee_accrual_method": "collectFees on position",
+      "position_identifier": "position NFT mint",
+      "complexity": "medium",
+      "priority": "P2",
+      "recommended_next_action": "design Stage G (secondary)"
+    },
+    {
+      "protocol": "Raydium CPMM",
+      "lp_type": "CPMM (Constant Product)",
+      "why_relevant": "Constant product; lower fee than CL; suitable for stable-stable",
+      "position_model": "LP token mint",
+      "fee_model": "flat fee (e.g. 25 bps)",
+      "liquidity_model": "reserve_a, reserve_b",
+      "il_control_model": "n/a (constant product IL fixed)",
+      "required_data_sources": [
+        "Solana RPC getProgramAccounts (CPMM program)",
+        "Raydium SDK"
+      ],
+      "quote_method": "simulateSwap on CPMM pool",
+      "fee_accrual_method": "LP token balance growth",
+      "position_identifier": "LP token mint",
+      "complexity": "low",
+      "priority": "P2",
+      "recommended_next_action": "design Stage G (CPMM section)"
+    },
+    {
+      "protocol": "Lifinity",
+      "lp_type": "PMM (Proactive Market Maker)",
+      "why_relevant": "Oracle-based PMM; less documentation",
+      "position_model": "position account",
+      "fee_model": "dynamic (oracle based)",
+      "liquidity_model": "reserve_a, reserve_b + oracle price",
+      "il_control_model": "n/a (oracle anchored)",
+      "required_data_sources": [
+        "Solana RPC getProgramAccounts (Lifinity program)",
+        "Lifinity SDK (limited public docs)"
+      ],
+      "quote_method": "simulateSwap via SDK",
+      "fee_accrual_method": "position balance growth",
+      "position_identifier": "position pubkey",
+      "complexity": "high (limited public material)",
+      "priority": "P2",
+      "recommended_next_action": "future stage (out of scope v1)"
+    }
+  ],
+
+  "priority_order": ["Meteora DLMM", "Orca Whirlpools", "Meteora DAMM v2", "Raydium CLMM", "Raydium CPMM", "Lifinity"],
+
+  "ev_improvement_hypothesis": {
+    "Meteora_DLMM": "high (full IL control via bin selection; dynamic fee; can avoid IL-prone ranges entirely)",
+    "Meteora_DAMM_v2": "medium (oracle-anchored + dynamic fee reduces LVR)",
+    "Orca_Whirlpools": "medium (similar to V3 but Solana fee velocity higher)",
+    "Raydium_CLMM": "medium",
+    "Raydium_CPMM": "low (constant product IL fixed)",
+    "Lifinity": "unknown"
+  },
+
+  "solana_chain_params_assumed": {
+    "chain_id_mainnet_beta": 101,
+    "rpc_url_primary": "https://api.mainnet-beta.solana.com",
+    "rpc_url_alt": "https://solana.publicnode.com",
+    "slot_duration_seconds": 0.4,
+    "block_height_per_day": 216000,
+    "rent_exemption_lamports_typical": 890880,
+    "rent_exemption_sol_typical": 0.00089,
+    "priority_fee_lamports_range": [1000, 100000],
+    "base_tx_fee_lamports": 5000,
+    "assumed_sol_usd_price": 150
+  },
+
+  "cost_comparison_per_lp_open_close": {
+    "EVM_Base_V3_LP": {
+      "open_approve_usdc_estimate_usd": 0.001,
+      "open_mint_estimate_usd": 0.005,
+      "open_total_usd": 0.006,
+      "close_decrease_collect_estimate_usd": 0.005,
+      "close_revoke_estimate_usd": 0.001,
+      "close_total_usd": 0.006,
+      "round_trip_usd": 0.012
+    },
+    "Solana_Meteora_DLMM_LP": {
+      "open_create_ata_x2_usd": 0.0003,
+      "open_create_position_account_usd": 0.0002,
+      "open_add_liquidity_usd": 0.001,
+      "open_total_usd": 0.0015,
+      "close_claim_fee_usd": 0.0008,
+      "close_remove_liquidity_usd": 0.001,
+      "close_close_position_account_recovery_usd": -0.0002,
+      "close_total_usd": 0.0016,
+      "round_trip_usd": 0.0031
+    },
+    "Solana_Orca_Whirlpools_LP": {
+      "open_create_ata_x2_usd": 0.0003,
+      "open_mint_position_nft_usd": 0.0015,
+      "open_add_liquidity_usd": 0.001,
+      "open_total_usd": 0.0028,
+      "close_collect_fees_usd": 0.001,
+      "close_decrease_liquidity_usd": 0.001,
+      "close_total_usd": 0.002,
+      "nft_rent_recovery_usd": 0.0,
+      "round_trip_usd": 0.0048
+    }
+  },
+
+  "exclusions": [
+    "Marinade / Lido (LST, not LP)",
+    "Friktion / Katana (derivatives)",
+    "Drift / Mango / Zeta (perps)",
+    "Solend / Mango (lending)",
+    "Phoenix (order book)"
+  ],
+
+  "this_stage_does_not": [
+    "implement connector code",
+    "run Solana RPC",
+    "connect to any wallet",
+    "prepare SOL/USDC funding"
+  ]
+}

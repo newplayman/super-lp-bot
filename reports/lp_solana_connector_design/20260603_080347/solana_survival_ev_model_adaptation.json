@@ -1,0 +1,67 @@
+{
+  "stage": "LP_SOLANA_LP_CONNECTOR_DESIGN_V1",
+  "run_id": "20260603_080347",
+  "phase": "I_solana_survival_ev_model_adaptation",
+
+  "evm_v3_components_reused": {
+    "notional_grid": [10, 20, 100, 500, 1000, 2000],
+    "hold_windows": ["15m", "30m", "1h", "2h", "6h", "12h", "24h", "3d", "7d"],
+    "fee_velocity_framework": true,
+    "cost_model_framework": "semantic reused, value replaced with Solana rent+tx+priority",
+    "near_break_even_threshold_usd": 0.01,
+    "risk_scoring_framework": true,
+    "scenarios": ["zero_il_lvr", "optimistic", "realistic", "conservative", "stress"],
+    "il_lvr_ratios": {"zero_il_lvr": 0.0, "optimistic": 0.05, "realistic": 0.30, "conservative": 0.80, "stress": 2.0},
+    "survival_probability_gaussian": "partially reused (CLMM); DLMM uses binary 0/1"
+  },
+
+  "evm_v3_components_NOT_reused": {
+    "v3_tick_math": "Solana CLMM same math but different account layout",
+    "evm_gas_model": "replaced with rent + tx + priority fee",
+    "nft_position_model": "Solana PDA / NFT mint / LP token (per protocol)",
+    "fee_growth_inside_model": "DLMM uses dynamic_fee per bin; CLMM uses fee_growth_global",
+    "quoter_v2": "replaced with simulateTransaction + Jupiter Quote API",
+    "erc20_balance_allowance": "replaced with SPL token + getTokenAccountBalance"
+  },
+
+  "solana_specific_components": {
+    "rent_required_sol_per_account": 0.00089088,
+    "base_tx_fee_lamports_per_signature": 5000,
+    "priority_fee_formula": "cu_limit * micro_lamports_per_cu / 1e6 / 1e9",
+    "ata_creation_cost_sol": 0.00203928,
+    "rent_recovery_sol_per_closed_account": 0.00089088,
+    "nft_mint_cost_sol": 0.00144,
+    "nft_mint_recovery": false,
+    "liquidity_range_models": {
+      "Meteora_DLMM": "bin range [lower_bin, upper_bin]",
+      "Meteora_DAMM_v2": "full range (constant product)",
+      "Orca_Whirlpools": "tick range [lower_tick, upper_tick]",
+      "Raydium_CLMM": "tick range [lower_tick, upper_tick]",
+      "Raydium_CPMM": "n/a (full range)"
+    }
+  },
+
+  "round_trip_cost_usd_comparison": {
+    "EVM_Base_V3": 0.012,
+    "Solana_Meteora_DLMM": 0.0031,
+    "Solana_Orca_Whirlpools": 0.0048,
+    "sol_assumed_usd": 150
+  },
+
+  "heuristic_expected_net_ev_at_10u_7d": {
+    "EVM_Base_V3_realistic": -0.046,
+    "Solana_Meteora_DLMM_optimistic": "+0.01 to +0.05",
+    "Solana_Orca_Whirlpools_optimistic": "+0.005 to +0.02",
+    "note": "heuristic; need actual fee velocity data + IL binary confirmation via read-only connector"
+  },
+
+  "this_stage_does_not": [
+    "run EV model on real Solana data",
+    "write Solana-specific formula code",
+    "run any RPC",
+    "load any keypair"
+  ],
+
+  "solana_wallet_or_keypair_touched": false,
+  "can_run_probe_now": false
+}

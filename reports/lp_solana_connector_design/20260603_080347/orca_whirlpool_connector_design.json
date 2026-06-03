@@ -1,0 +1,80 @@
+{
+  "stage": "LP_SOLANA_LP_CONNECTOR_DESIGN_V1",
+  "run_id": "20260603_080347",
+  "phase": "F_orca_whirlpool_connector_design",
+
+  "summary": "Orca Whirlpools = Solana CLMM benchmark; tick array model similar to V3; NFT position model; high fee velocity; P1 priority",
+
+  "discovery": {
+    "entry_method": "getProgramAccounts (Whirlpools program)",
+    "filters": ["dataSize (Whirlpool exact size ~800 bytes)", "optional memcmp by token mint"],
+    "state_fields": ["tick_current_index", "liquidity", "sqrt_price_x64", "fee_growth_global_a", "fee_growth_global_b", "fee_rate", "token_mint_a", "token_mint_b", "token_vault_a", "token_vault_b"]
+  },
+
+  "tick_array": {
+    "size": 88,
+    "pda_derivation": "derive_tick_array_pda(whirlpool_pubkey, start_tick_index)",
+    "loading_strategy": "load only current_tick ± 1 TickArray (covers tick range ±88)"
+  },
+
+  "position_model": {
+    "type": "Position NFT (mint) + Position account (PDA)",
+    "position_account_fields": ["position_mint", "whirlpool", "tick_lower_index", "tick_upper_index", "liquidity", "fee_growth_inside_last", "fee_owed_a", "fee_owed_b"]
+  },
+
+  "quote": {
+    "method": "simulateTransaction on swap tx (read-only)",
+    "fallback": "@orca-so/whirlpools-sdk quote function (TypeScript helper)",
+    "output": ["amount_in", "amount_out", "fee_amount", "cross_tick_upper", "cross_tick_lower"]
+  },
+
+  "fee_accrual": {
+    "method": "read position.fee_owed_a / position.fee_owed_b (direct state)",
+    "claim_method": "collectFees instruction (signed tx, future stage)"
+  },
+
+  "exit": {
+    "decrease_liquidity": "remove liquidity → token_a + token_b → position owner",
+    "collect_fees": "claim accrued fees",
+    "close_position": "burn position NFT; close position account (rent recovery ~0.0014 SOL on account close, NFT mint not recoverable)"
+  },
+
+  "10_20u_probe_preflight": {
+    "balance_check": "getBalance(wallet) >= 1.5 SOL",
+    "token_balance": "USDC >= 10 + slippage",
+    "ata_readiness": "getAccountInfo(ata_usdc) existence",
+    "pool_metadata": "cached; current_tick, fee_rate known",
+    "tick_range_decision": "based on volatility forecast (heuristic)",
+    "deposit_quote": "simulateTransaction(removeLiquidityTx) returns 10U + 0.5U slippage OK",
+    "exit_quote": "simulateTransaction returns 9.5-11U OK",
+    "expected_fee_24h_threshold": ">= 0.05 USDC",
+    "expected_il_24h_threshold": "<= 0.10 USDC",
+    "preflight_pass": "all above"
+  },
+
+  "complexity_blockers": {
+    "sdk": "@orca-so/whirlpools-sdk public",
+    "idl": "public on Orca GitHub",
+    "rpc_rate_limit": "getProgramAccounts on Whirlpools program = large; need memcmp + dataSize filters",
+    "tick_array_parsing": "need custom implementation (SDK binary)",
+    "rent": "position account + token vault + 2 ATA + NFT mint; NFT rent not recoverable",
+    "round_trip_cost_usd": "0.005-0.008"
+  },
+
+  "vs_meteora_dlmm": {
+    "il_control": "Orca: gradual (V3-like); Meteora: binary 0 until exit",
+    "fee_velocity_proxy": "Orca: 25-60% APR; Meteora: 30-100% APR (volatile pair higher)",
+    "position_cost": "Orca: NFT not recoverable; Meteora: position account closeable",
+    "round_trip_cost": "Orca: $0.005-0.008; Meteora: $0.003",
+    "sdk": "both TypeScript",
+    "recommendation": "P0 should still be Meteora DLMM; Orca Whirlpools P1 backup"
+  },
+
+  "this_stage_does_not": [
+    "implement connector code",
+    "run any RPC",
+    "load any keypair",
+    "sign or send any tx",
+    "prepare SOL/USDC funding"
+  ]
+}

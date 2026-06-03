@@ -1,0 +1,65 @@
+{
+  "stage": "LP_SOLANA_LP_CONNECTOR_DESIGN_V1",
+  "run_id": "20260603_080347",
+  "phase": "G_raydium_connector_design",
+
+  "raydium_clmm": {
+    "priority": "P2",
+    "suitable_for_first_connector": false,
+    "reason_not_first": "Orca Whirlpools preferred (better SDK, IDL, fee velocity)",
+    "pool_state_struct": {
+      "amm_config": "Pubkey",
+      "pool_creator": "Pubkey",
+      "token_mint_0": "Pubkey",
+      "token_mint_1": "Pubkey",
+      "token_vault_0": "Pubkey",
+      "token_vault_1": "Pubkey",
+      "tick_current": "i32",
+      "tick_spacing": "u16",
+      "liquidity": "u128 (Q64.64)",
+      "sqrt_price_x64": "u128 (Q64.64)",
+      "fee_growth_global_0": "u128",
+      "fee_growth_global_1": "u128"
+    },
+    "fee_model": "tiered per amm_config; typically 0.05-1%",
+    "position_model": "NFT mint (similar to Orca)",
+    "exit": "decreaseLiquidity + collectFees",
+    "blockers": "SDK public but IDL complex; getProgramAccounts data volume high; overlap with Orca"
+  },
+
+  "raydium_cpmm": {
+    "priority": "P2",
+    "suitable_for_first_connector": false,
+    "reason_not_first": "lower fee than V3; suitable for stable-stable only; not high-EV 10/20U probe candidate",
+    "pool_state_struct": {
+      "base_mint": "Pubkey",
+      "quote_mint": "Pubkey",
+      "base_vault": "Pubkey",
+      "quote_vault": "Pubkey",
+      "base_reserve": "u64",
+      "quote_reserve": "u64",
+      "fee_rate_bps": "u16 (e.g. 25)"
+    },
+    "fee_model": "flat fee (e.g. 25 bps)",
+    "position_model": "LP token mint (balance growth = fee accrual)",
+    "exit": "burn LP token to withdraw proportional reserves",
+    "blockers": "low fee; not high-EV candidate"
+  },
+
+  "priority_order": [
+    "Meteora DLMM (P0)",
+    "Orca Whirlpools (P1)",
+    "Meteora DAMM v2 (P1)",
+    "Raydium CLMM (P2)",
+    "Raydium CPMM (P2)",
+    "Lifinity (P2 future)"
+  ],
+
+  "this_stage_does_not": [
+    "implement connector code",
+    "run any RPC",
+    "load any keypair",
+    "sign or send any tx",
+    "prepare SOL/USDC funding"
+  ]
+}
