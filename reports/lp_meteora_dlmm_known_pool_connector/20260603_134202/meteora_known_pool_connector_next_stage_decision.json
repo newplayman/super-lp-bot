@@ -1,0 +1,112 @@
+{
+  "stage": "LP_METEORA_DLMM_KNOWN_POOL_READONLY_CONNECTOR_V1",
+  "run_id": "20260603_134202",
+  "phase": "J_next_stage_decision_v4",
+
+  "recommended_next_stage": "LP_METEORA_DLMM_QUOTE_BINARRAY_FIX_REPEAT",
+  "default_when_no_explicit_choice": "LP_METEORA_DLMM_QUOTE_BINARRAY_FIX_REPEAT",
+
+  "allowed_next_stages": [
+    "LP_METEORA_DLMM_QUOTE_BINARRAY_FIX_REPEAT",
+    "LP_METEORA_DLMM_SURVIVAL_EV_PREVIEW_V1",
+    "LP_SOLANA_PAID_RPC_SETUP_REQUIRED",
+    "LP_METEORA_DLMM_KNOWN_POOL_CONNECTOR_FIX_REPEAT",
+    "STOP_LP_RESEARCH_NOW"
+  ],
+
+  "selected_next_stage": "LP_METEORA_DLMM_QUOTE_BINARRAY_FIX_REPEAT",
+  "selection_rationale": {
+    "not_QUOTE_BINARRAY_FIX_REPEAT": "NEGATIVE: actually, this IS the right choice. V4 connector is built and runs; pool_snapshot 2/2 + fee_snapshot 2/2 + bin_liquidity 0/2 (blocked on public RPC 403) + quote 0/4 (depends on bin arrays). The blocker is a known RPC restriction, not a connector bug. A fix_repeat round should (a) implement known bin array index path (compute binArrayIndex from activeId, fetch single bin array via getMultipleAccountsInfo single account, pass to swapQuote), (b) attempt 1-bin quote (theoretical), (c) document Phase 2B paid RPC requirement clearly.",
+    "not_SURVIVAL_EV_PREVIEW_V1": "NEGATIVE: requires quote to be ready; quote is blocked on bin arrays. Survival EV cannot be computed before fixing the upstream blocker.",
+    "not_PAID_RPC_SETUP_REQUIRED": "NEGATIVE: this is a fallback if no workaround exists. A known bin array index + single-account getMultipleAccountsInfo might work on public RPC (because it only asks for 1 account). V4 should try this before declaring paid RPC needed.",
+    "not_KNOWN_POOL_CONNECTOR_FIX_REPEAT": "NEGATIVE: connector implementation works (2/2 pools decoded, 2/2 fee extracted, bin/quote attempts produced honest blockers). No bugs to fix in connector V1 itself.",
+    "not_STOP_LP_RESEARCH_NOW": "NEGATIVE: read-only path is fully viable. 3/6 tables ready, 2/2 pools decoded, connector V1 functional. Not a structural failure."
+  },
+
+  "this_round_v3_to_v4_improvements": {
+    "v3_connector_implementation": "V3 only had single-use smoke scripts; no reusable connector",
+    "v4_connector_implementation": "Reusable scripts/lp_meteora_dlmm_known_pool_connector_v1_readonly.js with --mode snapshot/quote-smoke/all, --known-pool-feed, --output-dir, --run-id, --rpc-url-redacted-source",
+    "v3_pool_snapshot": "2/2 single-use smoke",
+    "v4_pool_snapshot": "2/2 via connector V1 reusable script; CSV/JSON output",
+    "v3_fee_snapshot": "embedded in smoke JSON",
+    "v4_fee_snapshot": "Standalone fee_snapshot.csv / fee_snapshot.json",
+    "v3_bin_liquidity": "0/2 smoke",
+    "v4_bin_liquidity": "0/2 via connector V1; honest blocker recorded (same as V3)",
+    "v3_quote": "0/4 smoke",
+    "v4_quote": "0/4 via connector V1; honest blocker recorded",
+    "v3_readiness_matrix": "schema design only",
+    "v4_readiness_matrix": "6 tables judged; 3 ready / 2 blocked_public_rpc / 1 blocked_missing_quote"
+  },
+
+  "entry_conditions_for_known_POOL_READONLY_CONNECTOR_V1_now_satisfied": {
+    "known_pool_connector_built": true,
+    "known_pool_count": 2,
+    "pool_snapshot_success_count": 2,
+    "fee_snapshot_success_count": 2,
+    "bin_liquidity_snapshot_success_count": 0,
+    "quote_snapshot_success_count": 0,
+    "connector_readonly_ready": true,
+    "quote_ready": false,
+    "needs_paid_rpc": true
+  },
+
+  "remaining_blockers": [
+    {
+      "blocker": "bin_array / quote blocked on public RPC (V1 + V3 + V4 evidence; 403/410)",
+      "fix": "next fix_repeat: try single-account getMultipleAccountsInfo with computed binArrayIndex; if fails, mark paid_rpc_required and document for Phase 2B"
+    },
+    {
+      "blocker": "known pool feed size = 2",
+      "fix": "operator can extend to 5-10 pools from Meteora UI top pools; or paid RPC GPA (Phase 2B)"
+    },
+    {
+      "blocker": "Raydium CPMM mainnet pid (unchanged from V1/V2/V3; not on mainnet AND not on devnet)",
+      "fix": "operator input: real mainnet pid from Raydium Discord / 公告 / Solscan; P2 separate from Meteora DLMM P0"
+    },
+    {
+      "blocker": "Lifinity pid (unchanged from V1/V2/V3; docs SPA; no public GitHub DEX repo)",
+      "fix": "operator input: pid from browser-rendered docs / Solscan; P2 separate from Meteora DLMM P0"
+    }
+  ],
+
+  "next_stage_responsibilities": [
+    "implement single-account bin array path: compute binArrayIndex from activeId (via SDK helper `binIdToBinArrayIndex`), call `connection.getMultipleAccountsInfo([binArrayPubkey])` (single account), pass result to swapQuote",
+    "if single-account path fails, document Phase 2B paid RPC requirement",
+    "re-run connector V1 with new path; output 6/6 tables or document 4/6 still blocked",
+    "do NOT call paid RPC (no key); do NOT fake data"
+  ],
+
+  "next_stage_must_not": [
+    "execute probe on Solana",
+    "send any tx",
+    "load any keypair / private key / seed phrase",
+    "construct signer",
+    "auto bridge / auto swap",
+    "modify EVM executor v2",
+    "release v2 hard-disable",
+    "set can_run_probe_now to true",
+    "set tiny_canary_allowed to yes",
+    "hard-code any program id from memory",
+    "use paid RPC without operator key",
+    "implement any position creation / addLiquidity / removeLiquidity / closePosition / claimFee / claimReward",
+    "construct any transaction (even no-op)",
+    "fabricate quote / bin_liquidity success when blocked"
+  ],
+
+  "this_stage_did_not": [
+    "implement any production connector",
+    "compute any quote",
+    "load any keypair / private key",
+    "send any transaction",
+    "call any pos-create / tx-builder method",
+    "modify any production table",
+    "modify EVM executor v2"
+  ],
+
+  "can_run_probe_now": false,
+  "solana_wallet_or_keypair_touched": false,
+  "tiny_canary_allowed": "no",
+  "edge_proven": "no",
+  "v2_line_count_unchanged": true,
+  "v2_line_count": 992
+}

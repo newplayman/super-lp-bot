@@ -1,0 +1,3 @@
+pool_address,base_fee_bps,max_fee_bps,dynamic_fee_components,fee_info_available,source_method,confidence,invalid_reason
+5BKxfWMbmYBAEWvyPZS9esPducUba9GqyMjtLCfbaqyF,0.02,10,,true,dlmmPool.getFeeInfo(),0.95,
+9DiruRpjnAnzhn6ts5HGLouHtJrT1JGsPbXNYCrFz2ad,1.5,10,,true,dlmmPool.getFeeInfo(),0.95,

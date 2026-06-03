@@ -1,0 +1,118 @@
+{
+  "stage": "LP_METEORA_DLMM_KNOWN_POOL_READONLY_CONNECTOR_V1",
+  "run_id": "20260603_134202",
+  "phase": "I_connector_readiness_matrix",
+
+  "tables": [
+    {
+      "table_id": "meteora_dlmm_known_pool_universe_v1",
+      "status": "ready",
+      "status_reason": "2/2 pools from official SDK examples, full addresses loaded from V3 artifact, all on mainnet",
+      "v4_evidence": "Stage D: known_pool_universe.csv with 3 rows (2 selected + 1 skipped not on mainnet); expected_owner_program=LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo",
+      "fields_populated": 7,
+      "fields_total": 8,
+      "confidence": 0.95
+    },
+    {
+      "table_id": "meteora_dlmm_pool_snapshot_v1",
+      "status": "ready",
+      "status_reason": "2/2 pools full LbPair decode succeeded via @meteora-ag/dlmm@1.9.10 DLMM.create + getActiveBin + tokenX/Y/amounts + binStep",
+      "v4_evidence": "Stage E: pool_snapshot.csv with 2 rows; fields include token_x_mint, token_y_mint, decimals, bin_step, active_bin_id, active_price, reserve_x_raw, reserve_y_raw, base_fee_bps, max_fee_bps, owner_program",
+      "fields_populated": 17,
+      "fields_total": 19,
+      "fields_missing": ["protocol_fee_bps (SDK getFeeInfo returns undefined)", "volatility_accumulator (not extracted this round)"],
+      "confidence": 0.9
+    },
+    {
+      "table_id": "meteora_dlmm_fee_snapshot_v1",
+      "status": "ready",
+      "status_reason": "2/2 pools base_fee_bps + max_fee_bps extracted via SDK getFeeInfo() (synchronous, no extra RPC)",
+      "v4_evidence": "Stage F: fee_snapshot.csv with 2 rows; pool 1 = 0.02%/10%; pool 2 = 1.5%/10%",
+      "fields_populated": 6,
+      "fields_total": 8,
+      "fields_missing": ["dynamic_fee_components (SDK doesn't break out)", "protocol_fee_bps"],
+      "confidence": 0.95
+    },
+    {
+      "table_id": "meteora_dlmm_bin_liquidity_snapshot_v1",
+      "status": "blocked_public_rpc",
+      "status_reason": "getBinArrayForSwap 403 on public RPC for both pools; same root cause as V1 GPA + V3 bin_liquidity",
+      "v4_evidence": "Stage G: bin_liquidity_snapshot.csv with 2 rows; bin_array_success=false; rpc_error_type=rpc_403_forbidden",
+      "fields_populated": 2,
+      "fields_total": 7,
+      "blocker": "403 Forbidden: blocked parameter: params.0.# (public RPC restricts getMultipleAccounts for many accounts)",
+      "fix_path": "paid RPC OR known bin array index (operator input required)",
+      "confidence": 0.0
+    },
+    {
+      "table_id": "meteora_dlmm_quote_snapshot_v1",
+      "status": "blocked_public_rpc",
+      "status_reason": "swapQuote requires binArrays; binArrays blocked on public RPC (same root cause as bin_liquidity)",
+      "v4_evidence": "Stage H: quote_snapshot.csv with 4 rows (2 pools × 2 notionals); 0/4 success; all 4 blocked at getBinArrayForSwap",
+      "fields_populated": 0,
+      "fields_total": 9,
+      "blocker": "403 Forbidden: blocked parameter: params.0.# (same as bin_liquidity)",
+      "fix_path": "paid RPC OR known bin array index (operator input required)",
+      "confidence": 0.0
+    },
+    {
+      "table_id": "meteora_dlmm_survival_ev_preview_v1",
+      "status": "blocked_missing_quote",
+      "status_reason": "no quote data in V4; survival EV computation requires quote",
+      "v4_evidence": "Stage H: 0/4 quote success; EV computation cannot proceed without quote data",
+      "fields_populated": 0,
+      "fields_total": 10,
+      "blocker": "no_quote_data (derived from quote_snapshot blocked state)",
+      "fix_path": "fix quote first, then EV",
+      "confidence": 0.0
+    }
+  ],
+
+  "summary": {
+    "tables_total": 6,
+    "tables_ready": 3,
+    "tables_partial": 0,
+    "tables_blocked_public_rpc": 2,
+    "tables_blocked_missing_quote": 1,
+    "tables_invalid": 0,
+    "tables_not_attempted": 0
+  },
+
+  "judgments": {
+    "connector_readonly_ready": true,
+    "connector_readonly_ready_reason": "3/6 tables (universe, pool_snapshot, fee_snapshot) are ready with 2/2 pools each; connector V1 is functional for read-only LbPair state + fee extraction",
+    "quote_ready": false,
+    "quote_ready_reason": "0/4 quote success; bin_arrays blocked on public RPC (Stage G + H); need paid RPC or known bin array index",
+    "survival_ev_ready": false,
+    "survival_ev_ready_reason": "depends on quote; no quote data → no EV",
+    "needs_paid_rpc": true,
+    "needs_paid_rpc_reason": "Meteora DLMM requires getMultipleAccounts for many accounts to fetch bin arrays; public RPCs cap/block this method",
+    "needs_known_pool_feed_expansion": false,
+    "needs_known_pool_feed_expansion_reason": "2/2 pools verified and decoded; feed size is sufficient for connector V1 validation; expansion can be deferred to Phase 2B"
+  },
+
+  "phase_2A_status": "delivered (V4)",
+  "phase_2B_requirements": [
+    "operator provides paid RPC (Helius / Triton / QuickNode) OR known bin array index",
+    "rerun connector with --rpc-url-redacted-source <paid_rpc_label> --mode all",
+    "expect 6/6 tables ready",
+    "compute survival_ev_preview_v1 with real quote data"
+  ],
+
+  "this_stage_does_not": [
+    "implement any 6 tables in real storage",
+    "connect to any live database",
+    "modify any production table",
+    "overwrite any shadow table",
+    "modify EVM executor v2",
+    "release v2 hard-disable"
+  ],
+
+  "solana_wallet_or_keypair_touched": false,
+  "transaction_sent": false,
+  "can_run_probe_now": false,
+  "v2_line_count_unchanged": true,
+  "v2_line_count": 992,
+
+  "next_stage": "Stage J: next-stage decision"
+}

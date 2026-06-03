@@ -1,0 +1,3 @@
+pool_address,active_bin_id,bin_array_attempted,bin_array_success,bin_count,total_x_amount,total_y_amount,blocker,rpc_error_type,confidence
+5BKxfWMbmYBAEWvyPZS9esPducUba9GqyMjtLCfbaqyF,-12248,true,false,0,,,"403 Forbidden: {""jsonrpc"":""2.0"",""error"":{""code"":-32602,""message"":""Request blocked. Details: blocked parameter: params.0.#""},""id"":""06eb5b26-c954-4efe-873a-b0743851625e""}",rpc_403_forbidden,0
+9DiruRpjnAnzhn6ts5HGLouHtJrT1JGsPbXNYCrFz2ad,-236,true,false,0,,,"403 Forbidden: {""jsonrpc"":""2.0"",""error"":{""code"":-32602,""message"":""Request blocked. Details: blocked parameter: params.0.#""},""id"":""ea89047a-a78d-4807-80cf-14dd6b8e3176""}",rpc_403_forbidden,0

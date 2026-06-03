@@ -1,0 +1,62 @@
+[
+  {
+    "pool_address": "5BKxfWMbmYBAEWvyPZS9esPducUba9GqyMjtLCfbaqyF",
+    "notional_usd": "10U",
+    "amount_in_raw": "10000000",
+    "token_in": "Y",
+    "token_out": "X",
+    "quote_attempted": true,
+    "quote_success": false,
+    "amount_out_raw": null,
+    "fee": null,
+    "bins_crossed": null,
+    "blocker": "403 Forbidden: {\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32602,\"message\":\"Request blocked. Details: blocked parameter: params.0.#\"},\"id\":\"fb88afc9-ba5f-4253-a56a-62a0396a8497\"}",
+    "confidence": 0,
+    "latency_ms": 8642
+  },
+  {
+    "pool_address": "5BKxfWMbmYBAEWvyPZS9esPducUba9GqyMjtLCfbaqyF",
+    "notional_usd": "20U",
+    "amount_in_raw": "20000000",
+    "token_in": "Y",
+    "token_out": "X",
+    "quote_attempted": true,
+    "quote_success": false,
+    "amount_out_raw": null,
+    "fee": null,
+    "bins_crossed": null,
+    "blocker": "403 Forbidden: {\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32602,\"message\":\"Request blocked. Details: blocked parameter: params.0.#\"},\"id\":\"33d52ce5-2d87-43b5-9a23-aa07b6c2f0fc\"}",
+    "confidence": 0,
+    "latency_ms": 6938
+  },
+  {
+    "pool_address": "9DiruRpjnAnzhn6ts5HGLouHtJrT1JGsPbXNYCrFz2ad",
+    "notional_usd": "10U",
+    "amount_in_raw": "10000000",
+    "token_in": "Y",
+    "token_out": "X",
+    "quote_attempted": true,
+    "quote_success": false,
+    "amount_out_raw": null,
+    "fee": null,
+    "bins_crossed": null,
+    "blocker": "403 Forbidden: {\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32602,\"message\":\"Request blocked. Details: blocked parameter: params.0.#\"},\"id\":\"86447580-cde3-4589-9b20-049beb34df83\"}",
+    "confidence": 0,
+    "latency_ms": 6396
+  },
+  {
+    "pool_address": "9DiruRpjnAnzhn6ts5HGLouHtJrT1JGsPbXNYCrFz2ad",
+    "notional_usd": "20U",
+    "amount_in_raw": "20000000",
+    "token_in": "Y",
+    "token_out": "X",
+    "quote_attempted": true,
+    "quote_success": false,
+    "amount_out_raw": null,
+    "fee": null,
+    "bins_crossed": null,
+    "blocker": "403 Forbidden: {\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32602,\"message\":\"Request blocked. Details: blocked parameter: params.0.#\"},\"id\":\"9723639b-125d-439e-855e-5b3bdda5ddc9\"}",
+    "confidence": 0,
+    "latency_ms": 6538
+  }
+]

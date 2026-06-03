@@ -1,0 +1,116 @@
+{
+  "status": "WARN",
+  "stage": "LP_METEORA_DLMM_KNOWN_POOL_READONLY_CONNECTOR_V1",
+  "run_id": "20260603_134202",
+  "branch": "feat/supabase-postgres-deployment",
+  "head_before": "fa4e5e4",
+
+  "known_pool_connector_built": true,
+  "known_pool_connector_script": "scripts/lp_meteora_dlmm_known_pool_connector_v1_readonly.js",
+  "known_pool_count": 2,
+  "pool_snapshot_success_count": 2,
+  "fee_snapshot_success_count": 2,
+  "bin_liquidity_snapshot_success_count": 0,
+  "quote_snapshot_success_count": 0,
+  "quote_snapshot_attempted_count": 4,
+
+  "connector_readonly_ready": true,
+  "quote_ready": false,
+  "survival_ev_ready": false,
+  "needs_paid_rpc": true,
+  "needs_known_pool_feed_expansion": false,
+
+  "sdk_used": "@meteora-ag/dlmm@1.9.10",
+  "sdk_install_in_isolated_tmp": true,
+  "sdk_install_dir": "/tmp/lpbot_meteora_dlmm_sdk_probe_20260603_130532",
+  "repo_node_modules_created": false,
+  "repo_root_touched_for_sdk": false,
+
+  "tables_status": {
+    "meteora_dlmm_known_pool_universe_v1": "ready",
+    "meteora_dlmm_pool_snapshot_v1": "ready",
+    "meteora_dlmm_fee_snapshot_v1": "ready",
+    "meteora_dlmm_bin_liquidity_snapshot_v1": "blocked_public_rpc",
+    "meteora_dlmm_quote_snapshot_v1": "blocked_public_rpc",
+    "meteora_dlmm_survival_ev_preview_v1": "blocked_missing_quote"
+  },
+
+  "v4_real_on_chain_data": {
+    "pool_5BKxfWMb": {
+      "token_x": "So11111111111111111111111111111111111111112 (Wrapped SOL, 9 decimals)",
+      "token_y": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v (USDC, 6 decimals)",
+      "bin_step": 2,
+      "active_bin_id": -12248,
+      "active_price": "0.086349257542837731428 (1 SOL ≈ 11.58 USDC)",
+      "reserve_x_raw": "49468352994",
+      "reserve_y_raw": "1064410439",
+      "base_fee_bps": "0.02",
+      "max_fee_bps": "10"
+    },
+    "pool_9DiruRpj": {
+      "token_x": "FUAfBo2jgks6gB4Z4LfZkqSZgzNucisEHqnNebaRxM1P (6 decimals)",
+      "token_y": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v (USDC, 6 decimals)",
+      "bin_step": 100,
+      "active_bin_id": -236,
+      "active_price": "0.095533521620978319249",
+      "reserve_x_raw": "101593140348172",
+      "reserve_y_raw": "2200122802740",
+      "base_fee_bps": "1.5",
+      "max_fee_bps": "10"
+    }
+  },
+
+  "v3_to_v4_improvements": {
+    "v3_connector": "single-use smoke scripts (2 scripts, no reusable connector)",
+    "v4_connector": "reusable scripts/lp_meteora_dlmm_known_pool_connector_v1_readonly.js (--mode snapshot/quote-smoke/all, --known-pool-feed, --output-dir, --run-id, --rpc-url-redacted-source)",
+    "v3_pool_snapshot": "embedded in smoke JSON",
+    "v4_pool_snapshot": "standalone pool_snapshot.csv + .json; 2/2 pools",
+    "v3_fee_snapshot": "embedded in smoke JSON",
+    "v4_fee_snapshot": "standalone fee_snapshot.csv + .json; 2/2 pools",
+    "v3_bin_liquidity": "0/2 smoke (no per-pool structured output)",
+    "v4_bin_liquidity": "0/2 via connector V1; bin_liquidity_snapshot.csv + .json with honest blockers",
+    "v3_quote": "0/4 smoke (no per-attempt structured output)",
+    "v4_quote": "0/4 via connector V1; quote_snapshot.csv + .json with honest blockers",
+    "v3_readiness_matrix": "schema design only",
+    "v4_readiness_matrix": "6 tables judged: 3 ready / 2 blocked_public_rpc / 1 blocked_missing_quote"
+  },
+
+  "phase_results": {
+    "A_workspace_safety": "PASS (HEAD=fa4e5e4; pre-existing dirty files unrelated)",
+    "B_input_evidence_audit": "PASS (14 upstream files from V3)",
+    "C_connector_script": "PASS (reusable script with --mode snapshot/quote-smoke/all; no Keypair; no sendTransaction; no wallet adapter)",
+    "D_known_pool_universe": "PASS (2 pools selected, full addresses from V3 artifact, 1 skipped not on mainnet)",
+    "E_pool_snapshot": "PASS (2/2 pools full LbPair decode via SDK; real on-chain state)",
+    "F_fee_snapshot": "PASS (2/2 pools base + max fee via SDK getFeeInfo)",
+    "G_bin_liquidity_attempt": "BLOCKED (0/2; 403 on public RPC; root cause documented)",
+    "H_quote_attempt": "BLOCKED (0/4; depends on bin_arrays; same root cause as G)",
+    "I_readiness_matrix": "PASS (6 tables judged; 3 ready / 2 blocked_public_rpc / 1 blocked_missing_quote)",
+    "J_next_stage_decision": "PASS (LP_METEORA_DLMM_QUOTE_BINARRAY_FIX_REPEAT selected)"
+  },
+
+  "can_run_probe_now": false,
+  "execution_allowed_now": false,
+  "transaction_sent": false,
+  "wallet_or_tx_touched": false,
+  "solana_wallet_or_keypair_touched": false,
+  "edge_proven": "no",
+  "tiny_canary_allowed": "no",
+  "manual_approval_required": true,
+  "send_hard_disable_still_active": true,
+
+  "v2_modified_by_this_task": false,
+  "v2_line_count_unchanged": true,
+  "v2_line_count": 992,
+
+  "structural_finding": "Meteora DLMM known-pool read-only connector V1 is built and functional. 2/2 known pools from official SDK examples are decoded via @meteora-ag/dlmm@1.9.10. Real on-chain state extracted: SOL/USDC (bin_step=2, active_bin=-12248, fee=0.02%/10%) and X/USDC (bin_step=100, active_bin=-236, fee=1.5%/10%). 3/6 tables ready (universe, pool_snapshot, fee_snapshot); 2/6 blocked on public RPC (bin_liquidity, quote — same root cause as V1 GPA: getMultipleAccounts for many accounts is 403/410 on public RPCs); 1/6 derived blocked (survival_ev). No keypair / signer / transaction / wallet adapter used; SDK install in /tmp isolated; repo node_modules NOT created. Recommended next stage: LP_METEORA_DLMM_QUOTE_BINARRAY_FIX_REPEAT (try single-account bin array path before falling back to paid RPC). can_run_probe_now=false; tiny_canary_allowed=no; v2 (lp_base_10u_probe_executor_v2.py) line count 992 unchanged.",
+
+  "allowed_next_stages": [
+    "LP_METEORA_DLMM_QUOTE_BINARRAY_FIX_REPEAT",
+    "LP_METEORA_DLMM_SURVIVAL_EV_PREVIEW_V1",
+    "LP_SOLANA_PAID_RPC_SETUP_REQUIRED",
+    "LP_METEORA_DLMM_KNOWN_POOL_CONNECTOR_FIX_REPEAT",
+    "STOP_LP_RESEARCH_NOW"
+  ],
+  "recommended_next_stage": "LP_METEORA_DLMM_QUOTE_BINARRAY_FIX_REPEAT",
+  "default_when_no_explicit_choice": "LP_METEORA_DLMM_QUOTE_BINARRAY_FIX_REPEAT"
+}

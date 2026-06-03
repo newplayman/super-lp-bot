@@ -1,0 +1,4 @@
+pool_address,source,source_file,source_confidence,selected_for_snapshot,expected_owner_program,previous_smoke_status,invalid_reason
+5BKxfWMbmYBAEWvyPZS9esPducUba9GqyMjtLCfbaqyF,official_sdk_example,swap_quote.ts,high,yes,LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo,verified_v3,
+9DiruRpjnAnzhn6ts5HGLouHtJrT1JGsPbXNYCrFz2ad,official_sdk_example,fetch_lb_pair_lock_info.ts,high,yes,LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo,verified_v3,
+3W2HKgUa96Z69zzG3LK1g8KdcRAWzAttiLiHfYnKuPw5,official_sdk_example,example.ts,high,no,LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo,skipped_not_on_mainnet,getAccountInfo returned null on mainnet; pool from example.ts is not currently deployed; do not use in smoke (V3 honest finding; spec forbids memory-only pool hardcode)

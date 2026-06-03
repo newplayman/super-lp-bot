@@ -1,0 +1,28 @@
+[
+  {
+    "pool_address": "5BKxfWMbmYBAEWvyPZS9esPducUba9GqyMjtLCfbaqyF",
+    "active_bin_id": -12248,
+    "bin_array_attempted": true,
+    "bin_array_success": false,
+    "bin_count": 0,
+    "total_x_amount": null,
+    "total_y_amount": null,
+    "blocker": "403 Forbidden: {\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32602,\"message\":\"Request blocked. Details: blocked parameter: params.0.#\"},\"id\":\"06eb5b26-c954-4efe-873a-b0743851625e\"}",
+    "rpc_error_type": "rpc_403_forbidden",
+    "confidence": 0,
+    "latency_ms": 6726
+  },
+  {
+    "pool_address": "9DiruRpjnAnzhn6ts5HGLouHtJrT1JGsPbXNYCrFz2ad",
+    "active_bin_id": -236,
+    "bin_array_attempted": true,
+    "bin_array_success": false,
+    "bin_count": 0,
+    "total_x_amount": null,
+    "total_y_amount": null,
+    "blocker": "403 Forbidden: {\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32602,\"message\":\"Request blocked. Details: blocked parameter: params.0.#\"},\"id\":\"ea89047a-a78d-4807-80cf-14dd6b8e3176\"}",
+    "rpc_error_type": "rpc_403_forbidden",
+    "confidence": 0,
+    "latency_ms": 6935
+  }
+]

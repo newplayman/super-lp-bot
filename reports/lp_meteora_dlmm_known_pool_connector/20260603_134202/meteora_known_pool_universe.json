@@ -1,0 +1,67 @@
+{
+  "stage": "LP_METEORA_DLMM_KNOWN_POOL_READONLY_CONNECTOR_V1",
+  "run_id": "20260603_134202",
+  "phase": "D_known_pool_universe_materialization",
+
+  "policy": {
+    "pools_must_be_from_official_source": true,
+    "all_addresses_loaded_from_v3_artifact": true,
+    "no_fabrication": true
+  },
+
+  "pools": [
+    {
+      "pool_address": "5BKxfWMbmYBAEWvyPZS9esPducUba9GqyMjtLCfbaqyF",
+      "source": "official_sdk_example",
+      "source_file": "swap_quote.ts",
+      "source_url": "https://raw.githubusercontent.com/MeteoraAg/dlmm-sdk/main/ts-client/src/examples/swap_quote.ts",
+      "source_confidence": "high",
+      "selected_for_snapshot": true,
+      "expected_owner_program": "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo",
+      "previous_smoke_status": "verified_v3 (full LbPair decode succeeded)",
+      "invalid_reason": ""
+    },
+    {
+      "pool_address": "9DiruRpjnAnzhn6ts5HGLouHtJrT1JGsPbXNYCrFz2ad",
+      "source": "official_sdk_example",
+      "source_file": "fetch_lb_pair_lock_info.ts",
+      "source_url": "https://raw.githubusercontent.com/MeteoraAg/dlmm-sdk/main/ts-client/src/examples/fetch_lb_pair_lock_info.ts",
+      "source_confidence": "high",
+      "selected_for_snapshot": true,
+      "expected_owner_program": "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo",
+      "previous_smoke_status": "verified_v3 (full LbPair decode succeeded)",
+      "invalid_reason": ""
+    },
+    {
+      "pool_address": "3W2HKgUa96Z69zzG3LK1g8KdcRAWzAttiLiHfYnKuPw5",
+      "source": "official_sdk_example",
+      "source_file": "example.ts",
+      "source_url": "https://raw.githubusercontent.com/MeteoraAg/dlmm-sdk/main/ts-client/src/examples/example.ts",
+      "source_confidence": "high",
+      "selected_for_snapshot": false,
+      "expected_owner_program": "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo",
+      "previous_smoke_status": "skipped_not_on_mainnet",
+      "invalid_reason": "getAccountInfo returned null on mainnet; pool from example.ts is not currently deployed; do not use in smoke (V3 honest finding; spec forbids memory-only pool hardcode)"
+    }
+  ],
+
+  "selected_count": 2,
+  "verified_count": 2,
+  "skipped_count": 1,
+
+  "this_stage_does_not": [
+    "fabricate any pool address",
+    "use memory-only pool list",
+    "include pool without official source",
+    "select pool that is not on mainnet",
+    "modify any production table",
+    "modify EVM executor v2",
+    "release v2 hard-disable"
+  ],
+
+  "solana_wallet_or_keypair_touched": false,
+  "can_run_probe_now": false,
+  "v2_line_count_unchanged": true,
+
+  "next_stage": "Stage E: pool snapshot materialization"
+}

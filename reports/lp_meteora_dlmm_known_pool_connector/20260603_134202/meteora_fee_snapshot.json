@@ -1,0 +1,22 @@
+[
+  {
+    "pool_address": "5BKxfWMbmYBAEWvyPZS9esPducUba9GqyMjtLCfbaqyF",
+    "base_fee_bps": "0.02",
+    "max_fee_bps": "10",
+    "protocol_fee_bps": null,
+    "fee_info_available": true,
+    "source_method": "dlmmPool.getFeeInfo()",
+    "confidence": 0.95,
+    "invalid_reason": ""
+  },
+  {
+    "pool_address": "9DiruRpjnAnzhn6ts5HGLouHtJrT1JGsPbXNYCrFz2ad",
+    "base_fee_bps": "1.5",
+    "max_fee_bps": "10",
+    "protocol_fee_bps": null,
+    "fee_info_available": true,
+    "source_method": "dlmmPool.getFeeInfo()",
+    "confidence": 0.95,
+    "invalid_reason": ""
+  }
+]

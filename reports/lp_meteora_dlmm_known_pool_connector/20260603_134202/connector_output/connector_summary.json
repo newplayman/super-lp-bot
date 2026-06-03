@@ -1,0 +1,35 @@
+{
+  "run_id": "20260603_134202",
+  "stage": "LP_METEORA_DLMM_KNOWN_POOL_READONLY_CONNECTOR_V1",
+  "rpc_url_redacted_source": "<redacted_public_mainnet_beta_solana_com>",
+  "sdk_package": "@meteora-ag/dlmm",
+  "sdk_package_version": "1.9.10",
+  "cluster": "mainnet-beta",
+  "mode": "all",
+  "pools_attempted": 2,
+  "pools": [
+    {
+      "pool_address": "5BKxfWMbmYBAEWvyPZS9esPducUba9GqyMjtLCfbaqyF",
+      "decode_status": "ok"
+    },
+    {
+      "pool_address": "9DiruRpjnAnzhn6ts5HGLouHtJrT1JGsPbXNYCrFz2ad",
+      "decode_status": "ok"
+    }
+  ],
+  "timestamp_utc": "2026-06-03T13:45:53.833Z",
+  "solana_wallet_or_keypair_touched": false,
+  "transaction_sent": false,
+  "signer_used": false,
+  "wallet_adapter_used": false,
+  "swap_transaction_built": false,
+  "open_lp_called": false,
+  "close_lp_called": false,
+  "collect_fee_called": false,
+  "bridge_called": false,
+  "pool_snapshot_success_count": 2,
+  "fee_snapshot_success_count": 2,
+  "bin_liquidity_snapshot_success_count": 0,
+  "quote_snapshot_success_count": 0,
+  "quote_snapshot_attempted_count": 4
+}
