@@ -1,0 +1,89 @@
+{
+  "stage": "LP_SOLANA_READONLY_RPC_AND_REGISTRY_V1",
+  "run_id": "20260603_084054",
+  "phase": "G_token_and_quote_reference_design",
+
+  "principles": [
+    "read-only only",
+    "no swap / no bridge / no transaction",
+    "no sendTransaction / no keypair / no sign",
+    "Jupiter Quote API used for price reference only, not swap"
+  ],
+
+  "token_quote_dimensions": {
+    "spl_token_metadata_source": {
+      "method": "getAccountInfo(mint) + check owner == TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+      "read_only": true,
+      "v1_status": "ready (design only)"
+    },
+    "decimals_source": {
+      "method": "getAccountInfo(mint) + parse [44] byte",
+      "v1_status": "ready (design only)",
+      "common_decimals": {"USDC": 6, "USDT": 6, "wSOL": 9, "cbBTC": 8}
+    },
+    "jupiter_quote_api": {
+      "endpoint": "https://quote-api.jup.ag/v6/quote",
+      "method": "GET only (no POST; no /swap)",
+      "rate_limit": "10 req/s unauth",
+      "cache_ttl_seconds": 30,
+      "v1_status": "ready (design only)"
+    },
+    "token_account_balance_source": {
+      "method": "getTokenAccountBalance(ata_pda) or getAccountInfo(ata, encoding=jsonParsed)",
+      "ata_derivation": "Pubkey.findProgramAddress([wallet, TOKEN_PROGRAM_ID, mint], ASSOCIATED_TOKEN_PROGRAM_ID)",
+      "v1_status": "ready (design only)"
+    },
+    "sol_usd_anchor": {
+      "method": "Jupiter quote(SOL_MINT, USDC_MINT, 1_000_000_000)",
+      "v1_status": "ready (design only)",
+      "refresh_seconds": 30
+    },
+    "usdc_usd_anchor": {
+      "method": "USDC = $1.00 assumption (stablecoin peg)",
+      "depeg_risk_pct": 0.5,
+      "v1_status": "ready (design only)"
+    },
+    "wrapped_sol_handling": {
+      "wSOL_mint": "So11111111111111111111111111111111111111112",
+      "v1_status": "read mint + decimals only; no wrap/unwrap"
+    },
+    "token_mint_registry": {
+      "format": "local JSONL (research-only)",
+      "initial_set": ["USDC", "USDT", "wSOL", "SOL", "cbBTC", "jitoSOL", "jupSOL"],
+      "v1_status": "ready (design only)"
+    },
+    "pool_token_pair_validation": {
+      "method": "per-pool check that pool_meta.token_a_mint or token_b_mint == expected_mint",
+      "v1_status": "ready (design only)"
+    }
+  },
+
+  "v1_implemented_methods": [],
+  "v1_designed_only_methods": [
+    "get_spl_token_metadata",
+    "get_decimals",
+    "jupiter_quote (GET)",
+    "get_ata_balance",
+    "get_sol_usd_price",
+    "validate_pool_tokens"
+  ],
+
+  "this_stage_does_not": [
+    "call Jupiter /swap endpoint",
+    "wrap / unwrap SOL",
+    "call sendTransaction",
+    "read wallet (only pubkey for ATA derivation)",
+    "construct transaction",
+    "load keypair / private key / seed phrase"
+  ],
+
+  "known_dependencies": [
+    "Jupiter rate limit (cache required)",
+    "Metaplex Token Metadata (complex; v1 may skip)",
+    "Token-2022 (Token Extensions) - v1 not supported",
+    "USDC depeg risk (negligible for 10/20U)"
+  ],
+
+  "solana_wallet_or_keypair_touched": false,
+  "can_run_probe_now": false
+}

@@ -1,0 +1,39 @@
+{
+  "stage": "LP_SOLANA_READONLY_RPC_AND_REGISTRY_V1",
+  "run_id": "20260603_084054",
+  "phase": "E_program_id_verification",
+
+  "verification_run": true,
+  "verified_count": 0,
+  "not_provided_count": 6,
+  "system_program_sanity_check": {
+    "program_id": "11111111111111111111111111111111",
+    "source": "well-known public constant (Solana System Program)",
+    "verification_status": "verified",
+    "verified_in_stage_c": true,
+    "note": "this is not a hard-coded AMM program id; it is a public constant used only for sanity-checking the on-chain verify path"
+  },
+
+  "reason_for_zero_verified": "registry seed (Stage D) has no program_id for any of the 6 protocols (per spec no-hard-code policy); on-chain verification cannot run without external program id source",
+
+  "results": [
+    {"protocol": "Meteora DLMM", "program_id": null, "verification_status": "not_provided_to_this_stage", "confidence": 0.0, "invalid_reason": "registry_seed has no program_id"},
+    {"protocol": "Meteora DAMM v2", "program_id": null, "verification_status": "not_provided_to_this_stage", "confidence": 0.0, "invalid_reason": "registry_seed has no program_id"},
+    {"protocol": "Orca Whirlpools", "program_id": null, "verification_status": "not_provided_to_this_stage", "confidence": 0.0, "invalid_reason": "registry_seed has no program_id"},
+    {"protocol": "Raydium CLMM", "program_id": null, "verification_status": "not_provided_to_this_stage", "confidence": 0.0, "invalid_reason": "registry_seed has no program_id; smoke-only this phase"},
+    {"protocol": "Raydium CPMM", "program_id": null, "verification_status": "not_provided_to_this_stage", "confidence": 0.0, "invalid_reason": "registry_seed has no program_id; smoke-only this phase"},
+    {"protocol": "Lifinity", "program_id": null, "verification_status": "not_provided_to_this_stage", "confidence": 0.0, "invalid_reason": "out of scope v1"}
+  ],
+
+  "this_stage_does_not": [
+    "webfetch external docs",
+    "extract program id from SDK source",
+    "hard-code any protocol program id",
+    "run getAccountInfo on any protocol program id (none provided)"
+  ],
+
+  "next_stage_implication": "verification_count=0 + program_id registry incomplete => must enter LP_SOLANA_RPC_REGISTRY_FIX_REPEAT (per spec next stage table)",
+
+  "solana_wallet_or_keypair_touched": false,
+  "can_run_probe_now": false
+}

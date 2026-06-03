@@ -1,0 +1,7 @@
+protocol,priority,expected_program_id,program_id_source,registry_confidence,must_verify_onchain,selected_for_this_phase,invalid_reason
+Meteora DLMM,P0,,official_doc_required,0.3,True,True,program id not hard-coded; must be obtained via official Meteora docs or on-chain getAccountInfo probe (Stage E)
+Meteora DAMM v2,P1,,official_doc_required,0.3,True,True,program id not hard-coded; must be obtained via official Meteora docs or on-chain getAccountInfo probe
+Orca Whirlpools,P1,,official_doc_required,0.3,True,True,program id not hard-coded; must be obtained via official Orca docs or on-chain probe
+Raydium CLMM,P2,,official_doc_required,0.3,True,True,program id not hard-coded; smoke-only this phase
+Raydium CPMM,P2,,official_doc_required,0.3,True,True,program id not hard-coded; smoke-only this phase
+Lifinity,P2,,sdk_required,0.1,True,False,out of scope v1; Lifinity SDK public material limited; skip in this phase

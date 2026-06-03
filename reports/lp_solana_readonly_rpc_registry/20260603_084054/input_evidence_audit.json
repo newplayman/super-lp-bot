@@ -1,0 +1,106 @@
+{
+  "stage": "LP_SOLANA_READONLY_RPC_AND_REGISTRY_V1",
+  "run_id": "20260603_084054",
+  "branch": "feat/supabase-postgres-deployment",
+  "head_before": "bf92f4c",
+
+  "upstream_files_audited": [
+    "reports/lp_solana_connector_design/20260603_080347/FINAL_VERDICT.json",
+    "reports/lp_solana_connector_design/20260603_080347/ONEPAGE_CN.md",
+    "reports/lp_solana_connector_design/20260603_080347/SOLANA_LP PROTOCOL_TARGET_MATRIX_CN.md",
+    "reports/lp_solana_connector_design/20260603_080347/solana_lp_protocol_target_matrix.json",
+    "reports/lp_solana_connector_design/20260603_080347/SOLANA_DATA_SOURCE_FEASIBILITY_CN.md",
+    "reports/lp_solana_connector_design/20260603_080347/solana_data_source_feasibility.json",
+    "reports/lp_solana_connector_design/20260603_080347/METEORA_DLMM_CONNECTOR_DESIGN_CN.md",
+    "reports/lp_solana_connector_design/20260603_080347/meteora_dlmm_connector_design.json",
+    "reports/lp_solana_connector_design/20260603_080347/ORCA_WHIRLPOOL_CONNECTOR_DESIGN_CN.md",
+    "reports/lp_solana_connector_design/20260603_080347/orca_whirlpool_connector_design.json",
+    "reports/lp_solana_connector_design/20260603_080347/RAYDIUM_CONNECTOR_DESIGN_CN.md",
+    "reports/lp_solana_connector_design/20260603_080347/raydium_connector_design.json",
+    "reports/lp_solana_connector_design/20260603_080347/SOLANA_CONNECTOR_IMPLEMENTATION_ROADMAP_CN.md",
+    "reports/lp_solana_connector_design/20260603_080347/solana_connector_implementation_roadmap.json"
+  ],
+  "missing_files": [],
+
+  "key_findings": {
+    "previous_stage": "LP_SOLANA_LP_CONNECTOR_DESIGN_V1",
+    "previous_status": "PASS",
+    "previous_run_id": "20260603_080347",
+    "previous_commit": "bf92f4c",
+    "recommended_next_stage_from_upstream": "LP_SOLANA_READONLY_RPC_AND_REGISTRY_V1",
+    "implementation_status": "phase_1_pending",
+    "evm_v3_path_paused": true,
+    "solana_connector_design_complete": true,
+    "target_protocol_count": 6,
+    "p0_protocol": "Meteora DLMM",
+    "p1_protocols": ["Orca Whirlpools", "Meteora DAMM v2"],
+    "p2_protocols": ["Raydium CLMM", "Raydium CPMM", "Lifinity"],
+    "can_run_probe_now": false,
+    "solana_wallet_or_keypair_touched": false,
+    "tiny_canary_allowed": "no",
+    "edge_proven": "no",
+    "send_hard_disable_still_active": true
+  },
+
+  "this_stage_objectives": [
+    "implement Solana read-only RPC readiness script",
+    "verify 6 protocol program ids (with redaction + verification status)",
+    "smoke-test getProgramAccounts feasibility per protocol (bounded)",
+    "design token / quote reference sources (read-only)",
+    "assess P0 Meteora DLMM and P1 Orca + DAMM v2 readiness",
+    "decide next stage (connector / fix / setup / stop)"
+  ],
+
+  "this_stage_does_not": [
+    "implement real LP connector",
+    "load any keypair / private key / seed phrase / wallet adapter",
+    "construct any transaction",
+    "call sendTransaction or any signing method",
+    "swap / open LP / close LP / collect fee / bridge",
+    "start live/canary/paper",
+    "write production positions",
+    "overwrite shadow tables",
+    "modify EVM executor v2",
+    "release v2 hard-disable"
+  ],
+
+  "rpc_sources": {
+    "env_vars": ["SOLANA_RPC_URL", "SOLANA_RPC_PRIMARY", "LPBOT_SOLANA_RPC_URL"],
+    "env_vars_rpc_only_never_print": ["HELIUS_RPC_URL", "QUICKNODE_SOLANA_RPC_URL"],
+    "public_fallback": [
+      "<redacted_public_mainnet_beta_solana_com>",
+      "<redacted_public_publicnode_com>"
+    ],
+    "note": "Full URLs redacted from this artifact per spec '不得打印完整 RPC URL'; verified via Stage C host_hash"
+  },
+
+  "rpc_methods_to_check": [
+    "getHealth", "getVersion", "getSlot", "getBlockHeight",
+    "getLatestBlockhash", "getEpochInfo", "getGenesisHash",
+    "getAccountInfo"
+  ],
+
+  "rpc_url_redaction_policy": "print only endpoint_id + source_type + host_hash; never print full URL",
+
+  "known_gaps_from_upstream": [
+    "Meteora DLMM account layout not fully public",
+    "Orca Whirlpools tick array layout bit offsets need empirical test",
+    "Jupiter Quote API rate limited; v1 should fall back",
+    "Meteora DAMM v2 2025 launch; account layout newer",
+    "Lifinity public material limited; out of scope v1"
+  ],
+
+  "safety_locks_intact": {
+    "can_run_probe_now": false,
+    "execution_allowed_now": false,
+    "tiny_canary_allowed": "no",
+    "edge_proven": "no",
+    "wallet_or_tx_touched": false,
+    "solana_wallet_or_keypair_touched": false,
+    "transaction_sent": false,
+    "manual_approval_required": true,
+    "send_hard_disable_still_active": true,
+    "v2_modified_by_this_task": false,
+    "v2_line_count_unchanged": true
+  }
+}

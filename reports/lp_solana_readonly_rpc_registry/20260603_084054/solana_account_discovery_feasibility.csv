@@ -1,0 +1,8 @@
+protocol,program_id,gpa_attempted,gpa_success,filter_strategy,data_slice_strategy,returned_count_sample,rate_limit_seen,needs_paid_rpc,needs_sdk_decoder,confidence,blocker
+Meteora DLMM,,no,n/a,dataSize + dataSlice,dataSlice { offset:0 length:0 },n/a,n/a,unknown,unknown,0.0,program_id missing
+Meteora DAMM v2,,no,n/a,dataSize + dataSlice,dataSlice { offset:0 length:0 },n/a,n/a,unknown,unknown,0.0,program_id missing
+Orca Whirlpools,,no,n/a,dataSize + dataSlice,dataSlice { offset:0 length:0 },n/a,n/a,unknown,unknown,0.0,program_id missing
+Raydium CLMM,,no,n/a,dataSize + dataSlice,dataSlice { offset:0 length:0 },n/a,n/a,unknown,unknown,0.0,program_id missing
+Raydium CPMM,,no,n/a,dataSize + dataSlice,dataSlice { offset:0 length:0 },n/a,n/a,unknown,unknown,0.0,program_id missing
+Lifinity,,no,n/a,n/a,n/a,n/a,n/a,n/a,n/a,0.0,out of scope v1
+System Program (path sanity),11111111111111111111111111111111,yes,yes,dataSize + dataSlice,dataSlice { offset:0 length:0 },0,no,no,no,0.8,this is a public constant used only for sanity-checking the on-chain verify path

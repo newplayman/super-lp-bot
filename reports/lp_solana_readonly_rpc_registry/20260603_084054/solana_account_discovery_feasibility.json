@@ -1,0 +1,53 @@
+{
+  "stage": "LP_SOLANA_READONLY_RPC_AND_REGISTRY_V1",
+  "run_id": "20260603_084054",
+  "phase": "F_account_discovery_feasibility",
+
+  "gpa_smoke_attempted_count": 1,
+  "gpa_smoke_success_count": 1,
+  "gpa_smoke_skipped_count": 6,
+  "reason_for_skipped": "registry seed has no program_id (per spec no-hard-code policy); on-chain GPA cannot run without external program id source",
+
+  "gpa_path_sanity_check": {
+    "target_program": "11111111111111111111111111111111",
+    "source": "well-known public constant (Solana System Program)",
+    "dataSlice": {"offset": 0, "length": 0},
+    "attempted": true,
+    "success": true,
+    "returned_count_sample": 0,
+    "rate_limit_seen": "no",
+    "needs_paid_rpc": "no",
+    "needs_sdk_decoder": "no",
+    "confidence": 0.8,
+    "note": "this is only a sanity check; not a real protocol smoke"
+  },
+
+  "per_protocol_results": [
+    {"protocol": "Meteora DLMM", "program_id": null, "gpa_attempted": false, "gpa_success": false, "filter_strategy": "dataSize + dataSlice", "data_slice_strategy": "dataSlice: { offset: 0, length: 0 }", "returned_count_sample": null, "rate_limit_seen": "n/a", "needs_paid_rpc": "unknown", "needs_sdk_decoder": "unknown", "confidence": 0.0, "blocker": "program_id missing"},
+    {"protocol": "Meteora DAMM v2", "program_id": null, "gpa_attempted": false, "gpa_success": false, "filter_strategy": "dataSize + dataSlice", "data_slice_strategy": "dataSlice: { offset: 0, length: 0 }", "returned_count_sample": null, "rate_limit_seen": "n/a", "needs_paid_rpc": "unknown", "needs_sdk_decoder": "unknown", "confidence": 0.0, "blocker": "program_id missing"},
+    {"protocol": "Orca Whirlpools", "program_id": null, "gpa_attempted": false, "gpa_success": false, "filter_strategy": "dataSize + dataSlice", "data_slice_strategy": "dataSlice: { offset: 0, length: 0 }", "returned_count_sample": null, "rate_limit_seen": "n/a", "needs_paid_rpc": "unknown", "needs_sdk_decoder": "unknown", "confidence": 0.0, "blocker": "program_id missing"},
+    {"protocol": "Raydium CLMM", "program_id": null, "gpa_attempted": false, "gpa_success": false, "filter_strategy": "dataSize + dataSlice", "data_slice_strategy": "dataSlice: { offset: 0, length: 0 }", "returned_count_sample": null, "rate_limit_seen": "n/a", "needs_paid_rpc": "unknown", "needs_sdk_decoder": "unknown", "confidence": 0.0, "blocker": "program_id missing; smoke-only this phase"},
+    {"protocol": "Raydium CPMM", "program_id": null, "gpa_attempted": false, "gpa_success": false, "filter_strategy": "dataSize + dataSlice", "data_slice_strategy": "dataSlice: { offset: 0, length: 0 }", "returned_count_sample": null, "rate_limit_seen": "n/a", "needs_paid_rpc": "unknown", "needs_sdk_decoder": "unknown", "confidence": 0.0, "blocker": "program_id missing; smoke-only this phase"},
+    {"protocol": "Lifinity", "program_id": null, "gpa_attempted": false, "gpa_success": false, "filter_strategy": "n/a", "data_slice_strategy": "n/a", "returned_count_sample": null, "rate_limit_seen": "n/a", "needs_paid_rpc": "n/a", "needs_sdk_decoder": "n/a", "confidence": 0.0, "blocker": "out of scope v1"}
+  ],
+
+  "gpa_limits": {
+    "dataSlice": "0 bytes data, only count",
+    "timeout_seconds": 8.0,
+    "no_unbounded_scan": true,
+    "no_retry_on_rate_limit": true
+  },
+
+  "this_stage_does_not": [
+    "run getProgramAccounts on any protocol (no pid)",
+    "unbounded scan",
+    "retry on rate limit",
+    "hard-code program id",
+    "webfetch external docs (留 fix_repeat)"
+  ],
+
+  "next_stage_implication": "gpa count=0 + program_id registry incomplete => LP_SOLANA_RPC_REGISTRY_FIX_REPEAT per spec",
+
+  "solana_wallet_or_keypair_touched": false,
+  "can_run_probe_now": false
+}

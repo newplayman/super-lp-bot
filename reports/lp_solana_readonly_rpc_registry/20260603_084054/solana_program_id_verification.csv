@@ -1,0 +1,8 @@
+protocol,program_id,account_exists,executable,owner,data_len,verification_status,confidence,invalid_reason
+Meteora DLMM,,n/a,n/a,n/a,n/a,not_provided_to_this_stage,0.0,registry_seed has no program_id (per spec no-hard-code policy); cannot run on-chain verify without external source
+Meteora DAMM v2,,n/a,n/a,n/a,n/a,not_provided_to_this_stage,0.0,registry_seed has no program_id (per spec no-hard-code policy); cannot run on-chain verify without external source
+Orca Whirlpools,,n/a,n/a,n/a,n/a,not_provided_to_this_stage,0.0,registry_seed has no program_id (per spec no-hard-code policy); cannot run on-chain verify without external source
+Raydium CLMM,,n/a,n/a,n/a,n/a,not_provided_to_this_stage,0.0,registry_seed has no program_id; smoke-only this phase
+Raydium CPMM,,n/a,n/a,n/a,n/a,not_provided_to_this_stage,0.0,registry_seed has no program_id; smoke-only this phase
+Lifinity,,n/a,n/a,n/a,n/a,not_provided_to_this_stage,0.0,out of scope v1
+System Program (sanity),11111111111111111111111111111111,verified (per Stage C),true,verified,verified,verified,0.95,this is a public constant, verified via Stage C

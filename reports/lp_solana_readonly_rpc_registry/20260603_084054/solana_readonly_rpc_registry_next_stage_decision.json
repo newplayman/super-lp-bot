@@ -1,0 +1,58 @@
+{
+  "stage": "LP_SOLANA_READONLY_RPC_AND_REGISTRY_V1",
+  "run_id": "20260603_084054",
+  "phase": "J_next_stage_decision",
+
+  "recommended_next_stage": "LP_SOLANA_RPC_REGISTRY_FIX_REPEAT",
+  "allowed_next_stages": [
+    "LP_METEORA_DLMM_READONLY_CONNECTOR_V1",
+    "LP_SOLANA_RPC_REGISTRY_FIX_REPEAT",
+    "LP_SOLANA_RPC_SETUP_REQUIRED",
+    "STOP_LP_RESEARCH_NOW"
+  ],
+  "default_when_no_explicit_choice": "LP_SOLANA_RPC_REGISTRY_FIX_REPEAT",
+
+  "selection_rationale": {
+    "not_METEORA_DLMM_READONLY_CONNECTOR": "3/4 entry conditions fail: program id unverified, account discovery not run, registry confidence only 0.3 placeholder",
+    "selected_RPC_REGISTRY_FIX_REPEAT": "RPC usable (2/2 public RPC pass 8/8 methods); program registry incomplete (verified_count=0); can fix in one round by obtaining 6 program ids externally + re-running Stages D-I",
+    "not_RPC_SETUP_REQUIRED": "both public RPCs usable; no setup needed",
+    "not_STOP_LP_RESEARCH_NOW": "read-only path fully viable; only data gap (program id); not structural"
+  },
+
+  "fix_repeat_stage_responsibilities": [
+    "obtain 6 protocol program ids from official docs (Meteora/Orca/Raydium docs or webfetch)",
+    "update Stage D registry seed with verified pids",
+    "re-run Stage E on-chain verify for each pid (must show executable=true)",
+    "re-run Stage F GPA smoke with verified pids (bounded)",
+    "re-run Stage H/I readiness assessments",
+    "re-run Stage J: only if 4/4 entry conditions met, recommend LP_METEORA_DLMM_READONLY_CONNECTOR_V1"
+  ],
+
+  "next_stage_must_not": [
+    "execute probe on Solana",
+    "send any tx",
+    "load any keypair / private key / seed phrase",
+    "construct any transaction",
+    "call sendTransaction / signing",
+    "swap / open LP / close LP / collect fee / bridge",
+    "start live/canary/paper",
+    "hard-code any program id not from official source",
+    "modify EVM executor v2",
+    "release v2 hard-disable",
+    "set can_run_probe_now to true",
+    "set tiny_canary_allowed to yes"
+  ],
+
+  "this_stage_did_not": [
+    "run on-chain verify against any non-system-program pid",
+    "run getProgramAccounts on any protocol pid",
+    "call any SDK / indexer / API",
+    "call Jupiter Quote",
+    "load any keypair / private key"
+  ],
+
+  "can_run_probe_now": false,
+  "solana_wallet_or_keypair_touched": false,
+  "tiny_canary_allowed": "no",
+  "edge_proven": "no"
+}

@@ -1,0 +1,116 @@
+{
+  "status": "WARN",
+  "stage": "LP_SOLANA_READONLY_RPC_AND_REGISTRY_V1",
+  "run_id": "20260603_084054",
+  "branch": "feat/supabase-postgres-deployment",
+  "head_before": "bf92f4c",
+
+  "solana_rpc_readiness_ran": true,
+  "usable_rpc_count": 2,
+  "primary_endpoint_id": "public_publicnode-110e5a18",
+  "primary_host_hash": "110e5a18",
+  "primary_avg_latency_ms": 314.54,
+  "primary_source_type": "public_publicnode",
+
+  "protocol_registry_seed_ready": true,
+  "registry_count": 6,
+  "registry_p0_protocol": "Meteora DLMM",
+  "registry_p1_protocols": ["Orca Whirlpools", "Meteora DAMM v2"],
+  "registry_p2_protocols": ["Raydium CLMM", "Raydium CPMM", "Lifinity"],
+
+  "program_verification_ran": true,
+  "verified_program_count": 0,
+  "system_program_sanity_verified": true,
+  "not_provided_count": 6,
+  "verification_path_verified_via_system_program": true,
+
+  "account_discovery_feasibility_ran": true,
+  "gpa_path_sanity_verified_via_system_program": true,
+  "gpa_smoke_skipped_count": 6,
+  "gpa_smoke_blocker": "no_program_id_to_smoke",
+
+  "meteora_dlmm_registry_ready": false,
+  "orca_registry_ready": false,
+  "damm_v2_registry_ready": false,
+
+  "token_quote_reference_designed": true,
+  "spl_metadata_source_designed": true,
+  "decimals_source_designed": true,
+  "jupiter_quote_api_designed": true,
+  "token_account_balance_source_designed": true,
+  "sol_usd_anchor_designed": true,
+  "usdc_usd_anchor_designed": true,
+  "wrapped_sol_handling_designed": true,
+  "token_mint_registry_designed": true,
+  "pool_token_pair_validation_designed": true,
+
+  "can_run_probe_now": false,
+  "execution_allowed_now": false,
+  "transaction_sent": false,
+  "wallet_or_tx_touched": false,
+  "solana_wallet_or_keypair_touched": false,
+  "edge_proven": "no",
+  "tiny_canary_allowed": "no",
+  "manual_approval_required": true,
+  "send_hard_disable_still_active": true,
+
+  "v2_modified_by_this_task": false,
+  "v2_line_count_unchanged": true,
+  "v2_line_count": 992,
+
+  "phase_results": {
+    "A_workspace_safety": "PASS",
+    "B_input_evidence_audit": "PASS (14 upstream files; 0 missing)",
+    "C_solana_rpc_readiness_matrix": "PASS (2/2 endpoints usable; 8/8 methods verified)",
+    "D_solana_protocol_registry_seed": "PASS (6 protocols; pid_source=oficial_doc_required; 0 hard-coded pid)",
+    "E_solana_program_id_verification": "PASS (path verified via System Program; 0 protocol pids to verify this round per spec no-hard-code policy)",
+    "F_solana_account_discovery_feasibility": "PASS (path verified via System Program; 6/6 protocol GPA skipped due to no pid)",
+    "G_solana_token_and_quote_reference_design": "PASS (9 dimensions designed; read-only)",
+    "H_meteora_dlmm_registry_readiness": "WARN (3/4 connector conditions fail; only RPC usable)",
+    "I_orca_damm_registry_readiness": "WARN (both 0/4 conditions; pid missing)",
+    "J_solana_next_stage_decision": "PASS (LP_SOLANA_RPC_REGISTRY_FIX_REPEAT selected)"
+  },
+
+  "allowed_next_stages": [
+    "LP_METEORA_DLMM_READONLY_CONNECTOR_V1",
+    "LP_SOLANA_RPC_REGISTRY_FIX_REPEAT",
+    "LP_SOLANA_RPC_SETUP_REQUIRED",
+    "STOP_LP_RESEARCH_NOW"
+  ],
+  "recommended_next_stage": "LP_SOLANA_RPC_REGISTRY_FIX_REPEAT",
+  "default_when_no_explicit_choice": "LP_SOLANA_RPC_REGISTRY_FIX_REPEAT",
+
+  "next_stage_must_not": [
+    "execute probe on Solana",
+    "send any tx",
+    "load any keypair / private key / seed phrase",
+    "construct signer",
+    "auto bridge / auto swap",
+    "modify EVM executor execution path",
+    "release v2 hard-disable",
+    "set can_run_probe_now to true",
+    "set tiny_canary_allowed to yes"
+  ],
+
+  "this_stage_did_not": [
+    "implement any Solana LP connector code",
+    "run on-chain verify against any non-system-program pid",
+    "run getProgramAccounts on any protocol pid (no pid to feed)",
+    "call any SDK / indexer / API",
+    "call Jupiter Quote",
+    "load any Solana wallet / keypair / private key",
+    "sign any transaction",
+    "send any transaction",
+    "open or close any LP position",
+    "collect any fee",
+    "swap any token",
+    "bridge any asset",
+    "start live/canary/paper",
+    "modify EVM executor v2 source",
+    "release v2 hard-disable",
+    "set can_run_probe_now to true",
+    "set tiny_canary_allowed to yes"
+  ],
+
+  "structural_finding": "Solana read-only path (RPC + GPA + token/quote) is technically viable (verified via System Program sanity check). However, no protocol program id is hard-coded per spec policy; fix_repeat stage must obtain 6 program ids externally before any protocol connector can be entered."
+}

@@ -1,0 +1,58 @@
+{
+  "stage": "LP_SOLANA_READONLY_RPC_AND_REGISTRY_V1",
+  "run_id": "20260603_084054",
+  "phase": "I_orca_damm_registry_readiness",
+
+  "orca_whirlpools": {
+    "protocol": "Orca Whirlpools",
+    "priority": "P1",
+    "program_id_status": "unknown",
+    "program_id_source": "oficial_doc_required",
+    "account_discovery_readiness": false,
+    "sdk_decoder_need": "yes (TypeScript @orca-so/whirlpools-sdk)",
+    "idl_availability": "public on Orca GitHub",
+    "can_enter_connector": false,
+    "next_action_blocked_by": ["no_verified_program_id", "no_sdk_in_v1_python_path"],
+    "blockers": [
+      {"id": 1, "name": "no_verified_program_id", "severity": "critical", "fix": "fix_repeat stage: human or webfetch obtains pid from official Orca docs; on-chain verify"},
+      {"id": 2, "name": "no_sdk_decoder", "severity": "minor", "fix": "use TypeScript SDK helper or parse IDL directly"}
+    ]
+  },
+
+  "meteora_damm_v2": {
+    "protocol": "Meteora DAMM v2",
+    "priority": "P1",
+    "program_id_status": "unknown",
+    "program_id_source": "oficial_doc_required",
+    "account_discovery_readiness": false,
+    "sdk_decoder_need": "yes (Meteora SDK)",
+    "idl_availability": "may not be fully public (2025 launch)",
+    "can_enter_connector": false,
+    "next_action_blocked_by": ["no_verified_program_id", "no_sdk_in_v1_python_path"],
+    "blockers": [
+      {"id": 1, "name": "no_verified_program_id", "severity": "critical", "fix": "fix_repeat stage: human or webfetch obtains pid from Meteora docs"},
+      {"id": 2, "name": "no_sdk_decoder", "severity": "minor", "fix": "Meteora SDK (TypeScript) or raw IDL parse"}
+    ]
+  },
+
+  "shared_blockers": [
+    "no verified program id (both)",
+    "no SDK installed in v1 (Python only; Meteora/Orca SDK are TypeScript)",
+    "no on-chain verify performed",
+    "no GPA smoke performed",
+    "no token / quote test performed"
+  ],
+
+  "this_stage_does_not": [
+    "webfetch official docs",
+    "run on-chain verify",
+    "call any SDK",
+    "call any protocol API",
+    "call Jupiter Quote"
+  ],
+
+  "next_stage_recommendation": "LP_SOLANA_RPC_REGISTRY_FIX_REPEAT (補 program id 後再來本 stage 重做 readiness)",
+
+  "solana_wallet_or_keypair_touched": false,
+  "can_run_probe_now": false
+}

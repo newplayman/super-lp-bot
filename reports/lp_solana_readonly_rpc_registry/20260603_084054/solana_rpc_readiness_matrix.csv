@@ -1,0 +1,3 @@
+endpoint_id,source_type,host_hash,health_ok,version_ok,slot_ok,blockheight_ok,latest_blockhash_ok,epochinfo_ok,genesishash_ok,accountinfo_ok,version_string,slot,block_height,epoch,avg_latency_ms,rate_limit_seen,usable_for_registry,usable_for_getProgramAccounts,confidence,invalid_reason
+public_mainnet_beta-d6092b5f,public_mainnet_beta,d6092b5f,True,True,True,True,True,True,True,True,4.0.0,423993091,402076480,981,339.62,no,True,likely,1.0,
+public_publicnode-110e5a18,public_publicnode,110e5a18,True,True,True,True,True,True,True,True,4.0.0,423993130,423993130,981,314.54,no,True,likely,1.0,

@@ -1,0 +1,56 @@
+{
+  "stage": "LP_SOLANA_READONLY_RPC_AND_REGISTRY_V1",
+  "run_id": "20260603_084054",
+  "phase": "H_meteora_dlmm_registry_readiness",
+
+  "protocol": "Meteora DLMM",
+
+  "readiness_answers": {
+    "Q1_verified_dlmm_program_id": false,
+    "Q2_can_read_program_account": "path_verified_via_system_program; DLMM_specific_blocked_by_no_pid",
+    "Q3_can_pool_discovery": false,
+    "Q4_needs_meteora_sdk": "yes (per upstream design)",
+    "Q5_needs_indexer_or_api": "maybe (dlmm-api.meteora.ag available; not yet wired)",
+    "Q6_can_enter_connector": false,
+    "Q7_main_blocker": "no_verified_program_id"
+  },
+
+  "readiness_summary": {
+    "rpc_usable": true,
+    "program_id_verified": false,
+    "pool_discovery_feasible": false,
+    "sdk_available": "partial_design_only",
+    "indexer_api_available": "partial_design_only",
+    "token_quote_reference": "partial_design_only",
+    "overall_readiness_for_connector": false,
+    "overall_confidence": 0.3
+  },
+
+  "connector_entry_conditions": {
+    "Solana_RPC_usable": true,
+    "Meteora_DLMM_program_verified_or_registry_confident": false,
+    "account_discovery_feasible_or_sdk_api_path_feasible": "sdk_design_only",
+    "conditions_satisfied": "1/4",
+    "can_enter_LP_METEORA_DLMM_READONLY_CONNECTOR_V1": false
+  },
+
+  "blockers": [
+    {"id": 1, "name": "no_verified_program_id", "severity": "critical", "fix": "fix_repeat stage: human or webfetch obtains pid from official Meteora docs; on-chain verify"},
+    {"id": 2, "name": "no_sdk_decoder", "severity": "minor", "fix": "wire Meteora SDK in connector stage or use raw IDL parser"},
+    {"id": 3, "name": "rpc_rate_limit", "severity": "minor", "fix": "cache + retry policy"}
+  ],
+
+  "this_stage_does_not": [
+    "webfetch Meteora docs",
+    "run on-chain verify (no pid)",
+    "run getProgramAccounts (no pid)",
+    "call Meteora SDK",
+    "call dlmm-api.meteora.ag",
+    "call Jupiter Quote"
+  ],
+
+  "next_stage_recommendation": "LP_SOLANA_RPC_REGISTRY_FIX_REPEAT (補 program id 後再來本 stage 重做 readiness)",
+
+  "solana_wallet_or_keypair_touched": false,
+  "can_run_probe_now": false
+}
