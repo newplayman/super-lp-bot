@@ -1,0 +1,59 @@
+{
+  "stage": "LP_BASE_10U_PROBE_MONITOR_FINALIZE_AND_GO_NOGO_V1",
+  "run_id": "20260603_040018",
+  "phase": "E_monitor_finalize_result",
+
+  "command": "python3 scripts/lp_base_10u_probe_readiness_monitor_v1.py --run-id 20260602_193517 --output-dir reports/lp_base_10u_probe_overnight_armed_runner/20260602_193517/monitor --finalize",
+  "exit_code": 0,
+  "side_effects": [
+    "rewrote final_monitor_summary.json",
+    "rewrote FINAL_MONITOR_SUMMARY_CN.md",
+    "rewrote readiness_timeseries.csv"
+  ],
+  "no_side_effects": [
+    "no transaction sent",
+    "no signer constructed",
+    "no monitor process started",
+    "no checkpoints modified"
+  ],
+
+  "summary": {
+    "total_checkpoints": 47,
+    "success_checkpoints": 47,
+    "failed_checkpoints": 0,
+    "market_safe_count": 0,
+    "market_unsafe_count": 47,
+    "tick_drift_min": -722,
+    "tick_drift_max": -318,
+    "gas_estimate_min_wei": 6000000,
+    "gas_estimate_max_wei": 14018528,
+    "allowance_status_last": 5000000,
+    "balance_status_last": 21774783,
+    "recommended_operator_action": "DO_NOT_EXECUTE_MARKET_UNSAFE",
+    "recommended_reason": "0 checkpoints reported market_safe=true",
+    "this_does_not_execute": true,
+    "can_run_probe_now": false,
+    "execution_allowed_now": false,
+    "tiny_canary_allowed": "no",
+    "send_hard_disable_active": true,
+    "hard_disable_still_active": true
+  },
+
+  "consistency_with_auto_finalize": {
+    "total_checkpoints": "identical",
+    "market_safe_count": "identical",
+    "tick_drift_min": "identical",
+    "tick_drift_max": "identical",
+    "gas_estimate_min_wei": "identical",
+    "gas_estimate_max_wei": "identical",
+    "allowance_status_last": "identical",
+    "balance_status_last": "identical",
+    "recommended_operator_action": "identical"
+  },
+
+  "typo_known": {
+    "file": "FINAL_MONITOR_SUMMARY_CN.md",
+    "issue": "market_safe_count line shows 47 instead of 0",
+    "authoritative_source": "final_monitor_summary.json"
+  }
+}

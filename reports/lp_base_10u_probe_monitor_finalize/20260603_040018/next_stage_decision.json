@@ -1,0 +1,48 @@
+{
+  "stage": "LP_BASE_10U_PROBE_MONITOR_FINALIZE_AND_GO_NOGO_V1",
+  "run_id": "20260603_040018",
+  "phase": "G_next_stage_decision",
+
+  "go_nogo": "NO_GO",
+  "recommended_next_stage": "LP_BASE_10U_PROBE_MARKET_UNSAFE_WAIT_V1",
+  "allowed_next_stages": [
+    "LP_BASE_10U_PROBE_FINAL_OPERATOR_AUTHORIZATION_REVIEW_V1",
+    "LP_BASE_10U_PROBE_REFRESH_DRY_RUN_V1",
+    "LP_BASE_10U_PROBE_MARKET_UNSAFE_WAIT_V1",
+    "STOP_LP_RESEARCH_NOW"
+  ],
+  "default_when_no_explicit_choice": "LP_BASE_10U_PROBE_MARKET_UNSAFE_WAIT_V1",
+
+  "selection_rationale": {
+    "not_FINAL_OPERATOR_AUTHORIZATION_REVIEW_V1": "GO fails 3/13 conditions; spec requires GO for that stage",
+    "not_REFRESH_DRY_RUN_V1": "drift is structural (monotonic -385 -> -722) not stale data; REFRESH cannot solve structural market shift",
+    "selected_MARKET_UNSAFE_WAIT_V1": "market structurally unsafe, may recover if WETH returns to ~$2700; correct semantics for 'unsafe but wait'",
+    "not_STOP_LP_RESEARCH_NOW": "operator has not asked to stop; 1 NO_GO is not permanent signal"
+  },
+
+  "next_stage_must_not": [
+    "execute probe",
+    "send any tx",
+    "construct signer / load private key",
+    "unseal v2 hard-disable",
+    "accept one-shot execution phrase",
+    "write production positions",
+    "overwrite shadow tables",
+    "modify strategy execution path"
+  ],
+
+  "next_stage_expected_actions": [
+    "start another read-only monitor (4-6h recommended)",
+    "verify tick drift returns to <= 200 (frozen center regression)",
+    "do not modify armed runner v1 or v2",
+    "do not unseal hard-disable",
+    "if drift <= 200 -> return to LP_BASE_10U_PROBE_FINAL_OPERATOR_AUTHORIZATION_REVIEW_V1",
+    "if drift > 200 still -> re-evaluate GO / change candidate / STOP"
+  ],
+
+  "can_run_probe_now": false,
+  "execution_allowed_now": false,
+  "tiny_canary_allowed": "no",
+  "send_hard_disable_still_active": true,
+  "edge_proven": "no"
+}

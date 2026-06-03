@@ -6,10 +6,10 @@
   "max_hours": 8,
   "consecutive_rpc_failures": 0,
   "degraded": false,
-  "stopped_iso": null,
-  "stopped_reason": null,
-  "last_checkpoint_iso": "2026-06-02T19:54:21Z",
-  "last_tick": -200761,
-  "last_drift": -318,
+  "stopped_iso": "2026-06-03T03:44:32Z",
+  "stopped_reason": "max_hours_reached",
+  "last_checkpoint_iso": "2026-06-03T03:34:19Z",
+  "last_tick": -201165,
+  "last_drift": -722,
   "last_market_safe": false
 }

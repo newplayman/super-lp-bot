@@ -1,0 +1,84 @@
+{
+  "stage": "LP_BASE_10U_PROBE_MONITOR_FINALIZE_AND_GO_NOGO_V1",
+  "run_id": "20260603_040018",
+  "phase": "F_go_nogo_review",
+
+  "candidate": {
+    "chain": "Base",
+    "chain_id": 8453,
+    "protocol": "Uniswap V3 (Base)",
+    "pool": "0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38",
+    "pair": "WETH/USDC",
+    "fee_tier": 100,
+    "npm": "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1",
+    "wallet": "0xb05b2872ace4564ff247555b6f7b097d31f3d835",
+    "notional_usd": 10,
+    "hold_window": "15m"
+  },
+
+  "go_nogo": "NO_GO",
+  "primary_reason": "0/47 market_safe checkpoints; tick drift -722 ticks (>200 threshold by 522 ticks); fresh_approval_required continuously; market data shows monotonic worsening",
+  "blocking_conditions": [
+    "market_safe_false_in_latest_checkpoint",
+    "tick_drift_exceeds_threshold_-722",
+    "any_stop_condition_unresolved_fresh_approval_required"
+  ],
+  "next_required_action": "LP_BASE_10U_PROBE_REFRESH_DRY_RUN_V1",
+
+  "go_conditions_evaluation": {
+    "1_market_safe_ratio_ge_80pct": {"pass": false, "value": 0.0, "detail": "0/47=0%"},
+    "2_no_hard_stop_in_latest": {"pass": false, "value": "fresh_approval_required=true", "detail": "any_stop_condition_active=true"},
+    "3_latest_tick_inside_dynamic_range": {"pass": true, "value": true, "detail": "current_tick_inside_new_range=true"},
+    "4_drift_within_threshold_or_fresh_approval_satisfiable": {"pass": false, "value": "drift=-722 fresh=doable-but-doesnt-solve-drift", "detail": "drift -722 >> 200; fresh approval 5->10 USDC satisfiable but not the issue"},
+    "5_quote_valid": {"pass": null, "value": "n/a", "detail": "v1 monitor does not collect quote_drift"},
+    "6_exit_quote_valid": {"pass": null, "value": "n/a", "detail": "v1 monitor does not collect exit_quote_drift"},
+    "7_gas_sane": {"pass": true, "value": "0.006-0.014 gwei", "detail": "Base L2 extremely cheap"},
+    "8_eth_balance_sufficient": {"pass": true, "value": "90470751043807 wei ~= 0.0905 ETH", "detail": "way more than enough for any 10U probe"},
+    "9_usdc_balance_sufficient": {"pass": true, "value": "21774783 raw ~= 21.77 USDC", "detail": "comfortably > 10 USDC threshold"},
+    "10_allowance_plan_clear": {"pass": true, "value": "ApproveExact(USDC, NPM, 10 USDC)", "detail": "but requires fresh approval — pre-exec checklist gate 14"},
+    "11_no_rpc_instability": {"pass": true, "value": "0/47 failures", "detail": "stable"},
+    "12_no_signer_wallet_tx_touched": {"pass": true, "value": "wallet_or_tx_touched=false", "detail": "true"},
+    "13_hard_disable_still_active": {"pass": true, "value": "true", "detail": "v2 line 974 raise preserved"}
+  },
+  "go_fail_count": 3,
+  "go_total_count": 13,
+
+  "no_go_triggers": [
+    {"id": "market_safe_false_latest", "triggered": true, "value": "market_safe_for_execution_candidate=false"},
+    {"id": "tick_drift_exceeds_threshold", "triggered": true, "value": "drift=-722 > 200"},
+    {"id": "current_tick_outside_range", "triggered": false, "value": "current_tick_inside_new_range=true"},
+    {"id": "quote_stale_or_unavailable", "triggered": false, "value": "n/a (v1 monitor)"},
+    {"id": "exit_quote_unavailable", "triggered": false, "value": "n/a (v1 monitor)"},
+    {"id": "gas_too_high", "triggered": false, "value": "0.006-0.014 gwei"},
+    {"id": "wallet_balance_insufficient", "triggered": false, "value": "21.77 USDC + 0.0905 ETH"},
+    {"id": "allowance_ambiguity", "triggered": false, "value": "plan clear (5->10 USDC ApproveExact)"},
+    {"id": "rpc_unstable", "triggered": false, "value": "0/47 failures"},
+    {"id": "data_incomplete", "triggered": false, "value": "minor: v1 missing quote_drift field"},
+    {"id": "any_stop_condition_unresolved", "triggered": true, "value": "fresh_approval_required=true"}
+  ],
+  "no_go_trigger_count": 3,
+
+  "drift_trajectory": {
+    "iter_1_drift": -385,
+    "iter_10_drift": -363,
+    "iter_18_drift": -414,
+    "iter_20_drift": -573,
+    "iter_30_drift": -548,
+    "iter_40_drift": -631,
+    "iter_47_drift": -722,
+    "pattern": "monotonically_worsening_after_iter_18"
+  },
+
+  "alternative_decision_explanations": {
+    "why_not_GO": "any armed runner unseal would require operator to accept -722 drift risk + fresh approval; spec does not allow this without explicit override",
+    "why_not_REFRESH_REQUIRED_only": "REFRESH does not solve monotonic drift; the market structure has shifted, not just stale data",
+    "why_NO_GO": "multiple hard NO-GO triggers + monotonic worsening trend + spec default for sustained drift is NO-GO"
+  },
+
+  "wallet_or_tx_touched": false,
+  "can_run_probe_now": false,
+  "execution_allowed_now": false,
+  "tiny_canary_allowed": "no",
+  "send_hard_disable_still_active": true,
+  "edge_proven": "no"
+}

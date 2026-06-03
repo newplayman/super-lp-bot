@@ -1,0 +1,31 @@
+{
+  "ts_iso": "2026-06-02T21:06:07Z",
+  "ts_unix": 1780434367,
+  "iteration": 9,
+  "chain_id": 8453,
+  "chain_id_match": true,
+  "block_number": 46822510,
+  "wallet_eth_wei": 90470751043807,
+  "usdc_balance_raw": 21774783,
+  "weth_balance_raw": 2470131003793800,
+  "usdc_allowance_raw": 5000000,
+  "weth_allowance_raw": 2470131003793800,
+  "pool_slot0_raw": "0x00000000000000000000000000000000000000000002dcd7b40a405400000000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffcefb1000000000000000000000000000000000000000000000000000000000000025000000000000000000000000000000000000000000000000000000000000003e800000000000000000000000000000000000000000000000000000000000003e8000000000000000000000000000000000000000000000000000000000ce40ce40000000000000000000000000000000000000000000000000000000000000001",
+  "pool_liquidity_raw": "0x000000000000000000000000000000000000000000000000060336bfd2f31d45",
+  "current_tick": -200783,
+  "drift_ticks": -340,
+  "proposed_tick_lower": -200983,
+  "proposed_tick_upper": -200583,
+  "current_tick_inside_new_range": true,
+  "fresh_approval_required": true,
+  "gas_price_wei": 6005468,
+  "stop_conditions": {
+    "tick_outside_new_range": false,
+    "fresh_approval_required": true,
+    "usdc_balance_below_threshold": false,
+    "weth_balance_below_threshold": false
+  },
+  "any_stop_condition_active": true,
+  "market_safe_for_execution_candidate": false,
+  "reason": "one or more read-only checks failed: {\"fresh_approval_required\": true}"
+}

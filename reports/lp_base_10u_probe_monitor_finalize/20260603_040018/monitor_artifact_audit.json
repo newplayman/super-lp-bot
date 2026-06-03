@@ -1,0 +1,74 @@
+{
+  "stage": "LP_BASE_10U_PROBE_MONITOR_FINALIZE_AND_GO_NOGO_V1",
+  "run_id": "20260603_040018",
+  "phase": "D_monitor_artifact_audit",
+  "source": "reports/lp_base_10u_probe_overnight_armed_runner/20260602_193517/monitor/",
+
+  "checkpoint_count": 47,
+  "first_checkpoint_time": "2026-06-02T19:44:19Z",
+  "last_checkpoint_time": "2026-06-03T03:34:19Z",
+  "monitor_duration_minutes": 470,
+
+  "rpc_failure_count": 0,
+  "market_safe_true_count": 0,
+  "market_safe_false_count": 47,
+  "stop_condition_count": 47,
+
+  "tick_drift_min": -722,
+  "tick_drift_max": -318,
+  "tick_drift_threshold": 200,
+  "tick_drift_min_abs_exceeds_threshold": true,
+  "tick_drift_max_abs_exceeds_threshold": true,
+
+  "gas_estimate_min_wei": 6000000,
+  "gas_estimate_max_wei": 14018528,
+  "gas_estimate_min_gwei_approx": 0.006,
+  "gas_estimate_max_gwei_approx": 0.014,
+
+  "allowance_status_last": 5000000,
+  "balance_status_last": 21774783,
+
+  "latest_checkpoint": {
+    "ts_iso": "2026-06-03T03:34:19Z",
+    "iteration": 47,
+    "chain_id": 8453,
+    "chain_id_match": true,
+    "block_number": 46834161,
+    "wallet_eth_wei": 90470751043807,
+    "usdc_balance_raw": 21774783,
+    "weth_balance_raw": 2470131003793800,
+    "usdc_allowance_raw": 5000000,
+    "weth_allowance_raw": 2470131003793800,
+    "current_tick": -201165,
+    "drift_ticks": -722,
+    "proposed_tick_lower": -201365,
+    "proposed_tick_upper": -200965,
+    "current_tick_inside_new_range": true,
+    "fresh_approval_required": true,
+    "gas_price_wei": 13455641,
+    "any_stop_condition_active": true,
+    "market_safe_for_execution_candidate": false
+  },
+
+  "monitor_csv_present": true,
+  "monitor_log_present": true,
+  "monitor_state_present": true,
+  "monitor_finalize_summary_present": true,
+
+  "missing_or_partial": [
+    "v1 monitor does NOT collect quote_drift (v2 monitor candidate schema)"
+  ],
+
+  "drift_trajectory": {
+    "iter_1_drift": -385,
+    "iter_10_drift": -363,
+    "iter_20_drift": -573,
+    "iter_30_drift": -548,
+    "iter_40_drift": -631,
+    "iter_47_drift": -722,
+    "pattern": "monotonically_worsening_after_iter_18"
+  },
+
+  "rpc_stable": true,
+  "monitor_degraded": false
+}

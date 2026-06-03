@@ -1,0 +1,34 @@
+{
+  "stage": "LP_BASE_10U_PROBE_MONITOR_FINALIZE_AND_GO_NOGO_V1",
+  "run_id": "20260603_040018",
+  "phase": "C_monitor_process_status",
+  "status_source": "local_vps_process_check",
+
+  "tmux_session_active": false,
+  "runner_process_active": false,
+  "process_list_redacted": "",
+  "monitor_output_dir": "reports/lp_base_10u_probe_overnight_armed_runner/20260602_193517/monitor",
+  "monitor_auto_exited_reason": "max_hours_reached",
+  "monitor_auto_exited_at_iso": "2026-06-03T03:44:32Z",
+  "monitor_stopped_by_this_task": false,
+  "monitor_was_active": false,
+  "monitor_finalized": true,
+
+  "evidence": {
+    "tmux_list_sessions_excerpt": "work, work-lp (no lp_base_10u_probe_readiness_monitor_*)",
+    "pgrep_filter_excerpt": "(empty after filter)",
+    "monitor_log_last_line": "[2026-06-03T03:44:32Z] monitor stopped reason=max_hours_reached",
+    "state_json_stopped_reason": "max_hours_reached",
+    "state_json_degraded": false,
+    "state_json_consecutive_rpc_failures": 0
+  },
+
+  "forbidden_process_scan": "no forbidden processes",
+
+  "wallet_or_tx_touched": false,
+  "touched_trading_path": false,
+  "touched_wallet_tx_bridge_live_paper": false,
+  "tiny_canary_allowed": "no",
+  "can_run_probe_now": false,
+  "execution_allowed_now": false
+}

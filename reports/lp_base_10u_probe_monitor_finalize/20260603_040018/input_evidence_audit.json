@@ -1,0 +1,72 @@
+{
+  "stage": "LP_BASE_10U_PROBE_MONITOR_FINALIZE_AND_GO_NOGO_V1",
+  "run_id": "20260603_040018",
+  "branch": "feat/supabase-postgres-deployment",
+  "head_before": "4550b5f",
+
+  "source_monitor_run_id": "20260602_193517",
+  "previous_stage": "LP_BASE_10U_PROBE_OVERNIGHT_ARMED_RUNNER_BUILD_AND_READONLY_MONITOR_V1",
+  "previous_status": "RUNNING",
+  "previous_commit": "4550b5f",
+
+  "input_files_audited": [
+    "reports/lp_base_10u_probe_overnight_armed_runner/20260602_193517/FINAL_VERDICT.json",
+    "reports/lp_base_10u_probe_overnight_armed_runner/20260602_193517/ONEPAGE_CN.md",
+    "reports/lp_base_10u_probe_overnight_armed_runner/20260602_193517/MONITOR_START_HEALTHCHECK_CN.md",
+    "reports/lp_base_10u_probe_overnight_armed_runner/20260602_193517/monitor/state.json",
+    "reports/lp_base_10u_probe_overnight_armed_runner/20260602_193517/monitor/monitor.log",
+    "reports/lp_base_10u_probe_overnight_armed_runner/20260602_193517/monitor/readiness_timeseries.csv",
+    "reports/lp_base_10u_probe_overnight_armed_runner/20260602_193517/monitor/checkpoints/",
+    "reports/lp_base_10u_probe_overnight_armed_runner/20260602_193517/monitor/final_monitor_summary.json",
+    "reports/lp_base_10u_probe_overnight_armed_runner/20260602_193517/monitor/FINAL_MONITOR_SUMMARY_CN.md"
+  ],
+  "missing_files": [],
+
+  "monitor_state_summary": {
+    "started_iso": "2026-06-02T19:44:19Z",
+    "stopped_iso": "2026-06-03T03:44:32Z",
+    "stopped_reason": "max_hours_reached",
+    "degraded": false,
+    "consecutive_rpc_failures": 0,
+    "last_tick": -201165,
+    "last_drift": -722,
+    "last_market_safe": false,
+    "duration_minutes": 480
+  },
+
+  "monitor_aggregate": {
+    "total_checkpoints": 47,
+    "success_checkpoints": 47,
+    "failed_checkpoints": 0,
+    "market_safe_count": 0,
+    "market_unsafe_count": 47,
+    "market_safe_ratio": 0.0,
+    "tick_drift_min": -722,
+    "tick_drift_max": -318,
+    "gas_estimate_min_wei": 6000000,
+    "gas_estimate_max_wei": 14018528,
+    "allowance_status_last": 5000000,
+    "balance_status_last": 21774783,
+    "recommended_operator_action": "DO_NOT_EXECUTE_MARKET_UNSAFE",
+    "recommended_reason": "0 checkpoints reported market_safe=true"
+  },
+
+  "safety_locks_intact": {
+    "can_run_probe_now": false,
+    "execution_allowed_now": false,
+    "tiny_canary_allowed": "no",
+    "send_hard_disable_active": true,
+    "hard_disable_still_active": true,
+    "edge_proven": "no",
+    "actual_fee_ready": false,
+    "token_id_available": false,
+    "wallet_or_tx_touched": false,
+    "manual_approval_required": true
+  },
+
+  "typo_noted": {
+    "file": "reports/lp_base_10u_probe_overnight_armed_runner/20260602_193517/monitor/FINAL_MONITOR_SUMMARY_CN.md",
+    "issue": "CN markdown says market_safe_count: 47, but the JSON says 0 (which is consistent with the CSV and the reason text). Authoritative source is final_monitor_summary.json.",
+    "authoritative_source": "final_monitor_summary.json"
+  }
+}
