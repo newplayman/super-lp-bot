@@ -1,0 +1,130 @@
+{
+  "stage": "LP_METEORA_DLMM_QUOTE_BINARRAY_COVERAGE_EXPAND_V1",
+  "run_id": "20260603_143729",
+  "phase": "C_coverage_expansion_plan",
+
+  "policy": {
+    "expansion_bounded": true,
+    "max_coverage_arrays": 9,
+    "must_checkpoint_per_tier": true,
+    "stop_when_sufficient": true,
+    "no_infinite_expansion": true
+  },
+
+  "coverage_tiers": [
+    {
+      "tier_id": "coverage_3_arrays",
+      "offsets": [-1, 0, 1],
+      "array_count": 3,
+      "bin_count_estimated": 210,
+      "estimated_price_range_for_pool1_sol_usdc_bin_step_2": "≈ 4.2% (3 × 64 bins × 0.02% = 3.84%)",
+      "estimated_price_range_for_pool2_x_usdc_bin_step_100": "≈ 20000% (3 × 64 bins × 100 = 19200%)",
+      "expected_rpc_calls_per_pool": 3,
+      "expected_total_latency_sec": 3.0,
+      "public_rpc_risk": "low (V5 evidence: 6/6 single-account success)",
+      "selected_for_run": false,
+      "note": "V5 baseline (already tested); pool 1 (tight bin_step) blocked; pool 2 (wide bin_step) success"
+    },
+    {
+      "tier_id": "coverage_5_arrays",
+      "offsets": [-2, -1, 0, 1, 2],
+      "array_count": 5,
+      "bin_count_estimated": 350,
+      "estimated_price_range_for_pool1_sol_usdc_bin_step_2": "≈ 7.0% (5 × 64 bins × 0.02% = 6.4%)",
+      "estimated_price_range_for_pool2_x_usdc_bin_step_100": "≈ 32000% (5 × 64 bins × 100 = 32000%)",
+      "expected_rpc_calls_per_pool": 5,
+      "expected_total_latency_sec": 5.0,
+      "public_rpc_risk": "low (V5 evidence: 6/6 single-account success on public RPC)",
+      "selected_for_run": true,
+      "note": "FIRST EXPANSION TARGET; should unlock pool 1 10U-20U USDC swap (need ≥6% price range)"
+    },
+    {
+      "tier_id": "coverage_7_arrays",
+      "offsets": [-3, -2, -1, 0, 1, 2, 3],
+      "array_count": 7,
+      "bin_count_estimated": 490,
+      "estimated_price_range_for_pool1_sol_usdc_bin_step_2": "≈ 9.8% (7 × 64 × 0.02% = 8.96%)",
+      "estimated_price_range_for_pool2_x_usdc_bin_step_100": "≈ 44800% (7 × 64 × 100 = 44800%)",
+      "expected_rpc_calls_per_pool": 7,
+      "expected_total_latency_sec": 7.0,
+      "public_rpc_risk": "low-medium (7 consecutive single-account reads; public RPC may rate limit after 5-10 req/s)",
+      "selected_for_run": "conditional (only if 5_arrays insufficient for pool 1)",
+      "note": "SECOND EXPANSION TARGET; provides 2x more coverage than 5_arrays"
+    },
+    {
+      "tier_id": "coverage_9_arrays",
+      "offsets": [-4, -3, -2, -1, 0, 1, 2, 3, 4],
+      "array_count": 9,
+      "bin_count_estimated": 630,
+      "estimated_price_range_for_pool1_sol_usdc_bin_step_2": "≈ 12.6% (9 × 64 × 0.02% = 11.52%)",
+      "estimated_price_range_for_pool2_x_usdc_bin_step_100": "≈ 57600% (9 × 64 × 100 = 57600%)",
+      "expected_rpc_calls_per_pool": 9,
+      "expected_total_latency_sec": 9.0,
+      "public_rpc_risk": "medium (9 consecutive single-account reads; rate limit possible on publicnode at ~10 req/s sustained)",
+      "selected_for_run": "conditional (only if 7_arrays insufficient)",
+      "note": "LAST EXPANSION TIER; if 9_arrays still fails, document as paid_rpc_setup candidate"
+    }
+  ],
+
+  "execution_order": [
+    "1. coverage_5_arrays (FIRST; should unlock pool 1 10U-20U USDC quote)",
+    "2. coverage_7_arrays (CONDITIONAL; only if 5_arrays insufficient for pool 1)",
+    "3. coverage_9_arrays (CONDITIONAL; only if 7_arrays insufficient for pool 1)"
+  ],
+
+  "checkpoint_criteria": {
+    "after_5_arrays": "if pool 1 10U USDC quote success → STOP; declare coverage_5_arrays sufficient",
+    "after_7_arrays": "if pool 1 10U USDC quote success → STOP; declare coverage_7_arrays sufficient",
+    "after_9_arrays": "if pool 1 still blocked → declare coverage_9_arrays insufficient; document paid_rpc_setup candidate; recommend Phase 2B paid RPC"
+  },
+
+  "bin_step_analysis": {
+    "pool_1_sol_usdc_bin_step_2": {
+      "active_bin_id": -12248,
+      "issue": "tight bin_step=2 means each bin = 0.02% price change",
+      "10U_USDC_swap_required_range": "depends on liquidity distribution; need at least ±0.5% to ±5% typically for tight pools",
+      "minimum_coverage_hypothesis": "5 arrays (≈ 7% range) likely sufficient; 3 arrays (≈ 4%) insufficient as V5 showed"
+    },
+    "pool_2_x_usdc_bin_step_100": {
+      "active_bin_id": -236,
+      "issue": "wide bin_step=100 means each bin = 1% price change; even 1 array covers ±32% range",
+      "minimum_coverage_hypothesis": "3 arrays already more than enough; 5+ arrays for safety"
+    }
+  },
+
+  "expected_quote_success_by_tier": {
+    "coverage_3_arrays": {
+      "pool_1_sol_usdc": "blocked (V5 evidence)",
+      "pool_2_x_usdc": "success (V5 evidence)",
+      "total": "2/4"
+    },
+    "coverage_5_arrays": {
+      "pool_1_sol_usdc": "expected success (≈ 7% range covers typical 10U-20U USDC swap)",
+      "pool_2_x_usdc": "expected success",
+      "total": "expected 4/4"
+    },
+    "coverage_7_arrays": {
+      "pool_1_sol_usdc": "expected success (more coverage)",
+      "pool_2_x_usdc": "expected success",
+      "total": "expected 4/4"
+    },
+    "coverage_9_arrays": {
+      "pool_1_sol_usdc": "expected success (12% range)",
+      "pool_2_x_usdc": "expected success",
+      "total": "expected 4/4"
+    }
+  },
+
+  "this_stage_does_not": [
+    "execute any RPC (this is plan design only)",
+    "modify EVM executor v2",
+    "release v2 hard-disable"
+  ],
+
+  "solana_wallet_or_keypair_touched": false,
+  "can_run_probe_now": false,
+  "v2_line_count_unchanged": true,
+  "v2_line_count": 992,
+
+  "next_stage": "Stage D: expanded PDA derivation (5_arrays first, then 7_arrays if needed)"
+}

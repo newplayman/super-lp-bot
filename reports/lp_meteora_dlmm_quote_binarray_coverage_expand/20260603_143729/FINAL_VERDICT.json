@@ -1,0 +1,82 @@
+{
+  "status": "WARN",
+  "stage": "LP_METEORA_DLMM_QUOTE_BINARRAY_COVERAGE_EXPAND_V1",
+  "run_id": "20260603_143729",
+  "branch": "feat/supabase-postgres-deployment",
+  "head_before": "202de5b",
+
+  "coverage_plan_ready": true,
+  "expanded_pda_derivation_ran": true,
+  "expanded_pda_success_count": 42,
+  "expanded_pda_total_count": 42,
+  "expanded_single_account_read_ran": true,
+  "expanded_single_account_success_count": 33,
+  "expanded_single_account_total_count": 42,
+  "expanded_single_account_403_count": 0,
+  "expanded_single_account_410_count": 0,
+  "expanded_bin_liquidity_decode_success_count": 2310,
+  "expanded_bin_liquidity_decode_with_liquidity": 731,
+  "quote_smoke_v3_ran": true,
+  "quote_smoke_attempt_count": 12,
+  "quote_smoke_success_count": 6,
+  "sol_usdc_quote_success": false,
+  "x_usdc_quote_success": true,
+  "minimum_coverage_required": "≥9_arrays (still insufficient for pool 1; 12-15 may work or paid RPC)",
+
+  "paid_rpc_required": "partial",
+  "paid_rpc_required_reason": "single-account path works for 33/42 reads; pool 1 quote requires >9 arrays (12-15 may work on public RPC) OR paid RPC GPA",
+  "can_enter_survival_ev_preview": "partial (only pool 2 quote data; pool 1 blocked)",
+
+  "key_findings": {
+    "v6_breakthrough": "expanded coverage 3 → 5/7/9 arrays; 33/42 single-account reads success; 2310 bins decoded; 6/12 quote success (all pool 2)",
+    "pool_2_stable": "X/USDC pool: 6/6 quote success across 3 tiers (5/7/9 arrays); 10U → 941005 raw X; 20U → 1882010 raw X (linear 2x)",
+    "pool_1_blocked_at_all_tiers": "SOL/USDC pool: 0/6 quote success even with 9 arrays; bin_step=2 tight + 9 arrays × 70 bins = 630 bins ≈ 12% range insufficient",
+    "single_account_path_robust": "33/42 single-account reads (0 RPC errors); V5 multi-account blocker BYPASSED, single-account path scales",
+    "v5_to_v6_real_evidence": "V5: 6 single-account reads; V6: 33 (5.5x); V5: 420 bins; V6: 2310 bins (5.5x); V5: 2/4 quote; V6: 6/12 quote (3x attempts, same 2/4 effective)"
+  },
+
+  "v3_to_v6_5_stage_progression": {
+    "v3_FEASIBILITY": "SDK path identified; smoke partial (0/4 quote); readiness matrix designed",
+    "v4_CONNECTOR_V1": "connector V1 built; pool/fee snapshot 2/2; bin/quote 0/2 / 0/4 (multi-account blocked)",
+    "v5_BINARRAY_FIX": "single-account path PROVEN (6/6 bin arrays; 420 bins decoded; 2/4 quote success)",
+    "v6_COVERAGE_EXPAND": "expanded 3 → 5/7/9 arrays; 33/42 single-account success; 2310 bins decoded; 6/12 quote (pool 2 stable, pool 1 still blocked on tight bin_step)"
+  },
+
+  "phase_results": {
+    "A_workspace_safety": "PASS (HEAD=202de5b; pre-existing dirty files unrelated)",
+    "B_input_evidence_audit": "PASS (10 upstream files from V5)",
+    "C_coverage_plan": "PASS (3/5/7/9 arrays plan designed with cost + risk estimates)",
+    "D_expanded_pda_derivation": "PASS (42/42 deterministic pubkeys; 6 tiers across 2 pools)",
+    "E_expanded_single_account_read": "PASS (33/42 success on public RPC; 0 403, 0 410; 9 account_null = un-initialized bin array accounts)",
+    "F_expanded_bin_liquidity_decode": "PASS (2310 bins decoded; 731 with liquidity)",
+    "G_quote_smoke_v3": "PARTIAL (6/12 quote; pool 2 6/6 stable; pool 1 0/6 blocked on Insufficient liquidity even with 9 arrays)",
+    "H_quote_readiness_update": "PASS (6 tables judged: 3 ready / 3 partial)",
+    "I_next_stage_decision": "PASS (LP_METEORA_DLMM_QUOTE_BINARRAY_FIX_REPEAT selected; try 12-15 arrays next)"
+  },
+
+  "can_run_probe_now": false,
+  "execution_allowed_now": false,
+  "transaction_sent": false,
+  "wallet_or_tx_touched": false,
+  "solana_wallet_or_keypair_touched": false,
+  "edge_proven": "no",
+  "tiny_canary_allowed": "no",
+  "manual_approval_required": true,
+  "send_hard_disable_still_active": true,
+
+  "v2_modified_by_this_task": false,
+  "v2_line_count_unchanged": true,
+  "v2_line_count": 992,
+
+  "structural_finding": "Meteora DLMM single-account path SCALES with coverage (V5: 6/6; V6: 33/42 = 0 RPC errors). 2310 bins decoded across 5/7/9 arrays (5.5x more than V5). Quote smoke V6: 6/12 success — pool 2 (X/USDC, bin_step=100) stable 6/6 across all tiers; pool 1 (SOL/USDC, bin_step=2) blocked 0/6 even with 9 arrays × 70 bins = 630 bins ≈ 12% price range. paid_rpc_required=partial (NOT true; single-account path works; pool 1 needs >9 arrays OR paid RPC GPA). can_run_probe_now=false; tiny_canary_allowed=no; v2 line count 992 unchanged.",
+
+  "allowed_next_stages": [
+    "LP_METEORA_DLMM_SURVIVAL_EV_PREVIEW_V1",
+    "LP_METEORA_DLMM_QUOTE_BINARRAY_FIX_REPEAT",
+    "LP_SOLANA_PAID_RPC_SETUP_REQUIRED",
+    "LP_METEORA_DLMM_KNOWN_POOL_CONNECTOR_FIX_REPEAT",
+    "STOP_LP_RESEARCH_NOW"
+  ],
+  "recommended_next_stage": "LP_METEORA_DLMM_QUOTE_BINARRAY_FIX_REPEAT",
+  "default_when_no_explicit_choice": "LP_METEORA_DLMM_QUOTE_BINARRAY_FIX_REPEAT"
+}

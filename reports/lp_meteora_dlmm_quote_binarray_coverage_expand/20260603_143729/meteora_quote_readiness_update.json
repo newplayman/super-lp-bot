@@ -1,0 +1,89 @@
+{
+  "stage": "LP_METEORA_DLMM_QUOTE_BINARRAY_COVERAGE_EXPAND_V1",
+  "run_id": "20260603_143729",
+  "phase": "H_quote_readiness_update",
+
+  "v6_results_summary": {
+    "coverage_5_arrays": {
+      "pda_success": "10/10 (2 pools × 5)",
+      "single_account_read_success": "9/10 (1 account_null at offset=-2 pool 1)",
+      "bins_decoded": 630,
+      "bins_with_liquidity": 231,
+      "quote_attempted": 4,
+      "quote_success": 2,
+      "pool_1_sol_usdc_quote": "0/2 (still blocked on Insufficient liquidity)",
+      "pool_2_x_usdc_quote": "2/2 (10U=941005; 20U=1882010)"
+    },
+    "coverage_7_arrays": {
+      "pda_success": "14/14 (2 pools × 7)",
+      "single_account_read_success": "11/14 (3 account_null at offsets -3, +3 pool 1)",
+      "bins_decoded": 770,
+      "bins_with_liquidity": 301,
+      "quote_attempted": 4,
+      "quote_success": 2,
+      "pool_1_sol_usdc_quote": "0/2 (still blocked)",
+      "pool_2_x_usdc_quote": "2/2 (same)"
+    },
+    "coverage_9_arrays": {
+      "pda_success": "18/18 (2 pools × 9)",
+      "single_account_read_success": "13/18 (5 account_null at far offsets)",
+      "bins_decoded": 910,
+      "bins_with_liquidity": 371,
+      "quote_attempted": 4,
+      "quote_success": 2,
+      "pool_1_sol_usdc_quote": "0/2 (still blocked on Insufficient liquidity)",
+      "pool_2_x_usdc_quote": "2/2 (same)"
+    }
+  },
+
+  "v5_to_v6_quote_progress": {
+    "v5_3_arrays": "2/4 quote (pool 2 success, pool 1 blocked)",
+    "v6_5_arrays": "2/4 quote (same; pool 1 still blocked)",
+    "v6_7_arrays": "2/4 quote (same; pool 1 still blocked)",
+    "v6_9_arrays": "2/4 quote (same; pool 1 STILL blocked even with 9 arrays × 70 bins = 630 bins ≈ 12% price range)"
+  },
+
+  "key_finding": "Pool 1 (SOL/USDC) quote blocked even with 9 arrays coverage (≈12% price range); bin_step=2 + 9 arrays insufficient; root cause: pool 1's liquidity distribution is wider than ±6% from active bin in current market conditions; SDK swapQuote requires consecutive bin arrays with liquidity in the swap path",
+
+  "6_table_readiness_update": {
+    "meteora_dlmm_known_pool_universe_v1": "ready (unchanged from V4)",
+    "meteora_dlmm_pool_snapshot_v1": "ready (unchanged from V4)",
+    "meteora_dlmm_fee_snapshot_v1": "ready (unchanged from V4)",
+    "meteora_dlmm_bin_liquidity_snapshot_v1": "now_ready_for_pool_2_only (V6: 371 bins decoded across 9 arrays; pool 1: 18/18 PDA but only 13/18 init + 9 arrays still insufficient for full coverage)",
+    "meteora_dlmm_quote_snapshot_v1": "partial_ready (V6: 2/4 quote success on public RPC; pool 1 blocked on coverage; pool 2 ready)",
+    "meteora_dlmm_survival_ev_preview_v1": "partial (V6: only pool 2 quote data; pool 1 still blocked)"
+  },
+
+  "judgments": {
+    "pool_snapshot_ready": true,
+    "fee_snapshot_ready": true,
+    "bin_liquidity_ready": "partial (pool 1: 9 arrays insufficient; pool 2: 6+ arrays sufficient)",
+    "quote_ready": "partial (pool 1: 0/2; pool 2: 6/6 across tiers)",
+    "survival_ev_ready": "partial (only pool 2 quote data)",
+    "paid_rpc_required": "partial (single-account path works; pool 1 quote requires wider bin coverage OR paid RPC GPA for liquidity discovery)",
+    "paid_rpc_required_reason": "Pool 1 (SOL/USDC bin_step=2) liquidity at active_bin_id=-12248 may be concentrated far from active bin; 9 arrays × 70 bins = 630 bins = 12% price range insufficient; would need 15+ arrays (≈20% range) OR paid RPC GPA to find liquidity"
+  },
+
+  "minimum_coverage_required_by_pool": {
+    "pool_1_sol_usdc_bin_step_2": "≥9 arrays (V6 evidence) still insufficient; 12-15 arrays likely needed OR paid RPC GPA",
+    "pool_2_x_usdc_bin_step_100": "3-5 arrays (V5/V6 evidence: 4 arrays work; 5+ arrays unnecessary)"
+  },
+
+  "can_enter_survival_ev_preview": "partial (pool 1 quote data missing; pool 2 ready; can compute EV for pool 2 only)",
+
+  "this_stage_does_not": [
+    "implement any production code",
+    "load any keypair / private key",
+    "send any transaction",
+    "modify EVM executor v2",
+    "release v2 hard-disable",
+    "compute survival EV (deferred until quote data is complete)"
+  ],
+
+  "solana_wallet_or_keypair_touched": false,
+  "can_run_probe_now": false,
+  "v2_line_count_unchanged": true,
+  "v2_line_count": 992,
+
+  "next_stage": "Stage I: next-stage decision V6"
+}

@@ -1,0 +1,13 @@
+pool_address,coverage_arrays,notional_usd,token_in,token_out,amount_in_raw,quote_attempted,quote_success,amount_out_raw,price_impact,fee,bins_crossed,coverage_sufficient,confidence,invalid_reason,latency_ms
+5BKxfWMbmYBAEWvyPZS9esPducUba9GqyMjtLCfbaqyF,5,10U,Y,X,10000000,true,false,,,,,no,0,Insufficient liquidity in binArrays for swapQuote,300
+5BKxfWMbmYBAEWvyPZS9esPducUba9GqyMjtLCfbaqyF,5,20U,Y,X,20000000,true,false,,,,,no,0,Insufficient liquidity in binArrays for swapQuote,182
+9DiruRpjnAnzhn6ts5HGLouHtJrT1JGsPbXNYCrFz2ad,5,10U,Y,X,10000000,true,true,941005,,,0,yes,0.9,,55
+9DiruRpjnAnzhn6ts5HGLouHtJrT1JGsPbXNYCrFz2ad,5,20U,Y,X,20000000,true,true,1882010,,,0,yes,0.9,,10
+5BKxfWMbmYBAEWvyPZS9esPducUba9GqyMjtLCfbaqyF,7,10U,Y,X,10000000,true,false,,,,,no,0,Insufficient liquidity in binArrays for swapQuote,261
+5BKxfWMbmYBAEWvyPZS9esPducUba9GqyMjtLCfbaqyF,7,20U,Y,X,20000000,true,false,,,,,no,0,Insufficient liquidity in binArrays for swapQuote,125
+9DiruRpjnAnzhn6ts5HGLouHtJrT1JGsPbXNYCrFz2ad,7,10U,Y,X,10000000,true,true,941005,,,0,yes,0.9,,14
+9DiruRpjnAnzhn6ts5HGLouHtJrT1JGsPbXNYCrFz2ad,7,20U,Y,X,20000000,true,true,1882010,,,0,yes,0.9,,27
+5BKxfWMbmYBAEWvyPZS9esPducUba9GqyMjtLCfbaqyF,9,10U,Y,X,10000000,true,false,,,,,no,0,Insufficient liquidity in binArrays for swapQuote,210
+5BKxfWMbmYBAEWvyPZS9esPducUba9GqyMjtLCfbaqyF,9,20U,Y,X,20000000,true,false,,,,,no,0,Insufficient liquidity in binArrays for swapQuote,67
+9DiruRpjnAnzhn6ts5HGLouHtJrT1JGsPbXNYCrFz2ad,9,10U,Y,X,10000000,true,true,941005,,,0,yes,0.9,,30
+9DiruRpjnAnzhn6ts5HGLouHtJrT1JGsPbXNYCrFz2ad,9,20U,Y,X,20000000,true,true,1882010,,,0,yes,0.9,,183

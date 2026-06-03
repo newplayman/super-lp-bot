@@ -1,0 +1,89 @@
+{
+  "stage": "LP_METEORA_DLMM_QUOTE_BINARRAY_COVERAGE_EXPAND_V1",
+  "run_id": "20260603_143729",
+  "branch": "feat/supabase-postgres-deployment",
+  "head_before": "202de5b",
+
+  "upstream_files_audited": [
+    "reports/lp_meteora_dlmm_quote_binarray_fix/20260603_140707/FINAL_VERDICT.json",
+    "reports/lp_meteora_dlmm_quote_binarray_fix/20260603_140707/ONEPAGE_CN.md",
+    "reports/lp_meteora_dlmm_quote_binarray_fix/20260603_140707/METEORA_BINARRAY_PDA_DERIVATION_CN.md",
+    "reports/lp_meteora_dlmm_quote_binarray_fix/20260603_140707/meteora_binarray_pda_derivation.json",
+    "reports/lp_meteora_dlmm_quote_binarray_fix/20260603_140707/METEORA_BINARRAY_SINGLE_ACCOUNT_SMOKE_CN.md",
+    "reports/lp_meteora_dlmm_quote_binarray_fix/20260603_140707/meteora_binarray_single_account_smoke.json",
+    "reports/lp_meteora_dlmm_quote_binarray_fix/20260603_140707/METEORA_BIN_LIQUIDITY_DECODE_CN.md",
+    "reports/lp_meteora_dlmm_quote_binarray_fix/20260603_140707/meteora_bin_liquidity_decode.json",
+    "reports/lp_meteora_dlmm_quote_binarray_fix/20260603_140707/METEORA_QUOTE_SMOKE_V2_CN.md",
+    "reports/lp_meteora_dlmm_quote_binarray_fix/20260603_140707/meteora_quote_smoke_v2.json",
+    "reports/lp_meteora_dlmm_known_pool_connector/20260603_134202/FINAL_VERDICT.json"
+  ],
+  "missing_files": [],
+
+  "key_findings": {
+    "previous_stage": "LP_METEORA_DLMM_QUOTE_BINARRAY_FIX_REPEAT_V1",
+    "previous_status": "WARN",
+    "previous_run_id": "20260603_140707",
+    "previous_commit": "202de5b",
+    "recommended_next_stage_from_upstream": "LP_METEORA_DLMM_QUOTE_BINARRAY_FIX_REPEAT",
+    "single_account_smoke_success_count": 6,
+    "bin_liquidity_decode_success_count": 420,
+    "quote_smoke_success_count": 2,
+    "sol_usdc_quote_success": false,
+    "x_usdc_quote_success": true,
+    "paid_rpc_required": "partial",
+    "can_run_probe_now": false,
+    "solana_wallet_or_keypair_touched": false,
+    "tiny_canary_allowed": "no",
+    "v2_line_count_unchanged": true
+  },
+
+  "known_pool_feed_full_addresses_from_v5_artifact": [
+    "5BKxfWMbmYBAEWvyPZS9esPducUba9GqyMjtLCfbaqyF",
+    "9DiruRpjnAnzhn6ts5HGLouHtJrT1JGsPbXNYCrFz2ad"
+  ],
+
+  "this_stage_objectives": [
+    "design 3/5/7/9 arrays coverage plan",
+    "derive 5/7/9 arrays PDA for 2 known pools (no RPC)",
+    "single-account getAccountInfo on 5/7/9 arrays",
+    "decode all fetched bin arrays",
+    "quote smoke v3 by coverage; target SOL/USDC 4/4 success",
+    "update 6-table readiness; can_enter_survival_ev_preview yes/no",
+    "decide next stage"
+  ],
+
+  "this_stage_does_not": [
+    "implement production connector",
+    "load any keypair / private key / seed phrase / wallet adapter",
+    "construct any transaction",
+    "call sendTransaction or any signing method",
+    "swap / open LP / close LP / collect fee / bridge",
+    "start live/canary/paper",
+    "write production positions",
+    "overwrite shadow tables",
+    "modify EVM executor v2",
+    "release v2 hard-disable",
+    "set can_run_probe_now to true",
+    "set tiny_canary_allowed to yes",
+    "hard-code any program id from model memory",
+    "use blog / Twitter / forum / unofficial GitHub fork as source",
+    "use paid RPC (no key in this round)",
+    "install any package in repo root (only in /tmp isolated dir)",
+    "expand beyond 9 arrays (spec '不得无限扩展')",
+    "fake quote / bin_liquidity success when blocked"
+  ],
+
+  "safety_locks_intact": {
+    "can_run_probe_now": false,
+    "execution_allowed_now": false,
+    "transaction_sent": false,
+    "wallet_or_tx_touched": false,
+    "solana_wallet_or_keypair_touched": false,
+    "tiny_canary_allowed": "no",
+    "edge_proven": "no",
+    "manual_approval_required": true,
+    "send_hard_disable_still_active": true,
+    "v2_modified_by_this_task": false,
+    "v2_line_count_unchanged": true
+  }
+}
