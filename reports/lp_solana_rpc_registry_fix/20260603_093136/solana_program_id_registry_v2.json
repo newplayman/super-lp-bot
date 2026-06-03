@@ -1,0 +1,120 @@
+{
+  "stage": "LP_SOLANA_RPC_REGISTRY_FIX_REPEAT_V1",
+  "run_id": "20260603_093136",
+  "phase": "D_program_id_registry_v2",
+
+  "registry": [
+    {
+      "protocol": "Meteora DLMM",
+      "priority": "P0",
+      "program_id": "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo",
+      "program_id_source_url": "https://docs.meteora.ag/core-products/dlmm",
+      "program_id_source_type": "oficial_docs",
+      "source_confidence": "high",
+      "oficial_source_verified": true,
+      "selected_for_onchain_verification": true,
+      "candidate_role": "primary",
+      "conflicts_with_other_sources": false,
+      "invalid_reason": ""
+    },
+    {
+      "protocol": "Meteora DAMM v2",
+      "priority": "P1",
+      "program_id": "cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG",
+      "program_id_source_url": "https://github.com/MeteoraAg/damm-v2-sdk",
+      "program_id_source_type": "oficial_github",
+      "source_confidence": "high",
+      "oficial_source_verified": true,
+      "selected_for_onchain_verification": true,
+      "candidate_role": "primary",
+      "conflicts_with_other_sources": false,
+      "invalid_reason": ""
+    },
+    {
+      "protocol": "Orca Whirlpools",
+      "priority": "P1",
+      "program_id": "whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc",
+      "program_id_source_url": "https://github.com/orca-so/whirlpools",
+      "program_id_source_type": "oficial_github",
+      "source_confidence": "high",
+      "oficial_source_verified": true,
+      "selected_for_onchain_verification": true,
+      "candidate_role": "primary",
+      "conflicts_with_other_sources": false,
+      "invalid_reason": ""
+    },
+    {
+      "protocol": "Raydium CLMM",
+      "priority": "P2",
+      "program_id": "CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK",
+      "program_id_source_url": "https://raw.githubusercontent.com/raydium-io/raydium-clmm/master/programs/amm/src/lib.rs",
+      "program_id_source_type": "oficial_github",
+      "source_confidence": "high",
+      "oficial_source_verified": true,
+      "selected_for_onchain_verification": true,
+      "candidate_role": "primary",
+      "secondary_program_id_devnet": "DRayAUgENGQBKVaX8owNhgzkEDyoHTGVEGHVJT1E9pfH",
+      "conflicts_with_other_sources": false,
+      "invalid_reason": ""
+    },
+    {
+      "protocol": "Raydium CPMM",
+      "priority": "P2",
+      "program_id": "CPMMoo8L3F4NbTegBCKVNunggN7H1ZpdTHKxQB5qKP1C",
+      "program_id_source_url": "https://raw.githubusercontent.com/raydium-io/raydium-cp-swap/master/programs/cp-swap/src/lib.rs",
+      "program_id_source_type": "oficial_github",
+      "source_confidence": "high",
+      "oficial_source_verified": true,
+      "selected_for_onchain_verification": true,
+      "candidate_role": "primary",
+      "secondary_program_id_devnet": "DRaycpLY18LhpbydsBWbVJtxpNv9oXPgjRSfpF2bWpYb",
+      "conflicts_with_other_sources": false,
+      "invalid_reason": ""
+    },
+    {
+      "protocol": "Lifinity",
+      "priority": "P2",
+      "program_id": null,
+      "program_id_source_url": "https://docs.lifinity.io",
+      "program_id_source_type": "unknown",
+      "source_confidence": "unknown",
+      "oficial_source_verified": false,
+      "selected_for_onchain_verification": false,
+      "candidate_role": null,
+      "conflicts_with_other_sources": false,
+      "invalid_reason": "docs.lifinity.io returns 404; no public GitHub source found; spec forbids memory/b/blog/twitter/forum hardcode; will remain unknown"
+    }
+  ],
+
+  "policy": {
+    "only_oficial_source_verified_can_be_onchain_verified": true,
+    "unknown_cannot_be_getAccountInfo": true,
+    "multiple_candidates_kept_with_primary_secondary_label": true,
+    "conflict_detection_between_sources": true
+  },
+
+  "registry_v2_count": 6,
+  "registry_v2_verified_count": 5,
+  "registry_v2_unknown_count": 1,
+  "registry_v2_selected_for_onchain_count": 5,
+  "registry_v2_with_conflict_count": 0,
+
+  "conflict_report": {
+    "Meteora_DLMM": "no conflict (single source)",
+    "Meteora_DAMM_v2": "no conflict (single source)",
+    "Orca_Whirlpools": "no conflict (single source)",
+    "Raydium_CLMM": "no conflict; mainnet vs devnet clearly labeled via cfg feature flag in lib.rs",
+    "Raydium_CPMM": "no conflict; mainnet vs devnet clearly labeled via cfg feature flag in lib.rs",
+    "Lifinity": "no source obtained"
+  },
+
+  "this_stage_does_not": [
+    "hard-code any program id from memory",
+    "select unknown pids for on-chain verify"
+  ],
+
+  "next_stage": "Stage E: on-chain program verification v2 (5 pids)",
+
+  "solana_wallet_or_keypair_touched": false,
+  "can_run_probe_now": false
+}

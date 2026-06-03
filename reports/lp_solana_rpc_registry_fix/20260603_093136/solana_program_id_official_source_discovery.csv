@@ -1,0 +1,7 @@
+protocol,priority,source_type,source_confidence,primary_program_id,oficial_source_verified,source_fetch_success,oficial_source_url,evidence_excerpt_short,invalid_reason
+Meteora DLMM,P0,oficial_docs,high,LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo,True,True,https://docs.meteora.ag/core-products/dlmm,docs.meteora.ag/core-products/dlmm page returned the program id directly,
+Meteora DAMM v2,P1,oficial_github,high,cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG,True,True,https://github.com/MeteoraAg/damm-v2-sdk,damm-v2-sdk README returned the program id,
+Orca Whirlpools,P1,oficial_github,high,whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc,True,True,https://github.com/orca-so/whirlpools,orca-so/whirlpools README returned the program id,
+Raydium CLMM,P2,oficial_github,high,CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK,True,True,https://raw.githubusercontent.com/raydium-io/raydium-clmm/master/programs/amm/src/lib.rs,"declare_id!(""CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK"") in lib.rs (mainnet; devnet is DRayAUg... via cfg flag)",
+Raydium CPMM,P2,oficial_github,high,CPMMoo8L3F4NbTegBCKVNunggN7H1ZpdTHKxQB5qKP1C,True,True,https://raw.githubusercontent.com/raydium-io/raydium-cp-swap/master/programs/cp-swap/src/lib.rs,"declare_id!(""CPMMoo8L3F4NbTegBCKVNunggN7H1ZpdTHKxQB5qKP1C"") in lib.rs (mainnet)",
+Lifinity,P2,unknown,unknown,,False,False,https://docs.lifinity.io,docs.lifinity.io returns 404; no public GitHub source found in this round,docs.lifinity.io returns 404; spec forbids memory/b/blog/twitter/forum hardcode; will remain unknown

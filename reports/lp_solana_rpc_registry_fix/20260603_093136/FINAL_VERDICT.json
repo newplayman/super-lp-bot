@@ -1,0 +1,94 @@
+{
+  "status": "WARN",
+  "stage": "LP_SOLANA_RPC_REGISTRY_FIX_REPEAT_V1",
+  "run_id": "20260603_093136",
+  "branch": "feat/supabase-postgres-deployment",
+  "head_before": "9c46813",
+
+  "oficial_source_discovery_ran": true,
+  "oficial_source_discovery_method": "WebFetch (HTTPS) + curl to github raw",
+  "oficial_program_id_count": 5,
+  "unknown_count": 1,
+  "oficially_sourced_protocols": [
+    "Meteora DLMM",
+    "Meteora DAMM v2",
+    "Orca Whirlpools",
+    "Raydium CLMM",
+    "Raydium CPMM"
+  ],
+  "still_unknown_protocols": ["Lifinity"],
+
+  "verified_program_count": 4,
+  "verified_protocols": [
+    "Meteora DLMM",
+    "Meteora DAMM v2",
+    "Orca Whirlpools",
+    "Raydium CLMM"
+  ],
+  "not_found_protocols": [
+    "Raydium CPMM (pid from cp-swap declare_id! not on mainnet)"
+  ],
+
+  "gpa_smoke_success_count": 0,
+  "gpa_smoke_attempted_count": 4,
+  "gpa_blocker_summary": "public RPC not feasible for any major AMM; paid RPC or indexer decision required",
+
+  "meteora_dlmm_registry_ready": false,
+  "orca_registry_ready": false,
+  "damm_v2_registry_ready": false,
+  "raydium_registry_ready": false,
+  "lifinity_registry_ready": false,
+
+  "ready_summary": {
+    "Meteora_DLMM": "4/5 sub-conditions verified; only GPA blocked (3 of 4 sub-conditions = source, verify, sdk_design; GPA fails; SDK not wired)",
+    "Meteora_DAMM_v2": "2/5 sub-conditions verified (source + verify); GPA fails; SDK shared with DLMM not wired",
+    "Orca_Whirlpools": "2/5 sub-conditions verified (source + verify); GPA fails (-32010 program too large); SDK not wired",
+    "Raydium_CLMM": "2/5 sub-conditions verified; GPA rate-limited; SDK not wired",
+    "Raydium_CPMM": "1/5 (source only; verify failed because pid not on mainnet)",
+    "Lifinity": "0/5 (still unknown)"
+  },
+
+  "improvement_vs_previous_round": {
+    "previous_round_verified": 0,
+    "this_round_verified": 4,
+    "delta": "+4 verified"
+  },
+
+  "recommended_next_stage": "LP_SOLANA_RPC_REGISTRY_FIX_REPEAT",
+  "default_when_no_explicit_choice": "LP_SOLANA_RPC_REGISTRY_FIX_REPEAT",
+  "allowed_next_stages": [
+    "LP_METEORA_DLMM_READONLY_CONNECTOR_V1",
+    "LP_ORCA_WHIRLPOOL_READONLY_CONNECTOR_V1",
+    "LP_SOLANA_RPC_REGISTRY_FIX_REPEAT",
+    "LP_SOLANA_RPC_SETUP_REQUIRED",
+    "STOP_LP_RESEARCH_NOW"
+  ],
+
+  "can_run_probe_now": false,
+  "execution_allowed_now": false,
+  "transaction_sent": false,
+  "wallet_or_tx_touched": false,
+  "solana_wallet_or_keypair_touched": false,
+  "edge_proven": "no",
+  "tiny_canary_allowed": "no",
+  "manual_approval_required": true,
+  "send_hard_disable_still_active": true,
+
+  "v2_modified_by_this_task": false,
+  "v2_line_count_unchanged": true,
+  "v2_line_count": 992,
+
+  "phase_results": {
+    "A_workspace_safety": "PASS",
+    "B_input_evidence_audit": "PASS (10 upstream files)",
+    "C_oficial_source_discovery": "PASS (5/6 protocols sourced via WebFetch + curl to github raw)",
+    "D_program_id_registry_v2": "PASS (5 official + 1 unknown; conflict detection; mainnet vs devnet labels)",
+    "E_onchain_program_verification_v2": "PASS (4 verified + 1 not_found + 1 skipped; honest reporting of CPMM pid not on mainnet)",
+    "F_bounded_gpa_smoke_v2": "PASS (0/4 success on public RPC; blocker documented; path verified)",
+    "G_meteora_dlmm_registry_readiness_v2": "WARN (4/5 sub-conditions verified; GPA blocked on public RPC)",
+    "H_p1_p2_registry_readiness_v2": "WARN (5/6 protocols have some readiness; 0 fully ready)",
+    "I_next_stage_decision": "PASS (LP_SOLANA_RPC_REGISTRY_FIX_REPEAT selected)"
+  },
+
+  "structural_finding": "5/6 protocol pids now officially sourced (was 0/6 last round); 4/6 verified on-chain (was 0/6). However, GPA on public RPC is not feasible for any major AMM program; SDK/API paths designed but not wired. Two remaining blockers: (1) Raydium CPMM pid from cp-swap declare_id! not on mainnet (need raydium-amm-v3 or docs); (2) Lifinity pid still unknown (deferred). Meteora DLMM is the most mature candidate but needs (a) paid RPC or indexer for pool discovery, (b) SDK wire. fix_repeat recommended."
+}

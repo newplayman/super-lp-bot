@@ -1,0 +1,83 @@
+{
+  "stage": "LP_SOLANA_RPC_REGISTRY_FIX_REPEAT_V1",
+  "run_id": "20260603_093136",
+  "phase": "H_p1_p2_registry_readiness_v2",
+
+  "p1_protocols": [
+    {
+      "protocol": "Meteora DAMM v2",
+      "priority": "P1",
+      "oficialmente_sourced": true,
+      "verified_onchain": true,
+      "gpa_feasible": "no (timeout 8.1s on public RPC)",
+      "sdk_or_api_path_available": "partial (Meteora SDK shared with DLMM)",
+      "connector_priority_after_fix": "P1_backup (lower than Meteora DLMM)",
+      "blocker": "GPA fails on public RPC; SDK shared with DLMM (Meteora SDK covers both)",
+      "ready_for_connector": false
+    },
+    {
+      "protocol": "Orca Whirlpools",
+      "priority": "P1",
+      "oficialmente_sourced": true,
+      "verified_onchain": true,
+      "gpa_feasible": "no (json-rpc error -32010, program too large for getProgramAccounts)",
+      "sdk_or_api_path_available": "partial (Orca SDK TypeScript; @orca-so/whirlpools-sdk)",
+      "connector_priority_after_fix": "P1 (tied with Meteora DLMM; Orca SDK is mature)",
+      "blocker": "GPA fails with -32010 (program too large); Orca SDK exists but not wired",
+      "ready_for_connector": false
+    }
+  ],
+
+  "p2_protocols": [
+    {
+      "protocol": "Raydium CLMM",
+      "priority": "P2",
+      "oficialmente_sourced": true,
+      "verified_onchain": true,
+      "gpa_feasible": "no (HTTP 429 rate-limited on public RPC)",
+      "sdk_or_api_path_available": "partial (Raydium SDK TypeScript; Raydium API)",
+      "connector_priority_after_fix": "P2 (high quality but P2 by design; lower priority than Meteora/Orca)",
+      "blocker": "GPA rate-limited on public RPC; Raydium SDK exists but not wired",
+      "ready_for_connector": false
+    },
+    {
+      "protocol": "Raydium CPMM",
+      "priority": "P2",
+      "oficialmente_sourced": true,
+      "verified_onchain": "no (program not found on mainnet; declare_id in cp-swap repo not deployed)",
+      "gpa_feasible": "n/a (skipped; pid not on chain)",
+      "sdk_or_api_path_available": "partial (Raydium SDK shared with CLMM)",
+      "connector_priority_after_fix": "P2_low (CPMM is constant product; lower fee; less interesting for LP research)",
+      "blocker": "Pid CPMMoo8L3F4NbTegBCKVNunggN7H1ZpdTHKxQB5qKP1C not on mainnet; needs new pid from mainnet-deployed source (likely raydium-amm-v3 repo or docs)",
+      "ready_for_connector": false
+    },
+    {
+      "protocol": "Lifinity",
+      "priority": "P2",
+      "oficialmente_sourced": false,
+      "verified_onchain": "n/a (no pid)",
+      "gpa_feasible": "n/a (no pid)",
+      "sdk_or_api_path_available": "limited (Lifinity SDK public material sparse)",
+      "connector_priority_after_fix": "P2_deferred (no public source found in this round; will remain unknown)",
+      "blocker": "docs.lifinity.io returns 404; no public GitHub source; spec forbids memory hardcode; will remain unknown",
+      "ready_for_connector": false
+    }
+  ],
+
+  "summary": {
+    "P1_Meteora_DAMM_v2": "oficially_sourced ✅, verified_onchain ✅, GPA fails, SDK shared",
+    "P1_Orca_Whirlpools": "oficially_sourced ✅, verified_onchain ✅, GPA fails (program too large), SDK exists",
+    "P2_Raydium_CLMM": "oficially_sourced ✅, verified_onchain ✅, GPA rate-limited, SDK exists",
+    "P2_Raydium_CPMM": "oficially_sourced ✅, but verify_onchain FAILED (pid not on mainnet)",
+    "P2_Lifinity": "oficialmente_sourced NO; pid remains unknown"
+  },
+
+  "this_stage_does_not": [
+    "implement any connector code",
+    "call any SDK or API",
+    "load any keypair / private key"
+  ],
+
+  "solana_wallet_or_keypair_touched": false,
+  "can_run_probe_now": false
+}

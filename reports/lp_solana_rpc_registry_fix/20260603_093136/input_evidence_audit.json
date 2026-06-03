@@ -1,0 +1,99 @@
+{
+  "stage": "LP_SOLANA_RPC_REGISTRY FIX_REPEAT_V1",
+  "run_id": "20260603_093136",
+  "branch": "feat/supabase-postgres-deployment",
+  "head_before": "9c46813",
+
+  "upstream_files_audited": [
+    "reports/lp_solana_readonly_rpc_registry/20260603_084054/FINAL_VERDICT.json",
+    "reports/lp_solana_readonly_rpc_registry/20260603_084054/ONEPAGE_CN.md",
+    "reports/lp_solana_readonly_rpc_registry/20260603_084054/SOLANA_RPC_READINESS_MATRIX_CN.md",
+    "reports/lp_solana_readonly_rpc_registry/20260603_084054/solana_rpc_readiness_matrix.json",
+    "reports/lp_solana_readonly_rpc_registry/20260603_084054/SOLANA PROTOCOL_REGISTRY_SEED_CN.md",
+    "reports/lp_solana_readonly_rpc_registry/20260603_084054/solana_protocol_registry_seed.json",
+    "reports/lp_solana_readonly_rpc_registry/20260603_084054/SOLANA_PROGRAM_ID_VERIFICATION_CN.md",
+    "reports/lp_solana_readonly_rpc_registry/20260603_084054/solana_program_id_verification.json",
+    "reports/lp_solana_readonly_rpc_registry/20260603_084054/SOLANA_READONLY_RPC_REGISTRY_NEXT_STAGE_DECISION_CN.md",
+    "reports/lp_solana_readonly_rpc_registry/20260603_084054/solana_readonly_rpc_registry_next_stage_decision.json",
+    "reports/lp_solana_connector_design/20260603_080347/FINAL_VERDICT.json"
+  ],
+  "missing_files": [],
+
+  "key_findings": {
+    "previous_stage": "LP_SOLANA_READONLY_RPC_AND_REGISTRY_V1",
+    "previous_status": "WARN",
+    "previous_run_id": "20260603_084054",
+    "previous_commit": "9c46813",
+    "recommended_next_stage_from_upstream": "LP_SOLANA_RPC_REGISTRY FIX_REPEAT",
+    "usable_rpc_count": 2,
+    "verified_program_count": 0,
+    "not_provided_count": 6,
+    "system_program_sanity_verified": true,
+    "target_protocols": 6,
+    "can_run_probe_now": false,
+    "solana_wallet_or_keypair_touched": false,
+    "tiny_canary_allowed": "no"
+  },
+
+  "this_stage_objectives": [
+    "discover official sources for 6 protocols (webfetch if available)",
+    "filter to verified program ids (only Level A or B sources)",
+    "re-run on-chain verification for verified pids",
+    "re-run bounded GPA smoke for verified pids",
+    "re-assess Meteora DLMM + Orca + DAMM v2 + Raydium + Lifinity readiness",
+    "decide next stage (Meteora connector / Orca connector / fix / setup / stop)"
+  ],
+
+  "this_stage_does_not": [
+    "implement real LP connector",
+    "load any keypair / private key / seed phrase / wallet adapter",
+    "construct any transaction",
+    "call sendTransaction or any signing method",
+    "swap / open LP / close LP / collect fee / bridge",
+    "start live/canary/paper",
+    "write production positions",
+    "overwrite shadow tables",
+    "modify EVM executor v2",
+    "release v2 hard-disable",
+    "set can_run_probe_now to true",
+    "set tiny_canary_allowed to yes",
+    "hard-code any program id from model memory",
+    "use blog / Twitter / forum / unofficial GitHub fork as source"
+  ],
+
+  "oficial_source_levels": {
+    "level_A": [
+      "protocol_oficial_docs_domain",
+      "protocol_oficial_github_org_or_repo",
+      "protocol_oficial_npm_package_or_SDK"
+    ],
+    "level_B_allowed": [
+      "protocol_oficial_SDK_constant",
+      "protocol_oficial_example_code"
+    ],
+    "forbidden": [
+      "blog",
+      "twitter_or_x_screenshot",
+      "forum_repeat",
+      "unofficial_github_fork",
+      "model_memory_hardcode",
+      "explorer_only_guess_protocol"
+    ]
+  },
+
+  "webfetch_status_at_task_start": "unknown (to be probed in Stage C)",
+
+  "safety_locks_intact": {
+    "can_run_probe_now": false,
+    "execution_allowed_now": false,
+    "transaction_sent": false,
+    "wallet_or_tx_touched": false,
+    "solana_wallet_or_keypair_touched": false,
+    "tiny_canary_allowed": "no",
+    "edge_proven": "no",
+    "manual_approval_required": true,
+    "send_hard_disable_still_active": true,
+    "v2_modified_by_this_task": false,
+    "v2_line_count_unchanged": true
+  }
+}

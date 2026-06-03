@@ -1,0 +1,122 @@
+{
+  "stage": "LP_SOLANA_RPC_REGISTRY_FIX_REPEAT_V1",
+  "run_id": "20260603_093136",
+  "phase": "C_oficial_source_discovery",
+
+  "policy": {
+    "no_memory_hardcode": true,
+    "level_A_sources_only": true,
+    "no_blog_twitter_forum": true,
+    "no_unofficial_github_fork": true,
+    "no_explorer_only_guess": true
+  },
+
+  "oficial_source_discovery_ran": true,
+  "source_fetch_method": "WebFetch (HTTPS) + curl to github raw",
+  "no_webfetch_unavailable": true,
+
+  "results": [
+    {
+      "protocol": "Meteora DLMM",
+      "priority": "P0",
+      "oficial_source_url": "https://docs.meteora.ag/core-products/dlmm",
+      "source_type": "oficial_docs",
+      "source_confidence": "high",
+      "program_id_candidates": ["LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo"],
+      "primary_program_id": "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo",
+      "evidence_excerpt_short": "docs.meteora.ag/core-products/dlmm page returned the program id directly",
+      "source_fetch_success": true,
+      "oficial_source_verified": true,
+      "invalid_reason": ""
+    },
+    {
+      "protocol": "Meteora DAMM v2",
+      "priority": "P1",
+      "oficial_source_url": "https://github.com/MeteoraAg/damm-v2-sdk",
+      "source_type": "oficial_github",
+      "source_confidence": "high",
+      "program_id_candidates": ["cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG"],
+      "primary_program_id": "cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG",
+      "evidence_excerpt_short": "damm-v2-sdk README returned the program id",
+      "source_fetch_success": true,
+      "oficial_source_verified": true,
+      "invalid_reason": ""
+    },
+    {
+      "protocol": "Orca Whirlpools",
+      "priority": "P1",
+      "oficial_source_url": "https://github.com/orca-so/whirlpools",
+      "source_type": "oficial_github",
+      "source_confidence": "high",
+      "program_id_candidates": ["whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc"],
+      "primary_program_id": "whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc",
+      "evidence_excerpt_short": "orca-so/whirlpools README returned the program id",
+      "source_fetch_success": true,
+      "oficial_source_verified": true,
+      "invalid_reason": ""
+    },
+    {
+      "protocol": "Raydium CLMM",
+      "priority": "P2",
+      "oficial_source_url": "https://raw.githubusercontent.com/raydium-io/raydium-clmm/master/programs/amm/src/lib.rs",
+      "source_type": "oficial_github",
+      "source_confidence": "high",
+      "program_id_candidates": [
+        "CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK",
+        "DRayAUgENGQBKVaX8owNhgzkEDyoHTGVEGHVJT1E9pfH"
+      ],
+      "primary_program_id": "CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK",
+      "evidence_excerpt_short": "declare_id!(\"CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK\") in lib.rs (mainnet; devnet is DRayAUg... via cfg flag)",
+      "source_fetch_success": true,
+      "oficial_source_verified": true,
+      "invalid_reason": ""
+    },
+    {
+      "protocol": "Raydium CPMM",
+      "priority": "P2",
+      "oficial_source_url": "https://raw.githubusercontent.com/raydium-io/raydium-cp-swap/master/programs/cp-swap/src/lib.rs",
+      "source_type": "oficial_github",
+      "source_confidence": "high",
+      "program_id_candidates": [
+        "CPMMoo8L3F4NbTegBCKVNunggN7H1ZpdTHKxQB5qKP1C",
+        "DRaycpLY18LhpbydsBWbVJtxpNv9oXPgjRSfpF2bWpYb"
+      ],
+      "primary_program_id": "CPMMoo8L3F4NbTegBCKVNunggN7H1ZpdTHKxQB5qKP1C",
+      "evidence_excerpt_short": "declare_id!(\"CPMMoo8L3F4NbTegBCKVNunggN7H1ZpdTHKxQB5qKP1C\") in lib.rs (mainnet)",
+      "source_fetch_success": true,
+      "oficial_source_verified": true,
+      "invalid_reason": ""
+    },
+    {
+      "protocol": "Lifinity",
+      "priority": "P2",
+      "oficial_source_url": "https://docs.lifinity.io",
+      "source_type": "unknown",
+      "source_confidence": "unknown",
+      "program_id_candidates": [],
+      "primary_program_id": null,
+      "evidence_excerpt_short": "docs.lifinity.io returns 404; no public GitHub source found in this round",
+      "source_fetch_success": false,
+      "oficial_source_verified": false,
+      "invalid_reason": "docs.lifinity.io returns 404; spec forbids memory/b/blog/twitter/forum hardcode; will remain unknown"
+    }
+  ],
+
+  "verified_count": 5,
+  "unknown_count": 1,
+  "verified_protocols": ["Meteora DLMM", "Meteora DAMM v2", "Orca Whirlpools", "Raydium CLMM", "Raydium CPMM"],
+  "unknown_protocols": ["Lifinity"],
+
+  "this_stage_does_not": [
+    "webfetch any non-oficial source (blog / Twitter / forum)",
+    "hard-code from model memory",
+    "run on-chain verification (Stage E)",
+    "load any keypair / private key / seed phrase",
+    "construct any transaction"
+  ],
+
+  "next_stage": "Stage D: program id registry v2",
+
+  "solana_wallet_or_keypair_touched": false,
+  "can_run_probe_now": false
+}

@@ -1,0 +1,80 @@
+{
+  "stage": "LP_SOLANA_RPC_REGISTRY_FIX_REPEAT_V1",
+  "run_id": "20260603_093136",
+  "phase": "I_next_stage_decision",
+
+  "recommended_next_stage": "LP_SOLANA_RPC_REGISTRY_FIX_REPEAT",
+  "allowed_next_stages": [
+    "LP_METEORA_DLMM_READONLY_CONNECTOR_V1",
+    "LP_ORCA_WHIRLPOOL_READONLY_CONNECTOR_V1",
+    "LP_SOLANA_RPC_REGISTRY_FIX_REPEAT",
+    "LP_SOLANA_RPC_SETUP_REQUIRED",
+    "STOP_LP_RESEARCH_NOW"
+  ],
+  "default_when_no_explicit_choice": "LP_SOLANA_RPC_REGISTRY_FIX_REPEAT",
+
+  "selection_rationale": {
+    "not_METEORA_DLMM_READONLY_CONNECTOR": "3/4 entry conditions still fail: (a) gpa_smoke_feasible=no (public RPC timeout), (b) sdk_or_api_path_available=partial (designed only, not wired), (c) connector would need to introduce paid RPC + SDK wire in same stage; risk of complex stage",
+    "not_ORCA_WHIRLPOOL_READONLY_CONNECTOR": "Orca is also blocked on gpa (json-rpc -32010, program too large); sdk_or_api_path available but not wired; same risk",
+    "selected_RPC_REGISTRY_FIX_REPEAT": "registry still incomplete: (1) Raydium CPMM pid from cp-swap declare_id! is NOT on mainnet (real on-chain finding; need raydium-amm-v3 pid); (2) Lifinity still unknown; (3) GPA on public RPC not feasible for any major AMM (need paid RPC decision); fixing these first before connector is the lower-risk path",
+    "not_RPC_SETUP_REQUIRED": "RPCs are usable (2/2 endpoints; 8/8 methods pass); the blocker is data source (GPA) and pid availability, not RPC setup",
+    "not_STOP_LP_RESEARCH_NOW": "read-only path fully viable; 4/6 protocol pids officially sourced and on-chain verified (improvement over previous round 0/6); not a structural failure"
+  },
+
+  "this_round_improvements": {
+    "previous_round_verified_count": 0,
+    "this_round_verified_count": 4,
+    "improvement": "5/6 protocols have official source; 4/6 verified on-chain (Meteora DLMM, Meteora DAMM v2, Orca Whirlpools, Raydium CLMM); 1 not_found (Raydium CPMM); 1 unknown (Lifinity)"
+  },
+
+  "remaining_blockers": [
+    {
+      "blocker": "Raydium CPMM pid CPMMoo8L3F4NbTegBCKVNunggN7H1ZpdTHKxQB5qKP1C not on mainnet",
+      "fix": "re-pull pid from raydium-amm-v3 repo (legacy AMM v4 = CPMM) or official Raydium docs; needs new external source"
+    },
+    {
+      "blocker": "Lifinity pid still unknown (docs.lifinity.io 404; no public GitHub source)",
+      "fix": "defer until human provides pid; spec forbids memory hardcode; this is OK (Lifinity P2 not in main path)"
+    },
+    {
+      "blocker": "GPA on public RPC not feasible for any major AMM (timeout / program too large / rate-limited)",
+      "fix": "decision: (a) accept paid RPC for connector stage; or (b) use Meteora DLMM API + Raydium API + Orca SDK for pool discovery (no GPA); or (c) skip pool-level discovery in v1 and use cached registry"
+    },
+    {
+      "blocker": "SDK / API paths designed but not wired",
+      "fix": "next connector stage (if selected) will wire Meteora SDK / Meteora DLMM API / Orca SDK / Raydium SDK"
+    }
+  ],
+
+  "fix_repeat_next_stage_responsibilities": [
+    "re-obtain Raydium CPMM pid from raydium-amm-v3 repo or Raydium official docs",
+    "re-verify CPMM pid on mainnet",
+    "make decision on paid RPC vs indexer/API for connector stage (operator input required)",
+    "optionally re-attempt Lifinity pid (human or webfetch)",
+    "re-run Stages D-H with fixed CPMM + Lifinity"
+  ],
+
+  "next_stage_must_not": [
+    "execute probe on Solana",
+    "send any tx",
+    "load any keypair / private key / seed phrase",
+    "construct signer",
+    "auto bridge / auto swap",
+    "modify EVM executor v2",
+    "release v2 hard-disable",
+    "set can_run_probe_now to true",
+    "set tiny_canary_allowed to yes",
+    "hard-code any program id from memory"
+  ],
+
+  "this_stage_did_not": [
+    "implement any connector code",
+    "call any SDK / indexer / API",
+    "load any keypair / private key"
+  ],
+
+  "can_run_probe_now": false,
+  "solana_wallet_or_keypair_touched": false,
+  "tiny_canary_allowed": "no",
+  "edge_proven": "no"
+}

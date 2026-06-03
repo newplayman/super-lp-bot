@@ -1,0 +1,7 @@
+protocol,program_id,gpa_attempted,gpa_success,returned_count_sample,data_slice_used,filter_used,timeout_sec,rate_limit_seen,rpc_error_type,needs_paid_rpc,needs_sdk_decoder,discovery_feasible,confidence,latency_ms,invalid_reason
+Meteora DLMM,LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo,True,False,0,True,dataSize unknown (dataSlice 0 bytes),8.0,no,TimeoutError('The read operation timed out'),unknown,unknown,unknown,0.2,9187.03,
+Meteora DAMM v2,cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG,True,False,0,True,dataSize unknown (dataSlice 0 bytes),8.0,no,TimeoutError('The read operation timed out'),unknown,unknown,unknown,0.2,8071.12,
+Orca Whirlpools,whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc,True,False,0,True,dataSize unknown (dataSlice 0 bytes),8.0,no,"{""code"": -32010, ""message"": ""whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc excluded from account secondary indexes; this RPC method unavailable for key. If you're trying to query the Token Program, plea",unknown,unknown,unknown,0.2,483.95,
+Raydium CLMM,CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK,True,False,0,True,dataSize unknown (dataSlice 0 bytes),8.0,yes,<HTTPError 429: 'Too Many Requests'>,likely,unknown,unknown,0.3,347.89,
+Raydium CPMM,CPMMoo8L3F4NbTegBCKVNunggN7H1ZpdTHKxQB5qKP1C,False,False,0,True,n/a,0.0,no,,unknown,unknown,no,0.0,0.0,not_verified_onchain; per spec skip GPA smoke
+Lifinity,,False,False,0,True,n/a,0.0,no,,unknown,unknown,no,0.0,0.0,not_verified_onchain; per spec skip GPA smoke

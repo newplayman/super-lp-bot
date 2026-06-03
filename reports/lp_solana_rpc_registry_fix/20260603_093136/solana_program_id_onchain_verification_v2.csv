@@ -1,0 +1,7 @@
+protocol,program_id,account_exists,executable,owner,lamports,data_len,upgradeable_program,programdata_address,verification_status,confidence,latency_ms,invalid_reason
+Meteora DLMM,LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo,True,True,BPFLoaderUpgradeab1e11111111111111111111111,34988465,48,yes,,verified,0.95,228.49,
+Meteora DAMM v2,cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG,True,True,BPFLoaderUpgradeab1e11111111111111111111111,11823513,48,yes,,verified,0.95,512.17,
+Orca Whirlpools,whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc,True,True,BPFLoaderUpgradeab1e11111111111111111111111,9400580,48,yes,,verified,0.95,96.27,
+Raydium CLMM,CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK,True,True,BPFLoaderUpgradeab1e11111111111111111111111,1854640730,48,yes,,verified,0.95,768.44,
+Raydium CPMM,CPMMoo8L3F4NbTegBCKVNunggN7H1ZpdTHKxQB5qKP1C,False,False,,0,0,unknown,,not_found,0.0,66.49,getAccountInfo returned null (pid not on mainnet or not yet deployed)
+Lifinity,,False,False,,0,0,unknown,,skipped_unknown,0.0,0.0,oficial_source_verified=False; per spec skip on-chain verify

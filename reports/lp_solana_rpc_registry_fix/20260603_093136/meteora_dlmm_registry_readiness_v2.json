@@ -1,0 +1,78 @@
+{
+  "stage": "LP_SOLANA_RPC_REGISTRY_FIX_REPEAT_V1",
+  "run_id": "20260603_093136",
+  "phase": "G_meteora_dlmm_registry_readiness_v2",
+
+  "protocol": "Meteora DLMM",
+  "priority": "P0",
+
+  "readiness_answers_v2": {
+    "Q1_program_id_officially_sourced": "yes",
+    "Q2_program_verified_onchain": "yes",
+    "Q3_gpa_smoke_feasible": "no (timeout on public RPC; need paid RPC or indexer)",
+    "Q4_sdk_or_api_path_available": "partial (designed only, not wired in this round)",
+    "Q5_ready_for_readonly_connector": "no (GPA blocked on public RPC)"
+  },
+
+  "program_id": "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo",
+  "program_id_source_url": "https://docs.meteora.ag/core-products/dlmm",
+  "program_id_source_type": "oficial_docs",
+  "program_id_source_confidence": "high",
+
+  "onchain_verification": {
+    "method": "getAccountInfo on solana.publicnode.com (primary) and api.mainnet-beta.solana.com (secondary)",
+    "retry_attempts": 2,
+    "account_exists": true,
+    "executable": true,
+    "owner": "BPFLoaderUpgradeab1e11111111111111111111111",
+    "data_len": 48,
+    "lamports": 9400580,
+    "verification_status": "verified",
+    "confidence": 0.95
+  },
+
+  "gpa_smoke": {
+    "method": "getProgramAccounts with dataSlice {offset:0, length:0}",
+    "timeout_seconds": 8.0,
+    "attempted": true,
+    "success": false,
+    "rpc_error_type": "TimeoutError('The read operation timed out')",
+    "rate_limit_seen": "no",
+    "needs_paid_rpc": "likely",
+    "discovery_feasible": "no (on public RPC)",
+    "confidence": 0.3,
+    "latency_ms": 9187.03
+  },
+
+  "sdk_or_api_path": {
+    "Meteora SDK (TypeScript)": "exists; @meteora-ag/dlmm; design-only in v1",
+    "Meteora DLMM API (REST)": "exists; https://dlmm-api.meteora.ag; design-only in v1",
+    "wired_in_v1": false,
+    "confidence": 0.5
+  },
+
+  "overall_readiness": {
+    "sub_condition_1_source": "pass (0.95)",
+    "sub_condition_2_verified": "pass (0.95)",
+    "sub_condition_3_gpa": "fail (0.3)",
+    "sub_condition_4_sdk_api": "partial (0.5)",
+    "average_confidence": 0.675,
+    "ready_for_readonly_connector": false,
+    "primary_blocker": "GPA fails on public RPC (timeout); need paid RPC or Meteora DLMM API"
+  },
+
+  "next_connector_blocker": [
+    "GPA not feasible on public RPC (timeout)",
+    "SDK / API path not wired in v1"
+  ],
+
+  "this_stage_does_not": [
+    "webfetch Meteora docs (already done in Stage C)",
+    "run on-chain verify (already done in Stage E)",
+    "run GPA (already done in Stage F)",
+    "call Meteora SDK / API"
+  ],
+
+  "solana_wallet_or_keypair_touched": false,
+  "can_run_probe_now": false
+}

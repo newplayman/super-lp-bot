@@ -1,0 +1,7 @@
+protocol,priority,program_id,program_id_source_url,program_id_source_type,source_confidence,oficial_source_verified,selected_for_onchain_verification,invalid_reason
+Meteora DLMM,P0,LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo,https://docs.meteora.ag/core-products/dlmm,oficial_docs,high,True,True,
+Meteora DAMM v2,P1,cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG,https://github.com/MeteoraAg/damm-v2-sdk,oficial_github,high,True,True,
+Orca Whirlpools,P1,whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc,https://github.com/orca-so/whirlpools,oficial_github,high,True,True,
+Raydium CLMM,P2,CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK,https://raw.githubusercontent.com/raydium-io/raydium-clmm/master/programs/amm/src/lib.rs,oficial_github,high,True,True,
+Raydium CPMM,P2,CPMMoo8L3F4NbTegBCKVNunggN7H1ZpdTHKxQB5qKP1C,https://raw.githubusercontent.com/raydium-io/raydium-cp-swap/master/programs/cp-swap/src/lib.rs,oficial_github,high,True,True,
+Lifinity,P2,,https://docs.lifinity.io,unknown,unknown,False,False,docs.lifinity.io returns 404; no public GitHub source found; spec forbids memory/b/blog/twitter/forum hardcode; will remain unknown
