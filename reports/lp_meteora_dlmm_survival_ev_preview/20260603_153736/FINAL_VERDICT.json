@@ -1,0 +1,84 @@
+{
+  "status": "WARN",
+  "stage": "LP_METEORA_DLMM_SURVIVAL_EV_PREVIEW_V1",
+  "run_id": "20260603_153736",
+  "branch": "feat/supabase-postgres-deployment",
+  "head_before": "3c72d3f",
+
+  "scope": "partial_pool2_only",
+  "included_pool_count": 1,
+  "excluded_pool_count": 1,
+
+  "survival_ev_model_ran": true,
+  "row_count": 168,
+  "positive_zero_il_lvr_count": 0,
+  "positive_optimistic_count": 0,
+  "positive_realistic_count": 0,
+  "positive_conservative_count": 0,
+  "near_break_even_count": 21,
+
+  "best_notional": 2000,
+  "best_hold_window": "15m",
+  "best_scenario": "zero_il_lvr",
+  "best_net_ev_proxy_usd": -0.154453,
+  "best_net_ev_proxy_pct": -0.0077,
+
+  "x_usdc_preflight_candidate": false,
+  "x_usdc_preflight_candidate_reason": "All 10/20U X/USDC cells negative even in best case; better path is known pool feed expansion",
+
+  "can_run_probe_now": false,
+  "execution_allowed_now": false,
+  "transaction_sent": false,
+  "wallet_or_tx_touched": false,
+  "solana_wallet_or_keypair_touched": false,
+  "edge_proven": "no",
+  "tiny_canary_allowed": "no",
+  "manual_approval_required": true,
+  "send_hard_disable_still_active": true,
+
+  "v2_modified_by_this_task": false,
+  "v2_line_count_unchanged": true,
+  "v2_line_count": 992,
+
+  "key_findings": {
+    "partial_scope_x_usdc_only": "V8 frozen partial scope: X/USDC included; SOL/USDC excluded with no_quote_data reason (15 arrays = 21% range still 0 bins with liquidity in SOL/USDC at V7)",
+    "168_ev_cells_all_negative": "X/USDC EV at 10-2000 USD notionals is structurally negative; even zero_il_lvr scenario with 2000 notional + 15m hold = -$0.154 (-0.0077%)",
+    "root_cause": "base_fee_bps=1.5 (low); assumed_volume_pct=0.5% (medium, pessimistic); fixed cost ~$0.19 round-trip + setup; IL/LVR even at 0.1% = $2 on $2000",
+    "honest_heuristic_marking": "All 126 fee_capture rows + 3 cost_model rows + 168 EV rows have heuristic=true; missing data marked 'missing' not 0",
+    "no_fake_success": "V8 does NOT claim 10/20U X/USDC probe is worth it; honest negative EV reported",
+    "structural_finding": "Meteora DLMM X/USDC at retail scale (10-2000 USD) is structurally unprofitable for single-position LP given current fee structure + cost + IL"
+  },
+
+  "v3_to_v8_6_stage_progression": {
+    "v3_FEASIBILITY": "SDK path identified; smoke partial (0/4 quote); readiness matrix designed",
+    "v4_CONNECTOR_V1": "connector V1 built; pool/fee snapshot 2/2; bin/quote 0/2 / 0/4 (multi-account blocked)",
+    "v5_BINARRAY_FIX": "single-account path PROVEN (6/6; 420 bins; 2/4 quote)",
+    "v6_COVERAGE_EXPAND": "5/7/9 arrays (33/42 single-account; 2310 bins; 6/12 quote; pool 2 stable 6/6)",
+    "v7_COVERAGE_EXPAND_V2": "12/15 arrays (18/27 single-account; 1540 bins; 0/4 SOL/USDC at spec cap)",
+    "v8_SURVIVAL_EV_PREVIEW": "partial X/USDC EV computed; 168 cells; 0 positive; 21 near break-even; best -$0.154 (-0.0077%); recommended feed expansion"
+  },
+
+  "phase_results": {
+    "A_workspace_safety": "PASS (HEAD=3c72d3f; pre-existing dirty files unrelated)",
+    "B_input_evidence_audit": "PASS (14 upstream files from V7+V4)",
+    "C_partial_scope_freeze": "PASS (X/USDC included; SOL/USDC excluded with no_quote_data)",
+    "D_survival_ev_model_input_build": "PASS (168 cells; 6×7×4 dimensions; missing data marked 'missing' not 0)",
+    "E_fee_capture_proxy": "PASS (126 rows; scenario-based; heuristic marked)",
+    "F_cost_model": "PASS (3 rows; low/realistic/conservative; SOL_PRICE_USD=130 heuristic)",
+    "G_survival_ev_preview": "PASS (168 cells computed; 0/168 positive; honest negative EV reported)",
+    "H_10_20u_preflight_implication": "PASS (X/USDC 10/20U NOT worth; partial EV negative; better path is feed expansion)",
+    "I_next_stage_decision": "PASS (LP_METEORA_DLMM_KNOWN_POOL_FEED_EXPANSION_V1 selected)"
+  },
+
+  "structural_finding": "V8 survival EV preview for X/USDC at 10-2000 USD notionals is **structurally negative** (168/168 cells negative; best -$0.154 at 2000/15m/zero_il_lvr). Root cause: low base fee (1.5%) + low assumed volume (0.5%) + high fixed cost (~$0.19) + IL/LVR even at 0.1% (=$2 on $2000). The connector V1 + coverage expansion V6 + V7 work is technically complete; partial EV preview now gives a quantitative signal that **single-pool retail-scale LP on Meteora DLMM X/USDC is unprofitable**. Recommended next stage: expand known pool feed to find pools with positive EV. can_run_probe_now=false; tiny_canary_allowed=no; v2 line count 992 unchanged.",
+
+  "allowed_next_stages": [
+    "LP_METEORA_DLMM_KNOWN_POOL_FEED_EXPANSION_V1",
+    "LP_METEORA_DLMM_10_20U_PROBE_PREFLIGHT_DESIGN_V1",
+    "LP_SOLANA_PAID_RPC_SETUP_REQUIRED",
+    "LP_METEORA_DLMM_SURVIVAL_EV_PREVIEW_FIX_REPEAT",
+    "STOP_LP_RESEARCH_NOW"
+  ],
+  "recommended_next_stage": "LP_METEORA_DLMM_KNOWN_POOL_FEED_EXPANSION_V1",
+  "default_when_no_explicit_choice": "LP_METEORA_DLMM_KNOWN_POOL_FEED_EXPANSION_V1"
+}

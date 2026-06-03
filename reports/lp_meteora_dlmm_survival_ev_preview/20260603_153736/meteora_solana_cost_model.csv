@@ -1,0 +1,4 @@
+scenario,priority_fee_lamports,per_tx_sol,per_tx_usd,round_trip_tx_count,round_trip_usd,setup_sol,setup_usd,recovery_usd,total_cost_usd,net_cost_usd,sol_price_used,heuristic,refundable,applies_to_probe,applies_to_scaled_notional,confidence,invalid_reason
+low,1000,6e-06,0.00078,2,0.00156,0.00218928,0.2846064,0.1325532,0.2861664,0.15361319999999998,130.0,True,partial,False,True,0.5,SOL price heuristic; priority fee heuristic; rent heuristic; mark heuristic
+realistic,10000,1.5e-05,0.0019500000000000001,2,0.0039000000000000003,0.00218928,0.2846064,0.1325532,0.2885064,0.1559532,130.0,True,partial,False,True,0.5,SOL price heuristic; priority fee heuristic; rent heuristic; mark heuristic
+conservative,100000,0.000105,0.01365,2,0.0273,0.00218928,0.2846064,0.1325532,0.3119064,0.17935319999999996,130.0,True,partial,False,True,0.5,SOL price heuristic; priority fee heuristic; rent heuristic; mark heuristic
