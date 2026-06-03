@@ -20,7 +20,7 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-RUN_ID = "20260603_153736"
+RUN_ID = "20260603_190910"
 REPORT_DIR = REPO_ROOT / "reports" / "lp_meteora_dlmm_survival_ev_preview" / RUN_ID
 
 V2 = REPO_ROOT / "scripts" / "lp_base_10u_probe_executor_v2.py"

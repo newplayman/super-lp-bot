@@ -1,0 +1,81 @@
+{
+  "stage": "LP_METEORA_DLMM_SURVIVAL_EV_PREVIEW_V1",
+  "run_id": "20260603_190910",
+  "branch": "feat/supabase-postgres-deployment",
+  "head_before": "3065d23",
+  "phase": "C_partial_scope_freeze",
+  "rerun_of_prior_run_id": "20260603_153736",
+  "rerun_reason": "verification re-run; same inputs same model; new RUN_ID for audit trail",
+
+  "scope": "partial_pool2_only",
+  "scope_description": "本 EV preview 只覆盖 X/USDC pool (pool 2). 不代表所有 Meteora DLMM pools. 不代表 SOL/USDC. 不能作为 probe 执行依据.",
+
+  "included_pools": [
+    {
+      "pool_address": "9DiruRpjnAnzhn6ts5HGLouHtJrT1JGsPbXNYCrFz2ad",
+      "pool_label": "X/USDC (pool 2)",
+      "source_file": "fetch_lb_pair_lock_info.ts (from official Meteora DLMM SDK examples)",
+      "quote_status": "ready (V6 6/6 stable at 5/7/9 arrays; 10U=941005 raw X; 20U=1882010 raw X)",
+      "bin_liquidity_status": "ready (V6 231 bins with liquidity at 5_arrays; V7 280 bins decoded at 5_arrays sanity)",
+      "fee_snapshot_status": "ready (V3+V4: base_fee_bps=1.5; max_fee_bps=10; protocol_fee_bps=null)",
+      "pool_snapshot_status": "ready (V3+V4: token_x=FUAfBo2...; token_y=USDC; bin_step=100; active_bin_id=-236; active_price=0.0955)",
+      "effective_rate": "1 X ≈ 10.62 USDC for 10U/20U USDC swap (V6 evidence)",
+      "excluded": false
+    }
+  ],
+
+  "excluded_pools": [
+    {
+      "pool_address": "5BKxfWMbmYBAEWvyPZS9esPducUba9GqyMjtLCfbaqyF",
+      "pool_label": "SOL/USDC (pool 1)",
+      "source_file": "swap_quote.ts (from official Meteora DLMM SDK examples)",
+      "exclusion_reason": "no_quote_data",
+      "exclusion_detail": "V5+V6+V7 (7 stages of coverage expansion at 3/5/7/9/12/15 arrays per spec hard cap): SOL/USDC quote 0/8 cumulative. Root cause: 0 bins with liquidity at coverage 15 (21% price range, 1050 bins decoded); on-chain liquidity at active_bin_id=-12248 is concentrated even further than ±10% from active bin. This is real on-chain fact, not RPC limit. Single-account path works fine (V7 18/27 success on public RPC).",
+      "paid_rpc_required_for_full_scope": true,
+      "paid_rpc_setup_candidate": true,
+      "excluded": true
+    }
+  ],
+
+  "scope_honesty_assertions": [
+    "本报告是 PARTIAL; not full",
+    "不能代表所有 Meteora DLMM pools",
+    "不能代表 SOL/USDC (excluded; no_quote_data)",
+    "不能作为 probe / live / canary / paper 执行依据",
+    "cannot be used for full 2-pool EV computation",
+    "can_enter_partial_survival_ev_preview = true (per V7 final verdict)",
+    "can_enter_full_survival_ev_preview = false (per V7 final verdict)"
+  ],
+
+  "data_assets_for_partial_preview": {
+    "x_usdc_quote_snapshot": "V6 evidence; 6 quote attempts; all success; amount_out_raw available",
+    "x_usdc_bin_liquidity": "V6 evidence; 231 bins with liquidity at 5_arrays; covers active bin ±10% range",
+    "x_usdc_fee_snapshot": "V3+V4: base_fee_bps=1.5; max_fee_bps=10",
+    "x_usdc_pool_snapshot": "V3+V4: token_x=FUAfBo2...; bin_step=100; active_bin_id=-236; active_price=0.0955",
+    "x_usdc_active_to_nearest_liquidity_distance": "estimated 0-1 bin (active bin -236 has neighboring bins with liquidity per V6 decode)",
+    "x_usdc_pool_reserves": "V4 evidence: reserve_x_raw=101593140348172 (101.6T raw X); reserve_y_raw=2200122802740 (2.2T micro-USDC)"
+  },
+
+  "data_missing_must_mark": [
+    "actual on-chain trading volume (we have not measured; per spec: mark 'missing' not 0)",
+    "actual realized IL/LVR (we have not measured; per spec: mark 'missing' not 0)",
+    "actual realized slippage (V6 quote has price_impact empty; mark 'missing')",
+    "real token USDC supply (we use reserve_y_raw as proxy; mark 'proxy' not 'actual')",
+    "actual Solana priority fee (per scenario; we use proxy 1000-100000 microlamports)",
+    "actual rent (per scenario; we use proxy 0.00218928 SOL for account creation; mark 'proxy')"
+  ],
+
+  "this_stage_does_not": [
+    "represent partial as full",
+    "fake any data to fill missing fields",
+    "load any keypair / private key",
+    "construct any transaction"
+  ],
+
+  "solana_wallet_or_keypair_touched": false,
+  "can_run_probe_now": false,
+  "v2_line_count_unchanged": true,
+  "v2_line_count": 992,
+
+  "next_stage": "Stage D: survival EV model input build (X/USDC only; 6 notionals x 7 hold_windows x 4 scenarios = 168 cells)"
+}

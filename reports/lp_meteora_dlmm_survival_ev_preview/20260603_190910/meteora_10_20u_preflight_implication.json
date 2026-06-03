@@ -1,0 +1,70 @@
+{
+  "stage": "LP_METEORA_DLMM_SURVIVAL_EV_PREVIEW_V1",
+  "run_id": "20260603_190910",
+  "phase": "H_10_20u_preflight_implication",
+
+  "operator_questions_answered": {
+    "q1_x_usdc_worth_10_20u_probe": {
+      "answer": "NO (honestly)",
+      "reason": "All 10/20U cells negative in V8 EV preview; best case ~-$0.156 at 10U/15m/zero_il_lvr; worst ~-$0.256 at 20U/15m/realistic"
+    },
+    "q2_need_solana_wallet": {
+      "answer": "NO (this round)",
+      "reason": "V8 is read-only analysis only; no transaction construction; per spec '不得选择 probe/live/canary/wallet/keypair'"
+    },
+    "q3_need_extra_tokens": {
+      "answer": "For probe yes (X + USDC + SOL); For V8 no",
+      "reason": "V8 is theoretical EV only; no token acquisition; 'notional' column is theoretical (10U USDC input -> X output)"
+    },
+    "q4_sufficient_data": {
+      "answer": "PARTIAL",
+      "available": ["quote (X/USDC)", "bin liquidity", "fee snapshot", "pool snapshot", "reserves"],
+      "missing": ["actual on-chain volume", "actual realized IL/LVR", "actual priority fee", "real SOL price", "real rent", "real slippage"]
+    },
+    "q5_realistic_positive_ev": {
+      "answer": "NO",
+      "best_realistic": {
+        "notional_usd": 10,
+        "hold_window": "15m",
+        "scenario": "realistic",
+        "net_ev_usd": -0.206,
+        "net_ev_pct": -2.06
+      }
+    },
+    "q6_just_exploratory_connector_probe": {
+      "answer": "V8 is preflight design only, NOT probe. If next stage is 10_20U_PROBE_PREFLIGHT_DESIGN_V1, that would design (no execute). If EV positive, separate stage executes probe (with operator keypair).",
+      "current_state": "preflight_design"
+    },
+    "q7_expand_known_pool_feed_instead_of_probe": {
+      "answer": "YES (recommended)",
+      "reason": "10-20U X/USDC EV is all negative; expanding pool feed to find higher-fee Meteora DLMM pools or other AMM protocols (Raydium, Orca) has better ROI; paid RPC for SOL/USDC deferrable"
+    }
+  },
+
+  "key_finding": "10/20U X/USDC probe is NOT worth it under V8 EV model (heuristic-based; missing actual volume/IL). Net EV is structurally negative at retail notionals for X/USDC given (a) low base fee (1.5%), (b) low assumed volume, (c) fixed cost (~$0.16 round-trip + setup). Real EV could be different if (a) actual volume is 10x+ higher, (b) max_fee (10%) kicks in, (c) zero_il_lvr is realistic for tight notional windows.",
+
+  "summary_decision": {
+    "10_20U_probe_worth": false,
+    "10_20U_preflight_design_worth": "false (no point if no probe coming)",
+    "known_pool_feed_expansion_worth": true,
+    "paid_rpc_for_sol_usdc": "deferrable",
+    "survival_ev_honest_report": "NEGATIVE for X/USDC at 10-2000 USD notionals (best case -$0.156; worst ~-$0.36; 84/168 near break-even but all negative)"
+  },
+
+  "this_stage_does_not": [
+    "construct any transaction",
+    "instantiate Keypair",
+    "import wallet adapter",
+    "execute probe",
+    "swap / open_lp / close_lp / collect_fee",
+    "paid RPC call",
+    "modify EVM executor v2"
+  ],
+
+  "solana_wallet_or_keypair_touched": false,
+  "can_run_probe_now": false,
+  "v2_line_count_unchanged": true,
+  "v2_line_count": 992,
+
+  "next_stage": "Stage I: next-stage decision V8 (recommend LP_METEORA_DLMM_KNOWN_POOL_FEED_EXPANSION_V1)"
+}

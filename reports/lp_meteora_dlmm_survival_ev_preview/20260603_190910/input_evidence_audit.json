@@ -1,0 +1,88 @@
+{
+  "stage": "LP_METEORA_DLMM_SURVIVAL_EV_PREVIEW_V1",
+  "run_id": "20260603_190910",
+  "branch": "feat/supabase-postgres-deployment",
+  "head_before": "3065d23",
+
+  "upstream_files_audited": [
+    "reports/lp_meteora_dlmm_quote_binarray_coverage_expand_v2/20260603_150331/FINAL_VERDICT.json",
+    "reports/lp_meteora_dlmm_quote_binarray_coverage_expand_v2/20260603_150331/ONEPAGE_CN.md",
+    "reports/lp_meteora_dlmm_quote_binarray_coverage_expand_v2/20260603_150331/METEORA_COMBINED_QUOTE_READINESS_V2_CN.md",
+    "reports/lp_meteora_dlmm_quote_binarray_coverage_expand_v2/20260603_150331/meteora_combined_quote_readiness_v2.json",
+    "reports/lp_meteora_dlmm_quote_binarray_coverage_expand_v2/20260603_150331/METEORA_QUOTE_READINESS_UPDATE_CN.md",
+    "reports/lp_meteora_dlmm_quote_binarray_coverage_expand_v2/20260603_150331/meteora_quote_readiness_update.json",
+    "reports/lp_meteora_dlmm_quote_binarray_coverage_expand_v2/20260603_150331/METEORA_QUOTE_SMOKE_V3_BY_COVERAGE_CN.md",
+    "reports/lp_meteora_dlmm_quote_binarray_coverage_expand_v2/20260603_150331/meteora_quote_smoke_v3_by_coverage.json",
+    "reports/lp_meteora_dlmm_quote_binarray_coverage_expand_v2/20260603_150331/METEORA_EXPANDED_BIN_LIQUIDITY_DECODE_CN.md",
+    "reports/lp_meteora_dlmm_quote_binarray_coverage_expand_v2/20260603_150331/meteora_expanded_bin_liquidity_decode.json",
+    "reports/lp_meteora_dlmm_known_pool_connector/20260603_134202/METEORA_POOL_SNAPSHOT_CN.md",
+    "reports/lp_meteora_dlmm_known_pool_connector/20260603_134202/meteora_pool_snapshot.json",
+    "reports/lp_meteora_dlmm_known_pool_connector/20260603_134202/METEORA_FEE_SNAPSHOT_CN.md",
+    "reports/lp_meteora_dlmm_known_pool_connector/20260603_134202/meteora_fee_snapshot.json",
+    "reports/lp_meteora_dlmm_quote_binarray_coverage_expand/20260603_143729/meteora_quote_smoke_v3_by_coverage.json",
+    "reports/lp_meteora_dlmm_survival_ev_preview/20260603_153736/FINAL_VERDICT.json",
+    "reports/lp_meteora_dlmm_survival_ev_preview/20260603_153736/meteora_survival_ev_inputs.json"
+  ],
+  "missing_files": [],
+
+  "key_findings": {
+    "previous_stage": "LP_METEORA_DLMM_QUOTE_BINARRAY_COVERAGE_EXPAND_V2",
+    "previous_status": "WARN",
+    "previous_run_id": "20260603_150331",
+    "previous_commit": "3c72d3f",
+    "prior_survival_ev_preview_run_id": "20260603_153736",
+    "prior_survival_ev_preview_commit": "3065d23",
+    "recommended_next_stage_from_upstream": "LP_METEORA_DLMM_SURVIVAL_EV_PREVIEW_V1",
+    "can_enter_full_survival_ev_preview": false,
+    "can_enter_partial_survival_ev_preview": true,
+    "x_usdc_quote_still_success": true,
+    "sol_usdc_quote_success": false,
+    "minimum_coverage_required": ">=15_arrays",
+    "can_run_probe_now": false,
+    "solana_wallet_or_keypair_touched": false,
+    "tiny_canary_allowed": "no",
+    "v2_line_count_unchanged": true
+  },
+
+  "this_stage_objectives": [
+    "freeze partial scope (X/USDC included; SOL/USDC excluded with no_quote_data)",
+    "build survival EV model input (6 notionals x 7 hold_windows x 4 scenarios = 168 cells for X/USDC)",
+    "construct scenario-based fee capture proxy (heuristic marked)",
+    "construct Solana cost model (tx fee + rent + position cost; 3 scenarios)",
+    "compute survival EV preview honestly (no fake success; mark missing data)",
+    "answer 10/20U preflight implication (no probe)",
+    "decide next stage (one of 5 allowed)"
+  ],
+
+  "this_stage_does_not": [
+    "compute EV for SOL/USDC (no_quote_data)",
+    "represent partial EV as full EV",
+    "load any keypair / private key / seed phrase / wallet adapter",
+    "construct any transaction",
+    "call sendTransaction or any signing method",
+    "swap / open LP / close LP / collect fee / bridge",
+    "start live/canary/paper",
+    "write production positions",
+    "overwrite shadow tables",
+    "modify EVM executor v2",
+    "release v2 hard-disable",
+    "set can_run_probe_now to true",
+    "set tiny_canary_allowed to yes",
+    "hard-code any program id from model memory",
+    "fill missing data with zero (per spec: must mark 'missing')"
+  ],
+
+  "safety_locks_intact": {
+    "can_run_probe_now": false,
+    "execution_allowed_now": false,
+    "transaction_sent": false,
+    "wallet_or_tx_touched": false,
+    "solana_wallet_or_keypair_touched": false,
+    "tiny_canary_allowed": "no",
+    "edge_proven": "no",
+    "manual_approval_required": true,
+    "send_hard_disable_still_active": true,
+    "v2_modified_by_this_task": false,
+    "v2_line_count_unchanged": true
+  }
+}
