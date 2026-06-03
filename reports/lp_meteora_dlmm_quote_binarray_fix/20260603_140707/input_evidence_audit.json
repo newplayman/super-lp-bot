@@ -1,0 +1,116 @@
+{
+  "stage": "LP_METEORA_DLMM_QUOTE_BINARRAY_FIX_REPEAT_V1",
+  "run_id": "20260603_140707",
+  "branch": "feat/supabase-postgres-deployment",
+  "head_before": "1c3d8ea",
+
+  "upstream_files_audited": [
+    "reports/lp_meteora_dlmm_known_pool_connector/20260603_134202/FINAL_VERDICT.json",
+    "reports/lp_meteora_dlmm_known_pool_connector/20260603_134202/ONEPAGE_CN.md",
+    "reports/lp_meteora_dlmm_known_pool_connector/20260603_134202/METEORA_KNOWN_POOL_UNIVERSE_CN.md",
+    "reports/lp_meteora_dlmm_known_pool_connector/20260603_134202/meteora_known_pool_universe.json",
+    "reports/lp_meteora_dlmm_known_pool_connector/20260603_134202/METEORA_POOL_SNAPSHOT_CN.md",
+    "reports/lp_meteora_dlmm_known_pool_connector/20260603_134202/meteora_pool_snapshot.json",
+    "reports/lp_meteora_dlmm_known_pool_connector/20260603_134202/METEORA_FEE_SNAPSHOT_CN.md",
+    "reports/lp_meteora_dlmm_known_pool_connector/20260603_134202/meteora_fee_snapshot.json",
+    "reports/lp_meteora_dlmm_known_pool_connector/20260603_134202/METEORA_BIN_LIQUIDITY_SNAPSHOT_CN.md",
+    "reports/lp_meteora_dlmm_known_pool_connector/20260603_134202/meteora_bin_liquidity_snapshot.json",
+    "reports/lp_meteora_dlmm_known_pool_connector/20260603_134202/METEORA_QUOTE_SNAPSHOT_CN.md",
+    "reports/lp_meteora_dlmm_known_pool_connector/20260603_134202/meteora_quote_snapshot.json",
+    "reports/lp_meteora_dlmm_known_pool_connector/20260603_134202/METEORA_CONNECTOR_READINESS_MATRIX_CN.md",
+    "reports/lp_meteora_dlmm_known_pool_connector/20260603_134202/meteora_connector_readiness_matrix.json",
+    "reports/lp_meteora_dlmm_sdk_connector_feasibility/20260603_130532/FINAL_VERDICT.json"
+  ],
+  "missing_files": [],
+
+  "key_findings": {
+    "previous_stage": "LP_METEORA_DLMM_KNOWN_POOL_READONLY_CONNECTOR_V1",
+    "previous_status": "WARN",
+    "previous_run_id": "20260603_134202",
+    "previous_commit": "1c3d8ea",
+    "recommended_next_stage_from_upstream": "LP_METEORA_DLMM_QUOTE_BINARRAY_FIX_REPEAT",
+    "known_pool_count": 2,
+    "pool_snapshot_success_count": 2,
+    "fee_snapshot_success_count": 2,
+    "bin_liquidity_snapshot_success_count": 0,
+    "quote_snapshot_success_count": 0,
+    "quote_ready": false,
+    "survival_ev_ready": false,
+    "needs_paid_rpc_v4_claim": true,
+    "needs_known_pool_feed_expansion": false,
+    "can_run_probe_now": false,
+    "solana_wallet_or_keypair_touched": false,
+    "tiny_canary_allowed": "no",
+    "v2_line_count_unchanged": true
+  },
+
+  "known_pool_feed_full_addresses_from_v4_artifact": [
+    "5BKxfWMbmYBAEWvyPZS9esPducUba9GqyMjtLCfbaqyF",
+    "9DiruRpjnAnzhn6ts5HGLouHtJrT1JGsPbXNYCrFz2ad"
+  ],
+
+  "this_stage_objectives": [
+    "audit SDK bin array helpers (binIdToBinArrayIndex, deriveBinArray, getBinArrayForSwap, getBinArrays, getBinsAroundActiveBin)",
+    "derive active + neighbor -1/+1 bin array PDA for 2 known pools (no GPA)",
+    "single-account getAccountInfo on each derived pubkey; document blockers",
+    "small-batch getMultipleAccounts (1-3 accounts) if single-account partial",
+    "bin array decode via SDK if data fetchable",
+    "quote smoke v2 if bin liquidity available",
+    "paid_rpc_required decision (yes/no/partial)",
+    "next-stage decision"
+  ],
+
+  "this_stage_does_not": [
+    "implement production connector",
+    "load any keypair / private key / seed phrase / wallet adapter",
+    "construct any transaction",
+    "call sendTransaction or any signing method",
+    "swap / open LP / close LP / collect fee / bridge",
+    "start live/canary/paper",
+    "write production positions",
+    "overwrite shadow tables",
+    "modify EVM executor v2",
+    "release v2 hard-disable",
+    "set can_run_probe_now to true",
+    "set tiny_canary_allowed to yes",
+    "hard-code any program id from model memory",
+    "use blog / Twitter / forum / unofficial GitHub fork as source",
+    "use paid RPC (no key in this round; only test if env var exists without printing URL)",
+    "install any package in repo root (only in /tmp isolated dir)",
+    "fake quote / bin_liquidity success when blocked"
+  ],
+
+  "oficial_source_levels": {
+    "level_A": [
+      "protocol_oficial_docs_domain",
+      "protocol_oficial_github_org_or_repo",
+      "protocol_oficial_npm_package_or_SDK"
+    ],
+    "level_B_allowed": [
+      "protocol_oficial_SDK_constant",
+      "protocol_oficial_example_code"
+    ],
+    "forbidden": [
+      "blog",
+      "twitter_or_x_screenshot",
+      "forum_repeat",
+      "unofficial_github_fork",
+      "model_memory_hardcode",
+      "explorer_only_guess_protocol"
+    ]
+  },
+
+  "safety_locks_intact": {
+    "can_run_probe_now": false,
+    "execution_allowed_now": false,
+    "transaction_sent": false,
+    "wallet_or_tx_touched": false,
+    "solana_wallet_or_keypair_touched": false,
+    "tiny_canary_allowed": "no",
+    "edge_proven": "no",
+    "manual_approval_required": true,
+    "send_hard_disable_still_active": true,
+    "v2_modified_by_this_task": false,
+    "v2_line_count_unchanged": true
+  }
+}

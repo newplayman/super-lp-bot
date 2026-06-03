@@ -1,0 +1,7 @@
+pool_address,active_bin_id,bin_step,bin_array_index,bin_array_pubkey,neighbor_offset,derivation_success,confidence,invalid_reason
+5BKxfWMbmYBAEWvyPZS9esPducUba9GqyMjtLCfbaqyF,-12248,2,-176,99daE4xkHTmziJZYh6XzfQ8mRqJD6kiYbDVtf8mRhoUL,-1,true,0.95,
+5BKxfWMbmYBAEWvyPZS9esPducUba9GqyMjtLCfbaqyF,-12248,2,-175,HEG2LuUaJNZNS7EYD5qXL8G3FAHEHKzWZaMPCu3osU1R,0,true,0.95,
+5BKxfWMbmYBAEWvyPZS9esPducUba9GqyMjtLCfbaqyF,-12248,2,-174,7tfRkX2QnictEJEZkdw85QVs3zTm21UTqPdz4Dk5fnvP,1,true,0.95,
+9DiruRpjnAnzhn6ts5HGLouHtJrT1JGsPbXNYCrFz2ad,-236,100,-5,yhkw7F4xFVLWmF775cfj56gMQhNZchrmdpSBALC6Z5j,-1,true,0.95,
+9DiruRpjnAnzhn6ts5HGLouHtJrT1JGsPbXNYCrFz2ad,-236,100,-4,29JynFXae8M6FLSmNPpDbTsEfXhxhxmSCQFGnBnFsU2N,0,true,0.95,
+9DiruRpjnAnzhn6ts5HGLouHtJrT1JGsPbXNYCrFz2ad,-236,100,-3,G1BHyB19ozazdUtAdHJbHW8KXoJqsWq4XMiH64WNRHFz,1,true,0.95,

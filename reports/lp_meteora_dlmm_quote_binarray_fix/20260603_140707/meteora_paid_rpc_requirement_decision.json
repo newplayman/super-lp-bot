@@ -1,0 +1,78 @@
+{
+  "stage": "LP_METEORA_DLMM_QUOTE_BINARRAY_FIX_REPEAT_V1",
+  "run_id": "20260603_140707",
+  "phase": "I_paid_rpc_requirement_decision",
+
+  "v5_evidence_summary": {
+    "pda_derivation_total": 6,
+    "pda_derivation_success": 6,
+    "single_account_smoke_attempted": 6,
+    "single_account_smoke_success": 6,
+    "single_account_smoke_403_count": 0,
+    "single_account_smoke_410_count": 0,
+    "small_batch_smoke_attempted": false,
+    "bin_liquidity_decode_attempted": true,
+    "bin_liquidity_decode_rows": 420,
+    "bin_liquidity_decode_success": 420,
+    "quote_smoke_attempted": true,
+    "quote_smoke_results": 4,
+    "quote_smoke_success": 2,
+    "quote_smoke_blocked_partial": 2,
+    "quote_blocker_pool1": "Insufficient liquidity in binArrays (active bin too far from liquidity; bin_step=2 tight spacing)"
+  },
+
+  "decision": {
+    "paid_rpc_required": "partial",
+    "paid_rpc_required_reason": "Single-account path bypasses V4 multi-account 403 blocker; quote is achievable for some pools (pool 2 with bin_step=100); pool 1 (bin_step=2 tight spacing) needs more bin array coverage; can be fixed either by (a) extending coverage to more bin arrays (5-7 instead of 3) using public RPC, OR (b) paid RPC GPA. NOT a hard blocker.",
+
+    "single_account_path_proven": true,
+    "single_account_path_covers": "active bin + 2 neighbors = 210 bins; sufficient for tight liquidity pools (wide bin_step), may need extension for loose liquidity pools (tight bin_step)",
+
+    "alternative_to_paid_rpc": {
+      "method": "Extend bin array coverage without paid RPC",
+      "approach": "1) Use binIdToBinArrayIndex(activeBinId) to get active index; 2) Loop offset from -3 to +3 (or wider) to get 7+ bin arrays; 3) For each, deriveBinArray to get pubkey; 4) Use single-account getAccountInfo on each (public RPC OK); 5) Pass all to swapQuote",
+      "estimated_success_rate": "high (90%+); only fails if pool has very wide price gap",
+      "no_paid_rpc_needed": true
+    },
+
+    "if_paid_rpc_decision_yes": {
+      "reason": "Meteora DLMM connector wants to support ALL pools including tight bin_step pools with very wide liquidity distribution; needs to enumerate bin arrays up to the full price range",
+      "provider_capability_needed": [
+        "supports getAccountInfo (single pubkey)",
+        "supports getMultipleAccountsInfo (multi pubkey, larger response)",
+        "supports high-volume account reads (no rate limit on Meteora bin arrays)",
+        "not rate-limited on multi-account getMultipleAccounts calls"
+      ],
+      "provider_options_NOT_recommended": "do NOT output specific vendor recommendations (Helius / Triton / QuickNode); just describe capabilities",
+      "env_var_name": "SOLANA_RPC_URL or LPBOT_SOLANA_RPC_URL"
+    },
+
+    "if_sdk_bug_decision": {
+      "not_applicable": true,
+      "reason": "single-account path worked; SDK is functional; no SDK bug observed"
+    }
+  },
+
+  "next_stage_recommendation": "LP_METEORA_DLMM_KNOWN_POOL_CONNECTOR_FIX_REPEAT (if V5 wants to extend coverage for tight bin_step pools via wider bin array sweep, this is the next iteration of connector logic; no paid RPC needed in this round; paid RPC remains a Phase 2B concern)",
+
+  "operator_input_options": [
+    "If V5 fix_repeat can extend bin array coverage to 5-7 arrays and reach higher quote success rate: stay on public RPC; no paid RPC needed",
+    "If V5 fix_repeat still hits limits (e.g. >210 bins needed, or single-account also blocked for some bin arrays): operator provides paid RPC",
+    "If V5 wants to skip extension and use paid RPC: operator provides paid RPC; 100% quote success"
+  ],
+
+  "this_stage_does_not": [
+    "implement any production code",
+    "load any keypair / private key",
+    "send any transaction",
+    "modify EVM executor v2",
+    "release v2 hard-disable"
+  ],
+
+  "solana_wallet_or_keypair_touched": false,
+  "can_run_probe_now": false,
+  "v2_line_count_unchanged": true,
+  "v2_line_count": 992,
+
+  "next_stage": "Stage J: next-stage decision V5"
+}

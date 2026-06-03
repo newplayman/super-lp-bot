@@ -1,0 +1,86 @@
+{
+  "status": "WARN",
+  "stage": "LP_METEORA_DLMM_QUOTE_BINARRAY_FIX_REPEAT_V1",
+  "run_id": "20260603_140707",
+  "branch": "feat/supabase-postgres-deployment",
+  "head_before": "1c3d8ea",
+
+  "binarray_helper_audit_ran": true,
+  "binarray_pda_derivation_ran": true,
+  "binarray_pda_success_count": 6,
+  "binarray_pda_total_count": 6,
+  "single_account_smoke_ran": true,
+  "single_account_smoke_success_count": 6,
+  "single_account_smoke_total_count": 6,
+  "single_account_smoke_403_count": 0,
+  "single_account_smoke_410_count": 0,
+  "small_batch_smoke_ran": false,
+  "small_batch_smoke_success_count": 0,
+  "bin_liquidity_decode_success_count": 420,
+  "quote_smoke_ran": true,
+  "quote_smoke_success_count": 2,
+  "quote_smoke_blocked_count": 2,
+  "paid_rpc_required": "partial",
+  "paid_rpc_required_reason": "single-account path works; quote partial because pool 1 tight bin_step needs more bin array coverage (3 → 5-7 arrays); extension is on public RPC, no paid RPC needed for next iteration",
+
+  "key_findings": {
+    "v4_blocker": "multi-account getBinArrayForSwap 403 on public RPC (0/4 quote in V4)",
+    "v5_unblocker": "single-account path: use deriveBinArray (pure PDA, no RPC) + connection.getAccountInfo(singlePubkey) (public RPC allows single-account)",
+    "v5_results_summary": "6/6 PDA derivation + 6/6 single-account success + 420 bins decoded + 2/4 quote success",
+    "v4_to_v5_quote_progress": "0/4 → 2/4 (V1-V4 all 0; V5 first success)",
+    "remaining_2_4_quote_blocked": "pool 1 SOL/USDC bin_step=2 needs more bin array coverage (3 arrays × 70 bins = ~4% price range not enough for 10U-20U USDC swap); fix: extend to 5-7 arrays in next fix_repeat"
+  },
+
+  "v5_real_on_chain_data": {
+    "bin_arrays_decoded": 6,
+    "total_bins_decoded": 420,
+    "bin_array_data_length_bytes": 10136,
+    "bin_array_owner_program": "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo (Meteora DLMM)",
+    "quote_pool_2_swap": "10U USDC → 941005 raw X; 20U USDC → 1882010 raw X; effective rate ~0.0941 X/USDC (1 X ≈ 10.62 USDC at 2026-06-03 14:17 UTC)"
+  },
+
+  "v3_to_v5_3_stage_progression": {
+    "v3_FEASIBILITY": "SDK path identified; smoke partial (0/4 quote); readiness matrix designed",
+    "v4_CONNECTOR_V1": "connector V1 built; pool/fee snapshot 2/2 success; bin/quote 0/2 / 0/4 (multi-account blocked)",
+    "v5_BINARRAY_FIX": "single-account path PROVEN (6/6 success on public RPC); 420 bins decoded; **2/4 quote success** (V1-V4 all 0)"
+  },
+
+  "phase_results": {
+    "A_workspace_safety": "PASS (HEAD=1c3d8ea; pre-existing dirty files unrelated)",
+    "B_input_evidence_audit": "PASS (14 upstream files from V4)",
+    "C_binarray_sdk_helper_audit": "PASS (12 helpers audited; single-account path identified)",
+    "D_binarray_pda_derivation": "PASS (6/6 deterministic pubkeys; no RPC)",
+    "E_single_account_smoke": "PASS (6/6 getAccountInfo success on public RPC; V4 blocker BYPASSED)",
+    "F_small_batch_smoke": "SKIPPED (Stage E had full success)",
+    "G_bin_liquidity_decode": "PASS (420 bins decoded via SDK program.account.binArray.fetch)",
+    "H_quote_smoke_v2": "PARTIAL (2/4 quote success; pool 2 fully; pool 1 blocked on tight bin_step + 3-array coverage)",
+    "I_paid_rpc_decision": "PASS (paid_rpc_required=partial; single-account path works; coverage extension on public RPC)",
+    "J_next_stage_decision": "PASS (LP_METEORA_DLMM_QUOTE_BINARRAY_FIX_REPEAT selected)"
+  },
+
+  "can_run_probe_now": false,
+  "execution_allowed_now": false,
+  "transaction_sent": false,
+  "wallet_or_tx_touched": false,
+  "solana_wallet_or_keypair_touched": false,
+  "edge_proven": "no",
+  "tiny_canary_allowed": "no",
+  "manual_approval_required": true,
+  "send_hard_disable_still_active": true,
+
+  "v2_modified_by_this_task": false,
+  "v2_line_count_unchanged": true,
+  "v2_line_count": 992,
+
+  "structural_finding": "Meteora DLMM single-account bin array path PROVEN on public RPC (6/6 success). V1-V4 multi-account 403 blocker FULLY BYPASSED by switching to deriveBinArray (PDA) + connection.getAccountInfo (single pubkey). 420 bin liquidity entries decoded via SDK. Quote smoke 2/4 success (V1-V4 all 0; V5 first real quote) for pool 2 (X/USDC, bin_step=100); pool 1 (SOL/USDC, bin_step=2) blocked on insufficient bin array coverage (3 arrays × 70 bins = 210 bins not enough for 10U-20U USDC swap in tight bin_step). paid_rpc_required=partial (extension to 5-7 arrays achievable on public RPC). Next stage LP_METEORA_DLMM_QUOTE_BINARRAY_FIX_REPEAT will extend coverage to 5-7 arrays. No keypair / signer / transaction / wallet adapter used; SDK install in /tmp isolated; repo node_modules NOT created; can_run_probe_now=false; tiny_canary_allowed=no; v2 (lp_base_10u_probe_executor_v2.py) line count 992 unchanged.",
+
+  "allowed_next_stages": [
+    "LP_METEORA_DLMM_SURVIVAL_EV_PREVIEW_V1",
+    "LP_METEORA_DLMM_QUOTE_BINARRAY_FIX_REPEAT",
+    "LP_SOLANA_PAID_RPC_SETUP_REQUIRED",
+    "LP_METEORA_DLMM_KNOWN_POOL_CONNECTOR_FIX_REPEAT",
+    "STOP_LP_RESEARCH_NOW"
+  ],
+  "recommended_next_stage": "LP_METEORA_DLMM_QUOTE_BINARRAY_FIX_REPEAT",
+  "default_when_no_explicit_choice": "LP_METEORA_DLMM_QUOTE_BINARRAY_FIX_REPEAT"
+}

@@ -1,0 +1,80 @@
+[
+  {
+    "pool_address": "5BKxfWMbmYBAEWvyPZS9esPducUba9GqyMjtLCfbaqyF",
+    "bin_array_pubkey": "99daE4xkHTmziJZYh6XzfQ8mRqJD6kiYbDVtf8mRhoUL",
+    "neighbor_offset": -1,
+    "getAccountInfo_attempted": true,
+    "getAccountInfo_success": true,
+    "owner": "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo",
+    "data_len": 10136,
+    "rpc_error_type": "ok",
+    "confidence": 0.9,
+    "invalid_reason": "",
+    "latency_ms": 2430
+  },
+  {
+    "pool_address": "5BKxfWMbmYBAEWvyPZS9esPducUba9GqyMjtLCfbaqyF",
+    "bin_array_pubkey": "HEG2LuUaJNZNS7EYD5qXL8G3FAHEHKzWZaMPCu3osU1R",
+    "neighbor_offset": 0,
+    "getAccountInfo_attempted": true,
+    "getAccountInfo_success": true,
+    "owner": "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo",
+    "data_len": 10136,
+    "rpc_error_type": "ok",
+    "confidence": 0.9,
+    "invalid_reason": "",
+    "latency_ms": 225
+  },
+  {
+    "pool_address": "5BKxfWMbmYBAEWvyPZS9esPducUba9GqyMjtLCfbaqyF",
+    "bin_array_pubkey": "7tfRkX2QnictEJEZkdw85QVs3zTm21UTqPdz4Dk5fnvP",
+    "neighbor_offset": 1,
+    "getAccountInfo_attempted": true,
+    "getAccountInfo_success": true,
+    "owner": "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo",
+    "data_len": 10136,
+    "rpc_error_type": "ok",
+    "confidence": 0.9,
+    "invalid_reason": "",
+    "latency_ms": 126
+  },
+  {
+    "pool_address": "9DiruRpjnAnzhn6ts5HGLouHtJrT1JGsPbXNYCrFz2ad",
+    "bin_array_pubkey": "yhkw7F4xFVLWmF775cfj56gMQhNZchrmdpSBALC6Z5j",
+    "neighbor_offset": -1,
+    "getAccountInfo_attempted": true,
+    "getAccountInfo_success": true,
+    "owner": "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo",
+    "data_len": 10136,
+    "rpc_error_type": "ok",
+    "confidence": 0.9,
+    "invalid_reason": "",
+    "latency_ms": 349
+  },
+  {
+    "pool_address": "9DiruRpjnAnzhn6ts5HGLouHtJrT1JGsPbXNYCrFz2ad",
+    "bin_array_pubkey": "29JynFXae8M6FLSmNPpDbTsEfXhxhxmSCQFGnBnFsU2N",
+    "neighbor_offset": 0,
+    "getAccountInfo_attempted": true,
+    "getAccountInfo_success": true,
+    "owner": "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo",
+    "data_len": 10136,
+    "rpc_error_type": "ok",
+    "confidence": 0.9,
+    "invalid_reason": "",
+    "latency_ms": 158
+  },
+  {
+    "pool_address": "9DiruRpjnAnzhn6ts5HGLouHtJrT1JGsPbXNYCrFz2ad",
+    "bin_array_pubkey": "G1BHyB19ozazdUtAdHJbHW8KXoJqsWq4XMiH64WNRHFz",
+    "neighbor_offset": 1,
+    "getAccountInfo_attempted": true,
+    "getAccountInfo_success": true,
+    "owner": "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo",
+    "data_len": 10136,
+    "rpc_error_type": "ok",
+    "confidence": 0.9,
+    "invalid_reason": "",
+    "latency_ms": 95
+  }
+]

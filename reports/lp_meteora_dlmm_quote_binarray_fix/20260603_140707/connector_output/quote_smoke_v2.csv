@@ -1,0 +1,5 @@
+pool_address,notional_usd,token_in,token_out,amount_in_raw,quote_attempted,quote_success,amount_out_raw,price_impact,fee,bins_crossed,confidence,invalid_reason,latency_ms
+5BKxfWMbmYBAEWvyPZS9esPducUba9GqyMjtLCfbaqyF,10U,Y,X,10000000,true,false,,,,,0,Insufficient liquidity in binArrays for swapQuote,1576
+5BKxfWMbmYBAEWvyPZS9esPducUba9GqyMjtLCfbaqyF,20U,Y,X,20000000,true,false,,,,,0,Insufficient liquidity in binArrays for swapQuote,438
+9DiruRpjnAnzhn6ts5HGLouHtJrT1JGsPbXNYCrFz2ad,10U,Y,X,10000000,true,true,941005,,,0,0.85,,15
+9DiruRpjnAnzhn6ts5HGLouHtJrT1JGsPbXNYCrFz2ad,20U,Y,X,20000000,true,true,1882010,,,0,0.85,,5

@@ -1,0 +1,185 @@
+{
+  "stage": "LP_METEORA_DLMM_QUOTE_BINARRAY_FIX_REPEAT_V1",
+  "run_id": "20260603_140707",
+  "phase": "C_sdk_binarray_helper_audit",
+
+  "sdk_package": "@meteora-ag/dlmm@1.9.10",
+  "sdk_install_in_isolated_tmp": true,
+  "sdk_install_dir": "/tmp/lpbot_meteora_dlmm_sdk_probe_20260603_130532",
+  "repo_node_modules_created": false,
+
+  "helpers": [
+    {
+      "helper_name": "binIdToBinArrayIndex",
+      "exists": true,
+      "source_file": "ts-client/src/dlmm/helpers/index.ts (exported via dist/index.d.ts line 12709)",
+      "signature": "(binId: BN): BN",
+      "requires_wallet": false,
+      "requires_transaction": false,
+      "requires_gpa": false,
+      "usable_for_single_account_path": true,
+      "notes": "pure math; given activeBinId, computes binArrayIndex; deterministic; no RPC"
+    },
+    {
+      "helper_name": "deriveBinArray",
+      "exists": true,
+      "source_file": "ts-client/src/dlmm/helpers/index.ts (exported via dist/index.d.ts line 12759)",
+      "signature": "(lbPair: PublicKey, index: BN, programId: PublicKey): [PublicKey, number]",
+      "requires_wallet": false,
+      "requires_transaction": false,
+      "requires_gpa": false,
+      "usable_for_single_account_path": true,
+      "notes": "PDA derivation: seeds = [lbPair, index_le_bytes]; returns (pubkey, bump); no RPC; deterministic"
+    },
+    {
+      "helper_name": "deriveBinArrayBitmapExtension",
+      "exists": true,
+      "source_file": "ts-client/src/dlmm/helpers/index.ts (exported via dist/index.d.ts line 12708)",
+      "signature": "(lbPair: PublicKey, programId: PublicKey): [PublicKey, number]",
+      "requires_wallet": false,
+      "requires_transaction": false,
+      "requires_gpa": false,
+      "usable_for_single_account_path": true,
+      "notes": "PDA derivation for the bitmap extension account; not strictly needed for bin array read"
+    },
+    {
+      "helper_name": "getBinArrayForSwap",
+      "exists": true,
+      "source_file": "ts-client/src/dlmm/index.ts (exported via dist/index.d.ts line 13671)",
+      "signature": "(swapForY: boolean, count?: number): Promise<BinArrayAccount[]>",
+      "requires_wallet": false,
+      "requires_transaction": false,
+      "requires_gpa": true,
+      "uses_chunked_getMultipleAccountsInfo": true,
+      "usable_for_single_account_path": false,
+      "notes": "INTERNALLY uses chunkedGetMultipleAccountInfos (multi-account) which 403 on public RPC. This is the V4 blocker."
+    },
+    {
+      "helper_name": "getBinArrays",
+      "exists": true,
+      "source_file": "ts-client/src/dlmm/index.ts (exported via dist/index.d.ts line 13662)",
+      "signature": "(): Promise<BinArrayAccount[]>",
+      "requires_wallet": false,
+      "requires_transaction": false,
+      "requires_gpa": true,
+      "uses_anchor_program_account_binArray_all": true,
+      "usable_for_single_account_path": false,
+      "notes": "INTERNALLY uses Anchor program.account.binArray.all([binArrayLbPairFilter]) = GPA. Same blocker."
+    },
+    {
+      "helper_name": "getBinsAroundActiveBin",
+      "exists": true,
+      "source_file": "ts-client/src/dlmm/index.ts (exported via dist/index.d.ts line 13710)",
+      "signature": "(numberOfBinsToTheLeft: number, numberOfBinsToTheRight: number): Promise<{activeBin: number; bins: BinLiquidity[]}>",
+      "requires_wallet": false,
+      "requires_transaction": false,
+      "requires_gpa": true,
+      "uses_private_getBins_fetchMultiple": true,
+      "usable_for_single_account_path": false,
+      "notes": "INTERNALLY uses private getBins which calls program.account.binArray.fetchMultiple (multi-account). Same blocker."
+    },
+    {
+      "helper_name": "getBinsBetweenMinAndMaxPrice",
+      "exists": true,
+      "source_file": "ts-client/src/dlmm/index.ts (exported via dist/index.d.ts line 13720)",
+      "signature": "(minPrice: number, maxPrice: number): Promise<{activeBin: number; bins: BinLiquidity[]}>",
+      "requires_wallet": false,
+      "requires_transaction": false,
+      "requires_gpa": true,
+      "uses_private_getBins_fetchMultiple": true,
+      "usable_for_single_account_path": false,
+      "notes": "Same as getBinsAroundActiveBin; calls private getBins which uses multi-account."
+    },
+    {
+      "helper_name": "getBinArrayKeysCoverage",
+      "exists": true,
+      "source_file": "ts-client/src/dlmm/index.ts (exported via dist/index.d.ts line 12314)",
+      "signature": "(programId: PublicKey): PublicKey[]",
+      "requires_wallet": false,
+      "requires_transaction": false,
+      "requires_gpa": false,
+      "usable_for_single_account_path": true,
+      "notes": "Returns array of derived pubkeys (no RPC). Combine with single-account getAccountInfo to bypass multi-account RPC limit."
+    },
+    {
+      "helper_name": "getBinArrayLowerUpperBinId",
+      "exists": true,
+      "source_file": "ts-client/src/dlmm/helpers/index.ts (exported via dist/index.d.ts line 12710)",
+      "signature": "(binArrayIndex: BN): BN[]",
+      "requires_wallet": false,
+      "requires_transaction": false,
+      "requires_gpa": false,
+      "usable_for_single_account_path": true,
+      "notes": "pure math; returns [lowerBinId, upperBinId] for a given bin array index"
+    },
+    {
+      "helper_name": "getBinArrayIndexesCoverage",
+      "exists": true,
+      "source_file": "ts-client/src/dlmm/helpers/index.ts (exported via dist/index.d.ts line 12888)",
+      "signature": "(lowerBinId: BN, upperBinId: BN): BN[]",
+      "requires_wallet": false,
+      "requires_transaction": false,
+      "requires_gpa": false,
+      "usable_for_single_account_path": true,
+      "notes": "pure math; returns array of bin array indices covering [lowerBinId, upperBinId]"
+    },
+    {
+      "helper_name": "getBinArrayInfoForNonContiguousBinIds",
+      "exists": true,
+      "source_file": "ts-client/src/dlmm/helpers/index.ts (exported via dist/index.d.ts line 12734)",
+      "signature": "(binIds: number[], programId: PublicKey, lbPair: PublicKey): { ... }",
+      "requires_wallet": false,
+      "requires_transaction": false,
+      "requires_gpa": false,
+      "usable_for_single_account_path": true,
+      "notes": "Returns derived bin array pubkeys + index info; pure PDA derivation; no RPC."
+    },
+    {
+      "helper_name": "swapQuote",
+      "exists": true,
+      "source_file": "ts-client/src/dlmm/index.ts (exported via dist/index.d.ts line 14059)",
+      "signature": "(inAmount, swapForY, allowedSlippage, binArrays: BinArrayAccount[], isPartialFill?, maxExtraBinArrays?): SwapQuote",
+      "requires_wallet": false,
+      "requires_transaction": false,
+      "requires_gpa": false,
+      "requires_binArrays": true,
+      "usable_for_single_account_path": true,
+      "notes": "Pure local computation. Requires pre-fetched binArrays. After V5 single-account path proves bin arrays fetchable per-account, swapQuote can run."
+    }
+  ],
+
+  "single_account_path_feasibility": {
+    "feasible": true,
+    "approach": "1) Use binIdToBinArrayIndex(activeId) to get index; 2) Use deriveBinArray(lbPair, index, programId) to get pubkey (deterministic PDA); 3) Use connection.getAccountInfo(pubkey) (SINGLE account; should bypass multi-account 403); 4) Decode bin array data via SDK; 5) Pass decoded bin arrays to swapQuote.",
+    "expected_blockers": "public RPC may still 403 getAccountInfo on certain Meteora bin array accounts (uncommon but possible); if so, only paid RPC can unblock",
+    "expected_success_probability": "medium-high; single-account getAccountInfo is much more permissive than multi-account getMultipleAccounts"
+  },
+
+  "small_batch_path_feasibility": {
+    "feasible": true,
+    "approach": "Use connection.getMultipleAccountsInfo([single_pubkey]) with 1-3 accounts; if blocked, fall back to per-account getAccountInfo",
+    "expected_blockers": "same as V4 if 1-account also blocked"
+  },
+
+  "summary": {
+    "helpers_total_audited": 12,
+    "helpers_no_rpc_required": 7,
+    "helpers_multi_account_rpc_blocked": 4,
+    "helpers_usable_for_single_account_path": 8,
+    "single_account_path_promising": true,
+    "v5_action": "implement single-account getAccountInfo path; if fails, document paid_rpc_required"
+  },
+
+  "this_stage_does_not": [
+    "install any new package (reuse V3 SDK install in /tmp)",
+    "call any RPC (read-only audit; only inspect SDK source)",
+    "construct any transaction",
+    "load any keypair / private key"
+  ],
+
+  "solana_wallet_or_keypair_touched": false,
+  "can_run_probe_now": false,
+  "v2_line_count_unchanged": true,
+
+  "next_stage": "Stage D: active-bin bin array PDA derivation (use binIdToBinArrayIndex + deriveBinArray for 2 known pools)"
+}

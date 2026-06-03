@@ -1,0 +1,68 @@
+[
+  {
+    "pool_address": "5BKxfWMbmYBAEWvyPZS9esPducUba9GqyMjtLCfbaqyF",
+    "active_bin_id": -12248,
+    "bin_step": 2,
+    "bin_array_index": -176,
+    "bin_array_pubkey": "99daE4xkHTmziJZYh6XzfQ8mRqJD6kiYbDVtf8mRhoUL",
+    "neighbor_offset": -1,
+    "derivation_success": true,
+    "confidence": 0.95,
+    "invalid_reason": ""
+  },
+  {
+    "pool_address": "5BKxfWMbmYBAEWvyPZS9esPducUba9GqyMjtLCfbaqyF",
+    "active_bin_id": -12248,
+    "bin_step": 2,
+    "bin_array_index": -175,
+    "bin_array_pubkey": "HEG2LuUaJNZNS7EYD5qXL8G3FAHEHKzWZaMPCu3osU1R",
+    "neighbor_offset": 0,
+    "derivation_success": true,
+    "confidence": 0.95,
+    "invalid_reason": ""
+  },
+  {
+    "pool_address": "5BKxfWMbmYBAEWvyPZS9esPducUba9GqyMjtLCfbaqyF",
+    "active_bin_id": -12248,
+    "bin_step": 2,
+    "bin_array_index": -174,
+    "bin_array_pubkey": "7tfRkX2QnictEJEZkdw85QVs3zTm21UTqPdz4Dk5fnvP",
+    "neighbor_offset": 1,
+    "derivation_success": true,
+    "confidence": 0.95,
+    "invalid_reason": ""
+  },
+  {
+    "pool_address": "9DiruRpjnAnzhn6ts5HGLouHtJrT1JGsPbXNYCrFz2ad",
+    "active_bin_id": -236,
+    "bin_step": 100,
+    "bin_array_index": -5,
+    "bin_array_pubkey": "yhkw7F4xFVLWmF775cfj56gMQhNZchrmdpSBALC6Z5j",
+    "neighbor_offset": -1,
+    "derivation_success": true,
+    "confidence": 0.95,
+    "invalid_reason": ""
+  },
+  {
+    "pool_address": "9DiruRpjnAnzhn6ts5HGLouHtJrT1JGsPbXNYCrFz2ad",
+    "active_bin_id": -236,
+    "bin_step": 100,
+    "bin_array_index": -4,
+    "bin_array_pubkey": "29JynFXae8M6FLSmNPpDbTsEfXhxhxmSCQFGnBnFsU2N",
+    "neighbor_offset": 0,
+    "derivation_success": true,
+    "confidence": 0.95,
+    "invalid_reason": ""
+  },
+  {
+    "pool_address": "9DiruRpjnAnzhn6ts5HGLouHtJrT1JGsPbXNYCrFz2ad",
+    "active_bin_id": -236,
+    "bin_step": 100,
+    "bin_array_index": -3,
+    "bin_array_pubkey": "G1BHyB19ozazdUtAdHJbHW8KXoJqsWq4XMiH64WNRHFz",
+    "neighbor_offset": 1,
+    "derivation_success": true,
+    "confidence": 0.95,
+    "invalid_reason": ""
+  }
+]
