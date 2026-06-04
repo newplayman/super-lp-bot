@@ -1,0 +1,83 @@
+{
+  "stage": "LP_LONG_HORIZON_READONLY_DATA_PIPELINE_V1",
+  "run_id": "20260604_062324",
+
+  "default_mode": "design",
+  "allowed_modes": ["design", "smoke"],
+  "hard_rejected_modes": ["daemon", "30d", "long", "loop", "cron", "continuous", "live", "canary", "paper", "probe"],
+
+  "cli": {
+    "design": "python scripts/lp_long_horizon_readonly_collector_v1.py",
+    "smoke": "python scripts/lp_long_horizon_readonly_collector_v1.py --mode smoke --pools-per-protocol 3 --notionals 10,20,100,500,1000,2000 --out data/lp_long_horizon/<run_id>/"
+  },
+
+  "components": [
+    "design_mode",
+    "smoke_mode",
+    "safety_guard",
+    "source_adapter_solana_rpc_public",
+    "source_adapter_coingecko_public",
+    "source_adapter_protocol_sdk_quote",
+    "source_adapter_dex_screener_public",
+    "storage_jsonl_per_category",
+    "storage_sqlite_research"
+  ],
+
+  "rate_limits": {
+    "solana_rpc_public": "30 req / 10s; retry 3x exponential 1s 2s 4s; abort after 5 consecutive 429",
+    "coingecko_public": "10-30 req / min; retry 3x backoff 60s 120s 240s",
+    "protocol_sdk_quote": "follow solana_rpc_public",
+    "dex_screener_public": "60 req / min; retry 3x backoff 30s 60s 120s"
+  },
+
+  "concurrency": {
+    "default": "sequential",
+    "parallel_hard_rejected": true
+  },
+
+  "storage": {
+    "root": "data/lp_long_horizon/<run_id>/",
+    "files": [
+      "pool_snapshots.jsonl",
+      "quote_snapshots.jsonl",
+      "fee_velocity.jsonl",
+      "liquidity_distribution.jsonl",
+      "market_regime.jsonl",
+      "smoke_summary.json",
+      "research.sqlite"
+    ],
+    "smoke_size_estimate": "30KB jsonl + 50KB sqlite",
+    "long_run_size_estimate": "100MB+ sqlite monthly"
+  },
+
+  "safety_guard_invariants": [
+    "mode in {design, smoke} else SystemExit",
+    "no private_key / mnemonic / seed / keypair import",
+    "no sendTransaction / signTransaction / Keypair.from_secret_key",
+    "no add_liquidity / remove_liquidity / swap / collect_fee / approve call",
+    "write path must start with data/lp_long_horizon/",
+    "hard reject any long-running flag (daemon / 30d / long / loop / cron / continuous)"
+  ],
+
+  "reused_connectors": [
+    "Meteora DLMM (verified 56/56 in 021913)",
+    "Orca Whirlpools (verified 75/75 in 025414)",
+    "Raydium CLMM (verified 65/65 in 034503)",
+    "Raydium CPMM AMM v4 (verified 81/81 in 040952)",
+    "Meteora Stable + Orca LST (verified 25/25 in 044118)"
+  ],
+
+  "out_of_scope": [
+    "long-running cron/systemd/while-true",
+    "paid indexer / paid RPC",
+    "protocol re-connector",
+    "heuristic modification",
+    "R1 actual fee accrual capture",
+    "R2 regime split run",
+    "R3 incentive/vault candidate review",
+    "R4 10U tokenId probe preflight",
+    "R5 manual probe"
+  ],
+
+  "next_stage": "E_research_only_schema"
+}

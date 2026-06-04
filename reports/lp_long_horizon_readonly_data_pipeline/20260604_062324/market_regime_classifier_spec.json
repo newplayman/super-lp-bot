@@ -1,0 +1,111 @@
+{
+  "stage": "LP_LONG_HORIZON_READONLY_DATA_PIPELINE_V1",
+  "run_id": "20260604_062324",
+
+  "regime_count": 7,
+  "regimes": [
+    {
+      "name": "uptrend",
+      "criteria": {"px_change_7d": ">5%", "realized_vol_7d": "<8%"},
+      "priority": 5
+    },
+    {
+      "name": "downtrend",
+      "criteria": {"px_change_7d": "<-5%", "realized_vol_7d": "<8%"},
+      "priority": 6
+    },
+    {
+      "name": "sideways",
+      "criteria": {"px_change_7d": "-5%..5%", "realized_vol_7d": "<5%", "vol_tvl_30d": "<1%"},
+      "priority": 8
+    },
+    {
+      "name": "high_volume_sideways",
+      "criteria": {"px_change_7d": "-5%..5%", "realized_vol_7d": "<5%", "vol_tvl_30d": ">=1%"},
+      "priority": 7
+    },
+    {
+      "name": "high_volatility_trend",
+      "criteria": {"realized_vol_7d": ">=10%"},
+      "priority": 4
+    },
+    {
+      "name": "incentive_period",
+      "criteria": {"lm_active": "true OR bribe_active: true"},
+      "priority": 2
+    },
+    {
+      "name": "low_volatility_stable",
+      "criteria": {"realized_vol_7d": "<1%"},
+      "priority": 1
+    }
+  ],
+
+  "priority_order": [
+    "low_volatility_stable",
+    "incentive_period",
+    "high_volatility_trend",
+    "high_volume_sideways",
+    "uptrend",
+    "downtrend",
+    "sideways"
+  ],
+
+  "input_sources": [
+    "OHLC 7d from CoinGecko / on-chain",
+    "OHLC 30d from CoinGecko / on-chain",
+    "realized_vol 7d derived from OHLC",
+    "realized_vol 30d derived from OHLC",
+    "volume 30d USD from DexScreener",
+    "tvl USD derived from pool snapshot",
+    "lm_active from protocol farm events",
+    "bribe_active from bribe marketplace"
+  ],
+
+  "output_schema_matches": "Stage E 1.5 market_regime table",
+
+  "edge_cases": [
+    "data missing -> regime = unknown, skip write",
+    "tie between regimes -> priority order wins",
+    "regime flip within 1h -> keep old regime",
+    "new pool (< 7d history) -> regime = unknown",
+    "cross-protocol mix -> classify per protocol, do not merge"
+  ],
+
+  "implementation_outline_only": true,
+  "r0_implementation_phase": "follow-up stage, not this task",
+  "r0_long_running_required": true,
+  "manual_approval_required_for_r0_implementation": true,
+
+  "phase_interface": {
+    "R0": "1 sample / day write market_regime.jsonl",
+    "R1": "regime context for actual fee",
+    "R2": "regime-weighted long-horizon EV",
+    "R3": "regime filter for incentive / high vol sideways pool",
+    "R4": "regime selection for probe timing",
+    "R5": "regime check for probe boundary"
+  },
+
+  "test_coverage_required": [
+    "test_low_vol_stable_priority",
+    "test_incentive_overrides_trend",
+    "test_high_vol_overrides_sideways",
+    "test_uptrend_priority",
+    "test_downtrend_priority",
+    "test_high_volume_sideways_distinction",
+    "test_missing_data_returns_unknown",
+    "test_boundary_5pct",
+    "test_boundary_1pct_vol",
+    "test_boundary_10pct_vol"
+  ],
+
+  "out_of_scope": [
+    "actual classifier model training",
+    "OHLC 7d/30d data fetch",
+    "regime split EV run",
+    "regime-driven auto probe",
+    "paid indexer / paid RPC"
+  ],
+
+  "next_stage": "G_actual_fee_accrual_schema"
+}

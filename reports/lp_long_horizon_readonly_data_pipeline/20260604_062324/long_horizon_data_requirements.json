@@ -1,0 +1,103 @@
+{
+  "stage": "LP_LONG_HORIZON_READONLY_DATA_PIPELINE_V1",
+  "run_id": "20260604_062324",
+
+  "windows": [
+    {"window": "7d", "hours": 168, "minimum_cells": 210},
+    {"window": "14d", "hours": 336, "minimum_cells": 420},
+    {"window": "30d", "hours": 720, "minimum_cells": 900}
+  ],
+
+  "data_categories": [
+    {
+      "name": "pool_snapshot",
+      "fields": [
+        "pool_address", "chain", "protocol", "program_id",
+        "token_mint_a", "token_mint_b", "token_symbol_a", "token_symbol_b",
+        "fee_tier_bps", "reserve_a_raw", "reserve_b_raw", "liquidity",
+        "active_tick", "active_bin", "tvl_usd", "snapshot_at"
+      ]
+    },
+    {
+      "name": "quote_snapshot",
+      "fields": [
+        "pool_address", "notional_usd", "quote_success",
+        "amount_in_raw", "amount_out_raw", "price_impact_pct",
+        "slippage_pct", "fee_raw", "fee_usd",
+        "error_code", "quote_at"
+      ],
+      "notional_levels_usd": [10, 20, 100, 500, 1000, 2000]
+    },
+    {
+      "name": "fee_velocity",
+      "fields": [
+        "pool_address", "window",
+        "volume_proxy_usd", "fee_capture_proxy_usd",
+        "volume_to_tl_pct", "sample_count", "window_end_at"
+      ],
+      "rolling_windows": ["15m", "1h", "6h", "24h", "7d"],
+      "r0_phase_status": "proxy (quote derived); r1 will upgrade to actual via tokenId"
+    },
+    {
+      "name": "liquidity_distribution",
+      "fields": [
+        "pool_address",
+        "active_range_liquidity", "near_active_liquidity",
+        "sparse_liquidity_warning", "out_of_range_risk",
+        "tick_spacing", "bin_step", "snapshot_at"
+      ]
+    },
+    {
+      "name": "market_regime",
+      "fields": [
+        "regime", "lookback_days",
+        "price_change_pct", "realized_vol_pct",
+        "volume_to_tvl_pct", "incentive_active", "regime_at"
+      ],
+      "regime_count": 7
+    },
+    {
+      "name": "future_actual_fee_accrual",
+      "fields": [
+        "token_id", "pool_address",
+        "entry_fee_growth_global", "entry_fee_growth_a", "entry_fee_growth_b",
+        "entry_tick_lower", "entry_tick_upper", "entry_at",
+        "exit_fee_growth_global", "exit_fee_growth_a", "exit_fee_growth_b",
+        "exit_tick_lower", "exit_tick_upper", "exit_at",
+        "tokens_owed_a_raw", "tokens_owed_b_raw",
+        "actual_collected_a_raw", "actual_collected_b_raw", "actual_collected_at",
+        "actual_pnl_usd", "il_realized_pct", "il_actual_pct"
+      ],
+      "r0_phase_status": "placeholder schema only; r1 requires user-provided tokenId or paid indexer"
+    }
+  ],
+
+  "data_sources": {
+    "on_chain": "public RPC (getMultipleAccountsInfo)",
+    "quote_sdk": "protocol-specific swap_quote (read-only)",
+    "price_usd": "CoinGecko public API",
+    "ohlc": "on-chain or CoinGecko",
+    "volume_tvl": "DexScreener public (rate limited)",
+    "actual_fee": "user-provided tokenId (R1, requires paid indexer)"
+  },
+
+  "smoke_sampling": {
+    "protocol_count": 5,
+    "pool_per_protocol": 3,
+    "notional_count": 6,
+    "regime": "current",
+    "total_cells_smoke": 90,
+    "auto_loop": false
+  },
+
+  "addressed_model_limitations": {
+    "data_window": "design 7d/14d/30d baseline (R0 phase target)",
+    "fee_data": "R0 proxy; R1 actual via tokenId",
+    "il_lvr": "R0 out_of_range_risk proxy; R1 actual playback",
+    "pool_selection": "R0 public feed; R3 incentive/vault",
+    "cost_data": "R0 derived; R4 precise breakdown",
+    "capital_scale": "R0 2000 USD cap; R3 1M+"
+  },
+
+  "next_stage": "D_readonly_collector_architecture"
+}

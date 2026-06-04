@@ -1,0 +1,125 @@
+{
+  "stage": "LP_LONG_HORIZON_READONLY_DATA_PIPELINE_V1",
+  "run_id": "20260604_062324",
+
+  "storage_formats": ["jsonl", "csv", "sqlite (R0 long-run only)"],
+  "storage_root": "data/lp_long_horizon/<run_id>/",
+
+  "tables": [
+    {
+      "name": "pool_snapshots",
+      "jsonl_record_example": {
+        "pool_address": "CnK82s8exdsK9nwqQ55kd9wcxoA22NwTchZJCBdu8LDa",
+        "chain": "solana",
+        "protocol": "meteora_dlmm",
+        "program_id": "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo",
+        "fee_tier_bps": 100,
+        "tvl_usd": 1234.56,
+        "snapshot_at": "2026-06-04T06:30:00Z"
+      },
+      "sqlite_table": "pool_snapshots",
+      "indexes": ["pool_address+snapshot_at", "protocol+snapshot_at"]
+    },
+    {
+      "name": "quote_snapshots",
+      "jsonl_record_example": {
+        "pool_address": "CnK82s8exdsK9nwqQ55kd9wcxoA22NwTchZJCBdu8LDa",
+        "notional_usd": 10,
+        "quote_success": true,
+        "fee_usd": 0.003,
+        "quote_at": "2026-06-04T06:30:01Z"
+      },
+      "sqlite_table": "quote_snapshots",
+      "indexes": ["pool_address+quote_at", "notional_usd+quote_at"]
+    },
+    {
+      "name": "fee_velocity",
+      "jsonl_record_example": {
+        "pool_address": "CnK82s8exdsK9nwqQ55kd9wcxoA22NwTchZJCBdu8LDa",
+        "window": "7d",
+        "volume_proxy_usd": 12345.67,
+        "fee_capture_proxy_usd": 12.35,
+        "window_end_at": "2026-06-04T06:30:00Z"
+      },
+      "sqlite_table": "fee_velocity",
+      "indexes": ["pool_address+window_end_at"],
+      "r0_phase_status": "proxy (quote derived)"
+    },
+    {
+      "name": "liquidity_distribution",
+      "jsonl_record_example": {
+        "pool_address": "CnK82s8exdsK9nwqQ55kd9wcxoA22NwTchZJCBdu8LDa",
+        "active_range_liquidity": 12345.67,
+        "near_active_liquidity": 23456.78,
+        "sparse_liquidity_warning": false,
+        "out_of_range_risk": 0.15,
+        "snapshot_at": "2026-06-04T06:30:00Z"
+      },
+      "sqlite_table": "liquidity_distribution",
+      "indexes": ["pool_address+snapshot_at"]
+    },
+    {
+      "name": "market_regime",
+      "jsonl_record_example": {
+        "regime": "downtrend",
+        "lookback_days": 7,
+        "price_change_pct": -8.5,
+        "realized_vol_pct": 12.3,
+        "regime_at": "2026-06-04T06:30:00Z"
+      },
+      "sqlite_table": "market_regime",
+      "indexes": ["regime_at"]
+    },
+    {
+      "name": "future_actual_fee_accrual",
+      "jsonl_record_example": {
+        "token_id": null,
+        "pool_address": "CnK82s8exdsK9nwqQ55kd9wcxoA22NwTchZJCBdu8LDa",
+        "tokens_owed_a_raw": null,
+        "actual_collected_a_raw": null
+      },
+      "sqlite_table": "future_actual_fee_accrual",
+      "indexes": ["token_id", "pool_address+entry_at"],
+      "r0_phase_status": "schema only, no records written"
+    }
+  ],
+
+  "smoke_summary_locked_fields": [
+    "wallet_or_tx_touched=false",
+    "transaction_sent=false",
+    "send_hard_disable_still_active=true",
+    "next_stage=manual_review_of_smoke_artifacts"
+  ],
+
+  "write_path_constraints": {
+    "must_start_with": "data/lp_long_horizon/<run_id>/",
+    "forbidden_paths": [
+      "migrations/",
+      "cmd/",
+      "internal/",
+      "web/",
+      "configs/",
+      "reports/",
+      "data/dryrun.*",
+      "data/shadow.*",
+      "data/live.*"
+    ]
+  },
+
+  "field_naming_convention": {
+    "*_raw": "on-chain raw integer (no decimals)",
+    "*_usd": "USD-denominated float",
+    "*_at": "ISO 8601 UTC timestamp"
+  },
+
+  "long_run_archive_strategy": {
+    "monthly_archive_path": "data/lp_long_horizon/archive/<YYYY-MM>/",
+    "sqlite_vacuum_trigger_mb": 100,
+    "twelve_month_cold_storage": true,
+    "jsonl_gzip": true,
+    "csv_to_parquet": true,
+    "must_not_write_to_production_db": true
+  },
+
+  "next_stage": "F_market_regime_classifier_spec"
+}

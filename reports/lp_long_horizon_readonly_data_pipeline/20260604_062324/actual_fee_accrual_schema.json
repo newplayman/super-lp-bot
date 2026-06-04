@@ -1,0 +1,127 @@
+{
+  "stage": "LP_LONG_HORIZON_READONLY_DATA_PIPELINE_V1",
+  "run_id": "20260604_062324",
+
+  "schema_sections": [
+    {
+      "section": "entry",
+      "purpose": "用户在 entry 时记录 position 初始状态",
+      "fields": [
+        "token_id", "pool_address", "chain", "protocol", "program_id",
+        "entry_fee_growth_global", "entry_fee_growth_a", "entry_fee_growth_b",
+        "entry_tick_lower", "entry_tick_upper",
+        "entry_sqrt_price_x64", "entry_bin_id", "entry_liquidity",
+        "entry_amount_a_raw", "entry_amount_b_raw", "entry_value_usd",
+        "entry_at", "entry_tx_signature", "entry_block_slot",
+        "entry_user_wallet", "entry_source", "entry_at_local"
+      ],
+      "r0_phase_status": "schema only, no records",
+      "r1_phase_status": "on-chain fetch via paid indexer (user-provided tokenId required)"
+    },
+    {
+      "section": "exit",
+      "purpose": "用户在 exit 时记录 position 终态",
+      "fields": [
+        "exit_fee_growth_global", "exit_fee_growth_a", "exit_fee_growth_b",
+        "exit_tick_lower", "exit_tick_upper",
+        "exit_sqrt_price_x64", "exit_bin_id", "exit_liquidity",
+        "exit_amount_a_raw", "exit_amount_b_raw", "exit_value_usd",
+        "exit_at", "exit_tx_signature", "exit_block_slot",
+        "exit_user_wallet", "exit_source", "exit_at_local", "exit_reason"
+      ],
+      "r0_phase_status": "schema only, no records",
+      "r1_phase_status": "on-chain fetch via paid indexer"
+    },
+    {
+      "section": "collect_fee",
+      "purpose": "R1 阶段 on-chain 抓 collect event, 多个 record per position",
+      "fields": [
+        "collect_id", "token_id",
+        "collect_amount_a_raw", "collect_amount_b_raw", "collect_value_usd",
+        "collect_fee_growth_global_at_collect",
+        "collect_at", "collect_tx_signature", "collect_block_slot", "collect_at_local"
+      ],
+      "r0_phase_status": "schema only, no records",
+      "r1_phase_status": "on-chain fetch via paid indexer"
+    },
+    {
+      "section": "tokens_owed",
+      "purpose": "mid-position 24h 快照",
+      "fields": [
+        "token_id", "snapshot_at",
+        "tokens_owed_a_raw", "tokens_owed_b_raw",
+        "fee_growth_global_at_snapshot", "il_unrealized_pct"
+      ],
+      "r0_phase_status": "schema only, no records",
+      "r1_phase_status": "on-chain fetch every 24h"
+    },
+    {
+      "section": "derived",
+      "purpose": "R1 阶段离线派生, 用于对比 heuristic vs actual",
+      "fields": [
+        "actual_fee_a_raw", "actual_fee_b_raw", "actual_fee_usd",
+        "actual_pnl_usd", "actual_pnl_pct",
+        "il_realized_pct", "il_actual_pct", "il_divergence_pct",
+        "holding_period_hours",
+        "fee_velocity_actual", "fee_velocity_proxy", "fee_velocity_divergence"
+      ],
+      "r0_phase_status": "not applicable, no records to derive from",
+      "r1_phase_status": "derived from entry+exit+collect records"
+    }
+  ],
+
+  "background_motivation": {
+    "current_heuristic": "0.5%/day turnover, derived from 10/20U quote",
+    "actual_fee_factors": [
+      "fee growth inside/outside tick (V3 CL)",
+      "dynamic fee activation rate (Meteora DLMM 100bps base + 1000bps max)",
+      "tick boundary cross",
+      "collect fee timing"
+    ],
+    "previous_stage_acknowledged": "heuristic is 100x higher than observed single-swap 10/20u quote"
+  },
+
+  "r0_implementation": {
+    "scope": "schema only, no data fetch",
+    "r0_records_written": 0,
+    "sqlite_table": "future_actual_fee_accrual (exists, no rows)",
+    "jsonl_file": "future_actual_fee_accrual.jsonl (empty, header only)"
+  },
+
+  "r1_implementation": {
+    "scope": "actual data fetch, requires user-provided tokenId or paid indexer",
+    "r1_records_per_position": "1 entry + 0-N exit + 0-M collect + 0-K tokens_owed",
+    "blocked_by": "no user-provided tokenId, no paid indexer",
+    "can_run_probe_now_required": false
+  },
+
+  "heuristic_vs_actual_mapping": {
+    "fee": "heuristic 0.5%/day -> actual_fee_velocity_actual",
+    "il": "heuristic 4 scenarios -> il_realized_pct",
+    "net_ev": "heuristic fee - IL - cost -> actual_pnl_usd",
+    "holding_period": "heuristic 7d -> holding_period_hours"
+  },
+
+  "test_coverage_required": [
+    "test_entry_schema_completeness",
+    "test_exit_schema_completeness",
+    "test_collect_schema_completeness",
+    "test_tokens_owed_schema_completeness",
+    "test_r0_no_records_written",
+    "test_r0_table_schema_exists_but_empty",
+    "test_r0_schema_forward_compatible_with_r1",
+    "test_actual_pnl_calculation",
+    "test_il_realized_calculation",
+    "test_fee_velocity_divergence"
+  ],
+
+  "out_of_scope": [
+    "actual fee data fetch (R1 follow-up)",
+    "entry / exit / collect simulation",
+    "heuristic modification",
+    "paid indexer integration",
+    "R1 actual run"
+  ],
+
+  "next_stage": "H_collector_safety_audit"
+}

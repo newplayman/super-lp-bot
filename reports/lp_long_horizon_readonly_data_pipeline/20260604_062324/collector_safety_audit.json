@@ -1,0 +1,102 @@
+{
+  "stage": "LP_LONG_HORIZON_READONLY_DATA_PIPELINE_V1",
+  "run_id": "20260604_062324",
+
+  "audit_layers": [
+    "architecture_design",
+    "code_static_analysis",
+    "data_source_call_safety",
+    "write_path_constraint",
+    "locked_field_preservation",
+    "process_level_safety",
+    "cross_stage_isolation"
+  ],
+
+  "forbidden_tokens_in_code": [
+    "private_key", "mnemonic", "seed_phrase", "seed_words",
+    "keypair.from_secret_key", "Keypair.fromSecretKey", "fromSecretKey", "SecretKey",
+    "keystore.json", "encrypted_json",
+    "new Signer(", "signer = Wallet", "new Wallet(",
+    "sendTransaction", "eth_sendRawTransaction", "eth_sendTransaction",
+    "signTransaction(", "signAndSendTransaction(",
+    "sign_all_transactions", "sign_tx",
+    "add_liquidity(", "remove_liquidity(", "swap(", "collect_fee(", "collect(",
+    "mint(", "approve(", "burn(", "transfer(",
+    "bridge(", "wormhole.core", "wormhole.bridge", "mayan.forward", "portal.bridge"
+  ],
+
+  "forbidden_write_paths": [
+    "data/dryrun*",
+    "data/shadow*",
+    "data/live*",
+    "migrations/",
+    "cmd/",
+    "internal/",
+    "web/",
+    "configs/",
+    "reports/"
+  ],
+
+  "allowed_write_paths": [
+    "data/lp_long_horizon/<run_id>/",
+    "data/lp_long_horizon/archive/<YYYY-MM>/"
+  ],
+
+  "data_source_safety": {
+    "solana_rpc_public": "getMultipleAccountsInfo / getAccountInfo — read-only",
+    "coingecko_public": "GET /coins/{id}/ohlc — read-only HTTP",
+    "protocol_sdk_quote": "swap_quote — read-only, mutation patched",
+    "dex_screener_public": "GET /dexes/{chain}/pools/{addr} — read-only HTTP"
+  },
+
+  "sdk_mutation_patched_methods": [
+    "add_liquidity", "remove_liquidity", "swap", "collect_fee", "collect", "approve", "mint", "burn", "transfer"
+  ],
+
+  "locked_fields_preserved": {
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no",
+    "edge_proven": "no",
+    "send_hard_disable_still_active": true,
+    "current_probe_allowed": false,
+    "long_term_lp_value_judged": false,
+    "global_lp_rejected": false
+  },
+
+  "process_safety_check_command": "ps aux | egrep 'canary|lpbot-live|live|paper|sendTransaction|eth_sendRawTransaction|eth_sendTransaction|keypair' | grep -v grep || echo \"(no matching processes)\"",
+
+  "cross_stage_isolation": {
+    "no_write_to": [
+      "cmd/lpbot / cmd/lpbot-live / cmd/lpbot-backtest",
+      "internal/adapters/chain/solana / wallet / mev / simulator",
+      "configs/config.live.toml / configs/config.canary.toml",
+      "migrations/postgres",
+      "web/ dashboard",
+      "reports/lp_research_* (read-only)",
+      "data/dryrun.* / data/shadow.* / data/live.*"
+    ]
+  },
+
+  "long_run_safety_gates": {
+    "requires_separate_stage": true,
+    "requires_separate_audit": true,
+    "requires_manual_approval": true,
+    "can_run_probe_now_must_stay_false": true,
+    "tiny_canary_allowed_must_stay_no": true,
+    "abort_on_error_rate_pct": 20,
+    "abort_on_429_streak": 5
+  },
+
+  "out_of_scope_hard_prohibitions": [
+    "paid indexer / paid RPC integration",
+    "actual fee data fetch (R1 follow-up)",
+    "regime split actual run (R2 follow-up)",
+    "incentive / vault candidate review (R3 follow-up)",
+    "10U tokenId probe preflight (R4 follow-up)",
+    "manual probe (R5 follow-up)"
+  ],
+
+  "test_count_required_in_pytest": 21,
+
+  "next_stage": "I_smoke_collector_implementation"
+}

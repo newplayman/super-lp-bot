@@ -1,0 +1,100 @@
+{
+  "stage": "LP_LONG_HORIZON_READONLY_DATA_PIPELINE_V1",
+  "run_id": "20260604_062324",
+  "branch": "feat/supabase-postgres-deployment",
+  "head": "82be451",
+
+  "input_files_audit": {
+    "scope_audit_final_verdict": {
+      "path": "reports/lp_research_conclusion_scope_audit/20260604_060659/FINAL_VERDICT.json",
+      "exists": true,
+      "status": "WARN"
+    },
+    "long_horizon_reopen_plan": {
+      "path": "reports/lp_research_conclusion_scope_audit/20260604_060659/long_horizon_reopen_plan.json",
+      "exists": true
+    },
+    "model_limitation_audit": {
+      "path": "reports/lp_research_conclusion_scope_audit/20260604_060659/model_limitation_audit.json",
+      "exists": true
+    },
+    "market_regime_bias_audit": {
+      "path": "reports/lp_research_conclusion_scope_audit/20260604_060659/market_regime_bias_audit.json",
+      "exists": true
+    }
+  },
+
+  "locked_boundary_fields": {
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no",
+    "edge_proven": "no",
+    "send_hard_disable_still_active": true,
+    "global_lp_rejected": false,
+    "current_probe_allowed": false,
+    "market_downtrend_bias_acknowledged": true,
+    "current_model_rejects_auto_probe": true,
+    "conclusion_scope": "current_data_current_model_short_window",
+    "long_term_lp_value_judged": false
+  },
+
+  "build_target_fields": {
+    "needs_longer_horizon_validation": true,
+    "needs_actual_fee_accrual": true,
+    "needs_market_regime_split": true,
+    "long_horizon_pipeline_ready": false,
+    "collector_script_built": false,
+    "market_regime_classifier_spec_ready": false,
+    "actual_fee_accrual_schema_ready": false
+  },
+
+  "hard_prohibitions_checklist": [
+    "no private key / seed / keypair read",
+    "no signer creation",
+    "no transaction sent",
+    "no approve / mint / add_liquidity / remove_liquidity / collect_fee",
+    "no swap / bridge",
+    "no live / canary / paper start",
+    "no production position write",
+    "no shadow table overwrite",
+    "can_run_probe_now must stay false",
+    "tiny_canary_allowed must stay no",
+    "default design mode",
+    "no long-running daemon",
+    "no auto 30d run",
+    "smoke sample only",
+    "long-running requires explicit manual approval"
+  ],
+
+  "in_scope_outputs": [
+    "INPUT_EVIDENCE_AUDIT_CN.md/json",
+    "LONG_HORIZON_DATA_REQUIREMENTS_CN.md/json",
+    "READONLY_COLLECTOR_ARCHITECTURE_CN.md/json",
+    "RESEARCH_ONLY_SCHEMA_CN.md/json",
+    "MARKET_REGIME_CLASSIFIER_SPEC_CN.md/json",
+    "ACTUAL_FEE_ACCRUAL_SCHEMA_CN.md/json",
+    "COLLECTOR_SAFETY_AUDIT_CN.md/json",
+    "FINAL_VERDICT.json",
+    "ONEPAGE_CN.md",
+    "ARTIFACT_INDEX.md",
+    "scripts/lp_long_horizon_readonly_collector_v1.py",
+    "tests/test_lp_long_horizon_readonly_data_pipeline_v1.py"
+  ],
+
+  "out_of_scope_outputs": [
+    "protocol re-run",
+    "heuristic modification",
+    "cost optimization implementation",
+    "paid RPC integration",
+    "private pool / vault data collection",
+    "bribe marketplace integration",
+    "90d+ backtest (R0 follow-up, requires paid indexer)",
+    "actual fee accrual capture (R1, requires user-provided tokenId)",
+    "regime split run (R2)",
+    "candidate review (R3)",
+    "probe preflight (R4)",
+    "manual probe (R5)"
+  ],
+
+  "scope_audit_inputs_locked": true,
+  "next_stage": "C_long_horizon_data_requirements"
+}

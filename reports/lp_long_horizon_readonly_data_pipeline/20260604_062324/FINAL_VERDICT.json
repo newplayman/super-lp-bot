@@ -1,0 +1,100 @@
+{
+  "stage": "LP_LONG_HORIZON_READONLY_DATA_PIPELINE_V1",
+  "status": "WARN",
+  "run_id": "20260604_062324",
+  "branch": "feat/supabase-postgres-deployment",
+  "head_before": "82be451",
+
+  "global_lp_rejected": false,
+  "current_probe_allowed": false,
+  "long_horizon_pipeline_ready": true,
+  "collector_script_built": true,
+  "market_regime_classifier_spec_ready": true,
+  "actual_fee_accrual_schema_ready": true,
+
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no",
+  "edge_proven": "no",
+  "wallet_or_tx_touched": false,
+  "transaction_sent": false,
+  "send_hard_disable_still_active": true,
+  "docs_updated": true,
+
+  "recommended_next_stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_SMOKE_V1",
+
+  "deliverables_locked": [
+    "INPUT_EVIDENCE_AUDIT_CN.md/json",
+    "LONG_HORIZON_DATA_REQUIREMENTS_CN.md/json",
+    "READONLY_COLLECTOR_ARCHITECTURE_CN.md/json",
+    "RESEARCH_ONLY_SCHEMA_CN.md/json",
+    "MARKET_REGIME_CLASSIFIER_SPEC_CN.md/json",
+    "ACTUAL_FEE_ACCRUAL_SCHEMA_CN.md/json",
+    "COLLECTOR_SAFETY_AUDIT_CN.md/json",
+    "FINAL_VERDICT.json",
+    "ONEPAGE_CN.md",
+    "ARTIFACT_INDEX.md",
+    "scripts/lp_long_horizon_readonly_collector_v1.py",
+    "tests/test_lp_long_horizon_readonly_data_pipeline_v1.py"
+  ],
+
+  "data_categories_designed": [
+    "pool_snapshot",
+    "quote_snapshot",
+    "fee_velocity",
+    "liquidity_distribution",
+    "market_regime",
+    "future_actual_fee_accrual"
+  ],
+
+  "regime_count": 7,
+
+  "safety": {
+    "touched_trading_path": false,
+    "touched_wallet_tx_bridge_live_paper": false,
+    "wallet_or_tx_touched": false,
+    "solana_wallet_or_keypair_touched": false,
+    "transaction_sent": false,
+    "send_hard_disable_still_active": true,
+    "no_paid_indexer_integration": true,
+    "no_paid_rpc_integration": true,
+    "no_protocol_re_run": true,
+    "no_heuristic_modification": true,
+    "no_long_running_daemon": true,
+    "no_signer_creation": true,
+    "default_mode": "design",
+    "smoke_mode_writes_only_to_data_lp_long_horizon": true
+  },
+
+  "model_limitations_addressed": {
+    "data_window": "design 7d/14d/30d baseline (R0 phase target)",
+    "fee_data": "R0 proxy; R1 actual via tokenId",
+    "il_lvr": "R0 out_of_range_risk proxy; R1 actual playback",
+    "pool_selection": "R0 public feed; R3 incentive/vault",
+    "cost_data": "R0 derived; R4 precise breakdown",
+    "capital_scale": "R0 2000 USD cap; R3 1M+"
+  },
+
+  "phase_results": {
+    "A_workspace_safety": "PASS (HEAD=82be451; no new unrelated dirty files)",
+    "B_input_evidence_audit": "PASS (scope_audit 060659 inputs locked; 7 locked boundary fields; 3 build target fields; 15 hard prohibitions)",
+    "C_long_horizon_data_requirements": "PASS (6 categories; 7d/14d/30d windows; 5 protocol x 6 notional x 7 regime = 210 cells per window)",
+    "D_readonly_collector_architecture": "PASS (default design mode; 2 allowed modes; 12 hard_rejected_modes; 4 source adapters; sequential concurrency)",
+    "E_research_only_schema": "PASS (6 tables jsonl+csv; sqlite DDL defined; write path constraint enforced)",
+    "F_market_regime_classifier_spec": "PASS (7 regimes; priority order; decision tree; 10 tests required; R0 implementation outline only)",
+    "G_actual_fee_accrual_schema": "PASS (5 sections entry/exit/collect/tokens_owed/derived; R0 schema only; R1 requires user tokenId or paid indexer)",
+    "H_collector_safety_audit": "PASS (7 audit layers; 28 forbidden tokens; 7 forbidden write paths; 7 locked fields; 5 long-run safety gates)",
+    "I_smoke_collector_implementation": "PASS (design mode + smoke mode verified; 9 reject paths tested; 90-cell smoke output verified; cleanup ok)",
+    "J_tests_and_safety": "PASS (pytest 52/52; go test ./cmd/lpbot cached ok; process safety check no match)",
+    "K_final_verdict": "PASS (this file)"
+  },
+
+  "long_run_safety_gates": {
+    "requires_separate_stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_SMOKE_V1",
+    "requires_separate_audit": true,
+    "requires_manual_approval": true,
+    "can_run_probe_now_must_stay_false": true,
+    "tiny_canary_allowed_must_stay_no": true,
+    "abort_on_error_rate_pct": 20,
+    "abort_on_429_streak": 5
+  }
+}
