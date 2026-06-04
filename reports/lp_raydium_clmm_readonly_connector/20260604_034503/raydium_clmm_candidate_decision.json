@@ -1,0 +1,71 @@
+{
+  "stage": "LP_RAYDIUM_CLMM_READONLY_CONNECTOR_V1",
+  "run_id": "20260604_034503",
+
+  "seven_questions": {
+    "realistic_positive_10_20u": false,
+    "near_break_even_present": true,
+    "high_fee_quote_ready_present": true,
+    "probe_preflight_worth": false,
+    "switch_to_raydium_cpmm": true,
+    "paid_rpc_needed_now": false,
+    "should_stop": false
+  },
+
+  "positive_realistic_count": 0,
+  "positive_zero_il_lvr_count": "TBD",
+  "positive_optimistic_count": 0,
+  "near_break_even_count": "TBD",
+  "quote_ready_pool_count": 50,
+  "high_fee_quote_ready_count": 50,
+
+  "best_pool": "3nMFwZXwY1s1M5s8vYAHqd4wGs4iSxXE4LRoUMMYqEgF",
+  "best_pair": "SOL/USDT",
+  "best_notional": 2000,
+  "best_hold_window": "7d",
+  "best_scenario": "zero_il_lvr",
+  "best_net_ev_proxy_usd": 0.167,
+
+  "spec_decision_rule_applied": "rule_2 + user instruction: positive_realistic=0, switch to Raydium CPMM (not infinite V3 CL extension)",
+
+  "v3_cl_amm_cumulative": {
+    "meteora_dlmm_v8": {"best_cell_usd": 0.544, "positive_realistic": 0, "verdict": "reject"},
+    "orca_whirlpools_v1": {"best_cell_usd": 0.106, "positive_realistic": 0, "verdict": "reject"},
+    "raydium_clmm_v1_this": {"best_cell_usd": 0.167, "positive_realistic": 0, "verdict": "reject"},
+    "summary": "3/3 V3 CL AMMs reject retail 10-20U 2000 USD LP"
+  },
+
+  "recommended_next_stage": "LP_RAYDIUM_CPMM_READONLY_CONNECTOR_V1",
+  "rejected_alternatives": [
+    "LP_RAYDIUM_CLMM_10_20U_PROBE_PREFLIGHT_DESIGN_V1",
+    "LP_RAYDIUM_CLMM_KNOWN_POOL_FEED_EXPANSION_REPEAT",
+    "LP_SOLANA_PAID_RPC_SETUP_REQUIRED",
+    "STOP_LP_RESEARCH_NOW"
+  ],
+
+  "reasons": [
+    "3/3 V3 CL AMMs verified negative (Meteora + Orca + Raydium) for retail 10-20U 2000 USD LP",
+    "Best cell $0.167 in zero_il_lvr only, identical pattern across all 3 V3 CL protocols",
+    "positive_realistic=0 across all 4 scenarios",
+    "Per user instruction: switch to Raydium CPMM / stable pool / non-CL LP, not infinite V3 CL extension",
+    "CPMM (constant product) has different IL dynamics; switching AMM class is meaningful next test"
+  ],
+
+  "safety_locks": {
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no",
+    "solana_wallet_or_keypair_touched": false,
+    "transaction_sent": false,
+    "v2_line_count": 992,
+    "v2_line_count_unchanged": true,
+    "send_hard_disable_still_active": true
+  },
+
+  "allowed_next_stages": [
+    "LP_RAYDIUM_CLMM_10_20U_PROBE_PREFLIGHT_DESIGN_V1",
+    "LP_RAYDIUM_CLMM_KNOWN_POOL_FEED_EXPANSION_REPEAT",
+    "LP_RAYDIUM_CPMM_READONLY_CONNECTOR_V1",
+    "LP_SOLANA_PAID_RPC_SETUP_REQUIRED",
+    "STOP_LP_RESEARCH_NOW"
+  ]
+}

@@ -1,0 +1,115 @@
+{
+  "stage": "LP_RAYDIUM_CLMM_READONLY_CONNECTOR_V1",
+  "run_id": "20260604_034503",
+  "branch": "feat/supabase-postgres-deployment",
+  "head_before": "9f0495a",
+  "audit_completed_utc": "2026-06-04T03:46:00Z",
+
+  "previous_orca_v1_stage": {
+    "stage": "LP_ORCA_WHIRLPOOL_READONLY_CONNECTOR_V1",
+    "run_id": "20260604_025414",
+    "candidate_raw_count": 15002,
+    "verified_pool_count": 75,
+    "sdk_decode_success_count": 75,
+    "tick_array_ready_pool_count": 4,
+    "quote_ready_pool_count": 10,
+    "survival_ev_model_ran": true,
+    "row_count": 1680,
+    "positive_zero_il_lvr_count": 29,
+    "positive_optimistic_count": 0,
+    "positive_realistic_count": 0,
+    "positive_conservative_count": 0,
+    "near_break_even_count": 928,
+    "best_pool": "C9U2Ksk6KKWvLEeo5yUQ7Xu46X7NzeBJtd9PBfuXaUSM",
+    "best_net_ev_proxy_usd": 0.106,
+    "recommended_next_stage": "LP_RAYDIUM_CLMM_READONLY_CONNECTOR_V1"
+  },
+
+  "previous_meteora_v8_stage": {
+    "stage": "LP_METEORA_DLMM_TARGETED_TOP_POOL_FEED_EXPANSION_V1",
+    "run_id": "20260604_021913",
+    "best_net_ev_proxy_usd": 0.544,
+    "positive_realistic_count": 0
+  },
+
+  "raydium_clmm_program_id": {
+    "program_id": "CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK",
+    "source": "https://raw.githubusercontent.com/raydium-io/raydium-clmm/master/programs/amm/src/lib.rs",
+    "source_type": "official_github",
+    "source_confidence": "high",
+    "verified_in_v1_stage": "20260603_093136",
+    "secondary_program_id_devnet": "DRayAUgENGQBKVaX8owNhgzkEDyoHTGVEGHVJT1E9pfH"
+  },
+
+  "evidence_files_read": [
+    "reports/lp_orca_whirlpool_readonly_connector/20260604_025414/FINAL_VERDICT.json",
+    "reports/lp_orca_whirlpool_readonly_connector/20260604_025414/ONEPAGE_CN.md",
+    "reports/lp_orca_whirlpool_readonly_connector/20260604_025414/ORCA_SURVIVAL_EV_PREVIEW_CN.md",
+    "reports/lp_orca_whirlpool_readonly_connector/20260604_025414/orca_survival_ev_preview.csv",
+    "reports/lp_orca_whirlpool_readonly_connector/20260604_025414/ORCA_CANDIDATE_DECISION_CN.md",
+    "reports/lp_orca_whirlpool_readonly_connector/20260604_025414/orca_candidate_decision.json",
+    "reports/lp_meteora_dlmm_targeted_top_pool_feed/20260604_021913/FINAL_VERDICT.json",
+    "reports/lp_solana_rpc_registry_fix/20260603_093136/FINAL_VERDICT.json",
+    "reports/lp_solana_rpc_registry_fix/20260603_093136/solana_program_id_registry_v2.json",
+    "reports/lp_solana_connector_design/20260603_080347/RAYDIUM_CONNECTOR_DESIGN_CN.md"
+  ],
+
+  "v3_cl_amm_cumulative": {
+    "meteora_dlmm_v8": {"best_cell_usd": 0.544, "positive_realistic": 0, "verdict": "reject"},
+    "orca_whirlpools_v1": {"best_cell_usd": 0.106, "positive_realistic": 0, "verdict": "reject"},
+    "raydium_clmm_v1_this": {"verdict": "TBD"}
+  },
+
+  "this_stage_pivot": {
+    "from": "Meteora DLMM (V8) + Orca Whirlpools (V1) — both reject",
+    "to": "Raydium CLMM V1 — 3rd V3 CL AMM independent test",
+    "next_after_reject": "If reject: switch to Raydium CPMM / stable pool / non-CL LP (per user instruction); not infinite V3 CL extension"
+  },
+
+  "hard_constraints": {
+    "no_keypair": true,
+    "no_signer": true,
+    "no_transaction": true,
+    "no_open_close_position": true,
+    "no_collect_fees": true,
+    "no_swap": true,
+    "no_bridge": true,
+    "no_live_canary_paper": true,
+    "no_production_positions": true,
+    "no_shadow_table_overwrite": true,
+    "no_evm_executor_modify": true,
+    "no_hard_disable_release": true
+  },
+
+  "allowed_operations": {
+    "webfetch_curl_official": true,
+    "npm_install_to_tmp": true,
+    "solana_public_rpc_readonly": true,
+    "getAccountInfo": true,
+    "getMultipleAccountsInfo_small_batch": true,
+    "raydium_sdk_account_decode": true,
+    "poolstate_account_decode": true,
+    "tick_array_pda_derive": true,
+    "tick_array_account_read_decode": true,
+    "readonly_quote_object": true,
+    "json_csv_md_tests": true
+  },
+
+  "safety_locks": {
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no",
+    "solana_wallet_or_keypair_touched": false,
+    "transaction_sent": false,
+    "v2_line_count": 992,
+    "v2_line_count_unchanged": true,
+    "send_hard_disable_still_active": true
+  },
+
+  "allowed_next_stages": [
+    "LP_RAYDIUM_CLMM_10_20U_PROBE_PREFLIGHT_DESIGN_V1",
+    "LP_RAYDIUM_CLMM_KNOWN_POOL_FEED_EXPANSION_REPEAT",
+    "LP_RAYDIUM_CPMM_READONLY_CONNECTOR_V1",
+    "LP_SOLANA_PAID_RPC_SETUP_REQUIRED",
+    "STOP_LP_RESEARCH_NOW"
+  ]
+}

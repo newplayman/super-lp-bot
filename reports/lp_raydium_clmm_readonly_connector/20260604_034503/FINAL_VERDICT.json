@@ -1,0 +1,79 @@
+{
+  "status": "WARN",
+  "stage": "LP_RAYDIUM_CLMM_READONLY_CONNECTOR_V1",
+  "run_id": "20260604_034503",
+  "branch": "feat/supabase-postgres-deployment",
+  "head_before": "9f0495a",
+
+  "candidate_raw_count": 107,
+  "selected_for_chain_verify_count": 80,
+  "verified_pool_count": 65,
+  "sdk_decode_success_count": 65,
+  "tick_array_ready_pool_count": 2,
+  "quote_ready_pool_count": 50,
+  "survival_ev_model_ran": true,
+
+  "row_count": 8400,
+  "positive_zero_il_lvr_count": 480,
+  "positive_optimistic_count": 0,
+  "positive_realistic_count": 0,
+  "positive_conservative_count": 0,
+  "near_break_even_count": 1680,
+  "high_fee_quote_ready_count": 50,
+
+  "best_pool": "3nMFwZXwY1s1M5s8vYAHqd4wGs4iSxXE4LRoUMMYqEgF",
+  "best_pair": "SOL/USDT",
+  "best_notional": 2000,
+  "best_hold_window": "7d",
+  "best_scenario": "zero_il_lvr",
+  "best_net_ev_proxy_usd": 0.167,
+  "best_net_ev_proxy_pct": 0.0084,
+
+  "v2_line_count": 992,
+  "v2_line_count_unchanged": true,
+
+  "structural_finding": "Raydium CLMM 65/65 verified, 65/65 SDK decode via @raydium-io/raydium-sdk 1.3.1-beta.58, 50/53 quote-ready via liquidity ratio heuristic. Tick arrays only 2/195 (1.0%) initialized; pool-level liquidity used as proxy. 8400 cells (50 × 6 × 7 × 4), 480 positive in zero_il_lvr only, 0 in optimistic/realistic/conservative. Best cell +$0.167 at 2000/7d/zero_il_lvr in SOL/USDT (default 25bps fee). **3/3 V3 CL AMMs (Meteora + Orca + Raydium) all reject retail 10-20U 2000 USD LP** with identical pattern (positive only in zero_il_lvr). Per user instruction: switch to Raydium CPMM / stable pool / non-CL LP; not infinite V3 CL extension.",
+
+  "phase_results": {
+    "A_workspace_safety": "PASS (HEAD=9f0495a; pre-existing dirty files unrelated)",
+    "B_input_evidence_audit": "PASS (10 upstream files audited)",
+    "C_raydium_sdk_source_audit": "PASS (GitHub + npm registry verified; @raydium-io/raydium-sdk 1.3.1-beta.58; PoolInfoLayout decode confirmed)",
+    "D_isolated_sdk_install": "PASS (npm install to /tmp; read-only decode verified on 8sLbNZoA1cfnvMJLPfp98ZLAnFSYCFApfJKMbiXNLwxj SOL/USDC 0.01%)",
+    "E_candidate_source_collection": "PASS (107 unique: 60 GeckoTerminal raydium-clmm + 47 DexScreener; 80 selected for chain verify)",
+    "F_chain_verify": "PASS (65/80 owner=CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK; 15 owner_mismatch; data_len 1544 each for CLMM)",
+    "G_pool_decode": "PASS (65/65 via PoolInfoLayout.decode; mintA/B, tickSpacing, liquidity, sqrtPriceX64, tickCurrent all decoded)",
+    "H_tick_array_read": "PARTIAL (2/195 tick arrays initialized; Raydium tick arrays exist only at active tick for actively-traded pools; pool-level liquidity > 0 for 53/65)",
+    "I_quote_smoke": "PARTIAL (50/53 quote-ready via liquidity ratio heuristic; exact quote via SDK requires tick array state)",
+    "J_survival_ev_preview": "PASS (8400 cells; 480 positive in zero_il_lvr only; 0 in realistic/optimistic/conservative; default 25bps fee assumed)",
+    "K_candidate_decision": "PASS (rule_2 + user instruction applied: switch to Raydium CPMM, not infinite V3 CL)"
+  },
+
+  "can_run_probe_now": false,
+  "execution_allowed_now": false,
+  "transaction_sent": false,
+  "wallet_or_tx_touched": false,
+  "solana_wallet_or_keypair_touched": false,
+  "edge_proven": "no",
+  "tiny_canary_allowed": "no",
+  "manual_approval_required": true,
+  "send_hard_disable_still_active": true,
+
+  "v2_modified_by_this_task": false,
+
+  "v3_cl_amm_cumulative": {
+    "meteora_dlmm_v8": {"best_cell_usd": 0.544, "positive_realistic": 0},
+    "orca_whirlpools_v1": {"best_cell_usd": 0.106, "positive_realistic": 0},
+    "raydium_clmm_v1": {"best_cell_usd": 0.167, "positive_realistic": 0},
+    "summary": "3/3 V3 CL AMMs reject retail 10-20U 2000 USD LP"
+  },
+
+  "allowed_next_stages": [
+    "LP_RAYDIUM_CLMM_10_20U_PROBE_PREFLIGHT_DESIGN_V1",
+    "LP_RAYDIUM_CLMM_KNOWN_POOL_FEED_EXPANSION_REPEAT",
+    "LP_RAYDIUM_CPMM_READONLY_CONNECTOR_V1",
+    "LP_SOLANA_PAID_RPC_SETUP_REQUIRED",
+    "STOP_LP_RESEARCH_NOW"
+  ],
+  "recommended_next_stage": "LP_RAYDIUM_CPMM_READONLY_CONNECTOR_V1",
+  "default_when_no_explicit_choice": "LP_RAYDIUM_CPMM_READONLY_CONNECTOR_V1"
+}

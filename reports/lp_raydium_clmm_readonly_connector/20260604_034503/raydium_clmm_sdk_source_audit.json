@@ -1,0 +1,88 @@
+{
+  "stage": "LP_RAYDIUM_CLMM_READONLY_CONNECTOR_V1",
+  "run_id": "20260604_034503",
+  "phase": "C_sdk_source_audit",
+
+  "program_id": {
+    "value": "CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK",
+    "official_source_url": "https://raw.githubusercontent.com/raydium-io/raydium-clmm/master/programs/amm/src/lib.rs",
+    "source_type": "official_github",
+    "source_confidence": "high",
+    "verified_in_v1_stage": "20260603_093136"
+  },
+
+  "official_sources": [
+    {
+      "name": "Raydium CLMM GitHub",
+      "url": "https://github.com/raydium-io/raydium-clmm",
+      "type": "official_github",
+      "fetch_success": true
+    },
+    {
+      "name": "PoolState Rust source",
+      "url": "https://raw.githubusercontent.com/raydium-io/raydium-clmm/master/programs/amm/src/states/pool.rs",
+      "type": "official_github",
+      "fetch_success": true,
+      "size_bytes": 83706
+    },
+    {
+      "name": "TypeScript SDK (v1 stable)",
+      "url": "https://www.npmjs.com/package/@raydium-io/raydium-sdk",
+      "type": "official_npm",
+      "fetch_success": true,
+      "package_name": "@raydium-io/raydium-sdk",
+      "package_version": "1.3.1-beta.58",
+      "has_poolstate_account_decode": true,
+      "has_tick_array_decode": true,
+      "has_quote_method": true,
+      "has_position_model": true,
+      "wallet_related_imports_used_for_readonly": false
+    },
+    {
+      "name": "TypeScript SDK (v2 preview)",
+      "url": "https://www.npmjs.com/package/@raydium-io/raydium-sdk-v2",
+      "type": "official_npm",
+      "fetch_success": true,
+      "package_name": "@raydium-io/raydium-sdk-v2",
+      "package_version": "0.2.50-alpha"
+    }
+  ],
+
+  "poolstate_fields": [
+    "bump", "amm_config", "owner", "token_mint_0", "token_mint_1",
+    "token_vault_0", "token_vault_1", "observation_key",
+    "mint_decimals_0", "mint_decimals_1", "tick_spacing", "liquidity",
+    "sqrt_price_x64", "tick_current", "padding0", "padding1",
+    "fee_growth_global_0", "fee_growth_global_1",
+    "protocol_fees_token_0", "protocol_fees_token_1",
+    "swap_in_amount_token_0", "swap_out_amount_token_1",
+    "swap_in_amount_token_1", "swap_out_amount_token_0",
+    "status", "reward_infos", "tick_array_bitmap", "total_fees_token_0", "total_fees_token_1"
+  ],
+
+  "read_only_functions": [
+    "getPdaPoolId", "getPdaTickArrayAddress", "getPdaAmmConfigId",
+    "getPdaPersonalPositionAddress", "getPdaProtocolPositionAddress",
+    "getPdaPoolVaultId", "getPdaPoolRewardVaulId", "getPdaExBitmapAccount",
+    "getMultipleAccountsInfo", "fetchMultipleMintInfos",
+    "getDxByDyBaseIn", "getDyByDxBaseIn",
+    "PoolInfoLayout (decoder)", "TickArrayLayout (decoder)", "TickLayout (decoder)",
+    "TickMath", "TickUtils", "PoolUtils", "TickQuery"
+  ],
+
+  "write_functions_excluded": [
+    "createPoolInstruction", "addLiquidity", "removeLiquidity",
+    "swap", "openPosition", "closePosition", "increaseLiquidity",
+    "decreaseLiquidity", "harvest", "swapInstruction"
+  ],
+
+  "audit_confidence": 0.92,
+  "invalid_reason": null,
+
+  "this_stage_does_not": [
+    "load any keypair",
+    "sign or send any transaction",
+    "construct any signer",
+    "modify production tables"
+  ]
+}

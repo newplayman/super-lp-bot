@@ -1,0 +1,108 @@
+pool_address,name,base_symbol,quote_symbol,vol24h_usd,reserve_usd,source_type,source_url,source_confidence,selected_for_chain_verify
+3nMFwZXwY1s1M5s8vYAHqd4wGs4iSxXE4LRoUMMYqEgF,SOL / USDT 0.01%,SOL,USDT 0.01%,27076908.84,1806038.53,GeckoTerminal,https://www.geckoterminal.com/solana/pools/3nMFwZXwY1s1M5s8vYAHqd4wGs4iSxXE4LRoUMMYqEgF,B,True
+BxZ1GN3qVe7iwuQjaebgCyjMYjdXtia8YP3JfuVpUAUU,WorldCup / SOL,WorldCup,SOL,3437908.61,9.38,GeckoTerminal,https://www.geckoterminal.com/solana/pools/BxZ1GN3qVe7iwuQjaebgCyjMYjdXtia8YP3JfuVpUAUU,B,True
+3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv,SOL / USDC,SOL,USDC,18432332.91,4731743.66,GeckoTerminal,https://www.geckoterminal.com/solana/pools/3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv,B,True
+CrE5Xi1YoxnFYmE27mP4rm812ZnUs3Lwj7kGob85TnyX,WorldCup / SOL,WorldCup,SOL,2542493.01,112973.88,GeckoTerminal,https://www.geckoterminal.com/solana/pools/CrE5Xi1YoxnFYmE27mP4rm812ZnUs3Lwj7kGob85TnyX,B,True
+HzKStSGe3Vwk2Z5EVRKhf7WuauWAKGryKw7ayAwg8Vj,UNOS / SOL,UNOS,SOL,4658726.20,10.44,GeckoTerminal,https://www.geckoterminal.com/solana/pools/HzKStSGe3Vwk2Z5EVRKhf7WuauWAKGryKw7ayAwg8Vj,B,True
+63PBiPWuVSoPg85hR1a4RpewTVkEqowbfbvNstWe9uFM,TEA / SOL,TEA,SOL,883348.45,83650.77,GeckoTerminal,https://www.geckoterminal.com/solana/pools/63PBiPWuVSoPg85hR1a4RpewTVkEqowbfbvNstWe9uFM,B,True
+D1dAuATCnvTKiXhyV9v19gSMe5ak7uMPDm8cUNASmJmJ,USWR / SOL,USWR,SOL,2935387.25,11.34,GeckoTerminal,https://www.geckoterminal.com/solana/pools/D1dAuATCnvTKiXhyV9v19gSMe5ak7uMPDm8cUNASmJmJ,B,True
+CYbD9RaToYMtWKA7QZyoLahnHdWq553Vm62Lh6qWtuxq,SOL / USDC,SOL,USDC,2024076.61,346593.82,GeckoTerminal,https://www.geckoterminal.com/solana/pools/CYbD9RaToYMtWKA7QZyoLahnHdWq553Vm62Lh6qWtuxq,B,True
+CsFBAvNFAdyQLJHrB1EGkrsewaWF3ZLN59JoVoi3Sbgf,SAOS / SOL,SAOS,SOL,3181641.68,11.47,GeckoTerminal,https://www.geckoterminal.com/solana/pools/CsFBAvNFAdyQLJHrB1EGkrsewaWF3ZLN59JoVoi3Sbgf,B,True
+8sLbNZoA1cfnvMJLPfp98ZLAnFSYCFApfJKMbiXNLwxj,SOL / USDC 0.01%,SOL,USDC 0.01%,74878.98,400333.97,GeckoTerminal,https://www.geckoterminal.com/solana/pools/8sLbNZoA1cfnvMJLPfp98ZLAnFSYCFApfJKMbiXNLwxj,B,True
+AmG2fAB18dDQZE7DraHCrz2tYgM9jmtd7THqHRpm8CM4,Verse / SOL,Verse,SOL,347182.38,2034.98,GeckoTerminal,https://www.geckoterminal.com/solana/pools/AmG2fAB18dDQZE7DraHCrz2tYgM9jmtd7THqHRpm8CM4,B,True
+ExcBWu8fGPdJiaF1b1z3iEef38sjQJks8xvj6M85pPY6,USDT / SOL,USDT,SOL,127499.26,65499.11,GeckoTerminal,https://www.geckoterminal.com/solana/pools/ExcBWu8fGPdJiaF1b1z3iEef38sjQJks8xvj6M85pPY6,B,True
+EXHyQxMSttcvLPwjENnXCPZ8GmLjJYHtNBnAkcFeFKMn,SOL / USDC 0.01%,SOL,USDC 0.01%,957.37,1388.86,GeckoTerminal,https://www.geckoterminal.com/solana/pools/EXHyQxMSttcvLPwjENnXCPZ8GmLjJYHtNBnAkcFeFKMn,B,True
+2AXXcN6oN9bBT5owwmTH53C7QHUXvhLeu718Kqt8rvY2,RAY / SOL 0.05%,RAY,SOL 0.05%,6061077.93,1199725.76,GeckoTerminal,https://www.geckoterminal.com/solana/pools/2AXXcN6oN9bBT5owwmTH53C7QHUXvhLeu718Kqt8rvY2,B,True
+5pE2FWrCh9tqdRFk9wDJRhCCicsQfKKWmsF4ki24ngS1,BP / SOL,BP,SOL,914373.59,85614.73,GeckoTerminal,https://www.geckoterminal.com/solana/pools/5pE2FWrCh9tqdRFk9wDJRhCCicsQfKKWmsF4ki24ngS1,B,True
+GYqHjuDzTiw7i52Xv1qohDE6eJr6eSZpsrBVikGZyaFV,CRCLx / USDC,CRCLx,USDC,5373840.79,2716914.71,GeckoTerminal,https://www.geckoterminal.com/solana/pools/GYqHjuDzTiw7i52Xv1qohDE6eJr6eSZpsrBVikGZyaFV,B,True
+2QdhepnKRTLjjSqPL1PtKNwqrUkoLee5Gqs8bvZhRdMv,SOL / USDC 0.05%,SOL,USDC 0.05%,580389.65,404825.55,GeckoTerminal,https://www.geckoterminal.com/solana/pools/2QdhepnKRTLjjSqPL1PtKNwqrUkoLee5Gqs8bvZhRdMv,B,True
+DUdfMuH22FTj9RZ8p3tSJJXUAE375FVgCpKfGubRhax2,IBMUSDT / SOL,IBMUSDT,SOL,743872.00,108560.76,GeckoTerminal,https://www.geckoterminal.com/solana/pools/DUdfMuH22FTj9RZ8p3tSJJXUAE375FVgCpKfGubRhax2,B,True
+HpgV2jnzgrGfrZjeZGkHgTnEgRFAhtzCVuk3BRFTFJwk,TRX / USDC,TRX,USDC,2420981.25,12351917.98,GeckoTerminal,https://www.geckoterminal.com/solana/pools/HpgV2jnzgrGfrZjeZGkHgTnEgRFAhtzCVuk3BRFTFJwk,B,True
+9FxWQ5RqMpbHoehY4Gu2tHixfhCBixmGrvRDt1LJgX6C,SkyAI / SOL,SkyAI,SOL,594136.16,51032.57,GeckoTerminal,https://www.geckoterminal.com/solana/pools/9FxWQ5RqMpbHoehY4Gu2tHixfhCBixmGrvRDt1LJgX6C,B,True
+ARdfTL3JhD6BQd7D2a46b65eMGhhSEYvXF7VvTDUrj6V,TEA / SOL,TEA,SOL,536921.33,97024.88,GeckoTerminal,https://www.geckoterminal.com/solana/pools/ARdfTL3JhD6BQd7D2a46b65eMGhhSEYvXF7VvTDUrj6V,B,True
+8ir2KDZCxcXZzZ7EqEF8tp6xuiD2SKnuzkm7etHz4KbM,BABYTROLL / SOL,BABYTROLL,SOL,204136.51,24506.10,GeckoTerminal,https://www.geckoterminal.com/solana/pools/8ir2KDZCxcXZzZ7EqEF8tp6xuiD2SKnuzkm7etHz4KbM,B,True
+29awEHj853nKeRzuKwfsKbX1qRupSco1dTugKG5geErC,DEL / SOL,DEL,SOL,510500.89,96470.05,GeckoTerminal,https://www.geckoterminal.com/solana/pools/29awEHj853nKeRzuKwfsKbX1qRupSco1dTugKG5geErC,B,True
+DgvPyYf9KimyZ4oto3mPRBX8tRNLJRmkFGbU9Gd3DkTG,MANIFEST / SOL,MANIFEST,SOL,425497.75,9223.90,GeckoTerminal,https://www.geckoterminal.com/solana/pools/DgvPyYf9KimyZ4oto3mPRBX8tRNLJRmkFGbU9Gd3DkTG,B,True
+Fh8RufBNQgdG2LT1tc5HvZ13enF1YvLrsuqRAYiV2qiF,three / SOL,three,SOL,648644.85,68533.24,GeckoTerminal,https://www.geckoterminal.com/solana/pools/Fh8RufBNQgdG2LT1tc5HvZ13enF1YvLrsuqRAYiV2qiF,B,True
+F3DAAusn8mob9swWaX4ehaRrhi2Q3XJScKkuUpXdvn2i,CARDS / USDC,CARDS,USDC,472889.89,56298.35,GeckoTerminal,https://www.geckoterminal.com/solana/pools/F3DAAusn8mob9swWaX4ehaRrhi2Q3XJScKkuUpXdvn2i,B,True
+CodkD7Z6UBZzjJGufeqPyAUhUXYL27Cye33S7voLxLop,AMERICA / SOL,AMERICA,SOL,45954.48,18540.44,GeckoTerminal,https://www.geckoterminal.com/solana/pools/CodkD7Z6UBZzjJGufeqPyAUhUXYL27Cye33S7voLxLop,B,True
+GDsjjQ7MbP5XdumrELnXNZC7e9rF3gHbY3AVPi4ZL4Kw,JARS / SOL,JARS,SOL,760157.61,71877.24,GeckoTerminal,https://www.geckoterminal.com/solana/pools/GDsjjQ7MbP5XdumrELnXNZC7e9rF3gHbY3AVPi4ZL4Kw,B,True
+3C4Z6Kiq33JYcxTMj4jMfhmoS4TwFvEtahwuaw7JLfwP,POKE / SOL,POKE,SOL,668233.09,68446.72,GeckoTerminal,https://www.geckoterminal.com/solana/pools/3C4Z6Kiq33JYcxTMj4jMfhmoS4TwFvEtahwuaw7JLfwP,B,True
+56Gd9Vtg5RsAzetUYnccttnSzyb13GDfwr5kjastymLq,DATBIHGAH / SOL,DATBIHGAH,SOL,826957.98,61370.16,GeckoTerminal,https://www.geckoterminal.com/solana/pools/56Gd9Vtg5RsAzetUYnccttnSzyb13GDfwr5kjastymLq,B,True
+6kT4MhDqKrkWikaGpFCvYsk45BUKXEe2gTpNGAR1YcjS,SOL / USDT 0.05%,SOL,USDT 0.05%,86899.81,68267.15,GeckoTerminal,https://www.geckoterminal.com/solana/pools/6kT4MhDqKrkWikaGpFCvYsk45BUKXEe2gTpNGAR1YcjS,B,True
+7mBfKwvW2v96GgCNJHpXaq31biSiUgo1kwRERbxLTYo3,BP / SOL,BP,SOL,110860.12,39433.47,GeckoTerminal,https://www.geckoterminal.com/solana/pools/7mBfKwvW2v96GgCNJHpXaq31biSiUgo1kwRERbxLTYo3,B,True
+7FEkYZJG2VUQZNqSmZDLH9Unnwkge8UwzXissKXCXUxZ,LMAO! / SOL,LMAO!,SOL,349180.85,25496.50,GeckoTerminal,https://www.geckoterminal.com/solana/pools/7FEkYZJG2VUQZNqSmZDLH9Unnwkge8UwzXissKXCXUxZ,B,True
+EGwhdSXnSDVd3jBVafgFZR1KCZXQqRr23LQagpWsK1W4,FCM / SOL,FCM,SOL,582149.80,72416.36,GeckoTerminal,https://www.geckoterminal.com/solana/pools/EGwhdSXnSDVd3jBVafgFZR1KCZXQqRr23LQagpWsK1W4,B,True
+5Guq7ooZFtNju48kVNRzCVJmE9erW4DPcTQyrAk3z4UE,2Z / USDC,2Z,USDC,240189.86,698096.09,GeckoTerminal,https://www.geckoterminal.com/solana/pools/5Guq7ooZFtNju48kVNRzCVJmE9erW4DPcTQyrAk3z4UE,B,True
+G4LTmHVnARsAmjDYAVukjPoMwae5AVhwWdWpHCjhJcqc,2Z / USDC,2Z,USDC,7902.16,40351.72,GeckoTerminal,https://www.geckoterminal.com/solana/pools/G4LTmHVnARsAmjDYAVukjPoMwae5AVhwWdWpHCjhJcqc,B,True
+FBv7PtQ9FH1NepbVCh4ojZEKXa15jLQBreuxMeT9uERb,USDT / SOL,USDT,SOL,6514.91,2139.66,GeckoTerminal,https://www.geckoterminal.com/solana/pools/FBv7PtQ9FH1NepbVCh4ojZEKXa15jLQBreuxMeT9uERb,B,True
+DKf8fsQHRBKoh4opHmLyi9nMjMsdRgbP7DnoagvC9oFM,CATCOIN / SOL,CATCOIN,SOL,182629.60,45855.68,GeckoTerminal,https://www.geckoterminal.com/solana/pools/DKf8fsQHRBKoh4opHmLyi9nMjMsdRgbP7DnoagvC9oFM,B,True
+EZVkeboWeXygtq8LMyENHyXdF5wpYrtExRNH9UwB1qYw,JUP / SOL 0.05%,JUP,SOL 0.05%,63188.69,28332.39,GeckoTerminal,https://www.geckoterminal.com/solana/pools/EZVkeboWeXygtq8LMyENHyXdF5wpYrtExRNH9UwB1qYw,B,True
+tqCiSbcbr1QKCv7fNA3gaEgCzTgy8acoghebPhN9XzU,USDS / SOL,USDS,SOL,32728.54,20666.49,GeckoTerminal,https://www.geckoterminal.com/solana/pools/tqCiSbcbr1QKCv7fNA3gaEgCzTgy8acoghebPhN9XzU,B,True
+3aUkCrQm67n19Ugh5944jNiFjPeGthKEJZmKArZi3Cy3,PANTH / SOL,PANTH,SOL,100439.39,3145.46,GeckoTerminal,https://www.geckoterminal.com/solana/pools/3aUkCrQm67n19Ugh5944jNiFjPeGthKEJZmKArZi3Cy3,B,True
+GUWFT7bbLphGrcpAPnnEnBbe1uErv9e6LLC2qPx2wZy1,BIRB / USDC,BIRB,USDC,806603.05,1851796.30,GeckoTerminal,https://www.geckoterminal.com/solana/pools/GUWFT7bbLphGrcpAPnnEnBbe1uErv9e6LLC2qPx2wZy1,B,True
+CZkNKEwyeVJS2vHriYE3pG8CxRPL34PccTG88T6s5oAk,HYPE / SOL,HYPE,SOL,78596.94,26113.20,GeckoTerminal,https://www.geckoterminal.com/solana/pools/CZkNKEwyeVJS2vHriYE3pG8CxRPL34PccTG88T6s5oAk,B,True
+FC3a5AfSqZyyMGWjiNubetgnAqGh4b6HQGBX8iZhkyQE,JLP / SOL,JLP,SOL,82437.20,50270.56,GeckoTerminal,https://www.geckoterminal.com/solana/pools/FC3a5AfSqZyyMGWjiNubetgnAqGh4b6HQGBX8iZhkyQE,B,True
+6bb6zgM8q4Jx7po4EKDgz3s7gGSsKEqNkk73X3mfJtCZ,MCDOGE / SOL,MCDOGE,SOL,325165.12,32159.27,GeckoTerminal,https://www.geckoterminal.com/solana/pools/6bb6zgM8q4Jx7po4EKDgz3s7gGSsKEqNkk73X3mfJtCZ,B,True
+9DSTQ3PdPNNrE1gQhjjGnuMMZqctPW8qKtoeYfekMEAJ,LOLA / SOL,LOLA,SOL,56413.15,485.07,GeckoTerminal,https://www.geckoterminal.com/solana/pools/9DSTQ3PdPNNrE1gQhjjGnuMMZqctPW8qKtoeYfekMEAJ,B,True
+7Zg2KhVvcszsVqbfHUKeT9KEVdRJdCSX3VG7aWKFGGmF,SON / SOL,SON,SOL,892302.24,57058.69,GeckoTerminal,https://www.geckoterminal.com/solana/pools/7Zg2KhVvcszsVqbfHUKeT9KEVdRJdCSX3VG7aWKFGGmF,B,True
+CRoTdDUM3NJGbuvB7Vr9rhmRxnSswMjnTLC1ANjhwsdq,TRUMP / USDC,TRUMP,USDC,377545.48,901863.70,GeckoTerminal,https://www.geckoterminal.com/solana/pools/CRoTdDUM3NJGbuvB7Vr9rhmRxnSswMjnTLC1ANjhwsdq,B,True
+3zozghHn3cCmbAVPF3Bm5AiyT7VorSdHwTt2qJjLfDo2,CRCLx / SOL,CRCLx,SOL,1614714.75,538503.15,GeckoTerminal,https://www.geckoterminal.com/solana/pools/3zozghHn3cCmbAVPF3Bm5AiyT7VorSdHwTt2qJjLfDo2,B,True
+BZtgQEyS6eXUXicYPHecYQ7PybqodXQMvkjUbP4R8mUU,USDC / USDT 0.01%,USDC,USDT 0.01%,6105425.65,4230049.85,GeckoTerminal,https://www.geckoterminal.com/solana/pools/BZtgQEyS6eXUXicYPHecYQ7PybqodXQMvkjUbP4R8mUU,B,True
+DP9Q72RFXVmX9UtGim71tckoGXN1dCb6QWoKFDfS8fMd,MONJI / SOL,MONJI,SOL,258441.05,52320.34,GeckoTerminal,https://www.geckoterminal.com/solana/pools/DP9Q72RFXVmX9UtGim71tckoGXN1dCb6QWoKFDfS8fMd,B,True
+45ssPkUQs1ssbeDqxD2mZrMdJYAXF7GyQyhS5xDXuWC5,PUMP / SOL,PUMP,SOL,476618.11,85237.41,GeckoTerminal,https://www.geckoterminal.com/solana/pools/45ssPkUQs1ssbeDqxD2mZrMdJYAXF7GyQyhS5xDXuWC5,B,True
+B7FMajPsN3BdiB3gRH9goJP5nHqkHgBDpDv1VVoirMXD,SPCX / SOL,SPCX,SOL,772289.73,70964.41,GeckoTerminal,https://www.geckoterminal.com/solana/pools/B7FMajPsN3BdiB3gRH9goJP5nHqkHgBDpDv1VVoirMXD,B,True
+3RA4PDZAZ49nm6hdDCnCTrnECqQD93ny8oHP4T1CSTcR,GEOD(SOL) / SOL,GEOD(SOL),SOL,146219.37,113840.04,GeckoTerminal,https://www.geckoterminal.com/solana/pools/3RA4PDZAZ49nm6hdDCnCTrnECqQD93ny8oHP4T1CSTcR,B,True
+7PksjxWEJaDrNp3XUUHiKRgkPsmmi6WDnYSFpRvn8G2T,KINS / SOL,KINS,SOL,268249.41,39111.69,GeckoTerminal,https://www.geckoterminal.com/solana/pools/7PksjxWEJaDrNp3XUUHiKRgkPsmmi6WDnYSFpRvn8G2T,B,True
+AQAGYQsdU853WAKhXM79CgNdoyhrRwXvYHX6qrDyC1FS,USD1 / SOL,USD1,SOL,2883467.38,4330690.96,GeckoTerminal,https://www.geckoterminal.com/solana/pools/AQAGYQsdU853WAKhXM79CgNdoyhrRwXvYHX6qrDyC1FS,B,True
+FKzoAV4wZYteNV1xDDr5nQaSLrYEUWwerxvBkKVXNCB,USDT / SOL,USDT,SOL,5634.23,2527.04,GeckoTerminal,https://www.geckoterminal.com/solana/pools/FKzoAV4wZYteNV1xDDr5nQaSLrYEUWwerxvBkKVXNCB,B,True
+G8LqPHYAMcwP14CDgk9XsV9VdwpsW3aJ59VubwnyrJVr,USD1 / SOL,USD1,SOL,635.56,38710.44,GeckoTerminal,https://www.geckoterminal.com/solana/pools/G8LqPHYAMcwP14CDgk9XsV9VdwpsW3aJ59VubwnyrJVr,B,True
+4AnR1SU1eF2YMadkdkXoQqdf5Hc368nforDGbCiDTVw7,neet / USDC,neet,USDC,422766.81,410923.73,GeckoTerminal,https://www.geckoterminal.com/solana/pools/4AnR1SU1eF2YMadkdkXoQqdf5Hc368nforDGbCiDTVw7,B,True
+AqfwQ6tvFZqN4AQZAWgYQXVJ7JNVF9T2vGMt5VWHAPQS,BP / USDC,BP,USDC,15895.37,1073.84,GeckoTerminal,https://www.geckoterminal.com/solana/pools/AqfwQ6tvFZqN4AQZAWgYQXVJ7JNVF9T2vGMt5VWHAPQS,B,True
+6UmmUiYoBjSrhakAobJw8BvkmJtDVxaeBtbt7rxWo1mg,RAY/USDC,RAY,USDC,514810.61,3718334.67,DexScreener,https://dexscreener.com/solana/6UmmUiYoBjSrhakAobJw8BvkmJtDVxaeBtbt7rxWo1mg,B,True
+DVa7Qmb5ct9RCpaU7UTpSaf3GVMYz17vNVU67XpdCRut,RAY/USDT,RAY,USDT,126954.85,944663.86,DexScreener,https://dexscreener.com/solana/DVa7Qmb5ct9RCpaU7UTpSaf3GVMYz17vNVU67XpdCRut,B,True
+61R1ndXxvsWXXkWSyNkCxnzwd3zUNB8Q2ibmkiLPC8ht,RAY/USDC,RAY,USDC,24977.20,126626.50,DexScreener,https://dexscreener.com/solana/61R1ndXxvsWXXkWSyNkCxnzwd3zUNB8Q2ibmkiLPC8ht,B,True
+AVs9TA4nWDzfPJE9gGVNJMVhcQy3V9PGazuz33BfG2RA,RAY/SOL,RAY,SOL,54725.18,2392472.22,DexScreener,https://dexscreener.com/solana/AVs9TA4nWDzfPJE9gGVNJMVhcQy3V9PGazuz33BfG2RA,B,True
+Enfoa5Xdtirwa46xxa5LUVcQWe7EUb2pGzTjfvU7EBS1,RAY/SOL,RAY,SOL,5986.77,213770.48,DexScreener,https://dexscreener.com/solana/Enfoa5Xdtirwa46xxa5LUVcQWe7EUb2pGzTjfvU7EBS1,B,True
+EyDgEU9BdG7m6ZK4bYERxbN4NCJ129WzPtv23dBkfsLg,SAMO/RAY,SAMO,RAY,2231.35,39436.19,DexScreener,https://dexscreener.com/solana/EyDgEU9BdG7m6ZK4bYERxbN4NCJ129WzPtv23dBkfsLg,B,True
+DfptScHTyb9YwDV27HsDaBAwPr38ij9Qu3HgEwD8hs4h,RAY/SOL,RAY,SOL,31281.28,36982.22,DexScreener,https://dexscreener.com/solana/DfptScHTyb9YwDV27HsDaBAwPr38ij9Qu3HgEwD8hs4h,B,True
+HS245zT4sjkzrhzqiNDr1WWpqbd9FDisiU61sUsf8MnV,RAY/USDT,RAY,USDT,4754.56,26167.91,DexScreener,https://dexscreener.com/solana/HS245zT4sjkzrhzqiNDr1WWpqbd9FDisiU61sUsf8MnV,B,True
+8iQFhWyceGREsWnLM8NkG9GC8DvZunGZyMzuyUScgkMK,ETH/RAY,ETH,RAY,914.31,189752.41,DexScreener,https://dexscreener.com/solana/8iQFhWyceGREsWnLM8NkG9GC8DvZunGZyMzuyUScgkMK,B,True
+6kmMMacvoCKBkBrqssLEdFuEZu2wqtLdNQxh9VjtzfwT,KIN/RAY,KIN,RAY,4388.61,18175.54,DexScreener,https://dexscreener.com/solana/6kmMMacvoCKBkBrqssLEdFuEZu2wqtLdNQxh9VjtzfwT,B,True
+F73euqPynBwrgcZn3fNSEneSnYasDQohPM5aZazW9hp2,ATLAS/RAY,ATLAS,RAY,8239.15,80124.29,DexScreener,https://dexscreener.com/solana/F73euqPynBwrgcZn3fNSEneSnYasDQohPM5aZazW9hp2,B,True
+6gpZ9JkLoYvpA5cwdyPZFsDw6tkbPyyXM5FqRqHxMCny,mSOL/RAY,mSOL,RAY,1497.76,83823.26,DexScreener,https://dexscreener.com/solana/6gpZ9JkLoYvpA5cwdyPZFsDw6tkbPyyXM5FqRqHxMCny,B,True
+5tho4By9RsqTF1rbm9Akiepik3kZBT7ffUzGg8bL1mD,POLIS/RAY,POLIS,RAY,10068.08,50867.35,DexScreener,https://dexscreener.com/solana/5tho4By9RsqTF1rbm9Akiepik3kZBT7ffUzGg8bL1mD,B,True
+GaqgfieVmnmY4ZsZHHA6L5RSVzCGL3sKx4UgHBaYNy8m,SRM/RAY,SRM,RAY,4768.37,47390.13,DexScreener,https://dexscreener.com/solana/GaqgfieVmnmY4ZsZHHA6L5RSVzCGL3sKx4UgHBaYNy8m,B,True
+EgZ9WNbtccXHuhpw44FtyMFcLZySqsSDPMCaVANeeRxg,UTHR/RAY,UTHR,RAY,517.70,14550.80,DexScreener,https://dexscreener.com/solana/EgZ9WNbtccXHuhpw44FtyMFcLZySqsSDPMCaVANeeRxg,B,True
+E8gg5a3Ubn33hGw9RpYZZdMPJNUXpU9r811nhaURCy1Y,RAY/USDT,RAY,USDT,43.89,12.38,DexScreener,https://dexscreener.com/solana/E8gg5a3Ubn33hGw9RpYZZdMPJNUXpU9r811nhaURCy1Y,B,False
+GWuVyeveWZ69UoAVXmVUJ4YVNPfSE6WVhSmwowJc8dtu,RAY/USDC,RAY,USDC,44.19,11.97,DexScreener,https://dexscreener.com/solana/GWuVyeveWZ69UoAVXmVUJ4YVNPfSE6WVhSmwowJc8dtu,B,False
+9ZpFyuMaHjSbM8feuarrWf4VZN2gmLxtwEc3e471n1KN,JUP/RAY,JUP,RAY,119.16,8007.72,DexScreener,https://dexscreener.com/solana/9ZpFyuMaHjSbM8feuarrWf4VZN2gmLxtwEc3e471n1KN,B,True
+6W5Y8kmmDV4EPzTgZLbaNhjCRi3Y3sLwpd3rDTr1uMcc,RAY/USD1,RAY,USD1,866.89,3563.27,DexScreener,https://dexscreener.com/solana/6W5Y8kmmDV4EPzTgZLbaNhjCRi3Y3sLwpd3rDTr1uMcc,B,True
+AY86tR2o8Hn2A25AANMqE9bS5t2Z5xBUshBHhiXCW2Kb,RAY/USDC,RAY,USDC,8.40,45.37,DexScreener,https://dexscreener.com/solana/AY86tR2o8Hn2A25AANMqE9bS5t2Z5xBUshBHhiXCW2Kb,B,False
+6ASbQ9vC14sxrSBs8pwjebrctz1uu1Za1mq1kGtUbAjp,RAY/USDC,RAY,USDC,2.90,27.49,DexScreener,https://dexscreener.com/solana/6ASbQ9vC14sxrSBs8pwjebrctz1uu1Za1mq1kGtUbAjp,B,False
+HPWkdpsbaKWKxi4F6ZSWjjDqLmdV9hKE7wvYNLPWKLbD,RAY/USDC,RAY,USDC,28.38,594.06,DexScreener,https://dexscreener.com/solana/HPWkdpsbaKWKxi4F6ZSWjjDqLmdV9hKE7wvYNLPWKLbD,B,False
+EwmuLic6bdWtxXrzHfwWxqWmARoWh8K4RoqFFsKgCcUZ,RAY/USDC,RAY,USDC,1.18,1.91,DexScreener,https://dexscreener.com/solana/EwmuLic6bdWtxXrzHfwWxqWmARoWh8K4RoqFFsKgCcUZ,B,False
+5FoG2w1v153J5xQuGJ9WKeoSGjEFp7y3Qhr7CdXxr7sv,RAY/USDC,RAY,USDC,0.60,3.03,DexScreener,https://dexscreener.com/solana/5FoG2w1v153J5xQuGJ9WKeoSGjEFp7y3Qhr7CdXxr7sv,B,False
+EVzLJhqMtdC1nPmz8rNd6xGfVjDPxpLZgq7XJuNfMZ6,RAY/USDC,RAY,USDC,0.48,1.52,DexScreener,https://dexscreener.com/solana/EVzLJhqMtdC1nPmz8rNd6xGfVjDPxpLZgq7XJuNfMZ6,B,False
+BcjFnHHzJ6Y1XzLcm3nfr6tP7TGHGh15bLZazP5dAy9p,RAY/USDC,RAY,USDC,0.01,0.06,DexScreener,https://dexscreener.com/solana/BcjFnHHzJ6Y1XzLcm3nfr6tP7TGHGh15bLZazP5dAy9p,B,False
+4c94mqLUdq6GzerBbN8auB9hgn8fFXwGNS4rCuHr3viU,RAY/USDC,RAY,USDC,0.08,1.24,DexScreener,https://dexscreener.com/solana/4c94mqLUdq6GzerBbN8auB9hgn8fFXwGNS4rCuHr3viU,B,False
+8RTUXqKjPmENqqVy5b3NZT2t2q5VwEK6mb12zhd35cbE,RAY/USDC,RAY,USDC,0.00,0.04,DexScreener,https://dexscreener.com/solana/8RTUXqKjPmENqqVy5b3NZT2t2q5VwEK6mb12zhd35cbE,B,False
+FnPCmcZQb6BjustPN186W26Ye16nNbN6va7TioTCPqMd,RAY/USDC,RAY,USDC,0.01,0.15,DexScreener,https://dexscreener.com/solana/FnPCmcZQb6BjustPN186W26Ye16nNbN6va7TioTCPqMd,B,False
+ATttGHnhX6R6pcKg2FFW7FtKHzvFe342MDnzwM3zzJqB,RAY/USDC,RAY,USDC,0.00,0.01,DexScreener,https://dexscreener.com/solana/ATttGHnhX6R6pcKg2FFW7FtKHzvFe342MDnzwM3zzJqB,B,False
+6XcLM1zbQAEUPjURqNTaBLG1RHWzkAseYw1VM92ptJwH,RAY/USDC,RAY,USDC,0.03,1.15,DexScreener,https://dexscreener.com/solana/6XcLM1zbQAEUPjURqNTaBLG1RHWzkAseYw1VM92ptJwH,B,False
+mRuWYvPdmaMwnR2c9JrB1gGb6c5VHyUy5uHDju4TNBd,RAY/USDC,RAY,USDC,0.00,0.16,DexScreener,https://dexscreener.com/solana/mRuWYvPdmaMwnR2c9JrB1gGb6c5VHyUy5uHDju4TNBd,B,False
+DacaYecBaenWiw935C67c13kaFXJJdD6NsQcBYt5FPDG,RAY/USDC,RAY,USDC,0.00,0.08,DexScreener,https://dexscreener.com/solana/DacaYecBaenWiw935C67c13kaFXJJdD6NsQcBYt5FPDG,B,False
+7rjhjwSU5hP34czAajyzG652ebsK6uhS6qSGeJgKkQvk,RAY/USDC,RAY,USDC,0.00,0.84,DexScreener,https://dexscreener.com/solana/7rjhjwSU5hP34czAajyzG652ebsK6uhS6qSGeJgKkQvk,B,False
+HcRKPTNnd6av9CUYAPmDZFvxFNdGQQXTxqa7ysYHG12o,RAY/SOL,RAY,SOL,88.53,4580.98,DexScreener,https://dexscreener.com/solana/HcRKPTNnd6av9CUYAPmDZFvxFNdGQQXTxqa7ysYHG12o,B,True
+E64ER3SCFZwqB2BWJFa6QvutLwAk35JfK2wFwZir46vz,RAY/SOL,RAY,SOL,627.10,2818.29,DexScreener,https://dexscreener.com/solana/E64ER3SCFZwqB2BWJFa6QvutLwAk35JfK2wFwZir46vz,B,True
+AQptcJhCg5k1BQpTtFDVvuZAekhm5eS49oneMfwZW9V5,RAY/SOL,RAY,SOL,38.45,1478.67,DexScreener,https://dexscreener.com/solana/AQptcJhCg5k1BQpTtFDVvuZAekhm5eS49oneMfwZW9V5,B,False
+6iQ9CAMHvgfpsgo4WpdACMaYmhSPemQZDuxbv6rnRrfs,RAY/SOL,RAY,SOL,0.20,35.37,DexScreener,https://dexscreener.com/solana/6iQ9CAMHvgfpsgo4WpdACMaYmhSPemQZDuxbv6rnRrfs,B,False
+8GKgXyJhnWoWyvehznmR1fb8nyDa4yTNUG5irrTB3C6r,RAY/SOL,RAY,SOL,2.93,85.56,DexScreener,https://dexscreener.com/solana/8GKgXyJhnWoWyvehznmR1fb8nyDa4yTNUG5irrTB3C6r,B,False
+3wUJdLgUuzzHY136ABfmkT7gxQ6VvRncdL4bYZ68VE6E,RAY/SOL,RAY,SOL,0.00,79.47,DexScreener,https://dexscreener.com/solana/3wUJdLgUuzzHY136ABfmkT7gxQ6VvRncdL4bYZ68VE6E,B,False
+EBqQdu9rGe6j3WGJQSyTvDjUMWcRd6uLcxSS4TbFT31t,LARIX/RAY,LARIX,RAY,89.00,1599.37,DexScreener,https://dexscreener.com/solana/EBqQdu9rGe6j3WGJQSyTvDjUMWcRd6uLcxSS4TbFT31t,B,True
+J3CoGcJqHquUdSgS7qAwdGbp3so4EpLX8eVDdGuauvi,SLRS/RAY,SLRS,RAY,37.94,178.71,DexScreener,https://dexscreener.com/solana/J3CoGcJqHquUdSgS7qAwdGbp3so4EpLX8eVDdGuauvi,B,False
+8Fr3wxZXLtiSozqms5nF4XXGHNSNqcMC6K6MvRqEfk4a,ALEPH/RAY,ALEPH,RAY,7.89,124.10,DexScreener,https://dexscreener.com/solana/8Fr3wxZXLtiSozqms5nF4XXGHNSNqcMC6K6MvRqEfk4a,B,False
+9HgxcGbNzT1b9bFgFEoTpFRRQwvJX1pkFtd2oK3BDY9,BABYSOL/RAY,BABYSOL,RAY,3.05,294.13,DexScreener,https://dexscreener.com/solana/9HgxcGbNzT1b9bFgFEoTpFRRQwvJX1pkFtd2oK3BDY9,B,False
+29S9Ev63aZLcucemYtK6pTkXQJJ4Moy66xm6RVsqRjip,SOLJAK/RAY,SOLJAK,RAY,0.62,139.40,DexScreener,https://dexscreener.com/solana/29S9Ev63aZLcucemYtK6pTkXQJJ4Moy66xm6RVsqRjip,B,False
+5nhqGo1n4SXNxUemLcSktsD2ewhH3TDij2dUDSC67iSE,SOLX/RAY,SOLX,RAY,33.16,120.39,DexScreener,https://dexscreener.com/solana/5nhqGo1n4SXNxUemLcSktsD2ewhH3TDij2dUDSC67iSE,B,False
+2HarHq3qaLMD6wc1zmEVdjpjUvAVXv4LnDzmqGovhT3z,RAY/SOL,RAY,SOL,0.10,8.00,DexScreener,https://dexscreener.com/solana/2HarHq3qaLMD6wc1zmEVdjpjUvAVXv4LnDzmqGovhT3z,B,False
