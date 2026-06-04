@@ -1,0 +1,49 @@
+{
+  "stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_SMOKE_V1",
+  "run_id": "20260604_081432",
+
+  "regime_rows": 7,
+  "regimes_present": [
+    "uptrend",
+    "downtrend",
+    "sideways",
+    "high_volume_sideways",
+    "high_volatility_trend",
+    "incentive_period",
+    "low_volatility_stable"
+  ],
+  "regimes_missing": [],
+
+  "missing_data_marked": true,
+  "smoke_placeholder_field": true,
+  "no_fabrication": true,
+
+  "fields_per_row": {
+    "regime": "string (one of 7 spec names)",
+    "lookback_days": 7,
+    "price_change_pct": 0.0,
+    "realized_vol_pct": 0.0,
+    "volume_to_tvl_pct": 0.0,
+    "incentive_active": false,
+    "regime_at": "ISO 8601 UTC",
+    "smoke_placeholder": true
+  },
+
+  "spec_compatibility": {
+    "expected_regime_count": 7,
+    "actual_regime_count": 7,
+    "all_spec_names_present": true,
+    "priority_order_defined_in_spec": true,
+    "classifier_still_spec_only": true
+  },
+
+  "long_run_readiness": {
+    "classifier_implemented": false,
+    "source_adapter_stub_replaced": false,
+    "manual_approval_received": false,
+    "long_run_started": false,
+    "classifier_ready_for_long_run": false
+  },
+
+  "next_stage": "H_collector_health_and_failure_mode"
+}

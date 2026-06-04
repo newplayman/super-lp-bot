@@ -1,0 +1,107 @@
+{
+  "stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_SMOKE_V1",
+  "status": "WARN",
+  "run_id": "20260604_081432",
+  "branch": "feat/supabase-postgres-deployment",
+  "head_before": "cdeb058",
+
+  "design_mode_ran": true,
+  "smoke_mode_ran": true,
+  "selected_pool_count": 5,
+  "pool_snapshot_rows": 5,
+  "quote_snapshot_rows": 30,
+  "fee_velocity_rows": 25,
+  "liquidity_distribution_rows": 5,
+  "market_regime_rows": 7,
+  "schema_validation_pass": true,
+  "research_only_write_ok": true,
+  "long_run_ready": false,
+  "long_run_started": false,
+
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no",
+  "edge_proven": "no",
+  "wallet_or_tx_touched": false,
+  "transaction_sent": false,
+  "send_hard_disable_still_active": true,
+
+  "recommended_next_stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_FIX_REPEAT",
+
+  "deliverables_locked": [
+    "INPUT_EVIDENCE_AUDIT_CN.md/json",
+    "COLLECTOR_CLI_REVIEW_CN.md/json",
+    "COLLECTOR_DESIGN_MODE_RESULT_CN.md/json",
+    "COLLECTOR_SMOKE_RESULT_CN.md/json",
+    "SMOKE_OUTPUT_SCHEMA_VALIDATION_CN.md/json",
+    "MARKET_REGIME_SMOKE_VALIDATION_CN.md/json",
+    "COLLECTOR_HEALTH_AND_FAILURE_MODE_CN.md/json",
+    "LONG_HORIZON_COLLECTOR_NEXT_STAGE_DECISION_CN.md/json",
+    "FINAL_VERDICT.json",
+    "ONEPAGE_CN.md",
+    "ARTIFACT_INDEX.md"
+  ],
+
+  "safety": {
+    "touched_trading_path": false,
+    "touched_wallet_tx_bridge_live_paper": false,
+    "wallet_or_tx_touched": false,
+    "solana_wallet_or_keypair_touched": false,
+    "transaction_sent": false,
+    "send_hard_disable_still_active": true,
+    "no_paid_rpc_integration": true,
+    "no_paid_indexer_integration": true,
+    "no_protocol_re_run": true,
+    "no_heuristic_modification": true,
+    "no_long_running_daemon": true,
+    "no_signer_creation": true,
+    "smoke_placeholder_only": true,
+    "secret_leak_count": 0,
+    "production_write_count": 0,
+    "shadow_overwrite_count": 0
+  },
+
+  "smoke_summary": {
+    "stage": "LP_LONG_HORIZON_READONLY_DATA_PIPELINE_V1",
+    "mode": "smoke",
+    "auto_run_id": "20260604_081859",
+    "executed_at": "2026-06-04T08:18:59Z",
+    "out_root": "data/lp_long_horizon/20260604_081432/collector_smoke/",
+    "expected_cells": 30,
+    "executed_cells": 30,
+    "skipped_cells": 0,
+    "source_aborted": false,
+    "files_written": 7,
+    "wallet_or_tx_touched": false,
+    "transaction_sent": false
+  },
+
+  "long_run_readiness": {
+    "score": "0/9",
+    "missing_items": [
+      "source_adapter_implemented",
+      "classifier_implemented",
+      "rate_limit_retry_backoff_implemented",
+      "abort_condition_implemented",
+      "sqlite_enabled",
+      "paid_rpc_indexer_integrated",
+      "error_rate_monitor_implemented",
+      "cron_systemd_configured",
+      "manual_approval_recorded"
+    ]
+  },
+
+  "next_stage_decision_rationale": "smoke 100% passed but R0 long_run_readiness 0/9, FIX_REPEAT chosen to fill 9 readiness items before 7D_RUN_REQUEST",
+
+  "phase_results": {
+    "A_workspace_safety": "PASS (HEAD=cdeb058; no new unrelated dirty files)",
+    "B_input_evidence_audit": "PASS (8 input files read; 10 locked boundary fields; 13 hard prohibitions)",
+    "C_collector_cli_review": "PASS (7 flags; 12 hard_rejected_modes; 5 task_spec deviations documented)",
+    "D_run_design_mode": "PASS (exit 0; 9 lines stdout; 0 stderr; no files written as expected)",
+    "E_run_smoke_mode": "PASS (exit 0; 5 pool + 30 quote + 25 fee + 5 liq + 7 regime + 1 actual_fee + 1 summary)",
+    "F_smoke_output_schema_validation": "PASS (6/6 tables schema match; 0 real secret hit; 0 production write; 0 shadow overwrite)",
+    "G_market_regime_smoke_validation": "PASS (7/7 regimes present; smoke_placeholder=true; no fabrication)",
+    "H_collector_health_and_failure_mode": "PASS (smoke 100% OK; long-run failure mode spec complete 5/5; readiness 0/9 documented)",
+    "I_long_horizon_collector_next_stage_decision": "PASS (FIX_REPEAT chosen; 7 fix tasks identified)",
+    "J_final_verdict": "PASS (this file)"
+  }
+}

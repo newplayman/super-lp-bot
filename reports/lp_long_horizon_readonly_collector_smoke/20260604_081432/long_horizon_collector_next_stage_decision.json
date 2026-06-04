@@ -1,0 +1,87 @@
+{
+  "stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_SMOKE_V1",
+  "run_id": "20260604_081432",
+
+  "decision_inputs": {
+    "smoke_ran": true,
+    "design_mode_ran": true,
+    "exit_code": 0,
+    "schema_validation_pass": true,
+    "research_only_write_ok": true,
+    "no_production_write": true,
+    "no_shadow_overwrite": true,
+    "no_wallet": true,
+    "no_tx": true,
+    "error_rate_pct": 0,
+    "long_run_readiness_score": "0/9",
+    "manual_approval_received": false,
+    "classifier_implemented": false,
+    "source_adapter_implemented": false,
+    "paid_rpc_indexer_integrated": false,
+    "abort_condition_implemented": false
+  },
+
+  "candidate_evaluation": {
+    "LP_LONG_HORIZON_READONLY_COLLECTOR_7D_RUN_REQUEST_V1": {
+      "trigger_conditions": "smoke pass + schema pass + no production + no wallet/tx + error rate acceptable + user manual approval",
+      "satisfied": [1, 2, 3, 4, 5],
+      "not_satisfied": ["user manual approval"],
+      "verdict": "premature; long_run readiness 0/9"
+    },
+    "LP_LONG_HORIZON_READONLY_COLLECTOR_FIX_REPEAT": {
+      "trigger_conditions": "smoke partial fail but fixable OR readiness gaps to fill",
+      "satisfied": true,
+      "rationale": "smoke fully passed but 9 readiness items need to be filled before 7d run"
+    },
+    "PAUSE_AUTOMATED_LP_PROBE_AND_COLLECT_LONGER_HORIZON_DATA": {
+      "trigger_conditions": "smoke success but no auto long-run",
+      "verdict": "would roll back the smoke progress"
+    },
+    "STOP_LP_RESEARCH_NOW": {
+      "trigger_conditions": "collector unsafe or unusable",
+      "verdict": "not applicable; collector fully safe"
+    }
+  },
+
+  "decision": {
+    "recommended_next_stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_FIX_REPEAT",
+    "reason": "smoke 100% passed but R0 long_run_readiness 0/9, must fill 9 items before 7D_RUN_REQUEST",
+    "fix_repeat_tasks": [
+      "implement 4 source adapters (solana_rpc / coingecko / protocol_sdk_quote / dex_screener)",
+      "implement 7-regime classifier (per spec section 7)",
+      "integrate paid RPC/indexer (Helius / Triton / Shyft)",
+      "implement 5 abort conditions (error_rate, 429_consecutive, write_failure, safety_self_check, banned_token_runtime)",
+      "manual approval flow (LP_LONG_HORIZON_READONLY_COLLECTOR_7D_RUN_APPROVAL_V1)",
+      "regression smoke (verify implementations are still safe)",
+      "prometheus/grafana integration (optional, later in R0)"
+    ]
+  },
+
+  "long_run_path": [
+    "current smoke (passed)",
+    "FIX_REPEAT (fill 9 readiness items)",
+    "7D_RUN_REQUEST (manual approval)",
+    "7D_RUN_V1 (actual 7d run)",
+    "R0 7d baseline dataset",
+    "30D_RUN_REQUEST",
+    "30D_RUN_V1",
+    "R0 30d baseline dataset",
+    "R1 actual fee (tokenId / paid indexer)",
+    "R2 regime split EV",
+    "R3 candidate review",
+    "R4 10U tokenId probe preflight",
+    "R5 manual probe only"
+  ],
+
+  "locked_fields_preserved": {
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no",
+    "edge_proven": "no",
+    "long_run_ready": false,
+    "long_run_started": false,
+    "wallet_or_tx_touched": false,
+    "transaction_sent": false
+  },
+
+  "next_stage": "J_final_verdict"
+}

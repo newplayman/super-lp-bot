@@ -1,0 +1,9 @@
+[smoke mode] wrote 5 pool_snapshots to data/lp_long_horizon/20260604_081432/collector_smoke/pool_snapshots.jsonl
+[smoke mode] wrote 30 quote_snapshots to data/lp_long_horizon/20260604_081432/collector_smoke/quote_snapshots.jsonl
+[smoke mode] wrote 25 fee_velocity to data/lp_long_horizon/20260604_081432/collector_smoke/fee_velocity.jsonl
+[smoke mode] wrote 5 liquidity_distribution to data/lp_long_horizon/20260604_081432/collector_smoke/liquidity_distribution.jsonl
+[smoke mode] wrote 7 market_regime to data/lp_long_horizon/20260604_081432/collector_smoke/market_regime.jsonl
+[smoke mode] wrote actual_fee placeholder to data/lp_long_horizon/20260604_081432/collector_smoke/actual_fee_accrual_placeholder.json
+[smoke mode] wrote summary to data/lp_long_horizon/20260604_081432/collector_smoke/smoke_summary.json
+[smoke mode] no network, no tx, no wallet, no signer, no daemon. exit 0
+{"stage": "LP_LONG_HORIZON_READONLY_DATA_PIPELINE_V1", "run_id": "20260604_081859", "summary_keys": ["stage", "mode", "run_id", "executed_at", "out_root", "protocol_count", "pool_per_protocol", "notional_levels", "expected_cells", "executed_cells", "skipped_cells", "source_aborted", "sources", "files_written", "wallet_or_tx_touched", "transaction_sent", "send_hard_disable_still_active", "next_stage", "smoke_placeholder_only"]}

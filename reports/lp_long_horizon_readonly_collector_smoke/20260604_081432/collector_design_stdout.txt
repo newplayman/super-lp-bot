@@ -1,0 +1,11 @@
+[design mode] stage=LP_LONG_HORIZON_READONLY_DATA_PIPELINE_V1 run_id=20260604_081808
+[design mode] output_root=data/lp_long_horizon/20260604_081432/collector_design
+[design mode] allowed_modes=('design', 'smoke')
+[design mode] rejected_modes=('daemon', '30d', 'long', 'loop', 'cron', 'continuous', 'live', 'canary', 'paper', 'probe', 'auto', 'scheduled')
+[design mode] protocol_count=5
+[design mode] notional_levels=[10, 20, 100, 500, 1000, 2000]
+[design mode] rolling_windows=('15m', '1h', '6h', '24h', '7d')
+[design mode] regimes=('uptrend', 'downtrend', 'sideways', 'high_volume_sideways', 'high_volatility_trend', 'incentive_period', 'low_volatility_stable')
+[design mode] expected_smoke_cells=30
+[design mode] no network, no tx, no wallet, no signer, no daemon. exit 0
+{"stage": "LP_LONG_HORIZON_READONLY_DATA_PIPELINE_V1", "run_id": "20260604_081808", "summary_keys": ["stage", "mode", "run_id", "expected_smoke_cells", "protocol_count", "notional_levels", "rolling_windows", "regime_count", "out_root"]}

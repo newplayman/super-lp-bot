@@ -1,0 +1,84 @@
+{
+  "stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_SMOKE_V1",
+  "run_id": "20260604_081432",
+
+  "actual_cli_signature": {
+    "flags": [
+      {"name": "--mode", "default": "design", "allowed": ["design", "smoke"]},
+      {"name": "--pools-per-protocol", "default": 1, "type": "int"},
+      {"name": "--out", "default": "data/lp_long_horizon/<run_id>/", "type": "str"},
+      {"name": "--no-wallet", "default": true, "type": "store_true"},
+      {"name": "--no-tx", "default": true, "type": "store_true"},
+      {"name": "--no-bridge", "default": true, "type": "store_true"},
+      {"name": "--dry-run", "default": true, "type": "store_true"}
+    ]
+  },
+
+  "mode_whitelist_audit": {
+    "allowed": ["design", "smoke"],
+    "hard_rejected": [
+      "daemon", "30d", "long", "loop", "cron", "continuous",
+      "live", "canary", "paper", "probe", "auto", "scheduled"
+    ]
+  },
+
+  "output_path_constraint": {
+    "must_start_with": "data/lp_long_horizon",
+    "rejected_examples": ["/tmp/evil", "/etc/passwd", "migrations/", "data/dryrun*", "data/shadow*", "data/live*"]
+  },
+
+  "safety_flag_audit": {
+    "no_wallet_default_on": true,
+    "no_tx_default_on": true,
+    "no_bridge_default_on": true,
+    "dry_run_default_on": true,
+    "any_disable_attempt_via_eq_false": "argparse rejects as unrecognized argument"
+  },
+
+  "safety_self_check_audit": {
+    "runs_at_import_time": true,
+    "uses_ast_and_tokenize": true,
+    "banned_token_count": 30,
+    "scope": "real code only, exempts BANNED_TOKENS_IN_CODE tuple, comments, docstrings"
+  },
+
+  "source_adapter_audit": {
+    "SOLANA_RPC_PUBLIC": "stub raises NotImplementedError",
+    "COINGECKO_PUBLIC": "stub raises NotImplementedError",
+    "PROTOCOL_SDK_QUOTE": "stub raises NotImplementedError",
+    "DEX_SCREENER_PUBLIC": "stub raises NotImplementedError"
+  },
+
+  "unsupported_features_audit": {
+    "wallet": false,
+    "signer": false,
+    "transaction": false,
+    "approve_mint_add_remove_liquidity_collect_fee": false,
+    "swap_bridge": false,
+    "live_canary_paper_probe": false,
+    "production_position_write": false,
+    "shadow_table_overwrite": false,
+    "daemon_30d_long_loop_cron": false,
+    "paid_rpc_indexer": false
+  },
+
+  "exit_codes": {
+    "0": "success",
+    "2": "safety self-check failed",
+    "3": "mode rejected",
+    "4": "safety flag rejected",
+    "5": "output path rejected"
+  },
+
+  "task_spec_deviation": [
+    {"spec_flag": "--run-id", "actual": "env var or timestamp", "stage_de_handling": "use default timestamp"},
+    {"spec_flag": "--output-dir", "actual": "--out", "stage_de_handling": "use --out"},
+    {"spec_flag": "--max-pools", "actual": "--pools-per-protocol", "stage_de_handling": "use --pools-per-protocol"},
+    {"spec_flag": "--max-snapshots", "actual": "n/a (smoke is 1 pass)", "stage_de_handling": "default 1 pass accepted"},
+    {"spec_flag": "--no-daemon", "actual": "n/a (daemon already hard-rejected)", "stage_de_handling": "default safety accepted"}
+  ],
+
+  "conclusion": "CLI 严格, 安全门禁全部通过, 偏差仅命名差异, 安全语义一致. Stage D/E 用实际 CLI 跑, 不修改脚本.",
+
+  "next_stage": "D_run_design_mode"
+}

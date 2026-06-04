@@ -1,0 +1,124 @@
+{
+  "stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_SMOKE_V1",
+  "run_id": "20260604_081432",
+
+  "smoke_health": {
+    "exit_code": 0,
+    "source_adapter_errors": 0,
+    "source_adapter_rate_limited": 0,
+    "source_adapter_ok": 0,
+    "write_errors": 0,
+    "partial_data": false,
+    "source_aborted": false
+  },
+
+  "long_run_failure_mode_specs": {
+    "rpc_errors": {
+      "timeout": "retry 3x exp backoff 1s 2s 4s, then skip",
+      "429": "retry 3x, 5 consecutive 429 abort source",
+      "5xx": "retry 3x, then skip",
+      "4xx_non_429": "skip pool, log, continue",
+      "partial_accounts_null": "log error_code, continue next notional"
+    },
+    "api_errors": {
+      "coingecko_4xx": "retry 3x 60s 120s 240s",
+      "coingecko_5xx": "retry 3x, then skip",
+      "coingecko_timeout": "retry 3x",
+      "dex_screener_429": "retry 3x 30s 60s 120s",
+      "dex_screener_4xx_non_429": "skip pool, log"
+    },
+    "sdk_errors": {
+      "tick_array_not_initialized": "quote_success=false, continue",
+      "liquidity_too_low": "quote_success=false, continue",
+      "pool_not_found": "quote_success=false, skip pool"
+    },
+    "429_handling": {
+      "solana_rpc_public": "retry 3x, 5 consecutive 429 abort",
+      "coingecko_public": "retry 3x 60s 120s 240s",
+      "dex_screener_public": "retry 3x 30s 60s 120s",
+      "protocol_sdk_quote": "follow solana_rpc_public"
+    },
+    "timeout_handling": {
+      "solana_rpc_public": "5s per call, retry 3x",
+      "coingecko_public": "default 10-30s, retry 3x",
+      "dex_screener_public": "default 10-30s, retry 3x",
+      "protocol_sdk_quote": "follow solana_rpc_public"
+    },
+    "missing_data_handling": {
+      "ohlc_7d_missing": "skip day, regime=unknown, no record",
+      "pool_reserve_missing": "log error_code, continue",
+      "volume_30d_missing": "skip, continue",
+      "lm_events_missing": "incentive_active=false, continue"
+    },
+    "partial_data_handling": {
+      "one_pool_partial_quote_fail": "log quote_success=false, continue",
+      "one_source_aborted_mid_run": "source_aborted=true, continue next source",
+      "write_failure": "immediate abort, no retry",
+      "one_pool_total_fail": "log error, continue"
+    },
+    "abort_conditions": [
+      "error_rate > 20%",
+      "5 consecutive 429 from any source",
+      "write failure",
+      "safety self-check fail",
+      "banned token detected at runtime"
+    ]
+  },
+
+  "long_run_readiness_checklist": {
+    "source_adapter_implemented": false,
+    "classifier_implemented": false,
+    "rate_limit_retry_backoff_implemented": false,
+    "abort_condition_implemented": false,
+    "sqlite_enabled": false,
+    "paid_rpc_indexer_integrated": false,
+    "error_rate_monitor_implemented": false,
+    "cron_systemd_configured": false,
+    "manual_approval_recorded": false
+  },
+  "long_run_readiness_score": "0/9",
+
+  "current_blocker": [
+    "source adapter stub (4 source unimplemented)",
+    "classifier spec-only (7 regime unimplemented)",
+    "paid RPC/indexer missing (public RPC 7d run will hit 429)",
+    "abort condition unimplemented (5 conditions)",
+    "manual approval not received (current recommended_next_stage is request only)"
+  ],
+
+  "long_run_metrics_recommended": [
+    "collector_pool_snapshot_total (counter)",
+    "collector_quote_success_total (counter)",
+    "collector_quote_failure_total (counter)",
+    "collector_source_error_total{source} (counter)",
+    "collector_source_429_total{source} (counter)",
+    "collector_source_429_consecutive{source} (gauge)",
+    "collector_run_duration_seconds (gauge)",
+    "collector_abort_total{reason} (counter)",
+    "collector_error_rate_pct (gauge)",
+    "collector_can_run_probe_now (gauge, always 0)",
+    "collector_send_hard_disable_active (gauge, always 1)"
+  ],
+
+  "long_run_assumption_risks": [
+    {"risk": "public RPC rate limit", "trigger": "7d run 5min 1 sample, 100+ pools",
+     "impact": "429 blocked", "mitigation": "paid RPC (Helius/Triton)"},
+    {"risk": "data drift (pool close / migrate)", "trigger": "pool_address change",
+     "impact": "data invalid", "mitigation": "add source=abandoned tag"},
+    {"risk": "regime classifier bias", "trigger": "CoinGecko unreliable",
+     "impact": "regime misclassified", "mitigation": "multi-source cross-validate"},
+    {"risk": "IL/LVR proxy error", "trigger": "heuristic vs actual gap",
+     "impact": "EV misestimated", "mitigation": "R1 actual fee"},
+    {"risk": "fee_velocity estimation bias", "trigger": "quote fee_rate != actual",
+     "impact": "fee_velocity wrong", "mitigation": "R1 actual fee"},
+    {"risk": "disk full", "trigger": "sqlite 100MB+",
+     "impact": "write failure", "mitigation": "12-month archive + cold storage"},
+    {"risk": "script bug", "trigger": "any unhandled case",
+     "impact": "data corruption", "mitigation": "smoke + 7d short + 30d long validation"}
+  ],
+
+  "long_run_ready": false,
+  "long_run_started": false,
+
+  "next_stage": "I_long_horizon_collector_next_stage_decision"
+}

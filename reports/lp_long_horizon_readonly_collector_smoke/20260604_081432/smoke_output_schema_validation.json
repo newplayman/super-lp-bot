@@ -1,0 +1,102 @@
+{
+  "stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_SMOKE_V1",
+  "run_id": "20260604_081432",
+
+  "tables_validated": [
+    {
+      "name": "pool_snapshots",
+      "row_count": 5,
+      "expected_field_count": 16,
+      "actual_field_count": 17,
+      "missing_fields": [],
+      "extra_fields": ["smoke_placeholder"],
+      "pass": true
+    },
+    {
+      "name": "quote_snapshots",
+      "row_count": 30,
+      "expected_field_count": 11,
+      "actual_field_count": 12,
+      "missing_fields": [],
+      "extra_fields": ["smoke_placeholder"],
+      "pass": true
+    },
+    {
+      "name": "fee_velocity",
+      "row_count": 25,
+      "expected_field_count": 7,
+      "actual_field_count": 9,
+      "missing_fields": [],
+      "extra_fields": ["smoke_placeholder", "r0_phase_status"],
+      "pass": true
+    },
+    {
+      "name": "liquidity_distribution",
+      "row_count": 5,
+      "expected_field_count": 8,
+      "actual_field_count": 9,
+      "missing_fields": [],
+      "extra_fields": ["smoke_placeholder"],
+      "pass": true
+    },
+    {
+      "name": "market_regime",
+      "row_count": 7,
+      "expected_field_count": 7,
+      "actual_field_count": 8,
+      "missing_fields": [],
+      "extra_fields": ["smoke_placeholder"],
+      "pass": true
+    },
+    {
+      "name": "future_actual_fee_accrual",
+      "row_count": 1,
+      "expected_field_count": 23,
+      "actual_field_count": 24,
+      "missing_fields": [],
+      "extra_fields": ["r0_phase_status", "smoke_placeholder"],
+      "pass": true
+    }
+  ],
+
+  "secret_scan": {
+    "patterns_checked": ["private_key", "mnemonic", "seed", "keypair", "wallet",
+                        "api_key", "secret", "password", "database_url",
+                        "postgres_dsn", "rpc_url"],
+    "files_scanned": 7,
+    "raw_hits": 1,
+    "real_secret_hits": 0,
+    "hit_details": [
+      {"file": "smoke_summary.json", "match": "wallet_or_tx_touched: false",
+       "verdict": "field name only, not a real secret"}
+    ]
+  },
+
+  "production_data_path_check": {
+    "data_dryrun_exists": false,
+    "data_shadow_exists": false,
+    "data_live_exists": false,
+    "data_subdirs": ["lp_long_horizon"],
+    "pass": true
+  },
+
+  "shadow_table_overwrite_check": {
+    "shadow_tables_exist": false,
+    "shadow_tables_overwritten": false,
+    "pass": true
+  },
+
+  "r0_to_r1_forward_compatibility": {
+    "fee_velocity_r0_phase_status_field": true,
+    "actual_fee_placeholder_has_23_fields": true,
+    "market_regime_placeholder_for_real_ohlc": true,
+    "consumer_can_read_smoke_output": true
+  },
+
+  "schema_validation_pass": true,
+  "research_only_write_ok": true,
+  "no_production_write": true,
+  "no_shadow_overwrite": true,
+
+  "next_stage": "G_market_regime_smoke_validation"
+}

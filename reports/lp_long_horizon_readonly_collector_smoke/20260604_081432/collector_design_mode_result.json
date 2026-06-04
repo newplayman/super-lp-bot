@@ -1,0 +1,55 @@
+{
+  "stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_SMOKE_V1",
+  "run_id": "20260604_081432",
+  "actual_substage_run_id": "20260604_081808",
+
+  "command_run": "python3 scripts/lp_long_horizon_readonly_collector_v1.py --mode design --out data/lp_long_horizon/20260604_081432/collector_design",
+
+  "exit_code": 0,
+  "mode": "design",
+  "auto_run_id": "20260604_081808",
+
+  "output_root_requested": "data/lp_long_horizon/20260604_081432/collector_design",
+  "output_files_generated": [],
+  "schema_files_generated": [],
+
+  "stdout_summary_keys": [
+    "stage", "mode", "run_id", "expected_smoke_cells",
+    "protocol_count", "notional_levels", "rolling_windows",
+    "regime_count", "out_root"
+  ],
+
+  "stdout_capture": "reports/lp_long_horizon_readonly_collector_smoke/20260604_081432/collector_design_stdout.txt",
+  "stderr_capture": "reports/lp_long_horizon_readonly_collector_smoke/20260604_081432/collector_design_stderr.txt",
+  "stderr_empty": true,
+
+  "safety_checklist": {
+    "no_network_calls": true,
+    "no_wallet": true,
+    "no_tx": true,
+    "no_signer": true,
+    "no_daemon": true,
+    "no_paid_rpc": true,
+    "no_paid_indexer": true,
+    "safety_self_check_passed": true,
+    "source_adapter_stubs_not_triggered": true,
+    "write_path_constraint_passed": true
+  },
+
+  "design_mode_characteristics": {
+    "writes_files": false,
+    "prints_schema_preview": true,
+    "expected_smoke_cells": 30,
+    "expected_files_in_smoke": [
+      "pool_snapshots.jsonl",
+      "quote_snapshots.jsonl",
+      "fee_velocity.jsonl",
+      "liquidity_distribution.jsonl",
+      "market_regime.jsonl",
+      "actual_fee_accrual_placeholder.json",
+      "smoke_summary.json"
+    ]
+  },
+
+  "next_stage": "E_run_smoke_mode"
+}
