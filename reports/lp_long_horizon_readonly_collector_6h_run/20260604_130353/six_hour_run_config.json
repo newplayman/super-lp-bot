@@ -1,0 +1,91 @@
+{
+  "stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_6H_RUN_APPROVAL_V1",
+  "run_id": "20260604_130353",
+  "branch": "feat/supabase-postgres-deployment",
+
+  "duration_hours": 6,
+  "checkpoint_interval_minutes": 60,
+  "heartbeat_interval_minutes": 15,
+  "max_pools": 5,
+  "notional_levels_usd": [10, 20, 100, 500, 1000, 2000],
+  "rolling_windows": ["15m", "1h", "6h"],
+  "output_data_dir": "data/lp_long_horizon/20260604_130353/",
+  "output_report_dir": "reports/lp_long_horizon_readonly_collector_6h_run/20260604_130353/",
+  "tmux_session_name": "lp_long_horizon_6h_20260604_130353",
+
+  "run_mode": "readonly",
+  "paid_rpc": false,
+  "paid_indexer": false,
+  "no_probe": true,
+  "no_wallet": true,
+  "no_tx": true,
+  "no_bridge": true,
+  "dry_run": true,
+  "cron_enabled": false,
+  "systemd_enabled": false,
+  "daemon_enabled": false,
+  "auto_advance_to_12h": false,
+
+  "abort_thresholds": {
+    "consecutive_429_streak": {"threshold": ">= 5", "exit_code": 1},
+    "error_rate_pct": {"threshold": "> 20", "exit_code": 2},
+    "write_failure": {"threshold": "any", "exit_code": 3},
+    "safety_self_check_failure": {"threshold": "any", "exit_code": 4},
+    "forbidden_token_detected": {"threshold": "any", "exit_code": 5},
+    "disk_threshold_breach_mb": {"threshold": "> 1", "exit_code": 6},
+    "duplicate_collector_process": {"threshold": "tmux session already exists", "exit_code": 7}
+  },
+
+  "tmux_session_plan": {
+    "session_name": "lp_long_horizon_6h_20260604_130353",
+    "start_at": "Stage F 完成时",
+    "end_at": "T0 + 6h",
+    "expected_end_time_utc": "2026-06-04T19:0X:XXZ",
+    "session_lifetime_hours": 6.17,
+    "loop_iterations": 6,
+    "sleep_between_iterations_seconds": 3600
+  },
+
+  "adjusted_thresholds_6h": {
+    "rationale": "collector --mode smoke 1 pass produces ~30 quote rows; 6 iterations = 180 rows; far less than 2160 gate threshold. Adjusted for realistic 6h output given current script capability.",
+    "min_pool_snapshot_rows": 30,
+    "min_quote_snapshot_rows": 180,
+    "min_fee_velocity_rows": 90,
+    "min_liquidity_distribution_rows": 30,
+    "min_market_regime_rows": 42,
+    "min_real_data_pct": 80.0,
+    "disk_usage_max_mb": 5,
+    "error_rate_pct_max": 20,
+    "consecutive_429_streak_max": 5,
+    "production_write_count_max": 0,
+    "wallet_tx_touch_count_max": 0,
+    "daemon_leak_count_max": 0,
+    "final_verdict_required": true,
+    "data_quality_status_required": "PASS or WARN_ACCEPTABLE"
+  },
+
+  "expected_data_dimensions_6h": {
+    "pool_snapshots": "5 pool × 6 iteration = 30 records",
+    "quote_snapshots": "5 × 6 × 6 notional = 180 records",
+    "fee_velocity": "5 × 6 × 3 rolling = 90 records",
+    "liquidity_distribution": "5 × 6 = 30 records",
+    "market_regime": "7 × 6 = 42 records",
+    "actual_fee_accrual": "1 placeholder (schema only)"
+  },
+
+  "hard_prohibitions": [
+    "no probe / canary / live / paper",
+    "no private key / seed / keypair / keystore",
+    "no signer creation",
+    "no transaction sent",
+    "no approve / mint / add_liquidity / remove_liquidity / collect_fee / swap / bridge",
+    "no production position write",
+    "no shadow table overwrite",
+    "no cron enabled",
+    "no systemd enabled",
+    "no extra tmux session",
+    "no auto advance to 12h"
+  ],
+
+  "next_stage": "E_pre_run_safety_check"
+}

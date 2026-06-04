@@ -1,0 +1,17 @@
+{
+  "stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_6H_RUN_APPROVAL_V1",
+  "run_id": "20260604_130353",
+
+  "all_passed": true,
+  "checks": {
+    "tmux_session_unique": {"pass": true, "value": "(no existing lp_long_horizon tmux session)"},
+    "forbidden_process_absent": {"pass": true, "value": "(no canary/live/paper/sendTransaction/keypair process)"},
+    "wallet_keypair_process_absent": {"pass": true, "value": "(no wallet/keypair/signer process)"},
+    "data_dir_writable": {"pass": true, "value": "data/lp_long_horizon/20260604_130353/ writable, write test passed"},
+    "report_dir_writable": {"pass": true, "value": "reports/lp_long_horizon_readonly_collector_6h_run/20260604_130353/ writable, write test passed"},
+    "collector_help_executable": {"pass": true, "value": "--help returns 0, 7 flags"},
+    "collector_supports_readonly_run": {"pass": true, "value": "--mode design runs 0-network, exit 0"}
+  },
+
+  "next_stage": "F_start_6h_tmux"
+}
