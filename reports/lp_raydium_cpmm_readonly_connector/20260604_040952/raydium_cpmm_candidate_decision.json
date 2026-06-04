@@ -1,0 +1,72 @@
+{
+  "stage": "LP_RAYDIUM_CPMM_READONLY_CONNECTOR_V1",
+  "run_id": "20260604_040952",
+
+  "seven_questions": {
+    "realistic_positive_10_20u": false,
+    "near_break_even_present": true,
+    "high_fee_stable_low_slippage_quote_ready": true,
+    "probe_preflight_worth": false,
+    "switch_to_stable_pool": true,
+    "should_stop": "partial (depends on stable pool research)",
+    "more_cpmm_repeat": false
+  },
+
+  "positive_realistic_count": 0,
+  "positive_zero_il_lvr_count": 1344,
+  "positive_optimistic_count": 0,
+  "near_break_even_count": 1344,
+  "stable_quote_ready_count": 24,
+  "high_fee_quote_ready_count": 0,
+  "quote_ready_pool_count": 73,
+  "low_slippage_pool_count": 243,
+
+  "best_pool": "vs6XUbGcVWG75Gv81qvDMBxkQ67Kr2eLrFNDTrCxxwk",
+  "best_pair": "YZai/SOL",
+  "best_notional": 2000,
+  "best_hold_window": "7d",
+  "best_scenario": "zero_il_lvr",
+  "best_net_ev_proxy_usd": 0.172,
+
+  "spec_decision_rule_applied": "rule_2: quote_ready_pool_count > 0 but all negative",
+
+  "amm_cumulative_4_reject": {
+    "meteora_dlmm_v8": {"best_cell_usd": 0.544, "positive_realistic": 0, "verdict": "reject"},
+    "orca_whirlpools_v1": {"best_cell_usd": 0.106, "positive_realistic": 0, "verdict": "reject"},
+    "raydium_clmm_v1": {"best_cell_usd": 0.167, "positive_realistic": 0, "verdict": "reject"},
+    "raydium_cpmm_v1_this": {"best_cell_usd": 0.172, "positive_realistic": 0, "verdict": "reject"},
+    "summary": "4/4 Solana AMMs (3 V3 CL + 1 AMM v4 CPMM) reject retail 10-20U 2000 USD LP"
+  },
+
+  "recommended_next_stage": "LP_SOLANA_STABLE_POOL_RESEARCH_V1",
+  "rejected_alternatives": [
+    "LP_RAYDIUM_CPMM_10_20U_PROBE_PREFLIGHT_DESIGN_V1",
+    "LP_RAYDIUM_CPMM_KNOWN_POOL_FEED_EXPANSION_REPEAT",
+    "STOP_LP_RESEARCH_NOW (deferred until stable pool research fails)"
+  ],
+
+  "reasons": [
+    "4/4 Solana AMMs verified negative for retail 10-20U 2000 USD LP",
+    "best cell $0.172 in zero_il_lvr only, identical pattern across all 4 AMMs",
+    "AMM v4 24 stable pairs all are USDC/SOL or USDC/USDT (no stable-stable)",
+    "Solana has no active native Curve-style stable-stable AMM",
+    "Per spec rule_2: switch to stable pool research (or stop if no active stable pool)"
+  ],
+
+  "safety_locks": {
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no",
+    "solana_wallet_or_keypair_touched": false,
+    "transaction_sent": false,
+    "v2_line_count": 992,
+    "v2_line_count_unchanged": true,
+    "send_hard_disable_still_active": true
+  },
+
+  "allowed_next_stages": [
+    "LP_RAYDIUM_CPMM_10_20U_PROBE_PREFLIGHT_DESIGN_V1",
+    "LP_RAYDIUM_CPMM_KNOWN_POOL_FEED_EXPANSION_REPEAT",
+    "LP_SOLANA_STABLE_POOL_RESEARCH_V1",
+    "STOP_LP_RESEARCH_NOW"
+  ]
+}

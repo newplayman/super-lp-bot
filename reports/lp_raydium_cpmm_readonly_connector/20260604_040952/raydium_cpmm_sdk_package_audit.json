@@ -1,0 +1,51 @@
+{
+  "stage": "LP_RAYDIUM_CPMM_READONLY_CONNECTOR_V1",
+  "run_id": "20260604_040952",
+  "phase": "E_sdk_package_audit",
+
+  "package_name": "@raydium-io/raydium-sdk-v2",
+  "resolved_version": "0.2.50-alpha",
+  "v1_sdk_package": "@raydium-io/raydium-sdk@1.3.1-beta.58 (cross-check only)",
+
+  "v2_install_attempted": true,
+  "v2_install_success": true,
+  "v2_install_dir": "/tmp/lpbot_raydium_v2_probe_20260604/node_modules",
+  "v1_install_dir": "/tmp/lpbot_raydium_clmm_sdk_probe_20260604_034503/node_modules",
+  "repo_node_modules_created": false,
+
+  "has_context_required": false,
+  "context_method": "liquidityStateV4Layout.decode (pure JS) + Connection.getAccountInfo for read",
+
+  "wallet_required_for_readonly": false,
+  "wallet_related_imports_used_for_readonly": false,
+
+  "read_only_import_success": true,
+  "read_only_decode_proof": {
+    "address": "58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2",
+    "owner": "675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8",
+    "data_len": 752,
+    "decoded_fields": {
+      "baseMint": "So11111111111111111111111111111111111111112 (SOL)",
+      "quoteMint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v (USDC)",
+      "baseDecimal": 9,
+      "quoteDecimal": 6,
+      "tradeFeeNumerator": 25,
+      "tradeFeeDenominator": 10000,
+      "fee_bps": 25,
+      "lpReserve": "50674335682686"
+    }
+  },
+
+  "has_cpmm_pool_decode": true,
+  "has_cpmm_quote": true,
+  "has_liquidity_math": true,
+
+  "key_caveat": {
+    "v1_sdk_pool_info_layout": "is CLMM, NOT applicable to AMM v4",
+    "v2_sdk_liquidity_state_v4": "is correct AMM v4 layout",
+    "reserves_actual": "must be fetched from baseVault/quoteVault token accounts, not from pool state directly"
+  },
+
+  "confidence": 0.94,
+  "invalid_reason": null
+}

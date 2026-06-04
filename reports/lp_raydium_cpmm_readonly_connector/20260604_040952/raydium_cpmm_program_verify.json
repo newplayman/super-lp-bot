@@ -1,0 +1,40 @@
+{
+  "stage": "LP_RAYDIUM_CPMM_READONLY_CONNECTOR_V1",
+  "run_id": "20260604_040952",
+  "phase": "D_program_verify",
+
+  "verified_program_id": "675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8",
+  "label": "Raydium AMM v4 (legacy constant product)",
+  "account_exists": true,
+  "executable": true,
+  "owner": "BPFLoaderUpgradeab1e11111111111111111111111",
+  "data_len": 36,
+  "verified": true,
+  "confidence": 1.0,
+  "invalid_reason": null,
+
+  "rejected_candidates": [
+    {
+      "candidate": "CPMMoo8L3F4NbTegBCKVNunggN7H1ZpdTHKxQB5qKP1C",
+      "mainnet_status": "NOT deployed",
+      "reason": "Source-declared mainnet pid in #[cfg(not(feature = \"devnet\"))] declare_id!; on-chain 2026-06-04 confirms null"
+    },
+    {
+      "candidate": "DRaycpLY18LhpbydsBWbVJtxpNv9oXPgjRSfpF2bWpYb",
+      "mainnet_status": "NOT deployed",
+      "reason": "Source-declared devnet pid; v2 SDK wires as CREATE_CPMM_POOL_PROGRAM; on-chain 2026-06-04 confirms null"
+    }
+  ],
+
+  "test_pool_verified": {
+    "address": "58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2",
+    "owner": "675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8",
+    "data_len": 752
+  },
+
+  "sdk_path_for_stage_e": {
+    "v2_sdk_layout": "liquidityStateV4Layout (src/raydium/liquidity/layout.ts)",
+    "v1_sdk_layout_NOT_applicable": "PoolInfoLayout is CLMM, returns wrong values on AMM v4",
+    "reason": "AMM v4 and CLMM are separate programs with separate layouts"
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "stage": "LP_RAYDIUM_CPMM_READONLY_CONNECTOR_V1",
+  "run_id": "20260604_040952",
+  "phase": "C_source_audit",
+
+  "program_id_candidates": [
+    {
+      "candidate_program_id": "675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8",
+      "label": "Raydium AMM v4 (legacy constant product)",
+      "source_url": "https://github.com/raydium-io/raydium-amm",
+      "source_type": "official_github",
+      "source_confidence": "high",
+      "mainnet_label": "yes",
+      "mainnet_verified": true,
+      "selected_for_onchain_verify": true,
+      "invalid_reason": null
+    },
+    {
+      "candidate_program_id": "CPMMoo8L3F4NbTegBCKVNunggN7H1ZpdTHKxQB5qKP1C",
+      "label": "Raydium cp-swap (new CPMM) — mainnet declared",
+      "source_url": "https://raw.githubusercontent.com/raydium-io/raydium-cp-swap/master/programs/cp-swap/src/lib.rs",
+      "source_type": "official_github",
+      "source_confidence": "high",
+      "mainnet_label": "yes (declared in source)",
+      "mainnet_verified": false,
+      "selected_for_onchain_verify": false,
+      "invalid_reason": "NOT on mainnet per V1 stage 20260603_093136 verification; not deployed as of 2026-06-04"
+    },
+    {
+      "candidate_program_id": "DRaycpLY18LhpbydsBWbVJtxpNv9oXPgjRSfpF2bWpYb",
+      "label": "Raydium cp-swap (new CPMM) — devnet only",
+      "source_url": "https://raw.githubusercontent.com/raydium-io/raydium-cp-swap/master/programs/cp-swap/src/lib.rs",
+      "source_type": "official_github",
+      "source_confidence": "high",
+      "mainnet_label": "no (declared as #[cfg(feature = \"devnet\")] declare_id!)",
+      "mainnet_verified": false,
+      "selected_for_onchain_verify": false,
+      "invalid_reason": "NOT on mainnet; v2 SDK wires this as CREATE_CPMM_POOL_PROGRAM constant for devnet testing"
+    }
+  ],
+
+  "v2_sdk_cpmm_prog_constant": {
+    "name": "CREATE_CPMM_POOL_PROGRAM",
+    "value": "DRaycpLY18LhpbydsBWbVJtxpNv9oXPgjRSfpF2bWpYb",
+    "actual_target": "devnet only",
+    "mainnet_cpmm_deployment": "missing"
+  },
+
+  "decision": {
+    "use_program": "675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8 (Raydium AMM v4)",
+    "reason": "Only deployed Raydium constant-product AMM on mainnet",
+    "this_stage_uses_legacy_amm_v4": true,
+    "rationale": "V1 early design (20260603_080347) describes CPMM as 'constant product; stable-stable 路径' with reserve_a/reserve_b/LP token — exactly AMM v4 behavior"
+  },
+
+  "cpmm_pool_layout_v2_sdk": {
+    "struct": "CpmmPoolInfo",
+    "fields": ["configId", "poolCreator", "vaultA", "vaultB", "mintLp", "mintA", "mintB", "mintProgramA", "mintProgramB", "observationId", "lpAmount", "protocolFeesMintA", "protocolFeesMintB", "fundFeesMintA", "fundFeesMintB", "openTime", "epoch"],
+    "applies_to_program": "DRaycpLY18LhpbydsBWbVJtxpNv9oXPgjRSfpF2bWpYb (devnet cp-swap, NOT applicable to mainnet AMM v4)"
+  },
+
+  "amm_v4_pool_layout_v1_sdk": {
+    "struct": "PoolInfoLayout",
+    "data_size": 752,
+    "fields_via_V1_sdk_decode": ["baseMint", "quoteMint", "baseVault", "quoteVault", "lpMint", "baseDecimals", "quoteDecimals", "baseReserve", "quoteReserve", "supply", "tradeFeeRate", "swapFeeNumerator", "swapFeeDenominator"],
+    "applies_to_program": "675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8 (mainnet AMM v4)"
+  },
+
+  "audit_confidence": 0.92,
+  "invalid_reason": null
+}

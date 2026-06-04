@@ -1,0 +1,101 @@
+{
+  "stage": "LP_RAYDIUM_CPMM_READONLY_CONNECTOR_V1",
+  "run_id": "20260604_040952",
+  "branch": "feat/supabase-postgres-deployment",
+  "head_before": "b4327d4",
+  "audit_completed_utc": "2026-06-04T04:10:00Z",
+
+  "previous_raydium_clmm_v1_stage": {
+    "stage": "LP_RAYDIUM_CLMM_READONLY_CONNECTOR_V1",
+    "run_id": "20260604_034503",
+    "candidate_raw_count": 107,
+    "verified_pool_count": 65,
+    "sdk_decode_success_count": 65,
+    "tick_array_ready_pool_count": 2,
+    "quote_ready_pool_count": 50,
+    "survival_ev_model_ran": true,
+    "row_count": 8400,
+    "positive_zero_il_lvr_count": 480,
+    "positive_optimistic_count": 0,
+    "positive_realistic_count": 0,
+    "positive_conservative_count": 0,
+    "near_break_even_count": 1680,
+    "best_pool": "3nMFwZXwY1s1M5s8vYAHqd4wGs4iSxXE4LRoUMMYqEgF",
+    "best_net_ev_proxy_usd": 0.167,
+    "recommended_next_stage": "LP_RAYDIUM_CPMM_READONLY_CONNECTOR_V1"
+  },
+
+  "v3_cl_amm_cumulative": {
+    "meteora_dlmm_v8": {"best_cell_usd": 0.544, "positive_realistic": 0, "verdict": "reject"},
+    "orca_whirlpools_v1": {"best_cell_usd": 0.106, "positive_realistic": 0, "verdict": "reject"},
+    "raydium_clmm_v1": {"best_cell_usd": 0.167, "positive_realistic": 0, "verdict": "reject"},
+    "summary": "3/3 V3 CL AMMs reject retail 10-20U 2000 USD LP"
+  },
+
+  "cpmm_pid_history_caveat": {
+    "candidate_pid": "CPMMoo8L3F4NbTegBCKVNunggN7H1ZpdTHKxQB5qKP1C",
+    "candidate_source": "https://raw.githubusercontent.com/raydium-io/raydium-cp-swap/master/programs/cp-swap/src/lib.rs",
+    "v1_stage_verification": "20260603_093136",
+    "v1_stage_result": "NOT on mainnet AND NOT on devnet",
+    "devnet_fallback_also_null": "DRaycpLY18LhpbydsBWbVJtxpNv9oXPgjRSfpF2bWpYb",
+    "implication": "this_stage_must_reverify_cpmm_program_id_from_fresh_official_source"
+  },
+
+  "evidence_files_read": [
+    "reports/lp_raydium_clmm_readonly_connector/20260604_034503/FINAL_VERDICT.json",
+    "reports/lp_raydium_clmm_readonly_connector/20260604_034503/ONEPAGE_CN.md",
+    "reports/lp_raydium_clmm_readonly_connector/20260604_034503/RAYDIUM_CLMM_SURVIVAL_EV_PREVIEW_CN.md",
+    "reports/lp_raydium_clmm_readonly_connector/20260604_034503/raydium_clmm_survival_ev_preview.csv",
+    "reports/lp_raydium_clmm_readonly_connector/20260604_034503/RAYDIUM_CLMM_CANDIDATE_DECISION_CN.md",
+    "reports/lp_raydium_clmm_readonly_connector/20260604_034503/raydium_clmm_candidate_decision.json",
+    "reports/lp_solana_rpc_registry_fix/20260603_093136/FINAL_VERDICT.json",
+    "reports/lp_solana_rpc_registry_fix/20260603_093136/solana_program_id_registry_v2.json",
+    "reports/lp_solana_connector_design/20260603_080347/RAYDIUM_CONNECTOR_DESIGN_CN.md",
+    "reports/lp_solana_connector_design/20260603_080347/raydium_connector_design.json"
+  ],
+
+  "hard_constraints": {
+    "no_keypair": true,
+    "no_signer": true,
+    "no_transaction": true,
+    "no_open_close_lp": true,
+    "no_add_remove_liquidity": true,
+    "no_collect_fee": true,
+    "no_swap": true,
+    "no_bridge": true,
+    "no_live_canary_paper": true,
+    "no_production_positions": true,
+    "no_shadow_table_overwrite": true,
+    "no_evm_executor_modify": true,
+    "no_hard_disable_release": true
+  },
+
+  "allowed_operations": {
+    "webfetch_curl_official": true,
+    "npm_install_to_tmp": true,
+    "solana_public_rpc_readonly": true,
+    "getAccountInfo": true,
+    "getMultipleAccountsInfo_small_batch": true,
+    "raydium_sdk_readonly_decode": true,
+    "reserve_vault_read": true,
+    "constant_product_quote_math": true,
+    "json_csv_md_tests": true
+  },
+
+  "safety_locks": {
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no",
+    "solana_wallet_or_keypair_touched": false,
+    "transaction_sent": false,
+    "v2_line_count": 992,
+    "v2_line_count_unchanged": true,
+    "send_hard_disable_still_active": true
+  },
+
+  "allowed_next_stages": [
+    "LP_RAYDIUM_CPMM_10_20U_PROBE_PREFLIGHT_DESIGN_V1",
+    "LP_RAYDIUM_CPMM_KNOWN_POOL_FEED_EXPANSION_REPEAT",
+    "LP_SOLANA_STABLE_POOL_RESEARCH_V1",
+    "STOP_LP_RESEARCH_NOW"
+  ]
+}
