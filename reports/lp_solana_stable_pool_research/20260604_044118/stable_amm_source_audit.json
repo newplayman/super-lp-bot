@@ -1,0 +1,73 @@
+{
+  "stage": "LP_SOLANA_STABLE_POOL_RESEARCH_V1",
+  "run_id": "20260604_044118",
+  "phase": "C_stable_amm_source_audit",
+
+  "verified_candidates": [
+    {
+      "name": "Meteora Stable Swap (ex-Saber)",
+      "program_id": "SSwpkEEcbUqx4vtoEByFjSkhKdCT862DNVb52nZg1UZ",
+      "source_urls": [
+        "https://raw.githubusercontent.com/saber-hq/stable-swap/master/stable-swap-program/program/src/lib.rs",
+        "https://raw.githubusercontent.com/MeteoraAg/stable-swap/master/stable-swap-program/program/src/lib.rs"
+      ],
+      "source_type": "official_github",
+      "source_confidence": "high",
+      "mainnet_label": "yes",
+      "on_chain_verified": true,
+      "api_source": "Meteora DAMM v2 endpoint (shared)",
+      "status": "active (Meteora acquired Saber 2024-2025, kept same pid)"
+    },
+    {
+      "name": "Meteora DAMM v2 (constant product, has stable pool_type)",
+      "program_id": "cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG",
+      "source_url": "https://github.com/MeteoraAg/damm-v2",
+      "source_type": "official_github",
+      "source_confidence": "high",
+      "mainnet_label": "yes",
+      "on_chain_verified": true,
+      "api_source": "https://amm-v2.meteora.ag/pools/search?page=N&size=100&include_pool_token_pairs=<PAIR>",
+      "stable_pool_count_in_api": "50 USDC-USDT, 3 USDC-mSOL, 4 USDC-bSOL, 1 USDT-mSOL"
+    },
+    {
+      "name": "Orca Whirlpool (V3 CL, has LST-stable pairs)",
+      "program_id": "whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc",
+      "source_url": "https://github.com/orca-so/whirlpools",
+      "source_type": "official_github",
+      "source_confidence": "high",
+      "mainnet_label": "yes",
+      "on_chain_verified": true,
+      "api_source": "https://api.mainnet.orca.so/v1/whirlpool/list",
+      "stable_lst_count": 77
+    },
+    {
+      "name": "Raydium AMM v4 (constant product, USDC-anchor only)",
+      "program_id": "675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8",
+      "source_url": "https://github.com/raydium-io/raydium-amm",
+      "source_type": "official_github",
+      "source_confidence": "high",
+      "mainnet_label": "yes",
+      "on_chain_verified": true,
+      "api_source": "Meteora DAMM v2 endpoint OR GeckoTerminal raydium",
+      "stable_anchor_count": 24
+    }
+  ],
+
+  "rejected_candidates": [
+    {
+      "name": "Lifinity",
+      "reason": "V1 stage 20260603_093136 confirmed pid NOT on mainnet; org returns 404 (no public repo)"
+    },
+    {
+      "name": "Mercurial Finance",
+      "reason": "github org returns 404; likely shut down"
+    },
+    {
+      "name": "Saber (independent)",
+      "reason": "Rebranded as Meteora Stable Swap, same pid SSwpkEEcbUqx4vtoEByFjSkhKdCT862DNVb52nZg1UZ"
+    }
+  ],
+
+  "audit_confidence": 0.95,
+  "invalid_reason": null
+}

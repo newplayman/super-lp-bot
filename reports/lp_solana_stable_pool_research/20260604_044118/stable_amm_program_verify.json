@@ -1,0 +1,60 @@
+{
+  "stage": "LP_SOLANA_STABLE_POOL_RESEARCH_V1",
+  "run_id": "20260604_044118",
+  "phase": "D_program_verify",
+
+  "verified_programs": [
+    {
+      "name": "Meteora Stable Swap (ex-Saber)",
+      "program_id": "SSwpkEEcbUqx4vtoEByFjSkhKdCT862DNVb52nZg1UZ",
+      "exists": true,
+      "executable": true,
+      "owner": "BPFLoaderUpgradeab1e11111111111111111111111",
+      "data_len": 36,
+      "verified": true
+    },
+    {
+      "name": "Meteora DAMM v2",
+      "program_id": "cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG",
+      "exists": true,
+      "executable": true,
+      "owner": "BPFLoaderUpgradeab1e11111111111111111111111",
+      "data_len": 36,
+      "verified": true
+    },
+    {
+      "name": "Orca Whirlpool",
+      "program_id": "whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc",
+      "exists": true,
+      "executable": true,
+      "owner": "BPFLoaderUpgradeab1e11111111111111111111111",
+      "data_len": 36,
+      "verified": true
+    },
+    {
+      "name": "Raydium AMM v4",
+      "program_id": "675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8",
+      "exists": true,
+      "executable": true,
+      "owner": "BPFLoaderUpgradeab1e11111111111111111111111",
+      "data_len": 36,
+      "verified": true
+    }
+  ],
+
+  "important_caveat": "Meteora DAMM v2 API mislabels Orca pools (returns pools owned by Orca program under 'meteora' name). 32D4zRxNc1Essb... returned by API is Orca-owned (Eo7Wj...), not Meteora DAMM v2 owned.",
+
+  "excluded_candidates": [
+    {"address": "5dVKb63X9CJD2fmvq2yLKaRcm5ZNEFLc5LxPVLJxuqp7", "owner": "null on mainnet", "reason": "not deployed"},
+    {"address": "32D4zRxNc1EssbJieVHfPhZM3rH6CzfUPrWUuWxD9prG", "actual_owner": "Eo7WjKq... (Orca)", "reason": "Meteora API mislabel"}
+  ],
+
+  "candidate_pool_data": {
+    "meteora_dlmm_known_working": "HcjZvfeSNJbNkfLD4eEcRBr96AD3w1GpmMppaeRZf7ur (SOL-mSOL, but Orca-owned, 1387 bytes data)",
+    "orca_stable_known": "Czfq3xZZDmsdGdUyrNLtRhGc47cXcZtLG4crryfu44zE (SOL-USDC 0.01% tickSpacing=4, Orca)",
+    "orca_lst_stable_count": 77
+  },
+
+  "confidence": 0.85,
+  "invalid_reason": null
+}

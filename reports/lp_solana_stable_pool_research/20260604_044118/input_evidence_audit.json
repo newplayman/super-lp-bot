@@ -1,0 +1,93 @@
+{
+  "stage": "LP_SOLANA_STABLE_POOL_RESEARCH_V1",
+  "run_id": "20260604_044118",
+  "branch": "feat/supabase-postgres-deployment",
+  "head_before": "8b2562a",
+  "audit_completed_utc": "2026-06-04T04:42:00Z",
+
+  "is_final_lp_research_stage": true,
+  "rationale": "4/4 prior AMM V1 stages (Meteora DLMM + Orca Whirlpools + Raydium CLMM + Raydium CPMM) all reject retail 10-20U 2000 USD LP. Stable pool is the only remaining IL class to test before final STOP_LP_RESEARCH_NOW decision.",
+
+  "previous_raydium_cpmm_v1_stage": {
+    "stage": "LP_RAYDIUM_CPMM_READONLY_CONNECTOR_V1",
+    "run_id": "20260604_040952",
+    "candidate_raw_count": 127,
+    "verified_pool_count": 81,
+    "sdk_decode_success_count": 81,
+    "quote_ready_pool_count": 73,
+    "survival_ev_model_ran": true,
+    "row_count": 12264,
+    "positive_zero_il_lvr_count": 1344,
+    "positive_optimistic_count": 0,
+    "positive_realistic_count": 0,
+    "positive_conservative_count": 0,
+    "stable_quote_ready_count": 24,
+    "best_pool": "vs6XUbGcVWG75Gv81qvDMBxkQ67Kr2eLrFNDTrCxxwk",
+    "best_net_ev_proxy_usd": 0.172,
+    "recommended_next_stage": "LP_SOLANA_STABLE_POOL_RESEARCH_V1"
+  },
+
+  "amm_cumulative_4_reject": {
+    "meteora_dlmm_v8": {"best_cell_usd": 0.544, "positive_realistic": 0, "verdict": "reject"},
+    "orca_whirlpools_v1": {"best_cell_usd": 0.106, "positive_realistic": 0, "verdict": "reject"},
+    "raydium_clmm_v1": {"best_cell_usd": 0.167, "positive_realistic": 0, "verdict": "reject"},
+    "raydium_cpmm_v1": {"best_cell_usd": 0.172, "positive_realistic": 0, "verdict": "reject"},
+    "summary": "4/4 Solana AMMs reject retail 10-20U 2000 USD LP"
+  },
+
+  "evidence_files_read": [
+    "reports/lp_raydium_cpmm_readonly_connector/20260604_040952/FINAL_VERDICT.json",
+    "reports/lp_raydium_cpmm_readonly_connector/20260604_040952/ONEPAGE_CN.md",
+    "reports/lp_raydium_cpmm_readonly_connector/20260604_040952/RAYDIUM_CPMM_SURVIVAL_EV_PREVIEW_CN.md",
+    "reports/lp_raydium_cpmm_readonly_connector/20260604_040952/raydium_cpmm_survival_ev_preview.csv",
+    "reports/lp_raydium_cpmm_readonly_connector/20260604_040952/RAYDIUM_CPMM_CANDIDATE_DECISION_CN.md",
+    "reports/lp_raydium_cpmm_readonly_connector/20260604_040952/raydium_cpmm_candidate_decision.json",
+    "reports/lp_raydium_clmm_readonly_connector/20260604_034503/FINAL_VERDICT.json",
+    "reports/lp_orca_whirlpool_readonly_connector/20260604_025414/FINAL_VERDICT.json",
+    "reports/lp_meteora_dlmm_targeted_top_pool_feed/20260604_021913/FINAL_VERDICT.json",
+    "reports/lp_solana_rpc_registry_fix/20260603_093136/solana_program_id_registry_v2.json",
+    "reports/lp_solana_connector_design/20260603_080347/RAYDIUM_CONNECTOR_DESIGN_CN.md"
+  ],
+
+  "candidate_stable_amms": [
+    {"name": "Saber", "status": "mostly deprecated", "program_id": "TBD", "source": "saber-hq/saber-core"},
+    {"name": "Mercurial Finance", "status": "outdated", "program_id": "TBD", "source": "mercurial-finance/mercurial"},
+    {"name": "Meteora DAMM v2 stable", "status": "active (V1 stage verified)", "program_id": "cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG", "source": "meteora-ag/damm-v2-sdk"},
+    {"name": "Orca Whirlpool stable", "status": "active (V1 stage verified)", "program_id": "whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc", "source": "orca-so/whirlpools"},
+    {"name": "Raydium AMM v4 stable", "status": "24 stable-anchor pools (V1 stage verified)", "program_id": "675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8", "source": "raydium-io/raydium-amm"},
+    {"name": "Lifinity", "status": "pid unknown (V1 stage 20260603_093136 NOT on mainnet)", "program_id": null, "source": "V1 stage skip"}
+  ],
+
+  "hard_constraints": {
+    "no_keypair": true,
+    "no_signer": true,
+    "no_transaction": true,
+    "no_open_close_lp": true,
+    "no_add_remove_liquidity": true,
+    "no_collect_fee": true,
+    "no_swap": true,
+    "no_bridge": true,
+    "no_live_canary_paper": true,
+    "no_production_positions": true,
+    "no_shadow_table_overwrite": true,
+    "no_evm_executor_modify": true,
+    "no_hard_disable_release": true
+  },
+
+  "safety_locks": {
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no",
+    "solana_wallet_or_keypair_touched": false,
+    "transaction_sent": false,
+    "v2_line_count": 992,
+    "v2_line_count_unchanged": true,
+    "send_hard_disable_still_active": true
+  },
+
+  "allowed_next_stages": [
+    "LP_STABLE_POOL_10_20U_PROBE_PREFLIGHT_DESIGN_V1",
+    "LP_STABLE_POOL_KNOWN_POOL_FEED_EXPANSION_REPEAT",
+    "LP_SOLANA_PAID_RPC_SETUP_REQUIRED",
+    "STOP_LP_RESEARCH_NOW"
+  ]
+}

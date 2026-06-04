@@ -1,0 +1,74 @@
+{
+  "stage": "LP_SOLANA_STABLE_POOL_RESEARCH_V1",
+  "run_id": "20260604_044118",
+
+  "seven_questions": {
+    "realistic_positive_10_20u": false,
+    "near_break_even_present": true,
+    "high_fee_stable_quote_ready": true,
+    "probe_preflight_worth": false,
+    "expand_stable_pool": false,
+    "paid_rpc_needed_now": false,
+    "should_stop": true
+  },
+
+  "positive_realistic_count": 0,
+  "positive_optimistic_count": 0,
+  "positive_zero_il_lvr_count": 30,
+  "near_break_even_count": 1067,
+  "stable_quote_ready_count": 10,
+  "high_fee_quote_ready_count": 3,
+  "quote_ready_pool_count": 10,
+
+  "best_pool": "AiMZS5U3JMvpdvsr1KeaMiS354Z1DeSg5XjA4yYRxtFf",
+  "best_pair": "mSOL/USDC",
+  "best_notional": 2000,
+  "best_hold_window": "7d",
+  "best_scenario": "zero_il_lvr",
+  "best_net_ev_proxy_usd": 0.204,
+
+  "spec_decision_rule_applied": "rule_2: positive_realistic=0 + quote_ready>0 -> STOP_LP_RESEARCH_NOW",
+
+  "amm_cumulative_5_reject": {
+    "meteora_dlmm_v8": {"best_cell_usd": 0.544, "positive_realistic": 0, "verdict": "reject"},
+    "orca_whirlpools_v1": {"best_cell_usd": 0.106, "positive_realistic": 0, "verdict": "reject"},
+    "raydium_clmm_v1": {"best_cell_usd": 0.167, "positive_realistic": 0, "verdict": "reject"},
+    "raydium_cpmm_v1": {"best_cell_usd": 0.172, "positive_realistic": 0, "verdict": "reject"},
+    "orca_stable_this": {"best_cell_usd": 0.204, "positive_realistic": 0, "verdict": "reject"},
+    "summary": "5/5 Solana AMMs reject retail 10-20U 2000 USD LP"
+  },
+
+  "recommended_next_stage": "STOP_LP_RESEARCH_NOW",
+  "rejected_alternatives": [
+    "LP_STABLE_POOL_10_20U_PROBE_PREFLIGHT_DESIGN_V1",
+    "LP_STABLE_POOL_KNOWN_POOL_FEED_EXPANSION_REPEAT",
+    "LP_SOLANA_PAID_RPC_SETUP_REQUIRED"
+  ],
+
+  "reasons": [
+    "5/5 Solana AMMs verified negative for retail 10-20U 2000 USD LP",
+    "best cell +$0.204 in zero_il_lvr only (mSOL/USDC, 30bps, 2000/7d)",
+    "Any IL/LVR assumption > 0 makes all 1680 cells negative",
+    "Active stable-stable pool on Solana is essentially non-existent (Meteora API mislabels Orca)",
+    "Meteora DAMM v2 stable pools return TVL=0 (50 candidates, only 2 with TVL>1000, both Orca-owned)",
+    "Saber rebrand as Meteora Stable Swap but Saber API 308 redirect (deprecated)",
+    "Per spec rule_2 + 5/5 reject: STOP_LP_RESEARCH_NOW is the stable 结论"
+  ],
+
+  "safety_locks": {
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no",
+    "solana_wallet_or_keypair_touched": false,
+    "transaction_sent": false,
+    "v2_line_count": 992,
+    "v2_line_count_unchanged": true,
+    "send_hard_disable_still_active": true
+  },
+
+  "allowed_next_stages": [
+    "LP_STABLE_POOL_10_20U_PROBE_PREFLIGHT_DESIGN_V1",
+    "LP_STABLE_POOL_KNOWN_POOL_FEED_EXPANSION_REPEAT",
+    "LP_SOLANA_PAID_RPC_SETUP_REQUIRED",
+    "STOP_LP_RESEARCH_NOW"
+  ]
+}

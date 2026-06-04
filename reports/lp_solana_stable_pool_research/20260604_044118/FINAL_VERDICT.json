@@ -1,0 +1,88 @@
+{
+  "status": "WARN",
+  "stage": "LP_SOLANA_STABLE_POOL_RESEARCH_V1",
+  "run_id": "20260604_044118",
+  "branch": "feat/supabase-postgres-deployment",
+  "head_before": "8b2562a",
+
+  "program_verified": true,
+  "verified_program_count": 4,
+  "verified_program_ids": [
+    "SSwpkEEcbUqx4vtoEByFjSkhKdCT862DNVb52nZg1UZ (Meteora Stable Swap / ex-Saber)",
+    "cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG (Meteora DAMM v2)",
+    "whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc (Orca Whirlpool)",
+    "675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8 (Raydium AMM v4)"
+  ],
+
+  "candidate_raw_count": 27,
+  "selected_for_chain_verify_count": 27,
+  "verified_pool_count": 25,
+  "sdk_decode_success_count": 25,
+  "quote_ready_pool_count": 10,
+  "survival_ev_model_ran": true,
+
+  "row_count": 1680,
+  "positive_zero_il_lvr_count": 30,
+  "positive_optimistic_count": 0,
+  "positive_realistic_count": 0,
+  "positive_conservative_count": 0,
+  "near_break_even_count": 1067,
+  "high_fee_quote_ready_count": 3,
+  "stable_quote_ready_count": 10,
+
+  "best_pool": "AiMZS5U3JMvpdvsr1KeaMiS354Z1DeSg5XjA4yYRxtFf",
+  "best_pair": "mSOL/USDC",
+  "best_notional": 2000,
+  "best_hold_window": "7d",
+  "best_scenario": "zero_il_lvr",
+  "best_net_ev_proxy_usd": 0.204,
+  "best_net_ev_proxy_pct": 0.0102,
+
+  "v2_line_count": 992,
+  "v2_line_count_unchanged": true,
+
+  "structural_finding": "Stable pool research is the final IL class test. 25 verified stable pools (all Orca Whirlpool LST-stable; Meteora DAMM v2 stable API mislabels Orca pools; Meteora Stable Swap has no active pools). 10/25 quote-ready, 1680 cells, 30 positive in zero_il_lvr only, 0 in optimistic/realistic/conservative. Best cell +$0.204 at 2000/7d/zero_il_lvr in mSOL/USDC (30bps). **5/5 Solana AMM protocols (Meteora DLMM + Orca Whirlpool + Raydium CLMM + Raydium CPMM + Orca stable LST) all reject retail 10-20U 2000 USD LP** with identical pattern (positive only in zero_il_lvr, best cell < $0.55 even at 7d 2000 USD). This is the LP research 收口 结论. Per spec rule_2: STOP_LP_RESEARCH_NOW.",
+
+  "phase_results": {
+    "A_workspace_safety": "PASS (HEAD=8b2562a; pre-existing dirty files unrelated)",
+    "B_input_evidence_audit": "PASS (11 upstream files audited; 4/4 AMM reject history)",
+    "C_stable_amm_source_audit": "PASS (4 candidates audited: Meteora Stable Swap, Meteora DAMM v2, Orca Whirlpool, Raydium AMM v4)",
+    "D_stable_amm_program_verify": "PASS (all 4 programs on-chain verified executable)",
+    "E_candidate_collection": "PASS (27 candidates: 25 Orca stable + 2 Meteora DAMM v2 stable)",
+    "F_chain_verify": "PASS (25/27 owner=whirLbMiicV...; 2 Meteora API candidates filtered as Orca-owned; 0 DAMM v2 stable pools verified)",
+    "G_pool_decode": "PASS (25/25 SDK decode success via Orca V1 SDK fetchConcentratedLiquidityPool)",
+    "H_quote_smoke": "PASS (10/25 quote-ready via Orca V1 SDK swapInstructions quote-only)",
+    "I_survival_ev_preview": "PASS (1680 cells; 30 positive zero_il_lvr; 0 realistic/optimistic/conservative)",
+    "J_candidate_decision": "PASS (rule_2 + 5/5 reject: STOP_LP_RESEARCH_NOW)"
+  },
+
+  "can_run_probe_now": false,
+  "execution_allowed_now": false,
+  "transaction_sent": false,
+  "wallet_or_tx_touched": false,
+  "solana_wallet_or_keypair_touched": false,
+  "edge_proven": "no",
+  "tiny_canary_allowed": "no",
+  "manual_approval_required": true,
+  "send_hard_disable_still_active": true,
+
+  "v2_modified_by_this_task": false,
+
+  "amm_cumulative_5_reject": {
+    "meteora_dlmm_v8": {"best_cell_usd": 0.544, "positive_realistic": 0},
+    "orca_whirlpools_v1": {"best_cell_usd": 0.106, "positive_realistic": 0},
+    "raydium_clmm_v1": {"best_cell_usd": 0.167, "positive_realistic": 0},
+    "raydium_cpmm_v1": {"best_cell_usd": 0.172, "positive_realistic": 0},
+    "orca_stable_this": {"best_cell_usd": 0.204, "positive_realistic": 0},
+    "summary": "5/5 Solana AMMs reject retail 10-20U 2000 USD LP"
+  },
+
+  "allowed_next_stages": [
+    "LP_STABLE_POOL_10_20U_PROBE_PREFLIGHT_DESIGN_V1",
+    "LP_STABLE_POOL_KNOWN_POOL_FEED_EXPANSION_REPEAT",
+    "LP_SOLANA_PAID_RPC_SETUP_REQUIRED",
+    "STOP_LP_RESEARCH_NOW"
+  ],
+  "recommended_next_stage": "STOP_LP_RESEARCH_NOW",
+  "default_when_no_explicit_choice": "STOP_LP_RESEARCH_NOW"
+}
