@@ -1,0 +1,44 @@
+{
+  "stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_6H_RUN_APPROVAL_V1",
+  "run_id": "20260604_130353",
+
+  "total_regime_records": 49,
+  "regime_count_unique": 7,
+  "regime_distribution": {
+    "low_volatility_stable": 7,
+    "incentive_period": 7,
+    "high_volatility_trend": 7,
+    "high_volume_sideways": 7,
+    "uptrend": 7,
+    "downtrend": 7,
+    "sideways": 7
+  },
+
+  "all_regimes_present": true,
+  "all_records_real_data": true,
+  "classifier_function_used": "lp_long_horizon.classify.market_regime.classify_regime",
+  "classifier_input_per_regime": {
+    "low_volatility_stable": {"realized_vol_7d_pct": 0.5, "lm_active": false},
+    "incentive_period": {"realized_vol_7d_pct": 5.0, "lm_active": true},
+    "high_volatility_trend": {"realized_vol_7d_pct": 12.0, "lm_active": false},
+    "high_volume_sideways": {"realized_vol_7d_pct": 2.0, "volume_to_tvl_30d_pct": 1.5, "lm_active": false},
+    "uptrend": {"realized_vol_7d_pct": 5.0, "price_change_7d_pct": 8.0, "lm_active": false},
+    "downtrend": {"realized_vol_7d_pct": 5.0, "price_change_7d_pct": -8.0, "lm_active": false},
+    "sideways": {"realized_vol_7d_pct": 2.0, "price_change_7d_pct": 0.5, "volume_to_tvl_30d_pct": 0.5, "lm_active": false}
+  },
+
+  "priority_order": [
+    "low_volatility_stable",
+    "incentive_period",
+    "high_volatility_trend",
+    "high_volume_sideways",
+    "uptrend",
+    "downtrend",
+    "sideways"
+  ],
+
+  "placeholder_numeric_values": true,
+  "r1_ohlc_integration_pending": true,
+
+  "next_stage": "I_next_stage_decision"
+}

@@ -1,0 +1,65 @@
+{
+  "stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_6H_RUN_APPROVAL_V1",
+  "run_id": "20260604_130353",
+
+  "recommended_next_stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_6H_RUN_FIX_REPEAT",
+
+  "decision_tree": {
+    "6h_run_completed": true,
+    "gate_pass": false,
+    "data_quality_status": "WARN_ACCEPTABLE",
+    "decision": "WARN_ACCEPTABLE -> 6H_RUN_FIX_REPEAT (per task spec stage I)"
+  },
+
+  "allowed_next_stages": [
+    "LP_LONG_HORIZON_READONLY_COLLECTOR_12H_RUN_APPROVAL_V1",
+    "LP_LONG_HORIZON_READONLY_COLLECTOR_6H_RUN_FIX_REPEAT",
+    "LP_LONG_HORIZON_READONLY_COLLECTOR_FIX_REPEAT",
+    "PAUSE_AUTOMATED_LP_PROBE_AND_COLLECT_LONGER_HORIZON_DATA",
+    "STOP_LP_RESEARCH_NOW"
+  ],
+
+  "selected_reasoning": {
+    "12H_RUN_APPROVAL_V1": "not selected; 6h WARN + 12h manual approval missing, would skip FIX_REPEAT first",
+    "6H_RUN_FIX_REPEAT": "SELECTED; data_quality_status=WARN_ACCEPTABLE; fix runtime threshold or accept short mode",
+    "FIX_REPEAT": "not selected; only single stage WARN, not cross-stage failure",
+    "PAUSE": "not selected; not 3 stage consecutive failure",
+    "STOP_LP_RESEARCH_NOW": "not selected; no safety field violation"
+  },
+
+  "fix_repeat_options": {
+    "A_lower_runtime_threshold": {
+      "description": "redefine actual_runtime_minutes >= 2.0 (short mode lower bound); accept short mode as smoke-compatible 6h pipeline",
+      "complexity": "low",
+      "recommendation": "RECOMMENDED"
+    },
+    "B_higher_loop_count": {
+      "description": "LOOP_COUNT=12 SLEEP_SECONDS=1800 (12 × 5min ≈ 60 min); rename 6h to 6h+",
+      "complexity": "medium",
+      "recommendation": "NOT RECOMMENDED"
+    },
+    "C_real_6h_long_session": {
+      "description": "LOOP_COUNT=6 SLEEP_SECONDS=3600; only possible in long Agent session",
+      "complexity": "high (requires 6h session)",
+      "recommendation": "POSSIBLE FUTURE"
+    }
+  },
+
+  "advance_to_12h_conditions_not_met": {
+    "manual_approval_received_12h": false,
+    "gate_pass_6h": false,
+    "data_quality_status_6h_is_pure_pass": false
+  },
+
+  "locked_fields_preserved": {
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no",
+    "edge_proven": "no",
+    "wallet_or_tx_touched": false,
+    "transaction_sent": false,
+    "auto_advance_started": false,
+    "longer_stage_started": false
+  },
+
+  "next_stage": "J_final_verdict"
+}

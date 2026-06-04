@@ -1,0 +1,26 @@
+{
+  "stage": "6h",
+  "run_id": "20260604_130353",
+  "checkpoint_count": 7,
+  "checkpoint_dirs": [
+    "data/lp_long_horizon/20260604_130353/checkpoint_1_1311",
+    "data/lp_long_horizon/20260604_130353/checkpoint_1_131315",
+    "data/lp_long_horizon/20260604_130353/checkpoint_2_131323",
+    "data/lp_long_horizon/20260604_130353/checkpoint_3_131332",
+    "data/lp_long_horizon/20260604_130353/checkpoint_4_131340",
+    "data/lp_long_horizon/20260604_130353/checkpoint_5_131349",
+    "data/lp_long_horizon/20260604_130353/checkpoint_6_131357"
+  ],
+  "row_counts_deduped": {
+    "pool_snapshots": 5,
+    "quote_snapshots": 210,
+    "fee_velocity": 175,
+    "liquidity_distribution": 35,
+    "market_regime": 49,
+    "actual_fee_accrual": 7
+  },
+  "wallet_or_tx_touched": false,
+  "transaction_sent": false,
+  "auto_advance_to_12h": false,
+  "next_action": "await manual approval for 12h"
+}

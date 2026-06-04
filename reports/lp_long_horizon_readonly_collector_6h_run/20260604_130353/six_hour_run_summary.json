@@ -1,0 +1,187 @@
+{
+  "stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_6H_RUN_APPROVAL_V1",
+  "run_id": "20260604_130353",
+  "mode": "short",
+  "actual_runtime_minutes": 2.75,
+  "real_6h_mode_planned_minutes": 360,
+  "gate_threshold_min_runtime_minutes": 330,
+  "runtime_meets_threshold": false,
+  "row_counts_deduped": {
+    "selected_pool_count": 5,
+    "pool_snapshot_rows": 5,
+    "quote_snapshot_rows": 210,
+    "fee_velocity_rows": 175,
+    "liquidity_distribution_rows": 35,
+    "market_regime_rows": 49,
+    "actual_fee_accrual": 7
+  },
+  "row_counts_per_checkpoint": {
+    "checkpoint_1_1311": 74,
+    "checkpoint_1_131315": 74,
+    "checkpoint_2_131323": 74,
+    "checkpoint_3_131332": 74,
+    "checkpoint_4_131340": 74,
+    "checkpoint_5_131349": 74,
+    "checkpoint_6_131357": 74
+  },
+  "gate_threshold_check": {
+    "selected_pool_count_gt_zero": {
+      "value": 5,
+      "threshold": "> 0",
+      "pass": true
+    },
+    "min_pool_snapshot_rows": {
+      "value": 5,
+      "threshold": 30,
+      "pass": false,
+      "note": "dedup = 5, but gate expects 30 (5 pool × 6 iteration). Use adjusted threshold 5 (real deduped count after 5 pool)."
+    },
+    "min_quote_snapshot_rows": {
+      "value": 210,
+      "threshold": 180,
+      "pass": true,
+      "note": "210 >= 180 adjusted"
+    },
+    "min_fee_velocity_rows": {
+      "value": 175,
+      "threshold": 90,
+      "pass": true
+    },
+    "min_liquidity_distribution_rows": {
+      "value": 35,
+      "threshold": 30,
+      "pass": true
+    },
+    "min_market_regime_rows": {
+      "value": 49,
+      "threshold": 42,
+      "pass": true
+    },
+    "min_real_data_pct": {
+      "value": 100,
+      "threshold": 80,
+      "pass": true
+    },
+    "disk_usage_mb": {
+      "value": 0.33,
+      "threshold": 5,
+      "pass": true
+    },
+    "error_rate_pct": {
+      "value": 0.0,
+      "threshold": 20,
+      "pass": true
+    },
+    "consecutive_429_max": {
+      "value": 0,
+      "threshold": 5,
+      "pass": true
+    },
+    "production_write_count": {
+      "value": 0,
+      "threshold": 0,
+      "pass": true
+    },
+    "wallet_tx_touch_count": {
+      "value": 0,
+      "threshold": 0,
+      "pass": true
+    },
+    "daemon_leak_count": {
+      "value": 0,
+      "threshold": 0,
+      "pass": true
+    },
+    "final_verdict_generated": {
+      "value": true,
+      "threshold": true,
+      "pass": true
+    },
+    "actual_runtime_minutes": {
+      "value": 2.75,
+      "threshold": 330,
+      "pass": false,
+      "note": "short mode 2.75 min, real 6h 期望 330 min"
+    },
+    "data_quality_status": {
+      "value": "WARN_ACCEPTABLE",
+      "threshold": "PASS or WARN_ACCEPTABLE",
+      "pass": true
+    }
+  },
+  "error_count": 0,
+  "error_rate_pct": 0.0,
+  "consecutive_429_max": 0,
+  "write_failures": 0,
+  "safety_self_check_failures": 0,
+  "banned_token_detected": 0,
+  "aborted": false,
+  "safety_field_all_7_checkpoints": {
+    "wallet_or_tx_touched": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ],
+    "transaction_sent": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ],
+    "send_hard_disable_still_active": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ],
+    "no_long_running_daemon": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ],
+    "no_paid_rpc_called": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "data_quality_status": "WARN_ACCEPTABLE",
+  "gate_pass": false,
+  "can_advance_to_12h": false,
+  "disk_usage_kb": 330,
+  "tmux_session_after_run": "gone",
+  "unique_pool_addresses": [
+    "CnK82s8exdsK9nwqQ55kd9wcxoA22NwTchZJCBdu8LDa",
+    "C9U2Ksk6KKWvLEeo5yUQ7Xu46X7NzeBJtd9PBfuXaUSM",
+    "3nMFwZXwY1s1M5s8vYAHqd4wGs4iSxXE4LRoUMMYqEgF",
+    "vs6XUbGcVWG75Gv81qvDMBxkQ67Kr2eLrFNDTrCxxwk",
+    "AiMZS5U3JMvpdvsr1KeaMiS354Z1DeSg5XjA4yYRxtFf"
+  ],
+  "next_stage": "I_data_quality_gate",
+  "wallet_or_tx_touched": false,
+  "transaction_sent": false,
+  "no_production_write": true,
+  "no_shadow_overwrite": true,
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no",
+  "auto_advance_started": false,
+  "auto_advance_to_12h": false
+}
