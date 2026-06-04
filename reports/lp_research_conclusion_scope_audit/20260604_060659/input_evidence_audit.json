@@ -1,0 +1,101 @@
+{
+  "stage": "LP_RESEARCH_CONCLUSION_SCOPE_AUDIT_V1",
+  "run_id": "20260604_060659",
+  "branch": "feat/supabase-postgres-deployment",
+  "head": "7940cff",
+
+  "input_files_audit": {
+    "final_freeze_verdict": {
+      "path": "reports/lp_research_final_freeze/20260604_051254/FINAL_VERDICT.json",
+      "exists": true,
+      "status": "WARN",
+      "stage": "LP_RESEARCH_FINAL_FREEZE_AND_HANDOFF_V1"
+    },
+    "why_stop_doc": {
+      "path": "reports/lp_research_final_freeze/20260604_051254/WHY_STOP_LP_RESEARCH_NOW_CN.md",
+      "exists": true
+    },
+    "reopen_conditions_doc": {
+      "path": "reports/lp_research_final_freeze/20260604_051254/LP_RESEARCH_REOPEN_CONDITIONS_CN.md",
+      "exists": true
+    },
+    "what_this_does_not_mean_doc": {
+      "path": "reports/lp_research_final_freeze/20260604_051254/WHAT_THIS_DOES_NOT_MEAN_CN.md",
+      "exists": true
+    },
+    "research_status_doc": {
+      "path": "docs/LPBOT_RESEARCH_STATUS_CN.md",
+      "exists": true
+    },
+    "artifact_index_doc": {
+      "path": "docs/LPBOT_RESEARCH_ARTIFACT_INDEX_CN.md",
+      "exists": true
+    },
+    "readme": {
+      "path": "README.md",
+      "exists": true
+    },
+    "protocol_verdicts": [
+      {
+        "stage": "LP_METEORA_DLMM_TARGETED_TOP_POOL_FEED_EXPANSION_V1",
+        "path": "reports/lp_meteora_dlmm_targeted_top_pool_feed/20260604_021913/FINAL_VERDICT.json",
+        "exists": true,
+        "verdict": "REJECT",
+        "best_cell_usd": 0.544,
+        "positive_realistic": 0
+      },
+      {
+        "stage": "LP_ORCA_WHIRLPOOL_READONLY_CONNECTOR_V1",
+        "path": "reports/lp_orca_whirlpool_readonly_connector/20260604_025414/FINAL_VERDICT.json",
+        "exists": true,
+        "verdict": "REJECT",
+        "best_cell_usd": 0.106,
+        "positive_realistic": 0
+      },
+      {
+        "stage": "LP_RAYDIUM_CLMM_READONLY_CONNECTOR_V1",
+        "path": "reports/lp_raydium_clmm_readonly_connector/20260604_034503/FINAL_VERDICT.json",
+        "exists": true,
+        "verdict": "REJECT",
+        "best_cell_usd": 0.167,
+        "positive_realistic": 0
+      },
+      {
+        "stage": "LP_RAYDIUM_CPMM_READONLY_CONNECTOR_V1",
+        "path": "reports/lp_raydium_cpmm_readonly_connector/20260604_040952/FINAL_VERDICT.json",
+        "exists": true,
+        "verdict": "REJECT",
+        "best_cell_usd": 0.172,
+        "positive_realistic": 0
+      },
+      {
+        "stage": "LP_SOLANA_STABLE_POOL_RESEARCH_V1",
+        "path": "reports/lp_solana_stable_pool_research/20260604_044118/FINAL_VERDICT.json",
+        "exists": true,
+        "verdict": "REJECT",
+        "best_cell_usd": 0.204,
+        "positive_realistic": 0
+      }
+    ]
+  },
+
+  "required_invariants": {
+    "final_freeze_exists": true,
+    "stop_lp_research_now_written": true,
+    "reopen_conditions_documented": true,
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no",
+    "all_5_protocols_realistic_positive_zero": true,
+    "all_5_protocols_optimistic_positive_zero": true,
+    "all_5_protocols_conservative_positive_zero": true,
+    "cumulative_cells_28560": true,
+    "no_transaction_sent": true,
+    "no_solana_wallet_or_keypair_touched": true,
+    "no_wallet_or_tx_touched": true,
+    "send_hard_disable_still_active": true,
+    "edge_proven": "no"
+  },
+
+  "scope_audit_inputs_locked": true,
+  "next_stage": "C_current_conclusion_scope"
+}

@@ -1,0 +1,79 @@
+{
+  "status": "WARN",
+  "stage": "LP_RESEARCH_CONCLUSION_SCOPE_AUDIT_V1",
+  "run_id": "20260604_053626",
+  "branch": "feat/supabase-postgres-deployment",
+  "head_before": "7940cff",
+
+  "current_probe_allowed": false,
+  "global_lp_rejected": false,
+  "current_model_rejects_auto_probe": true,
+  "conclusion_scope": "current_data_current_model_short_window",
+  "long_term_lp_value_judged": false,
+  "needs_longer_horizon_validation": true,
+  "needs_actual_fee_accrual": true,
+  "needs_market_regime_split": true,
+  "market_downtrend_bias_acknowledged": true,
+  "docs_updated": true,
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no",
+  "edge_proven": "no",
+  "wallet_or_tx_touched": false,
+  "solana_wallet_or_keypair_touched": false,
+  "transaction_sent": false,
+  "v2_line_count": 992,
+  "v2_line_count_unchanged": true,
+  "send_hard_disable_still_active": true,
+
+  "exact_conclusion_wording": "在当前短窗口数据 (heuristic 0.5%/day turnover, 4 IL/LVR scenarios), 当前模型假设 (heuristic fee/cost/IL proxies, no actual position data), 当前没有真实 LP tokenId / actual fee accrual 的前提下, 5 类 Solana AMM protocols 全部 negative EV for retail 10-20U 2000 USD LP.",
+
+  "what_conclusion_does_NOT_say": [
+    "All LP long-term has no value (NOT proven)",
+    "Institutional LP has no value (NOT proven)",
+    "Incentive LP / reward farming has no value (NOT proven)",
+    "Hedge / vault / JIT / active management has no value (NOT proven)",
+    "Long-horizon or different regime still negative (NOT proven)",
+    "Real fee accrual must be lower than proxy (NOT proven)"
+  ],
+
+  "limitations_audit_summary": {
+    "limitation_count": 6,
+    "high_impact_limitations": 3,
+    "high_impact_categories": ["data_window", "fee_data", "il_lvr"],
+    "medium_impact_limitations": 3,
+    "medium_impact_categories": ["cost_data", "pool_selection", "capital_size"],
+    "conclusion_confidence_applicable_to_current_short_window": "MEDIUM",
+    "conclusion_confidence_applicable_to_long_horizon": "NONE"
+  },
+
+  "regime_categorizations": [
+    {"name": "uptrend", "reopen_priority": "HIGH"},
+    {"name": "downtrend", "reopen_priority": "LOW"},
+    {"name": "sideways", "reopen_priority": "MEDIUM"},
+    {"name": "high_volume_sideways", "reopen_priority": "HIGH (best case for LP)"},
+    {"name": "high_volatility_trend", "reopen_priority": "MEDIUM"},
+    {"name": "incentive_period", "reopen_priority": "HIGH"},
+    {"name": "low_volatility_stable", "reopen_priority": "LOW"}
+  ],
+
+  "long_horizon_reopen_plan_phases": [
+    "PHASE_R0_LONG_READONLY_DATA (2-4 weeks)",
+    "PHASE_R1_REAL_FEE_ACCRUAL_DESIGN (1-2 weeks)",
+    "PHASE_R2_MARKET_REGIME_SPLIT (2-4 weeks)",
+    "PHASE_R3_REOPEN_CANDIDATE_REVIEW (1-2 weeks)",
+    "PHASE_R4_10U_TOKENID_PROBE_PREFLIGHT (1 week)",
+    "PHASE_R5_MANUAL_PROBE_ONLY (持续)"
+  ],
+
+  "recommended_next_stage": "PAUSE_AUTOMATED_LP_PROBE_AND_COLLECT_LONGER_HORIZON_DATA",
+
+  "phase_results": {
+    "A_workspace_safety": "PASS (HEAD=7940cff)",
+    "B_input_evidence_audit": "PASS (final freeze + 5 protocol verdicts + 2 docs + README read)",
+    "C_conclusion_scope": "PASS (CAN prove 5 items + CANNOT prove 6 items; global_lp_rejected=false; long_term_lp_value_judged=false)",
+    "D_model_limitation_audit": "PASS (6 limitations audited; 3 HIGH impact)",
+    "E_market_regime_bias": "PASS (downtrend bias acknowledged; 7 regime categories)",
+    "F_long_horizon_reopen_plan": "PASS (6-phase R0-R5 plan, 7-13 weeks to first manual probe)",
+    "G_docs_updated": "PASS (LPBOT_RESEARCH_STATUS_CN.md + README.md updated)"
+  }
+}

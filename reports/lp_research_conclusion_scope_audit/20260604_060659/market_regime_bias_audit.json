@@ -1,0 +1,105 @@
+{
+  "stage": "LP_RESEARCH_CONCLUSION_SCOPE_AUDIT_V1",
+  "run_id": "20260604_060659",
+
+  "user_question": "最近 1-2 天大盘下跌, 会不会使结论偏负?",
+
+  "direct_answer": "会, 短窗口 regime 单边性 (downtrend) 会让结论偏负, 这是已知 bias. 但 STOP_LP_RESEARCH_NOW 仍成立 (cross-regime 决策).",
+
+  "mechanism": {
+    "il_lvr_proxy_in_downtrend": {
+      "realistic_7d_pct": 3.5,
+      "uptrend_7d_pct": 1.4,
+      "ratio_down_vs_up": 2.5
+    },
+    "active_liquidity_withdrawal_in_downtrend": true,
+    "fee_under_covers_loss_in_downtrend": true,
+    "short_window_negative_ev_still_blocks_auto_probe": true
+  },
+
+  "bias_acknowledged": {
+    "market_downtrend_bias_acknowledged": true,
+    "short_window_single_regime_extrapolation_invalid": true
+  },
+
+  "future_regime_classification": [
+    {
+      "regime": "uptrend",
+      "definition": "7d/30d price change > +5%",
+      "data_source": "on-chain OHLC + CEX index",
+      "expected_fee_capture": "high",
+      "expected_il": "low"
+    },
+    {
+      "regime": "downtrend",
+      "definition": "7d/30d price change < -5%",
+      "data_source": "on-chain OHLC + CEX index",
+      "expected_fee_capture": "low",
+      "expected_il": "high"
+    },
+    {
+      "regime": "sideways",
+      "definition": "price change within +/-5%",
+      "data_source": "on-chain OHLC",
+      "expected_fee_capture": "stable",
+      "expected_il": "moderate"
+    },
+    {
+      "regime": "high_volume_sideways",
+      "definition": "sideways + 30d volume/TVL > 1%",
+      "data_source": "on-chain volume + TVL index",
+      "expected_fee_capture": "high",
+      "expected_il": "low"
+    },
+    {
+      "regime": "high_volatility_trend",
+      "definition": "7d realized vol > 10%",
+      "data_source": "on-chain realized vol / oracle",
+      "expected_fee_capture": "very_high",
+      "expected_il": "very_high"
+    },
+    {
+      "regime": "incentive_period",
+      "definition": "protocol LM / bribe active",
+      "data_source": "protocol farm program events",
+      "expected_fee_capture": "fee + LM + bribe",
+      "expected_il": "depends_on_underlying"
+    },
+    {
+      "regime": "low_volatility_stable",
+      "definition": "realized vol < 1%, low fee",
+      "data_source": "on-chain realized vol",
+      "expected_fee_capture": "very_low",
+      "expected_il": "very_low"
+    }
+  ],
+
+  "regime_split_required_for": [
+    "R2_market_regime_split",
+    "long_term_lp_value_judgment",
+    "weighted_long_horizon_EV"
+  ],
+
+  "locked_conclusions": {
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no",
+    "edge_proven": "no",
+    "long_term_lp_value_judged": false,
+    "market_downtrend_bias_acknowledged": true
+  },
+
+  "out_of_scope_this_task": [
+    "actual regime split run",
+    "paid indexer integration",
+    "paid RPC upgrade",
+    "protocol re-run",
+    "heuristic modification"
+  ],
+
+  "deliverables_this_stage": [
+    "MARKET_REGIME_BIAS_AUDIT_CN.md",
+    "market_regime_bias_audit.json"
+  ],
+
+  "next_stage": "F_long_horizon_reopen_plan"
+}

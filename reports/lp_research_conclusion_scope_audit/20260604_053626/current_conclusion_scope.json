@@ -1,0 +1,97 @@
+{
+  "stage": "LP_RESEARCH_CONCLUSION_SCOPE_AUDIT_V1",
+  "run_id": "20260604_053626",
+  "phase": "C_conclusion_scope",
+
+  "global_lp_rejected": false,
+  "current_model_rejects_auto_probe": true,
+  "current_probe_allowed": false,
+  "conclusion_scope": "current_data_current_model_short_window",
+  "long_term_lp_value_judged": false,
+
+  "can_prove_5_items": [
+    {
+      "id": 1,
+      "claim": "Current auto LP probe should not start",
+      "evidence": "5/5 Solana AMM protocols verify positive_realistic=0; canary/live/paper/dry-run (auto) should not start"
+    },
+    {
+      "id": 2,
+      "claim": "Current 10/20U small capital probe has no sufficient EV support",
+      "evidence": "5 stages cumulative 28560 EV cells; 10 USD at 25bps × 0.5%/day × 7d = $0.00875 gross; minus cost $0.006 = $0.00275; minus IL 0.5% × 7d × $10 = $0.35; net = -$0.35 at 7d realistic"
+    },
+    {
+      "id": 3,
+      "claim": "Current model has 0 positive in optimistic/realistic/conservative for 5 Solana AMM",
+      "evidence": "5 protocols × 28560 cells: 0 in realistic, 0 in optimistic, 0 in conservative; only 1898 in zero_il_lvr"
+    },
+    {
+      "id": 4,
+      "claim": "Current connector work can be preserved",
+      "evidence": "12 reusable modules (EVM V3, BSC, Base, 4 Solana AMM, EV framework, etc.); 5 connectors 100% SDK decode on mainnet"
+    },
+    {
+      "id": 5,
+      "claim": "Current should pause auto protocol expansion",
+      "evidence": "5/5 AMM already covered; marginal info value low; 7 reopen conditions required for any expansion"
+    }
+  ],
+
+  "cannot_prove_6_items": [
+    {
+      "id": 1,
+      "claim_disproved": "All LP long-term has no value",
+      "why_cannot_prove": "Study only covers retail 10/20U 2000 USD. Large capital ($1M+) + professional market making + hedging may still have positive EV. New protocols may change. EVM (Base, Arbitrum) V3 not tested."
+    },
+    {
+      "id": 2,
+      "claim_disproved": "Institutional LP has no value",
+      "why_cannot_prove": "5/5 reject is retail model, not institutional. Institutional LP has MEV income, bribe, incentive farming, hedging tools, lower cost basis. Different market."
+    },
+    {
+      "id": 3,
+      "claim_disproved": "Incentive LP / reward farming has no value",
+      "why_cannot_prove": "5 stages only use pool.fee_rate. Protocol LM (liquidity mining) + bribes + IFO rewards not included. Some protocol LM is 5-10x fee. Need separate 7-reopen-condition verification."
+    },
+    {
+      "id": 4,
+      "claim_disproved": "Hedge / vault / JIT / active management has no value",
+      "why_cannot_prove": "5 stages all vanilla LP (hold → fee → IL). Professional LP uses structural strategies with different EV model. Need separate verification."
+    },
+    {
+      "id": 5,
+      "claim_disproved": "Long-horizon or different market regime still negative",
+      "why_cannot_prove": "5 stages heuristic 0.5%/day turnover (short window proxy). Long-horizon (90d/365d) backtest missing. Different market regime (uptrend/downtrend/sideways) varies. Need regime split."
+    },
+    {
+      "id": 6,
+      "claim_disproved": "Real fee accrual must be lower than proxy",
+      "why_cannot_prove": "5 stages heuristic fee model only. Real LP position tokenId + actual fee claim history missing. Paid RPC/indexer missing. Real vs proxy bias not quantified. Need actual position-level data."
+    }
+  ],
+
+  "exact_conclusion_wording": "Under current short-window data (heuristic 0.5%/day turnover, 4 IL/LVR scenarios), current model assumptions (heuristic fee/cost/IL proxies, no actual position data), no real LP tokenId/actual fee accrual, 5 Solana AMM protocols all negative EV for retail 10/20U 2000 USD LP.",
+
+  "not_what_we_say": [
+    "All LP long-term has no value",
+    "Institutional LP has no value",
+    "Incentive LP / reward farming has no value",
+    "Hedge / vault / JIT / active management has no value",
+    "Long-horizon or different regime still negative",
+    "Real fee accrual must be lower than proxy"
+  ],
+
+  "key_audit_fields": {
+    "global_lp_rejected": false,
+    "current_model_rejects_auto_probe": true,
+    "current_probe_allowed": false,
+    "conclusion_scope": "current_data_current_model_short_window",
+    "long_term_lp_value_judged": false,
+    "needs_longer_horizon_validation": true,
+    "needs_actual_fee_accrual": true,
+    "needs_market_regime_split": true,
+    "market_downtrend_bias_acknowledged": true
+  },
+
+  "important_caveat": "This audit does NOT change the 5/5 reject conclusion. Final recommendation remains STOP_LP_RESEARCH_NOW (main LP research line). But it PRECISES: (1) STOP scope = auto probe only, not all LP forever; (2) 7 reopen conditions NOW include longer horizon + actual fee + regime split; (3) reopen LP research must first satisfy these, then go through complete read-only → preflight → dry-run → manual approval."
+}

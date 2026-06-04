@@ -1,0 +1,130 @@
+{
+  "stage": "LP_RESEARCH_CONCLUSION_SCOPE_AUDIT_V1",
+  "run_id": "20260604_060659",
+
+  "limitation_count": 6,
+  "high_impact_limitations": [
+    "data_window",
+    "fee_data",
+    "il_lvr",
+    "pool_selection"
+  ],
+  "medium_impact_limitations": [
+    "cost_data",
+    "capital_scale"
+  ],
+  "low_impact_limitations": [],
+
+  "dimensions": {
+    "data_window": {
+      "current_coverage": "7d primary, 1d/3d/14d/30d secondary",
+      "missing": ["90d", "180d", "365d", "cross_regime", "TVL_growth_trend"],
+      "impact": "HIGH",
+      "confidence_in_current": "high (current model)",
+      "confidence_in_extrapolation": "low"
+    },
+    "fee_data": {
+      "current_coverage": "pool.fee_rate static, heuristic 0.5%/day turnover",
+      "missing": [
+        "actual position-level fee accrual",
+        "fee growth inside/outside tick",
+        "dynamic fee activation rate (Meteora DLMM)",
+        "7d fee distribution"
+      ],
+      "impact": "HIGH",
+      "heuristic_vs_actual": "heuristic is 100x higher than observed single-swap 10/20u quote"
+    },
+    "cost_data": {
+      "current_coverage": "fixed_cost $0.003-0.006 per round-trip",
+      "missing": [
+        "precise cost breakdown (rent vs priority fee vs Jito tip)",
+        "real slippage in low liquidity",
+        "priority fee congestion vs idle period",
+        "NFT mint / position close rent skip",
+        "tick array init status"
+      ],
+      "impact": "MEDIUM",
+      "cost_pct_at_10usd": 0.06,
+      "cost_pct_at_2000usd": 0.0003
+    },
+    "il_lvr": {
+      "current_coverage": "heuristic 4 scenarios (zero/optimistic/realistic/conservative)",
+      "missing": [
+        "real LP playback",
+        "actual on-chain IL",
+        "LVR maker/taker flow breakdown",
+        "downtrend regime bias",
+        "V3 CL tick boundary IL frequency"
+      ],
+      "impact": "HIGH",
+      "downtrend_bias_acknowledged": true
+    },
+    "pool_selection": {
+      "current_coverage": "GeckoTerminal + DexScreener + Orca official + Meteora UI top",
+      "missing": [
+        "incentive pools (LM / LM-bonus / IFO reward)",
+        "vault / managed LP",
+        "private / permissioned LP",
+        "new pool (< 7d history) default exclude",
+        "bribe marketplace pools (veRAMM etc.)"
+      ],
+      "impact": "HIGH",
+      "selection_bias": "public feed only, high-yield pool often incentive-wrapped"
+    },
+    "capital_scale": {
+      "current_coverage": "10/20/100/500/1000/2000 USD notional",
+      "missing": [
+        "$10K - $1M notional",
+        "market impact (entry/exit cap)",
+        "MM rebate tier (fee tier 0/-1/-2)",
+        "professional LP cost basis"
+      ],
+      "impact": "MEDIUM",
+      "scale_extrapolation_risk": "1000x scale: cost → 0, but fee capture may cap"
+    }
+  },
+
+  "conclusion_confidence": {
+    "current_model_current_data": "high",
+    "long_horizon": "low",
+    "large_capital": "low",
+    "incentive_lp": "low",
+    "hedge_vault_jit": "low"
+  },
+
+  "what_must_be_verified_next": [
+    "R0_7d_14d_30d_readonly_baseline",
+    "R0_paid_indexer_90d_180d_365d",
+    "R0_precise_cost_breakdown",
+    "R0_batch_transaction_design",
+    "R1_actual_position_tokenId",
+    "R1_actual_collect_fee_data",
+    "R1_dynamic_fee_activation_rate",
+    "R1_LP_real_playback",
+    "R2_market_regime_classification",
+    "R2_regime_split_EV",
+    "R3_incentive_pool_list",
+    "R3_vault_managed_LP_list",
+    "R3_bribe_marketplace_pool_list",
+    "R4_10U_tokenId_probe_preflight",
+    "R5_manual_probe_only"
+  ],
+
+  "out_of_scope_this_task": [
+    "protocol re-run",
+    "heuristic modification",
+    "cost optimization implementation",
+    "paid RPC integration",
+    "private pool / vault data collection",
+    "bribe marketplace integration",
+    "90d+ backtest (requires paid indexer)",
+    "actual fee accrual capture (requires user-provided tokenId)"
+  ],
+
+  "deliverables_this_stage": [
+    "MODEL_LIMITATION_AUDIT_CN.md",
+    "model_limitation_audit.json"
+  ],
+
+  "next_stage": "E_market_regime_bias_audit"
+}

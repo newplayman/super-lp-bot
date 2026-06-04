@@ -16,10 +16,15 @@ Phase 0 — 历史回测 + 全套测试基础设施 + 代码骨架。
 
 ## Current Research Status
 
-- **2026-06-04 LP Research Final Freeze** — `STOP_LP_RESEARCH_NOW`
+- **2026-06-04 LP Research Final Freeze + Conclusion Scope Audit** — `STOP_LP_RESEARCH_NOW`
 - 5/5 Solana AMM protocols reject retail 10-20U 2000 USD LP (cumulative 28560 EV cells, 0 in optimistic/realistic/conservative)
 - can_run_probe_now = `false`, tiny_canary_allowed = `no`, edge_proven = `no`
-- See `docs/LPBOT_RESEARCH_STATUS_CN.md` and `reports/lp_research_final_freeze/20260604_051254/FINAL_VERDICT.json`
+- **重要: 结论不等于 global LP rejected**. 5/5 reject 仅适用 current data + current model + current regime (downtrend 1-2 天) + retail 10/20U 2000 USD 范围
+- `global_lp_rejected = false`, `long_term_lp_value_judged = false`, `conclusion_scope = current_data_current_model_short_window`
+- `market_downtrend_bias_acknowledged = true` — 短窗口 downtrend 已知让结论偏负
+- `needs_longer_horizon_validation = true` + `needs_actual_fee_accrual = true` + `needs_market_regime_split = true`
+- 重开需 7-reopen-condition 全部满足 + R0-R5 6 阶段 plan (任一阶段失败 → STOP, 不允许跳过)
+- See `docs/LPBOT_RESEARCH_STATUS_CN.md` and `reports/lp_research_final_freeze/20260604_051254/FINAL_VERDICT.json` and `reports/lp_research_conclusion_scope_audit/20260604_060659/FINAL_VERDICT.json`
 - Historical final freeze: `reports/final_freeze/20260531_124000/FINAL_VERDICT.json`
 - No live/canary/paper execution is allowed.
 

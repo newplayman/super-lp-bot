@@ -1,0 +1,73 @@
+{
+  "stage": "LP_RESEARCH_CONCLUSION_SCOPE_AUDIT_V1",
+  "run_id": "20260604_060659",
+
+  "global_lp_rejected": false,
+  "current_probe_allowed": false,
+  "current_model_rejects_auto_probe": true,
+  "conclusion_scope": "current_data_current_model_short_window",
+  "long_term_lp_value_judged": false,
+
+  "what_current_conclusion_can_prove": [
+    "auto LP probe must not start",
+    "retail 10/20U 2000 USD has no realistic positive EV",
+    "5 Solana AMM protocols all reject in current model",
+    "5 connectors verified and reusable",
+    "auto protocol expansion should pause"
+  ],
+
+  "what_current_conclusion_cannot_prove": [
+    "all LP permanently valueless",
+    "large/institutional LP valueless",
+    "incentive LP / reward farming valueless",
+    "hedge / vault / JIT / active management valueless",
+    "long-horizon LP still negative under different regime",
+    "actual fee accrual always below proxy"
+  ],
+
+  "out_of_scope_domains": [
+    "EVM V3 LP (Base / Arbitrum / BSC)",
+    "New protocol (Orca v2 / Lifinity) listing",
+    "Manual operator discretionary trade",
+    "Hedging tool / LP monitoring tool",
+    "Long-horizon (>30d) validation",
+    "Real fee accrual lineage",
+    "Large / institutional LP",
+    "Incentive farming / LM / bribe",
+    "Delta-hedged / JIT / vault / covered call",
+    "Different market regime (uptrend / sideways / high-vol)"
+  ],
+
+  "in_scope_domains": [
+    "Solana AMM V3 CL (Meteora DLMM / Orca Whirlpools / Raydium CLMM)",
+    "Solana AMM constant product (Raydium AMM v4 CPMM)",
+    "Solana stable swap (Meteora Stable / Orca LST-stable)",
+    "Retail 10-20U 2000 USD notional",
+    "Heuristic EV model (0.5%/day turnover, IL/LVR scenarios)",
+    "Public RPC only (no paid indexer)",
+    "Short-window 7d holding",
+    "Current downtrend 1-2 day market regime",
+    "Auto / unattended probe runner"
+  ],
+
+  "data_window": {
+    "primary_hold_window": "7d",
+    "secondary_window_tested": ["1d", "3d", "7d", "14d", "30d"],
+    "long_horizon_window": "NOT TESTED",
+    "market_regime_coverage": "current short-window, single regime"
+  },
+
+  "freeze_lock": {
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no",
+    "edge_proven": "no",
+    "send_hard_disable_still_active": true
+  },
+
+  "deliverables_this_stage": [
+    "CURRENT_CONCLUSION_SCOPE_CN.md",
+    "current_conclusion_scope.json"
+  ],
+
+  "next_stage": "D_model_limitation_audit"
+}

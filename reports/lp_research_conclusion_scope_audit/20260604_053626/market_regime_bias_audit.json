@@ -1,0 +1,115 @@
+{
+  "stage": "LP_RESEARCH_CONCLUSION_SCOPE_AUDIT_V1",
+  "run_id": "20260604_053626",
+  "phase": "E_market_regime_bias",
+
+  "user_question": "最近 1–2 天大盘下跌, 会不会使结论偏负?",
+
+  "short_answer": "会 (部分). 短窗口负 EV 仍足以阻止当前自动 probe (因为正 EV 路径需要 zero_il_lvr + 高 fee, 而 zero_il_lvr 不现实). 但长期判断需要 regime split, 不能在单一 regime snapshot 下结论.",
+
+  "downtrend_specific_impacts": [
+    {
+      "id": 1,
+      "category": "il_lvr_proxy",
+      "impact": "net_ev 更负. heuristic 0.5%/day 可能低估 IL. 实际 V3 CL 跨 tick boundary 增加 IL."
+    },
+    {
+      "id": 2,
+      "category": "active_liquidity",
+      "impact": "下跌时 active LP 减少, 滑点 higher, quote 实际更差"
+    },
+    {
+      "id": 3,
+      "category": "fee_velocity",
+      "impact": "gross fee 减少, 实际 0.5%/day turnover 可能高估"
+    },
+    {
+      "id": 4,
+      "category": "single_regime",
+      "impact": "snapshot 是单 regime, 不能外推到其他 regime"
+    },
+    {
+      "id": 5,
+      "category": "stop_decision_still_valid",
+      "impact": "短窗口负 EV 仍足以 STOP. 任何 IL > 0 → 全负, 不依赖 regime."
+    }
+  ],
+
+  "boundary_meaning": {
+    "current_short_window_reject": "sufficient for STOP decision (auto probe blocked)",
+    "long_horizon_reject": "insufficient (need regime split)",
+    "large_capital_reject": "out of scope",
+    "all_lp_long_term_reject": "completely out of scope"
+  },
+
+  "regime_categories": [
+    {
+      "id": 1,
+      "name": "uptrend",
+      "description": "持续 positive price action, volume 上升",
+      "lp_impact": "池 active liquidity 上升, fee velocity 上升, IL 也上升",
+      "reopen_priority": "HIGH (上行 + fee velocity = 可能正 EV)"
+    },
+    {
+      "id": 2,
+      "name": "downtrend",
+      "description": "持续 negative price action, volume 略低",
+      "lp_impact": "池 active liquidity 下降, fee velocity 可能下降, IL 高",
+      "reopen_priority": "LOW (本次 snapshot 就是 downtrend, 结论已 reject)"
+    },
+    {
+      "id": 3,
+      "name": "sideways",
+      "description": "价格区间, 无明显 trend",
+      "lp_impact": "池 active liquidity 稳定, fee velocity 取决于 volume",
+      "reopen_priority": "MEDIUM (sideways 是 LP 最 common regime)"
+    },
+    {
+      "id": 4,
+      "name": "high_volume_sideways",
+      "description": "震荡 + 大量交易",
+      "lp_impact": "fee velocity 最高, IL 低 (sideways), 最适合 LP",
+      "reopen_priority": "HIGH (如果该 regime 持续, LP EV 可能正)"
+    },
+    {
+      "id": 5,
+      "name": "high_volatility_trend",
+      "description": "强 trend + 大波动",
+      "lp_impact": "fee velocity 高, IL 也高",
+      "reopen_priority": "MEDIUM (fee-heavy 池可能正)"
+    },
+    {
+      "id": 6,
+      "name": "incentive_period",
+      "description": "协议有 LM 奖励, bribe, IFO 等待",
+      "lp_impact": "real yield = fee + LM + bribe, 可能 fee 的 5-10×",
+      "reopen_priority": "HIGH (如果协议有 active LM, LP 可能正)"
+    },
+    {
+      "id": 7,
+      "name": "low_volatility_stable",
+      "description": "价格几乎不动 (如 stablecoin pair)",
+      "lp_impact": "fee velocity 极低, IL 极低",
+      "reopen_priority": "LOW (本研究 stable V1 已 reject)"
+    }
+  ],
+
+  "regime_split_reopen_flow": [
+    "1. 收集历史 regime 数据 (90d / 365d)",
+    "2. 分类每个 regime 的 5 AMM protocols",
+    "3. 在每个 regime 下跑 EV model",
+    "4. regime 4 (high volume sideways) + regime 6 (incentive period) 是 best case",
+    "5. regime 2 (downtrend) + regime 7 (low vol stable) 是 worst case",
+    "6. 只有在 best case regime 下 positive_realistic > 0, 才考虑重开",
+    "7. worst case regime 必须 re-verify 5/5 reject 仍然 valid"
+  ],
+
+  "market_downtrend_bias_acknowledged": true,
+  "downtrend_bias_reason": "本研究 snapshot (2026-06-04) 在 downtrend 环境下, IL/LVR proxy 偏高, fee velocity 可能偏低",
+  "downtrend_bias_implication": "短窗口结论对 current regime auto probe 充分, 对 long-term LP value 不充分",
+  "downtrend_bias_next_action": "regime split 验证 (Stage F long_horizon_reopen_plan)",
+
+  "important_caveat": "下跌 bias 不是 5/5 reject 结论的弱点. STOP 决策在 downtrend 下仍 valid. 下跌 bias 是长期 LP 价值判断的不充分理由. regime split 验证是 Stage F long_horizon_reopen_plan 的核心.",
+
+  "conclusion_rescope": "本研究的结论, 在 'current data + current model + current regime (downtrend 1-2 天) + retail 10/20U 2000 USD' 条件下, 5/5 Solana AMM 全部 negative EV. NOT '长期所有 LP 都没价值'. 长期判断需要 regime split + actual fee data + larger capital + different strategy."
+}

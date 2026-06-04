@@ -1,0 +1,105 @@
+{
+  "stage": "LP_RESEARCH_CONCLUSION_SCOPE_AUDIT_V1",
+  "run_id": "20260604_053626",
+  "phase": "F_long_horizon_reopen_plan",
+
+  "principle": "重开 LP research 必须按 6 阶段顺序走完 (R0 → R5), 任何阶段失败 → 重新评估 / STOP. 重开 ≠ 直接实盘.",
+
+  "phases": [
+    {
+      "id": "R0",
+      "name": "LONG_READONLY_DATA",
+      "goal": "收集 7d/14d/30d/90d/365d 历史 read-only data, 解决 Stage D 限制 1 (数据窗口)",
+      "tasks": ["5 timeframe × 5 AMM", "regime 分类", "历史 volume + TVL"],
+      "data_sources": ["paid RPC (Helius / Triton / QuickNode)", "Birdeye / DexScreener API", "历史 indexer (Shyft, helloMoon)", "GeckoTerminal"],
+      "outcome": "5 AMM × 7 regime × 5 timeframe = 175 cells of data",
+      "success_criteria": ["5/5 protocols 数据覆盖率 >= 80%", "5/5 regime 全部有 30d+ 数据", "任何 regime 缺失 → 重新收集"],
+      "failure_handling": "数据缺失 → 回到 R0 重新设计, 不应跳过",
+      "estimated_time": "2-4 周"
+    },
+    {
+      "id": "R1",
+      "name": "REAL_FEE_ACCRUAL_DESIGN",
+      "goal": "获取 actual LP position tokenId + 历史 fee claim data, 解决 Stage D 限制 2 (fee 数据)",
+      "tasks": ["找 user-held LP position", "获取 position 历史 fee claim", "实际 vs heuristic fee 比较", "regime-specific fee capture"],
+      "data_sources": ["user-held LP tokenId", "paid RPC", "历史 fee claim events (Orca collectFees, Raydium decreaseLiquidity)", "第三方 fee tracker (Bifrost, Step Finance)"],
+      "outcome": "actual fee capture / heuristic fee 比例 (per regime)",
+      "success_criteria": [">= 50 个 user LP position", "actual vs heuristic 比 ratio 量化", "regime-specific fee capture 量化"],
+      "failure_handling": "user 不提供 → 重新 invite user; paid RPC 数据缺失 → 重新设计",
+      "estimated_time": "1-2 周"
+    },
+    {
+      "id": "R2",
+      "name": "MARKET_REGIME_SPLIT",
+      "goal": "把 R0 + R1 数据按 regime 分类, 解决 Stage E 用户问题",
+      "tasks": ["90d/365d 历史 regime 分类", "7 regime × 5 AMM × 5 timeframe EV 重新跑", "regime-specific best cell", "regime 4 + 6 重点"],
+      "data_sources": ["R0 历史 pool data", "R1 actual fee data", "BTC/ETH/SOL 价格 + volume 历史 (CoinGecko, CoinMarketCap)"],
+      "outcome": "5 AMM × 7 regime × 5 timeframe = 175 EV cells per regime scenario",
+      "success_criteria": ["5/5 × 7/7 全有 EV data", ">= 1 regime positive_realistic > 0 → R3", "全 0 → STOP again"],
+      "failure_handling": "全 0 → 重新审视 heuristic, 考虑永久 STOP",
+      "estimated_time": "2-4 周"
+    },
+    {
+      "id": "R3",
+      "name": "REOPEN_CANDIDATE_REVIEW",
+      "goal": "评审 R2 发现的 positive candidate, 决定是否继续重开",
+      "tasks": ["R2 positive candidate 详细分析", "候选池 incentive 数据 (LM + bribe) 调查", "用户 specific 假设", "非 vanilla LP 策略考虑"],
+      "decision": ["都 invalid → STOP again, return to STOP_LP_RESEARCH_NOW", "有效 → R4"],
+      "success_criteria": [">= 1 pool 通过 7-reopen-condition 验证", "incentive data 真实", "cost/benefit 实际计算"],
+      "failure_handling": "全 invalid → STOP, 不重开",
+      "estimated_time": "1-2 周"
+    },
+    {
+      "id": "R4",
+      "name": "10U_TOKENID_PROBE_PREFLIGHT",
+      "goal": "为重开 LP research 设计 10U tokenId probe, 仅 read-only, 不发",
+      "tasks": ["选择具体 tokenId", "设计 probe 时间窗", "实际 fee/IL 测量 protocol", "cost/benefit 实际计算", "dry-run tx 仿真"],
+      "data_sources": ["R3 候选 pool + user LP position", "paid RPC for simulation", "simulateTransaction"],
+      "outcome": "10U probe design (read-only dry-run)",
+      "success_criteria": ["design 通过 review", "expected net EV > 0 in actual model", "cost 占比 < 1% of notional"],
+      "failure_handling": "expected net EV < 0 → 回到 R3 调整",
+      "estimated_time": "1 周"
+    },
+    {
+      "id": "R5",
+      "name": "MANUAL_PROBE_ONLY",
+      "goal": "在 R4 通过的 candidate 上, 真正做 manual probe (operator discretionary, not auto)",
+      "tasks": ["operator 手动操作 (不是 auto runner)", "严格 7-reopen-condition 验证", "严格 read-only → preflight → dry-run → manual approval 流程", "1 tx at a time, manual sign", "实时监控 + manual stop"],
+      "outcome": "第一次 manual probe 实际数据",
+      "success_criteria": ["第一次 probe net EV > 0", "cost/benefit 实际符合 R4 design", "风险指标在预期范围"],
+      "failure_handling": "第一次 probe < 0 → STOP manual probe, 回到 R3 重新评估; 多次失败 → 永久 STOP",
+      "estimated_time": "持续"
+    }
+  ],
+
+  "flow_timing": {
+    "PHASE_R0": "2-4 周",
+    "PHASE_R1": "1-2 周",
+    "PHASE_R2": "2-4 周",
+    "PHASE_R3": "1-2 周",
+    "PHASE_R4": "1 周",
+    "PHASE_R5": "持续",
+    "total_to_first_manual_probe": "7-13 周 (不保证正 EV)"
+  },
+
+  "estimated_cost": "$500-$5000 USD 级别 (paid RPC + historical data + human time)",
+
+  "relationship_with_7_reopen_conditions": {
+    "condition_1_real_fee_accrual": "PHASE_R0 + R1",
+    "condition_2_incentives": "PHASE_R0 + R1 + R3",
+    "condition_3_high_fee_velocity_pool": "PHASE_R0 + R2",
+    "condition_4_lower_cost_link": "PHASE_R0 + R4",
+    "condition_5_paid_rpc": "PHASE_R0",
+    "condition_6_user_specific": "PHASE_R3 + R4",
+    "condition_7_non_standard_strategy": "PHASE_R3 + R4"
+  },
+
+  "important_caveats": [
+    "This is a reopen plan, NOT a reopen decision. 即使按 6 阶段走完, 仍可能 STOP 多次.",
+    "6 阶段任何一个失败 → 回到 STOP, 不强行继续.",
+    "重开 ≠ 直接实盘, 仍需 read-only → preflight → dry-run → manual approval.",
+    "6 阶段不能跳过, 不能并联, 不能 modify.",
+    "任何 'let me skip to R5 with 10 USD probe' 的尝试不通过 此 plan.",
+    "重开累计成本: 7-13 周 + paid RPC + 历史 data, $500-$5000 USD."
+  ]
+}

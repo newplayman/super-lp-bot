@@ -1,0 +1,121 @@
+{
+  "stage": "LP_RESEARCH_CONCLUSION_SCOPE_AUDIT_V1",
+  "run_id": "20260604_053626",
+  "phase": "D_model_limitation",
+
+  "limitations": [
+    {
+      "id": 1,
+      "category": "data_window",
+      "impact": "HIGH",
+      "issues": [
+        "5 stages heuristic 0.5%/day turnover, single window proxy",
+        "no 7d/14d/30d/90d/365d backtest coverage",
+        "no regime split (uptrend/downtrend/sideways)",
+        "all 5 stages same-day snapshot 2026-06-04",
+        "downtrend environment 1-2 days ago, IL/LVR proxy biased high"
+      ],
+      "verification_plan": ["7d/14d/30d/90d/365d historical backtest", "regime split", "regime-specific IL/LVR model"]
+    },
+    {
+      "id": 2,
+      "category": "fee_data",
+      "impact": "HIGH",
+      "issues": [
+        "5 stages heuristic fee model only",
+        "no actual LP position tokenId (NFT for Orca, mint for Raydium)",
+        "no actual collect fee data",
+        "fee capture ratio may differ from heuristic by 10x"
+      ],
+      "verification_plan": ["user provides LP position tokenId", "historical collect fee data from chain", "actual LP lifetime + fee capture ratio"]
+    },
+    {
+      "id": 3,
+      "category": "cost_data",
+      "impact": "MEDIUM",
+      "issues": [
+        "fixed cost assumption $0.003-0.006 per round-trip",
+        "no actual add/remove/collect on chain",
+        "slippage via quote-derived price impact (approximation)",
+        "priority fee assumed 10k microlamports"
+      ],
+      "verification_plan": ["actual tx cost data from past LP", "priority fee from on-chain tx logs", "slippage vs quote impact comparison"]
+    },
+    {
+      "id": 4,
+      "category": "il_lvr",
+      "impact": "HIGH",
+      "issues": [
+        "heuristic IL/LVR (0%/0.1%/0.5%/2% per day)",
+        "no actual LP replay (no real position historical)",
+        "IL/LVR is proxy, not measured",
+        "may be conservative in downturn",
+        "V3 CL IL/LVR more severe on price range cross",
+        "constant product 100% IL on any price change",
+        "LST-stable also has LST depeg 0.01-0.1%/day"
+      ],
+      "verification_plan": ["actual LP position replay (with user tokenId)", "historical IL/LVR simulation with real price paths", "regime-specific IL/LVR model"]
+    },
+    {
+      "id": 5,
+      "category": "pool_selection",
+      "impact": "MEDIUM",
+      "issues": [
+        "5 stages used public APIs (Orca, GeckoTerminal, DexScreener)",
+        "no incentive pool coverage (LM pools hidden from public)",
+        "no vault / managed LP coverage (Kamino, Tulip)",
+        "no bribe pool coverage (veRAMM-style)",
+        "no IDO / launch pool coverage",
+        "actual LP candidate pool count may be 2-5x public pools"
+      ],
+      "verification_plan": ["invite-only LP pool data (Kamino, Marinade, Tulip)", "bribe marketplace integration", "IDO / launch pool tracker"]
+    },
+    {
+      "id": 6,
+      "category": "capital_size",
+      "impact": "MEDIUM",
+      "issues": [
+        "5 stages retail 10/20U 2000 USD model only",
+        "no large capital ($100K+ / $1M+ TVL) coverage",
+        "large capital lower cost basis (no rent, discounted fee tier)",
+        "large capital has MEV / rebate / incentive income",
+        "large capital can hire quant team"
+      ],
+      "verification_plan": ["large capital EV model (different cost basis + MEV + rebate)", "institutional LP case study", "capital vs cost sensitivity"]
+    }
+  ],
+
+  "summary": {
+    "limitation_count": 6,
+    "high_impact_limitations": 3,
+    "high_impact_categories": ["data_window", "fee_data", "il_lvr"],
+    "medium_impact_limitations": 3,
+    "medium_impact_categories": ["cost_data", "pool_selection", "capital_size"]
+  },
+
+  "conclusion_confidence": {
+    "applicable_to_current_short_window_retail_model": "MEDIUM (5 stages converge)",
+    "applicable_to_long_horizon": "NONE (out of scope)",
+    "applicable_to_large_capital": "NONE (out of scope)",
+    "applicable_to_different_market_regime": "LOW (only current regime tested)",
+    "applicable_to_incentive_pool": "NONE (not tested)",
+    "overall_5_5_reject_under_current_model": "MEDIUM (consistent with 5 stages)"
+  },
+
+  "what_must_be_verified_next_priority": {
+    "P0_must": [
+      "data_window: 7d/14d/30d/90d/365d historical backtest with regime split",
+      "il_lvr: actual LP position replay (with user tokenId) + historical price paths",
+      "fee_data: actual fee claim history (with user LP tokenId)"
+    ],
+    "P1_important": [
+      "cost_data: actual on-chain tx cost from past LP operations",
+      "pool_selection: incentive pool / vault / bribe pool coverage"
+    ],
+    "P2_nice_to_have": [
+      "capital_size: simulate different capital (100K / 1M) with different cost basis"
+    ]
+  },
+
+  "important_caveat": "6 limitations do NOT negate 5/5 reject. Even with MEDIUM confidence, vanilla LP at retail 10/20U 2000 USD is still not viable. Limitations do NOT open immediate LP research restart. Reopen requires solving all HIGH impact limitations first."
+}

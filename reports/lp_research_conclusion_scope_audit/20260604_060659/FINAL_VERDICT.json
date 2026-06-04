@@ -1,0 +1,112 @@
+{
+  "status": "WARN",
+  "stage": "LP_RESEARCH_CONCLUSION_SCOPE_AUDIT_V1",
+  "run_id": "20260604_060659",
+  "branch": "feat/supabase-postgres-deployment",
+  "head_before": "7940cff",
+
+  "current_probe_allowed": false,
+  "global_lp_rejected": false,
+  "current_model_rejects_auto_probe": true,
+  "conclusion_scope": "current_data_current_model_short_window",
+  "long_term_lp_value_judged": false,
+
+  "needs_longer_horizon_validation": true,
+  "needs_actual_fee_accrual": true,
+  "needs_market_regime_split": true,
+  "market_downtrend_bias_acknowledged": true,
+
+  "docs_updated": true,
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no",
+  "edge_proven": "no",
+
+  "recommended_next_stage": "PAUSE_AUTOMATED_LP_PROBE_AND_COLLECT_LONGER_HORIZON_DATA",
+
+  "scope_addendum": {
+    "what_current_conclusion_can_prove": [
+      "auto LP probe must not start",
+      "retail 10/20U 2000 USD has no realistic positive EV in current model",
+      "5 Solana AMM protocols all reject in current model",
+      "5 connectors verified and reusable",
+      "auto protocol expansion should pause"
+    ],
+    "what_current_conclusion_cannot_prove": [
+      "all LP permanently valueless",
+      "large/institutional LP valueless",
+      "incentive LP / reward farming valueless",
+      "hedge / vault / JIT / active management valueless",
+      "long-horizon LP still negative under different regime",
+      "actual fee accrual always below proxy"
+    ]
+  },
+
+  "model_limitations": {
+    "limitation_count": 6,
+    "high_impact": ["data_window", "fee_data", "il_lvr", "pool_selection"],
+    "medium_impact": ["cost_data", "capital_scale"],
+    "low_impact": []
+  },
+
+  "regime_bias_audit": {
+    "downtrend_short_window_known_to_bias_negative": true,
+    "locked_conclusions_unaffected_by_regime": ["can_run_probe_now=false", "tiny_canary_allowed=no", "edge_proven=no"],
+    "regime_classification_proposed": 7
+  },
+
+  "long_horizon_reopen_phases": [
+    "PHASE_R0_LONG_READONLY_DATA",
+    "PHASE_R1_REAL_FEE_ACCRUAL_DESIGN",
+    "PHASE_R2_MARKET_REGIME_SPLIT",
+    "PHASE_R3_REOPEN_CANDIDATE_REVIEW",
+    "PHASE_R4_10U_TOKENID_PROBE_PREFLIGHT",
+    "PHASE_R5_MANUAL_PROBE_ONLY"
+  ],
+
+  "safety": {
+    "touched_trading_path": false,
+    "touched_wallet_tx_bridge_live_paper": false,
+    "wallet_or_tx_touched": false,
+    "solana_wallet_or_keypair_touched": false,
+    "transaction_sent": false,
+    "send_hard_disable_still_active": true,
+    "no_protocol_re_run": true,
+    "no_heuristic_modification": true,
+    "no_paid_rpc_integration": true,
+    "no_new_research_runner_started": true
+  },
+
+  "deliverables": {
+    "STAGE_A_WORKSPACE_SAFETY_CN.md": "passed",
+    "INPUT_EVIDENCE_AUDIT_CN.md": "passed",
+    "CURRENT_CONCLUSION_SCOPE_CN.md": "passed",
+    "MODEL_LIMITATION_AUDIT_CN.md": "passed",
+    "MARKET_REGIME_BIAS_AUDIT_CN.md": "passed",
+    "LONG_HORIZON_REOPEN_PLAN_CN.md": "passed",
+    "FINAL_VERDICT.json": "passed",
+    "ONEPAGE_CN.md": "passed",
+    "ARTIFACT_INDEX.md": "passed"
+  },
+
+  "docs_modified": [
+    "docs/LPBOT_RESEARCH_STATUS_CN.md",
+    "README.md"
+  ],
+
+  "tests_added": [
+    "tests/test_lp_research_conclusion_scope_audit_v1.py"
+  ],
+
+  "phase_results": {
+    "A_workspace_safety": "PASS (HEAD=7940cff; pre-existing dirty files belong to prior scope_audit run 053626 + build artifacts; no new unrelated dirty files)",
+    "B_input_evidence_audit": "PASS (5 LP FINAL_VERDICT + 2 docs + README re-read; 5/5 reject cumulative confirmed; can_run_probe_now=false, tiny_canary_allowed=no across all)",
+    "C_current_conclusion_scope": "PASS (5 can-prove + 6 cannot-prove + 10 out-of-scope + 9 in-scope)",
+    "D_model_limitation_audit": "PASS (6 dimensions; 4 HIGH impact; 3 next-stage verifications named)",
+    "E_market_regime_bias_audit": "PASS (downtrend bias acknowledged; 7 regime classification proposed; locked conclusions unaffected)",
+    "F_long_horizon_reopen_plan": "PASS (6 phases R0-R5; 7 reopen conditions mapped to phases; any-phase STOP exit; hard prohibitions listed)",
+    "G_docs_updated": "PASS (LPBOT_RESEARCH_STATUS_CN.md + README.md updated with scope addendum)",
+    "H_final_verdict": "PASS (this file)",
+    "I_tests_and_safety": "see Stage I",
+    "J_git_publish": "see Stage J"
+  }
+}

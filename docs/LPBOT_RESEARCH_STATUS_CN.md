@@ -1,15 +1,48 @@
 # LPBOT 研究状态
 
-> **2026-06-04 UPDATE — LP Research Final Freeze**
+> **2026-06-04 UPDATE — LP Research Conclusion Scope Audit (口径修正)**
 >
 > 当前状态: **`STOP_LP_RESEARCH_NOW`** (LP research 主线收口)
 >
-> - can_run_probe_now = `false`
-> - tiny_canary_allowed = `no`
-> - edge_proven = `no`
+> - **can_run_probe_now = `false`**
+> - **tiny_canary_allowed = `no`**
+> - **edge_proven = `no`**
+>
+> **重要: 结论口径** (per `LP_RESEARCH_CONCLUSION_SCOPE_AUDIT_V1`, 2026-06-04 060659)
+>
+> 当前结论 **不等于 global LP rejected**:
+>
+> - **`global_lp_rejected = false`** — 没有任何结论说"所有 LP 永久没价值"
+> - **`long_term_lp_value_judged = false`** — 长期价值本任务没判定
+> - **`conclusion_scope = current_data_current_model_short_window`** — 结论的精确范围
+> - **结论只表示**: 在当前短窗口数据 + 当前模型 + 当前 regime (downtrend 1-2 天) +
+>   retail 10/20U 2000 USD 条件下, 5/5 Solana AMM protocols 全部 negative EV
+>
+> 当前数据 / 模型 / regime **不足以**判断:
+>
+> - 大资金 / 专业 LP / institutional
+> - 激励 LP / reward farming / LM / bribe
+> - Hedge / vault / JIT / active management / covered call
+> - 长期 (>30d) 跨 regime 验证
+> - 真实 fee accrual vs heuristic proxy
+> - EVM V3 LP (Base / Arbitrum / BSC) / 新上线 protocol
+>
+> 重开 LP research 需满足 (按顺序, 详见 `reports/lp_research_conclusion_scope_audit/20260604_060659/LONG_HORIZON_REOPEN_PLAN_CN.md`):
+>
+> - 7-reopen-condition 全部满足 (Stage F 7 类)
+> - 6 阶段 R0-R5 全部 PASS (任一 STOP → 不再继续)
+> - **`needs_longer_horizon_validation = true`**
+> - **`needs_actual_fee_accrual = true`**
+> - **`needs_market_regime_split = true`**
+> - **`market_downtrend_bias_acknowledged = true`**
+>
+> Current Status Documents:
+>
 > - Final Freeze date: 2026-06-04
 > - Final Freeze run_id: `20260604_051254`
 > - Final Freeze report: `reports/lp_research_final_freeze/20260604_051254/`
+> - Conclusion Scope Audit run_id: `20260604_060659`
+> - Conclusion Scope Audit report: `reports/lp_research_conclusion_scope_audit/20260604_060659/`
 > - **5/5 Solana AMM protocols reject retail 10-20U 2000 USD LP** (cumulative 28560 EV cells, best $0.544 in zero_il_lvr only)
 
 历史状态: `LP strategy research frozen` (2026-05-31 final freeze)
@@ -54,18 +87,28 @@
 - `reports/lp_research_final_freeze/20260604_051254/REUSABLE_ARTIFACTS_AND_MODULES_CN.md` (12 复用模块)
 - `reports/lp_research_final_freeze/20260604_051254/NEXT_PROJECT_DIRECTION_CN.md` (后续方向)
 
+### Conclusion Scope Audit Artifacts (本阶段新增, 060659)
+
+- `reports/lp_research_conclusion_scope_audit/20260604_060659/FINAL_VERDICT.json` (口径修正 verdict)
+- `reports/lp_research_conclusion_scope_audit/20260604_060659/ONEPAGE_CN.md` (口径修正 one-pager)
+- `reports/lp_research_conclusion_scope_audit/20260604_060659/CURRENT_CONCLUSION_SCOPE_CN.md` (结论适用范围)
+- `reports/lp_research_conclusion_scope_audit/20260604_060659/MODEL_LIMITATION_AUDIT_CN.md` (模型边界 6 维度)
+- `reports/lp_research_conclusion_scope_audit/20260604_060659/MARKET_REGIME_BIAS_AUDIT_CN.md` (regime 偏差)
+- `reports/lp_research_conclusion_scope_audit/20260604_060659/LONG_HORIZON_REOPEN_PLAN_CN.md` (R0-R5 6 阶段)
+- `reports/lp_research_conclusion_scope_audit/20260604_060659/INPUT_EVIDENCE_AUDIT_CN.md` (输入证据)
+
 ### Reopen Conditions (摘要)
 
 重开 LP research 需满足 7 大类条件 (详细见 Final Freeze):
 1. 真实 fee accrual / actual position tokenId 数据
 2. 协议激励 / external rewards / bribe
-3. 稳定高 fee velocity 的池
+3. 稳定高 fee velocity 池
 4. 更低成本链路
 5. paid RPC / indexer 支撑更完整数据
 6. 用户主动提供具体池 / 资金 / 策略假设
 7. 非普通 LP 的结构性策略 (incentive farming, delta-hedged, JIT, etc.)
 
-即使 7 条件满足, 仍需走 read-only → preflight → dry-run → manual approval 全流程。
+即使 7 条件满足, 仍需走 R0 → R1 → R2 → R3 → R4 → R5 6 阶段 read-only 路径 + manual approval 全流程。
 
 ### 警示
 
@@ -74,9 +117,11 @@
 - 当前只允许阅读历史报告、补文档、做工程清理。
 - `docs/runbooks/base-canary-ops.md`、`docs/runbooks/vps-shadow-deployment.md`、`scripts/canary_cycle.sh` 等历史入口仅作归档保留，不代表当前允许执行。
 - `internal/core/execution/hard-disable` 仍 active, 不释放。
+- 任何重开 LP research 必须先读 R0-R5 6 阶段计划, 任一阶段失败 → STOP, 不允许跳过。
 
 如果未来重启 LP research, 先读:
-- `reports/lp_research_final_freeze/20260604_051254/ONEPAGE_CN.md`
+- `reports/lp_research_conclusion_scope_audit/20260604_060659/ONEPAGE_CN.md`
+- `reports/lp_research_conclusion_scope_audit/20260604_060659/LONG_HORIZON_REOPEN_PLAN_CN.md`
 - `reports/lp_research_final_freeze/20260604_051254/LP_RESEARCH_REOPEN_CONDITIONS_CN.md`
 - `reports/lp_research_final_freeze/20260604_051254/NEXT_PROJECT_DIRECTION_CN.md`
 
