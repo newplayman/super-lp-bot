@@ -1,0 +1,61 @@
+{
+  "stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_6H_REAL_WALLCLOCKFIX_REPEAT_V1",
+  "run_id": "20260604_134918",
+  "branch": "feat/supabase-postgres-deployment",
+  "head": "c36a179",
+
+  "previous_6h_stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_6H_RUN_APPROVAL_V1",
+  "previous_6h_run_id": "20260604_130353",
+  "previous_6h_report_dir": "reports/lp_long_horizon_readonly_collector_6h_run/20260604_130353/",
+
+  "previous_actual_runtime_minutes": 2.75,
+  "previous_actual_runtime_valid_for_6h_gate": false,
+  "previous_short_mode_used": true,
+  "previous_gate_valid_for_12h": false,
+  "previous_should_not_advance_to_12h": true,
+  "previous_recommended_next_stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_6H_RUN_FIX_REPEAT",
+
+  "previous_gate_decision": {
+    "data_quality_status": "WARN_ACCEPTABLE",
+    "gate_pass": false,
+    "can_advance_to_12h": false,
+    "reason": "actual_runtime_minutes 2.75 < 330 threshold; short mode used; gate 不通过"
+  },
+
+  "previous_safety_locked": {
+    "wallet_or_tx_touched": false,
+    "transaction_sent": false,
+    "no_paid_rpc_integration": true,
+    "no_long_running_daemon": true,
+    "no_auto_advance": true,
+    "no_12h_24h_48h_72h_7d_run": true
+  },
+
+  "previous_best_practices_reusable": [
+    "approval_phrase_exact_match + sha256 锁定",
+    "MANUAL_APPROVAL_RECORDED.json schema (approved_next_stages=[])",
+    "tmux session 命名约定",
+    "7 类 abort condition 完整",
+    "6 类 data 维度 + JSONL fallback",
+    "5 unique pool_address 来源 (final_freeze 5 protocol verdict)"
+  ],
+
+  "this_task_differences_from_previous": {
+    "stage_name": "previous: 6H_RUN_APPROVAL_V1; this: 6H_REAL_WALLCLOCKFIX_REPEAT_V1",
+    "mode": "previous: short (10s); this: real_6h (3600s, hard-reject short)",
+    "agent_behavior": "previous: Agent 自己跑完; this: tmux + supervisor 独立跑, Agent 等早回报",
+    "finalize": "previous: Agent finalize; this: supervisor 自动 finalize + auto commit/push",
+    "expected_gate": "previous: WARN_ACCEPTABLE; this: PASS (real wallclock)"
+  },
+
+  "this_task_hard_constraints": {
+    "actual_runtime_minutes_min": 330,
+    "short_mode_forbidden": true,
+    "loop_sleep_override_allowed": false,
+    "agent_kill_then_replace_forbidden": true,
+    "auto_advance_to_12h": false,
+    "SLEEP_SECONDS_min_in_supervisor": 3600
+  },
+
+  "next_stage": "B_workspace_safety"
+}

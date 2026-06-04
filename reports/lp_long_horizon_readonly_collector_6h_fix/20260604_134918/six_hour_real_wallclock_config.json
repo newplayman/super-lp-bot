@@ -1,0 +1,122 @@
+{
+  "stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_6H_REAL_WALLCLOCKFIX_REPEAT_V1",
+  "run_id": "20260604_134918",
+
+  "duration_hours": 6,
+  "min_valid_runtime_minutes": 330,
+  "checkpoint_interval_minutes": 60,
+  "heartbeat_interval_minutes": 15,
+  "max_pools": 5,
+  "notional_levels_usd": [10, 20, 100, 500, 1000, 2000],
+  "rolling_windows": ["15m", "1h", "6h"],
+
+  "output_data_dir": "data/lp_long_horizon/20260604_134918/",
+  "output_report_dir": "reports/lp_long_horizon_readonly_collector_6h_run/20260604_134918/",
+  "tmux_session_name": "lp_long_horizon_6h_20260604_134918",
+
+  "run_mode": "readonly",
+  "paid_rpc": false,
+  "paid_indexer": false,
+  "no_probe": true,
+  "no_wallet": true,
+  "no_tx": true,
+  "no_bridge": true,
+  "dry_run": true,
+  "cron_enabled": false,
+  "systemd_enabled": false,
+  "daemon_enabled": false,
+  "auto_advance_to_12h": false,
+
+  "CRITICAL_short_mode_constraints": {
+    "short_mode_allowed": false,
+    "loop_sleep_override_allowed": false,
+    "min_sleep_seconds_per_iteration": 3600,
+    "max_loop_count": 6,
+    "min_actual_runtime_minutes": 330,
+    "abort_on_short_mode_detected": true,
+    "abort_exit_code_for_short_mode": 8
+  },
+
+  "abort_thresholds": {
+    "consecutive_429_streak": {"threshold": ">= 5", "exit_code": 1},
+    "error_rate_pct": {"threshold": "> 20", "exit_code": 2},
+    "write_failure": {"threshold": "any", "exit_code": 3},
+    "safety_self_check_failure": {"threshold": "any", "exit_code": 4},
+    "forbidden_token_detected": {"threshold": "any", "exit_code": 5},
+    "disk_threshold_breach_mb": {"threshold": "> 1", "exit_code": 6},
+    "duplicate_collector_process": {"threshold": "tmux session already exists", "exit_code": 7},
+    "short_mode_detected": {"threshold": "SLEEP_SECONDS < 3600", "exit_code": 8},
+    "loop_count_overridden": {"threshold": "LOOP_COUNT != 6", "exit_code": 9},
+    "actual_runtime_below_330": {"threshold": "< 330 min at finalize", "exit_code": 10}
+  },
+
+  "tmux_session_plan": {
+    "session_name": "lp_long_horizon_6h_20260604_134918",
+    "start_at": "Stage G 完成时",
+    "end_at": "T0 + 6h",
+    "expected_end_time_utc": "2026-06-04T19:49:18Z",
+    "session_lifetime_hours": 6.17,
+    "loop_count": 6,
+    "sleep_seconds_per_iteration": 3600,
+    "max_concurrent_sessions": 1,
+    "auto_kill_at_finalize": true
+  },
+
+  "expected_data_dimensions_6h": {
+    "pool_snapshots": "5 pool × 6 iteration = 30 records",
+    "quote_snapshots": "5 × 6 × 6 notional × 72 sample = 1080 records (per 6h stage_gate_rules: 2160 ideal, 1080 minimum acceptable)",
+    "fee_velocity": "5 × 6 × 3 rolling = 90 records",
+    "liquidity_distribution": "5 × 6 = 30 records",
+    "market_regime": "7 × 6 = 42 records",
+    "actual_fee_accrual": "1 placeholder (schema only)"
+  },
+
+  "safety_21_fields": {
+    "touched_trading_path": false,
+    "touched_wallet_tx_bridge_live_paper": false,
+    "wallet_or_tx_touched": false,
+    "solana_wallet_or_keypair_touched": false,
+    "transaction_sent": false,
+    "send_hard_disable_still_active": true,
+    "no_paid_rpc_integration": true,
+    "no_paid_indexer_integration": true,
+    "no_protocol_re_run": true,
+    "no_heuristic_modification": true,
+    "no_long_running_daemon": true,
+    "no_signer_creation": true,
+    "no_12h_24h_48h_72h_7d_run": true,
+    "no_auto_advance": true,
+    "no_cron_enabled": true,
+    "no_systemd_enabled": true,
+    "no_extra_tmux_session": true,
+    "no_actual_daemon": true,
+    "no_approval_recorded_for_other_stages": true,
+    "secret_leak_count": 0,
+    "production_write_count": 0,
+    "shadow_overwrite_count": 0
+  },
+
+  "gate_pass_conditions": {
+    "actual_runtime_minutes": ">= 330",
+    "selected_pool_count": "> 0",
+    "pool_snapshot_rows": "> 0",
+    "quote_snapshot_rows": "> 0",
+    "fee_velocity_rows": "> 0",
+    "market_regime_rows": "> 0",
+    "error_rate_pct": "<= 20",
+    "consecutive_429_max": "< 5",
+    "research_only_write_ok": true,
+    "no_production_write": true,
+    "no_wallet_tx": true,
+    "no_daemon_leak": true,
+    "final_verdict_generated": true
+  },
+
+  "gate_decision_to_recommended_next_stage": {
+    "PASS": "LP_LONG_HORIZON_READONLY_COLLECTOR_12H_RUN_APPROVAL_V1",
+    "WARN_ACCEPTABLE": "LP_LONG_HORIZON_READONLY_COLLECTOR_6H_RUN_FIX_REPEAT",
+    "FAIL": "LP_LONG_HORIZON_READONLY_COLLECTOR FIX_REPEAT"
+  },
+
+  "next_stage": "E_create_6h_supervisor_script"
+}

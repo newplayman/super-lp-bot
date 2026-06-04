@@ -1,0 +1,44 @@
+{
+  "stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_6H_REAL_WALLCLOCKFIX_REPEAT_V1",
+  "run_id": "20260604_134918",
+  "branch": "feat/supabase-postgres-deployment",
+
+  "approval_recorded": true,
+  "approved_stage": "6h",
+  "mode": "readonly",
+  "no_probe": true,
+  "approved_next_stages": [],
+  "auto_advance_allowed": false,
+  "user_approval_text": "APPROVE_LP_LONG_HORIZON_READONLY_STAGE_RUN stage=6h mode=readonly no_probe=true",
+  "user_approval_text_hash_sha256": "1dd950db67e3bad450d4d319c3c5e8ec3a57eb1cdb6d75027cdab307f4681b3e",
+  "timestamp_utc": "2026-06-04T13:49:18Z",
+  "approved_by": "manual operator (this conversation)",
+  "reason": "per LP_LONG_HORIZON_READONLY_COLLECTOR_6H_REAL_WALLCLOCKFIX_REPEAT_V1 task spec; only 6h stage approved (real wallclock); 12h/24h/48h/72h/7d all NOT approved; previous 6h (130353) was invalid due to short mode, this run must use real wallclock",
+
+  "preconditions_verified": [
+    "previous_stage_LP_LONG_HORIZON_READONLY_COLLECTOR_6H_RUN_APPROVAL_V1_complete",
+    "previous_6h_actual_runtime_2.75_invalid_for_6h_gate",
+    "previous_short_mode_used_identified",
+    "this_task_will_use_real_wallclock_SLEEP_SECONDS=3600",
+    "approval_phrase_exact_match",
+    "no_batch_approval_language",
+    "no_forward_approval_language",
+    "no_implicit_cascade_language",
+    "can_run_probe_now_still_false",
+    "tiny_canary_allowed_still_no"
+  ],
+
+  "risk_acknowledged": "manual operator acknowledges this 6h run must be real wallclock (SLEEP_SECONDS=3600, not 10); no short mode substitution; no agent kill-then-replace; no probe / canary / live / paper; decision to enable probe requires separate PAUSE_LP_RESEARCH and reopen.",
+
+  "forward_approval_check": {
+    "approved_stages": ["6h"],
+    "NOT_approved_stages": ["12h", "24h", "48h", "72h", "7d"],
+    "implicit_forward_forbidden": true,
+    "explicit_forward_forbidden": true,
+    "note": "same 6h approval as previous (130353); only difference is this run uses real wallclock, not short mode"
+  },
+
+  "scope_of_this_approval": "ONLY stage 6h. After 6h real wallclock completes, runner must wait for next manual approval (12h_RUN_APPROVAL_V1) before any further action.",
+
+  "next_stage": "D_real_6h_config_freeze"
+}
