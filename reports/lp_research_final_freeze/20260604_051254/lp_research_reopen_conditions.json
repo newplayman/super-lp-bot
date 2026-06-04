@@ -1,0 +1,133 @@
+{
+  "stage": "LP_RESEARCH_FINAL_FREEZE_AND_HANDOFF_V1",
+  "run_id": "20260604_051254",
+  "phase": "F_reopen_conditions",
+
+  "all_required": true,
+
+  "conditions": [
+    {
+      "id": 1,
+      "title": "real fee accrual / actual position tokenId data",
+      "background": "5 stages used heuristic 0.5%/day turnover, no actual position data. Heuristic 100x higher than observed 10/20u quote-derived 0.005%/day.",
+      "why_needed": "Need on-chain historical position data to validate heuristic",
+      "how_to_provide": [
+        "user-held LP NFT/Position tokenId",
+        "historical fee claims/collects",
+        "historical IL realization (from position query)",
+        "paid RPC + indexer (Helius, Triton, QuickNode) for history"
+      ]
+    },
+    {
+      "id": 2,
+      "title": "protocol incentives / external rewards / bribes",
+      "background": "5 stages used pool.fee_rate only. Protocol LM + bribes + IFO not included.",
+      "why_needed": "LP real yield = fee + LM + bribe. Only fee severely underestimates positive EV. Some protocols' LM is 5-10x fee.",
+      "how_to_provide": [
+        "specific protocol LM contract (e.g. Meteora farm program)",
+        "historical LM emission data",
+        "current bribe marketplace data (bribes.sol)",
+        "LP range / hold time assumption"
+      ]
+    },
+    {
+      "id": 3,
+      "title": "stable high fee velocity pool",
+      "background": "5 stages best cells are memecoin / speculative pools. Memecoin unsuitable for 7d hold.",
+      "why_needed": "Current heuristic 0.5%/day is average. Need >1%/day pools.",
+      "how_to_provide": [
+        "vol/fee ratio top 50 pools",
+        "historical fee / TVL ratio > 0.5%/day",
+        "price volatility estimate (twap, EMA)",
+        "backtest 30d / 90d / 365d"
+      ]
+    },
+    {
+      "id": 4,
+      "title": "lower cost link",
+      "background": "5 stages fixed_cost = $0.003-0.006 per round-trip. retail 10 USD = 0.06% ratio. Must 10-100x reduce.",
+      "why_needed": "Cost ratio directly kills retail LP. Must compress to $0.0001 level.",
+      "how_to_provide": [
+        "precise cost breakdown (rent + priority fee + slippage + jito tip)",
+        "batch transaction design (multi-pool in 1 tx)",
+        "rebate model assumption (Jupiter, etc.)"
+      ]
+    },
+    {
+      "id": 5,
+      "title": "paid RPC / indexer",
+      "background": "5 stages used public RPC. 429 rate limit causes quote-ready count loss: Meteora 27/56 (48%), Orca 10/75 (13%), stable 10/25 (40%).",
+      "why_needed": "Complete quote coverage requires paid RPC or indexer.",
+      "how_to_provide": [
+        "paid RPC endpoint (Helius / Triton / QuickNode) with rate limit headroom",
+        "Birdeye / DexScreener API for pool metadata",
+        "historical indexer (Shyft, helloMoon) for backtest",
+        "or: user accepts partial coverage"
+      ]
+    },
+    {
+      "id": 6,
+      "title": "user-specific pool / capital / strategy",
+      "background": "5 stages generic search, no user context.",
+      "why_needed": "Retail generic doesn't work. Need user-specific assumptions.",
+      "how_to_provide": [
+        "specific pool address",
+        "specific capital amount",
+        "specific risk tolerance",
+        "specific time horizon"
+      ]
+    },
+    {
+      "id": 7,
+      "title": "non-standard LP structural strategy",
+      "background": "5 stages vanilla LP (hold → fee → IL). Pro LP use structural strategies.",
+      "why_needed": "Vanilla LP doesn't work. Structural may 5-10x yield + reduce IL.",
+      "strategies": [
+        {"name": "incentive farming", "data_needed": ["LM contract", "historical emission", "claim flow"]},
+        {"name": "delta-hedged LP", "data_needed": ["perp/options data", "hedge cost", "basis data"]},
+        {"name": "JIT liquidity", "data_needed": ["mempool", "per-tx simulation"]},
+        {"name": "single sided / managed vault", "data_needed": ["vault TVL", "auto-rebalance logic"]},
+        {"name": "options / perp hedge", "data_needed": ["options pricing"]},
+        {"name": "MM rebate model", "data_needed": ["rebate tier"]}
+      ]
+    }
+  ],
+
+  "reopen_flow_mandatory": [
+    "1. read-only EV re-verify",
+    "2. preflight design (single pool / assumptions / boundaries)",
+    "3. dry-run (simulate tx, no broadcast)",
+    "4. manual operator approval",
+    "5. THEN can_run_probe_now = true (with conditions)",
+    "6. THEN tiny_canary_allowed = yes (only with approval)",
+    "7. THEN canary / probe / live"
+  ],
+
+  "checklist_11_items": [
+    "1. real fee accrual data",
+    "2. protocol incentives",
+    "3. stable high-fee pool",
+    "4. lower cost link",
+    "5. paid RPC / indexer",
+    "6. user-specific pool/capital/strategy",
+    "7. non-standard LP strategy",
+    "8. read-only EV re-verify",
+    "9. preflight design",
+    "10. dry-run",
+    "11. manual operator approval"
+  ],
+
+  "caveats": [
+    "Reopen cost: 7 conditions + EV re-verify = 1-2 weeks work",
+    "Reopen ROI: even if 7 conditions met, retail 10/20U may still be negative EV; reopen != guaranteed positive EV",
+    "Manual decision required: reopen is operator decision, not auto-trigger",
+    "Re-STOP if still negative: if 7 conditions met but EV still negative, must STOP again. No forced probe."
+  ],
+
+  "alternative_paths_if_cannot_meet_7": [
+    "(a) do not reopen LP research",
+    "(b) switch to other research (event-driven trading, arbitrage, options)",
+    "(c) switch to scanner / monitoring tool (no trading)",
+    "(d) archive repo with final tag"
+  ]
+}

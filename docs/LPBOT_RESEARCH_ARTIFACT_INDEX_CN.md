@@ -202,3 +202,45 @@
 - final verdict path: `/Users/bendu/lp-bot/v3/reports/lp_real_data_final_freeze/20260601_150954/FINAL_VERDICT.json`
 - status: `PASS`
 - one-line conclusion: real-data reopen 研究线正式收口，保持 `STOP_LP_RESEARCH_NOW`。
+
+## lp_meteora_dlmm_targeted_top_pool_feed
+
+- latest report dir: `reports/lp_meteora_dlmm_targeted_top_pool_feed/20260604_021913`
+- final verdict path: `reports/lp_meteora_dlmm_targeted_top_pool_feed/20260604_021913/FINAL_VERDICT.json`
+- status: `WARN`
+- one-line conclusion: 56 verified, 27 quote-ready, best cell +$0.544 (zero_il_lvr), positive_realistic=0; recommend next: Orca.
+
+## lp_orca_whirlpool_readonly_connector
+
+- latest report dir: `reports/lp_orca_whirlpool_readonly_connector/20260604_025414`
+- final verdict path: `reports/lp_orca_whirlpool_readonly_connector/20260604_025414/FINAL_VERDICT.json`
+- status: `WARN`
+- one-line conclusion: 75 verified, 10 quote-ready, best cell +$0.106 (zero_il_lvr), positive_realistic=0; tick array LAZY init.
+
+## lp_raydium_clmm_readonly_connector
+
+- latest report dir: `reports/lp_raydium_clmm_readonly_connector/20260604_034503`
+- final verdict path: `reports/lp_raydium_clmm_readonly_connector/20260604_034503/FINAL_VERDICT.json`
+- status: `WARN`
+- one-line conclusion: 65 verified, 50 quote-ready (liquidity ratio heuristic), best cell +$0.167 (zero_il_lvr), positive_realistic=0.
+
+## lp_raydium_cpmm_readonly_connector
+
+- latest report dir: `reports/lp_raydium_cpmm_readonly_connector/20260604_040952`
+- final verdict path: `reports/lp_raydium_cpmm_readonly_connector/20260604_040952/FINAL_VERDICT.json`
+- status: `WARN`
+- one-line conclusion: 81 verified, 73 quote-ready, best cell +$0.172 (zero_il_lvr), positive_realistic=0; AMM v4 (675kPX9MHT) is the only deployed constant-product Raydium on mainnet; new cp-swap pid CPMMoo8L... NOT on mainnet.
+
+## lp_solana_stable_pool_research
+
+- latest report dir: `reports/lp_solana_stable_pool_research/20260604_044118`
+- final verdict path: `reports/lp_solana_stable_pool_research/20260604_044118/FINAL_VERDICT.json`
+- status: `WARN`
+- one-line conclusion: 25 verified (all Orca LST-stable), 10 quote-ready, best cell +$0.204 (mSOL/USDC zero_il_lvr), positive_realistic=0; Meteora DAMM v2 API mislabels Orca pools; recommend next: STOP_LP_RESEARCH_NOW.
+
+## lp_research_final_freeze (FINAL FREEZE)
+
+- latest report dir: `reports/lp_research_final_freeze/20260604_051254`
+- final verdict path: `reports/lp_research_final_freeze/20260604_051254/FINAL_VERDICT.json`
+- status: `WARN`
+- one-line conclusion: **LP Research Final Freeze** — 5/5 Solana AMM protocols reject retail 10-20U 2000 USD LP. Cumulative 28560 EV cells, 1898 positive in zero_il_lvr only, 0 in optimistic/realistic/conservative. Best cell $0.544 (Meteora DLMM memecoin). Overall recommendation: **STOP_LP_RESEARCH_NOW**. can_run_probe_now=false, tiny_canary_allowed=no, edge_proven=no. Reopen conditions documented. 12 reusable modules preserved.

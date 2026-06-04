@@ -1,0 +1,57 @@
+{
+  "stage": "LP_RESEARCH_FINAL_FREEZE_AND_HANDOFF_V1",
+  "run_id": "20260604_051254",
+  "phase": "E_not_meant_disclaimer",
+
+  "six_common_misreadings": [
+    {
+      "id": 1,
+      "misreading": "All LP is forever doomed",
+      "reality": "Under current data, current capital size (retail 10-20U), current automation model, 5/5 Solana AMM protocols reject. Large capital + professional market making + hedging may still have positive EV. New protocols or EVM-side may differ. Out of scope of this study."
+    },
+    {
+      "id": 2,
+      "misreading": "Institutional LP is also doomed",
+      "reality": "Retail 10-20U 2000 USD LP is different market from institutional LP. Institutional has MEV income, bribe, incentive farming, hedging tools, lower cost basis. 5/5 reject is retail model, not institutional model."
+    },
+    {
+      "id": 3,
+      "misreading": "Project code is worthless",
+      "reality": "lpbot code retains value: EVM V3 pipeline, BSC QuoterV2 fix, Base wallet dry-run, Solana RPC registry, 5 Solana AMM connectors, EV framework, artifact index, verdict discipline, safety gates, hard-disable executor. All reusable for other research (scanner, dashboard, hedging tool)."
+    },
+    {
+      "id": 4,
+      "misreading": "Connector work is worthless",
+      "reality": "5 connectors 100% SDK decode verified on mainnet. Real engineering work, documented and tested. Usable as SDK integration templates, hedging tool data source, LP monitoring data source, scanner/dashboard data source."
+    },
+    {
+      "id": 5,
+      "misreading": "Cannot be reopened",
+      "reality": "STOP_LP_RESEARCH_NOW is current state, not permanent. Reopen conditions: real fee accrual / actual position tokenId data, protocol incentives / bribe, stable high-fee velocity pool, lower cost link, paid RPC / indexer, user-provided specific pool or strategy, non-standard LP strategies (incentive farming, delta-hedged, JIT, etc.). Reopen != direct live trading; still requires read-only → preflight → dry-run → manual approval."
+    },
+    {
+      "id": 6,
+      "misreading": "Will auto-probe forever",
+      "reality": "STOP_LP_RESEARCH_NOW specifically means: do not continue auto-probe under current data, current capital, current model. Manual operator decisions are out of scope of this STOP."
+    }
+  ],
+
+  "keep_active": [
+    "can_run_probe_now = false (locked)",
+    "tiny_canary_allowed = no (locked)",
+    "edge_proven = no (locked)",
+    "hard-disable executor active",
+    "safety gates (artifact index, verdict discipline, tests)",
+    "reusable connector code",
+    "documentation"
+  ],
+
+  "paused": [
+    "auto LP probe runner",
+    "auto protocol expansion",
+    "auto survival EV model rebuild",
+    "any form of unattended LP execution"
+  ],
+
+  "exact_stopping_wording": "Under current data, current capital size (retail 10-20U 2000 USD), and current automation model, do not continue auto-probe of LP."
+}

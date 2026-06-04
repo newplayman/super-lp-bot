@@ -1,0 +1,92 @@
+{
+  "stage": "LP_RESEARCH_FINAL_FREEZE_AND_HANDOFF_V1",
+  "run_id": "20260604_051254",
+  "phase": "I_next_project_direction",
+
+  "four_directions": [
+    {
+      "id": "A",
+      "name": "Continue trading system (no vanilla LP)",
+      "strategies": [
+        {"name": "Event-driven / catalyst-driven", "data_source": "protocol announcement, on-chain event listener", "horizon": "minutes to hours", "risk": "event delay / misjudgment"},
+        {"name": "CEX-DEX spread capture / arbitrage", "data_source": "order book + AMM quotes", "horizon": "seconds to minutes", "risk": "MEV front-run, gas, slippage"},
+        {"name": "Perps / options structural hedge", "data_source": "perps dex (Drift, Mango), options (Zeta, Lyra)", "horizon": "days to weeks", "risk": "liquidation, complex failure modes"},
+        {"name": "Incentive / reward farming", "data_source": "LM contract, bribe marketplace", "horizon": "days to weeks", "risk": "emission decay, bribe war"}
+      ],
+      "priority_order": ["A.2 (CEX-DEX arb)", "A.1 (event-driven)", "A.4 (incentive farming)", "A.3 (perps/options)"],
+      "time_commitment": "medium",
+      "roi_horizon": "short-medium",
+      "risk_level": "high (capital risk)",
+      "lp_research_reuse": "medium (reuse part of EV model)"
+    },
+    {
+      "id": "B",
+      "name": "Continue on-chain (no trading)",
+      "strategies": [
+        {"name": "Scanner / dashboard", "data_source": "Orca/Raydium API, GeckoTerminal, Birdeye", "value": "real-time pool monitoring, alert"},
+        {"name": "Data pipeline", "data_source": "historical on-chain data, postgres + timescaledb", "value": "data foundation for any future research"},
+        {"name": "Vault / LP monitoring tool", "data_source": "user LP position", "value": "help LP users understand their position"},
+        {"name": "On-chain analytics report", "data_source": "weekly/monthly trends", "value": "public thought leadership"}
+      ],
+      "priority_order": ["B.2 (data pipeline)", "B.1 (scanner)", "B.3 (vault monitor)", "B.4 (analytics)"],
+      "time_commitment": "high",
+      "roi_horizon": "long",
+      "risk_level": "low",
+      "lp_research_reuse": "high (reuse 12 modules)"
+    },
+    {
+      "id": "C",
+      "name": "Back to Polymarket / prediction markets",
+      "strategies": [
+        {"name": "Polymarket trend tracking", "data_source": "Polymarket API, UMA oracle"},
+        {"name": "Prediction market arbitrage", "data_source": "Polymarket vs other markets"},
+        {"name": "Strict research process (reuse LP research discipline)", "data_source": "verdict discipline, safety gates, artifact index"}
+      ],
+      "priority_order": ["C.3 (reuse discipline)", "C.1 (Polymarket tracking)"],
+      "time_commitment": "medium",
+      "roi_horizon": "medium",
+      "risk_level": "medium",
+      "lp_research_reuse": "medium (verdict discipline)"
+    },
+    {
+      "id": "D",
+      "name": "Stop this repo",
+      "strategies": [
+        {"name": "Archive current branch", "value": "no data deletion; final tag e.g. v3-lp-research-final-20260604"},
+        {"name": "Pivot to other project", "value": "reuse lpbot engineering discipline for new project"},
+        {"name": "Public learning material", "value": "publish LP research report to community; prevent wasted effort"}
+      ],
+      "priority_order": ["D.1 (archive)", "D.3 (public learning)"],
+      "time_commitment": "low",
+      "roi_horizon": "immediate",
+      "risk_level": "0",
+      "lp_research_reuse": "0 (archive only)"
+    }
+  ],
+
+  "recommendations": {
+    "if_active_development": {
+      "primary": "Direction B (chain tooling)",
+      "specific": "B.2 (data pipeline) → B.1 (scanner)",
+      "reason": "reuse 12 LP research modules, high ROI, low risk"
+    },
+    "if_short_term_output": {
+      "primary": "Direction D (archive + public learning)",
+      "reason": "immediate completion, 0 risk, public contribution"
+    },
+    "if_high_risk_high_reward": {
+      "primary": "Direction A.2 (CEX-DEX arbitrage)",
+      "reason": "short ROI, but needs capital + MEV experience"
+    }
+  },
+
+  "forbidden_false_reopen": [
+    "directly restart LP research without 7 reopen conditions",
+    "assume 'change parameters and EV becomes positive'",
+    "'change pool and it works'",
+    "'wait for market change and it works'",
+    "manual operator discretionary 'this time different'"
+  ],
+
+  "important_caveat": "These direction suggestions do NOT affect LP research closure state. Even if operator chooses D (archive), LP research remains STOP_LP_RESEARCH_NOW. Reopen requires 7 conditions + complete read-only → preflight → dry-run → manual approval."
+}

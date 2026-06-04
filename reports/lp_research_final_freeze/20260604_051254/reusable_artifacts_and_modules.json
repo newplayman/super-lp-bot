@@ -1,0 +1,117 @@
+{
+  "stage": "LP_RESEARCH_FINAL_FREEZE_AND_HANDOFF_V1",
+  "run_id": "20260604_051254",
+  "phase": "G_reusable_modules",
+
+  "principle": "LP research 收口, 但所有已 verified 代码、docs、tests、artifacts 全部保留, 不删除",
+
+  "reusable_modules": [
+    {
+      "id": 1,
+      "name": "EVM V3 quote / depth / cost pipeline",
+      "status": "preserve",
+      "location": "scripts/lp_*.py historical (early commits)",
+      "function": "Uniswap V3 QuoterV2 + depth + cost decomposition",
+      "reusability": ["EVM V3 research (Base, Arbitrum, Mainnet)", "V3 scanner", "V3 fee model reference"]
+    },
+    {
+      "id": 2,
+      "name": "BSC PancakeSwap V3 QuoterV2 fix",
+      "status": "preserve",
+      "location": "scripts/lp_*.py historical",
+      "function": "PancakeSwap V3 QuoterV2 ABI fix + decode + fee",
+      "reusability": ["BSC V3 research", "PancakeSwap V3 scanner", "EVM V3 reference"]
+    },
+    {
+      "id": 3,
+      "name": "Base wallet dry-run builder",
+      "status": "preserve",
+      "location": "scripts/lp_*.py historical",
+      "function": "EVM wallet dry-run (no keypair), V3 simulate, cost estimation",
+      "reusability": ["EVM LP dry-run", "V3 pre-flight tool", "V3 cost calculator"]
+    },
+    {
+      "id": 4,
+      "name": "Solana RPC registry",
+      "status": "preserve",
+      "location": "reports/lp_solana_rpc_registry_fix/",
+      "function": "5 mainnet Solana program ids on-chain verified (Meteora DLMM, Orca, Raydium CLMM, AMM v4, DAMM v2)",
+      "reusability": ["any Solana LP research", "Solana protocol identification", "program id discovery"]
+    },
+    {
+      "id": 5,
+      "name": "Meteora DLMM connector",
+      "status": "preserve",
+      "location": "scripts/lp_meteora_dlmm_targeted_top_pool_feed_expansion_v1_readonly.js",
+      "function": "56/56 pool SDK decode, 27 quote-ready, 4536 EV cells",
+      "reusability": ["any Meteora DLMM work", "DLMM fee velocity scanner", "DLMM IL model"]
+    },
+    {
+      "id": 6,
+      "name": "Orca connector",
+      "status": "preserve",
+      "location": "scripts/lp_orca_whirlpool_readonly_connector_v1_readonly.js",
+      "function": "75/75 pool SDK decode, tick array PDA + read, 10 quote-ready, 1680 EV cells",
+      "reusability": ["any Orca Whirlpool work", "V3 CL Solana reference", "tick array lazy init study"]
+    },
+    {
+      "id": 7,
+      "name": "Raydium CLMM connector",
+      "status": "preserve",
+      "location": "scripts/lp_raydium_clmm_readonly_connector_v1_readonly.js",
+      "function": "65/65 pool SDK decode, 50 quote-ready (liquidity ratio), 8400 EV cells",
+      "reusability": ["any Raydium CLMM work", "V3 CL 3rd-party SDK reference", "liquidity-based quote fallback"]
+    },
+    {
+      "id": 8,
+      "name": "Raydium CPMM connector (AMM v4)",
+      "status": "preserve",
+      "location": "scripts/lp_raydium_cpmm_readonly_connector_v1_readonly.js",
+      "function": "81/81 pool SDK decode (liquidityStateV4Layout), 73 quote-ready (constant product), 12264 EV cells",
+      "reusability": ["any Raydium AMM v4 work", "constant product LP research", "stable pool reference"]
+    },
+    {
+      "id": 9,
+      "name": "Survival EV framework",
+      "status": "preserve",
+      "location": "each stage *survival_ev_preview.{json,csv}",
+      "function": "6 notionals × 7 hold × 4 scenarios = 168 cells, 4 IL/LVR scenarios, heuristic 0.5%/day turnover",
+      "reusability": ["any LP research EV model", "IL/LVR scenario analysis", "liquidity yield backtest"]
+    },
+    {
+      "id": 10,
+      "name": "Artifact index / verdict discipline",
+      "status": "preserve",
+      "location": "reports/lp_*/ARTIFACT_INDEX.md + docs/LPBOT_RESEARCH_ARTIFACT_INDEX_CN.md",
+      "function": "per-stage artifact index, cross-stage evidence chain, verdict schema (status, can_run_probe_now, tiny_canary_allowed, recommended_next_stage)",
+      "reusability": ["any research project artifact organization", "verdict schema template", "cross-stage evidence audit"]
+    },
+    {
+      "id": 11,
+      "name": "Safety gates",
+      "status": "preserve + active",
+      "location": "tests/test_lp_*.py (5 test files)",
+      "function": "pytest enforces chain verify, FINAL_VERDICT fields, no Keypair/signer/tx, can_run_probe_now=false, tiny_canary_allowed=no, data_len per protocol, heuristic marked, survival EV on quote-ready only",
+      "reusability": ["any Solana LP/DEX research tests", "any read-only connector tests", "safety-first template"]
+    },
+    {
+      "id": 12,
+      "name": "Hard-disable executor",
+      "status": "preserve + active",
+      "location": "internal/core/execution/ (Go code)",
+      "function": "build tags guard, mode_default exits on no-tag, _live/_stub pair, dry-run panics on mis-invoke",
+      "reusability": ["any write-disabled project", "build tag safety pattern", "live/paper strong constraint"]
+    }
+  ],
+
+  "do_not_delete": [
+    "scripts/ (all 5 LP connector runner scripts)",
+    "tests/ (all 5 LP test files)",
+    "docs/ (LPBOT_RESEARCH_STATUS_CN.md, LPBOT_RESEARCH_ARTIFACT_INDEX_CN.md, others)",
+    "reports/ (all 5 stage artifact dirs, 28560 EV cells total)",
+    "README.md (top-level)",
+    "internal/core/execution/ (hard-disable)"
+  ],
+
+  "important_caveat": "Reuse != direct production deploy. Must redo read-only → preflight → dry-run → manual approval. Modules may need adaptation for different chain/protocol. Safety gates and hard-disable stay active and unchanged."
+}

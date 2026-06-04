@@ -16,10 +16,12 @@ Phase 0 — 历史回测 + 全套测试基础设施 + 代码骨架。
 
 ## Current Research Status
 
-- LP strategy research is currently frozen.
+- **2026-06-04 LP Research Final Freeze** — `STOP_LP_RESEARCH_NOW`
+- 5/5 Solana AMM protocols reject retail 10-20U 2000 USD LP (cumulative 28560 EV cells, 0 in optimistic/realistic/conservative)
+- can_run_probe_now = `false`, tiny_canary_allowed = `no`, edge_proven = `no`
+- See `docs/LPBOT_RESEARCH_STATUS_CN.md` and `reports/lp_research_final_freeze/20260604_051254/FINAL_VERDICT.json`
+- Historical final freeze: `reports/final_freeze/20260531_124000/FINAL_VERDICT.json`
 - No live/canary/paper execution is allowed.
-- See `/Users/bendu/lp-bot/v3/docs/LPBOT_RESEARCH_STATUS_CN.md`.
-- Latest final freeze: `/Users/bendu/lp-bot/v3/reports/final_freeze/20260531_124000/FINAL_VERDICT.json`.
 
 ## 快速命令
 

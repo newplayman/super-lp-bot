@@ -1,0 +1,81 @@
+{
+  "stage": "LP_RESEARCH_FINAL_FREEZE_AND_HANDOFF_V1",
+  "run_id": "20260604_051254",
+  "phase": "D_why_stop",
+
+  "decision": "STOP_LP_RESEARCH_NOW",
+  "headline_summary": "5/5 Solana AMM protocols reject retail 10-20U 2000 USD LP; cumulative 28560 EV cells; best cell $0.544 only in zero_il_lvr (Meteora DLMM memecoin 100bps, 2000 USD, 7d); all other scenarios negative.",
+
+  "reasons": [
+    {
+      "id": 1,
+      "title": "Not because connector did not work",
+      "detail": "5 stages connector_status = complete; SDK decode + quote path proven on public RPC."
+    },
+    {
+      "id": 2,
+      "title": "Most connectors DID work",
+      "detail": "Meteora DLMM (56 decode), Orca (75), Raydium CLMM (65), Raydium CPMM (81), Solana stable (25); 4 mainnet programs verified executable."
+    },
+    {
+      "id": 3,
+      "title": "Realistic EV does not hold",
+      "detail": "Across 28560 cells, 1898 positive in zero_il_lvr only, 0 in optimistic/realistic/conservative. Any IL > 0 makes all cells negative."
+    },
+    {
+      "id": 4,
+      "title": "zero_il_lvr positive is not real positive",
+      "detail": "zero_il_lvr is theoretical upper bound; V3 CL tick boundary crossing, constant product any price change, LST depeg all ensure IL > 0 in practice."
+    },
+    {
+      "id": 5,
+      "title": "10/20U small capital cannot cover fixed cost / slippage / IL",
+      "detail": "10 USD notional at 25bps × 0.5%/day = $0.00125/day gross; 7d gross $0.00875 minus cost $0.006 minus IL $0.35 = net -$0.347. Small capital means fee capture too small, fixed cost too large a ratio. Structural, not fee rate problem."
+    },
+    {
+      "id": 6,
+      "title": "100-2000U scale-up does not produce realistic positive",
+      "detail": "At 2000 USD notional / 7d / zero_il_lvr: Meteora +$0.544, Orca +$0.106, Raydium CLMM +$0.167, Raydium CPMM +$0.172, Solana stable +$0.204. All < $0.55 best case. Scaling up notional does not solve IL dominance."
+    },
+    {
+      "id": 7,
+      "title": "No pool satisfies probe preflight",
+      "detail": "Per spec rule_1 trigger: positive_realistic > 0 OR strong near-break-even high-fee pool. 5/5 reject — none qualify."
+    },
+    {
+      "id": 8,
+      "title": "Continued auto-expansion is low-value repetition",
+      "detail": "All 5 mainnet Solana AMM protocols (DLMM, V3 CL x 3, CPMM, stable) tested. Remaining candidates: Meteora DAMM v2 stable (API mislabel, 0 verified), Lifinity (pid unknown), Mercurial (deprecated), Saber (rebranded, 0 active), native Curve on Solana (not exist). Marginal information value of further expansion is low."
+    },
+    {
+      "id": 9,
+      "title": "Therefore STOP_LP_RESEARCH_NOW",
+      "detail": "5/5 reject cumulative + above 8 reasons = stable conclusion: in current data, current capital size, current automation model, retail 10-20U 2000 USD LP cannot achieve realistic positive EV on Solana."
+    }
+  ],
+
+  "cumulative_5_stage_cost": {
+    "total_cells": 28560,
+    "total_pools_verified": 302,
+    "total_quote_ready": 170,
+    "total_positive_zero_il_lvr": 1898,
+    "total_positive_optimistic": 0,
+    "total_positive_realistic": 0,
+    "total_positive_conservative": 0,
+    "best_cell_usd": 0.544,
+    "best_cell_protocol": "Meteora DLMM V8 (memecoin 100bps)"
+  },
+
+  "stop_meaning": {
+    "research_stopped": true,
+    "auto_expansion_stopped": true,
+    "can_run_probe_now_keeps_false": true,
+    "tiny_canary_allowed_keeps_no": true,
+    "edge_proven_keeps_no": true,
+    "hard_disable_executor_keeps_active": true,
+    "manual_operator_approval_required_for_any_lp_decision": true,
+    "lp_research_can_restart_only_with_all_reopen_conditions_met": true
+  },
+
+  "caveat": "STOP_LP_RESEARCH_NOW is research-only decision; does NOT affect project code, connectors, docs, tests, or safety gates which all remain intact and reusable."
+}
