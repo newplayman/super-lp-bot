@@ -1,0 +1,65 @@
+{
+  "stage": "LP_METEORA_DLMM_TARGETED_TOP_POOL_FEED_EXPANSION_V1",
+  "run_id": "20260604_021913",
+
+  "seven_questions": {
+    "realistic_positive_10_20u": false,
+    "near_break_even_present": true,
+    "high_fee_quote_ready_present": true,
+    "probe_preflight_worth": false,
+    "switch_to_orca": true,
+    "paid_rpc_needed_now": false,
+    "should_stop": false
+  },
+
+  "positive_realistic_count": 0,
+  "positive_zero_il_lvr_count": 15,
+  "positive_optimistic_count": 0,
+  "near_break_even_count": 19,
+  "high_fee_quote_ready_count": 4,
+  "quote_ready_pool_count": 27,
+
+  "best_pool": "CnK82s8exdsK9nwqQ55kd9wcxoA22NwTchZJCBdu8LDa",
+  "best_pair": "FeMbDo/So1111",
+  "best_notional": 2000,
+  "best_hold_window": "7d",
+  "best_scenario": "zero_il_lvr",
+  "best_net_ev_proxy_usd": 0.544,
+
+  "spec_decision_rule_applied": "rule_2: quote_ready_pool_count > 0 but all negative, candidate quality still insufficient",
+
+  "recommended_next_stage": "LP_ORCA_WHIRLPOOL_READONLY_CONNECTOR_V1",
+  "rejected_alternatives": [
+    "LP_METEORA_DLMM_KNOWN_POOL_FEED_EXPANSION_REPEAT",
+    "LP_SOLANA_PAID_RPC_SETUP_REQUIRED",
+    "STOP_LP_RESEARCH_NOW",
+    "LP_METEORA_DLMM_10_20U_PROBE_PREFLIGHT_DESIGN_V1"
+  ],
+
+  "reasons": [
+    "Meteora DLMM retail 10/20U to 2000 USD LP has been validated negative across V1-V8 stages",
+    "V8 path (targeted feed) succeeded technically: 27/27 quote-ready, 4 high-fee candidates",
+    "Best cell +$0.544 is in zero_il_lvr scenario only; positive_realistic_count = 0",
+    "Heuristic 0.5%/day turnover is 100x higher than observed single-swap fee from 10/20u quote",
+    "Orca Whirlpool is a different AMM protocol (Concentrated Liquidity, V3-like) with different IL behavior",
+    "Public RPC sufficient - paid RPC is not the blocking factor; structural IL is"
+  ],
+
+  "safety_locks": {
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no",
+    "solana_wallet_or_keypair_touched": false,
+    "transaction_sent": false,
+    "v2_line_count": 992,
+    "v2_line_count_unchanged": true,
+    "send_hard_disable_still_active": true
+  },
+
+  "allowed_next_stages": [
+    "LP_METEORA_DLMM_10_20U_PROBE_PREFLIGHT_DESIGN_V1",
+    "LP_METEORA_DLMM_KNOWN_POOL_FEED_EXPANSION_REPEAT",
+    "LP_ORCA_WHIRLPOOL_READONLY_CONNECTOR_V1",
+    "LP_SOLANA_PAID_RPC_SETUP_REQUIRED",
+    "STOP_LP_RESEARCH_NOW"
+  ]
+}

@@ -1,0 +1,68 @@
+{
+  "status": "WARN",
+  "stage": "LP_METEORA_DLMM_TARGETED_TOP_POOL_FEED_EXPANSION_V1",
+  "run_id": "20260604_021913",
+  "branch": "feat/supabase-postgres-deployment",
+  "head_before": "852c976",
+
+  "candidate_raw_count": 60,
+  "verified_pool_count": 56,
+  "sdk_decode_success_count": 56,
+  "quote_ready_pool_count": 27,
+  "survival_ev_model_ran": true,
+
+  "row_count": 4536,
+  "positive_zero_il_lvr_count": 15,
+  "positive_optimistic_count": 0,
+  "positive_realistic_count": 0,
+  "positive_conservative_count": 0,
+  "near_break_even_count": 19,
+  "high_fee_quote_ready_count": 4,
+
+  "best_pool": "CnK82s8exdsK9nwqQ55kd9wcxoA22NwTchZJCBdu8LDa",
+  "best_pair": "FeMbDo/So1111",
+  "best_notional": 2000,
+  "best_hold_window": "7d",
+  "best_scenario": "zero_il_lvr",
+  "best_net_ev_proxy_usd": 0.544,
+  "best_net_ev_proxy_pct": 0.0272,
+
+  "v2_line_count": 992,
+  "v2_line_count_unchanged": true,
+
+  "structural_finding": "V8 targeted feed (GeckoTerminal Meteora DLMM + DexScreener) yielded 27/27 quote-ready pools with real fee data; best cell +$0.544 at 2000/7d/zero_il_lvr in memecoin three/SOL pool (base=100bps, bin_step=80). positive_realistic_count=0; positive_optimistic=0; positive_conservative=0. Heuristic 0.5%/day turnover is 100x higher than observed single-swap fee from 10/20u quote; best cell margin is dominated by IL risk. Meteora DLMM retail 10-20U to 2000 USD LP is structurally negative across 4536 cells under any realistic IL assumption.",
+
+  "phase_results": {
+    "A_workspace_safety": "PASS (HEAD=852c976; pre-existing dirty files unrelated)",
+    "B_input_evidence_audit": "PASS (9 upstream files audited)",
+    "C_targeted_pool_source_strategy": "PASS (5-dim target defined; Meteora UI top + DexScreener high-fee)",
+    "D_targeted_candidate_source_collection": "PASS (60 candidates: 53 GeckoTerminal + 7 DexScreener; 27 high-volume >= $1M/d)",
+    "E_chain_verify": "PASS (56/60 verified; 4 mislabeled by DexScreener filtered: 2 Raydium CPMM + 2 Orca Whirlpool)",
+    "F_sdk_decode_targeted": "PASS (56/56 decode success via @meteora-ag/dlmm v1.9.10; base_fee_bps 1-100, max_fee_bps 1000 for all)",
+    "G_quote_targeted": "BREAKTHROUGH (27/27 quote-ready using getBinArrayKeysCoverage + getMultipleAccountsInfo + DLMM.decodeAccount; V7 path fixed)",
+    "H_survival_ev_preview": "PASS (4536 cells = 27 pools × 6 × 7 × 4; 15 positive zero_il_lvr only)",
+    "I_candidate_decision": "PASS (rule_2 applied; recommend Orca Whirlpools)"
+  },
+
+  "can_run_probe_now": false,
+  "execution_allowed_now": false,
+  "transaction_sent": false,
+  "wallet_or_tx_touched": false,
+  "solana_wallet_or_keypair_touched": false,
+  "edge_proven": "no",
+  "tiny_canary_allowed": "no",
+  "manual_approval_required": true,
+  "send_hard_disable_still_active": true,
+
+  "v2_modified_by_this_task": false,
+
+  "allowed_next_stages": [
+    "LP_METEORA_DLMM_10_20U_PROBE_PREFLIGHT_DESIGN_V1",
+    "LP_METEORA_DLMM_KNOWN_POOL_FEED_EXPANSION_REPEAT",
+    "LP_ORCA_WHIRLPOOL_READONLY_CONNECTOR_V1",
+    "LP_SOLANA_PAID_RPC_SETUP_REQUIRED",
+    "STOP_LP_RESEARCH_NOW"
+  ],
+  "recommended_next_stage": "LP_ORCA_WHIRLPOOL_READONLY_CONNECTOR_V1",
+  "default_when_no_explicit_choice": "LP_ORCA_WHIRLPOOL_READONLY_CONNECTOR_V1"
+}

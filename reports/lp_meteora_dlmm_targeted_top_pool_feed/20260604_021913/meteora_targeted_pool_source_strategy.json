@@ -1,0 +1,100 @@
+{
+  "stage": "LP_METEORA_DLMM_TARGETED_TOP_POOL_FEED_EXPANSION_V1",
+  "run_id": "20260604_021913",
+  "strategy_version": "v1",
+
+  "five_dimensions": {
+    "high_fee_dlmm": {
+      "type": "hard_filter",
+      "min_base_fee_bps": 500,
+      "min_max_fee_bps": 2000,
+      "dynamic_fee_supported": true,
+      "rationale": "10U notional × 0.5% turnover × 0.05% base = $0.00025; < cost $0.156; structural loss below 5% base."
+    },
+    "high_volume_dlmm": {
+      "type": "soft_preference",
+      "preferred_24h_volume_usd": 1000000,
+      "acceptable_24h_volume_usd": 100000,
+      "watch_24h_volume_usd_below": 10000
+    },
+    "high_liquidity_near_active": {
+      "type": "smoke_blocker",
+      "required_liquidity_within_pct": 5,
+      "quote_smoke_required": true,
+      "rationale": "上一轮 16 池 active bin ±10% 全部 0 bins with liquidity; 必须 hard filter 掉这批"
+    },
+    "quote_friendly_bin_step": {
+      "type": "physical",
+      "preferred_bin_step_min": 50,
+      "preferred_bin_step_max": 2000,
+      "avoid_bin_step_2": true,
+      "avoid_bin_step_above": 5000
+    },
+    "token_quality": {
+      "tier_A": ["USDC", "USDT", "SOL"],
+      "tier_B": ["mSOL", "jitoSOL", "bSOL"],
+      "tier_C": ["JUP", "JTO", "BONK", "WIF", "PYTH"],
+      "tier_D_memecoin_watch": ["high_vol_high_fee_memecoin"]
+    }
+  },
+
+  "source_priority": {
+    "A_high_confidence": [
+      "Meteora UI top pools page (app.meteora.ag/clmm-api/pair/all)",
+      "Meteora dlmm-sdk ts-client GitHub examples",
+      "Meteora official docs (docs.meteora.ag)"
+    ],
+    "B_medium_confidence_chain_verify_required": [
+      "DexScreener solana pairs search",
+      "GeckoTerminal solana meteora pools",
+      "Jupiter quote endpoint token list"
+    ],
+    "blacklist": [
+      "bin_step=2 (SOL/USDC 衍生，已结构性失败)",
+      "上一轮 reject bucket 全部 16 池",
+      "24h volume < $1k 池"
+    ]
+  },
+
+  "meteora_dlmm_program_validation": {
+    "program_id": "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo",
+    "expected_data_len": 904,
+    "data_struct": "LbPair",
+    "chain_verify_required": true
+  },
+
+  "candidate_collection_targets": {
+    "candidate_raw_count_min": 30,
+    "candidate_raw_count_max": 80,
+    "source_A_count_target": 10,
+    "source_B_count_target": 20,
+    "high_fee_candidate_count_target": 15,
+    "high_volume_candidate_count_target": 10,
+    "duplicate_count_allowed": "any (marked only)",
+    "invalid_count_allowed": "any (filtered in stage E)"
+  },
+
+  "pre_filter_order": [
+    "1. base_fee_hint >= 5% AND token_pair in {USDC, SOL}",
+    "2. base_fee_hint >= 1% AND 24h_volume_hint >= $100k",
+    "3. base_fee_hint >= 5% (any token)",
+    "4. 24h_volume_hint >= $1M",
+    "5. fallback (any Meteora DLMM pool)"
+  ],
+
+  "failure_mode_decisions": {
+    "0_high_fee_candidates": "→ LP_ORCA_WHIRLPOOL_READONLY_CONNECTOR_V1",
+    "0_chain_verified": "→ LP_ORCA_WHIRLPOOL_READONLY_CONNECTOR_V1",
+    "0_quote_ready": "→ LP_ORCA_WHIRLPOOL_READONLY_CONNECTOR_V1 or LP_SOLANA_PAID_RPC_SETUP_REQUIRED",
+    "all_quote_ready_negative_EV": "→ LP_ORCA_WHIRLPOOL_READONLY_CONNECTOR_V1",
+    "any_realistic_positive_non_memecoin": "→ LP_METEORA_DLMM_10_20U_PROBE_PREFLIGHT_DESIGN_V1"
+  },
+
+  "allowed_next_stages": [
+    "LP_METEORA_DLMM_10_20U_PROBE_PREFLIGHT_DESIGN_V1",
+    "LP_METEORA_DLMM_KNOWN_POOL_FEED_EXPANSION_REPEAT",
+    "LP_ORCA_WHIRLPOOL_READONLY_CONNECTOR_V1",
+    "LP_SOLANA_PAID_RPC_SETUP_REQUIRED",
+    "STOP_LP_RESEARCH_NOW"
+  ]
+}
