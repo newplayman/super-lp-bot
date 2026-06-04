@@ -1,0 +1,139 @@
+{
+  "snapshot_at_utc": "2026-06-04T18:35:18Z",
+  "author": "Agent (Claude Opus 4.8)",
+
+  "decision": "V1_continues_real_6h, V2_deferred",
+  "decision_reason": "V1 (PID 2161828) is legitimately running real 6h wallclock (LOOP_COUNT=6 SLEEP_SECONDS=3600); user chose option 2 'Let V1 finish, defer V2'. V1 supervisor is on track to complete at 20:01:29Z.",
+
+  "v0_invalid_short_mode": {
+    "stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_6H_RUN_APPROVAL_V1",
+    "run_id": "20260604_130353",
+    "loop_count": 6,
+    "sleep_seconds": 10,
+    "actual_runtime_minutes": 2.75,
+    "short_mode_used": true,
+    "gate_pass": false,
+    "can_advance_to_12h": false,
+    "recommended_next_stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_6H_RUN_FIX_REPEAT",
+    "verdict": "INVALID; short mode (LOOP_COUNT=6 SLEEP_SECONDS=10) ran 2.75 min, real-6h expected 330 min. This was the V0 invalid run that V1 was launched to fix."
+  },
+
+  "v1_in_flight_real_6h": {
+    "stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_6H_REAL_WALLCLOCKFIX_REPEAT_V1",
+    "run_id": "20260604_134918",
+    "loop_count": 6,
+    "sleep_seconds": 3600,
+    "supervisor_pid": 2161828,
+    "supervisor_stat": "S",
+    "supervisor_elapsed_minutes": 153.6,
+    "supervisor_state_loop": "iteration 3/6, sleep 2/4 (heartbeat 3_2_of_4 at 16:31:32Z)",
+    "tmux_session": "lp_long_horizon_6h_20260604_134918",
+    "tmux_session_alive": true,
+    "tmux_windows": 1,
+    "tmux_created_at": "2026-06-04 16:02:00",
+    "expected_end_time_utc": "2026-06-04T20:01:29Z",
+    "remaining_minutes": 86.4,
+    "checkpoints_completed": 3,
+    "checkpoints_total": 6,
+    "checkpoints_list": ["checkpoint_1_1401", "checkpoint_2_1501", "checkpoint_3_1601"],
+    "heartbeats_emitted": 12,
+    "heartbeats_total_expected": 24,
+    "short_mode_used": false,
+    "short_mode_rejected": true,
+    "loop_count_override_rejected": true,
+    "expected_short_mode_rejection_exit": 8,
+    "expected_loop_count_override_exit": 9
+  },
+
+  "v1_invariant_checks_at_snapshot": {
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no",
+    "auto_advance_started": false,
+    "longer_stage_started": false,
+    "can_advance_to_12h_pending_finalize": true,
+    "gate_pass_pending_finalize": true,
+    "wallet_or_tx_touched": false,
+    "transaction_sent": false,
+    "send_hard_disable_still_active": true,
+    "no_canary_live_paper_process": true,
+    "no_wallet_keypair_signer_process": true,
+    "no_sendTransaction_process": true,
+    "no_production_write": true,
+    "no_shadow_overwrite": true,
+    "no_cron_systemd": true,
+    "no_extra_tmux_session": true,
+    "no_actual_daemon": true
+  },
+
+  "v1_data_state": {
+    "data_dir": "data/lp_long_horizon/20260604_134918/",
+    "report_dir": "reports/lp_long_horizon_readonly_collector_6h_run/20260604_134918/",
+    "checkpoint_1_1401": {"rows": {"pool_snapshots": 5, "quote_snapshots": 30, "fee_velocity": 25, "liquidity_distribution": 5, "market_regime": 7, "actual_fee_accrual_placeholder": 1, "smoke_summary": 1}, "completed_at_utc": "2026-06-04T14:01:30Z"},
+    "checkpoint_2_1501": {"rows": {"pool_snapshots": 5, "quote_snapshots": 30, "fee_velocity": 25, "liquidity_distribution": 5, "market_regime": 7, "actual_fee_accrual_placeholder": 1, "smoke_summary": 1}, "completed_at_utc": "2026-06-04T15:01:31Z"},
+    "checkpoint_3_1601": {"rows": {"pool_snapshots": 5, "quote_snapshots": 30, "fee_velocity": 25, "liquidity_distribution": 5, "market_regime": 7, "actual_fee_accrual_placeholder": 1, "smoke_summary": 1}, "completed_at_utc": "2026-06-04T16:01:32Z"},
+    "checkpoints_remaining": 3,
+    "expected_remaining_checkpoints": ["checkpoint_4_1701", "checkpoint_5_1801", "checkpoint_6_1901"]
+  },
+
+  "v1_finalize_will_write": {
+    "report_dir": "reports/lp_long_horizon_readonly_collector_6h_run/20260604_134918/",
+    "files": [
+      "SIX_HOUR_RUN_SUMMARY_CN.md",
+      "six_hour_run_summary.json",
+      "DATA_QUALITY_GATE_CN.md",
+      "data_quality_gate.json",
+      "MARKET_REGIME_SUMMARY_CN.md",
+      "market_regime_summary.json",
+      "NEXT_STAGE_DECISION_CN.md",
+      "next_stage_decision.json",
+      "FINAL_VERDICT.json",
+      "ONEPAGE_CN.md",
+      "ARTIFACT_INDEX.md"
+    ],
+    "final_verdict_required_fields": [
+      "stage", "six_hour_run_completed", "actual_runtime_minutes", "actual_runtime_valid_for_6h_gate",
+      "short_mode_used", "short_mode_rejected", "selected_pool_count", "pool_snapshot_rows",
+      "quote_snapshot_rows", "fee_velocity_rows", "liquidity_distribution_rows", "market_regime_rows",
+      "error_rate_pct", "consecutive_429_max", "data_quality_status", "gate_pass", "can_advance_to_12h",
+      "auto_advance_started", "longer_stage_started", "can_run_probe_now", "tiny_canary_allowed",
+      "wallet_or_tx_touched", "transaction_sent", "recommended_next_stage"
+    ]
+  },
+
+  "v1_post_run_actions": {
+    "auto_commit_message": "research: finalize real 6h long horizon readonly collector 20260604_134918",
+    "auto_push_target": "feat/supabase-postgres-deployment",
+    "auto_kill_tmux_session": "lp_long_horizon_6h_20260604_134918"
+  },
+
+  "v2_deferred": {
+    "defer_reason": "user instruction: option 2 - 'Let V1 finish, defer V2'. Do not stop V1, do not launch V2, do not run in parallel.",
+    "v2_decision_blocked_until_v1_finalize": true,
+    "v2_trigger_conditions": [
+      "V1 gate_pass=false (actual_runtime_minutes < 330)",
+      "V1 short_mode_used=true (should not happen; supervisor has hard guards)"
+    ]
+  },
+
+  "no_touch_invariants": {
+    "no_probe": true,
+    "no_canary": true,
+    "no_live": true,
+    "no_paper": true,
+    "no_wallet_read": true,
+    "no_keypair_read": true,
+    "no_signer_creation": true,
+    "no_tx_send": true,
+    "no_bridge": true,
+    "no_paid_rpc": true,
+    "no_paid_indexer": true,
+    "no_protocol_rerun": true,
+    "no_heuristic_modification": true,
+    "no_long_running_daemon": true,
+    "no_12h_24h_48h_72h_7d_auto_start": true,
+    "no_cron_enabled": true,
+    "no_systemd_enabled": true,
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no"
+  }
+}
