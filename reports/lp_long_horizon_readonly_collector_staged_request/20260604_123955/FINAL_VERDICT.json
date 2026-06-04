@@ -1,0 +1,92 @@
+{
+  "stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_STAGED_RUN_REQUEST_V1",
+  "status": "WARN",
+  "run_id": "20260604_123955",
+  "branch": "feat/supabase-postgres-deployment",
+  "head_before": "66eba1f",
+
+  "one_shot_7d_replaced": true,
+  "staged_plan_ready": false,
+  "stages": ["6h", "12h", "24h", "48h", "72h", "7d"],
+  "first_stage": "6h",
+  "auto_advance_allowed": false,
+  "manual_approval_required_each_stage": true,
+  "stage_gate_rules_ready": false,
+  "tmux_template_generated": false,
+  "cron_enabled": false,
+  "systemd_enabled": false,
+  "daemon_started": false,
+  "long_run_started": false,
+
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no",
+  "edge_proven": "no",
+  "wallet_or_tx_touched": false,
+  "transaction_sent": false,
+  "send_hard_disable_still_active": true,
+
+  "recommended_next_stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_6H_RUN_APPROVAL_V1",
+
+  "deliverables_locked": [
+    "INPUT_EVIDENCE_AUDIT_CN.md/json",
+    "STAGED_RUN_PLAN_CN.md/json",
+    "STAGE_GATE_RULES_CN.md/json",
+    "STAGE_APPROVAL_TEMPLATES_CN.md/json",
+    "STAGE_RUNTIME_BUDGET_CN.md/json",
+    "STAGE_FAILURE_AND_ABORT_POLICY_CN.md/json",
+    "STAGED_TMUX_SCRIPT_TEMPLATE_CN.md/json",
+    "FINAL_VERDICT.json",
+    "ONEPAGE_CN.md",
+    "ARTIFACT_INDEX.md"
+  ],
+
+  "redirect_record": {
+    "previous_recommended_next_stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_7D_RUN_REQUEST_V1",
+    "current_recommended_next_stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_6H_RUN_APPROVAL_V1",
+    "reason": "user pivot from one-shot 7d to staged 6h/12h/24h/48h/72h/7d",
+    "one_shot_7d_replaced": true
+  },
+
+  "stages_detail": [
+    {"stage": "6h",  "duration_hours": 6,   "auto_advance": false, "manual_approval_required": true, "gate_status": "rules_ready"},
+    {"stage": "12h", "duration_hours": 12,  "auto_advance": false, "manual_approval_required": true, "gate_status": "rules_ready"},
+    {"stage": "24h", "duration_hours": 24,  "auto_advance": false, "manual_approval_required": true, "gate_status": "rules_ready"},
+    {"stage": "48h", "duration_hours": 48,  "auto_advance": false, "manual_approval_required": true, "gate_status": "rules_ready"},
+    {"stage": "72h", "duration_hours": 72,  "auto_advance": false, "manual_approval_required": true, "gate_status": "rules_ready"},
+    {"stage": "7d",  "duration_hours": 168, "auto_advance": false, "manual_approval_required": true, "gate_status": "rules_ready"}
+  ],
+
+  "safety": {
+    "touched_trading_path": false,
+    "touched_wallet_tx_bridge_live_paper": false,
+    "wallet_or_tx_touched": false,
+    "solana_wallet_or_keypair_touched": false,
+    "transaction_sent": false,
+    "send_hard_disable_still_active": true,
+    "no_paid_rpc_integration": true,
+    "no_paid_indexer_integration": true,
+    "no_protocol_re_run": true,
+    "no_heuristic_modification": true,
+    "no_long_running_daemon": true,
+    "no_signer_creation": true,
+    "no_7d_14d_30d_run": true,
+    "no_actual_stage_run": true,
+    "no_approval_recorded_true": true,
+    "secret_leak_count": 0,
+    "production_write_count": 0,
+    "shadow_overwrite_count": 0,
+    "tmux_actual_session_started": 0
+  },
+
+  "phase_results": {
+    "A_workspace_safety": "PASS (HEAD=66eba1f; no new unrelated dirty files)",
+    "B_input_evidence_audit": "PASS (fix_repeat_v1 inputs; redirect 7D → STAGED recorded)",
+    "C_staged_run_plan": "PASS (6 stages; first=6h; auto_advance=false; manual_approval_each)",
+    "D_stage_gate_rules": "PASS (13 core gate rules; per-stage thresholds; PASS/WARN_ACCEPTABLE/FAIL decision)",
+    "E_stage_approval_templates": "PASS (6 APPROVE phrase templates; reject + pause phrases; APPROVAL_RECORD.json schema)",
+    "F_stage_runtime_budget": "PASS (size + RPC + CPU + RAM estimates per stage; paid RPC recommend at 48h, must at 72h)",
+    "G_stage_failure_and_abort_policy": "PASS (5 abort conditions; 3 decision paths: fix_repeat/pause/stop; failure report template; cross-stage isolation)",
+    "H_staged_tmux_script_template": "PASS (template generated; disabled by default; 6H_RUN_APPROVAL_V1 will enable; max 1 concurrent session)",
+    "I_final_verdict": "PASS (this file)"
+  }
+}

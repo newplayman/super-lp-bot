@@ -1,0 +1,107 @@
+{
+  "stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_STAGED_RUN_REQUEST_V1",
+  "run_id": "20260604_123955",
+  "branch": "feat/supabase-postgres-deployment",
+  "head": "66eba1f",
+
+  "input_files_audit": {
+    "fix_repeat_v1_final_verdict": {
+      "path": "reports/lp_long_horizon_readonly_collector_fix_repeat/20260604_084008/FINAL_VERDICT.json",
+      "exists": true,
+      "status": "WARN"
+    },
+    "fix_repeat_v1_smoke_result": {
+      "path": "reports/lp_long_horizon_readonly_collector_fix_repeat/20260604_084008/real_data_smoke_result.json",
+      "exists": true
+    },
+    "smoke_v1_final_verdict": {
+      "path": "reports/lp_long_horizon_readonly_collector_smoke/20260604_081432/FINAL_VERDICT.json",
+      "exists": true
+    },
+    "final_freeze_verdict": {
+      "path": "reports/lp_research_final_freeze/20260604_051254/FINAL_VERDICT.json",
+      "exists": true
+    }
+  },
+
+  "long_run_readiness_9_items": {
+    "source_adapter_implemented": true,
+    "classifier_implemented": true,
+    "rate_limit_retry_backoff_implemented": true,
+    "abort_condition_implemented": true,
+    "sqlite_enabled": true,
+    "error_rate_monitor_implemented": true,
+    "paid_rpc_indexer_integrated": false,
+    "cron_systemd_configured": false,
+    "manual_approval_recorded": false
+  },
+
+  "redirect_record": {
+    "previous_recommended_next_stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_7D_RUN_REQUEST_V1",
+    "current_recommended_next_stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_6H_RUN_APPROVAL_V1",
+    "reason": "user pivot from one-shot 7d to staged 6h/12h/24h/48h/72h/7d",
+    "one_shot_7d_replaced": true
+  },
+
+  "stages_defined": ["6h", "12h", "24h", "48h", "72h", "7d"],
+  "first_stage": "6h",
+  "auto_advance_allowed": false,
+  "manual_approval_required_each_stage": true,
+
+  "locked_boundary_fields": {
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no",
+    "edge_proven": "no",
+    "send_hard_disable_still_active": true,
+    "wallet_or_tx_touched": false,
+    "transaction_sent": false,
+    "long_run_started": false,
+    "global_lp_rejected": false
+  },
+
+  "hard_prohibitions_checklist": [
+    "no 7d run (any stage)",
+    "no auto_advance between stages",
+    "no cron enabled",
+    "no systemd enabled",
+    "no daemon started",
+    "no probe / canary / live / paper",
+    "no private key / seed / keypair / keystore read",
+    "no signer creation",
+    "no transaction sent",
+    "no approve / mint / add_liquidity / remove_liquidity / collect_fee / swap / bridge",
+    "no production position write",
+    "no shadow table overwrite",
+    "no approval recorded as true (this stage only generates templates)",
+    "can_run_probe_now must stay false",
+    "tiny_canary_allowed must stay no"
+  ],
+
+  "in_scope_outputs": [
+    "INPUT_EVIDENCE_AUDIT_CN.md/json",
+    "STAGED_RUN_PLAN_CN.md/json",
+    "STAGE_GATE_RULES_CN.md/json",
+    "STAGE_APPROVAL_TEMPLATES_CN.md/json",
+    "STAGE_RUNTIME_BUDGET_CN.md/json",
+    "STAGE_FAILURE_AND_ABORT_POLICY_CN.md/json",
+    "STAGED_TMUX_SCRIPT_TEMPLATE_CN.md/json",
+    "FINAL_VERDICT.json",
+    "ONEPAGE_CN.md",
+    "ARTIFACT_INDEX.md",
+    "tests/test_lp_long_horizon_readonly_collector_staged_request_v1.py"
+  ],
+
+  "out_of_scope": [
+    "6h/12h/24h/48h/72h/7d actual run",
+    "paid RPC / paid indexer",
+    "cron / systemd / tmux actual start",
+    "manual approval flow implementation",
+    "actual fee accrual capture (R1)",
+    "protocol re-connector",
+    "heuristic modification",
+    "production write"
+  ],
+
+  "scope_audit_inputs_locked": true,
+  "next_stage": "C_staged_run_plan"
+}

@@ -1,0 +1,60 @@
+{
+  "stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_STAGED_RUN_REQUEST_V1",
+  "run_id": "20260604_123955",
+
+  "approve_phrase_template_per_stage": {
+    "6h":  "APPROVE_LP_LONG_HORIZON_READONLY_STAGE_RUN stage=6h mode=readonly no_probe=true",
+    "12h": "APPROVE_LP_LONG_HORIZON_READONLY_STAGE_RUN stage=12h mode=readonly no_probe=true",
+    "24h": "APPROVE_LP_LONG_HORIZON_READONLY_STAGE_RUN stage=24h mode=readonly no_probe=true",
+    "48h": "APPROVE_LP_LONG_HORIZON_READONLY_STAGE_RUN stage=48h mode=readonly no_probe=true",
+    "72h": "APPROVE_LP_LONG_HORIZON_READONLY_STAGE_RUN stage=72h mode=readonly no_probe=true",
+    "7d":  "APPROVE_LP_LONG_HORIZON_READONLY_STAGE_RUN stage=7d mode=readonly no_probe=true"
+  },
+
+  "approve_record_template": {
+    "phrase": "APPROVE_LP_LONG_HORIZON_READONLY_STAGE_RUN",
+    "stage": "<6h|12h|24h|48h|72h|7d>",
+    "mode": "readonly",
+    "no_probe": true,
+    "approved_at": "<ISO 8601 UTC>",
+    "approved_by": "<manual operator>",
+    "reason": "<1-2 sentence>",
+    "preconditions_verified": [
+      "previous_stage_final_verdict_pass_or_warn_acceptable",
+      "all_13_core_gate_checks_pass_or_warn_acceptable",
+      "no_production_write",
+      "no_wallet_tx_signer_touched",
+      "no_daemon_leak"
+    ],
+    "risk_acknowledged": "manual operator acknowledges stage is read-only, no probe/canary/live/paper, decision to enable probe requires separate PAUSE_LP_RESEARCH and reopen."
+  },
+
+  "reject_phrase_template": "REJECT_LP_LONG_HORIZON_READONLY_STAGE_RUN stage=<STAGE> reason=<SHORT_REASON>",
+  "reject_record_fields": ["phrase", "stage", "reason", "rejected_at", "rejected_by", "next_action"],
+
+  "pause_phrase_template": "PAUSE_LP_LONG_HORIZON_READONLY_STAGE_RUN reason=<SHORT_REASON>",
+  "pause_record_fields": ["phrase", "reason", "paused_at", "paused_by", "next_action"],
+
+  "approval_record_path_per_stage": {
+    "6h":  "reports/lp_long_horizon_readonly_collector_6h_run/<run_id>/APPROVAL_RECORD.json",
+    "12h": "reports/lp_long_horizon_readonly_collector_12h_run/<run_id>/APPROVAL_RECORD.json",
+    "24h": "reports/lp_long_horizon_readonly_collector_24h_run/<run_id>/APPROVAL_RECORD.json",
+    "48h": "reports/lp_long_horizon_readonly_collector_48h_run/<run_id>/APPROVAL_RECORD.json",
+    "72h": "reports/lp_long_horizon_readonly_collector_72h_run/<run_id>/APPROVAL_RECORD.json",
+    "7d":  "reports/lp_long_horizon_readonly_collector_7d_run/<run_id>/APPROVAL_RECORD.json"
+  },
+
+  "validation_logic_pseudocode": "def is_valid_approval(phrase, stage): expected = f'APPROVE_LP_LONG_HORIZON_READONLY_STAGE_RUN stage={stage} mode=readonly no_probe=true'; return phrase.strip() == expected",
+
+  "multi_approval_semantics": "same stage can have multiple attempts (fix_repeat); each attempt writes its own APPROVAL_RECORD_<run_id>.json; latest one is canonical.",
+
+  "cross_stage_exclusivity": [
+    "no batch approval ('approving all stages' forbidden)",
+    "no forward approval ('approving through 7d' forbidden)",
+    "no implicit cascade ('approving 24h and subsequent' forbidden)"
+  ],
+
+  "this_stage_status": "templates generated only; no approval recorded as true in this stage",
+
+  "next_stage": "F_stage_runtime_budget"
+}

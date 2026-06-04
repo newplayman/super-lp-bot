@@ -1,0 +1,77 @@
+{
+  "stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_STAGED_RUN_REQUEST_V1",
+  "run_id": "20260604_123955",
+
+  "one_shot_7d_replaced": true,
+  "staged_plan_ready": false,
+  "stages": ["6h", "12h", "24h", "48h", "72h", "7d"],
+  "first_stage": "6h",
+  "auto_advance_allowed": false,
+  "manual_approval_required_each_stage": true,
+
+  "stages_detail": [
+    {"stage": "6h", "duration_hours": 6, "cumulative_hours": 6, "auto_advance": false, "manual_approval_required": true},
+    {"stage": "12h", "duration_hours": 12, "cumulative_hours": 18, "auto_advance": false, "manual_approval_required": true},
+    {"stage": "24h", "duration_hours": 24, "cumulative_hours": 42, "auto_advance": false, "manual_approval_required": true},
+    {"stage": "48h", "duration_hours": 48, "cumulative_hours": 90, "auto_advance": false, "manual_approval_required": true},
+    {"stage": "72h", "duration_hours": 72, "cumulative_hours": 162, "auto_advance": false, "manual_approval_required": true},
+    {"stage": "7d", "duration_hours": 168, "cumulative_hours": 330, "auto_advance": false, "manual_approval_required": true}
+  ],
+
+  "advance_conditions": [
+    "stage gate rules (Stage D) all core items PASS or WARN_ACCEPTABLE",
+    "final verdict generated for current stage",
+    "independent audit recorded",
+    "manual approval received (per Stage E templates)",
+    "runtime budget not exceeded (per Stage F)",
+    "failure / abort report (if any) fixed or accepted"
+  ],
+
+  "forbidden_shortcuts": [
+    "skip 6h to 12h",
+    "skip 12h to 24h",
+    "skip any stage to next",
+    "auto_advance even with all gates PASS",
+    "single approval covering multiple stages",
+    "treat 7d as inevitable (48h / 72h failure must rollback)"
+  ],
+
+  "data_dimensions_per_stage": {
+    "pool_snapshots_per_pool_per_stage": "1 sample / 30min, 5 pool",
+    "quote_snapshots_per_pool_per_stage": "1 sample / 5min, 5 pool x 6 notional",
+    "fee_velocity_rolling_windows": ["15m", "1h", "6h"],
+    "liquidity_distribution_per_pool_per_stage": "1 sample / 30min",
+    "market_regime_per_stage": "1 sample / 15min, classifier live",
+    "actual_fee_accrual": "R0 schema only, R1 requires user tokenId"
+  },
+
+  "current_state": {
+    "staged_plan_ready": false,
+    "tmux_template_generated": false,
+    "cron_enabled": false,
+    "systemd_enabled": false,
+    "daemon_started": false,
+    "long_run_started": false
+  },
+
+  "hard_prohibitions": [
+    "no 7d run",
+    "no auto_advance between stages",
+    "no cron enabled",
+    "no systemd enabled",
+    "no daemon started",
+    "no probe / canary / live / paper",
+    "no private key / seed / keypair / keystore",
+    "no signer creation",
+    "no transaction sent",
+    "no approve / mint / add_liquidity / remove_liquidity / collect_fee / swap / bridge",
+    "no production position write",
+    "no shadow table overwrite",
+    "can_run_probe_now must stay false",
+    "tiny_canary_allowed must stay no"
+  ],
+
+  "next_stage_after_approval": "LP_LONG_HORIZON_READONLY_COLLECTOR_6H_RUN_APPROVAL_V1",
+
+  "next_stage": "D_stage_gate_rules"
+}

@@ -1,0 +1,66 @@
+{
+  "stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_STAGED_RUN_REQUEST_V1",
+  "run_id": "20260604_123955",
+
+  "sampling_frequency_per_pool": {
+    "pool_snapshots": "1 / 30 min",
+    "quote_snapshots": "1 / 5 min",
+    "fee_velocity": "rolling (15m / 1h / 6h / 24h / 7d)",
+    "liquidity_distribution": "1 / 30 min",
+    "market_regime": "1 / 15 min"
+  },
+
+  "estimated_records_per_stage": {
+    "6h":  {"pool_snapshots_per_pool": 12,  "quote_snapshots_total": 2160,  "fee_velocity_per_pool": 60,  "liquidity_dist_per_pool": 12,  "market_regime_per_stage": 24},
+    "12h": {"pool_snapshots_per_pool": 24,  "quote_snapshots_total": 4320,  "fee_velocity_per_pool": 120, "liquidity_dist_per_pool": 24,  "market_regime_per_stage": 48},
+    "24h": {"pool_snapshots_per_pool": 48,  "quote_snapshots_total": 8640,  "fee_velocity_per_pool": 240, "liquidity_dist_per_pool": 48,  "market_regime_per_stage": 96},
+    "48h": {"pool_snapshots_per_pool": 96,  "quote_snapshots_total": 17280, "fee_velocity_per_pool": 480, "liquidity_dist_per_pool": 96,  "market_regime_per_stage": 192},
+    "72h": {"pool_snapshots_per_pool": 144, "quote_snapshots_total": 25920, "fee_velocity_per_pool": 720, "liquidity_dist_per_pool": 144, "market_regime_per_stage": 288},
+    "7d":  {"pool_snapshots_per_pool": 336, "quote_snapshots_total": 60480, "fee_velocity_per_pool": 1680,"liquidity_dist_per_pool": 336, "market_regime_per_stage": 672}
+  },
+
+  "size_estimates": {
+    "6h":  {"sqlite_kb": 100, "jsonl_kb": 250, "total_mb": 0.34, "disk_max_mb": 1,  "utilization_pct": 34},
+    "12h": {"sqlite_kb": 200, "jsonl_kb": 500, "total_mb": 0.68, "disk_max_mb": 2,  "utilization_pct": 34},
+    "24h": {"sqlite_kb": 400, "jsonl_kb": 1000,"total_mb": 1.37, "disk_max_mb": 5,  "utilization_pct": 27},
+    "48h": {"sqlite_kb": 800, "jsonl_kb": 2000,"total_mb": 2.73, "disk_max_mb": 10, "utilization_pct": 27},
+    "72h": {"sqlite_kb": 1200,"jsonl_kb": 3000,"total_mb": 4.10, "disk_max_mb": 15, "utilization_pct": 27},
+    "7d":  {"sqlite_kb": 2800,"jsonl_kb": 7000,"total_mb": 9.57, "disk_max_mb": 30, "utilization_pct": 32}
+  },
+
+  "rpc_rps_estimate": {
+    "solana_rpc_public_per_pool_quote": "1 req / 5 min = 0.0033 RPS",
+    "5_pool_6_notional_5min_quote": "1.0 RPS",
+    "public_rpc_limit": "3 RPS (publicnode)",
+    "headroom_factor": 30,
+    "5_consecutive_429_risk": "low for 6h/12h/24h/48h/72h/7d"
+  },
+
+  "paid_rpc_required": {
+    "6h": "no",
+    "12h": "no",
+    "24h": "no",
+    "48h": "recommend",
+    "72h": "yes",
+    "7d": "must"
+  },
+
+  "cpu_ram_estimate": {
+    "6h":  {"cpu_avg_pct": 5,  "ram_peak_mb": 50,  "processes": 1},
+    "12h": {"cpu_avg_pct": 5,  "ram_peak_mb": 60,  "processes": 1},
+    "24h": {"cpu_avg_pct": 8,  "ram_peak_mb": 80,  "processes": 1},
+    "48h": {"cpu_avg_pct": 10, "ram_peak_mb": 100, "processes": 1},
+    "72h": {"cpu_avg_pct": 12, "ram_peak_mb": 150, "processes": 1},
+    "7d":  {"cpu_avg_pct": 15, "ram_peak_mb": 200, "processes": 1, "background_required": true}
+  },
+
+  "fixed_pool_list": [
+    "meteora_dlmm: CnK82s8exdsK9nwqQ55kd9wcxoA22NwTchZJCBdu8LDa",
+    "orca_whirlpool: C9U2Ksk6KKWvLEeo5yUQ7Xu46X7NzeBJtd9PBfuXaUSM",
+    "raydium_clmm: 3nMFwZXwY1s1M5s8vYAHqd4wGs4iSxXE4LRoUMMYqEgF",
+    "raydium_cpmm: vs6XUbGcVWG75Gv81qvDMBxkQ67Kr2eLrFNDTrCxxwk",
+    "solana_stable: AiMZS5U3JMvpdvsr1KeaMiS354Z1DeSg5XjA4yYRxtFf"
+  ],
+
+  "next_stage": "G_stage_failure_and_abort_policy"
+}

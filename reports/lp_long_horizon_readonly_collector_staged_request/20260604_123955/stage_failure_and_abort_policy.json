@@ -1,0 +1,80 @@
+{
+  "stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_STAGED_RUN_REQUEST_V1",
+  "run_id": "20260604_123955",
+
+  "abort_conditions": [
+    {"kind": "consecutive_429", "trigger": "5 consecutive 429 from any source", "exit_code": 1},
+    {"kind": "error_rate", "trigger": "error_rate_pct >= 20", "exit_code": 2},
+    {"kind": "write_failure", "trigger": "jsonl / sqlite write failed", "exit_code": 3},
+    {"kind": "safety_self_check_failure", "trigger": "module self_check fail at runtime", "exit_code": 4},
+    {"kind": "banned_token_detected", "trigger": "banned token detected at runtime", "exit_code": 5}
+  ],
+
+  "abort_post_actions": [
+    "close store (sqlite + jsonl)",
+    "write smoke_summary.json with aborted=true, abort_reason, abort_at",
+    "write STAGE_ABORT.json with abort_kind + reason + last_completed_step",
+    "write FINAL_VERDICT.json with data_quality_status=FAIL",
+    "write failure subreport under reports/lp_long_horizon_readonly_collector_<STAGE>_run_failure_<RUN_ID>/",
+    "exit non-zero (1-7 per abort_kind)"
+  ],
+
+  "decision_paths": {
+    "fix_repeat": {
+      "trigger": "root cause identified + single retry can fix",
+      "examples": ["5 consecutive 429 → switch to paid RPC", "disk 80% full → archive older stages"],
+      "next_stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_<STAGE>_RUN_FIX_REPEAT_REQUEST_V1"
+    },
+    "pause": {
+      "trigger": "3 consecutive stages FAIL OR same abort_kind 2x in row OR external shock",
+      "phrase": "PAUSE_LP_LONG_HORIZON_READONLY_STAGE_RUN reason=<SHORT_REASON>",
+      "next_stage": "audit + redesign plan"
+    },
+    "stop": {
+      "trigger": "safety violation OR 5 stages all paused OR STOP_LP_RESEARCH_NOW",
+      "phrase": "STOP_LP_RESEARCH_NOW",
+      "next_stage": "archive + project direction A/B/C/D (per final freeze)"
+    }
+  },
+
+  "decision_tree": {
+    "stage_FAIL": "root_cause_identified?",
+    "yes": "fix_repeat",
+    "no": "consecutive_3_stage_FAIL?",
+    "yes": "pause",
+    "no": "safety_field_broken?",
+    "yes": "stop",
+    "no": "fallback_fix_repeat_with_stronger_audit"
+  },
+
+  "fix_repeat_replay_flow": [
+    "write LP_LONG_HORIZON_READONLY_COLLECTOR_<STAGE>_RUN_FIX_REPEAT_REQUEST_V1 report",
+    "implement fix (e.g. paid RPC, smaller sampling)",
+    "regression smoke",
+    "re-apply STAGE_RUN_APPROVAL_V1",
+    "re-run stage"
+  ],
+
+  "pause_unpause_flow": [
+    "write UNPAUSE_LP_LONG_HORIZON_READONLY_STAGE_RUN reason",
+    "audit report (root cause)",
+    "redesign staged plan",
+    "go through LP_LONG_HORIZON_READONLY_COLLECTOR_STAGED_REQUEST_FIX_REPEAT",
+    "re-apply first stage (6h) approval"
+  ],
+
+  "failure_report_template": {
+    "path": "reports/lp_long_horizon_readonly_collector_<STAGE>_run_failure_<RUN_ID>/STAGE_FAILURE_REPORT_CN.md",
+    "sections": [
+      "abort_kind", "abort_reason", "last_completed_step", "root_cause",
+      "impact_assessment", "fix_repeat_recommendation", "next_action_decision",
+      "cross_stage_impact", "audit_trail"
+    ]
+  },
+
+  "no_concealment": "any abort must be explicitly written in FINAL_VERDICT.json with data_quality_status=FAIL + abort_kind + abort_reason + abort_at + last_completed_step + next_action.",
+
+  "cross_stage_isolation": "auto_advance=false ensures no stage runs while previous FAIL; advance attempt sees FAIL → abort.",
+
+  "next_stage": "H_staged_tmux_script_template"
+}

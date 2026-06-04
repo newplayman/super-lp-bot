@@ -1,0 +1,73 @@
+{
+  "stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_STAGED_RUN_REQUEST_V1",
+  "run_id": "20260604_123955",
+
+  "tmux_template_generated": true,
+  "tmux_disabled_by_default": true,
+  "tmux_actual_session_started": 0,
+  "cron_enabled": false,
+  "systemd_enabled": false,
+  "daemon_started": false,
+  "long_run_started": false,
+
+  "session_naming_convention": "lp_long_horizon_<STAGE>_run_<RUN_ID>",
+  "session_examples": [
+    "lp_long_horizon_6h_run_20260604_XXXXXX",
+    "lp_long_horizon_12h_run_20260604_XXXXXX",
+    "lp_long_horizon_24h_run_20260604_XXXXXX",
+    "lp_long_horizon_48h_run_20260604_XXXXXX",
+    "lp_long_horizon_72h_run_20260604_XXXXXX",
+    "lp_long_horizon_7d_run_20260604_XXXXXX"
+  ],
+  "session_lifetime": "<stage duration> + 10 min cleanup",
+  "max_concurrent_sessions": 1,
+
+  "preflight_checks": [
+    "APPROVAL_RECORD.json exists at expected path",
+    "approval phrase matches APPROVE_LP_LONG_HORIZON_READONLY_STAGE_RUN stage=<STAGE> mode=readonly no_probe=true",
+    "no existing tmux session with same name",
+    "9-item readiness verified (per FIX_REPEAT_V1)",
+    "output dirs created"
+  ],
+
+  "launch_template_lines": [
+    "tmux new-session -d -s lp_long_horizon_<STAGE>_run_<RUN_ID> -c $(pwd) \\",
+    "    python3 scripts/lp_long_horizon_readonly_real_data_smoke_v1.py \\",
+    "     --mode smoke --out data/lp_long_horizon/<RUN_ID>/<STAGE>_run \\",
+    "     --stage <STAGE> --run-id <RUN_ID> 2>&1 | tee reports/.../logs/runner.log"
+  ],
+
+  "monitoring_commands": [
+    "tmux attach -t <SESSION>",
+    "tmux capture-pane -p -t <SESSION>",
+    "ps -ef | grep -v grep | grep lp_long_horizon_readonly_real_data_smoke",
+    "tail -f reports/.../logs/runner.log"
+  ],
+
+  "shutdown_checklist": [
+    "FINAL_VERDICT.json exists",
+    "data_quality_status is PASS or WARN_ACCEPTABLE",
+    "if PASS: kill tmux session, await manual approval for next stage",
+    "if FAIL: do NOT auto-kill, follow STAGE_FAILURE_AND_ABORT_POLICY"
+  ],
+
+  "enable_conditions_for_6H_RUN_APPROVAL_V1": [
+    "APPROVAL_RECORD.json received and validated",
+    "phrase matches exactly",
+    "9-item readiness all green",
+    "disk / RAM / network verified",
+    "manual operator uncomments launch lines",
+    "tmux session count <= 1"
+  ],
+
+  "forbidden_actions": [
+    "no canary / live / paper / probe inside tmux",
+    "no wallet / signer / tx inside tmux",
+    "no tmux session cross-stage reuse",
+    "no tmux session longer than stage duration + 10 min",
+    "no tmux wrapped in cron / systemd",
+    "no tmux writing production / shadow paths"
+  ],
+
+  "this_stage_status": "template generated, no actual tmux session created; 6H_RUN_APPROVAL_V1 will enable"
+}
