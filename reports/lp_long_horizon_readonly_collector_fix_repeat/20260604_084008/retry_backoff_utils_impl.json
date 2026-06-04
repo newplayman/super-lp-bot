@@ -1,0 +1,50 @@
+{
+  "stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_FIX_REPEAT_V1",
+  "run_id": "20260604_084008",
+
+  "files_implemented": [
+    "scripts/lp_long_horizon/__init__.py",
+    "scripts/lp_long_horizon/utils/__init__.py",
+    "scripts/lp_long_horizon/utils/retry.py",
+    "scripts/lp_long_horizon/utils/abort.py"
+  ],
+
+  "retry_api": {
+    "retry_with_backoff": {"max_retries_default": 3, "base_delay_s_default": 1.0, "backoff_factor_default": 2.0},
+    "classify_429": {"checks": ["status_code==429", "code==429", "429 in str", "too many requests", "rate limit"]},
+    "with_timeout": {"implementation": "SIGALRM (POSIX)", "raises": "TimeoutError_"},
+    "safe_sleep": "time.sleep wrapper, replaceable for tests"
+  },
+
+  "abort_api": {
+    "AbortError": "raised by AbortController",
+    "ErrorRateMonitor": {"threshold_pct_default": 20.0, "window_default": 50, "method": "should_abort"},
+    "AbortController": {
+      "max_429_streak_default": 5,
+      "abort_conditions": [
+        "consecutive_429",
+        "error_rate",
+        "write_failure",
+        "safety_self_check_failure",
+        "banned_token_detected"
+      ]
+    }
+  },
+
+  "safety_static_check": {
+    "no_banned_token_in_real_code": true,
+    "no_wallet_signer_tx_mutation": true,
+    "no_bridge_call": true,
+    "no_production_path": true,
+    "no_shadow_path": true,
+    "no_daemon_cron_systemd": true
+  },
+
+  "long_run_readiness_progress": {
+    "rate_limit_retry_backoff_implemented": true,
+    "abort_condition_implemented": true,
+    "error_rate_monitor_implemented": true
+  },
+
+  "next_stage": "E_local_artifact_replay_adapter"
+}

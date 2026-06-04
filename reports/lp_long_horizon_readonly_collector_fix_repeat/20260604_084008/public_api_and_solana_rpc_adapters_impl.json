@@ -1,0 +1,73 @@
+{
+  "stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_FIX_REPEAT_V1",
+  "run_id": "20260604_084008",
+
+  "files_implemented": [
+    "scripts/lp_long_horizon/adapters/public_api_coingecko.py",
+    "scripts/lp_long_horizon/adapters/solana_rpc_readonly.py"
+  ],
+
+  "public_api_coingecko": {
+    "endpoint": "https://api.coingecko.com/api/v3/coins/{coin_id}/ohlc",
+    "method": "GET",
+    "retry_max": 2,
+    "base_delay_s": 0.5,
+    "timeout_s": 5.0,
+    "return_on_failure": [],
+    "raises": false,
+    "opt_in": true,
+    "ohlc_bar_fields": ["ts", "open", "high", "low", "close", "volume", "real_data", "data_source"]
+  },
+
+  "solana_rpc_readonly": {
+    "endpoint_default": "https://api.mainnet-beta.solana.com",
+    "endpoint_alternatives": [
+      "https://api.mainnet-beta.solana.com",
+      "https://solana.publicnode.com",
+      "https://api.mainnet.solana.com"
+    ],
+    "method": "POST",
+    "jsonrpc_method": "getMultipleAccountsInfo",
+    "retry_max": 2,
+    "base_delay_s": 0.5,
+    "timeout_s": 5.0,
+    "return_on_failure": [],
+    "raises": false,
+    "opt_in": true,
+    "account_info_fields": ["address", "data_len", "owner", "lamports", "executable", "rent_epoch", "real_data", "data_source"],
+    "signing": false,
+    "keypair_load": false
+  },
+
+  "retry_backoff_integration": {
+    "uses_retry_with_backoff": true,
+    "uses_classify_429": true,
+    "uses_with_timeout": true,
+    "retryable_predicate": "classify_429(e) or isinstance(URLError / TimeoutError_)"
+  },
+
+  "abort_controller_integration": {
+    "record_ok_on_success": true,
+    "record_429_on_429": true,
+    "record_error_on_other": true,
+    "raises": false
+  },
+
+  "self_check_at_import": {
+    "public_api_coingecko_self_check_passes": true,
+    "solana_rpc_readonly_self_check_passes": true,
+    "banned_token_list_size": 28
+  },
+
+  "default_runner_behavior": {
+    "use_public_api_default": 0,
+    "use_solana_rpc_default": 0,
+    "always_runs_local_artifact_replay": true
+  },
+
+  "long_run_readiness_progress": {
+    "source_adapter_implemented": "3/3 (local_artifact_replay + public_api_coingecko + solana_rpc_readonly)"
+  },
+
+  "next_stage": "G_regime_classifier"
+}

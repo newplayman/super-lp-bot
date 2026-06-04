@@ -1,0 +1,120 @@
+{
+  "stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_FIX_REPEAT_V1",
+  "run_id": "20260604_084008",
+  "branch": "feat/supabase-postgres-deployment",
+  "head": "44954ba",
+
+  "input_files_audit": {
+    "smoke_v1_final_verdict": {
+      "path": "reports/lp_long_horizon_readonly_collector_smoke/20260604_081432/FINAL_VERDICT.json",
+      "exists": true
+    },
+    "smoke_v1_smoke_result": {
+      "path": "reports/lp_long_horizon_readonly_collector_smoke/20260604_081432/collector_smoke_result.json",
+      "exists": true
+    },
+    "smoke_v1_health": {
+      "path": "reports/lp_long_horizon_readonly_collector_smoke/20260604_081432/collector_health_and_failure_mode.json",
+      "exists": true
+    },
+    "final_freeze_verdict": {
+      "path": "reports/lp_research_final_freeze/20260604_051254/FINAL_VERDICT.json",
+      "exists": true
+    },
+    "protocol_verdicts": [
+      {"path": "reports/lp_meteora_dlmm_targeted_top_pool_feed/20260604_021913/FINAL_VERDICT.json", "exists": true, "best_pool": "CnK82s8exdsK9nwqQ55kd9wcxoA22NwTchZJCBdu8LDa"},
+      {"path": "reports/lp_orca_whirlpool_readonly_connector/20260604_025414/FINAL_VERDICT.json", "exists": true, "best_pool": "C9U2Ksk6KKWvLEeo5yUQ7Xu46X7NzeBJtd9PBfuXaUSM"},
+      {"path": "reports/lp_raydium_clmm_readonly_connector/20260604_034503/FINAL_VERDICT.json", "exists": true, "best_pool": "3nMFwZXwY1s1M5s8vYAHqd4wGs4iSxXE4LRoUMMYqEgF"},
+      {"path": "reports/lp_raydium_cpmm_readonly_connector/20260604_040952/FINAL_VERDICT.json", "exists": true, "best_pool": "vs6XUbGcVWG75Gv81qvDMBxkQ67Kr2eLrFNDTrCxxwk"},
+      {"path": "reports/lp_solana_stable_pool_research/20260604_044118/FINAL_VERDICT.json", "exists": true, "best_pool": "AiMZS5U3JMvpdvsr1KeaMiS354Z1DeSg5XjA4yYRxtFf"}
+    ]
+  },
+
+  "real_pool_addresses_replay": [
+    {"protocol": "meteora_dlmm", "pool_address": "CnK82s8exdsK9nwqQ55kd9wcxoA22NwTchZJCBdu8LDa", "program_id": "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo"},
+    {"protocol": "orca_whirlpool", "pool_address": "C9U2Ksk6KKWvLEeo5yUQ7Xu46X7NzeBJtd9PBfuXaUSM", "program_id": "whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc"},
+    {"protocol": "raydium_clmm", "pool_address": "3nMFwZXwY1s1M5s8vYAHqd4wGs4iSxXE4LRoUMMYqEgF", "program_id": "CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK"},
+    {"protocol": "raydium_cpmm", "pool_address": "vs6XUbGcVWG75Gv81qvDMBxkQ67Kr2eLrFNDTrCxxwk", "program_id": "675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8"},
+    {"protocol": "solana_stable", "pool_address": "AiMZS5U3JMvpdvsr1KeaMiS354Z1DeSg5XjA4yYRxtFf", "program_id": "whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc"}
+  ],
+
+  "long_run_readiness_9_items": {
+    "source_adapter_implemented": false,
+    "classifier_implemented": false,
+    "rate_limit_retry_backoff_implemented": false,
+    "abort_condition_implemented": false,
+    "sqlite_enabled": false,
+    "paid_rpc_indexer_integrated": false,
+    "error_rate_monitor_implemented": false,
+    "cron_systemd_configured": false,
+    "manual_approval_recorded": false
+  },
+
+  "this_task_targets": [
+    "source_adapter_implemented (local_artifact_replay + public_api + solana_rpc_readonly)",
+    "classifier_implemented (7 regime + priority)",
+    "rate_limit_retry_backoff_implemented (retry/backoff/timeout/429)",
+    "abort_condition_implemented (5 abort conditions)",
+    "sqlite_enabled (research.sqlite + JSONL fallback)",
+    "error_rate_monitor_implemented (ErrorRateMonitor class)"
+  ],
+
+  "this_task_deferred_to_7D_RUN": [
+    "paid_rpc_indexer_integrated",
+    "cron_systemd_configured",
+    "manual_approval_recorded"
+  ],
+
+  "locked_boundary_fields": {
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no",
+    "edge_proven": "no",
+    "send_hard_disable_still_active": true,
+    "wallet_or_tx_touched": false,
+    "transaction_sent": false,
+    "long_run_started": false,
+    "global_lp_rejected": false
+  },
+
+  "hard_prohibitions_checklist": [
+    "no 7d / 14d / 30d run",
+    "no long-running daemon",
+    "no wallet / signer / keypair",
+    "no transaction sent",
+    "no approve / mint / add_liquidity / remove_liquidity / collect_fee / swap / bridge",
+    "no probe / canary / live / paper",
+    "no production position write",
+    "no shadow table overwrite",
+    "no paid RPC / paid indexer",
+    "can_run_probe_now must stay false",
+    "tiny_canary_allowed must stay no"
+  ],
+
+  "in_scope_outputs": [
+    "scripts/lp_long_horizon/__init__.py",
+    "scripts/lp_long_horizon/utils/retry.py",
+    "scripts/lp_long_horizon/utils/abort.py",
+    "scripts/lp_long_horizon/adapters/local_artifact_replay.py",
+    "scripts/lp_long_horizon/adapters/public_api_coingecko.py",
+    "scripts/lp_long_horizon/adapters/solana_rpc_readonly.py",
+    "scripts/lp_long_horizon/classify/market_regime.py",
+    "scripts/lp_long_horizon/storage/research_store.py",
+    "scripts/lp_long_horizon_readonly_real_data_smoke_v1.py",
+    "tests/test_lp_long_horizon_readonly_collector_fix_repeat_v1.py",
+    "reports/lp_long_horizon_readonly_collector_fix_repeat/20260604_084008/* (16 docs/json)"
+  ],
+
+  "out_of_scope": [
+    "7d / 14d / 30d actual run",
+    "paid RPC / paid indexer",
+    "cron / systemd / long-running process",
+    "manual approval flow implementation",
+    "actual fee accrual capture (R1 phase)",
+    "protocol re-connector",
+    "heuristic modification",
+    "production write"
+  ],
+
+  "scope_audit_inputs_locked": true,
+  "next_stage": "C_fix_repeat_plan"
+}

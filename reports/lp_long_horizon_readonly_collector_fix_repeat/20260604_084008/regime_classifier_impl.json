@@ -1,0 +1,63 @@
+{
+  "stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_FIX_REPEAT_V1",
+  "run_id": "20260604_084008",
+
+  "files_implemented": [
+    "scripts/lp_long_horizon/classify/market_regime.py"
+  ],
+
+  "classify_regime_api": {
+    "signature": "(*, realized_vol_7d_pct, price_change_7d_pct, volume_to_tvl_30d_pct, lm_active=False, bribe_active=False) -> str",
+    "returns": "one of 7 regime names",
+    "priority_order": [
+      "low_volatility_stable (vol_7d < 1%)",
+      "incentive_period (lm OR bribe active, overrides trend)",
+      "high_volatility_trend (vol_7d >= 10%)",
+      "high_volume_sideways (sideways + vol_tvl_30d >= 1%)",
+      "uptrend (px_7d > +5%)",
+      "downtrend (px_7d < -5%)",
+      "sideways (fallback)"
+    ],
+    "side_effects": "none (pure function)"
+  },
+
+  "constants": {
+    "VOL_7D_LOW_THRESHOLD_PCT": 1.0,
+    "VOL_7D_HIGH_THRESHOLD_PCT": 10.0,
+    "PX_CHANGE_7D_UPTREND_THRESHOLD_PCT": 5.0,
+    "PX_CHANGE_7D_DOWNTREND_THRESHOLD_PCT": -5.0,
+    "VOL_TVL_30D_HIGH_VOLUME_THRESHOLD_PCT": 1.0
+  },
+
+  "helpers": [
+    "is_valid_regime(name) -> bool",
+    "regime_priority_index(name) -> int",
+    "build_market_regime_row(...) -> dict"
+  ],
+
+  "spec_alignment": {
+    "seven_regimes_defined": true,
+    "priority_order_defined": true,
+    "thresholds_match_spec": true,
+    "decision_tree_match_spec": true,
+    "boundary_behavior_match_spec": true,
+    "unknown_placeholder_defined": true
+  },
+
+  "safety_static_check": {
+    "no_wallet_signer_tx_mutation": true,
+    "no_bridge": true,
+    "no_production_path": true,
+    "no_shadow_path": true,
+    "no_daemon_cron_systemd": true,
+    "pure_function_no_io": true
+  },
+
+  "test_coverage": 15,
+
+  "long_run_readiness_progress": {
+    "classifier_implemented": true
+  },
+
+  "next_stage": "H_sqlite_storage"
+}

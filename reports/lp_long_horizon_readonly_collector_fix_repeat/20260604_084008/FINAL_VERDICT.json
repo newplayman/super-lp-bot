@@ -1,0 +1,109 @@
+{
+  "stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_FIX_REPEAT_V1",
+  "status": "WARN",
+  "run_id": "20260604_084008",
+  "branch": "feat/supabase-postgres-deployment",
+  "head_before": "44954ba",
+
+  "source_adapter_implemented": true,
+  "classifier_implemented": true,
+  "retry_backoff_implemented": true,
+  "abort_condition_implemented": true,
+  "sqlite_enabled": true,
+  "jsonl_storage_ready": true,
+  "error_rate_monitor_implemented": true,
+  "real_data_smoke_ran": true,
+  "real_data_rows": 72,
+  "placeholder_rows": 1,
+  "total_rows": 73,
+  "schema_validation_pass": true,
+  "research_only_write_ok": true,
+  "long_run_ready": false,
+  "long_run_ready_reason": "3 items deferred to 7D_RUN_REQUEST_V1 (paid_rpc_indexer_integrated, cron_systemd_configured, manual_approval_recorded)",
+
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no",
+  "edge_proven": "no",
+  "wallet_or_tx_touched": false,
+  "transaction_sent": false,
+  "send_hard_disable_still_active": true,
+
+  "recommended_next_stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_7D_RUN_REQUEST_V1",
+
+  "long_run_readiness_9_items": {
+    "source_adapter_implemented": true,
+    "classifier_implemented": true,
+    "rate_limit_retry_backoff_implemented": true,
+    "abort_condition_implemented": true,
+    "sqlite_enabled": true,
+    "error_rate_monitor_implemented": true,
+    "paid_rpc_indexer_integrated": false,
+    "cron_systemd_configured": false,
+    "manual_approval_recorded": false
+  },
+
+  "deliverables_locked": [
+    "INPUT_EVIDENCE_AUDIT_CN.md/json",
+    "FIX_REPEAT_PLAN_CN.md/json",
+    "RETRY_BACKOFF_UTILS_IMPL_CN.md/json",
+    "LOCAL_ARTIFACT_REPLAY_ADAPTER_IMPL_CN.md/json",
+    "PUBLIC_API_AND_SOLANA_RPC_ADAPTERS_IMPL_CN.md/json",
+    "REGIME_CLASSIFIER_IMPL_CN.md/json",
+    "SQLITE_STORAGE_IMPL_CN.md/json",
+    "REAL_DATA_SMOKE_RUNNER_IMPL_CN.md/json",
+    "REAL_DATA_SMOKE_RESULT_CN.md/json",
+    "FINAL_VERDICT.json",
+    "ONEPAGE_CN.md",
+    "ARTIFACT_INDEX.md"
+  ],
+
+  "files_implemented": [
+    "scripts/lp_long_horizon/__init__.py",
+    "scripts/lp_long_horizon/utils/__init__.py",
+    "scripts/lp_long_horizon/utils/retry.py",
+    "scripts/lp_long_horizon/utils/abort.py",
+    "scripts/lp_long_horizon/adapters/__init__.py",
+    "scripts/lp_long_horizon/adapters/local_artifact_replay.py",
+    "scripts/lp_long_horizon/adapters/public_api_coingecko.py",
+    "scripts/lp_long_horizon/adapters/solana_rpc_readonly.py",
+    "scripts/lp_long_horizon/classify/__init__.py",
+    "scripts/lp_long_horizon/classify/market_regime.py",
+    "scripts/lp_long_horizon/storage/__init__.py",
+    "scripts/lp_long_horizon/storage/research_store.py",
+    "scripts/lp_long_horizon_readonly_real_data_smoke_v1.py",
+    "tests/test_lp_long_horizon_readonly_collector_fix_repeat_v1.py"
+  ],
+
+  "safety": {
+    "touched_trading_path": false,
+    "touched_wallet_tx_bridge_live_paper": false,
+    "wallet_or_tx_touched": false,
+    "solana_wallet_or_keypair_touched": false,
+    "transaction_sent": false,
+    "send_hard_disable_still_active": true,
+    "no_paid_rpc_integration": true,
+    "no_paid_indexer_integration": true,
+    "no_protocol_re_run": true,
+    "no_heuristic_modification": true,
+    "no_long_running_daemon": true,
+    "no_signer_creation": true,
+    "no_7d_14d_30d_run": true,
+    "secret_leak_count": 0,
+    "production_write_count": 0,
+    "shadow_overwrite_count": 0
+  },
+
+  "phase_results": {
+    "A_workspace_safety": "PASS (HEAD=44954ba; no new unrelated dirty files)",
+    "B_input_evidence_audit": "PASS (8 input files; 5 real pool addresses locked; 9 readiness items documented)",
+    "C_fix_repeat_plan": "PASS (target 6/9 readiness; defer 3 to 7D_RUN)",
+    "D_retry_backoff_abort_utils": "PASS (retry_with_backoff + classify_429 + with_timeout + AbortController + ErrorRateMonitor + AbortError)",
+    "E_local_artifact_replay_adapter": "PASS (5 real PoolRecord from frozen verdicts; build_*_row helpers)",
+    "F_public_api_and_solana_rpc_adapters": "PASS (CoinGecko + Solana RPC; opt-in; self_check at import)",
+    "G_regime_classifier": "PASS (7 regimes + priority + decision tree; 15+ test cases)",
+    "H_sqlite_storage": "PASS (6 DDL + 6 indexes; JSONL fallback; self_check)",
+    "I_real_data_smoke_runner": "PASS (orchestrates 4 libs; design + smoke mode; 7 regime inputs)",
+    "J_real_data_smoke_run": "PASS (real_data_rows=72 placeholder_rows=1 total=73; exit 0; 0 abort; 0 error)",
+    "K_final_verdict": "PASS (this file)"
+  }
+}

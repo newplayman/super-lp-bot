@@ -1,0 +1,69 @@
+{
+  "stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_FIX_REPEAT_V1",
+  "run_id": "20260604_084008",
+
+  "this_task_targets": [
+    "source_adapter_implemented",
+    "classifier_implemented",
+    "rate_limit_retry_backoff_implemented",
+    "abort_condition_implemented",
+    "sqlite_enabled",
+    "error_rate_monitor_implemented"
+  ],
+
+  "this_task_deferred_to_7D_RUN": [
+    "paid_rpc_indexer_integrated",
+    "cron_systemd_configured",
+    "manual_approval_recorded"
+  ],
+
+  "new_files": {
+    "scripts/lp_long_horizon/__init__.py": "package marker",
+    "scripts/lp_long_horizon/utils/__init__.py": "utils package",
+    "scripts/lp_long_horizon/utils/retry.py": "retry_with_backoff + classify_429 + with_timeout",
+    "scripts/lp_long_horizon/utils/abort.py": "AbortController + ErrorRateMonitor + AbortError",
+    "scripts/lp_long_horizon/adapters/__init__.py": "adapters package",
+    "scripts/lp_long_horizon/adapters/local_artifact_replay.py": "LocalArtifactReplayAdapter (real pool_address source)",
+    "scripts/lp_long_horizon/adapters/public_api_coingecko.py": "PublicApiCoinGeckoAdapter (read-only HTTP)",
+    "scripts/lp_long_horizon/adapters/solana_rpc_readonly.py": "SolanaRpcReadOnlyAdapter (read-only getMultipleAccountsInfo)",
+    "scripts/lp_long_horizon/classify/__init__.py": "classify package",
+    "scripts/lp_long_horizon/classify/market_regime.py": "classify_regime() 7 regimes + priority",
+    "scripts/lp_long_horizon/storage/__init__.py": "storage package",
+    "scripts/lp_long_horizon/storage/research_store.py": "ResearchStore (SQLite + JSONL)",
+    "scripts/lp_long_horizon_readonly_real_data_smoke_v1.py": "runner",
+    "tests/test_lp_long_horizon_readonly_collector_fix_repeat_v1.py": "pytest"
+  },
+
+  "real_data_definition": "record with real_data=true marker",
+  "real_data_rows_expected_min": 65,
+  "placeholder_rows_expected_max": 8,
+  "total_rows_expected": 73,
+
+  "long_run_readiness_after_this_task": {
+    "source_adapter_implemented": true,
+    "classifier_implemented": true,
+    "rate_limit_retry_backoff_implemented": true,
+    "abort_condition_implemented": true,
+    "sqlite_enabled": true,
+    "error_rate_monitor_implemented": true,
+    "paid_rpc_indexer_integrated": false,
+    "cron_systemd_configured": false,
+    "manual_approval_recorded": false,
+    "score": "6/9",
+    "long_run_ready": false,
+    "long_run_ready_reason": "3 items deferred to 7D_RUN_REQUEST_V1"
+  },
+
+  "hard_prohibitions": [
+    "no wallet / signer / keypair",
+    "no transaction / approve / mint / add_liquidity / remove_liquidity / collect_fee / swap / bridge",
+    "no 7d / 14d / 30d run",
+    "no daemon / cron / systemd",
+    "no production write",
+    "no shadow table overwrite",
+    "can_run_probe_now must stay false",
+    "tiny_canary_allowed must stay no"
+  ],
+
+  "next_stage": "D_retry_backoff_abort_utils"
+}

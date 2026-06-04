@@ -1,0 +1,84 @@
+{
+  "stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_FIX_REPEAT_V1",
+  "run_id": "20260604_084008",
+  "actual_smoke_run_id": "20260604_085232",
+
+  "real_data_smoke_ran": true,
+  "exit_code": 0,
+  "selected_pool_count": 5,
+  "real_data_rows": 72,
+  "placeholder_rows": 1,
+  "total_rows": 73,
+
+  "sqlite_summary": {
+    "sqlite_available": true,
+    "jsonl_only": false,
+    "sqlite_path": "data/lp_long_horizon/20260604_085232/real_data_smoke/research.sqlite",
+    "sqlite_size_bytes": 73728,
+    "warnings": []
+  },
+
+  "sqlite_table_counts": {
+    "pool_snapshots": {"total": 5, "real": 5, "placeholder": 0},
+    "quote_snapshots": {"total": 30, "real": 30, "placeholder": 0},
+    "fee_velocity": {"total": 25, "real": 25, "placeholder": 0},
+    "liquidity_distribution": {"total": 5, "real": 5, "placeholder": 0},
+    "market_regime": {"total": 7, "real": 7, "placeholder": 0},
+    "future_actual_fee_accrual": {"total": 1, "real": 0, "placeholder": 1}
+  },
+
+  "abort_summary": {
+    "aborted": false,
+    "abort_reason": null,
+    "error_rate_pct": 0.0,
+    "errors": 0,
+    "total": 5,
+    "max_429_streak_hit": false,
+    "write_failures": 0,
+    "safety_self_check_failures": 0,
+    "banned_token_detected": 0
+  },
+
+  "safety": {
+    "touched_trading_path": false,
+    "touched_wallet_tx_bridge_live_paper": false,
+    "wallet_or_tx_touched": false,
+    "solana_wallet_or_keypair_touched": false,
+    "transaction_sent": false,
+    "send_hard_disable_still_active": true,
+    "no_paid_rpc_called": true,
+    "no_long_running_daemon": true
+  },
+
+  "locked_fields_preserved": {
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no",
+    "edge_proven": "no",
+    "long_run_started": false
+  },
+
+  "real_data_pool_address_sample": {
+    "protocol": "meteora_dlmm",
+    "pool_address": "CnK82s8exdsK9nwqQ55kd9wcxoA22NwTchZJCBdu8LDa",
+    "program_id": "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo",
+    "best_net_ev_proxy_usd": 0.544,
+    "source_verdict_path": "reports/lp_meteora_dlmm_targeted_top_pool_feed/20260604_021913/FINAL_VERDICT.json"
+  },
+
+  "output_files": {
+    "pool_snapshots.jsonl": 4004,
+    "quote_snapshots.jsonl": 10224,
+    "fee_velocity.jsonl": 9105,
+    "liquidity_distribution.jsonl": 1624,
+    "market_regime.jsonl": 1699,
+    "future_actual_fee_accrual.jsonl": 673,
+    "research.sqlite": 73728,
+    "smoke_summary.json": 1217
+  },
+
+  "long_run_readiness_score": "6/9",
+  "long_run_ready": false,
+  "long_run_ready_reason": "3 items deferred to 7D_RUN_REQUEST_V1 (paid_rpc_indexer_integrated, cron_systemd_configured, manual_approval_recorded)",
+
+  "next_stage": "K_final_verdict"
+}

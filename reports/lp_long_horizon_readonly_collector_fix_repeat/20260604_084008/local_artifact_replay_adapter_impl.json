@@ -1,0 +1,54 @@
+{
+  "stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_FIX_REPEAT_V1",
+  "run_id": "20260604_084008",
+
+  "files_implemented": [
+    "scripts/lp_long_horizon/adapters/local_artifact_replay.py"
+  ],
+
+  "api": {
+    "LocalArtifactReplayAdapter": {
+      "fetch_pools": "returns 5 real PoolRecord from frozen verdicts",
+      "depends_on_network": false,
+      "depends_on_chain_state": false
+    },
+    "PoolRecord_dataclass_fields": [
+      "pool_address", "chain", "protocol", "program_id", "fee_tier_bps",
+      "best_net_ev_proxy_usd", "best_scenario", "best_hold_window",
+      "best_notional_usd", "source", "real_data", "source_verdict_path", "extra"
+    ],
+    "build_helpers": [
+      "build_pool_snapshot_row",
+      "build_quote_snapshot_rows",
+      "build_fee_velocity_rows",
+      "build_liquidity_distribution_row"
+    ]
+  },
+
+  "real_pool_addresses": [
+    {"protocol": "meteora_dlmm", "pool_address": "CnK82s8exdsK9nwqQ55kd9wcxoA22NwTchZJCBdu8LDa"},
+    {"protocol": "orca_whirlpool", "pool_address": "C9U2Ksk6KKWvLEeo5yUQ7Xu46X7NzeBJtd9PBfuXaUSM"},
+    {"protocol": "raydium_clmm", "pool_address": "3nMFwZXwY1s1M5s8vYAHqd4wGs4iSxXE4LRoUMMYqEgF"},
+    {"protocol": "raydium_cpmm", "pool_address": "vs6XUbGcVWG75Gv81qvDMBxkQ67Kr2eLrFNDTrCxxwk"},
+    {"protocol": "solana_stable", "pool_address": "AiMZS5U3JMvpdvsr1KeaMiS354Z1DeSg5XjA4yYRxtFf"}
+  ],
+
+  "expected_real_data_rows": 65,
+  "expected_placeholder_rows": 8,
+  "expected_total_rows": 73,
+
+  "safety_static_check": {
+    "no_banned_token": true,
+    "no_wallet_signer_tx_mutation": true,
+    "no_bridge": true,
+    "no_production_path": true,
+    "no_shadow_path": true,
+    "no_daemon_cron_systemd": true
+  },
+
+  "long_run_readiness_progress": {
+    "source_adapter_implemented": "1/3 (local_artifact_replay done; public_api + solana_rpc in Stage F)"
+  },
+
+  "next_stage": "F_public_api_and_solana_rpc_adapters"
+}

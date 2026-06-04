@@ -1,0 +1,63 @@
+{
+  "stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_FIX_REPEAT_V1",
+  "run_id": "20260604_084008",
+
+  "files_implemented": [
+    "scripts/lp_long_horizon_readonly_real_data_smoke_v1.py"
+  ],
+
+  "cli": {
+    "flags": ["--mode", "--out", "--pools", "--use-public-api", "--use-solana-rpc", "--run-id"],
+    "defaults": {
+      "mode": "smoke",
+      "pools": 5,
+      "use_public_api": 0,
+      "use_solana_rpc": 0
+    }
+  },
+
+  "expected_row_counts": {
+    "pool_snapshots": 5,
+    "quote_snapshots": 30,
+    "fee_velocity": 25,
+    "liquidity_distribution": 5,
+    "market_regime": 7,
+    "actual_fee_placeholder": 1,
+    "total": 73,
+    "real_data_rows": 72,
+    "placeholder_rows": 1
+  },
+
+  "abort_controller_integration": {
+    "max_429_streak": 5,
+    "error_rate_threshold_pct": 50,
+    "window": 20,
+    "check_after_each_pool": true,
+    "check_after_each_regime": true
+  },
+
+  "safety_static_check": {
+    "no_wallet_signer_tx_mutation": true,
+    "no_bridge": true,
+    "write_path_constrained": "data/lp_long_horizon/<run_id>/",
+    "no_production_path": true,
+    "no_shadow_path": true,
+    "default_no_network": true,
+    "no_daemon_cron_systemd": true
+  },
+
+  "long_run_readiness_progress": {
+    "source_adapter_implemented": true,
+    "classifier_implemented": true,
+    "rate_limit_retry_backoff_implemented": true,
+    "abort_condition_implemented": true,
+    "sqlite_enabled": true,
+    "error_rate_monitor_implemented": true
+  },
+
+  "long_run_readiness_score": "6/9",
+  "long_run_ready": false,
+  "long_run_ready_reason": "3 items deferred to 7D_RUN_REQUEST_V1 (paid_rpc_indexer_integrated, cron_systemd_configured, manual_approval_recorded)",
+
+  "next_stage": "J_run_real_data_smoke"
+}
