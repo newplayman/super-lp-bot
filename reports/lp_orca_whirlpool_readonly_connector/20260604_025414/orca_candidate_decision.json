@@ -1,0 +1,64 @@
+{
+  "stage": "LP_ORCA_WHIRLPOOL_READONLY_CONNECTOR_V1",
+  "run_id": "20260604_025414",
+
+  "seven_questions": {
+    "realistic_positive_10_20u": false,
+    "near_break_even_present": true,
+    "high_fee_quote_ready_present": true,
+    "probe_preflight_worth": false,
+    "switch_to_raydium_clmm": true,
+    "paid_rpc_needed_now": false,
+    "should_stop": false
+  },
+
+  "positive_realistic_count": 0,
+  "positive_zero_il_lvr_count": 29,
+  "positive_optimistic_count": 0,
+  "near_break_even_count": 928,
+  "high_fee_quote_ready_count": 20,
+  "quote_ready_pool_count": 10,
+
+  "best_pool": "C9U2Ksk6KKWvLEeo5yUQ7Xu46X7NzeBJtd9PBfuXaUSM",
+  "best_pair": "SOL/Fartcoin",
+  "best_notional": 2000,
+  "best_hold_window": "7d",
+  "best_scenario": "zero_il_lvr",
+  "best_net_ev_proxy_usd": 0.106,
+
+  "spec_decision_rule_applied": "rule_2: quote_ready_pool_count > 0 but all negative, candidate quality still insufficient",
+
+  "recommended_next_stage": "LP_RAYDIUM_CLMM_READONLY_CONNECTOR_V1",
+  "rejected_alternatives": [
+    "LP_ORCA_WHIRLPOOL_KNOWN_POOL_FEED_EXPANSION_REPEAT",
+    "LP_SOLANA_PAID_RPC_SETUP_REQUIRED",
+    "STOP_LP_RESEARCH_NOW",
+    "LP_ORCA_WHIRLPOOL_10_20U_PROBE_PREFLIGHT_DESIGN_V1"
+  ],
+
+  "reasons": [
+    "Orca V1 best cell +$0.106 in zero_il_lvr only; positive_realistic=0",
+    "Meteora V8 + Orca V1 two V3 CL AMMs both negative for retail 10-20U 2000 USD LP",
+    "Best margin in 7d hold is impractical for high vol memecoin pool (Fartcoin)",
+    "Orca SDK read-only path works on public RPC; no paid RPC needed",
+    "Raydium CLMM is 3rd V3 CL AMM, different fee structure, should be independent test"
+  ],
+
+  "safety_locks": {
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no",
+    "solana_wallet_or_keypair_touched": false,
+    "transaction_sent": false,
+    "v2_line_count": 992,
+    "v2_line_count_unchanged": true,
+    "send_hard_disable_still_active": true
+  },
+
+  "allowed_next_stages": [
+    "LP_ORCA_WHIRLPOOL_10_20U_PROBE_PREFLIGHT_DESIGN_V1",
+    "LP_ORCA_WHIRLPOOL_KNOWN_POOL_FEED_EXPANSION_REPEAT",
+    "LP_RAYDIUM_CLMM_READONLY_CONNECTOR_V1",
+    "LP_SOLANA_PAID_RPC_SETUP_REQUIRED",
+    "STOP_LP_RESEARCH_NOW"
+  ]
+}

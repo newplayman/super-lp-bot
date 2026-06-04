@@ -1,0 +1,46 @@
+{
+  "stage": "LP_ORCA_WHIRLPOOL_READONLY_CONNECTOR_V1",
+  "run_id": "20260604_025414",
+  "phase": "D_sdk_package_audit",
+
+  "package_name": "@orca-so/whirlpools",
+  "resolved_version": "8.0.0",
+  "legacy_package": "@orca-so/whirlpools-sdk@0.20.0",
+
+  "install_attempted": true,
+  "install_success": true,
+  "install_dir": "/tmp/lpbot_orca_whirlpool_sdk_probe_20260604_025414/node_modules",
+  "repo_node_modules_created": false,
+
+  "has_context_required": true,
+  "context_method": "createSolanaRpc from @solana/kit (no Keypair, no signer)",
+
+  "wallet_required_for_readonly": false,
+  "wallet_related_imports_used_for_readonly": false,
+
+  "read_only_import_success": true,
+  "read_only_export_count": 42,
+  "read_only_decode_proof": true,
+  "read_only_decode_proof_pools": [
+    {"tickSpacing": 4, "address": "Czfq3xZZDmsdGdUyrNLtRhGc47cXcZtLG4crryfu44zE", "feeRate": 400, "tickCurrentIndex": -26570},
+    {"tickSpacing": 8, "address": "7qbRF6YsyGuLUVs6Y1q64bdVrfe4ZcUUz1JRdoVNUJnm", "feeRate": 500, "tickCurrentIndex": -26567},
+    {"tickSpacing": 64, "address": "HJPjoWUrhoZzkNfRpHuieeFk9WcZWjwy6PBjZ81ngndJ", "feeRate": 3000, "tickCurrentIndex": -26573},
+    {"tickSpacing": 128, "address": "DFVTutNYXD8z4T5cRdgpso1G3sZqQvMHWpW2N99E4DvE", "feeRate": 10000, "tickCurrentIndex": -26640}
+  ],
+
+  "orca_official_api": {
+    "url": "https://api.mainnet.orca.so/v1/whirlpool/list",
+    "http_code": 200,
+    "size_bytes": 17979106,
+    "pool_count": 14983,
+    "fields": ["address", "tokenA", "tokenB", "tickSpacing", "price", "lpFeeRate", "protocolFeeRate", "tvl", "volume", "feeApr", "whirlpoolsConfig"]
+  },
+
+  "sdk_limitations_accepted": [
+    "fetchWhirlpoolsByTokenPair uses GPA internally (fails on public RPC); use Orca official API for discovery",
+    "getSwapQuote is internal; accessed via swapInstructions quote-only mode or direct tick-array + tick-math compute"
+  ],
+
+  "confidence": 0.92,
+  "invalid_reason": null
+}

@@ -1,0 +1,72 @@
+{
+  "status": "WARN",
+  "stage": "LP_ORCA_WHIRLPOOL_READONLY_CONNECTOR_V1",
+  "run_id": "20260604_025414",
+  "branch": "feat/supabase-postgres-deployment",
+  "head_before": "22d2941",
+
+  "candidate_raw_count": 15002,
+  "selected_for_chain_verify_count": 75,
+  "verified_pool_count": 75,
+  "sdk_decode_success_count": 75,
+  "tick_array_ready_pool_count": 4,
+  "quote_ready_pool_count": 10,
+  "survival_ev_model_ran": true,
+
+  "row_count": 1680,
+  "positive_zero_il_lvr_count": 29,
+  "positive_optimistic_count": 0,
+  "positive_realistic_count": 0,
+  "positive_conservative_count": 0,
+  "near_break_even_count": 928,
+  "high_fee_quote_ready_count": 20,
+
+  "best_pool": "C9U2Ksk6KKWvLEeo5yUQ7Xu46X7NzeBJtd9PBfuXaUSM",
+  "best_pair": "SOL/Fartcoin",
+  "best_notional": 2000,
+  "best_hold_window": "7d",
+  "best_scenario": "zero_il_lvr",
+  "best_net_ev_proxy_usd": 0.106,
+  "best_net_ev_proxy_pct": 0.0053,
+
+  "v2_line_count": 992,
+  "v2_line_count_unchanged": true,
+
+  "structural_finding": "Orca 8.0 dynamic tick arrays are LAZILY initialized on first swap (only 4/225 PDAs returned data on chain). Pool-level liquidity (Stage G) is the only direct signal of active liquidity. 75/75 Orca pools verified on-chain (data_len 653 bytes), 75/75 SDK decode success via @orca-so/whirlpools 8.0.0. 10/75 quote-ready via swapInstructions quote-only mode (limited by public RPC 429 rate). Survival EV: 1680 cells, 29 positive in zero_il_lvr only, 0 in realistic/optimistic/conservative. Best cell +$0.106 at 2000/7d/zero_il_lvr in SOL/Fartcoin (16bps fee). 2 V3 CL AMMs (Meteora DLMM V8 + Orca V1) both reject retail 10-20U 2000 USD LP. Recommend Raydium CLMM as 3rd independent V3 CL test.",
+
+  "phase_results": {
+    "A_workspace_safety": "PASS (HEAD=22d2941; pre-existing dirty files unrelated)",
+    "B_input_evidence_audit": "PASS (10 upstream files audited)",
+    "C_orca_sdk_source_audit": "PASS (GitHub + npm registry verified; @orca-so/whirlpools 8.0.0; read-only methods confirmed)",
+    "D_isolated_sdk_install": "PASS (npm install to /tmp/lpbot_orca_whirlpool_sdk_probe_20260604_025414; read-only import verified on 4 SOL/USDC pools; 14983 pools from Orca official API)",
+    "E_candidate_source_collection": "PASS (15002 raw: 14983 Orca official + 19 DexScreener; 75 selected)",
+    "F_chain_verify": "PASS (75/75 owner=whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc; data_len 653 each)",
+    "G_whirlpool_decode": "PASS (75/75 fetchConcentratedLiquidityPool success; feeRate 1-200bps, tickSpacing 1-128)",
+    "H_tick_array_read": "PARTIAL (4/225 tick arrays initialized; LAZY init by Orca 8.0 program; pool-level liquidity > 0 for 72/75 pools)",
+    "I_quote_smoke": "PARTIAL (10/75 quote-ready via swapInstructions quote-only; 106/126 attempts 429-limited)",
+    "J_survival_ev_preview": "PASS (1680 cells; 29 positive zero_il_lvr only; 0 in realistic/optimistic/conservative)",
+    "K_candidate_decision": "PASS (rule_2 applied; recommend Raydium CLMM)"
+  },
+
+  "can_run_probe_now": false,
+  "execution_allowed_now": false,
+  "transaction_sent": false,
+  "wallet_or_tx_touched": false,
+  "solana_wallet_or_keypair_touched": false,
+  "edge_proven": "no",
+  "tiny_canary_allowed": "no",
+  "manual_approval_required": true,
+  "send_hard_disable_still_active": true,
+
+  "v2_modified_by_this_task": false,
+
+  "allowed_next_stages": [
+    "LP_ORCA_WHIRLPOOL_10_20U_PROBE_PREFLIGHT_DESIGN_V1",
+    "LP_ORCA_WHIRLPOOL_KNOWN_POOL_FEED_EXPANSION_REPEAT",
+    "LP_RAYDIUM_CLMM_READONLY_CONNECTOR_V1",
+    "LP_SOLANA_PAID_RPC_SETUP_REQUIRED",
+    "STOP_LP_RESEARCH_NOW"
+  ],
+  "recommended_next_stage": "LP_RAYDIUM_CLMM_READONLY_CONNECTOR_V1",
+  "default_when_no_explicit_choice": "LP_RAYDIUM_CLMM_READONLY_CONNECTOR_V1"
+}

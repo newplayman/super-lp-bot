@@ -1,0 +1,93 @@
+{
+  "stage": "LP_ORCA_WHIRLPOOL_READONLY_CONNECTOR_V1",
+  "run_id": "20260604_025414",
+  "phase": "C_sdk_source_audit",
+
+  "program_id": {
+    "value": "whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc",
+    "official_source_url": "https://github.com/orca-so/whirlpools",
+    "source_type": "official_github",
+    "source_confidence": "high",
+    "verified_in_v1_stage": "20260603_093136"
+  },
+
+  "official_sources": [
+    {
+      "name": "Orca Whirlpools GitHub",
+      "url": "https://github.com/orca-so/whirlpools",
+      "type": "official_github",
+      "fetch_success": true,
+      "size_bytes": 428726,
+      "verified": true
+    },
+    {
+      "name": "Whirlpools Rust program source",
+      "url": "https://raw.githubusercontent.com/orca-so/whirlpools/main/programs/whirlpool/src/lib.rs",
+      "type": "official_github",
+      "fetch_success": true,
+      "size_bytes": 62738
+    },
+    {
+      "name": "TypeScript SDK (current)",
+      "url": "https://github.com/orca-so/whirlpools/tree/main/ts-sdk/whirlpool",
+      "type": "official_github",
+      "fetch_success": true,
+      "package_name": "@orca-so/whirlpools",
+      "package_version": "8.0.0",
+      "has_whirlpool_account_decode": true,
+      "has_tick_array_decode": true,
+      "has_quote_method": true,
+      "has_position_model": true,
+      "wallet_related_imports_present": true,
+      "wallet_related_imports_used_for_readonly": false
+    },
+    {
+      "name": "TypeScript SDK (legacy)",
+      "url": "https://registry.npmjs.org/@orca-so/whirlpools-sdk",
+      "type": "official_npm",
+      "fetch_success": true,
+      "package_name": "@orca-so/whirlpools-sdk",
+      "package_version": "0.20.0"
+    }
+  ],
+
+  "read_only_methods": [
+    "fetchConcentratedLiquidityPool",
+    "fetchSplashPool",
+    "fetchWhirlpoolsByTokenPair",
+    "fetchPositionsForOwner",
+    "fetchPositionsInWhirlpool",
+    "getSwapQuote (internal)",
+    "getPayer",
+    "getRpcConfig",
+    "setDefaultSlippageToleranceBps"
+  ],
+
+  "write_methods_excluded": [
+    "swap",
+    "swapInstructions",
+    "increaseLiquidity",
+    "decreaseLiquidity",
+    "harvest",
+    "lockPosition",
+    "resetPositionRange",
+    "createPool"
+  ],
+
+  "wallet_related_imports": {
+    "KeyPairSigner": "type-only, used in config.ts; not invoked in read-only path",
+    "TransactionSigner": "type-only, used as parameter type in swap.ts; not required for fetch*",
+    "loadWallet": "high-level helper, write path only",
+    "generateKeyPairSigner": "token.ts, write path only"
+  },
+
+  "audit_confidence": 0.92,
+  "invalid_reason": null,
+
+  "this_stage_does_not": [
+    "load any keypair",
+    "sign or send any transaction",
+    "construct any signer",
+    "modify production tables"
+  ]
+}
