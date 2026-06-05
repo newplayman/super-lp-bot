@@ -1,0 +1,88 @@
+{
+  "stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_6H_REAL_WALLCLOCK_FIX_REPEAT_V2",
+  "run_id": "20260605_043726",
+
+  "tmux_started": true,
+  "session_name": "lp_long_horizon_6h_v2_20260605_043726",
+  "session_created_at": "2026-06-05T04:51:15Z",
+  "session_state_at_2_min": "alive",
+  "supervisor_pid": 3872268,
+  "supervisor_cmd": "bash scripts/run_lp_long_horizon_readonly_6h_once.sh 20260605_043726",
+  "supervisor_state_at_2_min": "alive, elapsed=2:00+, in iteration 1/6 sleep 1h",
+
+  "run_log_path": "reports/lp_long_horizon_readonly_collector_6h_run/20260605_043726/logs/supervisor.stdout.log",
+  "checkpoint_path": "data/lp_long_horizon/20260605_043726/checkpoint_*_*/",
+  "expected_end_time_utc": "2026-06-05T10:51:29Z",
+  "expected_duration_hours": 6.0,
+  "expected_duration_minutes": 360,
+  "gate_threshold_min_runtime_minutes": 330,
+
+  "status_check_command": "tmux ls 2>/dev/null | grep lp_long_horizon_6h",
+  "status_check_command_v2": "ps -p 3872268 -o pid,etime,cmd",
+  "supervisor_log_tail_command": "tail -F reports/lp_long_horizon_readonly_collector_6h_run/20260605_043726/logs/supervisor.stdout.log",
+  "stop_command": "tmux kill-session -t lp_long_horizon_6h_v2_20260605_043726; kill 3872268",
+
+  "smoke_check_results": {
+    "tmux_session_exists": true,
+    "supervisor_process_alive": true,
+    "run_log_updating": true,
+    "first_checkpoint_exists": true,
+    "heartbeat_file_exists": true,
+    "no_forbidden_process": true,
+    "no_wallet_tx": true,
+    "no_production_write": true,
+    "short_mode_rejected": true,
+    "v2_end_ts_based_loop": true,
+    "v2_fail_safe_trap": true,
+    "approval_phrase_verified": true,
+    "v1_marked_fail": true
+  },
+
+  "first_checkpoint": {
+    "name": "checkpoint_1_0451",
+    "files": 7,
+    "rows_per_file": {"pool_snapshots": 5, "quote_snapshots": 30, "fee_velocity": 25, "liquidity_distribution": 5, "market_regime": 7, "actual_fee_accrual_placeholder": 1, "smoke_summary": 1},
+    "wallet_or_tx_touched": false,
+    "completed_at_utc": "2026-06-05T04:51:29Z"
+  },
+
+  "v2_supervisor_bug_fixes": {
+    "v1_bug_1_bash_loop_missing_sleep": "FIXED — END_TS-based loop control (END_TS = START_TS + 21600); after last ckpt sleep REMAINING = END_TS - now; split into CHUNK + TAIL with heartbeats",
+    "v1_bug_2_python_lowercase_false": "FIXED — false → False in Python heredoc (line 222)",
+    "v1_bug_3_finalize_silent_loss": "FIXED — trap EXIT/SIGTERM/SIGINT/SIGHUP → write_fail_verdict_on_trap writes FAIL FINAL_VERDICT"
+  },
+
+  "safety_check": {
+    "no_canary_live_paper": true,
+    "no_wallet_keypair_signer": true,
+    "no_sendTransaction": true,
+    "no_production_write": true,
+    "no_shadow_overwrite": true,
+    "no_cron_systemd": true,
+    "no_daemon": true,
+    "no_extra_tmux_session": true,
+    "short_mode_rejected": true,
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no"
+  },
+
+  "process_state": {
+    "supervisor_count": 1,
+    "tmux_session_count": 1,
+    "collector_orphan_process": false,
+    "wallet_keypair_process": false
+  },
+
+  "v1_salvage_state": {
+    "run_id": "20260604_134918",
+    "status": "FAIL",
+    "actual_runtime_minutes": 300.12,
+    "actual_runtime_valid_for_6h_gate": false,
+    "gate_pass": false,
+    "can_advance_to_12h": false,
+    "recommended_next_stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_6H_REAL_WALLCLOCK_FIX_REPEAT_V2",
+    "data_preserved": true
+  },
+
+  "next_stage": "I_6h_finalize_auto_commit_push"
+}

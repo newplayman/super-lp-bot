@@ -1,0 +1,57 @@
+{
+  "stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_6H_REAL_WALLCLOCK_FIX_REPEAT_V2",
+  "run_id": "20260605_043726",
+  "approval_recorded": true,
+  "approved_stage": "6h",
+  "mode": "readonly",
+  "no_probe": true,
+  "approved_next_stages": [],
+  "auto_advance_allowed": false,
+  "user_approval_text": "APPROVE_LP_LONG_HORIZON_READONLY_STAGE_RUN stage=6h mode=readonly no_probe=true",
+  "user_approval_text_hash_sha256": "1dd950db67e3bad450d4d319c3c5e8ec3a57eb1cdb6d75027cdab307f4681b3e",
+  "timestamp_utc": "2026-06-05T04:48:30Z",
+  "approved_by": "user (V1 20260604_134918 FAIL → V2 启动)",
+  "reason": "V1 (20260604_134918) supervisor ran 6 checkpoints but actual_runtime=300.12 min (5h instead of 6h due to bash loop missing 1 sleep) + Python 'false' NameError in finalize block. V1 gate FAIL, 7 reports + FINAL_VERDICT not auto-generated. V2 fixes both bugs (END_TS-based loop + Python boolean + fail-safe trap) and re-runs real 6h wallclock.",
+  "preconditions_verified": [
+    "V1_20260604_134918_completed_but_FAIL",
+    "V1_actual_runtime_minutes_300.12_invalid_for_6h_gate",
+    "V1_short_mode_used_false_but_wallclock_5h_not_6h",
+    "V1_supervisor_bug_1_bash_loop_missing_sleep_identified",
+    "V1_supervisor_bug_2_python_lowercase_false_identified",
+    "V1_supervisor_bug_3_finalize_silent_loss_identified",
+    "V2_supervisor_fix_implemented_END_TS_based",
+    "V2_supervisor_fix_implemented_python_boolean_uppercase",
+    "V2_supervisor_fix_implemented_fail_safe_trap",
+    "V2_pytest_25_25_passed",
+    "no_forward_approval_to_12h_24h_48h_72h_7d",
+    "can_run_probe_now_still_false",
+    "tiny_canary_allowed_still_no"
+  ],
+  "risk_acknowledged": [
+    "V2 6h supervisor 在 VPS 后台跑 (run_id 20260605_043726), 6h wallclock 不可前台等",
+    "supervisor auto-finalize + auto-commit + auto-push 在 6h 完成后",
+    "如 supervisor 中途失败, fail-safe trap 写 FAIL FINAL_VERDICT (避免 V1 silent loss)",
+    "V1 data 保留, 不被 V2 修改"
+  ],
+  "forward_approval_check": {
+    "approved_stages": ["6h"],
+    "NOT_approved_stages": ["12h", "24h", "48h", "72h", "7d"],
+    "implicit_forward_forbidden": true,
+    "explicit_forward_forbidden": true,
+    "note": "V2 审批仅 6h; 6h PASS 后需新 manual approval 进入 12h (auto_advance_to_12h=false locked)"
+  },
+  "scope_of_this_approval": {
+    "stage": "6h",
+    "mode": "readonly",
+    "no_probe": true,
+    "duration_hours": 6,
+    "duration_minutes": 360,
+    "loop_count": 6,
+    "sleep_seconds_per_iteration": 3600,
+    "data_dir": "data/lp_long_horizon/20260605_043726/",
+    "report_dir": "reports/lp_long_horizon_readonly_collector_6h_run/20260605_043726/",
+    "tmux_session_name": "lp_long_horizon_6h_v2_20260605_043726",
+    "supervisor_script": "scripts/run_lp_long_horizon_readonly_6h_once.sh"
+  },
+  "next_stage": "H_launch_6h_tmux_real_wallclock"
+}

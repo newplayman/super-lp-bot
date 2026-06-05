@@ -1,0 +1,70 @@
+{
+  "stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_6H_REAL_WALLCLOCK_FIX_REPEAT_V2",
+  "run_id": "20260605_043726",
+  "check_at_utc": "2026-06-05T04:48:00Z",
+  "all_passed": true,
+  "checks": {
+    "no_existing_lp_long_horizon_tmux": {"pass": true, "value": "(no tmux session matching lp_long_horizon or lpbot)"},
+    "no_canary_live_paper_keypair_process": {"pass": true, "value": "(ps -ef | grep canary|lpbot-live|live|paper|keypair | grep -v grep → empty)"},
+    "data_dir_writable": {"pass": true, "value": "data/lp_long_horizon/20260605_043726/ writable, write test passed"},
+    "report_dir_writable": {"pass": true, "value": "reports/lp_long_horizon_readonly_collector_6h_run/20260605_043726/ writable, write test passed"},
+    "supervisor_executable_and_syntax": {"pass": true, "value": "scripts/run_lp_long_horizon_readonly_6h_once.sh rwxr-xr-x, bash -n OK"},
+    "v2_pytest_passed": {"pass": true, "value": "25/25 passed in 0.45s (test_lp_long_horizon_readonly_collector_6h_real_wallclock_v2.py)"},
+    "v1_marked_fail_not_gate": {"pass": true, "value": "V1 salvage FINAL_VERDICT.json status=FAIL, gate_pass=false, can_advance_to_12h=false, recommended_next_stage=V2"},
+    "v1_data_intact": {"pass": true, "value": "data/lp_long_horizon/20260604_134918/ 6 ckpt × 7 files = 42 files, untouched"}
+  },
+  "v2_supervisor_bug_fixes": {
+    "v1_bug_1_bash_loop_missing_sleep": {"v1_status": "FAIL (300.12 min instead of 360)", "v2_fix": "END_TS-based loop control; after last checkpoint sleep REMAINING = END_TS - now; split into CHUNK + TAIL with heartbeats"},
+    "v1_bug_2_python_lowercase_false": {"v1_status": "FAIL (NameError in finalize, 7 reports + FINAL_VERDICT not written)", "v2_fix": "false → False in Python heredoc (line 222)"},
+    "v1_bug_3_finalize_silent_loss": {"v1_status": "FAIL (no FAIL verdict on NameError crash)", "v2_fix": "trap EXIT/SIGTERM/SIGINT/SIGHUP → write_fail_verdict_on_trap writes FAIL FINAL_VERDICT"}
+  },
+  "v2_hard_guarantees": {
+    "SLEEP_SECONDS_min_3600": true,
+    "LOOP_COUNT_eq_6": true,
+    "set_euo_pipefail": true,
+    "END_TS_based_loop": true,
+    "fail_safe_trap": true,
+    "approval_phrase_required": true,
+    "tmux_session_unique": true,
+    "forbidden_process_zero_tolerance": true
+  },
+  "v1_salvage_state": {
+    "run_id": "20260604_134918",
+    "status": "FAIL",
+    "actual_runtime_minutes": 300.12,
+    "actual_runtime_valid_for_6h_gate": false,
+    "short_mode_used": false,
+    "gate_pass": false,
+    "can_advance_to_12h": false,
+    "recommended_next_stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_6H_REAL_WALLCLOCK_FIX_REPEAT_V2"
+  },
+  "v2_pytest_summary": {
+    "test_file": "tests/test_lp_long_horizon_readonly_collector_6h_real_wallclock_v2.py",
+    "total": 25,
+    "passed": 25,
+    "failed": 0,
+    "elapsed_seconds": 0.45
+  },
+  "no_touch_invariants": {
+    "no_probe": true,
+    "no_canary": true,
+    "no_live": true,
+    "no_paper": true,
+    "no_wallet_read": true,
+    "no_keypair_read": true,
+    "no_signer_creation": true,
+    "no_tx_send": true,
+    "no_bridge": true,
+    "no_paid_rpc": true,
+    "no_paid_indexer": true,
+    "no_protocol_rerun": true,
+    "no_heuristic_modification": true,
+    "no_long_running_daemon": true,
+    "no_12h_24h_48h_72h_7d_auto_start": true,
+    "no_cron_enabled": true,
+    "no_systemd_enabled": true,
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no"
+  },
+  "next_stage": "G_approval_phrase"
+}
