@@ -1,0 +1,160 @@
+{
+  "audit_at_utc": "2026-06-04T22:35:00Z",
+  "author": "Agent (Claude Opus 4.8)",
+  "run_id": "20260604_134918",
+
+  "v1_completion_status": "FAIL",
+
+  "actual_runtime_minutes": 300.12,
+  "actual_runtime_valid_for_6h_gate": false,
+  "gate_threshold_min_runtime_minutes": 330,
+  "gate_threshold_met": false,
+
+  "short_mode_used": false,
+  "short_mode_rejected": true,
+  "loop_count": 6,
+  "sleep_seconds_per_iteration": 3600,
+
+  "wallclock_timeline_utc": {
+    "supervisor_start": "2026-06-04T14:01:29Z",
+    "checkpoint_1_ok": "2026-06-04T14:01:30Z",
+    "checkpoint_2_ok": "2026-06-04T15:01:31Z",
+    "checkpoint_3_ok": "2026-06-04T16:01:32Z",
+    "checkpoint_4_ok": "2026-06-04T17:01:35Z",
+    "checkpoint_5_ok": "2026-06-04T18:01:36Z",
+    "checkpoint_6_ok": "2026-06-04T19:01:37Z",
+    "supervisor_end_actual": "2026-06-04T19:01:37Z",
+    "expected_end_utc": "2026-06-04T20:01:29Z",
+    "delta_minutes_short_of_expected": 60
+  },
+
+  "checkpoint_count_completed": 6,
+  "checkpoint_count_expected": 6,
+  "checkpoint_data_files_per": 7,
+
+  "row_counts_deduped": {
+    "selected_pool_count": 5,
+    "pool_snapshot_rows": 5,
+    "quote_snapshot_rows": 180,
+    "fee_velocity_rows": 150,
+    "liquidity_distribution_rows": 30,
+    "market_regime_rows": 42,
+    "actual_fee_accrual_placeholder_rows": 6
+  },
+
+  "row_counts_raw": {
+    "pool_snapshot_rows": 30,
+    "quote_snapshot_rows": 210,
+    "fee_velocity_rows": 150,
+    "liquidity_distribution_rows": 30,
+    "market_regime_rows": 42,
+    "actual_fee_accrual_placeholder_rows": 6
+  },
+
+  "error_metrics": {
+    "error_count": 0,
+    "error_rate_pct": 0.0,
+    "consecutive_429_max": 0,
+    "write_failures": 0,
+    "safety_self_check_failures": 0,
+    "banned_token_detected": 0
+  },
+
+  "finalize_phase": {
+    "aggregate_summary_json_written": false,
+    "six_hour_run_summary_written": false,
+    "data_quality_gate_written": false,
+    "market_regime_summary_written": false,
+    "next_stage_decision_written": false,
+    "final_verdict_json_written": false,
+    "onepage_written": false,
+    "artifact_index_written": false,
+    "auto_commit_triggered": false,
+    "auto_push_triggered": false,
+    "tmux_killed_by_supervisor": false,
+    "tmux_session_still_listed": true,
+    "supervisor_exit_reason": "NameError: name 'false' is not defined. Did you mean: 'False'?"
+  },
+
+  "bugs_in_supervisor_v1": {
+    "bug_1_bash_loop_missing_sleep": {
+      "file": "scripts/run_lp_long_horizon_readonly_6h_once.sh",
+      "line": 141,
+      "code": 'if [ "$i" -lt $LOOP_COUNT ]; then for q in 1 2 3 4; do sleep $((SLEEP_SECONDS / 4)); heartbeat "${i}_${q}_of_4"; done; fi',
+      "effect": "6 iterations but only 5 sleeps (between ckpt 1-2, 2-3, 3-4, 4-5, 5-6). Total wallclock = 5h instead of 6h.",
+      "actual_runtime_minutes": 300.12,
+      "expected_runtime_minutes": 360,
+      "fix_options": [
+        "A: change 'if [ \"$i\" -lt $LOOP_COUNT ]' to 'if [ \"$i\" -le $LOOP_COUNT ]' (adds 1h sleep after final ckpt, but ckpt 6 would be the very last action)",
+        "B: change to single 'sleep $SLEEP_SECONDS' outside the inner loop, with 4 heartbeats around it",
+        "C: add explicit 'sleep $SLEEP_SECONDS' between iterations 5 and 6"
+      ]
+    },
+    "bug_2_python_lowercase_false": {
+      "file": "scripts/run_lp_long_horizon_readonly_6h_once.sh",
+      "line": 222,
+      "code": '"short_mode_used": false,',
+      "effect": "Python NameError at finalize phase; aggregate_summary.json + 7 reports + FINAL_VERDICT all not written; auto-commit/push not triggered.",
+      "fix": "change 'false' to 'False' (Python boolean). Same issue may exist elsewhere in the file - audit all `false` / `true` in Python heredoc blocks."
+    }
+  },
+
+  "v0_vs_v1_comparison": {
+    "v0_20260604_130353": {
+      "short_mode_used": true,
+      "sleep_seconds": 10,
+      "actual_runtime_minutes": 2.75,
+      "gate_pass": false,
+      "finalize_succeeded": true,
+      "auto_commit_pushed": true
+    },
+    "v1_20260604_134918": {
+      "short_mode_used": false,
+      "sleep_seconds": 3600,
+      "actual_runtime_minutes": 300.12,
+      "gate_pass": false,
+      "finalize_succeeded": false,
+      "auto_commit_pushed": false,
+      "reason_for_fail": "supervisor bash loop missing 1 sleep (5h instead of 6h) + Python `false` NameError in finalize block"
+    }
+  },
+
+  "safety_audit_v1_full_run": {
+    "no_canary_live_paper": true,
+    "no_wallet_keypair_signer": true,
+    "no_sendTransaction": true,
+    "no_production_write": true,
+    "no_shadow_overwrite": true,
+    "no_cron_systemd": true,
+    "no_extra_tmux_session": true,
+    "no_actual_daemon": true,
+    "short_mode_used": false,
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no",
+    "auto_advance_started": false,
+    "longer_stage_started": false,
+    "wallet_or_tx_touched": false,
+    "transaction_sent": false
+  },
+
+  "v2_should_launch_conditions": {
+    "v1_gate_pass": false,
+    "v1_finalize_succeeded": false,
+    "v1_runtime_lt_330": true,
+    "user_instruction_was": "如果 V1 FAIL 或 runtime < 330 分钟, 再进入 V2 fix repeat",
+    "all_conditions_met_for_v2": true,
+    "v2_required_bug_fixes": [
+      "Fix supervisor bash loop to sleep 6h (not 5h)",
+      "Fix supervisor Python heredoc `false` → `False` (audit all boolean values)"
+    ],
+    "v2_deferred_per_user_choice": "option 2 (Let V1 finish, defer V2) — V2 launch is user's call, not auto"
+  },
+
+  "tmux_session_state": {
+    "session_name": "lp_long_horizon_6h_20260604_134918",
+    "session_listed": true,
+    "session_should_be_killed": true,
+    "session_killed_by_supervisor": false,
+    "manual_cleanup_recommended": "tmux kill-session -t lp_long_horizon_6h_20260604_134918"
+  }
+}
