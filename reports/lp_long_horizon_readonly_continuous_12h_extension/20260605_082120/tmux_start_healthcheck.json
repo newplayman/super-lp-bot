@@ -1,0 +1,98 @@
+{
+  "stage": "LP_LONG_HORIZON_READONLY_CONTINUOUS_12H_EXTENSION_REQUEST_V1",
+  "check_stage": "G_TMUX_START_HEALTHCHECK",
+  "check_at_utc": "2026-06-05T14:59:00Z (2 min after launch)",
+
+  "tmux_started": false,
+  "session_name": "lp_long_horizon_12h_20260605_082120",
+  "session_state_at_2_min": "nohup_detached_supervisor_alive",
+  "supervisor_pid": 1054322,
+  "supervisor_cmd": "bash scripts/run_lp_long_horizon_readonly_stage_once.sh 20260605_082120 12h 12 reports/lp_long_horizon_readonly_continuous_12h_extension/20260605_082120/real_pool_universe_for_12h.json",
+  "supervisor_state_at_2_min": "alive, elapsed=01:28, in iteration 1/12 sleep 1h (heartbeat loop starting)",
+
+  "run_log_path": "reports/lp_long_horizon_readonly_12h_run/20260605_082120/logs/supervisor.stdout.log",
+  "checkpoint_path": "data/lp_long_horizon/20260605_082120/checkpoint_*_*/",
+  "expected_end_time_utc": "2026-06-06T02:57:39Z",
+  "expected_duration_hours": 12.0,
+  "expected_duration_minutes": 720,
+  "gate_threshold_min_runtime_minutes": 660,
+
+  "status_check_command": "ps -p 1054322 -o pid,etime,stat,cmd",
+  "status_check_command_v2": "tail -F reports/lp_long_horizon_readonly_12h_run/20260605_082120/logs/supervisor.stdout.log",
+  "stop_command": "kill 1054322 (DO NOT execute unless user explicitly aborts)",
+
+  "smoke_check_results": {
+    "supervisor_process_alive": true,
+    "run_log_updating": true,
+    "first_checkpoint_exists": true,
+    "heartbeat_file_exists": true,
+    "no_forbidden_process": true,
+    "no_wallet_tx": true,
+    "no_production_write": true,
+    "short_mode_rejected": true,
+    "real_pool_universe_enforced": true,
+    "v2_end_ts_based_loop": true,
+    "v2_fail_safe_trap": true,
+    "v3_finalize_succeeded_marker": true,
+    "v3_corrected_final_verdict_fallback": true,
+    "approval_phrase_verified": true,
+    "v1_marked_fail_6h_v2_marked_fail_corrected_to_pass": true
+  },
+
+  "first_checkpoint": {
+    "name": "checkpoint_1_1457",
+    "files": 7,
+    "rows_per_file": {"pool_snapshots": 5, "quote_snapshots": 30, "fee_velocity": 25, "liquidity_distribution": 5, "market_regime": 7, "actual_fee_accrual_placeholder": 1, "smoke_summary": 1},
+    "wallet_or_tx_touched": false,
+    "completed_at_utc": "2026-06-05T14:57:39Z"
+  },
+
+  "real_pool_universe_used": true,
+  "selected_real_pool_count": 33,
+  "real_pool_universe_path": "reports/lp_long_horizon_readonly_continuous_12h_extension/20260605_082120/real_pool_universe_for_12h.json",
+
+  "v2_supervisor_bug_fixes_carried_forward": {
+    "v1_bug_1_bash_loop_missing_sleep": "FIXED — END_TS-based loop control (END_TS = START_TS + 12*3600); after last ckpt sleep REMAINING = END_TS - now; split into CHUNK + TAIL with heartbeats",
+    "v1_bug_2_python_lowercase_false": "FIXED — False (Python uppercase)",
+    "v1_bug_3_finalize_silent_loss": "FIXED — trap EXIT/SIGTERM/SIGINT/SIGHUP → write_fail_verdict_on_trap",
+    "v2_bug_1_post_6h_summary_block_rc_1": "FIXED — wrap post-Nh block with FINALIZE_RC=$?; if rc!=0, write CORRECTED_FINAL_VERDICT_FALLBACK.json with real aggregate_summary.json row counts + log tail",
+    "v2_bug_2_trap_overwrites_successful_finalize": "FIXED — trap first checks .finalize_succeeded marker + CORRECTED_FINAL_VERDICT_FALLBACK.json; if either present, NOT overwrite with default zeros"
+  },
+
+  "safety_check": {
+    "no_canary_live_paper": true,
+    "no_wallet_keypair_signer": true,
+    "no_sendTransaction": true,
+    "no_production_write": true,
+    "no_shadow_overwrite": true,
+    "no_cron_systemd": true,
+    "no_daemon": true,
+    "no_extra_tmux_session": true,
+    "short_mode_rejected": true,
+    "real_pool_universe_enforced": true,
+    "auto_advance_to_24h_rejected": true,
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no",
+    "edge_proven": "no",
+    "wallet_or_tx_touched": false,
+    "transaction_sent": false
+  },
+
+  "process_state": {
+    "supervisor_count": 1,
+    "tmux_session_count_for_12h": 0,
+    "tmux_session_for_12h": "not_yet_created (supervisor runs in nohup-detached mode, NOT inside tmux)",
+    "orphan_collector_process": false,
+    "wallet_keypair_process": false
+  },
+
+  "v2_salvage_state": {
+    "v2_run_id": "20260605_043726",
+    "v2_status": "FAIL (per V2 supervisor FINAL_VERDICT)",
+    "v2_corrected_status": "PASS (per CORRECTED_FINAL_VERDICT, gate_pass=true, 13/13 gate checks pass)",
+    "v2_data_intact": true,
+    "v2_used_as_input_to_12h": "true"
+  },
+
+  "next_stage": "H_12H_AUTO_FINALIZE_DEFERRED"
+}

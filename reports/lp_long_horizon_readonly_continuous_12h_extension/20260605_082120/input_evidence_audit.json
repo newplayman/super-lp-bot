@@ -1,0 +1,185 @@
+{
+  "stage": "LP_LONG_HORIZON_READONLY_CONTINUOUS_12H_EXTENSION_REQUEST_V1",
+  "audit_stage": "A_INPUT_EVIDENCE_AUDIT",
+  "audited_at_utc": "2026-06-05T14:42:00Z",
+  "auditor": "agent (read-only)",
+
+  "input_evidence_files": [
+    {
+      "label": "6h_corrected_verdict",
+      "path": "reports/lp_long_horizon_6h_finalizer_rebuild/20260605_043726/CORRECTED_FINAL_VERDICT.json",
+      "mtime_utc": "2026-06-05T14:10:32Z",
+      "size_bytes": 2798,
+      "key_fields": {
+        "stage": "LP_LONG_HORIZON_6H_FINALIZER_REBUILD_FROM_CHECKPOINTS_V1",
+        "source_run_id": "20260605_043726",
+        "corrected_from_checkpoints": true,
+        "actual_runtime_minutes": 360,
+        "actual_runtime_valid_for_6h_gate": true,
+        "short_mode_used": false,
+        "checkpoint_count": 6,
+        "selected_pool_count": 5,
+        "pool_snapshot_rows": 5,
+        "quote_snapshot_rows": 180,
+        "fee_velocity_rows": 150,
+        "liquidity_distribution_rows": 30,
+        "market_regime_rows": 42,
+        "error_rate_pct": 0.0,
+        "consecutive_429_max": 0,
+        "data_quality_status": "PASS",
+        "gate_pass": true,
+        "can_advance_to_12h": false,
+        "can_run_probe_now": false,
+        "tiny_canary_allowed": "no",
+        "edge_proven": "no",
+        "wallet_or_tx_touched": false,
+        "transaction_sent": false,
+        "auto_advance_started": false,
+        "longer_stage_started": false,
+        "recommended_next_stage": "LP_LONG_HORIZON_READONLY_CONTINUOUS_12H_EXTENSION_REQUEST_V1"
+      }
+    },
+    {
+      "label": "6h_node_report",
+      "path": "reports/lp_long_horizon_node_reports/20260605_043726/6h/FINAL_NODE_VERDICT.json",
+      "mtime_utc": "2026-06-05T13:11:30Z",
+      "key_fields": {
+        "v2_finalized": true,
+        "full_sample": true,
+        "partial_sample": false,
+        "checkpoint_count_observed": 6,
+        "checkpoint_count_expected": 6,
+        "chain_coverage_count": 7,
+        "dex_coverage_count": 10,
+        "pool_coverage_count": 30,
+        "quote_ready_pool_count": 0,
+        "fee_ready_pool_count": 0,
+        "ev_ready_pool_count": 0,
+        "preflight_candidate_count": 0
+      }
+    },
+    {
+      "label": "6h_pool_universe_coverage_manifest",
+      "path": "reports/lp_long_horizon_node_reports/20260605_043726/6h/POOL_UNIVERSE_COVERAGE_MANIFEST.csv",
+      "smoke_placeholder_pool_count": 5,
+      "real_pool_count": 0,
+      "unique_pool_addresses": [
+        "<smoke_pool_meteora_dlmm_a>",
+        "<smoke_pool_orca_whirlpool_a>",
+        "<smoke_pool_raydium_clmm_a>",
+        "<smoke_pool_raydium_cpmm_a>",
+        "<smoke_pool_solana_stable_a>"
+      ],
+      "all_pools_have_tvl_zero": true,
+      "conclusion": "6h used 5 smoke placeholder pools, all tvl=0. 12h must use REAL pool universe from existing readonly connector research."
+    },
+    {
+      "label": "readonly_connector_research",
+      "paths": {
+        "orca_whirlpool": "reports/lp_orca_whirlpool_readonly_connector/20260604_025414/orca_candidate_source_collection.csv (75 selected real candidates)",
+        "raydium_clmm": "reports/lp_raydium_clmm_readonly_connector/20260604_034503/raydium_clmm_candidate_source_collection.csv (80 selected real candidates)",
+        "raydium_cpmm": "reports/lp_raydium_cpmm_readonly_connector/20260604_040952/raydium_cpmm_candidate_source_collection.csv (120 selected real candidates)"
+      },
+      "missing_connectors": ["meteora_dlmm (not yet implemented)", "raydium_amm_v4 (not yet implemented)", "stable / LST-stable (no dedicated research yet)"],
+      "evm_status": "Base Uniswap V3 + Aerodrome + BSC PancakeSwap V3/V2 NOT yet enabled in collector (Go adapter exists for Uniswap V3 + Aerodrome, but no public RPC reader wired into smoke mode)"
+    },
+    {
+      "label": "supervisor_script_6h",
+      "path": "scripts/run_lp_long_horizon_readonly_6h_once.sh",
+      "size_lines": 750,
+      "last_modified_utc": "2026-06-05T14:10:32Z (this branch)",
+      "key_features": [
+        "END_TS-based loop (V2 fix for V1 missing-sleep bug)",
+        "fail-safe trap with .finalize_succeeded marker + CORRECTED_FINAL_VERDICT_FALLBACK.json",
+        "SLEEP_SECONDS>=3600 + LOOP_COUNT==6 hard guard",
+        "approval phrase check",
+        "no forbidden process check",
+        "no existing tmux session check"
+      ]
+    },
+    {
+      "label": "node_report_generator",
+      "path": "scripts/lp_long_horizon_node_report_generator_v1.py",
+      "version": "1.0",
+      "supports_stages": ["6h", "12h", "24h", "48h", "72h", "7d"]
+    },
+    {
+      "label": "collector_script",
+      "path": "scripts/lp_long_horizon_readonly_collector_v1.py",
+      "version": "1.0",
+      "modes": ["design", "smoke"],
+      "current_smoke_pool_count": 5
+    }
+  ],
+
+  "key_assertions": {
+    "6h_corrected_gate_pass": true,
+    "6h_corrected_runtime_valid": true,
+    "6h_corrected_actual_runtime_minutes": 360,
+    "6h_corrected_checkpoint_count": 6,
+    "6h_full_node_report_exists": true,
+    "6h_pool_universe_was_placeholder": true,
+    "6h_smoke_placeholder_pool_count": 5,
+    "6h_real_pool_count": 0,
+    "12h_must_use_real_pool_universe": true,
+    "12h_real_pool_sources_available": ["orca_whirlpool", "raydium_clmm", "raydium_cpmm"],
+    "12h_missing_protocols": ["meteora_dlmm", "raydium_amm_v4"],
+    "12h_evm_status": "no_collectors_in_current_run",
+    "no_auto_24h": true,
+    "manual_approval_required_for_24h": true,
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no",
+    "edge_proven": "no",
+    "wallet_or_tx_touched": false,
+    "transaction_sent": false,
+    "lp_strategy_research_freeze": "ACTIVE"
+  },
+
+  "improvement_over_6h": {
+    "before_6h": "5 smoke placeholder pools, all tvl=0, no real on-chain data",
+    "for_12h": "min 35 real pools from orca (10+) + raydium_clmm (10+) + raydium_cpmm (10+) + stable (5) = 35+ real pools with real on-chain addresses, real TVL, real 24h volume from existing readonly connector research",
+    "honest_disclosure": "meteora_dlmm / raydium_amm_v4 connectors not yet implemented; EVM (Base/BSC) collectors not wired into smoke mode. Coverage manifest must show observed=false + reason, no fake coverage."
+  },
+
+  "scope_of_this_audit": {
+    "this_turn_designs": [
+      "INPUT_EVIDENCE_AUDIT (this file)",
+      "MANUAL_APPROVAL_RECORDED (Stage B)",
+      "REAL_POOL_UNIVERSE_FOR_12H (Stage C, 35+ real pools from readonly connector research)",
+      "TWELVE_HOUR_RUN_CONFIG (Stage D)",
+      "12h supervisor script (Stage E, generalized from 6h supervisor)",
+      "PRE_RUN_SAFETY_CHECK (Stage F)",
+      "TMUX_START_HEALTHCHECK (Stage G)"
+    ],
+    "this_turn_does_not": [
+      "auto-start 24h",
+      "auto-start parallel collector",
+      "modify 6h data_dir (42 files untouched)",
+      "modify 6h report_dir",
+      "modify supervisor script (already patched in commit 23fed9d)",
+      "kill V2 supervisor (already gone)",
+      "probe / canary / live / paper",
+      "read wallet / keypair / signer / private key",
+      "send transaction / approve / mint / swap / bridge"
+    ]
+  },
+
+  "no_touch_invariants": {
+    "no_auto_24h": true,
+    "no_modify_6h_data": true,
+    "no_modify_6h_report": true,
+    "no_kill_v2": true,
+    "no_probe_canary_live_paper": true,
+    "no_wallet_keypair_signer": true,
+    "no_tx_send_approve_mint": true,
+    "no_paid_rpc_indexer": true,
+    "no_production_write": true,
+    "no_shadow_overwrite": true,
+    "no_cron_systemd_daemon": true,
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no",
+    "edge_proven": "no"
+  },
+
+  "next_stage": "B_12H_APPROVAL_RECORD"
+}

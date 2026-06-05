@@ -1,0 +1,81 @@
+{
+  "stage": "LP_LONG_HORIZON_READONLY_CONTINUOUS_12H_EXTENSION_REQUEST_V1",
+  "approval_recorded": true,
+  "approved_stage": "12h",
+  "mode": "readonly",
+  "no_probe": true,
+  "approved_next_stages": [],
+  "auto_advance_allowed": false,
+  "user_approval_text": "APPROVE_LP_LONG_HORIZON_READONLY_STAGE_RUN stage=12h mode=readonly no_probe=true",
+  "user_approval_text_hash_sha256": "040c37f3bc32bc3fe281eb4cf181fae4634e742e78c769d2211d3a5f8802198f",
+  "timestamp_utc": "2026-06-05T14:42:30Z",
+  "approved_by": "user (V2 20260605_043726 corrected gate PASS, 12h extension)",
+
+  "reason": "6h corrected verdict (commit 23fed9d) shows gate_pass=true, data_quality_status=PASS, actual_runtime_minutes=360, 13/13 gate checks pass. 6h node report full_sample=true. Per user new direction: 6h to 12h to 24h to 48h to 72h to 7d continuous, node report only for data observation, not auto-trade. User manually approves 12h stage.",
+
+  "preconditions_verified": [
+    "6h_corrected_gate_pass=true (CORRECTED_FINAL_VERDICT.json)",
+    "6h_actual_runtime_minutes=360 >= 330 gate threshold",
+    "6h_short_mode_used=false (LOCKED)",
+    "6h_checkpoint_count=6 expected",
+    "6h_full_node_report_exists (commit e74d84f)",
+    "6h_data_dir_intact (42 files in data/lp_long_horizon/20260605_043726/, untouched)",
+    "real_pool_universe_available (orca 75 + raydium_clmm 80 + raydium_cpmm 120 candidates from existing readonly connector research)",
+    "12h_must_use_real_pool_universe=true (no more smoke placeholder)",
+    "no_forward_approval_to_24h_48h_72h_7d (approved_next_stages=[])",
+    "auto_advance_allowed=false (LOCKED)",
+    "can_run_probe_now_still_false",
+    "tiny_canary_allowed_still_no",
+    "edge_proven_still_no",
+    "lp_strategy_research_freeze_ACTIVE (per docs/LPBOT_RESEARCH_STATUS_CN.md)"
+  ],
+
+  "risk_acknowledged": [
+    "12h supervisor runs in VPS background (run_id 20260605_082120), 12h wallclock cannot be waited for in foreground",
+    "supervisor auto-finalize + auto-commit + auto-push at 12h completion",
+    "if supervisor mid-run fails, fail-safe trap writes FAIL FINAL_VERDICT (avoid silent loss)",
+    "if V2 fail-safe patch (commit 23fed9d) insufficient, 12h uses rebuild script fallback",
+    "V2 data preserved, not modified by 12h",
+    "6h corrected verdict preserved, not modified by 12h"
+  ],
+
+  "forward_approval_check": {
+    "approved_stages": ["12h"],
+    "NOT_approved_stages": ["24h", "48h", "72h", "7d"],
+    "implicit_forward_forbidden": true,
+    "explicit_forward_forbidden": true,
+    "note": "This approval is 12h only; 12h PASS requires new manual approval to enter 24h (auto_advance_to_24h=false locked)"
+  },
+
+  "scope_of_this_approval": {
+    "stage": "12h",
+    "mode": "readonly",
+    "no_probe": true,
+    "duration_hours": 12,
+    "duration_minutes": 720,
+    "expected_min_runtime_minutes": 660,
+    "loop_count": 12,
+    "sleep_seconds_per_iteration": 3600,
+    "heartbeat_interval_minutes": 15,
+    "checkpoint_interval_minutes": 60,
+    "data_dir": "data/lp_long_horizon/20260605_082120/",
+    "report_dir": "reports/lp_long_horizon_readonly_continuous_12h_extension/20260605_082120/",
+    "node_report_dir": "reports/lp_long_horizon_node_reports/20260605_082120/12h/",
+    "tmux_session_name": "lp_long_horizon_12h_20260605_082120",
+    "real_pool_universe_path": "reports/lp_long_horizon_readonly_continuous_12h_extension/20260605_082120/real_pool_universe_for_12h.json"
+  },
+
+  "no_touch_invariants": {
+    "no_6h_data_modification": true,
+    "no_6h_report_modification": true,
+    "no_auto_24h": true,
+    "no_probe_canary_live_paper": true,
+    "no_wallet_keypair_signer": true,
+    "no_tx_send_approve_mint": true,
+    "no_paid_rpc_indexer": true,
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no"
+  },
+
+  "next_stage": "C_REAL_POOL_UNIVERSE_FOR_12H"
+}
