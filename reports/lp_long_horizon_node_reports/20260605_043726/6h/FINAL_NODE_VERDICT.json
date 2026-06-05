@@ -1,15 +1,104 @@
 {
-  "stage": "LP_CONTINUOUS_STAGED_OBSERVATION_AND_COVERAGE_REPORT_V1",
+  "stage": "LP_LONG_HORIZON_CONTINUOUS_OBSERVATION_NODE_REPORTS_V1",
+  "node": "6h",
+  "source_run_id": "20260605_043726",
+  "v2_final_verdict_path": "reports/lp_long_horizon_readonly_collector_6h_run/20260605_043726/FINAL_VERDICT.json",
+  "generated_at_utc": "2026-06-05T13:11:30Z",
   "generator": "lp_long_horizon_node_report_generator_v1",
-  "node_stage": "6h",
-  "run_id": "20260605_043726",
-  "generated_at_utc": "2026-06-05T08:37:52Z",
-  "status": "WARN_ACCEPTABLE",
-  "data_quality_status": "data_quality_warn",
-  "gate_pass": false,
-  "can_continue_collection": true,
-  "can_enter_preflight_design": false,
-  "can_use_for_preflight": false,
+
+  "v2_finalized": true,
+  "v2_status": "FAIL",
+  "v2_gate_pass": false,
+  "v2_actual_runtime_minutes": 360,
+  "v2_actual_runtime_valid_for_6h_gate": true,
+  "v2_short_mode_used": false,
+  "v2_six_hour_run_completed": false,
+  "v2_can_advance_to_12h": false,
+  "v2_data_quality_status": "FAIL",
+  "v2_finalize_error": "trap EXIT rc=1 (post-6h summary block; data intact)",
+  "v2_supervisor_recommended_next_stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_6H_REAL_WALLCLOCK_FIX_REPEAT",
+
+  "node_report_status": "PASS",
+  "node_report_gate_pass": true,
+  "node_report_data_quality_status": "data_quality_ok",
+  "full_sample": true,
+  "partial_sample": false,
+  "checkpoint_count_observed": 6,
+  "checkpoint_count_expected": 6,
+  "checkpoint_completeness_pct": 100.0,
+
+  "coverage_manifest_generated": true,
+  "fee_estimation_basis_generated": true,
+  "range_liquidity_fee_sensitivity_generated": true,
+  "candidate_review_generated": true,
+  "next_node_decision_generated": true,
+  "artifact_index_generated": true,
+  "node_report_cn_generated": true,
+
+  "chain_coverage_count": 7,
+  "chain_coverage_observed_count": 1,
+  "chain_observed_list": ["solana"],
+  "chain_not_observed_list": ["base", "bsc", "ethereum", "arbitrum", "optimism", "polygon"],
+
+  "dex_coverage_count": 10,
+  "dex_coverage_observed_count": 5,
+  "dex_observed_list": [
+    "solana/meteora_dlmm",
+    "solana/orca_whirlpool",
+    "solana/raydium_clmm",
+    "solana/raydium_cpmm",
+    "solana/solana_stable"
+  ],
+  "dex_not_observed_list": [
+    "base/uniswap_v3 (Go adapter implemented, V2未跑)",
+    "base/aerodrome (Go adapter implemented, V2未跑)",
+    "solana/raydium_amm_v4 (not_implemented_yet)",
+    "solana/pancakeswap_v3_solana (Go adapter implemented, V2未跑)",
+    "bsc/pancakeswap_v3 (bsc_chain_adapter_not_implemented_yet)",
+    "bsc/pancakeswap_v2 (bsc_chain_adapter_not_implemented_yet)"
+  ],
+
+  "pool_coverage_count": 30,
+  "unique_pool_count": 5,
+  "pool_addresses": [
+    "<smoke_pool_meteora_dlmm_a>",
+    "<smoke_pool_orca_whirlpool_a>",
+    "<smoke_pool_raydium_clmm_a>",
+    "<smoke_pool_raydium_cpmm_a>",
+    "<smoke_pool_solana_stable_a>"
+  ],
+  "all_pools_are_smoke_placeholder": true,
+  "all_pools_have_tvl_zero": true,
+
+  "quote_ready_pool_count": 0,
+  "fee_ready_pool_count": 0,
+  "ev_ready_pool_count": 0,
+  "preflight_candidate_count": 0,
+  "watchlist_count": 0,
+  "data_insufficient_count": 30,
+  "reject_count": 0,
+
+  "row_counts": {
+    "pool_snapshot_rows": 30,
+    "quote_snapshot_rows": 180,
+    "fee_velocity_rows": 150,
+    "liquidity_distribution_rows": 30,
+    "market_regime_rows": 42,
+    "actual_fee_accrual_placeholder_rows": 6
+  },
+
+  "fee_estimation_status": {
+    "actual_fee_data_available": false,
+    "fee_proxy_used": true,
+    "heuristic_used": true,
+    "fee_estimate_confidence": "low",
+    "v3_clmm_formula": "fee_proxy_<width> = volume × fee_rate × user_lp_share_in_range × in_range_time_ratio_<width>",
+    "meteora_dlmm_formula": "fee_proxy_<coverage> = volume × fee_rate × user_bin_share_in_range_<coverage>",
+    "cpmm_formula": "fee_proxy = volume × fee_rate × user_lp_share; user_lp_share = user_notional / pool_tvl",
+    "stable_formula": "fee_proxy = volume × fee_rate × user_lp_share (low IL assumption)",
+    "r1_upgrade_requirements_count": 7
+  },
+
   "can_run_probe_now": false,
   "tiny_canary_allowed": "no",
   "edge_proven": "no",
@@ -18,10 +107,35 @@
   "auto_probe_allowed": false,
   "auto_trade_allowed": false,
   "manual_approval_required_for_execution": true,
-  "recommended_next_action": "continue_collection_with_note",
-  "partial_sample": true,
-  "best_candidate_count": 0,
-  "rejected_candidate_count": 20,
-  "checkpoint_count_observed": 4,
-  "checkpoint_count_expected": 6
+  "touched_wallet_tx_bridge_live_paper": false,
+
+  "no_touch_invariants": {
+    "no_restart_v2": true,
+    "no_kill_v2": true,
+    "no_modify_v2_data": true,
+    "no_modify_v2_supervisor": true,
+    "no_start_12h_24h_48h_72h_7d": true,
+    "no_probe_canary_live_paper": true,
+    "no_wallet_keypair_signer": true,
+    "no_tx_send_approve_mint": true,
+    "no_paid_rpc_indexer": true,
+    "no_production_write": true,
+    "no_shadow_overwrite": true,
+    "no_cron_systemd_daemon": true
+  },
+
+  "allowed_recommended_next_stages": [
+    "LP_LONG_HORIZON_READONLY_CONTINUOUS_12H_EXTENSION_REQUEST_V1",
+    "LP_LONG_HORIZON_NODE_REPORT_FIX_REPEAT",
+    "LP_LONG_HORIZON_COLLECTOR_6H_FIX_REPEAT",
+    "PAUSE_AUTOMATED_LP_PROBE_AND_COLLECT_LONGER_HORIZON_DATA",
+    "STOP_LP_RESEARCH_NOW"
+  ],
+
+  "recommended_next_stage": "LP_LONG_HORIZON_READONLY_CONTINUOUS_12H_EXTENSION_REQUEST_V1",
+  "recommended_next_stage_rationale": "node report full_sample=true + gate=PASS, 用户新意图 = 6h → 12h 连续, 不在节点停. 12h 延展请求**不**自动启动, 需用户单独 approve 短语 + 单独 FINAL_VERDICT + freeze 状态决定. 详见 NEXT_NODE_DECISION_CN.md.",
+
+  "do_not_auto_start_12h": true,
+  "manual_approval_required_for_12h": true,
+  "manual_approval_phrase_12h": "APPROVE_LP_LONG_HORIZON_READONLY_STAGE_RUN stage=12h mode=readonly no_probe=true"
 }

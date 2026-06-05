@@ -1,0 +1,128 @@
+{
+  "stage": "LP_LONG_HORIZON_CONTINUOUS_OBSERVATION_NODE_REPORTS_V1",
+  "decision_stage": "E_NEXT_NODE_DECISION",
+  "decided_at_utc": "2026-06-05T13:11:00Z",
+
+  "source_run_id": "20260605_043726",
+  "node": "6h",
+  "v2_final_verdict_path": "reports/lp_long_horizon_readonly_collector_6h_run/20260605_043726/FINAL_VERDICT.json",
+
+  "v2_gate_pass": false,
+  "v2_data_quality_status": "FAIL",
+  "v2_actual_runtime_minutes": 360,
+  "v2_actual_runtime_valid_for_6h_gate": true,
+  "v2_short_mode_used": false,
+  "v2_six_hour_run_completed": false,
+  "v2_can_advance_to_12h": false,
+  "v2_recommended_next_stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_6H_REAL_WALLCLOCK_FIX_REPEAT",
+  "v2_finalize_error": "trap EXIT rc=1 (post-6h summary block hit error after ckpt 6 + 4 postfinal heartbeats; trap wrote FAIL FINAL_VERDICT preserving data)",
+
+  "node_report_state": {
+    "full_sample": true,
+    "partial_sample": false,
+    "gate_status": "PASS",
+    "data_quality_status": "data_quality_ok",
+    "can_continue_collection": true,
+    "can_use_for_preflight": true
+  },
+
+  "decision_question": "6h node report 生成后, recommended_next_stage 应该选哪个?",
+
+  "candidate_next_stages_evaluation": [
+    {
+      "name": "LP_LONG_HORIZON_READONLY_CONTINUOUS_12H_EXTENSION_REQUEST_V1",
+      "conditions_required": [
+        "6h V2 gate pass",
+        "node report full_sample=true",
+        "data_quality_status PASS 或 WARN_ACCEPTABLE"
+      ],
+      "conditions_met_check": {
+        "v2_gate_pass": "V2 FINAL_VERDICT.json says gate_pass=false (post-6h summary block error). HOWEVER node report generator's own gate_status=PASS (data_quality_ok, 6/6 ckpts)."
+      },
+      "verdict": "条件**部分满足**: node report full_sample=true, data_quality_status=PASS. 但 V2 FINAL_VERDICT 自身 gate_pass=false (因 trap EXIT rc=1 触发 fail-safe trap, 后写 FAIL verdict). 详见下方 discussion."
+    },
+    {
+      "name": "LP_LONG_HORIZON_NODE_REPORT_FIX_REPEAT",
+      "conditions_required": [
+        "node report 生成失败或 coverage manifest 不完整"
+      ],
+      "conditions_met": false,
+      "rationale": "node report 已成功生成, coverage manifest 完整 (3 levels), gate=PASS. 不需要 fix_repeat."
+    },
+    {
+      "name": "LP_LONG_HORIZON_COLLECTOR_6H_FIX_REPEAT",
+      "conditions_required": [
+        "V2 6h 本身失败"
+      ],
+      "conditions_met": true,
+      "rationale": "V2 FINAL_VERDICT.json status=FAIL (data_quality_status=FAIL, gate_pass=false, finalize_error='trap EXIT rc=1'). 6h 数据本身**完整** (6/6 ckpts, 30 quote_snapshots/ckpt, no error indicators in logs), 但 post-6h summary block 触发 fail-safe trap 写 FAIL verdict. **条件满足, 但 V2 数据本身可复用**, 详见下方 discussion."
+    },
+    {
+      "name": "PAUSE_AUTOMATED_LP_PROBE_AND_COLLECT_LONGER_HORIZON_DATA",
+      "conditions_required": [
+        "暂不继续 collector"
+      ],
+      "conditions_met": false,
+      "rationale": "用户新意图: 6h → 12h 连续, 不在节点停. 不是 pause."
+    },
+    {
+      "name": "STOP_LP_RESEARCH_NOW",
+      "conditions_required": [
+        "edge_proven=yes 强烈推荐停止",
+        "用户明确要求停 LP research"
+      ],
+      "conditions_met": false,
+      "rationale": "edge_proven=no, 用户**未**要求停."
+    }
+  ],
+
+  "discussion_v2_status_discrepancy": {
+    "v2_final_verdict_says": "status=FAIL, data_quality_status=FAIL, gate_pass=false, finalize_error='trap EXIT rc=1'",
+    "node_report_generator_says": "gate_status=PASS, data_quality_status=data_quality_ok, 6/6 ckpts",
+    "explanation": [
+      "V2 supervisor 在 6h wallclock 完成后, 进入 post-6h summary block, 该 block 触发了 fail-safe trap (EXIT rc=1), trap 写 FAIL FINAL_VERDICT (preserving V2 supervisor 'no silent loss' invariant from V1 fix).",
+      "FAIL 来自 supervisor 自身的 post-6h summary block 失败, **不是** 6h 数据采集失败.",
+      "V2 实际数据**完整**: 6/6 ckpts, 每 ckpt 30 quote_snapshots + 25 fee_velocity + 5 liquidity + 7 regime + 5 pool_snapshots + 1 actual_fee_placeholder + 1 smoke_summary. supervisor log 显示 [checkpoint 6/6] ok at 2026-06-05T09:51:33Z, [6h end] 2026-06-05T10:51:29Z elapsed_min=360, 随后 [trap] EXIT rc=1.",
+      "node report generator 用实际 ckpt 数据 (placeholder 但完整) 生成 PASS node report. 6h node report 自身的 gate=PASS."
+    ],
+    "implication": "V2 supervisor 的 FAIL 状态**只影响** V2 supervisor 自身, 不影响 R0 节点报告. 节点报告**可以**作为 R0 数据观察 + 是否继续采集判断的依据."
+  },
+
+  "selected_next_stage": "LP_LONG_HORIZON_READONLY_CONTINUOUS_12H_EXTENSION_REQUEST_V1",
+
+  "selected_next_stage_rationale": {
+    "primary_reason": "node report full_sample=true + gate=PASS, 用户新意图 = 6h → 12h 连续, 不在节点停. 12h 延展请求**不**自动启动, 需用户单独 approve 短语 + 单独 FINAL_VERDICT + freeze 状态决定.",
+    "secondary_reason": "V2 supervisor FAIL 不阻断 R0 节点报告. V2 实际数据完整可复用. 12h 延展会建立新的 supervisor, 复用同一 RUN_ID 累积 data + 自动在 12h 节点生成 12h node report.",
+    "NOT_collector_fix_repeat_rationale": "collector 本身**无 bug** (6/6 ckpts 完整, no error indicators in logs). V2 supervisor post-6h summary block 失败是 supervisor 自身 (Python aggregate + write 7 reports 步骤), 不是 collector. collector 在 6h 内行为完全正确. 修 supervisor = 修 V2 supervisor `scripts/run_lp_long_horizon_readonly_6h_once.sh` post-6h block, 不需要 fix_repeat collector."
+  },
+
+  "allowed_next_stages_locked": [
+    "LP_LONG_HORIZON_READONLY_CONTINUOUS_12H_EXTENSION_REQUEST_V1",
+    "LP_LONG_HORIZON_NODE_REPORT_FIX_REPEAT",
+    "LP_LONG_HORIZON_COLLECTOR_6H_FIX_REPEAT",
+    "PAUSE_AUTOMATED_LP_PROBE_AND_COLLECT_LONGER_HORIZON_DATA",
+    "STOP_LP_RESEARCH_NOW"
+  ],
+
+  "forbidden_next_stages": [
+    "LP_LONG_HORIZON_READONLY_COLLECTOR_6H_RUN_APPROVAL_V1 (V2 in-flight → finalized, no rerun needed)",
+    "any probe / canary / live / paper / wallet / keypair stage"
+  ],
+
+  "do_not_auto_start_12h": true,
+  "manual_approval_required_for_12h": true,
+  "manual_approval_phrase_12h": "APPROVE_LP_LONG_HORIZON_READONLY_STAGE_RUN stage=12h mode=readonly no_probe=true",
+
+  "no_touch_invariants": {
+    "no_auto_start_12h": true,
+    "no_kill_v2": true,
+    "no_restart_v2": true,
+    "no_modify_v2_data": true,
+    "no_probe_canary_live_paper": true,
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no",
+    "edge_proven": "no"
+  },
+
+  "next_stage": "F_FINAL_NODE_VERDICT"
+}

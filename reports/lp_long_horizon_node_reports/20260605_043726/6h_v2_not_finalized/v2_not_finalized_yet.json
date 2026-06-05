@@ -1,0 +1,53 @@
+{
+  "stage": "LP_LONG_HORIZON_CONTINUOUS_OBSERVATION_NODE_REPORTS_V1",
+  "decision_stage": "A_V2_FINALIZE_CHECK",
+  "checked_at_utc": "2026-06-05T09:41:28Z",
+  "decision": "V2_NOT_FINALIZED_YET",
+
+  "v2_run_id": "20260605_043726",
+  "v2_finalized": false,
+  "v2_final_verdict_exists": false,
+  "v2_supervisor_pid": 3872268,
+  "v2_supervisor_alive": true,
+  "v2_supervisor_etime": "04:49:49",
+  "v2_expected_end_time_utc": "2026-06-05T10:51:29Z",
+  "v2_remaining_minutes": 70,
+
+  "v2_progress": {
+    "checkpoint_count_observed": 5,
+    "checkpoint_count_expected": 6,
+    "checkpoint_dirs": [
+      "checkpoint_1_0451", "checkpoint_2_0551", "checkpoint_3_0651",
+      "checkpoint_4_0751", "checkpoint_5_0851"
+    ],
+    "checkpoint_5_written_at_utc": "2026-06-05T08:51:31Z",
+    "latest_log_mtime_utc": "2026-06-05T08:56:32Z",
+    "latest_heartbeat": "heartbeat_5_3_of_4.json",
+    "heartbeat_phase": "post-ckpt_5 sleep (3/4 of 4×heartbeat chunks; ckpt_6 expected at 09:51:31Z)"
+  },
+
+  "v2_state_inferred": "supervisor is in the END_TS-based REMAINING sleep after ckpt_5. Will write ckpt_6 at ~09:51:31Z, then sleep TAIL = (10:51:29Z - now) = ~60 min, then enter finalize block (write FINAL_VERDICT + 7 reports + auto commit + auto push + kill tmux).",
+
+  "six_hour_run_completed": false,
+  "actual_runtime_valid_for_6h_gate": null,
+  "short_mode_used": false,
+  "data_quality_status": null,
+  "gate_pass": null,
+  "recommended_next_stage": "WAIT_FOR_V2_FINALIZE",
+
+  "action_taken": "no_full_node_report_generated_yet; per task spec, must wait for V2 FINAL_VERDICT to exist before generating full 6h node report",
+
+  "what_will_trigger_full_node_report": "V2 supervisor writes reports/lp_long_horizon_readonly_collector_6h_run/20260605_043726/FINAL_VERDICT.json. After that, re-invoke this stage to run the generator on the now-full data (6/6 ckpts).",
+
+  "no_touch_invariants": {
+    "no_restart_v2": true,
+    "no_kill_v2": true,
+    "no_modify_v2_data": true,
+    "no_modify_v2_supervisor": true,
+    "no_start_12h_24h_48h_72h_7d": true,
+    "no_probe_canary_live_paper": true,
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no",
+    "edge_proven": "no"
+  }
+}
