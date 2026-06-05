@@ -1,0 +1,149 @@
+{
+  "spec_name": "fee_estimation_without_probe_v1",
+  "spec_version": "1.0",
+  "spec_stage": "F_FEE_ESTIMATION_WITHOUT_PROBE",
+  "designed_at_utc": "2026-06-05T08:23:00Z",
+
+  "purpose": "大白话解释为什么'无探针资金时手续费估算依据是什么', 区分 actual_fee / fee_proxy / heuristic, 并列出从 R0 (proxy) 升级到 R1 (actual) 所需条件.",
+
+  "core_principles": {
+    "P1_no_actual_fee_in_R0": "R0 阶段 (当前) 没有真实 LP tokenId / positionId, 任何 fee 数字都是 proxy / heuristic, 不是 actual fee.",
+    "P2_proxy_explicit_disclosed": "每个 fee 数字必须显式标注 actual_fee=false / fee_proxy=true / heuristic=true, 不得隐含当作 actual.",
+    "P3_pool_type_specific_formula": "不同 pool type 的 fee proxy 公式不同 (V3/CLMM 与 DLMM 完全不同), 必须分别定义.",
+    "P4_range_bin_sensitivity_required": "V3/CLMM fee proxy 必须按 range 宽度 (narrow/medium/wide) 分别算; DLMM 必须按 bin coverage 算.",
+    "P5_stable_pool_il_low_not_zero": "stable / LST-stable 池 IL 低, 但 depeg / LST risk 仍要计入.",
+    "P6_upgrade_path_to_R1_explicit": "从 R0 升级到 R1 (actual fee) 所需数据必须显式列出, 任何 R0 proxy 都不可作为 R1 实际值."
+  },
+
+  "r0_state_locked_fields": {
+    "actual_fee": false,
+    "fee_proxy": true,
+    "heuristic": true,
+    "actual_fee_accrual_rows_in_data_dir": 0,
+    "wallet_or_tx_touched": false,
+    "transaction_sent": false,
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no"
+  },
+
+  "fee_proxy_per_pool_type": {
+    "V3_CLMM": {
+      "r0_proxy_inputs_required": [
+        "pool_address",
+        "fee_tier (e.g. 3000 = 0.3%)",
+        "current_tick (from pool.slot0)",
+        "active_tick_range (current liquidity density around current tick)",
+        "window_volume_in_pool (USD over window)",
+        "window_volume_distribution_by_tick (if available, else skip range sensitivity)"
+      ],
+      "narrow_range_fee_proxy_formula": "fee_proxy_narrow = volume_window × fee_rate × user_lp_share_in_range × in_range_time_ratio_narrow",
+      "medium_range_fee_proxy_formula": "fee_proxy_medium = volume_window × fee_rate × user_lp_share_in_range × in_range_time_ratio_medium",
+      "wide_range_fee_proxy_formula": "fee_proxy_wide = volume_window × fee_rate × user_lp_share_in_range × in_range_time_ratio_wide",
+      "user_lp_share_in_range_formula": "user_notional / total_active_liquidity_in_user_range",
+      "in_range_time_ratio_formula": "approximated from tick history (if not available, use 0.5 with warning)",
+      "feeGrowthInside_proxy_note": "R0 不读 feeGrowth (需 tokenId, 属于 R1); R0 用 volume × fee_rate × lp_share 估算",
+      "limitation_disclosure": "R0 无法计算: out-of-range 时 IL / 重新 setRange 成本 / 实际累积 feeGrowth / tokensOwed"
+    },
+    "Meteora_DLMM": {
+      "r0_proxy_inputs_required": [
+        "pool_address",
+        "bin_step",
+        "active_bin_id",
+        "bins_with_liquidity (per side of active bin)",
+        "bin_liquidity_distribution (if available)",
+        "window_volume_in_pool (USD)",
+        "window_swap_count_per_bin (if available, else skip bin-level sensitivity)"
+      ],
+      "narrow_bin_fee_proxy_formula": "fee_proxy_narrow = volume_window × fee_rate × user_bin_share_in_active_bins",
+      "medium_bin_fee_proxy_formula": "fee_proxy_medium = volume_window × fee_rate × user_bin_share_in_active_bins ± N bins",
+      "wide_bin_fee_proxy_formula": "fee_proxy_wide = volume_window × fee_rate × user_bin_share_in_active_bins ± 2N bins",
+      "user_bin_share_in_active_bins_formula": "user_bin_liquidity / total_bin_liquidity_in_range",
+      "active_bin_distance_formula": "|bin_id - active_bin_id|",
+      "sparse_liquidity_warning": "如果 bins_with_liquidity_count < threshold (e.g. 5 per side), 标记 sparse_liquidity_warning=true",
+      "limitation_disclosure": "R0 无法计算: bin rebalancing 触发点 / 实际 binShares 累积 / DLMM reward (DLMM 协议层激励, 需 DLMM SDK)"
+    },
+    "CPMM_v2_cpmm": {
+      "r0_proxy_inputs_required": [
+        "pool_address",
+        "fee_bps (e.g. 30 = 0.3%)",
+        "pool_tvl (USD)",
+        "window_volume (USD)",
+        "user_notional (假设)"
+      ],
+      "full_range_fee_proxy_formula": "fee_proxy = volume_window × fee_rate × user_lp_share",
+      "user_lp_share_formula": "user_notional / pool_tvl",
+      "price_impact_proxy_formula": "user_notional / pool_tvl (rough; better: 实际 swap-out 模拟, R0 不做)",
+      "il_proxy_formula": "基于 token ratio change; 简化版 = 2 × sqrt(price_ratio) / (1 + price_ratio) - 1 (Uniswap V2 标准)",
+      "limitation_disclosure": "R0 无法计算: 实际 add/remove 滑点 / 时间加权 IL / 多周期 compounding"
+    },
+    "Stable_LST_Stable": {
+      "r0_proxy_inputs_required": [
+        "pool_address",
+        "fee_bps (e.g. 1 = 0.01% for stable)",
+        "pool_tvl (USD)",
+        "window_volume (USD)",
+        "user_notional",
+        "depeg_risk_score (0-1)",
+        "lst_depeg_history_30d (事件数)"
+      ],
+      "full_range_fee_proxy_formula": "fee_proxy = volume_window × fee_rate × user_lp_share (同 CPMM)",
+      "il_proxy_assumption": "stable 池 IL 假设低 (e.g. < 0.5%/30d), 但 depeg_risk_score > 0.3 需调高 IL 假设",
+      "depeg_risk_adjustment": "adjusted_il = il_base × (1 + depeg_risk_score × 2)",
+      "limitation_disclosure": "R0 无法计算: 实际 depeg 事件触发 IL / LST 协议层 slashing / 稳定币脱锚后回归时间"
+    }
+  },
+
+  "future_actual_fee_requirement": {
+    "description": "R0 → R1 升级需要以下数据 (任何缺失 = 仍为 proxy, 不可标记 actual_fee=true):",
+    "required_data_points": [
+      "tokenId / positionId (V3/CLMM NFT mint address; DLMM bin position pubkey)",
+      "entry feeGrowthGlobal (V3/CLMM 在 add liquidity 时的 feeGrowthOutside + Inside snapshot)",
+      "exit feeGrowthGlobal (V3/CLMM 在 remove/collect 时的 feeGrowthOutside + Inside snapshot)",
+      "tokensOwed0 / tokensOwed1 (V3/CLMM mint callback 之后的待 collect 数量)",
+      "collected fee (实际 collect 后的 token 数量, 转 USD)",
+      "actual add/remove cost (gas + slippage + protocol fee, USD)",
+      "realized PnL (collected fee + token 价值变化 - add/remove cost - IL realized)"
+    ],
+    "data_source_r1": "需要真实 LP 操作 (用户签 add/remove/collect) 或 paid indexer (B 线, 需用户单独批准)",
+    "current_R0_has_none_of_these": true
+  },
+
+  "node_report_required_disclosure": {
+    "in_fee_estimation_block": {
+      "actual_fee_data_available": false,
+      "fee_proxy_used": true,
+      "heuristic_used": true,
+      "v3_clmm_fee_proxy_formula": "(string, 完整公式)",
+      "meteora_dlmm_fee_proxy_formula": "(string, 完整公式)",
+      "cpmm_fee_proxy_formula": "(string, 完整公式)",
+      "stable_pool_fee_proxy_formula": "(string, 完整公式)",
+      "future_actual_fee_requirement": ["(6 strings, per future_actual_fee_requirement.required_data_points)"]
+    },
+    "in_range_sensitivity_block": {
+      "fee_estimate_confidence": "low (R0 proxy only, 无 actual fee)"
+    },
+    "in_candidate_block": {
+      "ev_proxy_confidence": "low (per candidate) — explicit per pool, not overall"
+    }
+  },
+
+  "honest_disclaimers_for_users": {
+    "D1": "R0 阶段所有 fee 数字 = proxy, 不是 actual fee. 实际 fee 必须有 tokenId + feeGrowth snapshot + tokensOwed 实测.",
+    "D2": "V3/CLMM range 越窄, fee proxy 越高 (因为 user_lp_share_in_range 越大), 但 out-of-range 风险也越大. R0 不能直接告诉你 range 选多窄最优.",
+    "D3": "Meteora DLMM bin coverage 越窄, fee proxy 越高, 但 sparse_liquidity_warning 越严重. R0 不能直接告诉你 bin coverage 选多少最优.",
+    "D4": "CPMM fee proxy 精度受限于 TVL / volume 的更新延迟. R0 用的 tvl_proxy / volume_proxy 可能有 ±20% 误差.",
+    "D5": "Stable / LST-stable 池 fee proxy 假设 IL 低, 但 depeg 事件可瞬间击穿 IL 假设. R0 depeg_risk_score 是 heuristic, 不是预言机.",
+    "D6": "R0 节点报告**不**可用于 B 线 preflight, 因为实际 fee 仍未知. B 线需要 tokenId 实盘数据, 需用户单独批准."
+  },
+
+  "no_touch_invariants": {
+    "F1_no_actual_fee": true,
+    "F2_explicit_proxy_disclosure": true,
+    "F3_no_wallet_keypair_signing": true,
+    "F4_no_tx_send_approve_mint": true,
+    "F5_no_paid_indexer_default": true,
+    "F6_no_paid_rpc_default": true
+  },
+
+  "next_stage": "G_RANGE_LIQUIDITY_FEE_SENSITIVITY_SPEC"
+}

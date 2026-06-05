@@ -1,0 +1,84 @@
+{
+  "stage": "LP_CONTINUOUS_STAGED_OBSERVATION_AND_COVERAGE_REPORT_V1",
+  "decision_stage": "I_CONTINUOUS_OBSERVATION_NEXT_STAGE_DECISION",
+  "decided_at_utc": "2026-06-05T08:38:00Z",
+  "decider": "agent (read-only)",
+
+  "decision_question": "本轮 (Stage A→H) 已完成所有设计与 node_report_generator_v1 实现, 并用 V2 in-flight 4/6 ckpts 数据成功 dry-run 生成 6h partial_sample 节点报告. 下一步应该选哪个 stage?",
+
+  "candidate_next_stages": [
+    {
+      "name": "LP_LONG_HORIZON_CONTINUOUS_OBSERVATION_NODE_REPORTS_V1",
+      "conditions_required": [
+        "node report generator ready (✓ scripts/lp_long_horizon_node_report_generator_v1.py implemented + tested)",
+        "current V2 不被干扰 (✓ per Stage A audit, no V2 modification)",
+        "可以在 V2 完成后生成 6h node report (✓ generator supports --node 6h)",
+        "后续可保持同 run 连续扩展到 12h/24h (✓ generator supports all 6 nodes)"
+      ],
+      "conditions_met": true,
+      "rationale": "本轮交付: continuous_staged_observation_design + node_report_schema + coverage_manifest_spec + fee_estimation_explanation + range_liquidity_fee_sensitivity_spec + node_report_generator_v1 (read-only) + sample node report (6h partial, WARN_ACCEPTABLE). 工具链 ready, 当前 V2 在 6h 完成后用户可触发 6h node report, 后续 12h/24h/48h/72h/7d 节点可由新 supervisor 自动触发. 本轮设计全部 ready."
+    },
+    {
+      "name": "LP_CONTINUOUS_STAGED_OBSERVATION_FIX_REPEAT",
+      "conditions_required": [
+        "schema / script 不完整"
+      ],
+      "conditions_met": false,
+      "rationale": "本轮交付物: 21 top-level fields in node_report_schema, 7 forbidden keys validated, 3 coverage levels (chain/dex/pool), 7 protocols across 3 chains, 4 fee proxy formulas, 3 range sensitivity tables, 11 output files per node report, 25 R0 locked fields. **schema 完整, script 可用, sample run 成功.**  不需要 fix_repeat."
+    },
+    {
+      "name": "PAUSE_AUTOMATED_LP_PROBE_AND_COLLECT_LONGER_HORIZON_DATA",
+      "conditions_required": [
+        "暂不继续 collector"
+      ],
+      "conditions_met": false,
+      "rationale": "用户新意图: 让 collector 连续跑, 节点自动生成报告, 不在每个节点停. **不是 pause, 是 continuous.** 当前 V2 6h 仍在跑 (4/6 ckpts), 不会 pause."
+    },
+    {
+      "name": "STOP_LP_RESEARCH_NOW",
+      "conditions_required": [
+        "edge_proven=yes 强烈推荐停止",
+        "用户明确要求停 LP research"
+      ],
+      "conditions_met": false,
+      "rationale": "edge_proven=no, 用户**未**要求停 LP research, 且本轮设计 (continuous observation) 是为了获得更多数据**避免**STOP. 不得选 STOP."
+    }
+  ],
+
+  "selected_next_stage": "LP_LONG_HORIZON_CONTINUOUS_OBSERVATION_NODE_REPORTS_V1",
+
+  "selected_next_stage_rationale": {
+    "fit_with_user_intent": "用户新意图 = '6h → 12h → 24h → 48h → 72h → 7d 这条观察链可以不中断; 不是每个节点都停机等待人工审批; 应该让 collector 连续运行, 到每个节点自动生成阶段报告'. 本轮交付物精确满足此意图: 设计 + 工具 + 样例已就位.",
+    "fit_with_collector_continuity": "V2 当前 6h 跑完后, 同一 RUN_ID 可由下一阶段 supervisor 继续跑到 12h/24h/48h/72h/7d, 节点报告由 generator 自动生成, 整个链条不中断.",
+    "fit_with_a_b_separation": "本轮 = A 线 (continuous observation), 严格不触发 B 线 (execution). 节点报告全部 locked: can_run_probe_now=false, tiny_canary_allowed='no', edge_proven='no', wallet_or_tx_touched=false, transaction_sent=false.",
+    "fit_with_freeze": "LP strategy research 仍处于 freeze (per docs/LPBOT_RESEARCH_STATUS_CN.md). 节点报告是 R0 数据采集, 严格遵守 freeze, 不解锁 LP strategy research.",
+    "fit_with_r0_actual_fee_lock": "R0 阶段所有 fee 数字 = proxy, generator 显式标记 actual_fee=false / fee_proxy=true / heuristic=true. 升级到 R1 (actual fee) 需要真实 LP 操作, 需用户单独批准 (B 线).",
+    "next_stage_actual_activities": [
+      "V2 6h 完成后 (预计 2026-06-05T10:51:29Z) 用户可手动触发 6h node report: python3 scripts/lp_long_horizon_node_report_generator_v1.py --run-id 20260605_043726 --node 6h",
+      "后续阶段 (12h/24h/48h/72h/7d) 由新 supervisor 在节点 wallclock 自动调用 generator (本轮**不**创建新 supervisor, 由下一轮单独安排)",
+      "节点报告只用于数据观察 + 是否继续采集判断, 不作为 B 线 preflight 依据"
+    ]
+  },
+
+  "stage_i_open_items_for_user": [
+    "本轮 A→L commit + push 完成后 (Stage L), 节点报告工具就绪",
+    "V2 6h 完成后用户可触发 6h 节点报告, 看 partial_sample=true (因 V2 是 6h supervisor, 跑满 6h 写 6 ckpt 后 finalize, 此时 6h node report = full_sample=true)",
+    "后续 12h/24h 节点需要新 supervisor (不在本轮范围), 用户可单独批准创建"
+  ],
+
+  "selected_next_stage_constraints": {
+    "C1_no_probe_canary_live_paper": true,
+    "C2_no_wallet_keypair_signer": true,
+    "C3_no_tx_send_approve_mint": true,
+    "C4_no_paid_rpc_indexer": true,
+    "C5_no_production_write": true,
+    "C6_no_shadow_overwrite": true,
+    "C7_no_cron_systemd_daemon": true,
+    "C8_no_lp_research_freeze_reopen": true,
+    "C9_can_run_probe_now_lock_false": true,
+    "C10_tiny_canary_allowed_lock_no": true,
+    "C11_edge_proven_lock_no": true
+  },
+
+  "next_stage": "J_FINAL_VERDICT"
+}

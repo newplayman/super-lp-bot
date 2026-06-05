@@ -1,0 +1,70 @@
+{
+  "stage": "LP_CONTINUOUS_STAGED_OBSERVATION_AND_COVERAGE_REPORT_V1",
+  "audit_stage": "A_CURRENT_V2_PROTECTION_AUDIT",
+  "audit_at_utc": "2026-06-05T08:20:58Z",
+  "audit_operator": "agent (read-only, no V2 modification, no kill, no restart, no parallel collector)",
+
+  "v2_run_id": "20260605_043726",
+  "v2_tmux_session": "lp_long_horizon_6h_v2_20260605_043726",
+  "v2_supervisor_pid": 3872268,
+  "v2_supervisor_cmd": "bash scripts/run_lp_long_horizon_readonly_6h_once.sh 20260605_043726",
+  "v2_expected_end_time_utc": "2026-06-05T10:51:29Z",
+
+  "current_v2_not_touched": true,
+  "no_restart": true,
+  "no_parallel_collector": true,
+  "no_kill": true,
+  "no_modify_supervisor": true,
+  "no_modify_collector": true,
+  "no_modify_data_files": true,
+  "no_modify_checkpoint_files": true,
+  "no_modify_final_verdict": true,
+  "no_manual_finalize": true,
+  "no_commit_to_v2_dir": true,
+  "no_new_tmux_session_for_v2": true,
+  "no_new_tmux_session_for_observation": true,
+  "no_cron_systemd_daemon": true,
+  "no_probe_canary_live_paper": true,
+  "no_wallet_keypair_signer": true,
+  "no_tx_send_approve_mint": true,
+  "no_paid_rpc_indexer": true,
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no",
+  "edge_proven": "no",
+
+  "v2_inflight_health_at_audit_time": {
+    "tmux_session_exists": true,
+    "tmux_window_count": 1,
+    "tmux_created_at_local": "Fri Jun  5 06:51:15 2026",
+    "supervisor_alive": true,
+    "supervisor_etime": "03:29:40",
+    "supervisor_stat": "S",
+    "checkpoint_count": 4,
+    "checkpoint_dirs_present": [
+      "checkpoint_1_0451",
+      "checkpoint_2_0551",
+      "checkpoint_3_0651",
+      "checkpoint_4_0751"
+    ],
+    "checkpoint_pending": ["checkpoint_5_0851", "checkpoint_6_0951"],
+    "final_verdict_exists": false,
+    "data_dir_file_count": 28,
+    "report_dir_file_count": 22,
+    "error_indicators_count": 0,
+    "forbidden_process_count": 0,
+    "no_12h_session": true,
+    "no_v3_session": true,
+    "tmux_sessions_total": 3,
+    "tmux_sessions_unrelated_to_v2": ["work", "work-lp"],
+    "tmux_sessions_for_v2": ["lp_long_horizon_6h_v2_20260605_043726"]
+  },
+
+  "operation_constraints_for_this_audit": {
+    "scope": "design continuous staged observation; build reporting schemas; build coverage manifest spec; build fee estimation explanation; build range/tick/bin sensitivity spec; build node report generator; do NOT touch V2",
+    "no_collector_state_change": true,
+    "no_v2_data_change": true,
+    "v2_keep_running_until_2026_06_05T10_51_29Z": true
+  },
+
+  "next_stage": "B_INPUT_EVIDENCE_AUDIT"
+}

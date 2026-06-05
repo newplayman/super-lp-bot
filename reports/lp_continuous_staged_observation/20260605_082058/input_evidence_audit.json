@@ -1,0 +1,151 @@
+{
+  "stage": "LP_CONTINUOUS_STAGED_OBSERVATION_AND_COVERAGE_REPORT_V1",
+  "audit_stage": "B_INPUT_EVIDENCE_AUDIT",
+  "audit_at_utc": "2026-06-05T08:21:00Z",
+  "audit_operator": "agent (read-only evidence collection, no V2 modification, no new run start)",
+
+  "input_evidence_files": [
+    {
+      "label": "staged_request",
+      "path": "reports/lp_long_horizon_readonly_collector_staged_request/20260604_123955/FINAL_VERDICT.json",
+      "status": "WARN",
+      "key_fields": {
+        "one_shot_7d_replaced": true,
+        "stages": ["6h", "12h", "24h", "48h", "72h", "7d"],
+        "first_stage": "6h",
+        "auto_advance_allowed": false,
+        "manual_approval_required_each_stage": true,
+        "stage_gate_rules_ready": false,
+        "tmux_template_generated": false,
+        "cron_enabled": false,
+        "systemd_enabled": false,
+        "long_run_started": false,
+        "recommended_next_stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_6H_RUN_APPROVAL_V1",
+        "redirect_record.previous": "LP_LONG_HORIZON_READONLY_COLLECTOR_7D_RUN_REQUEST_V1",
+        "redirect_record.current": "LP_LONG_HORIZON_READONLY_COLLECTOR_6H_RUN_APPROVAL_V1",
+        "redirect_record.reason": "user pivot from one-shot 7d to staged 6h/12h/24h/48h/72h/7d"
+      }
+    },
+    {
+      "label": "data_pipeline",
+      "path": "reports/lp_long_horizon_readonly_data_pipeline/20260604_062324/FINAL_VERDICT.json",
+      "status": "WARN",
+      "key_fields": {
+        "long_horizon_pipeline_ready": true,
+        "collector_script_built": true,
+        "market_regime_classifier_spec_ready": true,
+        "actual_fee_accrual_schema_ready": true,
+        "data_categories_designed": ["pool_snapshot", "quote_snapshot", "fee_velocity", "liquidity_distribution", "market_regime", "future_actual_fee_accrual"],
+        "regime_count": 7,
+        "smoke_mode_writes_only_to_data_lp_long_horizon": true,
+        "default_mode": "design",
+        "recommended_next_stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_SMOKE_V1",
+        "long_run_safety_gates.can_run_probe_now_must_stay_false": true,
+        "long_run_safety_gates.tiny_canary_allowed_must_stay_no": true,
+        "long_run_safety_gates.abort_on_error_rate_pct": 20,
+        "long_run_safety_gates.abort_on_429_streak": 5,
+        "model_limitations.fee_data": "R0 proxy; R1 actual via tokenId",
+        "model_limitations.pool_selection": "R0 public feed; R3 incentive/vault"
+      }
+    },
+    {
+      "label": "scope_audit",
+      "path": "reports/lp_research_conclusion_scope_audit/20260604_060659/FINAL_VERDICT.json",
+      "status": "WARN",
+      "key_fields": {
+        "current_probe_allowed": false,
+        "global_lp_rejected": false,
+        "current_model_rejects_auto_probe": true,
+        "conclusion_scope": "current_data_current_model_short_window",
+        "needs_longer_horizon_validation": true,
+        "needs_actual_fee_accrual": true,
+        "needs_market_regime_split": true,
+        "market_downtrend_bias_acknowledged": true,
+        "locked_conclusions_unaffected_by_regime": ["can_run_probe_now=false", "tiny_canary_allowed=no", "edge_proven=no"],
+        "regime_classification_proposed": 7,
+        "long_horizon_reopen_phases": ["R0_LONG_READONLY_DATA", "R1_REAL_FEE_ACCRUAL_DESIGN", "R2_MARKET_REGIME_SPLIT", "R3_REOPEN_CANDIDATE_REVIEW", "R4_10U_TOKENID_PROBE_PREFLIGHT", "R5_MANUAL_PROBE_ONLY"],
+        "recommended_next_stage": "PAUSE_AUTOMATED_LP_PROBE_AND_COLLECT_LONGER_HORIZON_DATA"
+      }
+    },
+    {
+      "label": "v2_6h_run_startup",
+      "path": "reports/lp_long_horizon_readonly_collector_6h_run/20260605_043726/",
+      "status": "IN_FLIGHT",
+      "key_files": [
+        "PRE_RUN_SAFETY_CHECK_CN.md",
+        "pre_run_safety_check.json",
+        "MANUAL_APPROVAL_RECORDED_CN.md",
+        "MANUAL_APPROVAL_RECORDED.json",
+        "TMUX_START_HEALTHCHECK_CN.md",
+        "tmux_start_healthcheck.json",
+        "supervisor.pid",
+        "logs/supervisor.log",
+        "logs/supervisor.stdout.log",
+        "logs/checkpoint/",
+        "logs/heartbeat/"
+      ],
+      "expected_end_time_utc": "2026-06-05T10:51:29Z",
+      "loop_count": 6,
+      "sleep_seconds": 3600
+    },
+    {
+      "label": "collector_script",
+      "path": "scripts/lp_long_horizon_readonly_collector_v1.py",
+      "size_bytes": 22277,
+      "modes": ["design", "smoke"],
+      "default_mode": "design",
+      "output_root_prefix": "data/lp_long_horizon",
+      "writes_only_to_data_lp_long_horizon": true
+    },
+    {
+      "label": "supervisor_6h",
+      "path": "scripts/run_lp_long_horizon_readonly_6h_once.sh",
+      "size_bytes": 32301,
+      "hard_guards": [
+        "SLEEP_SECONDS >= 3600 (short mode forbidden, exit 8)",
+        "LOOP_COUNT == 6 (override forbidden, exit 9)",
+        "approval phrase must equal expected (exit 11)",
+        "no pre-existing tmux session (exit 13)",
+        "no forbidden process (exit 14)",
+        "data_dir + report_dir writable (exit 15, 16)"
+      ],
+      "fail_safe_trap": "write_fail_verdict_on_trap on EXIT/SIGTERM/SIGINT/SIGHUP (V2 fix for V1 NameError silent loss)"
+    }
+  ],
+
+  "key_assertions": {
+    "one_shot_7d_replaced": true,
+    "stages": ["6h", "12h", "24h", "48h", "72h", "7d"],
+    "first_stage": "6h",
+    "auto_advance_allowed_originally": false,
+    "user_new_intent_continuous_observation_with_node_reports": true,
+    "user_new_intent_no_manual_stop_at_each_node": true,
+    "this_turn_only_designs_reporting_does_not_start_new_run": true,
+    "current_v2_6h_run_in_flight": true,
+    "current_v2_6h_run_protected": true
+  },
+
+  "redirect_chain": [
+    {"from": "LP_LONG_HORIZON_READONLY_COLLECTOR_7D_RUN_REQUEST_V1", "to": "LP_LONG_HORIZON_READONLY_COLLECTOR_6H_RUN_APPROVAL_V1", "reason": "user pivot: one-shot 7d → staged 6h/12h/24h/48h/72h/7d"},
+    {"from": "STOP_AT_EACH_NODE", "to": "CONTINUOUS_STAGED_OBSERVATION", "reason": "user pivot: stop at each node for manual approval → continuous collector with auto node reports (no auto probe, no auto trade)"}
+  ],
+
+  "scope_of_this_audit": {
+    "this_turn_designs": ["continuous_staged_observation_spec", "node_report_schema", "coverage_manifest_spec", "fee_estimation_explanation", "range_liquidity_fee_sensitivity_spec", "node_report_generator_v1"],
+    "this_turn_does_not": [
+      "start V3 / 12h / 24h / 72h / 7d new run",
+      "modify V2 supervisor or collector",
+      "modify V2 data or report dir",
+      "kill V2 tmux or supervisor",
+      "enable cron / systemd / daemon",
+      "probe / canary / live / paper",
+      "read wallet / keypair / private key",
+      "send transaction / approve / mint / swap / bridge",
+      "write production positions",
+      "overwrite shadow tables",
+      "use paid RPC or paid indexer"
+    ]
+  },
+
+  "next_stage": "C_CONTINUOUS_STAGED_OBSERVATION_DESIGN"
+}

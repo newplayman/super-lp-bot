@@ -1,0 +1,35 @@
+{
+  "stage": "LP_CONTINUOUS_STAGED_OBSERVATION_AND_COVERAGE_REPORT_V1",
+  "node": "6h",
+  "run_id": "20260605_043726",
+  "actual_fee_data_available": false,
+  "fee_proxy_used": true,
+  "heuristic_used": true,
+  "v3_clmm": {
+    "narrow_range": "fee_proxy = volume_window × fee_rate × user_lp_share_in_range × in_range_time_ratio_narrow",
+    "medium_range": "fee_proxy = volume_window × fee_rate × user_lp_share_in_range × in_range_time_ratio_medium",
+    "wide_range": "fee_proxy = volume_window × fee_rate × user_lp_share_in_range × in_range_time_ratio_wide"
+  },
+  "meteora_dlmm": {
+    "narrow_bin": "fee_proxy = volume_window × fee_rate × user_bin_share_in_active_bins",
+    "medium_bin": "fee_proxy = volume_window × fee_rate × user_bin_share_in_active_bins ± 10 bins",
+    "wide_bin": "fee_proxy = volume_window × fee_rate × user_bin_share_in_active_bins ± 50 bins"
+  },
+  "cpmm": "fee_proxy = volume_window × fee_rate × user_lp_share; user_lp_share = user_notional / pool_tvl",
+  "stable_pool": "fee_proxy = volume_window × fee_rate × user_lp_share (assumes low IL)",
+  "r0_limitations": [
+    "no tokenId / positionId",
+    "no feeGrowth snapshot",
+    "no tokensOwed",
+    "no actual add/remove cost",
+    "no realized PnL"
+  ],
+  "future_actual_fee_requirement": [
+    "tokenId / positionId",
+    "entry feeGrowthGlobal / exit feeGrowthGlobal",
+    "tokensOwed0 / tokensOwed1",
+    "collected fee (USD)",
+    "actual add/remove cost (USD)",
+    "realized PnL"
+  ]
+}

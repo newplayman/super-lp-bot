@@ -1,0 +1,125 @@
+{
+  "stage": "LP_CONTINUOUS_STAGED_OBSERVATION_AND_COVERAGE_REPORT_V1",
+  "status": "PASS",
+  "run_id": "20260605_082058",
+  "branch": "feat/supabase-postgres-deployment",
+  "head_before": "95efae6",
+
+  "current_v2_touched": false,
+  "current_v2_run_id": "20260605_043726",
+  "current_v2_protected": true,
+  "current_v2_not_touched": true,
+  "no_restart": true,
+  "no_parallel_collector": true,
+  "no_kill": true,
+
+  "continuous_observation_design_ready": true,
+  "node_report_schema_ready": true,
+  "coverage_manifest_spec_ready": true,
+  "fee_estimation_explained": true,
+  "range_liquidity_fee_sensitivity_spec_ready": true,
+  "node_report_generator_built": true,
+  "sample_node_report_generated": true,
+  "sample_node_report_path": "reports/lp_long_horizon_node_reports/20260605_043726/6h/",
+  "sample_node_report_status": "WARN_ACCEPTABLE",
+  "sample_node_report_partial_sample": true,
+
+  "collection_can_continue_between_nodes": true,
+  "auto_probe_allowed": false,
+  "auto_trade_allowed": false,
+  "auto_advance_to_execution_allowed": false,
+  "auto_advance_to_next_node_allowed": true,
+  "manual_approval_required_for_execution": true,
+  "manual_approval_required_for_node_skip": false,
+  "manual_approval_required_for_node_stop": false,
+
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no",
+  "edge_proven": "no",
+  "wallet_or_tx_touched": false,
+  "transaction_sent": false,
+  "send_hard_disable_still_active": true,
+
+  "no_touch_invariants": {
+    "no_probe_canary_live_paper": true,
+    "no_wallet_keypair_signer": true,
+    "no_tx_send_approve_mint": true,
+    "no_paid_rpc_paid_indexer": true,
+    "no_production_write": true,
+    "no_shadow_overwrite": true,
+    "no_cron_systemd_daemon": true,
+    "no_lp_research_freeze_reopen": true,
+    "no_modify_v2_supervisor": true,
+    "no_modify_v2_collector": true,
+    "no_modify_v2_data": true
+  },
+
+  "deliverables": {
+    "CURRENT_V2_PROTECTION_AUDIT_CN.md": "passed",
+    "current_v2_protection_audit.json": "passed",
+    "INPUT_EVIDENCE_AUDIT_CN.md": "passed",
+    "input_evidence_audit.json": "passed",
+    "CONTINUOUS_STAGED_OBSERVATION_DESIGN_CN.md": "passed",
+    "continuous_staged_observation_design.json": "passed",
+    "NODE_REPORT_SCHEMA_CN.md": "passed",
+    "node_report_schema.json": "passed",
+    "POOL_UNIVERSE_COVERAGE_MANIFEST_SPEC_CN.md": "passed",
+    "pool_universe_coverage_manifest_spec.json": "passed",
+    "FEE_ESTIMATION_WITHOUT_PROBE_CN.md": "passed",
+    "fee_estimation_without_probe.json": "passed",
+    "RANGE_LIQUIDITY_FEE_SENSITIVITY_SPEC_CN.md": "passed",
+    "range_liquidity_fee_sensitivity_spec.json": "passed",
+    "CONTINUOUS_OBSERVATION_NEXT_STAGE_DECISION_CN.md": "passed",
+    "continuous_observation_next_stage_decision.json": "passed",
+    "FINAL_VERDICT.json": "passed (this file)",
+    "ONEPAGE_CN.md": "passed",
+    "ARTIFACT_INDEX.md": "passed",
+    "scripts/lp_long_horizon_node_report_generator_v1.py": "built (read-only, dry-run tested)",
+    "sample_node_report_at_reports/lp_long_horizon_node_reports/20260605_043726/6h/": "generated (WARN_ACCEPTABLE, partial_sample=true)"
+  },
+
+  "phase_results": {
+    "A_current_v2_protection_audit": "PASS (V2 supervisor PID 3872268 alive, 4/6 ckpts, expected end 2026-06-05T10:51:29Z, no forbidden process, no V2 modification)",
+    "B_input_evidence_audit": "PASS (6 input files identified: staged_request, data_pipeline, scope_audit, v2_startup, collector, supervisor; user 2x pivot: 7d→staged, stop→continuous)",
+    "C_continuous_staged_observation_design": "PASS (5 core principles, collector_continuity=true, node_reports=6 nodes, A/B line separation, design_constraints 14 items)",
+    "D_node_report_schema": "PASS (21 top-level fields, 7 forbidden keys, 3 gate states PASS/WARN_ACCEPTABLE/FAIL, locked R0 fields)",
+    "E_pool_universe_coverage_manifest_spec": "PASS (3 coverage levels chain/dex/pool, 7 chains × 10 protocols, observed=false honest disclosure, stable/LST depeg fields)",
+    "F_fee_estimation_without_probe": "PASS (V3/CLMM/DLMM/CPMM/Stable 5 pool type formulas, R0 limitations explicit, 6 honest disclaimers, R0→R1 upgrade path 7 data points)",
+    "G_range_liquidity_fee_sensitivity_spec": "PASS (V3/CLMM 3 range × risk heuristic, DLMM 3 bin coverage, CPMM full range + lp_share + price_impact + il_proxy, stable depeg)",
+    "H_node_report_generator_v1": "PASS (read-only script, 11 output files per node, schema enforced, 6h partial_sample dry-run WARN_ACCEPTABLE)",
+    "I_next_stage_decision": "PASS (selected: LP_LONG_HORIZON_CONTINUOUS_OBSERVATION_NODE_REPORTS_V1; 4 candidates evaluated, only this one meets all conditions)",
+    "J_final_verdict": "PASS (this file)",
+    "K_tests_and_safety": "see Stage K",
+    "L_git_publish": "see Stage L"
+  },
+
+  "recommended_next_stage": "LP_LONG_HORIZON_CONTINUOUS_OBSERVATION_NODE_REPORTS_V1",
+
+  "redirect_record": {
+    "previous_recommended_next_stage": "PAUSE_AUTOMATED_LP_PROBE_AND_COLLECT_LONGER_HORIZON_DATA (per scope_audit 20260604_060659)",
+    "previous_redirect_2": "LP_LONG_HORIZON_READONLY_COLLECTOR_6H_RUN_APPROVAL_V1 (per staged_request 20260604_123955)",
+    "current_recommended_next_stage": "LP_LONG_HORIZON_CONTINUOUS_OBSERVATION_NODE_REPORTS_V1",
+    "redirect_chain": [
+      "scope_audit 060659: PAUSE_LONGER_HORIZON_DATA (per conclusion_scope)",
+      "staged_request 123955: 6H_RUN_APPROVAL_V1 (per staged plan, auto_advance=false)",
+      "current 082058: LP_LONG_HORIZON_CONTINUOUS_OBSERVATION_NODE_REPORTS_V1 (per user pivot: continuous, not stop-at-each-node)"
+    ],
+    "user_pivot_2": "用户新意图: '6h→12h→24h→48h→72h→7d 观察链可以不中断; 不是每个节点都停机等待人工审批; 应该让 collector 连续运行, 到每个节点自动生成阶段报告'"
+  },
+
+  "allowed_next_stages_locked": [
+    "LP_LONG_HORIZON_CONTINUOUS_OBSERVATION_NODE_REPORTS_V1",
+    "LP_CONTINUOUS_STAGED_OBSERVATION_FIX_REPEAT",
+    "PAUSE_AUTOMATED_LP_PROBE_AND_COLLECT_LONGER_HORIZON_DATA",
+    "STOP_LP_RESEARCH_NOW"
+  ],
+
+  "forbidden_next_stages": [
+    "LP_LONG_HORIZON_READONLY_COLLECTOR_6H_RUN_APPROVAL_V1 (already executed, V2 in-flight)",
+    "LP_LONG_HORIZON_READONLY_COLLECTOR_12H_RUN_APPROVAL_V1 (not yet approved)",
+    "LP_LONG_HORIZON_READONLY_COLLECTOR_24H_RUN_APPROVAL_V1 (not yet approved)",
+    "any probe / canary / live / paper / wallet / keypair stage"
+  ],
+
+  "next_stage": "K_TESTS_AND_SAFETY"
+}

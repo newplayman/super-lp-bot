@@ -1,0 +1,349 @@
+{
+  "schema_name": "lp_long_horizon_node_report_schema_v1",
+  "schema_version": "1.0",
+  "schema_stage": "D_NODE_REPORT_SCHEMA",
+  "designed_at_utc": "2026-06-05T08:22:00Z",
+
+  "purpose": "定义 6h / 12h / 24h / 48h / 72h / 7d 节点的阶段报告标准 schema. 每个节点报告必须包含以下字段, 任何字段缺失 = 节点报告 schema invalid = gate FAIL.",
+
+  "node_report_top_level_fields": {
+    "node_stage": {
+      "type": "string",
+      "enum": ["6h", "12h", "24h", "48h", "72h", "7d"],
+      "required": true,
+      "description": "节点标识"
+    },
+    "run_id": {
+      "type": "string",
+      "required": true,
+      "description": "对应 collector run_id"
+    },
+    "generated_at_utc": {
+      "type": "string",
+      "format": "iso8601",
+      "required": true,
+      "description": "节点报告生成 UTC 时间"
+    },
+    "node_window_start_utc": {
+      "type": "string",
+      "format": "iso8601",
+      "required": true,
+      "description": "节点 wallclock 窗口起点 = collector T0"
+    },
+    "node_window_end_utc": {
+      "type": "string",
+      "format": "iso8601",
+      "required": true,
+      "description": "节点 wallclock 窗口终点 = generated_at_utc (近似)"
+    },
+    "runtime_minutes": {
+      "type": "number",
+      "required": true,
+      "description": "节点 wallclock 实际运行分钟数 = (node_window_end_utc - node_window_start_utc) / 60"
+    },
+    "expected_runtime_minutes": {
+      "type": "number",
+      "required": true,
+      "description": "节点期望分钟数: 6h=360, 12h=720, 24h=1440, 48h=2880, 72h=4320, 7d=10080"
+    },
+    "runtime_within_tolerance": {
+      "type": "boolean",
+      "required": true,
+      "description": "runtime_minutes >= expected_runtime_minutes - tolerance (tolerance 默认 60 min)"
+    },
+    "short_mode_used": {
+      "type": "boolean",
+      "required": true,
+      "description": "本节点是否使用 short mode (always false in production; true = schema invalid)"
+    },
+    "collection_continuity": {
+      "type": "boolean",
+      "required": true,
+      "description": "collector 是否在本节点期间连续运行 (true=连续, false=中断过)"
+    },
+    "single_supervisor": {
+      "type": "boolean",
+      "required": true,
+      "description": "本节点期间是否只有 1 个 supervisor 进程 (true=单 supervisor, false=有重启或并行)"
+    }
+  },
+
+  "coverage_block": {
+    "chain_coverage": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "chain": {"type": "string", "required": true, "enum": ["base", "bsc", "solana", "ethereum", "arbitrum", "optimism", "polygon"]},
+          "observed": {"type": "boolean", "required": true, "description": "本 collector 是否实际观察过该链"},
+          "pool_count": {"type": "integer", "required": true, "description": "本链观察到的池数"},
+          "quote_ready_count": {"type": "integer", "required": true},
+          "fee_ready_count": {"type": "integer", "required": true},
+          "ev_ready_count": {"type": "integer", "required": true},
+          "invalid_reason": {"type": "string", "required": false, "description": "如果 observed=false, 原因 (e.g. 'no_connector_implemented_yet', 'rpc_rate_limited', 'chain_skipped_for_safety')"}
+        }
+      },
+      "required": true
+    },
+    "dex_coverage": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "chain": {"type": "string", "required": true},
+          "protocol": {"type": "string", "required": true, "enum": ["uniswap_v3", "aerodrome", "pancakeswap_v3", "pancakeswap_v2", "pancakeswap_v3_solana", "meteora_dlmm", "orca_whirlpool", "raydium_clmm", "raydium_amm_v4", "raydium_cpmm"]},
+          "pool_type": {"type": "string", "required": true, "enum": ["v3", "clmm", "v2_cpmm", "dlmm", "stable"]},
+          "observed_pool_count": {"type": "integer", "required": true},
+          "quote_ready_count": {"type": "integer", "required": true},
+          "fee_ready_count": {"type": "integer", "required": true},
+          "ev_ready_count": {"type": "integer", "required": true},
+          "connector_used": {"type": "string", "required": true, "description": "e.g. 'internal/adapters/pool/raydium_clmm/readonly.py' or 'null' if not implemented"},
+          "data_source": {"type": "string", "required": true, "enum": ["public_rpc", "public_indexer", "design_placeholder", "smoke_placeholder"]},
+          "invalid_reason": {"type": "string", "required": false}
+        }
+      },
+      "required": true
+    },
+    "pool_coverage": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "chain": {"type": "string", "required": true},
+          "protocol": {"type": "string", "required": true},
+          "pool_address": {"type": "string", "required": true},
+          "token_pair": {"type": "string", "required": true, "description": "e.g. 'SOL/USDC' or 'WETH/USDC'"},
+          "pool_type": {"type": "string", "required": true},
+          "fee_tier_or_fee_bps": {"type": "number", "required": true, "description": "V3: fee tier (e.g. 3000 = 0.3%); DLMM: bin_step; CPMM: fee_bps"},
+          "tvl_proxy": {"type": "number", "required": true, "description": "USD value, R0 是 proxy"},
+          "volume_proxy": {"type": "number", "required": true, "description": "USD value over window, R0 是 proxy"},
+          "liquidity_near_active": {"type": "number", "required": false, "description": "V3/CLMM: liquidity in active tick range; DLMM: bin coverage in active range"},
+          "quote_ready": {"type": "boolean", "required": true},
+          "fee_ready": {"type": "boolean", "required": true},
+          "ev_ready": {"type": "boolean", "required": true},
+          "selected_for_candidate_review": {"type": "boolean", "required": true, "description": "是否进入 candidate_review 候选池"},
+          "reject_reason": {"type": "string", "required": false, "description": "如果 selected_for_candidate_review=false, 原因"}
+        }
+      },
+      "required": true
+    }
+  },
+
+  "row_count_block": {
+    "type": "object",
+    "properties": {
+      "checkpoint_count_observed": {"type": "integer", "required": true, "description": "data_dir 实际有 checkpoint_N 目录数"},
+      "checkpoint_count_expected": {"type": "integer", "required": true, "description": "6h=6, 12h=12, 24h=24, 48h=48, 72h=72, 7d=168 (per 1h granularity)"},
+      "pool_snapshot_rows": {"type": "integer", "required": true},
+      "quote_snapshot_rows": {"type": "integer", "required": true},
+      "fee_velocity_rows": {"type": "integer", "required": true},
+      "liquidity_distribution_rows": {"type": "integer", "required": true},
+      "market_regime_rows": {"type": "integer", "required": true},
+      "actual_fee_accrual_placeholder_rows": {"type": "integer", "required": true, "description": "R0 阶段 = 0 (无 tokenId)"},
+      "row_count_match_expected": {"type": "boolean", "required": true, "description": "rows >= expected * min_rows_per_ckpt"}
+    },
+    "required": true
+  },
+
+  "market_regime_block": {
+    "market_regime_distribution": {
+      "type": "object",
+      "properties": {
+        "regime_1_calm_trending": {"type": "integer"},
+        "regime_2_calm_ranging": {"type": "integer"},
+        "regime_3_volatile_trending": {"type": "integer"},
+        "regime_4_volatile_ranging": {"type": "integer"},
+        "regime_5_high_vol_chop": {"type": "integer"},
+        "regime_6_low_liquidity": {"type": "integer"},
+        "regime_7_stress_event": {"type": "integer"}
+      },
+      "required": true,
+      "description": "7 regime 分类, per data_pipeline/20260604_062324/FINAL_VERDICT.json regime_count=7"
+    },
+    "regime_diversity_score": {
+      "type": "number",
+      "required": true,
+      "description": "节点观察到的 regime 种类数 / 7 (1.0 = 全 7 regime 都观察到; 0.14 = 只观察到 1 regime)"
+    },
+    "regime_distribution_warning": {
+      "type": "string",
+      "required": false,
+      "description": "如果某 regime 占 >80%, warning: 'regime_dominated_by_<regime_name>'"
+    }
+  },
+
+  "candidate_block": {
+    "best_candidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "rank": {"type": "integer"},
+          "chain": {"type": "string"},
+          "protocol": {"type": "string"},
+          "pool_address": {"type": "string"},
+          "token_pair": {"type": "string"},
+          "ev_proxy_usd_per_day": {"type": "number"},
+          "ev_proxy_confidence": {"type": "string", "enum": ["low", "medium", "high"]},
+          "fee_proxy_basis": {"type": "string", "description": "引用 FEE_ESTIMATION_BASIS_CN.md 的具体公式"},
+          "il_proxy_basis": {"type": "string"},
+          "range_sensitivity_summary": {"type": "string", "description": "窄/中/宽 range 的 fee proxy 范围"},
+          "regime_split": {"type": "string", "description": "该池在 7 regime 下的 fee proxy 拆分"}
+        }
+      },
+      "max_items": 10
+    },
+    "rejected_candidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "chain": {"type": "string"},
+          "protocol": {"type": "string"},
+          "pool_address": {"type": "string"},
+          "token_pair": {"type": "string"},
+          "reject_reason": {"type": "string", "enum": ["fee_proxy_negative", "il_proxy_dominates", "regime_5_dominated", "low_liquidity_proxy", "concentrated_holder_proxy", "no_quote_ready", "no_fee_ready", "missing_connector", "other"]},
+          "reject_detail": {"type": "string"}
+        }
+      }
+    }
+  },
+
+  "fee_estimation_block": {
+    "actual_fee_data_available": {"type": "boolean", "required": true, "description": "R0 阶段 = false (无 tokenId)"},
+    "fee_proxy_used": {"type": "boolean", "required": true, "description": "R0 阶段 = true"},
+    "heuristic_used": {"type": "boolean", "required": true, "description": "R0 阶段 = true (proxy = heuristic)"},
+    "v3_clmm_fee_proxy_formula": {"type": "string", "required": true, "description": "narrow/medium/wide range × active liquidity share × feeGrowthInside approximation"},
+    "meteora_dlmm_fee_proxy_formula": {"type": "string", "required": true, "description": "bin coverage × active bin distance × bin liquidity share"},
+    "cpmm_fee_proxy_formula": {"type": "string", "required": true, "description": "lp_share × volume × fee_rate"},
+    "stable_pool_fee_proxy_formula": {"type": "string", "required": true, "description": "lp_share × volume × fee_rate (low IL assumption)"},
+    "future_actual_fee_requirement": {
+      "type": "array",
+      "required": true,
+      "items": ["tokenId / positionId", "entry feeGrowth / exit feeGrowth", "tokensOwed", "collected fee (USDC/SOL/etc.)", "actual add/remove cost (gas + slippage)", "realized PnL"]
+    }
+  },
+
+  "range_sensitivity_block": {
+    "range_assumption_used": {"type": "string", "required": true, "enum": ["narrow", "medium", "wide", "all_three_compared"]},
+    "range_sensitivity_available": {"type": "boolean", "required": true, "description": "本节点是否对每候选池计算了窄/中/宽 fee proxy"},
+    "v3_clmm_range_sensitivity": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "pool_address": {"type": "string"},
+          "narrow_range_fee_proxy": {"type": "number"},
+          "medium_range_fee_proxy": {"type": "number"},
+          "wide_range_fee_proxy": {"type": "number"},
+          "in_range_time_ratio": {"type": "number"},
+          "out_of_range_time_ratio": {"type": "number"},
+          "active_liquidity_share_proxy": {"type": "number"},
+          "tick_liquidity_density": {"type": "number"},
+          "range_width": {"type": "string", "enum": ["narrow", "medium", "wide"]},
+          "range_risk": {"type": "string", "enum": ["low", "medium", "high"]}
+        }
+      }
+    },
+    "meteora_dlmm_range_sensitivity": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "pool_address": {"type": "string"},
+          "narrow_bin_fee_proxy": {"type": "number"},
+          "medium_bin_fee_proxy": {"type": "number"},
+          "wide_bin_fee_proxy": {"type": "number"},
+          "active_bin_distance": {"type": "number"},
+          "bin_liquidity_density": {"type": "number"},
+          "bins_with_liquidity_count": {"type": "integer"},
+          "sparse_liquidity_warning": {"type": "boolean"}
+        }
+      }
+    },
+    "cpmm_range_sensitivity": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "pool_address": {"type": "string"},
+          "full_range_fee_proxy": {"type": "number"},
+          "lp_share": {"type": "number"},
+          "price_impact": {"type": "number"},
+          "il_proxy": {"type": "number"}
+        }
+      }
+    },
+    "fee_estimate_confidence": {"type": "string", "required": true, "enum": ["low", "medium", "high"], "description": "R0 阶段 = low (proxy only, 无 actual fee)"}
+  },
+
+  "data_quality_block": {
+    "data_quality_status": {
+      "type": "string",
+      "enum": ["data_quality_ok", "data_quality_warn", "data_quality_fail"],
+      "required": true
+    },
+    "data_quality_issues": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "e.g. 'rpc_429_streak_3_at_2h', 'checkpoint_2_0551_quote_rows_below_threshold', 'market_regime_diversity_low'"
+    },
+    "error_indicator_count": {"type": "integer", "required": true, "description": "error/traceback/exception/failed/NameError grep 命中数"},
+    "rpc_429_count": {"type": "integer", "required": true},
+    "checkpoint_completeness_pct": {"type": "number", "required": true, "description": "checkpoint_count_observed / checkpoint_count_expected × 100"}
+  },
+
+  "gate_block": {
+    "gate_pass": {
+      "type": "boolean",
+      "required": true,
+      "description": "PASS = data_quality_ok 且所有 required 字段齐全; WARN_ACCEPTABLE = data_quality_warn 但未致命; FAIL = data_quality_fail 或字段缺失"
+    },
+    "gate_status": {
+      "type": "string",
+      "enum": ["PASS", "WARN_ACCEPTABLE", "FAIL"],
+      "required": true
+    },
+    "can_continue_collection": {"type": "boolean", "required": true, "description": "true = 允许 collector 继续到下一个节点"},
+    "can_enter_preflight_design": {"type": "boolean", "required": true, "description": "true = 允许用户基于此节点报告进入 B 线 preflight design; R0 阶段 = false (节点报告 ≠ preflight 设计)"},
+    "can_use_for_preflight": {"type": "boolean", "required": true, "description": "true = 此节点数据可作为 preflight 输入; FAIL 节点 = false"},
+    "can_run_probe_now": {"type": "boolean", "required": true, "description": "ALWAYS false (locked per design C9 + freeze)"},
+    "tiny_canary_allowed": {"type": "string", "required": true, "description": "ALWAYS 'no' (locked per design C10 + freeze)"},
+    "edge_proven": {"type": "string", "required": true, "description": "ALWAYS 'no' (locked per design C11 + freeze)"},
+    "wallet_or_tx_touched": {"type": "boolean", "required": true, "description": "ALWAYS false (R0 数据采集)"},
+    "transaction_sent": {"type": "boolean", "required": true, "description": "ALWAYS false (R0 数据采集)"}
+  },
+
+  "recommended_next_action_block": {
+    "recommended_next_action": {
+      "type": "string",
+      "enum": [
+        "continue_collection_to_next_node",
+        "continue_collection_with_note",
+        "continue_collection_but_mark_node_invalid_for_preflight",
+        "raise_fix_repeat_to_user",
+        "raise_pause_to_user",
+        "raise_stop_to_user"
+      ],
+      "required": true
+    },
+    "note": {"type": "string", "required": false, "description": "如果是 continue_with_note, 解释 note 是什么"},
+    "raise_to_user_reason": {"type": "string", "required": false, "description": "如果是 raise_*, 解释为什么 raise"}
+  },
+
+  "schema_validation": {
+    "required_fields": [
+      "node_stage", "run_id", "generated_at_utc", "node_window_start_utc", "node_window_end_utc",
+      "runtime_minutes", "expected_runtime_minutes", "runtime_within_tolerance",
+      "short_mode_used", "collection_continuity", "single_supervisor",
+      "chain_coverage", "dex_coverage", "pool_coverage",
+      "row_count_block", "market_regime_block", "candidate_block",
+      "fee_estimation_block", "range_sensitivity_block", "data_quality_block",
+      "gate_block", "recommended_next_action_block"
+    ],
+    "forbidden_top_level_keys": [
+      "tx_hash", "wallet_address", "private_key", "keypair", "mnemonic", "seed", "signed_transaction"
+    ],
+    "schema_invalid_action": "node report generator exits 7, gate status = FAIL, can_continue_collection = false (但仍允许 collector 继续采集, 只是不写新节点报告)"
+  }
+}

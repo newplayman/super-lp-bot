@@ -1,0 +1,134 @@
+{
+  "spec_name": "range_liquidity_fee_sensitivity_spec_v1",
+  "spec_version": "1.0",
+  "spec_stage": "G_RANGE_LIQUIDITY_FEE_SENSITIVITY_SPEC",
+  "designed_at_utc": "2026-06-05T08:23:30Z",
+
+  "purpose": "为每个候选池计算 range / tick / bin 维度对 fee proxy 的影响, 输出 narrow/medium/wide 三种 range 的 fee proxy 对比 + 风险标注.",
+
+  "core_principles": {
+    "G1_required_per_candidate": "每个 selected_for_candidate_review=true 的池都必须有 range_sensitivity 行",
+    "G2_v3_clmm_three_ranges": "V3/CLMM 必须计算 narrow/medium/wide 三种 range 的 fee proxy",
+    "G3_dlmm_three_bin_coverages": "Meteora DLMM 必须计算 narrow/medium/wide 三种 bin coverage 的 fee proxy",
+    "G4_cpmm_full_range_only": "CPMM 池本身就是 full range, 只算 full_range_fee_proxy + lp_share + price_impact + il_proxy",
+    "G5_range_risk_heuristic": "range_risk = low/medium/high, 来自 range_width + in_range_time_ratio + tick_liquidity_density 三者组合的 heuristic",
+    "G6_confidence_always_low_in_R0": "R0 阶段所有 range_sensitivity 行的 fee_estimate_confidence=low (per fee_estimation_without_probe spec)"
+  },
+
+  "v3_clmm_range_sensitivity": {
+    "applies_to_protocols": ["uniswap_v3", "aerodrome (if v3 mode)", "raydium_clmm", "orca_whirlpool", "pancakeswap_v3", "pancakeswap_v3_solana"],
+    "range_width_definition": {
+      "narrow": "±5% 当前价格 (range_width = 0.1 × price)",
+      "medium": "±15% 当前价格 (range_width = 0.3 × price)",
+      "wide": "±50% 当前价格 (range_width = 1.0 × price)"
+    },
+    "fields_per_row": {
+      "pool_address": {"type": "string", "required": true},
+      "narrow_range_fee_proxy": {"type": "number", "required": true, "unit": "USD/window"},
+      "medium_range_fee_proxy": {"type": "number", "required": true, "unit": "USD/window"},
+      "wide_range_fee_proxy": {"type": "number", "required": true, "unit": "USD/window"},
+      "in_range_time_ratio": {"type": "number", "required": true, "range": "0-1", "description": "窗口内价格在 range 内的时间比例 (R0 近似)"},
+      "out_of_range_time_ratio": {"type": "number", "required": true, "range": "0-1", "description": "1 - in_range_time_ratio"},
+      "active_liquidity_share_proxy": {"type": "number", "required": true, "range": "0-1", "description": "user_notional / total_active_liquidity_in_user_range"},
+      "tick_liquidity_density": {"type": "number", "required": true, "description": "liquidity / tick (or liquidity per sqrt(price) unit)"},
+      "range_width": {"type": "string", "required": true, "enum": ["narrow", "medium", "wide"], "description": "本行对应的 range 宽度 (每个候选池应有 3 行: narrow/medium/wide)"},
+      "range_risk": {"type": "string", "required": true, "enum": ["low", "medium", "high"]}
+    },
+    "range_risk_heuristic": {
+      "low": "wide range + in_range_time_ratio >= 0.8 + tick_liquidity_density >= median",
+      "medium": "medium range + in_range_time_ratio 0.5-0.8 OR narrow range + in_range_time_ratio >= 0.7",
+      "high": "narrow range + in_range_time_ratio < 0.5 OR tick_liquidity_density < 0.1 × median"
+    },
+    "fee_proxy_formula": "fee_proxy_<width> = volume_window × fee_rate × active_liquidity_share_proxy × in_range_time_ratio_<width>",
+    "r0_limitation": "R0 不预测未来 in_range_time_ratio, 用窗口内 tick 历史估算; 长期 R0 节点 in_range_time_ratio 可能 0.5 (warning) if 数据不足"
+  },
+
+  "meteora_dlmm_range_sensitivity": {
+    "applies_to_protocols": ["meteora_dlmm"],
+    "bin_coverage_definition": {
+      "narrow": "active bin ± 2 bins",
+      "medium": "active bin ± 10 bins",
+      "wide": "active bin ± 50 bins"
+    },
+    "fields_per_row": {
+      "pool_address": {"type": "string", "required": true},
+      "narrow_bin_fee_proxy": {"type": "number", "required": true, "unit": "USD/window"},
+      "medium_bin_fee_proxy": {"type": "number", "required": true, "unit": "USD/window"},
+      "wide_bin_fee_proxy": {"type": "number", "required": true, "unit": "USD/window"},
+      "active_bin_distance": {"type": "number", "required": true, "description": "本池在窗口末 active bin 与窗口初 active bin 的 bin 数差, 表征 volatility"},
+      "bin_liquidity_density": {"type": "number", "required": true, "description": "liquidity per bin"},
+      "bins_with_liquidity_count": {"type": "integer", "required": true, "description": "active bin 两侧非零 bin 总数"},
+      "sparse_liquidity_warning": {"type": "boolean", "required": true, "description": "true if bins_with_liquidity_count < 5 per side (i.e. < 10 total)"}
+    },
+    "fee_proxy_formula": "fee_proxy_<coverage> = volume_window × fee_rate × user_bin_share_in_range_<coverage>",
+    "user_bin_share_formula": "user_bin_liquidity / total_bin_liquidity_in_range_<coverage>",
+    "r0_limitation": "R0 不预测未来 bin drift, 用窗口内 active bin 历史估算; sparse_liquidity 时 narrow/medium bin coverage 风险高"
+  },
+
+  "cpmm_range_sensitivity": {
+    "applies_to_protocols": ["uniswap_v2", "aerodrome (v2_cpmm mode)", "pancakeswap_v2", "raydium_amm_v4", "raydium_cpmm"],
+    "note": "CPMM 池本身就是 full range, 不分 narrow/medium/wide. 只算 full_range_fee_proxy + 风险字段.",
+    "fields_per_row": {
+      "pool_address": {"type": "string", "required": true},
+      "full_range_fee_proxy": {"type": "number", "required": true, "unit": "USD/window"},
+      "lp_share": {"type": "number", "required": true, "range": "0-1", "description": "user_notional / pool_tvl"},
+      "price_impact": {"type": "number", "required": true, "description": "user_notional / pool_tvl (R0 简化; better: 实际 swap-out 模拟)"},
+      "il_proxy": {"type": "number", "required": true, "unit": "USD/window", "description": "2 × sqrt(price_ratio) / (1 + price_ratio) - 1 (Uniswap V2 标准)"}
+    },
+    "r0_limitation": "R0 不做实际 swap 模拟, price_impact 简化估算; IL 用 Uniswap V2 标准公式"
+  },
+
+  "stable_lst_stable_special_handling": {
+    "applies_to_protocols": ["curve", "meteora_stable", "aerodrome_stable", "uniswap_v3_stable_fees"],
+    "additional_fields": {
+      "depeg_risk_score": {"type": "number", "required": true, "range": "0-1", "description": "heuristic, R0 简化"},
+      "lst_depeg_history_30d": {"type": "integer", "required": true, "description": "事件数, R0 来自 on-chain event log"},
+      "stable_curve_steepness": {"type": "number", "required": true, "description": "stable pool 的 curve 斜率; flat = 强 stable"}
+    },
+    "reject_criteria": [
+      "depeg_risk_score > 0.5 → reject",
+      "lst_depeg_history_30d > 0 → reject LST-stable 池 (但 stable-stable 池可保留)"
+    ],
+    "fee_proxy_inherits_cpmm": "stable 池的 fee_proxy 用 cpmm_range_sensitivity.full_range_fee_proxy"
+  },
+
+  "sensitivity_summary_per_candidate": {
+    "purpose": "在 node_report 中对每个 best_candidate 给出一句话 range_sensitivity 总结",
+    "template": "{pool_address}: narrow_fee=${X} (in_range={Y1}%, risk=Z1), medium_fee=${X2} (in_range={Y2}%, risk=Z2), wide_fee=${X3} (in_range={Y3}%, risk=Z3)",
+    "example": "0xABC...: narrow_fee=$0.12 (in_range=42%, risk=high), medium_fee=$0.08 (in_range=78%, risk=medium), wide_fee=$0.04 (in_range=99%, risk=low)"
+  },
+
+  "range_risk_aggregation": {
+    "purpose": "为 candidate_block.best_candidates 提供 aggregate range_risk 评分",
+    "rule": "如果 3 个 range (narrow/medium/wide) 都 high → aggregate_risk=high; 如果至少 1 个 low → aggregate_risk=low (宽 range 可对冲); 其他 → medium"
+  },
+
+  "node_report_required_fields": {
+    "in_range_sensitivity_block": {
+      "range_assumption_used": "all_three_compared (R0 节点必须 3 range 都算)",
+      "range_sensitivity_available": "true (per design G1)",
+      "v3_clmm_range_sensitivity": "[]",
+      "meteora_dlmm_range_sensitivity": "[]",
+      "cpmm_range_sensitivity": "[]",
+      "fee_estimate_confidence": "low (R0)"
+    }
+  },
+
+  "r0_locked_fields": {
+    "actual_fee": false,
+    "fee_proxy": true,
+    "heuristic": true,
+    "in_range_time_ratio_estimated_from_history": true,
+    "no_future_prediction": true
+  },
+
+  "no_touch_invariants": {
+    "G1_no_wallet_signing": true,
+    "G2_no_tx_send": true,
+    "G3_no_paid_indexer": true,
+    "G4_no_production_write": true,
+    "G5_can_run_probe_now_false": true
+  },
+
+  "next_stage": "H_NODE_REPORT_GENERATOR_V1"
+}

@@ -1,0 +1,140 @@
+{
+  "spec_name": "pool_universe_coverage_manifest_spec_v1",
+  "spec_version": "1.0",
+  "spec_stage": "E_POOL_UNIVERSE_COVERAGE_MANIFEST_SPEC",
+  "designed_at_utc": "2026-06-05T08:22:30Z",
+
+  "purpose": "为每个节点 (6h/12h/24h/48h/72h/7d) 定义链 / DEX / 池三层覆盖范围 manifest, 透明化'collector 实际观察到了什么 / 哪些链/DEX 尚未实现 connector / 哪些池尚未 selected_for_candidate_review'.",
+
+  "current_implementation_status_at_2026_06_05": {
+    "go_chain_adapters": {
+      "internal/adapters/chain/base": "implemented (Base mainnet public RPC + ABI)",
+      "internal/adapters/chain/solana": "implemented (Solana mainnet public RPC)"
+    },
+    "go_pool_adapters": {
+      "internal/adapters/pool/uniswap_v3": "implemented (Base Uniswap V3)",
+      "internal/adapters/pool/aerodrome": "implemented (Base Aerodrome)",
+      "internal/adapters/pool/raydium_clmm": "implemented (Solana Raydium CLMM)",
+      "internal/adapters/pool/whirlpool": "implemented (Solana Orca Whirlpools)",
+      "internal/adapters/pool/pancakeswap_v3_solana": "implemented (Solana PancakeSwap V3)"
+    },
+    "missing_go_pool_adapters": [
+      {"chain": "solana", "protocol": "meteora_dlmm", "reason": "not_implemented_yet"},
+      {"chain": "solana", "protocol": "raydium_cpmm", "reason": "not_implemented_yet"},
+      {"chain": "solana", "protocol": "raydium_amm_v4", "reason": "not_implemented_yet (legacy AMM)"},
+      {"chain": "bsc", "protocol": "pancakeswap_v3", "reason": "bsc_chain_adapter_not_implemented_yet"},
+      {"chain": "bsc", "protocol": "pancakeswap_v2", "reason": "bsc_chain_adapter_not_implemented_yet"}
+    ],
+    "python_readonly_scripts": [
+      "lp_base_*_readonly.py (Base)",
+      "lp_bsc_*_readonly.py (BSC, **placeholder only**, BSC chain adapter missing)",
+      "lp_solana_*_readonly.py (Solana, multiple protocols)"
+    ],
+    "python_collector_v1": {
+      "script": "scripts/lp_long_horizon_readonly_collector_v1.py",
+      "modes": ["design", "smoke"],
+      "default_mode": "design",
+      "writes_only_to_data_lp_long_horizon": true,
+      "currently_smoke_supported_protocols": "all_protocols_via_design_placeholder"
+    }
+  },
+
+  "manifest_structure": {
+    "manifest_type": "POOL_UNIVERSE_COVERAGE_MANIFEST",
+    "manifest_outputs": ["POOL_UNIVERSE_COVERAGE_MANIFEST.csv", "POOL_UNIVERSE_COVERAGE_MANIFEST.json"],
+    "manifest_level_1_chain_coverage": {
+      "fields": ["chain", "observed", "pool_count", "quote_ready_count", "fee_ready_count", "ev_ready_count", "invalid_reason"],
+      "rules": [
+        "如果 chain 的 chain adapter 已实现, observed=true; 否则 observed=false + invalid_reason='chain_adapter_not_implemented_yet'",
+        "如果 chain 的 chain adapter 已实现但 RPC rate limited, observed=true 但 invalid_reason='rpc_rate_limited'",
+        "如果 chain 出于安全原因跳过 (e.g. mainnet launch, 已知 depeg, 已知 hack), observed=false + invalid_reason='chain_skipped_for_safety'"
+      ],
+      "chains_in_design": [
+        "base", "bsc", "solana", "ethereum", "arbitrum", "optimism", "polygon"
+      ],
+      "chains_currently_observed_by_v2": ["base", "solana"],
+      "chains_currently_NOT_observed_by_v2": ["bsc", "ethereum", "arbitrum", "optimism", "polygon"]
+    },
+    "manifest_level_2_dex_protocol_coverage": {
+      "fields": ["chain", "protocol", "pool_type", "observed_pool_count", "quote_ready_count", "fee_ready_count", "ev_ready_count", "connector_used", "data_source", "invalid_reason"],
+      "rules": [
+        "如果 protocol 的 pool adapter 已实现, observed=true + connector_used 写文件路径; 否则 observed=false + connector_used='null' + invalid_reason='not_implemented_yet'",
+        "data_source 默认 'public_rpc' (R0), R1 可选 'public_indexer' / 'paid_indexer' (B 线, 需用户单独批准)"
+      ],
+      "dex_protocols_in_design": [
+        {"chain": "base", "protocol": "uniswap_v3", "pool_type": "v3", "connector": "internal/adapters/pool/uniswap_v3", "current_status": "implemented"},
+        {"chain": "base", "protocol": "aerodrome", "pool_type": "v2_cpmm", "connector": "internal/adapters/pool/aerodrome", "current_status": "implemented"},
+        {"chain": "solana", "protocol": "meteora_dlmm", "pool_type": "dlmm", "connector": "internal/adapters/pool/meteora_dlmm (not implemented)", "current_status": "missing"},
+        {"chain": "solana", "protocol": "orca_whirlpool", "pool_type": "clmm", "connector": "internal/adapters/pool/whirlpool", "current_status": "implemented"},
+        {"chain": "solana", "protocol": "raydium_clmm", "pool_type": "clmm", "connector": "internal/adapters/pool/raydium_clmm", "current_status": "implemented"},
+        {"chain": "solana", "protocol": "raydium_amm_v4", "pool_type": "v2_cpmm", "connector": "internal/adapters/pool/raydium_amm_v4 (not implemented)", "current_status": "missing"},
+        {"chain": "solana", "protocol": "raydium_cpmm", "pool_type": "v2_cpmm", "connector": "internal/adapters/pool/raydium_cpmm (not implemented)", "current_status": "missing"},
+        {"chain": "solana", "protocol": "pancakeswap_v3_solana", "pool_type": "v3", "connector": "internal/adapters/pool/pancakeswap_v3_solana", "current_status": "implemented"},
+        {"chain": "bsc", "protocol": "pancakeswap_v3", "pool_type": "v3", "connector": "internal/adapters/pool/pancakeswap_v3 (not implemented) + bsc chain adapter (not implemented)", "current_status": "missing"},
+        {"chain": "bsc", "protocol": "pancakeswap_v2", "pool_type": "v2_cpmm", "connector": "internal/adapters/pool/pancakeswap_v2 (not implemented) + bsc chain adapter (not implemented)", "current_status": "missing"}
+      ]
+    },
+    "manifest_level_3_pool_coverage": {
+      "fields": ["chain", "protocol", "pool_address", "token_pair", "pool_type", "fee_tier_or_fee_bps", "tvl_proxy", "volume_proxy", "liquidity_near_active", "quote_ready", "fee_ready", "ev_ready", "selected_for_candidate_review", "reject_reason"],
+      "rules": [
+        "pool_address 必须为 valid address (EVM 0x... 40hex; Solana base58 32-44 char)",
+        "如果池对应 protocol 的 connector 尚未实现, 该池不会被 collector 观察到, 但应在 manifest 写一行 observed_pool_count=0 + invalid_reason='parent_protocol_not_implemented'",
+        "selected_for_candidate_review = quote_ready AND fee_ready AND ev_ready AND tvl_proxy >= min_tvl AND volume_proxy >= min_volume AND regime_diversity NOT 严重偏向 regime_5/6/7",
+        "reject_reason 必填 (如果 selected=false)"
+      ],
+      "stable_lst_pools_special_handling": {
+        "rationale": "stable / LST-stable 池 IL 低但 depeg / LST risk 仍要计入",
+        "manifest_fields_extra": ["depeg_risk_score", "lst_depeg_history_30d", "stable_curve_steepness"],
+        "reject_reason_extra": "depeg_risk_too_high / lst_depeg_within_30d"
+      }
+    }
+  },
+
+  "observed_false_handling": {
+    "honest_disclosure": "如果某链/DEX/池当前 collector 尚未实现, manifest 必须写 observed=false + 原因, 不得假装覆盖",
+    "manifest_will_show": [
+      "Base Uniswap V3: observed=true, ~5 pool_addresses",
+      "Base Aerodrome: observed=true, ~3 pool_addresses",
+      "Solana Raydium CLMM: observed=true, ~3 pool_addresses",
+      "Solana Orca Whirlpool: observed=true, ~2 pool_addresses",
+      "Solana PancakeSwap V3: observed=true, ~2 pool_addresses",
+      "Solana Meteora DLMM: observed=false, invalid_reason='not_implemented_yet'",
+      "Solana Raydium CPMM: observed=false, invalid_reason='not_implemented_yet'",
+      "Solana Raydium AMM v4: observed=false, invalid_reason='not_implemented_yet'",
+      "BSC PancakeSwap V3: observed=false, invalid_reason='bsc_chain_adapter_not_implemented_yet'",
+      "BSC PancakeSwap V2: observed=false, invalid_reason='bsc_chain_adapter_not_implemented_yet'",
+      "Ethereum / Arbitrum / Optimism / Polygon: observed=false, invalid_reason='chain_skipped_for_safety_mainnet_only_design_target'"
+    ]
+  },
+
+  "manifest_output_format": {
+    "csv": {
+      "delimiter": ",",
+      "encoding": "utf-8",
+      "header_row": "level,chain,protocol,pool_address,token_pair,pool_type,fee_tier_or_fee_bps,observed,tvl_proxy,volume_proxy,liquidity_near_active,quote_ready,fee_ready,ev_ready,selected_for_candidate_review,reject_reason,connector_used,data_source,invalid_reason",
+      "level_values": ["chain", "dex", "pool"]
+    },
+    "json": {
+      "structure": "3 top-level keys: 'chain_coverage', 'dex_coverage', 'pool_coverage' (each is array of objects per node_report_schema.json coverage_block)",
+      "encoding": "utf-8"
+    }
+  },
+
+  "manifest_validation": {
+    "all_chains_have_rows": "manifest 必须包含 chains_in_design 中所有 7 个 chain 的 chain_coverage 行, 即使 observed=false",
+    "all_protocols_have_rows": "manifest 必须包含 dex_protocols_in_design 中所有 10 个 protocol 的 dex_coverage 行, 即使 observed=false",
+    "observed_false_must_have_invalid_reason": "observed=false 的行必须有 invalid_reason, 不得为空",
+    "selected_false_must_have_reject_reason": "selected_for_candidate_review=false 的 pool 行必须有 reject_reason, 不得为空",
+    "stable_lst_pools_must_have_depeg_field": "stable / LST-stable 池的 pool_coverage 行必须有 depeg_risk_score / lst_depeg_history_30d 字段"
+  },
+
+  "no_touch_invariants": {
+    "no_modify_v2_connector": true,
+    "no_add_new_connector": "本轮**不**新增任何 connector, 缺失的协议在 manifest 中写 observed=false",
+    "no_modify_existing_pool_adapter": true,
+    "no_wallet_keypair_signing": true,
+    "no_chain_state_write": true
+  },
+
+  "next_stage": "F_FEE_ESTIMATION_WITHOUT_PROBE"
+}
