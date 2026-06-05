@@ -1,0 +1,145 @@
+{
+  "stage": "LP_LONG_HORIZON_6H_FINALIZER_REBUILD_FROM_CHECKPOINTS_V1",
+  "audit_stage": "A_INPUT_EVIDENCE_AUDIT",
+  "audited_at_utc": "2026-06-05T13:30:00Z",
+  "auditor": "agent (read-only)",
+
+  "input_evidence_files": [
+    {
+      "label": "v2_final_verdict",
+      "path": "reports/lp_long_horizon_readonly_collector_6h_run/20260605_043726/FINAL_VERDICT.json",
+      "size_bytes": 1247,
+      "mtime_utc": "2026-06-05T12:51:00Z",
+      "key_fields": {
+        "stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_6H_REAL_WALLCLOCKFIX_REPEAT_V2",
+        "status": "FAIL",
+        "run_id": "20260605_043726",
+        "actual_runtime_minutes": 360,
+        "actual_runtime_valid_for_6h_gate": true,
+        "short_mode_used": false,
+        "supervisor_finalize_failed": true,
+        "finalize_error": "trap EXIT rc=1",
+        "selected_pool_count": 0,
+        "pool_snapshot_rows": 0,
+        "quote_snapshot_rows": 0,
+        "fee_velocity_rows": 0,
+        "liquidity_distribution_rows": 0,
+        "market_regime_rows": 0,
+        "error_rate_pct": null,
+        "consecutive_429_max": 0,
+        "data_quality_status": "FAIL",
+        "gate_pass": false,
+        "can_advance_to_12h": false,
+        "auto_advance_started": false,
+        "longer_stage_started": false,
+        "can_run_probe_now": false,
+        "tiny_canary_allowed": "no",
+        "edge_proven": "no",
+        "wallet_or_tx_touched": false,
+        "transaction_sent": false,
+        "send_hard_disable_still_active": true,
+        "recommended_next_stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_6H_REAL_WALLCLOCK_FIX_REPEAT"
+      },
+      "discrepancy_with_node_report": "FINAL_VERDICT shows rows=0, but node report (from same ckpt data) shows 30 pool_snapshots, 180 quote_snapshots, 150 fee_velocity, 30 liquidity, 42 market_regime, 6 actual_fee_accrual_placeholder. The trap EXIT verdict was written with default zeros, overwriting the in-progress post-6h aggregate block which had populated real values."
+    },
+    {
+      "label": "node_report_final_node_verdict",
+      "path": "reports/lp_long_horizon_node_reports/20260605_043726/6h/FINAL_NODE_VERDICT.json",
+      "key_fields": {
+        "v2_finalized": true,
+        "full_sample": true,
+        "partial_sample": false,
+        "checkpoint_count_observed": 6,
+        "checkpoint_count_expected": 6,
+        "chain_coverage_count": 7,
+        "dex_coverage_count": 10,
+        "pool_coverage_count": 30,
+        "quote_ready_pool_count": 0,
+        "fee_ready_pool_count": 0,
+        "ev_ready_pool_count": 0,
+        "preflight_candidate_count": 0,
+        "recommended_next_stage": "LP_LONG_HORIZON_READONLY_CONTINUOUS_12H_EXTENSION_REQUEST_V1"
+      }
+    },
+    {
+      "label": "v2_data_dir",
+      "path": "data/lp_long_horizon/20260605_043726/",
+      "checkpoint_count": 6,
+      "checkpoint_dirs": [
+        "checkpoint_1_0451", "checkpoint_2_0551", "checkpoint_3_0651",
+        "checkpoint_4_0751", "checkpoint_5_0851", "checkpoint_6_0951"
+      ],
+      "total_file_count": 42,
+      "files_per_ckpt": 7,
+      "row_counts_per_ckpt": {
+        "pool_snapshots": 5,
+        "quote_snapshots": 30,
+        "fee_velocity": 25,
+        "liquidity_distribution": 5,
+        "market_regime": 7,
+        "actual_fee_accrual_placeholder": 1,
+        "smoke_summary": 1
+      },
+      "row_counts_aggregated": {
+        "pool_snapshots_deduped": 5,
+        "quote_snapshots_deduped": 180,
+        "fee_velocity_total": 150,
+        "liquidity_distribution_total": 30,
+        "market_regime_total": 42,
+        "actual_fee_accrual_total": 6
+      },
+      "data_untouched": true,
+      "wallet_or_tx_in_data": false
+    },
+    {
+      "label": "supervisor_script",
+      "path": "scripts/run_lp_long_horizon_readonly_6h_once.sh",
+      "size_bytes": 32301,
+      "size_lines": 747,
+      "post_6h_block_bug": "line 537 has 'LP_LONG_HORIZON_READONLY_COLLECTOR FIX_REPEAT' (space, not underscore) which is a typo that would only trigger if actual_runtime_valid_for_6h_gate=false (it's true at 360 min, so not the trigger). Actual bug is: supervisor's post-6h block (Python heredoc at line 350) must have failed before reaching FINAL_VERDICT.json write, then trap EXIT fired and overwrote with default zeros. Root cause: not yet pinpointed from logs (post-6h block left no Python traceback)."
+    }
+  ],
+
+  "key_assertions": {
+    "runtime_valid": true,
+    "short_mode_used": false,
+    "checkpoint_count": 6,
+    "checkpoint_data_exists": true,
+    "original_final_verdict_status": "FAIL",
+    "original_finalizer_failed": true,
+    "original_rows_zero_due_to_finalize_bug": true,
+    "original_pool_snapshot_rows": 0,
+    "actual_pool_snapshot_rows_from_data": 5,
+    "data_dir_unchanged": true,
+    "wallet_or_tx_touched": false
+  },
+
+  "root_cause_analysis": {
+    "v2_supervisor_behavior": "6h wallclock completed cleanly (T0=04:51:15Z, END_TS=10:51:29Z, real 360 min). 6 checkpoints generated (each 7 files). Supervisor post-6h block (Python heredoc that aggregates row counts + writes 6+ reports + FINAL_VERDICT.json) appears to have failed before FINAL_VERDICT.json write, because the supervisor log shows [trap] EXIT rc=1 immediately after [6h end] but no [finalize] all 6 reports + FINAL_VERDICT written. The fail-safe trap then wrote a FAIL verdict with default-zero row counts, overwriting whatever was about to be written.",
+    "node_report_view": "Node report generator (`scripts/lp_long_horizon_node_report_generator_v1.py`) ran standalone on the same ckpt data, successfully aggregated 30/180/150/30/42/6 rows, and produced PASS verdict. This proves: 1) data is intact; 2) aggregate logic works; 3) supervisor finalize block is the broken step (not the ckpt generation step).",
+    "preserved_invariant": "V2's fail-safe trap (V1 'no silent loss' fix) successfully wrote a verdict, so V2's 6h run state is **not** silently lost — it is recorded as FAIL with full timestamp, runtime, and finalize_error. The trap is a feature, not a bug. The bug is that the post-6h block fails before the successful finalize write."
+  },
+
+  "rebuild_decision": {
+    "rebuild_approach": "Build a new standalone Python script `scripts/rebuild_lp_long_horizon_6h_verdict_from_checkpoints_v1.py` that: (1) reads data_dir + source_verdict, (2) re-aggregates row counts from ckpts (using the same dedup logic), (3) computes corrected gate, (4) writes CORRECTED_FINAL_VERDICT.json + 6 supporting reports to a NEW report_dir (reports/lp_long_horizon_6h_finalizer_rebuild/20260605_043726/) — never touching the original V2 FINAL_VERDICT.",
+    "fix_supervisor_for_future_runs": "Separately, also patch scripts/run_lp_long_horizon_readonly_6h_once.sh: (a) line 537 typo (LP_LONG_HORIZON_READONLY_COLLECTOR FIX_REPEAT → LP_LONG_HORIZON_READONLY_COLLECTOR_6H_REAL_WALLCLOCK_FIX_REPEAT); (b) add aggregate-failure handler that writes a CORRECTED_FINAL_VERDICT_FALLBACK.json with the actual error and tries to write the row counts from the aggregate log if available; (c) tighten trap logic: trap should NOT overwrite a successful FINAL_VERDICT (already correct in code at line 102-104, but verify); (d) add a finalize-success marker file so trap can detect success even if FINAL_VERDICT.json was corrupted during write.",
+    "no_overwrite_original": "Original `reports/lp_long_horizon_readonly_collector_6h_run/20260605_043726/FINAL_VERDICT.json` is **read-only** in this stage. Rebuild writes to a new path."
+  },
+
+  "no_touch_invariants": {
+    "no_rerun_6h": true,
+    "no_modify_ckpt_data": true,
+    "no_modify_v2_final_verdict": true,
+    "no_modify_v2_supervisor_log": true,
+    "no_start_12h_24h_48h_72h_7d": true,
+    "no_probe_canary_live_paper": true,
+    "no_wallet_keypair_signer": true,
+    "no_tx_send_approve_mint": true,
+    "no_paid_rpc_indexer": true,
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no",
+    "edge_proven": "no"
+  },
+
+  "next_stage": "B_FIX_SUPERVISOR_FINALIZE_LOGIC"
+}

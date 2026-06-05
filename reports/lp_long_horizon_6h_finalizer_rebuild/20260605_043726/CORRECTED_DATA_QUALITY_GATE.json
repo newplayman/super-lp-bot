@@ -1,0 +1,24 @@
+{
+  "stage": "LP_LONG_HORIZON_6H_FINALIZER_REBUILD_FROM_CHECKPOINTS_V1",
+  "source_run_id": "20260605_043726",
+  "data_quality_status": "PASS",
+  "gate_pass": true,
+  "can_advance_to_12h": false,
+  "gate_checks": {
+    "actual_runtime_minutes_ge_330": true,
+    "short_mode_used_false": true,
+    "selected_pool_count_gt_zero": true,
+    "pool_snapshot_rows_gt_zero": true,
+    "quote_snapshot_rows_gt_zero": true,
+    "fee_velocity_rows_gt_zero": true,
+    "liquidity_distribution_rows_gt_zero": true,
+    "market_regime_rows_gt_zero": true,
+    "error_rate_pct_le_20": true,
+    "consecutive_429_max_lt_5": true,
+    "no_wallet_tx_touch": true,
+    "no_production_write": true,
+    "no_shadow_overwrite": true
+  },
+  "pass_count": 13,
+  "fail_count": 0
+}

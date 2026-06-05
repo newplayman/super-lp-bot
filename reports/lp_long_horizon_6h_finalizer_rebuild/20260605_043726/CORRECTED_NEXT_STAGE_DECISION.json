@@ -1,0 +1,14 @@
+{
+  "stage": "LP_LONG_HORIZON_6H_FINALIZER_REBUILD_FROM_CHECKPOINTS_V1",
+  "source_run_id": "20260605_043726",
+  "corrected_from_checkpoints": true,
+  "gate_pass": true,
+  "data_quality_status": "PASS",
+  "recommended_next_stage": "LP_LONG_HORIZON_READONLY_CONTINUOUS_12H_EXTENSION_REQUEST_V1",
+  "reason": "rebuilt 6h gate PASS (data_quality_status=PASS, 13/13 gate checks pass). data 完整 (6/6 ckpts, 5 pool_snapshots, 180 quote_snapshots, 150 fee_velocity, 42 market_regime rows). 但**仍需用户单独审批** 12h 延展 (`APPROVE_LP_LONG_HORIZON_READONLY_STAGE_RUN stage=12h mode=readonly no_probe=true`).",
+  "can_advance_to_12h": false,
+  "auto_advance_started": false,
+  "longer_stage_started": false,
+  "do_not_auto_start_12h": true,
+  "manual_approval_required_for_12h": true
+}
