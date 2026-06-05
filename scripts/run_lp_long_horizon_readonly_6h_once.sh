@@ -90,6 +90,74 @@ echo "[preflight] all checks passed" | tee -a "${LOG_DIR}/supervisor.log"
 echo "[preflight] LOOP_COUNT=${LOOP_COUNT} SLEEP_SECONDS=${SLEEP_SECONDS} (real 6h)" | tee -a "${LOG_DIR}/supervisor.log"
 
 # ---------------------------------------------------------------------------
+# V2 fail-safe trap: if the script exits unexpectedly (e.g., NameError, OOM,
+# SIGTERM, ctrl-C), write a FAIL FINAL_VERDICT so the 6h run state is
+# never silently lost. This is the V2 fix for the V1 NameError crash that
+# left 7 reports + FINAL_VERDICT never written.
+# ---------------------------------------------------------------------------
+SUPERVISOR_DEADLINE_TS=$(( $(date +%s) + 6 * 3600 + 600 ))  # generous 6h+10min deadline
+write_fail_verdict_on_trap() {
+    local trap_rc=$?
+    local trap_signal="${1:-EXIT}"
+    if [[ -f "${REPORT_DIR}/FINAL_VERDICT.json" ]]; then
+        return 0  # already written, nothing to do
+    fi
+    echo "[trap] ${trap_signal} rc=${trap_rc}; writing FAIL FINAL_VERDICT" | tee -a "${LOG_DIR}/supervisor.log" 2>/dev/null || true
+    END_TS_ACTUAL=$(date +%s)
+    ELAPSED_MIN_TRAP=$(( (END_TS_ACTUAL - START_TS) / 60 ))
+    mkdir -p "${REPORT_DIR}"
+    python3 - <<PYEOF_TRAP 2>/dev/null || echo "trap verdict write failed" | tee -a "${LOG_DIR}/supervisor.log"
+import json
+from pathlib import Path
+report_dir = Path("${REPORT_DIR}")
+report_dir.mkdir(parents=True, exist_ok=True)
+verdict = {
+    "stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_6H_REAL_WALLCLOCKFIX_REPEAT_V2",
+    "status": "FAIL",
+    "run_id": "${RUN_ID}",
+    "branch": "feat/supabase-postgres-deployment",
+    "approval_recorded": True,
+    "approved_stage": "6h",
+    "tmux_started": True,
+    "tmux_session_name": "${SESSION}",
+    "tmux_session_at_finalize": "killed_by_trap",
+    "six_hour_run_completed": False,
+    "actual_runtime_minutes": ${ELAPSED_MIN_TRAP},
+    "actual_runtime_valid_for_6h_gate": ${ELAPSED_MIN_TRAP} >= 330,
+    "short_mode_used": False,
+    "supervisor_finalize_failed": True,
+    "finalize_error": "trap ${trap_signal} rc=${trap_rc}",
+    "selected_pool_count": 0,
+    "pool_snapshot_rows": 0,
+    "quote_snapshot_rows": 0,
+    "fee_velocity_rows": 0,
+    "liquidity_distribution_rows": 0,
+    "market_regime_rows": 0,
+    "error_rate_pct": None,
+    "consecutive_429_max": 0,
+    "data_quality_status": "FAIL",
+    "gate_pass": False,
+    "can_advance_to_12h": False,
+    "auto_advance_started": False,
+    "longer_stage_started": False,
+    "can_run_probe_now": False,
+    "tiny_canary_allowed": "no",
+    "edge_proven": "no",
+    "wallet_or_tx_touched": False,
+    "transaction_sent": False,
+    "send_hard_disable_still_active": True,
+    "recommended_next_stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_6H_REAL_WALLCLOCK_FIX_REPEAT",
+}
+(report_dir / "FINAL_VERDICT.json").write_text(json.dumps(verdict, indent=2, ensure_ascii=False))
+print(f"[trap] wrote FAIL verdict: runtime={verdict['actual_runtime_minutes']}min status=FAIL")
+PYEOF_TRAP
+}
+trap 'write_fail_verdict_on_trap EXIT' EXIT
+trap 'write_fail_verdict_on_trap SIGTERM; exit 143' SIGTERM
+trap 'write_fail_verdict_on_trap SIGINT; exit 130' SIGINT
+trap 'write_fail_verdict_on_trap SIGHUP; exit 129' SIGHUP
+
+# ---------------------------------------------------------------------------
 # 1. real 6h wallclock loop
 # ---------------------------------------------------------------------------
 
@@ -122,7 +190,18 @@ EOF
 # initial heartbeat
 heartbeat 0
 
-# 6 iterations × 1h sleep each (real 6h)
+# ---------------------------------------------------------------------------
+# V2 wallclock logic: END_TS-based loop control.
+#
+# V1 had a bug: `if [ "$i" -lt $LOOP_COUNT ]` skipped the sleep for the LAST
+# iteration, so 6 iterations only had 5 sleeps = 5h wallclock, gate FAIL.
+#
+# V2 fix: use absolute END_TS = START_TS + 6*3600. We run checkpoint 1..6,
+# then sleep until now >= END_TS, so total wallclock is GUARANTEED >= 6h.
+# Heartbeats fire every 15 min between checkpoints.
+# ---------------------------------------------------------------------------
+END_TS=$(( START_TS + 6 * 3600 ))
+
 for i in $(seq 1 $LOOP_COUNT); do
     CKPT_DIR="${DATA_DIR}/checkpoint_${i}_$(date -u +%H%M)"
     mkdir -p "${CKPT_DIR}"
@@ -138,21 +217,44 @@ for i in $(seq 1 $LOOP_COUNT); do
     fi
     echo "[checkpoint ${i}/${LOOP_COUNT}] ok at $(date -u +%Y-%m-%dT%H:%M:%SZ)" | tee -a "${LOG_DIR}/supervisor.log"
 
+    # V2: Always sleep until next checkpoint, with heartbeats along the way.
+    # After the LAST checkpoint (i=LOOP_COUNT), sleep until END_TS, NOT 0.
     if [ "$i" -lt $LOOP_COUNT ]; then
         # 1h sleep = 4 × 15min heartbeat
         for q in 1 2 3 4; do
             sleep $((SLEEP_SECONDS / 4))
             heartbeat "${i}_${q}_of_4"
         done
+    else
+        # V2 fix: after the last checkpoint, sleep until END_TS to GUARANTEE
+        # total wallclock >= 6h. This closes the V1 missing-sleep bug.
+        REMAINING=$(( END_TS - $(date +%s) ))
+        if [ "${REMAINING}" -gt 0 ]; then
+            echo "[V2 wallclock fix] last checkpoint done; sleeping ${REMAINING}s until END_TS=${END_TS}" | tee -a "${LOG_DIR}/supervisor.log"
+            # Sleep in 4 chunks with heartbeats in between
+            CHUNK=$(( REMAINING / 4 ))
+            for q in 1 2 3 4; do
+                sleep "${CHUNK}"
+                heartbeat "${i}_${q}_of_4_postfinal"
+            done
+            # Final tail sleep to hit exactly END_TS
+            TAIL=$(( END_TS - $(date +%s) ))
+            if [ "${TAIL}" -gt 0 ]; then
+                sleep "${TAIL}"
+            fi
+            heartbeat "${i}_end"
+        else
+            echo "[V2 wallclock] already past END_TS after last checkpoint, no extra sleep" | tee -a "${LOG_DIR}/supervisor.log"
+        fi
     fi
 done
 
-END_TS=$(date +%s)
-ELAPSED_SEC=$(( END_TS - START_TS ))
+END_TS_ACTUAL=$(date +%s)
+ELAPSED_SEC=$(( END_TS_ACTUAL - START_TS ))
 ELAPSED_MIN=$(( ELAPSED_SEC / 60 ))
 END_ISO=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
-echo "[6h end] ${END_ISO} elapsed_min=${ELAPSED_MIN}" | tee -a "${LOG_DIR}/supervisor.log"
+echo "[6h end] ${END_ISO} elapsed_min=${ELAPSED_MIN} (target END_TS=${END_TS})" | tee -a "${LOG_DIR}/supervisor.log"
 
 # ---------------------------------------------------------------------------
 # 2. validate actual_runtime_minutes >= 330 (gate threshold)
@@ -219,7 +321,7 @@ agg = {
     "actual_runtime_minutes": ${ELAPSED_MIN},
     "expected_min_runtime_minutes": 330,
     "actual_runtime_valid_for_6h_gate": ${REAL_6H_GATE_PASS},
-    "short_mode_used": false,
+    "short_mode_used": False,
     "loop_count_total": ${LOOP_COUNT},
     "sleep_seconds_per_iteration": ${SLEEP_SECONDS},
     "checkpoint_count": len(ckpts),

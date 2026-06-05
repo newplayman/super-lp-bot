@@ -1,0 +1,105 @@
+{
+  "stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_6H_REAL_WALLCLOCK_FIX_REPEAT_V1",
+  "status": "FAIL",
+  "salvage_at_utc": "2026-06-05T04:37:30Z",
+  "salvaged_by": "Agent (Claude Opus 4.8)",
+
+  "six_hour_run_completed": false,
+  "actual_runtime_minutes": 300.12,
+  "actual_runtime_valid_for_6h_gate": false,
+  "short_mode_used": false,
+  "supervisor_finalize_failed": true,
+  "finalize_error": "Python NameError: name 'false' is not defined. Did you mean: 'False'?",
+
+  "loop_count": 6,
+  "sleep_seconds_per_iteration": 3600,
+  "expected_wallclock_minutes": 360,
+  "actual_wallclock_short_of_expected_minutes": 60,
+
+  "checkpoints_generated": 6,
+  "checkpoints_expected": 6,
+  "checkpoints_complete": true,
+  "data_files_per_checkpoint": 7,
+  "data_files_total": 42,
+
+  "selected_pool_count": 5,
+  "pool_snapshot_rows": 5,
+  "quote_snapshot_rows": 180,
+  "fee_velocity_rows": 150,
+  "liquidity_distribution_rows": 30,
+  "market_regime_rows": 42,
+  "actual_fee_accrual_placeholder_rows": 6,
+
+  "error_rate_pct": 0.0,
+  "consecutive_429_max": 0,
+
+  "data_quality_status": "FAIL",
+  "gate_pass": false,
+  "can_advance_to_12h": false,
+  "auto_advance_started": false,
+  "longer_stage_started": false,
+
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no",
+  "edge_proven": "no",
+  "wallet_or_tx_touched": false,
+  "transaction_sent": false,
+  "send_hard_disable_still_active": true,
+
+  "no_production_write": true,
+  "no_shadow_overwrite": true,
+  "no_cron_enabled": true,
+  "no_systemd_enabled": true,
+  "no_daemon_leak": true,
+  "no_extra_tmux_session": true,
+  "no_paid_rpc_integration": true,
+  "no_paid_indexer_integration": true,
+
+  "gate_decision": {
+    "actual_runtime_minutes_ge_330": false,
+    "selected_pool_count_gt_zero": true,
+    "pool_snapshot_rows_gt_zero": true,
+    "quote_snapshot_rows_gt_zero": true,
+    "fee_velocity_rows_gt_zero": true,
+    "market_regime_rows_gt_zero": true,
+    "liquidity_distribution_rows_gt_zero": true,
+    "error_rate_pct_le_20": true,
+    "consecutive_429_max_lt_5": true,
+    "no_production_write": true,
+    "no_wallet_tx_touch": true,
+    "no_daemon_leak": true,
+    "short_mode_used_false": true,
+    "pass_count": 12,
+    "fail_count": 1,
+    "fail_detail": "actual_runtime_minutes=300.12 < 330 (gate threshold)"
+  },
+
+  "bugs_identified_in_v1_supervisor": {
+    "bug_1_bash_loop_missing_sleep": {
+      "file": "scripts/run_lp_long_horizon_readonly_6h_once.sh",
+      "line": 141,
+      "description": "if [ \"$i\" -lt $LOOP_COUNT ] skips the sleep for the last iteration; 6 iterations only have 5 sleeps = 5h wallclock instead of 6h",
+      "fix_for_v2": "use END_TS-based loop control (START_TS + 21600); checkpoint every 3600s, only finalize when now >= END_TS"
+    },
+    "bug_2_python_lowercase_false": {
+      "file": "scripts/run_lp_long_horizon_readonly_6h_once.sh",
+      "line": 222,
+      "description": "Python heredoc uses lowercase 'false' (JSON syntax) instead of Python 'False', triggering NameError in finalize phase",
+      "fix_for_v2": "replace all lowercase false/true with False/True in Python heredocs; or use python3 -c + json.dump; add set -euo pipefail"
+    }
+  },
+
+  "recommended_next_stage": "LP_LONG_HORIZON_READONLY_COLLECTOR_6H_REAL_WALLCLOCK_FIX_REPEAT_V2",
+
+  "v1_locked_fields_preserved": {
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no",
+    "edge_proven": "no",
+    "wallet_or_tx_touched": false,
+    "transaction_sent": false,
+    "auto_advance_started": false,
+    "longer_stage_started": false
+  },
+
+  "next_stage": "V2_LAUNCH"
+}

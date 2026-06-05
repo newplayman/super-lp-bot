@@ -80,7 +80,7 @@
     "bug_1_bash_loop_missing_sleep": {
       "file": "scripts/run_lp_long_horizon_readonly_6h_once.sh",
       "line": 141,
-      "code": 'if [ "$i" -lt $LOOP_COUNT ]; then for q in 1 2 3 4; do sleep $((SLEEP_SECONDS / 4)); heartbeat "${i}_${q}_of_4"; done; fi',
+      "code": "if [ \\\"$i\\\" -lt $LOOP_COUNT ]; then for q in 1 2 3 4; do sleep $((SLEEP_SECONDS / 4)); heartbeat \\\"${i}_${q}_of_4\\\"; done; fi",
       "effect": "6 iterations but only 5 sleeps (between ckpt 1-2, 2-3, 3-4, 4-5, 5-6). Total wallclock = 5h instead of 6h.",
       "actual_runtime_minutes": 300.12,
       "expected_runtime_minutes": 360,
@@ -93,7 +93,7 @@
     "bug_2_python_lowercase_false": {
       "file": "scripts/run_lp_long_horizon_readonly_6h_once.sh",
       "line": 222,
-      "code": '"short_mode_used": false,',
+      "code": "\"short_mode_used\": false,",
       "effect": "Python NameError at finalize phase; aggregate_summary.json + 7 reports + FINAL_VERDICT all not written; auto-commit/push not triggered.",
       "fix": "change 'false' to 'False' (Python boolean). Same issue may exist elsewhere in the file - audit all `false` / `true` in Python heredoc blocks."
     }
