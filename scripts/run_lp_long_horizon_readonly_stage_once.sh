@@ -261,7 +261,9 @@ for i in $(seq 1 $LOOP_COUNT); do
 
     if ! python3 scripts/lp_long_horizon_readonly_collector_v1.py \
         --mode smoke \
-        --pools-per-protocol 5 \
+        --pool-universe "${POOL_UNIVERSE_PATH}" \
+        --max-snapshots 1 \
+        --run-id "${RUN_ID}" \
         --out "${CKPT_DIR}" \
         --no-wallet --no-tx --no-bridge --dry-run 2>&1 | tee -a "${LOG_DIR}/supervisor.log"; then
         echo "[checkpoint ${i}/${LOOP_COUNT}] FAILED at $(date -u +%Y-%m-%dT%H:%M:%SZ), aborting ${STAGE_NAME} run" | tee -a "${LOG_DIR}/supervisor.log"

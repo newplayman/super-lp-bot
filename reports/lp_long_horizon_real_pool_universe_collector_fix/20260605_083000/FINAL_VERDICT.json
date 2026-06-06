@@ -1,0 +1,144 @@
+{
+  "stage": "LP_LONG_HORIZON_REAL_POOL_UNIVERSE_COLLECTOR_FIX_V1",
+  "status": "PASS",
+  "run_id": "20260605_083000",
+  "branch": "feat/supabase-postgres-deployment",
+  "approved_at_utc": "2026-06-06T08:14:00Z",
+
+  "collector_pool_universe_arg_supported": true,
+  "stage_runner_pool_universe_arg_supported": true,
+  "real_pool_universe_smoke_ran": true,
+  "real_pool_universe_used": true,
+  "selected_real_pool_count": 5,
+  "placeholder_pool_count": 0,
+  "all_pools_are_real_on_chain": true,
+  "all_pool_addresses_real": true,
+
+  "pool_snapshot_rows": 5,
+  "quote_snapshot_rows": 30,
+  "fee_velocity_rows": 25,
+  "liquidity_distribution_rows": 5,
+  "market_regime_rows": 7,
+  "actual_fee_accrual_placeholder_rows": 1,
+
+  "selected_real_pools_summary": [
+    {
+      "chain": "solana",
+      "protocol": "orca_whirlpool",
+      "pool_type": "stable",
+      "pool_address": "Hp53XEtt4S8SvPCXarsLSdGfZBuUr5mMmZmX2DRNXQKp",
+      "token_pair": "SOL/JitoSOL",
+      "tvl_proxy_usd": 31439174,
+      "vol24h_usd": 20121510
+    },
+    {
+      "chain": "solana",
+      "protocol": "orca_whirlpool",
+      "pool_type": "stable",
+      "pool_address": "G2FiE1yn9N9ZJx5e1E2LxxMnHvb1H3hCuHLPfKJ98smA",
+      "token_pair": "JTO/JitoSOL",
+      "tvl_proxy_usd": 6752812,
+      "vol24h_usd": 2010289
+    },
+    {
+      "chain": "solana",
+      "protocol": "orca_whirlpool",
+      "pool_type": "stable",
+      "pool_address": "9tXiuRRw7kbejLhZXtxDxYs2REe43uH2e7k1kocgdM9B",
+      "token_pair": "PYUSD/USDC",
+      "tvl_proxy_usd": 5372197,
+      "vol24h_usd": 4039707
+    },
+    {
+      "chain": "solana",
+      "protocol": "orca_whirlpool",
+      "pool_type": "stable",
+      "pool_address": "68soqftZg4HL1Dcis5hMgkLKU9qyC8qbn5JzLhrxhgi9",
+      "token_pair": "FDUSD/USDT",
+      "tvl_proxy_usd": 5276535,
+      "vol24h_usd": 2938005
+    },
+    {
+      "chain": "solana",
+      "protocol": "orca_whirlpool",
+      "pool_type": "stable",
+      "pool_address": "5xfKkFmhzNhHKTFUkh4PJmHSWB6LpRvhJcUMKzPP6md2",
+      "token_pair": "wfragSOL/JitoSOL",
+      "tvl_proxy_usd": 3665596,
+      "vol24h_usd": 1265672
+    }
+  ],
+
+  "r0_limitations_disclosed": {
+    "no_live_RPC": true,
+    "tvl_volume_are_proxies_from_universe_JSON": true,
+    "no_feeGrowth_snapshot": true,
+    "no_tokensOwed": true,
+    "no_real_fee_accrual": true,
+    "actual_fee_data_available": false,
+    "fee_proxy_used": true,
+    "heuristic_used": true,
+    "fee_estimate_confidence": "low"
+  },
+
+  "can_start_12h_real_universe_retry": true,
+  "can_start_12h_real_universe_retry_conditions": {
+    "collector_pool_universe_arg_supported": true,
+    "stage_runner_pool_universe_arg_supported": true,
+    "real_pool_universe_smoke_ran": true,
+    "real_pool_universe_used": true,
+    "placeholder_pool_count": 0,
+    "selected_real_pool_count_over_zero": true,
+    "pool_snapshot_rows_over_zero": true,
+    "all_pool_addresses_real": true,
+    "no_wallet_tx_probe": true
+  },
+  "can_start_12h_real_universe_retry_blockers": [
+    "V3 supervisor finalize bug: scripts/run_lp_long_horizon_readonly_stage_once.sh line 435 + 493 use bash ${REAL_GATE_PASS} interpolated to lowercase 'true' in Python ternary, triggers NameError, fail-safe trap writes default-zeros",
+    "12h retry ALSO needs EVM (Base / BSC) coverage fix to be considered full-universe; current 12h is partial_solana_real_pool_universe (5 protocols missing: Meteora DLMM, Base Uniswap V3, Base Aerodrome, BSC PancakeSwap V3, BSC PancakeSwap V2)",
+    "User must manually approve 12h retry with new approval phrase (APPROVE_LP_LONG_HORIZON_READONLY_STAGE_RUN stage=12h mode=readonly no_probe=true)"
+  ],
+
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no",
+  "edge_proven": "no",
+  "wallet_or_tx_touched": false,
+  "transaction_sent": false,
+  "auto_probe_allowed": false,
+  "auto_trade_allowed": false,
+  "manual_approval_required_for_execution": true,
+  "send_hard_disable_still_active": true,
+
+  "no_touch_invariants": {
+    "no_12h_data_modification": true,
+    "no_6h_data_modification": true,
+    "no_modify_v2_12h_FINAL_VERDICT": true,
+    "no_modify_v2_6h_FINAL_VERDICT": true,
+    "no_modify_v2_6h_corrected_verdict": true,
+    "no_modify_v2_12h_corrected_verdict": true,
+    "no_modify_12h_node_report": true,
+    "no_start_12h_24h_48h_72h_7d": true,
+    "no_long_running_collector": true,
+    "no_probe_canary_live_paper": true,
+    "no_wallet_keypair_signer": true,
+    "no_tx_send_approve_mint": true,
+    "no_paid_rpc_indexer": true,
+    "no_production_write": true,
+    "no_shadow_overwrite": true,
+    "no_cron_systemd_daemon": true
+  },
+
+  "allowed_recommended_next_stages": [
+    "LP_LONG_HORIZON_READONLY_CONTINUOUS_12H_REAL_UNIVERSE_RETRY_REQUEST_V1",
+    "LP_LONG_HORIZON_REAL_POOL_UNIVERSE_COLLECTOR FIX_REPEAT",
+    "PAUSE_AUTOMATED_LP_PROBE_AND_COLLECT_LONGER_HORIZON_DATA",
+    "STOP_LP_RESEARCH_NOW"
+  ],
+
+  "recommended_next_stage": "LP_LONG_HORIZON_READONLY_CONTINUOUS_12H_REAL_UNIVERSE_RETRY_REQUEST_V1",
+
+  "recommended_next_stage_rationale": "本 stage 已修复 collector CLI (--pool-universe) + stage runner (forward --pool-universe), 短 smoke 验证 collector 写真实池 (5 real pools, 0 placeholder, all_pool_addresses_real=true, no wallet/tx/probe). 满足 LP_LONG_HORIZON_READONLY_CONTINUOUS_12H_REAL_UNIVERSE_RETRY_REQUEST_V1 的 5 项前置: collector_pool_universe_arg_supported + stage_runner_pool_universe_arg_supported + real_pool_universe_smoke_ran + real_pool_universe_used + placeholder_pool_count=0 + selected_real_pool_count>0 + pool_snapshot_rows>0 + all_pool_addresses_real + no_wallet/tx/probe. 但 12h retry 仍需 3 项额外: 修 V3 supervisor finalize bug (line 435 + 493); EVM (Base/BSC) coverage fix to make 12h full-universe; 用户单独审批 12h retry 短语 (`APPROVE_LP_LONG_HORIZON_READONLY_STAGE_RUN stage=12h mode=readonly no_probe=true`).",
+
+  "do_not_auto_start_12h_retry": true,
+  "manual_approval_required_for_12h_retry": true
+}

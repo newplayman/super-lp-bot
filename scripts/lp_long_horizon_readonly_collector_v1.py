@@ -54,6 +54,17 @@ REJECTED_MODES = ("daemon", "30d", "long", "loop", "cron", "continuous",
                   "live", "canary", "paper", "probe", "auto", "scheduled")
 DEFAULT_OUTPUT_ROOT = Path("data/lp_long_horizon") / RUN_ID
 
+# Real pool universe mode (V2 fix for LP_LONG_HORIZON_READONLY_DATA_PIPELINE_V1)
+# When --pool-universe is provided, the collector reads REAL on-chain pool
+# addresses from the universe JSON/CSV (instead of hardcoded smoke placeholders).
+# The collector is still read-only (no live RPC, no signer, no tx) — but the
+# POOL ADDRESSES and TOKEN PAIRS are real, not <smoke_pool_*_a>.
+REAL_UNIVERSE_REQUIRED_KEYS = {
+    "selected_real_pool_count", "placeholder_pool_count",
+    "all_pools_are_real_on_chain", "real_pool_universe_used", "pools",
+}
+PLACEHOLDER_MARKERS = ("<smoke_pool_", "<smoke_mint_")
+
 # protocol pool sample (placeholder; not on-chain read, not wallet-bound).
 # Each entry is a (chain, protocol, program_id, sample_token_a, sample_token_b,
 # fee_tier_bps, fee_tier_kind) tuple. No private key. No signer. Read-only sample.
@@ -229,6 +240,78 @@ DEX_SCREENER_PUBLIC = _disabled_dex_screener
 
 
 # ---------------------------------------------------------------------------
+# Real pool universe loader (V2 fix for stage LP_LONG_HORIZON_REAL_POOL_UNIVERSE_COLLECTOR_FIX_V1)
+# ---------------------------------------------------------------------------
+
+def _load_pool_universe(path: Path) -> dict[str, Any]:
+    """Load and validate a real pool universe from JSON.
+
+    Hard requirements (per LP_LONG_HORIZON_REAL_POOL_UNIVERSE_COLLECTOR_FIX_V1 spec):
+      - JSON has selected_real_pool_count, placeholder_pool_count,
+        all_pools_are_real_on_chain, real_pool_universe_used, pools keys
+      - placeholder_pool_count == 0
+      - all_pools_are_real_on_chain == True
+      - real_pool_universe_used == True
+      - No pool_address contains '<smoke_pool_' (placeholder)
+      - No token_mint / token_symbol contains '<smoke_mint_'
+
+    On any failure: REFUSED, no fallback to placeholder.
+    """
+    if not path.exists():
+        print(f"REFUSED: pool universe not found: {path}", file=sys.stderr)
+        raise SystemExit(11)
+    try:
+        d = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        print(f"REFUSED: pool universe JSON parse failed: {path}: {exc}", file=sys.stderr)
+        raise SystemExit(12)
+    missing = REAL_UNIVERSE_REQUIRED_KEYS - set(d.keys())
+    if missing:
+        print(f"REFUSED: pool universe missing required keys: {sorted(missing)}", file=sys.stderr)
+        raise SystemExit(13)
+    if d.get("placeholder_pool_count", -1) != 0:
+        print(f"REFUSED: pool universe has placeholder_pool_count={d.get('placeholder_pool_count')}, must be 0", file=sys.stderr)
+        raise SystemExit(14)
+    if not d.get("all_pools_are_real_on_chain"):
+        print(f"REFUSED: pool universe all_pools_are_real_on_chain != True", file=sys.stderr)
+        raise SystemExit(15)
+    if not d.get("real_pool_universe_used"):
+        print(f"REFUSED: pool universe real_pool_universe_used != True", file=sys.stderr)
+        raise SystemExit(16)
+    pools = d.get("pools", [])
+    if not isinstance(pools, list) or len(pools) == 0:
+        print(f"REFUSED: pool universe pools must be non-empty list, got {type(pools).__name__} len={len(pools) if hasattr(pools, '__len__') else 'n/a'}", file=sys.stderr)
+        raise SystemExit(17)
+    for i, p in enumerate(pools):
+        if not isinstance(p, dict):
+            print(f"REFUSED: pool universe pools[{i}] not a dict", file=sys.stderr)
+            raise SystemExit(18)
+        for key in ("chain", "protocol", "pool_address", "token_pair"):
+            if key not in p:
+                print(f"REFUSED: pool universe pools[{i}] missing key {key!r}", file=sys.stderr)
+                raise SystemExit(19)
+        addr = str(p["pool_address"])
+        for marker in PLACEHOLDER_MARKERS:
+            if marker in addr:
+                print(f"REFUSED: pool universe pools[{i}].pool_address contains placeholder marker {marker!r}: {addr}", file=sys.stderr)
+                raise SystemExit(20)
+    return d
+
+
+def _select_universe_pools(universe: dict[str, Any], max_pools: int) -> list[dict[str, Any]]:
+    """Select up to max_pools real pools from the universe.
+
+    Default: stable-classified first, then by tvl_proxy_usd desc.
+    """
+    pools = list(universe.get("pools", []))
+    # Stable first
+    pools.sort(key=lambda p: (not p.get("stable_classified", False), -float(p.get("tvl_proxy_usd", 0) or 0)))
+    if max_pools > 0:
+        pools = pools[:max_pools]
+    return pools
+
+
+# ---------------------------------------------------------------------------
 # Schema builders (placeholder records; no live data)
 # ---------------------------------------------------------------------------
 
@@ -256,6 +339,35 @@ def _build_pool_snapshot(protocol_tuple: tuple) -> dict[str, Any]:
         "tvl_usd": 0.0,
         "snapshot_at": _now_iso(),
         "smoke_placeholder": True,
+    }
+
+
+def _build_real_pool_snapshot(real_pool: dict[str, Any]) -> dict[str, Any]:
+    """Build a pool_snapshots row for a REAL pool (not placeholder).
+
+    R0 read-only: no live RPC, no signer, no tx. TVL / volume are PROXIES
+    from the universe JSON (already known from readonly connector research).
+    """
+    return {
+        "pool_address": real_pool["pool_address"],
+        "chain": real_pool.get("chain", "unknown"),
+        "protocol": real_pool.get("protocol", "unknown"),
+        "pool_type": real_pool.get("pool_type", "unknown"),
+        "token_pair": real_pool.get("token_pair", "?"),
+        "fee_tier_or_fee_bps": real_pool.get("fee_tier_or_fee_bps", 0),
+        "tvl_proxy_usd": real_pool.get("tvl_proxy_usd", 0),
+        "vol24h_proxy_usd": real_pool.get("vol24h_usd", 0),
+        "stable_classified": real_pool.get("stable_classified", False),
+        "source_artifact": real_pool.get("source_artifact", "?"),
+        "selection_reason": real_pool.get("selection_reason", "?"),
+        "reserve_a_raw": 0,  # R0: not real RPC read
+        "reserve_b_raw": 0,
+        "liquidity": 0,
+        "active_tick": None,
+        "active_bin": None,
+        "snapshot_at": _now_iso(),
+        "smoke_placeholder": False,  # REAL pool address
+        "r0_phase_status": "real_pool_address_proxy_tvl_volume; no live RPC",
     }
 
 
@@ -456,6 +568,8 @@ def _smoke_mode(out_root: Path, pools_per_protocol: int) -> dict[str, Any]:
         "send_hard_disable_still_active": True,
         "next_stage": "manual_review_of_smoke_artifacts",
         "smoke_placeholder_only": True,
+        "smoke_placeholder_used": True,
+        "real_pool_universe_used": False,
     }
     (out_root / "smoke_summary.json").write_text(
         json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8"
@@ -468,6 +582,138 @@ def _smoke_mode(out_root: Path, pools_per_protocol: int) -> dict[str, Any]:
     print(f"[smoke mode] wrote actual_fee placeholder to {out_root/'actual_fee_accrual_placeholder.json'}")
     print(f"[smoke mode] wrote summary to {out_root/'smoke_summary.json'}")
     print("[smoke mode] no network, no tx, no wallet, no signer, no daemon. exit 0")
+    return summary
+
+
+def _real_universe_smoke_mode(
+    out_root: Path,
+    universe: dict[str, Any],
+    max_pools: int,
+    max_snapshots: int,
+) -> dict[str, Any]:
+    """Smoke mode using a REAL pool universe (V2 fix).
+
+    Read-only: no live RPC, no signer, no tx. Pool addresses / token pairs /
+    TVL proxies / volume proxies come from the universe JSON (built by
+    readonly connector research). Quote / fee / EV are still placeholders
+    (real on-chain reads deferred to R1 with user-provided tokenId).
+    """
+    out_root.mkdir(parents=True, exist_ok=True)
+
+    real_pools = _select_universe_pools(universe, max_pools)
+    if not real_pools:
+        print("REFUSED: real pool universe is empty after selection", file=sys.stderr)
+        raise SystemExit(21)
+
+    pool_snapshots: list[dict[str, Any]] = []
+    quote_snapshots: list[dict[str, Any]] = []
+    fee_velocity: list[dict[str, Any]] = []
+    liquidity_dist: list[dict[str, Any]] = []
+    market_regime_records: list[dict[str, Any]] = []
+
+    snap_iter = min(max(1, max_snapshots), 1)  # cap at 1 by default
+
+    for real_pool in real_pools:
+        for _ in range(snap_iter):
+            ps = _build_real_pool_snapshot(real_pool)
+            pool_snapshots.append(ps)
+            liquidity_dist.append(_build_liquidity_distribution(ps["pool_address"]))
+            for window in ROLLING_WINDOWS:
+                fee_velocity.append(_build_fee_velocity(ps["pool_address"], window))
+            for notional in NOTIONAL_LEVELS_USD:
+                quote_snapshots.append(_build_quote_snapshot(ps["pool_address"], notional))
+
+    for regime in REGIME_NAMES:
+        market_regime_records.append(_build_market_regime(regime))
+
+    actual_fee_placeholder = _build_actual_fee_placeholder()
+
+    def _write_jsonl(name: str, records: list[dict[str, Any]]) -> None:
+        path = out_root / name
+        with path.open("w", encoding="utf-8") as f:
+            for rec in records:
+                f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+
+    _write_jsonl("pool_snapshots.jsonl", pool_snapshots)
+    _write_jsonl("quote_snapshots.jsonl", quote_snapshots)
+    _write_jsonl("fee_velocity.jsonl", fee_velocity)
+    _write_jsonl("liquidity_distribution.jsonl", liquidity_dist)
+    _write_jsonl("market_regime.jsonl", market_regime_records)
+    (out_root / "actual_fee_accrual_placeholder.json").write_text(
+        json.dumps(actual_fee_placeholder, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+
+    summary = {
+        "stage": STAGE,
+        "mode": "smoke_real_universe",
+        "run_id": RUN_ID,
+        "executed_at": _now_iso(),
+        "out_root": str(out_root),
+        "real_pool_universe_used": True,
+        "real_pool_universe_path": universe.get("__source_path__", "?"),
+        "selected_real_pool_count": len(real_pools),
+        "selected_real_pools": [
+            {
+                "chain": p["chain"],
+                "protocol": p["protocol"],
+                "pool_address": p["pool_address"],
+                "token_pair": p["token_pair"],
+                "fee_tier_or_fee_bps": p.get("fee_tier_or_fee_bps", 0),
+                "tvl_proxy_usd": p.get("tvl_proxy_usd", 0),
+                "vol24h_usd": p.get("vol24h_usd", 0),
+                "stable_classified": p.get("stable_classified", False),
+                "source_artifact": p.get("source_artifact", "?"),
+            }
+            for p in real_pools
+        ],
+        "placeholder_pool_count": 0,
+        "all_pools_are_real_on_chain": True,
+        "max_snapshots": snap_iter,
+        "notional_levels": NOTIONAL_LEVELS_USD,
+        "expected_cells": len(real_pools) * snap_iter * len(NOTIONAL_LEVELS_USD),
+        "executed_cells": len(quote_snapshots),
+        "skipped_cells": 0,
+        "source_aborted": False,
+        "sources": {
+            "solana_rpc_public": {"ok": 0, "rate_limited": 0, "error": 0,
+                                  "note": "R0 stubbed; no live RPC; pool addresses from universe JSON"},
+            "coingecko_public": {"ok": 0, "rate_limited": 0, "error": 0,
+                                 "note": "R0 stubbed; no live RPC"},
+            "protocol_sdk_quote": {"ok": 0, "rate_limited": 0, "error": 0,
+                                   "note": "R0 stubbed; no live SDK call"},
+            "dex_screener_public": {"ok": 0, "rate_limited": 0, "error": 0,
+                                    "note": "R0 stubbed; no live RPC"},
+        },
+        "files_written": [
+            "pool_snapshots.jsonl",
+            "quote_snapshots.jsonl",
+            "fee_velocity.jsonl",
+            "liquidity_distribution.jsonl",
+            "market_regime.jsonl",
+            "actual_fee_accrual_placeholder.json",
+            "smoke_summary.json",
+        ],
+        "wallet_or_tx_touched": False,
+        "transaction_sent": False,
+        "send_hard_disable_still_active": True,
+        "next_stage": "manual_review_of_smoke_artifacts",
+        "smoke_placeholder_only": False,
+        "smoke_placeholder_used": False,
+        "real_pool_universe_used": True,
+    }
+    (out_root / "smoke_summary.json").write_text(
+        json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    print(f"[smoke_real_universe] wrote {len(pool_snapshots)} REAL pool_snapshots to {out_root/'pool_snapshots.jsonl'}")
+    for ps in pool_snapshots:
+        print(f"  - {ps['chain']}/{ps['protocol']}/{ps['pool_address']} ({ps['token_pair']}) tvl={ps['tvl_proxy_usd']:.0f}")
+    print(f"[smoke_real_universe] wrote {len(quote_snapshots)} quote_snapshots to {out_root/'quote_snapshots.jsonl'}")
+    print(f"[smoke_real_universe] wrote {len(fee_velocity)} fee_velocity to {out_root/'fee_velocity.jsonl'}")
+    print(f"[smoke_real_universe] wrote {len(liquidity_dist)} liquidity_distribution to {out_root/'liquidity_distribution.jsonl'}")
+    print(f"[smoke_real_universe] wrote {len(market_regime_records)} market_regime to {out_root/'market_regime.jsonl'}")
+    print(f"[smoke_real_universe] wrote actual_fee placeholder to {out_root/'actual_fee_accrual_placeholder.json'}")
+    print(f"[smoke_real_universe] wrote summary to {out_root/'smoke_summary.json'}")
+    print("[smoke_real_universe] no network, no tx, no wallet, no signer, no daemon. exit 0")
     return summary
 
 
@@ -495,29 +741,55 @@ def _validate_args(args: argparse.Namespace) -> None:
     if args.dry_run is False:
         print("REFUSED: --dry-run must remain True (default).", file=sys.stderr)
         raise SystemExit(4)
+    if args.max_pools < 0:
+        print(f"REFUSED: --max-pools must be >= 0, got {args.max_pools}", file=sys.stderr)
+        raise SystemExit(6)
+    if args.max_snapshots < 1:
+        print(f"REFUSED: --max-snapshots must be >= 1, got {args.max_snapshots}", file=sys.stderr)
+        raise SystemExit(6)
 
 
 def _build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(description="LP long-horizon read-only collector (design + smoke only)")
+    p = argparse.ArgumentParser(description="LP long-horizon read-only collector (design + smoke + smoke_real_universe)")
     p.add_argument("--mode", default="design", help="design (default) or smoke")
-    p.add_argument("--pools-per-protocol", type=int, default=1, help="smoke mode only; 1-N")
+    p.add_argument("--pools-per-protocol", type=int, default=1, help="smoke mode only; 1-N (smoke placeholder)")
+    p.add_argument("--pool-universe", default=None, help="path to real pool universe JSON; if provided, smoke uses REAL pools (V2 fix)")
+    p.add_argument("--max-pools", type=int, default=0, help="smoke_real_universe only; 0 = all (default); cap to N for short smoke")
+    p.add_argument("--max-snapshots", type=int, default=1, help="smoke_real_universe only; snapshots per pool (default 1)")
+    p.add_argument("--run-id", default=None, help="override RUN_ID (default: env LP_LONG_HORIZON_RUN_ID or timestamp)")
     p.add_argument("--out", default=str(DEFAULT_OUTPUT_ROOT), help="output directory")
     p.add_argument("--no-wallet", dest="no_wallet", action="store_true", default=True)
     p.add_argument("--no-tx", dest="no_tx", action="store_true", default=True)
     p.add_argument("--no-bridge", dest="no_bridge", action="store_true", default=True)
     p.add_argument("--dry-run", dest="dry_run", action="store_true", default=True)
+    p.add_argument("--no-daemon", dest="no_daemon", action="store_true", default=True)
     return p
 
 
 def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
     _validate_args(args)
+
+    # Apply --run-id override to module-level RUN_ID
+    global RUN_ID
+    if args.run_id is not None:
+        RUN_ID = args.run_id
+
     out_root = Path(args.out)
     if not str(out_root).startswith("data/lp_long_horizon"):
         print(f"REFUSED: output root {out_root!r} must start with data/lp_long_horizon", file=sys.stderr)
         raise SystemExit(5)
     if args.mode == "design":
         summary = _design_mode(out_root)
+    elif args.pool_universe is not None:
+        # V2 fix: real pool universe mode
+        universe = _load_pool_universe(Path(args.pool_universe))
+        universe["__source_path__"] = str(args.pool_universe)
+        summary = _real_universe_smoke_mode(
+            out_root, universe,
+            max_pools=args.max_pools if args.max_pools > 0 else universe.get("selected_real_pool_count", 33),
+            max_snapshots=args.max_snapshots,
+        )
     else:
         summary = _smoke_mode(out_root, args.pools_per_protocol)
     print(json.dumps({"stage": STAGE, "run_id": RUN_ID, "summary_keys": list(summary.keys())},

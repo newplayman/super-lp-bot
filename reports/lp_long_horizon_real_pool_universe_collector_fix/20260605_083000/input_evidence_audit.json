@@ -1,0 +1,153 @@
+{
+  "stage": "LP_LONG_HORIZON_REAL_POOL_UNIVERSE_COLLECTOR_FIX_V1",
+  "audit_stage": "A_INPUT_EVIDENCE_AUDIT",
+  "audited_at_utc": "2026-06-06T08:05:00Z",
+  "auditor": "agent (read-only)",
+
+  "input_evidence_files": [
+    {
+      "label": "real_pool_universe_for_12h",
+      "path": "reports/lp_long_horizon_readonly_continuous_12h_extension/20260605_082120/real_pool_universe_for_12h.json",
+      "size_bytes": 14100,
+      "key_fields": {
+        "selected_real_pool_count": 33,
+        "placeholder_pool_count": 0,
+        "all_pools_are_real_on_chain": true,
+        "real_pool_universe_used": true,
+        "no_smoke_placeholder_used": true,
+        "per_protocol_counts": {
+          "solana_orca_whirlpool_clmm": 8,
+          "solana_orca_whirlpool_stable": 5,
+          "solana_raydium_clmm": 10,
+          "solana_raydium_cpmm": 10,
+          "solana_stable_total": 5
+        }
+      }
+    },
+    {
+      "label": "12h_node_report_final_node_verdict",
+      "path": "reports/lp_long_horizon_node_reports/20260605_082120/12h/FINAL_NODE_VERDICT.json",
+      "key_fields": {
+        "node_report_gate_pass": true,
+        "full_sample": true,
+        "partial_sample": false,
+        "coverage_scope": "partial_solana_real_pool_universe",
+        "do_not_treat_as_full_coverage": true,
+        "selected_real_pool_count": 33,
+        "placeholder_pool_count": 0,
+        "all_pools_are_smoke_placeholder": true,
+        "pool_coverage_count": 60,
+        "unique_pool_count": 5,
+        "quote_ready_pool_count": 0,
+        "fee_ready_pool_count": 0,
+        "ev_ready_pool_count": 0,
+        "preflight_candidate_count": 0,
+        "data_insufficient_count": 60,
+        "all_pools_have_tvl_zero": true,
+        "recommended_next_stage": "LP_LONG_HORIZON_12H_NODE_REPORT_FIX_REPEAT"
+      }
+    },
+    {
+      "label": "12h_corrected_verdict",
+      "path": "reports/lp_long_horizon_readonly_12h_extension/20260605_082120/CORRECTED_FINAL_VERDICT.json",
+      "key_fields": {
+        "corrected_from_checkpoints": true,
+        "actual_runtime_minutes": 720,
+        "gate_pass": true,
+        "data_quality_status": "PASS",
+        "source_supervisor_finalize_failed": true,
+        "source_finalize_error": "post-12h python block NameError on 'true' (bash ${REAL_GATE_PASS} interpolated to lowercase 'true' in Python ternary)"
+      }
+    },
+    {
+      "label": "collector_v1",
+      "path": "scripts/lp_long_horizon_readonly_collector_v1.py",
+      "size_bytes": 22277,
+      "version": "1.0",
+      "modes": ["design", "smoke"],
+      "current_smoke_pool_count": 5,
+      "current_args": ["--mode", "--pools-per-protocol", "--out", "--no-wallet", "--no-tx", "--no-bridge", "--dry-run"],
+      "missing_args": ["--pool-universe", "--max-pools", "--max-snapshots", "--run-id"],
+      "root_cause": "collector 仍跑 hardcoded smoke placeholder; 没有 --pool-universe CLI 接通 real_pool_universe_for_12h.json"
+    },
+    {
+      "label": "stage_runner",
+      "path": "scripts/run_lp_long_horizon_readonly_stage_once.sh",
+      "size_lines": 522,
+      "current_args_passed_to_collector": [
+        "--mode smoke", "--pools-per-protocol 5", "--out ${CKPT_DIR}", "--no-wallet --no-tx --no-bridge --dry-run"
+      ],
+      "root_cause": "stage runner 没有把 POOL_UNIVERSE_PATH 传给 collector, 即便 preflight 验证了 universe 是真实的, 实际 collector 仍跑 smoke placeholder"
+    }
+  ],
+
+  "key_assertions": {
+    "real_pool_universe_exists": true,
+    "real_pool_universe_path": "reports/lp_long_horizon_readonly_continuous_12h_extension/20260605_082120/real_pool_universe_for_12h.json",
+    "selected_real_pool_count": 33,
+    "placeholder_pool_count_in_request_config": 0,
+    "12h_actual_collection_used_placeholder": true,
+    "all_pools_are_smoke_placeholder_in_12h": true,
+    "pool_coverage_count_in_12h": 60,
+    "unique_pool_count_in_12h": 5,
+    "quote_ready_pool_count_in_12h": 0,
+    "fee_ready_pool_count_in_12h": 0,
+    "ev_ready_pool_count_in_12h": 0,
+    "data_insufficient_count_in_12h": 60,
+    "cannot_advance_to_24h": true,
+    "do_not_treat_as_full_coverage": true,
+    "12h_node_report_status": "PASS (corrected; not a full-universe verdict)",
+    "12h_corrected_gate_pass": true,
+    "12h_actual_runtime_minutes": 720,
+    "12h_supervisor_self_status": "FAIL (post-12h block NameError on bash ${REAL_GATE_PASS})"
+  },
+
+  "root_cause_summary": {
+    "primary_bug": "scripts/lp_long_horizon_readonly_collector_v1.py 不接受 --pool-universe CLI arg; 即便 stage runner 验证了 real_pool_universe_for_12h.json 是真实的, 实际 collector 仍 hardcoded 跑 smoke placeholder (5 个 <smoke_pool_*_a>). 12h supervisor preflight hard guard 只验证 universe JSON 的 metadata (real_pool_universe_used=true, all_pools_are_real_on_chain=true, placeholder_pool_count=0), 但**不**验证 collector 实际跑的是真实池.",
+    "secondary_bug": "scripts/run_lp_long_horizon_readonly_stage_once.sh Stage 4 post-12h python block 用 bash ${REAL_GATE_PASS} 变量在 Python ternary 中, 触发 NameError; fail-safe trap 写 default-zeros. (V3 fix CORRECTED_FINAL_VERDICT_FALLBACK.json 同样有 bash ${REAL_GATE_PASS} bug, 没救回.)"
+  },
+
+  "scope_of_this_audit": {
+    "this_turn_fixes": [
+      "修改 collector v1: 新增 --pool-universe CLI arg; 接受时拒绝 placeholder; 输出 real_pool_universe_used=true",
+      "修改 stage runner: 把 POOL_UNIVERSE_PATH 传给 collector; 若没传入则 fail, 不得默默回退 placeholder",
+      "运行 short smoke: 5 真实池 × 1 snapshot, 验证 collector 不再跑 placeholder",
+      "新增 tests: --pool-universe parses / placeholder rejected / parse fail no fallback / 真实池 selected / final verdict 5-stage allowed"
+    ],
+    "this_turn_does_not": [
+      "启动 12h / 24h / 48h / 72h / 7d",
+      "启动长期 collector (本轮只短 smoke: 5 池 × 1 snapshot)",
+      "启动新 tmux / cron / systemd / daemon",
+      "probe / canary / live / paper",
+      "读 wallet / keypair / signer / 私钥",
+      "发送 transaction / approve / mint / swap / bridge",
+      "写 production positions",
+      "覆盖 shadow 原始表",
+      "接 paid RPC / paid indexer",
+      "修复 V3 supervisor finalize bug (本轮不动 supervisor 脚本; 修复留给下一轮 LP_LONG_HORIZON_12H_COLLECTOR_FIX_REPEAT)"
+    ]
+  },
+
+  "no_touch_invariants": {
+    "no_12h_data_modification": true,
+    "no_6h_data_modification": true,
+    "no_12h_supervisor_modification": true,
+    "no_modify_v2_12h_FINAL_VERDICT": true,
+    "no_modify_v2_6h_FINAL_VERDICT": true,
+    "no_modify_v2_6h_corrected_verdict": true,
+    "no_modify_v2_12h_corrected_verdict": true,
+    "no_start_12h_24h_48h_72h_7d": true,
+    "no_probe_canary_live_paper": true,
+    "no_wallet_keypair_signer": true,
+    "no_tx_send_approve_mint": true,
+    "no_paid_rpc_indexer": true,
+    "no_production_write": true,
+    "no_shadow_overwrite": true,
+    "no_cron_systemd_daemon": true,
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no",
+    "edge_proven": "no"
+  },
+
+  "next_stage": "B_COLLECTOR_CLI_FIX"
+}
