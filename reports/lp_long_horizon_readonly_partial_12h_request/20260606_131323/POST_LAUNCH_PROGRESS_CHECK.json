@@ -1,0 +1,47 @@
+{
+  "stage": "LP_LONG_HORIZON_READONLY_CONTINUOUS_12H_PARTIAL_REAL_UNIVERSE_REQUEST_V1",
+  "section": "post_launch_progress_check",
+  "run_id": "20260606_131323",
+  "branch": "feat/supabase-postgres-deployment",
+  "checked_at_utc": "2026-06-06T14:55:00Z",
+  "process_alive": true,
+  "process_pid": 3871101,
+  "checkpoint_progress": {
+    "checkpoint_1_1324": {
+      "completed_at_utc": "2026-06-06T13:24:45Z",
+      "pool_snapshots": 53,
+      "quote_snapshots": 318,
+      "fee_velocity": 265,
+      "liquidity_distribution": 53,
+      "market_regime": 7
+    },
+    "checkpoint_2_1424": {
+      "completed_at_utc": "2026-06-06T14:24:47Z",
+      "pool_snapshots": 53,
+      "heartbeat_progress": "2_1_of_4 + 2_2_of_4 ok (75min, 90min)"
+    }
+  },
+  "current_status": "RUNNING",
+  "checkpoints_completed": 2,
+  "checkpoints_remaining": 10,
+  "expected_end_time_utc": "2026-06-07T01:24:45Z",
+  "no_wallet_tx_probe_observed": true,
+  "no_24h_started": true,
+  "long_run_started": true,
+  "auto_advance_to_24h": false,
+  "do_not_treat_as_full_universe": true,
+  "no_touch_invariants": {
+    "no_wallet_keypair_signer": true,
+    "no_tx_send_approve_mint": true,
+    "no_production_write": true,
+    "no_collector_started_pre_launch": true,
+    "no_paid_rpc_key_committed": true,
+    "no_real_secret_committed": true
+  },
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no",
+  "edge_proven": "no",
+  "wallet_or_tx_touched": false,
+  "transaction_sent": false,
+  "next_recommended_stage_after_12h_completes": "LP_LONG_HORIZON_PARTIAL_12H_NODE_REPORT_REVIEW_V1"
+}
