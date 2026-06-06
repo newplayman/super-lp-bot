@@ -1,0 +1,156 @@
+{
+  "stage": "LP_LONG_HORIZON_COLLECTOR_RPC_REACHABILITY_AND_ADAPTER_SMOKE_FIX_V1",
+  "status": "WARN",
+  "run_id": "20260606_103807",
+  "branch": "feat/supabase-postgres-deployment",
+  "approved_at_utc": "2026-06-06T10:49:00Z",
+
+  "rpc_registry_ready": true,
+  "rpc_reachability_matrix_ran": true,
+  "base_rpc_reachable": false,
+  "bsc_rpc_reachable": true,
+  "solana_rpc_reachable": true,
+  "base_adapter_smoke_success": false,
+  "bsc_adapter_smoke_success": true,
+  "meteora_dlmm_smoke_success": false,
+  "integrated_smoke_ran": true,
+
+  "rpc_reachability_detail": {
+    "base": {
+      "primary": "https://mainnet.base.org",
+      "tested_endpoints": 4,
+      "all_returned_403_or_connection_reset": true,
+      "selected_endpoint": null
+    },
+    "bsc": {
+      "primary": "https://bsc-dataseed.binance.org",
+      "tested_endpoints": 4,
+      "reachable_endpoints": 1,
+      "selected_endpoint": "https://bsc-dataseed.binance.org"
+    },
+    "solana": {
+      "primary": "https://api.mainnet-beta.solana.com",
+      "tested_endpoints": 3,
+      "reachable_endpoints": 1,
+      "selected_endpoint": "https://api.mainnet-beta.solana.com"
+    }
+  },
+
+  "per_adapter_smoke_results": {
+    "base_uniswap_v3": {
+      "smoke_pool_count": 2,
+      "uniswap_v3_smoke_success_count": 0,
+      "pool_snapshot_rows": 0,
+      "honest_disclosure": "Base public RPC 全部 403 Forbidden. 不能 reach Base 链."
+    },
+    "base_aerodrome": {
+      "classic_count": 1,
+      "aerodrome_classic_smoke_success_count": 0,
+      "slipstream_supported": false,
+      "honest_disclosure": "Base public RPC 全部 unreachable. Slipstream marked unsupported honestly (custom tick math)."
+    },
+    "bsc_pancakeswap_v3": {
+      "smoke_pool_count": 4,
+      "pancakeswap_v3_smoke_success_count": 4,
+      "pool_snapshot_rows": 4,
+      "honest_disclosure": "4/4 V3 pools real on-chain via eth_call to bsc-dataseed.binance.org (WBNB/USDT 0.01%, 0.05%, WBNB/USDC 0.01%, 0.05%)."
+    },
+    "bsc_pancakeswap_v2": {
+      "smoke_pool_count": 3,
+      "pancakeswap_v2_factory_getpair_success_count": 0,
+      "pancakeswap_v2_getreserves_success_count": 0,
+      "honest_disclosure": "factory.getPair(WBNB, USDT/USDC) returned zero address for all 3 candidate pairs. The specific V2 pairs (WBNB/USDT etc.) may not exist on PancakeSwap V2 mainnet factory, or token ordering is different. Honest record, no fake success."
+    },
+    "meteora_dlmm": {
+      "test_pool_count": 5,
+      "accountinfo_success_count": 0,
+      "dlmm_owner_verified_count": 0,
+      "honest_disclosure": "Solana public RPC returned empty for 5 verified Meteora DLMM test pools. The 16 pools exist on-chain per prior private RPC verification; current public RPC just returns empty."
+    }
+  },
+
+  "expanded_pool_count": 72,
+  "observable_pool_count": 49,
+  "observable_chain_count": 2,
+  "observable_protocol_count": 5,
+  "placeholder_pool_count": 0,
+  "non_observable_pool_count": 23,
+  "observable_per_chain": {
+    "solana": 45,
+    "base": 0,
+    "bsc": 4
+  },
+
+  "five_conditions": {
+    "observable_pool_count_ge_45": true,
+    "observable_chain_count_ge_3": false,
+    "observable_protocol_count_ge_5": true,
+    "placeholder_pool_count_eq_0": true,
+    "no_wallet_tx_probe": true
+  },
+  "all_5_conditions_met": false,
+  "collector_full_coverage_ready": false,
+  "can_start_12h_real_universe_retry": false,
+
+  "blocking_reasons": [
+    "observable_chain_count=2 < 3 (Solana + BSC only; Base public RPC 全部 403 Forbidden in this env, honest 记录)",
+    "23 池 (Base 10 + BSC 9 + Meteora 4) 仍 not observable in this env",
+    "12h retry **不** 自动启动 until all 5 conditions met"
+  ],
+
+  "long_run_started": false,
+  "no_paid_rpc_key_committed": true,
+  "no_real_secret_committed": true,
+
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no",
+  "edge_proven": "no",
+  "wallet_or_tx_touched": false,
+  "transaction_sent": false,
+  "auto_probe_allowed": false,
+  "auto_trade_allowed": false,
+  "manual_approval_required_for_execution": true,
+  "send_hard_disable_still_active": true,
+
+  "no_touch_invariants": {
+    "no_12h_data_modification": true,
+    "no_6h_data_modification": true,
+    "no_modify_v2_12h_FINAL_VERDICT": true,
+    "no_modify_v2_12h_corrected_verdict": true,
+    "no_modify_v2_6h_FINAL_VERDICT": true,
+    "no_modify_v2_6h_corrected_verdict": true,
+    "no_modify_12h_node_report": true,
+    "no_modify_supervisor_runner": true,
+    "no_modify_collector_main": true,
+    "no_modify_5_existing_adapters": true,
+    "no_start_12h_24h_48h_72h_7d": true,
+    "no_long_running_collector": true,
+    "no_probe_canary_live_paper": true,
+    "no_wallet_keypair_signer": true,
+    "no_tx_send_approve_mint": true,
+    "no_paid_rpc_indexer": true,
+    "no_production_write": true,
+    "no_shadow_overwrite": true,
+    "no_cron_systemd_daemon": true,
+    "no_tmux_session_created": true,
+    "no_collector_started": true,
+    "no_paid_rpc_key_committed": true,
+    "no_real_secret_committed": true
+  },
+
+  "allowed_recommended_next_stages": [
+    "LP_LONG_HORIZON_READONLY_CONTINUOUS_12H_REAL_UNIVERSE_RETRY_REQUEST_V1",
+    "LP_LONG_HORIZON_COLLECTOR_ADAPTER_COVERAGE_WIRING_FIX_REPEAT",
+    "LP_LONG_HORIZON_COLLECTOR_ADAPTER_CODE_FIX_REPEAT",
+    "PAUSE_AUTOMATED_LP_PROBE_AND_COLLECT_LONGER_HORIZON_DATA"
+  ],
+
+  "recommended_next_stage": "LP_LONG_HORIZON_COLLECTOR_ADAPTER_COVERAGE_WIRING_FIX_REPEAT",
+
+  "recommended_next_stage_rationale": "5 conditions NOT all met: observable_chain_count=2 < 3 (Solana + BSC only; Base 0 because public Base RPC 全部 403 Forbidden in this env). observable_pool_count=49 ≥ 45 ✓ (45 Solana + 4 BSC V3). BSC V2 factory.getPair 返回 zero address (3 candidate pairs 全部 0), honest 记录. Meteora Solana public RPC 返回 empty, honest 记录. 主要因 Base public RPC 不可达 (env-level 网络问题), **不** 是 adapter 代码问题. 下一 stage fix_repeat: 在能 reach public Base RPC 的 env 再 smoke 一次, 或等 RPC 改善.",
+
+  "do_not_auto_start_12h_retry": true,
+  "manual_approval_required_for_12h_retry": true,
+  "do_not_auto_start_24h": true,
+  "manual_approval_required_for_24h": true
+}

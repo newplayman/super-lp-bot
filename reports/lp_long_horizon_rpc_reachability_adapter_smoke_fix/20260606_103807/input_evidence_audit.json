@@ -1,0 +1,116 @@
+{
+  "stage": "LP_LONG_HORIZON_COLLECTOR_RPC_REACHABILITY_AND_ADAPTER_SMOKE_FIX_V1",
+  "run_id": "20260606_103807",
+  "branch": "feat/supabase-postgres-deployment",
+  "audit_at_utc": "2026-06-06T10:39:00Z",
+  "input_files": {
+    "prior_stage_adapter_wiring_verdict": "reports/lp_long_horizon_collector_adapter_coverage_wiring/20260606_093857/FINAL_VERDICT.json",
+    "current_expanded_universe": "reports/lp_long_horizon_real_pool_universe_coverage_expand/20260606_091120/expanded_real_pool_universe_for_12h_retry.json",
+    "adapter_base_uniswap_v3": "scripts/lp_long_horizon/adapters/evm_base_uniswap_v3.py",
+    "adapter_base_aerodrome": "scripts/lp_long_horizon/adapters/evm_base_aerodrome.py",
+    "adapter_bsc_pancakeswap_v3": "scripts/lp_long_horizon/adapters/evm_bsc_pancakeswap_v3.py",
+    "adapter_bsc_pancakeswap_v2": "scripts/lp_long_horizon/adapters/evm_bsc_pancakeswap_v2.py",
+    "adapter_solana_meteora_dlmm_check": "scripts/lp_long_horizon/adapters/solana_meteora_dlmm_check.py",
+    "collector": "scripts/lp_long_horizon_readonly_collector_v1.py"
+  },
+  "input_evidence_confirmed": {
+    "adapter_code_ready": true,
+    "base_uniswap_v3_adapter_file_exists": true,
+    "base_aerodrome_adapter_file_exists": true,
+    "bsc_pancakeswap_v3_adapter_file_exists": true,
+    "bsc_pancakeswap_v2_adapter_file_exists": true,
+    "meteora_dlmm_check_file_exists": true,
+    "all_5_adapters_self_check_passed": true,
+    "base_rpc_unavailable_in_prior_stage": true,
+    "solana_rpc_empty_for_meteora_in_prior_stage": true,
+    "bsc_v2_address_empty_in_prior_stage": true,
+    "bsc_pancakeswap_v3_1_pool_real_observed": true,
+    "observable_pool_count_prior": 13,
+    "observable_chain_count_prior": 2,
+    "observable_protocol_count_prior": 5,
+    "placeholder_pool_count_prior": 0,
+    "collector_full_coverage_ready": false,
+    "can_start_12h_retry": false,
+    "expanded_pool_count": 72,
+    "this_stage_only_rpc_smoke_fix_no_12h_start": true,
+    "this_stage_does_not_modify_collector_main": true,
+    "this_stage_only_adds_rpc_registry": true,
+    "this_stage_does_not_modify_5_adapters": true,
+    "this_stage_does_not_modify_12h_6h_data_dirs": true,
+    "this_stage_does_not_modify_v2_verdicts": true,
+    "no_paid_rpc_key_committed": true,
+    "no_real_secret_committed": true
+  },
+  "fix_strategy": {
+    "stage_b_steps": [
+      "Add scripts/lp_long_horizon/rpc_registry.py: per-chain primary + fallback_public_rpc_list + env_override_name + healthcheck_method",
+      "Each chain: base/bsc/solana with at least 2 public fallbacks (https only)",
+      "No paid RPC keys committed. env_override_name is just a NAME, not a VALUE.",
+      "Output RPC_FALLBACK_REGISTRY_CN.md + rpc_fallback_registry.json"
+    ],
+    "stage_c_steps": [
+      "Run eth_chainId / eth_blockNumber / getLatestBlockhash for each endpoint",
+      "Record latency_ms + error per endpoint honestly (no fake success)",
+      "Select one endpoint per chain with best latency OR first reachable for smoke",
+      "Output RPC_REACHABILITY_MATRIX_CN.md + .csv + .json"
+    ],
+    "stage_d_steps": [
+      "Retry Base UniV3 + Aerodrome classic with selected Base endpoint",
+      "If Base still unreachable: record honestly, do NOT pretend smoke succeeded",
+      "Slipstream explicitly remains adapter_ready=false (custom tick math not implemented)"
+    ],
+    "stage_e_steps": [
+      "Retry BSC V3 (2-4 pools) + V2 with selected BSC endpoint",
+      "V2 use factory.getPair(tokenA, tokenB) for pair discovery (WBNB/USDT, WBNB/USDC, USDT/USDC)",
+      "If V2 factory.getPair returns zero address, honest record and move on"
+    ],
+    "stage_f_steps": [
+      "Retry Meteora DLMM (2-5 verified pools) with selected Solana endpoint",
+      "getAccountInfo + owner check + bin array / quote if reachable",
+      "If Solana still empty: honest record"
+    ],
+    "stage_g_steps": [
+      "Run collector with --pool-universe=expanded_universe_for_12h_retry.json + --max-pools 45 + --max-snapshots 1",
+      "Record per-pool observable/unobservable reason",
+      "No placeholder fallback"
+    ],
+    "stage_h_steps": [
+      "5 conditions check",
+      "If all met: recommended_next_stage = LP_LONG_HORIZON_READONLY_CONTINUOUS_12H_REAL_UNIVERSE_RETRY_REQUEST_V1",
+      "If main blocker is public RPC: LP_LONG_HORIZON_COLLECTOR_ADAPTER_COVERAGE_WIRING_FIX_REPEAT",
+      "If main blocker is adapter code: LP_LONG_HORIZON_COLLECTOR_ADAPTER_CODE_FIX_REPEAT",
+      "If user decides to pause: PAUSE_AUTOMATED_LP_PROBE_AND_COLLECT_LONGER_HORIZON_DATA"
+    ]
+  },
+  "audit_outcome": "PASS",
+  "audit_locked_fields": {
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no",
+    "wallet_or_tx_touched": false,
+    "transaction_sent": false,
+    "long_run_started": false,
+    "no_12h_data_modification": true,
+    "no_6h_data_modification": true,
+    "no_modify_v2_12h_FINAL_VERDICT": true,
+    "no_modify_v2_12h_corrected_verdict": true,
+    "no_modify_v2_6h_FINAL_VERDICT": true,
+    "no_modify_v2_6h_corrected_verdict": true,
+    "no_modify_12h_node_report": true,
+    "no_modify_supervisor_runner": true,
+    "no_modify_collector_main": true,
+    "no_modify_5_existing_adapters": true,
+    "no_start_12h_24h_48h_72h_7d": true,
+    "no_long_running_collector": true,
+    "no_probe_canary_live_paper": true,
+    "no_wallet_keypair_signer": true,
+    "no_tx_send_approve_mint": true,
+    "no_paid_rpc_indexer": true,
+    "no_production_write": true,
+    "no_shadow_overwrite": true,
+    "no_cron_systemd_daemon": true,
+    "no_tmux_session_created": true,
+    "no_collector_started": true,
+    "no_paid_rpc_key_committed": true,
+    "no_real_secret_committed": true
+  }
+}

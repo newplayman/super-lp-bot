@@ -1,0 +1,59 @@
+{
+  "stage": "LP_LONG_HORIZON_COLLECTOR_RPC_REACHABILITY_AND_ADAPTER_SMOKE_FIX_V1",
+  "section": "rpc_fallback_registry",
+  "run_id": "20260606_103807",
+  "branch": "feat/supabase-postgres-deployment",
+  "generated_at_utc": "2026-06-06T10:40:00Z",
+  "registry_source": "scripts/lp_long_horizon/rpc_registry.py",
+  "no_paid_rpc_key_committed": true,
+  "no_real_secret_committed": true,
+  "registries": [
+    {
+      "chain": "base",
+      "primary_public_rpc": "https://mainnet.base.org",
+      "fallback_public_rpc_list": [
+        "https://mainnet.base.org",
+        "https://base-rpc.publicnode.com",
+        "https://base.llamarpc.com",
+        "https://1rpc.io/base"
+      ],
+      "env_override_name": "BASE_RPC_URL",
+      "healthcheck_method": "eth_chainId",
+      "chain_id_expected": 8453
+    },
+    {
+      "chain": "bsc",
+      "primary_public_rpc": "https://bsc-dataseed.binance.org",
+      "fallback_public_rpc_list": [
+        "https://bsc-dataseed.binance.org",
+        "https://bsc-rpc.publicnode.com",
+        "https://binance.llamarpc.com",
+        "https://1rpc.io/bnb"
+      ],
+      "env_override_name": "BSC_RPC_URL",
+      "healthcheck_method": "eth_chainId",
+      "chain_id_expected": 56
+    },
+    {
+      "chain": "solana",
+      "primary_public_rpc": "https://api.mainnet-beta.solana.com",
+      "fallback_public_rpc_list": [
+        "https://api.mainnet-beta.solana.com",
+        "https://solana-rpc.publicnode.com",
+        "https://1rpc.io/solana"
+      ],
+      "env_override_name": "SOLANA_RPC_URL",
+      "healthcheck_method": "getHealth"
+    }
+  ],
+  "select_best_endpoint_logic": "If env_override_name is set (e.g. BASE_RPC_URL), use that. Else try primary_public_rpc first, then each entry in fallback_public_rpc_list in order. Return the first reachable endpoint (chain_id matches expected for EVM, or getHealth='ok' for Solana).",
+  "no_touch_invariants": {
+    "no_wallet_keypair_signer": true,
+    "no_tx_send_approve_mint": true,
+    "no_production_write": true,
+    "no_collector_started": true,
+    "no_12h_retry_started": true,
+    "no_paid_rpc_key_committed": true,
+    "no_real_secret_committed": true
+  }
+}

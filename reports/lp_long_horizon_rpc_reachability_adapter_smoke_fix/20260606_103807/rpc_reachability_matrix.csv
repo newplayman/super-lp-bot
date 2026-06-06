@@ -1,0 +1,12 @@
+chain,endpoint_name,endpoint_redacted,reachable,latency_ms,method_tested,response_preview,error
+base,fallback_mainnet,https://mainnet.base.org,False,9890,eth_chainId,,HTTPError: HTTP Error 403: Forbidden
+base,fallback_base-rpc,https://base-rpc.publicnode.com,False,528,eth_chainId,,HTTPError: HTTP Error 403: Forbidden
+base,fallback_base,https://base.llamarpc.com,False,434,eth_chainId,,HTTPError: HTTP Error 403: Forbidden
+base,fallback_1rpc,https://1rpc.io/base,False,991,eth_chainId,,URLError: <urlopen error [Errno 104] Connection reset by peer>
+bsc,fallback_bsc-dataseed,https://bsc-dataseed.binance.org,True,166,eth_chainId,0x38,
+bsc,fallback_bsc-rpc,https://bsc-rpc.publicnode.com,False,430,eth_chainId,,HTTPError: HTTP Error 403: Forbidden
+bsc,fallback_binance,https://binance.llamarpc.com,False,391,eth_chainId,,URLError: <urlopen error [Errno -2] Name or service not known>
+bsc,fallback_1rpc,https://1rpc.io/bnb,False,1036,eth_chainId,,URLError: <urlopen error [Errno 104] Connection reset by peer>
+solana,fallback_api,https://api.mainnet-beta.solana.com,True,59,getHealth,ok,
+solana,fallback_solana-rpc,https://solana-rpc.publicnode.com,False,516,getHealth,,HTTPError: HTTP Error 403: Forbidden
+solana,fallback_1rpc,https://1rpc.io/solana,False,1106,getHealth,,URLError: <urlopen error [Errno 104] Connection reset by peer>

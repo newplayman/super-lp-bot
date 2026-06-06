@@ -1,0 +1,102 @@
+{
+  "stage": "LP_LONG_HORIZON_COLLECTOR_RPC_REACHABILITY_AND_ADAPTER_SMOKE_FIX_V1",
+  "section": "bsc_adapter_smoke_retry",
+  "run_id": "20260606_103807",
+  "branch": "feat/supabase-postgres-deployment",
+  "bsc_rpc_reachable": true,
+  "bsc_rpc_selected": "https://bsc-dataseed.binance.org",
+  "pancakeswap_v3_smoke_success_count": 4,
+  "pancakeswap_v2_factory_getpair_success_count": 0,
+  "pancakeswap_v2_getreserves_success_count": 0,
+  "pool_snapshot_rows": 4,
+  "quote_snapshot_rows": 24,
+  "error_count": 3,
+  "pancake_v2_factory_address": "0xcA143Ce32Fe78f1f7019d7d551a6402fD5350a73",
+  "pancake_v2_fee_bps": 20,
+  "cpmm_formula_test_output": 997004989020957084829,
+  "summaries": [
+    {
+      "adapter": "evm_bsc_pancakeswap_v3",
+      "pool_address": "0x172fcD41E0913e95784454622d1c3724f546f849",
+      "snapshot_error": "",
+      "sqrt_price_x96": 3311209765323885514063372421,
+      "tick": -63504,
+      "liquidity": 2942815021604306151950777,
+      "fee": 100,
+      "token0": "0x55d398326f99059ff775485246999027b3197955",
+      "token1": "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c",
+      "quote_count": 6,
+      "quote_errors": 0
+    },
+    {
+      "adapter": "evm_bsc_pancakeswap_v3",
+      "pool_address": "0x36696169C63e42cd08ce11f5deeBbCeBae652050",
+      "snapshot_error": "",
+      "sqrt_price_x96": 3311576165259443433579352328,
+      "tick": -63502,
+      "liquidity": 216385103274722884768257,
+      "fee": 500,
+      "token0": "0x55d398326f99059ff775485246999027b3197955",
+      "token1": "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c",
+      "quote_count": 6,
+      "quote_errors": 0
+    },
+    {
+      "adapter": "evm_bsc_pancakeswap_v3",
+      "pool_address": "0xf2688Fb5B81049DFB7703aDa5e770543770612C4",
+      "snapshot_error": "",
+      "sqrt_price_x96": 3311012600426905121689853467,
+      "tick": -63505,
+      "liquidity": 209984363959477282024826,
+      "fee": 100,
+      "token0": "0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d",
+      "token1": "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c",
+      "quote_count": 6,
+      "quote_errors": 0
+    },
+    {
+      "adapter": "evm_bsc_pancakeswap_v3",
+      "pool_address": "0x81A9b5F18179cE2bf8f001b8a634Db80771F1824",
+      "snapshot_error": "",
+      "sqrt_price_x96": 3311633209448974865075825740,
+      "tick": -63501,
+      "liquidity": 22294507562032634638007,
+      "fee": 500,
+      "token0": "0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d",
+      "token1": "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c",
+      "quote_count": 6,
+      "quote_errors": 0
+    },
+    {
+      "adapter": "evm_bsc_pancakeswap_v2",
+      "pair_label": "WBNB/USDT",
+      "factory_getpair": "pair_not_found",
+      "discovered_pair_address": "0x0000000000000000000000000000000000000000",
+      "getReserves": "skipped_no_pair",
+      "snapshot_error": "factory_getpair_failed"
+    },
+    {
+      "adapter": "evm_bsc_pancakeswap_v2",
+      "pair_label": "WBNB/USDC",
+      "factory_getpair": "pair_not_found",
+      "discovered_pair_address": "0x0000000000000000000000000000000000000000",
+      "getReserves": "skipped_no_pair",
+      "snapshot_error": "factory_getpair_failed"
+    },
+    {
+      "adapter": "evm_bsc_pancakeswap_v2",
+      "pair_label": "USDT/USDC",
+      "factory_getpair": "pair_not_found",
+      "discovered_pair_address": "0x0000000000000000000000000000000000000000",
+      "getReserves": "skipped_no_pair",
+      "snapshot_error": "factory_getpair_failed"
+    }
+  ],
+  "no_touch_invariants": {
+    "no_wallet_keypair_signer": true,
+    "no_tx_send_approve_mint": true,
+    "no_production_write": true,
+    "no_collector_started": true,
+    "no_12h_retry_started": true
+  }
+}

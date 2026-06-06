@@ -1,0 +1,132 @@
+{
+  "stage": "LP_LONG_HORIZON_COLLECTOR_RPC_REACHABILITY_AND_ADAPTER_SMOKE_FIX_V1",
+  "section": "rpc_reachability_matrix",
+  "run_id": "20260606_103807",
+  "branch": "feat/supabase-postgres-deployment",
+  "generated_at_utc": "2026-06-06T10:42:00Z",
+  "selected_per_chain": {
+    "bsc": "https://bsc-dataseed.binance.org",
+    "solana": "https://api.mainnet-beta.solana.com"
+  },
+  "total_endpoints_probed": 11,
+  "reachable_count": 2,
+  "results": [
+    {
+      "chain": "base",
+      "endpoint_name": "fallback_mainnet",
+      "endpoint_redacted": "https://mainnet.base.org",
+      "reachable": false,
+      "latency_ms": 9890,
+      "method_tested": "eth_chainId",
+      "response_preview": "",
+      "error": "HTTPError: HTTP Error 403: Forbidden"
+    },
+    {
+      "chain": "base",
+      "endpoint_name": "fallback_base-rpc",
+      "endpoint_redacted": "https://base-rpc.publicnode.com",
+      "reachable": false,
+      "latency_ms": 528,
+      "method_tested": "eth_chainId",
+      "response_preview": "",
+      "error": "HTTPError: HTTP Error 403: Forbidden"
+    },
+    {
+      "chain": "base",
+      "endpoint_name": "fallback_base",
+      "endpoint_redacted": "https://base.llamarpc.com",
+      "reachable": false,
+      "latency_ms": 434,
+      "method_tested": "eth_chainId",
+      "response_preview": "",
+      "error": "HTTPError: HTTP Error 403: Forbidden"
+    },
+    {
+      "chain": "base",
+      "endpoint_name": "fallback_1rpc",
+      "endpoint_redacted": "https://1rpc.io/base",
+      "reachable": false,
+      "latency_ms": 991,
+      "method_tested": "eth_chainId",
+      "response_preview": "",
+      "error": "URLError: <urlopen error [Errno 104] Connection reset by peer>"
+    },
+    {
+      "chain": "bsc",
+      "endpoint_name": "fallback_bsc-dataseed",
+      "endpoint_redacted": "https://bsc-dataseed.binance.org",
+      "reachable": true,
+      "latency_ms": 166,
+      "method_tested": "eth_chainId",
+      "response_preview": "0x38",
+      "error": ""
+    },
+    {
+      "chain": "bsc",
+      "endpoint_name": "fallback_bsc-rpc",
+      "endpoint_redacted": "https://bsc-rpc.publicnode.com",
+      "reachable": false,
+      "latency_ms": 430,
+      "method_tested": "eth_chainId",
+      "response_preview": "",
+      "error": "HTTPError: HTTP Error 403: Forbidden"
+    },
+    {
+      "chain": "bsc",
+      "endpoint_name": "fallback_binance",
+      "endpoint_redacted": "https://binance.llamarpc.com",
+      "reachable": false,
+      "latency_ms": 391,
+      "method_tested": "eth_chainId",
+      "response_preview": "",
+      "error": "URLError: <urlopen error [Errno -2] Name or service not known>"
+    },
+    {
+      "chain": "bsc",
+      "endpoint_name": "fallback_1rpc",
+      "endpoint_redacted": "https://1rpc.io/bnb",
+      "reachable": false,
+      "latency_ms": 1036,
+      "method_tested": "eth_chainId",
+      "response_preview": "",
+      "error": "URLError: <urlopen error [Errno 104] Connection reset by peer>"
+    },
+    {
+      "chain": "solana",
+      "endpoint_name": "fallback_api",
+      "endpoint_redacted": "https://api.mainnet-beta.solana.com",
+      "reachable": true,
+      "latency_ms": 59,
+      "method_tested": "getHealth",
+      "response_preview": "ok",
+      "error": ""
+    },
+    {
+      "chain": "solana",
+      "endpoint_name": "fallback_solana-rpc",
+      "endpoint_redacted": "https://solana-rpc.publicnode.com",
+      "reachable": false,
+      "latency_ms": 516,
+      "method_tested": "getHealth",
+      "response_preview": "",
+      "error": "HTTPError: HTTP Error 403: Forbidden"
+    },
+    {
+      "chain": "solana",
+      "endpoint_name": "fallback_1rpc",
+      "endpoint_redacted": "https://1rpc.io/solana",
+      "reachable": false,
+      "latency_ms": 1106,
+      "method_tested": "getHealth",
+      "response_preview": "",
+      "error": "URLError: <urlopen error [Errno 104] Connection reset by peer>"
+    }
+  ],
+  "no_touch_invariants": {
+    "no_wallet_keypair_signer": true,
+    "no_tx_send_approve_mint": true,
+    "no_production_write": true,
+    "no_collector_started": true,
+    "no_12h_retry_started": true
+  }
+}

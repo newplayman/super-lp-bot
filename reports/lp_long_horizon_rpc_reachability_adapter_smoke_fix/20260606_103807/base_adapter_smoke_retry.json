@@ -1,0 +1,54 @@
+{
+  "stage": "LP_LONG_HORIZON_COLLECTOR_RPC_REACHABILITY_AND_ADAPTER_SMOKE_FIX_V1",
+  "section": "base_adapter_smoke_retry",
+  "run_id": "20260606_103807",
+  "branch": "feat/supabase-postgres-deployment",
+  "base_rpc_reachable": false,
+  "base_rpc_selected": null,
+  "uniswap_v3_smoke_success_count": 0,
+  "aerodrome_classic_smoke_success_count": 0,
+  "aerodrome_slipstream_supported": false,
+  "slipstream_supported": false,
+  "pool_snapshot_rows": 0,
+  "quote_snapshot_rows": 0,
+  "error_count": 4,
+  "summaries": [
+    {
+      "adapter": "evm_base_uniswap_v3",
+      "pool_address": "0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38",
+      "snapshot_error": "rpc_unavailable_base_all_endpoints_failed",
+      "quote_count": 0,
+      "quote_errors": 0
+    },
+    {
+      "adapter": "evm_base_uniswap_v3",
+      "pool_address": "0x0000000000000000000000000000000000000a01",
+      "snapshot_error": "rpc_unavailable_base_all_endpoints_failed",
+      "quote_count": 0,
+      "quote_errors": 0
+    },
+    {
+      "adapter": "evm_base_aerodrome",
+      "pool_address": "0x0000000000000000000000000000000000000b01",
+      "pool_subtype": "classic",
+      "snapshot_error": "rpc_unavailable_base_all_endpoints_failed",
+      "quote_count": 0,
+      "quote_errors": 0
+    },
+    {
+      "adapter": "evm_base_aerodrome",
+      "pool_address": "0x0000000000000000000000000000000000000b02",
+      "pool_subtype": "slipstream",
+      "snapshot_error": "slipstream_not_supported_in_this_stage",
+      "quote_count": 0,
+      "quote_errors": 0
+    }
+  ],
+  "no_touch_invariants": {
+    "no_wallet_keypair_signer": true,
+    "no_tx_send_approve_mint": true,
+    "no_production_write": true,
+    "no_collector_started": true,
+    "no_12h_retry_started": true
+  }
+}
