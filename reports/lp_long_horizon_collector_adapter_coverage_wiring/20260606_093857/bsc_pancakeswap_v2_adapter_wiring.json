@@ -1,0 +1,54 @@
+{
+  "stage": "LP_LONG_HORIZON_COLLECTOR_ADAPTER_COVERAGE_WIRING_V1",
+  "section": "bsc_pancakeswap_v2_adapter_smoke",
+  "run_id": "20260606_093857",
+  "branch": "feat/supabase-postgres-deployment",
+  "adapter_file": "scripts/lp_long_horizon/adapters/evm_bsc_pancakeswap_v2.py",
+  "smoke_pool_count": 2,
+  "pool_snapshot_rows": 0,
+  "quote_snapshot_rows": 0,
+  "error_count": 2,
+  "adapter_ready": true,
+  "pancake_v2_factory_address": "0xcA143Ce32Fe78f1f7019d7d551a6402fD5350a73",
+  "fee_bps": 20,
+  "cpmm_formula_test": {
+    "input_wei": 1000000000000000000000,
+    "reserve_in": 1000000000000000000000000,
+    "reserve_out": 1000000000000000000000000,
+    "fee_bps": 20,
+    "expected_approx": 980000000000000000000,
+    "actual_out_wei": 997004989020957084829
+  },
+  "smoke_ran": true,
+  "summaries": [
+    {
+      "pool_address": "0x16b9a82891338f9bA80E2D6970FddA79D1d0E162",
+      "snapshot_error": "getReserves_decode_too_short",
+      "reserve0": 0,
+      "reserve1": 0,
+      "token0": "",
+      "token1": "",
+      "total_supply": 0,
+      "quote_count": 0,
+      "quote_errors": 0
+    },
+    {
+      "pool_address": "0x0000000000000000000000000000000000000d01",
+      "snapshot_error": "getReserves_decode_too_short",
+      "reserve0": 0,
+      "reserve1": 0,
+      "token0": "",
+      "token1": "",
+      "total_supply": 0,
+      "quote_count": 0,
+      "quote_errors": 0
+    }
+  ],
+  "no_touch_invariants": {
+    "no_wallet_keypair_signer": true,
+    "no_tx_send_approve_mint": true,
+    "no_production_write": true,
+    "no_collector_started": true,
+    "no_12h_retry_started": true
+  }
+}

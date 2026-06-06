@@ -1,0 +1,44 @@
+{
+  "stage": "LP_LONG_HORIZON_COLLECTOR_ADAPTER_COVERAGE_WIRING_V1",
+  "section": "meteora_dlmm_long_horizon_adapter_check",
+  "run_id": "20260606_093857",
+  "branch": "feat/supabase-postgres-deployment",
+  "adapter_file": "scripts/lp_long_horizon/adapters/solana_meteora_dlmm_check.py",
+  "meteora_dlmm_owner": "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo",
+  "meteora_dlmm_data_len": 904,
+  "reuses_solana_rpc_readonly": true,
+  "meteora_dlmm_long_horizon_adapter_ready": false,
+  "rpc_unavailable": true,
+  "smoke_ran": true,
+  "test_pool_count": 2,
+  "verified_pool_count": 0,
+  "summaries": [
+    {
+      "pool_address": "5BKxfWMbmYBAEWvyPZS9esPducUba9GqyMjtLCfbaqyF",
+      "account_exists": false,
+      "owner": "",
+      "owner_is_meteora_dlmm": false,
+      "data_len": 0,
+      "dlmm_sized": false,
+      "verified": false,
+      "error": "account_not_returned_or_rpc_unavailable"
+    },
+    {
+      "pool_address": "9DiruRpjnAnzhn6ts5HGLouHtJrT1JGsPbXNYCrFz2ad",
+      "account_exists": false,
+      "owner": "",
+      "owner_is_meteora_dlmm": false,
+      "data_len": 0,
+      "dlmm_sized": false,
+      "verified": false,
+      "error": "account_not_returned_or_rpc_unavailable"
+    }
+  ],
+  "no_touch_invariants": {
+    "no_wallet_keypair_signer": true,
+    "no_tx_send_approve_mint": true,
+    "no_production_write": true,
+    "no_collector_started": true,
+    "no_12h_retry_started": true
+  }
+}

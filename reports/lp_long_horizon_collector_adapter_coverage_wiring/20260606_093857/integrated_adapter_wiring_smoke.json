@@ -1,0 +1,290 @@
+{
+  "stage": "LP_LONG_HORIZON_COLLECTOR_ADAPTER_COVERAGE_WIRING_V1",
+  "section": "integrated_adapter_wiring_smoke",
+  "run_id": "20260606_093857",
+  "branch": "feat/supabase-postgres-deployment",
+  "smoke_ran": true,
+  "smoke_output_dir": "/opt/lpbot/lp-bot-v3-origin-check/data/lp_long_horizon_adapter_wiring_smoke/20260606_093857",
+  "smoke_universe_source": "reports/lp_long_horizon_real_pool_universe_coverage_expand/20260606_091120/expanded_real_pool_universe_for_12h_retry.json",
+  "selected_pool_count": 12,
+  "real_pool_universe_used": true,
+  "placeholder_pool_count": 0,
+  "all_pools_are_real_on_chain": true,
+  "pool_snapshot_rows": 12,
+  "quote_snapshot_rows": 72,
+  "fee_velocity_rows": 60,
+  "liquidity_distribution_rows": 12,
+  "market_regime_rows": 7,
+  "chain_distribution": {
+    "solana": 12
+  },
+  "protocol_distribution": {
+    "solana/orca_whirlpool": 5,
+    "solana/raydium_cpmm": 4,
+    "solana/raydium_clmm": 3
+  },
+  "chain_observed_count": 2,
+  "protocol_observed_count": 4,
+  "observable_pool_count": 13,
+  "non_observable_pool_count": 59,
+  "observable_per_chain": {
+    "solana": 12,
+    "base": 0,
+    "bsc": 1
+  },
+  "error_count": 6,
+  "per_adapter_smoke_results": {
+    "base_uniswap_v3": {
+      "stage": "LP_LONG_HORIZON_COLLECTOR_ADAPTER_COVERAGE_WIRING_V1",
+      "section": "base_uniswap_v3_adapter_smoke",
+      "run_id": "20260606_093857",
+      "branch": "feat/supabase-postgres-deployment",
+      "adapter_file": "scripts/lp_long_horizon/adapters/evm_base_uniswap_v3.py",
+      "smoke_pool_count": 2,
+      "pool_snapshot_rows": 0,
+      "quote_snapshot_rows": 0,
+      "error_count": 2,
+      "adapter_ready": true,
+      "collector_observable": false,
+      "rpc_unavailable_recorded": true,
+      "public_rpc_endpoint": "https://mainnet.base.org",
+      "smoke_ran": true,
+      "summaries": [
+        {
+          "pool_address": "0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38",
+          "snapshot_error": "rpc_unavailable: HTTPError",
+          "sqrt_price_x96": 0,
+          "tick": 0,
+          "liquidity": 0,
+          "fee": 0,
+          "token0": "",
+          "token1": "",
+          "quote_count": 0,
+          "quote_errors": 0
+        },
+        {
+          "pool_address": "0x0000000000000000000000000000000000000a01",
+          "snapshot_error": "rpc_unavailable: HTTPError",
+          "sqrt_price_x96": 0,
+          "tick": 0,
+          "liquidity": 0,
+          "fee": 0,
+          "token0": "",
+          "token1": "",
+          "quote_count": 0,
+          "quote_errors": 0
+        }
+      ],
+      "no_touch_invariants": {
+        "no_wallet_keypair_signer": true,
+        "no_tx_send_approve_mint": true,
+        "no_production_write": true,
+        "no_collector_started": true,
+        "no_12h_retry_started": true
+      }
+    },
+    "base_aerodrome": {
+      "stage": "LP_LONG_HORIZON_COLLECTOR_ADAPTER_COVERAGE_WIRING_V1",
+      "section": "base_aerodrome_adapter_smoke",
+      "run_id": "20260606_093857",
+      "branch": "feat/supabase-postgres-deployment",
+      "adapter_file": "scripts/lp_long_horizon/adapters/evm_base_aerodrome.py",
+      "smoke_pool_count": 2,
+      "pool_snapshot_rows": 0,
+      "quote_snapshot_rows": 0,
+      "error_count": 1,
+      "classic_count": 1,
+      "slipstream_count": 1,
+      "classic_adapter_ready": true,
+      "slipstream_adapter_ready": false,
+      "slipstream_marked_not_supported": true,
+      "aerodrome_pool_factory_address": "0x420DD381b31aEf6683db6B902084cB0FFECe40Da",
+      "smoke_ran": true,
+      "summaries": [
+        {
+          "pool_address": "0x0000000000000000000000000000000000000b01",
+          "pool_subtype": "classic",
+          "snapshot_error": "rpc_unavailable: HTTPError",
+          "reserve0": 0,
+          "reserve1": 0,
+          "stable": false,
+          "token0": "",
+          "token1": "",
+          "quote_count": 0,
+          "quote_errors": 0
+        },
+        {
+          "pool_address": "0x0000000000000000000000000000000000000b02",
+          "pool_subtype": "slipstream",
+          "snapshot_error": "slipstream_not_supported_in_this_stage_custom_tick_math_adapter_not_implemented",
+          "reserve0": 0,
+          "reserve1": 0,
+          "stable": false,
+          "token0": "",
+          "token1": "",
+          "quote_count": 0,
+          "quote_errors": 0
+        }
+      ],
+      "no_touch_invariants": {
+        "no_wallet_keypair_signer": true,
+        "no_tx_send_approve_mint": true,
+        "no_production_write": true,
+        "no_collector_started": true,
+        "no_12h_retry_started": true
+      }
+    },
+    "bsc_pancakeswap_v3": {
+      "stage": "LP_LONG_HORIZON_COLLECTOR_ADAPTER_COVERAGE_WIRING_V1",
+      "section": "bsc_pancakeswap_v3_adapter_smoke",
+      "run_id": "20260606_093857",
+      "branch": "feat/supabase-postgres-deployment",
+      "adapter_file": "scripts/lp_long_horizon/adapters/evm_bsc_pancakeswap_v3.py",
+      "smoke_pool_count": 2,
+      "pool_snapshot_rows": 1,
+      "quote_snapshot_rows": 6,
+      "error_count": 1,
+      "adapter_ready": true,
+      "quoter_v2_address": "0xB048Bbc1Ee6b733FFfCFb9e9CeF7375518e25997",
+      "smoke_ran": true,
+      "summaries": [
+        {
+          "pool_address": "0x36696169C63e42cd08ce11f5deeBbCeBae652050",
+          "snapshot_error": "",
+          "sqrt_price_x96": 3298573634665582735803265530,
+          "tick": -63581,
+          "liquidity": 230925451494896775301857,
+          "fee": 500,
+          "token0": "0x55d398326f99059ff775485246999027b3197955",
+          "token1": "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c",
+          "quote_count": 6,
+          "quote_errors": 0
+        },
+        {
+          "pool_address": "0x0000000000000000000000000000000000000c01",
+          "snapshot_error": "slot0_decode_too_short",
+          "sqrt_price_x96": 0,
+          "tick": 0,
+          "liquidity": 0,
+          "fee": 0,
+          "token0": "",
+          "token1": "",
+          "quote_count": 0,
+          "quote_errors": 0
+        }
+      ],
+      "no_touch_invariants": {
+        "no_wallet_keypair_signer": true,
+        "no_tx_send_approve_mint": true,
+        "no_production_write": true,
+        "no_collector_started": true,
+        "no_12h_retry_started": true
+      }
+    },
+    "bsc_pancakeswap_v2": {
+      "stage": "LP_LONG_HORIZON_COLLECTOR_ADAPTER_COVERAGE_WIRING_V1",
+      "section": "bsc_pancakeswap_v2_adapter_smoke",
+      "run_id": "20260606_093857",
+      "branch": "feat/supabase-postgres-deployment",
+      "adapter_file": "scripts/lp_long_horizon/adapters/evm_bsc_pancakeswap_v2.py",
+      "smoke_pool_count": 2,
+      "pool_snapshot_rows": 0,
+      "quote_snapshot_rows": 0,
+      "error_count": 2,
+      "adapter_ready": true,
+      "pancake_v2_factory_address": "0xcA143Ce32Fe78f1f7019d7d551a6402fD5350a73",
+      "fee_bps": 20,
+      "cpmm_formula_test": {
+        "input_wei": 1000000000000000000000,
+        "reserve_in": 1000000000000000000000000,
+        "reserve_out": 1000000000000000000000000,
+        "fee_bps": 20,
+        "expected_approx": 980000000000000000000,
+        "actual_out_wei": 997004989020957084829
+      },
+      "smoke_ran": true,
+      "summaries": [
+        {
+          "pool_address": "0x16b9a82891338f9bA80E2D6970FddA79D1d0E162",
+          "snapshot_error": "getReserves_decode_too_short",
+          "reserve0": 0,
+          "reserve1": 0,
+          "token0": "",
+          "token1": "",
+          "total_supply": 0,
+          "quote_count": 0,
+          "quote_errors": 0
+        },
+        {
+          "pool_address": "0x0000000000000000000000000000000000000d01",
+          "snapshot_error": "getReserves_decode_too_short",
+          "reserve0": 0,
+          "reserve1": 0,
+          "token0": "",
+          "token1": "",
+          "total_supply": 0,
+          "quote_count": 0,
+          "quote_errors": 0
+        }
+      ],
+      "no_touch_invariants": {
+        "no_wallet_keypair_signer": true,
+        "no_tx_send_approve_mint": true,
+        "no_production_write": true,
+        "no_collector_started": true,
+        "no_12h_retry_started": true
+      }
+    },
+    "meteora_dlmm": {
+      "stage": "LP_LONG_HORIZON_COLLECTOR_ADAPTER_COVERAGE_WIRING_V1",
+      "section": "meteora_dlmm_long_horizon_adapter_check",
+      "run_id": "20260606_093857",
+      "branch": "feat/supabase-postgres-deployment",
+      "adapter_file": "scripts/lp_long_horizon/adapters/solana_meteora_dlmm_check.py",
+      "meteora_dlmm_owner": "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo",
+      "meteora_dlmm_data_len": 904,
+      "reuses_solana_rpc_readonly": true,
+      "meteora_dlmm_long_horizon_adapter_ready": false,
+      "rpc_unavailable": true,
+      "smoke_ran": true,
+      "test_pool_count": 2,
+      "verified_pool_count": 0,
+      "summaries": [
+        {
+          "pool_address": "5BKxfWMbmYBAEWvyPZS9esPducUba9GqyMjtLCfbaqyF",
+          "account_exists": false,
+          "owner": "",
+          "owner_is_meteora_dlmm": false,
+          "data_len": 0,
+          "dlmm_sized": false,
+          "verified": false,
+          "error": "account_not_returned_or_rpc_unavailable"
+        },
+        {
+          "pool_address": "9DiruRpjnAnzhn6ts5HGLouHtJrT1JGsPbXNYCrFz2ad",
+          "account_exists": false,
+          "owner": "",
+          "owner_is_meteora_dlmm": false,
+          "data_len": 0,
+          "dlmm_sized": false,
+          "verified": false,
+          "error": "account_not_returned_or_rpc_unavailable"
+        }
+      ],
+      "no_touch_invariants": {
+        "no_wallet_keypair_signer": true,
+        "no_tx_send_approve_mint": true,
+        "no_production_write": true,
+        "no_collector_started": true,
+        "no_12h_retry_started": true
+      }
+    }
+  },
+  "no_touch_invariants": {
+    "no_wallet_keypair_signer": true,
+    "no_tx_send_approve_mint": true,
+    "no_production_write": true,
+    "no_collector_started": true,
+    "no_12h_retry_started": true
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "stage": "LP_LONG_HORIZON_COLLECTOR_ADAPTER_COVERAGE_WIRING_V1",
+  "section": "bsc_pancakeswap_v3_adapter_smoke",
+  "run_id": "20260606_093857",
+  "branch": "feat/supabase-postgres-deployment",
+  "adapter_file": "scripts/lp_long_horizon/adapters/evm_bsc_pancakeswap_v3.py",
+  "smoke_pool_count": 2,
+  "pool_snapshot_rows": 1,
+  "quote_snapshot_rows": 6,
+  "error_count": 1,
+  "adapter_ready": true,
+  "quoter_v2_address": "0xB048Bbc1Ee6b733FFfCFb9e9CeF7375518e25997",
+  "smoke_ran": true,
+  "summaries": [
+    {
+      "pool_address": "0x36696169C63e42cd08ce11f5deeBbCeBae652050",
+      "snapshot_error": "",
+      "sqrt_price_x96": 3298573634665582735803265530,
+      "tick": -63581,
+      "liquidity": 230925451494896775301857,
+      "fee": 500,
+      "token0": "0x55d398326f99059ff775485246999027b3197955",
+      "token1": "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c",
+      "quote_count": 6,
+      "quote_errors": 0
+    },
+    {
+      "pool_address": "0x0000000000000000000000000000000000000c01",
+      "snapshot_error": "slot0_decode_too_short",
+      "sqrt_price_x96": 0,
+      "tick": 0,
+      "liquidity": 0,
+      "fee": 0,
+      "token0": "",
+      "token1": "",
+      "quote_count": 0,
+      "quote_errors": 0
+    }
+  ],
+  "no_touch_invariants": {
+    "no_wallet_keypair_signer": true,
+    "no_tx_send_approve_mint": true,
+    "no_production_write": true,
+    "no_collector_started": true,
+    "no_12h_retry_started": true
+  }
+}

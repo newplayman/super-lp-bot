@@ -1,0 +1,49 @@
+{
+  "stage": "LP_LONG_HORIZON_COLLECTOR_ADAPTER_COVERAGE_WIRING_V1",
+  "section": "base_uniswap_v3_adapter_smoke",
+  "run_id": "20260606_093857",
+  "branch": "feat/supabase-postgres-deployment",
+  "adapter_file": "scripts/lp_long_horizon/adapters/evm_base_uniswap_v3.py",
+  "smoke_pool_count": 2,
+  "pool_snapshot_rows": 0,
+  "quote_snapshot_rows": 0,
+  "error_count": 2,
+  "adapter_ready": true,
+  "collector_observable": false,
+  "rpc_unavailable_recorded": true,
+  "public_rpc_endpoint": "https://mainnet.base.org",
+  "smoke_ran": true,
+  "summaries": [
+    {
+      "pool_address": "0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38",
+      "snapshot_error": "rpc_unavailable: HTTPError",
+      "sqrt_price_x96": 0,
+      "tick": 0,
+      "liquidity": 0,
+      "fee": 0,
+      "token0": "",
+      "token1": "",
+      "quote_count": 0,
+      "quote_errors": 0
+    },
+    {
+      "pool_address": "0x0000000000000000000000000000000000000a01",
+      "snapshot_error": "rpc_unavailable: HTTPError",
+      "sqrt_price_x96": 0,
+      "tick": 0,
+      "liquidity": 0,
+      "fee": 0,
+      "token0": "",
+      "token1": "",
+      "quote_count": 0,
+      "quote_errors": 0
+    }
+  ],
+  "no_touch_invariants": {
+    "no_wallet_keypair_signer": true,
+    "no_tx_send_approve_mint": true,
+    "no_production_write": true,
+    "no_collector_started": true,
+    "no_12h_retry_started": true
+  }
+}
