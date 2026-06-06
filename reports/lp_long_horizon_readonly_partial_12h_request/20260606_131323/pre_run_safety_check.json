@@ -1,0 +1,74 @@
+{
+  "stage": "LP_LONG_HORIZON_READONLY_CONTINUOUS_12H_PARTIAL_REAL_UNIVERSE_REQUEST_V1",
+  "section": "pre_run_safety_check",
+  "run_id": "20260606_131323",
+  "branch": "feat/supabase-postgres-deployment",
+  "checked_at_utc": "2026-06-06T13:19:00Z",
+  "checks": {
+    "no_running_long_horizon_collector": {
+      "pass": true,
+      "detail": "ps aux | grep -E 'run_lp_long_horizon_readonly_stage_once|lp_long_horizon_readonly_collector_v1|tmux: server' → no matches. Safe to launch."
+    },
+    "no_canary_live_paper": {
+      "pass": true,
+      "detail": "ps aux | grep -E 'canary|lpbot-live|live|paper' → no matches. Safe to launch."
+    },
+    "no_wallet_keypair_process": {
+      "pass": true,
+      "detail": "ps aux | grep -E 'keypair|private_key|mnemonic' → no matches. Safe to launch."
+    },
+    "no_sendTransaction_process": {
+      "pass": true,
+      "detail": "ps aux | grep -E 'sendTransaction|eth_sendRawTransaction|eth_sendTransaction' → no matches. Safe to launch."
+    },
+    "partial_universe_no_placeholder": {
+      "pass": true,
+      "detail": "All 53 selected pools have real pool_addresses (no <smoke_pool_>, no PENDING_*_RPC_VALIDATION). placeholder_pool_count=0."
+    },
+    "selected_pool_count_ge_45": {
+      "pass": true,
+      "detail": "53 pools selected (45 Solana + 8 BSC V3 distribution check shows 49 Solana + 4 BSC). 53 >= 45 ✓"
+    },
+    "partial_universe_chains_solana_bsc": {
+      "pass": true,
+      "detail": "chain_distribution: solana=49, bsc=4. observed_chains=['solana','bsc'], missing=['base']. matches scope=partial_solana_bsc."
+    },
+    "data_dir_writable": {
+      "pass": true,
+      "detail": "data_dir=data/lp_long_horizon/20260606_131323 created and writable (mkdir -p + touch test)."
+    },
+    "report_dir_writable": {
+      "pass": true,
+      "detail": "report_dir=reports/lp_long_horizon_readonly_12h_run/20260606_131323 created and writable."
+    },
+    "partial_universe_path_exists": {
+      "pass": true,
+      "detail": "reports/lp_long_horizon_readonly_partial_12h_request/20260606_131323/partial_observable_real_pool_universe_for_12h.json exists."
+    },
+    "approval_record_exists": {
+      "pass": true,
+      "detail": "MANUAL_APPROVAL_RECORDED.json exists with approval_phrase=APPROVE_LP_LONG_HORIZON_READONLY_STAGE_RUN stage=12h mode=readonly no_probe=true scope=partial_solana_bsc."
+    },
+    "run_config_exists": {
+      "pass": true,
+      "detail": "twelve_hour_partial_run_config.json exists with duration_hours=12, checkpoint_interval_minutes=60, no auto advance."
+    }
+  },
+  "all_checks_passed": true,
+  "decision": "PROCEED_TO_LAUNCH",
+  "decision_rationale": "All 12 safety checks passed. partial universe (53 pools, 5 protocols, Solana+BSC only) is clean, dirs writable, approval recorded, no forbidden processes. Safe to launch 12h partial collector.",
+  "no_touch_invariants": {
+    "no_wallet_keypair_signer": true,
+    "no_tx_send_approve_mint": true,
+    "no_production_write": true,
+    "no_collector_started_yet": true,
+    "no_12h_retry_started_yet": true,
+    "no_paid_rpc_indexer": true,
+    "no_shadow_overwrite": true,
+    "no_cron_systemd_daemon": true,
+    "no_tmux_session_created_pre_launch": true,
+    "no_paid_rpc_key_committed": true,
+    "no_real_secret_committed": true,
+    "do_not_treat_as_full_universe": true
+  }
+}

@@ -1,0 +1,111 @@
+{
+  "stage": "LP_LONG_HORIZON_READONLY_CONTINUOUS_12H_PARTIAL_REAL_UNIVERSE_REQUEST_V1",
+  "run_id": "20260606_131323",
+  "branch": "feat/supabase-postgres-deployment",
+  "audit_at_utc": "2026-06-06T13:14:00Z",
+  "input_files": {
+    "prior_stage_rpc_reachability_verdict": "reports/lp_long_horizon_rpc_reachability_adapter_smoke_fix/20260606_103807/FINAL_VERDICT.json",
+    "prior_stage_integrated_smoke_retry": "reports/lp_long_horizon_rpc_reachability_adapter_smoke_fix/20260606_103807/integrated_observable_smoke_retry.json",
+    "current_72_pool_universe": "reports/lp_long_horizon_real_pool_universe_coverage_expand/20260606_091120/expanded_real_pool_universe_for_12h_retry.json",
+    "collector": "scripts/lp_long_horizon_readonly_collector_v1.py",
+    "stage_runner": "scripts/run_lp_long_horizon_readonly_stage_once.sh"
+  },
+  "input_evidence_confirmed": {
+    "full_coverage_ready": false,
+    "observable_pool_count": 49,
+    "observable_chain_count": 2,
+    "observable_protocol_count": 5,
+    "placeholder_pool_count": 0,
+    "expanded_pool_count": 72,
+    "base_rpc_blocker_exists": true,
+    "meteora_dlmm_rpc_blocker_exists": true,
+    "bsc_v3_rpc_reachable_4_pools_real": true,
+    "this_stage_is_partial_12h_not_full_12h": true,
+    "this_stage_observable_chains": ["solana", "bsc"],
+    "this_stage_missing_chains": ["base"],
+    "this_stage_does_not_modify_supervisor_runner": true,
+    "this_stage_does_not_modify_collector_main": true,
+    "this_stage_does_not_modify_12h_6h_data_dirs": true,
+    "this_stage_does_not_modify_v2_verdicts": true,
+    "this_stage_auto_advance_to_24h": false,
+    "no_paid_rpc_key_committed": true,
+    "no_real_secret_committed": true,
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no"
+  },
+  "fix_strategy": {
+    "stage_b_steps": [
+      "Write PARTIAL_12H_SCOPE_FREEZE_CN.md + partial_12h_scope_freeze.json",
+      "coverage_scope=partial_solana_bsc_real_universe",
+      "full_coverage_ready=false, do_not_treat_as_full_universe=true"
+    ],
+    "stage_c_steps": [
+      "Filter expanded universe: keep only pools where collector_observable=true (45 Solana + 4 BSC V3)",
+      "Exclude all Base pools (10 pools, public RPC unreachable)",
+      "Exclude BSC V2 zero-getPair pools (0 pools, but pending factory.getPair resolution)",
+      "Exclude all PENDING_*_RPC_VALIDATION markers (5 pools total)",
+      "Output partial_observable_real_pool_universe_for_12h.csv + .json"
+    ],
+    "stage_d_steps": [
+      "Record approval_phrase=APPROVE_LP_LONG_HORIZON_READONLY_STAGE_RUN stage=12h mode=readonly no_probe=true scope=partial_solana_bsc",
+      "auto_advance_allowed=false, approved_next_stages=[]"
+    ],
+    "stage_e_steps": [
+      "12h duration, 60min checkpoint, 15min heartbeat",
+      "no auto advance to 24h, no probe, no wallet, no tx",
+      "pool_universe_path=partial_observable_real_pool_universe_for_12h.json"
+    ],
+    "stage_f_steps": [
+      "Verify no running long-horizon collector (ps aux | grep)",
+      "Verify no canary/live/paper/keypair (ps aux | grep)",
+      "Verify partial universe has no placeholder (placeholder_pool_count=0)",
+      "Verify selected_pool_count >= 45",
+      "Verify data dir and report dir writable",
+      "Verify pytest pass",
+      "If ANY check fails: DO NOT LAUNCH"
+    ],
+    "stage_g_steps": [
+      "Launch via tmux or nohup: lp_long_horizon_12h_partial_<RUN_ID>",
+      "Use --pool-universe, --duration-hours 12, --readonly, --no-probe, --no-auto-next",
+      "Healthcheck 2-3 min: process alive, first heartbeat, logs updating, no wallet/tx/probe, no 24h started",
+      "Commit + push"
+    ],
+    "stage_h_steps": [
+      "After 12h, stage runner auto-finalize",
+      "Generate FINAL_VERDICT.json (status PASS/WARN/FAIL, gate_pass based on actual_runtime)",
+      "Generate ONEPAGE_CN.md, ARTIFACT_INDEX.md, node report, coverage manifest, fee estimation basis, candidate review, next node decision"
+    ]
+  },
+  "audit_outcome": "PASS",
+  "audit_locked_fields": {
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no",
+    "wallet_or_tx_touched": false,
+    "transaction_sent": false,
+    "long_run_started": false,
+    "auto_advance_to_24h_disabled": true,
+    "do_not_treat_as_full_universe": true,
+    "no_12h_data_modification": true,
+    "no_6h_data_modification": true,
+    "no_modify_v2_12h_FINAL_VERDICT": true,
+    "no_modify_v2_12h_corrected_verdict": true,
+    "no_modify_v2_6h_FINAL_VERDICT": true,
+    "no_modify_v2_6h_corrected_verdict": true,
+    "no_modify_12h_node_report": true,
+    "no_modify_supervisor_runner": true,
+    "no_modify_collector_main": true,
+    "no_start_24h_48h_72h_7d": true,
+    "no_long_running_parallel_collector": true,
+    "no_probe_canary_live_paper": true,
+    "no_wallet_keypair_signer": true,
+    "no_tx_send_approve_mint": true,
+    "no_paid_rpc_indexer": true,
+    "no_production_write": true,
+    "no_shadow_overwrite": true,
+    "no_cron_systemd_daemon": true,
+    "no_tmux_session_created_pre_safety_check": true,
+    "no_collector_started_pre_safety_check": true,
+    "no_paid_rpc_key_committed": true,
+    "no_real_secret_committed": true
+  }
+}
