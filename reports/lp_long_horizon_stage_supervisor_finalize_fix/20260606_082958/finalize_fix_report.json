@@ -1,0 +1,133 @@
+{
+  "stage": "LP_LONG_HORIZON_STAGE_SUPERVISOR_FINALIZE_FIX_V1",
+  "run_id": "20260606_082958",
+  "branch": "feat/supabase-postgres-deployment",
+  "generated_at_utc": "2026-06-06T08:45:00Z",
+
+  "v3_bug_summary": {
+    "bug_id": "STAGE_RUNNER_V3_LOWERCASE_BOOLEAN_INTERPOLATION",
+    "introduced_in": "V3 (12h supervisor) — when generalizing from V2 6h supervisor",
+    "severity": "high — raw FINAL_VERDICT corrupted on every stage (6h/12h/24h/48h/72h/7d)",
+    "symptom": "raw FINAL_VERDICT.json status=FAIL with default-zeros row counts even when the actual data is good; corrected verdict required to disambiguate",
+    "trigger": "Post-stage Python block (line 361, 471, 494) interpolates bash ${REAL_GATE_PASS} (lowercase 'true'/'false') directly into Python dict values and ternary expressions. Python interprets these as bare names, raising NameError. The post-stage python block exits with rc=1, fail-safe trap writes default-zeros FINAL_VERDICT (status=FAIL, pool_snapshot_rows=0, etc.).",
+    "fix": "All 4 Python heredocs (trap, aggregate, finalize, fallback) converted to quoted form (<<'PYEOF_...'). Bash values exported as environment variables. Python reads os.environ (integers + strings only) and computes boolean comparisons in Python with proper bool type. aggregate_summary.json now writes a real JSON bool. Finalize + fallback read it via json.loads."
+  },
+
+  "lines_modified": {
+    "scripts/run_lp_long_horizon_readonly_stage_once.sh": {
+      "line_167_172_trap_setup": "Added comment explaining trap is a fail-safe and does not depend on aggregate_summary.json.",
+      "line_179_trap_python_invocation": "Changed python3 - <<PYEOF_TRAP → python3 - <<'PYEOF_TRAP' (quoted heredoc).",
+      "line_180_183_trap_env_exports": "Added export TRAP_REPORT_DIR / TRAP_ELAPSED_MIN_TRAP / TRAP_DURATION_HOURS / TRAP_TOLERANCE_MIN / TRAP_STAGE_NAME / TRAP_RUN_ID / TRAP_SESSION / TRAP_SIGNAL / TRAP_RC for trap block.",
+      "line_184_232_trap_body": "Python block rewritten: reads os.environ values; computes runtime_valid = elapsed_min_trap >= (duration_hours * 60 - tolerance_min); no bash boolean interpolation.",
+      "line_316_323_gate_decision": "(unchanged) Sets REAL_GATE_PASS and GATE_DECISION bash vars. Note: REAL_GATE_PASS is no longer used in any Python heredoc — it is preserved only for the bash log line and the gate check. GATE_DECISION is exported as env var for aggregate block.",
+      "line_325_330_aggregate_env_exports": "Added export DATA_DIR LOG_DIR STAGE_NAME RUN_ID LOOP_COUNT SLEEP_SECONDS ELAPSED_MIN DURATION_HOURS TOLERANCE_MIN GATE_DECISION REPORT_DIR SESSION before aggregate python invocation.",
+      "line_341_415_aggregate_block": "Changed python3 <<PYEOF → python3 <<'PYEOF_AGG' (quoted). Body rewritten: reads os.environ, computes runtime_valid in Python, writes aggregate_summary.json with real JSON bool for actual_runtime_valid_for_<STAGE>_gate.",
+      "line_431_497_finalize_block": "Changed python3 <<PYEOF → python3 <<'PYEOF_FINAL' (quoted). Body rewritten: reads aggregate_summary.json via json.loads (proper bool), computes status / data_quality / recommended_next_stage in Python, writes FINAL_VERDICT.json.",
+      "line_505_569_fallback_block": "Changed python3 - <<PYEOF_FALLBACK → python3 - <<'PYEOF_FALLBACK' (quoted). Body rewritten: reads aggregate_summary.json via json.loads; falls back to ELAPSED_MIN/DURATION_HOURS/TOLERANCE_MIN env vars if JSON missing; runtime_valid is a real Python bool. Writes CORRECTED_FINAL_VERDICT_FALLBACK.json."
+    }
+  },
+
+  "new_files_added": {
+    "scripts/test_stage_supervisor_finalize_from_existing_checkpoints_v1.py": "Dry-run test script. Re-runs the supervisor finalize logic against existing checkpoint fixture data, writing to a separate --out dir. Used by tests/test_lp_long_horizon_stage_supervisor_finalize_fix_v1.py to verify the fix works end-to-end on real 12h data without modifying the source.",
+    "tests/test_lp_long_horizon_stage_supervisor_finalize_fix_v1.py": "22 pytest tests covering: input evidence audit, supervisor finalize fix verification (no bash boolean in Python heredoc, all heredocs quoted, no fallback corruption), dry-run script correctness, no forbidden process, locked fields, allowed next stages."
+  },
+
+  "dry_run_results": {
+    "input": {
+      "source_data": "data/lp_long_horizon/20260605_082120",
+      "source_report": "reports/lp_long_horizon_readonly_12h_run/20260605_082120",
+      "dry_run_out": "data/lp_long_horizon_supervisor_finalize_dryrun/20260606_082958",
+      "stage": "12h",
+      "run_id": "20260606_082958"
+    },
+    "aggregate_summary": {
+      "checkpoint_count": 12,
+      "actual_runtime_minutes": 720,
+      "actual_runtime_valid_for_12h_gate": true,
+      "gate_decision": "PASS",
+      "row_counts_deduped": {
+        "pool_snapshots": 5,
+        "quote_snapshots": 360,
+        "fee_velocity": 300,
+        "liquidity_distribution": 60,
+        "market_regime": 84,
+        "actual_fee_accrual": 12
+      },
+      "selected_pool_count": 5
+    },
+    "FINAL_VERDICT_status": "PASS",
+    "FINAL_VERDICT_pool_snapshot_rows": 5,
+    "FINAL_VERDICT_quote_snapshot_rows": 360,
+    "FINAL_VERDICT_fee_velocity_rows": 300,
+    "FINAL_VERDICT_liquidity_distribution_rows": 60,
+    "FINAL_VERDICT_market_regime_rows": 84,
+    "FINAL_VERDICT_actual_fee_accrual_placeholder_rows": 12,
+    "FINAL_VERDICT_gate_pass": true,
+    "FINAL_VERDICT_actual_runtime_valid_for_12h_gate": true,
+    "source_data_modified": false,
+    "source_report_modified": false,
+    "wallet_or_tx_touched": false,
+    "transaction_sent": false,
+    "forbidden_process": "none detected",
+    "duration_seconds": "< 1"
+  },
+
+  "fix_verification_checklist": {
+    "trap_block_uses_quoted_heredoc": true,
+    "trap_block_no_bash_boolean": true,
+    "aggregate_block_uses_quoted_heredoc": true,
+    "aggregate_block_no_bash_boolean": true,
+    "aggregate_block_writes_real_json_bool": true,
+    "finalize_block_uses_quoted_heredoc": true,
+    "finalize_block_no_bash_boolean": true,
+    "finalize_block_reads_aggregate_summary_json": true,
+    "fallback_block_uses_quoted_heredoc": true,
+    "fallback_block_no_bash_boolean": true,
+    "fallback_block_reads_aggregate_summary_json_or_env": true,
+    "stage_runner_bash_syntax": "OK (bash -n)",
+    "all_python_heredocs_compile": "OK (compile())",
+    "existing_12h_checkpoint_dryrun_pass": true,
+    "existing_12h_source_data_unmodified": true
+  },
+
+  "test_results": {
+    "go_test_cmd_lpbot": "go test ./cmd/lpbot (cached OK from prior stage; not re-run since no Go code changed)",
+    "pytest_total": 22,
+    "pytest_passed": 22,
+    "pytest_failed": 0,
+    "test_files": [
+      "tests/test_lp_long_horizon_stage_supervisor_finalize_fix_v1.py"
+    ],
+    "test_categories": {
+      "stage_a_input_evidence_audit": 2,
+      "stage_b_supervisor_fix": 8,
+      "stage_c_dryrun_script": 4,
+      "stage_d_locked_and_final_verdict": 7,
+      "stage_a_or_b_data_invariants": 1
+    }
+  },
+
+  "no_touch_invariants_satisfied": {
+    "no_12h_data_modification": true,
+    "no_6h_data_modification": true,
+    "no_modify_v2_12h_FINAL_VERDICT": true,
+    "no_modify_v2_12h_corrected_verdict": true,
+    "no_modify_v2_6h_FINAL_VERDICT": true,
+    "no_modify_v2_6h_corrected_verdict": true,
+    "no_modify_12h_node_report": true,
+    "no_start_12h_24h_48h_72h_7d": true,
+    "no_long_running_collector": true,
+    "no_probe_canary_live_paper": true,
+    "no_wallet_keypair_signer": true,
+    "no_tx_send_approve_mint": true,
+    "no_paid_rpc_indexer": true,
+    "no_production_write": true,
+    "no_shadow_overwrite": true,
+    "no_cron_systemd_daemon": true
+  },
+
+  "follow_up_not_blocked_by_this_stage": {
+    "EVM_coverage_fix_Meteora_DLMM_Base_Uniswap_V3_Base_Aerodrome_BSC_PancakeSwap_V3_BSC_PancakeSwap_V2": "still pending; this stage does not address coverage expansion",
+    "12h_retry_approval": "still requires user manual approval with new approval phrase"
+  }
+}

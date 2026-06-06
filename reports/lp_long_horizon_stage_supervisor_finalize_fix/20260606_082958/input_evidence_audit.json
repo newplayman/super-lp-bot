@@ -1,0 +1,94 @@
+{
+  "stage": "LP_LONG_HORIZON_STAGE_SUPERVISOR_FINALIZE_FIX_V1",
+  "run_id": "20260606_082958",
+  "branch": "feat/supabase-postgres-deployment",
+  "audit_at_utc": "2026-06-06T08:30:00Z",
+  "input_files": {
+    "v2_12h_raw_final_verdict": "reports/lp_long_horizon_readonly_12h_run/20260605_082120/FINAL_VERDICT.json",
+    "v2_12h_corrected_final_verdict": "reports/lp_long_horizon_readonly_12h_extension/20260605_082120/CORRECTED_FINAL_VERDICT.json",
+    "v2_12h_node_report_verdict": "reports/lp_long_horizon_node_reports/20260605_082120/12h/FINAL_NODE_VERDICT.json",
+    "stage_runner_script": "scripts/run_lp_long_horizon_readonly_stage_once.sh",
+    "prior_collector_fix_verdict": "reports/lp_long_horizon_real_pool_universe_collector_fix/20260605_083000/FINAL_VERDICT.json"
+  },
+  "input_evidence_confirmed": {
+    "v2_12h_raw_finalizer_failed": true,
+    "v2_12h_raw_status": "FAIL",
+    "v2_12h_supervisor_finalize_failed_flag": true,
+    "v2_12h_finalize_error": "trap EXIT rc=1",
+    "v2_12h_corrected_verdict_was_needed": true,
+    "v2_12h_corrected_gate_pass": true,
+    "v2_12h_corrected_gate_check_pass_count": 15,
+    "v2_12h_corrected_gate_check_fail_count": 0,
+    "v2_12h_corrected_pool_snapshot_rows": 5,
+    "v2_12h_raw_pool_snapshot_rows_zero": 0,
+    "v2_12h_node_report_status": "PASS",
+    "v2_12h_node_report_v2_status": "FAIL",
+    "root_cause_python_heredoc_lowercase_true_false": true,
+    "root_cause_line_in_stage_runner": [
+      361,
+      471,
+      494
+    ],
+    "real_pool_universe_collector_fix_already_done": true,
+    "prior_stage_passed": true,
+    "prior_stage_recommended_next_stage": "LP_LONG_HORIZON_READONLY_CONTINUOUS_12H_REAL_UNIVERSE_RETRY_REQUEST_V1",
+    "this_stage_only_fixes_finalize_does_not_start_run": true
+  },
+  "bug_details": {
+    "bug_id": "STAGE_RUNNER_V3_LOWERCASE_BOOLEAN_INTERPOLATION",
+    "summary": "scripts/run_lp_long_horizon_readonly_stage_once.sh uses bash ${REAL_GATE_PASS} (lowercase 'true'/'false') inside unquoted Python heredoc dict values and ternary expressions. Python interprets these as bare names, raising NameError, causing the post-stage finalize block to fail with rc=1, which the fail-safe trap catches and writes default-zeros FINAL_VERDICT (status=FAIL, pool_snapshot_rows=0, etc.).",
+    "root_cause_line_in_stage_runner": [361, 471, 494],
+    "affected_lines": {
+      "line_317_to_385_aggregate_block": "Reads ${ELAPSED_MIN} and ${DURATION_HOURS} correctly as int, but line 361 writes lowercase 'true'/'false' into agg dict, which then propagates to finalize block at line 412/427.",
+      "line_361_specific_bug": "agg = { 'actual_runtime_valid_for_${STAGE_NAME}_gate': ${REAL_GATE_PASS} }  # bash interpolates 'true' / 'false' as Python literal — NameError",
+      "line_391_to_441_finalize_block": "Reads agg['actual_runtime_valid_for_<STAGE>_gate'] (which is corrupted by line 361), so finalize block also fails.",
+      "line_449_to_499_fallback_block": "Line 471 and line 494 use ${REAL_GATE_PASS} directly. Line 494 'if ${REAL_GATE_PASS}' in Python ternary raises NameError on lowercase 'true'/'false'.",
+      "line_168_to_216_trap_block": "Already correctly does not interpolate boolean values into Python; only interpolates integers (${ELAPSED_MIN_TRAP}, ${DURATION_HOURS}). Not a source of the bug."
+    },
+    "downstream_symptoms": {
+      "raw_FINAL_VERDICT_status_FAIL_even_when_data_ok": true,
+      "pool_snapshot_rows_zero_in_raw_FINAL_VERDICT_even_when_60_real_placeholder_rows_or_5_real_universe_rows": true,
+      "corrected_verdict_required_to_disambiguate": true,
+      "no_data_loss_but_ambiguity": "data is intact in checkpoint dirs, but supervisor's view is corrupted, requiring manual corrected-verdict rebuild from checkpoints to recover"
+    }
+  },
+  "fix_strategy": {
+    "stage_B_steps": [
+      "1. Convert all '<<PYEOF' (unquoted) Python heredocs that interpolate bash variables into '<<'PYEOF'' (quoted) heredocs. The only safe way to pass data into Python is via the file system (write a JSON to LOG_DIR first, read it in Python).",
+      "2. Restructure aggregate block to compute 'actual_runtime_valid_for_<STAGE>_gate' entirely in Python, only passing integer ELAPSED_MIN, DURATION_HOURS, TOLERANCE_MIN via env vars. The boolean decision is made in Python with proper bool type.",
+      "3. Restructure finalize block to read aggregate_summary.json (already correctly written by fixed aggregate block) instead of using inline agg variable. Use json.loads to get proper bool type.",
+      "4. Restructure fallback block to read aggregate_summary.json via json.loads, with .get() defaults. Never embed bash boolean into Python.",
+      "5. Trap block stays as-is (already safe) but add a code comment explaining: this is a fail-safe and does not depend on the (possibly failed) aggregate_summary.json."
+    ],
+    "fix_invariants": {
+      "raw_FINAL_VERDICT_always_generated": true,
+      "raw_FINAL_VERDICT_uses_aggregate_summary_json": true,
+      "no_bash_boolean_interpolation_in_python_heredoc": true,
+      "all_python_heredocs_quoted": true,
+      "fallback_does_not_depend_on_failed_aggregate": true
+    }
+  },
+  "audit_outcome": "PASS",
+  "audit_locked_fields": {
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no",
+    "wallet_or_tx_touched": false,
+    "transaction_sent": false,
+    "no_12h_data_modification": true,
+    "no_6h_data_modification": true,
+    "no_modify_v2_12h_FINAL_VERDICT": true,
+    "no_modify_v2_12h_corrected_verdict": true,
+    "no_modify_v2_6h_FINAL_VERDICT": true,
+    "no_modify_v2_6h_corrected_verdict": true,
+    "no_modify_12h_node_report": true,
+    "no_start_12h_24h_48h_72h_7d": true,
+    "no_long_running_collector": true,
+    "no_probe_canary_live_paper": true,
+    "no_wallet_keypair_signer": true,
+    "no_tx_send_approve_mint": true,
+    "no_paid_rpc_indexer": true,
+    "no_production_write": true,
+    "no_shadow_overwrite": true,
+    "no_cron_systemd_daemon": true
+  }
+}

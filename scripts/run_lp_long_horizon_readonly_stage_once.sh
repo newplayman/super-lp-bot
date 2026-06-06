@@ -165,27 +165,45 @@ write_fail_verdict_on_trap() {
     echo "[trap] ${trap_signal} rc=${trap_rc}; writing FAIL FINAL_VERDICT (no FINAL_VERDICT.json, no .finalize_succeeded, no fallback)" | tee -a "${LOG_DIR}/supervisor.log" 2>/dev/null || true
     END_TS_ACTUAL=$(date +%s)
     ELAPSED_MIN_TRAP=$(( (END_TS_ACTUAL - START_TS) / 60 ))
-    python3 - <<PYEOF_TRAP 2>/dev/null || echo "trap verdict write failed" | tee -a "${LOG_DIR}/supervisor.log"
+    # Export bash values to env vars so the quoted-heredoc Python block can read them safely
+    # (no bash boolean interpolation — only integers and strings).
+    export TRAP_REPORT_DIR="${REPORT_DIR}"
+    export TRAP_ELAPSED_MIN_TRAP="${ELAPSED_MIN_TRAP}"
+    export TRAP_DURATION_HOURS="${DURATION_HOURS}"
+    export TRAP_TOLERANCE_MIN="${TOLERANCE_MIN}"
+    export TRAP_STAGE_NAME="${STAGE_NAME}"
+    export TRAP_RUN_ID="${RUN_ID}"
+    export TRAP_SESSION="${SESSION}"
+    export TRAP_SIGNAL="${trap_signal}"
+    export TRAP_RC="${trap_rc}"
+    python3 - <<'PYEOF_TRAP' 2>/dev/null || echo "trap verdict write failed" | tee -a "${LOG_DIR}/supervisor.log"
 import json
+import os
 from pathlib import Path
-report_dir = Path("${REPORT_DIR}")
+report_dir = Path(os.environ["TRAP_REPORT_DIR"])
 report_dir.mkdir(parents=True, exist_ok=True)
+elapsed_min_trap = int(os.environ["TRAP_ELAPSED_MIN_TRAP"])
+duration_hours = int(os.environ["TRAP_DURATION_HOURS"])
+tolerance_min = int(os.environ["TRAP_TOLERANCE_MIN"])
+stage_name = os.environ["TRAP_STAGE_NAME"]
+# Compute the gate validity in Python — DO NOT embed a bash boolean literal here.
+runtime_valid = elapsed_min_trap >= (duration_hours * 60 - tolerance_min)
 verdict = {
-    "stage": "LP_LONG_HORIZON_READONLY_${STAGE_NAME^^}_STAGE_RUN_V1",
+    "stage": "LP_LONG_HORIZON_READONLY_" + stage_name.upper() + "_STAGE_RUN_V1",
     "status": "FAIL",
-    "run_id": "${RUN_ID}",
+    "run_id": os.environ["TRAP_RUN_ID"],
     "branch": "feat/supabase-postgres-deployment",
     "approval_recorded": True,
-    "approved_stage": "${STAGE_NAME}",
+    "approved_stage": stage_name,
     "tmux_started": True,
-    "tmux_session_name": "${SESSION}",
+    "tmux_session_name": os.environ["TRAP_SESSION"],
     "tmux_session_at_finalize": "killed_by_trap",
     "twelve_hour_run_completed": False,
-    "actual_runtime_minutes": ${ELAPSED_MIN_TRAP},
-    "actual_runtime_valid_for_${STAGE_NAME}_gate": ${ELAPSED_MIN_TRAP} >= (${DURATION_HOURS} * 60 - ${TOLERANCE_MIN}),
+    "actual_runtime_minutes": elapsed_min_trap,
+    "actual_runtime_valid_for_" + stage_name + "_gate": runtime_valid,
     "short_mode_used": False,
     "supervisor_finalize_failed": True,
-    "finalize_error": "trap ${trap_signal} rc=${trap_rc}",
+    "finalize_error": "trap " + os.environ["TRAP_SIGNAL"] + " rc=" + os.environ["TRAP_RC"],
     "real_pool_universe_used": True,
     "selected_real_pool_count": 33,
     "placeholder_pool_count": 0,
@@ -208,7 +226,7 @@ verdict = {
     "wallet_or_tx_touched": False,
     "transaction_sent": False,
     "send_hard_disable_still_active": True,
-    "recommended_next_stage": "LP_LONG_HORIZON_${STAGE_NAME^^}_NODE_REPORT_FIX_REPEAT",
+    "recommended_next_stage": "LP_LONG_HORIZON_" + stage_name.upper() + "_NODE_REPORT_FIX_REPEAT",
 }
 (report_dir / "FINAL_VERDICT.json").write_text(json.dumps(verdict, indent=2, ensure_ascii=False))
 print(f"[trap] wrote FAIL verdict: runtime={verdict['actual_runtime_minutes']}min status=FAIL")
@@ -314,10 +332,17 @@ else
     GATE_DECISION="PASS"
 fi
 
-python3 <<PYEOF
+# Export all bash values as env vars (integers + strings only — no boolean literal) so that
+# the quoted-heredoc Python blocks can read them via os.environ["..."]. This prevents
+# the v3 lowercase-true/false NameError bug.
+export DATA_DIR LOG_DIR STAGE_NAME RUN_ID LOOP_COUNT SLEEP_SECONDS
+export ELAPSED_MIN DURATION_HOURS TOLERANCE_MIN GATE_DECISION REPORT_DIR SESSION
+
+python3 <<'PYEOF_AGG'
 import json
+import os
 from pathlib import Path
-DATA = Path("${DATA_DIR}")
+DATA = Path(os.environ["DATA_DIR"])
 ckpts = sorted([p for p in DATA.iterdir() if p.is_dir() and p.name.startswith("checkpoint_")])
 total = {"pool_snapshots": 0, "quote_snapshots": 0, "fee_velocity": 0,
          "liquidity_distribution": 0, "market_regime": 0, "actual_fee_accrual": 0}
@@ -353,15 +378,27 @@ for d in ckpts:
     a = d / "actual_fee_accrual_placeholder.json"
     if a.exists(): total["actual_fee_accrual"] += 1
 
+# All values come from env vars (integers + strings only — NO bash boolean literal here).
+elapsed_min = int(os.environ["ELAPSED_MIN"])
+duration_hours = int(os.environ["DURATION_HOURS"])
+tolerance_min = int(os.environ["TOLERANCE_MIN"])
+stage_name = os.environ["STAGE_NAME"]
+run_id = os.environ["RUN_ID"]
+loop_count = int(os.environ["LOOP_COUNT"])
+sleep_seconds = int(os.environ["SLEEP_SECONDS"])
+gate_decision = os.environ["GATE_DECISION"]
+# Compute gate validity in Python — no bash boolean interpolation.
+runtime_valid = elapsed_min >= (duration_hours * 60 - tolerance_min)
+
 agg = {
-    "stage": "${STAGE_NAME}",
-    "run_id": "${RUN_ID}",
-    "actual_runtime_minutes": ${ELAPSED_MIN},
-    "expected_min_runtime_minutes": $((DURATION_HOURS * 60 - TOLERANCE_MIN)),
-    "actual_runtime_valid_for_${STAGE_NAME}_gate": ${REAL_GATE_PASS},
+    "stage": stage_name,
+    "run_id": run_id,
+    "actual_runtime_minutes": elapsed_min,
+    "expected_min_runtime_minutes": (duration_hours * 60 - tolerance_min),
+    "actual_runtime_valid_for_" + stage_name + "_gate": runtime_valid,
     "short_mode_used": False,
-    "loop_count_total": ${LOOP_COUNT},
-    "sleep_seconds_per_iteration": ${SLEEP_SECONDS},
+    "loop_count_total": loop_count,
+    "sleep_seconds_per_iteration": sleep_seconds,
     "checkpoint_count": len(ckpts),
     "checkpoint_dirs": [str(d) for d in ckpts],
     "row_counts_deduped": total,
@@ -377,39 +414,58 @@ agg = {
     "tiny_canary_allowed": "no",
     "auto_advance_to_next": False,
     "send_hard_disable_still_active": True,
-    "gate_decision": "${GATE_DECISION}",
+    "gate_decision": gate_decision,
     "next_action": "manual review of FINAL_VERDICT"
 }
-Path("${LOG_DIR}/aggregate_summary.json").write_text(json.dumps(agg, indent=2, ensure_ascii=False))
-print(f"[aggregate] ckpts={len(ckpts)} pool={total['pool_snapshots']} quote={total['quote_snapshots']} fee={total['fee_velocity']} liq={total['liquidity_distribution']} regime={total['market_regime']} actual_fee={total['actual_fee_accrual']}")
-PYEOF
+log_dir = Path(os.environ["LOG_DIR"])
+log_dir.mkdir(parents=True, exist_ok=True)
+agg_path = log_dir / "aggregate_summary.json"
+agg_path.write_text(json.dumps(agg, indent=2, ensure_ascii=False))
+print(f"[aggregate] ckpts={len(ckpts)} pool={total['pool_snapshots']} quote={total['quote_snapshots']} fee={total['fee_velocity']} liq={total['liquidity_distribution']} regime={total['market_regime']} actual_fee={total['actual_fee_accrual']} gate_valid={runtime_valid}")
+PYEOF_AGG
 
 # ---------------------------------------------------------------------------
 # 4. write summary + FINAL_VERDICT (same shape as 6h supervisor)
 # ---------------------------------------------------------------------------
 
-python3 <<PYEOF
+python3 <<'PYEOF_FINAL'
 import json
+import os
 from pathlib import Path
 from datetime import datetime, timezone
-LOG = Path("${LOG_DIR}")
+LOG = Path(os.environ["LOG_DIR"])
+REPORT_DIR_PATH = Path(os.environ["REPORT_DIR"])
 agg = json.loads((LOG / "aggregate_summary.json").read_text())
 total = agg["row_counts_deduped"]
 
+stage_name = agg["stage"]
+# All values come from aggregate_summary.json (already a proper JSON file with bool fields,
+# since the aggregate block now writes a real bool for actual_runtime_valid_for_<STAGE>_gate).
+# NO bash boolean interpolation in this heredoc.
+gate_valid = bool(agg.get("actual_runtime_valid_for_" + stage_name + "_gate", False))
+gate_decision = agg.get("gate_decision", "PASS" if gate_valid else "FAIL")
+status = "PASS" if gate_decision == "PASS" else "FAIL"
+data_quality = "PASS" if status == "PASS" else "FAIL"
+
+if status == "PASS":
+    recommended_next_stage = "LP_LONG_HORIZON_READONLY_CONTINUOUS_24H_EXTENSION_REQUEST_V1"
+else:
+    recommended_next_stage = "LP_LONG_HORIZON_" + stage_name.upper() + "_COLLECTOR_FIX_REPEAT"
+
 # FINAL_VERDICT
-(Path("${REPORT_DIR}") / "FINAL_VERDICT.json").write_text(json.dumps({
-    "stage": "LP_LONG_HORIZON_READONLY_${STAGE_NAME^^}_STAGE_RUN_V1",
-    "status": "PASS" if agg["gate_decision"] == "PASS" else "FAIL",
-    "run_id": "${RUN_ID}",
+(REPORT_DIR_PATH / "FINAL_VERDICT.json").write_text(json.dumps({
+    "stage": "LP_LONG_HORIZON_READONLY_" + stage_name.upper() + "_STAGE_RUN_V1",
+    "status": status,
+    "run_id": os.environ["RUN_ID"],
     "branch": "feat/supabase-postgres-deployment",
     "approval_recorded": True,
-    "approved_stage": "${STAGE_NAME}",
+    "approved_stage": stage_name,
     "tmux_started": True,
-    "tmux_session_name": "${SESSION}",
+    "tmux_session_name": os.environ["SESSION"],
     "tmux_session_at_finalize": "killed",
     "twelve_hour_run_completed": True,
     "actual_runtime_minutes": agg["actual_runtime_minutes"],
-    "actual_runtime_valid_for_${STAGE_NAME}_gate": agg["actual_runtime_valid_for_${STAGE_NAME}_gate"],
+    "actual_runtime_valid_for_" + stage_name + "_gate": gate_valid,
     "short_mode_used": False,
     "real_pool_universe_used": True,
     "selected_real_pool_count": 33,
@@ -423,8 +479,8 @@ total = agg["row_counts_deduped"]
     "actual_fee_accrual_placeholder_rows": total["actual_fee_accrual"],
     "error_rate_pct": 0.0,
     "consecutive_429_max": 0,
-    "data_quality_status": "PASS" if agg["gate_decision"] == "PASS" else "FAIL",
-    "gate_pass": agg["actual_runtime_valid_for_${STAGE_NAME}_gate"],
+    "data_quality_status": data_quality,
+    "gate_pass": gate_valid,
     "can_advance_to_next": False,
     "auto_advance_started": False,
     "longer_stage_started": False,
@@ -434,44 +490,59 @@ total = agg["row_counts_deduped"]
     "wallet_or_tx_touched": False,
     "transaction_sent": False,
     "send_hard_disable_still_active": True,
-    "recommended_next_stage": "LP_LONG_HORIZON_READONLY_CONTINUOUS_24H_EXTENSION_REQUEST_V1" if agg["actual_runtime_valid_for_${STAGE_NAME}_gate"] else "LP_LONG_HORIZON_${STAGE_NAME^^}_COLLECTOR_FIX_REPEAT"
+    "recommended_next_stage": recommended_next_stage
 }, indent=2, ensure_ascii=False))
 
 print("[finalize] FINAL_VERDICT written")
-PYEOF
+PYEOF_FINAL
 
 FINALIZE_RC=$?
 echo "[finalize-block] post-${STAGE_NAME} finalize block rc=${FINALIZE_RC}" | tee -a "${LOG_DIR}/supervisor.log"
 
-# aggregate-failure fallback (V2/V3 fix)
+# aggregate-failure fallback (V2/V3 fix) — quoted heredoc, no bash boolean interpolation
 if [ "${FINALIZE_RC}" -ne 0 ]; then
     echo "[finalize-block] post-${STAGE_NAME} block FAILED; writing CORRECTED_FINAL_VERDICT_FALLBACK.json" | tee -a "${LOG_DIR}/supervisor.log"
-    python3 - <<PYEOF_FALLBACK 2>>"${LOG_DIR}/supervisor.log"
+    python3 - <<'PYEOF_FALLBACK' 2>>"${LOG_DIR}/supervisor.log"
 import json
+import os
 from pathlib import Path
-report_dir = Path("${REPORT_DIR}")
-log_dir = Path("${LOG_DIR}")
+report_dir = Path(os.environ["REPORT_DIR"])
+log_dir = Path(os.environ["LOG_DIR"])
 report_dir.mkdir(parents=True, exist_ok=True)
 agg_path = log_dir / "aggregate_summary.json"
 if agg_path.exists():
     agg = json.loads(agg_path.read_text())
     rows = agg.get("row_counts_deduped", {})
+    stage_name = agg.get("stage", os.environ["STAGE_NAME"])
+    runtime_valid = bool(agg.get("actual_runtime_valid_for_" + stage_name + "_gate", False))
 else:
     agg = {}
     rows = {}
+    stage_name = os.environ["STAGE_NAME"]
+    # Recompute runtime_valid in Python from env vars (no bash boolean)
+    elapsed_min = int(os.environ["ELAPSED_MIN"])
+    duration_hours = int(os.environ["DURATION_HOURS"])
+    tolerance_min = int(os.environ["TOLERANCE_MIN"])
+    runtime_valid = elapsed_min >= (duration_hours * 60 - tolerance_min)
+
+if runtime_valid:
+    fallback_recommended = "LP_LONG_HORIZON_READONLY_CONTINUOUS_24H_EXTENSION_REQUEST_V1"
+else:
+    fallback_recommended = "LP_LONG_HORIZON_" + stage_name.upper() + "_COLLECTOR_FIX_REPEAT"
+
 fallback = {
-    "stage": "LP_LONG_HORIZON_READONLY_${STAGE_NAME^^}_STAGE_RUN_V3",
+    "stage": "LP_LONG_HORIZON_READONLY_" + stage_name.upper() + "_STAGE_RUN_V3",
     "status": "WARN",
-    "run_id": "${RUN_ID}",
+    "run_id": os.environ["RUN_ID"],
     "branch": "feat/supabase-postgres-deployment",
     "approval_recorded": True,
-    "approved_stage": "${STAGE_NAME}",
+    "approved_stage": stage_name,
     "twelve_hour_run_completed": True,
-    "actual_runtime_minutes": ${ELAPSED_MIN},
-    "actual_runtime_valid_for_${STAGE_NAME}_gate": ${REAL_GATE_PASS},
+    "actual_runtime_minutes": agg.get("actual_runtime_minutes", int(os.environ["ELAPSED_MIN"])),
+    "actual_runtime_valid_for_" + stage_name + "_gate": runtime_valid,
     "short_mode_used": False,
     "supervisor_finalize_failed": True,
-    "finalize_error": "post-${STAGE_NAME} python block rc=${FINALIZE_RC}",
+    "finalize_error": "post-" + stage_name + " python block rc=" + str(os.environ.get("FINALIZE_RC", "0")),
     "real_pool_universe_used": True,
     "selected_real_pool_count": 33,
     "placeholder_pool_count": 0,
@@ -491,7 +562,7 @@ fallback = {
     "auto_advance_started": False,
     "longer_stage_started": False,
     "send_hard_disable_still_active": True,
-    "recommended_next_stage": "LP_LONG_HORIZON_READONLY_CONTINUOUS_24H_EXTENSION_REQUEST_V1" if ${REAL_GATE_PASS} else "LP_LONG_HORIZON_${STAGE_NAME^^}_COLLECTOR_FIX_REPEAT",
+    "recommended_next_stage": fallback_recommended,
 }
 (report_dir / "CORRECTED_FINAL_VERDICT_FALLBACK.json").write_text(json.dumps(fallback, indent=2, ensure_ascii=False))
 print(f"[fallback] wrote CORRECTED_FINAL_VERDICT_FALLBACK.json")
