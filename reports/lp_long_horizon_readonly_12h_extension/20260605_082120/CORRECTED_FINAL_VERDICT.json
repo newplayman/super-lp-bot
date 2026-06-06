@@ -1,0 +1,112 @@
+{
+  "stage": "LP_LONG_HORIZON_12H_FINALIZER_REBUILD_FROM_CHECKPOINTS_V1",
+  "source_run_id": "20260605_082120",
+  "source_verdict_path": "reports/lp_long_horizon_readonly_12h_run/20260605_082120/FINAL_VERDICT.json",
+  "source_verdict_status": "FAIL",
+  "source_supervisor_finalize_failed": true,
+  "source_finalize_error": "trap EXIT rc=1; post-12h python block NameError on 'true' (bash ${REAL_GATE_PASS} interpolated to lowercase 'true' in Python ternary)",
+  "source_short_mode_used": false,
+  "source_runtime_valid_for_12h_gate": true,
+  "corrected_from_checkpoints": true,
+  "corrected_at_utc": "2026-06-06T07:32:00Z",
+
+  "actual_runtime_minutes": 720,
+  "actual_runtime_valid_for_12h_gate": true,
+  "short_mode_used": false,
+  "checkpoint_count": 12,
+  "checkpoint_dirs": [
+    "checkpoint_1_1457", "checkpoint_2_1557", "checkpoint_3_1657", "checkpoint_4_1757",
+    "checkpoint_5_1857", "checkpoint_6_1957", "checkpoint_7_2057", "checkpoint_8_2157",
+    "checkpoint_9_2257", "checkpoint_10_2357", "checkpoint_11_0057", "checkpoint_12_0157"
+  ],
+  "selected_pool_count": 5,
+  "pool_snapshot_rows": 5,
+  "quote_snapshot_rows": 360,
+  "fee_velocity_rows": 300,
+  "liquidity_distribution_rows": 60,
+  "market_regime_rows": 84,
+  "actual_fee_accrual_placeholder_rows": 12,
+
+  "error_rate_pct": 0.0,
+  "consecutive_429_max": 0,
+
+  "real_pool_universe_used": true,
+  "real_pool_universe_path": "reports/lp_long_horizon_readonly_continuous_12h_extension/20260605_082120/real_pool_universe_for_12h.json",
+  "selected_real_pool_count": 33,
+  "placeholder_pool_count": 0,
+
+  "data_quality_status": "PASS",
+  "gate_pass": true,
+  "gate_check_pass_count": 15,
+  "gate_check_fail_count": 0,
+  "gate_checks": {
+    "actual_runtime_minutes_ge_660": true,
+    "real_pool_universe_used": true,
+    "selected_real_pool_count_ge_30": true,
+    "placeholder_pool_count_eq_0": true,
+    "short_mode_used_false": true,
+    "pool_snapshot_rows_gt_zero": true,
+    "quote_snapshot_rows_gt_zero": true,
+    "fee_velocity_rows_gt_zero": true,
+    "liquidity_distribution_rows_gt_zero": true,
+    "market_regime_rows_gt_zero": true,
+    "error_rate_pct_le_20": true,
+    "consecutive_429_max_lt_5": true,
+    "no_wallet_tx_touch": true,
+    "no_production_write": true,
+    "no_shadow_overwrite": true
+  },
+  "can_advance_to_next": false,
+  "auto_advance_started": false,
+  "longer_stage_started": false,
+
+  "coverage_scope": "partial_solana_real_pool_universe",
+  "do_not_treat_as_full_coverage": true,
+  "coverage_gap_count": 12,
+  "missing_protocols_in_universe": [
+    "Meteora DLMM (solana/meteora_dlmm)",
+    "Base Uniswap V3 (base/uniswap_v3)",
+    "Base Aerodrome (base/aerodrome)",
+    "BSC PancakeSwap V3 (bsc/pancakeswap_v3)",
+    "BSC PancakeSwap V2 (bsc/pancakeswap_v2)"
+  ],
+  "honest_disclosure": "12h 跑不是 full-universe verdict, 仅是 partial Solana 真实池 (3 protocols + 5 stable) 的 12h 观察. selected_real_pool_count=33 < target_min_pool_count=45 (gap=12). Meteora DLMM + EVM (Base/BSC) 覆盖需要单独 stage 补完.",
+
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no",
+  "edge_proven": "no",
+  "wallet_or_tx_touched": false,
+  "transaction_sent": false,
+  "auto_probe_allowed": false,
+  "auto_trade_allowed": false,
+  "manual_approval_required_for_execution": true,
+  "send_hard_disable_still_active": true,
+
+  "no_touch_invariants": {
+    "no_overwrite_source_verdict": true,
+    "no_modify_data_dir": true,
+    "no_start_24h_48h_72h_7d": true,
+    "no_probe_canary_live_paper": true,
+    "no_wallet_keypair_signer": true,
+    "no_tx_send_approve_mint": true,
+    "no_paid_rpc_indexer": true,
+    "no_production_write": true,
+    "no_shadow_overwrite": true,
+    "no_cron_systemd_daemon": true
+  },
+
+  "allowed_recommended_next_stages": [
+    "LP_LONG_HORIZON_READONLY_CONTINUOUS_24H_EXTENSION_REQUEST_V1",
+    "LP_LONG_HORIZON_12H_NODE_REPORT_FIX_REPEAT",
+    "LP_LONG_HORIZON_12H_COLLECTOR_FIX_REPEAT",
+    "PAUSE_AUTOMATED_LP_PROBE_AND_COLLECT_LONGER_HORIZON_DATA",
+    "STOP_LP_RESEARCH_NOW"
+  ],
+
+  "recommended_next_stage": "LP_LONG_HORIZON_12H_NODE_REPORT_FIX_REPEAT",
+
+  "recommended_next_stage_rationale": "12h corrected gate_pass=true (15/15 gate checks pass, runtime=720, 12/12 ckpts), 但 coverage_scope=partial_solana_real_pool_universe + selected_real_pool_count=33 < target_min_pool_count=45. per inflight_healthcheck recommendation, 24h 延展**不**推荐 until Meteora DLMM + Base/BSC adapters 补完. 建议先做 LP_LONG_HORIZON_12H_NODE_REPORT_FIX_REPEAT (生成 12h 节点报告透明化覆盖范围), 等用户单独审批后, 再做 Meteora DLMM / Base/BSC adapter coverage fix stage, 然后才能进入 24h.",
+
+  "do_not_auto_start_24h": true,
+  "manual_approval_required_for_24h": true
+}

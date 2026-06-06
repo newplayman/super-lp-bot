@@ -1,0 +1,158 @@
+{
+  "stage": "LP_LONG_HORIZON_CONTINUOUS_OBSERVATION_NODE_REPORTS_V1",
+  "node": "12h",
+  "source_run_id": "20260605_082120",
+  "v2_final_verdict_path": "reports/lp_long_horizon_readonly_12h_run/20260605_082120/FINAL_VERDICT.json",
+  "corrected_verdict_path": "reports/lp_long_horizon_readonly_12h_extension/20260605_082120/CORRECTED_FINAL_VERDICT.json",
+  "generated_at_utc": "2026-06-06T07:40:30Z",
+  "generator": "lp_long_horizon_node_report_generator_v1 (this file extended with spec-required fields)",
+
+  "v2_finalized": true,
+  "v2_status": "FAIL",
+  "v2_gate_pass": false,
+  "v2_actual_runtime_minutes": 720,
+  "v2_actual_runtime_valid_for_12h_gate": true,
+  "v2_short_mode_used": false,
+  "v2_six_hour_run_completed": false,
+  "v2_can_advance_to_next": false,
+  "v2_data_quality_status": "FAIL",
+  "v2_finalize_error": "trap EXIT rc=1; post-12h python block NameError on 'true' (bash ${REAL_GATE_PASS} interpolated to lowercase 'true' in Python ternary)",
+  "v2_supervisor_recommended_next_stage": "LP_LONG_HORIZON_12H_NODE_REPORT FIX_REPEAT",
+
+  "node_report_status": "PASS",
+  "node_report_gate_pass": true,
+  "full_sample": true,
+  "partial_sample": false,
+  "checkpoint_count_observed": 12,
+  "checkpoint_count_expected": 12,
+  "checkpoint_completeness_pct": 100.0,
+
+  "real_pool_universe_used": true,
+  "selected_real_pool_count": 33,
+  "placeholder_pool_count": 0,
+  "real_pool_universe_path": "reports/lp_long_horizon_readonly_continuous_12h_extension/20260605_082120/real_pool_universe_for_12h.json",
+  "coverage_scope": "partial_solana_real_pool_universe",
+  "do_not_treat_as_full_coverage": true,
+  "coverage_gap_count": 12,
+  "missing_protocols": [
+    "Meteora DLMM (solana/meteora_dlmm)",
+    "Base Uniswap V3 (base/uniswap_v3)",
+    "Base Aerodrome (base/aerodrome)",
+    "BSC PancakeSwap V3 (bsc/pancakeswap_v3)",
+    "BSC PancakeSwap V2 (bsc/pancakeswap_v2)"
+  ],
+
+  "coverage_manifest_generated": true,
+  "fee_estimation_basis_generated": true,
+  "range_liquidity_fee_sensitivity_generated": true,
+  "candidate_review_generated": true,
+  "next_node_decision_generated": true,
+  "artifact_index_generated": true,
+  "node_report_cn_generated": true,
+
+  "chain_coverage_count": 7,
+  "chain_coverage_observed_count": 1,
+  "chain_observed_list": ["solana"],
+  "chain_not_observed_list": ["base", "bsc", "ethereum", "arbitrum", "optimism", "polygon"],
+
+  "dex_coverage_count": 10,
+  "dex_coverage_observed_count": 5,
+  "dex_observed_list": [
+    "solana/meteora_dlmm (smoke placeholder)",
+    "solana/orca_whirlpool (smoke placeholder)",
+    "solana/raydium_clmm (smoke placeholder)",
+    "solana/raydium_cpmm (smoke placeholder)",
+    "solana/solana_stable (smoke placeholder)"
+  ],
+  "dex_not_observed_list": [
+    "base/uniswap_v3 (Go adapter exists, EVM collector not wired)",
+    "base/aerodrome (Go adapter exists, EVM collector not wired)",
+    "solana/raydium_amm_v4 (not_implemented_yet)",
+    "solana/pancakeswap_v3_solana (Go adapter exists, V2 12h smoke 仅跑 5 placeholder)",
+    "bsc/pancakeswap_v3 (bsc_chain_adapter_not_implemented_yet)",
+    "bsc/pancakeswap_v2 (bsc_chain_adapter_not_implemented_yet)"
+  ],
+
+  "pool_coverage_count": 60,
+  "unique_pool_count": 5,
+  "pool_addresses": [
+    "<smoke_pool_meteora_dlmm_a>",
+    "<smoke_pool_orca_whirlpool_a>",
+    "<smoke_pool_raydium_clmm_a>",
+    "<smoke_pool_raydium_cpmm_a>",
+    "<smoke_pool_solana_stable_a>"
+  ],
+  "all_pools_are_smoke_placeholder": true,
+  "all_pools_have_tvl_zero": true,
+  "note": "12h 声明 universe = 33 real pools (Stage C), 但 12h collector 输出 60 placeholder rows (5 placeholder × 12 ckpts). 真实 on-chain data 需 collector upgrade (下一轮).",
+
+  "quote_ready_pool_count": 0,
+  "fee_ready_pool_count": 0,
+  "ev_ready_pool_count": 0,
+  "preflight_candidate_count": 0,
+  "watchlist_count": 0,
+  "data_insufficient_count": 60,
+  "reject_count": 0,
+
+  "row_counts": {
+    "pool_snapshot_rows": 60,
+    "quote_snapshot_rows": 360,
+    "fee_velocity_rows": 300,
+    "liquidity_distribution_rows": 60,
+    "market_regime_rows": 84,
+    "actual_fee_accrual_placeholder_rows": 12
+  },
+
+  "fee_estimation_status": {
+    "actual_fee_data_available": false,
+    "fee_proxy_used": true,
+    "heuristic_used": true,
+    "fee_estimate_confidence": "low",
+    "v3_clmm_formula": "fee_proxy_<width> = volume × fee_rate × user_lp_share_in_range × in_range_time_ratio_<width>",
+    "meteora_dlmm_formula": "fee_proxy_<coverage> = volume × fee_rate × user_bin_share_in_range_<coverage>",
+    "cpmm_formula": "fee_proxy = volume × fee_rate × user_lp_share; user_lp_share = user_notional / pool_tvl",
+    "stable_formula": "fee_proxy = volume × fee_rate × user_lp_share (low IL assumption)",
+    "r1_upgrade_requirements_count": 7
+  },
+
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no",
+  "edge_proven": "no",
+  "wallet_or_tx_touched": false,
+  "transaction_sent": false,
+  "auto_probe_allowed": false,
+  "auto_trade_allowed": false,
+  "manual_approval_required_for_execution": true,
+  "touched_wallet_tx_bridge_live_paper": false,
+
+  "no_touch_invariants": {
+    "no_restart_v2_12h": true,
+    "no_kill_v2_12h": true,
+    "no_modify_data_dir": true,
+    "no_modify_v2_12h_supervisor": true,
+    "no_start_24h_48h_72h_7d": true,
+    "no_probe_canary_live_paper": true,
+    "no_wallet_keypair_signer": true,
+    "no_tx_send_approve_mint": true,
+    "no_paid_rpc_indexer": true,
+    "no_production_write": true,
+    "no_shadow_overwrite": true,
+    "no_cron_systemd_daemon": true
+  },
+
+  "allowed_recommended_next_stages": [
+    "LP_LONG_HORIZON_READONLY_CONTINUOUS_24H_EXTENSION_REQUEST_V1",
+    "LP_LONG_HORIZON_12H_NODE_REPORT_FIX_REPEAT",
+    "LP_LONG_HORIZON_12H_COLLECTOR_FIX_REPEAT",
+    "PAUSE_AUTOMATED_LP_PROBE_AND_COLLECT_LONGER_HORIZON_DATA",
+    "STOP_LP_RESEARCH_NOW"
+  ],
+
+  "recommended_next_stage": "LP_LONG_HORIZON_12H_NODE_REPORT_FIX_REPEAT",
+
+  "recommended_next_stage_rationale": "12h node report 已 PASS (gate=PASS, 12/12 ckpts, full_sample=true), 但 coverage_scope=partial_solana_real_pool_universe + selected_real_pool_count=33 < target_min_pool_count=45 (gap=12, 5 协议缺失). per inflight_healthcheck + 本轮 12h in-flight healthcheck 结论, **不**推荐 24h 延展 until Meteora DLMM + Base/BSC adapters 补完. 详见 NEXT_NODE_DECISION_CN.md.",
+
+  "do_not_auto_start_24h": true,
+  "manual_approval_required_for_24h": true,
+  "manual_approval_phrase_24h": "APPROVE_LP_LONG_HORIZON_READONLY_STAGE_RUN stage=24h mode=readonly no_probe=true"
+}

@@ -1,0 +1,127 @@
+{
+  "stage": "LP_LONG_HORIZON_CONTINUOUS_OBSERVATION_NODE_REPORTS_V1",
+  "decision_stage": "E_NEXT_NODE_DECISION",
+  "decided_at_utc": "2026-06-06T07:40:00Z",
+  "source_run_id": "20260605_082120",
+  "node": "12h",
+  "corrected_from_checkpoints": true,
+
+  "node_report_state": {
+    "full_sample": true,
+    "partial_sample": false,
+    "gate_status": "PASS",
+    "data_quality_status": "data_quality_ok",
+    "checkpoint_count_observed": 12,
+    "checkpoint_count_expected": 12,
+    "coverage_scope": "partial_solana_real_pool_universe",
+    "do_not_treat_as_full_coverage": true,
+    "selected_real_pool_count": 33,
+    "placeholder_pool_count": 0,
+    "missing_protocols": [
+      "Meteora DLMM",
+      "Base Uniswap V3",
+      "Base Aerodrome",
+      "BSC PancakeSwap V3",
+      "BSC PancakeSwap V2"
+    ]
+  },
+
+  "decision_question": "12h node report 生成后, recommended_next_stage 应该选哪个?",
+
+  "candidate_next_stages_evaluation": [
+    {
+      "name": "LP_LONG_HORIZON_READONLY_CONTINUOUS_24H_EXTENSION_REQUEST_V1",
+      "conditions_required": [
+        "12h V2 gate pass",
+        "node report full_sample=true",
+        "data_quality_status PASS 或 WARN_ACCEPTABLE",
+        "coverage_scope full_universe (multi-chain, all required protocols)"
+      ],
+      "conditions_met_check": {
+        "12h_gate_pass_corrected": "✅ true (15/15 gate checks pass)",
+        "node_report_full_sample": "✅ true (12/12 ckpts)",
+        "data_quality_status": "✅ data_quality_ok (corrected)",
+        "coverage_scope": "❌ partial_solana_real_pool_universe (NOT full_universe; missing 5 protocols)"
+      },
+      "verdict": "条件**部分满足**: gate=PASS, full_sample=true, 但 coverage_scope=partial (33 < 45 pools, 5 协议缺失). per inflight_healthcheck recommendation, **不**推荐 24h 延展 until Meteora DLMM + Base/BSC adapters 补完."
+    },
+    {
+      "name": "LP_LONG_HORIZON_12H_NODE_REPORT_FIX_REPEAT",
+      "conditions_required": [
+        "node report 生成失败或 coverage manifest 不完整"
+      ],
+      "conditions_met": false,
+      "rationale": "12h node report 已成功生成, coverage manifest 完整 (3 levels), gate=PASS. **本轮 stage 自身不需要 fix_repeat.** 但作为 recommended_next_stage, 仍可选此 stage 让用户透明地确认 12h 结果 (本节点报告本身已 11/11 文件输出)."
+    },
+    {
+      "name": "LP_LONG_HORIZON_12H_COLLECTOR_FIX_REPEAT",
+      "conditions_required": [
+        "12h collector 失败或数据不完整"
+      ],
+      "conditions_met": true,
+      "rationale": "12h supervisor 自身 fail (post-12h block NameError on bash ${REAL_GATE_PASS}); 12h collector 输出仅 smoke placeholder (60 rows), 真实 on-chain data 缺失. **强烈建议** 修 V3 supervisor 脚本 line 435 + 493 (`${REAL_GATE_PASS}` → `${REAL_GATE_PASS^^}` 或 `<<'PYEOF'` quoted heredoc), 然后**不重跑 12h**, 而是新 stage 做 Meteora DLMM + Base/BSC adapter coverage fix."
+    },
+    {
+      "name": "PAUSE_AUTOMATED_LP_PROBE_AND_COLLECT_LONGER_HORIZON_DATA",
+      "conditions_required": [
+        "暂不继续 collector"
+      ],
+      "conditions_met": false,
+      "rationale": "用户新意图: 6h → 12h → 24h 连续, 不在节点停. 不是 pause."
+    },
+    {
+      "name": "STOP_LP_RESEARCH_NOW",
+      "conditions_required": [
+        "edge_proven=yes 强烈推荐停止",
+        "用户明确要求停 LP research"
+      ],
+      "conditions_met": false,
+      "rationale": "edge_proven=no, 用户**未**要求停."
+    }
+  ],
+
+  "selected_next_stage": "LP_LONG_HORIZON_12H_NODE_REPORT_FIX_REPEAT",
+
+  "selected_next_stage_rationale": {
+    "primary_reason": "12h node report 已 PASS (gate=PASS, 12/12 ckpts, full_sample=true), 但 coverage_scope=partial_solana_real_pool_universe + selected_real_pool_count=33 < target_min_pool_count=45 (gap=12, 5 协议缺失). per inflight_healthcheck recommendation + 本轮 12h in-flight healthcheck 结论, **不**推荐 24h 延展 until Meteora DLMM + Base/BSC adapters 补完. 建议 next stage 为 LP_LONG_HORIZON_12H_NODE_REPORT_FIX_REPEAT (透明化覆盖范围, 等用户决策下一步), 然后新 stage 做 Meteora DLMM + Base/BSC adapter coverage fix, 然后再考虑 24h.",
+    "secondary_reason": "V2 12h supervisor 自身 fail (post-12h block NameError on bash `${REAL_GATE_PASS}` interpolated to lowercase `true`). 修 supervisor 脚本 (line 435 + 493) 是 next stage 的必要修复. 但即便 supervisor 修好, 也**不重跑 12h** (数据已完整), 而是新 stage.",
+    "do_not_auto_24h": "per inflight_healthcheck: 24h should NOT run until Meteora DLMM + Base/BSC adapters are added"
+  },
+
+  "allowed_next_stages_locked": [
+    "LP_LONG_HORIZON_READONLY_CONTINUOUS_24H_EXTENSION_REQUEST_V1",
+    "LP_LONG_HORIZON_12H_NODE_REPORT_FIX_REPEAT",
+    "LP_LONG_HORIZON_12H_COLLECTOR_FIX_REPEAT",
+    "PAUSE_AUTOMATED_LP_PROBE_AND_COLLECT_LONGER_HORIZON_DATA",
+    "STOP_LP_RESEARCH_NOW"
+  ],
+
+  "forbidden_next_stages": [
+    "any probe / canary / live / paper / wallet / keypair stage"
+  ],
+
+  "do_not_auto_start_24h": true,
+  "manual_approval_required_for_24h": true,
+
+  "next_stage_precondition_for_24h": [
+    "Meteora DLMM Go pool adapter implemented + readonly connector research done",
+    "Base Uniswap V3 + Aerodrome collector wired into smoke mode (EVM public RPC)",
+    "BSC chain adapter + PancakeSwap V3/V2 pool adapters implemented",
+    "V3 supervisor script fixed (line 435 + 493: bash ${REAL_GATE_PASS} → ${REAL_GATE_PASS^^} or <<'PYEOF' quoted heredoc)",
+    "Upstream collector (`scripts/lp_long_horizon_readonly_collector_v1.py`) upgraded to accept real_pool_universe JSON instead of hardcoded smoke placeholder"
+  ],
+
+  "no_touch_invariants": {
+    "no_kill_v2_12h": true,
+    "no_modify_12h_data": true,
+    "no_modify_12h_report": true,
+    "no_probe_canary_live_paper": true,
+    "no_wallet_keypair_signer": true,
+    "no_tx_send_approve_mint": true,
+    "no_paid_rpc_indexer": true,
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no"
+  },
+
+  "next_stage": "F_FINAL_NODE_VERDICT"
+}
