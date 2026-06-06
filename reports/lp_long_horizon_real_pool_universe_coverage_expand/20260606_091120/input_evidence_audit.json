@@ -1,0 +1,99 @@
+{
+  "stage": "LP_LONG_HORIZON_REAL_POOL_UNIVERSE_COVERAGE_EXPAND_V1",
+  "run_id": "20260606_091120",
+  "branch": "feat/supabase-postgres-deployment",
+  "audit_at_utc": "2026-06-06T09:12:00Z",
+  "input_files": {
+    "prior_stage_finalize_fix_verdict": "reports/lp_long_horizon_stage_supervisor_finalize_fix/20260606_082958/FINAL_VERDICT.json",
+    "prior_2_stage_collector_fix_verdict": "reports/lp_long_horizon_real_pool_universe_collector_fix/20260605_083000/FINAL_VERDICT.json",
+    "12h_node_report_verdict": "reports/lp_long_horizon_node_reports/20260605_082120/12h/FINAL_NODE_VERDICT.json",
+    "current_12h_universe": "reports/lp_long_horizon_readonly_continuous_12h_extension/20260605_082120/real_pool_universe_for_12h.json",
+    "meteora_overnight_verified_pools": "reports/lp_meteora_dlmm_known_pool_feed_expansion_overnight/20260603_174815/meteora_pool_chain_verification.json"
+  },
+  "input_evidence_confirmed": {
+    "finalize_bug_fixed": true,
+    "fallback_finalize_bug_fixed": true,
+    "lowercase_python_boolean_removed": true,
+    "existing_12h_checkpoint_finalize_dryrun_pass": true,
+    "final_verdict_always_generated": true,
+    "collector_pool_universe_arg_supported": true,
+    "stage_runner_pool_universe_arg_forwarded": true,
+    "current_universe_pool_count": 33,
+    "target_pool_count": 45,
+    "pool_count_gap": 12,
+    "missing_protocols": [
+      "Meteora DLMM (solana/meteora_dlmm)",
+      "Base Uniswap V3 (base/uniswap_v3)",
+      "Base Aerodrome (base/aerodrome)",
+      "BSC PancakeSwap V3 (bsc/pancakeswap_v3)",
+      "BSC PancakeSwap V2 (bsc/pancakeswap_v2)"
+    ],
+    "meteora_verified_pool_count": 16,
+    "meteora_verification_source": "meteora_pool_chain_verification.json (account_exists=true, owner_is_meteora_dlmm=true, data_len=904, dlmm_sized=true)",
+    "this_stage_only_expands_coverage_no_collector_start": true,
+    "this_stage_does_not_start_12h_retry": true,
+    "this_stage_does_not_modify_supervisor_runner": true,
+    "this_stage_does_not_modify_collector": true,
+    "this_stage_does_not_modify_12h_6h_data_dirs": true,
+    "this_stage_does_not_modify_v2_verdicts": true
+  },
+  "fix_strategy": {
+    "stage_b_steps": [
+      "Read 16 verified Meteora DLMM pools from meteora_pool_chain_verification.json",
+      "Select 10 (or all 16) for the expanded universe",
+      "Emit meteora_dlmm_coverage_expand.csv/json with real Solana pool addresses, real owner_program=LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo, real on-chain verification"
+    ],
+    "stage_c_steps": [
+      "Identify 5-10 common mainnet Base Uniswap V3 pools from prior Base artifacts",
+      "Mark adapter_ready=true (Go adapter exists at internal/adapters/pool/uniswap_v3/) but collector_observable=false (EVM collector not wired to long-horizon pipeline)",
+      "Honest disclosure: pools are inferred, not RPC-validated this stage"
+    ],
+    "stage_d_steps": [
+      "Identify 5-10 common mainnet Base Aerodrome classic pools (Solidly fork)",
+      "Distinguish Aerodrome classic (Solidly) from Slipstream (V3 fork)",
+      "Slipstream pools: adapter_ready=false (custom tick math not in existing pool/uniswap_v3 adapter)",
+      "Classic pools: adapter_ready=true, collector_observable=false (EVM collector not wired)"
+    ],
+    "stage_e_steps": [
+      "Identify 5-10 BSC PancakeSwap V3 pools + 5-10 V2 pools from prior BSC precise_quote artifacts",
+      "Mark all bsc_chain_adapter_not_implemented_yet: adapter_ready=false, collector_observable=false"
+    ],
+    "stage_f_steps": [
+      "Merge 33 + 16 + 5 + 5 + 5 + 5 = ~69 pools",
+      "Compute observable_pool_count (Solana only, because Base/BSC adapters not wired): 33 + 10 (Meteora selected) = 43",
+      "Compute non_observable_pool_count: 26 (Base/BSC candidates)"
+    ],
+    "stage_g_steps": [
+      "Decide recommended_next_stage based on observable_pool_count and adapter status",
+      "Recommend LP_LONG_HORIZON_COLLECTOR_ADAPTER_COVERAGE_WIRING_V1 because Base/BSC not observable",
+      "Do NOT recommend 12h retry yet because observable coverage is still partial (Solana only)"
+    ]
+  },
+  "audit_outcome": "PASS",
+  "audit_locked_fields": {
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no",
+    "wallet_or_tx_touched": false,
+    "transaction_sent": false,
+    "no_12h_data_modification": true,
+    "no_6h_data_modification": true,
+    "no_modify_v2_12h_FINAL_VERDICT": true,
+    "no_modify_v2_12h_corrected_verdict": true,
+    "no_modify_v2_6h_FINAL_VERDICT": true,
+    "no_modify_v2_6h_corrected_verdict": true,
+    "no_modify_12h_node_report": true,
+    "no_modify_supervisor_runner": true,
+    "no_modify_collector": true,
+    "no_start_12h_24h_48h_72h_7d": true,
+    "no_long_running_collector": true,
+    "no_probe_canary_live_paper": true,
+    "no_wallet_keypair_signer": true,
+    "no_tx_send_approve_mint": true,
+    "no_paid_rpc_indexer": true,
+    "no_production_write": true,
+    "no_shadow_overwrite": true,
+    "no_cron_systemd_daemon": true,
+    "no_tmux_session_created": true,
+    "no_collector_started": true
+  }
+}

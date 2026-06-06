@@ -1,0 +1,204 @@
+{
+  "stage": "LP_LONG_HORIZON_REAL_POOL_UNIVERSE_COVERAGE_EXPAND_V1",
+  "section": "coverage_gap_decision",
+  "run_id": "20260606_091120",
+  "branch": "feat/supabase-postgres-deployment",
+  "generated_at_utc": "2026-06-06T09:19:00Z",
+  "decisions": {
+    "target_pool_count_45_met": true,
+    "target_protocol_count_5_met": true,
+    "target_chain_count_3_met": true,
+    "target_observable_pool_count_45_met": true,
+    "target_observable_protocol_count_5_met": false,
+    "needs_evm_wiring": true,
+    "needs_bsc_wiring": true,
+    "can_12h_retry_directly": false
+  },
+  "metrics": {
+    "total_pool_count": 72,
+    "observable_pool_count": 49,
+    "non_observable_pool_count": 23,
+    "chain_distribution": {
+      "solana": 49,
+      "base": 10,
+      "bsc": 13
+    },
+    "protocol_distribution": {
+      "solana/orca_whirlpool": 13,
+      "solana/raydium_clmm": 10,
+      "solana/raydium_cpmm": 10,
+      "solana/meteora_dlmm": 16,
+      "base/uniswap_v3": 5,
+      "base/aerodrome": 5,
+      "bsc/pancakeswap_v3": 8,
+      "bsc/pancakeswap_v2": 5
+    },
+    "observable_protocol_count": 4,
+    "observable_per_protocol": {
+      "solana/orca_whirlpool": 13,
+      "solana/raydium_clmm": 10,
+      "solana/raydium_cpmm": 10,
+      "solana/meteora_dlmm": 16
+    }
+  },
+  "decisions_detail": {
+    "evm_wiring_needed_pools": [
+      {
+        "chain": "base",
+        "protocol": "uniswap_v3",
+        "pool_address": "0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38",
+        "reason": "evm_collector_not_wired_into_smoke_mode_yet"
+      },
+      {
+        "chain": "base",
+        "protocol": "uniswap_v3",
+        "pool_address": "PENDING_BASE_UNIV3_RPC_VALIDATION",
+        "reason": "evm_collector_not_wired_into_smoke_mode_yet; pool_address_placeholder_pending_rpc_validation"
+      },
+      {
+        "chain": "base",
+        "protocol": "uniswap_v3",
+        "pool_address": "PENDING_BASE_UNIV3_RPC_VALIDATION",
+        "reason": "evm_collector_not_wired_into_smoke_mode_yet; pool_address_placeholder_pending_rpc_validation"
+      },
+      {
+        "chain": "base",
+        "protocol": "uniswap_v3",
+        "pool_address": "PENDING_BASE_UNIV3_RPC_VALIDATION",
+        "reason": "evm_collector_not_wired_into_smoke_mode_yet; pool_address_placeholder_pending_rpc_validation"
+      },
+      {
+        "chain": "base",
+        "protocol": "uniswap_v3",
+        "pool_address": "PENDING_BASE_UNIV3_RPC_VALIDATION",
+        "reason": "evm_collector_not_wired_into_smoke_mode_yet; pool_address_placeholder_pending_rpc_validation"
+      },
+      {
+        "chain": "base",
+        "protocol": "aerodrome",
+        "pool_address": "PENDING_AERODROME_RPC_VALIDATION",
+        "reason": "evm_collector_not_wired_into_smoke_mode_yet"
+      },
+      {
+        "chain": "base",
+        "protocol": "aerodrome",
+        "pool_address": "PENDING_AERODROME_RPC_VALIDATION",
+        "reason": "evm_collector_not_wired_into_smoke_mode_yet"
+      },
+      {
+        "chain": "base",
+        "protocol": "aerodrome",
+        "pool_address": "PENDING_AERODROME_RPC_VALIDATION",
+        "reason": "evm_collector_not_wired_into_smoke_mode_yet"
+      },
+      {
+        "chain": "base",
+        "protocol": "aerodrome",
+        "pool_address": "PENDING_AERODROME_RPC_VALIDATION",
+        "reason": "evm_collector_not_wired_into_smoke_mode_yet"
+      },
+      {
+        "chain": "base",
+        "protocol": "aerodrome",
+        "pool_address": "PENDING_AERODROME_RPC_VALIDATION",
+        "reason": "slipstream_custom_tick_math_adapter_not_implemented"
+      }
+    ],
+    "bsc_wiring_needed_pools": [
+      {
+        "chain": "bsc",
+        "protocol": "pancakeswap_v3",
+        "pool_address": "0x172fcD41E0913e95784454622d1c3724f546f849",
+        "reason": "bsc_chain_adapter_not_implemented_yet"
+      },
+      {
+        "chain": "bsc",
+        "protocol": "pancakeswap_v3",
+        "pool_address": "0x36696169C63e42cd08ce11f5deeBbCeBae652050",
+        "reason": "bsc_chain_adapter_not_implemented_yet"
+      },
+      {
+        "chain": "bsc",
+        "protocol": "pancakeswap_v3",
+        "pool_address": "0x1401ff943D08a7E098328C1d3a9d388923B115D2",
+        "reason": "bsc_chain_adapter_not_implemented_yet"
+      },
+      {
+        "chain": "bsc",
+        "protocol": "pancakeswap_v3",
+        "pool_address": "0x6805E0E5333c5c3acCF2930Be4734E2b98f4Ce06",
+        "reason": "bsc_chain_adapter_not_implemented_yet"
+      },
+      {
+        "chain": "bsc",
+        "protocol": "pancakeswap_v3",
+        "pool_address": "0xf2688Fb5B81049DFB7703aDa5e770543770612C4",
+        "reason": "bsc_chain_adapter_not_implemented_yet"
+      },
+      {
+        "chain": "bsc",
+        "protocol": "pancakeswap_v3",
+        "pool_address": "0x81A9b5F18179cE2bf8f001b8a634Db80771F1824",
+        "reason": "bsc_chain_adapter_not_implemented_yet"
+      },
+      {
+        "chain": "bsc",
+        "protocol": "pancakeswap_v3",
+        "pool_address": "0xc721dECCD986D54B39e8c29428A1f06155c3671e",
+        "reason": "bsc_chain_adapter_not_implemented_yet"
+      },
+      {
+        "chain": "bsc",
+        "protocol": "pancakeswap_v3",
+        "pool_address": "0x18C5aFFA481e7EDbF37405AdE553827d6387899f",
+        "reason": "bsc_chain_adapter_not_implemented_yet"
+      },
+      {
+        "chain": "bsc",
+        "protocol": "pancakeswap_v2",
+        "pool_address": "0x16b9a82891338f9bA80E2D6970FddA79D1d0E162",
+        "reason": "bsc_chain_adapter_not_implemented_yet"
+      },
+      {
+        "chain": "bsc",
+        "protocol": "pancakeswap_v2",
+        "pool_address": "0x58F876857a02D6762E0101bb5C46A8c1ED44Dc16",
+        "reason": "bsc_chain_adapter_not_implemented_yet"
+      },
+      {
+        "chain": "bsc",
+        "protocol": "pancakeswap_v2",
+        "pool_address": "PENDING_BSC_PANCAKE_V2_RPC_VALIDATION",
+        "reason": "bsc_chain_adapter_not_implemented_yet"
+      },
+      {
+        "chain": "bsc",
+        "protocol": "pancakeswap_v2",
+        "pool_address": "PENDING_BSC_PANCAKE_V2_RPC_VALIDATION",
+        "reason": "bsc_chain_adapter_not_implemented_yet"
+      },
+      {
+        "chain": "bsc",
+        "protocol": "pancakeswap_v2",
+        "pool_address": "0xA39Af17CE4a8eb807E076805Da1e2C8bAc8530b2",
+        "reason": "bsc_chain_adapter_not_implemented_yet"
+      }
+    ]
+  },
+  "recommended_next_stage": "LP_LONG_HORIZON_COLLECTOR_ADAPTER_COVERAGE_WIRING_V1",
+  "recommended_next_stage_rationale": "universe expanded to 72 pools but only 49 observable. Adapter wiring needed.",
+  "allowed_next_stages": [
+    "LP_LONG_HORIZON_READONLY_CONTINUOUS_12H_REAL_UNIVERSE_RETRY_REQUEST_V1",
+    "LP_LONG_HORIZON_COLLECTOR_ADAPTER_COVERAGE_WIRING_V1",
+    "LP_LONG_HORIZON_REAL_POOL_UNIVERSE_COVERAGE_EXPAND_REPEAT",
+    "PAUSE_AUTOMATED_LP_PROBE_AND_COLLECT_LONGER_HORIZON_DATA"
+  ],
+  "status": "WARN",
+  "no_touch_invariants": {
+    "no_wallet_keypair_signer": true,
+    "no_tx_send_approve_mint": true,
+    "no_production_write": true,
+    "no_collector_started": true,
+    "no_12h_retry_started": true
+  }
+}
