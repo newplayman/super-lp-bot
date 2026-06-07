@@ -1,0 +1,115 @@
+{
+  "stage": "LP_LONG_HORIZON_PARTIAL_12H_NODE_REPORT_REVIEW_V1",
+  "report_kind": "what_12h_did_not_prove",
+  "run_id": "20260606_131323",
+  "branch": "feat/supabase-postgres-deployment",
+  "review_audited_at_utc": "2026-06-07T16:30:00Z",
+  "coverage_scope": "partial_solana_bsc_real_universe",
+
+  "not_proved_items": [
+    {
+      "id": "NOT-PROVED-1",
+      "claim": "LP 有正 EV",
+      "why_not_proved": "r0 phase 数据无 actual fee accrual, 无 IL realized vs IL actual, 无 tokenId 位置信息",
+      "evidence": "fee_capture_proxy_usd=0, il_realized_pct=null, actual_pnl_usd=null, preflight_candidate_count=0, ev_ready_pool_count=0",
+      "status": "NOT_PROVED"
+    },
+    {
+      "id": "NOT-PROVED-2",
+      "claim": "LP 没肉 (low fee / 负 IL / LVR 主导)",
+      "why_not_proved": "r0 phase 数据**不**能证明 LP 亏或赚, 12h 跑通只证明 pipeline, **不** 是 backtest",
+      "evidence": "fee_velocity sample_count=0, quote amount_in/out=0, liquidity active_range=0, market_regime price/vol=0",
+      "status": "NOT_PROVED"
+    },
+    {
+      "id": "NOT-PROVED-3",
+      "claim": "可进入 probe",
+      "why_not_proved": "probe 需要 actual fee data + tier classification + preflight candidate list + freeze reopen",
+      "evidence": "can_run_probe_now=false, preflight_candidate_count=0, tier_classifier=DEFERRED_TO_R1, freeze active",
+      "status": "NOT_PROVED"
+    },
+    {
+      "id": "NOT-PROVED-4",
+      "claim": "actual fee accrual",
+      "why_not_proved": "actual fee accrual 需要 on-position tokenId (user 实际 mint 的 LP NFT / position) + entry/exit snapshot + tokenId-based feeGrowthInside 跨 ckpt diff",
+      "evidence": "actual_fee_accrual_placeholder.json 12 ckpt × 1 placeholder, 全部字段 null, r0_phase_status='schema only, no records; r1 requires user-provided tokenId'",
+      "status": "NOT_PROVED"
+    },
+    {
+      "id": "NOT-PROVED-5",
+      "claim": "真实 range / tick / bin fee capture",
+      "why_not_proved": "V3 range fee capture 需要 tokenId + tickLower/tickUpper + feeGrowthInside0/1 跨 diff; DLMM bin fee capture 需要 tokenId + bin_id 范围 + DLMM indexer; CPMM fee share 需要 tokenId + reserve0/reserve1",
+      "evidence": "active_tick=null, active_bin=null, active_range_liquidity=0, tick_spacing=null, bin_step=null, 12h 跑通只跑 quote smoke_placeholder, **不** 跑真实 QuoterV2 staticcall (因 no live RPC)",
+      "status": "NOT_PROVED"
+    },
+    {
+      "id": "NOT-PROVED-6",
+      "claim": "53 个池都值得参与",
+      "why_not_proved": "池值得参与需要 EV>0 + tier a/b/c + 不在 hard rejection + fee velocity > 阈值 + TVL 趋势 stable. 12h r0 phase **不** 验证任何一条",
+      "evidence": "53 池 smoke_placeholder, preflight_candidate_count=0, r0_candidate_ready=false (all), tier_classifier=DEFERRED_TO_R1, tier_c_hard_rejection **不** applied (r0)",
+      "status": "NOT_PROVED"
+    },
+    {
+      "id": "NOT-PROVED-7",
+      "claim": "full chain coverage",
+      "why_not_proved": "full coverage 需 5 chains × ≥3 DEX × ≥10 pool. 12h 仅 2 chains × 5 DEX × 53 pool, Base 0 池 (RPC 403), Ethereum/Arbitrum 不在 stage",
+      "evidence": "coverage_scope=partial_solana_bsc_real_universe, do_not_treat_as_full_universe=true, missing_chains=[base, ethereum, arbitrum]",
+      "status": "NOT_PROVED"
+    },
+    {
+      "id": "NOT-PROVED-8",
+      "claim": "market regime-aware sizing",
+      "why_not_proved": "market regime-aware sizing 需要 real-time price feed + realized vol 跨 7d/30d + volume-to-tvl ratio. r0 phase 全 0",
+      "evidence": "market_regime smoke_placeholder=true, price_change_pct=0, realized_vol_pct=0, volume_to_tvl_pct=0, regime 标签静态分配",
+      "status": "NOT_PROVED"
+    }
+  ],
+
+  "not_proved_count": 8,
+  "not_proved_summary": "12h 跑通**不**证明 LP 决策可有. 8/8 critical claims not proved.",
+
+  "reverse_not_proved": [
+    "53 池都不值得参与 (blocked by r0)",
+    "LP 必然亏 (blocked by r0)",
+    "Solana 比 BSC 好 (proxy 数据无效)",
+    "orca_whirlpool 比 raydium_clmm 好 (proxy 数据无效)",
+    "fee tier 0.01% 比 0.05% 适合 LP (proxy 数据无效)",
+    "stable pair 比 volatile pair 稳定 (proxy 数据无效)",
+    "12h 内 regime 切换发生过 (regime 静态分配)",
+    "此刻 LP 是否好 (proxy 数据无效)"
+  ],
+
+  "critical_gaps_for_r1": [
+    {"gap": "actual fee accrual", "blocker": "无 on-position tokenId", "r1_fix": "user mint 实际 LP position (需 freeze reopen)"},
+    {"gap": "actual IL", "blocker": "无 entry/exit price snapshot", "r1_fix": "Pyth/CoinGecko 集成 + 跨 snapshot diff"},
+    {"gap": "actual range/tick/bin fee", "blocker": "无 on-position tokenId", "r1_fix": "同上"},
+    {"gap": "actual quote", "blocker": "无 live RPC", "r1_fix": "Base RPC 修复 or paid RPC (freeze blocks)"},
+    {"gap": "actual reserve/liquidity", "blocker": "无 live RPC", "r1_fix": "同上"},
+    {"gap": "actual market regime", "blocker": "无 real-time price feed", "r1_fix": "Pyth/CoinGecko 集成 (not yet wired)"},
+    {"gap": "actual fee velocity", "blocker": "无 on-position tokenId + 无 live volume", "r1_fix": "跨 ckpt tokenId-based diff + volume proxy 集成"},
+    {"gap": "full chain coverage", "blocker": "Base 不可达 (env) + eth/arb 未集成", "r1_fix": "env change or paid RPC + 跨 chain adapter 集成"}
+  ],
+
+  "important_disclaimers": [
+    "12h 跑通 **不** 等于 LP 决策可有 (无 actual fee, 无 preflight candidate)",
+    "12h 跑通 **不** 等于'再跑 24h 就有数据' (24h 仍是 r0 proxy, 同样无 actual data)",
+    "12h 跑通 **不** 等于 48h / 72h / 7d 可破 (time 不解决 r0 → r1 升级)",
+    "12h 跑通 **不** 等于'先做 backtest 即可' (backtest 需 historical fee/IL data, 同样 blocked by r0)"
+  ],
+
+  "locked_fields": {
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no",
+    "edge_proven": "no",
+    "global_lp_rejected": false,
+    "actual_fee_data_available": false,
+    "fee_proxy_only": true,
+    "candidate_decision_reliable": false,
+    "preflight_candidate_count": 0,
+    "watchlist_count": 0,
+    "data_insufficient_count": 53,
+    "r1_upgrade_required": true,
+    "wallet_or_tx_touched": false,
+    "transaction_sent": false
+  }
+}

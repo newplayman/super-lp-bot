@@ -1,0 +1,144 @@
+{
+  "stage": "LP_LONG_HORIZON_PARTIAL_12H_NODE_REPORT_REVIEW_V1",
+  "report_kind": "coverage_review",
+  "run_id": "20260606_131323",
+  "branch": "feat/supabase-postgres-deployment",
+  "review_audited_at_utc": "2026-06-07T16:30:00Z",
+  "coverage_scope": "partial_solana_bsc_real_universe",
+  "do_not_treat_as_full_universe": true,
+  "full_coverage_ready": false,
+
+  "observed_chains": ["solana", "bsc"],
+  "missing_chains": ["base"],
+  "missing_chains_reasons": {
+    "base": "All 4 public RPC endpoints (base.publicnode.com, base-rpc.publicnode.com, mainnet.base.org, 1rpc.io/base) returned 403 in this env. Per prior stage lp_long_horizon_collector_rpc_reachability_and_adapter_smoke_fix_v1."
+  },
+  "chain_count": {"observed": 2, "missing_in_stage": 1, "missing_not_in_stage": ["ethereum", "arbitrum"], "total_in_stage": 3},
+
+  "observed_protocols": [
+    "solana/orca_whirlpool",
+    "solana/raydium_clmm",
+    "solana/raydium_cpmm",
+    "solana/meteora_dlmm",
+    "bsc/pancakeswap_v3"
+  ],
+  "missing_protocols": [
+    "base/aerodrome_slipstream",
+    "base/aerodrome_classic",
+    "base/uniswap_v3",
+    "bsc/pancakeswap_v2"
+  ],
+  "missing_protocols_reasons": {
+    "base/aerodrome_slipstream": "Base chain unreachable (chain-level missing)",
+    "base/aerodrome_classic": "Base chain unreachable",
+    "base/uniswap_v3": "Base chain unreachable",
+    "bsc/pancakeswap_v2": "factory.getPair returned zero for all V2 candidate pairs"
+  },
+  "protocol_count": {"observed": 5, "missing": 4, "total": 9},
+
+  "pool_count": {
+    "observed_pool_count": 53,
+    "real_on_chain_pool_count": 53,
+    "placeholder_pool_count": 0,
+    "smoke_placeholder_pool_count": 53,
+    "missing_pool_count": 0
+  },
+
+  "chain_distribution": {"solana": 49, "bsc": 4},
+  "protocol_distribution": {
+    "solana/orca_whirlpool": 13,
+    "solana/raydium_clmm": 10,
+    "solana/raydium_cpmm": 10,
+    "solana/meteora_dlmm": 16,
+    "bsc/pancakeswap_v3": 4
+  },
+
+  "tvl_distribution_proxy_from_prior_stage_csv": {
+    "gt_10m": 8,
+    "1m_to_10m": 17,
+    "100k_to_1m": 1,
+    "lt_100k": 5,
+    "zero_or_unknown": 22
+  },
+
+  "data_layer_readiness": {
+    "quote_ready_pool_count": 53,
+    "fee_ready_pool_count": 53,
+    "ev_ready_pool_count": 0,
+    "preflight_candidate_count": 0,
+    "watchlist_count": 0,
+    "data_insufficient_count": 53,
+    "tier_a_assigned": 0,
+    "tier_b_assigned": 0,
+    "tier_c_assigned": 0,
+    "tier_classifier_output": "DEFERRED_TO_R1"
+  },
+
+  "quote_ready_detail": {
+    "per_ckpt_count": 318,
+    "ckpt_count": 12,
+    "total_12h": 3816,
+    "notional_levels": [10, 100, 1000, 10000, 100000, 1000000],
+    "smoke_placeholder": true,
+    "r0_phase_status": "all amount_in_raw=0, amount_out_raw=0, price_impact_pct=0, slippage_pct=0, fee_usd=0"
+  },
+
+  "fee_ready_detail": {
+    "per_ckpt_count": 265,
+    "ckpt_count": 12,
+    "total_12h": 3180,
+    "windows": ["15m", "1h", "4h", "24h", "7d"],
+    "smoke_placeholder": true,
+    "r0_phase_status": "all volume_proxy_usd=0, fee_capture_proxy_usd=0, sample_count=0"
+  },
+
+  "ev_ready_detail": {
+    "count": 0,
+    "reason": "r0 phase: no actual fee + IL + tokenId data",
+    "components_all_zero": ["fee_actual_usd_24h", "il_realized_pct", "il_actual_pct", "actual_pnl_usd", "tokens_owed_a_raw", "tokens_owed_b_raw", "actual_collected_a_raw", "actual_collected_b_raw"]
+  },
+
+  "data_quality_status": {
+    "error_rate_pct": 0.0,
+    "consecutive_429_max": 0,
+    "data_quality_status": "PASS",
+    "per_ckpt_file_size_consistent": true,
+    "smoke_summary_consistent": true,
+    "note": "r0 phase data_quality, validates pipeline + flag correctness, NOT data truth"
+  },
+
+  "coverage_scope_summary": {
+    "chain_level_pct": 66.7,
+    "dex_level_pct": 55.6,
+    "pool_address_pct": 100.0,
+    "data_layer_smoke_pct": 100.0,
+    "data_layer_actual_pct": 0.0,
+    "ev_ready_pct": 0.0,
+    "preflight_candidate_pct": 0.0,
+    "full_coverage_ready": false,
+    "do_not_treat_as_full_universe": true
+  },
+
+  "coverage_gaps_for_r1": [
+    {"gap": "Base 链 0 池", "blocker": "public RPC 403", "r1_fix": "env 换 / paid RPC (freeze blocks)"},
+    {"gap": "BSC V2 0 池", "blocker": "factory.getPair=0", "r1_fix": "换候选 pair or 接受 V2 不参与"},
+    {"gap": "Meteora DLMM 16 池 TVL proxy=0", "blocker": "dlmm-api 不可达", "r1_fix": "DexScreener / GeckoTerminal indexer"},
+    {"gap": "BSC V3 4 池 TVL proxy=0", "blocker": "not yet in stage CSV", "r1_fix": "集成 bsc candidate CSV from prior stage"},
+    {"gap": "全 53 池 reserve/liquidity/quote/fee/regime=0", "blocker": "no live RPC", "r1_fix": "freeze blocks"},
+    {"gap": "全 53 池 on-position tokenId=0", "blocker": "no actual LP mint", "r1_fix": "freeze reopen + user mint (by design)"},
+    {"gap": "market regime static", "blocker": "no real-time price feed", "r1_fix": "Pyth/CoinGecko 集成 (not yet wired)"}
+  ],
+
+  "locked_fields": {
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no",
+    "edge_proven": "no",
+    "global_lp_rejected": false,
+    "actual_fee_data_available": false,
+    "fee_proxy_only": true,
+    "candidate_decision_reliable": false,
+    "r1_upgrade_required": true,
+    "wallet_or_tx_touched": false,
+    "transaction_sent": false
+  }
+}

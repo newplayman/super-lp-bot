@@ -1,0 +1,188 @@
+{
+  "stage": "LP_LONG_HORIZON_PARTIAL_12H_NODE_REPORT_REVIEW_V1",
+  "report_kind": "r0_to_r1_data_upgrade_plan",
+  "run_id": "20260606_131323",
+  "branch": "feat/supabase-postgres-deployment",
+  "review_audited_at_utc": "2026-06-07T16:30:00Z",
+  "coverage_scope": "partial_solana_bsc_real_universe",
+
+  "r1_objectives": [
+    {
+      "id": "R1-1",
+      "objective": "real reserve / liquidity snapshot (V3/CLMM/CPMM/DLMM)",
+      "r0_state": "pool_snapshots.jsonl reserve_a_raw=0, reserve_b_raw=0, liquidity=0, active_tick=null, active_bin=null",
+      "r1_target": "all 636 行 (53×12) non-zero",
+      "implementation": {
+        "solana_clmm": "getMultipleAccountsInfo → Whirlpool/Raydium CLMM 状态 → sqrt_price, tick_current_index, liquidity",
+        "solana_cpmm": "getMultipleAccountsInfo → Raydium CPMM pool state → reserve_a_amount, reserve_b_amount",
+        "solana_dlmm": "dlmm-api (env 不可达) or DexScreener API → active_id, bin_step, bin_liquidity[]",
+        "bsc_v3": "eth_call slot0(pool) + liquidity(pool) → sqrtPriceX96, tick, liquidity",
+        "bsc_v2": "eth_call getReserves(pair) → reserve0, reserve1 (currently 0 pool)",
+        "base": "同 BSC, 需 env change or paid RPC (paid blocked by freeze, currently 0 chain)"
+      }
+    },
+    {
+      "id": "R1-2",
+      "objective": "real quote snapshot (QuoterV2 staticcall)",
+      "r0_state": "quote_snapshots.jsonl amount_in_raw=0, amount_out_raw=0, price_impact_pct=0, slippage_pct=0, fee_usd=0",
+      "r1_target": "all 3816 行 (53×6×12) non-zero",
+      "implementation": {
+        "solana_clmm": "Whirlpool quote_swap / Raydium CLMM quote instruction (simulate, **不**sendTransaction)",
+        "bsc_v3": "eth_call IQuoterV2.quoteExactInputSingle(tokenIn, tokenOut, fee, amountIn, sqrtPriceLimitX96)",
+        "pyth_oracle": "PriceFeed.getPriceNoOlderThan(60) → SOL/USDC, USDC/USDT, WBNB/USDT, etc. → USD conversion"
+      }
+    },
+    {
+      "id": "R1-3",
+      "objective": "real fee velocity proxy (volume + 实际 fee)",
+      "r0_state": "fee_velocity.jsonl volume_proxy_usd=0, fee_capture_proxy_usd=0, sample_count=0",
+      "r1_target": "all 3180 行 (53×5×12) non-zero",
+      "implementation": {
+        "volume_source": "DexScreener API volume.h24/h6/h1/m15 OR GeckoTerminal API OR on-chain swap event log subscription",
+        "fee_capture_v3": "liquidity * (feeGrowthGlobal - feeGrowthOutside)",
+        "fee_capture_cpmm": "volume * fee_tier * lp_share (需 total_supply)",
+        "cross_ckpt_diff": "24h window tokenId-based diff (用 liquidity_provider_proxy, **不**需 actual tokenId)"
+      }
+    },
+    {
+      "id": "R1-4",
+      "objective": "real volume source (per-ckpt 5 windows)",
+      "r0_state": "vol24h_proxy_usd 来自 prior stage CSV (real, but 静态, not per-ckpt)",
+      "r1_target": "per-ckpt vol24h / vol6h / vol1h / vol15m / vol7d 全部 non-zero",
+      "implementation": {
+        "dexscreener": "https://api.dexscreener.com/latest/dex/pairs/{chain}/{pool_address}",
+        "geckoterminal": "https://api.geckoterminal.com/api/v2/networks/{chain}/pools/{pool_address}",
+        "on_chain_swap_event_solana": "getSignaturesForAddress + 解析 swap 指令",
+        "on_chain_swap_event_bsc": "getLogs + 解析 Swap event"
+      }
+    },
+    {
+      "id": "R1-5",
+      "objective": "real range / tick / bin liquidity",
+      "r0_state": "liquidity_distribution.jsonl active_range_liquidity=0, near_active_liquidity=0, tick_spacing=null, bin_step=null",
+      "r1_target": "all 636 行 (53×12) non-zero",
+      "implementation": {
+        "v3_clmm": "跨 tickLower/tickUpper 范围累积 liquidity (ticks(net) bitmap) → active_range / near_active / sparse",
+        "dlmm": "跨 bin_id 范围累积 bin liquidity (dlmm-api or on-chain bin_array) → active_bin / near_active_bin",
+        "cpmm": "单 bin (x*y=k), range=0, sparse=0, out_of_range_risk=N/A"
+      }
+    },
+    {
+      "id": "R1-6",
+      "objective": "market regime classification (real-time price)",
+      "r0_state": "market_regime.jsonl price_change_pct=0, realized_vol_pct=0, volume_to_tvl_pct=0, regime 静态分配",
+      "r1_target": "all 84 行 (7×12) non-zero (or N/A → regime 标 no_data 不写入)",
+      "implementation": {
+        "pyth": "PriceFeed.getPriceNoOlderThan(60) → 7d sliding window → price_change_pct + realized_vol_pct",
+        "coingecko_fallback": "https://api.coingecko.com/api/v3/coins/{id}/market_chart?vs_currency=usd&days=7",
+        "regime_classifier": "per token_pair 7d price_change + realized_vol → uptrend/downtrend/sideways/high_volume_sideways/high_volatility_trend/incentive_period/low_volatility_stable"
+      }
+    },
+    {
+      "id": "R1-7",
+      "objective": "actual fee accrual schema 维持 (placeholder)",
+      "r0_state": "actual_fee_accrual_placeholder.json 12 ckpt × 1 placeholder, 全部 null",
+      "r1_target": "schema 维持 placeholder, 全部 null, r0_phase_status 维持",
+      "implementation": {
+        "schema_unchanged": "保持 current schema, **不** 改字段",
+        "data_unchanged": "12 ckpt × 1 placeholder, 全部 null",
+        "r0_phase_status_unchanged": "schema only, no records; r1 requires user-provided tokenId",
+        "r0_to_r1_transition_explicit": "r1 = real data layer (RPC + quote + volume + regime), **不** = actual fee accrual"
+      }
+    }
+  ],
+
+  "r1_does_not_do": [
+    "不 probe (can_run_probe_now 仍 false)",
+    "不 canary (tiny_canary_allowed 仍 'no')",
+    "不 live (live mode hard-disabled)",
+    "不 paper (paper mode not in spec)",
+    "不读 wallet / seed / keypair / signer",
+    "不发送 transaction",
+    "不 approve / mint / swap / bridge",
+    "不写 production positions",
+    "不覆盖 shadow 原始表",
+    "不接 paid RPC / paid indexer",
+    "不 mint 实际 LP NFT 仓位 (无 tokenId, freeze 仍 active)",
+    "不 actual fee accrual (schema 维持 placeholder)",
+    "不 actual tokenId (无 on-position)"
+  ],
+
+  "r1_scope_clarification": "r1 = real-time read-only data layer (RPC + price feed + volume indexer), **不** mint / **不** add liquidity / **不** actual fee.",
+
+  "r1_recommended_stage_name": "LP_LONG_HORIZON_R1_REAL_DATA_OBSERVATION_UPGRADE_V1",
+  "r1_stage_name_breakdown": {
+    "LP_LONG_HORIZON": "long horizon 任务系列",
+    "R1_REAL_DATA": "r0 → r1 upgrade, real data layer",
+    "OBSERVATION": "observation only, **不** probe / canary / live",
+    "UPGRADE_V1": "collector + adapter 升级, **不**新增 surface"
+  },
+
+  "r1_stage_boundaries": {
+    "upgrade_collector": "scripts/lp_long_horizon_readonly_collector_v1.py 加 real RPC + quote + volume + regime",
+    "upgrade_adapters": "scripts/lp_long_horizon/adapters/ 走 real RPC call",
+    "upgrade_rpc_registry": "rpc_registry.py 加 retry / multi-endpoint / circuit breaker",
+    "upgrade_fee_estimation_basis": "r1 doc 写 'real data layer, all 6 dimensions non-zero'",
+    "upgrade_candidate_review": "r1 doc 重新跑 preflight, 输出 preflight_candidate_count > 0 (期望)",
+    "upgrade_market_regime": "r1 doc 用 real-time price feed classifier",
+    "upgrade_liquidity_distribution": "r1 doc 用 real range/tick/bin liquidity",
+    "actual_fee_accrual_unchanged": "schema only, freeze 仍 active"
+  },
+
+  "r1_completion_expectations": {
+    "preflight_candidate_count": "0 → 可能 > 0 (期望)",
+    "watchlist_count": "0 → 可能 > 0 (期望)",
+    "data_insufficient_count": "53 → 应显著下降 (期望 ≤ 10, 取决于 RPC reachability + fee proxy 准确性)",
+    "reject_count": "0 → 可能 > 0 (期望; tier_c hard reject applied)",
+    "fee_proxy_only": "true → false (期望; real data)",
+    "actual_fee_data_available": "false → false (维持, 因 freeze 仍 active)",
+    "candidate_decision_reliable": "false → 可能 true (期望; 但**仍**受 actual fee missing 影响)"
+  },
+
+  "r1_still_locked_after_completion": {
+    "can_run_probe_now": "false (freeze 仍 active)",
+    "tiny_canary_allowed": "'no' (freeze 仍 active)",
+    "edge_proven": "'no' (actual fee 缺失)",
+    "actual_fee_data_available": "false (freeze, r1 不 = actual)",
+    "global_lp_rejected": "false (r1 不 = reject)"
+  },
+
+  "r1_to_real_lp_decision": {
+    "r1_alone_insufficient": "r1 + freeze reopen → 才有 actual fee data",
+    "r1_plus_freeze_reopen": "r1 + freeze reopen + 24h+ tokenId diff → 才有 LP edge proven",
+    "next_stage_after_r1_12h": [
+      {"condition": "R1 12h PASS, data_insufficient ≤ 10, preflight > 0, watchlist > 0", "next_stage": "LP_LONG_HORIZON_R2_ACTUAL_FEE_ACCRUAL_UPGRADE_V1 (需 freeze reopen)"},
+      {"condition": "R1 12h PASS, data_insufficient > 10, RPC reachability blocker", "next_stage": "LP_LONG_HORIZON_RPC_REACHABILITY_FIX_V1"},
+      {"condition": "R1 12h FAIL", "next_stage": "LP_LONG_HORIZON_R1_FAILURE_AUDIT_V1"},
+      {"condition": "R1 12h PASS, freeze 仍 active, no actual fee data", "next_stage": "PAUSE_AUTOMATED_LP_PROBE_AND_COLLECT_LONGER_HORIZON_DATA"}
+    ]
+  },
+
+  "r1_risks": [
+    {"risk": "Base RPC 仍 403 (paid blocked)", "mitigation": "R1 在 solana + bsc 上跑, Base 仍 0 池 (但**不** blocker r1)"},
+    {"risk": "DexScreener API rate limit", "mitigation": "加 retry / circuit breaker / cache 5min"},
+    {"risk": "Pyth/CoinGecko API rate limit", "mitigation": "同上"},
+    {"risk": "Meteora DLMM indexer 不可达", "mitigation": "R1 仍 16 池 DLMM TVL=0, 但**不** blocker r1 (因 tokenPair 真实)"},
+    {"risk": "BSC V2 0 pool (factory.getPair=0)", "mitigation": "R1 仍 0 池 V2, **不** blocker r1"},
+    {"risk": "r1 12h 跑出来 fee 仍太小", "mitigation": "实事求是, **不** 翻 edge_proven=no → yes, **不** 翻 can_run_probe_now=false → true"}
+  ],
+
+  "r1_estimated_effort": {
+    "duration_hours": "2-3h (design + impl + test)",
+    "output": "升级后 collector + 升级后 adapters + 升级后 r1 跑 12h 验证 (新 RUN_ID, 新 data_dir)",
+    "r1_12h_validation": "preflight_candidate_count > 0, watchlist_count > 0, data_insufficient_count ≤ 10 (期望)"
+  },
+
+  "locked_fields": {
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no",
+    "edge_proven": "no",
+    "global_lp_rejected": false,
+    "actual_fee_data_available": false,
+    "fee_proxy_only": true,
+    "candidate_decision_reliable": false,
+    "r1_upgrade_required": true,
+    "wallet_or_tx_touched": false,
+    "transaction_sent": false
+  }
+}

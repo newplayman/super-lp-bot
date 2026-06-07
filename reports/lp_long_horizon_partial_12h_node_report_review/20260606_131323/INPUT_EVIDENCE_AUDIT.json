@@ -1,0 +1,80 @@
+{
+  "stage": "LP_LONG_HORIZON_PARTIAL_12H_NODE_REPORT_REVIEW_V1",
+  "report_kind": "input_evidence_audit",
+  "run_id": "20260606_131323",
+  "branch": "feat/supabase-postgres-deployment",
+  "review_audited_at_utc": "2026-06-07T16:30:00Z",
+  "coverage_scope": "partial_solana_bsc_real_universe",
+  "do_not_treat_as_full_universe": true,
+
+  "input_evidence_confirmed": {
+    "twelve_hour_pipeline_passed": true,
+    "data_quality_status": "PASS",
+    "error_rate_pct": 0.0,
+    "consecutive_429_max": 0,
+    "actual_runtime_minutes": 720,
+    "actual_runtime_valid_for_12h_gate": true,
+    "checkpoint_count": 12,
+    "placeholder_pool_count": 0,
+    "selected_pool_count": 53,
+    "selected_real_pool_count": 33,
+    "smoke_placeholder_pool_count": 53,
+    "wallet_or_tx_touched": false,
+    "transaction_sent": false,
+    "auto_advance_started": false,
+    "longer_stage_started": false,
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no",
+    "edge_proven": "no",
+    "send_hard_disable_still_active": true
+  },
+
+  "input_files_audited": [
+    {"path": "reports/lp_long_horizon_readonly_12h_node_report/20260606_131323/12H_NODE_REPORT_CN.md", "status": "exist", "kind": "node_report_cn"},
+    {"path": "reports/lp_long_horizon_readonly_12h_node_report/20260606_131323/coverage_manifest.json", "status": "exist", "kind": "coverage_manifest"},
+    {"path": "reports/lp_long_horizon_readonly_12h_node_report/20260606_131323/fee_estimation_basis.json", "status": "exist", "kind": "fee_estimation_basis"},
+    {"path": "reports/lp_long_horizon_readonly_12h_node_report/20260606_131323/candidate_review.json", "status": "exist", "kind": "candidate_review"},
+    {"path": "reports/lp_long_horizon_readonly_12h_node_report/20260606_131323/next_node_decision.json", "status": "exist", "kind": "next_node_decision"},
+    {"path": "reports/lp_long_horizon_readonly_partial_12h_request/20260606_131323/FINAL_VERDICT.json", "status": "exist", "kind": "request_final_verdict", "stage_status": "RUNNING (pre-launch)"},
+    {"path": "reports/lp_long_horizon_readonly_12h_run/20260606_131323/FINAL_VERDICT.json", "status": "exist", "kind": "run_final_verdict", "stage_status": "PASS"},
+    {"path": "data/lp_long_horizon/20260606_131323/", "status": "exist", "kind": "data_dir_12_checkpoints"},
+    {"path": "reports/lp_long_horizon_readonly_12h_run/20260606_131323/logs/supervisor.log", "status": "exist", "kind": "supervisor_log"},
+    {"path": "reports/lp_long_horizon_readonly_12h_run/20260606_131323/logs/aggregate_summary.json", "status": "exist", "kind": "aggregate_summary"}
+  ],
+
+  "input_evidence_locked_fields": {
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no",
+    "edge_proven": "no",
+    "wallet_or_tx_touched": false,
+    "transaction_sent": false,
+    "send_hard_disable_still_active": true,
+    "auto_advance_started": false,
+    "longer_stage_started": false
+  },
+
+  "input_evidence_review_scope": [
+    "WHAT_12H_PROVED_CN.md",
+    "WHAT_12H_DID_NOT_PROVE_CN.md",
+    "COVERAGE_REVIEW_CN.md",
+    "FEE_ESTIMATION_REVIEW_CN.md",
+    "CANDIDATE_REVIEW_AUDIT_CN.md",
+    "R0_TO_R1_DATA_UPGRADE_PLAN_CN.md",
+    "NEXT_STAGE_DECISION_CN.md"
+  ],
+
+  "input_evidence_audit_decision": "PROCEED_TO_REVIEW",
+  "input_evidence_audit_decision_rationale": "All 12h deliverables + data_dir exist, gate PASS, 21/21 stage H tests pass, 188/188 long-horizon tests pass. Audit decision = PROCEED_TO_REVIEW (12h review can now be written with full evidence).",
+
+  "no_touch_invariants": {
+    "no_24h_started": true,
+    "no_new_collector_started": true,
+    "no_probe_canary_live_paper": true,
+    "no_wallet_keypair_signer": true,
+    "no_tx_send_approve_mint_swap_bridge": true,
+    "no_paid_rpc_indexer": true,
+    "no_production_write": true,
+    "no_shadow_overwrite": true,
+    "no_real_secret_committed": true
+  }
+}

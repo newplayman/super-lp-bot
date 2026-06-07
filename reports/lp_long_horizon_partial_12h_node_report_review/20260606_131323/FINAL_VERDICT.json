@@ -1,0 +1,79 @@
+{
+  "stage": "LP_LONG_HORIZON_PARTIAL_12H_NODE_REPORT_REVIEW_V1",
+  "status": "PASS",
+  "run_id": "20260606_131323",
+  "branch": "feat/supabase-postgres-deployment",
+  "review_audited_at_utc": "2026-06-07T16:30:00Z",
+  "coverage_scope": "partial_solana_bsc_real_universe",
+  "do_not_treat_as_full_universe": true,
+  "full_coverage_ready": false,
+
+  "twelve_hour_pipeline_passed": true,
+  "twelve_hour_gate": {
+    "status": "PASS",
+    "actual_runtime_minutes": 720,
+    "data_quality_status": "PASS",
+    "error_rate_pct": 0.0,
+    "consecutive_429_max": 0,
+    "checkpoint_count": 12,
+    "selected_pool_count": 53,
+    "placeholder_pool_count": 0
+  },
+
+  "lp_edge_proven": false,
+  "global_lp_rejected": false,
+  "actual_fee_data_available": false,
+  "fee_proxy_only": true,
+  "candidate_decision_reliable": false,
+
+  "preflight_candidate_count": 0,
+  "watchlist_count": 0,
+  "data_insufficient_count": 53,
+  "reject_count": 0,
+  "ev_ready_pool_count": 0,
+
+  "r1_upgrade_required": true,
+  "r1_recommended_stage": "LP_LONG_HORIZON_R1_REAL_DATA_OBSERVATION_UPGRADE_V1",
+
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no",
+  "wallet_or_tx_touched": false,
+  "transaction_sent": false,
+  "send_hard_disable_still_active": true,
+  "edge_proven": "no",
+
+  "review_evidence_files": {
+    "input_evidence_audit": "reports/lp_long_horizon_partial_12h_node_report_review/20260606_131323/INPUT_EVIDENCE_AUDIT_CN.md",
+    "what_12h_proved": "reports/lp_long_horizon_partial_12h_node_report_review/20260606_131323/WHAT_12H_PROVED_CN.md",
+    "what_12h_did_not_prove": "reports/lp_long_horizon_partial_12h_node_report_review/20260606_131323/WHAT_12H_DID_NOT_PROVE_CN.md",
+    "coverage_review": "reports/lp_long_horizon_partial_12h_node_report_review/20260606_131323/COVERAGE_REVIEW_CN.md",
+    "fee_estimation_review": "reports/lp_long_horizon_partial_12h_node_report_review/20260606_131323/FEE_ESTIMATION_REVIEW_CN.md",
+    "candidate_review_audit": "reports/lp_long_horizon_partial_12h_node_report_review/20260606_131323/CANDIDATE_REVIEW_AUDIT_CN.md",
+    "r1_upgrade_plan": "reports/lp_long_horizon_partial_12h_node_report_review/20260606_131323/R0_TO_R1_DATA_UPGRADE_PLAN_CN.md",
+    "next_stage_decision": "reports/lp_long_horizon_partial_12h_node_report_review/20260606_131323/NEXT_STAGE_DECISION_CN.md",
+    "one_page": "reports/lp_long_horizon_partial_12h_node_report_review/20260606_131323/ONEPAGE_CN.md",
+    "artifact_index": "reports/lp_long_horizon_partial_12h_node_report_review/20260606_131323/ARTIFACT_INDEX.md"
+  },
+
+  "allowed_recommended_next_stages": [
+    "LP_LONG_HORIZON_R1_REAL_DATA_OBSERVATION_UPGRADE_V1",
+    "LP_LONG_HORIZON_READONLY_CONTINUOUS_24H_EXTENSION_REQUEST_V1",
+    "LP_LONG_HORIZON_COLLECTOR_ADAPTER_COVERAGE_WIRING_FIX_REPEAT",
+    "PAUSE_AUTOMATED_LP_PROBE_AND_COLLECT_LONGER_HORIZON_DATA"
+  ],
+  "recommended_next_stage": "LP_LONG_HORIZON_R1_REAL_DATA_OBSERVATION_UPGRADE_V1",
+  "recommended_next_stage_rationale": "12h 仍 r0 proxy (per fee_estimation_review + candidate_review_audit): actual_fee_data_available=false, fee_proxy_only=true, preflight=0, watchlist=0, data_insufficient=53 (100%). spec 规则: '如果当前 12h 主要仍是 R0 proxy / smoke_placeholder: 推荐 R1'. R1 范围 read-only (RPC + quote + volume + regime + liquidity_distribution), **不** mint / **不** freeze reopen / **不** actual fee → **不** 触发 freeze.",
+
+  "do_not_start_24h": true,
+  "do_not_start_48h_72h_7d": true,
+  "do_not_start_parallel_collector": true,
+  "do_not_probe_canary_live_paper": true,
+  "do_not_read_wallet_keypair_signer": true,
+  "do_not_send_tx_approve_mint_swap_bridge": true,
+  "do_not_paid_rpc_indexer": true,
+  "do_not_production_write": true,
+  "do_not_shadow_overwrite": true,
+  "do_not_modify_12h_data_dir": true,
+  "do_not_modify_12h_finalize_outputs": true,
+  "do_not_modify_prior_stage_data": true
+}

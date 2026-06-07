@@ -1,0 +1,168 @@
+{
+  "stage": "LP_LONG_HORIZON_PARTIAL_12H_NODE_REPORT_REVIEW_V1",
+  "report_kind": "fee_estimation_review",
+  "run_id": "20260606_131323",
+  "branch": "feat/supabase-postgres-deployment",
+  "review_audited_at_utc": "2026-06-07T16:30:00Z",
+  "coverage_scope": "partial_solana_bsc_real_universe",
+
+  "current_fee_state": "PROXY_ONLY",
+  "is_actual_fee": false,
+  "is_proxy_fee": true,
+  "has_token_id": false,
+  "has_fee_growth_inside": false,
+  "has_tokens_owed": false,
+  "has_collected_fee": false,
+  "has_entry_exit_snapshot": false,
+  "smoke_placeholder": true,
+  "r0_phase_status": "schema only, no records; r1 requires user-provided tokenId",
+
+  "per_data_layer_r0_state": {
+    "fee_velocity": {
+      "per_ckpt_count": 265,
+      "ckpt_count": 12,
+      "total_12h": 3180,
+      "all_zero": true,
+      "volume_proxy_usd": 0.0,
+      "fee_capture_proxy_usd": 0.0,
+      "sample_count": 0,
+      "smoke_placeholder": true,
+      "r0_phase_status": "proxy (quote derived); r1 will upgrade to actual via tokenId"
+    },
+    "quote_snapshots": {
+      "per_ckpt_count": 318,
+      "ckpt_count": 12,
+      "total_12h": 3816,
+      "all_zero": true,
+      "amount_in_raw": 0,
+      "amount_out_raw": 0,
+      "price_impact_pct": 0.0,
+      "slippage_pct": 0.0,
+      "fee_usd": 0.0,
+      "smoke_placeholder": true,
+      "r0_phase_status": "all rows tagged smoke_placeholder; no live QuoterV2 staticcall"
+    },
+    "pool_snapshots": {
+      "per_ckpt_count": 53,
+      "ckpt_count": 12,
+      "total_12h": 636,
+      "real_fields": ["pool_address", "chain", "protocol", "token_pair", "fee_tier_or_fee_bps", "tvl_proxy_usd", "vol24h_proxy_usd", "stable_classified", "source_artifact"],
+      "zero_or_null_fields": ["reserve_a_raw", "reserve_b_raw", "liquidity", "active_tick", "active_bin"],
+      "smoke_placeholder": false,
+      "r0_phase_status": "real_pool_address_proxy_tvl_volume; no live RPC"
+    },
+    "liquidity_distribution": {
+      "per_ckpt_count": 53,
+      "ckpt_count": 12,
+      "total_12h": 636,
+      "all_zero": true,
+      "active_range_liquidity": 0.0,
+      "near_active_liquidity": 0.0,
+      "sparse_liquidity_warning": false,
+      "out_of_range_risk": 0.0,
+      "tick_spacing": null,
+      "bin_step": null,
+      "smoke_placeholder": true,
+      "r0_phase_status": "schema only, no live tick/bin data"
+    },
+    "market_regime": {
+      "per_ckpt_count": 7,
+      "ckpt_count": 12,
+      "total_12h": 84,
+      "all_zero": true,
+      "price_change_pct": 0.0,
+      "realized_vol_pct": 0.0,
+      "volume_to_tvl_pct": 0.0,
+      "incentive_active": false,
+      "smoke_placeholder": true,
+      "r0_phase_status": "regime labels statically assigned per token_pair, not real-time market data"
+    },
+    "actual_fee_accrual": {
+      "per_ckpt_count": 1,
+      "ckpt_count": 12,
+      "total_12h": 12,
+      "all_null": true,
+      "token_id": null,
+      "pool_address": null,
+      "entry_fee_growth_global": null,
+      "entry_fee_growth_a": null,
+      "entry_fee_growth_b": null,
+      "entry_tick_lower": null,
+      "entry_tick_upper": null,
+      "entry_at": null,
+      "exit_fee_growth_global": null,
+      "exit_fee_growth_a": null,
+      "exit_fee_growth_b": null,
+      "exit_tick_lower": null,
+      "exit_tick_upper": null,
+      "exit_at": null,
+      "tokens_owed_a_raw": null,
+      "tokens_owed_b_raw": null,
+      "actual_collected_a_raw": null,
+      "actual_collected_b_raw": null,
+      "actual_collected_at": null,
+      "actual_pnl_usd": null,
+      "il_realized_pct": null,
+      "il_actual_pct": null,
+      "smoke_placeholder": true,
+      "r0_phase_status": "schema only, no records; r1 requires user-provided tokenId"
+    }
+  },
+
+  "v3_clmm_range_fee_explanation": {
+    "formula": "fee_capture = (feeGrowthInside0Last - feeGrowthInside0InsideLast) * liquidity_within_range",
+    "range_narrow_impact": "more concentrated liquidity (with same LP amount) = higher per-unit fee, BUT price out of range = 0 fee",
+    "range_wide_impact": "less concentrated liquidity = lower per-unit fee, BUT less likely to be out of range",
+    "r0_data_provides": "nothing — no tickLower/tickUpper/active_tick/real liquidity",
+    "r1_requirement": "on-position tokenId + positions(tokenId) call"
+  },
+
+  "dlmm_bin_fee_explanation": {
+    "formula": "fee_capture = sum(bin_fee_per_bin for bin_id in [lower_bin_id, upper_bin_id])",
+    "bin_coverage_narrow_impact": "fewer bins = higher per-bin fee, BUT active bin out of range = 0 fee",
+    "bin_coverage_wide_impact": "more bins = lower per-bin fee, BUT less likely to be out of range",
+    "r0_data_provides": "nothing — no active_bin_id/bin_step/bin_liquidity",
+    "r1_requirement": "on-position tokenId + Meteora DLMM indexer (env currently unreachable)"
+  },
+
+  "cpmm_fee_share_explanation": {
+    "formula": "fee_capture = LP_share * pool_volume_24h * fee_tier, where LP_share = your_lp_token_supply / total_lp_token_supply",
+    "r0_data_provides": "nothing — no reserve0/reserve1/total_supply/your_lp_token/volume_actual",
+    "r1_requirement": "live RPC reserve + LP token balance query + volume indexer"
+  },
+
+  "r0_decision_useful": false,
+  "r0_decision_useful_rationale": "r0 data = 0 × 12 ckpt = 0. EV computation = 0 - IL - gas - rebalance - opportunity = 0 (or negative). Cannot distinguish 'low fee' from 'no data'. Any LP decision based on r0 = misclassification. preflight_candidate_count=0, watchlist_count=0, data_insufficient_count=53.",
+
+  "r0_blocks_three_decision_paths": {
+    "probe_blocked_by": ["r0_data (EV=0 misclassify)", "freeze (can_run_probe_now=false)"],
+    "canary_blocked_by": ["r0_data", "freeze (tiny_canary_allowed='no')"],
+    "live_blocked_by": ["r0_data", "freeze (live mode hard-disabled)"],
+    "backtest_blocked_by": ["r0_data (no historical fee/IL/tvl)"],
+    "watchlist_blocked_by": ["r0_data (all zero)"]
+  },
+
+  "r1_upgrade_blockers": [
+    {"blocker": "on-position tokenId", "fix": "freeze reopen + user mint actual LP position", "priority": 1},
+    {"blocker": "live RPC", "fix": "Base RPC repair or paid RPC (paid blocked by freeze)", "priority": 2},
+    {"blocker": "real-time price feed", "fix": "Pyth/CoinGecko integration (not yet wired)", "priority": 3},
+    {"blocker": "historical fee data", "fix": "cross-ckpt 24h+ tokenId-based diff", "priority": 4},
+    {"blocker": "actual volume source", "fix": "DexScreener/GeckoTerminal/on-chain swap event indexer", "priority": 5}
+  ],
+
+  "locked_fields": {
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no",
+    "edge_proven": "no",
+    "global_lp_rejected": false,
+    "actual_fee_data_available": false,
+    "fee_proxy_only": true,
+    "candidate_decision_reliable": false,
+    "preflight_candidate_count": 0,
+    "watchlist_count": 0,
+    "data_insufficient_count": 53,
+    "r1_upgrade_required": true,
+    "wallet_or_tx_touched": false,
+    "transaction_sent": false
+  }
+}

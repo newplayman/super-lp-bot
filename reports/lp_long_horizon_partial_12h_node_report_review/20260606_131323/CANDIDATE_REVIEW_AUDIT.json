@@ -1,0 +1,163 @@
+{
+  "stage": "LP_LONG_HORIZON_PARTIAL_12H_NODE_REPORT_REVIEW_V1",
+  "report_kind": "candidate_review_audit",
+  "run_id": "20260606_131323",
+  "branch": "feat/supabase-postgres-deployment",
+  "review_audited_at_utc": "2026-06-07T16:30:00Z",
+  "coverage_scope": "partial_solana_bsc_real_universe",
+
+  "preflight_candidate_count": 0,
+  "watchlist_count": 0,
+  "data_insufficient_count": 53,
+  "reject_count": 0,
+  "sum_check": "0 + 0 + 53 + 0 = 53 (matches observed_pool_count)",
+
+  "candidate_decision_reliable": false,
+  "global_lp_rejected": false,
+  "actual_fee_data_available": false,
+  "fee_proxy_only": true,
+  "tier_classifier_output": "DEFERRED_TO_R1",
+  "r1_upgrade_required": true,
+
+  "per_pool_classification": {
+    "preflight": {
+      "count": 0,
+      "criteria": "EV > 0 + tier a/b/c + not in hard rejection + fee velocity > threshold",
+      "r0_blocker": "EV computation = 0 - IL - gas - rebalance - opportunity = 0 (r0 算不出, 因 fee=0, IL=null, gas=0, rebalance=0)"
+    },
+    "watchlist": {
+      "count": 0,
+      "criteria": "basic pool meta + recent fee trend + TVL trend",
+      "r0_blocker": "fee trend = 0 × 12 ckpt = 0; TVL trend = static (因 reserve=0)"
+    },
+    "data_insufficient": {
+      "count": 53,
+      "criteria": "data layer 不够, 不能做 LP 决策",
+      "r0_state": "53 池 r0 全部 data layer = 0/null/placeholder",
+      "spec_clarification": "DATA_INSUFFICIENT ≠ REJECT_BY_EV; DATA_INSUFFICIENT = 等 r1; REJECT_BY_EV = 有 data 算 EV<=0"
+    },
+    "reject": {
+      "count": 0,
+      "criteria": "tier_c_hard_rejection_policy applied",
+      "r0_blocker": "tier classifier DEFERRED_TO_R1; tier_c_assigned=false; hard rejection 不 applied"
+    }
+  },
+
+  "missing_field_groups_for_data_insufficient": [
+    {
+      "group": "G1_position_identity",
+      "missing_fields": ["token_id", "pool_address (in actual_fee_accrual schema)", "entry_at", "exit_at", "entry_tick_lower/upper", "exit_tick_lower/upper"],
+      "r1_fix": "freeze reopen + user mint actual LP NFT 仓位 → 拿 tokenId → 读 positions(tokenId) → 拿 tickLower/tickUpper"
+    },
+    {
+      "group": "G2_pool_state",
+      "missing_fields": ["reserve_a_raw", "reserve_b_raw", "liquidity", "active_tick", "active_bin", "feeGrowthGlobal0/1", "tick_spacing", "bin_step"],
+      "r1_fix": "live RPC (Solana mainnet + BSC + Base). Base 需 env change or paid RPC (paid blocked by freeze)"
+    },
+    {
+      "group": "G3_quote_data",
+      "missing_fields": ["amount_in_raw (actual)", "amount_out_raw (actual)", "price_impact_pct (actual)", "slippage_pct (actual)", "fee_usd (actual)"],
+      "r1_fix": "live QuoterV2 (Solana/BSC) + Pyth price oracle (USD conversion)"
+    },
+    {
+      "group": "G4_volume_fee_velocity",
+      "missing_fields": ["volume_proxy_usd (actual)", "fee_capture_proxy_usd (actual)", "sample_count (actual)"],
+      "r1_fix": "DexScreener/GeckoTerminal/on-chain swap event log subscription + tokenId-based feeGrowthInside diff"
+    },
+    {
+      "group": "G5_market_regime",
+      "missing_fields": ["price_change_pct (actual)", "realized_vol_pct (actual)", "volume_to_tvl_pct (actual)", "incentive_active (actual)"],
+      "r1_fix": "Pyth/CoinGecko 集成 + on-chain incentive program query (Merkl/Aerodrome/etc.)"
+    }
+  ],
+
+  "important_disclaimers": [
+    "53 池**不**是 'EV <= 0, 拒绝' (因 r0 算不出 EV)",
+    "53 池**不**是 'tier_c hard reject' (因 r0 算不出 tier)",
+    "53 池**不**是 'fee 太低, 拒绝' (因 r0 fee=0 是 placeholder, **不**是 actual)",
+    "53 池**不**是 'IL 太高, 拒绝' (因 r0 IL=null)",
+    "53 池**不**是 'tick out of range, 拒绝' (因 r0 tick=null)",
+    "53 池**是** '**没有** data, **不能**做 LP 决策, 暂搁置等 r1'",
+    "spec: '**不得** 把 DATA_INSUFFICIENT 解读成 不值得参与'"
+  ],
+
+  "global_lp_rejected_explanation": {
+    "value": false,
+    "means": "12h 跑通后, LP 全局**被**拒绝",
+    "false_means": [
+      "12h 跑通 ≠ LP rejected (是 'data insufficient')",
+      "12h r0 = data insufficient, **不** = reject",
+      "LP rejected 仅在: freeze reopened + r1 actual data + preflight all reject by EV (≥ N ckpt)",
+      "当前 3 个条件**全部** false → global_lp_rejected = false",
+      "false **不**意味着 LP 可以; false 仅指 '未做 global reject 决定'",
+      "实际 LP **不**可进 (freeze + r0 + data insufficient), 但**理由**是 'blocked by r1 + freeze', **不**是 'global reject'"
+    ]
+  },
+
+  "candidate_decision_reliable_explanation": {
+    "value": false,
+    "means": "candidate review 决策**是**否 reliable (有 data, 可信)",
+    "false_means": [
+      "53 池 data_insufficient (100%)",
+      "preflight=0, watchlist=0, reject=0 → 'no decision' 状态",
+      "r0 data layer = 0 → 'no data to base decision on'",
+      "任何'53 池参与'或'53 池不参与'决策 = unreliable (因无 data)",
+      "candidate_decision_reliable = false **不**意味着 'reject by unreliable', 是 '**不**做 candidate 决策, 等 r1'"
+    ]
+  },
+
+  "tier_classifier_output_explanation": {
+    "value": "DEFERRED_TO_R1",
+    "means": "tier 分类 (a/b/c) **是否** applied",
+    "r0_blocker": [
+      "tier 分类需 actual fee + TVL trend + tokenId-based risk + IL data",
+      "53 池 actual fee = 0 (r0 placeholder)",
+      "53 池 TVL trend = static (因 reserve=0)",
+      "53 池 tokenId-based risk = 0 (无 tokenId)",
+      "53 池 IL = null",
+      "全部 4 个 component 不足 → tier 分类**不** applied → DEFERRED_TO_R1"
+    ],
+    "r1_fix": "r1 actual data → tier classifier output = tier_a/b/c (具体)"
+  },
+
+  "watchlist_actual_state": {
+    "value": 0,
+    "r0_blocker": [
+      "watchlist 需 basic pool meta + recent fee trend + TVL trend",
+      "basic pool meta ✅ 53 池有 (来自 prior stage CSVs)",
+      "recent fee trend ❌ r0 = 0 × 12 ckpt = 0",
+      "TVL trend ❌ r0 = static (因 reserve=0)",
+      "0 + 0 → 0 池进 watchlist"
+    ],
+    "r1_fix": "r1 actual fee + TVL trend → 重新计算 watchlist"
+  },
+
+  "key_takeaway": {
+    "metric_table": {
+      "preflight_candidate_count": 0,
+      "watchlist_count": 0,
+      "data_insufficient_count": 53,
+      "reject_count": 0,
+      "sum_check": "0 + 0 + 53 + 0 = 53 ✅",
+      "global_lp_rejected": false,
+      "candidate_decision_reliable": false
+    },
+    "important_note": "data_insufficient (53) **不**是 reject. 53 池**没**有 candidate 决策. 决策**等**r1."
+  },
+
+  "locked_fields": {
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no",
+    "edge_proven": "no",
+    "global_lp_rejected": false,
+    "actual_fee_data_available": false,
+    "fee_proxy_only": true,
+    "candidate_decision_reliable": false,
+    "preflight_candidate_count": 0,
+    "watchlist_count": 0,
+    "data_insufficient_count": 53,
+    "r1_upgrade_required": true,
+    "wallet_or_tx_touched": false,
+    "transaction_sent": false
+  }
+}

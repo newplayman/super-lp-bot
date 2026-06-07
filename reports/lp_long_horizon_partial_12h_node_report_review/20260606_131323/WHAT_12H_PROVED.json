@@ -1,0 +1,84 @@
+{
+  "stage": "LP_LONG_HORIZON_PARTIAL_12H_NODE_REPORT_REVIEW_V1",
+  "report_kind": "what_12h_proved",
+  "run_id": "20260606_131323",
+  "branch": "feat/supabase-postgres-deployment",
+  "review_audited_at_utc": "2026-06-07T16:30:00Z",
+  "coverage_scope": "partial_solana_bsc_real_universe",
+
+  "proved_items": [
+    {
+      "id": "PROVED-1",
+      "claim": "collector 可稳定运行 12h (720 min exact)",
+      "evidence": "actual_runtime_minutes=720, gate_pass=true, 12/12 checkpoint 完整, nohup pid 3871101 干净 exit",
+      "status": "PROVED"
+    },
+    {
+      "id": "PROVED-2",
+      "claim": "checkpoint / heartbeat / finalize scheduling 可用",
+      "evidence": "12 ckpt × 7 files 完整, 48 sub-heartbeat + 12_end heartbeat update, finalize block rc=0, .finalize_succeeded marker 写入, git auto-commit + push 跑通 (30b67c4)",
+      "status": "PROVED"
+    },
+    {
+      "id": "PROVED-3",
+      "claim": "real pool address universe 可进入 pipeline",
+      "evidence": "53 个 real on-chain pool address 全部 loaded, placeholder_pool_count=0, all_pools_are_real_on_chain=true, 5 protocols × 2 chains",
+      "status": "PROVED"
+    },
+    {
+      "id": "PROVED-4",
+      "claim": "no wallet / tx / probe safety preserved",
+      "evidence": "wallet_or_tx_touched=false, transaction_sent=false, send_hard_disable_still_active=true, 12h 期间 0 个 eth_sendRawTransaction / solana_sendTransaction / approve / mint / swap / bridge 调用",
+      "status": "PROVED"
+    },
+    {
+      "id": "PROVED-5",
+      "claim": "12h data pipeline stability PASS",
+      "evidence": "error_rate_pct=0.0, consecutive_429_max=0, data_quality_status=PASS, gate_pass=true, per-ckpt 文件 size 完全一致 (35KB/98KB/88KB/15KB/1.5KB)",
+      "status": "PROVED"
+    },
+    {
+      "id": "PROVED-6",
+      "claim": "r0 phase smoke_placeholder data layer 透明",
+      "evidence": "全部 pool/quote/fee/liq/regime 行 honest 标记 smoke_placeholder=true, r0_phase_status 字段 disclosed, actual_fee_accrual 全部 schema only",
+      "status": "PROVED"
+    },
+    {
+      "id": "PROVED-7",
+      "claim": "auto_advance LOCKED 验证",
+      "evidence": "auto_advance_started=false, longer_stage_started=false, can_advance_to_next=false, 12h 跑完后 **不** 自动 24h, 12h 期间 **不** 启 24h / parallel collector / daemon",
+      "status": "PROVED"
+    },
+    {
+      "id": "PROVED-8",
+      "claim": "finalize block 透明 + git automation OK",
+      "evidence": ".finalize_succeeded 写入, FINAL_VERDICT.json 1296 bytes 写入, aggregate_summary.json 写入, git commit 30b67c4 干净, git push 干净, supervisor.log 83KB + nohup.log 83KB 完整",
+      "status": "PROVED"
+    }
+  ],
+
+  "proved_count": 8,
+  "proved_summary": "12h 跑通验证 r0 phase 全部 engineering stability 目标. 8/8 proved.",
+
+  "important_disclaimers": [
+    "12h 跑通 **不** 等于 LP edge proven (edge_proven 仍 'no')",
+    "12h 跑通 **不** 等于 12h 数据是 actual fee data (smoke_placeholder)",
+    "12h 跑通 **不** 等于可进入 probe (can_run_probe_now 仍 false)",
+    "12h 跑通 **不** 等于可进入 canary (tiny_canary_allowed 仍 'no')",
+    "12h 跑通 **不** 等于可进入 live (live mode hard-disabled)",
+    "12h 跑通 **不** 等于可进入 paper (paper mode not in spec)",
+    "12h 跑通 **不** 等于 24h 跑通会有 actual fee (同样 r0 proxy)",
+    "12h 跑通 **不** 等于 53 池都值得参与 (preflight_candidate_count=0)"
+  ],
+
+  "locked_fields": {
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no",
+    "edge_proven": "no",
+    "wallet_or_tx_touched": false,
+    "transaction_sent": false,
+    "send_hard_disable_still_active": true,
+    "auto_advance_started": false,
+    "longer_stage_started": false
+  }
+}
