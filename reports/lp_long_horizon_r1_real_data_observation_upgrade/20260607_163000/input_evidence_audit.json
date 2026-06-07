@@ -1,0 +1,109 @@
+{
+  "stage": "LP_LONG_HORIZON_R1_REAL_DATA_OBSERVATION_UPGRADE_V1",
+  "report_kind": "input_evidence_audit",
+  "run_id": "20260607_163000",
+  "branch": "feat/supabase-postgres-deployment",
+  "review_audited_at_utc": "2026-06-07T16:55:00Z",
+  "coverage_scope": "partial_solana_bsc_real_universe",
+  "do_not_treat_as_full_universe": true,
+
+  "input_evidence_confirmed": {
+    "r0_twelve_hour_pipeline_passed": true,
+    "r0_actual_runtime_minutes": 720,
+    "r0_data_quality_status": "PASS",
+    "r0_error_rate_pct": 0.0,
+    "r0_checkpoint_count": 12,
+    "r0_selected_pool_count": 53,
+    "r0_placeholder_pool_count": 0,
+    "r0_actual_fee_data_available": false,
+    "r0_fee_proxy_only": true,
+    "r0_data_insufficient_count": 53,
+    "r0_ev_ready_pool_count": 0,
+    "r0_preflight_candidate_count": 0,
+    "r0_watchlist_count": 0,
+    "r0_recommended_next_stage": "LP_LONG_HORIZON_R1_REAL_DATA_OBSERVATION_UPGRADE_V1",
+    "r1_required": true,
+    "this_stage_only_r1_data_layer": true,
+    "this_stage_no_long_run": true
+  },
+
+  "input_files_audited": [
+    {"path": "reports/lp_long_horizon_partial_12h_node_report_review/20260606_131323/FINAL_VERDICT.json", "status": "exist", "kind": "12h_review_final_verdict"},
+    {"path": "reports/lp_long_horizon_partial_12h_node_report_review/20260606_131323/R0_TO_R1_DATA_UPGRADE_PLAN_CN.md", "status": "exist", "kind": "r1_upgrade_plan_cn"},
+    {"path": "reports/lp_long_horizon_partial_12h_node_report_review/20260606_131323/R0_TO_R1_DATA_UPGRADE_PLAN.json", "status": "exist", "kind": "r1_upgrade_plan_json"},
+    {"path": "reports/lp_long_horizon_partial_12h_node_report_review/20260606_131323/FEE_ESTIMATION_REVIEW_CN.md", "status": "exist", "kind": "fee_estimation_review"},
+    {"path": "reports/lp_long_horizon_partial_12h_node_report_review/20260606_131323/CANDIDATE_REVIEW_AUDIT_CN.md", "status": "exist", "kind": "candidate_review_audit"},
+    {"path": "reports/lp_long_horizon_readonly_12h_node_report/20260606_131323/coverage_manifest.json", "status": "exist", "kind": "12h_coverage_manifest"},
+    {"path": "reports/lp_long_horizon_readonly_12h_node_report/20260606_131323/fee_estimation_basis.json", "status": "exist", "kind": "12h_fee_estimation_basis"},
+    {"path": "reports/lp_long_horizon_readonly_12h_node_report/20260606_131323/candidate_review.json", "status": "exist", "kind": "12h_candidate_review"},
+    {"path": "reports/lp_long_horizon_rpc_reachability_adapter_smoke_fix/20260606_103807/FINAL_VERDICT.json", "status": "exist", "kind": "rpc_reachability_final_verdict"},
+    {"path": "reports/lp_long_horizon_real_pool_universe_coverage_expand/20260606_091120/expanded_real_pool_universe_for_12h_retry.json", "status": "exist", "kind": "expanded_pool_universe_72"},
+    {"path": "scripts/lp_long_horizon_readonly_collector_v1.py", "status": "exist", "kind": "r0_collector_801_lines", "size_bytes": 35551},
+    {"path": "scripts/lp_long_horizon/adapters/", "status": "exist", "kind": "adapters_dir_8_files", "files": ["__init__.py", "evm_base_aerodrome.py", "evm_base_uniswap_v3.py", "evm_bsc_pancakeswap_v2.py", "evm_bsc_pancakeswap_v3.py", "local_artifact_replay.py", "public_api_coingecko.py", "solana_meteora_dlmm_check.py", "solana_rpc_readonly.py"]}
+  ],
+
+  "r0_shortages_for_r1_upgrade": {
+    "pool_snapshots": "reserve_a/b/liquidity/active_tick/bin = 0/null; need live RPC",
+    "quote_snapshots": "amount_in/out/price_impact/slippage/fee = 0; need QuoterV2 staticcall",
+    "fee_velocity": "volume_proxy/fee_capture/sample_count = 0; need DexScreener / on-chain swap event",
+    "liquidity_distribution": "active_range/near_active = 0; need tick/bin bitmap",
+    "market_regime": "price_change/realized_vol = 0; need Pyth/CoinGecko",
+    "actual_fee_accrual": "token_id/fee_growth/tokens_owed = null; R1 不 mint, schema 维持 placeholder"
+  },
+
+  "r1_does_not_do": [
+    "不 mint LP NFT",
+    "不产生 tokenId",
+    "不 actual position fee accrual",
+    "不 collect fee",
+    "不 live / canary / paper / probe",
+    "不 freeze reopen",
+    "不翻 can_run_probe_now (维持 false)",
+    "不翻 tiny_canary_allowed (维持 'no')",
+    "不翻 edge_proven (维持 'no')"
+  ],
+
+  "r1_6_dimensions": [
+    "real pool snapshot (live RPC reserve/liquidity/tick/bin)",
+    "real quote snapshot (QuoterV2 / Whirlpool quote_swap)",
+    "real fee velocity proxy (DexScreener / on-chain swap event)",
+    "real volume source (5 windows 15m/1h/4h/24h/7d)",
+    "real range / tick / bin / liquidity distribution",
+    "market regime classification (Pyth/CoinGecko)"
+  ],
+
+  "r1_scope_clarification": "R1 = real-time read-only data layer (6 dimensions), 不 mint / 不 freeze reopen / 不 actual fee",
+
+  "input_evidence_audit_decision": "PROCEED_TO_R1_BUILD",
+  "input_evidence_audit_decision_rationale": "R0 evidence 全部 audit pass, R1 upgrade required per prior stage recommended_next_stage, R1 scope 明确 (6 dimensions), hard prohibition 全部 clear, R1 启动条件满足",
+
+  "no_touch_invariants": {
+    "no_24h_started": true,
+    "no_long_running_collector": true,
+    "no_tmux_cron_systemd_daemon": true,
+    "no_probe_canary_live_paper": true,
+    "no_wallet_keypair_signer": true,
+    "no_tx_send_approve_mint_add_remove_collect_swap_bridge": true,
+    "no_production_write": true,
+    "no_shadow_overwrite": true,
+    "no_paid_rpc_indexer": true,
+    "no_real_secret_committed": true,
+    "no_modify_12h_data_dir": true,
+    "no_modify_12h_review_reports": true,
+    "no_modify_r0_collector": true,
+    "can_run_probe_now_maintained_false": true,
+    "tiny_canary_allowed_maintained_no": true,
+    "edge_proven_maintained_no": true
+  },
+
+  "locked_fields": {
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no",
+    "edge_proven": "no",
+    "wallet_or_tx_touched": false,
+    "transaction_sent": false,
+    "send_hard_disable_still_active": true,
+    "auto_advance_started": false,
+    "longer_stage_started": false
+  }
+}

@@ -1,0 +1,182 @@
+{
+  "stage": "LP_LONG_HORIZON_R1_REAL_DATA_OBSERVATION_UPGRADE_V1",
+  "report_kind": "r1_real_data_schema",
+  "run_id": "20260607_163000",
+  "branch": "feat/supabase-postgres-deployment",
+  "review_audited_at_utc": "2026-06-07T16:55:00Z",
+
+  "r1_design_principles": {
+    "r0_to_r1_changes": {
+      "data_source": "R0 placeholder/static/no-RPC → R1 live RPC + public API + on-chain",
+      "reserve0": "R0=0 → R1=live or confidence=unavailable with reason (no fallback to 0)",
+      "liquidity": "R0=0 → R1=live or unavailable",
+      "active_tick": "R0=null → R1=live or null with reason",
+      "amount_in_out_quote": "R0=0 → R1=live QuoterV2.staticcall or unavailable",
+      "fee_capture": "R0=0 → R1=volume × fee_rate or unavailable",
+      "market_regime": "R0=0 (static) → R1=live Pyth/CoinGecko",
+      "smoke_placeholder_flag": "R0=true (always) → R1=REMOVED; use confidence+invalid_reason",
+      "fallback_to_0": "R0=yes → R1=NO; confidence=unavailable with honest reason"
+    },
+    "confidence_values": ["high", "medium", "low", "unavailable"],
+    "invalid_reason_values": [
+      "rpc_unreachable",
+      "rpc_empty_response",
+      "rpc_rate_limited",
+      "pool_address_invalid",
+      "adapter_not_implemented",
+      "indexer_unreachable",
+      "dexscreener_no_data",
+      "pyth_no_price",
+      "coingecko_no_history",
+      "insufficient_history",
+      "cross_chain_skip",
+      "token_not_resolved",
+      "unknown"
+    ]
+  },
+
+  "r1_schema_6_dimensions": {
+    "r1_pool_snapshot": {
+      "fields": {
+        "chain": "str",
+        "protocol": "str",
+        "pool_address": "str",
+        "token_pair": "str",
+        "pool_type": "str (clmm/cpmm/dlmm)",
+        "block_or_slot": "int",
+        "timestamp_utc": "str ISO8601",
+        "reserve0": "str decimal",
+        "reserve1": "str decimal",
+        "liquidity": "str decimal",
+        "active_tick_or_bin": "int (int24 V3 / int32 DLMM)",
+        "fee_tier_or_fee_bps": "int",
+        "tvl_usd_proxy": "float",
+        "data_source": "str (rpc_slot0/rpc_getReserves/rpc_getMultipleAccountsInfo/dlmm_api/dexscreener/coingecko/unavailable)",
+        "confidence": "str (high/medium/low/unavailable)",
+        "invalid_reason": "str or null"
+      },
+      "r0_to_r1": "reserve_a/b/liquidity/active_tick 0/null → live or unavailable"
+    },
+    "r1_quote_snapshot": {
+      "fields": {
+        "pool_address": "str",
+        "notional_usd": "float",
+        "token_in": "str",
+        "token_out": "str",
+        "amount_in": "str decimal",
+        "amount_out": "str decimal",
+        "price_impact_bps": "float",
+        "fee_bps": "int",
+        "quote_success": "bool",
+        "quote_method": "str (quoter_v2_staticcall/whirlpool_quote_swap/raydium_clmm_quote/unavailable)",
+        "confidence": "str",
+        "invalid_reason": "str or null"
+      },
+      "r0_to_r1": "amount_in/out/price_impact/slippage/fee 0 → live QuoterV2.staticcall or unavailable"
+    },
+    "r1_fee_velocity": {
+      "fields": {
+        "pool_address": "str",
+        "window": "str (15m/1h/4h/24h/7d)",
+        "volume_usd": "float",
+        "fee_rate_bps": "int",
+        "estimated_fee_pool_usd": "float",
+        "source": "str (dexscreener/geckoterminal/on_chain_swap_event/unavailable)",
+        "heuristic": "str (direct/derived/unavailable)",
+        "confidence": "str",
+        "invalid_reason": "str or null"
+      },
+      "r0_to_r1": "volume_proxy/fee_capture/sample_count 0 → live DexScreener/on-chain or unavailable"
+    },
+    "r1_liquidity_distribution": {
+      "fields": {
+        "pool_address": "str",
+        "range_type": "str (full_range/tick_range/bin_range)",
+        "bin_coverage": "str (N/A / ±N ticks / M bins)",
+        "active_liquidity": "float",
+        "near_active_liquidity": "float",
+        "in_range_liquidity_share_proxy": "float (0-1)",
+        "tick_or_bin_density": "float",
+        "sparse_warning": "bool",
+        "confidence": "str",
+        "invalid_reason": "str or null"
+      },
+      "r0_to_r1": "active_range/near_active/tick_spacing/bin_step 0/null → live bitmap/bin_array or unavailable"
+    },
+    "r1_market_regime": {
+      "fields": {
+        "chain": "str",
+        "timestamp_utc": "str ISO8601",
+        "reference_asset": "str (SOL/ETH/BNB)",
+        "return_1h": "float",
+        "return_6h": "float",
+        "volatility_1h": "float",
+        "volatility_6h": "float",
+        "regime_label": "str (uptrend/downtrend/sideways/high_volume_sideways/high_volatility_trend/incentive_period/low_volatility_stable/no_data)",
+        "confidence": "str",
+        "invalid_reason": "str or null"
+      },
+      "r0_to_r1": "price_change/realized_vol 0 (static) → live Pyth/CoinGecko 7d sliding window"
+    },
+    "r1_candidate_review": {
+      "fields": {
+        "pool_address": "str",
+        "quote_ready": "bool",
+        "fee_ready": "bool",
+        "liquidity_ready": "bool",
+        "regime_ready": "bool",
+        "ev_ready": "bool (4 dimensions all high/medium; tokenId not required for r1)",
+        "preflight_candidate": "bool (simplified r1 preflight, not full EV)",
+        "watchlist": "bool (basic meta + ≥1 high/medium confidence)",
+        "data_insufficient": "bool (4 dimensions all unavailable/low)",
+        "reason": "str (e.g. 'quote_ready, fee_unavailable' / 'all_unavailable' / 'all_high_confidence')"
+      },
+      "r0_to_r1": "preflight=0, watchlist=0, data_insufficient=53 → R1 may improve"
+    }
+  },
+
+  "r1_output_files": [
+    "r1_pool_snapshot.csv",
+    "r1_pool_snapshot.json",
+    "r1_quote_snapshot.csv",
+    "r1_quote_snapshot.json",
+    "r1_fee_velocity.csv",
+    "r1_fee_velocity.json",
+    "r1_liquidity_distribution.csv",
+    "r1_liquidity_distribution.json",
+    "r1_market_regime.csv",
+    "r1_market_regime.json",
+    "r1_candidate_review.csv",
+    "r1_candidate_review.json",
+    "r1_smoke_summary.json"
+  ],
+
+  "r1_vs_r0_schema_relationship": {
+    "r1_is_superset_of_r0": true,
+    "r1_does_not_delete_r0_fields": true,
+    "r1_replaces_smoke_placeholder_with_confidence": true,
+    "r1_file_naming": "r1_* (distinguishes from R0 pool_snapshots.jsonl etc.)",
+    "r0_files_not_modified": "12h data dir 20260606_131323 unchanged"
+  },
+
+  "r1_locked_fields": {
+    "actual_fee_data_available": false,
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no",
+    "edge_proven": "no",
+    "wallet_or_tx_touched": false,
+    "transaction_sent": false
+  },
+
+  "r1_expected_outcome": {
+    "preflight_candidate_count": "0 → possibly > 0 (expected; simplified preflight, NOT full EV)",
+    "watchlist_count": "0 → possibly > 0 (expected)",
+    "data_insufficient_count": "53 → should decrease significantly (expected ≤ 20)",
+    "fee_proxy_only": "true → expected false (but actual_fee_data_available still false due to freeze)",
+    "candidate_decision_reliable": "false → possibly true (expected; but still affected by actual fee missing)",
+    "actual_fee_data_available": "false → false (LOCKED, R1 ≠ actual fee)",
+    "can_run_probe_now": "false → false (LOCKED)",
+    "tiny_canary_allowed": "'no' → 'no' (LOCKED)",
+    "edge_proven": "'no' → 'no' (LOCKED)"
+  }
+}

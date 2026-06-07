@@ -1,0 +1,138 @@
+{
+  "stage": "LP_LONG_HORIZON_R1_REAL_DATA_OBSERVATION_UPGRADE_V1",
+  "report_kind": "r1_collector_architecture",
+  "run_id": "20260607_163000",
+  "branch": "feat/supabase-postgres-deployment",
+  "review_audited_at_utc": "2026-06-07T16:55:00Z",
+
+  "architecture_overview": "R1 collector = new file scripts/lp_long_horizon_r1_real_data_collector_v1.py, reuse R0 adapters (8 files in scripts/lp_long_horizon/adapters/), NOT modify R0 collector. R1 smoke = short run (max_pools=20, max_snapshots=1, no-daemon, 2-3 min), real on-chain data + confidence + honest failure reasons, NOT fallback to 0 placeholder, NOT long-run.",
+
+  "reuse_r0_assets": {
+    "adapters_solana_rpc_readonly": "scripts/lp_long_horizon/adapters/solana_rpc_readonly.py",
+    "adapters_evm_bsc_pancakeswap_v3": "scripts/lp_long_horizon/adapters/evm_bsc_pancakeswap_v3.py",
+    "adapters_evm_bsc_pancakeswap_v2": "scripts/lp_long_horizon/adapters/evm_bsc_pancakeswap_v2.py",
+    "adapters_evm_base_aerodrome": "scripts/lp_long_horizon/adapters/evm_base_aerodrome.py",
+    "adapters_evm_base_uniswap_v3": "scripts/lp_long_horizon/adapters/evm_base_uniswap_v3.py",
+    "adapters_solana_meteora_dlmm_check": "scripts/lp_long_horizon/adapters/solana_meteora_dlmm_check.py",
+    "adapters_public_api_coingecko": "scripts/lp_long_horizon/adapters/public_api_coingecko.py",
+    "adapters_local_artifact_replay": "scripts/lp_long_horizon/adapters/local_artifact_replay.py",
+    "do_not_modify_r0_collector": "scripts/lp_long_horizon_readonly_collector_v1.py UNCHANGED",
+    "do_not_modify_any_adapter": "all 8 adapters UNCHANGED"
+  },
+
+  "r1_collector_modules": [
+    "main() — CLI entry, args: --pool-universe, --output-dir, --run-id, --max-pools, --max-snapshots, --no-daemon",
+    "load_pool_universe(path) — read expanded_universe_for_12h_retry.json, return list[Pool]",
+    "per_chain_protocol_router(pool) — route to adapter callable by chain+protocol",
+    "fetch_r1_pool_snapshot(pool, adapter) — live reserve/liquidity/tick + confidence + invalid_reason",
+    "fetch_r1_quote_snapshot(pool, adapter, notional_usd) — QuoterV2 staticcall × 6 notional levels",
+    "fetch_r1_fee_velocity(pool, adapter, window) — DexScreener/on-chain × 5 windows",
+    "fetch_r1_liquidity_distribution(pool, adapter) — bitmap/bin_array",
+    "fetch_r1_market_regime(pool, chain) — Pyth/CoinGecko 7d sliding window",
+    "aggregate_r1_candidate_review(pool, 5 dimensions) — 4-dim confidence aggregation",
+    "write_r1_outputs(dim_data, output_dir) — r1_*.csv + r1_*.json",
+    "write_r1_smoke_summary(dim_data, output_dir) — r1_smoke_summary.json"
+  ],
+
+  "per_chain_protocol_routing": {
+    "base": {
+      "aerodrome_slipstream": "evm_base_aerodrome.fetch_slipstream_state(pool)",
+      "aerodrome_classic": "evm_base_aerodrome.fetch_classic_reserves(pool)",
+      "uniswap_v3": "evm_base_uniswap_v3.fetch_slot0_liquidity(pool)",
+      "confidence_handling": "Base RPC unreachable → all confidence=unavailable, invalid_reason=rpc_unreachable"
+    },
+    "bsc": {
+      "pancakeswap_v3": "evm_bsc_pancakeswap_v3.fetch_slot0_liquidity_quoter(pool)",
+      "pancakeswap_v2": "evm_bsc_pancakeswap_v2.fetch_getReserves_factory_getPair(pool)",
+      "confidence_handling": "BSC V2 factory.getPair=0 → confidence=unavailable, invalid_reason=pool_address_invalid"
+    },
+    "solana": {
+      "orca_whirlpool": "solana_rpc_readonly.fetch_whirlpool_state(pool)",
+      "raydium_clmm": "solana_rpc_readonly.fetch_raydium_clmm_state(pool)",
+      "raydium_cpmm": "solana_rpc_readonly.fetch_raydium_cpmm_state(pool)",
+      "meteora_dlmm": "solana_meteora_dlmm_check.fetch_meteora_dlmm_state(pool)",
+      "confidence_handling": "Meteora dlmm-api unreachable → confidence=unavailable, invalid_reason=indexer_unreachable; others via getMultipleAccountsInfo"
+    }
+  },
+
+  "r1_failure_handling": {
+    "how_handle_base_rpc_unreachable": "R1 collector探测 1 次 base RPC; 如 403/timeout → 标 base_unreachable=true, 不重试, 不raise; per-pool 写 confidence=unavailable, invalid_reason=rpc_unreachable; summary写 chains_skipped=['base']",
+    "how_handle_solana_meteora_rpc_empty": "per-pool 调 fetch_meteora_dlmm_state → 返回 None/raise → confidence=unavailable, invalid_reason=indexer_unreachable; 不fallback to 0, 不fallback to placeholder; 其它 Solana 协议 走 getMultipleAccountsInfo 应能拿到",
+    "how_handle_bsc_v2_getpair_zero": "evm_bsc_pancakeswap_v2.fetch 调 factory.getPair → 返回 0x0...0 → confidence=unavailable, invalid_reason=pool_address_invalid; 不raise, 不fallback; summary写 bsc_v2_pools_excluded=N",
+    "how_avoid_fallback_placeholder": "R1 不使用 smoke_placeholder flag (R0用, R1不用); 用 confidence=unavailable + invalid_reason='...' 表达失败; 不使用 0/null/\"\" 作为 fallback; 如拿不到, 直接 unavailable + reason",
+    "how_mark_actual_fee_data_available_false": "r1_smoke_summary.json: actual_fee_data_available: false (硬编码); fee_proxy_only: true (硬编码, R1 ≠ actual); actual_fee_schema_unchanged: true",
+    "how_maintain_read_only": "R1 collector 内部不调任何写 chain state 的 RPC (sendTransaction/write API); 全部 RPC 调仅 read-only (getMultipleAccountsInfo, getAccountInfo, eth_call, getLogs read-only); 不调 approve/mint/addLiquidity/removeLiquidity/collect/swap/bridge; 不读 wallet/seed/keypair/signer; write-only 操作 = 写本地 data dir + reports, 不写 production"
+  },
+
+  "r1_short_smoke_flow": {
+    "cli": "python3 scripts/lp_long_horizon_r1_real_data_collector_v1.py --run-id 20260607_163000 --pool-universe reports/lp_long_horizon_real_pool_universe_coverage_expand/20260606_091120/expanded_real_pool_universe_for_12h_retry.json --output-dir data/lp_long_horizon_r1_smoke/20260607_163000 --max-pools 20 --max-snapshots 1 --no-daemon",
+    "step_1": "load universe (72 pools), sort by chain × protocol",
+    "step_2": "probe RPC reachability per chain × per endpoint (1 quick check)",
+    "step_3": "limit to --max-pools=20 (priority: solana_orca > solana_raydium > bsc_v3 > base_* > bsc_v2 > solana_meteora_dlmm_last)",
+    "step_4": "per pool × per dimension 调 adapter, 1 attempt per call, fail fast",
+    "step_5": "6 dimensions 写 r1_*.csv + r1_*.json",
+    "step_6": "r1_candidate_review per pool 聚合",
+    "step_7": "r1_smoke_summary.json 写顶层 summary",
+    "step_8": "退出 (无 daemon, no long-run)"
+  },
+
+  "r1_timeout_rate_limit_handling": {
+    "per_rpc_call_timeout_sec": 5,
+    "per_pool_per_dimension_total_sec": 30,
+    "total_r1_smoke_estimated_min": "2-3 min (20 pools × 6 dimensions × 1 attempt)",
+    "on_429": "不retry, 直接 confidence=unavailable, invalid_reason=rpc_rate_limited",
+    "on_403": "不retry, 直接 confidence=unavailable, invalid_reason=rpc_unreachable"
+  },
+
+  "r1_expected_output_fields": {
+    "selected_pool_count": 20,
+    "pool_snapshot_rows": 20,
+    "quote_snapshot_rows": 120,
+    "fee_velocity_rows": 100,
+    "liquidity_distribution_rows": 20,
+    "market_regime_rows": 2,
+    "candidate_review_rows": 20,
+    "actual_fee_data_available": false,
+    "fee_proxy_only": true,
+    "no_wallet_tx_probe": true
+  },
+
+  "r1_does_not_do": [
+    "不启动 24h / 48h / 72h / 7d",
+    "不启动 long-running collector",
+    "不启动 tmux / cron / systemd / daemon",
+    "不 probe / canary / live / paper",
+    "不读 wallet / seed / keypair / signer",
+    "不发送 transaction",
+    "不 approve / mint / add-liquidity / remove-liquidity / collect / swap / bridge",
+    "不写 production positions",
+    "不覆盖 shadow 原始表",
+    "不接 paid RPC / paid indexer",
+    "不写真实 secret",
+    "不翻 can_run_probe_now (维持 false)",
+    "不翻 tiny_canary_allowed (维持 'no')",
+    "不翻 edge_proven (维持 'no')",
+    "不翻 actual_fee_data_available (维持 false)",
+    "不修改 R0 collector / adapters / RPC registry",
+    "不修改 12h data dir",
+    "不修改 12h review reports",
+    "不 mint LP NFT (R1 严格 read-only)",
+    "不 actual position fee accrual",
+    "不 collect fee"
+  ],
+
+  "r1_locked_fields": {
+    "r1_schema_ready": "true (after Stage B)",
+    "r1_collector_built": "true (after Stage D)",
+    "r1_short_smoke_ran": "true (after Stage E)",
+    "actual_fee_data_available": false,
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no",
+    "edge_proven": "no",
+    "wallet_or_tx_touched": false,
+    "transaction_sent": false,
+    "send_hard_disable_still_active": true,
+    "auto_advance_started": false,
+    "longer_stage_started": false
+  }
+}

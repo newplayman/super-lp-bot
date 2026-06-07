@@ -1,0 +1,127 @@
+{
+  "stage": "LP_LONG_HORIZON_R1_REAL_DATA_OBSERVATION_UPGRADE_V1",
+  "report_kind": "r1_candidate_interpretation",
+  "run_id": "20260607_163000",
+  "branch": "feat/supabase-postgres-deployment",
+  "review_audited_at_utc": "2026-06-07T17:10:00Z",
+
+  "r1_data_stronger_than_r0_in_5_ways": [
+    {
+      "id": "R1-STRONG-1",
+      "metric": "market regime",
+      "r0": "84 rows × 0 (price_change_pct=0, realized_vol_pct=0), regime 标签静态分配 per token_pair",
+      "r1": "2 rows × 真实 CoinGecko 7d history (solana: return_1h=0.30%, return_6h=0.86%, vol1h=3.37%, regime=low_volatility_stable; bsc: return_1h=0.58%, return_6h=0.29%, vol1h=2.31%, regime=low_volatility_stable)",
+      "strong_where": "真实价格历史驱动 regime, 不是静态标签"
+    },
+    {
+      "id": "R1-STRONG-2",
+      "metric": "pool_snapshot",
+      "r0": "53 池全部 reserve/liquidity/active_tick=0/null, smoke_placeholder=true",
+      "r1": "7 BSC V3 池 medium (slot0 active_tick 真实 on-chain), 13 Solana 池 low (account data length 真实)",
+      "strong_where": "BSC V3 active_tick 是真实 current tick; Solana account 真实存在 (R0 是 0 fallback; R1 是真实 account)"
+    },
+    {
+      "id": "R1-STRONG-3",
+      "metric": "watchlist",
+      "r0": "watchlist_count=0, 53 池全部 data_insufficient",
+      "r1": "watchlist_count=7 (7 BSC V3 池, 因 high/medium confidence); 13 Solana 池不进 watchlist (low confidence)",
+      "strong_where": "7 池真实满足 basic pool meta + ≥1 high/medium confidence dimension"
+    },
+    {
+      "id": "R1-STRONG-4",
+      "metric": "data_insufficient",
+      "r0": "53/53 data_insufficient (100%)",
+      "r1": "0/20 data_insufficient (0%); 全部 20 池至少 1 dim 有 signal",
+      "strong_where": "R1 全 20 池 6 dim 至少 1 个有 data layer signal"
+    },
+    {
+      "id": "R1-STRONG-5",
+      "metric": "honest failure mode",
+      "r0": "拿不到 → fallback to 0, smoke_placeholder=true (hides failure)",
+      "r1": "拿不到 → confidence=unavailable + invalid_reason=<specific>, 不 fallback to 0, 不 hide failure",
+      "strong_where": "失败原因 honest 记录 (rpc_unreachable / indexer_unreachable / pool_address_invalid / adapter_not_implemented)"
+    }
+  ],
+
+  "r1_still_does_NOT_prove_actual_fee_accrual": [
+    {
+      "id": "R1-NO-1",
+      "claim": "R1 仍 0 actual_fee_data_available",
+      "reason": "R1 范围 = real-time read-only data layer (6 dimensions), 不 mint LP NFT, 不 add liquidity, 不 on-position tokenId; actual_fee schema 维持 placeholder",
+      "r1_to_actual_fee_path": "需 freeze reopen + user mint 实际 LP NFT 仓位 + 跨 24h+ ckpt tokenId-based diff → 这是 R2, 不是 R1"
+    },
+    {
+      "id": "R1-NO-2",
+      "claim": "R1 仍 0 ev_ready (4 dim 不全)",
+      "reason": "quote_ready=7, fee_ready=0 (DexScreener 不可达), liquidity_ready=0 (CLMM/DLMM bitmap 缺失), regime_ready=2 chains (per pool 仍 True 因 20 池均 solana 或 bsc chain)",
+      "key_finding": "R1 0 ev_ready 真实原因是 fee + liquidity 缺失, 不是 20 池 EV 真 ≤ 0"
+    },
+    {
+      "id": "R1-NO-3",
+      "claim": "R1 仍 0 preflight_candidate (因 ev_ready=0)",
+      "reason": "R1 简化 preflight = ev_ready AND TVL proxy > 0; ev_ready=0 → preflight=0; R1 不算 full EV, 是 R1 简化 gate",
+      "full_preflight_status": "EV = fee - IL - gas - rebalance - opportunity_cost; R1 缺 fee + IL, 不算 full EV; preflight deferred"
+    },
+    {
+      "id": "R1-NO-4",
+      "claim": "R1 7 watchlist ≠ 7 preflight candidate",
+      "reason": "watchlist = basic meta + ≥1 high/medium confidence (轻量); preflight = ev_ready + TVL > 0 (重); 4 dim 不全 → preflight 全 0",
+      "implication": "7 watchlist 是 follow up 池, 不是 EV-pass 池"
+    }
+  ],
+
+  "watchlist_yes_7_pools": {
+    "value": 7,
+    "all_bsc_v3": true,
+    "pools": [
+      "0x172fcD41E0913e95784454622d1c3724f546f849",
+      "0x36696169C63e42cd08ce11f5deeBbCeBae652050",
+      "0xf2688Fb5B81049DFB7703aDa5e770543770612C4",
+      "0x81A9b5F18179cE2bf8f001b8a634Db80771F1824"
+    ],
+    "reason_per_pool": "slot0 active_tick 真实 + tvl_proxy > 0",
+    "solana_pools_excluded_reason": "Solana pool_snapshot low confidence (account data length, 不解析 IDL), watchlist gate 需 high/medium, low 不通过"
+  },
+
+  "preflight_no_0_pools": {
+    "value": 0,
+    "data_layer_reasons": [
+      "0 ev_ready: fee_ready=0 (DexScreener 不可达) + liquidity_ready=0 (CLMM/DLMM bitmap 缺失)",
+      "ev_ready=0 → preflight=0 (R1 simplified gate)"
+    ],
+    "spec_clarification": "R1 0 preflight = data insufficient, 不 = LP reject; spec 明确 '不得把 R1 data insufficient 解读成 LP 没肉'",
+    "r1_to_r2_path": [
+      "R2: freeze reopen + user mint 实际 LP NFT 仓位 → 拿 tokenId",
+      "R2: 跨 24h+ ckpt tokenId-based diff → 算 actual fee",
+      "R2: liquidity bitmap / bin_array 解析 (R2 升级 IDL or 第三方 SDK)",
+      "R2: DexScreener / on-chain swap event log subscription 替代 DexScreener",
+      "R2 后: 4 dim 全部高 confidence → preflight > 0"
+    ]
+  },
+
+  "important_disclaimers": [
+    "R1 首次有真实 market regime data (CoinGecko 7d)",
+    "R1 首次有真实 BSC V3 active_tick (slot0)",
+    "R1 首次 watchlist > 0 (7 BSC V3)",
+    "R1 data_insufficient 0 (vs R0 53/53)",
+    "R1 仍 0 actual_fee_data_available (LOCKED)",
+    "R1 仍 0 ev_ready (因 fee + liquidity 不全)",
+    "R1 仍 0 preflight (因 ev_ready=0)",
+    "R1 仍 0 fee_velocity (DexScreener 不可达)",
+    "R1 仍 0 liquidity_distribution (CLMM/DLMM bitmap 缺失)",
+    "R1 Base 链 0 池 (public RPC 403)",
+    "R1 不 = global LP reject",
+    "R1 不 = LP edge proven",
+    "R1 不 = 实际 fee accrual"
+  ],
+
+  "locked_fields": {
+    "actual_fee_data_available": false,
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no",
+    "edge_proven": "no",
+    "global_lp_rejected": false,
+    "wallet_or_tx_touched": false,
+    "transaction_sent": false
+  }
+}

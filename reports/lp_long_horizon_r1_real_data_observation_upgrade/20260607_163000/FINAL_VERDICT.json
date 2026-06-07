@@ -1,0 +1,123 @@
+{
+  "stage": "LP_LONG_HORIZON_R1_REAL_DATA_OBSERVATION_UPGRADE_V1",
+  "status": "PASS",
+  "run_id": "20260607_163000",
+  "branch": "feat/supabase-postgres-deployment",
+  "review_audited_at_utc": "2026-06-07T17:10:00Z",
+  "coverage_scope": "partial_solana_bsc_real_universe",
+  "do_not_treat_as_full_universe": true,
+
+  "r1_schema_ready": true,
+  "r1_collector_built": true,
+  "r1_short_smoke_ran": true,
+  "r1_smoke_executed_at_utc": "2026-06-07T17:05:41Z",
+
+  "selected_pool_count": 20,
+  "pool_snapshot_rows": 20,
+  "quote_snapshot_rows": 120,
+  "fee_velocity_rows": 100,
+  "liquidity_distribution_rows": 20,
+  "market_regime_rows": 2,
+  "candidate_review_rows": 20,
+  "quote_ready_pool_count": 7,
+  "fee_ready_pool_count": 0,
+  "liquidity_ready_pool_count": 0,
+  "ev_ready_pool_count": 0,
+  "preflight_candidate_count": 0,
+  "watchlist_count": 7,
+  "data_insufficient_count": 0,
+
+  "actual_fee_data_available": false,
+  "fee_proxy_only": true,
+  "actual_fee_schema_unchanged": true,
+  "global_lp_rejected": false,
+  "candidate_decision_reliable": false,
+
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no",
+  "edge_proven": "no",
+  "wallet_or_tx_touched": false,
+  "transaction_sent": false,
+  "send_hard_disable_still_active": true,
+  "auto_advance_started": false,
+  "longer_stage_started": false,
+
+  "r1_6_dimensions_realism": {
+    "r1_pool_snapshot": {"high": 0, "medium": 7, "low": 13, "unavailable": 0},
+    "r1_quote_snapshot": {"high": 0, "medium": 0, "low": 60, "unavailable": 60},
+    "r1_fee_velocity": {"high": 0, "medium": 0, "low": 0, "unavailable": 100},
+    "r1_liquidity_distribution": {"high": 0, "medium": 0, "low": 7, "unavailable": 13},
+    "r1_market_regime": {"high": 0, "medium": 2, "low": 0, "unavailable": 0},
+    "r1_candidate_review": {"preflight_candidate": 0, "watchlist": 7, "data_insufficient": 0, "ev_ready": 0}
+  },
+
+  "chain_reachability": {
+    "solana": {"status": "reachable", "endpoint": "https://api.mainnet-beta.solana.com"},
+    "bsc": {"status": "reachable", "endpoint": "https://bsc-dataseed.binance.org"},
+    "base": {"status": "unreachable", "endpoint": "all endpoints failed"}
+  },
+  "chains_skipped": ["base"],
+
+  "r1_collector_path": "scripts/lp_long_horizon_r1_real_data_collector_v1.py",
+  "r1_smoke_data_dir": "data/lp_long_horizon_r1_smoke/20260607_163000/",
+  "r1_smoke_files": [
+    "r1_pool_snapshot.csv",
+    "r1_pool_snapshot.json",
+    "r1_quote_snapshot.csv",
+    "r1_quote_snapshot.json",
+    "r1_fee_velocity.csv",
+    "r1_fee_velocity.json",
+    "r1_liquidity_distribution.csv",
+    "r1_liquidity_distribution.json",
+    "r1_market_regime.csv",
+    "r1_market_regime.json",
+    "r1_candidate_review.csv",
+    "r1_candidate_review.json",
+    "r1_smoke_summary.json"
+  ],
+
+  "deliverables_in_report_dir": [
+    "INPUT_EVIDENCE_AUDIT_CN.md",
+    "input_evidence_audit.json",
+    "R1_REAL_DATA_SCHEMA_CN.md",
+    "r1_real_data_schema.json",
+    "R1_COLLECTOR_ARCHITECTURE_CN.md",
+    "r1_collector_architecture.json",
+    "R1_SHORT_SMOKE_RESULT_CN.md",
+    "r1_short_smoke_result.json",
+    "R1_CANDIDATE_INTERPRETATION_CN.md",
+    "r1_candidate_interpretation.json",
+    "R1_NEXT_STAGE_DECISION_CN.md",
+    "r1_next_stage_decision.json",
+    "FINAL_VERDICT.json",
+    "ONEPAGE_CN.md",
+    "ARTIFACT_INDEX.md"
+  ],
+
+  "no_touch_invariants": {
+    "no_24h_started": true,
+    "no_long_running_collector": true,
+    "no_tmux_cron_systemd_daemon": true,
+    "no_probe_canary_live_paper": true,
+    "no_wallet_keypair_signer": true,
+    "no_tx_send_approve_mint_add_remove_collect_swap_bridge": true,
+    "no_production_write": true,
+    "no_shadow_overwrite": true,
+    "no_paid_rpc_indexer": true,
+    "no_real_secret_committed": true,
+    "no_modify_12h_data_dir": true,
+    "no_modify_12h_review_reports": true,
+    "no_modify_r0_collector": true,
+    "no_modify_r0_adapters": true,
+    "no_mint_actual_lp_nft": true
+  },
+
+  "allowed_recommended_next_stages": [
+    "LP_LONG_HORIZON_R1_12H_REAL_DATA_OBSERVATION_REQUEST_V1",
+    "LP_LONG_HORIZON_R1_REAL_DATA_OBSERVATION_UPGRADE_FIX_REPEAT",
+    "LP_LONG_HORIZON_COLLECTOR_ADAPTER_COVERAGE_WIRING_FIX_REPEAT",
+    "PAUSE_AUTOMATED_LP_PROBE_AND_COLLECT_LONGER_HORIZON_DATA"
+  ],
+  "recommended_next_stage": "LP_LONG_HORIZON_R1_12H_REAL_DATA_OBSERVATION_REQUEST_V1",
+  "recommended_next_stage_rationale": "R1 smoke 5/5 spec rules match (pool/quote/fee/liquidity/candidate rows > 0); R1 7 watchlist (首次>0), 0 data_insufficient; market regime 真实 CoinGecko; R1 12h 是合理 next step 验 stability + watchlist evolution; R1 12h 不触发 probe/canary/live; R1 12h 不翻 can_run_probe_now/tiny_canary_allowed/edge_proven."
+}
