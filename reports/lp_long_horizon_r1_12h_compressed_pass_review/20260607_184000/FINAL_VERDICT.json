@@ -1,0 +1,112 @@
+{
+  "stage": "LP_LONG_HORIZON_R1_12H_COMPRESSED_PASS_REVIEW_V1",
+  "status": "COMPRESSED_PASS",
+  "stage_verdict": "R1_12H_SHORT_COMPRESSED_PASS_NOT_FULL_WALLCLOCK",
+  "gate_decision": "DATA_OBSERVATION_PASS_BUT_NO_EXECUTABLE_EDGE",
+  "prior_commit": "7aba170",
+  "prior_run_id": "20260607_171000",
+  "prior_stage": "LP_LONG_HORIZON_R1_12H_REAL_DATA_OBSERVATION_REQUEST_V1",
+  "review_run_id": "20260607_184000",
+  "review_audited_at_utc": "2026-06-07T18:40:00Z",
+  "branch": "feat/supabase-postgres-deployment",
+
+  "prior_actual_state": {
+    "r1_12h_completed": true,
+    "wallclock_compressed": true,
+    "short_sleep_seconds_per_iteration": 10,
+    "actual_runtime_minutes": 4.38,
+    "actual_runtime_seconds": 263,
+    "checkpoint_count": 12,
+    "selected_pool_count": 20,
+    "row_counts_last_ckpt": {
+      "pool_snapshots": 20, "quote_snapshots": 120, "fee_velocity": 100,
+      "liquidity_distribution": 20, "market_regime": 2, "candidate_review": 20
+    },
+    "forbidden_actions": {"wallet_or_tx_touched": false, "transaction_sent": false},
+    "source_health": "honest (no fake data)"
+  },
+
+  "verdict_downgrade": {
+    "before": "status: PASS, stage_verdict: implicit (full 12h wallclock)",
+    "after": "status: COMPRESSED_PASS, stage_verdict: R1_12H_SHORT_COMPRESSED_PASS_NOT_FULL_WALLCLOCK",
+    "reason": "actual_runtime_seconds=263 < 43200 (12h wallclock threshold); short_supervisor_used; not real 12h observation",
+    "kept_unchanged": "gate_decision (DATA_OBSERVATION_PASS_BUT_NO_EXECUTABLE_EDGE) - data layer still PASS, just not full 12h wallclock"
+  },
+
+  "compressed_disclosure": {
+    "wallclock_compressed": true,
+    "short_sleep_seconds_per_iteration": 10,
+    "actual_runtime_seconds": 263,
+    "is_12h_wallclock_threshold_43200": false,
+    "not_full_wallclock": true,
+    "short_supervisor_used_in_7aba170": true,
+    "full_supervisor_used_in_7aba170": false
+  },
+
+  "what_7aba170_proved": [
+    "R1 12h runner script + supervisor + heartbeat + aggregate 可用",
+    "R1 schema 6 dimensions 可在 12 ckpt 持续产出 row",
+    "R1 collector whitelist fix 后可写 12 ckpt 数据",
+    "Aggregate function 可聚合 watchlist + ready + source health 跨 ckpt",
+    "Report deliverable pipeline (8 files) 可生成",
+    "forbidden actions 全部 0",
+    "source health 诚实记录 (无 fake data)"
+  ],
+
+  "what_7aba170_did_NOT_prove": [
+    "12h real wallclock 数据稳定性",
+    "12 ckpt × 3600s 间隔的稳定性",
+    "12h 内任何 source health 变化",
+    "12h 内 watchlist drift / extension / shrink (短跑无 evolution)",
+    "market regime 12h 趋势 (仅 1 个 snapshot × 2 chain × 5min data)",
+    "fee/liquidity/ev source 跨 12h 变化 (短跑无 evolution)"
+  ],
+
+  "patched_files": [
+    "reports/lp_long_horizon_r1_12h_real_data_observation/20260607_171000/FINAL_VERDICT.json",
+    "reports/lp_long_horizon_r1_12h_real_data_observation/20260607_171000/R1_12H_OBSERVATION_REPORT_CN.md",
+    "reports/lp_long_horizon_r1_12h_real_data_observation/20260607_171000/ONEPAGE_CN.md"
+  ],
+
+  "no_touch_invariants": {
+    "no_24h_started": true,
+    "no_full_wallclock_started": true,
+    "no_long_running_parallel_collector": true,
+    "no_tmux_cron_systemd_daemon": true,
+    "no_probe_canary_live_paper": true,
+    "no_wallet_keypair_signer": true,
+    "no_tx_send_approve_mint_add_remove_collect_swap_bridge": true,
+    "no_paid_rpc_indexer": true,
+    "no_production_write": true,
+    "no_shadow_overwrite": true,
+    "no_real_secret_committed": true,
+    "no_modify_12h_data_dir_20260606_131323": true,
+    "no_modify_r1_smoke_data_dir_20260607_163000": true,
+    "no_modify_r1_12h_data_dir_20260607_171000_data": true,
+    "no_modify_r0_collector": true,
+    "no_modify_r0_adapters": true,
+    "no_auto_advance_to_r2": true,
+    "can_run_probe_now_maintained_false": true,
+    "tiny_canary_allowed_maintained_no": true,
+    "edge_proven_maintained_no": true,
+    "actual_fee_data_available_maintained_false": true,
+    "fee_proxy_only_maintained_true": true
+  },
+
+  "next_stage": "LP_LONG_HORIZON_R1_12H_FULL_WALLCLOCK_REPEAT_V1",
+  "next_stage_rationale": "User rejected 7aba170 as full 12h wallclock graduation; requested real 12h × 3600s wallclock repeat with full supervisor; will use scripts/run_lp_long_horizon_r1_12h_stage_once.sh (NOT _short); new_data_dir=data/lp_long_horizon_r1_12h_full_wallclock/<RUN_ID>/; new_report_dir=reports/lp_long_horizon_r1_12h_full_wallclock_observation/<RUN_ID>/",
+
+  "locked_fields": {
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no",
+    "edge_proven": "no",
+    "actual_fee_data_available": false,
+    "fee_proxy_only": true,
+    "wallet_or_tx_touched": false,
+    "transaction_sent": false,
+    "send_hard_disable_still_active": true,
+    "auto_advance_to_24h": false,
+    "longer_stage_started": false,
+    "auto_advance_to_r2": false
+  }
+}
