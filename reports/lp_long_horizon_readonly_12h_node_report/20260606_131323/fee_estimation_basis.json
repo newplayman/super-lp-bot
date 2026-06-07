@@ -1,0 +1,81 @@
+{
+  "stage": "LP_LONG_HORIZON_READONLY_12H_STAGE_RUN_V1",
+  "report_kind": "fee_estimation_basis",
+  "run_id": "20260606_131323",
+  "branch": "feat/supabase-postgres-deployment",
+  "generated_at_utc": "2026-06-07T16:20:00Z",
+  "coverage_scope": "partial_solana_bsc_real_universe",
+  "do_not_treat_as_full_universe": true,
+  "r0_phase_status": "proxy mode only; r1 (actual) requires live RPC + on-position tokenId + real-time market feed (all blocked by freeze)",
+
+  "fee_estimation_basis_summary": "12h 期间 fee_velocity data 是 smoke_placeholder (sample_count=0, volume_proxy_usd=0, fee_capture_proxy_usd=0). r0 phase 仅验证 pipeline 端到端, 不验证 fee 数字. 任何 actual fee 估算需要 r1 phase upgrade.",
+
+  "r0_phase_fee_estimation_formula": {
+    "form": "fee_velocity 行 = (pool_address, window, volume_proxy_usd, fee_capture_proxy_usd, volume_to_tvl_pct, sample_count, window_end_at)",
+    "formula_actual_r1": "fee_capture_proxy_usd = vol24h_proxy_usd * (window_hours / 24) * fee_tier_or_fee_bps * lp_share_factor",
+    "r0_value": "all 0.0 (smoke_placeholder)",
+    "r1_requirement": "live RPC (Base 不可达) + user-provided tokenId + on-position snapshot diff"
+  },
+
+  "per_pool_fee_tier_summary": {
+    "solana/orca_whirlpool": {
+      "pool_count": 13,
+      "fee_tier_or_fee_bps_range": [1, 4, 5, 30],
+      "tvl_proxy_usd_top3": ["Czfq3xZZDmsdGdUyrNLtRhGc47cXcZtLG4crryfu44zE SOL/USDC 32526289", "Hp53XEtt4S8SvPCXarsLSdGfZBuUr5mMmZmX2DRNXQKp SOL/JitoSOL 31439174", "CeaZcxBNLpJWtxzt58qQmfMBtJY8pQLvursXTJYGQpbN SOL/cbBTC 10487327"],
+      "r0_estimated_24h_fee_usd_per_1000usd_position": 0.0
+    },
+    "solana/raydium_clmm": {
+      "pool_count": 10,
+      "fee_tier_or_fee_bps_range": [1, 5, 25, 100],
+      "tvl_proxy_usd_top3": ["3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv SOL/USDC 9463487", "AQAGYQsdU853WAKhXM79CgNdoyhrRwXvYHX6qrDyC1FS USD1/SOL 8661382", "BZtgQEyS6eXUXicYPHecYQ7PybqodXQMvkjUbP4R8mUU USDC/USDT 8460100"],
+      "r0_estimated_24h_fee_usd_per_1000usd_position": 0.0
+    },
+    "solana/raydium_cpmm": {
+      "pool_count": 10,
+      "fee_tier_or_fee_bps_range": [25],
+      "tvl_proxy_usd_top3": ["DSUvc5qf5LJHHV5e2tD184ixotSnCnwj7i4jJa4Xsrmt BOME/SOL 18306512", "58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2 SOL/USDC 17080799", "Bzc9NZfMqkXR6fz1DBph7BDf9BroyEf6pnzESP7v5iiw Fartcoin/SOL 11764818"],
+      "r0_estimated_24h_fee_usd_per_1000usd_position": 0.0
+    },
+    "solana/meteora_dlmm": {
+      "pool_count": 16,
+      "fee_tier_or_fee_bps_range": [10, 20, 30, 50, 100],
+      "tvl_proxy_usd_top3": ["all 0 (LB pair not on dlmm-api.gmgn.io / Meteora public indexer in this env)"],
+      "r0_estimated_24h_fee_usd_per_1000usd_position": 0.0
+    },
+    "bsc/pancakeswap_v3": {
+      "pool_count": 4,
+      "fee_tier_or_fee_bps_range": [100, 500],
+      "tvl_proxy_usd_top3": ["all 0 (bsc v3 candidate not yet in this stage's TVL proxy csv)"],
+      "r0_estimated_24h_fee_usd_per_1000usd_position": 0.0
+    }
+  },
+
+  "r0_phase_disclosure": {
+    "tvl_proxy_source": "prior stage connector CSVs (orca/raydium_clmm/raydium_cpmm/meteora_dlmm/pancakeswap_v3) — real on-chain pool addresses + TVL/Vol24h proxy snapshot",
+    "volume_proxy_source": "same — Vol24h proxy from prior stage csv",
+    "fee_capture_proxy_source": "NONE in r0 — would require live RPC + on-position snapshot diff in r1",
+    "il_proxy_source": "NONE in r0 — would require historical price + position range + actual entry/exit snapshots in r1"
+  },
+
+  "r1_phase_blockers": [
+    "Base chain public RPC 全部 403 (chain-level coverage gap)",
+    "no live Solana RPC in this env (slot0/quoter_2 calls fail)",
+    "no live BSC RPC for quoter_2 (slot0 works but quoter_2 not deployed in this env)",
+    "no Meteora DLMM indexer (LB pair addresses known but reserve/liquidity fields are 0)",
+    "no on-position tokenId (user has not minted any LP position yet — by design, per freeze)",
+    "no real-time market data feed (Pyth/CoinGecko not integrated)",
+    "no actual fee accrual history (require r0 → r1 explicit transition + freeze reopen)"
+  ],
+
+  "honest_caveat": "12h 跑通验证 pipeline 稳定 + adapter wiring 稳定 + checkpoint scheduling 稳定 + data quality flag 正确. 12h 跑通 **不** 等于 edge proven. edge_proven 仍是 'no'. tiny_canary_allowed 仍是 'no'. can_run_probe_now 仍是 false. 12h 输出 **不** 当 full coverage 用, **不** 当 actual fee data 用, **不** 当 canary/live 触发条件用.",
+
+  "locked_fields": {
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no",
+    "edge_proven": "no",
+    "wallet_or_tx_touched": false,
+    "transaction_sent": false,
+    "send_hard_disable_still_active": true,
+    "auto_advance_to_next": false
+  }
+}

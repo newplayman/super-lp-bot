@@ -1,0 +1,110 @@
+{
+  "stage": "LP_LONG_HORIZON_READONLY_12H_STAGE_RUN_V1",
+  "report_kind": "next_node_decision",
+  "run_id": "20260606_131323",
+  "branch": "feat/supabase-postgres-deployment",
+  "generated_at_utc": "2026-06-07T16:20:00Z",
+  "coverage_scope": "partial_solana_bsc_real_universe",
+  "do_not_treat_as_full_universe": true,
+  "current_12h_finalize_status": "PASS",
+  "current_gate": "PASS (actual_runtime_minutes=720 >= 660, error_rate_pct=0.0, data_quality_status=PASS)",
+
+  "next_node_decision": "MANUAL_USER_DECISION_REQUIRED",
+
+  "decision_rationale": "12h finalize PASS 后, stage runner finalize block 写了 recommended_next_stage=LP_LONG_HORIZON_READONLY_CONTINUOUS_24H_EXTENSION_REQUEST_V1. 但这**不**等同自动 24h 启动 — 24h 是新 stage, 需新审批 + 新 scope freeze + 新 MANUAL_APPROVAL_RECORDED.json + 新 PRE_RUN_SAFETY_CHECK. 用户可从 4 个 allowed next stages 中选 1 个, 也可要求 PAUSE.",
+
+  "allowed_next_stages_with_rationale": [
+    {
+      "stage": "LP_LONG_HORIZON_READONLY_CONTINUOUS_24H_EXTENSION_REQUEST_V1",
+      "description": "24h extension (从 12h → 24h). 需 user 重新审批 (新 phrase, 新 scope freeze, 新 approval record). 推荐 for stability verification (12h 稳, 24h 验 r1 边界 + scheduler 长稳).",
+      "requires_user_approval": true,
+      "requires_new_scope_freeze": true,
+      "auto_advance_to_24h": false,
+      "scope_suggestion": "partial_solana_bsc_real_universe_24h_extension (NOT full coverage)",
+      "duration_hours": 24,
+      "checkpoint_interval_minutes": 60,
+      "expected_end_time_offset_hours_from_now": 24,
+      "expected_data_quality": "PASS (proven by 12h)"
+    },
+    {
+      "stage": "LP_LONG_HORIZON_PARTIAL_12H_NODE_REPORT_REVIEW_V1",
+      "description": "Review 本 12h node report + coverage_manifest + fee_estimation_basis + candidate_review. 不启动新 collector, 仅 review + 写 review notes.",
+      "requires_user_approval": false,
+      "requires_new_scope_freeze": false,
+      "auto_advance": false,
+      "scope_suggestion": "N/A (read-only review)",
+      "duration_hours": 0,
+      "expected_outputs": ["review_notes_cn.md", "issues_identified.json", "action_items_for_next_stage.json"]
+    },
+    {
+      "stage": "LP_LONG_HORIZON_COLLECTOR_ADAPTER_COVERAGE_WIRING_FIX_REPEAT",
+      "description": "在能 reach Base RPC 的 env 再 smoke. 当前 env Base 全部 403, 所以这次 12h Base 0 池. 换 env (or wait for paid RPC approval) 后重 smoke.",
+      "requires_user_approval": true,
+      "requires_new_scope_freeze": true,
+      "auto_advance": false,
+      "scope_suggestion": "partial_solana_bsc_base_real_universe (3 chains, IF Base RPC reachable)",
+      "duration_hours": "1-2 (smoke only)",
+      "blocked_by": "Base public RPC 全部 403 in this env"
+    },
+    {
+      "stage": "PAUSE_AUTOMATED_LP_PROBE_AND_COLLECT_LONGER_HORIZON_DATA",
+      "description": "暂停. 不启动新 stage. 等 Base RPC fix + r1 phase upgrade (live RPC + on-position tokenId + real-time market feed) 再继续.",
+      "requires_user_approval": true,
+      "requires_new_scope_freeze": false,
+      "auto_advance": false,
+      "scope_suggestion": "N/A (PAUSE)",
+      "duration_hours": 0
+    }
+  ],
+
+  "not_recommended_next_stages": [
+    "LP_LONG_HORIZON_TIER_C_PREFLIGHT_V1 (r0 phase 无 actual fee data, preflight_candidate_count=0)",
+    "LP_LONG_HORIZON_TINY_CANARY_PROBE_V1 (tiny_canary_allowed=no, can_run_probe_now=false, freeze active)",
+    "LP_LONG_HORIZON_LIVE_PROBE_V1 (live mode hard-disabled, can_run_probe_now=false)",
+    "LP_LONG_HORIZON_PAPER_TRADE_V1 (paper mode not in spec, freeze active)",
+    "LP_LONG_HORIZON_24H_AUTO_V1 (auto-advance LOCKED, 24h 需新审批)"
+  ],
+
+  "absolute_prohibitions": [
+    "不 probe / canary / live / paper",
+    "不读 wallet / seed / keypair / signer",
+    "不发送 transaction / approve / mint / swap / bridge",
+    "不接 paid RPC / paid indexer",
+    "不写 production positions",
+    "不覆盖 shadow 原始表",
+    "不把 edge_proven=no 翻成 yes (r0 phase 数据仍 smoke_placeholder)",
+    "不把 can_run_probe_now 翻成 true (freeze active)",
+    "不把 tiny_canary_allowed 翻成 yes (freeze active)"
+  ],
+
+  "user_decision_required_for_24h": {
+    "approval_phrase_template": "APPROVE_LP_LONG_HORIZON_READONLY_STAGE_RUN stage=24h mode=readonly no_probe=true",
+    "scope_clarification_needed": true,
+    "new_scope_freeze_required": true,
+    "new_MANUAL_APPROVAL_RECORDED_required": true,
+    "new_PRE_RUN_SAFETY_CHECK_required": true,
+    "new_24h_data_dir": "data/lp_long_horizon/20260607_XXXXXX/ (新 run_id, 新 dir)",
+    "carry_over_universe": "53 pools from 12h (or refreshed 24h universe from next prior stage)"
+  },
+
+  "locked_fields": {
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no",
+    "edge_proven": "no",
+    "wallet_or_tx_touched": false,
+    "transaction_sent": false,
+    "send_hard_disable_still_active": true,
+    "auto_advance_to_next": false,
+    "longer_stage_started": false
+  },
+
+  "key_questions_for_user": [
+    "Q1: 12h 跑通, 4 个 allowed next stages, 你想走哪个?",
+    "   (a) 24h extension (推荐, 验 stability; 需新审批)",
+    "   (b) review 12h node report (read-only, 不启新 collector)",
+    "   (c) Base RPC fix (需换 env or paid RPC; freeze still blocks)",
+    "   (d) PAUSE (不启新 stage)",
+    "Q2: 如果 (a), 24h 跑完推荐 next stage? (24h PASS 后 4-stage allowed 同样是 manual review / 48h extension / Base fix / pause)",
+    "Q3: 如果 (a) 24h 跑完后想 promote to r1 (actual fee data), 需 freeze reopen. 你打算何时 reopen? (这是 LP strategy research freeze 的核心 gate, 不应轻易翻)"
+  ]
+}

@@ -1,0 +1,92 @@
+{
+  "stage": "LP_LONG_HORIZON_READONLY_12H_STAGE_RUN_V1",
+  "report_kind": "candidate_review",
+  "run_id": "20260606_131323",
+  "branch": "feat/supabase-postgres-deployment",
+  "generated_at_utc": "2026-06-07T16:20:00Z",
+  "coverage_scope": "partial_solana_bsc_real_universe",
+  "do_not_treat_as_full_universe": true,
+
+  "candidate_review_summary": "12h 期间 r0 phase 仅 pipeline 验证, 不评估 actual candidate quality. 53 池全部 smoke_placeholder, **不** 当 preflight candidates. preflight_candidate_count = 0. 任何 preflight 评估需 r1 phase upgrade + freeze reopen.",
+
+  "candidate_status": {
+    "preflight_candidate_count": 0,
+    "ev_ready_pool_count": 0,
+    "quote_ready_pool_count": 53,
+    "fee_ready_pool_count": 53,
+    "actual_fee_accrual_pool_count": 0,
+    "candidate_tier_a_count": 0,
+    "candidate_tier_b_count": 0,
+    "candidate_tier_c_count": 0
+  },
+
+  "candidate_evaluation_rationale": "12h 跑通验证 pipeline 端到端 + adapter wiring + data quality flag. **不** 验证: (a) actual fee accrual over 12h, (b) IL realized vs IL actual, (c) volume-to-tvl ratio trend, (d) regime-aware sizing, (e) tier classifier output. 所有这些需 r1 phase 实际数据, 而 r1 需 freeze reopen + live RPC + on-position tokenId.",
+
+  "tier_classification_status": {
+    "tier_a_assigned": false,
+    "tier_b_assigned": false,
+    "tier_c_assigned": false,
+    "tier_c_hard_rejection_applied": false,
+    "tier_classifier_output": "DEFERRED_TO_R1 (per spec — tier classification requires r1 actual fee + TVL trend data)"
+  },
+
+  "per_protocol_candidate_readiness": {
+    "solana/orca_whirlpool": {
+      "pool_count": 13,
+      "r0_candidate_ready": false,
+      "r1_blockers": ["no live Solana RPC slot0/quoter_2 in this env", "no on-position tokenId", "no historical price feed for IL"]
+    },
+    "solana/raydium_clmm": {
+      "pool_count": 10,
+      "r0_candidate_ready": false,
+      "r1_blockers": ["no live Solana RPC slot0/quoter_2 in this env", "no on-position tokenId", "no historical price feed for IL"]
+    },
+    "solana/raydium_cpmm": {
+      "pool_count": 10,
+      "r0_candidate_ready": false,
+      "r1_blockers": ["no live Solana RPC CPMM getReserve in this env", "no on-position tokenId", "no historical price feed for IL"]
+    },
+    "solana/meteora_dlmm": {
+      "pool_count": 16,
+      "r0_candidate_ready": false,
+      "r1_blockers": ["no Meteora DLMM indexer reachable in this env (LB pair addresses known but reserve/liquidity 0)", "no on-position tokenId", "no bin_id/active_id snapshot for IL"]
+    },
+    "bsc/pancakeswap_v3": {
+      "pool_count": 4,
+      "r0_candidate_ready": false,
+      "r1_blockers": ["no live BSC quoter_2 in this env (slot0 works via bsc-dataseed.binance.org but quoter_2 not deployed)", "no on-position tokenId", "no historical price feed for IL"]
+    }
+  },
+
+  "candidate_honest_disclosure": "53 池的 'r0 candidate ready' 是 **false** for all. r0 phase 仅验证 pipeline 走得通, 不验证 candidate quality. 任何 LP_LONG_HORIZON_PREFLIGHT_V1 或 LP_LONG_HORIZON_TIER_C_* stage 在 r0 数据上跑都会 yield preflight_candidate_count=0. 这是 design — r0 → r1 显式分界.",
+
+  "what_r1_candidate_review_looks_like": {
+    "inputs_needed": [
+      "live RPC reachability (Base 修复 or paid RPC) — blocked by freeze",
+      "on-position tokenId (user-provided, from actual LP mint) — blocked by freeze (no canary/live)",
+      "real-time market feed (Pyth/CoinGecko integration) — not yet wired",
+      "12h+ position snapshot diff for actual fee accrual",
+      "historical price for IL realized vs IL actual"
+    ],
+    "outputs": [
+      "per-pool fee_capture_usd_24h (real, not proxy)",
+      "per-pool IL realized_pct (real, not proxy)",
+      "per-pool volume_to_tvl_pct (real, not 0)",
+      "tier classification (a/b/c) with hard rejection policy",
+      "preflight_candidate_count (real, not 0)",
+      "ranked candidate list with risk-adjusted return"
+    ]
+  },
+
+  "locked_fields": {
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no",
+    "edge_proven": "no",
+    "wallet_or_tx_touched": false,
+    "transaction_sent": false,
+    "send_hard_disable_still_active": true,
+    "auto_advance_to_next": false,
+    "preflight_candidate_count": 0,
+    "tier_classifier_output": "DEFERRED_TO_R1"
+  }
+}
