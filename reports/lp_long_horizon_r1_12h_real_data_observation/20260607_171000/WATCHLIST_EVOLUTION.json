@@ -1,0 +1,95 @@
+{
+  "stage": "LP_LONG_HORIZON_R1_12H_REAL_DATA_OBSERVATION_REQUEST_V1",
+  "run_id": "20260607_171000",
+  "watchlist_count_first": 7,
+  "watchlist_count_last": 7,
+  "watchlist_count_min": 7,
+  "watchlist_count_max": 7,
+  "watchlist_count_drift": 0,
+  "evolution": [
+    {
+      "ckpt": "checkpoint_10_1826",
+      "watchlist_count": 7,
+      "preflight_candidate_count": 0,
+      "data_insufficient_count": 0,
+      "ev_ready_pool_count": 0
+    },
+    {
+      "ckpt": "checkpoint_11_1827",
+      "watchlist_count": 7,
+      "preflight_candidate_count": 0,
+      "data_insufficient_count": 0,
+      "ev_ready_pool_count": 0
+    },
+    {
+      "ckpt": "checkpoint_12_1827",
+      "watchlist_count": 7,
+      "preflight_candidate_count": 0,
+      "data_insufficient_count": 0,
+      "ev_ready_pool_count": 0
+    },
+    {
+      "ckpt": "checkpoint_1_1823",
+      "watchlist_count": 7,
+      "preflight_candidate_count": 0,
+      "data_insufficient_count": 0,
+      "ev_ready_pool_count": 0
+    },
+    {
+      "ckpt": "checkpoint_2_1823",
+      "watchlist_count": 7,
+      "preflight_candidate_count": 0,
+      "data_insufficient_count": 0,
+      "ev_ready_pool_count": 0
+    },
+    {
+      "ckpt": "checkpoint_3_1823",
+      "watchlist_count": 7,
+      "preflight_candidate_count": 0,
+      "data_insufficient_count": 0,
+      "ev_ready_pool_count": 0
+    },
+    {
+      "ckpt": "checkpoint_4_1824",
+      "watchlist_count": 7,
+      "preflight_candidate_count": 0,
+      "data_insufficient_count": 0,
+      "ev_ready_pool_count": 0
+    },
+    {
+      "ckpt": "checkpoint_5_1824",
+      "watchlist_count": 7,
+      "preflight_candidate_count": 0,
+      "data_insufficient_count": 0,
+      "ev_ready_pool_count": 0
+    },
+    {
+      "ckpt": "checkpoint_6_1825",
+      "watchlist_count": 7,
+      "preflight_candidate_count": 0,
+      "data_insufficient_count": 0,
+      "ev_ready_pool_count": 0
+    },
+    {
+      "ckpt": "checkpoint_7_1825",
+      "watchlist_count": 7,
+      "preflight_candidate_count": 0,
+      "data_insufficient_count": 0,
+      "ev_ready_pool_count": 0
+    },
+    {
+      "ckpt": "checkpoint_8_1825",
+      "watchlist_count": 7,
+      "preflight_candidate_count": 0,
+      "data_insufficient_count": 13,
+      "ev_ready_pool_count": 0
+    },
+    {
+      "ckpt": "checkpoint_9_1826",
+      "watchlist_count": 7,
+      "preflight_candidate_count": 0,
+      "data_insufficient_count": 0,
+      "ev_ready_pool_count": 0
+    }
+  ]
+}

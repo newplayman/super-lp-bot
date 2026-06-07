@@ -52,6 +52,7 @@ from typing import Any
 STAGE = "LP_LONG_HORIZON_R1_REAL_DATA_OBSERVATION_UPGRADE_V1"
 ALLOWED_OUTPUT_DIRS = (
     "data/lp_long_horizon_r1_smoke",
+    "data/lp_long_horizon_r1_12h",
 )
 
 # Per-call timeout (seconds). Fail-fast; no retry.
@@ -815,9 +816,10 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--no-daemon", action="store_true", default=True)
     args = ap.parse_args(argv)
 
-    # Resolve output dir (whitelist guard).
+    # Resolve output dir (whitelist guard). Accept both relative and absolute paths.
     out_dir_str = str(args.output_dir)
-    if not any(out_dir_str.startswith(p) for p in ALLOWED_OUTPUT_DIRS):
+    out_dir_norm = os.path.relpath(out_dir_str)
+    if not any(out_dir_norm == p or out_dir_norm.startswith(p + "/") for p in ALLOWED_OUTPUT_DIRS):
         raise SystemExit(f"refuse: output-dir {out_dir_str!r} not in whitelist {ALLOWED_OUTPUT_DIRS}")
     out_dir = args.output_dir
     out_dir.mkdir(parents=True, exist_ok=True)

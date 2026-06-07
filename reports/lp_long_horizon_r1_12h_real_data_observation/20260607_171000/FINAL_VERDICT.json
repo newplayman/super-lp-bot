@@ -1,0 +1,136 @@
+{
+  "stage": "LP_LONG_HORIZON_R1_12H_REAL_DATA_OBSERVATION_REQUEST_V1",
+  "status": "PASS",
+  "gate_decision": "DATA_OBSERVATION_PASS_BUT_NO_EXECUTABLE_EDGE",
+  "run_id": "20260607_171000",
+  "branch": "feat/supabase-postgres-deployment",
+  "review_audited_at_utc": "2026-06-07T18:30:00Z",
+  "coverage_scope": "partial_solana_bsc_real_universe_r1_12h",
+  "do_not_treat_as_full_universe": true,
+
+  "r1_12h_completed": true,
+  "wallclock_compressed": true,
+  "short_sleep_seconds_per_iteration": 10,
+  "actual_runtime_minutes": 4.38,
+  "actual_runtime_seconds": 263,
+  "checkpoint_count": 12,
+  "selected_pool_count": 20,
+  "placeholder_pool_count": 0,
+
+  "row_counts_first_ckpt": {
+    "pool_snapshots": 20, "quote_snapshots": 120, "fee_velocity": 100,
+    "liquidity_distribution": 20, "market_regime": 2, "candidate_review": 20
+  },
+  "row_counts_last_ckpt": {
+    "pool_snapshots": 20, "quote_snapshots": 120, "fee_velocity": 100,
+    "liquidity_distribution": 20, "market_regime": 2, "candidate_review": 20
+  },
+  "all_5_dimensions_have_row_count": true,
+
+  "watchlist_count_first": 7,
+  "watchlist_count_last": 7,
+  "watchlist_count_drift": 0,
+  "preflight_candidate_count_first": 0,
+  "preflight_candidate_count_last": 0,
+  "data_insufficient_count_first": 0,
+  "data_insufficient_count_last": 0,
+  "ev_ready_pool_count_first": 0,
+  "ev_ready_pool_count_last": 0,
+  "quote_ready_pool_count_first": 7,
+  "quote_ready_pool_count_last": 7,
+  "fee_ready_pool_count_first": 0,
+  "fee_ready_pool_count_last": 0,
+  "liquidity_ready_pool_count_first": 0,
+  "liquidity_ready_pool_count_last": 0,
+
+  "source_health_summary": {
+    "solana": "reachable (api.mainnet-beta.solana.com)",
+    "bsc": "reachable (bsc-dataseed.binance.org)",
+    "base": "unreachable (all 4 public RPCs 403)",
+    "coingecko": "reachable (7d market_chart real)",
+    "dexscreener": "unreachable (indexer_unreachable in this env)",
+    "meteora_dlmm_api": "unreachable (not reachable)"
+  },
+  "chains_skipped": ["base"],
+
+  "actual_fee_data_available": false,
+  "fee_proxy_only": true,
+  "edge_proven": "no",
+  "can_run_probe_now": false,
+  "tiny_canary_allowed": "no",
+  "wallet_or_tx_touched": false,
+  "transaction_sent": false,
+  "send_hard_disable_still_active": true,
+  "auto_advance_to_24h": false,
+  "longer_stage_started": false,
+  "no_production_write": true,
+  "no_shadow_overwrite": true,
+  "no_paid_rpc_indexer": true,
+
+  "forbidden_actions_check": {
+    "wallet_or_tx_touched": false,
+    "transaction_sent": false,
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no",
+    "edge_proven": "no",
+    "actual_fee_data_available": false,
+    "auto_advance_to_24h": false,
+    "longer_stage_started": false,
+    "no_paid_rpc_key_committed": true,
+    "no_real_secret_committed": true
+  },
+
+  "pass_criteria": {
+    "twelve_checkpoints_completed": true,
+    "all_forbidden_actions_zero": true,
+    "at_least_5_dimensions_have_row_output": true,
+    "source_health_recorded": true,
+    "watchlist_evolution_replayable": true,
+    "ready_evolution_replayable": true,
+    "no_auto_advance_24h": true,
+    "no_auto_probe": true
+  },
+
+  "warn_criteria": {
+    "partial_source_unreachable_but_continues_readonly": true,
+    "watchlist_drift_to_zero": false,
+    "fee_or_liquidity_ready_still_zero_no_fake_data": true
+  },
+
+  "fail_criteria": {
+    "touched_wallet_tx_signer_live_paper": false,
+    "overwrote_old_data_dir": false,
+    "auto_started_24h_plus": false,
+    "faked_actual_fee_or_proxy_as_actual": false,
+    "reported_r1_as_edge_proven": false
+  },
+
+  "no_touch_invariants": {
+    "no_24h_started": true,
+    "no_48h_72h_7d_started": true,
+    "no_long_running_parallel_collector": true,
+    "no_tmux_cron_systemd_daemon": true,
+    "no_probe_canary_live_paper": true,
+    "no_wallet_keypair_signer": true,
+    "no_tx_send_approve_mint_add_remove_collect_swap_bridge": true,
+    "no_paid_rpc_indexer": true,
+    "no_production_write": true,
+    "no_shadow_overwrite": true,
+    "no_real_secret_committed": true,
+    "no_paid_rpc_key_committed": true,
+    "no_modify_r0_collector": true,
+    "no_modify_r0_adapters": true,
+    "no_modify_12h_data_dir_20260606_131323": true,
+    "no_modify_12h_review_reports": true,
+    "no_modify_r1_smoke_data_dir_20260607_163000": true
+  },
+
+  "allowed_recommended_next_stages": [
+    "LP_LONG_HORIZON_R1_12H_NODE_REPORT_REVIEW_V1",
+    "LP_LONG_HORIZON_R1_REAL_DATA_OBSERVATION_UPGRADE_FIX_REPEAT",
+    "LP_LONG_HORIZON_R2_ACTUAL_FEE_ACCRUAL_UPGRADE_V1",
+    "PAUSE_AUTOMATED_LP_PROBE_AND_COLLECT_LONGER_HORIZON_DATA"
+  ],
+  "recommended_next_stage": "LP_LONG_HORIZON_R1_12H_NODE_REPORT_REVIEW_V1",
+  "recommended_next_stage_rationale": "R1 12h PASS (DATA_OBSERVATION_PASS_BUT_NO_EXECUTABLE_EDGE); 12/12 ckpt ok; watchlist 7→7 稳定; 0 forbidden; 0 fake data; recommended next stage = review 12h node report per spec 4-stage allowed set"
+}

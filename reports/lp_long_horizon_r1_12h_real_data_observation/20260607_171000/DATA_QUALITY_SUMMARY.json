@@ -1,0 +1,152 @@
+{
+  "stage": "LP_LONG_HORIZON_R1_12H_REAL_DATA_OBSERVATION_REQUEST_V1",
+  "run_id": "20260607_171000",
+  "wallclock_compressed": true,
+  "short_sleep_seconds_per_iteration": 10,
+  "actual_runtime_seconds": 263,
+  "actual_runtime_minutes": 4.38,
+  "checkpoint_count": 12,
+  "all_5_dimensions_have_row_count": true,
+  "per_ckpt_quality": [
+    {
+      "ckpt": "checkpoint_10_1826",
+      "selected_pool_count": 20,
+      "pool_snapshot_rows": 20,
+      "quote_snapshot_rows": 120,
+      "fee_velocity_rows": 100,
+      "liquidity_distribution_rows": 20,
+      "market_regime_rows": 2,
+      "candidate_review_rows": 20
+    },
+    {
+      "ckpt": "checkpoint_11_1827",
+      "selected_pool_count": 20,
+      "pool_snapshot_rows": 20,
+      "quote_snapshot_rows": 120,
+      "fee_velocity_rows": 100,
+      "liquidity_distribution_rows": 20,
+      "market_regime_rows": 2,
+      "candidate_review_rows": 20
+    },
+    {
+      "ckpt": "checkpoint_12_1827",
+      "selected_pool_count": 20,
+      "pool_snapshot_rows": 20,
+      "quote_snapshot_rows": 120,
+      "fee_velocity_rows": 100,
+      "liquidity_distribution_rows": 20,
+      "market_regime_rows": 2,
+      "candidate_review_rows": 20
+    },
+    {
+      "ckpt": "checkpoint_1_1823",
+      "selected_pool_count": 20,
+      "pool_snapshot_rows": 20,
+      "quote_snapshot_rows": 120,
+      "fee_velocity_rows": 100,
+      "liquidity_distribution_rows": 20,
+      "market_regime_rows": 2,
+      "candidate_review_rows": 20
+    },
+    {
+      "ckpt": "checkpoint_2_1823",
+      "selected_pool_count": 20,
+      "pool_snapshot_rows": 20,
+      "quote_snapshot_rows": 120,
+      "fee_velocity_rows": 100,
+      "liquidity_distribution_rows": 20,
+      "market_regime_rows": 2,
+      "candidate_review_rows": 20
+    },
+    {
+      "ckpt": "checkpoint_3_1823",
+      "selected_pool_count": 20,
+      "pool_snapshot_rows": 20,
+      "quote_snapshot_rows": 120,
+      "fee_velocity_rows": 100,
+      "liquidity_distribution_rows": 20,
+      "market_regime_rows": 2,
+      "candidate_review_rows": 20
+    },
+    {
+      "ckpt": "checkpoint_4_1824",
+      "selected_pool_count": 20,
+      "pool_snapshot_rows": 20,
+      "quote_snapshot_rows": 120,
+      "fee_velocity_rows": 100,
+      "liquidity_distribution_rows": 20,
+      "market_regime_rows": 2,
+      "candidate_review_rows": 20
+    },
+    {
+      "ckpt": "checkpoint_5_1824",
+      "selected_pool_count": 20,
+      "pool_snapshot_rows": 20,
+      "quote_snapshot_rows": 120,
+      "fee_velocity_rows": 100,
+      "liquidity_distribution_rows": 20,
+      "market_regime_rows": 2,
+      "candidate_review_rows": 20
+    },
+    {
+      "ckpt": "checkpoint_6_1825",
+      "selected_pool_count": 20,
+      "pool_snapshot_rows": 20,
+      "quote_snapshot_rows": 120,
+      "fee_velocity_rows": 100,
+      "liquidity_distribution_rows": 20,
+      "market_regime_rows": 2,
+      "candidate_review_rows": 20
+    },
+    {
+      "ckpt": "checkpoint_7_1825",
+      "selected_pool_count": 20,
+      "pool_snapshot_rows": 20,
+      "quote_snapshot_rows": 120,
+      "fee_velocity_rows": 100,
+      "liquidity_distribution_rows": 20,
+      "market_regime_rows": 2,
+      "candidate_review_rows": 20
+    },
+    {
+      "ckpt": "checkpoint_8_1825",
+      "selected_pool_count": 20,
+      "pool_snapshot_rows": 20,
+      "quote_snapshot_rows": 120,
+      "fee_velocity_rows": 100,
+      "liquidity_distribution_rows": 20,
+      "market_regime_rows": 2,
+      "candidate_review_rows": 20
+    },
+    {
+      "ckpt": "checkpoint_9_1826",
+      "selected_pool_count": 20,
+      "pool_snapshot_rows": 20,
+      "quote_snapshot_rows": 120,
+      "fee_velocity_rows": 100,
+      "liquidity_distribution_rows": 20,
+      "market_regime_rows": 2,
+      "candidate_review_rows": 20
+    }
+  ],
+  "aggregate_row_counts_first_ckpt": {
+    "pool_snapshots": 20,
+    "quote_snapshots": 120,
+    "fee_velocity": 100,
+    "liquidity_distribution": 20,
+    "market_regime": 2,
+    "candidate_review": 20
+  },
+  "aggregate_row_counts_last_ckpt": {
+    "pool_snapshots": 20,
+    "quote_snapshots": 120,
+    "fee_velocity": 100,
+    "liquidity_distribution": 20,
+    "market_regime": 2,
+    "candidate_review": 20
+  },
+  "placeholder_pool_count": 0,
+  "no_wallet_tx_probe": true,
+  "wallet_or_tx_touched": false,
+  "transaction_sent": false
+}
