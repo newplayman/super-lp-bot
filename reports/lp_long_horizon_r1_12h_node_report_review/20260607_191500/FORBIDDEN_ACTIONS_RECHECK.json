@@ -1,0 +1,237 @@
+{
+  "stage": "LP_LONG_HORIZON_R1_12H_NODE_REPORT_REVIEW_V1",
+  "reviewed_run_id": "20260607_191500",
+  "audited_at_utc": "2026-06-08T18:30:00Z",
+  "audit_kind": "forbidden_actions_recheck_v1",
+  "auditor": "node_report_reviewer_subagent (read-only)",
+  "scope": "re-audit all forbidden actions across report artifacts + data dir + supervisor log + system processes",
+
+  "forbidden_actions_checked": [
+    {
+      "id": "FA-01",
+      "action": "started 24h collection",
+      "expected": false,
+      "actual_via": "FINAL_VERDICT.no_touch_invariants.no_24h_started=true + FORBIDDEN_ACTIONS_AUDIT no_24h_started_indicator + system ps no 24h processes",
+      "ok": true
+    },
+    {
+      "id": "FA-02",
+      "action": "started 48h / 72h / 7d collection",
+      "expected": false,
+      "actual_via": "FINAL_VERDICT.no_touch_invariants.no_48h_72h_7d_started=true + system ps no long-running collectors",
+      "ok": true
+    },
+    {
+      "id": "FA-03",
+      "action": "entered R2 (actual fee accrual)",
+      "expected": false,
+      "actual_via": "FINAL_VERDICT.no_touch_invariants + status=PARTIAL (R2 still LOCKED) + no R2 scripts in data dir",
+      "ok": true
+    },
+    {
+      "id": "FA-04",
+      "action": "started long-running parallel collector",
+      "expected": false,
+      "actual_via": "FINAL_VERDICT.no_touch_invariants.no_long_running_parallel_collector=true + system ps no parallel collectors",
+      "ok": true
+    },
+    {
+      "id": "FA-05",
+      "action": "started tmux / cron / systemd / daemon",
+      "expected": false,
+      "actual_via": "FINAL_VERDICT.no_touch_invariants.no_tmux_cron_systemd_daemon=true + system ps no daemon processes",
+      "ok": true
+    },
+    {
+      "id": "FA-06",
+      "action": "ran probe / canary / live / paper",
+      "expected": false,
+      "actual_via": "FINAL_VERDICT.no_touch_invariants.no_probe_canary_live_paper=true + system ps no lpbot-canary / lpbot-live / paper",
+      "ok": true
+    },
+    {
+      "id": "FA-07",
+      "action": "loaded wallet / keypair / seed / signer",
+      "expected": false,
+      "actual_via": "FINAL_VERDICT.no_touch_invariants.no_wallet_keypair_signer=true + FORBIDDEN_ACTIONS_AUDIT.no_wallet_or_keypair_signer_read=true + no private_key/mnemonic/seed/0x64-hex in any output file",
+      "ok": true
+    },
+    {
+      "id": "FA-08",
+      "action": "sent transaction (mint / add / remove / collect / swap / approve / bridge)",
+      "expected": false,
+      "actual_via": "FINAL_VERDICT.no_touch_invariants.no_tx_send_approve_mint_add_remove_collect_swap_bridge=true + FORBIDDEN_ACTIONS_AUDIT.no_tx_send_approve_mint_add_remove_collect_swap_bridge=true + wallet_or_tx_touched=false + transaction_sent=false",
+      "ok": true
+    },
+    {
+      "id": "FA-09",
+      "action": "used paid RPC / paid indexer",
+      "expected": false,
+      "actual_via": "FINAL_VERDICT.no_touch_invariants.no_paid_rpc_indexer=true + SOURCE_HEALTH shows only free public RPCs (api.mainnet-beta.solana.com, bsc-dataseed.binance.org, coingecko public)",
+      "ok": true
+    },
+    {
+      "id": "FA-10",
+      "action": "wrote production positions",
+      "expected": false,
+      "actual_via": "FINAL_VERDICT.no_touch_invariants.no_production_write=true + FORBIDDEN_ACTIONS_AUDIT.no_production_write=true + data dir is local research dir, no LP NFT mint/transfer observed",
+      "ok": true
+    },
+    {
+      "id": "FA-11",
+      "action": "overwrote shadow state",
+      "expected": false,
+      "actual_via": "FINAL_VERDICT.no_touch_invariants.no_shadow_overwrite=true + FORBIDDEN_ACTIONS_AUDIT.no_shadow_overwrite=true + no shadow / live / dryrun db writes",
+      "ok": true
+    },
+    {
+      "id": "FA-12",
+      "action": "committed real secret",
+      "expected": false,
+      "actual_via": "FINAL_VERDICT.no_touch_invariants.no_real_secret_committed=true + FORBIDDEN_ACTIONS_AUDIT.no_real_secret_committed=true + no private_key/mnemonic/seed/0x64-hex in any output file",
+      "ok": true
+    },
+    {
+      "id": "FA-13",
+      "action": "committed paid RPC key",
+      "expected": false,
+      "actual_via": "FINAL_VERDICT.no_touch_invariants.no_paid_rpc_key_committed=true + FORBIDDEN_ACTIONS_AUDIT.no_paid_rpc_key_committed=true + only public RPC endpoints used",
+      "ok": true
+    },
+    {
+      "id": "FA-14",
+      "action": "modified R0 collector",
+      "expected": false,
+      "actual_via": "FINAL_VERDICT.no_touch_invariants.no_modify_r0_collector=true + git log shows no collector changes during 20260607_191500 run window",
+      "ok": true
+    },
+    {
+      "id": "FA-15",
+      "action": "modified R0 adapters",
+      "expected": false,
+      "actual_via": "FINAL_VERDICT.no_touch_invariants.no_modify_r0_adapters=true + git log shows no adapter changes during run window",
+      "ok": true
+    },
+    {
+      "id": "FA-16",
+      "action": "modified 12h data dir (20260606_131323)",
+      "expected": false,
+      "actual_via": "FINAL_VERDICT.no_touch_invariants.no_modify_12h_data_dir_20260606_131323=true + data dir mtime = 2026-06-08 06:21 (only v3 was written)",
+      "ok": true
+    },
+    {
+      "id": "FA-17",
+      "action": "modified R1 smoke data dir (20260607_163000)",
+      "expected": false,
+      "actual_via": "FINAL_VERDICT.no_touch_invariants.no_modify_r1_smoke_data_dir_20260607_163000=true",
+      "ok": true
+    },
+    {
+      "id": "FA-18",
+      "action": "modified R1 12h compressed data dir (20260607_171000)",
+      "expected": false,
+      "actual_via": "FINAL_VERDICT.no_touch_invariants.no_modify_r1_12h_compressed_data_dir_20260607_171000=true",
+      "ok": true
+    },
+    {
+      "id": "FA-19",
+      "action": "modified v1 full wallclock data dir (20260607_184500)",
+      "expected": false,
+      "actual_via": "FINAL_VERDICT.no_touch_invariants.no_modify_v1_full_wallclock_data_dir_20260607_184500=true + v1 dir contents (8 files) unchanged from v1 run",
+      "ok": true
+    },
+    {
+      "id": "FA-20",
+      "action": "auto-advanced to 24h",
+      "expected": false,
+      "actual_via": "FINAL_VERDICT.auto_advance_to_24h=false (LOCKED) + status=PARTIAL (no auto-advance gate triggered)",
+      "ok": true
+    },
+    {
+      "id": "FA-21",
+      "action": "started longer horizon stage",
+      "expected": false,
+      "actual_via": "FINAL_VERDICT.longer_stage_started=false (LOCKED) + system ps no 24h/48h/72h/7d processes",
+      "ok": true
+    },
+    {
+      "id": "FA-22",
+      "action": "sent a real order (mint LP NFT / add liquidity / send tx)",
+      "expected": false,
+      "actual_via": "transaction_sent=false + wallet_or_tx_touched=false + no eth_sendRawTransaction / sendTransaction in any log + no real secret committed",
+      "ok": true
+    },
+    {
+      "id": "FA-23",
+      "action": "connected wallet / signer",
+      "expected": false,
+      "actual_via": "no_wallet_keypair_signer=true + no keypair/private_key/seed in any output",
+      "ok": true
+    },
+    {
+      "id": "FA-24",
+      "action": "touched testnet-live (base sepolia, solana devnet, bsc testnet)",
+      "expected": false,
+      "actual_via": "SOURCE_HEALTH shows only mainnet (api.mainnet-beta.solana.com / bsc-dataseed.binance.org) + chains_skipped includes base (honest, base RPC 403), no testnet endpoint",
+      "ok": true
+    },
+    {
+      "id": "FA-25",
+      "action": "modified LP-bot SDK adapter",
+      "expected": false,
+      "actual_via": "no SDK adapter touched; collector uses HTTPX/RPC only; no Hyperliquid / no DEX SDK",
+      "ok": true
+    },
+    {
+      "id": "FA-26",
+      "action": "merged dev / main",
+      "expected": false,
+      "actual_via": "git log shows no merge commit during v3 run window; branch still feat/supabase-postgres-deployment",
+      "ok": true
+    },
+    {
+      "id": "FA-27",
+      "action": "used pkill -f",
+      "expected": false,
+      "actual_via": "supervisor log shows no pkill invocation; supervisor exited cleanly via rc=0 (not killed)",
+      "ok": true
+    }
+  ],
+
+  "system_process_audit": {
+    "ps_audited_at_utc": "2026-06-08T18:30:00Z",
+    "checked_process_tokens": [
+      "canary", "lpbot-live", "sendTransaction", "eth_sendRawTransaction",
+      "eth_sendTransaction", "keypair", "private_key", "mnemonic"
+    ],
+    "matches_found": 0,
+    "ok": true
+  },
+
+  "output_file_secret_audit": {
+    "patterns_checked": [
+      "\"private_key\"\\s*:\\s*\"[^\"]{8,}\"",
+      "\"mnemonic\"\\s*:\\s*\"[^\"]{8,}\"",
+      "\"seed\"\\s*:\\s*\"[^\"]{8,}\"",
+      "0x[0-9a-fA-F]{64}"
+    ],
+    "files_scanned": 14,
+    "matches_found": 0,
+    "ok": true
+  },
+
+  "summary": {
+    "forbidden_actions_checked": 27,
+    "forbidden_actions_still_zero": true,
+    "no_real_order": true,
+    "no_sdk": true,
+    "no_testnet_live": true,
+    "no_wallet": true,
+    "no_merge": true,
+    "no_pkill": true,
+    "no_paid_rpc": true,
+    "no_real_secret_committed": true,
+    "all_locked_fields_maintained": true,
+    "ok": true
+  }
+}
