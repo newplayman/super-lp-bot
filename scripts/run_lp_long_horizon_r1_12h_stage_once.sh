@@ -35,7 +35,14 @@ SLEEP_SECONDS=$((DURATION_HOURS * 3600 / CHECKPOINT_COUNT))
 
 # Paths.
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-DATA_DIR="${REPO_ROOT}/data/lp_long_horizon_r1_12h/${RUN_ID}"
+# DATA_DIR can be overridden by env var (e.g. LP_R1_12H_DATA_DIR from wrapper)
+# to redirect the supervisor's output to a different data dir without
+# rewriting the script. Default keeps the legacy path for compressed runs.
+if [ -n "${LP_R1_12H_DATA_DIR:-}" ]; then
+    DATA_DIR="${LP_R1_12H_DATA_DIR}"
+else
+    DATA_DIR="${REPO_ROOT}/data/lp_long_horizon_r1_12h/${RUN_ID}"
+fi
 LOG_DIR="${DATA_DIR}/logs"
 HEARTBEAT_DIR="${LOG_DIR}/heartbeat"
 CHECKPOINT_LOG_DIR="${LOG_DIR}/checkpoint"

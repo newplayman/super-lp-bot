@@ -1,0 +1,26 @@
+{
+  "stage": "LP_LONG_HORIZON_R1_12H_FULL_WALLCLOCK_REPEAT_V1",
+  "run_id": "20260607_191500",
+  "audited_at_utc": "2026-06-08T08:23:54Z",
+  "checks": {
+    "wallet_or_tx_touched": false,
+    "transaction_sent": false,
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no",
+    "edge_proven": "no",
+    "actual_fee_data_available": false,
+    "auto_advance_to_24h": false,
+    "longer_stage_started": false,
+    "no_paid_rpc_key_committed": true,
+    "no_real_secret_committed": true,
+    "fee_proxy_only": true,
+    "send_hard_disable_still_active": true,
+    "no_wallet_or_keypair_signer_read": true,
+    "no_tx_send_approve_mint_add_remove_collect_swap_bridge": true,
+    "no_production_write": true,
+    "no_shadow_overwrite": true,
+    "no_paid_rpc_indexer": true
+  },
+  "forbidden_actions_still_zero": true,
+  "all_pass": true
+}

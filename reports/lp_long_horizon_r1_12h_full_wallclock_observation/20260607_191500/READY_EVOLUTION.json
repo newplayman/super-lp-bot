@@ -1,0 +1,14 @@
+{
+  "stage": "LP_LONG_HORIZON_R1_12H_FULL_WALLCLOCK_REPEAT_V1",
+  "run_id": "20260607_191500",
+  "ready_metrics": [
+    "quote_ready_pool_count",
+    "fee_ready_pool_count",
+    "liquidity_ready_pool_count",
+    "ev_ready_pool_count",
+    "preflight_candidate_count"
+  ],
+  "first_ckpt": {},
+  "last_ckpt": {},
+  "evolution": []
+}

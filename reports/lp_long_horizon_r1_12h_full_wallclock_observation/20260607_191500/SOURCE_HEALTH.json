@@ -1,0 +1,306 @@
+{
+  "stage": "LP_LONG_HORIZON_R1_12H_FULL_WALLCLOCK_REPEAT_V1",
+  "run_id": "20260607_191500",
+  "sources_overall": {
+    "solana": "reachable (api.mainnet-beta.solana.com / solana.publicnode.com)",
+    "bsc": "reachable (bsc-dataseed.binance.org)",
+    "base": "unreachable (all 4 public RPCs 403, honest skipped)",
+    "coingecko": "reachable (7d market_chart real for solana+bsc)",
+    "dexscreener": "unreachable (indexer_unreachable in this env, honest skipped)",
+    "meteora_dlmm_api": "unreachable (not reachable, honest skipped)"
+  },
+  "per_ckpt": [
+    {
+      "ckpt": "checkpoint_10_0420",
+      "chain_reachability": {
+        "solana": {
+          "status": "reachable",
+          "endpoint": "https://api.mainnet-beta.solana.com"
+        },
+        "bsc": {
+          "status": "reachable",
+          "endpoint": "https://bsc-dataseed.binance.org"
+        },
+        "base": {
+          "status": "unreachable",
+          "endpoint": "all endpoints failed"
+        }
+      },
+      "chains_skipped": [
+        "base"
+      ],
+      "confidence_distribution": {
+        "unavailable": 13,
+        "medium": 7
+      }
+    },
+    {
+      "ckpt": "checkpoint_11_0521",
+      "chain_reachability": {
+        "solana": {
+          "status": "reachable",
+          "endpoint": "https://api.mainnet-beta.solana.com"
+        },
+        "bsc": {
+          "status": "reachable",
+          "endpoint": "https://bsc-dataseed.binance.org"
+        },
+        "base": {
+          "status": "unreachable",
+          "endpoint": "all endpoints failed"
+        }
+      },
+      "chains_skipped": [
+        "base"
+      ],
+      "confidence_distribution": {
+        "unavailable": 13,
+        "medium": 7
+      }
+    },
+    {
+      "ckpt": "checkpoint_12_0621",
+      "chain_reachability": {
+        "solana": {
+          "status": "reachable",
+          "endpoint": "https://api.mainnet-beta.solana.com"
+        },
+        "bsc": {
+          "status": "reachable",
+          "endpoint": "https://bsc-dataseed.binance.org"
+        },
+        "base": {
+          "status": "unreachable",
+          "endpoint": "all endpoints failed"
+        }
+      },
+      "chains_skipped": [
+        "base"
+      ],
+      "confidence_distribution": {
+        "unavailable": 13,
+        "medium": 7
+      }
+    },
+    {
+      "ckpt": "checkpoint_1_1916",
+      "chain_reachability": {
+        "solana": {
+          "status": "reachable",
+          "endpoint": "https://api.mainnet-beta.solana.com"
+        },
+        "bsc": {
+          "status": "reachable",
+          "endpoint": "https://bsc-dataseed.binance.org"
+        },
+        "base": {
+          "status": "unreachable",
+          "endpoint": "all endpoints failed"
+        }
+      },
+      "chains_skipped": [
+        "base"
+      ],
+      "confidence_distribution": {
+        "unavailable": 13,
+        "medium": 7
+      }
+    },
+    {
+      "ckpt": "checkpoint_2_2017",
+      "chain_reachability": {
+        "solana": {
+          "status": "reachable",
+          "endpoint": "https://api.mainnet-beta.solana.com"
+        },
+        "bsc": {
+          "status": "reachable",
+          "endpoint": "https://bsc-dataseed.binance.org"
+        },
+        "base": {
+          "status": "unreachable",
+          "endpoint": "all endpoints failed"
+        }
+      },
+      "chains_skipped": [
+        "base"
+      ],
+      "confidence_distribution": {
+        "unavailable": 13,
+        "medium": 7
+      }
+    },
+    {
+      "ckpt": "checkpoint_3_2117",
+      "chain_reachability": {
+        "solana": {
+          "status": "reachable",
+          "endpoint": "https://api.mainnet-beta.solana.com"
+        },
+        "bsc": {
+          "status": "reachable",
+          "endpoint": "https://bsc-dataseed.binance.org"
+        },
+        "base": {
+          "status": "unreachable",
+          "endpoint": "all endpoints failed"
+        }
+      },
+      "chains_skipped": [
+        "base"
+      ],
+      "confidence_distribution": {
+        "unavailable": 13,
+        "medium": 7
+      }
+    },
+    {
+      "ckpt": "checkpoint_4_2217",
+      "chain_reachability": {
+        "solana": {
+          "status": "reachable",
+          "endpoint": "https://api.mainnet-beta.solana.com"
+        },
+        "bsc": {
+          "status": "reachable",
+          "endpoint": "https://bsc-dataseed.binance.org"
+        },
+        "base": {
+          "status": "unreachable",
+          "endpoint": "all endpoints failed"
+        }
+      },
+      "chains_skipped": [
+        "base"
+      ],
+      "confidence_distribution": {
+        "unavailable": 13,
+        "medium": 7
+      }
+    },
+    {
+      "ckpt": "checkpoint_5_2318",
+      "chain_reachability": {
+        "solana": {
+          "status": "reachable",
+          "endpoint": "https://api.mainnet-beta.solana.com"
+        },
+        "bsc": {
+          "status": "reachable",
+          "endpoint": "https://bsc-dataseed.binance.org"
+        },
+        "base": {
+          "status": "unreachable",
+          "endpoint": "all endpoints failed"
+        }
+      },
+      "chains_skipped": [
+        "base"
+      ],
+      "confidence_distribution": {
+        "unavailable": 13,
+        "medium": 7
+      }
+    },
+    {
+      "ckpt": "checkpoint_6_0019",
+      "chain_reachability": {
+        "solana": {
+          "status": "reachable",
+          "endpoint": "https://api.mainnet-beta.solana.com"
+        },
+        "bsc": {
+          "status": "reachable",
+          "endpoint": "https://bsc-dataseed.binance.org"
+        },
+        "base": {
+          "status": "unreachable",
+          "endpoint": "all endpoints failed"
+        }
+      },
+      "chains_skipped": [
+        "base"
+      ],
+      "confidence_distribution": {
+        "unavailable": 13,
+        "medium": 7
+      }
+    },
+    {
+      "ckpt": "checkpoint_7_0119",
+      "chain_reachability": {
+        "solana": {
+          "status": "reachable",
+          "endpoint": "https://api.mainnet-beta.solana.com"
+        },
+        "bsc": {
+          "status": "reachable",
+          "endpoint": "https://bsc-dataseed.binance.org"
+        },
+        "base": {
+          "status": "unreachable",
+          "endpoint": "all endpoints failed"
+        }
+      },
+      "chains_skipped": [
+        "base"
+      ],
+      "confidence_distribution": {
+        "unavailable": 13,
+        "medium": 7
+      }
+    },
+    {
+      "ckpt": "checkpoint_8_0219",
+      "chain_reachability": {
+        "solana": {
+          "status": "reachable",
+          "endpoint": "https://api.mainnet-beta.solana.com"
+        },
+        "bsc": {
+          "status": "reachable",
+          "endpoint": "https://bsc-dataseed.binance.org"
+        },
+        "base": {
+          "status": "unreachable",
+          "endpoint": "all endpoints failed"
+        }
+      },
+      "chains_skipped": [
+        "base"
+      ],
+      "confidence_distribution": {
+        "unavailable": 13,
+        "medium": 7
+      }
+    },
+    {
+      "ckpt": "checkpoint_9_0320",
+      "chain_reachability": {
+        "solana": {
+          "status": "reachable",
+          "endpoint": "https://api.mainnet-beta.solana.com"
+        },
+        "bsc": {
+          "status": "reachable",
+          "endpoint": "https://bsc-dataseed.binance.org"
+        },
+        "base": {
+          "status": "unreachable",
+          "endpoint": "all endpoints failed"
+        }
+      },
+      "chains_skipped": [
+        "base"
+      ],
+      "confidence_distribution": {
+        "unavailable": 13,
+        "medium": 7
+      }
+    }
+  ],
+  "chains_skipped": [
+    "base"
+  ],
+  "no_fake_data_injection": true
+}

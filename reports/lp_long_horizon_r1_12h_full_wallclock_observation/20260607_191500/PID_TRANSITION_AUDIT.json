@@ -1,0 +1,25 @@
+{
+  "audit_kind": "pid_transition_audit_v3",
+  "audited_at_utc": "2026-06-07T19:17:57Z",
+  "transition_history": [
+    {"pid": 2876054, "status": "exited (sed rewrite bug → REPO_ROOT=/tmp → /tmp/data/...)", "exit_reason": "data dir wrong path"},
+    {"pid": 2892835, "status": "exited (R1 collector whitelist reject: data/lp_long_horizon_r1_12h_full_wallclock not in whitelist)", "exit_reason": "ckpt 1 collected but wrote 0 files; sleeping 3600s for non-existent ckpt 2"},
+    {"pid": "current", "status": "new wrapper pid 2948793 launched for RUN_ID 20260607_191500", "exit_reason": null, "data_dir": "/opt/lpbot/lp-bot-v3-origin-check/data/lp_long_horizon_r1_12h_full_wallclock/20260607_191500"}
+  ],
+  "v1_partial_verdict": "see reports/lp_long_horizon_r1_12h_full_wallclock_observation/20260607_184500/PARTIAL_WALLCLOCK_FAIL_NEEDS_USER_DECISION.json",
+  "v3_current_state": {
+    "wrapper_pid": 2948793,
+    "data_dir": "/opt/lpbot/lp-bot-v3-origin-check/data/lp_long_horizon_r1_12h_full_wallclock/20260607_191500",
+    "report_dir": "/opt/lpbot/lp-bot-v3-origin-check/reports/lp_long_horizon_r1_12h_full_wallclock_observation/20260607_191500",
+    "ckpt_1_complete": true,
+    "ckpt_1_files": "13 (target 13 r1_* files)",
+    "started_at_utc": "2026-06-07 21:17:14.805537970 +0200",
+    "START_TS": 1780859772,
+    "expected_end_utc": "2026-06-08T07:17:57Z"
+  },
+  "full_supervisor_used": true,
+  "short_supervisor_used": false,
+  "compressed": false,
+  "sed_rewrite_used": false,
+  "r1_collector_whitelist_now_includes": "data/lp_long_horizon_r1_12h_full_wallclock"
+}

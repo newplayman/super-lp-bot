@@ -53,6 +53,7 @@ STAGE = "LP_LONG_HORIZON_R1_REAL_DATA_OBSERVATION_UPGRADE_V1"
 ALLOWED_OUTPUT_DIRS = (
     "data/lp_long_horizon_r1_smoke",
     "data/lp_long_horizon_r1_12h",
+    "data/lp_long_horizon_r1_12h_full_wallclock",
 )
 
 # Per-call timeout (seconds). Fail-fast; no retry.

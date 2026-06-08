@@ -1,0 +1,46 @@
+# R1 12h Full Wallclock — Command Used (v3 RUN_ID=20260607_191500)
+
+## Wrapper command (executed)
+```
+nohup env LP_R1_12H_DATA_DIR=/opt/lpbot/lp-bot-v3-origin-check/data/lp_long_horizon_r1_12h_full_wallclock/20260607_191500 \
+  bash scripts/run_lp_long_horizon_r1_12h_full_wallclock.sh 20260607_191500 12 12 \
+  > reports/lp_long_horizon_r1_12h_full_wallclock_observation/20260607_191500/wrapper_nohup_v3.log 2>&1 &
+```
+
+## Wrapper PID
+2948793 (alive at start, exited clean at end)
+
+## Child supervisor PID
+2948806 (alive at start, exited clean at end)
+
+## Old PID status (run history audit)
+- v0 pid 2876054: exited (sed rewrite bug → REPO_ROOT=/tmp → /tmp/data/...)
+- v1 pid 2892835 (RUN_ID 20260607_184500): exited (R1 collector whitelist reject, ckpt 1 wrote 0 files) — PARTIAL_WALLCLOCK_FAIL_NEEDS_USER_DECISION
+- v3 pid 2948793 (RUN_ID 20260607_191500): current authoritative run
+
+## Child process list (v3 lineage)
+```
+bash scripts/run_lp_long_horizon_r1_12h_full_wallclock.sh 20260607_191500 12 12  (pid 2948793)
+  └── bash /opt/lpbot/lp-bot-v3-origin-check/scripts/run_lp_long_horizon_r1_12h_stage_once.sh 20260607_191500 12 12  (pid 2948806)
+        └── python3 /opt/lpbot/lp-bot-v3-origin-check/scripts/lp_long_horizon_r1_real_data_collector_v1.py --run-id ... (per ckpt)
+```
+
+## Script path
+/opt/lpbot/lp-bot-v3-origin-check/scripts/run_lp_long_horizon_r1_12h_stage_once.sh
+/opt/lpbot/lp-bot-v3-origin-check/scripts/run_lp_long_horizon_r1_12h_full_wallclock.sh (wrapper)
+/opt/lpbot/lp-bot-v3-origin-check/scripts/lp_long_horizon_r1_real_data_collector_v1.py (per-ckpt collector)
+
+## Booleans (per spec)
+full_supervisor_used=true
+short_supervisor_used=false  (NEVER invoked _short.sh)
+compressed=false  (sleep_seconds_per_iteration=3600)
+LP_R1_12H_DATA_DIR actual value=/opt/lpbot/lp-bot-v3-origin-check/data/lp_long_horizon_r1_12h_full_wallclock/20260607_191500
+
+## Data dir
+/opt/lpbot/lp-bot-v3-origin-check/data/lp_long_horizon_r1_12h_full_wallclock/20260607_191500
+
+## Report dir
+/opt/lpbot/lp-bot-v3-origin-check/reports/lp_long_horizon_r1_12h_full_wallclock_observation/20260607_191500
+
+## No sed rewrite / no _short.sh / no hidden short interval
+Confirmed: no sed rewrite used; no stage_once_short.sh invoked; no hidden short interval parameters.
