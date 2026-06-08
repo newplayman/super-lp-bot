@@ -4,7 +4,7 @@
   "run_id": "20260608_190000",
   "branch": "feat/supabase-postgres-deployment",
   "base_commit": "6ec750a",
-  "final_commit": "<filled at commit time>",
+  "final_commit": "457c69230376bc842dcb8a8b3f1e999fa3ce6b6d",
   "audited_at_utc": "2026-06-08T19:00:00Z",
   "workdir": "/opt/lpbot/lp-bot-v3",
   "audit_copy_dir_readonly": "/opt/lpbot/lp-bot-v3-origin-check",
@@ -34,7 +34,16 @@
     "scripts/check_shadow_env_consistency.sh (PASS, 9/9 checks)",
     "shadow startup smoke with real DSN (PASS, all subsystems initialized)"
   ],
-  "tests_passed": true,
+  "tests_passed_breakdown": {
+    "go_test_all_status": "FAIL_WITH_KNOWN_PREEXISTING_FLAKE",
+    "go_test_all_explanation": "go test ./... reports FAIL because internal/adapters/rpc/TestRoundRobinProvider_Endpoint fails (this flake was present at base commit 6ec750a and earlier; test is sensitive to Go map iteration order; not introduced by this stage or by the P0-PG-02 series). All other 40 packages pass. The total go test ./... status is therefore reported as FAIL_WITH_KNOWN_PREEXISTING_FLAKE rather than tests_passed=true.",
+    "postgres_repair_tests_passed": true,
+    "postgres_repair_tests_explanation": "All 9 postgres package tests pass: TestMigrationsSchemaCompatibility (static, no DSN), TestPostgresRepoIntegration (real DSN, 16 tables + 1 index + PositionRepo roundtrip), TestPostgresAdapter_DockerIntegration_RoundTrip (docker, 30s), TestPostgres_New, TestChainIDConversion (TEXT roundtrip), TestPostgresAdapter_AllRepos (fail-closed at config load), TestPostgres_ConfigDSN, TestPostgres_ConfigDSN_DefaultSSL, TestLedgerRepo_InterfaceCompliance (and 5 other *_InterfaceCompliance tests).",
+    "shadow_smoke_run": "PASS",
+    "shadow_smoke_details": "bin/lpbot-shadow started, all adapters initialized (PostgreSQL store ✓, Redis runtime ✓, Base RPC ✓, GeckoTerminal datasource ✓, metrics server :9090 ✓), all core modules wired (scanner/strategy/RiskGate/AllocationManager/ApproveTracker/OrderManager ✓), live safety gate correctly blocked (13 blockers). Ran until timeout (~25s), exited clean.",
+    "builds_run": ["make build-shadow", "make build-dryrun", "make build-live"],
+    "builds_result": "PASS for all 3 binaries; live binary built but not executed (LOCKED)"
+  },
   "postgres_integration_test_run": "PASS",
   "postgres_integration_test_dsn": "postgresql://lpbot:testpass@127.0.0.1:54329/lpbot_test?sslmode=disable",
   "postgres_integration_test_details": "15 migrations applied; all 16 required tables present; idx_positions_one_active_per_pool index present; PositionRepo.Save then FindByID roundtrip succeeded with chain TEXT alignment ('base' stored and retrieved correctly).",

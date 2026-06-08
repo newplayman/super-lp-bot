@@ -23,6 +23,20 @@
 # databases only. Live canary/live use deploy/systemd/lpbot-canary.service +
 # scripts/canary_cycle.sh + manual review of FORBIDDEN_ACTIONS_LOCK.json
 # (see reports/lp_long_horizon_r1_pause_and_freeze/20260607_191500/).
+#
+# Safety boundaries (per the cleanup stage 2026-06-08):
+#   1. Auto-loaded env files: ONLY .env.postgres. The script does NOT
+#      auto-load .env.canary, .env.live, or any other canary/live env.
+#      Operators must set POSTGRES_DSN or DATABASE_URL explicitly when
+#      running this script for canary/live migrations, in a separate
+#      dedicated stage.
+#   2. The "production-DSN" guard below refuses DSNs containing
+#      supabase.co / rds.amazonaws.com / prod / production without
+#      LPBOT_MIGRATE_ALLOW_LIVE=YES.
+#   3. The status mode (REQUIRED_TABLES list) is a SOURCE OF TRUTH for
+#      what the live schema guard requires. Keep in sync with
+#      cmd/lpbot/main.go loadLiveSchemaState and the in-Go ensure*Table
+#      helpers in cmd/lpbot/decision_trace.go / position_mark.go.
 
 set -euo pipefail
 
@@ -41,13 +55,20 @@ load_env_file() {
 }
 
 cd "$ROOT_DIR"
+# ONLY .env.postgres is auto-loaded. Do NOT load .env.canary or .env.live
+# here: those are canary/live env files, and using this script for
+# canary/live migrations is OUT OF SCOPE for this script. Operators who
+# need to run migrations against canary/live must do so via a separate
+# explicit stage that:
+#   (a) sets POSTGRES_DSN or DATABASE_URL explicitly in the env, AND
+#   (b) acknowledges the live schema guard requirements manually.
 load_env_file ./.env.postgres
-load_env_file ./.env.canary
 
 POSTGRES_DSN="${POSTGRES_DSN:-${DATABASE_URL:-}}"
 if [[ -z "${POSTGRES_DSN}" ]]; then
   echo "[migrate-postgres] POSTGRES_DSN/DATABASE_URL is empty" >&2
   echo "[migrate-postgres] hint: copy .env.postgres.example to .env.postgres and fill DATABASE_URL" >&2
+  echo "[migrate-postgres]       (canary/live env files are NOT auto-loaded; use a separate stage)" >&2
   exit 2
 fi
 
@@ -81,11 +102,21 @@ for f in "${MIGRATIONS_DIR}"/*.sql; do
 done
 prev=""
 while IFS= read -r num; do
+  # Skip blank lines (heredoc can introduce trailing newline).
+  [[ -z "${num}" ]] && continue
   if [[ -z "${prev}" ]]; then
     prev="${num}"
     continue
   fi
-  if [[ $((10#${num} - 10#${prev} - 1)) -ne 0 ]] && [[ $((10#${num} - 10#${prev})) -ne 1 ]]; then
+  # Skip non-numeric (defensive; shouldn't happen since we extract from
+  # the leading numeric prefix of each filename).
+  if ! [[ "${num}" =~ ^[0-9]+$ ]] || ! [[ "${prev}" =~ ^[0-9]+$ ]]; then
+    continue
+  fi
+  # Force base 10 (a leading "0" would otherwise make bash treat the
+  # literal as octal; "000008" is not valid octal because of "8").
+  diff=$((10#$num - 10#$prev))
+  if [[ ${diff} -ne 1 ]]; then
     if [[ "${LPBOT_MIGRATE_ALLOW_GAP:-NO}" != "YES" ]]; then
       echo "[migrate-postgres] migration numbering gap detected between ${prev} and ${num}" >&2
       echo "[migrate-postgres] refusing to apply. Set LPBOT_MIGRATE_ALLOW_GAP=YES if intentional." >&2
@@ -106,6 +137,11 @@ fi
 
 if [[ "${MODE}" == "status" ]]; then
   echo "[migrate-postgres] status mode — checking required tables:"
+  # REQUIRED_TABLES is the source of truth for what the live schema guard
+  # in cmd/lpbot/main.go loadLiveSchemaState AND the in-Go ensure*Table
+  # helpers (cmd/lpbot/decision_trace.go, cmd/lpbot/position_mark.go)
+  # require. Keep this list in sync with those code locations when new
+  # tables are added.
   REQUIRED_TABLES=(
     "positions"
     "transactions"
@@ -115,6 +151,9 @@ if [[ "${MODE}" == "status" ]]; then
     "canary_events"
     "pnl_ledger"
     "shadow_decision_trace"
+    "shadow_position_marks"
+    "shadow_exit_decisions"
+    "shadow_exit_actions"
     "shadow_outcome_labels"
     "pools"
     "pool_score_history"
@@ -191,5 +230,4 @@ for migration in "${MIGRATIONS_DIR}"/*.sql; do
     INSERT INTO schema_migrations(filename) VALUES ('${fname}');
   " >/dev/null
 done
-echo "[migrate-postgres] done."
 echo "[migrate-postgres] done."

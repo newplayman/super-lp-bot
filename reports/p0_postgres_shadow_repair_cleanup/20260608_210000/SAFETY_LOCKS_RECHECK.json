@@ -1,0 +1,115 @@
+{
+  "stage": "LP_BOT_ENGINEERING_P0_POSTGRES_SHADOW_REPAIR_CLEANUP_V1",
+  "status": "WARN",
+  "run_id": "20260608_210000",
+  "branch": "feat/supabase-postgres-deployment",
+  "base_commit": "457c692",
+  "final_commit": "<filled at commit time>",
+  "audited_at_utc": "2026-06-08T21:00:00Z",
+  "workdir": "/opt/lpbot/lp-bot-v3",
+
+  "r1_research_thread_state": {
+    "status": "PAUSED",
+    "source": "reports/lp_long_horizon_r1_pause_and_freeze/20260607_191500/FINAL_PAUSE_VERDICT.json",
+    "verified_during_this_stage": true,
+    "modified_during_this_stage": false
+  },
+
+  "r2_state": {
+    "actual_fee_data_available": false,
+    "fee_proxy_only": true,
+    "r2_locked": true,
+    "reopened_during_this_stage": false
+  },
+
+  "canary_live_state": {
+    "canary_started": false,
+    "live_started": false,
+    "paper_started": false,
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no",
+    "LPBOT_CONFIRM_LIVE_set_to_YES": false,
+    "LPBOT_CONFIRM_LIVE_in_canary_env_template": "NO (pinned via .env.canary.example non-comment line)",
+    "canary_service_enabled": false,
+    "canary_service_started": false,
+    "canary_smoke_run": false
+  },
+
+  "migrate_postgres_safety_boundaries": {
+    "no_env_canary_autoload": true,
+    "no_env_live_autoload": true,
+    "no_env_canary_live_in_default_path": true,
+    "explicit_postgres_dsn_required_for_canary_live": true,
+    "production_dsn_guard_active": true,
+    "status_required_tables_includes_3_new_shadow_tables": true,
+    "duplicate_echo_done_removed": true,
+    "ten_pound_bash_arithmetic_fixed": true
+  },
+
+  "wallet_or_tx_touched": false,
+  "signing_attempted": false,
+  "broadcast_attempted": false,
+  "private_key_loaded": false,
+  "mnemonic_loaded": false,
+  "keypair_loaded": false,
+  "seed_loaded": false,
+  "lp_nft_minted": false,
+  "liquidity_added": false,
+  "liquidity_removed": false,
+  "swap_executed": false,
+  "approve_called": false,
+  "collect_called": false,
+  "bridge_called": false,
+
+  "paid_rpc_used": false,
+  "paid_indexer_used": false,
+  "testnet_live_connected": false,
+  "testnet_endpoints_used": [],
+  "mainnet_endpoints_used": [],
+
+  "real_secret_committed": false,
+  "dsn_committed_to_logs": false,
+  "wallet_passphrase_committed": false,
+  "private_key_in_logs": false,
+  "mnemonic_in_logs": false,
+  "dsn_in_logs": "no DSN logged in cleanup stage; migrate-postgres.sh status mode prints only OK / MISS table names, not DSN",
+
+  "merge_done": false,
+  "pkill_used": false,
+  "tmux_started": false,
+  "systemd_unit_enabled": false,
+  "systemd_unit_started": false,
+
+  "r1_reopened": false,
+  "r2_entered": false,
+  "long_horizon_run_started": false,
+  "12h_run_started": false,
+  "13h_run_started": false,
+  "24h_run_started": false,
+  "48h_run_started": false,
+  "72h_run_started": false,
+  "7d_run_started": false,
+  "mode_a_started": false,
+  "mode_b_started": false,
+  "paper_started": false,
+  "probe_started": false,
+  "canary_executed": false,
+  "live_executed": false,
+
+  "docker_run_in_cleanup_stage": false,
+  "docker_stop_in_cleanup_stage": false,
+  "shadow_binary_executed_in_cleanup_stage": false,
+  "shadow_service_enabled_in_cleanup_stage": false,
+
+  "r1_audit_copy_integrity": {
+    "audit_copy_dir": "/opt/lpbot/lp-bot-v3-origin-check",
+    "audit_copy_modified": false,
+    "audit_copy_read_only": true,
+    "audit_copy_intent": "read-only audit reference; not the implementation directory"
+  },
+
+  "forbidden_actions_lock_count": 30,
+  "forbidden_actions_lock_all_true": true,
+
+  "summary": "Cleanup stage did not trigger any forbidden action. R1 research thread PAUSE respected (reports/lp_long_horizon_r1_pause_and_freeze/20260607_191500/ verified intact, status=PAUSED, no modification). R2 LOCKED, canary/live/paper LOCKED, edge_proven=no, can_run_probe_now=false, tiny_canary_allowed=no, LPBOT_CONFIRM_LIVE never set to YES. No new docker run, no shadow binary executed, no shadow service enabled, no merge, no pkill, no paid RPC, no testnet-live, no real secret committed. The cleanup was 4 small fixes only: (1) report metadata + tests_passed breakdown, (2) per-target test results, (3) migrate-postgres.sh status completeness + safety boundaries, (4) test wording accuracy. No code behavior change. No new migration. No new test. No rebuild required. No docker run. No shadow re-smoke. Recommended next: enter P0-PG-02-E for Go migration runner, P0-PG-05 for -race in CI, address the pre-existing rpc flake (out of scope of P0-PG-02 series)."
+}

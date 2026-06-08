@@ -247,8 +247,24 @@ func findMigrationsDir(t *testing.T) string {
 }
 
 // TestPostgresRepoIntegration runs only when LPBOT_POSTGRES_TEST_DSN is set.
-// It applies all migrations and runs a smoke roundtrip on each repo.
-// When unset, the test SKIPs (we don't fabricate PASS).
+//
+// This test currently verifies (with a real DSN):
+//   1. PostgresAdapter.New() can open a connection to the test DB.
+//   2. All 16 required tables are present (via to_regclass queries).
+//   3. The required index idx_positions_one_active_per_pool is present.
+//   4. PositionRepo Save + FindByID roundtrip with chain TEXT='base'.
+//
+// Broader repo roundtrip coverage (PoolRepo / TxRepo / RiskRepo /
+// LedgerRepo / ExecutionIntentRepo) is intentionally NOT in this
+// function and remains a future test-coverage stage. Do not describe
+// this test as "roundtrip on each repo" — it does not exercise every
+// repo. The TestPostgresAdapter_DockerIntegration_RoundTrip test in
+// postgres_test.go (run by `go test ./...` when docker is available)
+// covers PoolRepo / TxRepo / PositionRepo with inline-schema, not
+// against the real migrations.
+//
+// When LPBOT_POSTGRES_TEST_DSN is unset, the test SKIPs (we do not
+// fabricate PASS).
 func TestPostgresRepoIntegration(t *testing.T) {
 	dsn := os.Getenv("LPBOT_POSTGRES_TEST_DSN")
 	if dsn == "" {
