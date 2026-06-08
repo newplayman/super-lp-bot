@@ -1,0 +1,103 @@
+P0-PG-02 Review-Repair — Postgres Integration Test Log
+====================================================
+
+Run ID: 20260608_190000
+Base commit: 6ec750a
+Branch: feat/supabase-postgres-deployment
+DSN: postgresql://lpbot:testpass@127.0.0.1:54329/lpbot_test?sslmode=disable
+Docker: postgres:16-alpine (already started in MIGRATION_APPLY_LOG.txt)
+
+================================================================================
+Test: TestMigrationsSchemaCompatibility (static, no DSN)
+================================================================================
+
+$ go test ./internal/adapters/store/postgres/ -run TestMigrationsSchemaCompatibility -v
+=== RUN   TestMigrationsSchemaCompatibility
+--- PASS: TestMigrationsSchemaCompatibility (0.06s)
+PASS
+ok  	github.com/lpbot/lpbot/internal/adapters/store/postgres	0.098s
+
+Verifies (after this stage's updates to requiredTables):
+- 16 required tables (incl. shadow_position_marks, shadow_exit_decisions, shadow_exit_actions)
+- 1 required index (idx_positions_one_active_per_pool)
+- 9 tables' required columns
+- Supports compact multi-column ALTER syntax
+- Detects migration numbering gaps (warns, does not fail)
+
+================================================================================
+Test: TestPostgresRepoIntegration (requires LPBOT_POSTGRES_TEST_DSN)
+================================================================================
+
+$ LPBOT_POSTGRES_TEST_DSN="postgresql://lpbot:testpass@127.0.0.1:54329/lpbot_test?sslmode=disable" \
+  go test ./internal/adapters/store/postgres/ -run TestPostgresRepoIntegration -v
+=== RUN   TestPostgresRepoIntegration
+    migrate_test.go:257: integration test would run against DSN host: 127.0.0.1:54329
+    migrate_test.go:274: postgres adapter connected; schema guard not yet exercised (migration runner pending)
+    migrate_test.go:290: all 16 required tables present
+    migrate_test.go:297: required index idx_positions_one_active_per_pool present
+    migrate_test.go:321: PositionRepo Save+FindByID roundtrip OK; chain TEXT='base'
+--- PASS: TestPostgresRepoIntegration (0.14s)
+PASS
+ok  	github.com/lpbot/lpbot/internal/adapters/store/postgres	0.167s
+
+================================================================================
+Test: TestChainIDConversion (TEXT roundtrip)
+================================================================================
+
+$ go test ./internal/adapters/store/postgres/ -run TestChainIDConversion -v
+=== RUN   TestChainIDConversion
+--- PASS: TestChainIDConversion (0.00s)
+PASS
+
+Updated from previous int-roundtrip version to verify:
+- domain.ChainBase ("base") written as "base" (string)
+- domain.ChainSolana ("solana") written as "solana"
+- domain.ChainID("") written as ""
+- domain.ChainID("custom") written as "custom"
+- All read back correctly via domain.ChainID(...)
+
+================================================================================
+Test: TestPostgresAdapter_DockerIntegration_RoundTrip (existing, gated on docker)
+================================================================================
+
+$ go test ./internal/adapters/store/postgres/ -run TestPostgresAdapter_DockerIntegration_RoundTrip -v
+=== RUN   TestPostgresAdapter_DockerIntegration_RoundTrip
+--- PASS: TestPostgresAdapter_DockerIntegration_RoundTrip (18.252s)
+PASS
+
+This test runs docker postgres internally, applies inline schema (with
+chain TEXT after this stage's edit), and exercises:
+- PositionRepo.Save + FindByID roundtrip (now with chain TEXT roundtrip)
+- TxRepo.UpsertTx + GetTxByHash roundtrip
+- PoolRepo.UpsertPool + GetPool roundtrip
+
+================================================================================
+Test: TestPostgres_New (fail-closed at config load)
+================================================================================
+
+$ go test ./internal/adapters/store/postgres/ -run TestPostgres_New -v
+=== RUN   TestPostgres_New
+    postgres_test.go:53: Expected error for invalid config: ...
+--- PASS: TestPostgres_New (0.00s)
+PASS
+
+Test verifies that New() with invalid config returns an error (fail-closed).
+
+================================================================================
+Summary
+================================================================================
+
+All 4 categories of postgres tests pass:
+- Static schema compatibility: PASS
+- Integration (real DSN): PASS
+- Existing docker integration: PASS
+- Fail-closed config validation: PASS
+
+DSN: postgresql://lpbot:testpass@127.0.0.1:54329/lpbot_test?sslmode=disable
+Migration runner: scripts/migrate-postgres.sh (shell-based, with -- +goose
+Up section extraction + schema_migrations marker table for idempotency).
+Migrations applied: 15/15.
+Required tables present: 16/16.
+Required index present: 1/1 (idx_positions_one_active_per_pool).
+PositionRepo roundtrip: OK.
+Chain TEXT alignment verified: chain='base' roundtrip OK.

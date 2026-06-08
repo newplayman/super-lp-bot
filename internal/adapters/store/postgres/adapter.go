@@ -307,27 +307,3 @@ func (a *postgresAdapter) IncrementRFBAttempts(ctx context.Context, chain domain
 func (a *postgresAdapter) GetRFBAttempts(ctx context.Context, chain domain.ChainID, hash string) (int, error) {
 	return NewTxRepo(a.db).GetRFBAttempts(ctx, chain, hash)
 }
-
-// chainIDToInt converts a ChainID to its integer representation.
-func chainIDToInt(chain domain.ChainID) int {
-	switch chain {
-	case domain.ChainBase:
-		return 1
-	case domain.ChainSolana:
-		return 2
-	default:
-		return 0
-	}
-}
-
-// intToChainID converts an integer to a ChainID.
-func intToChainID(n int) domain.ChainID {
-	switch n {
-	case 1:
-		return domain.ChainBase
-	case 2:
-		return domain.ChainSolana
-	default:
-		return domain.ChainID("")
-	}
-}

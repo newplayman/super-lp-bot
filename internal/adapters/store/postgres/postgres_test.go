@@ -209,27 +209,30 @@ func TestTxBroadcastTimestamp(t *testing.T) {
 	}
 }
 
-// TestChainIDConversion tests chain ID conversion helpers.
+// TestChainIDConversion tests chain ID string roundtrip (chain column type
+// was aligned to TEXT in migration 000016_chain_text_alignment.sql).
 func TestChainIDConversion(t *testing.T) {
 	tests := []struct {
 		chain   domain.ChainID
-		wantInt int
+		wantStr string
 	}{
-		{domain.ChainBase, 1},
-		{domain.ChainSolana, 2},
-		{domain.ChainID("unknown"), 0},
+		{domain.ChainBase, "base"},
+		{domain.ChainSolana, "solana"},
+		{domain.ChainID(""), ""},
+		{domain.ChainID("custom"), "custom"},
 	}
 
 	for _, tt := range tests {
-		got := chainIDToInt(tt.chain)
-		if got != tt.wantInt {
-			t.Errorf("chainIDToInt(%v) = %d, want %d", tt.chain, got, tt.wantInt)
+		// Write side: write as string (mirrors position_repo.go Save).
+		gotStr := string(tt.chain)
+		if gotStr != tt.wantStr {
+			t.Errorf("string(%v) = %q, want %q", tt.chain, gotStr, tt.wantStr)
 		}
 
-		// Test reverse conversion
-		gotChain := intToChainID(tt.wantInt)
-		if tt.chain != domain.ChainID("unknown") && gotChain != tt.chain {
-			t.Errorf("intToChainID(%d) = %v, want %v", tt.wantInt, gotChain, tt.chain)
+		// Read side: read back as domain.ChainID (mirrors position_repo.go Scan).
+		gotChain := domain.ChainID(gotStr)
+		if gotChain != tt.chain {
+			t.Errorf("domain.ChainID(%q) = %v, want %v", gotStr, gotChain, tt.chain)
 		}
 	}
 }
@@ -343,7 +346,7 @@ func TestPostgresAdapter_DockerIntegration_RoundTrip(t *testing.T) {
 		id TEXT PRIMARY KEY,
 		token_id TEXT NOT NULL DEFAULT '',
 		pool_id TEXT NOT NULL,
-		chain INTEGER NOT NULL,
+		chain TEXT NOT NULL,
 		protocol TEXT,
 		status TEXT NOT NULL,
 		tier TEXT NOT NULL,
@@ -382,7 +385,7 @@ func TestPostgresAdapter_DockerIntegration_RoundTrip(t *testing.T) {
 	)`)
 	mustExecSQL(t, adapter.db, `CREATE TABLE pools (
 		pool_id TEXT NOT NULL,
-		chain INTEGER NOT NULL,
+		chain TEXT NOT NULL,
 		protocol TEXT NOT NULL,
 		token0 TEXT NOT NULL,
 		token1 TEXT NOT NULL,
@@ -402,7 +405,7 @@ func TestPostgresAdapter_DockerIntegration_RoundTrip(t *testing.T) {
 	mustExecSQL(t, adapter.db, `CREATE TABLE pool_score_history (
 		id BIGSERIAL PRIMARY KEY,
 		pool_id TEXT NOT NULL,
-		chain INTEGER NOT NULL,
+		chain TEXT NOT NULL,
 		block_number BIGINT NOT NULL,
 		block_hash TEXT NOT NULL,
 		block_time BIGINT NOT NULL,

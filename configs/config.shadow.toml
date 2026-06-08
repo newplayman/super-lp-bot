@@ -32,11 +32,12 @@ commitment = "finalized"
 
 [store]
 backend = "postgres"
-# Required: DSN. Resolution order: POSTGRES_DSN (preferred) -> DATABASE_URL.
-# When neither is set, the binary fails closed at config load (per the
-# platform/config loader's required-var check). To override the resolution
-# order, set DATABASE_URL in .env.postgres (auto-loaded by lpbot-shadow.service).
-postgres_dsn = "${POSTGRES_DSN:-${DATABASE_URL:-}}"
+# Required: DSN. The platform/config loader resolves ${POSTGRES_DSN}
+# with a fallback to ${DATABASE_URL} automatically (see
+# internal/platform/config/config.go:resolveEnvValue). lpbot-shadow.service
+# loads .env.postgres into the systemd manager environment, so either
+# POSTGRES_DSN or DATABASE_URL in .env.postgres is sufficient.
+postgres_dsn = "${POSTGRES_DSN}"
 
 [redis]
 url = "${REDIS_URL:-redis://127.0.0.1:6379/0}"

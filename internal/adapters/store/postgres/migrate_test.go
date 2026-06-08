@@ -2,6 +2,8 @@
 package postgres
 
 import (
+	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -9,7 +11,9 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/lpbot/lpbot/internal/domain"
 	"github.com/stretchr/testify/require"
 )
 
@@ -36,7 +40,10 @@ var indexRE = regexp.MustCompile(`(?i)CREATE\s+(?:UNIQUE\s+)?INDEX\s+(?:IF\s+NOT
 func TestMigrationsSchemaCompatibility(t *testing.T) {
 	migrationsDir := findMigrationsDir(t)
 
-	// Required tables per cmd/lpbot/main.go loadLiveSchemaState.
+	// Required tables per cmd/lpbot/main.go loadLiveSchemaState +
+	// cmd/lpbot/position_mark.go (in-Go CREATE TABLE) + P0-PG-02-B (added
+	// 000013 / 000014 migrations). All shadow tables and runtime metadata
+	// tables should be sourced from migrations, not in-Go CREATE TABLE.
 	requiredTables := []string{
 		"positions",
 		"transactions",
@@ -46,6 +53,9 @@ func TestMigrationsSchemaCompatibility(t *testing.T) {
 		"canary_events",
 		"pnl_ledger",
 		"shadow_decision_trace",
+		"shadow_position_marks",
+		"shadow_exit_decisions",
+		"shadow_exit_actions",
 		"pools",
 		"pool_score_history",
 		"risk_events",
@@ -249,9 +259,10 @@ func TestPostgresRepoIntegration(t *testing.T) {
 		dsnHost(dsn))
 
 	// Note: the postgres adapter does not yet have a Go-based migration
-	// runner (BLK-PG-08 from P0-PG-01 audit). For now, this test only
-	// verifies that the adapter *can* open a connection and reach New().
-	// Repo roundtrips are added in a follow-up.
+	// runner (BLK-PG-08 from P0-PG-01 audit). The shell script
+	// scripts/migrate-postgres.sh is the canonical entry point and
+	// must be run BEFORE this test (it records applied migrations in
+	// the schema_migrations marker table).
 	cfg, err := parseDSNForTest(dsn)
 	require.NoError(t, err, "parse DSN")
 	adapter, err := New(cfg)
@@ -261,6 +272,56 @@ func TestPostgresRepoIntegration(t *testing.T) {
 	defer adapter.Close()
 	require.NotNil(t, adapter)
 	t.Logf("postgres adapter connected; schema guard not yet exercised (migration runner pending)")
+
+	// Verify the required tables (live schema guard) are present.
+	required := []string{
+		"positions", "transactions", "execution_intents", "portfolio_snapshots",
+		"position_marks", "canary_events", "pnl_ledger", "shadow_decision_trace",
+		"shadow_position_marks", "shadow_exit_decisions", "shadow_exit_actions",
+		"pools", "pool_score_history", "risk_events", "kill_switch_state",
+		"shadow_outcome_labels",
+	}
+	for _, tbl := range required {
+		var exists bool
+		err := adapter.DB().QueryRow("SELECT to_regclass('public.' || $1) IS NOT NULL", tbl).Scan(&exists)
+		require.NoError(t, err, "check %s", tbl)
+		require.Truef(t, exists, "required table %q missing (run scripts/migrate-postgres.sh first)", tbl)
+	}
+	t.Logf("all %d required tables present", len(required))
+
+	// Verify the required index is present.
+	var idxExists bool
+	err = adapter.DB().QueryRow("SELECT to_regclass('public.idx_positions_one_active_per_pool') IS NOT NULL").Scan(&idxExists)
+	require.NoError(t, err)
+	require.Truef(t, idxExists, "required index idx_positions_one_active_per_pool missing")
+	t.Logf("required index idx_positions_one_active_per_pool present")
+
+	// Smoke roundtrip on PositionRepo: Save then FindByID.
+	ctx := context.Background()
+	pos := &domain.Position{
+		ID:        "pos-it-" + fmt.Sprintf("%d", time.Now().UnixNano()),
+		PoolID:    "0xpool-it",
+		Chain:     domain.ChainBase,
+		Status:    domain.StatusOpen,
+		Tier:      domain.TierA,
+		TickLower: -100,
+		TickUpper: 100,
+		AmountUSD: domain.MustDecimal("12.34"),
+		OpenedAt:  time.Now().Unix(),
+		MetadataJSON: "{}",
+	}
+	require.NoError(t, adapter.PositionRepo().Save(ctx, pos), "save position")
+	got, err := adapter.PositionRepo().FindByID(ctx, pos.ID)
+	require.NoError(t, err, "find position")
+	require.NotNil(t, got, "position not found after save")
+	require.Equal(t, pos.ID, got.ID, "position ID roundtrip mismatch")
+	require.Equal(t, pos.PoolID, got.PoolID, "position pool_id roundtrip mismatch")
+	require.Equal(t, pos.Chain, got.Chain, "position chain roundtrip mismatch (TEXT alignment)")
+	require.Equal(t, pos.Status, got.Status, "position status roundtrip mismatch")
+	t.Logf("PositionRepo Save+FindByID roundtrip OK; chain TEXT='%s'", string(got.Chain))
+
+	// Cleanup the test row.
+	_, _ = adapter.DB().ExecContext(ctx, "DELETE FROM positions WHERE id = $1", pos.ID)
 }
 
 // dsnHost extracts "host[:port]" from a postgres URL for safe logging.
@@ -298,7 +359,12 @@ func parseDSNForTest(dsn string) (PostgresConfig, error) {
 		rest = rest[at+1:]
 	}
 	if slash := strings.Index(rest, "/"); slash >= 0 {
-		cfg.Database = rest[slash+1:]
+		dbPart := rest[slash+1:]
+		// Strip ?sslmode=... etc. from database name.
+		if q := strings.Index(dbPart, "?"); q >= 0 {
+			dbPart = dbPart[:q]
+		}
+		cfg.Database = dbPart
 		rest = rest[:slash]
 	}
 	if q := strings.Index(rest, "?"); q >= 0 {

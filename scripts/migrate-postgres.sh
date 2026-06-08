@@ -146,9 +146,50 @@ fi
 echo "[migrate-postgres] DSN host: $(echo "${POSTGRES_DSN}" | sed -E 's#.*@##; s#\/.*##')"
 echo "[migrate-postgres] migrations dir: ${MIGRATIONS_DIR}"
 echo "[migrate-postgres] applying migrations in lexical order:"
+
+# Track applied migrations in a per-DB marker table so re-runs are idempotent
+# (this also replaces goose-style version tracking for shadow/test use).
+ensure_migration_marker_table() {
+  psql "${POSTGRES_DSN}" -v ON_ERROR_STOP=1 -q -c "
+    CREATE TABLE IF NOT EXISTS schema_migrations (
+      filename TEXT PRIMARY KEY,
+      applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  " >/dev/null
+}
+
+ensure_migration_marker_table
+
 for migration in "${MIGRATIONS_DIR}"/*.sql; do
   [[ -f "${migration}" ]] || continue
-  echo "  - $(basename "${migration}")"
-  psql "${POSTGRES_DSN}" -v ON_ERROR_STOP=1 -f "${migration}"
+  fname=$(basename "${migration}")
+
+  # Skip if already applied
+  applied=$(psql "${POSTGRES_DSN}" -tAc "SELECT 1 FROM schema_migrations WHERE filename='${fname}'" 2>/dev/null | tr -d '[:space:]')
+  if [[ "${applied}" == "1" ]]; then
+    echo "  - ${fname} (already applied, skipping)"
+    continue
+  fi
+
+  # Extract only the Up section between -- +goose Up and -- +goose Down
+  # (psql runs the whole file otherwise, executing DROP TABLE etc.).
+  up_sql=$(awk '
+    /^-- \+goose Up[[:space:]]*$/ { in_up=1; next }
+    /^-- \+goose Down[[:space:]]*$/ { in_up=0; next }
+    in_up { print }
+  ' "${migration}")
+
+  echo "  - ${fname}"
+  echo "${up_sql}" | psql "${POSTGRES_DSN}" -v ON_ERROR_STOP=1 -q
+
+  if [[ $? -ne 0 ]]; then
+    echo "[migrate-postgres] failed at ${fname}; aborting (no further migrations applied)" >&2
+    exit 5
+  fi
+
+  psql "${POSTGRES_DSN}" -v ON_ERROR_STOP=1 -q -c "
+    INSERT INTO schema_migrations(filename) VALUES ('${fname}');
+  " >/dev/null
 done
+echo "[migrate-postgres] done."
 echo "[migrate-postgres] done."

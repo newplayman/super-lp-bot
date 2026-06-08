@@ -1,0 +1,12 @@
+ M configs/config.shadow.toml
+ M internal/adapters/store/postgres/adapter.go
+ M internal/adapters/store/postgres/ledger_repo.go
+ M internal/adapters/store/postgres/migrate_test.go
+ M internal/adapters/store/postgres/pool_repo.go
+ M internal/adapters/store/postgres/position_repo.go
+ M internal/adapters/store/postgres/postgres_test.go
+ M scripts/migrate-postgres.sh
+?? migrations/postgres/000013_shadow_position_marks.sql
+?? migrations/postgres/000014_shadow_exit_tables.sql
+?? migrations/postgres/000015_chain_text_alignment.sql
+?? reports/p0_postgres_shadow_review_repair/

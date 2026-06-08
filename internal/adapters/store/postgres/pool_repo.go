@@ -63,7 +63,7 @@ func (r *PoolRepo) UpsertPool(ctx context.Context, pool ports.PoolWithScore) err
 			fee_apr_24h = excluded.fee_apr_24h
 	`,
 		pool.Pool.ID,
-		chainIDToInt(pool.Pool.Chain),
+		string(pool.Pool.Chain),
 		pool.Pool.Protocol,
 		pool.Pool.Token0.String(),
 		pool.Pool.Token1.String(),
@@ -91,7 +91,7 @@ func (r *PoolRepo) UpsertPool(ctx context.Context, pool ports.PoolWithScore) err
 		) VALUES ($1, $2, $3, $4, $5, $6, $7)
 	`,
 		pool.Pool.ID,
-		chainIDToInt(pool.Pool.Chain),
+		string(pool.Pool.Chain),
 		0, // block_number
 		"", // block_hash
 		pool.Pool.UpdatedAt,
@@ -121,7 +121,7 @@ func (r *PoolRepo) GetPool(ctx context.Context, key string) (domain.Pool, error)
 
 	var row struct {
 		ID           string
-		Chain        int
+		Chain        string
 		Protocol     string
 		Token0       string
 		Token1       string
@@ -144,7 +144,7 @@ func (r *PoolRepo) GetPool(ctx context.Context, key string) (domain.Pool, error)
 		       liquidity, tick, tvl_usd, vol_24h, fee_apr_24h
 		FROM pools
 		WHERE pool_id = $1 AND chain = $2 AND protocol = $3
-	`, poolID, chainIDToInt(chain), protocol).Scan(
+	`, poolID, string(chain), protocol).Scan(
 		&row.ID, &row.Chain, &row.Protocol,
 		&row.Token0, &row.Token1, &row.FeeBPS,
 		&row.Tier, &row.AuditVerdict, &row.LastScore,
@@ -169,7 +169,7 @@ func (r *PoolRepo) GetPool(ctx context.Context, key string) (domain.Pool, error)
 
 	pool := domain.Pool{
 		ID:        row.ID,
-		Chain:     intToChainID(row.Chain),
+		Chain:     domain.ChainID(row.Chain),
 		Protocol:  row.Protocol,
 		Token0:    token0,
 		Token1:    token1,
@@ -212,7 +212,7 @@ func (r *PoolRepo) ListPools(ctx context.Context, filter ports.PoolFilter) ([]do
 
 	if filter.Chain != "" {
 		query += " AND chain = $1"
-		args = append(args, chainIDToInt(filter.Chain))
+		args = append(args, string(filter.Chain))
 		filterIdx := 2
 		if filter.Tier != "" {
 			query += fmt.Sprintf(" AND tier = $%d", filterIdx)
@@ -242,7 +242,7 @@ func (r *PoolRepo) ListPools(ctx context.Context, filter ports.PoolFilter) ([]do
 	for rows.Next() {
 		var row struct {
 			ID           string
-			Chain        int
+			Chain        string
 			Protocol     string
 			Token0       string
 			Token1       string
@@ -281,7 +281,7 @@ func (r *PoolRepo) ListPools(ctx context.Context, filter ports.PoolFilter) ([]do
 
 		pool := domain.Pool{
 			ID:        row.ID,
-			Chain:     intToChainID(row.Chain),
+			Chain:     domain.ChainID(row.Chain),
 			Protocol:  row.Protocol,
 			Token0:    token0,
 			Token1:    token1,
@@ -334,7 +334,7 @@ func (r *PoolRepo) GetScoreHistory(ctx context.Context, poolKey string, limit in
 		WHERE pool_id = $1 AND chain = $2
 		ORDER BY block_time ASC
 	`
-	args := []interface{}{poolID, chainIDToInt(chain)}
+	args := []interface{}{poolID, string(chain)}
 
 	if limit > 0 {
 		query += fmt.Sprintf(" LIMIT $%d", 3)
@@ -392,7 +392,7 @@ func (r *PoolRepo) UpsertAuditVerdict(ctx context.Context, poolKey string, verdi
 		UPDATE pools
 		SET audit_verdict = $1, updated_at = $2
 		WHERE pool_id = $3 AND chain = $4 AND protocol = $5
-	`, string(verdict), 0, poolID, chainIDToInt(chain), protocol)
+	`, string(verdict), 0, poolID, string(chain), protocol)
 	if err != nil {
 		return fmt.Errorf("failed to update audit verdict: %w", err)
 	}

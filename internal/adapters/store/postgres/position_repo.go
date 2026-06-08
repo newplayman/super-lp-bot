@@ -46,7 +46,7 @@ func (r *PositionRepo) Save(ctx context.Context, pos *domain.Position) error {
 		pos.ID,
 		pos.TokenID,
 		pos.PoolID,
-		chainIDToInt(pos.Chain),
+		string(pos.Chain),
 		pos.Protocol,
 		string(pos.Status),
 		string(pos.Tier),
@@ -70,7 +70,7 @@ func (r *PositionRepo) FindByID(ctx context.Context, id string) (*domain.Positio
 		ID        string
 		TokenID   string
 		PoolID    string
-		Chain     int
+		Chain     string
 		Protocol  string
 		Status    string
 		Tier      string
@@ -105,7 +105,7 @@ func (r *PositionRepo) FindByID(ctx context.Context, id string) (*domain.Positio
 		ID:        row.ID,
 		TokenID:   row.TokenID,
 		PoolID:    row.PoolID,
-		Chain:     intToChainID(row.Chain),
+		Chain:     domain.ChainID(row.Chain),
 		Protocol:  row.Protocol,
 		Status:    domain.PositionStatus(row.Status),
 		Tier:      tier,
@@ -147,7 +147,7 @@ func (r *PositionRepo) FindByChainAndStatus(ctx context.Context, chain domain.Ch
 		       amount_usd, COALESCE(open_tx_hash, ''), COALESCE(metadata::text, '{}'), opened_at, COALESCE(closed_at, 0)
 		FROM positions
 		WHERE chain = $1 AND status = $2
-	`, chainIDToInt(chain), string(status))
+	`, string(chain), string(status))
 	if err != nil {
 		return nil, fmt.Errorf("failed to query positions: %w", err)
 	}
@@ -202,7 +202,7 @@ func scanPositions(rows *sql.Rows) ([]*domain.Position, error) {
 			ID        string
 			TokenID   string
 			PoolID    string
-			Chain     int
+			Chain     string
 			Protocol  string
 			Status    string
 			Tier      string
@@ -229,7 +229,7 @@ func scanPositions(rows *sql.Rows) ([]*domain.Position, error) {
 			ID:        row.ID,
 			TokenID:   row.TokenID,
 			PoolID:    row.PoolID,
-			Chain:     intToChainID(row.Chain),
+			Chain:     domain.ChainID(row.Chain),
 			Protocol:  row.Protocol,
 			Status:    domain.PositionStatus(row.Status),
 			Tier:      tier,

@@ -45,7 +45,7 @@ func (r *LedgerRepo) Append(ctx context.Context, entry ports.LedgerEntry) (ports
 		string(entry.Kind),
 		entry.Amount.String(),
 		entry.TokenSymbol,
-		chainIDToInt(entry.BlockRef.Chain),
+		string(entry.BlockRef.Chain),
 		entry.BlockRef.Number,
 		entry.BlockRef.Hash,
 		entry.BlockRef.TimeUnix,
@@ -89,7 +89,7 @@ func (r *LedgerRepo) ByPosition(ctx context.Context, positionID string) ([]ports
 	var entries []ports.LedgerEntry
 	for rows.Next() {
 		var entry ports.LedgerEntry
-		var chain int
+		var chain string
 		var amountStr string
 
 		err := rows.Scan(
@@ -108,7 +108,7 @@ func (r *LedgerRepo) ByPosition(ctx context.Context, positionID string) ([]ports
 			continue
 		}
 
-		entry.BlockRef.Chain = intToChainID(chain)
+		entry.BlockRef.Chain = domain.ChainID(chain)
 		entry.Amount = domain.MustDecimal(amountStr)
 
 		entries = append(entries, entry)
@@ -133,7 +133,7 @@ func (r *LedgerRepo) ByPositionAndKind(ctx context.Context, positionID string, k
 	var entries []ports.LedgerEntry
 	for rows.Next() {
 		var entry ports.LedgerEntry
-		var chain int
+		var chain string
 		var amountStr string
 
 		err := rows.Scan(
@@ -152,7 +152,7 @@ func (r *LedgerRepo) ByPositionAndKind(ctx context.Context, positionID string, k
 			continue
 		}
 
-		entry.BlockRef.Chain = intToChainID(chain)
+		entry.BlockRef.Chain = domain.ChainID(chain)
 		entry.Amount = domain.MustDecimal(amountStr)
 
 		entries = append(entries, entry)
@@ -206,7 +206,7 @@ func (r *LedgerRepo) AggregateByKind(ctx context.Context, positionID string) (ma
 // LatestBlock returns the highest block number with any ledger entry.
 func (r *LedgerRepo) LatestBlock(ctx context.Context) (*domain.BlockRef, error) {
 	var blockRef domain.BlockRef
-	var chain int
+	var chain string
 
 	err := r.db.QueryRowContext(ctx, `
 		SELECT chain, block_number, block_hash, block_time
@@ -222,6 +222,6 @@ func (r *LedgerRepo) LatestBlock(ctx context.Context) (*domain.BlockRef, error) 
 		return nil, fmt.Errorf("failed to query latest block: %w", err)
 	}
 
-	blockRef.Chain = intToChainID(chain)
+	blockRef.Chain = domain.ChainID(chain)
 	return &blockRef, nil
 }
