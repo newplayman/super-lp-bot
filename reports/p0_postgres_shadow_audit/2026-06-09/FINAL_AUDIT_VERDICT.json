@@ -1,0 +1,201 @@
+{
+  "stage": "LP_BOT_ENGINEERING_P0_POSTGRES_SHADOW_AUDIT_V1",
+  "status": "WARN",
+  "branch": "feat/supabase-postgres-deployment",
+  "commit_before": "ed84970",
+  "audited_at_utc": "2026-06-09T00:00:00Z",
+  "r1_pause_respected": true,
+  "r1_pause_status": "PAUSED",
+  "r1_pause_dir": "reports/lp_long_horizon_r1_pause_and_freeze/20260607_191500/",
+  "r2_locked": true,
+  "canary_live_locked": true,
+  "tiny_canary_allowed": "no",
+  "can_run_probe_now": false,
+  "edge_proven": "no",
+  "forbidden_actions_still_zero": true,
+  "audit_scope": "P0-PG-01 only: schema-to-code consistency audit for Postgres/Supabase shadow deployment. NOT P0-PG-02 (drift fix), NOT P0-PG-03 (smoke), NOT P0-PG-04/05 (CI), NOT P0-PG-06 (docs).",
+  "schema_code_drift_found": true,
+  "deployment_blockers_found": true,
+  "ci_test_gaps_found": true,
+  "ready_for_p0_pg_02_fix": true,
+  "recommended_next_stage": "LP_BOT_ENGINEERING_P0_POSTGRES_SHADOW_DRIFT_FIX_V1",
+  "recommended_next_stage_rationale": "This audit found 8 P0 schema/code/deployment blockers (see 02_SCHEMA_CODE_DRIFT_AUDIT.md §5 and 03_DEPLOYMENT_RUNNABILITY_AUDIT.md §4). All blockers are fixable in a dedicated P0-PG-02 stage. None of the blockers should be addressed in this audit stage. P0-PG-02 should: (a) add the 3 missing-table migrations (000011_shadow_decision_trace.sql, 000013_shadow_position_marks.sql, 000014_shadow_exit_tables.sql), (b) consolidate the 2 in-Go CREATE TABLE statements (decision_trace.go, position_mark.go) into migrations, (c) align chain column types (INT vs TEXT) across all tables, (d) add lpbot-shadow.service EnvironmentFile=.env.postgres, (e) document config.shadow.toml + lpbot-shadow.service + apply_postgres_migrations.sh chain.",
+  "top_10_blockers": [
+    {
+      "rank": 1,
+      "id": "BLK-PG-01",
+      "severity": "P0",
+      "title": "Missing migration: shadow_decision_trace",
+      "files": [
+        "migrations/postgres/000001..000010 (no shadow_decision_trace)",
+        "cmd/lpbot/main.go:821 (live schema guard requires it)",
+        "cmd/lpbot/decision_trace.go:55 (in-Go CREATE TABLE workaround)"
+      ],
+      "impact": "If a fresh deploy runs apply_postgres_migrations.sh and then lpbot-shadow, the live schema guard at main.go:821 will fail. The runtime fallback ensureShadowDecisionTraceTable is a workaround that hides the gap.",
+      "fix_in": "P0-PG-02"
+    },
+    {
+      "rank": 2,
+      "id": "BLK-PG-02",
+      "severity": "P0",
+      "title": "Missing migration: shadow_position_marks",
+      "files": [
+        "migrations/postgres/000001..000010 (no shadow_position_marks)",
+        "cmd/lpbot/dashboard.go:1266,1888,2101 (SELECT FROM shadow_position_marks)",
+        "cmd/lpbot/canary_reconcile_mint.go:259 (DELETE FROM shadow_position_marks)",
+        "cmd/lpbot/position_mark.go:103 (in-Go CREATE TABLE workaround)"
+      ],
+      "impact": "Dashboard SELECT and canary_reconcile_mint DELETE will fail with 'relation does not exist' on fresh shadow deploy.",
+      "fix_in": "P0-PG-02"
+    },
+    {
+      "rank": 3,
+      "id": "BLK-PG-03",
+      "severity": "P0",
+      "title": "Missing migration: shadow_exit_decisions, shadow_exit_actions",
+      "files": [
+        "migrations/postgres/000001..000010 (no shadow_exit_*)",
+        "cmd/lpbot/position_mark.go:147,185 (in-Go CREATE TABLE for shadow_exit_decisions, shadow_exit_actions)"
+      ],
+      "impact": "Same as BLK-PG-02 — runtime CREATE TABLE workaround hides the gap.",
+      "fix_in": "P0-PG-02"
+    },
+    {
+      "rank": 4,
+      "id": "BLK-PG-04",
+      "severity": "P0",
+      "title": "Migration file numbering gap: 000010 -> 000012 (no 000011)",
+      "files": [
+        "migrations/postgres/000010_shadow_outcome_labels.sql",
+        "migrations/postgres/000012_shadow_outcome_repaired_v2.sql"
+      ],
+      "impact": "Indicates a missing migration was either deleted or never committed. Goose ordering depends on lexical order; the gap is suspicious and may indicate a lost file or rebased-out migration.",
+      "fix_in": "P0-PG-02 (investigate git log; if migration was lost, re-create)"
+    },
+    {
+      "rank": 5,
+      "id": "BLK-PG-05",
+      "severity": "P0",
+      "title": "Chain column type inconsistency across tables (TEXT vs INTEGER)",
+      "files": [
+        "migrations/postgres/000001_init_schema.sql (positions.chain INTEGER, pools.chain INTEGER, pnl_ledger.chain INTEGER, transactions.chain TEXT)",
+        "migrations/postgres/000007_execution_intents.sql (execution_intents.chain TEXT)",
+        "internal/adapters/store/postgres/position_repo.go:43 (chainIDToInt → int)",
+        "internal/adapters/store/postgres/tx_repo.go:35 (tx.Chain passed as string → TEXT)",
+        "internal/adapters/store/postgres/execution_intent_repo.go:42 (string(intent.Chain) → TEXT)"
+      ],
+      "impact": "Cross-table joins on chain (e.g. positions JOIN transactions ON chain) require explicit cast. Reporting SQL becomes fragile. Schema-vs-design drift.",
+      "fix_in": "P0-PG-02 (decide: all TEXT or all INTEGER; provide migration to align)"
+    },
+    {
+      "rank": 6,
+      "id": "BLK-PG-06",
+      "severity": "P0",
+      "title": "lpbot-shadow.service missing EnvironmentFile=.env.postgres",
+      "files": [
+        "deploy/systemd/lpbot-shadow.service (no EnvironmentFile)",
+        "deploy/systemd/lpbot-canary.service (has EnvironmentFile=.env.canary/.env.postgres/.env.redis/.env.dashboard)",
+        "scripts/apply_postgres_migrations.sh (reads from .env.postgres)",
+        "configs/config.shadow.toml:26 (postgres_dsn = '${DATABASE_URL}')"
+      ],
+      "impact": "After running apply_postgres_migrations.sh, DATABASE_URL is exported in the shell but NOT in the systemd manager's environment. lpbot-shadow will fail to start with empty DSN.",
+      "fix_in": "P0-PG-02 (add EnvironmentFile=/opt/lpbot/lp-bot-v3/.env.postgres to lpbot-shadow.service)"
+    },
+    {
+      "rank": 7,
+      "id": "BLK-PG-07",
+      "severity": "P0",
+      "title": "TestPostgresAdapter_DockerIntegration_RoundTrip is gated on docker availability AND uses divergent schema",
+      "files": [
+        "internal/adapters/store/postgres/postgres_test.go:303 (TestPostgresAdapter_DockerIntegration_RoundTrip)",
+        "internal/adapters/store/postgres/postgres_test.go:305 (t.Skip('docker not available'))"
+      ],
+      "impact": "The only real Postgres integration test (a) only runs if docker is in PATH (skipped on most CI runners), (b) creates its own ad-hoc schema (CREATE TABLE positions ... last_score JSONB) that does NOT match migrations/postgres/*.sql, (c) does NOT exercise any of the migration files, (d) does NOT cover shadow_decision_trace, shadow_position_marks, shadow_exit_*, portfolio_snapshots, position_marks, canary_events, execution_intents. So migration drift is undetectable by current test suite.",
+      "fix_in": "P0-PG-02 (and P0-PG-04 in CI)"
+    },
+    {
+      "rank": 8,
+      "id": "BLK-PG-08",
+      "severity": "P0",
+      "title": "No migration runner / embed in Go; migrations applied via raw psql in shell script",
+      "files": [
+        "scripts/apply_postgres_migrations.sh (psql -f migrations/postgres/*.sql, no version tracking, no down, no checksum)",
+        "internal/adapters/store/postgres/ (no migrate.go, no embed.FS, no goose import)",
+        "go.mod (no goose / golang-migrate dependency)"
+      ],
+      "impact": "Migration ordering relies on lexical file sort. No atomic apply. No rollback. No checksum. No in-Go version tracking. Re-runs can corrupt (UPDATE transactions SET created_at = ... CASE ... in 000004 is non-idempotent). For shadow this is acceptable; for canary/live this is a blocker.",
+      "fix_in": "P0-PG-02 (add Go-based migration runner + embed.FS + checksum; or at minimum, add ordering check + dry-run report)"
+    },
+    {
+      "rank": 9,
+      "id": "BLK-PG-09",
+      "severity": "P1",
+      "title": "000004_transactions_timestamp_cleanup is non-idempotent",
+      "files": [
+        "migrations/postgres/000004_transactions_timestamp_cleanup.sql:11-25 (UPDATE transactions SET created_at = CASE WHEN created_at > 0 AND created_at < 2000000000 THEN created_at * 1000 ELSE created_at END)"
+      ],
+      "impact": "First run converts seconds to milliseconds. Second run is safe (created_at < 2000000000 check). But if a row was inserted with seconds AND multiplied, the second run no-ops. Re-applying migrations during a partial failure is risky.",
+      "fix_in": "P0-PG-02 (add a flag column or idempotency check)"
+    },
+    {
+      "rank": 10,
+      "id": "BLK-PG-10",
+      "severity": "P1",
+      "title": "No -race in CI or Makefile",
+      "files": [
+        "Makefile (test target = $(GO) test ./... — no -race)",
+        ".github/workflows/ci.yml (make test — no -race)"
+      ],
+      "impact": "Race conditions in postgres adapter (concurrent UpsertTx, concurrent position status update) are undetectable. Given shadow mode now writes to Postgres, race exposure is higher than sqlite.",
+      "fix_in": "P0-PG-05 (test coverage improvements) or P0-PG-04 (CI migration tests)"
+    }
+  ],
+  "audit_evidence_paths": [
+    "reports/p0_postgres_shadow_audit/2026-06-09/00_INDEX.md",
+    "reports/p0_postgres_shadow_audit/2026-06-09/01_EXECUTIVE_SUMMARY_CN.md",
+    "reports/p0_postgres_shadow_audit/2026-06-09/02_SCHEMA_CODE_DRIFT_AUDIT.md",
+    "reports/p0_postgres_shadow_audit/2026-06-09/03_DEPLOYMENT_RUNNABILITY_AUDIT.md",
+    "reports/p0_postgres_shadow_audit/2026-06-09/04_CI_AND_TEST_GAP_AUDIT.md",
+    "reports/p0_postgres_shadow_audit/2026-06-09/05_FIX_PLAN_P0_PG_02.md"
+  ],
+  "forbidden_actions_audit_during_p0_pg_01": {
+    "no_code_modified": true,
+    "no_migration_modified": true,
+    "no_migration_applied_to_real_db": true,
+    "no_docker_compose_up": true,
+    "no_supabase_connection": true,
+    "no_real_db_connection": true,
+    "no_lpbot_shadow_started": true,
+    "no_wallet_loaded": true,
+    "no_paid_rpc": true,
+    "no_pkill_used": true,
+    "no_merge": true,
+    "no_real_secret_committed": true,
+    "no_r1_modified": true,
+    "no_r2_entered": true
+  },
+  "this_stage_did": [
+    "read 12 migration files (postgres)",
+    "read 8 Go files in internal/adapters/store/postgres/",
+    "read cmd/lpbot/{main.go, decision_trace.go, position_mark.go, canary_state.go, mode_shadow.go}",
+    "read 2 systemd unit files",
+    "read configs/config.{shadow,live,vps,dryrun}.toml",
+    "read .env.postgres.example + .env.example",
+    "read scripts/apply_postgres_migrations.sh + scripts/audit_shadow_vps.sh",
+    "read .github/workflows/ci.yml + Makefile",
+    "read internal/adapters/store/postgres/postgres_test.go",
+    "verified R1 pause/freeze artifacts at reports/lp_long_horizon_r1_pause_and_freeze/20260607_191500/ exist"
+  ],
+  "this_stage_did_not": [
+    "modify any .sql migration file",
+    "modify any .go file in internal/ or cmd/",
+    "modify any config (.toml, .env.example, systemd unit)",
+    "run psql against any database",
+    "run lpbot-shadow",
+    "connect to Supabase or any external service",
+    "modify R1 research artifacts",
+    "modify R2 status",
+    "unlock canary/live"
+  ],
+  "summary": "P0-PG-01 audit complete. 8 P0 + 2 P1 blockers found. All blockers are fixable in P0-PG-02. No code/migration/config was modified. No forbidden action was triggered. R1 research thread PAUSE respected. R2 still LOCKED. canary/live still LOCKED. Recommended next stage: LP_BOT_ENGINEERING_P0_POSTGRES_SHADOW_DRIFT_FIX_V1."
+}
