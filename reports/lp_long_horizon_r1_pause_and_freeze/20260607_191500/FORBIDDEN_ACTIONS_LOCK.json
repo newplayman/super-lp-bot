@@ -1,0 +1,207 @@
+{
+  "stage": "LP_LONG_HORIZON_R1_PAUSE_AND_FREEZE_RECORD_V1",
+  "status": "PAUSED",
+  "audited_at_utc": "2026-06-08T18:50:00Z",
+  "lock_kind": "forbidden_actions_lock_during_pause",
+  "scope": "All future activity during this PAUSE state, until user explicitly reopens R1 12h full wallclock research thread AND/OR R2 freeze AND/OR engineering track.",
+
+  "locked_actions": [
+    {
+      "id": "FAL-01",
+      "action": "start 24h collection",
+      "category": "long_horizon",
+      "rationale": "PAUSE per source FINAL_VERDICT.recommended_next_stage + review b46f52e. 24h not authorized."
+    },
+    {
+      "id": "FAL-02",
+      "action": "start 48h / 72h / 7d collection",
+      "category": "long_horizon",
+      "rationale": "PAUSE. 48h/72h/7d not authorized."
+    },
+    {
+      "id": "FAL-03",
+      "action": "enter R2 (actual fee accrual upgrade)",
+      "category": "stage_advance",
+      "rationale": "actual_fee_data_available=false (LOCKED), fee_proxy_only=true (LOCKED). R2 requires freeze reopen, NOT granted by this PAUSE record."
+    },
+    {
+      "id": "FAL-04",
+      "action": "start long-running parallel collector",
+      "category": "long_horizon",
+      "rationale": "PAUSE. No parallel collectors."
+    },
+    {
+      "id": "FAL-05",
+      "action": "start tmux / cron / systemd / daemon",
+      "category": "process",
+      "rationale": "PAUSE. No persistent processes."
+    },
+    {
+      "id": "FAL-06",
+      "action": "run probe / canary / live / paper",
+      "category": "trading",
+      "rationale": "PAUSE + can_run_probe_now=false LOCKED + tiny_canary_allowed=no LOCKED. No execution."
+    },
+    {
+      "id": "FAL-07",
+      "action": "load wallet / keypair / seed / signer",
+      "category": "wallet",
+      "rationale": "PAUSE. No wallet interactions."
+    },
+    {
+      "id": "FAL-08",
+      "action": "send transaction (mint LP NFT / add liquidity / remove / collect / swap / approve / bridge / sendTransaction)",
+      "category": "trading",
+      "rationale": "PAUSE. No on-chain actions."
+    },
+    {
+      "id": "FAL-09",
+      "action": "use paid RPC / paid indexer",
+      "category": "infrastructure",
+      "rationale": "PAUSE. Stay on public free RPC."
+    },
+    {
+      "id": "FAL-10",
+      "action": "write production positions / overwrite shadow / overwrite any data dir",
+      "category": "data",
+      "rationale": "PAUSE. Read-only on all data dirs."
+    },
+    {
+      "id": "FAL-11",
+      "action": "commit real secret / paid RPC key to VCS",
+      "category": "secret",
+      "rationale": "PAUSE. No real secret material."
+    },
+    {
+      "id": "FAL-12",
+      "action": "merge main / dev / any non-archive branch",
+      "category": "branch",
+      "rationale": "PAUSE. No merges."
+    },
+    {
+      "id": "FAL-13",
+      "action": "modify R0 collector / R0 adapters / runner / supervisor code",
+      "category": "code",
+      "rationale": "PAUSE. No-touch invariant on R0 + R1 collector/adapters. Supervisor fix is OUT OF SCOPE for this PAUSE record (see SUPERVISOR_FIX_OPTIONS_CN.md for options if user reopens)."
+    },
+    {
+      "id": "FAL-14",
+      "action": "modify 12h data dir (20260606_131323 / 20260607_163000 / 20260607_171000 / 20260607_184500 / 20260607_191500)",
+      "category": "data",
+      "rationale": "PAUSE. No-touch invariant on all historical R0/R1 data dirs."
+    },
+    {
+      "id": "FAL-15",
+      "action": "auto-advance to 24h / R2 / canary / live / paper",
+      "category": "stage_advance",
+      "rationale": "PAUSE. auto_advance_to_24h=false, longer_stage_started=false. No gate-triggered auto-advance."
+    },
+    {
+      "id": "FAL-16",
+      "action": "claim edge_proven=yes",
+      "category": "claim",
+      "rationale": "PAUSE. edge_proven=no LOCKED. Requires R2 actual fee data, which is unavailable."
+    },
+    {
+      "id": "FAL-17",
+      "action": "unlock can_run_probe_now=true / tiny_canary_allowed=yes",
+      "category": "permission",
+      "rationale": "PAUSE. can_run_probe_now=false LOCKED + tiny_canary_allowed=no LOCKED."
+    },
+    {
+      "id": "FAL-18",
+      "action": "use pkill -f",
+      "category": "process",
+      "rationale": "PAUSE. No pkill."
+    },
+    {
+      "id": "FAL-19",
+      "action": "connect to testnet-live (base sepolia / solana devnet / bsc testnet)",
+      "category": "infrastructure",
+      "rationale": "PAUSE. Mainnet-only (and only free public RPC)."
+    },
+    {
+      "id": "FAL-20",
+      "action": "modify LP-bot SDK adapter / Hyperliquid SDK / DEX SDK",
+      "category": "code",
+      "rationale": "PAUSE. No SDK adapter touched."
+    },
+    {
+      "id": "FAL-21",
+      "action": "delete any historical data dir (v0/v1/v2/v3/old_12h/smoke)",
+      "category": "data",
+      "rationale": "PAUSE. Preserve all historical R0/R1 data for future re-aggregation / audit. See WHAT_DATA_CAN_BE_REUSED_CN.md."
+    },
+    {
+      "id": "FAL-22",
+      "action": "modify or rewrite FINAL_VERDICT.json / WALLCLOCK_PROOF.json / CHECKPOINT_TIMELINE.json / source artifacts of v3",
+      "category": "data",
+      "rationale": "PAUSE. v3 source artifacts are immutable record. Review verdict b46f52e referenced these; any rewrite would invalidate review."
+    }
+  ],
+
+  "allowed_during_pause": [
+    {
+      "id": "ALW-01",
+      "action": "read-only review / re-aggregation of existing R0/R1 data",
+      "rationale": "What WHAT_DATA_CAN_BE_REUSED_CN.md documents as reusable."
+    },
+    {
+      "id": "ALW-02",
+      "action": "engineering work on P0_FIX_POSTGRES_SHADOW_DEPLOYMENT_V1",
+      "rationale": "Recommended next engineering track. Engineering mainline is INDEPENDENT of R1 research thread and may proceed."
+    },
+    {
+      "id": "ALW-03",
+      "action": "CI / lint / unit test maintenance",
+      "rationale": "Standard repo hygiene, not stage-specific."
+    },
+    {
+      "id": "ALW-04",
+      "action": "documentation updates (research status, freeze status)",
+      "rationale": "docs/LPBOT_RESEARCH_STATUS_CN.md may be updated to reflect PAUSE state."
+    },
+    {
+      "id": "ALW-05",
+      "action": "user explicit reopen of R1 / R2 / canary / live",
+      "rationale": "User may override PAUSE in a separate conversation turn with explicit authorization."
+    }
+  ],
+
+  "enforcement": {
+    "type": "policy",
+    "enforcement_mechanism": "human review of any stage that violates these locks; CI does not auto-enforce (this is a research project, not a CI-enforced contract).",
+    "violation_consequence": "any stage that violates FAL-01 through FAL-22 is invalid and must be reverted; no exceptions without user explicit override.",
+    "audit_trail": "this FORBIDDEN_ACTIONS_LOCK.json is committed to VCS as part of the PAUSE record at b46f52e + (next commit); future stages can reference this for self-check."
+  },
+
+  "summary": {
+    "forbidden_actions_locked": 22,
+    "allowed_during_pause": 5,
+    "all_locked_fields_maintained": true,
+    "no_24h_started": true,
+    "no_48h_72h_7d_started": true,
+    "no_r2_entered": true,
+    "no_probe_canary_live_paper": true,
+    "no_wallet_loaded": true,
+    "no_tx_sent": true,
+    "no_paid_rpc_used": true,
+    "no_production_write": true,
+    "no_shadow_overwrite": true,
+    "no_real_secret_committed": true,
+    "no_merge": true,
+    "no_pkill_used": true,
+    "no_code_modified": true,
+    "no_data_dir_modified": true,
+    "no_testnet_live": true,
+    "no_sdk_touched": true,
+    "no_data_dir_deleted": true,
+    "no_v3_artifacts_rewritten": true,
+    "edge_proven_still_no": true,
+    "can_run_probe_now_still_false": true,
+    "tiny_canary_allowed_still_no": true,
+    "r2_still_locked": true,
+    "no_auto_advance": true,
+    "ok": true
+  }
+}
