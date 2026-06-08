@@ -39,6 +39,7 @@ make build-shadow
 ## 4. 配置文件与环境变量
 
 - `configs/config.shadow.toml` 和 `configs/config.vps.toml` 使用 `${VAR}` 占位符读取环境变量（不写死密码）。
+- 可选变量在 config 中用 `${VAR:-}` 兜底（缺省空字符串），不会因环境变量缺失而 panic。
 - `.env` 类文件不入库，只作为启动环境注入。
 
 初始化 shadow 实例文件：
@@ -47,7 +48,10 @@ make build-shadow
 cd "$LPBOT_ROOT"
 cp .env.example .env
 cp .env.postgres.example .env.postgres
-chmod 600 .env .env.postgres
+cp .env.redis.example .env.redis
+cp .env.dashboard.example .env.dashboard
+cp .env.alerting.example .env.alerting
+chmod 600 .env .env.postgres .env.redis .env.dashboard .env.alerting
 ```
 
 按实际值编辑：
@@ -55,13 +59,16 @@ chmod 600 .env .env.postgres
 ```bash
 vim .env
 vim .env.postgres
+vim .env.redis   # 可选；缺省 redis://127.0.0.1:6379/0
+vim .env.dashboard   # 可选；缺省空 token（dashboard 端点拒绝未授权）
+vim .env.alerting    # 可选；缺省空 token（alerting 静默关闭）
 ```
 
 推荐变量：
 
-- `BASE_RPC_PRIMARY`, `BASE_RPC_FALLBACK`, `BASE_WS`, `SOL_RPC_PRIMARY`
-- `DATABASE_URL`（VPS 连接 `vps` 上 PostgreSQL 的连接串）
-- `REDIS_URL`（建议启用，当前用于 Redis 心跳与运行态探活）
+- `BASE_RPC_PRIMARY`, `BASE_RPC_FALLBACK`, `BASE_WS`, `SOL_RPC_PRIMARY`（可空，缺省 shadow 仍启动）
+- `DATABASE_URL` 或 `POSTGRES_DSN`（VPS 连接 `vps` 上 PostgreSQL 的连接串，**shadow 必需**）
+- `REDIS_URL`（可选，缺省 redis://127.0.0.1:6379/0）
 
 ## 4.1 Canary / Live 变量入口
 
@@ -89,6 +96,26 @@ chmod 600 .env.canary .env.live
 - `configs/config.canary.toml` 默认 `execution.backend = "native-rpc"`，只需要 QuickNode/RPC 即可。
 - 若后续切换 `execution.backend = "okx-onchain"`，再填写 OKX 变量；当前代码只做配置门禁与 readiness 展示，不代表已经完成真实交易执行。
 - `POSTGRES_DSN` 如果未单独填写，会自动回退到 `.env.postgres` 里的 `DATABASE_URL`。
+- **当前 canary/live 服务仍 LOCKED**（参考 `reports/lp_long_horizon_r1_pause_and_freeze/20260607_191500/FINAL_PAUSE_VERDICT.json`）。本 runbook 仅描述部署预备，不授权启动 canary/live。
+
+## 4.2 Postgres 迁移入口
+
+使用 `scripts/migrate-postgres.sh`（推荐）或 `make migrate-postgres`：
+
+```bash
+# Plan（只列要 apply 的文件，不执行）
+make migrate-postgres-plan
+
+# Status（验表存在性）
+make migrate-postgres-status
+
+# Apply（实际 apply）
+make migrate-postgres
+```
+
+DSN 解析顺序：`POSTGRES_DSN` > `DATABASE_URL` > 自动加载的 `.env.postgres` / `.env.canary`。
+
+防止误连生产：DSN 包含 `supabase.co` / `rds.amazonaws.com` / `prod` / `production` 时，脚本拒绝执行，需设置 `LPBOT_MIGRATE_ALLOW_LIVE=YES` 显式 override。
 
 ## 5. 安装依赖与数据库
 
@@ -125,29 +152,49 @@ set -a && source .env.postgres && set +a
 
 ## 7. systemd 后台运行（推荐）
 
-保存为 `/etc/systemd/system/lpbot-shadow.service`：
+推荐直接使用仓库模板（已包含 EnvironmentFile=.env.postgres / .env.redis / .env.dashboard / .env.alerting）：
+
+```bash
+cd /opt/lpbot/lp-bot-v3
+sudo cp deploy/systemd/lpbot-shadow.service /etc/systemd/system/lpbot-shadow.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now lpbot-shadow
+sudo systemctl restart lpbot-shadow
+```
+
+模板内容（`deploy/systemd/lpbot-shadow.service`）：
 
 ```ini
 [Unit]
-Description=LPBot Shadow
-After=network.target postgresql.service
+Description=LP Bot Shadow Mode
+After=network.target
 
 [Service]
 Type=simple
 User=lpbot
 WorkingDirectory=/opt/lpbot/lp-bot-v3
-EnvironmentFile=/opt/lpbot/lp-bot-v3/.env.postgres
-EnvironmentFile=/opt/lpbot/lp-bot-v3/.env.redis
-EnvironmentFile=/opt/lpbot/lp-bot-v3/.env.dashboard
-EnvironmentFile=/opt/lpbot/lp-bot-v3/.env.chain
+# Shadow 必需 env files. 注意：缺省指向 `lpbot-v3` 根目录
+# ($LPBOT_ROOT), 若 VPS 路径不同请同步修改此处。
+EnvironmentFile=-/opt/lpbot/lp-bot-v3/.env.postgres
+EnvironmentFile=-/opt/lpbot/lp-bot-v3/.env.redis
+EnvironmentFile=-/opt/lpbot/lp-bot-v3/.env.dashboard
+EnvironmentFile=-/opt/lpbot/lp-bot-v3/.env.alerting
 ExecStartPre=/opt/lpbot/lp-bot-v3/scripts/validate-shadow-binary.sh /opt/lpbot/lp-bot-v3
 ExecStart=/opt/lpbot/lp-bot-v3/bin/lpbot-shadow --config=/opt/lpbot/lp-bot-v3/configs/config.shadow.toml
 Restart=always
 RestartSec=5
+RestartPreventExitStatus=0
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=multi-user.target
 ```
+
+**关键说明**:
+- `EnvironmentFile=-...` 中 `-` 前缀表示该文件可不存在 (missing-tolerable)，不会导致 systemd fail。
+- shadow service **不** load `.env.canary` / `.env.live` / `WALLET_PASSPHRASE` / `LPBOT_CONFIRM_LIVE`，canary/live 解锁变量在 shadow service 中物理不可达。
+- 部署到不同路径的 VPS 时, 同步修改 6 个 `/opt/lpbot/lp-bot-v3/` 字串。
 
 ```bash
 cd /opt/lpbot/lp-bot-v3

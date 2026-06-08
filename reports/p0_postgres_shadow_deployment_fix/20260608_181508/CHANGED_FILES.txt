@@ -1,0 +1,13 @@
+ M .env.canary.example
+ M Makefile
+ M configs/config.shadow.toml
+ M deploy/systemd/lpbot-canary.service
+ M deploy/systemd/lpbot-shadow.service
+ M docs/runbooks/vps-shadow-deployment.md
+?? internal/adapters/store/postgres/migrate_test.go
+?? migrations/postgres/000011_shadow_decision_trace.sql
+?? reports/p0_postgres_shadow_deployment_fix/
+?? scripts/check_shadow_env_consistency.sh
+?? scripts/migrate-postgres.sh
+
+(untracked = new file; M = modified)

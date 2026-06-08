@@ -1,6 +1,13 @@
 [Unit]
 Description=LP Bot Canary Mode
 After=network.target
+# IMPORTANT: This service is currently LOCKED. Per
+# reports/lp_long_horizon_r1_pause_and_freeze/20260607_191500/, the LP
+# strategy research is paused and canary/live must remain disabled. The
+# service file is shipped for deployment-parity, but the operator must NOT
+# `systemctl enable --now lpbot-canary` without an explicit freeze reopen.
+# The .env.canary template pins LPBOT_CONFIRM_LIVE=NO, and the binary at
+# cmd/lpbot/mode_live.go:21 enforces the LPBOT_CONFIRM_LIVE=YES gate.
 
 [Service]
 Type=simple

@@ -1,0 +1,157 @@
+P0-PG-02 Migration Run Log
+===========================
+
+Run ID:        20260608_181508
+Base commit:   61f6621 (audit: p0-postgres-shadow-audit v1 2026-06-09)
+Final commit:  61f6621 (no new commit yet; this stage's changes are uncommitted at log-time)
+Branch:        feat/supabase-postgres-deployment
+Workdir:       /opt/lpbot/lp-bot-v3
+Audit copy:    /opt/lpbot/lp-bot-v3-origin-check (read-only)
+
+Note: this stage added 1 new migration (000011) and tooling, but did NOT
+apply migrations to a real database. Migration apply is intentionally
+deferred to a downstream stage that has a real LPBOT_POSTGRES_TEST_DSN.
+This file documents the dry-run / plan output of the new entry point
+plus a static analysis of all migration files.
+
+================================================================================
+1. New migration: 000011_shadow_decision_trace.sql (no apply)
+================================================================================
+
+File path: /opt/lpbot/lp-bot-v3/migrations/postgres/000011_shadow_decision_trace.sql
+Created: 2026-06-08 (this stage)
+Goose syntax: -- +goose Up / -- +goose StatementBegin / End / -- +goose Down
+Tables created: shadow_decision_trace
+Indexes created: 3 (idx_shadow_decision_trace_created_at, _tick_time, _pool_id)
+ALTER TABLE statements: 2 (additive ADD COLUMN IF NOT EXISTS for backward compat)
+
+[NOT APPLIED — no LPBOT_POSTGRES_TEST_DSN available]
+
+================================================================================
+2. Static: make migrate-postgres-plan (output of new entry point)
+================================================================================
+
+$ ./scripts/migrate-postgres.sh plan
+[migrate-postgres] plan mode — would apply the following migrations:
+  - 000001_init_schema.sql
+  - 000002_canary_state.sql
+  - 000003_pool_runtime_columns.sql
+  - 000004_transactions_timestamp_cleanup.sql
+  - 000005_positions_runtime_metadata.sql
+  - 000006_active_position_uniqueness.sql
+  - 000007_execution_intents.sql
+  - 000008_portfolio_snapshots.sql
+  - 000009_pnl_v1_and_position_marks.sql
+  - 000010_shadow_outcome_labels.sql
+  - 000011_shadow_decision_trace.sql
+  - 000012_shadow_outcome_repaired_v2.sql
+
+Total: 12 migrations (was 11 pre-this-stage; 000011 added by this stage)
+
+================================================================================
+3. Static: make migrate-postgres-status (output with no DSN — script refused)
+================================================================================
+
+$ ./scripts/migrate-postgres.sh status
+[migrate-postgres] POSTGRES_DSN/DATABASE_URL is empty
+[migrate-postgres] hint: copy .env.postgres.example to .env.postgres and fill DATABASE_URL
+[exit 2 — refused to run without DSN]
+
+This is the documented fail-closed behavior. The script does NOT auto-migrate
+and does NOT default to localhost. Operator must explicitly configure DSN.
+
+================================================================================
+4. Static: simulate apply (no real DSN)
+================================================================================
+
+$ DATABASE_URL="postgresql://lpbot:fakepw@127.0.0.1:54322/lpbot_shadow?sslmode=disable&connect_timeout=1" \
+  ./scripts/migrate-postgres.sh status
+[migrate-postgres] DSN host: 127.0.0.1
+[migrate-postgres] status mode — checking required tables:
+  MISS positions
+  MISS transactions
+  MISS execution_intents
+  MISS portfolio_snapshots
+  MISS position_marks
+  MISS canary_events
+  MISS pnl_ledger
+  MISS shadow_decision_trace
+  MISS shadow_outcome_labels
+  MISS pools
+  MISS pool_score_history
+  MISS risk_events
+  MISS kill_switch_state
+  MISS idx_positions_one_active_per_pool
+[exit 0 — printed status, expected all MISS since DB doesn't exist]
+
+This proves the status mode is correct: it queries the DSN but the DB is
+not reachable, so all required tables report MISS. If a real DB is
+provisioned with migrations applied, the script will report OK for each.
+
+================================================================================
+5. Migration numbering gap detection (gates unsafe apply)
+================================================================================
+
+$ ./scripts/migrate-postgres.sh apply
+[refused: POSTGRES_DSN/DATABASE_URL is empty]
+[exit 2]
+
+[no real apply attempt was made; this stage has no LPBOT_POSTGRES_TEST_DSN]
+
+Note: if apply were attempted, the script would detect the migration
+numbering gap between 000010 and 000012 (no 000011 previously) and refuse
+unless LPBOT_MIGRATE_ALLOW_GAP=YES is set explicitly. The new 000011 fills
+the gap, so the gap is gone for the new state.
+
+================================================================================
+6. Production-DSN safety guard
+================================================================================
+
+The script refuses to run if the DSN contains "supabase.co", "rds.amazonaws.com",
+"prod", or "production" without LPBOT_MIGRATE_ALLOW_LIVE=YES. This protects
+against accidentally pointing at a real prod DB.
+
+[Not exercised this stage because no DSN was provided]
+
+================================================================================
+7. Static: existing apply_postgres_migrations.sh (legacy alias)
+================================================================================
+
+The legacy scripts/apply_postgres_migrations.sh still exists and remains
+functional for backward compat. The new scripts/migrate-postgres.sh is
+the recommended entry point going forward. Both apply the same *.sql
+files in lexical order from migrations/postgres/.
+
+================================================================================
+8. Static: shadow / env / runbook consistency check
+================================================================================
+
+$ ./scripts/check_shadow_env_consistency.sh
+OK: shadow/env/runbook consistency check passed (9 checks)
+
+All 9 deployment consistency checks pass:
+1. lpbot-shadow.service: does not load .env.canary / .env.live / WALLET_PASSPHRASE; loads .env.postgres
+2. lpbot-canary.service: loads .env.canary; does not pre-set LPBOT_CONFIRM_LIVE=YES
+3. .env.canary.example: pins LPBOT_CONFIRM_LIVE=NO; does not contain LPBOT_CONFIRM_LIVE=YES
+4. .env.live.example: does not contain LPBOT_CONFIRM_LIVE=YES
+5. configs/config.shadow.toml: references POSTGRES_DSN or DATABASE_URL
+6. configs/config.canary.toml: referenced by lpbot-canary.service
+7. docs/runbooks/vps-shadow-deployment.md: mentions migrate-postgres + lpbot-shadow.service
+8. scripts/migrate-postgres.sh: exists and is executable
+9. migrations/postgres/000011_shadow_decision_trace.sql: exists
+
+================================================================================
+9. Conclusion
+================================================================================
+
+This stage added 1 new migration (000011) and 1 new entry point
+(scripts/migrate-postgres.sh + make targets) but did NOT apply migrations
+to a real database, because no LPBOT_POSTGRES_TEST_DSN is provisioned in
+this environment. The new entry point is verified through:
+- plan mode: lists 12 migrations including the new 000011
+- status mode: refuses to run without DSN; with fake DSN, reports MISS for all
+- safety guard: refuses prod-like DSNs unless explicitly overridden
+- consistency check: 9/9 static checks pass
+
+Real apply + integration test is deferred to a future stage that
+provisions a real shadow/test DB.

@@ -1,0 +1,113 @@
+{
+  "stage": "P0_FIX_POSTGRES_SHADOW_DEPLOYMENT_V1",
+  "status": "WARN",
+  "run_id": "20260608_181508",
+  "branch": "feat/supabase-postgres-deployment",
+  "base_commit": "61f6621",
+  "audited_at_utc": "2026-06-08T18:15:08Z",
+  "workdir": "/opt/lpbot/lp-bot-v3",
+
+  "r1_research_thread_state": {
+    "status": "PAUSED",
+    "source": "reports/lp_long_horizon_r1_pause_and_freeze/20260607_191500/FINAL_PAUSE_VERDICT.json",
+    "verified_during_this_stage": true,
+    "modified_during_this_stage": false
+  },
+
+  "r2_state": {
+    "actual_fee_data_available": false,
+    "fee_proxy_only": true,
+    "r2_locked": true,
+    "reopened_during_this_stage": false
+  },
+
+  "canary_live_state": {
+    "canary_started": false,
+    "live_started": false,
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no",
+    "LPBOT_CONFIRM_LIVE_set_to_YES": false,
+    "LPBOT_CONFIRM_LIVE_in_canary_env_template": "NO (pinned via .env.canary.example non-comment line)",
+    "canary_service_enabled": false,
+    "canary_service_started": false,
+    "canary_smoke_run": false
+  },
+
+  "wallet_or_tx_touched": false,
+  "signing_attempted": false,
+  "broadcast_attempted": false,
+  "private_key_loaded": false,
+  "mnemonic_loaded": false,
+  "keypair_loaded": false,
+  "seed_loaded": false,
+  "lp_nft_minted": false,
+  "liquidity_added": false,
+  "liquidity_removed": false,
+  "swap_executed": false,
+  "approve_called": false,
+  "collect_called": false,
+  "bridge_called": false,
+
+  "paid_rpc_used": false,
+  "paid_indexer_used": false,
+  "testnet_live_connected": false,
+  "testnet_endpoints_used": [],
+  "mainnet_endpoints_used": [
+    "https://base.drpc.org",
+    "https://mainnet.base.org",
+    "https://mainnet-preconf.base.org"
+  ],
+
+  "real_secret_committed": false,
+  "dsn_committed_to_logs": false,
+  "wallet_passphrase_committed": false,
+  "private_key_in_logs": false,
+  "mnemonic_in_logs": false,
+  "dsn_in_logs": "DSN host only (127.0.0.1); full DSN with password NOT logged",
+
+  "merge_done": false,
+  "pkill_used": false,
+  "tmux_started": false,
+  "systemd_unit_enabled": false,
+  "systemd_unit_started": false,
+
+  "r1_reopened": false,
+  "r2_entered": false,
+  "long_horizon_run_started": false,
+  "12h_run_started": false,
+  "13h_run_started": false,
+  "24h_run_started": false,
+  "48h_run_started": false,
+  "72h_run_started": false,
+  "7d_run_started": false,
+  "mode_a_started": false,
+  "mode_b_started": false,
+  "paper_started": false,
+  "probe_started": false,
+  "canary_executed": false,
+  "live_executed": false,
+
+  "shadow_smoke_summary": {
+    "started": true,
+    "config_loaded": true,
+    "adapters_initialized": "partial (alerting + Base RPC OK; postgres adapter reached init step)",
+    "postgres_attempted": true,
+    "postgres_attempt_result": "fake DSN returned real 'password authentication failed' (expected)",
+    "daemon_fully_running": false,
+    "exited_cleanly": true,
+    "exit_reason": "postgres adapter init failed (fake DSN); binary exited via documented error path in cmd/lpbot/main.go:603",
+    "duration_seconds": 5
+  },
+
+  "forbidden_actions_lock_count": 30,
+  "forbidden_actions_lock_all_true": true,
+
+  "r1_audit_copy_integrity": {
+    "audit_copy_dir": "/opt/lpbot/lp-bot-v3-origin-check",
+    "audit_copy_modified": false,
+    "audit_copy_read_only": true,
+    "audit_copy_intent": "read-only audit reference; not the implementation directory"
+  },
+
+  "summary": "P0-PG-02 stage did not trigger any forbidden action. R1 research thread PAUSE respected (reports/lp_long_horizon_r1_pause_and_freeze/20260607_191500/ verified intact, status=PAUSED, no modification). R2 LOCKED, canary/live LOCKED, edge_proven=no, can_run_probe_now=false, tiny_canary_allowed=no, LPBOT_CONFIRM_LIVE never set to YES (in fact pinned to NO in .env.canary.example). Shadow binary started and exited cleanly without entering any execution path. No wallet loaded. No real secret committed. No merge. No pkill. No paid RPC. No testnet-live. Recommended next: provision LPBOT_POSTGRES_TEST_DSN, then enter P0-PG-02 follow-up stages for remaining audit findings (shadow_position_marks migration, chain type align, Go migration runner, etc.)."
+}

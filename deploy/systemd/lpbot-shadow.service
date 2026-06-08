@@ -6,6 +6,15 @@ After=network.target
 Type=simple
 User=lpbot
 WorkingDirectory=/opt/lpbot/lp-bot-v3
+# Shadow mode loads env files for the runtime it needs. None of these contain
+# LPBOT_CONFIRM_LIVE or wallet passphrase; canary/live unlock is intentionally
+# absent. See deploy/systemd/lpbot-canary.service for the canary env chain and
+# reports/lp_long_horizon_r1_pause_and_freeze/20260607_191500/ for the
+# canary/live lockdown rationale.
+EnvironmentFile=-/opt/lpbot/lp-bot-v3/.env.postgres
+EnvironmentFile=-/opt/lpbot/lp-bot-v3/.env.redis
+EnvironmentFile=-/opt/lpbot/lp-bot-v3/.env.dashboard
+EnvironmentFile=-/opt/lpbot/lp-bot-v3/.env.alerting
 ExecStartPre=/opt/lpbot/lp-bot-v3/scripts/validate-shadow-binary.sh /opt/lpbot/lp-bot-v3
 ExecStart=/opt/lpbot/lp-bot-v3/bin/lpbot-shadow --config=/opt/lpbot/lp-bot-v3/configs/config.shadow.toml
 Restart=always

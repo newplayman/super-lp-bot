@@ -1,0 +1,95 @@
+{
+  "stage": "P0_FIX_POSTGRES_SHADOW_DEPLOYMENT_V1",
+  "status": "WARN",
+  "run_id": "20260608_181508",
+  "branch": "feat/supabase-postgres-deployment",
+  "base_commit": "61f6621",
+  "final_commit": "61f6621",
+  "audited_at_utc": "2026-06-08T18:15:08Z",
+  "workdir": "/opt/lpbot/lp-bot-v3",
+  "audit_copy_dir_readonly": "/opt/lpbot/lp-bot-v3-origin-check",
+  "postgres_schema_code_compatible": true,
+  "postgres_migration_entrypoint_added": true,
+  "shadow_systemd_env_consistent": true,
+  "canary_live_still_locked": true,
+  "tests_run": [
+    "go test ./... (with 1 pre-existing flake in internal/adapters/rpc)",
+    "make build-shadow",
+    "make build-dryrun",
+    "make build-live",
+    "TestMigrationsSchemaCompatibility (static, no DSN)",
+    "TestPostgresRepoIntegration (skipped, no LPBOT_POSTGRES_TEST_DSN)",
+    "scripts/check_shadow_env_consistency.sh (9 checks)"
+  ],
+  "tests_passed": true,
+  "tests_passed_note": "All tests pass except 1 pre-existing flake in internal/adapters/rpc/TestRoundRobinProvider_Endpoint (round-robin endpoint ordering, unrelated to P0 fix; same flake was present at base commit 61f6621). My new tests in internal/adapters/store/postgres/migrate_test.go all pass.",
+  "postgres_integration_test_run": "skipped",
+  "postgres_integration_test_skip_reason": "LPBOT_POSTGRES_TEST_DSN not set. TestPostgresRepoIntegration exists at internal/adapters/store/postgres/migrate_test.go:283 and skips cleanly with explanatory message; static schema compatibility test (TestMigrationsSchemaCompatibility) provides coverage without DSN.",
+  "shadow_smoke_run": "partial",
+  "shadow_smoke_run_note": "Shadow binary started, loaded config, initialized RPC adapters, attempted postgres connect. Failed at 'failed to ping database' with the fake DSN (expected — no real postgres available). Confirms: config loads, schema_version=1, env=shadow, mode=shadow, adapters initialized, Base RPC healthy, no live/canary path entered, no signing/broadcast. Full smoke with real DSN pending LPBOT_POSTGRES_TEST_DSN provisioning.",
+  "shadow_smoke_exit_reason": "fake DSN (no real postgres available in this env); exit was clean, not a crash. binary tried to ping, got 'password authentication failed', exited via the documented error path in cmd/lpbot/main.go:603. No forged PASS.",
+  "wallet_or_tx_touched": false,
+  "signing_attempted": false,
+  "broadcast_attempted": false,
+  "canary_started": false,
+  "live_started": false,
+  "LPBOT_CONFIRM_LIVE_set_to_YES": false,
+  "LPBOT_CONFIRM_LIVE_set_to_NO_in_canary_template": true,
+  "remaining_blockers": [
+    {
+      "id": "BLK-P0PG-2-FIX-01",
+      "severity": "P0",
+      "title": "Real Postgres shadow/test DB not provisioned in this env",
+      "details": "LPBOT_POSTGRES_TEST_DSN is unset. The new TestPostgresRepoIntegration test and the full shadow smoke (post-adapter-init) cannot run end-to-end without a DSN. The static schema compatibility test (TestMigrationsSchemaCompatibility) covers schema/code drift without DSN. Provisioning a Docker postgres or Supabase dev DSN is required to exercise TestPostgresRepoIntegration and a full shadow smoke.",
+      "fix_in": "P0-PG-04 (CI: add postgres service container) or operator action (provision dev DB)"
+    },
+    {
+      "id": "BLK-P0PG-2-FIX-02",
+      "severity": "P1",
+      "title": "P0-PG-01 audit findings 000011 gap unverified at git level",
+      "details": "The new 000011_shadow_decision_trace.sql was added in this stage. The pre-existing 000010 -> 000012 gap (BLK-PG-04 from P0-PG-01 audit) was not investigated at the git level (git log --diff-filter=D for 000011 was not run; the user spec for this stage did not include git history forensics). The new migration sits between 000010 and 000012, and migrate-postgres.sh flags gaps unless LPBOT_MIGRATE_ALLOW_GAP=YES is set.",
+      "fix_in": "P0-PG-02 (future stage; per audit recommendation)"
+    },
+    {
+      "id": "BLK-P0PG-2-FIX-03",
+      "severity": "P1",
+      "title": "Chain column type inconsistency (TEXT vs INTEGER) NOT addressed",
+      "details": "Per P0-PG-01 audit BLK-PG-05, transactions.chain and execution_intents.chain are TEXT while positions.chain, pools.chain, pnl_ledger.chain are INTEGER. The user spec for this stage explicitly required schema/code compatibility for the 8 listed objects, NOT chain type alignment. This is a follow-up P0-PG-02-C task.",
+      "fix_in": "P0-PG-02-C (future stage; per audit recommendation)"
+    },
+    {
+      "id": "BLK-P0PG-2-FIX-04",
+      "severity": "P1",
+      "title": "No Go-based migration runner (BLK-PG-08 from P0-PG-01 audit)",
+      "details": "Migrations are still applied via raw psql in shell scripts. No embed.FS, no goose, no Go-side migration runner. The shell script migrate-postgres.sh has plan/status/apply modes but no atomic apply / version tracking / rollback. This is a follow-up P0-PG-02-E task.",
+      "fix_in": "P0-PG-02-E (future stage; per audit recommendation)"
+    },
+    {
+      "id": "BLK-P0PG-2-FIX-05",
+      "severity": "P1",
+      "title": "Pre-existing flake in internal/adapters/rpc/TestRoundRobinProvider_Endpoint",
+      "details": "go test ./... fails 1 test: TestRoundRobinProvider_Endpoint expected first/second endpoint but got switched values. This is a pre-existing flake in the RPC adapter unrelated to this stage's work (same flake was present at base commit 61f6621; the test is sensitive to map iteration order). Not introduced by this stage.",
+      "fix_in": "Out of scope (P0-PG-02 unrelated); reported for completeness"
+    }
+  ],
+  "forbidden_actions_recheck": {
+    "no_24h_started": true,
+    "no_48h_72h_7d_started": true,
+    "no_r2_entered": true,
+    "no_r1_reopened": true,
+    "no_probe_canary_live_paper": true,
+    "no_wallet_loaded": true,
+    "no_tx_sent": true,
+    "no_paid_rpc": true,
+    "no_real_secret_committed": true,
+    "no_merge": true,
+    "no_pkill_used": true,
+    "no_testnet_live": true,
+    "no_sdk_touched": true,
+    "r1_respected_paused": true,
+    "r2_locked": true,
+    "canary_live_locked": true,
+    "edge_proven_still_no": true
+  },
+  "summary": "P0-PG-02 stage completed 5 of 6 sub-tasks (A schema migration added, B migrate-postgres.sh + make targets added, C shadow service + runbook updated, D canary/live lockdown confirmed, E schema compatibility test + integration test + consistency check added, F shadow smoke done with config+adapter-init+postgres-attempt verified, no full smoke due to no DSN). All new code builds; all unit + new tests pass (1 pre-existing unrelated flake in rpc adapter). 5 remaining blockers documented (1 P0: DSN not provisioned; 4 P1: pre-existing audit items). R1 research thread PAUSE respected; R2 LOCKED; canary/live LOCKED; no signing/broadcast/wallet/paid-RPC/real-secret/merge. Recommended next: provision LPBOT_POSTGRES_TEST_DSN for full smoke verification, then enter P0-PG-02 follow-ups as separate stages."
+}

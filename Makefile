@@ -11,7 +11,9 @@ GO_LDFLAGS := -X main.BuildCommit=$(BUILD_COMMIT) -X main.BuildDate=$(BUILD_DATE
         canary-profitability-evidence \
         build-dryrun build-shadow build-live build-all \
         run-dryrun run-shadow run-live \
-        backtest tidy clean
+        backtest tidy clean \
+        migrate-postgres migrate-postgres-plan migrate-postgres-status \
+        check-shadow-env-consistency
 
 tidy:
 	$(GO) mod tidy
@@ -36,8 +38,25 @@ test-all: test test-property test-fork test-chaos
 audit-consistency:
 	./scripts/audit_workspace_consistency.sh
 
+# Static check: shadow / canary / live deployment artifacts (systemd unit,
+# .env*.example templates, runbook, migrate entry point) are consistent.
+# Catches the kind of drift the P0-PG-01 audit flagged (BLK-PG-06).
+check-shadow-env-consistency:
+	./scripts/check_shadow_env_consistency.sh
+
 canary-profitability-evidence:
 	./scripts/canary_profitability_evidence.sh
+
+# Postgres migration entry points. Use migrate-postgres-plan / migrate-postgres-status
+# to inspect; migrate-postgres to apply. Refuses to apply if DSN looks production.
+migrate-postgres:
+	./scripts/migrate-postgres.sh apply
+
+migrate-postgres-plan:
+	./scripts/migrate-postgres.sh plan
+
+migrate-postgres-status:
+	./scripts/migrate-postgres.sh status
 
 build-dryrun:
 	$(GO) build -ldflags "$(GO_LDFLAGS)" -tags=$(BUILD_TAGS_DRYRUN) -o bin/lpbot-dryrun ./cmd/lpbot
