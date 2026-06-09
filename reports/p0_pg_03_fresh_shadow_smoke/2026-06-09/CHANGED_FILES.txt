@@ -1,0 +1,57 @@
+CHANGED FILES — P0-PG-03
+branch: feat/supabase-postgres-deployment
+base_commit: 883251bb87baf6a78053506c16aa6331ea2e4e99
+implementation_commit: (recorded at implementation-commit time)
+report_fill_commit:    (recorded at report-fill-commit time)
+final_commit:          (recorded at final-commit time)
+
+NEW
+  configs/config.shadow.smoke.example.toml
+    Test-only shadow config template. Mirrors configs/config.shadow.toml
+    but points at the fresh test DB (lpbot_smoke03), leaves all RPC
+    endpoints empty, disables alerting / dashboarding, and uses a
+    test-only redis URL. Operators copy to configs/config.shadow.smoke.toml
+    (NOT in VCS) and set POSTGRES_DSN / REDIS_URL.
+
+  configs/config.shadow.smoke.toml
+    Live test config used by the smoke in this stage. NOT in VCS
+    (created by `cp ... configs/config.shadow.smoke.toml` at the
+    start of the stage; left in the working tree as untracked).
+
+  scripts/run_shadow_smoke.sh
+    Bounded smoke driver. Builds the shadow binary if missing, runs
+    it under a timeout (default 10m, overridable), captures stdout
+    + stderr to SHADOW_SMOKE_RUN_LOG.txt, normalizes timeout exit
+    (124) to 0. Refuses to start if LPBOT_CONFIRM_LIVE, LPBOT_CANARY,
+    LPBOT_LIVE, CANARY_DSN, LIVE_DSN, .env.canary, or .env.live are
+    present.
+
+  scripts/check_shadow_smoke_safety.sh
+    Static safety check on the smoke log. Greps for panic, FATAL,
+    sendTransaction, LBBOT_CONFIRM_LIVE, and the action verbs
+    mint / addLiquidity / removeLiquidity / approve / swap / bridge.
+    Also requires positive evidence (shadow mode banner, metrics
+    server start line). Exits 0 on clean smoke, 1 on any violation.
+
+  reports/p0_pg_03_fresh_shadow_smoke/2026-06-09/*.md|*.json|*.txt
+    Report artifacts for this stage.
+
+NOT TOUCHED
+  - migrations/postgres/*.sql
+  - internal/adapters/store/postgres/migrator/sql/*.sql
+  - internal/adapters/store/postgres/migrator/*.go  (canonical runner)
+  - cmd/lpbot-migrate-postgres/main.go
+  - scripts/migrate-postgres.sh
+  - scripts/check_postgres_migrations_sync.sh
+  - configs/config.shadow.toml  (production shadow config; the smoke
+    uses a separate example + live test copy)
+  - Makefile
+  - .github/workflows/*
+  - tests/test_lp_long_horizon_partial_12h_request_v1.py  (R1 guard,
+    preserved as a working-tree modification per the r1-protection rule)
+
+PRE-EXISTING PRESERVED FILES (NOT in this commit)
+  tests/test_lp_long_horizon_partial_12h_request_v1.py
+    Modification present at the start of this stage, untouched by the
+    stage. Will remain a working-tree modification unless an explicit
+    follow-up decides to commit it.

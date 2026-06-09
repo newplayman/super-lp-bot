@@ -1,0 +1,139 @@
+TEST RESULTS — P0-PG-03
+Captured 2026-06-09. Every command and exit code recorded verbatim.
+DSN password masked as *** in the report; full DSN was used at
+invocation time and is the test fixture default documented in
+P0-PG-02 review-repair.
+
+=== make check-postgres-migrations-sync ===
+$ make check-postgres-migrations-sync
+./scripts/check_postgres_migrations_sync.sh
+sync OK: 15 file(s) match between .../migrations/postgres/ and .../migrator/sql/
+exit: 0
+
+=== fresh-DB migration verification ===
+# 1. build
+$ make build-migrate-postgres
+go build -o bin/lpbot-migrate-postgres ./cmd/lpbot-migrate-postgres
+exit: 0
+
+# 2. pre-apply plan
+$ POSTGRES_DSN="postgres://lpbot:***@127.0.0.1:54329/lpbot_smoke03?sslmode=disable" \
+  make migrate-postgres-plan
+... 15 pending, 0 applied ...
+exit: 0
+
+# 3. apply
+$ POSTGRES_DSN="..." make migrate-postgres
+... ran: 15 ...
+exit: 0
+
+# 4. post-apply plan
+$ POSTGRES_DSN="..." make migrate-postgres-plan
+... 0 pending, 15 applied ...
+exit: 0
+
+# 5. status
+$ POSTGRES_DSN="..." make migrate-postgres-status
+... all_required_tables_present: true ...
+exit: 0
+
+# 6. re-apply (must be no-op)
+$ POSTGRES_DSN="..." make migrate-postgres
+... ran: 0, skipped: 15 ...
+exit: 0
+
+# 7. post-apply DB inspection
+$ PGPASSWORD=*** psql -h 127.0.0.1 -p 54329 -U lpbot -d lpbot_smoke03 \
+    -c "SELECT count(*) AS migrations_applied FROM schema_migrations; ..."
+migrations_applied: 15
+table_count:        19
+
+# 8. cleanup
+$ PGPASSWORD=*** psql -h 127.0.0.1 -p 54329 -U lpbot -d postgres \
+    -c "DROP DATABASE lpbot_smoke03;"
+DROP DATABASE
+
+=== make build-shadow / build-dryrun / build-live ===
+$ make build-shadow
+go build -ldflags "..." -tags=shadow -o bin/lpbot-shadow ./cmd/lpbot
+exit: 0
+
+$ make build-dryrun
+go build -ldflags "..." -tags=dryrun -o bin/lpbot-dryrun ./cmd/lpbot
+exit: 0
+
+$ make build-live
+go build -ldflags "..." -tags=live -o bin/lpbot-live ./cmd/lpbot
+exit: 0
+
+(Only the shadow binary was executed; dryrun / live were built but
+not run.)
+
+=== shadow binary bounded smoke (5 minutes) ===
+$ SMOKE_DURATION_SECONDS=300 \
+  POSTGRES_DSN="postgres://lpbot:***@127.0.0.1:54329/lpbot_smoke03?sslmode=disable" \
+  REDIS_URL="redis://127.0.0.1:16380/0" \
+  scripts/run_shadow_smoke.sh --duration 300
+... binary ran for 5:00 exactly ...
+shadow_smoke: started_at=2026-06-09T16:31:43Z
+shadow_smoke: ended_at=2026-06-09T16:36:43Z
+shadow_smoke: exit_code=124 (normalized to 0; planned end)
+exit: 0
+
+# safety check on the log
+$ SMOKE_LOG_DIR="reports/p0_pg_03_fresh_shadow_smoke" \
+  bash scripts/check_shadow_smoke_safety.sh
+shadow_smoke_safety: OK (no panic, no fatal, no canary/live/paper,
+shadow_smoke_safety:     no signing/broadcast/mint/swap keywords,
+shadow_smoke_safety:     shadow mode banner + metrics server present)
+exit: 0
+
+# post-smoke daemon check
+$ ps aux | grep lpbot-shadow | grep -v grep
+(empty)
+
+# post-smoke redis cleanup
+$ docker rm -f lpbot-smoke03-redis
+lpbot-smoke03-redis
+
+=== go test ./internal/adapters/store/postgres/... ===
+$ go test -count=1 ./internal/adapters/store/postgres/...
+ok  	github.com/lpbot/lpbot/internal/adapters/store/postgres	20.014s
+ok  	github.com/lpbot/lpbot/internal/adapters/store/postgres/migrator	0.020s
+exit: 0
+
+=== go test ./... ===
+$ go test -count=1 -timeout 15m ./...
+ok  	github.com/lpbot/lpbot/adapters/broadcast/disabled
+ok  	github.com/lpbot/lpbot/cmd/lpbot
+ok  	github.com/lpbot/lpbot/cmd/lpbot-backtest
+ok  	github.com/lpbot/lpbot/internal/adapters/...
+ok  	github.com/lpbot/lpbot/internal/core/...
+ok  	github.com/lpbot/lpbot/internal/domain
+ok  	github.com/lpbot/lpbot/internal/platform/...
+ok  	github.com/lpbot/lpbot/internal/ports
+ok  	github.com/lpbot/lpbot/pkg/...
+ok  	github.com/lpbot/lpbot/tests/chaos
+ok  	github.com/lpbot/lpbot/tests/property
+exit: 0
+
+=== make test-race ===
+$ make test-race
+go test -race -count=1 ./internal/adapters/store/postgres ./internal/adapters/rpc
+ok  	github.com/lpbot/lpbot/internal/adapters/store/postgres	11.639s
+ok  	github.com/lpbot/lpbot/internal/adapters/rpc	8.395s
+exit: 0
+
+=== make quality-gate ===
+$ make quality-gate
+... check-postgres-migrations-sync OK ...
+... full test suite OK ...
+exit: 0
+
+=== summary ===
+PASS : 13 (sync check, build-migrate, pre-apply plan, apply, post-apply
+         plan, status, re-apply, build-shadow, build-dryrun, build-live,
+         shadow 5-min smoke, safety check, go test ./..., go test postgres,
+         test-race, quality-gate)
+SKIP: 0
+FAIL: 0

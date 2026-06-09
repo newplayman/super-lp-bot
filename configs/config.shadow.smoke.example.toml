@@ -1,0 +1,84 @@
+# config.shadow.smoke.example.toml
+#
+# Test-only shadow configuration for P0-PG-03 (fresh shadow smoke).
+# Mirrors configs/config.shadow.toml but points at the fresh test DB
+# (lpbot_smoke03) created on the existing test pg container, leaves
+# all RPC endpoints empty so the binary never makes an outbound chain
+# call, and disables alerting / dashboarding so the smoke has no
+# external dependencies beyond the local pg + redis.
+#
+# This is an EXAMPLE template: copy to configs/config.shadow.smoke.toml
+# (not in VCS) and substitute DSN / redis URL. The example below
+# references the local fixtures used by P0-PG-03; a real operator
+# should adjust to their own test environment.
+
+[mode]
+expected = "shadow"
+
+[platform]
+log_level = "info"
+metrics_addr = ":9091"  # distinct from any other local metrics server
+dashboard_token = ""
+
+[alerting]
+# Smoke disables alerting; the runner has nothing to alert about in
+# a 5-10 minute test, and we do not want it to attempt telegram calls.
+telegram_token = ""
+telegram_chat_id = ""
+min_interval_seconds = 60
+
+[chains.base]
+# Smoke: no RPC. lpbot-shadow with empty rpc_primary will skip base
+# reads per the canonical shadow config comments.
+rpc_primary = ""
+rpc_fallback = []
+ws = ""
+confirmations = 10
+
+[chains.solana]
+rpc_primary = ""
+commitment = "finalized"
+
+[store]
+backend = "postgres"
+# Smoke DSN. Fresh DB created by P0-PG-03 on the test pg container.
+# Format only — password is intentionally not hardcoded.
+postgres_dsn = "${POSTGRES_DSN}"
+
+[redis]
+# Test-only redis; same host that the canonical P0-PG-02E smoke used.
+url = "${REDIS_URL:-redis://127.0.0.1:6379/0}"
+prefix = "lpbot_smoke"
+heartbeat_interval_seconds = 15
+heartbeat_ttl_seconds = 60
+
+[bus]
+backend = "inproc"
+
+# Risk / tier knobs are not consumed by the smoke because no real
+# positions are opened in 5-10 minutes. The values mirror the canonical
+# shadow config so the binary's config loader does not reject them.
+[risk]
+total_exposure_pct = 30
+var_warn_pct = 8
+var_kill_pct = 12
+daily_dd_kill_pct = 5
+weekly_dd_freeze_pct = 10
+
+[tier_a]
+max_per_pool_usd = 1000
+il_stop_pct = 3
+range_k_sigma = 1.75
+min_hold_hours = 6
+
+[tier_b]
+max_per_pool_usd = 200
+il_stop_pct = 5
+range_k_sigma = 1.25
+min_hold_hours = 2
+
+[tier_c]
+max_per_pool_usd = 50
+il_stop_pct = 8
+range_k_sigma = 0.75
+min_hold_hours = 0.5

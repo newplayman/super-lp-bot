@@ -1,0 +1,63 @@
+shadow_smoke: starting
+shadow_smoke: config=/opt/lpbot/lp-bot-v3-origin-check/configs/config.shadow.smoke.toml
+shadow_smoke: duration=300s
+shadow_smoke: log=/opt/lpbot/lp-bot-v3-origin-check/reports/p0_pg_03_fresh_shadow_smoke/SHADOW_SMOKE_RUN_LOG.txt
+shadow_smoke: cmd=/opt/lpbot/lp-bot-v3-origin-check/bin/lpbot-shadow --config=/opt/lpbot/lp-bot-v3-origin-check/configs/config.shadow.smoke.toml
+shadow_smoke: started_at=2026-06-09T16:31:43Z
+{"level":"info","ts":1781022703.1853445,"caller":"lpbot/main.go:586","msg":"lpbot starting","env":"shadow","schema_version":1,"version":"0.4.0","mode":"shadow","commit":"580432a"}
+=== SHADOW MODE ===
+Running in shadow mode: simulating transactions without real execution.
+Configure via: configs/config.shadow.toml
+{"level":"warn","ts":1781022703.1858294,"caller":"lpbot/alerting.go:84","msg":"telegram token missing, fallback to logs only","env":"shadow","schema_version":1}
+{"level":"info","ts":1781022703.1858652,"caller":"lpbot/main.go:637","msg":"initializing adapters...","env":"shadow","schema_version":1}
+2026/06/09 18:31:44 [rpc:base] initial rpc order: [https://base.drpc.org https://mainnet.base.org https://mainnet-preconf.base.org]
+2026/06/09 18:31:44 [rpc:base] initial health check summary: https://base.drpc.org:OK(584.224378ms), https://mainnet.base.org:OK(743.144468ms), https://mainnet-preconf.base.org:OK(820.433869ms)
+{"level":"info","ts":1781022704.0098395,"caller":"lpbot/main.go:678","msg":"Base RPC provider initialized","env":"shadow","schema_version":1,"primary":"base.drpc.org","endpoints":4}
+{"level":"info","ts":1781022704.0328772,"caller":"lpbot/main.go:723","msg":"PostgreSQL store initialized","env":"shadow","schema_version":1}
+{"level":"info","ts":1781022704.3195336,"caller":"redis/runtime.go:75","msg":"Redis runtime initialized","env":"shadow","schema_version":1,"addr":"127.0.0.1:16380","heartbeat_key":"lpbot_smoke:shadow:heartbeat:vmi2884308","heartbeat_interval":15,"heartbeat_ttl":60}
+{"level":"info","ts":1781022704.513097,"caller":"lpbot/main.go:891","msg":"metrics server started","env":"shadow","schema_version":1,"addr":":9091"}
+{"level":"info","ts":1781022704.81358,"caller":"lpbot/main.go:760","msg":"GeckoTerminal datasource initialized","env":"shadow","schema_version":1}
+{"level":"info","ts":1781022704.8156567,"caller":"lpbot/main.go:897","msg":"initializing core modules...","env":"shadow","schema_version":1}
+{"level":"info","ts":1781022704.8157208,"caller":"lpbot/main.go:908","msg":"scanner initialized","env":"shadow","schema_version":1}
+{"level":"info","ts":1781022704.815759,"caller":"lpbot/main.go:912","msg":"strategy initialized","env":"shadow","schema_version":1}
+{"level":"info","ts":1781022704.815765,"caller":"lpbot/main.go:922","msg":"wiring main loop with risk/allocation/order components...","env":"shadow","schema_version":1}
+{"level":"info","ts":1781022704.8159292,"caller":"lpbot/main.go:933","msg":"RiskGate wired (fail-closed enabled)","env":"shadow","schema_version":1,"risk_repo_attached":true}
+{"level":"info","ts":1781022704.8159626,"caller":"lpbot/main.go:944","msg":"AllocationManager wired (per-pool + total exposure checks)","env":"shadow","schema_version":1}
+{"level":"info","ts":1781022704.816303,"caller":"lpbot/main.go:956","msg":"ApproveTracker wired","env":"shadow","schema_version":1}
+{"level":"info","ts":1781022704.816323,"caller":"lpbot/main.go:981","msg":"OrderManager wired","env":"shadow","schema_version":1}
+{"level":"warn","ts":1781022704.816358,"caller":"lpbot/main.go:991","msg":"live safety gate not ready","env":"shadow","schema_version":1,"canary":false,"blockers":["amount_usd to token amount sizing path is not implemented","build mode is shadow","execution.backend=shadow is not configured","execution.npm_base_address is empty","executor is still shadow-only; live broadcaster is not wired in cmd/lpbot","live.allowed_chains is empty","live.allowed_pools is empty","live.daily_loss_limit_usd must be > 0","live.enabled=false","live.max_order_usd must be > 0","live.wallet_address is empty","live_risk.max_pending_exposure_usd must be > 0","live_risk.max_total_exposure_usd must be > 0"]}
+{"level":"info","ts":1781022704.8164074,"caller":"lpbot/main.go:1002","msg":"RPC simulator wired","env":"shadow","schema_version":1}
+{"level":"info","ts":1781022704.8164165,"caller":"lpbot/main.go:1008","msg":"Metrics wired","env":"shadow","schema_version":1}
+{"level":"info","ts":1781022704.8164446,"caller":"lpbot/main.go:1024","msg":"Main loop wired successfully","env":"shadow","schema_version":1}
+{"level":"info","ts":1781022704.816462,"caller":"lpbot/main.go:622","msg":"all components initialized","env":"shadow","schema_version":1}
+{"level":"info","ts":1781022704.816533,"caller":"lpbot/main.go:1101","msg":"workers started","env":"shadow","schema_version":1,"strategy_interval":"1m","scanner_interval":"5m"}
+{"level":"info","ts":1781022704.8350646,"caller":"lpbot/main.go:1133","msg":"strategy loop started","env":"shadow","schema_version":1}
+{"level":"info","ts":1781022704.8353622,"caller":"lpbot/main.go:1111","msg":"scanner loop started","env":"shadow","schema_version":1}
+2026/06/09 18:32:14 [rpc:base] health check summary: https://base.drpc.org:OK(77.52802ms), https://mainnet.base.org:OK(141.491516ms), https://mainnet-preconf.base.org:OK(166.544698ms)
+2026/06/09 18:32:44 [rpc:base] health check summary: https://base.drpc.org:OK(94.84581ms), https://mainnet-preconf.base.org:OK(128.3078ms), https://mainnet.base.org:OK(129.566041ms)
+2026/06/09 18:32:47 [rpc:base] switched rpc endpoint: https://base.drpc.org -> https://mainnet-preconf.base.org
+{"level":"info","ts":1781022771.571639,"caller":"lpbot/main.go:1255","msg":"shadow strategy tick completed","env":"shadow","schema_version":1,"scanned":39,"candidates":3,"evaluated":3,"shadow_orders":3}
+{"level":"warn","ts":1781022771.5838492,"caller":"lpbot/position_mark.go:220","msg":"shadow position mark query failed","env":"shadow","schema_version":1,"error":"scan active position: sql: Scan error on column index 3, name \"chain\": converting driver.Value type string (\"base\") to a int: invalid syntax"}
+2026/06/09 18:33:14 [rpc:base] health check summary: https://base.drpc.org:OK(55.156925ms), https://mainnet.base.org:OK(443.490512ms), https://mainnet-preconf.base.org:OK(446.599448ms)
+2026/06/09 18:33:14 [rpc:base] primary rpc changed: https://base.drpc.org -> https://mainnet.base.org
+2026/06/09 18:33:44 [rpc:base] health check summary: https://base.drpc.org:OK(97.3394ms), https://mainnet.base.org:OK(116.13011ms), https://mainnet-preconf.base.org:OK(245.020035ms)
+2026/06/09 18:33:44 [rpc:base] primary rpc changed: https://mainnet.base.org -> https://base.drpc.org
+{"level":"info","ts":1781022828.644034,"caller":"lpbot/main.go:1255","msg":"shadow strategy tick completed","env":"shadow","schema_version":1,"scanned":39,"candidates":3,"evaluated":3,"shadow_orders":3}
+{"level":"warn","ts":1781022828.6456285,"caller":"lpbot/position_mark.go:220","msg":"shadow position mark query failed","env":"shadow","schema_version":1,"error":"scan active position: sql: Scan error on column index 3, name \"chain\": converting driver.Value type string (\"base\") to a int: invalid syntax"}
+2026/06/09 18:34:14 [rpc:base] health check summary: https://base.drpc.org:OK(37.836876ms), https://mainnet.base.org:OK(115.781946ms), https://mainnet-preconf.base.org:OK(120.450767ms)
+2026/06/09 18:34:44 [rpc:base] health check summary: https://base.drpc.org:OK(31.919026ms), https://mainnet.base.org:OK(107.420621ms), https://mainnet-preconf.base.org:OK(121.177172ms)
+{"level":"info","ts":1781022888.2507591,"caller":"lpbot/main.go:1255","msg":"shadow strategy tick completed","env":"shadow","schema_version":1,"scanned":39,"candidates":3,"evaluated":3,"shadow_orders":3}
+{"level":"warn","ts":1781022888.2529953,"caller":"lpbot/position_mark.go:220","msg":"shadow position mark query failed","env":"shadow","schema_version":1,"error":"scan active position: sql: Scan error on column index 3, name \"chain\": converting driver.Value type string (\"base\") to a int: invalid syntax"}
+2026/06/09 18:35:14 [rpc:base] health check summary: https://base.drpc.org:OK(36.824706ms), https://mainnet.base.org:OK(118.060998ms), https://mainnet-preconf.base.org:OK(148.406394ms)
+2026/06/09 18:35:44 [rpc:base] health check summary: https://base.drpc.org:OK(35.489173ms), https://mainnet-preconf.base.org:OK(108.821157ms), https://mainnet.base.org:OK(152.168021ms)
+{"level":"info","ts":1781022949.0056608,"caller":"lpbot/main.go:1255","msg":"shadow strategy tick completed","env":"shadow","schema_version":1,"scanned":39,"candidates":3,"evaluated":3,"shadow_orders":3}
+{"level":"warn","ts":1781022949.0131183,"caller":"lpbot/position_mark.go:220","msg":"shadow position mark query failed","env":"shadow","schema_version":1,"error":"scan active position: sql: Scan error on column index 3, name \"chain\": converting driver.Value type string (\"base\") to a int: invalid syntax"}
+2026/06/09 18:36:14 [rpc:base] health check summary: https://base.drpc.org:OK(33.229857ms), https://mainnet-preconf.base.org:OK(194.611433ms), https://mainnet.base.org:OK(194.858362ms)
+{"level":"info","ts":1781023003.1491113,"caller":"lpbot/main.go:629","msg":"shutdown signal received","env":"shadow","schema_version":1}
+{"level":"info","ts":1781023003.1497602,"caller":"lpbot/main.go:1447","msg":"stopping workers...","env":"shadow","schema_version":1}
+{"level":"info","ts":1781023003.1498287,"caller":"lpbot/main.go:1116","msg":"scanner loop stopped","env":"shadow","schema_version":1}
+{"level":"info","ts":1781023003.1499317,"caller":"lpbot/main.go:1138","msg":"strategy loop stopped","env":"shadow","schema_version":1}
+{"level":"info","ts":1781023003.150403,"caller":"lpbot/main.go:1451","msg":"all workers stopped","env":"shadow","schema_version":1}
+shadow_smoke: ended_at=2026-06-09T16:36:43Z
+shadow_smoke: exit_code=124
+shadow_smoke: timeout reached (planned end)
