@@ -7,8 +7,8 @@ BUILD_COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo local)
 BUILD_DATE ?= $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 GO_LDFLAGS := -X main.BuildCommit=$(BUILD_COMMIT) -X main.BuildDate=$(BUILD_DATE)
 
-.PHONY: lint test test-property test-fork test-chaos test-all audit-consistency \
-        canary-profitability-evidence \
+.PHONY: lint test test-property test-fork test-chaos test-all test-race \
+        audit-consistency canary-profitability-evidence \
         build-dryrun build-shadow build-live build-all \
         run-dryrun run-shadow run-live \
         backtest tidy clean \
@@ -34,6 +34,17 @@ test-chaos:
 	$(GO) test -tags=chaos ./tests/chaos/...
 
 test-all: test test-property test-fork test-chaos
+
+# Race detector for the two highest-contention adapter packages. Per the
+# P0-PG-01 audit (BLK-PG-10), the codebase previously had no -race
+# coverage anywhere; this target provides a focused entry point that
+# catches the most likely race-prone paths (the postgres adapter now
+# writes to real Postgres; the rpc adapter has goroutines for the
+# health loop and probe latency). Full-repo race coverage is
+# intentionally NOT in this target to keep iteration time low; expand
+# to ./... only when the packages below are clean.
+test-race:
+	$(GO) test -race -count=1 ./internal/adapters/store/postgres ./internal/adapters/rpc
 
 audit-consistency:
 	./scripts/audit_workspace_consistency.sh

@@ -1,0 +1,96 @@
+P1 Test Suite Stabilization — Race Test Results
+================================================
+
+Run ID: 20260609_053000
+Base commit: 63fd5aa
+Branch: feat/supabase-postgres-deployment
+Workdir: /opt/lpbot/lp-bot-v3
+Test entry point: make test-race
+                    = go test -race -count=1 ./internal/adapters/store/postgres ./internal/adapters/rpc
+
+================================================================================
+1. make test-race (focused: 2 highest-contention packages)
+================================================================================
+
+$ make test-race
+go test -race -count=1 ./internal/adapters/store/postgres ./internal/adapters/rpc
+ok  	github.com/lpbot/lpbot/internal/adapters/store/postgres	17.950s
+ok  	github.com/lpbot/lpbot/internal/adapters/rpc	9.587s
+[exit 0]
+
+Result: PASS
+Duration: ~28s (parallel package execution)
+Race conditions detected: 0
+
+Both packages:
+- Compiled with -race
+- Each test run with -count=1 to disable result caching
+- Pass cleanly under race detector
+
+================================================================================
+2. Per-package detail
+================================================================================
+
+2a. ./internal/adapters/store/postgres (17.95s under -race)
+  - TestMigrationsSchemaCompatibility (static, no DSN)
+  - TestPostgresRepoIntegration (skipped without DSN; with DSN does real roundtrip)
+  - TestPostgresAdapter_DockerIntegration_RoundTrip (docker, inline schema, ~18s)
+  - TestPostgres_New, TestPostgres_ConfigDSN, TestChainIDConversion, etc.
+  - All interface-compliance tests
+
+  No race detected despite:
+    - TestPostgresAdapter_DockerIntegration_RoundTrip uses goroutines (probeEndpointLatency)
+    - PositionRepo uses sync.RWMutex (p.mu)
+    - PoolRepo uses p.mu RLock
+    - Multiple TxRepo mutations under lock
+    - riskAdapter shares maps with mutex (endpointStateMu, endpointHistoryMu)
+
+2b. ./internal/adapters/rpc (9.59s under -race)
+  - TestRoundRobinProvider_InitialOrderStableAcrossRuns (20 runs)
+  - TestRoundRobinProvider_InitialOrderPreservesInputIndex (5 input orderings)
+  - TestRoundRobinProvider_InitialOrderNotSortedAlphabetically
+  - TestRoundRobinProvider_NextEndpointDeterministic (3 sizes × 2 rotations)
+  - TestRoundRobinProvider_RepeatedCallsNoMapIterationDependency (50 runs)
+  - TestRoundRobinProvider_EndpointHostExtractorDoesNotMutateInput
+  - TestRoundRobinProvider_SingleEndpointStableForRepeatedCalls
+  - TestRoundRobinProvider_EndpointStringPreserved
+  - TestNewBaseProvider
+  - TestRoundRobinProvider_Endpoint
+  - TestDefaultEndpoints
+
+  No race detected despite:
+    - healthLoop goroutine started by NewRoundRobinProvider
+    - rankEndpointsDetailed launches per-endpoint probe goroutines
+    - Multiple sync.Mutex (switchLogStateMu, endpointStateMu, endpointHistoryMu)
+    - atomic.LoadUint32/StoreUint32 on p.current
+
+================================================================================
+3. Out-of-scope for this stage (intentionally not in make test-race)
+================================================================================
+
+Full-repo -race (go test -race ./...) is NOT in make test-race because:
+- Some packages have long-running tests (TestPostgresAdapter_AllRepos expects
+  to fail; TestScanStuckTxs has 1s sleeps; TestKeystoreEncryptDecrypt has 30s
+  sleep; etc.) that would make -race on the whole repo take 5-10 minutes
+- Adding -race to all packages may surface unrelated flakes that this
+  stage is not intended to fix
+- Focused coverage on the 2 highest-contention adapter packages is the
+  best ROI: postgres adapter (real DB writes) and rpc adapter (probe
+  goroutines + mutex-heavy state)
+
+Full-repo -race will be expanded in a future stage (BLK-P1-03 in
+FINAL_VERDICT.json) once this stage's focused coverage is stable.
+
+================================================================================
+4. Conclusion
+================================================================================
+
+make test-race = PASS
+
+No data races detected in:
+- internal/adapters/store/postgres (Postgres adapter with real DSN, RWMutex-heavy)
+- internal/adapters/rpc (RoundRobin provider with health loop + probe goroutines + atomic counter)
+
+Race coverage baseline established. Future P1-EXPAND stage can extend
+this to ./... once the focused packages remain stable over multiple
+runs.

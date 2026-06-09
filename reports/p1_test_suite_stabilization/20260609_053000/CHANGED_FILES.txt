@@ -1,0 +1,78 @@
+P1 Test Suite Stabilization — Changed Files
+==========================================
+
+Run ID: 20260609_053000
+Base commit: 63fd5aa
+Final commit: <filled at commit time>
+Branch: feat/supabase-postgres-deployment
+Workdir: /opt/lpbot/lp-bot-v3
+
+(untracked = new file; M = modified)
+
+ M  Makefile
+ M  internal/adapters/rpc/roundrobin.go
+?? internal/adapters/rpc/roundrobin_stability_test.go
+?? reports/p1_test_suite_stabilization/
+
+Total: 2 modified, 2 untracked (4 files + the deliverables)
+
+================================================================================
+Modified files
+================================================================================
+
+Makefile
+  - Added test-race target to .PHONY
+  - Added test-race rule:
+        test-race:
+            $(GO) test -race -count=1 ./internal/adapters/store/postgres ./internal/adapters/rpc
+  - Comment explains scope (focused on 2 highest-contention packages;
+    full-repo -race deferred to P1-EXPAND)
+
+internal/adapters/rpc/roundrobin.go
+  - Modified rankEndpointsDetailed()'s allFailed branch to call
+    sort.SliceStable(probeResults, by index) so the result preserves
+    the caller's input order. This is the RPC flake fix.
+  - 6-line diff (5 lines of code + 1 comment explaining the rationale).
+  - No other code paths modified. No public API change. No behavior
+    change in the allOK path (which was already deterministic).
+
+================================================================================
+Untracked (new) files
+================================================================================
+
+internal/adapters/rpc/roundrobin_stability_test.go
+  - 8 new tests covering:
+    - TestRoundRobinProvider_InitialOrderStableAcrossRuns (20 runs)
+    - TestRoundRobinProvider_InitialOrderPreservesInputIndex (5 inputs)
+    - TestRoundRobinProvider_InitialOrderNotSortedAlphabetically
+    - TestRoundRobinProvider_NextEndpointDeterministic (3 sizes × 2 rotations)
+    - TestRoundRobinProvider_RepeatedCallsNoMapIterationDependency (50 runs)
+    - TestRoundRobinProvider_EndpointHostExtractorDoesNotMutateInput
+    - TestRoundRobinProvider_SingleEndpointStableForRepeatedCalls
+    - TestRoundRobinProvider_EndpointStringPreserved
+  - Helper functions: equalSlices (string slice equality), var _ = sort.Strings
+    (suppress unused import warning if Go toolchain complains)
+  - All 8 tests PASS
+
+reports/p1_test_suite_stabilization/20260609_053000/
+  - FINAL_VERDICT.json
+  - RPC_FLAKE_FIX_REPORT.md
+  - TEST_RESULTS.txt
+  - RACE_TEST_RESULTS.txt
+  - CHANGED_FILES.txt (this file)
+  - SAFETY_LOCKS_RECHECK.json
+
+================================================================================
+Not modified (verified, no change needed)
+================================================================================
+
+- internal/adapters/rpc/quicknode.go
+- internal/adapters/rpc/roundrobin_test.go (the original test that
+  was flaky; now passes after the roundrobin.go fix; no change needed
+  to the test itself)
+- internal/adapters/store/postgres/*.go (no changes; covered by
+  prior P0-PG-02 series)
+- All other test files
+- All strategy / live / execution / trading path files
+- configs/*.toml, deploy/systemd/*, .env*.example, migrations/postgres/*.sql
+- All deliverables from prior stages

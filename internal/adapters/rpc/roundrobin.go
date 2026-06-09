@@ -1044,6 +1044,14 @@ func rankEndpointsDetailed(ctx context.Context, endpoints []string, httpClient *
 	}
 
 	if allFailed {
+		// When all endpoints fail, preserve the caller's input order. The
+		// channel-driven collection above is non-deterministic across
+		// goroutine scheduling; we re-sort by the original index so the
+		// first endpoint in the config is the first one tried, matching
+		// the documented "primary endpoint" semantics.
+		sort.SliceStable(probeResults, func(i, j int) bool {
+			return probeResults[i].index < probeResults[j].index
+		})
 		failSummary := make([]string, 0, len(probeResults))
 		for _, result := range probeResults {
 			failSummary = append(failSummary, fmt.Sprintf("%s:FAIL(%s)", result.endpoint, result.errMsg))

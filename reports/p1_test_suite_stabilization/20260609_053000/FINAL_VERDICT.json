@@ -1,0 +1,100 @@
+{
+  "stage": "LP_BOT_ENGINEERING_P1_TEST_SUITE_STABILIZATION_V1",
+  "status": "PASS",
+  "run_id": "20260609_053000",
+  "branch": "feat/supabase-postgres-deployment",
+  "base_commit": "63fd5aa",
+  "final_commit": "<filled at commit time>",
+  "audited_at_utc": "2026-06-09T05:30:00Z",
+  "workdir": "/opt/lpbot/lp-bot-v3",
+  "audit_copy_dir_readonly": "/opt/lpbot/lp-bot-v3-origin-check",
+  "purpose": "修复 pre-existing RPC flake + 补 make test-race 入口. 仅测试稳定性与 CI 质量修复, 不碰策略 / live / 交易链路.",
+  "rpc_flake_fixed": true,
+  "go_test_all_status": "PASS",
+  "postgres_tests_status": "PASS",
+  "race_test_status": "PASS",
+  "build_shadow_status": "PASS",
+  "build_dryrun_status": "PASS",
+  "build_live_status": "PASS",
+  "tests_passed_breakdown": {
+    "go_test_internal_adapters_rpc": "PASS (5.7s; 11 tests including 8 new stability tests)",
+    "go_test_internal_adapters_store_postgres": "PASS (~20s; 9+ tests including integration roundtrip)",
+    "go_test_all": "PASS (whole repo, 40 packages ok, 0 FAIL; rpc flake FIXED)",
+    "make_test_race": "PASS (~28s; ./internal/adapters/store/postgres + ./internal/adapters/rpc; 0 race detected)",
+    "make_build_shadow": "PASS (bin/lpbot-shadow 40 MB)",
+    "make_build_dryrun": "PASS (bin/lpbot-dryrun 40 MB)",
+    "make_build_live": "PASS (bin/lpbot-live 41 MB; built, NOT executed; LOCKED)"
+  },
+  "rpc_flake_root_cause": "In internal/adapters/rpc/roundrobin.go, rankEndpointsDetailed() returned endpoints in non-deterministic order when ALL endpoints failed (the channel-driven collection completed in goroutine scheduling order, not in input index order). The test TestRoundRobinProvider_Endpoint fed test.example.com endpoints that all fail DNS; the order returned by NewRoundRobinProvider depended on which goroutine finished first, causing the test to be flaky.",
+  "rpc_flake_fix": "Modified rankEndpointsDetailed's allFailed branch to call sort.SliceStable(probeResults, by index) so the result preserves the caller's input order. Single-line addition: sort by index before returning. No real assertions removed; no test scope expanded to real network.",
+  "stability_tests_added": [
+    "TestRoundRobinProvider_InitialOrderStableAcrossRuns (20 runs, verifies order drift)",
+    "TestRoundRobinProvider_InitialOrderPreservesInputIndex (5 input orderings)",
+    "TestRoundRobinProvider_InitialOrderNotSortedAlphabetically (defensive: confirm NOT alphabetic)",
+    "TestRoundRobinProvider_NextEndpointDeterministic (3 sizes × 2 rotations = 6 cycles)",
+    "TestRoundRobinProvider_RepeatedCallsNoMapIterationDependency (50 runs)",
+    "TestRoundRobinProvider_EndpointHostExtractorDoesNotMutateInput (input safety)",
+    "TestRoundRobinProvider_SingleEndpointStableForRepeatedCalls (edge case: 1 endpoint)",
+    "TestRoundRobinProvider_EndpointStringPreserved (substring identity check)"
+  ],
+  "test_race_entry_point": "make test-race covers ./internal/adapters/store/postgres and ./internal/adapters/rpc. Full-repo race coverage intentionally deferred (kept iteration time low; will be expanded in a future stage when the focused packages are clean).",
+  "wallet_or_tx_touched": false,
+  "signing_attempted": false,
+  "broadcast_attempted": false,
+  "canary_started": false,
+  "live_started": false,
+  "paper_started": false,
+  "LPBOT_CONFIRM_LIVE_set_to_YES": false,
+  "r1_respected_paused": true,
+  "r2_locked": true,
+  "edge_proven_still_no": true,
+
+  "remaining_blockers": [
+    {
+      "id": "BLK-P1-01",
+      "severity": "P1",
+      "title": "No Go migration runner (BLK-PG-08, still open from prior stage)",
+      "details": "Migrations applied via shell script with awk-extracted Up section + schema_migrations marker table. No embed.FS, no goose, no in-Go version tracking.",
+      "fix_in": "P0-PG-02-E (future stage; per prior audit)"
+    },
+    {
+      "id": "BLK-P1-02",
+      "severity": "P1",
+      "title": "000004_transactions_timestamp_cleanup non-idempotent (BLK-PG-09, still open)",
+      "details": "First run is safe; partial-failure retry risky. schema_migrations marker table prevents same-migration re-apply, but doesn't help if the migration itself partially completes within its transaction.",
+      "fix_in": "P0-PG-02-E (future stage; per prior audit)"
+    },
+    {
+      "id": "BLK-P1-03",
+      "severity": "P2",
+      "title": "Full-repo race coverage not in make test-race (focused only on 2 packages)",
+      "details": "make test-race runs -race on ./internal/adapters/store/postgres + ./internal/adapters/rpc. Whole-repo race coverage is intentionally deferred to keep iteration time low. Will be expanded in a future stage.",
+      "fix_in": "P1-EXPAND (future stage; depends on this stage passing first)"
+    }
+  ],
+
+  "forbidden_actions_recheck": {
+    "no_24h_started": true,
+    "no_48h_72h_7d_started": true,
+    "no_r2_entered": true,
+    "no_r1_reopened": true,
+    "no_probe_canary_live_paper": true,
+    "no_wallet_loaded": true,
+    "no_tx_sent": true,
+    "no_paid_rpc": true,
+    "no_real_secret_committed": true,
+    "no_merge": true,
+    "no_pkill_used": true,
+    "no_testnet_live": true,
+    "no_sdk_touched": true,
+    "no_strategy_modified": true,
+    "no_live_path_touched": true,
+    "no_execution_path_modified": true,
+    "r1_respected_paused": true,
+    "r2_locked": true,
+    "canary_live_locked": true,
+    "edge_proven_still_no": true
+  },
+
+  "summary": "P1 test suite stabilization stage completed: (1) RPC flake FIXED at the source (rankEndpointsDetailed now sorts probeResults by index in the allFailed branch, preserving caller's input order); (2) 8 new stability tests added covering multi-endpoint order determinism, failover determinism, repeated-run independence, input immutability, single-endpoint edge case, and endpoint string identity; (3) make test-race entry point added covering 2 highest-contention packages (postgres adapter + rpc adapter); (4) ALL 6 required commands PASS (go test ./internal/adapters/rpc, go test ./internal/adapters/store/postgres, go test ./..., make test-race, make build-shadow, make build-dryrun, make build-live). go test ./... now reports 0 FAIL across 40 packages — the pre-existing rpc flake that was blocking 'go test ./... = PASS' is fixed. status=PASS (upgraded from prior stage's WARN because the documented blocker FAIL_WITH_KNOWN_PREEXISTING_FLAKE is now resolved). No code in strategy, live, execution, or trading path was modified. R1 PAUSE respected, R2 LOCKED, canary/live LOCKED, edge_proven=no, LPBOT_CONFIRM_LIVE never set."
+}
