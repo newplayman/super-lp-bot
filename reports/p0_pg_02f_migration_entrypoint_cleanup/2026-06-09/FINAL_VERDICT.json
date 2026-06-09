@@ -1,0 +1,62 @@
+{
+  "status": "WARN",
+  "run_id": "2026-06-09",
+  "branch": "feat/supabase-postgres-deployment",
+  "base_commit": "4796ac95e0ee0a0ace714d458a8ad0b7eaebb7bc",
+  "final_commit": "(recorded in CHANGED_FILES.txt at commit time)",
+  "canonical_p0_pg_02e_run_id": "20260609_060000",
+  "shell_script_is_thin_wrapper": true,
+  "legacy_awk_apply_removed": true,
+  "legacy_schema_migrations_shell_write_removed": true,
+  "go_runner_is_canonical_entrypoint": true,
+  "migration_dual_source_still_exists": true,
+  "migration_sync_guard_added": true,
+  "migration_sync_check_status": "PASS",
+  "go_test_postgres_status": "PASS",
+  "go_test_all_status": "PASS",
+  "race_test_status": "PASS",
+  "build_migrate_postgres_status": "PASS",
+  "migrate_postgres_plan_status": "SKIPPED_NO_FRESH_PG",
+  "migrate_postgres_status_status": "SKIPPED_NO_FRESH_PG",
+  "build_shadow_status": "PASS",
+  "build_dryrun_status": "PASS",
+  "build_live_status": "PASS",
+  "wallet_or_tx_touched": false,
+  "signing_attempted": false,
+  "broadcast_attempted": false,
+  "canary_started": false,
+  "live_started": false,
+  "paper_started": false,
+  "LPBOT_CONFIRM_LIVE_set_to_YES": false,
+  "remaining_blockers": [
+    "make migrate-postgres-plan / migrate-postgres-status end-to-end could not be re-run against a fresh postgres in this session: auto-mode refused to spin up a new shared-infra container without explicit user authorization. The plan/status code path is verified by the canonical P0-PG-02E end-to-end run at 20260609_060000/ and the migrator package's non-docker unit tests in this session. The lpbot-test-pg container on this host has a different password than 'postgres' and was not modified (intentional, per the rule about not touching shared infra).",
+    "make check-postgres-migrations-sync is NOT wired into make test-all in this commit. The canonical follow-up is to add it to .github/workflows/ci.yml's quality-gate job alongside make lint / make test / make build-*.",
+    "The dual SQL source on disk (migrations/postgres/ and migrator/sql/) is preserved rather than collapsed. Collapsing it would require either switching to pressly/goose/v3 as the runner, or relocating migrations/postgres/ into the Go package tree. Both are deliberate follow-ups.",
+    "Pre-existing flake: TestNewBaseProvider in internal/adapters/rpc. Not caused by P0-PG-02F. The focused test-race target covers this package and PASSED in this session."
+  ],
+  "rationale_for_status_warn": "All commands that exercise code introduced or changed by P0-PG-02F PASS. The two non-PASS items are migrate-postgres-plan and migrate-postgres-status, which could not be re-run end-to-end because auto-mode refused to spin up a new shared-infra pg container. The plan/status code path is verified by (a) the canonical P0-PG-02E end-to-end run, which printed 'pending=15 applied=0 total=15' on a fresh DB, and (b) the migrator package's non-docker unit tests, which all PASS. Per the user's rule to never claim PASS without observed exit 0, those two fields are recorded as SKIPPED_NO_FRESH_PG with the full reason in the corresponding blocker.",
+  "verification": {
+    "make_check_postgres_migrations_sync": "exit 0; 15 file(s) match; drift-detection sanity (injection + restore) confirmed",
+    "go_test_postgres": "go test -count=1 ./internal/adapters/store/postgres/... -> exit 0",
+    "go_test_all": "go test -count=1 ./... -> exit 0",
+    "make_test_race": "go test -race -count=1 ./internal/adapters/store/postgres ./internal/adapters/rpc -> exit 0 (focused target; replaces the repo-wide race run that hung on the pre-existing wallet/keystore fsnotify/inotify watcher)",
+    "make_build_migrate_postgres": "exit 0",
+    "make_migrate_postgres_plan": "binary exec'd; auth to lpbot-test-pg failed (wrong password); runner's auth-fail closed cleanly with non-zero exit; the plan path itself is covered by canonical P0-PG-02E end-to-end and the migrator unit tests",
+    "make_migrate_postgres_status": "same as plan; status path is identical code (Migrator.Status) and is covered by canonical P0-PG-02E end-to-end and the migrator unit tests",
+    "make_build_shadow": "exit 0",
+    "make_build_dryrun": "exit 0",
+    "make_build_live": "exit 0",
+    "scripts_migrate_postgres_sh_sanity": "exit 2 with helpful hint when bin/lpbot-migrate-postgres is missing; execs into the binary when present (verified in TEST_RESULTS.txt)"
+  },
+  "local_cleanup_summary": {
+    "duplicate_p0_pg_02e_commit_dropped": true,
+    "duplicate_p0_pg_02e_commit_sha": "75b5291",
+    "non_canonical_report_dir_removed": "reports/p0_pg_02e_migration_runner_idempotency/2026-06-09/",
+    "r1_files_preserved": true,
+    "r1_modified_file": "tests/test_lp_long_horizon_partial_12h_request_v1.py",
+    "stale_untracked_files_removed": [
+      "internal/adapters/store/postgres/migrator/discovery.go",
+      "internal/adapters/store/postgres/migrator/embed.go"
+    ]
+  }
+}

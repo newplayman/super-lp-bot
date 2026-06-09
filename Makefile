@@ -13,7 +13,8 @@ GO_LDFLAGS := -X main.BuildCommit=$(BUILD_COMMIT) -X main.BuildDate=$(BUILD_DATE
         run-dryrun run-shadow run-live \
         backtest tidy clean \
         migrate-postgres migrate-postgres-plan migrate-postgres-status \
-        check-shadow-env-consistency
+        check-shadow-env-consistency \
+        check-postgres-migrations-sync
 
 tidy:
 	$(GO) mod tidy
@@ -54,6 +55,13 @@ audit-consistency:
 # Catches the kind of drift the P0-PG-01 audit flagged (BLK-PG-06).
 check-shadow-env-consistency:
 	./scripts/check_shadow_env_consistency.sh
+
+# Drift check: the Go runner's embed directory
+# (internal/adapters/store/postgres/migrator/sql/) must match
+# migrations/postgres/ exactly — same filenames, same count, same sha256.
+# Catches the kind of dual-source drift the P0-PG-01 audit flagged.
+check-postgres-migrations-sync:
+	./scripts/check_postgres_migrations_sync.sh
 
 canary-profitability-evidence:
 	./scripts/canary_profitability_evidence.sh

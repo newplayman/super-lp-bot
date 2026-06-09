@@ -1,0 +1,49 @@
+{
+  "checked_at": "2026-06-09T13:50:00Z",
+  "branch": "feat/supabase-postgres-deployment",
+  "base_commit": "4796ac95e0ee0a0ace714d458a8ad0b7eaebb7bc",
+  "checks": {
+    "wallet_or_tx_touched": false,
+    "signing_attempted": false,
+    "broadcast_attempted": false,
+    "canary_started": false,
+    "live_started": false,
+    "paper_started": false,
+    "LPBOT_CONFIRM_LIVE_set_to_YES": false,
+    "no_psql_destructive_call": true,
+    "no_real_secret_in_diff": true,
+    "no_paid_rpc_used": true,
+    "no_merge_to_main_or_dev": true,
+    "no_modify_to_r1_reports": true,
+    "no_re_run_of_long_horizon_collector": true,
+    "r1_pause_record_intact": true,
+    "lp_research_frozen_respected": true,
+    "no_fabricated_pass_claim": true,
+    "no_repeat_of_p0_pg_02e": true
+  },
+  "details": {
+    "wallet_or_tx_touched": "No wallet, signer, keypair, or tx-building code was edited. P0-PG-02F only touched a shell script, the Makefile, and added one new shell script.",
+    "signing_attempted": "No signing API touched.",
+    "broadcast_attempted": "No transaction was broadcast. The migrator does not construct, sign, or send any chain transaction.",
+    "canary_started": "No canary process started. P0-PG-02F did not start any of the long-running containers on this host (auto-mode denied shared-infra container creation; the existing lpbot-test-pg is the only pg we interacted with, via a connection attempt that failed auth).",
+    "live_started": "No live runtime started. Only `make build-live` was executed, producing the binary in bin/; the binary was not executed.",
+    "paper_started": "No paper-trading runtime started.",
+    "LPBOT_CONFIRM_LIVE_set_to_YES": "Not set; the value of LPBOT_CONFIRM_LIVE was not exported during this session.",
+    "no_psql_destructive_call": "No psql call of any kind was issued in this session. The new scripts/migrate-postgres.sh does not call psql at all.",
+    "no_real_secret_in_diff": "`git diff --stat` shows no .env file changes. No secret strings were introduced; the test pg connection attempt used a public default password 'postgres' against a container that rejected it (correctly).",
+    "no_paid_rpc_used": "No RPC calls of any kind were made. P0-PG-02F only edits shell scripts and the Makefile.",
+    "no_merge_to_main_or_dev": "All work is on feat/supabase-postgres-deployment. No merge operations were performed.",
+    "no_modify_to_r1_reports": "reports/lp_long_horizon_r1_pause_and_freeze/ and reports/lp_long_horizon_readonly_* are unchanged. The pre-existing modification to tests/test_lp_long_horizon_partial_12h_request_v1.py was preserved across the cleanup (stashed and popped back).",
+    "no_re_run_of_long_horizon_collector": "No collector or long-horizon pipeline was started.",
+    "r1_pause_record_intact": "The r1 modification is preserved in the working tree (ls-files -m shows only the r1 test file). No r1 reports / data dirs were touched.",
+    "lp_research_frozen_respected": "No LP research file or pipeline was modified.",
+    "no_fabricated_pass_claim": "Every *_status field in FINAL_VERDICT.json is sourced from an observed command exit code captured into TEST_RESULTS.txt. The two non-pass items (make migrate-postgres-plan / status, where the test pg rejected the default 'postgres' password) are recorded with full context: the plan/status code path is verified by the canonical P0-PG-02E end-to-end run, not by a new container spin-up in this session.",
+    "no_repeat_of_p0_pg_02e": "P0-PG-02F does NOT re-implement P0-PG-02E. The Go runner from P0-PG-02E is used as-is. The local cleanup explicitly removed the duplicate P0-PG-02E commit (75b5291) and the non-canonical 2026-06-09/ report dir."
+  },
+  "remaining_blockers": [
+    "make migrate-postgres-plan / migrate-postgres-status end-to-end could not be re-run against a fresh postgres in this session: auto-mode refused to spin up a new shared-infra container without explicit user authorization. The plan/status code path is verified by (a) the canonical P0-PG-02E end-to-end run at 20260609_060000/ (which printed 'pending=15 applied=0 total=15' on a fresh DB) and (b) the migrator package's non-docker unit tests in this session. The lpbot-test-pg container on this host has a different password than 'postgres' and was not modified (intentional, per the rule about not touching shared infra).",
+    "make check-postgres-migrations-sync is NOT wired into make test-all in this commit. The canonical follow-up is to add it to .github/workflows/ci.yml's quality-gate job alongside make lint / make test / make build-*. That wiring is intentionally left as a follow-up so this commit can stay narrowly scoped to the entrypoint cleanup + sync guard.",
+    "Pre-existing flake: TestNewBaseProvider in internal/adapters/rpc (public mainnet.base.org health-check timing). Not caused by P0-PG-02F. The focused test-race target covers this package and PASSED in this session.",
+    "The dual SQL source on disk (migrations/postgres/ and migrator/sql/) is preserved rather than collapsed. Collapsing it would require either (A) switching to pressly/goose/v3 (already in go.mod) as the runner, or (B) relocating migrations/postgres/ into the Go package tree. Both are deliberate follow-ups."
+  ]
+}

@@ -1,0 +1,62 @@
+CHANGED FILES — P0-PG-02F
+branch: feat/supabase-postgres-deployment
+base_commit: 4796ac95e0ee0a0ace714d458a8ad0b7eaebb7bc
+final_commit: (TBD at commit time; pre-commit is HEAD == base_commit,
+               all changes are working-tree)
+
+MODIFIED
+  scripts/migrate-postgres.sh
+    Before: 233 lines, 8546 bytes — independent awk/psql apply loop
+            with its own schema_migrations writes and its own
+            REQUIRED_TABLES list.
+    After:  45 lines, 1645 bytes — pure thin wrapper:
+              - resolves repo root
+              - asserts bin/lpbot-migrate-postgres exists, else hints
+                at make build-migrate-postgres and exits 2
+              - exec "${BIN}" "$@"
+            No SQL parsing, no psql, no env file auto-load, no
+            schema_migrations writes.
+
+  Makefile
+    .PHONY: added "check-postgres-migrations-sync" to the declared
+            targets.
+    New target:
+        check-postgres-migrations-sync:
+            ./scripts/check_postgres_migrations_sync.sh
+    Comment documents the dual-source drift it catches.
+
+NEW
+  scripts/check_postgres_migrations_sync.sh
+    Drift guard. Compares migrations/postgres/*.sql against
+    internal/adapters/store/postgres/migrator/sql/*.sql:
+      * both directories exist
+      * same filename list (lexically sorted)
+      * same SHA256 for every file
+    Exits 0 on full agreement, 1 on any drift; prints a unified diff
+    of the failing comparison to stderr.
+
+  reports/p0_pg_02f_migration_entrypoint_cleanup/2026-06-09/*.txt|*.md|*.json
+    Report artifacts for this stage.
+
+NOT TOUCHED
+  - migrations/postgres/*.sql
+  - internal/adapters/store/postgres/migrator/sql/*.sql
+  - internal/adapters/store/postgres/migrator/*.go  (canonical runner)
+  - cmd/lpbot-migrate-postgres/main.go
+  - configs/*.toml
+  - deploy/systemd/*.service
+  - tests/test_lp_long_horizon_partial_12h_request_v1.py  (R1 guard)
+
+LOCAL CLEANUP PERFORMED BEFORE P0-PG-02F EDITS
+  - git reset --soft origin/feat/supabase-postgres-deployment
+    (dropped duplicate P0-PG-02E commit 75b5291)
+  - git diff --cached --name-only | grep -v long_horizon | xargs -r
+    git reset HEAD --  (unstaged 73 duplicate files)
+  - rm internal/adapters/store/postgres/migrator/discovery.go
+     internal/adapters/store/postgres/migrator/embed.go
+    (deleted two untracked stale files from my session; remote's
+    layout uses migrations.go instead)
+  - rm -rf reports/p0_pg_02e_migration_runner_idempotency/2026-06-09
+    (removed the non-canonical report dir from my previous session)
+  - git stash pop  (restored the pre-existing r1 modification
+    that had been stashed to protect it across the reset)
