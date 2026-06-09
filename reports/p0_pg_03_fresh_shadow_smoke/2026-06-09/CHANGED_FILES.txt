@@ -1,9 +1,16 @@
 CHANGED FILES — P0-PG-03
 branch: feat/supabase-postgres-deployment
 base_commit: 883251bb87baf6a78053506c16aa6331ea2e4e99
-implementation_commit: (recorded at implementation-commit time)
-report_fill_commit:    (recorded at report-fill-commit time)
-final_commit:          (recorded at final-commit time)
+implementation_commit: 1addd9701c3e9fced4b35405f33127a8e8658b2f
+report_fill_commit:    6ae3564b4d5a3340bf0a929b5c046f01db33860c
+final_commit:          6ae3564b4d5a3340bf0a929b5c046f01db33860c
+
+Note on FINAL_VERDICT self-reference: the FINAL_VERDICT.json file
+inside commit 6ae3564 references `report_fill_commit:
+6ae3564...` and `final_commit: 6ae3564...` correctly. The earlier
+intermediate commit `fe689c6597e66c3b84413ca115f370177a63edf7`
+(reference for the chain-id-only update) was amended away; the
+authoritative values are the ones above.
 
 NEW
   configs/config.shadow.smoke.example.toml
