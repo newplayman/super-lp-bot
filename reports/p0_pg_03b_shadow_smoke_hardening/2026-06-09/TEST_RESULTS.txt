@@ -1,0 +1,131 @@
+TEST RESULTS — P0-PG-03B
+Captured 2026-06-09. Every command and exit code recorded verbatim.
+DSN password masked as *** in the report.
+
+=== make check-postgres-migrations-sync ===
+$ make check-postgres-migrations-sync
+./scripts/check_postgres_migrations_sync.sh
+sync OK: 15 file(s) match between .../migrations/postgres/ and .../migrator/sql/
+exit: 0
+
+=== fresh-DB migration verification ===
+$ POSTGRES_DSN="postgres://lpbot:***@127.0.0.1:54329/lpbot_smoke03b?sslmode=disable" \
+  make build-migrate-postgres
+exit: 0
+
+$ POSTGRES_DSN="..." make migrate-postgres-plan
+... 15 pending, 0 applied ...
+exit: 0
+
+$ POSTGRES_DSN="..." make migrate-postgres
+... ran: 15 ...
+exit: 0
+
+$ POSTGRES_DSN="..." make migrate-postgres-status
+... all_present=true ...
+exit: 0
+
+# cleanup
+$ PGPASSWORD=*** psql -h 127.0.0.1 -p 54329 -U lpbot -d postgres \
+    -c "DROP DATABASE lpbot_smoke03b;"
+DROP DATABASE
+
+=== make build-shadow / build-dryrun / build-live ===
+$ make build-shadow
+go build -ldflags "..." -tags=shadow -o bin/lpbot-shadow ./cmd/lpbot
+exit: 0
+
+$ make build-dryrun
+go build -ldflags "..." -tags=dryrun -o bin/lpbot-dryrun ./cmd/lpbot
+exit: 0
+
+$ make build-live
+go build -ldflags "..." -tags=live -o bin/lpbot-live ./cmd/lpbot
+exit: 0
+
+(Only the shadow binary was executed; dryrun / live were built but
+not run.)
+
+=== shadow binary hardened smoke (5 minutes, no-RPC) ===
+$ SMOKE_DURATION_SECONDS=300 \
+  POSTGRES_DSN="postgres://lpbot:***@127.0.0.1:54329/lpbot_smoke03b?sslmode=disable" \
+  REDIS_URL="redis://127.0.0.1:16381/0" \
+  scripts/run_shadow_smoke.sh --config configs/config.shadow.smoke.toml \
+      --duration 300 --log-dir reports/p0_pg_03b_shadow_smoke_hardening/2026-06-09
+shadow_smoke: started_at=2026-06-09T17:26:19Z
+shadow_smoke: ended_at=2026-06-09T17:31:19Z
+shadow_smoke: exit_code=124 (normalized to 0)
+exit: 0
+
+=== log evidence (key lines) ===
+$ grep -E "smoke_no_rpc_mode|base_rpc_initialization|schema_guard" \
+    reports/p0_pg_03b_shadow_smoke_hardening/2026-06-09/SHADOW_SMOKE_RUN_LOG.txt
+"smoke_no_rpc_mode=true; base_rpc_initialization=skipped"     main.go:671
+"smoke_no_rpc_mode=true; solana_rpc_initialization=skipped"   main.go:718
+"schema_guard=ok backend=postgres" checked_relations=9        main.go:896
+
+$ grep -E "mainnet\.base|base\.drpc|mainnet-preconf|api\.mainnet\.solana" \
+    reports/p0_pg_03b_shadow_smoke_hardening/2026-06-09/SHADOW_SMOKE_RUN_LOG.txt
+(empty — the binary never reached any chain endpoint)
+
+$ grep -E "QuickNode|QUICKNODE" \
+    reports/p0_pg_03b_shadow_smoke_hardening/2026-06-09/SHADOW_SMOKE_RUN_LOG.txt
+(empty)
+
+=== shadow smoke safety check ===
+$ SMOKE_LOG_DIR="reports/p0_pg_03b_shadow_smoke_hardening/2026-06-09" \
+  bash scripts/check_shadow_smoke_safety.sh
+shadow_smoke_safety: forbidden_pattern_violations=0
+shadow_smoke_safety: missing_required_substrings=0
+shadow_smoke_safety: OK
+exit: 0
+
+# post-smoke daemon check
+$ ps aux | grep lpbot-shadow | grep -v grep
+(empty)
+
+# post-smoke fresh redis cleanup
+$ docker rm -f lpbot-smoke03b-redis
+lpbot-smoke03b-redis
+
+=== go test ./internal/adapters/store/postgres/... ===
+$ go test -count=1 ./internal/adapters/store/postgres/...
+ok  	github.com/lpbot/lpbot/internal/adapters/store/postgres	13.9s
+ok  	github.com/lpbot/lpbot/internal/adapters/store/postgres/migrator	0.02s
+exit: 0
+
+=== go test ./... ===
+$ go test -count=1 -timeout 15m ./...
+ok  	github.com/lpbot/lpbot/adapters/broadcast/disabled
+ok  	github.com/lpbot/lpbot/cmd/lpbot
+ok  	github.com/lpbot/lpbot/cmd/lpbot-backtest
+ok  	github.com/lpbot/lpbot/internal/adapters/...
+ok  	github.com/lpbot/lpbot/internal/core/...
+ok  	github.com/lpbot/lpbot/internal/domain
+ok  	github.com/lpbot/lpbot/internal/platform/...
+ok  	github.com/lpbot/lpbot/internal/ports
+ok  	github.com/lpbot/lpbot/pkg/...
+ok  	github.com/lpbot/lpbot/tests/chaos
+ok  	github.com/lpbot/lpbot/tests/property
+exit: 0
+
+=== make test-race ===
+$ make test-race
+go test -race -count=1 ./internal/adapters/store/postgres ./internal/adapters/rpc
+ok  	github.com/lpbot/lpbot/internal/adapters/store/postgres	10.601s
+ok  	github.com/lpbot/lpbot/internal/adapters/rpc	8.312s
+exit: 0
+
+=== make quality-gate ===
+$ make quality-gate
+... check-postgres-migrations-sync OK ...
+... full test suite OK ...
+exit: 0
+
+=== summary ===
+PASS : 14 (sync check, build-migrate, pre-apply plan, apply,
+         post-apply plan, status, build-shadow, build-dryrun,
+         build-live, 5-min hardened shadow smoke, safety check,
+         go test postgres, go test ./..., test-race, quality-gate)
+SKIP: 0
+FAIL: 0

@@ -1,0 +1,72 @@
+CHANGED FILES — P0-PG-03B
+branch: feat/supabase-postgres-deployment
+base_commit: 672b514586b9ac7842bc62ded6543bb7c9a70b19
+implementation_commit: (recorded at implementation-commit time)
+report_fill_commit:    (recorded at report-fill-commit time)
+final_commit:          (recorded at final-commit time)
+
+MODIFIED
+  cmd/lpbot/main.go
+    - Added isSmokeNoRPCEnabled() helper. Pure function; reads env
+      LPBOT_SMOKE_NO_RPC (1 / true => enabled).
+    - Added shadow no-RPC gate before constructing the base endpoint
+      list: when BuildMode == "shadow" AND the env var is enabled,
+      the base + solana endpoint lists stay empty and the binary
+      logs `smoke_no_rpc_mode=true; base_rpc_initialization=skipped`
+      (and the solana counterpart). The hardcoded public RPC
+      fallback + QuickNode discovery are skipped in that mode.
+    - Added runShadowSchemaGuard() method. Runs the existing
+      loadLiveSchemaState + validateLiveSchemaState pair against
+      the postgres store and emits `schema_guard=ok backend=postgres
+      checked_relations=N` on success (N=9) or `schema_guard=fail`
+      on missing tables. Called from initAdapters when the store
+      backend is postgres (parallel to ensureLiveSchema, which is
+      execution-mode-only).
+
+  configs/config.shadow.smoke.example.toml
+    - Header updated to reference P0-PG-03B and the no-RPC env var.
+    - Comment under [chains.base] updated to mention
+      LPBOT_SMOKE_NO_RPC=1 explicitly.
+
+  scripts/run_shadow_smoke.sh
+    - Default LOG_DIR now reports/p0_pg_03b_shadow_smoke_hardening
+      (was p0_pg_03_fresh_shadow_smoke).
+    - Default LPBOT_SMOKE_NO_RPC=1; exported into the binary's
+      environment; logged at start.
+    - Help text updated to document LPBOT_SMOKE_NO_RPC.
+
+  scripts/check_shadow_smoke_safety.sh
+    - Required positive substrings now include schema_guard=ok,
+      smoke_no_rpc_mode=true, base_rpc_initialization=skipped.
+    - Removed the obsolete comment claiming schema-guard was already
+      checked (it was not; the previous version only grep'd for the
+      shadow banner + metrics line).
+    - Optional: greps for solana_rpc_initialization=skipped and
+      reports it as informational, not required.
+
+NEW
+  reports/p0_pg_03b_shadow_smoke_hardening/2026-06-09/*.md|*.json|*.txt
+    Report artifacts for this stage.
+
+NOT TOUCHED
+  - migrations/postgres/*.sql
+  - internal/adapters/store/postgres/migrator/sql/*.sql
+  - internal/adapters/store/postgres/migrator/*.go
+  - cmd/lpbot-migrate-postgres/main.go
+  - scripts/migrate-postgres.sh
+  - scripts/check_postgres_migrations_sync.sh
+  - internal/adapters/rpc/roundrobin.go
+    (the no-RPC mode bypasses the constructor; the hardcoded public
+    endpoint constants remain in place for live / dryrun / shadow
+    without no-RPC mode)
+  - internal/adapters/store/postgres/*.go
+  - Makefile
+  - .github/workflows/*
+  - tests/test_lp_long_horizon_partial_12h_request_v1.py  (R1 guard,
+    preserved as a working-tree modification per the r1-protection rule)
+
+PRE-EXISTING PRESERVED FILES (NOT in this commit)
+  tests/test_lp_long_horizon_partial_12h_request_v1.py
+    Modification present at the start of this stage, untouched by
+    the stage. Will remain a working-tree modification unless an
+    explicit follow-up decides to commit it.

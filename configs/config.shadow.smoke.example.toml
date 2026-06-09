@@ -1,15 +1,16 @@
 # config.shadow.smoke.example.toml
 #
-# Test-only shadow configuration for P0-PG-03 (fresh shadow smoke).
-# Mirrors configs/config.shadow.toml but points at the fresh test DB
-# (lpbot_smoke03) created on the existing test pg container, leaves
-# all RPC endpoints empty so the binary never makes an outbound chain
-# call, and disables alerting / dashboarding so the smoke has no
-# external dependencies beyond the local pg + redis.
+# Test-only shadow configuration for P0-PG-03B (hardened fresh shadow
+# smoke). Mirrors configs/config.shadow.toml but points at the fresh
+# test DB created on the existing test pg container, leaves all RPC
+# endpoints empty, disables alerting / dashboarding, and is paired with
+# the LPBOT_SMOKE_NO_RPC=1 env var so the binary does NOT make any
+# outbound chain call (no fallback to the hardcoded public Base RPC
+# list, no QuickNode discovery, no health probe).
 #
 # This is an EXAMPLE template: copy to configs/config.shadow.smoke.toml
 # (not in VCS) and substitute DSN / redis URL. The example below
-# references the local fixtures used by P0-PG-03; a real operator
+# references the local fixtures used by P0-PG-03B; a real operator
 # should adjust to their own test environment.
 
 [mode]
@@ -28,8 +29,11 @@ telegram_chat_id = ""
 min_interval_seconds = 60
 
 [chains.base]
-# Smoke: no RPC. lpbot-shadow with empty rpc_primary will skip base
-# reads per the canonical shadow config comments.
+# Smoke: no RPC. The smoke also sets LPBOT_SMOKE_NO_RPC=1 in its env
+# (see scripts/run_shadow_smoke.sh). With that env var set, the
+# binary skips the hardcoded public-RPC fallback and the QuickNode
+# discovery path entirely, so the smoke binary never opens a
+# connection to any chain endpoint.
 rpc_primary = ""
 rpc_fallback = []
 ws = ""

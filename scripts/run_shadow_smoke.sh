@@ -19,7 +19,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CONFIG="${SMOKE_CONFIG:-${ROOT_DIR}/configs/config.shadow.smoke.toml}"
-LOG_DIR="${ROOT_DIR}/reports/p0_pg_03_fresh_shadow_smoke"
+LOG_DIR="${ROOT_DIR}/reports/p0_pg_03b_shadow_smoke_hardening"
 DURATION_SECONDS="${SMOKE_DURATION_SECONDS:-600}"  # 10 minutes
 BIN="${ROOT_DIR}/bin/lpbot-shadow"
 
@@ -34,7 +34,8 @@ usage: $0 [options]
                            (default: reports/p0_pg_03_fresh_shadow_smoke)
   -h, --help               show this help
 
-Environment overrides: SMOKE_CONFIG, SMOKE_DURATION_SECONDS, SMOKE_LOG_DIR.
+Environment overrides: SMOKE_CONFIG, SMOKE_DURATION_SECONDS, SMOKE_LOG_DIR,
+LPBOT_SMOKE_NO_RPC (default: 1, set to 0 to disable no-RPC smoke mode).
 EOF
 }
 
@@ -89,11 +90,19 @@ echo "shadow_smoke: duration=${DURATION_SECONDS}s"                       | tee -
 echo "shadow_smoke: log=${LOG_FILE}"                                    | tee -a "${LOG_FILE}"
 echo "shadow_smoke: cmd=${BIN} --config=${CONFIG}"                      | tee -a "${LOG_FILE}"
 echo "shadow_smoke: started_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"          | tee -a "${LOG_FILE}"
+echo "shadow_smoke: LPBOT_SMOKE_NO_RPC=${LPBOT_SMOKE_NO_RPC:-<unset>}" | tee -a "${LOG_FILE}"
+
+# P0-PG-03B: enable no-RPC mode by default. Operators can override to
+# empty or 0 to fall back to the canonical (public-RPC-fallback)
+# behavior, but the smoke's own safety check now requires the
+# no-RPC lines to be present in the log.
+export LPBOT_SMOKE_NO_RPC="${LPBOT_SMOKE_NO_RPC:-1}"
 
 # Bounded run via timeout(1). 124 on timeout is captured but treated
 # as a successful (planned) end by the safety check.
 set +e
 timeout --foreground "${DURATION_SECONDS}" \
+  env LPBOT_SMOKE_NO_RPC="${LPBOT_SMOKE_NO_RPC}" \
   "${BIN}" --config="${CONFIG}" 2>&1 | tee -a "${LOG_FILE}"
 EXIT=${PIPESTATUS[0]}
 set -e

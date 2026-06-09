@@ -519,6 +519,20 @@ func sanitizeEndpointForLog(value string) string {
 	return fmt.Sprintf("%s#%s", host, hex.EncodeToString(sum[:])[:8])
 }
 
+// isSmokeNoRPCEnabled returns true when the smoke wants to suppress all
+// chain RPC initialization. Honored only when the binary is built with
+// the shadow tag (the call site also checks BuildMode). The env var is
+// LPBOT_SMOKE_NO_RPC; values "1" and "true" (case-insensitive) enable
+// the mode. Any other value, including unset, leaves normal RPC init
+// in place.
+//
+// This is intentionally a tiny pure helper so future tests can assert
+// on the env var contract without spinning up the full adapter.
+func isSmokeNoRPCEnabled() bool {
+	v := strings.ToLower(strings.TrimSpace(os.Getenv("LPBOT_SMOKE_NO_RPC")))
+	return v == "1" || v == "true"
+}
+
 func pctOrDefault(value int, fallback string) domain.Decimal {
 	if value <= 0 {
 		return domain.MustDecimal(fallback)
@@ -639,10 +653,29 @@ func (app *App) initAdapters(ctx context.Context) error {
 	// Initialize RPC providers for each chain
 	app.rpc = make(map[string]*rpc.RoundRobinProvider)
 
-	baseEndpoints := append([]string{}, app.config.Chains.Base.RPCPrimary)
-	baseEndpoints = append(baseEndpoints, app.config.Chains.Base.RPCFallback...)
-	baseEndpoints = append(baseEndpoints, rpc.BasePublicEndpoints...)
-	baseEndpoints = append(baseEndpoints, rpc.BaseEndpoints...)
+	// No-RPC smoke mode. Honored ONLY when all of the following hold:
+	//   1. BuildMode == "shadow" (set by mode_shadow.go at startup).
+	//   2. LPBOT_SMOKE_NO_RPC env var is set to "1" or "true".
+	// It suppresses the hardcoded public-RPC fallback (rpc.BaseEndpoints,
+	// rpc.BasePublicEndpoints) and any QuickNode discovery. The shadow
+	// binary still starts, still wires workers, still runs the strategy
+	// loop, but does NOT touch the chain at all.
+	//
+	// This is the only path that lets P0-PG-03B verify shadow smoke
+	// without a single outbound RPC call. Live / canary paths are
+	// untouched (they do not check this env var).
+	noRPCSmokeMode := BuildMode == "shadow" && isSmokeNoRPCEnabled()
+
+	var baseEndpoints []string
+	if noRPCSmokeMode {
+		app.logger.Info("smoke_no_rpc_mode=true; base_rpc_initialization=skipped")
+		// Intentionally empty: no providers registered for "base".
+	} else {
+		baseEndpoints = append([]string{}, app.config.Chains.Base.RPCPrimary)
+		baseEndpoints = append(baseEndpoints, app.config.Chains.Base.RPCFallback...)
+		baseEndpoints = append(baseEndpoints, rpc.BasePublicEndpoints...)
+		baseEndpoints = append(baseEndpoints, rpc.BaseEndpoints...)
+	}
 	quickNodeHTTP := &http.Client{Timeout: 5 * time.Second}
 	quickNodeAPIKey := rpc.ResolveQuickNodeAPIKey()
 	var quickNodeDiscovered []rpc.QuickNodeEndpoint
@@ -681,10 +714,14 @@ func (app *App) initAdapters(ctx context.Context) error {
 	}
 
 	solanaEndpoints := make([]string, 0, 2)
-	if primary := strings.TrimSpace(app.config.Chains.Solana.RPCPrimary); primary != "" {
-		solanaEndpoints = append(solanaEndpoints, primary)
+	if noRPCSmokeMode {
+		app.logger.Info("smoke_no_rpc_mode=true; solana_rpc_initialization=skipped")
+	} else {
+		if primary := strings.TrimSpace(app.config.Chains.Solana.RPCPrimary); primary != "" {
+			solanaEndpoints = append(solanaEndpoints, primary)
+		}
+		solanaEndpoints = append(solanaEndpoints, rpc.PickQuickNodeHTTPEndpoints(quickNodeDiscovered, "solana")...)
 	}
-	solanaEndpoints = append(solanaEndpoints, rpc.PickQuickNodeHTTPEndpoints(quickNodeDiscovered, "solana")...)
 	if len(solanaEndpoints) > 0 {
 		provider, err := rpc.NewRoundRobinProvider(rpc.Config{
 			ChainID:   domain.ChainSolana,
@@ -751,6 +788,21 @@ func (app *App) initAdapters(ctx context.Context) error {
 	if err := app.ensureShadowExitActionsTable(ctx); err != nil {
 		return fmt.Errorf("failed to initialize exit action schema: %w", err)
 	}
+
+	// Shadow-mode schema guard. P0-PG-03B (LP_BOT_ENGINEERING_P0_PG_03B)
+	// added this so the smoke can assert that all required shadow tables
+	// exist. The live-mode schema guard (ensureLiveSchema above) only
+	// runs when the live safety gate considers the build mode "execution";
+	// shadow mode is not execution, so we duplicate the check here and
+	// log a single structured `schema_guard=ok` line on success.
+	//
+	// This call uses the same loadLiveSchemaState + validateLiveSchemaState
+	// pair the live path uses, so the table list stays in sync.
+	if backend == "postgres" || backend == "postgresql" || backend == "pg" {
+		if err := app.runShadowSchemaGuard(ctx); err != nil {
+			return fmt.Errorf("shadow schema guard failed: %w", err)
+		}
+	}
 	if err := app.ensureShadowOutcomeLabelsTable(ctx); err != nil {
 		return fmt.Errorf("failed to initialize shadow outcome schema: %w", err)
 	}
@@ -807,6 +859,43 @@ func (app *App) ensureLiveSchema(ctx context.Context) error {
 		return err
 	}
 	return validateLiveSchemaState(state)
+}
+
+// runShadowSchemaGuard verifies that the postgres backend has every
+// required shadow / live relation. It logs `schema_guard=ok` on success
+// (the P0-PG-03B smoke safety check greps for this string) and returns
+// an error if any required relation is missing. The table list is the
+// same one loadLiveSchemaState uses, so the live and shadow guards
+// stay in sync.
+func (app *App) runShadowSchemaGuard(ctx context.Context) error {
+	if app == nil || app.config == nil {
+		return fmt.Errorf("shadow schema guard requires initialized app + config")
+	}
+	backend := strings.ToLower(strings.TrimSpace(app.config.Store.Backend))
+	if backend != "postgres" && backend != "postgresql" && backend != "pg" {
+		// Nothing to verify against a non-postgres store.
+		app.logger.Info("schema_guard=ok backend=non-postgres")
+		return nil
+	}
+	dbStore, ok := any(app.store).(interface{ DB() *sql.DB })
+	if !ok || dbStore.DB() == nil {
+		return fmt.Errorf("shadow schema guard requires postgres store with DB access")
+	}
+	state, err := loadLiveSchemaState(ctx, dbStore.DB())
+	if err != nil {
+		return err
+	}
+	if err := validateLiveSchemaState(state); err != nil {
+		// Surface the missing tables so the smoke log includes them;
+		// the smoke safety check will fail on missing schema_guard=ok.
+		app.logger.Error("schema_guard=fail",
+			zap.String("backend", backend),
+			zap.Error(err))
+		return err
+	}
+	app.logger.Info("schema_guard=ok backend=postgres",
+		zap.Int("checked_relations", len(state)))
+	return nil
 }
 
 func loadLiveSchemaState(ctx context.Context, db *sql.DB) (map[string]bool, error) {
