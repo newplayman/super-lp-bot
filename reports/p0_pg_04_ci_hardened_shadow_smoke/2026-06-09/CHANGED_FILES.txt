@@ -1,9 +1,19 @@
 CHANGED FILES — P0-PG-04
 branch: feat/supabase-postgres-deployment
 base_commit: e707152faa72bdc9f9c2faed91e18a7229e746b0
-implementation_commit: (recorded at implementation-commit time)
-report_fill_commit:    (recorded at report-fill-commit time)
-final_commit:          (recorded at final-commit time)
+implementation_commit: 4a6656c9fd043fe8fd74b2b92a01b5aeb230bad9
+report_fill_commit:    c041766326dbd060d88c223c270c8b2b20467b0f
+final_commit:          c041766326dbd060d88c223c270c8b2b20467b0f
+
+Note on FINAL_VERDICT self-reference: the FINAL_VERDICT.json file
+inside commit c041766 references `report_fill_commit:
+3e6808f...` and `final_commit: 3e6808f...` — those values reflect
+the SHA BEFORE the amend that added the 3-line SHA fields to the
+file. The amend itself is a normal "update last-minute detail"
+operation; the file in the canonical commit c041766 contains the
+updated SHA fields. Same pattern as P0-PG-03 and P0-PG-03B;
+authoritative for ChatGPT reviewers is the FINAL_VERDICT inside the
+final_commit pointed-to by this CHANGED_FILES.txt.
 
 NEW
   .github/workflows/shadow-smoke-gate.yml
