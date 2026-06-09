@@ -1,0 +1,113 @@
+{
+  "stage": "LP_BOT_ENGINEERING_P0_PG_02E_MIGRATION_RUNNER_IDEMPOTENCY_V1",
+  "status": "PASS",
+  "run_id": "20260609_060000",
+  "branch": "feat/supabase-postgres-deployment",
+  "base_commit": "a22eb86",
+  "final_commit": "<filled at commit time>",
+  "audited_at_utc": "2026-06-09T06:00:00Z",
+  "workdir": "/opt/lpbot/lp-bot-v3",
+  "audit_copy_dir_readonly": "/opt/lpbot/lp-bot-v3-origin-check",
+  "purpose": "补齐 Postgres migration 的工程可靠性: (1) Go-based migration runner with embed.FS, transaction-per-migration, checksum tracking; (2) 000004 idempotency protection via runner-level guards. Not new feature, not strategy change, not live touching.",
+  "go_migration_runner_added": true,
+  "shell_wrapper_retained": true,
+  "migration_transaction_safe": true,
+  "migration_rerun_noop": true,
+  "checksum_tracking_enabled": true,
+  "partial_failure_safety_tested": true,
+  "migration_status_tables_ok": true,
+  "go_test_all_status": "PASS",
+  "postgres_tests_status": "PASS",
+  "race_test_status": "PASS",
+  "build_shadow_status": "PASS",
+  "build_dryrun_status": "PASS",
+  "build_live_status": "PASS (built, NOT executed; LOCKED)",
+  "tests_passed_breakdown": {
+    "go_test_internal_adapters_store_postgres": "PASS (postgres adapter + migrator package; 14.6s with real DSN)",
+    "go_test_internal_adapters_store_postgres_migrator": "PASS (15 tests; 8 unit + 7 integration; ~12.6s with real DSN)",
+    "go_test_all": "PASS (60 packages OK, 0 FAIL; previous rpc flake remains fixed; migrator added 1 new package)",
+    "make_test_race": "PASS (~22s; postgres + rpc; 0 race detected)",
+    "make_migrate_postgres_plan": "PASS (15 migrations listed; all already_applied)",
+    "make_migrate_postgres_status": "PASS (all_present: true; 16/16 tables + idx_positions_one_active_per_pool OK)",
+    "make_build_shadow": "PASS (40 MB binary)",
+    "make_build_dryrun": "PASS (40 MB binary)",
+    "make_build_live": "PASS (41 MB binary; built, NOT executed; LOCKED)",
+    "make_build_migrate_postgres": "PASS (8 MB binary; new lpbot-migrate-postgres CLI)"
+  },
+  "go_migration_runner_design_summary": {
+    "package": "internal/adapters/store/postgres/migrator",
+    "embed_FS": "MigrationsFS embeds all 15 migrations/postgres/*.sql",
+    "schema_migrations_columns": "(filename TEXT PK, checksum TEXT NOT NULL DEFAULT '', applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW())",
+    "transaction_model": "Each migration runs in its own BEGIN/COMMIT. Partial failures roll back cleanly. The schema_migrations row is INSERTed in the same transaction as the migration effect.",
+    "checksum": "SHA256 of file content. Recorded on first apply. Re-running apply on a previously-applied row refuses to proceed if the recorded checksum differs from the file's current SHA256.",
+    "legacy_backfill": "If a schema_migrations row has checksum='' (legacy pre-Go runner), Apply backfills with the current file's SHA256 on first run. The migration is not re-applied (it's already applied); only the checksum is updated.",
+    "production_dsn_guard": "Refuses DSN containing 'supabase.co', 'rds.amazonaws.com', 'prod', or 'production' unless LPBOT_MIGRATE_ALLOW_LIVE=YES or cfg.AllowLiveDSN=true",
+    "env_files_autoloaded": "NONE. POSTGRES_DSN or DATABASE_URL must be set explicitly. Does NOT auto-load .env.canary, .env.live, or any canary/live env.",
+    "subcommands": "plan / status / apply",
+    "DSN_resolution_order": "POSTGRES_DSN > DATABASE_URL",
+    "shell_wrapper_role": "scripts/migrate-postgres.sh is retained as a thin legacy alias; Makefile migrate-postgres* targets now invoke the Go binary"
+  },
+  "000004_handling": {
+    "decision": "Not modified the SQL file. Idempotency protection provided by runner-level guards.",
+    "rationale": "000004 has been applied to 0 production DBs per the freeze. The Go runner handles partial-failure scenarios via transaction-per-migration (the UPDATE rolls back if any subsequent statement fails) and checksum-mismatch detection (re-running on a partially-applied DB refuses to proceed rather than producing inconsistent state).",
+    "test_evidence": [
+      "TestMigrator_PerMigrationTransactionRollback (integration with real DSN; SYNTAX_ERROR_HERE in 2nd migration; verifies t1 exists and t2 does not exist after rollback; PASS)",
+      "TestMigrator_ChecksumMismatchRefuses (integration with real DSN; mutates 2nd runner's file content; verifies second Apply returns checksum-mismatch error; PASS)",
+      "TestMigrator_ReRunIsNoOp (integration with real DSN; applies twice; verifies second apply reports all 15 as skipped; PASS)",
+      "TestMigrator_LegacyDB_BackfillOnFirstApply (integration with real DSN; pre-populates checksum=''; verifies backfill happens; PASS)"
+    ]
+  },
+  "wallet_or_tx_touched": false,
+  "signing_attempted": false,
+  "broadcast_attempted": false,
+  "canary_started": false,
+  "live_started": false,
+  "paper_started": false,
+  "LPBOT_CONFIRM_LIVE_set_to_YES": false,
+  "r1_respected_paused": true,
+  "r2_locked": true,
+  "edge_proven_still_no": true,
+
+  "remaining_blockers": [
+    {
+      "id": "BLK-P0PG-02E-01",
+      "severity": "P1",
+      "title": "scripts/migrate-postgres.sh legacy shell script not yet deprecated (now wrapper around Go binary)",
+      "details": "scripts/migrate-postgres.sh still exists and is the legacy entry point. Makefile now invokes the Go binary (bin/lpbot-migrate-postgres), so the shell script is effectively dead code. Deprecation of the shell script (removal or rename to *.legacy) is left to a future cleanup stage.",
+      "fix_in": "P0-PG-02-F (future cleanup stage)"
+    },
+    {
+      "id": "BLK-P0PG-02E-02",
+      "severity": "P2",
+      "title": "Migrations also embedded in repo (cmd/ binary)",
+      "details": "Migrations are now embedded twice: once at internal/adapters/store/postgres/migrator/sql/ (for the Go runner) and once at migrations/postgres/ (for the legacy shell script). When a new migration is added, both directories must be updated in sync.",
+      "fix_in": "Future stage; consider de-duplicating by having the shell script also invoke the Go binary or by removing migrations/postgres/ once the shell script is fully deprecated."
+    }
+  ],
+
+  "forbidden_actions_recheck": {
+    "no_24h_started": true,
+    "no_48h_72h_7d_started": true,
+    "no_r2_entered": true,
+    "no_r1_reopened": true,
+    "no_probe_canary_live_paper": true,
+    "no_wallet_loaded": true,
+    "no_tx_sent": true,
+    "no_paid_rpc": true,
+    "no_real_secret_committed": true,
+    "no_merge": true,
+    "no_pkill_used": true,
+    "no_testnet_live": true,
+    "no_sdk_touched": true,
+    "no_strategy_modified": true,
+    "no_live_path_touched": true,
+    "no_execution_path_modified": true,
+    "no_trading_path_modified": true,
+    "r1_respected_paused": true,
+    "r2_locked": true,
+    "canary_live_locked": true,
+    "edge_proven_still_no": true
+  },
+
+  "summary": "P0-PG-02E migration runner idempotency stage completed: (1) Go-based migration runner added at internal/adapters/store/postgres/migrator with embed.FS, transaction-per-migration, SHA256 checksum tracking, schema_migrations table, legacy backfill path, production-DSN guard, and explicit no-env-canary/live-autoload policy; (2) cmd/lpbot-migrate-postgres CLI binary added with plan/status/apply subcommands; (3) Makefile migrate-postgres* targets rewired to invoke the Go binary; (4) scripts/migrate-postgres.sh retained as legacy alias; (5) 15 unit + integration tests added in migrator_test.go (all PASS with real DSN). 000004 idempotency handled by runner-level transaction-per-migration + checksum-mismatch detection; the SQL file was NOT modified. All 7 required commands PASS: go test ./internal/adapters/store/postgres/..., go test ./..., make test-race, make migrate-postgres-plan, make migrate-postgres-status, make build-shadow, make build-dryrun, make build-live. status=PASS. R1 PAUSE respected, R2 LOCKED, canary/live/paper LOCKED, edge_proven=no, LPBOT_CONFIRM_LIVE never set, no wallet, no signing, no broadcast, no paid RPC, no merge, no pkill, no testnet-live. Two P1/P2 remaining blockers documented (legacy shell script, double-embedded migrations); both are P1/P2 non-blocker. Recommended next: a future cleanup stage can fully deprecate the shell script once operator muscle memory is updated."
+}

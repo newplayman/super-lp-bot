@@ -1,0 +1,4 @@
+ M Makefile
+?? cmd/lpbot-migrate-postgres/
+?? internal/adapters/store/postgres/migrator/
+?? reports/p0_pg_02e_migration_runner_idempotency/

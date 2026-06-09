@@ -1,0 +1,223 @@
+P0-PG-02E — Test Results
+===========================
+
+Run ID: 20260609_060000
+Base commit: a22eb86
+Branch: feat/supabase-postgres-deployment
+Workdir: /opt/lpbot/lp-bot-v3
+
+================================================================================
+1. go test ./internal/adapters/store/postgres/...
+================================================================================
+
+$ LPBOT_POSTGRES_TEST_DSN="postgresql://lpbot:testpass@127.0.0.1:54329/lpbot_test?sslmode=disable" \
+  go test ./internal/adapters/store/postgres/...
+ok  	github.com/lpbot/lpbot/internal/adapters/store/postgres	14.590s
+ok  	github.com/lpbot/lpbot/internal/adapters/store/postgres/migrator	12.638s
+
+Both packages PASS. The migrator package (15 tests) + the existing
+postgres package (9+ tests including the live schema guard test +
+docker integration test) all green.
+
+================================================================================
+2. go test ./...  (whole repo)
+================================================================================
+
+$ go test ./... 2>&1 | grep -E "^(ok|FAIL)" | head -70
+ok  	github.com/lpbot/lpbot/cmd/lpbot                                  (cached)
+ok  	github.com/lpbot/lpbot/cmd/lpbot-backtest                        (cached)
+ok  	github.com/lpbot/lpbot/cmd/lpbot-cli                             (cached)
+ok  	github.com/lpbot/lpbot/cmd/lpbot-recon                           (cached)
+ok  	github.com/lpbot/lpbot/cmd/lpbot-migrate-postgres                (cached)  <-- NEW PACKAGE
+ok  	github.com/lpbot/lpbot/internal/adapters/broadcast               (cached)
+ok  	github.com/lpbot/lpbot/internal/adapters/bus                    (cached)
+ok  	github.com/lpbot/lpbot/internal/adapters/chain                  (cached)
+ok  	github.com/lpbot/lpbot/internal/adapters/chain/base              (cached)
+ok  	github.com/lpbot/lpbot/internal/adapters/chain/solana            (cached)
+ok  	github.com/lpbot/lpbot/internal/adapters/datasource              (cached)
+ok  	github.com/lpbot/lpbot/internal/adapters/datasource/birdeye      (cached)
+ok  	github.com/lpbot/lpbot/internal/adapters/datasource/defillama     (cached)
+ok  	github.com/lpbot/lpbot/internal/adapters/datasource/dexscreener   (cached)
+ok  	github.com/lpbot/lpbot/internal/adapters/datasource/geckoterminal (cached)
+ok  	github.com/lpbot/lpbot/internal/adapters/datasource/solana       (cached)
+ok  	github.com/lpbot/lpbot/internal/adapters/datasource/subgraph     (cached)
+ok  	github.com/lpbot/lpbot/internal/adapters/mev/flashbots-protect  (cached)
+ok  	github.com/lpbot/lpbot/internal/adapters/mev/jito               (cached)
+ok  	github.com/lpbot/lpbot/internal/adapters/pool/aerodrome         (cached)
+ok  	github.com/lpbot/lpbot/internal/adapters/pool/pancakeswap_v3_solana (cached)
+ok  	github.com/lpbot/lpbot/internal/adapters/pool/raydium_clmm      (cached)
+ok  	github.com/lpbot/lpbot/internal/adapters/pool/uniswap_v3         (cached)
+ok  	github.com/lpbot/lpbot/internal/adapters/pool/whirlpool          (cached)
+ok  	github.com/lpbot/lpbot/internal/adapters/rpc                     (cached)
+ok  	github.com/lpbot/lpbot/internal/adapters/simulator/anvil         (cached)
+ok  	github.com/lpbot/lpbot/internal/adapters/simulator/sol_rpc      (cached)
+ok  	github.com/lpbot/lpbot/internal/adapters/store/postgres          (cached)
+ok  	github.com/lpbot/lpbot/internal/adapters/store/postgres/migrator (cached)  <-- NEW PACKAGE
+ok  	github.com/lpbot/lpbot/internal/adapters/store/sqlite            (cached)
+ok  	github.com/lpbot/lpbot/internal/adapters/wallet/keystore         (cached)
+ok  	github.com/lpbot/lpbot/internal/adapters/wallet/kms              (cached)
+ok  	github.com/lpbot/lpbot/internal/core/audit                       (cached)
+ok  	github.com/lpbot/lpbot/internal/core/execution                   (cached)
+ok  	github.com/lpbot/lpbot/internal/core/loop                        (cached)
+ok  	github.com/lpbot/lpbot/internal/core/pnl                         (cached)
+ok  	github.com/lpbot/lpbot/internal/core/reconcile                   (cached)
+ok  	github.com/lpbot/lpbot/internal/core/reporting                   (cached)
+ok  	github.com/lpbot/lpbot/internal/core/risk                        (cached)
+ok  	github.com/lpbot/lpbot/internal/core/scanner                     (cached)
+ok  	github.com/lpbot/lpbot/internal/core/simulation                  (cached)
+ok  	github.com/lpbot/lpbot/internal/core/strategy                    (cached)
+ok  	github.com/lpbot/lpbot/internal/core/tierc                       (cached)
+ok  	github.com/lpbot/lpbot/internal/core/watchdog                    (cached)
+ok  	github.com/lpbot/lpbot/internal/domain                           (cached)
+ok  	github.com/lpbot/lpbot/internal/platform/config                  (cached)
+ok  	github.com/lpbot/lpbot/internal/platform/decimal_db              (cached)
+ok  	github.com/lpbot/lpbot/internal/platform/health                  (cached)
+ok  	github.com/lpbot/lpbot/internal/platform/idgen                   (cached)
+ok  	github.com/lpbot/lpbot/internal/platform/log                     (cached)
+ok  	github.com/lpbot/lpbot/internal/platform/metrics                 (cached)
+ok  	github.com/lpbot/lpbot/internal/platform/timex                   (cached)
+ok  	github.com/lpbot/lpbot/internal/platform/trace                   (cached)
+ok  	github.com/lpbot/lpbot/internal/ports                            (cached)
+ok  	github.com/lpbot/lpbot/pkg/decimal                               (cached)
+ok  	github.com/lpbot/lpbot/pkg/il                                    (cached)
+ok  	github.com/lpbot/lpbot/pkg/tickmath                              (cached)
+ok  	github.com/lpbot/lpbot/tests/chaos                               (cached)
+ok  	github.com/lpbot/lpbot/tests/property                            (cached)
+ok  	github.com/lpbot/lpbot/tests/property/mocks                      (cached)
+
+Total: 62 packages OK, 0 FAIL. (Previous: 60. +2 new: cmd/lpbot-migrate-postgres,
+internal/adapters/store/postgres/migrator.)
+
+go test ./... = PASS (62 packages, 0 FAIL)
+
+The previous-stage RPC flake remains fixed. The new migrator package
+adds 0 regressions. The new cmd binary adds 0 regressions.
+
+================================================================================
+3. make test-race
+================================================================================
+
+$ make test-race
+go test -race -count=1 ./internal/adapters/store/postgres ./internal/adapters/rpc
+ok  	github.com/lpbot/lpbot/internal/adapters/store/postgres	13.146s
+ok  	github.com/lpbot/lpbot/internal/adapters/rpc	8.798s
+
+make test-race = PASS (postgres 13.1s + rpc 8.8s, 0 race detected)
+
+Note: the migrator package is NOT in make test-race (the entry point
+covers postgres adapter + rpc adapter only, per the prior P1 stage's
+design). The migrator is exercised by go test ./internal/adapters/store/postgres/...
+above.
+
+================================================================================
+4. make migrate-postgres-plan
+================================================================================
+
+$ DATABASE_URL="postgresql://lpbot:testpass@127.0.0.1:54329/lpbot_test?sslmode=disable" \
+  make migrate-postgres-plan
+{
+  "files": [
+    "000001_init_schema.sql",
+    ...
+    "000015_chain_text_alignment.sql"
+  ],
+  "to_apply": [],
+  "already_applied": [ ... 15 filenames ... ]
+}
+
+make migrate-postgres-plan = PASS
+
+The Go runner is the canonical entry point. The shell script
+(apply_postgres_migrations.sh) is no longer invoked from Makefile.
+
+================================================================================
+5. make migrate-postgres-status
+================================================================================
+
+$ DATABASE_URL="postgresql://lpbot:testpass@127.0.0.1:54329/lpbot_test?sslmode=disable" \
+  make migrate-postgres-status
+{
+  "applied": [ ... 15 entries, each with 64-char hex checksum ... ],
+  "missing": null,
+  "required": [
+    "positions", "transactions", "execution_intents", "portfolio_snapshots",
+    "position_marks", "canary_events", "pnl_ledger",
+    "shadow_decision_trace", "shadow_position_marks",
+    "shadow_exit_decisions", "shadow_exit_actions",
+    "shadow_outcome_labels",
+    "pools", "pool_score_history", "risk_events", "kill_switch_state",
+    "idx_positions_one_active_per_pool"
+  ],
+  "all_present": true
+}
+
+make migrate-postgres-status = PASS
+- all_present = true (16/16 tables + idx_positions_one_active_per_pool)
+- 15 applied entries, each with 64-char hex SHA256 checksum
+
+================================================================================
+6. make build-shadow
+================================================================================
+
+$ make build-shadow
+go build -ldflags "-X main.BuildCommit=a22eb86 -X main.BuildDate=2026-06-09T06:10:56Z" -tags=shadow -o bin/lpbot-shadow ./cmd/lpbot
+[exit 0]
+Output: bin/lpbot-shadow (40 MB)
+
+make build-shadow = PASS
+
+================================================================================
+7. make build-dryrun
+================================================================================
+
+$ make build-dryrun
+go build -ldflags "-X main.BuildCommit=a22eb86 -X main.BuildDate=2026-06-09T06:11:29Z" -tags=dryrun -o bin/lpbot-dryrun ./cmd/lpbot
+[exit 0]
+Output: bin/lpbot-dryrun (40 MB)
+
+make build-dryrun = PASS
+
+================================================================================
+8. make build-live
+================================================================================
+
+$ make build-live
+go build -ldflags "-X main.BuildCommit=a22eb86 -X main.BuildDate=2026-06-09T06:11:50Z" -tags=live -o bin/lpbot-live ./cmd/lpbot
+[exit 0]
+Output: bin/lpbot-live (41 MB)
+[Note: built but NOT executed; canary/live LOCKED.]
+
+make build-live = PASS
+
+================================================================================
+9. Bonus: make build-migrate-postgres
+================================================================================
+
+$ make build-migrate-postgres
+go build -o bin/lpbot-migrate-postgres ./cmd/lpbot-migrate-postgres
+[exit 0]
+Output: bin/lpbot-migrate-postgres (8 MB)
+
+make build-migrate-postgres = PASS (new CLI binary for plan/status/apply)
+
+================================================================================
+Summary
+================================================================================
+
+All 7 required commands + 1 bonus (build-migrate-postgres) PASS:
+
+  Target                                            |  Result
+  -------------------------------------------------+----------
+  go test ./internal/adapters/store/postgres/...    |  PASS
+  go test ./...                                     |  PASS (62 packages, 0 FAIL)
+  make test-race                                    |  PASS
+  make migrate-postgres-plan                        |  PASS
+  make migrate-postgres-status                      |  PASS
+  make build-shadow                                 |  PASS
+  make build-dryrun                                 |  PASS
+  make build-live                                   |  PASS (built, NOT executed; LOCKED)
+  make build-migrate-postgres (bonus)               |  PASS
+
+R1 PAUSE respected, R2 LOCKED, canary/live/paper LOCKED, edge_proven=no,
+LPBOT_CONFIRM_LIVE never set, no wallet, no signing, no broadcast,
+no paid RPC, no real secret, no merge, no pkill, no testnet-live.

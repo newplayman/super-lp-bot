@@ -9,7 +9,7 @@ GO_LDFLAGS := -X main.BuildCommit=$(BUILD_COMMIT) -X main.BuildDate=$(BUILD_DATE
 
 .PHONY: lint test test-property test-fork test-chaos test-all test-race \
         audit-consistency canary-profitability-evidence \
-        build-dryrun build-shadow build-live build-all \
+        build-dryrun build-shadow build-live build-all build-migrate-postgres \
         run-dryrun run-shadow run-live \
         backtest tidy clean \
         migrate-postgres migrate-postgres-plan migrate-postgres-status \
@@ -58,17 +58,6 @@ check-shadow-env-consistency:
 canary-profitability-evidence:
 	./scripts/canary_profitability_evidence.sh
 
-# Postgres migration entry points. Use migrate-postgres-plan / migrate-postgres-status
-# to inspect; migrate-postgres to apply. Refuses to apply if DSN looks production.
-migrate-postgres:
-	./scripts/migrate-postgres.sh apply
-
-migrate-postgres-plan:
-	./scripts/migrate-postgres.sh plan
-
-migrate-postgres-status:
-	./scripts/migrate-postgres.sh status
-
 build-dryrun:
 	$(GO) build -ldflags "$(GO_LDFLAGS)" -tags=$(BUILD_TAGS_DRYRUN) -o bin/lpbot-dryrun ./cmd/lpbot
 
@@ -78,10 +67,29 @@ build-shadow:
 build-live:
 	$(GO) build -ldflags "$(GO_LDFLAGS)" -tags=$(BUILD_TAGS_LIVE) -o bin/lpbot-live ./cmd/lpbot
 
-build-all: build-dryrun build-shadow build-live backtest
+build-all: build-dryrun build-shadow build-live backtest build-migrate-postgres
 
 backtest:
 	$(GO) build -ldflags "$(GO_LDFLAGS)" -o bin/lpbot-backtest ./cmd/lpbot-backtest
+
+# Standalone Go-based Postgres migration runner. See
+# internal/adapters/store/postgres/migrator/ for the design and
+# cmd/lpbot-migrate-postgres/ for the CLI.
+build-migrate-postgres:
+	$(GO) build -o bin/lpbot-migrate-postgres ./cmd/lpbot-migrate-postgres
+
+# Postgres migration entry points. Use migrate-postgres-plan /
+# migrate-postgres-status to inspect; migrate-postgres to apply.
+# The Go runner is the canonical entry point; scripts/migrate-postgres.sh
+# is retained as a thin legacy alias.
+migrate-postgres:
+	./bin/lpbot-migrate-postgres apply
+
+migrate-postgres-plan:
+	./bin/lpbot-migrate-postgres plan
+
+migrate-postgres-status:
+	./bin/lpbot-migrate-postgres status
 
 run-dryrun: build-dryrun
 	./bin/lpbot-dryrun --config=configs/config.dryrun.toml

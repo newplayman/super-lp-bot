@@ -1,0 +1,138 @@
+{
+  "stage": "LP_BOT_ENGINEERING_P0_PG_02E_MIGRATION_RUNNER_IDEMPOTENCY_V1",
+  "status": "PASS",
+  "run_id": "20260609_060000",
+  "branch": "feat/supabase-postgres-deployment",
+  "base_commit": "a22eb86",
+  "final_commit": "<filled at commit time>",
+  "audited_at_utc": "2026-06-09T06:00:00Z",
+  "workdir": "/opt/lpbot/lp-bot-v3",
+
+  "r1_research_thread_state": {
+    "status": "PAUSED",
+    "source": "reports/lp_long_horizon_r1_pause_and_freeze/20260607_191500/FINAL_PAUSE_VERDICT.json",
+    "verified_during_this_stage": true,
+    "modified_during_this_stage": false
+  },
+
+  "r2_state": {
+    "actual_fee_data_available": false,
+    "fee_proxy_only": true,
+    "r2_locked": true,
+    "reopened_during_this_stage": false
+  },
+
+  "canary_live_state": {
+    "canary_started": false,
+    "live_started": false,
+    "paper_started": false,
+    "can_run_probe_now": false,
+    "tiny_canary_allowed": "no",
+    "LPBOT_CONFIRM_LIVE_set_to_YES": false,
+    "LPBOT_CONFIRM_LIVE_in_canary_env_template": "NO (pinned via .env.canary.example non-comment line)",
+    "canary_service_enabled": false,
+    "canary_service_started": false
+  },
+
+  "this_stage_scope_compliance": {
+    "no_strategy_modified": true,
+    "no_live_path_touched": true,
+    "no_execution_path_modified": true,
+    "no_trading_path_modified": true,
+    "no_collector_modified": true,
+    "no_000004_sql_modified": true,
+    "scope_is_migration_runner_idempotency_only": true
+  },
+
+  "wallet_or_tx_touched": false,
+  "signing_attempted": false,
+  "broadcast_attempted": false,
+  "private_key_loaded": false,
+  "mnemonic_loaded": false,
+  "keypair_loaded": false,
+  "seed_loaded": false,
+  "lp_nft_minted": false,
+  "liquidity_added": false,
+  "liquidity_removed": false,
+  "swap_executed": false,
+  "approve_called": false,
+  "collect_called": false,
+  "bridge_called": false,
+
+  "paid_rpc_used": false,
+  "paid_indexer_used": false,
+  "testnet_live_connected": false,
+  "testnet_endpoints_used": [],
+  "mainnet_endpoints_used": [],
+
+  "real_secret_committed": false,
+  "dsn_committed_to_logs": false,
+  "wallet_passphrase_committed": false,
+  "private_key_in_logs": false,
+  "mnemonic_in_logs": false,
+  "dsn_in_logs": "DSN host only (127.0.0.1:54329); full DSN with password NOT logged (verified by TestDSNHost_StripsCredentials)",
+
+  "merge_done": false,
+  "pkill_used": false,
+  "tmux_started": false,
+  "systemd_unit_enabled": false,
+  "systemd_unit_started": false,
+
+  "r1_reopened": false,
+  "r2_entered": false,
+  "long_horizon_run_started": false,
+  "12h_run_started": false,
+  "13h_run_started": false,
+  "24h_run_started": false,
+  "48h_run_started": false,
+  "72h_run_started": false,
+  "7d_run_started": false,
+  "mode_a_started": false,
+  "mode_b_started": false,
+  "paper_started": false,
+  "probe_started": false,
+  "canary_executed": false,
+  "live_executed": false,
+
+  "build_shadow_executed": false,
+  "build_shadow_built_only": true,
+  "build_dryrun_built_only": true,
+  "build_live_built_only": true,
+  "build_migrate_postgres_built_only": true,
+  "shadow_binary_executed": false,
+  "live_binary_executed": false,
+  "canary_binary_executed": false,
+  "dryrun_binary_executed": false,
+
+  "tests_run_in_this_stage": [
+    "go test ./internal/adapters/store/postgres/... (postgres + migrator; 27.2s combined; 24 tests; PASS)",
+    "go test ./... (~30s; 62 packages; PASS, 0 FAIL)",
+    "make test-race (~22s; postgres + rpc; 0 race detected; PASS)",
+    "make migrate-postgres-plan (15 migrations; PASS)",
+    "make migrate-postgres-status (16/16 tables + idx; all_present=true; PASS)",
+    "make build-shadow (40 MB binary; PASS)",
+    "make build-dryrun (40 MB binary; PASS)",
+    "make build-live (41 MB binary; built, NOT executed; PASS)",
+    "make build-migrate-postgres (8 MB binary; PASS)"
+  ],
+
+  "production_dsn_safety": {
+    "test_refuses_supabase_co": true,
+    "test_refuses_rds_amazonaws_com": true,
+    "test_refuses_prod_substring": true,
+    "test_refuses_production_substring": true,
+    "LPBOT_MIGRATE_ALLOW_LIVE_bypass_works": true,
+    "tests_in_unit_layer": true
+  },
+
+  "r1_audit_copy integrity": {
+    "audit_copy_dir": "/opt/lpbot/lp-bot-v3-origin-check",
+    "audit_copy_modified": false,
+    "audit_copy_read_only": true
+  },
+
+  "forbidden_actions_lock_count": 33,
+  "forbidden_actions_lock_all_true": true,
+
+  "summary": "P0-PG-02E migration runner idempotency stage did not trigger any forbidden action. R1 research thread PAUSE respected (reports/lp_long_horizon_r1_pause_and_freeze/20260607_191500/ verified intact, status=PAUSED, no modification). R2 LOCKED, canary/live/paper LOCKED, edge_proven=no, can_run_probe_now=false, tiny_canary_allowed=no, LPBOT_CONFIRM_LIVE never set to YES. No strategy / live / execution / trading path was modified. No wallet loaded. No real secret committed. No merge. No pkill. No paid RPC. No testnet-live. 000004 SQL file was NOT modified; idempotency is provided by runner-level transaction-per-migration + checksum-mismatch detection. All 3 binaries (shadow, dryrun, live) built but not executed. New lpbot-migrate-postgres CLI binary built but not executed (used only for plan/status in Makefile, plus integration tests). Recommended next: P0-PG-02-F (future cleanup stage) to fully deprecate scripts/migrate-postgres.sh and de-duplicate the SQL files between migrations/postgres/ and internal/adapters/store/postgres/migrator/sql/."
+}

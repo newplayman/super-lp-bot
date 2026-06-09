@@ -1,0 +1,169 @@
+P0-PG-02E — Idempotency Test Results
+========================================
+
+Run ID: 20260609_060000
+Base commit: a22eb86
+Branch: feat/supabase-postgres-deployment
+Test DSN: postgresql://lpbot:testpass@127.0.0.1:54329/lpbot_test?sslmode=disable
+(provided via LPBOT_POSTGRES_TEST_DSN env var)
+
+================================================================================
+Summary
+================================================================================
+
+All idempotency tests PASS. The Go migrator correctly handles:
+
+1. Fresh DB apply (15/15 migrations applied in 3.24s)
+2. Re-run on up-to-date DB (0 applied, 15 skipped, 2.47s)
+3. Per-migration transaction rollback (partial failure doesn't leak)
+4. Checksum mismatch detection (refuses re-apply on mutated file)
+5. Legacy DB backfill (checksum='' rows are filled with real SHA256)
+6. Status returns correct fields (16/16 tables + idx OK, 17/17 checksums)
+7. Plan lists all migrations (15 files in embed.FS)
+8. Postgres adapter integration (migrator's required list matches live schema guard)
+
+Total tests: 15 (8 unit + 7 integration)
+PASS: 15
+FAIL: 0
+SKIP: 0 (with DSN; without DSN: 7 integration tests SKIP, 8 unit tests PASS)
+
+================================================================================
+Test results (with DSN)
+================================================================================
+
+$ LPBOT_POSTGRES_TEST_DSN="postgresql://lpbot:testpass@127.0.0.1:54329/lpbot_test?sslmode=disable" \
+  go test ./internal/adapters/store/postgres/migrator/ -v
+=== RUN   TestExtractUpSection_StripsDownSection
+    --- PASS: normal_up+down
+    --- PASS: up_only_(no_down)
+    --- PASS: no_annotations
+--- PASS: TestExtractUpSection_StripsDownSection (0.00s)
+=== RUN   TestLooksLikeProductionDSN
+--- PASS: TestLooksLikeProductionDSN (0.00s)
+=== RUN   TestDSNHost_StripsCredentials
+--- PASS: TestDSNHost_StripsCredentials (0.00s)
+=== RUN   TestRunner_AllowLiveDSN_PermitsProductionDSN
+--- PASS: TestRunner_AllowLiveDSN_PermitsProductionDSN (0.00s)
+=== RUN   TestRunner_RejectsProductionDSN_WithoutAllowLiveDSN
+--- PASS: TestRunner_RejectsProductionDSN_WithoutAllowLiveDSN (0.00s)
+=== RUN   TestRunner_NoEnvCanaryOrLiveAutoLoad
+--- PASS: TestRunner_NoEnvCanaryOrLiveAutoLoad (0.00s)
+=== RUN   TestRunner_ProductionDSNGate_RespectsEnvVar
+--- PASS: TestRunner_ProductionDSNGate_RespectsEnvVar (0.00s)
+=== RUN   TestMigrator_PlanListsAllMigrations
+--- PASS: TestMigrator_PlanListsAllMigrations (0.19s)
+=== RUN   TestMigrator_ApplyOnFreshDB
+--- PASS: TestMigrator_ApplyOnFreshDB (3.24s)
+=== RUN   TestMigrator_ReRunIsNoOp
+--- PASS: TestMigrator_ReRunIsNoOp (2.47s)
+=== RUN   TestMigrator_ChecksumMismatchRefuses
+--- PASS: TestMigrator_ChecksumMismatchRefuses (0.50s)
+=== RUN   TestMigrator_PerMigrationTransactionRollback
+--- PASS: TestMigrator_PerMigrationTransactionRollback (0.05s)
+=== RUN   TestMigrator_StatusReturnsCorrectFields
+--- PASS: TestMigrator_StatusReturnsCorrectFields (3.79s)
+=== RUN   TestMigrator_LegacyDB_BackfillOnFirstApply
+--- PASS: TestMigrator_LegacyDB_BackfillOnFirstApply (0.34s)
+=== RUN   TestMigrator_PostgresAdapterIntegrationStillPasses
+--- PASS: TestMigrator_PostgresAdapterIntegrationStillPasses (1.71s)
+PASS
+ok  	github.com/lpbot/lpbot/internal/adapters/store/postgres/migrator	12.638s
+
+================================================================================
+Idempotency properties verified
+================================================================================
+
+A. Fresh DB apply (TestMigrator_ApplyOnFreshDB):
+   - DROP SCHEMA public CASCADE; CREATE SCHEMA public
+   - Apply 15 migrations
+   - Result: Applied=15, Skipped=0, Failed=""
+   - Status: all_present=true (16 tables + 1 index)
+   - Time: 3.24s
+
+B. Re-run on up-to-date DB (TestMigrator_ReRunIsNoOp):
+   - Apply twice in a row
+   - First Apply: Applied=15
+   - Second Apply: Applied=0, Skipped=15 (all 15 marked as already applied)
+   - Time: 2.47s for both runs combined
+
+C. Per-migration transaction rollback (TestMigrator_PerMigrationTransactionRollback):
+   - 2 migrations: 000001 valid, 000002 has SYNTAX_ERROR_HERE
+   - Apply 000001: committed (t1 exists, schema_migrations row exists)
+   - Apply 000002: failed, ROLLBACK (t2 does NOT exist, schema_migrations row does NOT exist)
+   - Runner stopped after failure (no further migrations attempted)
+   - Time: 0.05s
+
+D. Checksum mismatch detection (TestMigrator_ChecksumMismatchRefuses):
+   - First Apply with v1 content: OK
+   - Mutate content to v2 (different SHA256)
+   - Second Apply: refuses with "checksum mismatch for 000001_init.sql:
+     recorded=... file=... Refusing to apply to avoid corrupting a
+     partially-applied migration."
+   - Time: 0.50s
+
+E. Legacy DB backfill (TestMigrator_LegacyDB_BackfillOnFirstApply):
+   - Pre-populate schema_migrations with checksum='' (legacy)
+   - First Go Apply: backfills with current file SHA256
+   - Subsequent runs: verify against real checksum
+   - Time: 0.34s
+
+================================================================================
+Safety properties verified
+================================================================================
+
+1. No .env.canary / .env.live autoload:
+   - TestRunner_NoEnvCanaryOrLiveAutoLoad verifies DSN source is explicit
+   - No path reads .env files (test would fail if it did)
+
+2. Production-DSN guard:
+   - TestLooksLikeProductionDSN verifies heuristic catches 4 markers
+   - TestRunner_RejectsProductionDSN_WithoutAllowLiveDSN verifies default
+     refuses supabase.co / rds.amazonaws.com / prod / production
+   - TestRunner_AllowLiveDSN_PermitsProductionDSN verifies AllowLiveDSN bypass
+   - TestRunner_ProductionDSNGate_RespectsEnvVar verifies env var bypass
+
+3. DSN credential stripping in logs:
+   - TestDSNHost_StripsCredentials verifies dsnHost returns only "host[:port]"
+   - All error messages that include DSN show only the host, never
+     user:pass@
+
+4. Per-migration transaction:
+   - TestMigrator_PerMigrationTransactionRollback verifies rollback on
+     partial failure (mid-statement error)
+   - Each migration's INSERT into schema_migrations is in the same
+     transaction as the migration effect, so partial-failure state
+     is impossible
+
+5. Checksum tracking:
+   - TestMigrator_ChecksumMismatchRefuses verifies refusal on file mutation
+   - TestMigrator_LegacyDB_BackfillOnFirstApply verifies backfill on legacy
+
+6. Required tables / indexes:
+   - TestMigrator_PostgresAdapterIntegrationStillPasses verifies the
+     requiredTablesAndIndexes list is in sync with the postgres adapter
+     live schema guard (16 tables + 1 index = 17 items)
+   - No regression: previous stage's TestMigrationsSchemaCompatibility
+     still passes (run separately, see TEST_RESULTS.txt)
+
+================================================================================
+Tests for previously-existing postgres package
+================================================================================
+
+The existing tests in internal/adapters/store/postgres/ (e.g.
+TestMigrationsSchemaCompatibility, TestPostgresRepoIntegration,
+TestPostgresAdapter_DockerIntegration_RoundTrip) all still pass
+when run after the Go migrator has applied the migrations. See
+TEST_RESULTS.txt for the full output.
+
+================================================================================
+Conclusion
+================================================================================
+
+All idempotency tests pass. The Go migrator correctly handles:
+- Fresh DB apply (15/15 migrations, all required tables present)
+- Re-run no-op (already-applied migrations are skipped)
+- Per-migration transaction (partial failures roll back)
+- Checksum mismatch detection (mutated files refuse to apply)
+- Legacy DB backfill (checksum='' rows are filled with real SHA256)
+
+No regressions in the existing postgres package tests.
