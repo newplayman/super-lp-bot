@@ -1,0 +1,55 @@
+CHANGED FILES — P0-PG-02G
+branch: feat/supabase-postgres-deployment
+base_commit: 580432a0c17edb618f223f994923fc0b19d7d3b5
+final_commit: (recorded in this commit message at commit time)
+
+MODIFIED
+  Makefile
+    .PHONY: added "quality-gate" and "preflight" to the declared targets.
+    New target:
+        quality-gate: check-postgres-migrations-sync test
+    Comment documents the deliberate exclusion of test-property,
+    test-fork, test-chaos, and the DB-bound migration targets.
+
+  .github/workflows/ci.yml
+    Existing quality-gate job extended with:
+      - "make build-migrate-postgres" added to the "Build all tags" step
+      - new "Migration sync check" step running
+        `make check-postgres-migrations-sync` between Build all tags and
+        Unit tests. Cheap, network-free; safe on every PR.
+    No secrets, no DB service, no other changes.
+
+NEW
+  .github/workflows/migration-quality-gate.yml
+    Dedicated workflow for the database-bound migration checks.
+    Triggers:
+      - pull_request on the migration corpus paths
+      - push to feat/supabase-postgres-deployment or main
+      - daily cron (offset to 17 6 * * *, distinct from main CI cron)
+    Job:
+      - runs-on: ubuntu-latest
+      - services.postgres: postgres:16-alpine with default credentials
+        and a pg_isready healthcheck
+      - env.POSTGRES_DSN: postgres://postgres:postgres@localhost:5432/lpbot_test?sslmode=disable
+      - Steps: build-migrate-postgres, check-postgres-migrations-sync,
+        pg_isready wait, plan-pre-apply, apply, plan-post-apply, status,
+        re-apply (no-op), postgres adapter tests, full test suite,
+        test-files-unmodified guard.
+      - Concurrency group: migration-quality-gate-${{ github.ref }}
+        with cancel-in-progress: true.
+      - Reads NO secrets. The only DSN is the in-network service.
+
+  reports/p0_pg_02g_ci_migration_quality_gate/2026-06-09/*.md|*.json|*.txt
+    Report artifacts for this stage.
+
+NOT TOUCHED
+  - migrations/postgres/*.sql
+  - internal/adapters/store/postgres/migrator/sql/*.sql
+  - internal/adapters/store/postgres/migrator/*.go  (canonical runner)
+  - cmd/lpbot-migrate-postgres/main.go
+  - scripts/migrate-postgres.sh  (thin wrapper from P0-PG-02F)
+  - scripts/check_postgres_migrations_sync.sh  (sync check from P0-PG-02F)
+  - configs/*.toml
+  - deploy/systemd/*.service
+  - tests/test_lp_long_horizon_partial_12h_request_v1.py  (R1 guard,
+    preserved as a working-tree modification per the r1-protection rule)

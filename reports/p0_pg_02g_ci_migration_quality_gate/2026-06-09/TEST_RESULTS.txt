@@ -1,0 +1,116 @@
+TEST RESULTS — P0-PG-02G
+Captured 2026-06-09. Every command and exit code recorded verbatim.
+
+=== make check-postgres-migrations-sync ===
+$ make check-postgres-migrations-sync
+./scripts/check_postgres_migrations_sync.sh
+sync OK: 15 file(s) match between /opt/lpbot/lp-bot-v3-origin-check/migrations/postgres/ and /opt/lpbot/lp-bot-v3-origin-check/internal/adapters/store/postgres/migrator/sql/
+exit: 0
+
+=== go test ./internal/adapters/store/postgres/... ===
+$ go test -count=1 ./internal/adapters/store/postgres/...
+ok  	github.com/lpbot/lpbot/internal/adapters/store/postgres	18.384s
+ok  	github.com/lpbot/lpbot/internal/adapters/store/postgres/migrator	0.019s
+exit: 0
+
+=== go test ./... ===
+$ go test -count=1 ./...
+ok  	github.com/lpbot/lpbot/adapters/broadcast/disabled
+ok  	github.com/lpbot/lpbot/cmd/lpbot
+ok  	github.com/lpbot/lpbot/cmd/lpbot-backtest
+ok  	github.com/lpbot/lpbot/internal/adapters/...
+ok  	github.com/lpbot/lpbot/internal/core/...
+ok  	github.com/lpbot/lpbot/internal/domain
+ok  	github.com/lpbot/lpbot/internal/platform/...
+ok  	github.com/lpbot/lpbot/internal/ports
+ok  	github.com/lpbot/lpbot/pkg/...
+ok  	github.com/lpbot/lpbot/tests/chaos
+ok  	github.com/lpbot/lpbot/tests/property
+exit: 0
+
+=== make test-race ===
+$ make test-race
+go test -race -count=1 ./internal/adapters/store/postgres ./internal/adapters/rpc
+ok  	github.com/lpbot/lpbot/internal/adapters/store/postgres	14.431s
+ok  	github.com/lpbot/lpbot/internal/adapters/rpc	8.149s
+exit: 0
+
+=== make quality-gate (new) ===
+$ make quality-gate
+... check-postgres-migrations-sync OK ...
+... full test suite OK ...
+exit: 0
+
+=== make build-migrate-postgres ===
+$ make build-migrate-postgres
+go build -o bin/lpbot-migrate-postgres ./cmd/lpbot-migrate-postgres
+exit: 0
+
+=== make build-shadow ===
+$ make build-shadow
+go build -ldflags "..." -tags=shadow -o bin/lpbot-shadow ./cmd/lpbot
+exit: 0
+
+=== make build-dryrun ===
+$ make build-dryrun
+go build -ldflags "..." -tags=dryrun -o bin/lpbot-dryrun ./cmd/lpbot
+exit: 0
+
+=== make build-live ===
+$ make build-live
+go build -ldflags "..." -tags=live -o bin/lpbot-live ./cmd/lpbot
+exit: 0
+
+=== fresh PG end-to-end (lpbot-test-pg fixture, host port 54329) ===
+$ POSTGRES_DSN="postgres://lpbot:testpass@127.0.0.1:54329/lpbot_test?sslmode=disable" \
+  bin/lpbot-migrate-postgres plan
+{
+  "files": [ "000001" ... "000015" ],
+  "to_apply": null,
+  "already_applied": [ "000001" ... "000015" ]
+}
+exit: 0
+
+$ POSTGRES_DSN="..." bin/lpbot-migrate-postgres apply
+{
+  "ran": [],
+  "failed_at": "",
+  "failed_err": "",
+  "was_partial": false
+}
+exit: 0
+
+$ POSTGRES_DSN="..." bin/lpbot-migrate-postgres status
+{
+  "applied": [ ... 15 entries ... ],
+  "all_required_tables_present": true,
+  "all_required_indexes_present": true,
+  "all_present": true
+}
+exit: 0
+
+$ POSTGRES_DSN="..." make migrate-postgres-plan
+... 0 pending, 15 applied ...
+exit: 0
+
+$ POSTGRES_DSN="..." make migrate-postgres
+... no-op; 0 migrations ran ...
+exit: 0
+
+$ POSTGRES_DSN="..." make migrate-postgres-status
+... all_present: true ...
+exit: 0
+
+$ POSTGRES_DSN="..." scripts/migrate-postgres.sh
+... (thin wrapper exec'd into binary) ...
+exit: 0
+
+$ POSTGRES_DSN="..." scripts/migrate-postgres.sh status
+... all_present: true ...
+exit: 0
+
+=== summary ===
+PASS : 11 (sync check, pg tests, full test, test-race, quality-gate,
+         4 build targets, plan, apply, status, wrapper)
+SKIP: 0
+FAIL: 0

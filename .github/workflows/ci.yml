@@ -33,6 +33,13 @@ jobs:
           make build-shadow
           make build-live
           make backtest
+          make build-migrate-postgres
+
+      - name: Migration sync check
+        # Drift guard for the two postgres migration directories
+        # (migrations/postgres/ vs internal/adapters/store/postgres/migrator/sql/).
+        # Cheap, network-free; safe to run on every PR.
+        run: make check-postgres-migrations-sync
 
       - name: Unit tests
         run: make test

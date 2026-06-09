@@ -14,7 +14,8 @@ GO_LDFLAGS := -X main.BuildCommit=$(BUILD_COMMIT) -X main.BuildDate=$(BUILD_DATE
         backtest tidy clean \
         migrate-postgres migrate-postgres-plan migrate-postgres-status \
         check-shadow-env-consistency \
-        check-postgres-migrations-sync
+        check-postgres-migrations-sync \
+        quality-gate preflight
 
 tidy:
 	$(GO) mod tidy
@@ -62,6 +63,17 @@ check-shadow-env-consistency:
 # Catches the kind of dual-source drift the P0-PG-01 audit flagged.
 check-postgres-migrations-sync:
 	./scripts/check_postgres_migrations_sync.sh
+
+# Pre-merge quality gate. Aggregates the cheap, fast, network-free
+# checks that should run on every commit. Intentionally excludes:
+#   - test-property (uses internal goroutine stress; can be flaky)
+#   - test-fork / test-chaos (need secrets, schedule-only)
+#   - migrate-postgres apply (needs a live postgres; that lives in
+#     .github/workflows/migration-quality-gate.yml)
+# The full chain for end-to-end migration verification is:
+#   make check-postgres-migrations-sync    (this Makefile, no DB)
+#   .github/workflows/migration-quality-gate.yml  (postgres:16-alpine service)
+quality-gate: check-postgres-migrations-sync test
 
 canary-profitability-evidence:
 	./scripts/canary_profitability_evidence.sh

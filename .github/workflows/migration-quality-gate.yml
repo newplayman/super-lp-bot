@@ -1,0 +1,121 @@
+name: Migration Quality Gate
+
+# Dedicated workflow for the postgres migration runner. Runs on PRs that
+# touch the migration corpus, on pushes to the relevant branches, and
+# on a daily cron. Spins up a fresh postgres:16-alpine service; never
+# uses any real DSN, never touches a canary/live cluster, never reads
+# any wallet / signer secret. P0-PG-02G (stage
+# LP_BOT_ENGINEERING_P0_PG_02G_CI_MIGRATION_QUALITY_GATE_V1).
+
+on:
+  pull_request:
+    paths:
+      - "migrations/postgres/**"
+      - "internal/adapters/store/postgres/migrator/**"
+      - "cmd/lpbot-migrate-postgres/**"
+      - "scripts/migrate-postgres.sh"
+      - "scripts/check_postgres_migrations_sync.sh"
+      - "Makefile"
+      - ".github/workflows/migration-quality-gate.yml"
+  push:
+    branches: [feat/supabase-postgres-deployment, main]
+  schedule:
+    - cron: "17 6 * * *"  # offset from the main quality-gate cron (0 6)
+
+# Cancel any in-flight run for the same ref; this workflow is cheap and
+# idempotent, so always running the latest is preferable.
+concurrency:
+  group: migration-quality-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  migration-quality-gate:
+    runs-on: ubuntu-latest
+    # No secrets of any kind are read by this job. The postgres service
+    # below is a sibling container with default credentials, used only
+    # to exercise the Go migration runner.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: lpbot_test
+        ports:
+          - 5432:5432
+        # Health check: the runner will not proceed until pg is accepting
+        # connections. The default `postgres` image does not have a
+        # healthcheck; we add one so the runner doesn't race startup.
+        options: >-
+          --health-cmd "pg_isready -U postgres -d lpbot_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # Standard libpq DSN. The Go runner reads POSTGRES_DSN; see
+      # internal/adapters/store/postgres/migrator/main usage in
+      # cmd/lpbot-migrate-postgres/main.go.
+      POSTGRES_DSN: postgres://postgres:postgres@localhost:5432/lpbot_test?sslmode=disable
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+          cache: true
+
+      - name: Build migrator binary
+        # Required before plan / status / apply; no DB needed.
+        run: make build-migrate-postgres
+
+      - name: Migration sync check
+        # Drift guard: migrations/postgres/ vs migrator/sql/.
+        run: make check-postgres-migrations-sync
+
+      - name: Wait for postgres service
+        # Belt-and-suspenders: services.healthcheck should already gate
+        # this, but a short explicit wait protects against flakes on
+        # shared CI runners.
+        run: |
+          for i in $(seq 1 30); do
+            if pg_isready -h localhost -p 5432 -U postgres; then
+              echo "postgres ready after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "postgres not ready after 30s"
+          exit 1
+
+      - name: Migration plan (pre-apply)
+        run: make migrate-postgres-plan
+
+      - name: Migration apply
+        # End-to-end: apply all 15 migrations against a fresh DB.
+        run: make migrate-postgres
+
+      - name: Migration plan (post-apply, should be 0 pending)
+        run: make migrate-postgres-plan
+
+      - name: Migration status
+        run: make migrate-postgres-status
+
+      - name: Re-apply (must be no-op)
+        # Validates the runner's idempotency on an applied DB.
+        run: make migrate-postgres
+
+      - name: Postgres adapter tests
+        run: go test -count=1 -timeout 5m ./internal/adapters/store/postgres/...
+
+      - name: Full unit test suite
+        run: go test -count=1 -timeout 15m ./...
+
+      - name: Test files unmodified check
+        run: |
+          set -e
+          BASE=$(git merge-base origin/main HEAD || echo origin/main)
+          if git diff "$BASE" -- '*_test.go' | grep -E '^-[^-]' | grep -v '^---'; then
+            echo "ERROR: Cannot delete/modify *_test.go"
+            exit 1
+          fi
