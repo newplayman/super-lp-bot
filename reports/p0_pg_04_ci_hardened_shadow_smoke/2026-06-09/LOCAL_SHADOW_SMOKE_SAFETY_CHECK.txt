@@ -1,0 +1,9 @@
+shadow_smoke_safety: log=reports/p0_pg_04_ci_hardened_shadow_smoke/2026-06-09/SHADOW_SMOKE_RUN_LOG.txt
+shadow_smoke_safety: forbidden_pattern_violations=0
+shadow_smoke_safety: missing_required_substrings=0
+shadow_smoke_safety: OK
+shadow_smoke_safety:   - no panic, no fatal, no canary/live/paper
+shadow_smoke_safety:   - no signing/broadcast/mint/swap/approve keywords
+shadow_smoke_safety:   - schema_guard=ok present
+shadow_smoke_safety:   - smoke_no_rpc_mode=true and base_rpc_initialization=skipped present
+shadow_smoke_safety:   - shadow mode banner + metrics server start present

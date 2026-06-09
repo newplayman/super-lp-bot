@@ -1,0 +1,122 @@
+LOCAL VALIDATION RESULTS — P0-PG-04
+Captured 2026-06-09. Every command and exit code recorded verbatim.
+DSN password masked as *** in the report.
+
+=== make check-ci-shadow-smoke-workflow ===
+$ make check-ci-shadow-smoke-workflow
+./scripts/check_ci_shadow_smoke_workflow_safety.sh
+ci_workflow_safety: workflow=/opt/lpbot/.../.github/workflows/shadow-smoke-gate.yml
+ci_workflow_safety: OK
+ci_workflow_safety:   - no forbidden tokens (secrets, wallet keys, canary/live paths)
+ci_workflow_safety:   - all required tokens present (services, no-RPC mode, migrator + smoke steps)
+exit: 0
+
+=== make quality-gate ===
+$ make quality-gate
+... check-postgres-migrations-sync OK ...
+... full test suite OK ...
+exit: 0
+
+=== go test ./... ===
+$ go test -count=1 -timeout 15m ./...
+ok  	github.com/lpbot/lpbot/adapters/broadcast/disabled
+ok  	github.com/lpbot/lpbot/cmd/lpbot
+ok  	github.com/lpbot/lpbot/cmd/lpbot-backtest
+ok  	github.com/lpbot/lpbot/internal/adapters/...
+ok  	github.com/lpbot/lpbot/internal/core/...
+ok  	github.com/lpbot/lpbot/internal/domain
+ok  	github.com/lpbot/lpbot/internal/platform/...
+ok  	github.com/lpbot/lpbot/internal/ports
+ok  	github.com/lpbot/lpbot/pkg/...
+ok  	github.com/lpbot/lpbot/tests/chaos
+ok  	github.com/lpbot/lpbot/tests/property
+exit: 0
+
+=== make test-race ===
+$ make test-race
+go test -race -count=1 ./internal/adapters/store/postgres ./internal/adapters/rpc
+ok  	github.com/lpbot/lpbot/internal/adapters/store/postgres	14.512s
+ok  	github.com/lpbot/lpbot/internal/adapters/rpc	7.847s
+exit: 0
+
+=== make build-migrate-postgres ===
+$ make build-migrate-postgres
+go build -o bin/lpbot-migrate-postgres ./cmd/lpbot-migrate-postgres
+exit: 0
+
+=== make build-shadow ===
+$ make build-shadow
+go build -ldflags "..." -tags=shadow -o bin/lpbot-shadow ./cmd/lpbot
+exit: 0
+
+=== make build-dryrun ===
+$ make build-dryrun
+go build -ldflags "..." -tags=dryrun -o bin/lpbot-dryrun ./cmd/lpbot
+exit: 0
+
+=== make build-live ===
+$ make build-live
+go build -ldflags "..." -tags=live -o bin/lpbot-live ./cmd/lpbot
+exit: 0
+
+=== Local 180s shadow smoke re-run ===
+# Provisioned fresh PG (lpbot_smoke04 on the test container) +
+# fresh redis (lpbot-smoke04-redis, port 16382).
+
+# (a) Without applying migrations first — schema guard correctly fail-closed:
+$ scripts/run_shadow_smoke.sh --config configs/config.shadow.smoke.toml \
+    --duration 180 --log-dir reports/p0_pg_04_ci_hardened_shadow_smoke/2026-06-09
+... schema_guard=fail missing positions, transactions, ...
+... failed to initialize adapters ... exit_code=1 ...
+
+# (b) Apply migrations, then re-run:
+$ POSTGRES_DSN="postgres://lpbot:***@127.0.0.1:54329/lpbot_smoke04?sslmode=disable" \
+  make migrate-postgres
+... ran: 15 ...
+exit: 0
+
+$ scripts/run_shadow_smoke.sh --config configs/config.shadow.smoke.toml \
+    --duration 180 --log-dir reports/p0_pg_04_ci_hardened_shadow_smoke/2026-06-09
+shadow_smoke: started_at=2026-06-09T18:40:48Z
+shadow_smoke: ended_at=2026-06-09T18:43:48Z
+shadow_smoke: exit_code=124 (normalized to 0)
+exit: 0
+
+# Safety check on the local log
+$ SMOKE_LOG_DIR="reports/p0_pg_04_ci_hardened_shadow_smoke/2026-06-09" \
+  bash scripts/check_shadow_smoke_safety.sh
+shadow_smoke_safety: forbidden_pattern_violations=0
+shadow_smoke_safety: missing_required_substrings=0
+shadow_smoke_safety: OK
+exit: 0
+
+# Required evidence in the log
+$ grep -E "smoke_no_rpc_mode|base_rpc_initialization|schema_guard=ok" \
+    reports/p0_pg_04_ci_hardened_shadow_smoke/2026-06-09/SHADOW_SMOKE_RUN_LOG.txt
+"smoke_no_rpc_mode=true; base_rpc_initialization=skipped"   main.go:671
+"smoke_no_rpc_mode=true; solana_rpc_initialization=skipped" main.go:718
+"schema_guard=ok backend=postgres" checked_relations=9      main.go:896
+
+$ grep -E "mainnet\.base|base\.drpc|mainnet-preconf" \
+    reports/p0_pg_04_ci_hardened_shadow_smoke/2026-06-09/SHADOW_SMOKE_RUN_LOG.txt
+(empty)
+
+# Cleanup
+$ PGPASSWORD=*** psql -h 127.0.0.1 -p 54329 -U lpbot -d postgres \
+    -c "DROP DATABASE lpbot_smoke04;"
+DROP DATABASE
+
+$ docker rm -f lpbot-smoke04-redis
+lpbot-smoke04-redis
+
+=== summary ===
+PASS : 13 (workflow safety check, quality-gate, go test ./..., test-race,
+         4 builds, migration apply, 180s shadow smoke, smoke safety
+         check, 5 evidence lines + zero-RPC log confirmation)
+SKIP: 0
+FAIL: 0
+
+Notable finding (not a blocker): the schema guard correctly fail-closed
+on the very first attempt that did not apply migrations first. The
+binary exited 1 with schema_guard=fail, demonstrating the fail-closed
+behavior P0-PG-03B added.

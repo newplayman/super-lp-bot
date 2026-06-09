@@ -1,0 +1,53 @@
+shadow_smoke: starting
+shadow_smoke: config=configs/config.shadow.smoke.toml
+shadow_smoke: duration=180s
+shadow_smoke: log=reports/p0_pg_04_ci_hardened_shadow_smoke/2026-06-09/SHADOW_SMOKE_RUN_LOG.txt
+shadow_smoke: cmd=/opt/lpbot/lp-bot-v3-origin-check/bin/lpbot-shadow --config=configs/config.shadow.smoke.toml
+shadow_smoke: started_at=2026-06-09T18:40:48Z
+shadow_smoke: LPBOT_SMOKE_NO_RPC=<unset>
+{"level":"info","ts":1781030448.8683004,"caller":"lpbot/main.go:600","msg":"lpbot starting","env":"shadow","schema_version":1,"version":"0.4.0","mode":"shadow","commit":"e707152"}
+=== SHADOW MODE ===
+Running in shadow mode: simulating transactions without real execution.
+Configure via: configs/config.shadow.toml
+{"level":"warn","ts":1781030448.8685527,"caller":"lpbot/alerting.go:84","msg":"telegram token missing, fallback to logs only","env":"shadow","schema_version":1}
+{"level":"info","ts":1781030448.8688228,"caller":"lpbot/main.go:651","msg":"initializing adapters...","env":"shadow","schema_version":1}
+{"level":"info","ts":1781030448.8688407,"caller":"lpbot/main.go:671","msg":"smoke_no_rpc_mode=true; base_rpc_initialization=skipped","env":"shadow","schema_version":1}
+{"level":"info","ts":1781030448.8688555,"caller":"lpbot/main.go:718","msg":"smoke_no_rpc_mode=true; solana_rpc_initialization=skipped","env":"shadow","schema_version":1}
+{"level":"info","ts":1781030448.9487374,"caller":"lpbot/main.go:760","msg":"PostgreSQL store initialized","env":"shadow","schema_version":1}
+{"level":"info","ts":1781030448.9758854,"caller":"redis/runtime.go:75","msg":"Redis runtime initialized","env":"shadow","schema_version":1,"addr":"127.0.0.1:16382","heartbeat_key":"lpbot_smoke:shadow:heartbeat:vmi2884308","heartbeat_interval":15,"heartbeat_ttl":60}
+{"level":"info","ts":1781030448.9921288,"caller":"lpbot/main.go:980","msg":"metrics server started","env":"shadow","schema_version":1,"addr":":9091"}
+{"level":"info","ts":1781030449.0172772,"caller":"lpbot/main.go:896","msg":"schema_guard=ok backend=postgres","env":"shadow","schema_version":1,"checked_relations":9}
+{"level":"info","ts":1781030449.0936155,"caller":"lpbot/main.go:812","msg":"GeckoTerminal datasource initialized","env":"shadow","schema_version":1}
+{"level":"info","ts":1781030449.0937696,"caller":"lpbot/main.go:986","msg":"initializing core modules...","env":"shadow","schema_version":1}
+{"level":"info","ts":1781030449.0971637,"caller":"lpbot/main.go:997","msg":"scanner initialized","env":"shadow","schema_version":1}
+{"level":"info","ts":1781030449.0974543,"caller":"lpbot/main.go:1001","msg":"strategy initialized","env":"shadow","schema_version":1}
+{"level":"info","ts":1781030449.0975149,"caller":"lpbot/main.go:1011","msg":"wiring main loop with risk/allocation/order components...","env":"shadow","schema_version":1}
+{"level":"info","ts":1781030449.0976005,"caller":"lpbot/main.go:1022","msg":"RiskGate wired (fail-closed enabled)","env":"shadow","schema_version":1,"risk_repo_attached":true}
+{"level":"info","ts":1781030449.1118424,"caller":"lpbot/main.go:1033","msg":"AllocationManager wired (per-pool + total exposure checks)","env":"shadow","schema_version":1}
+{"level":"info","ts":1781030449.1119215,"caller":"lpbot/main.go:1045","msg":"ApproveTracker wired","env":"shadow","schema_version":1}
+{"level":"info","ts":1781030449.1119308,"caller":"lpbot/main.go:1070","msg":"OrderManager wired","env":"shadow","schema_version":1}
+{"level":"warn","ts":1781030449.111968,"caller":"lpbot/main.go:1080","msg":"live safety gate not ready","env":"shadow","schema_version":1,"canary":false,"blockers":["amount_usd to token amount sizing path is not implemented","build mode is shadow","execution.backend=shadow is not configured","execution.npm_base_address is empty","executor is still shadow-only; live broadcaster is not wired in cmd/lpbot","live.allowed_chains is empty","live.allowed_pools is empty","live.daily_loss_limit_usd must be > 0","live.enabled=false","live.max_order_usd must be > 0","live.wallet_address is empty","live_risk.max_pending_exposure_usd must be > 0","live_risk.max_total_exposure_usd must be > 0"]}
+{"level":"info","ts":1781030449.1120446,"caller":"lpbot/main.go:1091","msg":"RPC simulator wired","env":"shadow","schema_version":1}
+{"level":"info","ts":1781030449.1120515,"caller":"lpbot/main.go:1097","msg":"Metrics wired","env":"shadow","schema_version":1}
+{"level":"info","ts":1781030449.1120927,"caller":"lpbot/main.go:1113","msg":"Main loop wired successfully","env":"shadow","schema_version":1}
+{"level":"info","ts":1781030449.112117,"caller":"lpbot/main.go:636","msg":"all components initialized","env":"shadow","schema_version":1}
+{"level":"info","ts":1781030449.1121824,"caller":"lpbot/main.go:1190","msg":"workers started","env":"shadow","schema_version":1,"strategy_interval":"1m","scanner_interval":"5m"}
+{"level":"info","ts":1781030449.120525,"caller":"lpbot/main.go:1222","msg":"strategy loop started","env":"shadow","schema_version":1}
+{"level":"info","ts":1781030449.1322615,"caller":"lpbot/main.go:1200","msg":"scanner loop started","env":"shadow","schema_version":1}
+{"level":"warn","ts":1781030510.7582612,"caller":"log/alerter.go:27","msg":"pipeline reject pool=base:aerodrome-slipstream:0xb2cc224c1c9fee385f8ad6a55b4d94e92359dc59 stage=chain_rpc_unavailable reason=no rpc provider configured for chain base","env":"shadow","schema_version":1,"alert_level":"p1","alert_src":"shadow_pipeline"}
+{"level":"warn","ts":1781030510.7586143,"caller":"lpbot/main.go:1334","msg":"shadow pipeline evaluation failed","env":"shadow","schema_version":1,"pool":"base:aerodrome-slipstream:0xb2cc224c1c9fee385f8ad6a55b4d94e92359dc59","stage":"chain_rpc_unavailable","reason":"no rpc provider configured for chain base"}
+{"level":"warn","ts":1781030510.7595165,"caller":"lpbot/main.go:1334","msg":"shadow pipeline evaluation failed","env":"shadow","schema_version":1,"pool":"base:aerodrome-slipstream:0x4e962bb3889bf030368f56810a9c96b83cb3e778","stage":"chain_rpc_unavailable","reason":"no rpc provider configured for chain base"}
+{"level":"warn","ts":1781030510.7622375,"caller":"lpbot/main.go:1334","msg":"shadow pipeline evaluation failed","env":"shadow","schema_version":1,"pool":"base:aerodrome-slipstream:0x70acdf2ad0bf2402c957154f944c19ef4e1cbae1","stage":"chain_rpc_unavailable","reason":"no rpc provider configured for chain base"}
+{"level":"info","ts":1781030510.8676841,"caller":"lpbot/main.go:1344","msg":"shadow strategy tick completed","env":"shadow","schema_version":1,"scanned":40,"candidates":3,"evaluated":3,"shadow_orders":0}
+{"level":"warn","ts":1781030569.5332153,"caller":"lpbot/main.go:1334","msg":"shadow pipeline evaluation failed","env":"shadow","schema_version":1,"pool":"base:aerodrome-slipstream:0xb2cc224c1c9fee385f8ad6a55b4d94e92359dc59","stage":"chain_rpc_unavailable","reason":"no rpc provider configured for chain base"}
+{"level":"warn","ts":1781030569.534113,"caller":"lpbot/main.go:1334","msg":"shadow pipeline evaluation failed","env":"shadow","schema_version":1,"pool":"base:aerodrome-slipstream:0x4e962bb3889bf030368f56810a9c96b83cb3e778","stage":"chain_rpc_unavailable","reason":"no rpc provider configured for chain base"}
+{"level":"warn","ts":1781030569.534791,"caller":"lpbot/main.go:1334","msg":"shadow pipeline evaluation failed","env":"shadow","schema_version":1,"pool":"base:aerodrome-slipstream:0x70acdf2ad0bf2402c957154f944c19ef4e1cbae1","stage":"chain_rpc_unavailable","reason":"no rpc provider configured for chain base"}
+{"level":"info","ts":1781030569.6121106,"caller":"lpbot/main.go:1344","msg":"shadow strategy tick completed","env":"shadow","schema_version":1,"scanned":40,"candidates":3,"evaluated":3,"shadow_orders":0}
+{"level":"info","ts":1781030628.7028117,"caller":"lpbot/main.go:643","msg":"shutdown signal received","env":"shadow","schema_version":1}
+{"level":"info","ts":1781030628.7032378,"caller":"lpbot/main.go:1536","msg":"stopping workers...","env":"shadow","schema_version":1}
+{"level":"info","ts":1781030628.7033463,"caller":"lpbot/main.go:1227","msg":"strategy loop stopped","env":"shadow","schema_version":1}
+{"level":"info","ts":1781030628.7034345,"caller":"lpbot/main.go:1205","msg":"scanner loop stopped","env":"shadow","schema_version":1}
+{"level":"info","ts":1781030628.7034645,"caller":"lpbot/main.go:1540","msg":"all workers stopped","env":"shadow","schema_version":1}
+shadow_smoke: ended_at=2026-06-09T18:43:48Z
+shadow_smoke: exit_code=124
+shadow_smoke: timeout reached (planned end)

@@ -1,0 +1,5 @@
+./scripts/check_ci_shadow_smoke_workflow_safety.sh
+ci_workflow_safety: workflow=/opt/lpbot/lp-bot-v3-origin-check/.github/workflows/shadow-smoke-gate.yml
+ci_workflow_safety: OK
+ci_workflow_safety:   - no forbidden tokens (secrets, wallet keys, canary/live paths)
+ci_workflow_safety:   - all required tokens present (services, no-RPC mode, migrator + smoke steps)

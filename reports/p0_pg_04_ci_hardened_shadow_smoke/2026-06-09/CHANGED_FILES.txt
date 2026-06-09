@@ -1,0 +1,75 @@
+CHANGED FILES — P0-PG-04
+branch: feat/supabase-postgres-deployment
+base_commit: e707152faa72bdc9f9c2faed91e18a7229e746b0
+implementation_commit: (recorded at implementation-commit time)
+report_fill_commit:    (recorded at report-fill-commit time)
+final_commit:          (recorded at final-commit time)
+
+NEW
+  .github/workflows/shadow-smoke-gate.yml
+    Dedicated GitHub Actions workflow for the hardened shadow smoke.
+    Triggers: workflow_dispatch, daily cron at 37 6 * * *, push to
+    feat/supabase-postgres-deployment touching any of the smoke /
+    shadow / migrator / workflow paths. Concurrency cancel-in-progress.
+    Job:
+      - services.postgres: postgres:16-alpine (default creds,
+        pg_isready healthcheck, port 5432)
+      - services.redis: redis:7-alpine (redis-cli ping healthcheck,
+        port 6379)
+      - env: POSTGRES_DSN, REDIS_URL, LPBOT_SMOKE_NO_RPC=1 (no
+        secrets; no live/canary DSN)
+      - Steps: build-migrate-postgres, check-postgres-migrations-sync,
+        pg_isready + redis-cli ping waits, plan pre-apply, apply,
+        plan post-apply, status, reapply, build-shadow, materialize
+        smoke config, run_shadow_smoke.sh (180s CI window),
+        check_shadow_smoke_safety.sh,
+        check_ci_shadow_smoke_workflow_safety.sh, *_test.go guard.
+    Reads NO GitHub secrets.
+
+  scripts/check_ci_shadow_smoke_workflow_safety.sh
+    Static safety check on .github/workflows/shadow-smoke-gate.yml.
+    Strips YAML comments first; verifies forbidden tokens
+    (secrets., LPBOT_CONFIRM_LIVE=YES, PRIVATE_KEY, MNEMONIC, SEED,
+    KMS, CANARY_DSN, LIVE_DSN, BASE_RPC_PRIMARY, SOL_RPC_PRIMARY,
+    run-live, bin/lpbot-live, run-dryrun, bin/lpbot-dryrun) are
+    absent and required tokens (postgres:16-alpine, redis:7-alpine,
+    LPBOT_SMOKE_NO_RPC, make build-migrate-postgres, make
+    migrate-postgres, make migrate-postgres-status, make build-shadow,
+    run_shadow_smoke.sh, check_shadow_smoke_safety.sh) are present.
+    Exits 0 on a clean workflow, 1 on any violation.
+
+  reports/p0_pg_04_ci_hardened_shadow_smoke/2026-06-09/*.md|*.json|*.txt
+    Report artifacts for this stage.
+
+MODIFIED
+  Makefile
+    .PHONY: added "check-ci-shadow-smoke-workflow".
+    New target:
+        check-ci-shadow-smoke-workflow:
+            ./scripts/check_ci_shadow_smoke_workflow_safety.sh
+    Comment documents the dual-source drift it catches.
+
+NOT TOUCHED
+  - migrations/postgres/*.sql
+  - internal/adapters/store/postgres/migrator/sql/*.sql
+  - internal/adapters/store/postgres/migrator/*.go
+  - cmd/lpbot/*.go (no source change in this stage; only the
+    P0-PG-03B additions to cmd/lpbot/main.go remain authoritative)
+  - cmd/lpbot-migrate-postgres/main.go
+  - scripts/migrate-postgres.sh
+  - scripts/check_postgres_migrations_sync.sh
+  - scripts/run_shadow_smoke.sh
+  - scripts/check_shadow_smoke_safety.sh
+  - configs/config.shadow.smoke.example.toml
+  - configs/*.toml
+  - .github/workflows/ci.yml (canonical quality-gate job unchanged)
+  - .github/workflows/migration-quality-gate.yml (unchanged)
+  - tests/test_lp_long_horizon_partial_12h_request_v1.py
+    (R1 guard, preserved as a working-tree modification per the
+    r1-protection rule)
+
+PRE-EXISTING PRESERVED FILES (NOT in this commit)
+  tests/test_lp_long_horizon_partial_12h_request_v1.py
+    Modification present at the start of this stage, untouched by
+    the stage. Will remain a working-tree modification unless an
+    explicit follow-up decides to commit it.

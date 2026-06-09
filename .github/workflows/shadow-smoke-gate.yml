@@ -1,0 +1,196 @@
+name: Shadow Smoke Gate
+
+# Hardened 5-minute shadow smoke in CI. Runs the same flow as the local
+# P0-PG-03B hardened smoke: fresh postgres + fresh redis, no-RPC mode,
+# schema-guard positive assertion, static safety check. This workflow
+# is intentionally a stand-alone gate (not part of the main ci.yml
+# quality-gate job) because it takes ~5 minutes and is gated behind:
+#   - workflow_dispatch (manual)
+#   - daily cron (offset to 37 6 * * *, distinct from main cron)
+#   - push to feat/supabase-postgres-deployment that touches the
+#     shadow code, smoke config, smoke scripts, or this workflow.
+#
+# P0-PG-04 (LP_BOT_ENGINEERING_P0_PG_04_CI_HARDENED_SHADOW_SMOKE_V1).
+#
+# Strict safety: this workflow reads NO secrets. The only DSN is the
+# in-network postgres service. The smoke uses LPBOT_SMOKE_NO_RPC=1
+# so the binary does not touch any chain endpoint. There is no live
+# or canary path; LPBOT_CONFIRM_LIVE / LPBOT_CANARY / LPBOT_LIVE /
+# CANARY_DSN / LIVE_DSN are never set and the static safety check
+# scripts/check_ci_shadow_smoke_workflow_safety.sh will FAIL if any
+# of them appear in this file.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "37 6 * * *"
+  push:
+    branches: [feat/supabase-postgres-deployment]
+    paths:
+      - "cmd/lpbot/**"
+      - "internal/**"
+      - "configs/config.shadow.smoke.example.toml"
+      - "scripts/run_shadow_smoke.sh"
+      - "scripts/check_shadow_smoke_safety.sh"
+      - "scripts/check_postgres_migrations_sync.sh"
+      - "scripts/check_ci_shadow_smoke_workflow_safety.sh"
+      - "migrations/postgres/**"
+      - "internal/adapters/store/postgres/migrator/**"
+      - ".github/workflows/shadow-smoke-gate.yml"
+      - "Makefile"
+
+concurrency:
+  group: shadow-smoke-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  shadow-smoke:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: lpbot_smoke_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d lpbot_smoke_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # Test-only DSN; no real secrets, no live/canary DSN. The CI
+      # postgres service creates lpbot_smoke_ci; the smoke drops /
+      # recreates its own schema via the migrator before running.
+      POSTGRES_DSN: postgres://postgres:postgres@localhost:5432/lpbot_smoke_ci?sslmode=disable
+      # Test-only redis URL; same convention as the canonical local
+      # smoke (P0-PG-03, P0-PG-03B).
+      REDIS_URL: redis://localhost:6379/0
+      # No-RPC mode: the shadow binary skips the hardcoded public-RPC
+      # fallback AND QuickNode discovery. This is the gate that makes
+      # the CI smoke truly network-isolated for chain traffic.
+      LPBOT_SMOKE_NO_RPC: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+          cache: true
+
+      - name: Show Go version
+        run: go version
+
+      - name: Build migrator binary
+        run: make build-migrate-postgres
+
+      - name: Migration sync check
+        run: make check-postgres-migrations-sync
+
+      - name: Wait for postgres service
+        run: |
+          for i in $(seq 1 30); do
+            if pg_isready -h localhost -p 5432 -U postgres -d lpbot_smoke_ci; then
+              echo "postgres ready after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "postgres not ready after 30s"
+          exit 1
+
+      - name: Wait for redis service
+        run: |
+          for i in $(seq 1 30); do
+            if redis-cli -h localhost -p 6379 ping | grep -q PONG; then
+              echo "redis ready after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "redis not ready after 30s"
+          exit 1
+
+      - name: Migration pre-plan
+        # Fresh CI DB; this should report 15 pending, 0 applied.
+        run: make migrate-postgres-plan
+
+      - name: Migration apply
+        run: make migrate-postgres
+
+      - name: Migration post-plan
+        # Should report 0 pending, 15 applied.
+        run: make migrate-postgres-plan
+
+      - name: Migration status
+        # Should report all_present=true.
+        run: make migrate-postgres-status
+
+      - name: Migration reapply (idempotency check)
+        # Should report ran=0 (no new migrations to apply).
+        run: make migrate-postgres
+
+      - name: Build shadow binary
+        run: make build-shadow
+
+      - name: Materialize smoke config from template
+        # The template uses ${POSTGRES_DSN} / ${REDIS_URL}; the env
+        # block at the top of this job provides them. The runner
+        # writes a real copy (not the example file) so the binary
+        # picks up the in-network DSN.
+        run: |
+          cp configs/config.shadow.smoke.example.toml configs/config.shadow.smoke.toml
+
+      - name: Run hardened shadow smoke (180s CI window)
+        # 180s keeps the workflow under GitHub's default 6-hour limit
+        # with margin; the canonical local smoke uses 300s (5 min).
+        # Same env vars, same scripts, same safety check.
+        run: |
+          scripts/run_shadow_smoke.sh \
+            --config configs/config.shadow.smoke.toml \
+            --duration 180 \
+            --log-dir reports/ci_shadow_smoke
+
+      - name: Smoke safety check
+        # Static grep over the captured log; verifies positive evidence
+        # (schema_guard=ok, smoke_no_rpc_mode=true, base_rpc_initialization=skipped,
+        # shadow banner, metrics start) and the absence of forbidden
+        # keywords (panic, fatal, signing/broadcast/.../approve
+        # action verbs, canary/live/paper).
+        run: |
+          SMOKE_LOG_DIR=reports/ci_shadow_smoke \
+            bash scripts/check_shadow_smoke_safety.sh \
+            | tee reports/ci_shadow_smoke/SHADOW_SMOKE_SAFETY_CHECK.txt
+
+      - name: Static workflow safety check
+        # Verifies this very workflow file does not contain any
+        # forbidden tokens (secrets., LPBOT_CONFIRM_LIVE=YES,
+        # PRIVATE_KEY, etc.) and contains all required tokens
+        # (postgres:16-alpine, redis:7-alpine, LPBOT_SMOKE_NO_RPC,
+        # make build-migrate-postgres, make migrate-postgres,
+        # make migrate-postgres-status, make build-shadow,
+        # run_shadow_smoke.sh, check_shadow_smoke_safety.sh).
+        run: |
+          ./scripts/check_ci_shadow_smoke_workflow_safety.sh \
+            | tee reports/ci_shadow_smoke/CI_WORKFLOW_SAFETY_CHECK.txt
+
+      - name: Test files unmodified check
+        run: |
+          set -e
+          BASE=$(git merge-base origin/main HEAD || echo origin/main)
+          if git diff "$BASE" -- '*_test.go' | grep -E '^-[^-]' | grep -v '^---'; then
+            echo "ERROR: Cannot delete/modify *_test.go"
+            exit 1
+          fi

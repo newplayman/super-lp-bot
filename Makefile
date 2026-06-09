@@ -15,6 +15,7 @@ GO_LDFLAGS := -X main.BuildCommit=$(BUILD_COMMIT) -X main.BuildDate=$(BUILD_DATE
         migrate-postgres migrate-postgres-plan migrate-postgres-status \
         check-shadow-env-consistency \
         check-postgres-migrations-sync \
+        check-ci-shadow-smoke-workflow \
         quality-gate preflight
 
 tidy:
@@ -63,6 +64,14 @@ check-shadow-env-consistency:
 # Catches the kind of dual-source drift the P0-PG-01 audit flagged.
 check-postgres-migrations-sync:
 	./scripts/check_postgres_migrations_sync.sh
+
+# Static check on the P0-PG-04 hardened shadow-smoke CI workflow
+# (.github/workflows/shadow-smoke-gate.yml). Verifies forbidden tokens
+# (secrets, wallet keys, canary/live paths, dryrun / live binaries)
+# are absent and required tokens (postgres:16-alpine, redis:7-alpine,
+# LPBOT_SMOKE_NO_RPC, migrator + smoke make targets) are present.
+check-ci-shadow-smoke-workflow:
+	./scripts/check_ci_shadow_smoke_workflow_safety.sh
 
 # Pre-merge quality gate. Aggregates the cheap, fast, network-free
 # checks that should run on every commit. Intentionally excludes:
