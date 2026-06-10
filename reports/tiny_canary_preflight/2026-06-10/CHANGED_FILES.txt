@@ -1,9 +1,19 @@
 CHANGED FILES — Tiny Canary Preflight
 branch: feat/supabase-postgres-deployment
 base_commit: 0d50d15c26663bc7497a40b227a2b4af696522ff
-implementation_commit: (recorded at implementation-commit time)
-report_fill_commit:    (recorded at report-fill-commit time)
-final_commit:          (recorded at final-commit time)
+implementation_commit: 17ff0d9baa5f3ecf5ab234b539349e946d1f9455
+report_fill_commit:    83fb1c0699f95375c7f9c3868f671ed18aa9c7c5
+final_commit:          83fb1c0699f95375c7f9c3868f671ed18aa9c7c5
+
+Note on FINAL_VERDICT self-reference: the FINAL_VERDICT.json inside
+commit 83fb1c0 references `report_fill_commit:
+71a32d9...` and `final_commit: 71a32d9...` — those values reflect
+the SHA BEFORE the amend that added the SHA fields to the file.
+The amend is a normal "update last-minute detail" operation; the
+file in the canonical commit 83fb1c0 contains the updated SHA
+fields. Same pattern as prior stages; authoritative for ChatGPT
+reviewers is the FINAL_VERDICT inside the final_commit pointed-to
+by this CHANGED_FILES.txt.
 
 MODIFIED
   scripts/check_shadow_public_rpc_soak_safety.sh
