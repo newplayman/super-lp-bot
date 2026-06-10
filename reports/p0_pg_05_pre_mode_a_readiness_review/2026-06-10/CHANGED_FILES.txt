@@ -1,0 +1,50 @@
+CHANGED FILES — P0-PG-05
+branch: feat/supabase-postgres-deployment
+base_commit: 63327112eb193e6773b5e41627ab0481b4c677da
+implementation_commit: (recorded at implementation-commit time)
+report_fill_commit:    (recorded at report-fill-commit time)
+final_commit:          (recorded at final-commit time)
+
+NEW
+  reports/p0_pg_05_pre_mode_a_readiness_review/2026-06-10/*.md|*.json
+    Read-only review artifacts. No code change in this stage.
+    - STAGE_LINEAGE_AUDIT.md       (canonical-lineage table,
+                                     canonical vs superseded
+                                     classification, audit-only
+                                     artifact pointers)
+    - READINESS_MATRIX.md          (18-dimension matrix, PASS/WARN/
+                                     FAIL/NOT_APPLICABLE per
+                                     dimension, blocking level)
+    - BLOCKER_TRIAGE.md            (deduped blockers, P0/P1/P2
+                                     classification, audit
+                                     top-10 disposition, risk-
+                                     acceptance conditions)
+    - SAFETY_LOCKS_SUMMARY.md      (lock-by-lock summary across all
+                                     canonical stages, preserved-
+                                     file table)
+    - NEXT_STAGE_RECOMMENDATION.md (verdict, sequencing, what is
+                                     and is not in scope for the
+                                     next stage)
+    - CHANGED_FILES.txt            (this file)
+    - SAFETY_LOCKS_RECHECK.json    (this stage's lock check)
+    - FINAL_VERDICT.json           (this stage's verdict)
+
+NOT TOUCHED
+  - migrations/postgres/*.sql
+  - internal/adapters/store/postgres/migrator/sql/*.sql
+  - internal/adapters/store/postgres/migrator/*.go
+  - cmd/lpbot/*.go
+  - cmd/lpbot-migrate-postgres/main.go
+  - scripts/*.sh
+  - configs/*.toml, configs/*.toml.example
+  - .github/workflows/*.yml
+  - Makefile
+  - tests/test_lp_long_horizon_partial_12h_request_v1.py
+    (R1 guard, preserved as a working-tree modification per the
+    r1-protection rule)
+
+PRE-EXISTING PRESERVED FILES (NOT in this commit)
+  tests/test_lp_long_horizon_partial_12h_request_v1.py
+    Modification present at the start of this stage, untouched by
+    the stage. Will remain a working-tree modification unless an
+    explicit follow-up decides to commit it.
