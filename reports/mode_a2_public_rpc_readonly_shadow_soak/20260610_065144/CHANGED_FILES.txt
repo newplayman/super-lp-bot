@@ -1,9 +1,19 @@
 CHANGED FILES — Mode A2
 branch: feat/supabase-postgres-deployment
 base_commit: 856ea6ebf17b6ab124f43bda23d7439155dcd380
-implementation_commit: (recorded at implementation-commit time)
-report_fill_commit:    (recorded at report-fill-commit time)
-final_commit:          (recorded at final-commit time)
+implementation_commit: 2192bb5e97a9b902151969ef90ca70bde3a6d1e3
+report_fill_commit:    a5b75df7bc0b8364ba5d892b0bb7a42007f28a15
+final_commit:          a5b75df7bc0b8364ba5d892b0bb7a42007f28a15
+
+Note on FINAL_VERDICT self-reference: the FINAL_VERDICT.json inside
+commit a5b75df references `report_fill_commit:
+7da3ae5...` and `final_commit: 7da3ae5...` — those values reflect
+the SHA BEFORE the amend that added the SHA fields to the file.
+The amend is a normal "update last-minute detail" operation; the
+file in the canonical commit a5b75df contains the updated SHA
+fields. Same pattern as prior stages; authoritative for ChatGPT
+reviewers is the FINAL_VERDICT inside the final_commit pointed-to
+by this CHANGED_FILES.txt.
 
 NEW
   configs/config.shadow.a2-public-rpc.example.toml
