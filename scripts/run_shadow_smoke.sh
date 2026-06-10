@@ -8,6 +8,8 @@
 # code (or 124 on timeout, which the check_shadow_smoke_safety.sh
 # script treats as a WARN smoke not a FAIL).
 #
+# CI first-run trigger (P0-PG-06): no logic change; comment only.
+#
 # Strict safety: refuses to start if any canary/live/paper env var
 # is set or if the config file references canary/live DSN tokens.
 # Does NOT source .env.canary or .env.live. The smoke is a read-mostly

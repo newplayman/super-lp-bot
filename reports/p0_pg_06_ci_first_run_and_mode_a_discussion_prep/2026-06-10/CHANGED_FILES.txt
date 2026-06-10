@@ -1,0 +1,62 @@
+CHANGED FILES — P0-PG-06
+branch: feat/supabase-postgres-deployment
+base_commit: 102cbe36c51a8d056a5c5cbc0b67f6ca35b92d32
+implementation_commit: (recorded at implementation-commit time)
+report_fill_commit:    (recorded at report-fill-commit time)
+final_commit:          (recorded at final-commit time)
+
+NEW
+  reports/p0_pg_06_ci_first_run_and_mode_a_discussion_prep/2026-06-10/*.md|*.json
+    Read-only review and discussion artifacts. No executable logic
+    added.
+    - CI_FIRST_RUN_TRIGGER_REPORT.md   (why we used trigger-commit;
+                                       what was / was not done)
+    - CI_FIRST_RUN_RESULT.md          (gh CLI not authenticated;
+                                       inability to read CI result
+                                       is honest, not fabricated)
+    - MODE_A_DISCUSSION_DRAFT.md      (Mode A boundary definition;
+                                       three candidate options
+                                       A1/A2/A3; P2 risk acceptance
+                                       per option; proposed safety
+                                       contract; three-stage gating
+                                       discussion -> plan -> execute)
+    - P2_RISK_ACCEPTANCE_MATRIX.md    (single-purpose extract of the
+                                       discussion draft's section 3)
+    - NEXT_STAGE_RECOMMENDATION.md    (three explicit options for the
+                                       next stage; strict non-goal
+                                       reminder)
+    - CHANGED_FILES.txt               (this file)
+    - SAFETY_LOCKS_RECHECK.json       (this stage's lock check)
+    - FINAL_VERDICT.json              (this stage's verdict)
+
+MODIFIED
+  scripts/run_shadow_smoke.sh
+    +2 lines of pure comments documenting that this commit is the
+     P0-PG-06 CI first-run trigger. No executable code change. The
+     diff is exactly:
+       +#
+       +# CI first-run trigger (P0-PG-06): no logic change; comment only.
+       +#
+     inserted between two existing comment blocks. Verified by
+     `git diff scripts/run_shadow_smoke.sh`.
+
+NOT TOUCHED
+  - migrations/postgres/*.sql
+  - internal/adapters/store/postgres/migrator/sql/*.sql
+  - internal/adapters/store/postgres/migrator/*.go
+  - cmd/lpbot/*.go
+  - cmd/lpbot-migrate-postgres/main.go
+  - configs/*.toml, configs/*.toml.example
+  - .github/workflows/*.yml
+  - Makefile
+  - reports/p0_pg_05_pre_mode_a_readiness_review/2026-06-10/*
+  - reports/lp_long_horizon_r1_pause_and_freeze/*
+  - tests/test_lp_long_horizon_partial_12h_request_v1.py
+    (R1 guard, preserved as a working-tree modification per the
+    r1-protection rule)
+
+PRE-EXISTING PRESERVED FILES (NOT in this commit)
+  tests/test_lp_long_horizon_partial_12h_request_v1.py
+    Modification present at the start of this stage, untouched by
+    the stage. Will remain a working-tree modification unless an
+    explicit follow-up decides to commit it.
