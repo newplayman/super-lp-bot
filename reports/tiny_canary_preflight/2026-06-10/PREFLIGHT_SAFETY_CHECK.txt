@@ -1,0 +1,23 @@
+tiny_canary_preflight_safety: scanning /opt/lpbot/lp-bot-v3-origin-check/reports/tiny_canary_preflight/2026-06-10
+  required_present: max_total_exposure_usdc (USDC <= 10) in RISK_LIMIT_CONTRACT.md
+  required_present: max_per_pool_exposure_usdc (USDC <= 3) in RISK_LIMIT_CONTRACT.md
+  required_present: max_action_count (= 1) in RISK_LIMIT_CONTRACT.md
+  required_present: max_duration_minutes (15) in RISK_LIMIT_CONTRACT.md
+  required_present: approve uses ApproveExact in APPROVE_ALLOWANCE_POLICY.md
+  required_present: unlimited approve forbidden in APPROVE_ALLOWANCE_POLICY.md
+  required_present: LPBOT_CONFIRM_LIVE abort condition in TINY_CANARY_ABORT_CONDITIONS.md
+  required_present: kill switch defined in TINY_CANARY_ABORT_CONDITIONS.md
+  required_present: exposure cap abort in TINY_CANARY_ABORT_CONDITIONS.md
+  required_present: panic abort in TINY_CANARY_ABORT_CONDITIONS.md
+  required_present: broadcast abort in TINY_CANARY_ABORT_CONDITIONS.md
+  required_present: max_duration_minutes cap (15) in TINY_CANARY_ABORT_CONDITIONS.md
+  required_present: max_action_count cap in TINY_CANARY_ABORT_CONDITIONS.md
+  required_present: plan execution NOT authorized in TINY_CANARY_EXECUTION_PLAN_DRAFT.md
+  required_present: execute stage required in TINY_CANARY_EXECUTION_PLAN_DRAFT.md
+  required_present: operator checklist in TINY_CANARY_EXECUTION_PLAN_DRAFT.md
+tiny_canary_preflight_safety: OK
+tiny_canary_preflight_safety:   - no unlimited approve, no private-key/mnemonic/seed
+tiny_canary_preflight_safety:   - no LPBOT_CONFIRM_LIVE=YES hardcoded
+tiny_canary_preflight_safety:   - no alchemy/infura/quicknode tokens
+tiny_canary_preflight_safety:   - all required caps + abort conditions present
+tiny_canary_preflight_safety:   - plan explicitly states NOT AUTHORIZED FOR EXECUTION

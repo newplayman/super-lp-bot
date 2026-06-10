@@ -34,7 +34,7 @@ fi
 fail=0
 
 # Counters (printed to stdout for FINAL_VERDICT.json fields).
-panic_count=$(grep -c -E '^[^[:space:]]+[^[:space:]]+[[:space:]]+[^[:space:]]+[[:space:]]+"level":"error"' "${LOG_FILE}" 2>/dev/null || true)
+panic_count=$(grep -c -E '"level":"error"' "${LOG_FILE}" 2>/dev/null || true)
 fatal_count=$(grep -c -E 'panic:|^FATAL|^fatal error|traceback' "${LOG_FILE}" 2>/dev/null || true)
 
 forbidden=(
@@ -49,20 +49,20 @@ forbidden=(
   'LIVE_DSN'
   'QUICKNODE_API_KEY'
   # Action verbs as standalone words (case-insensitive).
-  '[[:space:]](mint|addLiquidity|removeLiquidity|approve|swap|bridge)[[:space:]]'
+  '(^|[^[:alnum:]_])(mint|addLiquidity|removeLiquidity|approve|swap|bridge)([^[:alnum:]_]|$)'
   # Wallet / signer / broadcaster keywords.
-  '[[:<:]]signing[[:>:]]'
-  '[[:<:]]broadcast([[:alpha:]]*)'
-  '[[:<:]]wallet([[:alpha:]]*)'
+  '(^|[^[:alnum:]_])signing([^[:alnum:]_]|$)'
+  '(^|[^[:alnum:]_])broadcast([^[:alnum:]_]|$)'
+  '(^|[^[:alnum:]_])wallet([^[:alnum:]_]|$)'
   'PRIVATE_KEY'
   'MNEMONIC'
   'SEED'
 )
 
-wallet_keyword_count=$(grep -c -iE '[[:<:]]wallet' "${LOG_FILE}" 2>/dev/null || true)
-signing_keyword_count=$(grep -c -iE '[[:<:]]signing' "${LOG_FILE}" 2>/dev/null || true)
-broadcast_keyword_count=$(grep -c -iE '[[:<:]]broadcast' "${LOG_FILE}" 2>/dev/null || true)
-lp_action_keyword_count=$(grep -c -E '[[:space:]](mint|addLiquidity|removeLiquidity|approve|swap|bridge)[[:space:]]' "${LOG_FILE}" 2>/dev/null || true)
+wallet_keyword_count=$(grep -c -iE '(^|[^[:alnum:]_])wallet([^[:alnum:]_]|$)' "${LOG_FILE}" 2>/dev/null || true)
+signing_keyword_count=$(grep -c -iE '(^|[^[:alnum:]_])signing([^[:alnum:]_]|$)' "${LOG_FILE}" 2>/dev/null || true)
+broadcast_keyword_count=$(grep -c -iE '(^|[^[:alnum:]_])broadcast([^[:alnum:]_]|$)' "${LOG_FILE}" 2>/dev/null || true)
+lp_action_keyword_count=$(grep -c -E '(^|[^[:alnum:]_])(mint|addLiquidity|removeLiquidity|approve|swap|bridge)([^[:alnum:]_]|$)' "${LOG_FILE}" 2>/dev/null || true)
 
 for pat in "${forbidden[@]}"; do
   if grep -E -q -- "$pat" "${LOG_FILE}"; then

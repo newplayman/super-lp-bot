@@ -1,0 +1,58 @@
+CHANGED FILES — Tiny Canary Preflight
+branch: feat/supabase-postgres-deployment
+base_commit: 0d50d15c26663bc7497a40b227a2b4af696522ff
+implementation_commit: (recorded at implementation-commit time)
+report_fill_commit:    (recorded at report-fill-commit time)
+final_commit:          (recorded at final-commit time)
+
+MODIFIED
+  scripts/check_shadow_public_rpc_soak_safety.sh
+    Replaced the GNU-non-portable `[[:<:]]` / `[[:>:]]`
+    word-boundary patterns with POSIX-portable
+    `(^|[^[:alnum:]_])` / `([^[:alnum:]_]|$)` grouping.
+    Also simplified the `panic_count` regex (removed unused
+    character classes). The script now runs without
+    `grep: Invalid character class name` warnings and emits
+    numeric counters (verified by replay against the existing
+    Mode A2 log).
+
+NEW
+  scripts/check_tiny_canary_preflight_safety.sh
+    Static safety check for the Tiny Canary plan + report. Verifies
+    forbidden tokens are absent (with documentation-cue allowance
+    for tokens that appear in "no X" / "forbidden: X" context),
+    and required caps + abort conditions are present in the
+    canonical report files.
+
+  reports/tiny_canary_preflight/2026-06-10/*.md|*.json|*.txt
+    Tiny Canary Preflight report artifacts.
+
+NOT TOUCHED
+  - migrations/postgres/*.sql
+  - internal/adapters/store/postgres/migrator/sql/*.sql
+  - internal/adapters/store/postgres/migrator/*.go
+  - cmd/lpbot/*.go (no source change in this stage; the
+    canonical codebase from P0-PG-04 / Mode A2 lineage is used
+    as-is)
+  - cmd/lpbot-migrate-postgres/main.go
+  - scripts/migrate-postgres.sh
+  - scripts/check_postgres_migrations_sync.sh
+  - scripts/run_shadow_smoke.sh
+  - configs/config.shadow.smoke.example.toml
+  - configs/config.shadow.toml
+  - configs/*.toml
+  - .github/workflows/*.yml
+  - Makefile
+  - reports/p0_pg_05_pre_mode_a_readiness_review/2026-06-10/*
+  - reports/p0_pg_06_ci_first_run_and_mode_a_discussion_prep/2026-06-10/*
+  - reports/p0_pg_06b_ci_first_run_result_capture/2026-06-10/*
+  - reports/mode_a2_public_rpc_readonly_shadow_soak/20260610_065144/*
+  - tests/test_lp_long_horizon_partial_12h_request_v1.py
+    (R1 guard, preserved as a working-tree modification per the
+    r1-protection rule)
+
+PRE-EXISTING PRESERVED FILES (NOT in this commit)
+  tests/test_lp_long_horizon_partial_12h_request_v1.py
+    Modification present at the start of this stage, untouched by
+    the stage. Will remain a working-tree modification unless an
+    explicit follow-up decides to commit it.

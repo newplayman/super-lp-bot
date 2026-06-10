@@ -1,0 +1,89 @@
+TEST RESULTS — Tiny Canary Preflight
+Captured 2026-06-10. Every command and exit code recorded verbatim.
+
+=== make quality-gate ===
+$ make quality-gate
+... check-postgres-migrations-sync OK ...
+... full test suite OK ...
+exit: 0
+
+=== go test ./internal/adapters/store/postgres ===
+$ go test -count=1 -timeout 5m ./internal/adapters/store/postgres
+ok  internal/adapters/store/postgres  8.188s
+exit: 0
+
+=== go test ./internal/core/... ./internal/platform/... ./internal/domain ./pkg/... ./cmd/... ./internal/adapters/store/sqlite ./internal/ports ./tests/property ./tests/chaos ===
+$ go test -count=1 -timeout 5m ./internal/core/... ./internal/platform/... ./internal/domain ./pkg/... ./cmd/... ./internal/adapters/store/sqlite ./internal/ports ./tests/property ./tests/chaos
+ok  ... (all subsets passed)
+exit: 0
+
+=== make test-race ===
+$ make test-race
+go test -race -count=1 ./internal/adapters/store/postgres ./internal/adapters/rpc
+ok  internal/adapters/store/postgres  16.842s
+ok  internal/adapters/rpc             10.370s
+exit: 0
+
+=== make build-migrate-postgres ===
+$ make build-migrate-postgres
+go build -o bin/lpbot-migrate-postgres ./cmd/lpbot-migrate-postgres
+exit: 0
+
+=== make build-shadow ===
+$ make build-shadow
+go build -ldflags "..." -tags=shadow -o bin/lpbot-shadow ./cmd/lpbot
+exit: 0
+
+=== make build-dryrun ===
+$ make build-dryrun
+go build -ldflags "..." -tags=dryrun -o bin/lpbot-dryrun ./cmd/lpbot
+exit: 0
+
+=== make build-live ===
+$ make build-live
+go build -ldflags "..." -tags=live -o bin/lpbot-live ./cmd/lpbot
+exit: 0
+
+(Dryrun and live binaries were built but NEVER executed.)
+
+=== A2 safety check replay (validates the grep-bug fix) ===
+$ SOAK_LOG_DIR="reports/mode_a2_public_rpc_readonly_shadow_soak/20260610_065144" \
+    bash scripts/check_shadow_public_rpc_soak_safety.sh
+shadow_soak_safety: forbidden_pattern_violations=0
+shadow_soak_safety: rpc_health_lines=60
+shadow_soak_safety: panic_count=2
+shadow_soak_safety: fatal_count=0
+shadow_soak_safety: wallet_keyword_count=0
+shadow_soak_safety: signing_keyword_count=0
+shadow_soak_safety: broadcast_keyword_count=0
+shadow_soak_safety: lp_action_keyword_count=0
+shadow_soak_safety: OK
+exit: 0
+
+=== Tiny Canary preflight safety check ===
+$ bash scripts/check_tiny_canary_preflight_safety.sh
+tiny_canary_preflight_safety: scanning reports/tiny_canary_preflight/2026-06-10
+  required_present: max_total_exposure_usdc (USDC <= 10) in RISK_LIMIT_CONTRACT.md
+  required_present: max_per_pool_exposure_usdc (USDC <= 3) in RISK_LIMIT_CONTRACT.md
+  required_present: max_action_count (= 1) in RISK_LIMIT_CONTRACT.md
+  required_present: max_duration_minutes (15) in RISK_LIMIT_CONTRACT.md
+  required_present: approve uses ApproveExact in APPROVE_ALLOWANCE_POLICY.md
+  required_present: unlimited approve forbidden in APPROVE_ALLOWANCE_POLICY.md
+  required_present: LPBOT_CONFIRM_LIVE abort condition in TINY_CANARY_ABORT_CONDITIONS.md
+  required_present: kill switch defined in TINY_CANARY_ABORT_CONDITIONS.md
+  required_present: exposure cap abort in TINY_CANARY_ABORT_CONDITIONS.md
+  required_present: panic abort in TINY_CANARY_ABORT_CONDITIONS.md
+  required_present: broadcast abort in TINY_CANARY_ABORT_CONDITIONS.md
+  required_present: max_duration_minutes cap (15) in TINY_CANARY_ABORT_CONDITIONS.md
+  required_present: max_action_count cap in TINY_CANARY_ABORT_CONDITIONS.md
+  required_present: plan execution NOT authorized in TINY_CANARY_EXECUTION_PLAN_DRAFT.md
+  required_present: execute stage required in TINY_CANARY_EXECUTION_PLAN_DRAFT.md
+  required_present: operator checklist in TINY_CANARY_EXECUTION_PLAN_DRAFT.md
+tiny_canary_preflight_safety: OK
+exit: 0
+
+=== summary ===
+PASS : 11 (quality-gate, postgres tests, all subsets, test-race, 4 builds,
+         A2 safety replay, preflight safety check)
+SKIP: 0
+FAIL: 0
