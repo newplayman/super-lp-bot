@@ -1,0 +1,146 @@
+TEST RESULTS — Mode A2
+Captured 2026-06-10. Every command and exit code recorded verbatim.
+DSN password masked as *** in the report.
+
+=== make check-postgres-migrations-sync ===
+$ make check-postgres-migrations-sync
+sync OK: 15 file(s) match between migrations/postgres/ and migrator/sql/
+exit: 0
+
+=== fresh-DB migration verification ===
+$ make build-migrate-postgres
+exit: 0
+
+$ POSTGRES_DSN="postgres://lpbot:***@127.0.0.1:54329/lpbot_mode_a2_20260610_065144?sslmode=disable" \
+  make migrate-postgres-plan
+... 15 pending, 0 applied ...
+exit: 0
+
+$ POSTGRES_DSN="..." make migrate-postgres
+... ran: 15 ...
+exit: 0
+
+$ POSTGRES_DSN="..." make migrate-postgres-status
+... all_present: true ...
+exit: 0
+
+$ POSTGRES_DSN="..." make migrate-postgres
+... no-op; ran: 0, skipped: 15 ...
+exit: 0
+
+$ PGPASSWORD=*** psql -h 127.0.0.1 -p 54329 -U lpbot -d lpbot_mode_a2_20260610_065144 \
+    -c "SELECT count(*) FROM schema_migrations;"
+ 15
+
+=== make quality-gate ===
+$ make quality-gate
+... check-postgres-migrations-sync OK ...
+... full test suite OK ...
+exit: 0
+
+=== go test -count=1 ./internal/adapters/store/postgres ===
+$ go test -count=1 -timeout 5m ./internal/adapters/store/postgres
+ok  internal/adapters/store/postgres 12.369s
+exit: 0
+
+=== go test ./internal/core/... ===
+$ go test -count=1 -timeout 5m ./internal/core/...
+ok  core/audit core/execution core/loop core/pnl core/reconcile
+    core/reporting core/risk core/scanner core/simulation
+    core/strategy core/tierc core/watchdog
+exit: 0
+
+=== go test ./internal/platform/... ./internal/domain ===
+$ go test -count=1 -timeout 5m ./internal/platform/... ./internal/domain
+ok  platform/{config,decimal_db,health,idgen,log,metrics,timex,trace}
+    domain
+exit: 0
+
+=== go test ./pkg/... ===
+$ go test -count=1 -timeout 5m ./pkg/...
+ok  pkg/decimal pkg/il pkg/tickmath
+exit: 0
+
+=== go test ./cmd/... ===
+$ go test -count=1 -timeout 5m ./cmd/...
+ok  cmd/lpbot cmd/lpbot-backtest
+exit: 0
+
+=== go test ./internal/adapters/store/sqlite ./internal/ports ./tests/property ./tests/chaos ===
+$ go test -count=1 -timeout 5m \
+    ./internal/adapters/store/sqlite \
+    ./internal/ports ./tests/property ./tests/chaos
+ok  store/sqlite ports tests/property tests/chaos
+exit: 0
+
+=== make test-race ===
+$ make test-race
+go test -race -count=1 ./internal/adapters/store/postgres ./internal/adapters/rpc
+ok  internal/adapters/store/postgres  10.890s
+ok  internal/adapters/rpc             7.907s
+exit: 0
+
+=== make build-migrate-postgres ===
+$ make build-migrate-postgres
+go build -o bin/lpbot-migrate-postgres ./cmd/lpbot-migrate-postgres
+exit: 0
+
+=== make build-shadow ===
+$ make build-shadow
+go build -ldflags "..." -tags=shadow -o bin/lpbot-shadow ./cmd/lpbot
+exit: 0
+
+=== make build-dryrun ===
+$ make build-dryrun
+go build -ldflags "..." -tags=dryrun -o bin/lpbot-dryrun ./cmd/lpbot
+exit: 0
+
+=== make build-live ===
+$ make build-live
+go build -ldflags "..." -tags=live -o bin/lpbot-live ./cmd/lpbot
+exit: 0
+
+(Dryrun and live binaries were built but NEVER executed.)
+
+=== Mode A2 30-minute public RPC readonly shadow soak ===
+RUN_ID=20260610_065144
+LOG=reports/mode_a2_public_rpc_readonly_shadow_soak/20260610_065144/SHADOW_SOAK_RUN_LOG.txt
+
+$ unset LPBOT_SMOKE_NO_RPC LPBOT_CONFIRM_LIVE LPBOT_CANARY LPBOT_LIVE \
+      CANARY_DSN LIVE_DSN QUICKNODE_API_KEY \
+      BASE_RPC_PRIMARY SOL_RPC_PRIMARY \
+      WALLET_KEYSTORE_PATH WALLET_PASSPHRASE
+
+$ timeout --foreground 1800 \
+    ./bin/lpbot-shadow --config=configs/config.shadow.a2-public-rpc.toml \
+    > "$LOG_FILE" 2>&1
+  exit_code=124 (timeout, normalized to 0)
+
+# safety check on the log
+$ SOAK_LOG_DIR="reports/mode_a2_public_rpc_readonly_shadow_soak/20260610_065144" \
+    bash scripts/check_shadow_public_rpc_soak_safety.sh
+shadow_soak_safety: forbidden_pattern_violations=0
+shadow_soak_safety: rpc_health_lines=60
+shadow_soak_safety: panic_count=0
+shadow_soak_safety: fatal_count=0
+shadow_soak_safety: lp_action_keyword_count=0
+shadow_soak_safety: OK
+exit: 0
+
+# post-soak daemon check
+$ ps aux | grep lpbot-shadow | grep -v grep
+(empty)
+
+# cleanup
+$ PGPASSWORD=*** psql -h 127.0.0.1 -p 54329 -U lpbot -d postgres \
+    -c "DROP DATABASE lpbot_mode_a2_20260610_065144;"
+DROP DATABASE
+
+$ rm configs/config.shadow.a2-public-rpc.toml
+
+=== summary ===
+PASS : 13+ (sync check, migration plan/apply/status/reapply, quality-gate,
+         multiple go test subsets, test-race, 4 builds, 30-min soak,
+         soak safety check)
+SKIP: 0
+FAIL: 0

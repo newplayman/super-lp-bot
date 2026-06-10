@@ -1,0 +1,18 @@
+grep: Invalid character class name
+grep: Invalid character class name
+grep: Invalid character class name
+shadow_soak_safety: log=reports/mode_a2_public_rpc_readonly_shadow_soak/20260610_065144/SHADOW_SOAK_RUN_LOG.txt
+shadow_soak_safety: forbidden_pattern_violations=0
+shadow_soak_safety: rpc_health_lines=60
+shadow_soak_safety: panic_count=0
+shadow_soak_safety: fatal_count=0
+shadow_soak_safety: wallet_keyword_count=
+shadow_soak_safety: signing_keyword_count=
+shadow_soak_safety: broadcast_keyword_count=
+shadow_soak_safety: lp_action_keyword_count=0
+shadow_soak_safety: OK
+shadow_soak_safety:   - no panic, no fatal, no wallet/signing/broadcast keywords
+shadow_soak_safety:   - no canary/live/paper/quicknode references
+shadow_soak_safety:   - shadow banner + metrics server + schema_guard=ok + Base RPC provider initialized
+shadow_soak_safety:   - RPC health evidence present (>= 1 health check summary line)
+shadow_soak_safety:   - smoke_no_rpc_mode=true absent (canonical RPC path)

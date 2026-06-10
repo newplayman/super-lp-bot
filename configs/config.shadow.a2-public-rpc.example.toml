@@ -1,0 +1,107 @@
+# config.shadow.a2-public-rpc.example.toml
+#
+# Mode A2 template: bounded 30–60 minute shadow soak with canonical
+# public RPC read-only path. Stage
+# LP_BOT_ENGINEERING_MODE_A2_PUBLIC_RPC_READONLY_SHADOW_SOAK_V1.
+#
+# This is a TEMPLATE. Copy to configs/config.shadow.a2-public-rpc.toml
+# (NOT in VCS) and substitute POSTGRES_DSN / REDIS_URL /
+# METRICS_PORT appropriately for your test environment. The example
+# below assumes the canonical local test fixtures that the P0-PG-*
+# lineage used.
+#
+# Strict safety: this config MUST NOT reference any wallet,
+# signer, broadcaster, private RPC, paid RPC, QuickNode, Alchemy,
+# Infura, or live-mode execution path. The binary in shadow mode
+# will not sign or broadcast regardless, but the config is the
+# canonical place to express intent.
+#
+# Required env at runtime (operator must unset these explicitly):
+#   unset LPBOT_SMOKE_NO_RPC             # Mode A2 uses canonical RPC
+#   unset LPBOT_CONFIRM_LIVE
+#   unset LPBOT_CANARY LPBOT_LIVE
+#   unset CANARY_DSN LIVE_DSN
+#   unset QUICKNODE_API_KEY              # disable QuickNode discovery
+#   unset BASE_RPC_PRIMARY SOL_RPC_PRIMARY  # let the canonical list win
+#   unset WALLET_KEYSTORE_PATH WALLET_PASSPHRASE  # no wallet path
+
+[mode]
+expected = "shadow"
+
+[platform]
+log_level = "info"
+# Distinct metrics port to avoid clashing with any other local smoke.
+# P0-PG-03/03B/04 use :9091; we use :9092 here.
+metrics_addr = ":9092"
+dashboard_token = ""
+
+[alerting]
+# Mode A2 disables alerting so the smoke cannot trigger telegram calls.
+telegram_token = ""
+telegram_chat_id = ""
+min_interval_seconds = 60
+
+[chains.base]
+# Canonical public RPC read-only. The binary will:
+#   1. Use this value as the primary.
+#   2. Append the hardcoded public list (mainnet.base.org,
+#      mainnet-preconf.base.org, base.drpc.org).
+#   3. NOT call QuickNode discovery because QUICKNODE_API_KEY is unset.
+# No private / paid / authenticated endpoint.
+rpc_primary = "${BASE_RPC_PRIMARY:-https://mainnet.base.org}"
+rpc_fallback = []
+ws = ""
+confirmations = 10
+
+[chains.solana]
+# Empty primary + no fallback = no solana endpoints. The binary
+# accepts an empty solana chain in shadow mode without failing.
+rpc_primary = ""
+commitment = "finalized"
+
+[store]
+backend = "postgres"
+# Test-only DSN; the example shows the format; the live copy
+# substitutes the actual fresh-test DB.
+postgres_dsn = "${POSTGRES_DSN}"
+
+[redis]
+# Empty URL = Redis runtime disabled (the shadow binary logs
+# "Redis runtime disabled" and continues). Mode A2's bounded
+# 30-min soak does not require redis heartbeats; the local pg
+# is the single source of truth for the soak.
+url = "${REDIS_URL:-}"
+prefix = "lpbot_a2_shadow"
+heartbeat_interval_seconds = 15
+heartbeat_ttl_seconds = 60
+
+[bus]
+backend = "inproc"
+
+# Risk / tier knobs are loaded by the config loader; the binary
+# never opens a position in shadow mode so these are inert but
+# present to keep the loader happy.
+[risk]
+total_exposure_pct = 30
+var_warn_pct = 8
+var_kill_pct = 12
+daily_dd_kill_pct = 5
+weekly_dd_freeze_pct = 10
+
+[tier_a]
+max_per_pool_usd = 1000
+il_stop_pct = 3
+range_k_sigma = 1.75
+min_hold_hours = 6
+
+[tier_b]
+max_per_pool_usd = 200
+il_stop_pct = 5
+range_k_sigma = 1.25
+min_hold_hours = 2
+
+[tier_c]
+max_per_pool_usd = 50
+il_stop_pct = 8
+range_k_sigma = 0.75
+min_hold_hours = 0.5

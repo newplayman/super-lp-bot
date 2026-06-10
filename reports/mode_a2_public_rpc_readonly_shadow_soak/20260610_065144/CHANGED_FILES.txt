@@ -1,0 +1,70 @@
+CHANGED FILES — Mode A2
+branch: feat/supabase-postgres-deployment
+base_commit: 856ea6ebf17b6ab124f43bda23d7439155dcd380
+implementation_commit: (recorded at implementation-commit time)
+report_fill_commit:    (recorded at report-fill-commit time)
+final_commit:          (recorded at final-commit time)
+
+NEW
+  configs/config.shadow.a2-public-rpc.example.toml
+    Mode A2 test-only shadow config template. Mirrors
+    configs/config.shadow.toml but: rpc_primary falls back to
+    https://mainnet.base.org; rpc_fallback is empty; ws is empty;
+    solana rpc_primary is empty (binary accepts empty solana);
+    redis.url is empty (binary disables redis with log line
+    "Redis runtime disabled"); metrics_addr uses :9092 to avoid
+    clashing with the canonical P0-PG-03/03B/04 smokes on :9091;
+    telegram alerting is disabled. The example is the canonical
+    reference; live copies (configs/config.shadow.a2-public-rpc.toml)
+    are NOT in VCS and are created per-soak on the operator host.
+
+  scripts/check_shadow_public_rpc_soak_safety.sh
+    Static safety check for Mode A2 soak logs. Strips nothing
+    before scanning. Verifies forbidden patterns absent
+    (panic, FATAL, sendTransaction, LPBOT_CONFIRM_LIVE,
+    LPBOT_CANARY, LPBOT_LIVE, CANARY_DSN, LIVE_DSN,
+    QUICKNODE_API_KEY, action verbs, wallet / signing /
+    broadcaster keywords, PRIVATE_KEY, MNEMONIC, SEED) and
+    required positive evidence present (shadow banner, metrics
+    server started, schema_guard=ok, Base RPC provider
+    initialized, >= 1 RPC health summary line). Also asserts
+    that smoke_no_rpc_mode=true is NOT present (Mode A2 must
+    use canonical RPC). Emits counters for the FINAL_VERDICT.json
+    fields.
+
+  reports/mode_a2_public_rpc_readonly_shadow_soak/20260610_065144/*.md|*.json|*.txt
+    Mode A2 report artifacts.
+
+NOT TOUCHED
+  - migrations/postgres/*.sql
+  - internal/adapters/store/postgres/migrator/sql/*.sql
+  - internal/adapters/store/postgres/migrator/*.go
+  - cmd/lpbot/*.go (no source change in this stage; the
+    canonical shadow binary from P0-PG-04 lineage is used as-is)
+  - cmd/lpbot-migrate-postgres/main.go
+  - scripts/migrate-postgres.sh
+  - scripts/check_postgres_migrations_sync.sh
+  - scripts/run_shadow_smoke.sh
+  - scripts/check_shadow_smoke_safety.sh
+  - configs/config.shadow.smoke.example.toml
+  - configs/config.shadow.toml
+  - configs/*.toml
+  - .github/workflows/*.yml
+  - Makefile
+  - reports/p0_pg_05_pre_mode_a_readiness_review/2026-06-10/*
+  - reports/p0_pg_06_ci_first_run_and_mode_a_discussion_prep/2026-06-10/*
+  - reports/p0_pg_06b_ci_first_run_result_capture/2026-06-10/*
+  - tests/test_lp_long_horizon_partial_12h_request_v1.py
+    (R1 guard, preserved as a working-tree modification per the
+    r1-protection rule)
+
+PRE-EXISTING PRESERVED FILES (NOT in this commit)
+  tests/test_lp_long_horizon_partial_12h_request_v1.py
+    Modification present at the start of this stage, untouched by
+    the stage. Will remain a working-tree modification unless an
+    explicit follow-up decides to commit it.
+
+EPHEMERAL FILES (NOT in VCS, used during this stage and discarded)
+  configs/config.shadow.a2-public-rpc.toml
+    Materialized from the example template for this stage only;
+    contained the fresh DB DSN. Deleted after the soak completed.
