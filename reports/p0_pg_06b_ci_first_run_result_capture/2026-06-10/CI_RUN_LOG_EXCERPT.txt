@@ -1,0 +1,34 @@
+CI_RUN_LOG_EXCERPT — P0-PG-06B
+============================================================
+
+(no log available; gh unauthenticated)
+
+This file is intentionally empty. The P0-PG-06B stage could not
+read the GitHub Actions run log because:
+
+  $ gh auth status
+  You are not logged into any GitHub hosts. To log in, run: gh auth login
+  Alternatively, populate the GH_TOKEN environment variable with a
+  GitHub API authentication token.
+
+No `GH_TOKEN`, no `GITHUB_TOKEN`, no other GitHub authentication
+material is present in the environment.
+
+To populate this file with real values, a reviewer with browser
+access or authenticated `gh` should run:
+
+  gh run list --workflow shadow-smoke-gate.yml \
+      --branch feat/supabase-postgres-deployment --limit 5
+  gh run view <RUN_ID> --log
+
+and paste the output below this header.
+
+The expected shape of the captured run, per the workflow file:
+
+  - single job: shadow-smoke
+  - ubuntu-latest runner
+  - 3-6 minutes total
+  - all 18 steps ok (green)
+  - conclusion: success (if green) or failure (otherwise)
+
+============================================================

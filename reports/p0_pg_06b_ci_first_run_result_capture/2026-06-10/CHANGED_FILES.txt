@@ -1,0 +1,50 @@
+CHANGED FILES — P0-PG-06B
+branch: feat/supabase-postgres-deployment
+base_commit: f5da80cf1a9e1bcf1323652663628b7217610ddf
+implementation_commit: (recorded at implementation-commit time)
+report_fill_commit:    (recorded at report-fill-commit time)
+final_commit:          (recorded at final-commit time)
+
+NEW
+  reports/p0_pg_06b_ci_first_run_result_capture/2026-06-10/*.md|*.json|*.txt
+    Read-only closure-attempt report. No code change in this stage.
+    - CI_RUN_OBSERVATION.md           (gh auth probes, honest record
+                                       of ci_result_observed=false,
+                                       what was and was not done,
+                                       what is required to close)
+    - CI_RUN_STEPS_SUMMARY.md         (expected workflow step list
+                                       from the workflow file;
+                                       nothing observed)
+    - CI_RUN_LOG_EXCERPT.txt          (empty with explicit
+                                       'no log available; gh
+                                       unauthenticated' marker)
+    - P0_PG_06_WARN_CLOSURE.md        (status of P0-PG-06 WARN;
+                                       paths to close it: browser,
+                                       authenticated gh, or
+                                       follow-up stage)
+    - CHANGED_FILES.txt               (this file)
+    - SAFETY_LOCKS_RECHECK.json       (this stage's lock check)
+    - FINAL_VERDICT.json              (this stage's verdict)
+
+NOT TOUCHED
+  - migrations/postgres/*.sql
+  - internal/adapters/store/postgres/migrator/sql/*.sql
+  - internal/adapters/store/postgres/migrator/*.go
+  - cmd/lpbot/*.go
+  - cmd/lpbot-migrate-postgres/main.go
+  - scripts/*.sh
+  - configs/*.toml, configs/*.toml.example
+  - .github/workflows/*.yml (no retrigger in this stage; trigger
+    commit from P0-PG-06 is already on remote)
+  - Makefile
+  - reports/p0_pg_06_ci_first_run_and_mode_a_discussion_prep/2026-06-10/*
+  - reports/p0_pg_05_pre_mode_a_readiness_review/2026-06-10/*
+  - tests/test_lp_long_horizon_partial_12h_request_v1.py
+    (R1 guard, preserved as a working-tree modification per the
+    r1-protection rule)
+
+PRE-EXISTING PRESERVED FILES (NOT in this commit)
+  tests/test_lp_long_horizon_partial_12h_request_v1.py
+    Modification present at the start of this stage, untouched by
+    the stage. Will remain a working-tree modification unless an
+    explicit follow-up decides to commit it.
