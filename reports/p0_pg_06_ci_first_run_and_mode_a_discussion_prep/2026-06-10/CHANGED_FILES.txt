@@ -1,9 +1,19 @@
 CHANGED FILES — P0-PG-06
 branch: feat/supabase-postgres-deployment
 base_commit: 102cbe36c51a8d056a5c5cbc0b67f6ca35b92d32
-implementation_commit: (recorded at implementation-commit time)
-report_fill_commit:    (recorded at report-fill-commit time)
-final_commit:          (recorded at final-commit time)
+implementation_commit: ea3bf446cec178ce650f87cc68dd311f96e489f3
+report_fill_commit:    9989a1148b9f65b77466b2ec918d32e22fc5054c
+final_commit:          9989a1148b9f65b77466b2ec918d32e22fc5054c
+
+Note on FINAL_VERDICT self-reference: the FINAL_VERDICT.json inside
+commit 9989a11 references `report_fill_commit:
+3ad94d1...` and `final_commit: 3ad94d1...` — those values reflect
+the SHA BEFORE the amend that added the SHA fields to the file. The
+amend is a normal "update last-minute detail" operation; the file in
+the canonical commit 9989a11 contains the updated SHA fields. Same
+pattern as P0-PG-03, P0-PG-03B, P0-PG-04, P0-PG-05; authoritative
+for ChatGPT reviewers is the FINAL_VERDICT inside the final_commit
+pointed-to by this CHANGED_FILES.txt.
 
 NEW
   reports/p0_pg_06_ci_first_run_and_mode_a_discussion_prep/2026-06-10/*.md|*.json
