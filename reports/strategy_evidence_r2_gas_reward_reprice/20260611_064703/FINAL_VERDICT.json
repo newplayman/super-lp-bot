@@ -4,20 +4,24 @@
   "run_id": "20260611_064703",
   "branch": "feat/supabase-postgres-deployment",
   "base_commit": "e832dd422ad631410aef82b7bd0727db0516435b",
-  "implementation_commit": "TBD",
-  "report_fill_commit": "TBD",
+  "implementation_commit": "dfb65b09a1afde6e80925ed2c5921d38815ba8d5",
+  "report_fill_commit": "2cc5bbbe90a4070b5e2831c526a06e0535198377",
   "final_commit": "TBD",
   "pushed": false,
-  "verdict_commit_note": "FINAL_VERDICT.json will be filled with real SHAs after the implementation commit lands.",
+  "verdict_commit_note": "FINAL_VERDICT.json was committed at 2cc5bbbe90a4070b5e2831c526a06e0535198377; the SHA-clarifying and pushed=true follow-up commits in this branch are part of the same stage.",
   "report_dir": "reports/strategy_evidence_r2_gas_reward_reprice/20260611_064703",
   "r1_report_dir": "reports/strategy_evidence_r1_reward_aware_alpha_discovery/20260611_034500",
   "wall_clock_minutes": 50,
   "wall_clock_budget_minutes": 120,
-  "checkpoints": {"15m": "PASS", "45m": "PASS", "90m": "PASS"},
+  "checkpoints": {
+    "15m": "PASS",
+    "45m": "PASS",
+    "90m": "PASS"
+  },
   "gas_anchor_observed": true,
   "gas_anchor_source": "eth_gasPrice + canonical Uniswap V3 gas budgets; eth_estimateGas for USDC.approve and USDC.transfer observed directly",
   "gas_anchor_observed_at_block": 4728478,
-  "gas_anchor_observed_gas_price_gwei": 0.0060,
+  "gas_anchor_observed_gas_price_gwei": 0.006,
   "gas_anchor_observed_gas_price_wei": 6000000,
   "gas_anchor_observed_eth_usd": 1653.0,
   "gas_anchor_canonical_uniswap_v3_gas": {
@@ -31,22 +35,70 @@
     "total_cycle": 962480
   },
   "gas_anchor_observed_real_calls": [
-    {"method": "USDC.approve(NPM, 10_000_000)", "gas_estimated": 56240, "rpc": "mainnet.base.org", "from": "0xb05b2872ace4564ff247555b6f7b097d31f3d835", "to": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"},
-    {"method": "USDC.transfer", "gas_estimated": 40683, "rpc": "mainnet.base.org", "from": "0xb05b2872ace4564ff247555b6f7b097d31f3d835", "to": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"},
-    {"method": "USDC.approve(NPM, 10_000_000)", "gas_estimated": 56240, "rpc": "mainnet.base.org", "from": "0x7976ef977693192b4d613145a5e6b89625b4319c", "to": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"}
+    {
+      "method": "USDC.approve(NPM, 10_000_000)",
+      "gas_estimated": 56240,
+      "rpc": "mainnet.base.org",
+      "from": "0xb05b2872ace4564ff247555b6f7b097d31f3d835",
+      "to": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
+    },
+    {
+      "method": "USDC.transfer",
+      "gas_estimated": 40683,
+      "rpc": "mainnet.base.org",
+      "from": "0xb05b2872ace4564ff247555b6f7b097d31f3d835",
+      "to": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
+    },
+    {
+      "method": "USDC.approve(NPM, 10_000_000)",
+      "gas_estimated": 56240,
+      "rpc": "mainnet.base.org",
+      "from": "0x7976ef977693192b4d613145a5e6b89625b4319c",
+      "to": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
+    }
   ],
   "gas_anchor_reverted_calls": [
-    {"method": "decreaseLiquidity(tokenId=270204, liq=1)", "rpc": "mainnet.base.org", "from": "0x7976ef977693192b4d613145a5e6b89625b4319c", "to": "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1", "revert_reason": "Not approved (operator check; expected)"},
-    {"method": "collect(tokenId=270204)", "rpc": "mainnet.base.org", "from": "0x7976ef977693192b4d613145a5e6b89625b4319c", "to": "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1", "revert_reason": "operator check (expected)"},
-    {"method": "burn(tokenId=270204)", "rpc": "mainnet.base.org", "from": "0x7976ef977693192b4d613145a5e6b89625b4319c", "to": "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1", "revert_reason": "operator check (expected)"},
-    {"method": "mint 10 USDC on Aerodrome CLNPM", "rpc": "mainnet.base.org", "from": "0x7976ef977693192b4d613145a5e6b89625b4319c", "to": "0x090b2a6bb475c00e2256e2095a60887cd710803b", "revert_reason": "REAL_OWNER has 0 USDC balance (state check; expected)"},
-    {"method": "mint 10 USDC on Uniswap V3 NPM", "rpc": "mainnet.base.org", "from": "0x7976ef977693192b4d613145a5e6b89625b4319c", "to": "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1", "revert_reason": "REAL_OWNER has 0 USDC balance (state check; expected)"}
+    {
+      "method": "decreaseLiquidity(tokenId=270204, liq=1)",
+      "rpc": "mainnet.base.org",
+      "from": "0x7976ef977693192b4d613145a5e6b89625b4319c",
+      "to": "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1",
+      "revert_reason": "Not approved (operator check; expected)"
+    },
+    {
+      "method": "collect(tokenId=270204)",
+      "rpc": "mainnet.base.org",
+      "from": "0x7976ef977693192b4d613145a5e6b89625b4319c",
+      "to": "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1",
+      "revert_reason": "operator check (expected)"
+    },
+    {
+      "method": "burn(tokenId=270204)",
+      "rpc": "mainnet.base.org",
+      "from": "0x7976ef977693192b4d613145a5e6b89625b4319c",
+      "to": "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1",
+      "revert_reason": "operator check (expected)"
+    },
+    {
+      "method": "mint 10 USDC on Aerodrome CLNPM",
+      "rpc": "mainnet.base.org",
+      "from": "0x7976ef977693192b4d613145a5e6b89625b4319c",
+      "to": "0x090b2a6bb475c00e2256e2095a60887cd710803b",
+      "revert_reason": "REAL_OWNER has 0 USDC balance (state check; expected)"
+    },
+    {
+      "method": "mint 10 USDC on Uniswap V3 NPM",
+      "rpc": "mainnet.base.org",
+      "from": "0x7976ef977693192b4d613145a5e6b89625b4319c",
+      "to": "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1",
+      "revert_reason": "REAL_OWNER has 0 USDC balance (state check; expected)"
+    }
   ],
   "gas_cycle_usd_observed": 0.0795,
   "gas_cycle_usd_observed_gwei": 0.05,
   "gas_cycle_usd_observed_gas": 962480,
   "gas_cycle_usd_observed_eth_usd": 1653.0,
-  "gas_cycle_usd_model_r1": 0.30,
+  "gas_cycle_usd_model_r1": 0.3,
   "gas_model_error_pct": -73.5,
   "gas_model_error_ratio": 0.265,
   "does_gas_change_r1_decision": true,
@@ -64,8 +116,18 @@
   "aerodrome_clnpm_address": "0x090b2a6bb475c00e2256e2095a60887cd710803b",
   "aerodrome_clnpm_verified_via": "factory() call returning Aerodrome factory 0x5e7b...0809a",
   "reward_data_available": "partial",
-  "reward_addresses_recovered": ["voter_proxy", "voter_impl", "gauge", "clnpm"],
-  "reward_data_still_missing": ["reward_token_symbol", "reward_rate_per_pool", "period_finish_per_gauge", "per_pool_reward_apr"],
+  "reward_addresses_recovered": [
+    "voter_proxy",
+    "voter_impl",
+    "gauge",
+    "clnpm"
+  ],
+  "reward_data_still_missing": [
+    "reward_token_symbol",
+    "reward_rate_per_pool",
+    "period_finish_per_gauge",
+    "per_pool_reward_apr"
+  ],
   "reward_recovery_reason_partial": "Aerodrome gauge ABI does not expose standard rewardToken() / rewardRate() / periodFinish() selectors; bytecode analysis or Goldsky URL recovery is required for full data",
   "reward_apr_est": null,
   "repriced_candidates_count": 35,
@@ -75,7 +137,7 @@
   "top_candidate_minimum_viable_size_usdc": 3.0,
   "top_candidate_minimum_viable_hours": 168,
   "top_candidate_expected_net_pnl_usd": 0.62,
-  "top_candidate_expected_net_pnl_usd_r1": 0.40,
+  "top_candidate_expected_net_pnl_usd_r1": 0.4,
   "top_candidate_data_quality_score": 0.85,
   "top_candidate_repriced": true,
   "final_recommendation": "NEED_MORE_DATA",
@@ -83,16 +145,16 @@
   "recommendation_changed": false,
   "recommendation_confidence_upgraded": true,
   "blockers_resolved_by_r2": [
-    "Gas anchor was unverified (R1 hand-estimate $0.30/cycle) → FIXED: real on-chain observation $0.08/cycle at 0.05 gwei, 3.8× cheaper than R1 model",
-    "Aerodrome Voter address unknown (3 candidates in R1 all returned 0x) → FIXED: recovered 0xf33a96b... via pool storage slot 3, verified via EIP-1167 proxy → impl 0xf5601f95... (12,614 bytes)",
-    "Aerodrome CLNPM address unknown → FIXED: recovered 0x090b2a6b... via factory storage slot 2, verified via factory() returning Aerodrome factory",
-    "Aerodrome Gauge address (top candidate) unknown → FIXED: recovered 0x8279...b72 via pool storage slot 4, 24,543 bytes real contract"
+    "Gas anchor was unverified (R1 hand-estimate $0.30/cycle) \u2192 FIXED: real on-chain observation $0.08/cycle at 0.05 gwei, 3.8\u00d7 cheaper than R1 model",
+    "Aerodrome Voter address unknown (3 candidates in R1 all returned 0x) \u2192 FIXED: recovered 0xf33a96b... via pool storage slot 3, verified via EIP-1167 proxy \u2192 impl 0xf5601f95... (12,614 bytes)",
+    "Aerodrome CLNPM address unknown \u2192 FIXED: recovered 0x090b2a6b... via factory storage slot 2, verified via factory() returning Aerodrome factory",
+    "Aerodrome Gauge address (top candidate) unknown \u2192 FIXED: recovered 0x8279...b72 via pool storage slot 4, 24,543 bytes real contract"
   ],
   "blockers_remaining_after_r2": [
     "Per-pool reward rate (rewardDataAvailable=partial): Aerodrome gauge ABI does not expose standard selectors; bytecode analysis or Goldsky URL recovery is required for full data",
     "IL variance: signal/noise ratio improves from 0.03-0.27 (R1) to 0.17-0.41 (R2) on the 3 top pools, but expected_net is still smaller than expected IL stddev",
     "cbBTC re-classification (model call, not data call): would promote 4 cbBTC-paired pools from NEED_MORE_DATA to GO_TINY_LIVE; R2 does not re-classify",
-    "$10 × 24h band: still gas-negative on every pool (R2 narrowed the deficit from $0.27 to $0.01, but the path to GO is reward data or a 0-gas relayer)"
+    "$10 \u00d7 24h band: still gas-negative on every pool (R2 narrowed the deficit from $0.27 to $0.01, but the path to GO is reward data or a 0-gas relayer)"
   ],
   "next_recommended_stage": "R3_aerodrome_gauge_bytecode_analysis_and_goldsky_url_recovery: (a) decompile the 24,543-byte Aerodrome gauge to find the actual rewardRate selector (~30 min of analyst time), or (b) find the correct Aerodrome Goldsky URL via official docs or governance forum. STOP if R3 does not promote any pool to high-confidence GO_TINY_LIVE; do NOT proceed to tiny-live without explicit freeze reopening and user authorisation.",
   "wallet_or_tx_touched": false,
@@ -118,8 +180,13 @@
     "eth_estimateGas",
     "trace_call (read-only)"
   ],
-  "builds_ok": ["make build-dryrun", "make build-shadow"],
-  "tests_ok": ["go test ./... (all packages cached PASS)"],
+  "builds_ok": [
+    "make build-dryrun",
+    "make build-shadow"
+  ],
+  "tests_ok": [
+    "go test ./... (all packages cached PASS)"
+  ],
   "verdict_basis": {
     "scan_window": "2026-06-11T06:47:03Z to 2026-06-11T07:35:00Z (UTC)",
     "data_sources": [
@@ -129,7 +196,11 @@
       "R1 capital_threshold_matrix.csv: 1,470 cells (re-priced with R2 gas anchor)"
     ],
     "merged_pool_count": 202,
-    "ranking_outcome": {"GO_TINY_LIVE": 3, "NEED_MORE_DATA": 7, "NO_GO": 25},
+    "ranking_outcome": {
+      "GO_TINY_LIVE": 3,
+      "NEED_MORE_DATA": 7,
+      "NO_GO": 25
+    },
     "top_3_go_tiny_live_r2": [
       "0xb2cc224c1c9fee385f8ad6a55b4d94e92359dc59 WETH/USDC 0.05% aerodrome-slipstream MVS=$3, hold=7d, net=+$0.62 (at $50 size, R2 gas anchor)",
       "0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38 WETH/USDC 0.01% pancakeswap-v3-base MVS=$3, hold=7d, net=+$0.27 (at $50 size, R2 gas anchor)",
