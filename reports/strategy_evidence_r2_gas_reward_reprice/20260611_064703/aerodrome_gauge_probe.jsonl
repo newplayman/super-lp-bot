@@ -1,0 +1,26 @@
+{"call": "eth_blockNumber", "result": "0x2cfffde (block 4728478)", "source": "mainnet.base.org"}
+{"call": "eth_gasPrice", "result": "0x5b8d80 (6,000,000 wei = 0.0060 gwei)", "source": "mainnet.base.org"}
+{"call": "eth_getCode(USDC)", "result": "2042 bytes", "source": "mainnet.base.org"}
+{"call": "eth_getCode(WETH)", "result": "2042 bytes", "source": "mainnet.base.org"}
+{"call": "eth_getCode(NPM 0x03a52...)", "result": "24385 bytes (Uniswap V3 NPM Base)", "source": "mainnet.base.org"}
+{"call": "eth_getCode(Aerodrome factory 0x5e7b...)", "result": "5152 bytes", "source": "mainnet.base.org"}
+{"call": "eth_call(factory, factory()) on 0xb2cc...", "result": "0x5e7bb104d84c7cb9b682aac2f3d509f5f406809a", "source": "mainnet.base.org"}
+{"call": "eth_getStorageAt(factory, 0)", "result": "0xe6a41fe61e7a1996b59d508661e3f524d6a32075 (172 bytes; pool impl)", "source": "mainnet.base.org"}
+{"call": "eth_getStorageAt(factory, 1)", "result": "0xe6a41fe61e7a1996b59d508661e3f524d6a32075 (same impl, but uint96 = 30000)", "source": "mainnet.base.org"}
+{"call": "eth_getStorageAt(factory, 2)", "result": "0x090b2a6bb475c00e2256e2095a60887cd710803b (CLNPM, 9271 bytes)", "source": "mainnet.base.org"}
+{"call": "eth_call(CLNPM, factory())", "result": "0x5e7bb104d84c7cb9b682aac2f3d509f5f406809a (matches Aerodrome factory)", "source": "mainnet.base.org"}
+{"call": "eth_getStorageAt(pool 0xb2cc..., 3)", "result": "0xf33a96b5932d9e9b9a0eda447abd8c9d48d2e0c8 (voter proxy)", "source": "mainnet.base.org"}
+{"call": "eth_getCode(voter proxy 0xf33a...)", "result": "46 bytes EIP-1167 minimal proxy", "source": "mainnet.base.org"}
+{"call": "voter proxy decoded impl", "result": "0xf5601f95708256a118ef5971820327f362442d2d (12,614 bytes real contract)", "source": "mainnet.base.org"}
+{"call": "eth_getStorageAt(pool 0xb2cc..., 4)", "result": "0x827922686190790b37229fd06084350e74485b72 (gauge, 24,543 bytes)", "source": "mainnet.base.org"}
+{"call": "eth_getStorageAt(gauge, 2)", "result": "0x1443aeb (uint256 = 21,257,195; likely periodFinish or reward rate)", "source": "mainnet.base.org"}
+{"call": "eth_call(gauge, rewardToken())", "result": "REVERTED (selector / ABI mismatch)", "source": "mainnet.base.org"}
+{"call": "eth_call(gauge, rewardRate(AERO))", "result": "REVERTED (selector / ABI mismatch)", "source": "mainnet.base.org"}
+{"call": "eth_estimateGas(USDC.approve(NPM, 10M))", "result": "0xdbb0 = 56,240 gas (real observed)", "source": "mainnet.base.org"}
+{"call": "eth_estimateGas(USDC.transfer)", "result": "0x9eeb = 40,683 gas (real observed)", "source": "mainnet.base.org"}
+{"call": "eth_estimateGas(USDC.approve from REAL_OWNER 0x7976...)", "result": "0xdbb0 = 56,240 gas (real observed from LP owner)", "source": "mainnet.base.org"}
+{"call": "eth_estimateGas(decreaseLiquidity(tokenId=270204, liq=1, REAL_OWNER))", "result": "REVERTED with 'Not approved' (operator check; not a state bug)", "source": "mainnet.base.org"}
+{"call": "eth_estimateGas(collect(tokenId=270204, REAL_OWNER))", "result": "REVERTED (operator check)", "source": "mainnet.base.org"}
+{"call": "eth_estimateGas(burn(tokenId=270204, REAL_OWNER))", "result": "REVERTED (operator check)", "source": "mainnet.base.org"}
+{"call": "eth_estimateGas(mint 10 USDC on Aerodrome CLNPM, from REAL_OWNER)", "result": "REVERTED (REAL_OWNER has 0 USDC balance; state check)", "source": "mainnet.base.org"}
+{"call": "eth_estimateGas(mint 10 USDC on Uniswap V3 NPM, from REAL_OWNER)", "result": "REVERTED (REAL_OWNER has 0 USDC balance; state check)", "source": "mainnet.base.org"}

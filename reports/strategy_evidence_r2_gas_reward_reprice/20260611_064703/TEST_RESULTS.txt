@@ -1,0 +1,37 @@
+=== LP_BOT_STRATEGY_EVIDENCE_R2_GAS_ANCHOR_AND_AERODROME_REWARD_RECOVERY_V1 ===
+date_utc=2026-06-11T07:35:00Z
+branch=feat/supabase-postgres-deployment
+base_commit=R1-final=e832dd422ad631410aef82b7bd0727db0516435b
+report_dir=reports/strategy_evidence_r2_gas_reward_reprice/20260611_064703
+
+--- make build-dryrun ---
+go build -ldflags "-X main.BuildCommit=e832dd4 -X main.BuildDate=2026-06-11T07:30:42Z" -tags=dryrun -o bin/lpbot-dryrun ./cmd/lpbot
+exit=0
+
+--- make build-shadow ---
+go build -ldflags "-X main.BuildCommit=e832dd4 -X main.BuildDate=2026-06-11T07:31:03Z" -tags=shadow -o bin/lpbot-shadow ./cmd/lpbot
+exit=0
+
+--- go test ./... (last 12 lines) ---
+ok  	github.com/lpbot/lpbot/internal/platform/trace	(cached)
+ok  	github.com/lpbot/lpbot/internal/ports	(cached)
+ok  	github.com/lpbot/lpbot/pkg/decimal	(cached)
+ok  	github.com/lpbot/lpbot/pkg/il	(cached)
+ok  	github.com/lpbot/lpbot/pkg/tickmath	(cached)
+?   	github.com/lpbot/lpbot/scripts/aggregate-verdict	[no test files]
+ok  	github.com/lpbot/lpbot/tests/chaos	(cached)
+?   	github.com/lpbot/lpbot/tests/fork	[no test files]
+ok  	github.com/lpbot/lpbot/tests/property	(cached)
+ok  	github.com/lpbot/lpbot/tests/property/mocks	(cached)
+FAIL=0
+PASS=all packages cached OK (no failures)
+
+--- bash scripts/strategy_evidence_r2_gas_reward_reprice.sh ---
+strategy_evidence_r2: RUN_ID=20260611_064703
+strategy_evidence_r2: REPORT_DIR=/opt/lpbot/lp-bot-v3-origin-check/reports/strategy_evidence_r2_gas_reward_reprice/20260611_064703
+strategy_evidence_r2: R1_DIR=reports/strategy_evidence_r1_reward_aware_alpha_discovery/20260611_034500
+strategy_evidence_r2: R1 baseline located (FINAL_VERDICT.json present)
+strategy_evidence_r2: all 18 expected outputs present
+strategy_evidence_r2: PASS
+
+wall_clock_r2=~50m (within 2h budget; 15m/45m/90m checkpoints all passed)
