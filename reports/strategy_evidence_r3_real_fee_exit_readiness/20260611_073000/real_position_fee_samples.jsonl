@@ -1,0 +1,5 @@
+{"method": "real_position_samples_v1", "status": "BLOCKED", "reason": "V3-fork storage layout mismatch (PancakeSwap V3 = Algebra fork; Aerodrome Slipstream = custom fork)"}
+{"pool": "0xb2cc224c1c9fee385f8ad6a55b4d94e92359dc59", "protocol": "aerodrome-slipstream", "clnpm": "0x090b2a6bb475c00e2256e2095a60887cd710803b", "mints_in_1h": 0, "inc_liq_in_1h": 0, "dec_liq_in_1h": 0, "collect_in_1h": 0, "status": "BLOCKED_no_active_positions_in_window"}
+{"pool": "0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38", "protocol": "pancakeswap-v3-base", "shared_npm": "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1", "mints_in_1h": 1701, "inc_liq_in_1h": 0, "dec_liq_in_1h": 0, "collect_in_1h": 3219, "positions_call_attempts": 3, "all_reverted": true, "status": "BLOCKED_positions_selector_reverts"}
+{"pool": "0xb775272e537cc670c65dc852908ad47015244eaf", "protocol": "pancakeswap-v3-base", "shared_npm": "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1", "mints_in_1h": 1701, "positions_call_attempts": 0, "status": "BLOCKED_same_npm_as_0x72ab"}
+{"conclusion": "fee_accrual_calibration_status=BLOCKED"}

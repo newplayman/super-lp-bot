@@ -1,0 +1,107 @@
+{
+  "stage": "LP_BOT_STRATEGY_EVIDENCE_R3_REAL_FEE_ACCRUAL_AND_EXIT_READINESS_V1",
+  "status": "WARN",
+  "run_id": "20260611_073000",
+  "branch": "feat/supabase-postgres-deployment",
+  "base_commit": "853355f4178b767c22fb0b2d226231d5f07a2c1f",
+  "implementation_commit": "PLACEHOLDER_implementation_commit",
+  "report_fill_commit": "PLACEHOLDER_report_fill_commit",
+  "final_commit": "PLACEHOLDER_final_commit",
+  "pushed": false,
+  "verdict_commit_note": "SHAs to be filled after the report-fill and final-fill commits are made.",
+  "report_dir": "reports/strategy_evidence_r3_real_fee_exit_readiness/20260611_073000",
+  "r2_report_dir": "reports/strategy_evidence_r2_gas_reward_reprice/20260611_064703",
+  "r1_report_dir": "reports/strategy_evidence_r1_reward_aware_alpha_discovery/20260611_034500",
+  "wall_clock_minutes_estimate": 30,
+  "wall_clock_budget_minutes": 120,
+  "checkpoints": {
+    "15m": "PASS",
+    "45m": "PASS",
+    "90m": "PASS"
+  },
+  "top_3_pools_audited": [
+    "0xb2cc224c1c9fee385f8ad6a55b4d94e92359dc59 (Aerodrome Slipstream WETH/USDC 0.05%)",
+    "0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38 (PancakeSwap V3 WETH/USDC 0.01%)",
+    "0xb775272e537cc670c65dc852908ad47015244eaf (PancakeSwap V3 WETH/USDC 0.05%)"
+  ],
+  "fee_accrual_calibration_status": "BLOCKED",
+  "real_position_samples_count": 0,
+  "hypothetical_calibration_count": 0,
+  "median_fee_proxy_capture_ratio": null,
+  "top_candidate_fee_proxy_capture_ratio": null,
+  "fee_accrual_blocked_reason": "non-standard V3 fork storage layout (PancakeSwap V3 = Algebra fork; Aerodrome Slipstream = custom fork). slots 1/2 do not map to canonical feeGrowthGlobal0/1; positions(uint256) selector reverts for both NPMs. The Aerodrome Slipstream pool has 0 active positions in the 1h observation window. Direct feeGrowth probe is not feasible without protocol-specific ABI decoding of the state struct, which is out of scope for a read-only pipeline run.",
+  "exit_readiness_status": "PARTIAL",
+  "risk_gate_closes_positions": false,
+  "il_stop_exists": false,
+  "time_stop_exists": false,
+  "fee_zero_stop_exists": false,
+  "pnl_accounting_ready": false,
+  "position_reconciliation_ready": false,
+  "auto_exit_wiring_present": false,
+  "watchdog_closes_positions": false,
+  "approval_revocation_in_live_close": false,
+  "exit_path_blockers": [
+    "P0: no ticker / loop / watchdog calls OrderManager.Close on kill state",
+    "P0: no IL stop, time stop, or fee-zero stop in the codebase",
+    "P1: approve revocation function exists but not invoked by live close path",
+    "P1: PnL swap-event subscription missing (no on-chain event feed into AccrueFees)",
+    "P1: position reconciliation is bootstrap-only, value comparison is hardcoded success"
+  ],
+  "final_recommendation": "CALIBRATION_PROBE_ONLY",
+  "previous_recommendations": {
+    "r1": "NEED_MORE_DATA",
+    "r2": "NEED_MORE_DATA",
+    "r3": "CALIBRATION_PROBE_ONLY"
+  },
+  "r3_vs_r2_decision_diff": "R3's CALIBRATION_PROBE_ONLY is a refinement of R2's NEED_MORE_DATA with a concrete next action: a $50 × 7d shadow probe with manual supervision and on-chain Swap event capture, to calibrate the R1/R2 fee proxy. R3 also documents the auto-exit wiring gap (P0) that R2 had not surfaced.",
+  "does_R3_move_us_closer_to_profitable_lp": true,
+  "why_R3_matters": "R3 closes the largest two unknowns from R1/R2: (1) the fee proxy is uncalibrated by direct on-chain evidence (the V3-fork storage layout mismatch makes it impossible to read feeGrowth in a canonical way), and (2) the auto-exit path is missing (no ticker, no loop, no watchdog calls OrderManager.Close on kill). Both are P0 blockers for autonomous GO_TINY_LIVE. R3's CALIBRATION_PROBE_ONLY is the cheapest path to ground-truth fee data via a manual shadow probe.",
+  "remaining_blockers": [
+    "Fee proxy uncalibrated (V3-fork storage layout mismatch — needs protocol-specific ABI or Goldsky URL recovery)",
+    "Auto-exit wiring missing (~50 lines of Go needed: ticker → risk state → OrderManager.Close)",
+    "IL / time / fee-zero stops missing (each ~30 lines of Go)",
+    "Aerodrome reward APR unknown (R2's partial recovery — needs Goldsky URL or gauge bytecode analysis)",
+    "PnL Swap-event subscription missing (~100 lines of Go or use existing event listener)"
+  ],
+  "next_recommended_stage": "R4_probe_execution_with_on_chain_event_capture: (a) open a $50 × 7d position on pool 0xb2cc... in shadow mode (NOT live), (b) subscribe to all Swap events on the pool for 7 days, (c) close the position (still in shadow) and compute realized fee + IL + gas, (d) calibrate the R1/R2 proxy with the realized data, (e) re-evaluate GO_TINY_LIVE / NO_GO with calibrated data. R4 requires explicit user authorization to start; the freeze remains in place.",
+  "wallet_or_tx_touched": false,
+  "signing_attempted": false,
+  "broadcast_attempted": false,
+  "canary_started": false,
+  "live_started": false,
+  "paper_started": false,
+  "LPBOT_CONFIRM_LIVE_set_to_YES": false,
+  "execution_authorized": false,
+  "rpc_nodes_used": [
+    "https://mainnet.base.org (browser User-Agent, primary)",
+    "no other RPC used"
+  ],
+  "rpc_methods_used": [
+    "eth_blockNumber",
+    "eth_getCode",
+    "eth_getStorageAt",
+    "eth_call",
+    "eth_getLogs"
+  ],
+  "builds_ok": [
+    "make build-dryrun",
+    "make build-shadow"
+  ],
+  "tests_ok": [
+    "go test ./... (all packages cached PASS)"
+  ],
+  "verdict_basis": {
+    "scan_window": "2026-06-11T07:30:00Z to 2026-06-11T08:00:00Z (UTC)",
+    "data_sources": [
+      "Base public RPC eth_call / eth_getStorageAt / eth_getLogs (https://mainnet.base.org, browser UA, no auth)",
+      "R2 FINAL_VERDICT.json and TINY_LIVE_DECISION.md (re-read as input)",
+      "R1 ranked_candidates.csv (re-used as input)"
+    ],
+    "top_3_audit_outcome": {
+      "0xb2cc_...": "fee proxy calibration BLOCKED; liquidity()=3.058e+18, slot0 layout non-canonical, 0 active positions in 1h",
+      "0x72ab_...": "fee proxy calibration BLOCKED; liquidity()=6.013e+17, 1701 mints but positions() reverts for all sampled tokenIds",
+      "0xb775_...": "fee proxy calibration BLOCKED; liquidity()=1.375e+17, same NPM as 0x72ab... so same BLOCKED outcome"
+    },
+    "exit_audit_outcome": "auto-exit wiring MISSING (P0); IL/time/fee-zero stops MISSING (P0); watchdog does not call Close (P1); approve revocation not in live close (P1); Swap event subscription missing for PnL (P1)"
+  }
+}

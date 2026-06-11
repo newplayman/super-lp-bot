@@ -1,0 +1,4 @@
+pool,name,L_liquidity_call,L_slot3_packed,fg0_delta_1h,fg1_delta_1h,total_fee_1h_usd_pool,total_fee_24h_usd_pool,proxy_50_24h,actual_50_24h,capture_ratio_actual_vs_proxy,r2_proxy_50_24h,capture_ratio_actual_vs_r2,data_quality
+0xb2cc224c1c9fee385f8ad6a55b4d94e92359dc59,Aerodrome Slipstream WETH/USDC 0.05%,3.058e+18,1.388e+48,0,0,0,0,0.3851,0.0,0.0,0.3851,0.0,BLOCKED_fork_feeGrowth_layout
+0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38,PancakeSwap V3 WETH/USDC 0.01%,6.013e+17,1.203e+33,0,1.902e+38,unknown,unknown,0.0618,unknown,unknown,0.3772,unknown,BLOCKED_fork_feeGrowth_layout
+0xb775272e537cc670c65dc852908ad47015244eaf,PancakeSwap V3 WETH/USDC 0.05%,1.375e+17,3.181e+34,0,2.073e+38,unknown,unknown,0.1113,unknown,unknown,0.0780,unknown,BLOCKED_fork_feeGrowth_layout

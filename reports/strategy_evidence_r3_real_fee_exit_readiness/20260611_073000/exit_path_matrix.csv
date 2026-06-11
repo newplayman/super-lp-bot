@@ -1,0 +1,37 @@
+component,status,file_path,function_or_type,does_it_execute_in_live,fail_closed,blocker_level
+RiskGate.Allow,EXISTS,internal/core/risk/gate.go:35,func (g *RiskGate) Allow,YES,partial,low
+RiskGate.IsBlocked,EXISTS,internal/core/risk/types.go:369,func (g *RiskGate) IsBlocked,YES,partial,low
+RiskGate.CheckVaR,EXISTS,internal/core/risk/types.go:236,func (g *RiskGate) CheckVaR,YES,partial,low
+RiskGate.CheckDrawdown,EXISTS,internal/core/risk/types.go:275,func (g *RiskGate) CheckDrawdown,YES,partial,low
+RiskGate.RaiseKill,EXISTS,internal/core/risk/types.go:349,func (g *RiskGate) RaiseKill,YES,partial,low
+RiskGate_CloseWiring,MISSING,,(no caller of OrderManager.Close on kill),NO,N/A,P0
+MainLoop.Run,EXISTS,internal/core/loop/loop.go:157,func (ml *MainLoop) Run,YES,partial,low
+MainLoop.EvaluatePool,EXISTS,internal/core/loop/loop.go:180,func (ml *MainLoop) EvaluatePool,YES,partial,low
+MainLoop.CloseOnRisk,MISSING,internal/core/loop/loop.go:173,(evaluateStrategies is a stub),NO,N/A,P0
+IL_stop,MISSING,,(not implemented),NO,N/A,P0
+TimeStop,MISSING,,(not implemented),NO,N/A,P0
+FeeZeroStop,MISSING,,(not implemented),NO,N/A,P0
+KillSwitch,EXISTS,internal/core/risk/types.go:349,RaiseKill + LowerWarn,YES,partial,low
+KillSwitch_TriggersClose,MISSING,,(RaiseKill only sets state),NO,N/A,P0
+Watchdog,EXISTS,internal/core/watchdog/watchdog.go:74,func (w *defaultWatchdog) Run,YES,partial,low
+Watchdog_TriggersClose,MISSING,internal/core/watchdog/watchdog.go:139,(RunChecks returns []CheckResult; parent only logs/alerts),NO,N/A,P1
+ForcedRemoveLiquidity,EXISTS,internal/core/execution/execution.go:178,defaultOrderManager.Close → BuildRemoveLiquidityTx,YES,partial,low
+ForcedCollect,EXISTS,internal/core/execution/execution.go:178,simulator.SimulateAndValidate (no separate collect call),PARTIAL,partial,P1
+ForcedBurn,EXISTS,internal/core/execution/interface.go:184,BurnIntent (interface defined, no test invocation),PARTIAL,partial,P2
+PositionReconcile_Bootstrap,EXISTS,internal/core/execution/reconcile.go:76,BootstrapReconcile,YES,partial,low
+PositionReconcile_Periodic,MISSING,,(not implemented),NO,N/A,P1
+PositionReconcile_Value,PARTIAL,internal/core/reconcile/reconcile.go:30,Reconcile returns hardcoded success,PARTIAL,N/A,P1
+PnL_Formula,EXISTS,internal/core/pnl/pnl.go:19,NetPnL,partial,partial,low
+PnL_SwapSubscription,MISSING,,(no on-chain Swap event subscription feeding AccrueFees),NO,N/A,P1
+PnL_OpenFee,EXISTS,internal/core/pnl/fees.go:14,AccrueFees,YES,partial,low
+PnL_Gas,EXISTS,internal/core/pnl/pnl.go:19,gas input parameter,YES,partial,low
+PnL_IL,EXISTS,pkg/il/il.go,(library),YES,partial,low
+PnL_IL_Trigger,MISSING,,(no loop wiring),NO,N/A,P2
+ApproveRevoke_Func,EXISTS,internal/core/execution/approve.go:263,BuildRevokeAllowance,YES,partial,low
+ApproveRevoke_LiveCall,PARTIAL,cmd/lpbot/main.go:2053,orderManagerAdapter.Close (does not call BuildRevokeAllowance),PARTIAL,N/A,P1
+MainGo_LiveGate,EXISTS,cmd/lpbot/main.go:240,liveSafetyGate.blockers,YES,yes,low
+MainGo_LiveClose,EXISTS,cmd/lpbot/main.go:2065,closeLiveCanaryPosition (gated by live mode),NO (gated by LPBOT_CONFIRM_LIVE),yes,P1
+MainGo_ShadowClose,EXISTS,cmd/lpbot/main.go:2088,persistShadowAuditTx,YES (shadow mode),yes,low
+MainGo_AdapterOpen,EXISTS,cmd/lpbot/main.go:2003,orderManagerAdapter.saveNewPosition,YES,yes,low
+TierC_Limit,EXISTS,internal/core/risk/alloc.go:48,AllocationConfig.TierCLimit=$50,YES,partial,low
+LiveSafetyGate_15_Blockers,EXISTS,cmd/lpbot/main.go:240,liveSafetyGate.blockers (15 conditions),YES,yes,low

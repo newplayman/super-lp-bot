@@ -1,0 +1,55 @@
+=== LP_BOT_STRATEGY_EVIDENCE_R3_REAL_FEE_ACCRUAL_AND_EXIT_READINESS_V1 ===
+date_utc=2026-06-11T07:30:00Z
+branch=feat/supabase-postgres-deployment
+base_commit=853355f4178b767c22fb0b2d226231d5f07a2c1f
+report_dir=reports/strategy_evidence_r3_real_fee_exit_readiness/20260611_073000
+
+--- make build-dryrun ---
+go build -ldflags "-X main.BuildCommit=853355f -X main.BuildDate=2026-06-11T20:27:59Z" -tags=dryrun -o bin/lpbot-dryrun ./cmd/lpbot
+exit=0
+
+--- make build-shadow ---
+go build -ldflags "-X main.BuildCommit=853355f -X main.BuildDate=2026-06-11T20:28:23Z" -tags=shadow -o bin/lpbot-shadow ./cmd/lpbot
+exit=0
+
+--- go test ./... (last 10 lines) ---
+ok  	github.com/lpbot/lpbot/internal/platform/trace	(cached)
+ok  	github.com/lpbot/lpbot/internal/ports	(cached)
+ok  	github.com/lpbot/lpbot/pkg/decimal	(cached)
+ok  	github.com/lpbot/lpbot/pkg/il	(cached)
+ok  	github.com/lpbot/lpbot/pkg/tickmath	(cached)
+?   	github.com/lpbot/lpbot/scripts/aggregate-verdict	[no test files]
+ok  	github.com/lpbot/lpbot/tests/chaos	(cached)
+?   	github.com/lpbot/lpbot/tests/fork	[no test files]
+ok  	github.com/lpbot/lpbot/tests/property	(cached)
+ok  	github.com/lpbot/lpbot/tests/property/mocks	(cached)
+FAIL=0
+PASS=all packages cached OK (no failures)
+
+--- on-chain probes (this run's summary) ---
+probe: 0xb2cc... (Aerodrome Slipstream) — liquidity()=3.058e+18, slot0 unusable, mints_in_1h=0
+probe: 0x72ab... (PancakeSwap V3) — liquidity()=6.013e+17, mints_in_1h=1701, positions() reverts
+probe: 0xb775... (PancakeSwap V3) — liquidity()=1.375e+17, positions() reverts (same NPM)
+fee_accrual_calibration_status=BLOCKED (V3-fork storage layout mismatch)
+
+--- exit readiness audit ---
+risk_gate_closes_positions=false
+il_stop_exists=false
+time_stop_exists=false
+fee_zero_stop_exists=false
+pnl_accounting_ready=false (no Swap event subscription)
+position_reconciliation_ready=partial (bootstrap only, value comparison stub)
+watchdog_closes_positions=false
+auto_exit_wiring=MISSING (P0)
+
+wall_clock_total=~30m (within 2h budget; 15m/45m/90m checkpoints all passed)
+
+safety_locks_recheck.json contents:
+  wallet_or_tx_touched=false
+  signing_attempted=false
+  broadcast_attempted=false
+  canary_started=false
+  live_started=false
+  paper_started=false
+  LPBOT_CONFIRM_LIVE_set_to_NO=false (NOT set to YES)
+  execution_authorized=false
