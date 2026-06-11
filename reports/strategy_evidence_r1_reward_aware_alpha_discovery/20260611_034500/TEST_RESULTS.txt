@@ -1,0 +1,43 @@
+=== LP_BOT_STRATEGY_EVIDENCE_R1_REWARD_AWARE_ALPHA_POOL_DISCOVERY_V1 ===
+date_utc=2026-06-11T04:22:00Z
+branch=feat/supabase-postgres-deployment
+base_commit=1c9cea12b7c9afab96d525cb06d06f3642a9fc6d
+report_dir=reports/strategy_evidence_r1_reward_aware_alpha_discovery/20260611_034500
+
+--- make build-dryrun ---
+go build -ldflags "-X main.BuildCommit=1c9cea1 -X main.BuildDate=2026-06-11T04:19:37Z" -tags=dryrun -o bin/lpbot-dryrun ./cmd/lpbot
+exit=0
+
+--- make build-shadow ---
+go build -ldflags "-X main.BuildCommit=1c9cea1 -X main.BuildDate=2026-06-11T04:19:19Z" -tags=shadow -o bin/lpbot-shadow ./cmd/lpbot
+exit=0
+
+--- go test ./... (last 5 lines) ---
+ok  	github.com/lpbot/lpbot/tests/chaos	(cached)
+?   	github.com/lpbot/lpbot/tests/fork	[no test files]
+ok  	github.com/lpbot/lpbot/tests/property	(cached)
+ok  	github.com/lpbot/lpbot/tests/property/mocks	(cached)
+FAIL=0
+PASS=all packages cached OK (no failures)
+
+--- bash scripts/strategy_evidence_r1_base_reward_aware_scan.sh (this run's summary) ---
+strategy_evidence_r1: RUN_ID=20260611_034500
+strategy_evidence_r1: REPORT_DIR=/opt/lpbot/lp-bot-v3-origin-check/reports/strategy_evidence_r1_reward_aware_alpha_discovery/20260611_034500
+scan: geckoterminal pulled 100 pools
+scan: dexscreener pulled 135 base pairs
+scan: merged pool count: 202
+scan: wrote raw_pools.csv (202 rows)
+scan: probing Aerodrome voter / gauge (best effort)...
+scan: reward_data_unavailable=True
+scan: wrote reward_pools.csv (202 rows; all reward_data_unavailable=True)
+scan: risk levels {'LOW': 16, 'MEDIUM': 99, 'REJECT': 48, 'HIGH': 39}
+scan: wrote capital_threshold_matrix.csv (1470 rows)
+scan: wrote gas_amortization_matrix.csv (49 rows)
+scan: wrote ranked_candidates.csv (35 rows)
+scan: GO_TINY_LIVE=3 NEED_MORE_DATA=7 NO_GO=25
+scan: reward_data_unavailable=True
+scan: probe findings=[{'addr': '0x16613524e02ad1e31e169a93aae5c40f47ff0fbf', 'result': None}, ...]
+exit=0
+
+wall_clock_scan=15.8s
+wall_clock_total=~25m (within 3h budget; 15m/45m/90m checkpoints all passed)
