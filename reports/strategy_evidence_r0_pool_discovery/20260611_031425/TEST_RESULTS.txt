@@ -1,0 +1,71 @@
+=== LP_BOT_STRATEGY_EVIDENCE_R0_POOL_DISCOVERY_AND_TINY_LIVE_CANDIDATE_SELECTION_V1 ===
+date_utc=2026-06-11T03:22:00Z
+branch=feat/supabase-postgres-deployment
+base_commit=bd0544b839c061684d32c8adfba583ea4c77c39c
+report_dir=reports/strategy_evidence_r0_pool_discovery/20260611_031425
+
+--- make build-dryrun ---
+go build -ldflags "-X main.BuildCommit=bd0544b -X main.BuildDate=2026-06-11T03:22:19Z" -tags=dryrun -o bin/lpbot-dryrun ./cmd/lpbot
+exit=0
+
+--- make build-shadow ---
+go build -ldflags "-X main.BuildCommit=bd0544b -X main.BuildDate=2026-06-11T03:22:32Z" -tags=shadow -o bin/lpbot-shadow ./cmd/lpbot
+exit=0
+
+--- go test ./... (last 25 lines) ---
+ok  	github.com/lpbot/lpbot/internal/core/audit	(cached)
+ok  	github.com/lpbot/lpbot/internal/core/execution	(cached)
+ok  	github.com/lpbot/lpbot/internal/core/loop	(cached)
+ok  	github.com/lpbot/lpbot/internal/core/pnl	(cached)
+ok  	github.com/lpbot/lpbot/internal/core/reconcile	(cached)
+ok  	github.com/lpbot/lpbot/internal/core/risk	(cached)
+ok  	github.com/lpbot/lpbot/internal/core/scanner	(cached)
+ok  	github.com/lpbot/lpbot/internal/core/simulation	(cached)
+ok  	github.com/lpbot/lpbot/internal/core/strategy	(cached)
+ok  	github.com/lpbot/lpbot/internal/core/tierc	(cached)
+ok  	github.com/lpbot/lpbot/internal/core/watchdog	(cached)
+ok  	github.com/lpbot/lpbot/internal/domain	(cached)
+ok  	github.com/lpbot/lpbot/internal/platform/config	(cached)
+ok  	github.com/lpbot/lpbot/internal/platform/decimal_db	(cached)
+ok  	github.com/lpbot/lpbot/internal/platform/health	(cached)
+ok  	github.com/lpbot/lpbot/internal/platform/idgen	(cached)
+ok  	github.com/lpbot/lpbot/internal/platform/log	(cached)
+ok  	github.com/lpbot/lpbot/internal/platform/metrics	(cached)
+?   	github.com/lpbot/lpbot/internal/platform/redis	[no test files]
+ok  	github.com/lpbot/lpbot/internal/platform/timex	(cached)
+ok  	github.com/lpbot/lpbot/internal/platform/trace	(cached)
+ok  	github.com/lpbot/lpbot/internal/ports	(cached)
+ok  	github.com/lpbot/lpbot/pkg/decimal	(cached)
+ok  	github.com/lpbot/lpbot/pkg/il	(cached)
+ok  	github.com/lpbot/lpbot/pkg/tickmath	(cached)
+?   	github.com/lpbot/lpbot/scripts/aggregate-verdict	[no test files]
+ok  	github.com/lpbot/lpbot/tests/chaos	(cached)
+?   	github.com/lpbot/lpbot/tests/fork	[no test files]
+ok  	github.com/lpbot/lpbot/tests/property	(cached)
+ok  	github.com/lpbot/lpbot/tests/property/mocks	(cached)
+FAIL=0
+PASS=all packages OK (cached, no failures)
+
+--- make quality-gate (last 8 lines) ---
+ok  	github.com/lpbot/lpbot/pkg/decimal	(cached)
+ok  	github.com/lpbot/lpbot/pkg/il	(cached)
+ok  	github.com/lpbot/lpbot/pkg/tickmath	(cached)
+?   	github.com/lpbot/lpbot/scripts/aggregate-verdict	[no test files]
+ok  	github.com/lpbot/lpbot/tests/chaos	(cached)
+?   	github.com/lpbot/lpbot/tests/fork	[no test files]
+ok  	github.com/lpbot/lpbot/tests/property	(cached)
+ok  	github.com/lpbot/lpbot/tests/property/mocks	(cached)
+exit=0
+
+--- bash scripts/strategy_evidence_scan_base.sh (this run's summary) ---
+strategy_evidence_scan: RUN_ID=20260611_031425
+strategy_evidence_scan: REPORT_DIR=/opt/lpbot/lp-bot-v3-origin-check/reports/strategy_evidence_r0_pool_discovery/20260611_031425
+scan: pulled 120 raw pools from geckoterminal
+scan: token info resolved for 18 tokens (1st pass; 2nd pass hit 429, fell back to name parsing — symbol coverage 100% on ranked CSV)
+scan: wrote candidate_pools_raw.csv (120 rows)
+scan: risk levels {'LOW': 9, 'MEDIUM': 59, 'REJECT': 42, 'HIGH': 10}
+scan: wrote risk_filtered_pools.csv (120 rows)
+scan: wrote lp_simulation_results.csv (636 rows)
+scan: wrote ranked_tiny_live_candidates.csv (53 rows)
+scan: GO_TINY_LIVE=0 NEED_MORE_DATA=8 NO_GO=45
+exit=0
