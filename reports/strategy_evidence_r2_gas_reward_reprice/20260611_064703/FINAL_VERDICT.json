@@ -6,7 +6,7 @@
   "base_commit": "e832dd422ad631410aef82b7bd0727db0516435b",
   "implementation_commit": "dfb65b09a1afde6e80925ed2c5921d38815ba8d5",
   "report_fill_commit": "2cc5bbbe90a4070b5e2831c526a06e0535198377",
-  "final_commit": "TBD",
+  "final_commit": "de3cb8e5a6f19141c18fa65de4cfb44fec2c9eaf",
   "pushed": false,
   "verdict_commit_note": "FINAL_VERDICT.json was committed at 2cc5bbbe90a4070b5e2831c526a06e0535198377; the SHA-clarifying and pushed=true follow-up commits in this branch are part of the same stage.",
   "report_dir": "reports/strategy_evidence_r2_gas_reward_reprice/20260611_064703",
