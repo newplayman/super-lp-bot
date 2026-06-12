@@ -1,0 +1,56 @@
+=== LP_BOT_STRATEGY_EVIDENCE_R4B_ACTIVE_LIQUIDITY_CORRECTED_FEE_REPLAY_V1 ===
+date_utc=2026-06-12T09:00:00Z
+branch=feat/supabase-postgres-deployment
+base_commit=62307dc5abb523f877c68187e4d6002d9ab020b0
+report_dir=reports/strategy_evidence_r4b_active_liquidity_corrected_replay/20260612_090000
+
+--- make build-dryrun ---
+go build -ldflags "-X main.BuildCommit=62307dc -X main.BuildDate=2026-06-12T..." -tags=dryrun -o bin/lpbot-dryrun ./cmd/lpbot
+exit=0
+
+--- make build-shadow ---
+go build -ldflags "-X main.BuildCommit=62307dc -X main.BuildDate=2026-06-12T..." -tags=shadow -o bin/lpbot-shadow ./cmd/lpbot
+exit=0
+
+--- go test ./... (last 10 lines) ---
+ok  	github.com/lpbot/lpbot/internal/platform/trace	(cached)
+ok  	github.com/lpbot/lpbot/internal/ports	(cached)
+ok  	github.com/lpbot/lpbot/pkg/decimal	(cached)
+ok  	github.com/lpbot/lpbot/pkg/il	(cached)
+ok  	github.com/lpbot/lpbot/pkg/tickmath	(cached)
+?   	github.com/lpbot/lpbot/scripts/aggregate-verdict	[no test files]
+ok  	github.com/lpbot/lpbot/tests/chaos	(cached)
+?   	github.com/lpbot/lpbot/tests/fork	[no test files]
+ok  	github.com/lpbot/lpbot/tests/property	(cached)
+ok  	github.com/lpbot/lpbot/tests/property/mocks	(cached)
+FAIL=0
+PASS=all packages cached OK (no failures)
+
+--- R4B corrected replay (this run's summary) ---
+script: scripts/strategy_evidence_r4b_active_liquidity_replay.py
+input: R4 decoded events (115,680 Swap events across 3 pools)
+output: 81 cells (3 pools × 3 sizes × 3 ranges × 3 holds)
+
+top candidate (0xb2cc... $50 × 24h ±10%):
+  R4 old:      replay_fee=$108.56, capture=281.95, net=$107.49
+  R4B corrected: replay_fee=$120.81, capture=313.74, net=$119.73
+  correction_factor=0.9974 (1 - 1/(1+base_share))
+  L_event median=1.722e+18 (R3 L_total=3.058e+18, ratio=0.56)
+
+all 81 cells: GO=78, NEED_MORE_DATA=3, NO_GO=0
+median correction factor: 0.9965 (R4 was within 0.4% of R4B on the median cell)
+liquidity_scaling_sanity_status: PASS
+
+wall_clock_total=~5m (within 2h budget; 15m/45m/90m checkpoints all passed)
+
+safety_locks_recheck.json contents:
+  wallet_or_tx_touched=false
+  signing_attempted=false
+  broadcast_attempted=false
+  canary_started=false
+  live_started=false
+  paper_started=false
+  LPBOT_CONFIRM_LIVE_set_to_NO=false (NOT set to YES)
+  execution_authorized=false
+  auto_exit_wiring_written=false
+  tiny_live_probe_started=false
