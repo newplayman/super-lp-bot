@@ -1,0 +1,72 @@
+=== LP_BOT_STRATEGY_EVIDENCE_R4C_INDEPENDENT_CLMM_LIQUIDITY_REPLAY_V1 ===
+date_utc=2026-06-12T10:00:00Z
+branch=feat/supabase-postgres-deployment
+base_commit=fc92e110331e96e0f25785961f2919fa70e2037e
+report_dir=reports/strategy_evidence_r4c_independent_clmm_liquidity_replay/20260612_100000
+
+--- make build-dryrun ---
+go build -ldflags "-X main.BuildCommit=fc92e11 -X main.BuildDate=2026-06-12T..." -tags=dryrun -o bin/lpbot-dryrun ./cmd/lpbot
+exit=0
+
+--- make build-shadow ---
+go build -ldflags "-X main.BuildCommit=fc92e11 -X main.BuildDate=2026-06-12T..." -tags=shadow -o bin/lpbot-shadow ./cmd/lpbot
+exit=0
+
+--- go test ./... (last 10 lines) ---
+ok  	github.com/lpbot/lpbot/internal/platform/trace	(cached)
+ok  	github.com/lpbot/lpbot/internal/ports	(cached)
+ok  	github.com/lpbot/lpbot/pkg/decimal	(cached)
+ok  	github.com/lpbot/lpbot/pkg/il	(cached)
+ok  	github.com/lpbot/lpbot/pkg/tickmath	(cached)
+?   	github.com/lpbot/lpbot/scripts/aggregate-verdict	[no test files]
+ok  	github.com/lpbot/lpbot/tests/chaos	(cached)
+?   	github.com/lpbot/lpbot/tests/fork	[no test files]
+ok  	github.com/lpbot/lpbot/tests/property	(cached)
+ok  	github.com/lpbot/lpbot/tests/property/mocks	(cached)
+FAIL=0
+PASS=all packages cached OK (no failures)
+
+--- R4C independent replay (this run's summary) ---
+script: scripts/strategy_evidence_r4c_independent_clmm_liquidity_replay.py
+input: R4 decoded events (115,680 Swap events across 3 pools)
+output: 81 cells (3 pools × 3 sizes × 3 ranges × 3 holds)
+       + 81 validation rows (PASS=81, FAIL=0)
+
+top candidate (0xb2cc... $50 × 24h ±10%):
+  R4B baseline: replay_fee=$120.81, net=$119.73, signal/noise=239.46
+  R4C independent: replay_fee=$0.3102, net=$-0.77, signal/noise=-1.38
+  R4C/R4B fee ratio=0.00257 (R4B was 390x too high)
+  L_position (R4C)=1.32e13
+  L_position / median_L_event=7.65e-6
+  median fee share (R4C)=0.00077% (R4B claimed 0.26%, a 340x overestimate)
+
+all 81 cells under R4C math:
+  GO=0, NEED_MORE_DATA=0, NO_GO=81
+  R4C best net_pnl=-0.23 (0xb2cc $50 ±5% 1h)
+  R4C best signal/noise=137.37
+  R4C/R4B fee ratio: min=0.0012, median=0.0034, max=0.0080 (R4B was 125-833x too high)
+
+validation:
+  amount_reconstruction_error_max=0.0000% (all 81 cells: PASS)
+  L_position > 0 for all 81 cells: PASS
+  share > 5% flag: never triggered
+  daily_fee > position_size flag: never triggered
+  APR > 1000% flag: never triggered
+  validation_anomaly_count=0/81
+
+model_bug_found=true
+final_recommendation=MODEL_BUG_FOUND
+
+wall_clock_total=~2m (within 2h budget; 15m/45m/90m checkpoints all passed)
+
+safety_locks_recheck.json contents:
+  wallet_or_tx_touched=false
+  signing_attempted=false
+  broadcast_attempted=false
+  canary_started=false
+  live_started=false
+  paper_started=false
+  LPBOT_CONFIRM_LIVE_set_to_NO=false (NOT set to YES)
+  execution_authorized=false
+  auto_exit_wiring_written=false
+  tiny_live_probe_started=false

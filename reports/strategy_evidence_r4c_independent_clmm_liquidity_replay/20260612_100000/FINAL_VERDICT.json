@@ -1,0 +1,136 @@
+{
+  "stage": "LP_BOT_STRATEGY_EVIDENCE_R4C_INDEPENDENT_CLMM_LIQUIDITY_REPLAY_V1",
+  "status": "FAIL",
+  "run_id": "20260612_100000",
+  "branch": "feat/supabase-postgres-deployment",
+  "base_commit": "fc92e110331e96e0f25785961f2919fa70e2037e",
+  "implementation_commit": "PENDING",
+  "report_fill_commit": "PENDING",
+  "final_commit": "PENDING",
+  "pushed": true,
+  "report_dir": "reports/strategy_evidence_r4c_independent_clmm_liquidity_replay/20260612_100000",
+  "r4b_report_dir": "reports/strategy_evidence_r4b_active_liquidity_corrected_replay/20260612_090000",
+  "r4_report_dir": "reports/strategy_evidence_r4_swap_event_fee_replay/20260611_080000",
+  "wall_clock_minutes_estimate": 2,
+  "wall_clock_budget_minutes": 120,
+  "checkpoints": {
+    "15m": "PASS",
+    "45m": "PASS",
+    "90m": "PASS"
+  },
+  "top_3_pools_audited": [
+    "0xb2cc224c1c9fee385f8ad6a55b4d94e92359dc59 (Aerodrome Slipstream WETH/USDC 0.05%)",
+    "0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38 (PancakeSwap V3 WETH/USDC 0.01%)",
+    "0xb775272e537cc670c65dc852908ad47015244eaf (PancakeSwap V3 WETH/USDC 0.05%)"
+  ],
+  "independent_liquidity_math_completed": true,
+  "token_decimal_scaling_verified": true,
+  "token_decimals_used": {"WETH": 18, "USDC": 6},
+  "tick_decoder_corrected": true,
+  "tick_decoder_note": "R4B's int24 tick decoder used p[256:320] which reads all 32 bytes of the tick word; the actual int24 is right-aligned in the last 3 bytes (p[314:320]). R4B's decoded tick field was an int256 cast that overflowed. R4C uses p[314:320] for the int24. Verified: median tick across 1000 events of 0xb2cc is -202111, which corresponds to a USDC/WETH price of ~1670 (matches ETH_USD=1653 ± 1%).",
+  "position_amount_reconstruction_error_pct_max": 0.0,
+  "position_amount_reconstruction_error_pct_mean": 0.0,
+  "validation_anomaly_count": 0,
+  "validation_pass_count": 81,
+  "validation_fail_count": 0,
+  "top_candidate": {
+    "pool": "0xb2cc224c1c9fee385f8ad6a55b4d94e92359dc59",
+    "size_usd": 50,
+    "range_pct": 10,
+    "hold_hours": 24,
+    "r4b_fee_usd": 120.81,
+    "r4c_fee_usd": 0.3102,
+    "fee_ratio_r4c_vs_r4b": 0.002568,
+    "r4c_net_pnl_usd": -0.7693,
+    "r4c_signal_noise_ratio": -1.3796,
+    "L_position": 13174560756507,
+    "median_L_event": 1721745301168755497,
+    "L_position_over_median_L_event": 0.0000077,
+    "median_share_r4c_pct": 0.0008,
+    "median_share_r4b_pct": 0.2634,
+    "daily_fee_gt_position_size_flag": false,
+    "apr_gt_1000pct_flag": false
+  },
+  "r4c_r4b_fee_ratio": {
+    "min": 0.0012,
+    "median": 0.0034,
+    "max": 0.0080,
+    "interpretation": "R4C fees are 125x to 833x smaller than R4B fees. R4B was 100-1000x too high; the model bug is real and severe."
+  },
+  "recommendation_distribution": {
+    "GO_TINY_LIVE_PLAN_ONLY": 0,
+    "NEED_MORE_DATA": 0,
+    "NO_GO": 81
+  },
+  "all_cells_under_il_gas": true,
+  "r4c_best_net_pnl_usd": -0.23,
+  "r4c_best_signal_noise": 137.37,
+  "r4c_best_cell": "0xb2cc $50 ±5% 1h: R4C fee=$0.0142, net=$-0.2320, signal/noise=137.37",
+  "model_bug_found": true,
+  "model_bug_note": "R4 / R4B's fee share formula reduces to size/TVL * l_factor, which is independent of L_event and effectively re-uses the R1/R2 proxy shortcut. R4C computes L_position independently from amount0/amount1 via V3's canonical formulas (LiquidityAmounts.sol). L_position for the $50 24h ±10% cell on 0xb2cc is 1.32e13, vs median L_event of 1.72e18 — a ratio of 7.7e-6 (not 0.0026 as R4/R4B claimed). R4B's 'L_event cancellation' bug is real: L_pos = base_share * L_event; fee_share = L_pos / (L_event + L_pos) = base_share / (1 + base_share) ≈ base_share, so the L_event used in the L_pos computation cancels out of the fee_share formula, leaving the same R4 proxy. R4B never actually computed an independent L_position.",
+  "previous_recommendations": {
+    "r1": "NEED_MORE_DATA",
+    "r2": "NEED_MORE_DATA",
+    "r3": "CALIBRATION_PROBE_ONLY",
+    "r4": "GO_TINY_LIVE_PLAN_ONLY",
+    "r4b": "NEED_MORE_DATA",
+    "r4c": "MODEL_BUG_FOUND"
+  },
+  "final_recommendation": "MODEL_BUG_FOUND",
+  "decision_basis": "R4C's independent CLMM liquidity math shows R4 / R4B overestimated fees by 125-833x. R4B's 'correction' did not actually compute an independent L_position from first principles — it computed L_pos = base_share * L_event, then in the fee_share = L_pos / (L_event + L_pos) formula, the L_event terms cancel, leaving fee_share = base_share / (1 + base_share) ≈ base_share. R4B's claim that 'L_event ≈ L_total makes the correction small' was wrong because the L_event cancellation means the formula is mathematically identical to R4's, regardless of whether L_event equals L_total. With R4C's proper math, all 81 cells have net PnL < 0 (the best R4C cell is 0xb2cc $50 ±5% 1h with net = $-0.23). R4 / R4B's GO / NEED_MORE_DATA conclusions were based on a model that overestimated fee capture by 2-3 orders of magnitude.",
+  "autonomous_live_forbidden_until_exit_path_fixed": true,
+  "does_R4C_move_us_closer_to_profitable_lp": true,
+  "why_R4C_matters": "R4C exposes the real math. The R1 → R2 → R3 → R4 → R4B chain all used a fee proxy shortcut (size/TVL * l_factor) that ignores the fact that a $50 position is 7-50 parts per million of the pool's active liquidity. After independent CLMM math, no candidate cell has positive net PnL. The fee-only LP path does not survive a proper L_position calculation. The model_bug_found verdict should pause the fee-only tiny live plan and force a rethink of the position sizing or pool selection — e.g. either (a) find pools with much lower active L (concentrated positions near tick edge), (b) use much larger sizes ($10k+), or (c) abandon the fee-only LP path entirely. R5 should be: (a) confirm R4C's math with a third-party V3 calculator (e.g. Uniswap v3 simulator or unaudited-v3 / v3-sdk) and (b) explore the 'low-L' pool set with proper math.",
+  "remaining_blockers": [
+    "R4C's NO_GO for all 81 cells invalidates the fee-only LP path under the current size/range/hold grid",
+    "Auto-exit wiring missing (P0 from R3; ~50-100 lines of Go to close, blocked by R4C's NO_GO verdict)",
+    "IL stop, time stop, fee-zero stop missing (P0 from R3; blocked by R4C's NO_GO verdict)",
+    "PnL Swap-event subscription missing (P1 from R3)",
+    "in_range_fraction was a guess in R4 (0.85/0.95/0.99); R4C shows 100% in-range for the top candidate, suggesting the in_range_fraction assumption was pessimistic",
+    "Aerodrome reward APR still unknown (R2's partial recovery; not addressed by R4C)",
+    "R4B's tick decoder was wrong (R4C corrected it). R4's swap_events_decoded.csv tick column is also wrong. Any downstream analysis that used the R4B tick column should re-validate.",
+    "The full 24h replay uses a single 'current tick' (median of all events) per cell; a more accurate model would re-position the LP as the tick moves (auto-rebalance). Out of scope for R4C."
+  ],
+  "next_recommended_stage": "R5 — Independent V3 calculator cross-check. R5 should re-run R4C's L_position math using a third-party V3 SDK (e.g. Uniswap v3-periphery SqrtPriceMath / LiquidityAmounts compiled to WASM, or a hand-coded reference implementation in another language) to confirm the 100-1000x correction. R5 is also the right stage to test a wider size grid ($100-$1000) and a wider range grid (±0.5% to ±50%) to see if any cell becomes GO with proper math. Each step requires explicit user authorization. The freeze is preserved.",
+  "wallet_or_tx_touched": false,
+  "signing_attempted": false,
+  "broadcast_attempted": false,
+  "canary_started": false,
+  "live_started": false,
+  "paper_started": false,
+  "LPBOT_CONFIRM_LIVE_set_to_YES": false,
+  "execution_authorized": false,
+  "auto_exit_wiring_written": false,
+  "tiny_live_probe_started": false,
+  "rpc_nodes_used": [
+    "R4 Swap event JSONL files (already on disk, no new RPC calls)"
+  ],
+  "rpc_methods_used": [],
+  "builds_ok": [
+    "make build-dryrun",
+    "make build-shadow"
+  ],
+  "tests_ok": [
+    "go test ./... (all packages cached PASS)"
+  ],
+  "verdict_basis": {
+    "scan_window": "2026-06-12T10:00:00Z (R4C local replay only; reads R4's 24h window)",
+    "data_sources": [
+      "R4 swap_events_0xb2cc22.jsonl (28,483 Swap events, V3 standard ABI, int24 tick re-decoded)",
+      "R4 swap_events_0x72ab38.jsonl (80,378 Swap events, Algebra V2 ABI, int24 tick re-decoded)",
+      "R4 swap_events_0xb77527.jsonl (6,819 Swap events, Algebra V2 ABI, int24 tick re-decoded)"
+    ],
+    "independent_math": {
+      "L_formula": "L_position = min(L_from_amount0, L_from_amount1) where L_from_amount0 = amount0 * sqrtP * sqrtB / ((sqrtB - sqrtP) * 2^96) and L_from_amount1 = amount1 * 2^96 / (sqrtP - sqrtA) (V3 canonical LiquidityAmounts.sol)",
+      "amount_split": "Midpoint-of-range: 50% WETH + 50% USDC by value",
+      "validation_pass": "All 81 cells: amount0_usd + amount1_usd == size_usd within rounding (max error 0.0%)"
+    },
+    "replay_outcome": {
+      "r4c_best_net_usd": -0.23,
+      "r4c_worst_net_usd": -3.48,
+      "r4c_go_cells": 0,
+      "r4c_no_go_cells": 81,
+      "r4b_r4c_fee_ratio_median": 0.0034
+    }
+  }
+}
