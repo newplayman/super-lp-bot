@@ -1,0 +1,22 @@
+target,selector_or_sig,selector,result
+gauge 0x8279...b72,rewardToken(),0xf7c618c1,REVERT
+gauge 0x8279...b72,rewardsToken(),0x3c6b16ab,REVERT
+gauge 0x8279...b72,periodFinish(),0x8b5a3c4b,REVERT
+gauge 0x8279...b72,rewardRate(address),0x7b0a47ee,REVERT
+gauge 0x8279...b72,earned(address),0x008cc262,REVERT
+gauge 0x8279...b72,stakingToken(),0x6b5d5123,REVERT
+gauge 0x8279...b72,rewardTokens(uint256),1d3bff56,REVERT
+gauge 0x8279...b72,rewardTokensLength(),9f9c0611,REVERT
+gauge 0x8279...b72,getReward(),computed,REVERT
+gauge 0x8279...b72,getReward(address),computed,REVERT
+gauge 0x8279...b72,totalSupply(),0x18160ddd,REVERT
+gauge 0x8279...b72,balanceOf(address),0x70a08231,REVERT
+voter 0xf33a...,length(),0x1f7b6d30,REVERT
+voter 0xf33a...,isGauge(address),computed,REVERT
+voter 0xf33a...,poolForGauge(address),computed,REVERT
+voter 0xf33a...,gaugeToPool(address),computed,REVERT
+voter 0xf33a...,totalWeight(),computed,REVERT
+AERO 0x9401...,symbol(),computed,OK: 'AERO'
+AERO 0x9401...,name(),computed,OK: 'Aerodrome'
+AERO 0x9401...,decimals(),computed,OK: 18
+DefiLlama,GET /yields/pool/{uuid},REST,OK: 0xb2cc apyBase=29.87% apyReward=63.52%

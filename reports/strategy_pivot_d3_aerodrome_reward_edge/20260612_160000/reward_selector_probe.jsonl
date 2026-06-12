@@ -1,0 +1,21 @@
+{"target": "gauge 0x8279...b72", "selector_or_sig": "rewardToken()", "selector": "0xf7c618c1", "result": "REVERT"}
+{"target": "gauge 0x8279...b72", "selector_or_sig": "rewardsToken()", "selector": "0x3c6b16ab", "result": "REVERT"}
+{"target": "gauge 0x8279...b72", "selector_or_sig": "periodFinish()", "selector": "0x8b5a3c4b", "result": "REVERT"}
+{"target": "gauge 0x8279...b72", "selector_or_sig": "rewardRate(address)", "selector": "0x7b0a47ee", "result": "REVERT"}
+{"target": "gauge 0x8279...b72", "selector_or_sig": "earned(address)", "selector": "0x008cc262", "result": "REVERT"}
+{"target": "gauge 0x8279...b72", "selector_or_sig": "stakingToken()", "selector": "0x6b5d5123", "result": "REVERT"}
+{"target": "gauge 0x8279...b72", "selector_or_sig": "rewardTokens(uint256)", "selector": "1d3bff56", "result": "REVERT"}
+{"target": "gauge 0x8279...b72", "selector_or_sig": "rewardTokensLength()", "selector": "9f9c0611", "result": "REVERT"}
+{"target": "gauge 0x8279...b72", "selector_or_sig": "getReward()", "selector": "computed", "result": "REVERT"}
+{"target": "gauge 0x8279...b72", "selector_or_sig": "getReward(address)", "selector": "computed", "result": "REVERT"}
+{"target": "gauge 0x8279...b72", "selector_or_sig": "totalSupply()", "selector": "0x18160ddd", "result": "REVERT"}
+{"target": "gauge 0x8279...b72", "selector_or_sig": "balanceOf(address)", "selector": "0x70a08231", "result": "REVERT"}
+{"target": "voter 0xf33a...", "selector_or_sig": "length()", "selector": "0x1f7b6d30", "result": "REVERT"}
+{"target": "voter 0xf33a...", "selector_or_sig": "isGauge(address)", "selector": "computed", "result": "REVERT"}
+{"target": "voter 0xf33a...", "selector_or_sig": "poolForGauge(address)", "selector": "computed", "result": "REVERT"}
+{"target": "voter 0xf33a...", "selector_or_sig": "gaugeToPool(address)", "selector": "computed", "result": "REVERT"}
+{"target": "voter 0xf33a...", "selector_or_sig": "totalWeight()", "selector": "computed", "result": "REVERT"}
+{"target": "AERO 0x9401...", "selector_or_sig": "symbol()", "selector": "computed", "result": "OK: 'AERO'"}
+{"target": "AERO 0x9401...", "selector_or_sig": "name()", "selector": "computed", "result": "OK: 'Aerodrome'"}
+{"target": "AERO 0x9401...", "selector_or_sig": "decimals()", "selector": "computed", "result": "OK: 18"}
+{"target": "DefiLlama", "selector_or_sig": "GET /yields/pool/{uuid}", "selector": "REST", "result": "OK: 0xb2cc apyBase=29.87% apyReward=63.52%"}

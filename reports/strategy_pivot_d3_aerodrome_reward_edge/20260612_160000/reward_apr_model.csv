@@ -1,0 +1,10 @@
+pool,pool_name,reward_token,reward_token_address,source,observed_apr_pct,apy_base_pct,apy_total_pct,tvl_usd,scenario_status
+0xb2cc224c1c9fee385f8ad6a55b4d94e92359dc59,Aerodrome Slipstream WETH/USDC 0.05%,AERO,0x940181a94A35A4569E4529A3CDfB74e38FD98631,defillama,63.52,29.87,93.39,8113563,OBSERVED
+0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38,PancakeSwap V3 WETH/USDC 0.01%,n/a,n/a,not_applicable,0.0,7.46,7.46,6020539,"NOT_APPLICABLE (PancakeSwap, no AERO rewards)"
+,,,,,,,,,
+scenario_id,apr_pct,tested_in_grid,,,,,,,note
+0pct,0,true,,,,,,,D2 base case (no reward)
+15pct,15,true,,,,,,,low observed range
+31.76pct,31.76,true,,,,,,,half of observed 63.52% (conservative)
+63.52pct_observed,63.52,true,,,,,,,DefiLlama observed 30d rolling average
+100pct,100,true,,,,,,,highly favorable stress (max edge)

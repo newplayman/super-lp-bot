@@ -1,0 +1,7 @@
+{"pool": "0xb2cc224c1c9fee385f8ad6a55b4d94e92359dc59", "pool_name": "Aerodrome Slipstream WETH/USDC 0.05%", "reward_token": "AERO", "reward_token_address": "0x940181a94A35A4569E4529A3CDfB74e38FD98631", "source": "defillama", "observed_apr_pct": 63.52, "apy_base_pct": 29.87, "apy_total_pct": 93.39, "tvl_usd": 8113563, "scenario_status": "OBSERVED"}
+{"pool": "0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38", "pool_name": "PancakeSwap V3 WETH/USDC 0.01%", "reward_token": "n/a", "reward_token_address": "n/a", "source": "not_applicable", "observed_apr_pct": 0.0, "apy_base_pct": 7.46, "apy_total_pct": 7.46, "tvl_usd": 6020539, "scenario_status": "NOT_APPLICABLE (PancakeSwap, no AERO rewards)"}
+{"scenario": "0pct", "apr_pct": 0, "note": "D2 base case (no reward)"}
+{"scenario": "15pct", "apr_pct": 15, "note": "low observed range"}
+{"scenario": "31.76pct", "apr_pct": 31.76, "note": "half of observed 63.52% (conservative)"}
+{"scenario": "63.52pct_observed", "apr_pct": 63.52, "note": "DefiLlama observed 30d rolling average"}
+{"scenario": "100pct", "apr_pct": 100, "note": "highly favorable stress (max edge)"}

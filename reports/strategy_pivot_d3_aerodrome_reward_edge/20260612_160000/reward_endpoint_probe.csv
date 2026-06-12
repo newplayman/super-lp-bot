@@ -1,0 +1,9 @@
+source,url,auth,status,result,records
+defillama_yields_pools,https://yields.llama.fi/pools,none,OK,0xb2cc apyBase=29.87% apyReward=63.52% AERO,1
+defillama_apy_endpoint,https://yields.llama.fi/chart/0xb2cc,none,see_pools_endpoint,0xb2cc identified via underlyingTokens,
+aerodrome_frontend,https://aerodrome.finance,none,not_queried,not needed; DefiLlama returns the data,
+goldsky_aerodrome,https://api.goldsky.com/api/public/project_clhwbd0qa02o201w62rw8ggu/subgraphs/aerodrome/mainnet-v2/gn,none,404_subgraph_not_found,URL stale; not used,
+thegraph_aerodrome,https://api.thegraph.com/subgraphs/name/aerodrome-finance/aerodrome,none,301_redirect_to_aerodrome_own,redirect; not used,
+base_public_rpc_gauge_selectors,"https://mainnet.base.org (eth_call, eth_getStorageAt)",none,PARTIAL,"gauge selectors all revert; ABI non-standard; storage slots readable (slot 2 = 21,270,630 = likely Aerodrome epoch day; slot 6 = 'Slipstream Position NFT v1' ASCII; slot 7 = 'AERO-CL-POS' ASCII)",16
+base_public_rpc_voter_selectors,https://mainnet.base.org (eth_call),none,PARTIAL,voter selectors all revert; addresses recovered (R2),0
+base_public_rpc_aero_token,https://mainnet.base.org (eth_call),none,OK,"AERO.symbol='AERO', AERO.name='Aerodrome', AERO.decimals=18",3

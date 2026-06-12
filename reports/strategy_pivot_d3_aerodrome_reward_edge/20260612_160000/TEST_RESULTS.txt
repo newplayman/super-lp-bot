@@ -1,0 +1,94 @@
+=== LP_BOT_STRATEGY_PIVOT_D3_AERODROME_REWARD_APR_RECOVERY_AND_EDGE_THICKENING_V1 ===
+date_utc=2026-06-12T16:00:00Z
+branch=feat/supabase-postgres-deployment
+base_commit=31215b61102643f8efcfa7b2665e9e95469fa1eb
+report_dir=reports/strategy_pivot_d3_aerodrome_reward_edge/20260612_160000
+
+--- make build-dryrun ---
+go build -ldflags "-X main.BuildCommit=31215b6 -X main.BuildDate=2026-06-12T..." -tags=dryrun -o bin/lpbot-dryrun ./cmd/lpbot
+exit=0
+
+--- make build-shadow ---
+go build -ldflags "-X main.BuildCommit=31215b6 -X main.BuildDate=2026-06-12T..." -tags=shadow -o bin/lpbot-shadow ./cmd/lpbot
+exit=0
+
+--- go test ./... (last 10 lines) ---
+ok  	github.com/lpbot/lpbot/internal/platform/trace	(cached)
+ok  	github.com/lpbot/lpbot/internal/ports	(cached)
+ok  	github.com/lpbot/lpbot/pkg/decimal	(cached)
+ok  	github.com/lpbot/lpbot/pkg/il	(cached)
+ok  	github.com/lpbot/lpbot/pkg/tickmath	(cached)
+?   	github.com/lpbot/lpbot/scripts/aggregate-verdict	[no test files]
+ok  	github.com/lpbot/lpbot/tests/chaos	(cached)
+?   	github.com/lpbot/lpbot/tests/fork	[no test files]
+ok  	github.com/lpbot/lpbot/tests/property	(cached)
+ok  	github.com/lpbot/lpbot/tests/property/mocks	(cached)
+FAIL=0
+PASS=all packages cached OK (no failures)
+
+--- D3 reward-adjusted model (this run's summary) ---
+script: scripts/strategy_pivot_d3_aerodrome_reward_edge.py
+input: D2 funding history (269 records, 89.3 days)
+       R4C corrected fee matrix (81 cells)
+       R4 swap events (28,483 + 80,378 events)
+       DefiLlama reward APR (no auth, 0xb2cc apyReward=63.52% AERO)
+output: 2700 cells evaluated
+       222 GO cells (positive net_pnl_reward_adjusted under various scenarios)
+       222 sustainable (positive under funding stress + reward scenario)
+
+best cell (0xb2cc $1000 ±2% 24h hedge=0.75 funding=median reward=63.52%):
+  LP fee=$18.00
+  AERO reward=$1.74
+  IL=$0.80
+  funding income=$0.02
+  hedge cost=$10.46 (perp fee + rebal + residual)
+  claim gas=$0.10
+  initial gas=$0.08
+  net=$8.32/day
+  signal/noise=3.51
+
+min viable capital: $250 (0xb2cc $250 ±2% 24h hedge=0.75, net $1.83/day, sig/noise 3.51)
+
+funding_stress (best cell at observed reward 63.52%):
+  median: $8.32
+  0%: $8.30
+  +5%: $8.40
+  p5 (-9.02%): $8.12
+  current (-2.63%): $8.25
+
+reward_stress (best cell at median funding):
+  0% reward: $6.51 (D2 base, still GO)
+  15% reward: $7.10
+  31.76% reward (half-observed): $7.71
+  63.52% reward (observed): $8.32
+  100% reward: $8.97
+
+reward_data_recovery:
+  source: defillama /yields/pools (no auth)
+  apyReward: 63.52% (AERO emissions)
+  apyBase (DefiLlama): 29.87% (vs R4C's measured 226% — different methodology)
+  apyTotal: 93.39%
+  AERO token: 0x940181a94A35A4569E4529A3CDfB74e38FD98631 (verified via Base RPC eth_call)
+  gauge ABI selectors: all revert (non-standard; not required because DefiLlama aggregates)
+
+recommendation_distribution:
+  GO=222
+  NEED_MORE_DATA=13
+  NO_GO=2465
+final_recommendation=GO_DELTA_HEDGED_REWARD_LP_PLAN_ONLY
+
+wall_clock_total=~3m (within 2h budget; 15m/45m/90m checkpoints all passed)
+
+safety_locks_recheck.json contents:
+  wallet_or_tx_touched=false
+  signing_attempted=false
+  broadcast_attempted=false
+  cex_api_key_used=false (DefiLlama + Base public RPC only)
+  perp_order_placed=false
+  canary_started=false
+  live_started=false
+  paper_started=false
+  LPBOT_CONFIRM_LIVE_set_to_NO=false (NOT set to YES)
+  execution_authorized=false
+  auto_exit_wiring_written=false
+  tiny_live_probe_started=false
