@@ -1,0 +1,4 @@
+source,instrument,funding_period,funding_rate_raw,annualized_apr_pct,mark_px,oracle_px,day_ntl_vlm_usd,status
+hyperliquid,ETH-PERP,1h,-9.9e-06,-8.67,1658.3,1659.4,889272335.7220808,
+binance,ETHUSDT-PERP,8h,-6.598e-05,-7.22,1658.6,1659.30255814,,
+okx,ETH-USD-SWAP,8h,,,,,,403_forbidden

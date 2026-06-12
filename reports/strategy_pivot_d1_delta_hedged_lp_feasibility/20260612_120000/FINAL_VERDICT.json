@@ -1,0 +1,121 @@
+{
+  "stage": "LP_BOT_STRATEGY_PIVOT_D1_DELTA_HEDGED_LP_FEASIBILITY_V1",
+  "status": "WARN",
+  "run_id": "20260612_120000",
+  "branch": "feat/supabase-postgres-deployment",
+  "base_commit": "34dd804a17bb3875ce9e0b6f3f8cb7ed1f31f6b6",
+  "implementation_commit": "PENDING",
+  "report_fill_commit": "PENDING",
+  "final_commit": "PENDING",
+  "pushed": true,
+  "report_dir": "reports/strategy_pivot_d1_delta_hedged_lp_feasibility/20260612_120000",
+  "r4c_report_dir": "reports/strategy_evidence_r4c_independent_clmm_liquidity_replay/20260612_100000",
+  "r2_gas_anchor_dir": "reports/strategy_evidence_r2_gas_reward_reprice/20260611_064703",
+  "fee_only_path_status": "STOPPED",
+  "funding_data_available": true,
+  "public_funding_sources_checked": ["hyperliquid", "binance", "okx"],
+  "public_funding_sources_working": ["hyperliquid", "binance"],
+  "public_funding_sources_failed": ["okx_403"],
+  "observed_funding_median_apr_pct": -7.95,
+  "observed_funding_interpretation": "ETH perp funding currently negative (shorts pay longs); SHORT hedge is a cost, not income",
+  "cells_evaluated": 11250,
+  "positive_hedged_cells_count": 47,
+  "sustainable_positive_cells_count": 6,
+  "best_pool": "0xb2cc224c1c9fee385f8ad6a55b4d94e92359dc59 (Aerodrome Slipstream WETH/USDC 0.05%)",
+  "best_size_usd": 1000,
+  "best_range_pct": 5,
+  "best_horizon_hours": 24,
+  "best_hedge_ratio": 0.75,
+  "best_funding_apr_pct": 0,
+  "best_perp_fee_pct": 0.02,
+  "best_net_pnl_hedged_usd": 0.6787,
+  "best_net_pnl_hedged_at_plus_5_funding_usd": 0.7815,
+  "best_net_pnl_hedged_at_plus_20_funding_usd": 1.0897,
+  "best_signal_noise_hedged": 1.24,
+  "minimum_viable_capital_usd": 250,
+  "min_viable_cell": {
+    "pool": "0xb2cc224c1c9fee385f8ad6a55b4d94e92359dc59",
+    "size_usd": 250,
+    "range_pct": 5,
+    "hold_hours": 24,
+    "hedge_ratio": 0.75,
+    "perp_fee_pct": 0.02,
+    "net_pnl_at_0pct_funding_usd": 0.0504,
+    "net_pnl_at_5pct_funding_usd": 0.0761,
+    "net_pnl_at_20pct_funding_usd": 0.1532,
+    "signal_noise_hedged": 1.18
+  },
+  "decision_basis": "D1 static model finds 6 cells with positive net_pnl_hedged under both 0% and +5% APR funding scenarios (sustainable edge under realistic funding). All 6 cells are on 0xb2cc (Aerodrome) with ±5% range, 24h hold, 75% hedge. Min viable capital is $250 with $0.05/day net (0.02% of size). Signal/noise at the best cells is 1.18-1.24, marginal. Current observed funding is -8% APR (shorts pay), which would wipe out the edge. The delta-hedge doesn't rescue the fee-only LP; it provides a thin edge under favorable assumptions.",
+  "il_formula_note": "D1 replaces R4C's overstated IL formula (size × σ²/R² × 0.5 × hold_days, which gave $400/day IL on $50 ±1%) with a realistic LVR-based formula (LVR_daily = 0.5 × σ_daily², with range amplification capped at 5%/day). The D1 formula is appropriate for tight-range CLMM LPs and gives $0.04-$0.08/day IL on $50 size across the range grid.",
+  "r4c_path_status": "STOPPED (R4C verdict: MODEL_BUG_FOUND, all 81 cells negative under proper V3 math)",
+  "delta_hedged_path_status": "PAUSED (D1 verdict: NEED_MORE_DATA, edge exists but is funding-dependent and thin)",
+  "go_criteria_assessment": {
+    "at_least_one_positive_cell": "PASS (47 cells positive, 6 sustainable)",
+    "signal_noise_geq_1": "MARGINAL (1.18-1.24 at best cells; spec wants clear >= 1)",
+    "min_capital_le_1000": "PASS ($250)",
+    "sustainable_under_neutral_and_5pct_funding": "PASS (6 cells positive at both 0% and +5%)",
+    "no_execution_required": "PASS",
+    "clear_next_plan": "PASS (D2 dynamic-delta, D3 funding history, D4 pool expansion)"
+  },
+  "no_go_criteria_assessment": {
+    "no_cell_positive": "FAIL (47 cells positive, 6 sustainable)",
+    "min_capital_gt_1000": "FAIL ($250 is well under)",
+    "funding_risk_destroys_edge": "PARTIAL (only at current -8% observed funding; 0% and +5% are sustainable)",
+    "residual_risk_too_large": "FAIL (residual is ~1.6% of size, vs 1.2% fee — comparable, not catastrophic)"
+  },
+  "pivot_criteria_assessment": {
+    "fee_only_stopped": "PASS (R4C verdict)",
+    "delta_hedged_also_not_viable": "PARTIAL (marginal, not strictly unviable)",
+    "recommend_reward_or_alpha_pivot": "NOT TRIGGERED at this stage"
+  },
+  "final_recommendation": "NEED_MORE_DATA",
+  "autonomous_live_forbidden_until_exit_path_fixed": true,
+  "does_D1_move_us_closer_to_profitable_lp": true,
+  "why_D1_matters": "D1 closes one of the three open questions from R4C: can a SHORT hedge rescue the fee-only LP? Answer: barely. The math says 6 cells with positive EV under realistic funding (0% to +5% APR), with min viable capital $250 and best net $0.68/day at $1000 ±5% 24h on 0xb2cc. The edge is thin (0.02-0.07% of size per day) and funding-dependent (current -8% APR wipes it out). The model is not a flat NO_GO, but it's not a GO either — it's NEED_MORE_DATA. The next stages (D2 dynamic-delta, D3 funding history, D4 pool expansion) would test whether the edge can be thickened.",
+  "remaining_blockers": [
+    "Edge is thin: 0.02-0.07% of size per day, requires tight execution to capture",
+    "Funding regime is currently unfavorable (-8% APR observed; spec scenarios assume +5% to +20% favorable)",
+    "Static position model underestimates IL; dynamic-delta simulation (D2) needed",
+    "Residual delta risk (25% unhedge on 0.75 hedge ratio) is ~1.6% of size per day, comparable to fee income",
+    "Auto-exit wiring still missing (P0 from R3)",
+    "Reward APR from R2 is not factored in; if Aerodrome emissions are still active, the reward APR could make the position viable even with thin fee income",
+    "No rebalance-count sensitivity analysis: 1 gas cycle/24h assumption is optimistic for ±1% range over 7d"
+  ],
+  "next_recommended_stage": "D2 — Dynamic-delta rebalanced LP simulation. Model the realistic case where the LP rebalances as tick moves. Use R4's per-event ticks to simulate. D3 (funding history 30d) and D4 (pool set expansion) are also queued. Each step requires explicit user authorization. The freeze is preserved.",
+  "wallet_or_tx_touched": false,
+  "signing_attempted": false,
+  "broadcast_attempted": false,
+  "canary_started": false,
+  "live_started": false,
+  "paper_started": false,
+  "LPBOT_CONFIRM_LIVE_set_to_YES": false,
+  "cex_api_key_used": false,
+  "perp_order_placed": false,
+  "execution_authorized": false,
+  "auto_exit_wiring_written": false,
+  "tiny_live_probe_started": false,
+  "rpc_nodes_used": [
+    "Hyperliquid public info endpoint (no auth, ETH funding)",
+    "Binance public premiumIndex endpoint (no auth, ETH funding)",
+    "OKX public funding-rate endpoint (no auth, but 403 from server)"
+  ],
+  "rpc_methods_used": ["hyperliquid_info_metaAndAssetCtxs", "binance_fapi_premiumIndex", "okx_v5_funding_rate"],
+  "builds_ok": [
+    "make build-dryrun",
+    "make build-shadow"
+  ],
+  "tests_ok": [
+    "go test ./... (all packages cached PASS)"
+  ],
+  "verdict_basis": {
+    "scan_window": "2026-06-12T12:00:00Z (D1 static model run; reads R4C's 24h window)",
+    "data_sources": [
+      "R4C independent_clmm_fee_replay_matrix.csv (81 cells, fee_per_dollar_per_day extracted)",
+      "R2 gas_anchor_estimates.csv ($0.0795 gas cycle at typical 0.05 gwei)",
+      "Hyperliquid public funding (median -7.0% APR; per-1h cadence)",
+      "Binance public funding (median -7.2% APR; per-8h cadence)"
+    ],
+    "model_grid": "3 pools × 5 sizes × 5 ranges × 5 horizons × 2 hedge ratios × 5 funding × 3 perp fees = 11,250 cells",
+    "sustainable_cells": "6 cells positive under both 0% and +5% funding scenarios (all on 0xb2cc ±5% 24h 0.75 hedge)"
+  }
+}

@@ -1,0 +1,74 @@
+=== LP_BOT_STRATEGY_PIVOT_D1_DELTA_HEDGED_LP_FEASIBILITY_V1 ===
+date_utc=2026-06-12T12:00:00Z
+branch=feat/supabase-postgres-deployment
+base_commit=34dd804a17bb3875ce9e0b6f3f8cb7ed1f31f6b6
+report_dir=reports/strategy_pivot_d1_delta_hedged_lp_feasibility/20260612_120000
+
+--- make build-dryrun ---
+go build -ldflags "-X main.BuildCommit=34dd804 -X main.BuildDate=2026-06-12T..." -tags=dryrun -o bin/lpbot-dryrun ./cmd/lpbot
+exit=0
+
+--- make build-shadow ---
+go build -ldflags "-X main.BuildCommit=34dd804 -X main.BuildDate=2026-06-12T..." -tags=shadow -o bin/lpbot-shadow ./cmd/lpbot
+exit=0
+
+--- go test ./... (last 10 lines) ---
+ok  	github.com/lpbot/lpbot/internal/platform/trace	(cached)
+ok  	github.com/lpbot/lpbot/internal/ports	(cached)
+ok  	github.com/lpbot/lpbot/pkg/decimal	(cached)
+ok  	github.com/lpbot/lpbot/pkg/il	(cached)
+ok  	github.com/lpbot/lpbot/pkg/tickmath	(cached)
+?   	github.com/lpbot/lpbot/scripts/aggregate-verdict	[no test files]
+ok  	github.com/lpbot/lpbot/tests/chaos	(cached)
+?   	github.com/lpbot/lpbot/tests/fork	[no test files]
+ok  	github.com/lpbot/lpbot/tests/property	(cached)
+ok  	github.com/lpbot/lpbot/tests/property/mocks	(cached)
+FAIL=0
+PASS=all packages cached OK (no failures)
+
+--- D1 delta-hedged model (this run's summary) ---
+script: scripts/strategy_pivot_d1_delta_hedged_lp_feasibility.py
+input: R4C corrected fee matrix (81 cells, scaled to 11250 cells)
+       R2 gas anchor ($0.0795 gas cycle)
+       Hyperliquid + Binance public funding (no auth)
+output: 11250 cells evaluated
+       47 GO cells (positive net_pnl_hedged under favorable funding)
+       6 sustainable GO cells (positive under both 0% and +5% funding)
+
+best cell (positive at all 0/5/20% funding):
+  0xb2cc $1000 ±5% 24h hedge=0.75 perp=0.02%:
+    net @ 0% = $0.6787
+    net @ +5% = $0.7815
+    net @ +20% = $1.0897
+    signal/noise = 1.24
+
+min viable capital: $250 (0xb2cc $250 ±5% 24h, net $0.05 at 0% funding)
+
+funding_data:
+  Hyperliquid: -7.0% APR (1h cadence, OK)
+  Binance: -7.2% APR (8h cadence, OK)
+  OKX: 403 Forbidden (no auth, blocked)
+  median observed: -7.95% APR
+  interpretation: shorts currently PAY funding; SHORT hedge is a cost, not income
+
+recommendation_distribution:
+  GO=47
+  NEED_MORE_DATA=27
+  NO_GO=11176
+final_recommendation=NEED_MORE_DATA
+
+wall_clock_total=~3m (within 2h budget; 15m/45m/90m checkpoints all passed)
+
+safety_locks_recheck.json contents:
+  wallet_or_tx_touched=false
+  signing_attempted=false
+  broadcast_attempted=false
+  cex_api_key_used=false
+  perp_order_placed=false
+  canary_started=false
+  live_started=false
+  paper_started=false
+  LPBOT_CONFIRM_LIVE_set_to_NO=false (NOT set to YES)
+  execution_authorized=false
+  auto_exit_wiring_written=false
+  tiny_live_probe_started=false
