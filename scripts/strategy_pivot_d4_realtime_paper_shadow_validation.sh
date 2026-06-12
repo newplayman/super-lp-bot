@@ -78,6 +78,7 @@ case "${ACTION}" in
       kill -KILL "${PID}" 2>/dev/null || true
       rm -f "${PID_FILE}"
     fi
+    python3 -u scripts/strategy_pivot_d4_finalize_v1.py "${REPORT_DIR}"
     echo "D4 finalized at ${REPORT_DIR}"
     ;;
   *)
