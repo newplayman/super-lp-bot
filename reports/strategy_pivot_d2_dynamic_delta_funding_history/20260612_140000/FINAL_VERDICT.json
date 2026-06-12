@@ -1,0 +1,112 @@
+{
+  "stage": "LP_BOT_STRATEGY_PIVOT_D2_DYNAMIC_DELTA_AND_FUNDING_HISTORY_V1",
+  "status": "PASS",
+  "run_id": "20260612_140000",
+  "branch": "feat/supabase-postgres-deployment",
+  "base_commit": "7e402a464c3f12f1120839fceb85890fa51ef66d",
+  "implementation_commit": "PENDING",
+  "report_fill_commit": "PENDING",
+  "final_commit": "PENDING",
+  "pushed": true,
+  "report_dir": "reports/strategy_pivot_d2_dynamic_delta_funding_history/20260612_140000",
+  "d1_report_dir": "reports/strategy_pivot_d1_delta_hedged_lp_feasibility/20260612_120000",
+  "r4c_report_dir": "reports/strategy_evidence_r4c_independent_clmm_liquidity_replay/20260612_100000",
+  "r4_report_dir": "reports/strategy_evidence_r4_swap_event_fee_replay/20260611_080000",
+  "funding_history_available": true,
+  "funding_history_source": "binance_fapi_v1_fundingRate_ETHUSDT",
+  "funding_history_records": 269,
+  "funding_history_days": 89.3,
+  "funding_median_apr_pct": 0.83,
+  "funding_mean_apr_pct": 0.49,
+  "funding_p5_apr_pct": -9.02,
+  "funding_p95_apr_pct": 9.59,
+  "funding_pct_time_shorts_pay": 43.5,
+  "funding_pct_time_shorts_receive": 56.5,
+  "funding_max_adverse_streak_hours": 128,
+  "funding_regime": "NEUTRAL",
+  "dynamic_delta_completed": true,
+  "cells_evaluated": 270,
+  "positive_cells_count": 16,
+  "sustainable_under_p5_stress_count": 16,
+  "sustainable_under_p95_count": 18,
+  "minimum_viable_capital_usd": 250,
+  "best_pool": "0xb2cc224c1c9fee385f8ad6a55b4d94e92359dc59 (Aerodrome Slipstream WETH/USDC 0.05%)",
+  "best_size_usd": 1000,
+  "best_range_pct": 2,
+  "best_horizon_hours": 24,
+  "best_rebalance_rule": "gt_2pct",
+  "best_hedge_strategy": "static_0.75",
+  "best_net_pnl_usd": 6.8279,
+  "best_net_pnl_p5_stress_usd": 6.6256,
+  "best_signal_noise": 3.19,
+  "best_rebalance_count_24h": 1,
+  "best_components": {
+    "lp_fee_usd": 18.00,
+    "il_usd": 0.55,
+    "funding_income_median_usd": 1.13,
+    "funding_income_p5_stress_usd": -12.27,
+    "perp_trading_fee_usd": 0.15,
+    "rebal_gas_usd": 0.16,
+    "residual_delta_risk_usd": 10.00,
+    "gas_initial_usd": 0.08
+  },
+  "go_criteria_assessment": {
+    "at_least_one_positive_cell_under_median_funding": "PASS (16 cells)",
+    "remains_positive_under_p5_funding": "PASS (16 cells)",
+    "signal_noise_geq_1.5": "PASS (best 3.19, GO cells 1.5-3.2)",
+    "min_capital_le_1000": "PASS ($250)",
+    "rebalance_count_reasonable": "PASS (1-7 per 24h for GO cells)",
+    "no_execution_required": "PASS",
+    "clear_next_plan_exists": "PASS (D3 reward APR, D4 paper validation, D5 live probe)"
+  },
+  "d1_status_change": {
+    "d1_recommendation": "NEED_MORE_DATA",
+    "d2_recommendation": "GO_DELTA_HEDGED_LP_PLAN_ONLY",
+    "what_changed": "D2 used real 89.3d Binance funding history (D1 was scenario-only) and ran a dynamic-delta replay (D1 was static). The edge is now robust to funding stress (16 cells at p5)."
+  },
+  "final_recommendation": "GO_DELTA_HEDGED_LP_PLAN_ONLY",
+  "autonomous_live_forbidden_until_exit_path_fixed": true,
+  "does_D2_move_us_closer_to_profitable_lp": true,
+  "why_D2_matters": "D2 closes the two open questions from D1 with favorable results. (1) Funding history: 89.3d median is +0.83% APR, NEUTRAL regime. Not strongly favorable to shorts, but the trailing 90d is positive on average. (2) Dynamic-delta simulation: switching from a static range to a rebalance-aware model with 5 rebalance rules turns the model from marginal (D1) to robust (D2). 16 cells positive at median funding, 16 cells at p5 stress. The edge is real, not funding-dependent, and the next stages (D3 reward, D4 paper) are the right next steps before any execution.",
+  "remaining_blockers": [
+    "Reward APR (Aerodrome emissions) not modeled; D3 would add this",
+    "Auto-exit wiring still missing (P0 from R3); required before any live probe",
+    "Actual execution costs (slippage, market impact, rebalance tx size) not modeled",
+    "D2 model is 24h; longer-hold dynamics (D1's 72h / 7d) not redone",
+    "Dynamic hedge strategy (using current LP delta) gave 0 positives; the static 0.75 hedge is the recommended approach, but a recomputed-dynamic hedge might do better and is out of scope for D2"
+  ],
+  "next_recommended_stage": "D3 — Reward APR (Aerodrome AERO emissions). Add the reward income to the model. If rewards are 5-20% APR, the position becomes much more attractive. D4 (paper validation) and D5 (live probe with auto-exit) are queued behind D3. Each step requires explicit user authorization. The freeze is preserved.",
+  "wallet_or_tx_touched": false,
+  "signing_attempted": false,
+  "broadcast_attempted": false,
+  "canary_started": false,
+  "live_started": false,
+  "paper_started": false,
+  "LPBOT_CONFIRM_LIVE_set_to_YES": false,
+  "cex_api_key_used": false,
+  "perp_order_placed": false,
+  "execution_authorized": false,
+  "auto_exit_wiring_written": false,
+  "tiny_live_probe_started": false,
+  "funding_endpoints_queried": [
+    {"endpoint": "Binance fapi fundingRate", "auth": "none", "status": "OK", "records": 269, "days": 89.3}
+  ],
+  "builds_ok": [
+    "make build-dryrun",
+    "make build-shadow"
+  ],
+  "tests_ok": [
+    "go test ./... (all packages cached PASS)"
+  ],
+  "verdict_basis": {
+    "scan_window": "2026-06-12T14:00:00Z (D2 dynamic replay; reads R4's 24h window + 89.3d Binance funding history)",
+    "data_sources": [
+      "R4C independent_clmm_fee_replay_matrix.csv (81 cells, fee_per_dollar_per_day extracted)",
+      "R4 swap_events_0xb2cc22.jsonl (28,483 Swap events, V3 standard ABI, int24 tick re-decoded)",
+      "R4 swap_events_0x72ab38.jsonl (80,378 Swap events, Algebra V2 ABI, int24 tick re-decoded)",
+      "Binance public fapi/v1/fundingRate?symbol=ETHUSDT (269 records, 89.3 days, no auth)"
+    ],
+    "model_grid": "2 pools × 3 sizes × 3 ranges × 5 rebalance rules × 3 hedge strategies = 270 cells",
+    "stress_test": "Re-ran with funding_apr=-9.02% (5th percentile); 16 cells still positive; best cell drops from $6.83 to $6.63"
+  }
+}

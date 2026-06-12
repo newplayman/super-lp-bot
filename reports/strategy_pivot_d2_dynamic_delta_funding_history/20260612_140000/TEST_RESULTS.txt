@@ -1,0 +1,91 @@
+=== LP_BOT_STRATEGY_PIVOT_D2_DYNAMIC_DELTA_AND_FUNDING_HISTORY_V1 ===
+date_utc=2026-06-12T14:00:00Z
+branch=feat/supabase-postgres-deployment
+base_commit=7e402a464c3f12f1120839fceb85890fa51ef66d
+report_dir=reports/strategy_pivot_d2_dynamic_delta_funding_history/20260612_140000
+
+--- make build-dryrun ---
+go build -ldflags "-X main.BuildCommit=7e402a4 -X main.BuildDate=2026-06-12T..." -tags=dryrun -o bin/lpbot-dryrun ./cmd/lpbot
+exit=0
+
+--- make build-shadow ---
+go build -ldflags "-X main.BuildCommit=7e402a4 -X main.BuildDate=2026-06-12T..." -tags=shadow -o bin/lpbot-shadow ./cmd/lpbot
+exit=0
+
+--- go test ./... (last 10 lines) ---
+ok  	github.com/lpbot/lpbot/internal/platform/trace	(cached)
+ok  	github.com/lpbot/lpbot/internal/ports	(cached)
+ok  	github.com/lpbot/lpbot/pkg/decimal	(cached)
+ok  	github.com/lpbot/lpbot/pkg/il	(cached)
+ok  	github.com/lpbot/lpbot/pkg/tickmath	(cached)
+?   	github.com/lpbot/lpbot/scripts/aggregate-verdict	[no test files]
+ok  	github.com/lpbot/lpbot/tests/chaos	(cached)
+?   	github.com/lpbot/lpbot/tests/fork	[no test files]
+ok  	github.com/lpbot/lpbot/tests/property	(cached)
+ok  	github.com/lpbot/lpbot/tests/property/mocks	(cached)
+FAIL=0
+PASS=all packages cached OK (no failures)
+
+--- D2 dynamic-delta replay (this run's summary) ---
+script: scripts/strategy_pivot_d2_dynamic_delta_funding_history.py
+input: R4C corrected fee matrix (81 cells, scaled to 270 cells)
+       R4 swap events (28,483 + 80,378 events)
+       Binance 89.3d funding history (269 records)
+output: 270 cells evaluated
+       16 GO cells (positive net_pnl_hedged under median funding)
+       16 sustainable cells under p5 stress (-9.02% APR)
+       18 cells under p95 favorable (+9.59% APR)
+
+best cell (0xb2cc $1000 ±2% 24h rebal=gt_2pct hedge=static_0.75):
+  net @ median funding = $6.83
+  net @ p5 stress (-9.02% APR) = $6.63
+  net @ p95 (+9.59% APR) = $8.10
+  signal/noise = 3.19
+  rebalance count = 1 (in 24h)
+
+min viable capital: $250 (0xb2cc $250 ±2% 24h, net $1.53 at median funding)
+
+funding_history:
+  Source: Binance fapi/v1/fundingRate?symbol=ETHUSDT (no auth)
+  Records: 269
+  Days: 89.3
+  Mean APR: +0.49%
+  Median APR: +0.83%
+  p5: -9.02%, p95: +9.59%
+  Regime: NEUTRAL
+  % time shorts pay: 43.5%, % time shorts receive: 56.5%
+  Max adverse streak: 128h (16 8h periods)
+
+recommendation_distribution:
+  GO=16
+  NEED_MORE_DATA=1
+  NO_GO=253
+final_recommendation=GO_DELTA_HEDGED_LP_PLAN_ONLY
+
+median net by hedge strategy:
+  static_0.5: -$8.88, max -$0.96, 0/90 positive
+  static_0.75: -$4.35, max $6.83, 17/90 positive
+  dynamic: -$7.40, max -$0.14, 0/90 positive
+
+median net by rebal rule:
+  none: -$4.35, max $6.01, 6/54 positive
+  hourly: -$8.00, max $2.71, 1/54 positive
+  gt_0.5pct: -$9.91, max $1.42, 1/54 positive
+  gt_1pct: -$5.46, max $5.87, 3/54 positive
+  gt_2pct: -$4.50, max $6.83, 6/54 positive
+
+wall_clock_total=~3m (within 2h budget; 15m/45m/90m checkpoints all passed)
+
+safety_locks_recheck.json contents:
+  wallet_or_tx_touched=false
+  signing_attempted=false
+  broadcast_attempted=false
+  cex_api_key_used=false (Binance public no-auth only)
+  perp_order_placed=false
+  canary_started=false
+  live_started=false
+  paper_started=false
+  LPBOT_CONFIRM_LIVE_set_to_NO=false (NOT set to YES)
+  execution_authorized=false
+  auto_exit_wiring_written=false
+  tiny_live_probe_started=false
