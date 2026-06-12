@@ -6,7 +6,7 @@
   "base_commit": "fc92e110331e96e0f25785961f2919fa70e2037e",
   "implementation_commit": "c56ec0ec9dcddb16d09787ac3a5d5d647565c08f",
   "report_fill_commit": "c56ec0ec9dcddb16d09787ac3a5d5d647565c08f",
-  "final_commit": "PENDING",
+  "final_commit": "b9281019ec4bbf7d6027e42982c3343187002dc5",
   "verdict_commit_note": "Both the implementation and the report fill were committed in the same commit (c56ec0ec); FINAL_VERDICT.json was staged with the rest of the R4C output and so did not require a separate report-fill commit.",
   "pushed": true,
   "report_dir": "reports/strategy_evidence_r4c_independent_clmm_liquidity_replay/20260612_100000",
