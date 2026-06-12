@@ -1,0 +1,4 @@
+pool,pool_name,swap_abi,start_block,end_block,event_count,decode_success_count,decode_fail_count,decode_success_rate,total_weth_in_eth,total_weth_out_eth,total_usdc_in,total_usdc_out,volume_total_24h_usd,r2_volume_24h_usd,capture_volume_replay_vs_r2,r4_total_fees_24h_usd,fee_tier
+0xb2cc224c1c9fee385f8ad6a55b4d94e92359dc59,Aerodrome Slipstream WETH/USDC 0.05%,v3_standard,47202986,47224586,28483,28483,0,1.0000,27474.6740,27653.7965,45945171.72,45639194.49,91355863.95,134650766.61,0.6785,45677.93,0.0005
+0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38,PancakeSwap V3 WETH/USDC 0.01%,algebra_v2,47202986,47224586,80378,80378,0,1.0000,13509.1040,13652.8627,22645951.08,22402810.57,44973746.27,48559486.41,0.9262,4497.37,0.0001
+0xb775272e537cc670c65dc852908ad47015244eaf,PancakeSwap V3 WETH/USDC 0.05%,algebra_v2,47202986,47224586,6819,6819,0,1.0000,815.5789,840.8495,1394002.14,1350664.03,2741371.15,5839905.92,0.4694,1370.69,0.0005

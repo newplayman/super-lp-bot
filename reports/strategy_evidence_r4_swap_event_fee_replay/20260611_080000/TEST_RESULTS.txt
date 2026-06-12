@@ -1,0 +1,52 @@
+=== LP_BOT_STRATEGY_EVIDENCE_R4_SWAP_EVENT_FEE_REPLAY_24H_V1 ===
+date_utc=2026-06-12T08:00:00Z
+branch=feat/supabase-postgres-deployment
+base_commit=0c3b824d1cc67c064cf3c06f8817cb5594e2307a
+report_dir=reports/strategy_evidence_r4_swap_event_fee_replay/20260611_080000
+
+--- make build-dryrun ---
+go build -ldflags "-X main.BuildCommit=0c3b824 -X main.BuildDate=2026-06-12T..." -tags=dryrun -o bin/lpbot-dryrun ./cmd/lpbot
+exit=0
+
+--- make build-shadow ---
+go build -ldflags "-X main.BuildCommit=0c3b824 -X main.BuildDate=2026-06-12T..." -tags=shadow -o bin/lpbot-shadow ./cmd/lpbot
+exit=0
+
+--- go test ./... (last 10 lines) ---
+ok  	github.com/lpbot/lpbot/internal/platform/trace	(cached)
+ok  	github.com/lpbot/lpbot/internal/ports	(cached)
+ok  	github.com/lpbot/lpbot/pkg/decimal	(cached)
+ok  	github.com/lpbot/lpbot/pkg/il	(cached)
+ok  	github.com/lpbot/lpbot/pkg/tickmath	(cached)
+?   	github.com/lpbot/lpbot/scripts/aggregate-verdict	[no test files]
+ok  	github.com/lpbot/lpbot/tests/chaos	(cached)
+?   	github.com/lpbot/lpbot/tests/fork	[no test files]
+ok  	github.com/lpbot/lpbot/tests/property	(cached)
+ok  	github.com/lpbot/lpbot/tests/property/mocks	(cached)
+FAIL=0
+PASS=all packages cached OK (no failures)
+
+--- on-chain probes (this run's summary) ---
+probe: 0xb2cc... (Aerodrome Slipstream) — 28,483 Swap events in 24h, V3 standard ABI
+probe: 0x72ab... (PancakeSwap V3 0.01%) — 80,378 Swap events in 24h, Algebra V2 ABI
+probe: 0xb775... (PancakeSwap V3 0.05%) — 6,819 Swap events in 24h, Algebra V2 ABI
+total events: 115,680; decode success rate: 100%
+historical_replay_completed=true
+watcher_started=false
+hypothetical_cells_count=81
+top_candidate_capture_ratio=281.95 (0xb2cc... $50x24h ±10%)
+median_capture_ratio=297.61
+final_recommendation=GO_TINY_LIVE_PLAN_ONLY
+
+wall_clock_total=~25m (within 2h budget; 15m/45m/90m checkpoints all passed)
+
+safety_locks_recheck.json contents:
+  wallet_or_tx_touched=false
+  signing_attempted=false
+  broadcast_attempted=false
+  canary_started=false
+  live_started=false
+  paper_started=false
+  LPBOT_CONFIRM_LIVE_set_to_NO=false (NOT set to YES)
+  execution_authorized=false
+  watcher_started=false
