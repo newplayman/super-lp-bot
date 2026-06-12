@@ -191,16 +191,21 @@ def decode_int24_hex(hex_str):
 
 def decode_v3_swap_data(data_hex):
     """Decode V3 Swap data field. Layout: amount0(int256), amount1(int256), sqrtPriceX96(uint160), liquidity(uint128), tick(int24)."""
+    if not data_hex or len(data_hex) < 2:
+        return None
     p = data_hex[2:]  # strip 0x
     if len(p) < 320:
         return None
-    return {
-        "amount0": int(p[0:64], 16),
-        "amount1": int(p[64:128], 16),
-        "sqrt_price_x96": int(p[128:192], 16),
-        "liquidity": int(p[192:256], 16),
-        "tick": decode_int24_hex(p[256 + 32 * 9 : 256 + 32 * 10]),  # 10th word
-    }
+    try:
+        return {
+            "amount0": int(p[0:64], 16),
+            "amount1": int(p[64:128], 16),
+            "sqrt_price_x96": int(p[128:192], 16),
+            "liquidity": int(p[192:256], 16),
+            "tick": decode_int24_hex(p[256 + 32 * 9 : 256 + 32 * 10]),  # 10th word
+        }
+    except Exception:
+        return None
 
 
 # ---------------------------------------------------------------------------
