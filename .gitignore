@@ -27,6 +27,7 @@ coverage.out
 !.env.live.example
 !.env.dashboard.example
 !.env.redis.example
+!.env.d4.example
 
 # data
 *.db

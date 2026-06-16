@@ -47,6 +47,19 @@ from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+# Ensure the repo root is importable whether this file is run as a script
+# (`python3 scripts/...py`, where sys.path[0] is the scripts/ dir) or imported
+# as a module from the repo root (tests). Without this the `scripts.` package
+# imports below fail with ModuleNotFoundError when run as a script.
+import os as _os
+import sys as _sys
+_REPO_ROOT = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+if _REPO_ROOT not in _sys.path:
+    _sys.path.insert(0, _REPO_ROOT)
+
+from scripts.lp_v3_position_value import lp_position_value_usd, lp_impermanent_loss_usd, lp_mtm_usd, lp_weth_amount_eth
+from scripts.lp_v3_fee_share import position_liquidity_raw, fee_for_swap_usd
+
 # ---------------------------------------------------------------------------
 # Constants from prior stages
 # ---------------------------------------------------------------------------
@@ -61,7 +74,13 @@ WETH_ADDR = "0x4200000000000000000000000000000000000006"
 USDC_ADDR = "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
 
 # Public no-auth endpoints
-BASE_RPC_URL = "https://mainnet.base.org"
+_BASE_RPC_ENV = os.environ.get("D4_BASE_RPC_URL") or os.environ.get("BASE_RPC_URL") or ""
+if _BASE_RPC_ENV:
+    BASE_RPC_URL = _BASE_RPC_ENV
+    BASE_RPC_IS_FALLBACK = False
+else:
+    BASE_RPC_URL = "https://mainnet.base.org"
+    BASE_RPC_IS_FALLBACK = True
 DEFILLAMA_POOLS = "https://yields.llama.fi/pools"
 DEFILLAMA_POOL = "https://yields.llama.fi/pool/"
 BINANCE_FUNDING = "https://fapi.binance.com/fapi/v1/fundingRate?symbol=ETHUSDT&limit=1000"
@@ -140,10 +159,23 @@ def _http_post_json(url, payload, headers=None, timeout=15):
         return json.loads(r.read().decode("utf-8"))
 
 
+def _rpc_post_with_retry(payload, timeout=20):
+    """POST with retry + exponential backoff (up to 4 attempts)."""
+    last_exc = None
+    for attempt in range(4):
+        try:
+            return _http_post_json(BASE_RPC_URL, payload, timeout=timeout)
+        except Exception as e:
+            last_exc = e
+            if attempt < 3:
+                time.sleep([1, 2, 4][attempt] + 0.25)
+    raise last_exc
+
+
 def rpc_call(method, params):
     """Call a JSON-RPC method on the Base public RPC."""
     payload = {"jsonrpc": "2.0", "id": 1, "method": method, "params": params}
-    return _http_post_json(BASE_RPC_URL, payload, timeout=20)
+    return _rpc_post_with_retry(payload, timeout=20)
 
 
 def get_eth_block_number():
@@ -162,23 +194,29 @@ def get_eth_gas_price_gwei():
         return 0.05  # 0.05 gwei typical Base
 
 
+def rpc_selfcheck():
+    """Check Base RPC connectivity. Never raises."""
+    try:
+        bn = get_eth_block_number()
+        return {"ok": True, "block": bn, "is_fallback": BASE_RPC_IS_FALLBACK, "error": None}
+    except Exception as e:
+        return {"ok": False, "block": None, "is_fallback": BASE_RPC_IS_FALLBACK, "error": str(e)}
+
+
 def get_swap_logs(pool_addr, from_block, to_block):
     """Fetch Swap logs for the pool in the block window. Returns list of dicts."""
-    try:
-        r = rpc_call(
-            "eth_getLogs",
-            [
-                {
-                    "address": pool_addr,
-                    "topics": [V3_SWAP_TOPIC],
-                    "fromBlock": hex(from_block),
-                    "toBlock": hex(to_block),
-                }
-            ],
-        )
-        return r.get("result", [])
-    except Exception as e:
-        return []
+    r = rpc_call(
+        "eth_getLogs",
+        [
+            {
+                "address": pool_addr,
+                "topics": [V3_SWAP_TOPIC],
+                "fromBlock": hex(from_block),
+                "toBlock": hex(to_block),
+            }
+        ],
+    )
+    return r.get("result", [])
 
 
 def decode_int24_hex(hex_str):
@@ -189,8 +227,20 @@ def decode_int24_hex(hex_str):
     return raw
 
 
+def _to_signed_256(uval):
+    """Interpret a 256-bit unsigned int as a two's-complement signed int.
+
+    Works for any value sign-extended into the 32-byte word (int256, and also
+    int24 tick which the ABI sign-extends to a full word)."""
+    if uval >= (1 << 255):
+        uval -= (1 << 256)
+    return uval
+
+
 def decode_v3_swap_data(data_hex):
-    """Decode V3 Swap data field. Layout: amount0(int256), amount1(int256), sqrtPriceX96(uint160), liquidity(uint128), tick(int24)."""
+    """Decode V3 Swap event data: five 32-byte words —
+    amount0(int256), amount1(int256), sqrtPriceX96(uint160), liquidity(uint128), tick(int24).
+    amount0/amount1 and tick are signed; sqrtPriceX96/liquidity are unsigned."""
     if not data_hex or len(data_hex) < 2:
         return None
     p = data_hex[2:]  # strip 0x
@@ -198,11 +248,11 @@ def decode_v3_swap_data(data_hex):
         return None
     try:
         return {
-            "amount0": int(p[0:64], 16),
-            "amount1": int(p[64:128], 16),
+            "amount0": _to_signed_256(int(p[0:64], 16)),
+            "amount1": _to_signed_256(int(p[64:128], 16)),
             "sqrt_price_x96": int(p[128:192], 16),
             "liquidity": int(p[192:256], 16),
-            "tick": decode_int24_hex(p[256 + 32 * 9 : 256 + 32 * 10]),  # 10th word
+            "tick": _to_signed_256(int(p[256:320], 16)),
         }
     except Exception:
         return None
@@ -346,10 +396,11 @@ def fetch_coingecko_eth_usd():
 class PaperPosition:
     """One paper LP position. Replays the swap stream and tracks paper PnL."""
 
-    def __init__(self, size_usd, range_pct, hedge_ratio=0.75, start_tick=None, start_eth_usd=ETH_USD_FALLBACK):
+    def __init__(self, size_usd, range_pct, hedge_ratio=0.75, start_tick=None, start_eth_usd=ETH_USD_FALLBACK, hedge_mode="static"):
         self.size_usd = float(size_usd)
         self.range_pct = int(range_pct)
         self.hedge_ratio = float(hedge_ratio)
+        self.hedge_mode = hedge_mode
         self.start_eth_usd = start_eth_usd
         self.entry_tick = start_tick
         self.entry_block = None
@@ -375,6 +426,9 @@ class PaperPosition:
         self.last_event_block = None
         self.start_time_utc = None
         self.last_update_utc = None
+        self.lp_mtm_usd = 0.0
+        self.last_mark_price = None
+        self.l_pos_raw = 0.0
 
     def set_entry(self, tick, block, eth_usd):
         self.entry_tick = tick
@@ -385,48 +439,41 @@ class PaperPosition:
         self.in_range = True
         # Hedge: short hedge_ratio × size in ETH at the entry price
         self.hedge_eth_amount = -(self.hedge_notional_usd / eth_usd)
+        self.last_mark_price = eth_usd
+        self.l_pos_raw = position_liquidity_raw(self.size_usd, eth_usd, self.range_pct)
+        if self.hedge_mode == "dynamic":
+            self.hedge_eth_amount = -self.hedge_ratio * lp_weth_amount_eth(self.size_usd, eth_usd, self.range_pct, eth_usd)
 
-    def apply_event(self, ev, fee_per_dollar_per_day, total_events_so_far):
-        """Apply one swap event. Returns the new fee income for this event (US$)."""
+    def apply_event(self, ev, l_active_raw):
         if not ev.get("ok"):
             self.events_decoded_fail += 1
             return 0.0
         self.events_seen += 1
         self.events_decoded_ok += 1
         self.last_event_block = ev["block"]
-        tick = ev["tick"]
-        new_lower, new_upper = self.lower_tick, self.upper_tick  # unchanged
         if self.entry_tick is None:
             return 0.0
-        prev_in_range = self.in_range
+        tick = ev["tick"]
         in_range_now = self.lower_tick <= tick <= self.upper_tick
-        # Rebalance check
-        threshold = TICK_THRESHOLDS.get(self.range_pct, 200)
-        rebalanced = False
-        if abs(tick - self.entry_tick) > threshold:
-            # Re-anchor center
-            self.entry_tick = tick
-            self.lower_tick, self.upper_tick = tick_lower_upper(tick, self.range_pct)
-            self.rebalance_count += 1
-            self.rebalance_cost_usd += GAS_CYCLE_USD * 2  # LP close+open + perp open
-            rebalanced = True
         self.in_range = in_range_now
-        # Per-event fee allocation
-        # 24h: fee_per_dollar_per_day × size / total_events_per_24h
-        # total_events_so_far is approximately the daily count for the live window
-        if total_events_so_far <= 0:
-            total_events_so_far = 1
-        fee_for_event = self.size_usd * fee_per_dollar_per_day / total_events_so_far
+        fee = 0.0
         if in_range_now:
-            self.accumulated_lp_fee_usd += fee_for_event
-        # IL accrual: 0.5 × σ² × period_fraction × range_amplification × size
-        # Period = 1 / total_events_so_far days
-        # range_amplification: ±2% → ~25x; ±5% → ~4x; ±10% → 1x
-        range_amp = {2: 25.0, 5: 4.0, 10: 1.0}.get(self.range_pct, 1.0)
-        il_step = 0.5 * (ETH_DAILY_SIGMA ** 2) * (1.0 / total_events_so_far) * range_amp * self.size_usd
-        if in_range_now:
-            self.estimated_il_usd += il_step
-        return fee_for_event
+            fee = fee_for_swap_usd(self.l_pos_raw, float(l_active_raw or 0), ev.get("amount1", 0))
+            self.accumulated_lp_fee_usd += fee
+        return fee
+
+    def mark(self, current_eth_usd):
+        if self.entry_tick is None or current_eth_usd is None or current_eth_usd <= 0:
+            return
+        self.lp_mtm_usd = lp_mtm_usd(self.size_usd, self.start_eth_usd, self.range_pct, current_eth_usd)
+        self.estimated_il_usd = lp_impermanent_loss_usd(self.size_usd, self.start_eth_usd, self.range_pct, current_eth_usd)
+        if self.last_mark_price is None:
+            self.last_mark_price = current_eth_usd
+        self.hedge_pnl_usd += self.hedge_eth_amount * (current_eth_usd - self.last_mark_price)
+        if self.hedge_mode == "dynamic":
+            self.hedge_eth_amount = -self.hedge_ratio * lp_weth_amount_eth(self.size_usd, self.start_eth_usd, self.range_pct, current_eth_usd)
+        self.last_mark_price = current_eth_usd
+        self.last_eth_usd = current_eth_usd
 
     def accrue_funding(self, funding_apr_pct, hours):
         """Accrue funding income over `hours` hours. SHORT pays funding if funding > 0."""
@@ -440,11 +487,7 @@ class PaperPosition:
         self.funding_pnl_usd += delta
 
     def hedge_mark_pnl(self, current_eth_usd):
-        """Update hedge PnL given the current ETH mark."""
-        if self.hedge_eth_amount == 0:
-            return
-        # SHORT: gain when price falls
-        self.hedge_pnl_usd = (self.start_eth_usd - current_eth_usd) * (-self.hedge_eth_amount)
+        self.mark(current_eth_usd)
 
     def accrue_reward(self, reward_apr_pct, hours):
         """Accrue AERO reward income over `hours` hours."""
@@ -453,16 +496,9 @@ class PaperPosition:
         self.reward_income_usd += delta
 
     def total_net(self):
-        return (
-            self.accumulated_lp_fee_usd
-            + self.reward_income_usd
-            - self.estimated_il_usd
-            - self.rebalance_cost_usd
-            - self.claim_gas_usd
-            - self.gas_estimate_usd
-            + self.hedge_pnl_usd
-            + self.funding_pnl_usd
-        )
+        return (self.lp_mtm_usd + self.accumulated_lp_fee_usd + self.reward_income_usd
+                - self.rebalance_cost_usd - self.claim_gas_usd - self.gas_estimate_usd
+                + self.hedge_pnl_usd + self.funding_pnl_usd)
 
     def to_dict(self, eth_usd_now):
         return {
@@ -489,6 +525,8 @@ class PaperPosition:
             "events_seen": self.events_seen,
             "events_decoded_ok": self.events_decoded_ok,
             "events_decoded_fail": self.events_decoded_fail,
+            "hedge_mode": self.hedge_mode,
+            "lp_mtm_usd": self.lp_mtm_usd,
             "eth_usd_now": eth_usd_now,
         }
 
@@ -515,12 +553,13 @@ class D4Runner:
         self.reward_updates_path = self.report_dir / "reward_apr_updates.jsonl"
         self.model_error_path = self.report_dir / "model_error_log.jsonl"
         self.restart_path = self.report_dir / "restart.jsonl"
-        self.positions = {
-            (250, 2): PaperPosition(250, 2),
-            (250, 5): PaperPosition(250, 5),
-            (1000, 2): PaperPosition(1000, 2),
-            (1000, 5): PaperPosition(1000, 5),
-        }
+        # 8 tracks: each (size,range) cell run with BOTH a static notional hedge
+        # and a dynamic-delta hedge, so the two policies are compared on the same
+        # live data. Keyed by (size, range, mode).
+        self.positions = {}
+        for _size, _rng in [(250, 2), (250, 5), (1000, 2), (1000, 5)]:
+            for _mode in ("static", "dynamic"):
+                self.positions[(_size, _rng, _mode)] = PaperPosition(_size, _rng, hedge_mode=_mode)
         self.last_block = None
         self.last_heartbeat = 0.0
         self.last_hourly = 0.0
@@ -577,8 +616,8 @@ class D4Runner:
         rows = []
         for k, p in self.positions.items():
             p.last_eth_usd = eth_usd
-            p.hedge_mark_pnl(eth_usd)
-            row = {"ts_utc": now, "track": f"${p.size_usd:.0f} ±{p.range_pct}%", **p.to_dict(eth_usd)}
+            p.mark(eth_usd)
+            row = {"ts_utc": now, "track": f"${p.size_usd:.0f} ±{p.range_pct}% {p.hedge_mode}", **p.to_dict(eth_usd)}
             rows.append(row)
         with open(self.hourly_path, "a") as f:
             for row in rows:
@@ -605,14 +644,15 @@ class D4Runner:
             f"- funding_apr_pct: {self.funding_apr_pct:.4f}",
             f"- reward_apr_pct: {self.reward_apr_pct:.4f}",
             "",
-            "| Track | LP fee | Reward | IL | Rebal cost | Hedge PnL | Funding PnL | Net PnL | Events seen | Decoded |",
-            "|---|---|---|---|---|---|---|---|---|---|",
+            "| Track | LP fee | LP MTM | Reward | IL | Rebal cost | Hedge PnL | Funding PnL | Net PnL | Events seen | Decoded |",
+            "|---|---|---|---|---|---|---|---|---|---|---|",
         ]
         for k, p in self.positions.items():
             d = p.to_dict(self._eth_usd() or ETH_USD_FALLBACK)
             lines.append(
-                f"| ${p.size_usd:.0f} ±{p.range_pct}% | "
+                f"| ${p.size_usd:.0f} ±{p.range_pct}% {p.hedge_mode} | "
                 f"${d['accumulated_lp_fee_usd']:.2f} | "
+                f"${d['lp_mtm_usd']:.2f} | "
                 f"${d['reward_income_usd']:.2f} | "
                 f"${d['estimated_il_usd']:.2f} | "
                 f"${d['rebalance_cost_usd']:.2f} | "
@@ -757,12 +797,11 @@ class D4Runner:
                         "ok": True,
                     }
                     self._append_jsonl(self.swap_events_path, decoded)
+                    # Real fee accrual: each position earns its share of this swap's
+                    # fee based on its liquidity vs the pool's active liquidity.
+                    l_active = decoded.get("liquidity", 0)
                     for p in self.positions.values():
-                        # Look up fee per dollar per day for this size/range
-                        # D3's R4C table is size-invariant; use the size-keyed entry
-                        key = (int(p.size_usd), int(p.range_pct))
-                        fee = D3_FEE_PER_DOLLAR_PER_DAY.get(key, 0.018)
-                        p.apply_event(decoded, fee, total_so_far)
+                        p.apply_event(decoded, l_active)
                         events_applied += 1
                 self.last_block = to_b
             return events_applied

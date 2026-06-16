@@ -24,6 +24,15 @@ mkdir -p "${LOG_DIR}"
 
 cd "${ROOT_DIR}"
 
+# Load read-only RPC config if present (gitignored). Provides D4_BASE_RPC_URL.
+# No wallet keys belong in this file.
+if [ -f "${ROOT_DIR}/.env.d4" ]; then
+  set -a
+  # shellcheck disable=SC1091
+  . "${ROOT_DIR}/.env.d4"
+  set +a
+fi
+
 ACTION="${1:-start}"
 
 case "${ACTION}" in
