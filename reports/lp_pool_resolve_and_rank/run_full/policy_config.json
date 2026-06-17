@@ -1,0 +1,162 @@
+[
+  {
+    "dec0": 18,
+    "dec1": 6,
+    "fee_tier": 0.0027,
+    "label": "TIG-USDC | aerodrome-slipstream",
+    "pool": "0x3f5e98c7ebff35056ab4346bccd722a537c1aefa",
+    "tier_hint": "B"
+  },
+  {
+    "dec0": 6,
+    "dec1": 18,
+    "fee_tier": 0.00452,
+    "label": "USDC-SAPIEN | aerodrome-slipstream",
+    "pool": "0x80cc08712aa61ce9dc7604f9ce7560a25094b862",
+    "tier_hint": "B"
+  },
+  {
+    "dec0": 18,
+    "dec1": 18,
+    "fee_tier": 0.01,
+    "label": "WETH-VVV | uniswap-v3",
+    "pool": "0x1d2bdb7117a5a7d7fe4c1d95681a92e4df13bb69",
+    "tier_hint": "B"
+  },
+  {
+    "dec0": 18,
+    "dec1": 18,
+    "fee_tier": 0.003,
+    "label": "WETH-B3 | aerodrome-slipstream",
+    "pool": "0xb099c658e784b41ee435d48a8eb67e8f27285c93",
+    "tier_hint": "B"
+  },
+  {
+    "dec0": 18,
+    "dec1": 6,
+    "fee_tier": 0.003,
+    "label": "VIRTUAL-USDC | uniswap-v3",
+    "pool": "0x529d2863a1521d0b57db028168fde2e97120017c",
+    "tier_hint": "B"
+  },
+  {
+    "dec0": 18,
+    "dec1": 18,
+    "fee_tier": 0.01,
+    "label": "BNKR-WETH | uniswap-v3",
+    "pool": "0xaec085e5a5ce8d96a7bdd3eb3a62445d4f6ce703",
+    "tier_hint": "A"
+  },
+  {
+    "dec0": 18,
+    "dec1": 6,
+    "fee_tier": 0.000842,
+    "label": "WETH-USDC | aerodrome-slipstream",
+    "pool": "0xb2cc224c1c9fee385f8ad6a55b4d94e92359dc59",
+    "tier_hint": "A"
+  },
+  {
+    "dec0": 18,
+    "dec1": 8,
+    "fee_tier": 0.0025,
+    "label": "WETH-CBBTC | aerodrome-slipstream",
+    "pool": "0x70acdf2ad0bf2402c957154f944c19ef4e1cbae1",
+    "tier_hint": "A"
+  },
+  {
+    "dec0": 18,
+    "dec1": 18,
+    "fee_tier": 0.002096,
+    "label": "WETH-BRETT | aerodrome-slipstream",
+    "pool": "0x4e829f8a5213c42535ab84aa40bd4adcce9cba02",
+    "tier_hint": "B"
+  },
+  {
+    "dec0": 18,
+    "dec1": 6,
+    "fee_tier": 0.01,
+    "label": "WETH-USDC | uniswap-v3",
+    "pool": "0x0b1c2dcbbfa744ebd3fc17ff1a96a1e1eb4b2d69",
+    "tier_hint": "A"
+  },
+  {
+    "dec0": 18,
+    "dec1": 6,
+    "fee_tier": 0.0005,
+    "label": "WETH-USDC | uniswap-v3",
+    "pool": "0xd0b53d9277642d899df5c87a3966a349a798f224",
+    "tier_hint": "A"
+  },
+  {
+    "dec0": 18,
+    "dec1": 6,
+    "fee_tier": 0.003,
+    "label": "WETH-USDC | uniswap-v3",
+    "pool": "0x6c561b446416e1a00e8e93e221854d6ea4171372",
+    "tier_hint": "B"
+  },
+  {
+    "dec0": 8,
+    "dec1": 18,
+    "fee_tier": 0.0025,
+    "label": "CBBTC-ZEN | aerodrome-slipstream",
+    "pool": "0x47f9e291bb766fc307ad7bba4f29f3eab6a97101",
+    "tier_hint": "A"
+  },
+  {
+    "dec0": 18,
+    "dec1": 8,
+    "fee_tier": 0.003,
+    "label": "WETH-CBBTC | uniswap-v3",
+    "pool": "0x8c7080564b5a792a33ef2fd473fba6364d5495e5",
+    "tier_hint": "A"
+  },
+  {
+    "dec0": 18,
+    "dec1": 18,
+    "fee_tier": 0.003,
+    "label": "WETH-DEGEN | uniswap-v3",
+    "pool": "0xc9034c3e7f58003e6ae0c8438e7c8f4598d5acaa",
+    "tier_hint": "B"
+  },
+  {
+    "dec0": 6,
+    "dec1": 8,
+    "fee_tier": 3e-05,
+    "label": "USDC-CBBTC | aerodrome-slipstream",
+    "pool": "0x4e962bb3889bf030368f56810a9c96b83cb3e778",
+    "tier_hint": "B"
+  },
+  {
+    "dec0": 18,
+    "dec1": 18,
+    "fee_tier": 0.0015,
+    "label": "WETH-ZEN | aerodrome-slipstream",
+    "pool": "0x0392b12a1ceb0cd13af5ea448cf5586ea609852d",
+    "tier_hint": "A"
+  },
+  {
+    "dec0": 6,
+    "dec1": 8,
+    "fee_tier": 0.000342,
+    "label": "USDC-CBBTC | aerodrome-slipstream",
+    "pool": "0x3e66e55e97ce60096f74b7c475e8249f2d31a9fb",
+    "tier_hint": "B"
+  },
+  {
+    "dec0": 6,
+    "dec1": 18,
+    "fee_tier": 0.01,
+    "label": "USDC-AERO | aerodrome-slipstream",
+    "pool": "0xbe00ff35af70e8415d0eb605a286d8a45466a4c1",
+    "tier_hint": "B"
+  },
+  {
+    "dec0": 18,
+    "dec1": 8,
+    "fee_tier": 0.00075,
+    "label": "AERO-CBBTC | aerodrome-slipstream",
+    "pool": "0xdfe5f275020def30993f042174fc2d335678b626",
+    "tier_hint": "B"
+  }
+]
