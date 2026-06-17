@@ -1,0 +1,89 @@
+"""Pure tests for the Stage-1 universe screener (no network)."""
+from scripts.lp_universe_screener_v1_readonly import (
+    parse_pool_meta,
+    headline_apr,
+    total_apr_now,
+    classify_tier_by_apr,
+    is_suspect,
+    passes_gates,
+    score_pool,
+    assess,
+)
+
+
+def test_parse_pool_meta():
+    assert parse_pool_meta("CL50 - 0.05%") == (50, 0.0005)
+    assert parse_pool_meta("CL100 - 0.25%") == (100, 0.0025)
+    assert parse_pool_meta("0.3%") == (None, 0.003)
+    assert parse_pool_meta(None) == (None, None)
+    assert parse_pool_meta("weird") == (None, None)
+
+
+def test_headline_and_total_apr():
+    p = {"apyBase": 30.0, "apyReward": 20.0, "apyMean30d": 45.0}
+    assert headline_apr(p) == 45.0          # prefers 30d mean
+    assert total_apr_now(p) == 50.0
+    p2 = {"apyBase": 30.0, "apyReward": 20.0, "apyMean30d": None}
+    assert headline_apr(p2) == 50.0         # falls back to spot sum
+    assert headline_apr({"apyBase": None, "apyReward": None}) == 0.0
+
+
+def test_classify_tier_bands():
+    assert classify_tier_by_apr(10) == "sub"
+    assert classify_tier_by_apr(30) == "A"
+    assert classify_tier_by_apr(79.9) == "A"
+    assert classify_tier_by_apr(80) == "B"
+    assert classify_tier_by_apr(799) == "B"
+    assert classify_tier_by_apr(800) == "C"
+    assert classify_tier_by_apr(5000) == "C"
+
+
+def test_is_suspect_flags():
+    s = is_suspect({"apyReward": 480.0, "tvlUsd": 1e6, "volumeUsd1d": 1e5, "apyBase": 1.0},
+                   suspect_reward_apr=300, suspect_vol_tvl=20)
+    assert any("incentive" in r for r in s)
+    s2 = is_suspect({"apyReward": 5.0, "tvlUsd": 1e6, "volumeUsd1d": 5e7, "apyBase": 1.0},
+                    suspect_reward_apr=300, suspect_vol_tvl=20)
+    assert any("wash" in r for r in s2)
+    s3 = is_suspect({"apyReward": 10.0, "tvlUsd": 1e6, "volumeUsd1d": 1e5, "apyBase": None},
+                    suspect_reward_apr=300, suspect_vol_tvl=20)
+    assert any("no fee APR" in r for r in s3)
+    clean = is_suspect({"apyReward": 10.0, "tvlUsd": 1e6, "volumeUsd1d": 1e5, "apyBase": 20.0},
+                       suspect_reward_apr=300, suspect_vol_tvl=20)
+    assert clean == []
+
+
+def test_passes_gates():
+    ok, _ = passes_gates({"tvlUsd": 1e6, "volumeUsd1d": 1e6, "apyBase": 30},
+                         min_tvl=5e5, min_vol1d=5e4)
+    assert ok
+    lo_tvl, _ = passes_gates({"tvlUsd": 1e4, "volumeUsd1d": 1e6, "apyBase": 30},
+                             min_tvl=5e5, min_vol1d=5e4)
+    assert not lo_tvl
+    lo_vol, _ = passes_gates({"tvlUsd": 1e6, "volumeUsd1d": 1e3, "apyBase": 30},
+                             min_tvl=5e5, min_vol1d=5e4)
+    assert not lo_vol
+    no_yield, _ = passes_gates({"tvlUsd": 1e6, "volumeUsd1d": 1e6, "apyBase": 0, "apyReward": 0},
+                               min_tvl=5e5, min_vol1d=5e4)
+    assert not no_yield
+
+
+def test_score_discounts_spike():
+    spike = score_pool({"apyBase": 100, "apyReward": 0, "apyMean30d": 20})
+    persist = score_pool({"apyBase": 100, "apyReward": 0, "apyMean30d": 100})
+    assert persist > spike
+    assert spike > 0
+
+
+def test_assess_shape():
+    p = {"symbol": "WETH-USDC", "project": "aerodrome-slipstream", "pool": "uuid",
+         "poolMeta": "CL50 - 0.05%", "underlyingTokens": ["0xa", "0xb"],
+         "rewardTokens": ["0xAERO"], "tvlUsd": 9e6, "apyBase": 31.0,
+         "apyReward": 68.0, "apyMean30d": 95.0, "volumeUsd1d": 5e6,
+         "sigma": 1.0, "ilRisk": "yes", "stablecoin": False}
+    r = assess(p, dict(min_tvl=5e5, min_vol1d=5e4, suspect_reward_apr=300, suspect_vol_tvl=20))
+    assert r["fee_tier"] == 0.0005 and r["tick_spacing"] == 50
+    assert r["tier"] == "B"          # headline 95 in [80,800) => B
+    assert classify_tier_by_apr(r["headline_apr"]) == r["tier"]
+    assert r["gate_ok"] is True
+    assert r["suspect"] == []
