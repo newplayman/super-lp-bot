@@ -1,0 +1,392 @@
+#!/usr/bin/env python3
+"""Multi-pool LP paper-shadow runner (READ-ONLY research).
+
+Takes a fixed allocation (the portfolio allocator's output) and tracks the
+paper P&L of the whole book over time. Per pool it holds a vol-sized *passive*
+LP position and:
+  - accrues real fees from real on-chain swaps that land inside the band,
+  - accrues reward emissions linearly from the pool's reward_apr,
+  - marks LP value + IL from the latest on-chain price,
+  - logs band breaches for the operator (does NOT auto-rebalance — Tier-A
+    policy is wide-range-passive; a breach is information, not an action).
+
+This mirrors strategy_pivot_d4_realtime_paper_shadow_validation.py (the
+single-pool Tier-A version) but is LP-only (no hedge) and multi-pool.
+
+FROZEN-project rules: read-only. No wallet / signing / broadcast / chain
+writes. RPC reads only. Honors FETCH_PACE_SECS for getLogs pacing.
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import signal
+import sys
+import time
+from datetime import datetime, timezone
+
+# repo-root import shim so `scripts.*` resolves when run as a file
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
+
+from scripts.lp_tier_c_exit_feasibility_v1_readonly import (  # noqa: E402
+    fetch_pool_swaps,
+    _rpc_with_retry,
+)
+from scripts.lp_v3_position_value import (  # noqa: E402
+    lp_position_value_usd,
+    lp_impermanent_loss_usd,
+)
+from scripts.lp_v3_fee_share import (  # noqa: E402
+    position_liquidity_raw,
+    fee_for_swap_usd,
+)
+
+
+# ---------------------------------------------------------------------------
+# Pure engine (unit-tested, NO network)
+# ---------------------------------------------------------------------------
+
+def init_state(*, capital, anchor, range_pct, fee_tier, dec0, dec1, last_block):
+    """Build a fresh passive-position state dict."""
+    return {
+        "capital": float(capital),
+        "anchor": float(anchor),
+        "range_pct": float(range_pct),
+        "fee_tier": float(fee_tier),
+        "dec0": int(dec0),
+        "dec1": int(dec1),
+        # liquidity for ONE unit of capital (size=1.0); fees are scaled by
+        # capital afterwards, exactly like the passive replay convention.
+        "l_pos_raw": position_liquidity_raw(1.0, anchor, range_pct, int(dec0), int(dec1)),
+        "fees_quote": 0.0,
+        "reward_quote": 0.0,
+        "last_block": int(last_block),
+        "breaches": [],
+        "in_range_now": True,
+    }
+
+
+def update_position(state, swaps, *, now_block):
+    """Advance a passive position with new swaps (block > state['last_block']).
+
+    In-range swaps accrue fees (scaled by capital). Out-of-range swaps accrue
+    NO fee and record a breach once per crossing (in->out transition). The
+    anchor and capital never change — this is a passive, no-rebalance position.
+    """
+    anchor = state["anchor"]
+    r = state["range_pct"]
+    lo = anchor * (1 - r / 100)
+    hi = anchor * (1 + r / 100)
+    l_pos_unit = state["l_pos_raw"]
+    cap = state["capital"]
+    in_range = state.get("in_range_now", True)
+
+    for s in swaps:
+        if s["block"] <= state["last_block"]:
+            continue
+        price = s["price"]
+        if lo <= price <= hi:
+            fee_unit = fee_for_swap_usd(
+                l_pos_unit, s["liquidity"], s["amount1"], state["fee_tier"], state["dec1"]
+            )
+            state["fees_quote"] += cap * fee_unit
+            in_range = True
+        else:
+            if in_range:  # only log the crossing, not every out-of-range tick
+                state["breaches"].append({"block": s["block"], "price": price})
+            in_range = False
+
+    state["last_block"] = int(now_block)
+    state["in_range_now"] = in_range
+    return state
+
+
+def mark_position(state, current_price):
+    """Mark the position to market at current_price (quote-token units)."""
+    cap = state["capital"]
+    lp_value = cap * lp_position_value_usd(1.0, state["anchor"], state["range_pct"], current_price)
+    il = lp_impermanent_loss_usd(cap, state["anchor"], state["range_pct"], current_price)
+    fees = state["fees_quote"]
+    net = lp_value + fees - cap
+    net_pct = (net / cap * 100) if cap else 0.0
+    return {
+        "lp_value_quote": lp_value,
+        "il_quote": il,
+        "fees_quote": fees,
+        "net_quote": net,
+        "net_pct": net_pct,
+    }
+
+
+def accrue_reward(capital, reward_apr_pct, elapsed_secs):
+    """Linear reward income over wall-clock time. Pure."""
+    return float(capital) * (float(reward_apr_pct) / 100.0) * (float(elapsed_secs) / (365.0 * 86400.0))
+
+
+# ---------------------------------------------------------------------------
+# Runner (network)
+# ---------------------------------------------------------------------------
+
+def _now_utc():
+    return datetime.now(timezone.utc)
+
+
+def _latest_block():
+    return int(_rpc_with_retry("eth_blockNumber", []), 16)
+
+
+def _report_dir(out):
+    if out:
+        d = out
+    else:
+        stamp = _now_utc().strftime("%Y%m%d_%H%M%S")
+        d = os.path.join(_REPO_ROOT, "reports", "lp_portfolio_paper_runner", stamp)
+    os.makedirs(d, exist_ok=True)
+    return d
+
+
+def _load_allocation(path):
+    with open(path) as f:
+        data = json.load(f)
+    allocs = data.get("allocations", [])
+    if not allocs:
+        raise SystemExit(f"no allocations in {path}")
+    return allocs
+
+
+def _init_book(allocs, *, entry_window_blocks, latest):
+    """Tick 0: fetch a small recent window per pool to set the entry anchor."""
+    book = []
+    for a in allocs:
+        pool = a["pool"]
+        dec0, dec1 = int(a["dec0"]), int(a["dec1"])
+        from_b = max(0, latest - entry_window_blocks)
+        swaps = fetch_pool_swaps(pool, from_b, latest, dec0, dec1)
+        if not swaps:
+            print(f"[warn] {a['symbol']} {pool}: no swaps in entry window; skipping")
+            continue
+        anchor = swaps[-1]["price"]
+        st = init_state(
+            capital=a["usd"], anchor=anchor, range_pct=a["range_pct"],
+            fee_tier=a["fee_tier"], dec0=dec0, dec1=dec1, last_block=latest,
+        )
+        book.append({
+            "symbol": a["symbol"], "project": a.get("project", ""),
+            "tier": a.get("tier", ""), "pool": pool,
+            "reward_apr": float(a.get("reward_apr", 0.0)),
+            "last_price": anchor, "state": st,
+        })
+        print(f"[init] {a['symbol']:14s} {a['tier']} cap={a['usd']:.0f} "
+              f"anchor={anchor:.6g} range=±{a['range_pct']:.2f}% pool={pool}")
+        time.sleep(float(os.environ.get("CALL_PACE_SECS", "0.0")))
+    if not book:
+        raise SystemExit("no pools initialized (no swaps found)")
+    return book
+
+
+def _tick(book, *, last_ts):
+    latest = _latest_block()
+    now = _now_utc()
+    elapsed = (now - last_ts).total_seconds()
+    by_pool = []
+    portfolio_net = 0.0
+    for p in book:
+        st = p["state"]
+        swaps = fetch_pool_swaps(p["pool"], st["last_block"] + 1, latest, st["dec0"], st["dec1"])
+        n_breach_before = len(st["breaches"])
+        update_position(st, swaps, now_block=latest)
+        if swaps:
+            p["last_price"] = swaps[-1]["price"]
+        reward_inc = accrue_reward(st["capital"], p["reward_apr"], elapsed)
+        st["reward_quote"] += reward_inc
+        mk = mark_position(st, p["last_price"])
+        pool_net = mk["net_quote"] + st["reward_quote"]
+        portfolio_net += pool_net
+        by_pool.append({
+            "symbol": p["symbol"], "tier": p["tier"], "pool": p["pool"],
+            "net_pct": round(mk["net_pct"], 4),
+            "net_usd": round(pool_net, 2),
+            "fees": round(st["fees_quote"], 4),
+            "il": round(mk["il_quote"], 4),
+            "reward": round(st["reward_quote"], 4),
+            "lp_value": round(mk["lp_value_quote"], 2),
+            "n_swaps": len(swaps),
+            "breaches": len(st["breaches"]),
+            "new_breach": len(st["breaches"]) > n_breach_before,
+            "in_range": st["in_range_now"],
+        })
+        time.sleep(float(os.environ.get("CALL_PACE_SECS", "0.0")))
+    return {"ts_utc": now.isoformat(), "block": latest,
+            "portfolio_net_usd": round(portfolio_net, 2), "by_pool": by_pool}, now
+
+
+def _write_pid(run_dir):
+    with open(os.path.join(run_dir, "runner.pid"), "w") as f:
+        f.write(str(os.getpid()))
+
+
+def _append_heartbeat(run_dir, rec, tick):
+    rec = {"tick": tick, **rec}
+    with open(os.path.join(run_dir, "heartbeat.jsonl"), "a") as f:
+        f.write(json.dumps(rec) + "\n")
+
+
+_CSV_HEADER = "ts_utc,tick,block,portfolio_net_usd\n"
+
+
+def _append_hourly_csv(run_dir, rec, tick):
+    path = os.path.join(run_dir, "portfolio_state_hourly.csv")
+    new = not os.path.exists(path)
+    with open(path, "a") as f:
+        if new:
+            f.write(_CSV_HEADER)
+        f.write(f"{rec['ts_utc']},{tick},{rec['block']},{rec['portfolio_net_usd']}\n")
+
+
+def run(allocation_path, *, poll_secs=300, max_ticks=None, out=None,
+        entry_window_blocks=4000):
+    allocs = _load_allocation(allocation_path)
+    run_dir = _report_dir(out)
+    _write_pid(run_dir)
+    print(f"[run] dir={run_dir} pools={len(allocs)} poll={poll_secs}s "
+          f"max_ticks={max_ticks}")
+
+    latest = _latest_block()
+    book = _init_book(allocs, entry_window_blocks=entry_window_blocks, latest=latest)
+    # snapshot the resolved book for reproducibility
+    with open(os.path.join(run_dir, "book_init.json"), "w") as f:
+        json.dump([{k: v for k, v in p.items() if k != "state"} | {
+            "anchor": p["state"]["anchor"], "capital": p["state"]["capital"],
+            "range_pct": p["state"]["range_pct"], "fee_tier": p["state"]["fee_tier"],
+        } for p in book], f, indent=2)
+
+    last_ts = _now_utc()
+    last_hour = -1
+    tick = 0
+    stop = {"flag": False}
+
+    def _handle(signum, frame):  # graceful flush
+        stop["flag"] = True
+    signal.signal(signal.SIGINT, _handle)
+    signal.signal(signal.SIGTERM, _handle)
+
+    try:
+        while not stop["flag"]:
+            rec, last_ts = _tick(book, last_ts=last_ts)
+            _append_heartbeat(run_dir, rec, tick)
+            cur_hour = datetime.fromisoformat(rec["ts_utc"]).hour
+            if cur_hour != last_hour:
+                _append_hourly_csv(run_dir, rec, tick)
+                last_hour = cur_hour
+            print(f"[tick {tick}] blk={rec['block']} net=${rec['portfolio_net_usd']:.2f} "
+                  + " ".join(f"{p['symbol']}:{p['net_pct']:+.2f}%"
+                             + ("!" if p["new_breach"] else "")
+                             + ("" if p["in_range"] else "·OOR")
+                             for p in rec["by_pool"]))
+            tick += 1
+            if max_ticks is not None and tick >= max_ticks:
+                break
+            if stop["flag"]:
+                break
+            for _ in range(int(poll_secs)):
+                if stop["flag"]:
+                    break
+                time.sleep(1)
+    finally:
+        _flush_state(run_dir, book, tick)
+        print(f"[done] {tick} ticks; state flushed to {run_dir}")
+
+
+def _flush_state(run_dir, book, tick):
+    snap = {"final_tick": tick, "pools": []}
+    for p in book:
+        st = p["state"]
+        mk = mark_position(st, p["last_price"])
+        snap["pools"].append({
+            "symbol": p["symbol"], "tier": p["tier"], "pool": p["pool"],
+            "capital": st["capital"], "anchor": st["anchor"],
+            "range_pct": st["range_pct"], "last_price": p["last_price"],
+            "fees_quote": st["fees_quote"], "reward_quote": st["reward_quote"],
+            "il_quote": mk["il_quote"], "lp_value_quote": mk["lp_value_quote"],
+            "net_quote": mk["net_quote"] + st["reward_quote"],
+            "net_pct": mk["net_pct"], "n_breaches": len(st["breaches"]),
+            "in_range": st["in_range_now"], "breaches": st["breaches"],
+        })
+    with open(os.path.join(run_dir, "final_state.json"), "w") as f:
+        json.dump(snap, f, indent=2)
+
+
+# ---------------------------------------------------------------------------
+# Self-test (pure, no network)
+# ---------------------------------------------------------------------------
+
+def run_self_test():
+    dec0 = dec1 = 18
+    fee_tier = 0.003
+    r = 10.0
+    anchor = 1.0
+    st = init_state(capital=1000.0, anchor=anchor, range_pct=r,
+                    fee_tier=fee_tier, dec0=dec0, dec1=dec1, last_block=0)
+    L = 10 ** 18
+    amt1 = 10 ** 18  # 1.0 token1 raw
+    # two in-range swaps
+    in_swaps = [
+        {"block": 1, "price": 1.00, "liquidity": L, "amount1": amt1},
+        {"block": 2, "price": 1.02, "liquidity": L, "amount1": amt1},
+    ]
+    update_position(st, in_swaps, now_block=2)
+    assert st["fees_quote"] > 0, "in-range swaps must accrue fees"
+    assert st["breaches"] == [], "no breach while in range"
+    assert st["anchor"] == anchor, "anchor must not move (passive)"
+    fees_after_in = st["fees_quote"]
+
+    mk = mark_position(st, anchor)
+    assert abs(mk["il_quote"]) < 1e-6, "round-trip to anchor => IL ~ 0"
+    assert mk["net_quote"] > 0, "net positive once fees accrued at anchor"
+
+    # an out-of-range swap: no fee, one breach, anchor unchanged
+    out_swaps = [{"block": 3, "price": 1.50, "liquidity": L, "amount1": amt1}]
+    update_position(st, out_swaps, now_block=3)
+    assert st["fees_quote"] == fees_after_in, "out-of-range swap accrues no fee"
+    assert len(st["breaches"]) == 1, "one breach recorded"
+    assert st["anchor"] == anchor, "anchor still unchanged (no rebalance)"
+
+    mk2 = mark_position(st, 1.20)
+    assert mk2["il_quote"] < 0, "price move => IL < 0"
+
+    # reward: linear, zero at zero elapsed
+    assert accrue_reward(1000.0, 50.0, 0) == 0.0
+    half = accrue_reward(1000.0, 50.0, 365 * 86400 / 2)
+    full = accrue_reward(1000.0, 50.0, 365 * 86400)
+    assert abs(full - 500.0) < 1e-6, "50% APR for 1y on 1000 => 500"
+    assert abs(half * 2 - full) < 1e-9, "reward linear in elapsed"
+    assert abs(accrue_reward(2000.0, 50.0, 365 * 86400) - 1000.0) < 1e-6, "linear in capital"
+
+    print("self-test OK: fees accrue in-range, breaches logged out-of-range, "
+          "anchor passive, IL sign correct, reward linear.")
+
+
+def main():
+    ap = argparse.ArgumentParser(description="Multi-pool LP paper-shadow runner (read-only)")
+    ap.add_argument("--allocation", help="path to allocator allocation.json")
+    ap.add_argument("--poll-secs", type=int, default=300)
+    ap.add_argument("--max-ticks", type=int, default=None)
+    ap.add_argument("--out", default=None)
+    ap.add_argument("--entry-window-blocks", type=int, default=4000)
+    ap.add_argument("--self-test", action="store_true")
+    args = ap.parse_args()
+
+    if args.self_test:
+        run_self_test()
+        return
+    if not args.allocation:
+        ap.error("--allocation is required (or use --self-test)")
+    run(args.allocation, poll_secs=args.poll_secs, max_ticks=args.max_ticks,
+        out=args.out, entry_window_blocks=args.entry_window_blocks)
+
+
+if __name__ == "__main__":
+    main()
