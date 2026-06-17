@@ -3,7 +3,42 @@ from scripts.lp_portfolio_allocator_v1_readonly import (
     is_enterable,
     select_per_tier,
     allocate,
+    rank_metric,
+    merge_stability,
 )
+
+
+def test_rank_metric_uses_net_apr_uncapped():
+    # discriminates above 100 (composite_score saturated; rank_metric does not)
+    a = {"total_income_apr": 300.0, "il_apr": 20.0, "composite_score": 100}
+    b = {"total_income_apr": 150.0, "il_apr": 20.0, "composite_score": 100}
+    assert rank_metric(a) > rank_metric(b)
+    assert rank_metric(a) == 280.0
+    # falls back to composite_score when APR fields absent
+    assert rank_metric({"composite_score": 42}) == 42.0
+    # negative net clamped to 0
+    assert rank_metric({"total_income_apr": 5.0, "il_apr": 50.0}) == 0.0
+
+
+def test_merge_stability_annotates_by_pool():
+    recs = [{"pool": "0xAAA", "composite_score": 10},
+            {"resolved_pool": "0xBbB", "composite_score": 10}]
+    stab = [{"pool": "0xaaa", "fee_cover_stability": {"stable": True, "enter_frac": 1.0}}]
+    out = merge_stability(recs, stab)
+    assert out[0]["stable"] is True and out[0]["enter_frac"] == 1.0
+    assert out[1]["stable"] is False    # not in stability set -> not stable
+
+
+def test_require_stable_gate_drops_unstable():
+    recs = [
+        {"symbol": "S1", "tier": "A", "status": "OK", "resolve_status": "OK",
+         "composite_score": 50, "yield_cover": 5, "wash_flag": False, "stable": True, "range_pct": 10},
+        {"symbol": "U1", "tier": "A", "status": "OK", "resolve_status": "OK",
+         "composite_score": 99, "yield_cover": 9, "wash_flag": False, "stable": False, "range_pct": 10},
+    ]
+    out = allocate(recs, total=10000, require_stable=True)
+    syms = [a["symbol"] for a in out["allocations"]]
+    assert "S1" in syms and "U1" not in syms    # unstable dropped despite higher score
 
 
 def _rec(sym, tier, score, yc=5.0, wash=False, status="OK", resolve="OK"):

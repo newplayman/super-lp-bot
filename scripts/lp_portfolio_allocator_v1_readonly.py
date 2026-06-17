@@ -57,22 +57,44 @@ def _tier_of(rec: Mapping[str, Any]) -> str:
     return str(rec.get("tier") or rec.get("tier_hint") or "").upper()
 
 
-def select_per_tier(records: Sequence[Mapping[str, Any]], max_pools: Mapping[str, int]):
-    """Group enterable records by tier, keep top-N by composite_score per tier."""
+def rank_metric(rec: Mapping[str, Any]) -> float:
+    """Ranking/weighting metric: reward-adjusted net APR (income - IL), UNCAPPED.
+
+    This fixes the composite_score 100-saturation that flattened the top: among
+    (already farm/wash-filtered) pools, higher real net APR ranks higher and gives
+    discrimination. Falls back to composite_score if APR fields are absent.
+    """
+    inc = rec.get("total_income_apr")
+    il = rec.get("il_apr")
+    if inc is not None:
+        try:
+            return max(float(inc) - float(il or 0.0), 0.0)
+        except (TypeError, ValueError):
+            pass
+    try:
+        return max(float(rec.get("composite_score") or 0.0), 0.0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def select_per_tier(records, max_pools, *, require_stable=False):
+    """Group enterable records by tier, keep top-N by rank_metric per tier."""
     by_tier: Dict[str, List[Mapping[str, Any]]] = {}
     for r in records:
         if not is_enterable(r):
             continue
+        if require_stable and not r.get("stable", True):
+            continue
         by_tier.setdefault(_tier_of(r), []).append(r)
     for t in by_tier:
-        by_tier[t].sort(key=lambda r: -float(r.get("composite_score") or 0.0))
+        by_tier[t].sort(key=lambda r: -rank_metric(r))
         cap = max_pools.get(t, 0)
         by_tier[t] = by_tier[t][:cap] if cap else []
     return by_tier
 
 
 def _weight_within(selected: Sequence[Mapping[str, Any]]) -> List[float]:
-    scores = [max(float(r.get("composite_score") or 0.0), 0.0) for r in selected]
+    scores = [rank_metric(r) for r in selected]
     s = sum(scores)
     n = len(selected)
     if n == 0:
@@ -83,16 +105,18 @@ def _weight_within(selected: Sequence[Mapping[str, Any]]) -> List[float]:
 
 
 def allocate(records, *, total=DEFAULT_TOTAL, tier_weights=None, max_pools=None,
-             min_pool_usd=DEFAULT_MIN_POOL_USD):
-    """Allocate `total` across enterable pools by tier weight then score weight.
+             min_pool_usd=DEFAULT_MIN_POOL_USD, require_stable=False):
+    """Allocate `total` across enterable pools by tier weight then rank_metric.
 
     Tier weights for tiers with NO enterable pools are redistributed pro-rata to
     the tiers that do have picks (so we don't leave the book under-deployed).
+    require_stable: only include pools flagged stable (multi-window) — set when a
+    stability map has been merged in via merge_stability().
     Returns {allocations:[...], by_tier_usd:{}, deployed, idle, n_pools}.
     """
     tier_weights = dict(tier_weights or DEFAULT_TIER_WEIGHTS)
     max_pools = dict(max_pools or DEFAULT_MAX_POOLS)
-    by_tier = select_per_tier(records, max_pools)
+    by_tier = select_per_tier(records, max_pools, require_stable=require_stable)
 
     active = {t: w for t, w in tier_weights.items() if w > 0 and by_tier.get(t)}
     wsum = sum(active.values())
@@ -138,6 +162,29 @@ def allocate(records, *, total=DEFAULT_TOTAL, tier_weights=None, max_pools=None,
 # ---------------------------------------------------------------------------
 # SELF TEST (no network)
 # ---------------------------------------------------------------------------
+def merge_stability(records, stability_records):
+    """Annotate bridge records with multi-window stability (by pool address).
+
+    stability_records: list from lp_multiwindow_stability stability.json, each with
+    'pool' and 'fee_cover_stability':{stable, enter_frac}. Adds rec['stable'] and
+    rec['enter_frac']. Pools absent from the stability set get stable=False.
+    """
+    smap = {}
+    for s in stability_records or []:
+        pool = str(s.get("pool") or "").lower()
+        st = s.get("fee_cover_stability") or {}
+        smap[pool] = {"stable": bool(st.get("stable")), "enter_frac": st.get("enter_frac")}
+    out = []
+    for r in records:
+        rr = dict(r)
+        pool = str(rr.get("resolved_pool") or rr.get("pool") or "").lower()
+        info = smap.get(pool)
+        rr["stable"] = info["stable"] if info else False
+        rr["enter_frac"] = info["enter_frac"] if info else None
+        out.append(rr)
+    return out
+
+
 def run_self_test():
     print("=== self-test: portfolio allocator ===")
     recs = [
@@ -201,6 +248,9 @@ def _f(v):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--ranked", help="bridge resolve_and_rank.json")
+    ap.add_argument("--stability", help="multiwindow stability.json (enables stability gate)")
+    ap.add_argument("--require-stable", action="store_true",
+                    help="only allocate to multi-window-stable pools (needs --stability)")
     ap.add_argument("--total", type=float, default=DEFAULT_TOTAL)
     ap.add_argument("--out", default=None)
     ap.add_argument("--self-test", action="store_true")
@@ -212,7 +262,9 @@ def main():
         ap.error("--ranked required (or --self-test)")
 
     records = json.load(open(args.ranked))
-    out = allocate(records, total=args.total)
+    if args.stability:
+        records = merge_stability(records, json.load(open(args.stability)))
+    out = allocate(records, total=args.total, require_stable=args.require_stable)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     d = args.out or os.path.join(_ROOT, "reports", "lp_portfolio_allocator", stamp)
     os.makedirs(d, exist_ok=True)
