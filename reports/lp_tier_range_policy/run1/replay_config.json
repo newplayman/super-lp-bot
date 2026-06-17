@@ -1,0 +1,68 @@
+[
+  {
+    "pool": "0x70acdf2ad0bf2402c957154f944c19ef4e1cbae1",
+    "dec0": 18,
+    "dec1": 8,
+    "fee_tier": 0.0005,
+    "range_pct": 7.17,
+    "label": "cbBTC/WETH 0.05% [range-bound,H7]",
+    "regime": "range-bound",
+    "action": "ENTER",
+    "weekly_tight_allowed": true
+  },
+  {
+    "pool": "0xb2cc224c1c9fee385f8ad6a55b4d94e92359dc59",
+    "dec0": 18,
+    "dec1": 6,
+    "fee_tier": 0.0005,
+    "range_pct": 11.82,
+    "label": "WETH/USDC 0.05% [range-bound,H7]",
+    "regime": "range-bound",
+    "action": "ENTER",
+    "weekly_tight_allowed": true
+  },
+  {
+    "pool": "0x4e962bb3889bf030368f56810a9c96b83cb3e778",
+    "dec0": 8,
+    "dec1": 6,
+    "fee_tier": 0.0005,
+    "range_pct": 6.11,
+    "label": "cbBTC/USDC 0.05% [range-bound,H7]",
+    "regime": "range-bound",
+    "action": "ENTER",
+    "weekly_tight_allowed": true
+  },
+  {
+    "pool": "0x6c561b446416e1a00e8e93e221854d6ea4171372",
+    "dec0": 18,
+    "dec1": 6,
+    "fee_tier": 0.003,
+    "range_pct": 12.09,
+    "label": "WETH/USDC 0.3% [range-bound,H7]",
+    "regime": "range-bound",
+    "action": "ENTER",
+    "weekly_tight_allowed": true
+  },
+  {
+    "pool": "0x3f0296bf652e19bca772ec3df08b32732f93014a",
+    "dec0": 18,
+    "dec1": 18,
+    "fee_tier": 0.0005,
+    "range_pct": 10.86,
+    "label": "VIRTUAL/WETH 0.05% [range-bound,H7]",
+    "regime": "range-bound",
+    "action": "ENTER",
+    "weekly_tight_allowed": true
+  },
+  {
+    "pool": "0x7ec6c9d993d9832aa654593f2dbc21303650bc6c",
+    "dec0": 18,
+    "dec1": 18,
+    "fee_tier": 0.0005,
+    "range_pct": 20.45,
+    "label": "VVV/WETH 0.05% [range-bound,H7]",
+    "regime": "range-bound",
+    "action": "ENTER",
+    "weekly_tight_allowed": true
+  }
+]
