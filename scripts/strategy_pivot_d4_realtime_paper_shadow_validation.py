@@ -1,16 +1,21 @@
 #!/usr/bin/env python3
 """
-D4 — Realtime Paper / Shadow Validation
+D4 — Realtime Paper / Shadow Validation (UNHEDGED)
 
-Read-only paper tracker that runs the D3 best strategy in real time against
-live Base RPC + DefiLlama + Binance/Hyperliquid public no-auth endpoints and
-compares paper PnL to the D3 model predictions.
+Read-only paper tracker that runs the LP-only strategy in real time against
+live Base RPC + DefiLlama + Hyperliquid/CoinGecko public no-auth endpoints.
 
-Tracks (from D3 spec):
-  1. $250  ±2%  hedge=0.75
-  2. $250  ±5%  hedge=0.75
-  3. $1000 ±2%  hedge=0.75
-  4. $1000 ±5%  hedge=0.75
+No delta hedge. Per the operator's prior LP research, a perp delta-hedge does
+not survive its own real-world frictions (funding, per-rebalance perp fees,
+slippage, basis); it was an agent-introduced addition and has been removed.
+The bet under test is the LP core directly: captured fee + reward must beat
+realized IL + rebalance cost. ETH exposure is reported as a diagnostic only.
+
+Tracks (unhedged LP):
+  1. $250  ±2%
+  2. $250  ±5%
+  3. $1000 ±2%
+  4. $1000 ±5%
 
 Schedule:
   - 30m heartbeat
@@ -37,7 +42,6 @@ import json
 import math
 import os
 import signal
-import statistics
 import sys
 import time
 import traceback
@@ -83,7 +87,6 @@ else:
     BASE_RPC_IS_FALLBACK = True
 DEFILLAMA_POOLS = "https://yields.llama.fi/pools"
 DEFILLAMA_POOL = "https://yields.llama.fi/pool/"
-BINANCE_FUNDING = "https://fapi.binance.com/fapi/v1/fundingRate?symbol=ETHUSDT&limit=1000"
 HYPERLIQUID_INFO = "https://api.hyperliquid.xyz/info"
 COINGECKO_SIMPLE = "https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd"
 
@@ -323,35 +326,7 @@ def fetch_defillama_reward_apr():
 
 
 # ---------------------------------------------------------------------------
-# Binance funding history (live updates + stress scenarios)
-# ---------------------------------------------------------------------------
-
-
-def fetch_binance_funding_recent(limit=8):
-    """Fetch the last `limit` Binance funding rates (8h intervals)."""
-    try:
-        r = _http_get_json(BINANCE_FUNDING + f"&limit={limit}", timeout=15)
-        out = []
-        for row in r:
-            out.append(
-                {
-                    "funding_time_utc": row.get("fundingTime"),
-                    "funding_rate_raw": float(row.get("fundingRate", 0)),
-                    "mark_price": float(row.get("markPrice", 0)),
-                }
-            )
-        return out
-    except Exception:
-        return []
-
-
-def funding_to_apr_pct(funding_rate_raw, funding_interval_hours=8):
-    """Convert a single 8h funding rate to APR% (simple: rate * (24/8) * 365 * 100)."""
-    return funding_rate_raw * 3.0 * 365.0 * 100.0
-
-
-# ---------------------------------------------------------------------------
-# Hyperliquid hedge mark
+# Hyperliquid / CoinGecko ETH price mark (read-only price feed, not a hedge)
 # ---------------------------------------------------------------------------
 
 
@@ -396,11 +371,9 @@ def fetch_coingecko_eth_usd():
 class PaperPosition:
     """One paper LP position. Replays the swap stream and tracks paper PnL."""
 
-    def __init__(self, size_usd, range_pct, hedge_ratio=0.75, start_tick=None, start_eth_usd=ETH_USD_FALLBACK, hedge_mode="static"):
+    def __init__(self, size_usd, range_pct, start_tick=None, start_eth_usd=ETH_USD_FALLBACK):
         self.size_usd = float(size_usd)
         self.range_pct = int(range_pct)
-        self.hedge_ratio = float(hedge_ratio)
-        self.hedge_mode = hedge_mode
         self.start_eth_usd = start_eth_usd
         self.entry_tick = start_tick
         self.entry_block = None
@@ -410,16 +383,12 @@ class PaperPosition:
         self.accumulated_lp_fee_usd = 0.0
         self.estimated_il_usd = 0.0
         self.reward_income_usd = 0.0
-        self.hedge_notional_usd = self.size_usd * self.hedge_ratio
-        self.hedge_pnl_usd = 0.0
-        self.funding_pnl_usd = 0.0
         self.rebalance_count = 0
         self.rebalance_cost_usd = 0.0
         self.gas_estimate_usd = 0.0
         self.claim_gas_usd = 0.0
         self.net_pnl_usd = 0.0
         self.last_eth_usd = start_eth_usd
-        self.hedge_eth_amount = 0.0  # negative = short
         self.events_seen = 0
         self.events_decoded_ok = 0
         self.events_decoded_fail = 0
@@ -429,6 +398,8 @@ class PaperPosition:
         self.lp_mtm_usd = 0.0
         self.last_mark_price = None
         self.l_pos_raw = 0.0
+        # Diagnostic only (NOT hedged): current ETH exposure of the LP, in ETH.
+        self.lp_eth_exposure = 0.0
 
     def set_entry(self, tick, block, eth_usd):
         self.entry_tick = tick
@@ -437,12 +408,10 @@ class PaperPosition:
         self.start_eth_usd = eth_usd
         self.lower_tick, self.upper_tick = tick_lower_upper(tick, self.range_pct)
         self.in_range = True
-        # Hedge: short hedge_ratio × size in ETH at the entry price
-        self.hedge_eth_amount = -(self.hedge_notional_usd / eth_usd)
         self.last_mark_price = eth_usd
         self.l_pos_raw = position_liquidity_raw(self.size_usd, eth_usd, self.range_pct)
-        if self.hedge_mode == "dynamic":
-            self.hedge_eth_amount = -self.hedge_ratio * lp_weth_amount_eth(self.size_usd, eth_usd, self.range_pct, eth_usd)
+        # Diagnostic: how much ETH the LP holds at entry (exposure, not hedged).
+        self.lp_eth_exposure = lp_weth_amount_eth(self.size_usd, eth_usd, self.range_pct, eth_usd)
 
     def apply_event(self, ev, l_active_raw):
         if not ev.get("ok"):
@@ -463,31 +432,17 @@ class PaperPosition:
         return fee
 
     def mark(self, current_eth_usd):
+        """Mark the LP leg to market (unhedged). Also refresh the ETH exposure
+        diagnostic. No hedge PnL — there is no hedge."""
         if self.entry_tick is None or current_eth_usd is None or current_eth_usd <= 0:
             return
         self.lp_mtm_usd = lp_mtm_usd(self.size_usd, self.start_eth_usd, self.range_pct, current_eth_usd)
         self.estimated_il_usd = lp_impermanent_loss_usd(self.size_usd, self.start_eth_usd, self.range_pct, current_eth_usd)
+        self.lp_eth_exposure = lp_weth_amount_eth(self.size_usd, self.start_eth_usd, self.range_pct, current_eth_usd)
         if self.last_mark_price is None:
             self.last_mark_price = current_eth_usd
-        self.hedge_pnl_usd += self.hedge_eth_amount * (current_eth_usd - self.last_mark_price)
-        if self.hedge_mode == "dynamic":
-            self.hedge_eth_amount = -self.hedge_ratio * lp_weth_amount_eth(self.size_usd, self.start_eth_usd, self.range_pct, current_eth_usd)
         self.last_mark_price = current_eth_usd
         self.last_eth_usd = current_eth_usd
-
-    def accrue_funding(self, funding_apr_pct, hours):
-        """Accrue funding income over `hours` hours. SHORT pays funding if funding > 0."""
-        # funding_pnl = -hedge_eth_amount × mark × funding_rate × hours
-        # SHORT (hedge_eth_amount < 0) means we receive funding when funding_rate > 0
-        # PnL = -hedge_eth_amount × price × funding_apr/100 × hours/8760
-        if self.hedge_eth_amount == 0:
-            return
-        funding_per_hour = (funding_apr_pct / 100.0) / HOURS_PER_YEAR
-        delta = -self.hedge_eth_amount * self.last_eth_usd * funding_per_hour * hours
-        self.funding_pnl_usd += delta
-
-    def hedge_mark_pnl(self, current_eth_usd):
-        self.mark(current_eth_usd)
 
     def accrue_reward(self, reward_apr_pct, hours):
         """Accrue AERO reward income over `hours` hours."""
@@ -496,16 +451,17 @@ class PaperPosition:
         self.reward_income_usd += delta
 
     def total_net(self):
+        # Unhedged LP net: mark-to-market + fees + reward, minus rebalance/gas costs.
+        # IL is captured inside lp_mtm_usd (vs entry size); estimated_il_usd is a
+        # separate diagnostic and must NOT be added here (no double count).
         return (self.lp_mtm_usd + self.accumulated_lp_fee_usd + self.reward_income_usd
-                - self.rebalance_cost_usd - self.claim_gas_usd - self.gas_estimate_usd
-                + self.hedge_pnl_usd + self.funding_pnl_usd)
+                - self.rebalance_cost_usd - self.claim_gas_usd - self.gas_estimate_usd)
 
     def to_dict(self, eth_usd_now):
         return {
             "size_usd": self.size_usd,
             "range_pct": self.range_pct,
-            "hedge_ratio": self.hedge_ratio,
-            "hedge_eth_amount": self.hedge_eth_amount,
+            "lp_eth_exposure": self.lp_eth_exposure,
             "entry_tick": self.entry_tick,
             "entry_block": self.entry_block,
             "lower_tick": self.lower_tick,
@@ -514,8 +470,6 @@ class PaperPosition:
             "accumulated_lp_fee_usd": self.accumulated_lp_fee_usd,
             "estimated_il_usd": self.estimated_il_usd,
             "reward_income_usd": self.reward_income_usd,
-            "hedge_pnl_usd": self.hedge_pnl_usd,
-            "funding_pnl_usd": self.funding_pnl_usd,
             "rebalance_count": self.rebalance_count,
             "rebalance_cost_usd": self.rebalance_cost_usd,
             "gas_estimate_usd": self.gas_estimate_usd,
@@ -525,7 +479,6 @@ class PaperPosition:
             "events_seen": self.events_seen,
             "events_decoded_ok": self.events_decoded_ok,
             "events_decoded_fail": self.events_decoded_fail,
-            "hedge_mode": self.hedge_mode,
             "lp_mtm_usd": self.lp_mtm_usd,
             "eth_usd_now": eth_usd_now,
         }
@@ -549,24 +502,18 @@ class D4Runner:
         self.hourly_csv_path = self.report_dir / "paper_position_state_hourly.csv"
         self.daily_dir = self.report_dir  # daily_summary_dayN.md written here
         self.swap_events_path = self.report_dir / "swap_events_realtime.jsonl"
-        self.funding_updates_path = self.report_dir / "funding_updates.jsonl"
         self.reward_updates_path = self.report_dir / "reward_apr_updates.jsonl"
         self.model_error_path = self.report_dir / "model_error_log.jsonl"
         self.restart_path = self.report_dir / "restart.jsonl"
-        # 8 tracks: each (size,range) cell run with BOTH a static notional hedge
-        # and a dynamic-delta hedge, so the two policies are compared on the same
-        # live data. Keyed by (size, range, mode).
+        # 4 unhedged LP tracks, keyed by (size, range). No hedge variants.
         self.positions = {}
         for _size, _rng in [(250, 2), (250, 5), (1000, 2), (1000, 5)]:
-            for _mode in ("static", "dynamic"):
-                self.positions[(_size, _rng, _mode)] = PaperPosition(_size, _rng, hedge_mode=_mode)
+            self.positions[(_size, _rng)] = PaperPosition(_size, _rng)
         self.last_block = None
         self.last_heartbeat = 0.0
         self.last_hourly = 0.0
         self.last_daily = 0.0
-        self.last_funding_update = 0.0
         self.last_reward_update = 0.0
-        self.funding_apr_pct = 0.83  # D2 median
         self.reward_apr_pct = 63.52  # D3 observed
         self.events_24h_baseline = 30000  # R4: ~28k events in 24h on 0xb2cc
         self.shutdown_requested = False
@@ -585,7 +532,6 @@ class D4Runner:
                         row = json.loads(line)
                         if row.get("event") == "restart":
                             self.start_time_utc = datetime.fromisoformat(row["start_time_utc"])
-                            self.funding_apr_pct = row.get("funding_apr_pct", 0.83)
                             self.reward_apr_pct = row.get("reward_apr_pct", 63.52)
                             self.last_block = row.get("last_block")
             except Exception:
@@ -602,7 +548,6 @@ class D4Runner:
             "ts_utc": now,
             "uptime_hours": round(uptime_h, 3),
             "last_block": self.last_block,
-            "funding_apr_pct": round(self.funding_apr_pct, 4),
             "reward_apr_pct": round(self.reward_apr_pct, 4),
             "tracks_alive": sum(1 for p in self.positions.values() if p.entry_tick is not None),
             "note": note,
@@ -617,7 +562,7 @@ class D4Runner:
         for k, p in self.positions.items():
             p.last_eth_usd = eth_usd
             p.mark(eth_usd)
-            row = {"ts_utc": now, "track": f"${p.size_usd:.0f} ±{p.range_pct}% {p.hedge_mode}", **p.to_dict(eth_usd)}
+            row = {"ts_utc": now, "track": f"${p.size_usd:.0f} ±{p.range_pct}%", **p.to_dict(eth_usd)}
             rows.append(row)
         with open(self.hourly_path, "a") as f:
             for row in rows:
@@ -641,23 +586,21 @@ class D4Runner:
             f"- ts_utc: {datetime.now(timezone.utc).isoformat()}",
             f"- uptime_hours: {uptime_h:.2f}",
             f"- last_block: {self.last_block}",
-            f"- funding_apr_pct: {self.funding_apr_pct:.4f}",
             f"- reward_apr_pct: {self.reward_apr_pct:.4f}",
             "",
-            "| Track | LP fee | LP MTM | Reward | IL | Rebal cost | Hedge PnL | Funding PnL | Net PnL | Events seen | Decoded |",
-            "|---|---|---|---|---|---|---|---|---|---|---|",
+            "| Track | LP fee | LP MTM | Reward | IL | Rebal cost | ETH expo | Net PnL | Events seen | Decoded |",
+            "|---|---|---|---|---|---|---|---|---|---|",
         ]
         for k, p in self.positions.items():
             d = p.to_dict(self._eth_usd() or ETH_USD_FALLBACK)
             lines.append(
-                f"| ${p.size_usd:.0f} ±{p.range_pct}% {p.hedge_mode} | "
+                f"| ${p.size_usd:.0f} ±{p.range_pct}% | "
                 f"${d['accumulated_lp_fee_usd']:.2f} | "
                 f"${d['lp_mtm_usd']:.2f} | "
                 f"${d['reward_income_usd']:.2f} | "
                 f"${d['estimated_il_usd']:.2f} | "
                 f"${d['rebalance_cost_usd']:.2f} | "
-                f"${d['hedge_pnl_usd']:.2f} | "
-                f"${d['funding_pnl_usd']:.2f} | "
+                f"{d['lp_eth_exposure']:.4f} | "
                 f"${d['net_pnl_usd']:.2f} | "
                 f"{d['events_seen']} | "
                 f"{d['events_decoded_ok']} |"
@@ -672,23 +615,6 @@ class D4Runner:
             return p
         p = fetch_coingecko_eth_usd()
         return p
-
-    def _refresh_funding(self):
-        recs = fetch_binance_funding_recent(limit=4)
-        if not recs:
-            return
-        # Median of the last 4 records (32h) as live funding
-        aprs = [funding_to_apr_pct(r["funding_rate_raw"]) for r in recs]
-        self.funding_apr_pct = statistics.median(aprs)
-        self._append_jsonl(
-            self.funding_updates_path,
-            {
-                "ts_utc": datetime.now(timezone.utc).isoformat(),
-                "funding_apr_pct_median_32h": round(self.funding_apr_pct, 4),
-                "raw": recs,
-            },
-        )
-        self.last_funding_update = time.time()
 
     def _refresh_reward(self):
         apr, fetched_at = fetch_defillama_reward_apr()
@@ -813,15 +739,13 @@ class D4Runner:
             return 0
 
     def _accrue_periodic(self, hours):
-        """Accrue funding + reward income for the elapsed time across positions."""
+        """Accrue reward income for the elapsed time across positions (no funding)."""
         for p in self.positions.values():
-            p.accrue_funding(self.funding_apr_pct, hours)
             p.accrue_reward(self.reward_apr_pct, hours)
 
     def run(self):
         # First-run entry
         self._initial_entry()
-        self._refresh_funding()
         self._refresh_reward()
         self._write_heartbeat(note="initial_entry")
         self._write_hourly_state()
@@ -840,7 +764,7 @@ class D4Runner:
             now = time.time()
             # Pull new events
             self._fetch_and_apply_events()
-            # Accrue funding and reward for the elapsed period (capped at 1h between iterations)
+            # Accrue reward for the elapsed period (capped at 1h between iterations)
             dt_h = min(1.0, (now - last_accrual) / 3600.0)
             if dt_h > 0:
                 self._accrue_periodic(dt_h)
@@ -853,10 +777,6 @@ class D4Runner:
             # Hourly state every 1h
             if now - self.last_hourly > PAPER_STATE_SECS:
                 self._write_hourly_state()
-
-            # Funding refresh every 8h (4 funding events at 8h intervals)
-            if now - self.last_funding_update > 8 * 3600:
-                self._refresh_funding()
 
             # Reward refresh every 24h
             if now - self.last_reward_update > 24 * 3600:
@@ -878,7 +798,6 @@ class D4Runner:
                         "ts_utc": datetime.now(timezone.utc).isoformat(),
                         "start_time_utc": self.start_time_utc.isoformat(),
                         "last_block": self.last_block,
-                        "funding_apr_pct": self.funding_apr_pct,
                         "reward_apr_pct": self.reward_apr_pct,
                     },
                 )
