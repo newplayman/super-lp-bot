@@ -36,3 +36,16 @@ def test_zero_negative_guards():
 def test_fee_realistic_magnitude():
     fee = fee_for_swap_usd(1.2278e15, 1e18, 200_000_000_000, 0.0005)
     assert 0.0 <= fee <= 1.0
+
+
+def test_liquidity_decimal_scale_canonical():
+    # On-chain L = sqrt(x*y) in RAW units => scale is 10**((dec0+dec1)/2).
+    # 18/6 (WETH-USDC) is unchanged vs the legacy 10**(dec0-dec1)=10**12 factor.
+    liq_18_6 = position_liquidity_raw(1000, 1675.6, 2, 18, 6)
+    assert 0.995 < liq_18_6 / 1.2278e15 < 1.005
+    # 18/18: legacy used 10**0 and collapsed l_pos to ~O(1); canonical is 10**18.
+    liq_18_18 = position_liquidity_raw(1.0, 100.0, 10, 18, 18)
+    assert liq_18_18 > 1e15  # large, not O(1) -> fee share no longer ~0
+    # 18/8 (cbBTC/WETH layout): canonical scale 10**13.
+    liq_18_8 = position_liquidity_raw(1.0, 0.03, 7, 18, 8)
+    assert liq_18_8 > 1e10
