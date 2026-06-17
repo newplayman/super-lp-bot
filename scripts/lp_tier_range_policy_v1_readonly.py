@@ -45,6 +45,7 @@ from scripts.lp_vol_range_sizer_v1_readonly import (  # noqa: E402
     latest_block,
 )
 from scripts.lp_tier_c_exit_feasibility_v1_readonly import fetch_pool_swaps  # noqa: E402
+from scripts.lp_tier_b_level2_replay_v1_readonly import replay  # noqa: E402
 
 # Regime thresholds on the efficiency ratio.
 ER_RANGE_BOUND = 0.25   # ER below this => choppy / range-bound
@@ -55,6 +56,10 @@ H_NEUTRAL = 14
 H_TRENDING = 30
 # A high-vol trending mid-cap is an AVOID (IL risk swamps fees).
 AVOID_SIGMA_DAILY = 0.06   # ~6%/day (annualized ~115%)
+# Viability: fees must cover at least this multiple of structural IL.
+FEE_COVER_MIN = 1.0
+# Directional exposure (|entry->end| price move) that flags a net-long bet.
+DIRECTIONAL_WARN_PCT = 15.0
 
 
 # ---------------------------------------------------------------------------
@@ -126,6 +131,44 @@ def build_policy(sigma_daily, er, *, tier_hint="", k=DEFAULT_K):
     }
 
 
+def fee_cover_ratio(fees_quote, il_quote):
+    """fees / |structural IL|.  >=1 => fees beat IL.  inf if no IL.
+
+    fees_quote >= 0, il_quote <= 0 (IL is a loss vs HODL). Returns None if no fee
+    data. This isolates the STRUCTURAL viability of LPing (fees vs IL) from the
+    DIRECTIONAL bet (holding the underlying), which is reported separately.
+    """
+    if fees_quote is None or il_quote is None:
+        return None
+    il_loss = -float(il_quote)
+    if il_loss <= 0:
+        return float("inf")
+    return float(fees_quote) / il_loss
+
+
+def finalize_action(policy, fee_cover, abs_move_pct, *, tier_hint="",
+                    fee_cover_min=FEE_COVER_MIN,
+                    directional_warn_pct=DIRECTIONAL_WARN_PCT):
+    """Layer the viability screen on top of the ER/regime action.
+
+    Structural gate: fees must cover IL (fee_cover >= fee_cover_min) or it's an
+    AVOID regardless of regime. Directional gate: a large |move| flags a net-long
+    bet — hard-AVOID for Tier A (should be ~market-neutral), a noted risk for B.
+    Returns (action, reason).
+    """
+    base = policy["action"]
+    if base.startswith("AVOID"):
+        return base, "regime/vol: high-vol trend"
+    if fee_cover is not None and fee_cover < fee_cover_min:
+        return "AVOID_FEE<IL", f"fees cover only {fee_cover:.2f}x of IL"
+    directional = abs_move_pct is not None and abs_move_pct >= directional_warn_pct
+    if directional and str(tier_hint).upper().startswith("A"):
+        return "AVOID_DIRECTIONAL", f"|move| {abs_move_pct:.1f}% too directional for Tier A"
+    if directional:
+        return base, f"OK structurally; directional risk |move| {abs_move_pct:.1f}% (Tier-B bet)"
+    return base, "fees cover IL; range-appropriate"
+
+
 # ---------------------------------------------------------------------------
 # NETWORK
 # ---------------------------------------------------------------------------
@@ -138,14 +181,42 @@ def assess_pool(cfg, blocks_back, k):
     closes = hourly_closes(swaps)
     sigma_daily, n_ret = daily_vol_from_closes(closes)
     er = efficiency_ratio(closes)
-    pol = build_policy(sigma_daily, er, tier_hint=cfg.get("tier_hint", ""), k=k)
-    return {
+    tier_hint = cfg.get("tier_hint", "")
+    fee_tier = cfg.get("fee_tier")
+    pol = build_policy(sigma_daily, er, tier_hint=tier_hint, k=k)
+
+    # Viability screen: passive replay at the policy range over the SAME window
+    # to get realized fees vs structural IL (fee_cover) and directional move.
+    fees_pct = il_pct = net_pct = abs_move_pct = fee_cover = None
+    window_days = round(blocks_back / BLOCKS_PER_DAY, 2)
+    if pol["range_pct"] and fee_tier is not None and swaps:
+        rep = replay(swaps, range_pct=pol["range_pct"], fee_tier=float(fee_tier),
+                     dec0=dec0, dec1=dec1, mode="passive")
+        if rep.get("net_pct") is not None:
+            fees_pct = rep["fees_quote"] * 100.0
+            il_pct = rep["il_quote"] * 100.0
+            net_pct = rep["net_pct"]
+            fee_cover = fee_cover_ratio(rep["fees_quote"], rep["il_quote"])
+            ep, xp = rep["entry_price"], rep["end_price"]
+            abs_move_pct = abs(xp / ep - 1.0) * 100.0 if ep else None
+        # annualize realized fee yield for context
+    fee_apr_pct = (fees_pct * 365.0 / window_days) if (fees_pct is not None and window_days) else None
+    action, reason = finalize_action(pol, fee_cover, abs_move_pct, tier_hint=tier_hint)
+
+    out = {
         "label": label, "pool": pool, "dec0": dec0, "dec1": dec1,
-        "fee_tier": cfg.get("fee_tier"), "tier_hint": cfg.get("tier_hint", ""),
+        "fee_tier": fee_tier, "tier_hint": tier_hint,
         "n_swaps": len(swaps), "n_hourly_closes": len(closes), "n_returns": n_ret,
-        "window_days": round(blocks_back / BLOCKS_PER_DAY, 2),
+        "window_days": window_days,
         **pol,
+        "fees_pct": fees_pct, "il_pct": il_pct, "net_pct": net_pct,
+        "fee_apr_pct": fee_apr_pct, "abs_move_pct": abs_move_pct,
+        "fee_cover": (None if fee_cover is None else
+                      (round(fee_cover, 2) if fee_cover != float("inf") else "inf")),
+        "reason": reason,
     }
+    out["action"] = action  # viability-refined action overrides the regime action
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -184,7 +255,7 @@ def _emit_replay_config(results):
     """Build a replay/sim-ready config from the policy (range = policy range)."""
     cfg = []
     for r in results:
-        if r["action"] == "AVOID" or r["range_pct"] is None:
+        if str(r["action"]).startswith("AVOID") or r["range_pct"] is None:
             continue
         cfg.append({
             "pool": r["pool"], "dec0": r["dec0"], "dec1": r["dec1"],
@@ -200,16 +271,23 @@ def _fmt_md(results, k):
     out = [f"# Tier range policy  (k={k})",
            f"_generated {datetime.now(timezone.utc).isoformat()}_\n",
            "range = vol-sized for regime H. ER = Kaufman efficiency ratio "
-           "(1=trend, 0=chop). weekly-tight gated on range-bound regime.\n",
-           "| pool | tier | σ_daily | ER | regime | H | ±range | weekly? | action |",
-           "|---|---|---|---|---|---|---|---|---|"]
+           "(1=trend, 0=chop). weekly-tight gated on range-bound regime; "
+           "ENTER gated on fee_cover (fees/|IL|) >= 1.\n",
+           "| pool | tier | σ_daily | ER | regime | ±range | fees% | IL% | net% | fee_cover | move% | action |",
+           "|---|---|---|---|---|---|---|---|---|---|---|---|"]
+    def f2(v, suf=""):
+        return "n/a" if v is None else f"{v:.2f}{suf}"
     for r in results:
-        sd = f"{r['sigma_daily_pct']:.2f}%" if r['sigma_daily_pct'] else "n/a"
-        er = f"{r['er']:.2f}" if r['er'] is not None else "n/a"
-        rng = f"±{r['range_pct']:.1f}%" if r['range_pct'] is not None else "n/a"
-        wk = "yes" if r['weekly_tight_allowed'] else "no"
+        sd = f"{r['sigma_daily_pct']:.2f}%" if r.get('sigma_daily_pct') else "n/a"
+        er = f"{r['er']:.2f}" if r.get('er') is not None else "n/a"
+        rng = f"±{r['range_pct']:.1f}%" if r.get('range_pct') is not None else "n/a"
         out.append(f"| {r['label']} | {r['tier_hint']} | {sd} | {er} | {r['regime']} "
-                   f"| {r['H_days']} | {rng} | {wk} | **{r['action']}** |")
+                   f"| {rng} | {f2(r.get('fees_pct'))} | {f2(r.get('il_pct'))} "
+                   f"| {f2(r.get('net_pct'))} | {r.get('fee_cover')} | {f2(r.get('abs_move_pct'))} "
+                   f"| **{r['action']}** |")
+    out.append("")
+    for r in results:
+        out.append(f"- **{r['label']}** — {r['action']}: {r.get('reason','')}")
     return "\n".join(out) + "\n"
 
 
@@ -243,9 +321,12 @@ def main():
                  "range_pct": None, "rebal_per_month": None,
                  "weekly_tight_allowed": False, "action": f"ERROR: {e}", "n_swaps": 0}
         results.append(r)
+        fc = r.get("fee_cover")
         print(f"{r['label']}: {r['regime']} ER={r['er'] if r['er'] is None else round(r['er'],2)} "
-              f"σ={r['sigma_daily_pct'] and round(r['sigma_daily_pct'],2)}% "
-              f"-> ±{r['range_pct']}% [{r['action']}]")
+              f"σ={r['sigma_daily_pct'] and round(r['sigma_daily_pct'],2)}% ±{r['range_pct']}% "
+              f"fees={None if r.get('fees_pct') is None else round(r['fees_pct'],2)}% "
+              f"fee_cover={fc} net={None if r.get('net_pct') is None else round(r['net_pct'],2)}% "
+              f"[{r['action']}]")
 
     replay_cfg = _emit_replay_config(results)
     out = args.out

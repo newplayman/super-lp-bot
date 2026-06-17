@@ -4,6 +4,8 @@ from scripts.lp_tier_range_policy_v1_readonly import (
     classify_regime,
     choose_h,
     build_policy,
+    fee_cover_ratio,
+    finalize_action,
     H_RANGE_BOUND,
     H_TRENDING,
 )
@@ -64,3 +66,41 @@ def test_trending_range_wider_than_range_bound():
     rb = build_policy(0.03, 0.1)["range_pct"]
     tr = build_policy(0.03, 0.9)["range_pct"]
     assert tr > rb   # trending uses larger H => wider range
+
+
+def test_fee_cover_ratio():
+    assert fee_cover_ratio(0.02, -0.01) == 2.0      # fees 2x the IL
+    assert fee_cover_ratio(0.005, -0.01) == 0.5     # fees half the IL
+    assert fee_cover_ratio(0.01, 0.0) == float("inf")  # no IL
+    assert fee_cover_ratio(None, -0.01) is None
+
+
+def test_finalize_action_fee_lt_il_avoids():
+    pol = build_policy(0.03, 0.1)            # range-bound ENTER
+    act, _ = finalize_action(pol, fee_cover=0.5, abs_move_pct=3.0)
+    assert act == "AVOID_FEE<IL"             # fees don't cover IL -> AVOID
+
+
+def test_finalize_action_enters_when_fees_cover():
+    pol = build_policy(0.03, 0.1)
+    act, _ = finalize_action(pol, fee_cover=2.0, abs_move_pct=3.0)
+    assert act == "ENTER"
+
+
+def test_finalize_action_directional_avoid_for_tier_a():
+    pol = build_policy(0.03, 0.1)
+    act, _ = finalize_action(pol, fee_cover=2.0, abs_move_pct=20.0, tier_hint="A")
+    assert act == "AVOID_DIRECTIONAL"        # too directional for a Tier-A pair
+
+
+def test_finalize_action_directional_ok_for_tier_b():
+    pol = build_policy(0.03, 0.1)
+    act, reason = finalize_action(pol, fee_cover=2.0, abs_move_pct=20.0, tier_hint="B")
+    assert act == "ENTER"                     # B accepts the directional bet
+    assert "directional" in reason.lower()
+
+
+def test_finalize_preserves_high_vol_trend_avoid():
+    pol = build_policy(0.08, 0.9)            # already AVOID (high-vol trend)
+    act, _ = finalize_action(pol, fee_cover=5.0, abs_move_pct=2.0)
+    assert act == "AVOID"
