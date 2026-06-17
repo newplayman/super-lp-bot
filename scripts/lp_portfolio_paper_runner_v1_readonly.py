@@ -43,6 +43,9 @@ from scripts.lp_v3_fee_share import (  # noqa: E402
     position_liquidity_raw,
     fee_for_swap_usd,
 )
+from scripts.lp_swap_cost_model_v1_readonly import (  # noqa: E402
+    exit_conversion_cost_usd,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -83,18 +86,27 @@ def init_state(*, capital, anchor, range_pct, fee_tier, dec0, dec1, last_block,
     }
 
 
-def _do_exit(state, *, exit_price, block):
+def _do_exit(state, *, exit_price, block, l_active_raw=None):
     """Realize a position at exit_price and convert to base currency (paper).
 
-    Frozen once set: LP value at exit + accrued fees, minus a conversion cost
-    (exit_cost_bps on the converted value). Reward is held separately and added
-    at mark time. After this, the position holds base cash and accrues nothing.
+    Frozen once set: LP value at exit + accrued fees, minus the cost of
+    converting the LP holdings back to base. If the active pool liquidity is
+    known (l_active_raw, from the breach swap), the depth-aware swap-cost model
+    sizes that conversion (fee + real slippage); otherwise a flat exit_cost_bps
+    placeholder is used. Fees are already in base, so only lp_value is converted.
+    Reward is held separately and added at mark time. After exit the position
+    holds base cash and accrues nothing.
     """
     cap = state["capital"]
     lp_value = cap * lp_position_value_usd(1.0, state["anchor"], state["range_pct"], exit_price)
     il = lp_impermanent_loss_usd(cap, state["anchor"], state["range_pct"], exit_price)
-    gross = lp_value + state["fees_quote"]
-    cost = gross * state["exit_cost_bps"] / 1e4
+    if l_active_raw and l_active_raw > 0:
+        cost = exit_conversion_cost_usd(
+            lp_value, l_active_raw, exit_price, state["fee_tier"],
+            state["dec0"], state["dec1"], side="sell_base",
+        )
+    else:
+        cost = lp_value * state["exit_cost_bps"] / 1e4
     state["exited"] = {
         "block": int(block),
         "price": float(exit_price),
@@ -102,7 +114,7 @@ def _do_exit(state, *, exit_price, block):
         "il_quote": il,
         "fees_quote": state["fees_quote"],
         "exit_cost_quote": cost,
-        "realized_quote": gross - cost,  # base cash recovered
+        "realized_quote": lp_value - cost + state["fees_quote"],  # base cash recovered
     }
     return state
 
@@ -144,7 +156,8 @@ def update_position(state, swaps, *, now_block):
                 state["breaches"].append({"block": s["block"], "price": price})
             in_range = False
             if state.get("exit_on_breach"):
-                _do_exit(state, exit_price=price, block=s["block"])
+                _do_exit(state, exit_price=price, block=s["block"],
+                         l_active_raw=s.get("liquidity"))
                 state["last_block"] = int(now_block)
                 state["in_range_now"] = False
                 return state  # stop: position closed at the breach

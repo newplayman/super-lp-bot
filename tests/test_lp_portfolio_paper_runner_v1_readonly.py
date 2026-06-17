@@ -9,8 +9,8 @@ from scripts.lp_portfolio_paper_runner_v1_readonly import (
 DEC = 18
 FEE = 0.003
 R = 10.0
-L = 10 ** 18
-AMT1 = 10 ** 18  # 1.0 token1 raw
+L = 10 ** 24       # deep pool (human_L = 1e6): realistic, low-slippage
+AMT1 = 10 ** 18    # 1.0 token1 raw
 
 
 def _state(cap=1000.0, anchor=1.0):
@@ -158,12 +158,25 @@ def test_mark_position_exited_ignores_current_price():
     assert mk_a["lp_value_quote"] == st["exited"]["realized_quote"]
 
 
-def test_higher_exit_cost_lowers_realized():
+def test_flat_exit_cost_used_when_liquidity_absent():
+    # breach swap with NO liquidity field -> flat exit_cost_bps path
     cheap = _state_b(exit_cost_bps=10.0)
     pricey = _state_b(exit_cost_bps=200.0)
     for st in (cheap, pricey):
-        update_position(st, [{"block": 1, "price": 1.5, "liquidity": L, "amount1": AMT1}], now_block=1)
+        update_position(st, [{"block": 1, "price": 1.5, "amount1": AMT1}], now_block=1)
+    assert cheap["exited"]["exit_cost_quote"] < pricey["exited"]["exit_cost_quote"]
     assert cheap["exited"]["realized_quote"] > pricey["exited"]["realized_quote"]
+
+
+def test_model_exit_cost_used_when_liquidity_present_and_depth_matters():
+    # with liquidity present, the depth model sizes the cost; deeper pool = cheaper
+    shallow = _state_b()
+    deep = _state_b()
+    update_position(shallow, [{"block": 1, "price": 1.5, "liquidity": 10 ** 22, "amount1": AMT1}], now_block=1)
+    update_position(deep, [{"block": 1, "price": 1.5, "liquidity": 10 ** 26, "amount1": AMT1}], now_block=1)
+    assert shallow["exited"]["exit_cost_quote"] > deep["exited"]["exit_cost_quote"]
+    # model path ignores the flat exit_cost_bps placeholder
+    assert deep["exited"]["exit_cost_quote"] > 0
 
 
 def test_tier_a_default_does_not_exit():
