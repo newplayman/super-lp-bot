@@ -66,6 +66,7 @@ GAP_DEGRADED = 0.10        # >=10% below floor => stop fills materially worse th
 COLLAPSE_UNEXITABLE = 0.90  # active liquidity fell >=90% around breach => rug signature
 NEAR_FLOOR_BAND = 0.02     # +/-2% band around floor counts as "a chance to exit near floor"
 DUMP_LOOKAHEAD = 10        # swaps after breach used to estimate a realistic market-exit price
+MIN_ASSESSABLE_SWAPS = 3   # below this the pool is dead-on-arrival; exit can't be judged
 
 
 # ---------------------------------------------------------------------------
@@ -143,6 +144,12 @@ def analyze_exit_feasibility(
     """
     if not swaps or entry_price <= 0:
         return {"verdict": "NO_DATA", "breached": False, "n_swaps": len(swaps or [])}
+
+    # Dead-on-arrival: created then barely traded. The exit question is not
+    # assessable (no real price path), and counting these as NO_BREACH would
+    # falsely inflate the "exitable" rate. Classify them out explicitly.
+    if len(swaps) < MIN_ASSESSABLE_SWAPS:
+        return {"verdict": "INSUFFICIENT_DATA", "breached": False, "n_swaps": len(swaps)}
 
     floor = entry_price * (1.0 - range_pct / 100.0)
     cap = entry_price * (1.0 + range_pct / 100.0)
@@ -392,9 +399,12 @@ def _aggregate(verdicts):
         counts[v["verdict"]] = counts.get(v["verdict"], 0) + 1
     breached = [v for v in verdicts if v.get("breached")]
     exitable = sum(1 for v in breached if v["verdict"] == "EXITABLE_CLEAN")
+    # assessable = pools with a real price path (exclude dead-on-arrival / no-data)
+    assessable = [v for v in verdicts if v["verdict"] not in ("NO_DATA", "INSUFFICIENT_DATA")]
     return {
         "n_pools": len(verdicts),
         "verdict_counts": counts,
+        "assessable": len(assessable),
         "breached": len(breached),
         "clean_exit_rate_of_breached": (exitable / len(breached)) if breached else None,
     }

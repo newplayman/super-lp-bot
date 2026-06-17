@@ -122,3 +122,15 @@ def test_realized_loss_vs_floor_tracks_post_breach_dump():
 def test_empty_stream_is_no_data():
     r = m.analyze_exit_feasibility([], entry_price=1.0, range_pct=5.0)
     assert r["verdict"] == "NO_DATA"
+
+
+def test_dead_on_arrival_is_insufficient_data_not_no_breach():
+    # 1-2 swap pools (created then abandoned) must NOT count as NO_BREACH, or
+    # the exitable rate is falsely inflated.
+    L = 10 ** 18
+    one = [{"price": 1.0, "liquidity": L, "block": 0}]
+    two = [{"price": 1.0, "liquidity": L, "block": 0}, {"price": 1.0, "liquidity": L, "block": 1}]
+    for s in (one, two):
+        r = m.analyze_exit_feasibility(s, entry_price=1.0, range_pct=5.0)
+        assert r["verdict"] == "INSUFFICIENT_DATA"
+        assert r["breached"] is False
