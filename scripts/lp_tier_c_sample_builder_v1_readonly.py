@@ -23,6 +23,9 @@ FACTORY = "0x33128a8fC17869897dcE68Ed026d694621f6FDfD"
 TOPIC_POOL_CREATED = (
     "0x783cca1c0412dd0d695e784568c96da2e9c22ff989357a2e8b1d9b2b4e6b7118"
 )
+TOPIC_POOL_SWAPPED = (
+    "0xc42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115fbcca67"
+)
 WETH = "0x4200000000000000000000000000000000000006"
 USDC = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
 MAJORS = {WETH.lower(), USDC.lower()}
@@ -35,12 +38,10 @@ RETRY_DELAYS = [0.5, 1.0, 2.0]
 
 
 def _to_checksum(addr: str) -> str:
-    """Return address as a checksummed string (stdlib only, no eth_utils)."""
-    # lowercase hex without 0x
     a = (addr[2:] if addr.startswith("0x") else addr).lower().zfill(40)
-    # keccak-256 of lowercase hex address — use eth_utils if available, else leave lower
     try:
         from eth_utils import to_checksum_address
+
         return to_checksum_address("0x" + a)
     except Exception:
         return "0x" + a
@@ -52,10 +53,7 @@ def _clean_addr(raw: str) -> str:
 
 
 def decode_pool_created(log: Dict) -> Dict:
-    """Decode one PoolCreated event dict into a normalized payload.
-
-    Pure function: no network calls.
-    """
+    """Decode one PoolCreated event dict into a normalized payload. Pure function."""
     topics = log["topics"]
     if len(topics) < 4:
         raise ValueError("log topics missing required entries")
@@ -73,8 +71,6 @@ def decode_pool_created(log: Dict) -> Dict:
     tick_hex = data[0:64]
     tick_spacing = int.from_bytes(bytes.fromhex(tick_hex), "big", signed=True)
 
-    # word1 [64:128] -> pool address at chars [88:128] relative to word1 start
-    # i.e. absolute offset in data: 64 + 24 = 88 to 64 + 64 = 128
     pool_raw = data[64 + 24: 128]
     pool = _to_checksum("0x" + pool_raw)
     creation_block = int(log["blockNumber"], 16)
@@ -89,14 +85,8 @@ def decode_pool_created(log: Dict) -> Dict:
     }
 
 
-def fresh_token_for_major_pair(
-    token0: str, token1: str
-) -> Optional[Tuple[str, str]]:
-    """Return (fresh_token, major_token) when exactly one token is a major.
-
-    Returns None when both are majors or neither is.
-    Pure function: no network calls.
-    """
+def fresh_token_for_major_pair(token0: str, token1: str) -> Optional[Tuple[str, str]]:
+    """Return (fresh_token, major_token) when exactly one token is a major. Pure function."""
     t0_major = token0.lower() in MAJORS
     t1_major = token1.lower() in MAJORS
     if t0_major == t1_major:
@@ -107,10 +97,7 @@ def fresh_token_for_major_pair(
 
 
 def decode_decimals_from_word(word_hex: str) -> int:
-    """Decode uint8 decimals from the last byte of a 32-byte ABI word.
-
-    Pure function: no network calls.
-    """
+    """Decode uint8 decimals from the last byte of a 32-byte ABI word. Pure function."""
     if not word_hex:
         raise ValueError("empty word")
     clean = word_hex[2:] if word_hex.startswith("0x") else word_hex
@@ -131,7 +118,7 @@ def _decode_symbol_from_word(data_hex: str) -> Optional[str]:
     if len(clean) < pos + 64:
         return None
     try:
-        strlen = int(clean[pos: pos + 64], 16)
+        strlen = int(clean[pos : pos + 64], 16)
     except ValueError:
         return None
     start = pos + 64
@@ -163,7 +150,7 @@ def _rpc_request(rpc_url: str, method: str, params) -> object:
         except Exception as exc:
             last_err = exc
             time.sleep(delay)
-    raise last_err  # type: ignore[misc]
+    raise last_err
 
 
 def _eth_block_number(rpc_url: str) -> int:
@@ -171,15 +158,17 @@ def _eth_block_number(rpc_url: str) -> int:
     return int(str(result), 16)
 
 
-def _eth_get_logs(rpc_url: str, from_block: int, to_block: int) -> List[Dict]:
-    params = [
-        {
-            "address": FACTORY,
-            "fromBlock": hex(from_block),
-            "toBlock": hex(to_block),
-            "topics": [TOPIC_POOL_CREATED],
-        }
-    ]
+def _eth_get_logs(
+    rpc_url: str,
+    from_block: int,
+    to_block: int,
+    *,
+    address: str = FACTORY,
+    topics: Optional[List[str]] = None,
+) -> List[Dict]:
+    if topics is None:
+        topics = [TOPIC_POOL_CREATED]
+    params = [{"address": address, "fromBlock": hex(from_block), "toBlock": hex(to_block), "topics": topics}]
     result = _rpc_request(rpc_url, "eth_getLogs", params)
     return result if isinstance(result, list) else []
 
@@ -187,6 +176,25 @@ def _eth_get_logs(rpc_url: str, from_block: int, to_block: int) -> List[Dict]:
 def _eth_call(rpc_url: str, to_addr: str, data: str) -> str:
     result = _rpc_request(rpc_url, "eth_call", [{"to": to_addr, "data": data}, "latest"])
     return str(result) if result is not None else "0x"
+
+
+def count_pool_swaps(rpc_url: str, pool: str, from_block: int, to_block: int) -> int:
+    """Count swap events for a pool in [from_block, to_block], inclusive."""
+    if to_block < from_block:
+        return 0
+    return len(
+        _eth_get_logs(
+            rpc_url,
+            from_block,
+            to_block,
+            address=pool,
+            topics=[TOPIC_POOL_SWAPPED],
+        )
+    )
+
+
+def passes_activity(swap_count: int, min_swaps: int) -> bool:
+    return swap_count >= min_swaps
 
 
 def _safe_decimal(rpc_url: str, token: str) -> int:
@@ -217,6 +225,9 @@ def run_scanner(
     blocks_forward: int = 20000,
     range_pct: float = 5.0,
     max_pools: int = 8,
+    min_swaps: int = 20,
+    activity_window: int = 3000,
+    max_probe: int = 60,
     rpc_url: Optional[str] = None,
     out: Optional[str] = None,
 ) -> Tuple[list, dict]:
@@ -232,8 +243,6 @@ def run_scanner(
     start_block = max(0, head - blocks_back)
     end_block = max(0, head - blocks_recent)
 
-    # Phase 1 — pure decode + major-pair filter (no per-pool RPC). Collect the
-    # bare candidates so we can sort/truncate BEFORE spending eth_calls.
     candidates: List[Dict] = []
     scanned = 0
 
@@ -253,14 +262,32 @@ def run_scanner(
 
     candidates.sort(key=lambda c: c["decoded"]["creation_block"], reverse=True)
     kept = len(candidates)
-    selected = candidates[:max_pools]
-    truncated = kept > max_pools
 
-    # Phase 2 — enrich ONLY the selected pools with decimals/symbol (the only
-    # per-pool RPC). This keeps Alchemy usage to <=3 calls per written row.
     rows: List[Dict] = []
-    for c in selected:
+    probed = 0
+    active = 0
+
+    for idx, c in enumerate(candidates):
+        if idx >= max_probe:
+            break
+
         decoded = c["decoded"]
+        swap_count = count_pool_swaps(
+            rpc_url,
+            decoded["pool"],
+            decoded["creation_block"],
+            decoded["creation_block"] + activity_window,
+        )
+        probed += 1
+
+        if not passes_activity(swap_count, min_swaps):
+            continue
+
+        active += 1
+
+        if len(rows) >= max_pools:
+            continue
+
         maj_sym = "WETH" if c["major"].lower() == WETH.lower() else "USDC"
         rows.append(
             {
@@ -271,14 +298,18 @@ def run_scanner(
                 "dec0": _safe_decimal(rpc_url, decoded["token0"]),
                 "dec1": _safe_decimal(rpc_url, decoded["token1"]),
                 "label": f"{_safe_symbol(rpc_url, c['fresh'])}/{maj_sym} fee{decoded['fee']}",
+                "swap_count": swap_count,
             }
         )
+
     written_rows = rows
     summary = {
         "scanned": scanned,
         "kept": kept,
+        "probed": probed,
+        "active": active,
         "written": len(written_rows),
-        "truncated": truncated,
+        "truncated": active > max_pools,
     }
 
     if out is None:
@@ -297,8 +328,8 @@ def run_scanner(
     for row in written_rows:
         print(row["pool"], row["entry_block"], row["label"])
 
-    if truncated:
-        print(f"truncated: kept {kept} > max-pools {max_pools}")
+    if summary["truncated"]:
+        print(f"truncated: active {active} > max-pools {max_pools}")
 
     return written_rows, summary
 
@@ -310,6 +341,9 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--blocks-forward", type=int, default=20000)
     parser.add_argument("--range-pct", type=float, default=5.0)
     parser.add_argument("--max-pools", type=int, default=8)
+    parser.add_argument("--min-swaps", type=int, default=20)
+    parser.add_argument("--activity-window", type=int, default=3000)
+    parser.add_argument("--max-probe", type=int, default=60)
     parser.add_argument("--out", default=None)
     return parser.parse_args()
 
@@ -322,6 +356,9 @@ def main() -> None:
         blocks_forward=args.blocks_forward,
         range_pct=args.range_pct,
         max_pools=args.max_pools,
+        min_swaps=args.min_swaps,
+        activity_window=args.activity_window,
+        max_probe=args.max_probe,
         out=args.out,
     )
 
