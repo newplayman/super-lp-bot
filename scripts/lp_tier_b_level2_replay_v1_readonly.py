@@ -70,10 +70,10 @@ V3_SWAP_TOPIC = "0xd78ad95fa46c994b6551d0da85fc275fe613ce376ca8b5ef1d2d9d89c5f0f
 
 def _rpc_url() -> str:
     return (
-        os.environ.get("RPC_URL")
-        or os.environ.get("ETH_RPC_URL")
-        or os.environ.get("LPBOT_RPC_URL")
-        or "http://localhost:8545"
+        os.environ.get("D4_BASE_RPC_URL")
+        or os.environ.get("BASE_RPC_URL")
+        or os.environ.get("RPC_URL")
+        or "https://mainnet.base.org"
     )
 
 
@@ -112,56 +112,19 @@ def _to_int(v: Any) -> int:
 
 
 def fetch_pool_swaps(pool: str, from_block: int, to_block: int, dec0: int, dec1: int) -> List[Dict[str, Any]]:
+    """Fetch + decode V3 swaps for `pool` over [from_block, to_block].
+
+    Delegates to the VERIFIED, block-windowed implementation in the Tier-C
+    pipeline (correct V3 Swap topic 0xc42079f9..., signed-amount decoder, 2000-
+    block windowing, env D4_BASE_RPC_URL/BASE_RPC_URL with public fallback).
+    Returns dicts {block, price, liquidity, tick, amount0, amount1} sorted by block —
+    exactly the shape replay() consumes.
     """
-    Fetch swaps for pool in [from_block, to_block], return dicts:
-      {'block', 'price', 'liquidity', 'tick', 'amount0', 'amount1'}
-    sorted by block.
-    """
-    pool = pool.lower()
-    if not pool.startswith("0x"):
-        raise ValueError("pool must be hex address")
-    logs = _rpc_with_retry(
-        "eth_getLogs",
-        [
-            {
-                "address": pool,
-                "fromBlock": hex(int(from_block)),
-                "toBlock": hex(int(to_block)),
-                "topics": [V3_SWAP_TOPIC],
-            }
-        ],
-    ) or []
+    from scripts.lp_tier_c_exit_feasibility_v1_readonly import (
+        fetch_pool_swaps as _tc_fetch_pool_swaps,
+    )
 
-    out: List[Dict[str, Any]] = []
-    for log in logs:
-        decoded = decode_v3_swap_data(log)
-        sqrt_price_x96 = decoded["sqrt_price_x96"]
-        if sqrt_price_x96 is None or int(sqrt_price_x96) <= 0:
-            continue
-
-        price = price_from_sqrt_x96(int(sqrt_price_x96), int(dec0), int(dec1))
-        block = _to_int(log.get("blockNumber")) if log.get("blockNumber") is not None else 0
-        tx_idx = _to_int(log.get("transactionIndex", "0x0")) if log.get("transactionIndex") is not None else 0
-        log_idx = _to_int(log.get("logIndex", "0x0")) if log.get("logIndex") is not None else 0
-
-        out.append(
-            {
-                "block": block,
-                "tx_index": tx_idx,
-                "log_index": log_idx,
-                "price": float(price),
-                "liquidity": int(decoded["liquidity"]),
-                "tick": int(decoded["tick"]),
-                "amount0": int(decoded["amount0"]),
-                "amount1": int(decoded["amount1"]),
-            }
-        )
-
-    out.sort(key=lambda x: (x["block"], x["tx_index"], x["log_index"]))
-    for item in out:
-        item.pop("tx_index", None)
-        item.pop("log_index", None)
-    return out
+    return _tc_fetch_pool_swaps(pool, from_block, to_block, dec0, dec1)
 
 
 def _no_data_result(mode: str) -> Dict[str, Any]:
