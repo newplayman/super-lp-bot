@@ -1,0 +1,79 @@
+{
+  "allocations": [
+    {
+      "tier": "A",
+      "symbol": "WETH-CBBTC",
+      "project": "aerodrome-slipstream",
+      "pool": "0x70acdf2ad0bf2402c957154f944c19ef4e1cbae1",
+      "dec0": 18,
+      "dec1": 8,
+      "fee_tier": 0.0025,
+      "range_pct": 10.320063990216516,
+      "composite_score": 100.0,
+      "yield_cover": 11.448286996075502,
+      "fee_apr_onchain": 318.9336167969245,
+      "reward_apr": 12.22146,
+      "usd": 3207.66,
+      "weight_in_tier": 0.4582,
+      "below_min": false
+    },
+    {
+      "tier": "A",
+      "symbol": "WETH-USDC",
+      "project": "aerodrome-slipstream",
+      "pool": "0xb2cc224c1c9fee385f8ad6a55b4d94e92359dc59",
+      "dec0": 18,
+      "dec1": 6,
+      "fee_tier": 0.000842,
+      "range_pct": 16.2724603407399,
+      "composite_score": 100.0,
+      "yield_cover": 33.92217797457327,
+      "fee_apr_onchain": 215.06681229418265,
+      "reward_apr": 67.68342,
+      "usd": 2912.46,
+      "weight_in_tier": 0.4161,
+      "below_min": false
+    },
+    {
+      "tier": "A",
+      "symbol": "WETH-USDC",
+      "project": "uniswap-v3",
+      "pool": "0x0b1c2dcbbfa744ebd3fc17ff1a96a1e1eb4b2d69",
+      "dec0": 18,
+      "dec1": 6,
+      "fee_tier": 0.01,
+      "range_pct": 11.574563290927493,
+      "composite_score": 81.9039106031779,
+      "yield_cover": 26.428520428913775,
+      "fee_apr_onchain": 86.16418328931151,
+      "reward_apr": 0.0,
+      "usd": 879.89,
+      "weight_in_tier": 0.1257,
+      "below_min": true
+    },
+    {
+      "tier": "B",
+      "symbol": "USDC-SAPIEN",
+      "project": "aerodrome-slipstream",
+      "pool": "0x80cc08712aa61ce9dc7604f9ce7560a25094b862",
+      "dec0": 6,
+      "dec1": 18,
+      "fee_tier": 0.00452,
+      "range_pct": 17.754759189983975,
+      "composite_score": 100.0,
+      "yield_cover": 9.394020592465994,
+      "fee_apr_onchain": 94.42749086757075,
+      "reward_apr": 153.71908,
+      "usd": 3000.0,
+      "weight_in_tier": 1.0,
+      "below_min": false
+    }
+  ],
+  "by_tier_usd": {
+    "A": 7000.0,
+    "B": 3000.0
+  },
+  "deployed": 10000.01,
+  "idle": -0.01,
+  "n_pools": 4
+}
