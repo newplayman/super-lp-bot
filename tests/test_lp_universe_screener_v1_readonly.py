@@ -4,11 +4,30 @@ from scripts.lp_universe_screener_v1_readonly import (
     headline_apr,
     total_apr_now,
     classify_tier_by_apr,
+    classify_tier_by_quality,
+    split_symbol_legs,
     is_suspect,
     passes_gates,
     score_pool,
     assess,
 )
+
+
+def test_classify_tier_by_quality():
+    assert classify_tier_by_quality("WETH-USDC") == "A"     # both major
+    assert classify_tier_by_quality("CBBTC-WETH") == "A"
+    assert classify_tier_by_quality("USDC-USDT") == "A"     # major stables
+    assert classify_tier_by_quality("BNKR-WETH") == "B"     # one major leg
+    assert classify_tier_by_quality("TIG-USDC") == "B"
+    assert classify_tier_by_quality("TIG-SAPIEN") == "C"    # neither major
+    assert classify_tier_by_quality("WEIRD") == "C"         # unparseable
+    assert classify_tier_by_quality(None) == "C"
+
+
+def test_split_symbol_legs():
+    assert split_symbol_legs("WETH-USDC") == ["WETH", "USDC"]
+    assert split_symbol_legs("weth-usdc") == ["WETH", "USDC"]
+    assert split_symbol_legs(None) == []
 
 
 def test_parse_pool_meta():

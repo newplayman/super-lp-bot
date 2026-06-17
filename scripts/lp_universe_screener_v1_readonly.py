@@ -39,6 +39,44 @@ DEFAULT_PROJECTS = ("aerodrome-slipstream", "uniswap-v3")
 # Operator tier bands by headline APR (%).
 TIER_BANDS = (("sub", 0.0, 30.0), ("A", 30.0, 80.0), ("B", 80.0, 800.0), ("C", 800.0, float("inf")))
 
+# Asset-quality tiering (the operator's Tier A = STABLE BLUE CHIPS, not just "high APR").
+# Tier is really about asset SAFETY; APR is a symptom. So classify by which legs are
+# major (blue-chip / major-stable / major-LST-or-BTC) tokens, by symbol ticker.
+MAJOR_STABLES = {
+    "USDC", "USDBC", "USDT", "DAI", "EURC", "GHO", "USDS", "USR", "MSUSD",
+    "SUSDC", "SUSDS", "USD+", "DOLA", "CRVUSD",
+}
+MAJOR_BLUE = {
+    "WETH", "ETH", "CBBTC", "TBTC", "LBTC", "WBTC", "CBETH", "WSTETH", "WEETH",
+    "RETH", "EZETH", "SUPEROETHB", "MSETH", "WRSETH",
+}
+MAJOR_TOKENS = MAJOR_STABLES | MAJOR_BLUE
+
+
+def split_symbol_legs(symbol):
+    """'WETH-USDC' -> ['WETH','USDC']; tolerant of None / odd formats."""
+    if not symbol or not isinstance(symbol, str):
+        return []
+    return [s.strip().upper() for s in symbol.split("-") if s.strip()]
+
+
+def classify_tier_by_quality(symbol):
+    """Asset-safety tier from the pool's token legs (NOT from APR).
+
+    both legs major -> 'A' (blue-chip / stable pair)
+    exactly one leg major -> 'B' (one risky leg)
+    neither / unparseable -> 'C' (exotic, treat as degen)
+    """
+    legs = split_symbol_legs(symbol)
+    if len(legs) != 2:
+        return "C"
+    n_major = sum(1 for leg in legs if leg in MAJOR_TOKENS)
+    if n_major == 2:
+        return "A"
+    if n_major == 1:
+        return "B"
+    return "C"
+
 # Default gates (all CLI-tunable).
 DEFAULTS = dict(
     min_tvl=500_000.0,        # capacity + not-easily-rugged
@@ -152,7 +190,8 @@ def assess(p, gates):
         "apyMean30d": p.get("apyMean30d"), "headline_apr": round(h, 2),
         "volumeUsd1d": p.get("volumeUsd1d"), "sigma": p.get("sigma"),
         "ilRisk": p.get("ilRisk"), "stablecoin": p.get("stablecoin"),
-        "tier": tier, "score": round(score_pool(p), 2),
+        "tier": tier, "tier_quality": classify_tier_by_quality(p.get("symbol")),
+        "score": round(score_pool(p), 2),
         "gate_ok": ok, "gate_reason": reason,
         "suspect": suspect,
     }
@@ -216,9 +255,9 @@ def _fmt(results, gates, n_total, n_base):
     for tier in ("A", "B", "C"):
         rows = [r for r in results if r["tier"] == tier and r["gate_ok"]]
         rows.sort(key=lambda r: -r["score"])
-        out.append(f"## Tier {tier} — {len(rows)} candidates")
-        out.append("| symbol | project | fee | TVL($M) | apyBase | apyReward | head_APR | vol1d($M) | score | flags |")
-        out.append("|---|---|---|---|---|---|---|---|---|---|")
+        out.append(f"## Tier {tier} (by APR) — {len(rows)} candidates")
+        out.append("| symbol | qual | project | fee | TVL($M) | apyBase | apyReward | head_APR | vol1d($M) | score | flags |")
+        out.append("|---|---|---|---|---|---|---|---|---|---|---|")
         for r in rows[:12]:
             fee = f"{r['fee_tier']*100:.2f}%" if r['fee_tier'] else "?"
             tvl = (r['tvlUsd'] or 0)/1e6
@@ -226,7 +265,8 @@ def _fmt(results, gates, n_total, n_base):
             ab = "n/a" if r['apyBase'] is None else f"{r['apyBase']:.1f}"
             ar = "n/a" if r['apyReward'] is None else f"{r['apyReward']:.1f}"
             flags = "⚠" + ";".join(r["suspect"]) if r["suspect"] else ""
-            out.append(f"| {r['symbol']} | {r['project'][:10]} | {fee} | {tvl:.1f} | {ab} | {ar} "
+            qmark = "" if r.get("tier_quality") == tier else f"!{r.get('tier_quality')}"
+            out.append(f"| {r['symbol']} | {r.get('tier_quality')}{qmark} | {r['project'][:10]} | {fee} | {tvl:.1f} | {ab} | {ar} "
                        f"| {r['headline_apr']:.1f} | {vol:.1f} | {r['score']:.0f} | {flags} |")
         out.append("")
     return "\n".join(out)
