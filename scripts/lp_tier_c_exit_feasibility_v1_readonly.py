@@ -301,6 +301,9 @@ def fetch_pool_swaps(pool, from_block, to_block, dec0, dec1):
                 "amount1": ev["amount1"],
             })
         b = to_b + 1
+        # Gentle pacing between windows to avoid provider rate-limit (HTTP 403)
+        # on long multi-day scans. Override with FETCH_PACE_SECS.
+        time.sleep(float(os.environ.get("FETCH_PACE_SECS", "0.12")))
     swaps.sort(key=lambda s: s["block"])
     return swaps
 
