@@ -49,8 +49,19 @@ from scripts.lp_v3_fee_share import (  # noqa: E402
 # Pure engine (unit-tested, NO network)
 # ---------------------------------------------------------------------------
 
-def init_state(*, capital, anchor, range_pct, fee_tier, dec0, dec1, last_block):
-    """Build a fresh passive-position state dict."""
+def init_state(*, capital, anchor, range_pct, fee_tier, dec0, dec1, last_block,
+               exit_on_breach=False, exit_cost_bps=None):
+    """Build a fresh passive-position state dict.
+
+    exit_on_breach: Tier-B policy — on the first band breach, auto-exit the LP
+      position and convert back to base currency (holding the breached token is
+      risky). Tier-A leaves this False (wide-range passive: breach = log only).
+    exit_cost_bps: conversion cost charged on exit (swap fee + slippage). If
+      None, a placeholder = round(fee_tier*1e4)+10bps is used until the
+      depth/slippage model (lp_swap_cost_model) is wired in to size it properly.
+    """
+    if exit_cost_bps is None:
+        exit_cost_bps = round(float(fee_tier) * 1e4) + 10.0
     return {
         "capital": float(capital),
         "anchor": float(anchor),
@@ -66,7 +77,34 @@ def init_state(*, capital, anchor, range_pct, fee_tier, dec0, dec1, last_block):
         "last_block": int(last_block),
         "breaches": [],
         "in_range_now": True,
+        "exit_on_breach": bool(exit_on_breach),
+        "exit_cost_bps": float(exit_cost_bps),
+        "exited": None,
     }
+
+
+def _do_exit(state, *, exit_price, block):
+    """Realize a position at exit_price and convert to base currency (paper).
+
+    Frozen once set: LP value at exit + accrued fees, minus a conversion cost
+    (exit_cost_bps on the converted value). Reward is held separately and added
+    at mark time. After this, the position holds base cash and accrues nothing.
+    """
+    cap = state["capital"]
+    lp_value = cap * lp_position_value_usd(1.0, state["anchor"], state["range_pct"], exit_price)
+    il = lp_impermanent_loss_usd(cap, state["anchor"], state["range_pct"], exit_price)
+    gross = lp_value + state["fees_quote"]
+    cost = gross * state["exit_cost_bps"] / 1e4
+    state["exited"] = {
+        "block": int(block),
+        "price": float(exit_price),
+        "lp_value_quote": lp_value,
+        "il_quote": il,
+        "fees_quote": state["fees_quote"],
+        "exit_cost_quote": cost,
+        "realized_quote": gross - cost,  # base cash recovered
+    }
+    return state
 
 
 def update_position(state, swaps, *, now_block):
@@ -75,7 +113,14 @@ def update_position(state, swaps, *, now_block):
     In-range swaps accrue fees (scaled by capital). Out-of-range swaps accrue
     NO fee and record a breach once per crossing (in->out transition). The
     anchor and capital never change — this is a passive, no-rebalance position.
+
+    If exit_on_breach is set (Tier-B), the FIRST out-of-range swap closes the
+    position (convert to base) and no further swaps are processed.
     """
+    if state.get("exited"):  # closed: holds base cash, accrues nothing
+        state["last_block"] = int(now_block)
+        return state
+
     anchor = state["anchor"]
     r = state["range_pct"]
     lo = anchor * (1 - r / 100)
@@ -98,6 +143,11 @@ def update_position(state, swaps, *, now_block):
             if in_range:  # only log the crossing, not every out-of-range tick
                 state["breaches"].append({"block": s["block"], "price": price})
             in_range = False
+            if state.get("exit_on_breach"):
+                _do_exit(state, exit_price=price, block=s["block"])
+                state["last_block"] = int(now_block)
+                state["in_range_now"] = False
+                return state  # stop: position closed at the breach
 
     state["last_block"] = int(now_block)
     state["in_range_now"] = in_range
@@ -105,8 +155,26 @@ def update_position(state, swaps, *, now_block):
 
 
 def mark_position(state, current_price):
-    """Mark the position to market at current_price (quote-token units)."""
+    """Mark the position to market at current_price (quote-token units).
+
+    If the position has exited, current_price is ignored: it holds base cash, so
+    the marks are the frozen realized values (plus reward accrued to exit).
+    """
     cap = state["capital"]
+    if state.get("exited"):
+        ex = state["exited"]
+        realized = ex["realized_quote"]
+        net = realized + state["reward_quote"] - cap
+        return {
+            "lp_value_quote": realized,  # now base cash, not an LP position
+            "il_quote": ex["il_quote"],  # IL realized at exit (frozen)
+            "fees_quote": ex["fees_quote"],
+            "net_quote": net,
+            "net_pct": (net / cap * 100) if cap else 0.0,
+            "exited": True,
+            "exit_price": ex["price"],
+            "exit_cost_quote": ex["exit_cost_quote"],
+        }
     lp_value = cap * lp_position_value_usd(1.0, state["anchor"], state["range_pct"], current_price)
     il = lp_impermanent_loss_usd(cap, state["anchor"], state["range_pct"], current_price)
     fees = state["fees_quote"]
@@ -118,6 +186,7 @@ def mark_position(state, current_price):
         "fees_quote": fees,
         "net_quote": net,
         "net_pct": net_pct,
+        "exited": False,
     }
 
 
@@ -169,9 +238,13 @@ def _init_book(allocs, *, entry_window_blocks, latest):
             print(f"[warn] {a['symbol']} {pool}: no swaps in entry window; skipping")
             continue
         anchor = swaps[-1]["price"]
+        tier = str(a.get("tier", "")).upper()
+        # Tier-B auto-exits on breach (convert to base); Tier-A is wide-passive.
+        exit_on_breach = a.get("exit_on_breach", tier == "B")
         st = init_state(
             capital=a["usd"], anchor=anchor, range_pct=a["range_pct"],
             fee_tier=a["fee_tier"], dec0=dec0, dec1=dec1, last_block=latest,
+            exit_on_breach=exit_on_breach, exit_cost_bps=a.get("exit_cost_bps"),
         )
         book.append({
             "symbol": a["symbol"], "project": a.get("project", ""),
@@ -180,7 +253,8 @@ def _init_book(allocs, *, entry_window_blocks, latest):
             "last_price": anchor, "state": st,
         })
         print(f"[init] {a['symbol']:14s} {a['tier']} cap={a['usd']:.0f} "
-              f"anchor={anchor:.6g} range=±{a['range_pct']:.2f}% pool={pool}")
+              f"anchor={anchor:.6g} range=±{a['range_pct']:.2f}% "
+              f"exit_on_breach={exit_on_breach} pool={pool}")
         time.sleep(float(os.environ.get("CALL_PACE_SECS", "0.0")))
     if not book:
         raise SystemExit("no pools initialized (no swaps found)")
@@ -195,15 +269,25 @@ def _tick(book, *, last_ts):
     portfolio_net = 0.0
     for p in book:
         st = p["state"]
-        swaps = fetch_pool_swaps(p["pool"], st["last_block"] + 1, latest, st["dec0"], st["dec1"])
-        n_breach_before = len(st["breaches"])
-        update_position(st, swaps, now_block=latest)
-        if swaps:
-            p["last_price"] = swaps[-1]["price"]
-        reward_inc = accrue_reward(st["capital"], p["reward_apr"], elapsed)
-        st["reward_quote"] += reward_inc
-        mk = mark_position(st, p["last_price"])
-        pool_net = mk["net_quote"] + st["reward_quote"]
+        if st.get("exited"):
+            # closed position holds base cash: no RPC, no further accrual.
+            mk = mark_position(st, p["last_price"])
+            pool_net = mk["net_quote"]  # exited mark already includes reward
+            n_swaps, new_breach = 0, False
+        else:
+            swaps = fetch_pool_swaps(p["pool"], st["last_block"] + 1, latest, st["dec0"], st["dec1"])
+            n_breach_before = len(st["breaches"])
+            # book reward for elapsed BEFORE update, so a same-tick exit keeps it
+            st["reward_quote"] += accrue_reward(st["capital"], p["reward_apr"], elapsed)
+            update_position(st, swaps, now_block=latest)
+            if swaps:
+                p["last_price"] = swaps[-1]["price"]
+            mk = mark_position(st, p["last_price"])
+            # active mark excludes reward; exited mark includes it
+            pool_net = mk["net_quote"] if st.get("exited") else mk["net_quote"] + st["reward_quote"]
+            n_swaps = len(swaps)
+            new_breach = len(st["breaches"]) > n_breach_before
+            time.sleep(float(os.environ.get("CALL_PACE_SECS", "0.0")))
         portfolio_net += pool_net
         by_pool.append({
             "symbol": p["symbol"], "tier": p["tier"], "pool": p["pool"],
@@ -213,12 +297,12 @@ def _tick(book, *, last_ts):
             "il": round(mk["il_quote"], 4),
             "reward": round(st["reward_quote"], 4),
             "lp_value": round(mk["lp_value_quote"], 2),
-            "n_swaps": len(swaps),
+            "n_swaps": n_swaps,
             "breaches": len(st["breaches"]),
-            "new_breach": len(st["breaches"]) > n_breach_before,
+            "new_breach": new_breach,
             "in_range": st["in_range_now"],
+            "exited": bool(st.get("exited")),
         })
-        time.sleep(float(os.environ.get("CALL_PACE_SECS", "0.0")))
     return {"ts_utc": now.isoformat(), "block": latest,
             "portfolio_net_usd": round(portfolio_net, 2), "by_pool": by_pool}, now
 
@@ -284,7 +368,7 @@ def run(allocation_path, *, poll_secs=300, max_ticks=None, out=None,
             print(f"[tick {tick}] blk={rec['block']} net=${rec['portfolio_net_usd']:.2f} "
                   + " ".join(f"{p['symbol']}:{p['net_pct']:+.2f}%"
                              + ("!" if p["new_breach"] else "")
-                             + ("" if p["in_range"] else "·OOR")
+                             + ("·EXIT" if p.get("exited") else ("" if p["in_range"] else "·OOR"))
                              for p in rec["by_pool"]))
             tick += 1
             if max_ticks is not None and tick >= max_ticks:
@@ -305,15 +389,18 @@ def _flush_state(run_dir, book, tick):
     for p in book:
         st = p["state"]
         mk = mark_position(st, p["last_price"])
+        net_quote = mk["net_quote"] if st.get("exited") else mk["net_quote"] + st["reward_quote"]
         snap["pools"].append({
             "symbol": p["symbol"], "tier": p["tier"], "pool": p["pool"],
             "capital": st["capital"], "anchor": st["anchor"],
             "range_pct": st["range_pct"], "last_price": p["last_price"],
             "fees_quote": st["fees_quote"], "reward_quote": st["reward_quote"],
             "il_quote": mk["il_quote"], "lp_value_quote": mk["lp_value_quote"],
-            "net_quote": mk["net_quote"] + st["reward_quote"],
+            "net_quote": net_quote,
             "net_pct": mk["net_pct"], "n_breaches": len(st["breaches"]),
             "in_range": st["in_range_now"], "breaches": st["breaches"],
+            "exit_on_breach": st.get("exit_on_breach", False),
+            "exited": st.get("exited"),
         })
     with open(os.path.join(run_dir, "final_state.json"), "w") as f:
         json.dump(snap, f, indent=2)
@@ -365,8 +452,23 @@ def run_self_test():
     assert abs(half * 2 - full) < 1e-9, "reward linear in elapsed"
     assert abs(accrue_reward(2000.0, 50.0, 365 * 86400) - 1000.0) < 1e-6, "linear in capital"
 
+    # Tier-B auto-exit on breach: position closes, converts to base, stops accruing
+    stb = init_state(capital=1000.0, anchor=1.0, range_pct=r, fee_tier=fee_tier,
+                     dec0=dec0, dec1=dec1, last_block=0, exit_on_breach=True)
+    update_position(stb, [{"block": 1, "price": 1.0, "liquidity": L, "amount1": amt1}], now_block=1)
+    assert stb["exited"] is None, "in-range: not exited"
+    update_position(stb, [{"block": 2, "price": 1.5, "liquidity": L, "amount1": amt1}], now_block=2)
+    assert stb["exited"] is not None, "breach must trigger exit for Tier-B"
+    assert stb["exited"]["exit_cost_quote"] > 0, "exit pays a conversion cost"
+    fees_at_exit = stb["fees_quote"]
+    # further swaps after exit accrue nothing (holds base cash)
+    update_position(stb, [{"block": 3, "price": 1.0, "liquidity": L, "amount1": amt1}], now_block=3)
+    assert stb["fees_quote"] == fees_at_exit, "no accrual after exit"
+    mkb = mark_position(stb, 9.99)  # current price ignored once exited
+    assert mkb["exited"] is True and mkb["lp_value_quote"] == stb["exited"]["realized_quote"]
+
     print("self-test OK: fees accrue in-range, breaches logged out-of-range, "
-          "anchor passive, IL sign correct, reward linear.")
+          "anchor passive, IL sign correct, reward linear, Tier-B auto-exit works.")
 
 
 def main():

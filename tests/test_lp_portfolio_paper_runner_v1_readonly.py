@@ -99,7 +99,75 @@ def test_init_state_shape():
     st = _state()
     for k in ("capital", "anchor", "range_pct", "fee_tier", "dec0", "dec1",
               "l_pos_raw", "fees_quote", "reward_quote", "last_block",
-              "breaches", "in_range_now"):
+              "breaches", "in_range_now", "exit_on_breach", "exit_cost_bps", "exited"):
         assert k in st
     assert st["l_pos_raw"] > 0
     assert st["breaches"] == [] and st["in_range_now"] is True
+    assert st["exit_on_breach"] is False and st["exited"] is None
+
+
+# --- Tier-B auto-exit on breach -------------------------------------------
+
+def _state_b(cap=1000.0, anchor=1.0, exit_cost_bps=None):
+    return init_state(capital=cap, anchor=anchor, range_pct=R, fee_tier=FEE,
+                      dec0=DEC, dec1=DEC, last_block=0,
+                      exit_on_breach=True, exit_cost_bps=exit_cost_bps)
+
+
+def test_default_exit_cost_bps_is_fee_plus_slippage():
+    st = _state_b()
+    assert st["exit_cost_bps"] == round(FEE * 1e4) + 10.0   # 0.003 -> 30 + 10 = 40
+
+
+def test_breach_triggers_exit_and_stops_accrual():
+    st = _state_b()
+    update_position(st, [{"block": 1, "price": 1.0, "liquidity": L, "amount1": AMT1}], now_block=1)
+    assert st["exited"] is None                       # still in range
+    fees_in = st["fees_quote"]
+    assert fees_in > 0
+    update_position(st, [{"block": 2, "price": 1.5, "liquidity": L, "amount1": AMT1}], now_block=2)
+    assert st["exited"] is not None                   # breach closed it
+    ex = st["exited"]
+    assert ex["price"] == 1.5 and ex["block"] == 2
+    assert ex["exit_cost_quote"] > 0                  # paid conversion cost
+    assert ex["realized_quote"] == ex["lp_value_quote"] + ex["fees_quote"] - ex["exit_cost_quote"]
+    # any further swaps accrue nothing (holds base cash)
+    update_position(st, [{"block": 3, "price": 1.0, "liquidity": L, "amount1": AMT1}], now_block=3)
+    assert st["fees_quote"] == fees_in
+
+
+def test_exit_stops_at_first_out_swap_not_processing_rest():
+    st = _state_b()
+    fee0 = st["fees_quote"]
+    swaps = [
+        {"block": 1, "price": 1.5, "liquidity": L, "amount1": AMT1},   # breach -> exit here
+        {"block": 2, "price": 1.0, "liquidity": L, "amount1": AMT1},   # must NOT be processed
+    ]
+    update_position(st, swaps, now_block=2)
+    assert st["exited"]["price"] == 1.5
+    assert st["fees_quote"] == fee0                  # the later in-range swap was skipped
+
+
+def test_mark_position_exited_ignores_current_price():
+    st = _state_b()
+    update_position(st, [{"block": 1, "price": 1.5, "liquidity": L, "amount1": AMT1}], now_block=1)
+    mk_a = mark_position(st, 0.5)
+    mk_b = mark_position(st, 5.0)
+    assert mk_a["exited"] is True
+    assert mk_a["net_quote"] == mk_b["net_quote"]    # frozen; price ignored
+    assert mk_a["lp_value_quote"] == st["exited"]["realized_quote"]
+
+
+def test_higher_exit_cost_lowers_realized():
+    cheap = _state_b(exit_cost_bps=10.0)
+    pricey = _state_b(exit_cost_bps=200.0)
+    for st in (cheap, pricey):
+        update_position(st, [{"block": 1, "price": 1.5, "liquidity": L, "amount1": AMT1}], now_block=1)
+    assert cheap["exited"]["realized_quote"] > pricey["exited"]["realized_quote"]
+
+
+def test_tier_a_default_does_not_exit():
+    st = _state()  # exit_on_breach defaults False
+    update_position(st, [{"block": 1, "price": 1.5, "liquidity": L, "amount1": AMT1}], now_block=1)
+    assert st["exited"] is None                       # Tier-A holds passive
+    assert len(st["breaches"]) == 1                   # but still logs the breach
