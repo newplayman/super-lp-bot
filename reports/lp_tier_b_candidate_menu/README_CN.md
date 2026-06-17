@@ -27,7 +27,25 @@
 
 两者都过三闸：质量-B（一条主流腿）+ 链上 yield_cover≥1 + 多窗口稳定。
 
-## 给指挥官的决定点（未自动执行）
-- VIRTUAL-USDC = VIRTUAL 对 USDC 的方向性敞口。是否纳入 B sleeve、分配多少、是否对 B
-  设击穿退出，属 gap #4/#5，需你批准后再 sizing。
-- WETH-DEGEN 提醒：**链上单窗口 yc 高 ≠ 可入选**；多窗口闸把它和 BNKR-WETH/TIG-USDC 一样剔除。
+## 第二批验证（batch2/，2026-06-17 指挥官回来后扩到 3 仓）
+再验 4 个 fee-driven quality-B：
+| 池 | yc(链上) | 6窗稳定 | 结论 |
+|---|---|---|---|
+| **WETH-BRETT** (aero) | 28.5 | **YES** 5/6, mean fc 5.90 | ✅ **入选**（B 第 3 仓）|
+| DEFI.SSI-USDC (uni) | 6.45 | no 2/6, cv 1.99 | ❌ 均值高但极不稳定 |
+| CBBTC-ZEN (aero) | 0.95 | — | ❌ yc<1 |
+| WETH-ZEN (aero) | 0.59 | — | ❌ yc<1 |
+
+## 最终 vetted Tier-B 菜单（3 仓已满，每仓 1000U）
+按 yc 排序:
+1. **WETH-BRETT** (aero, 0x4e829f8a…, ±13.5%, yc 28.5, 5/6 稳)
+2. **USDC-SAPIEN** (aero, 0x80cc0871…, ±17.8%, yc 9.4, 6/6 稳)
+3. **VIRTUAL-USDC** (uni, 0x529d2863…, ±18.1%, yc 8.2, 5/6 稳)
+
+全部三闸通过 + 指挥官政策:**B 档击穿自动退出换回本币**(exit_on_breach=True)。
+组合启动分配见 reports/lp_portfolio_allocator/run_launch/allocation.json
+(A 7000U/3 池被动 + B 3000U/3 池自动退出, 共 10000U)。
+
+## 复盘:多窗口闸的价值
+4 个"链上单窗口 yc 很高"的池被多窗口闸剔除(WETH-DEGEN 14×、DEFI.SSI-USDC 69× 均值
+但只 2/6 稳)。**单窗口 yc 高 ≠ 可入选**,和 BNKR-WETH/TIG-USDC 一个教训。
