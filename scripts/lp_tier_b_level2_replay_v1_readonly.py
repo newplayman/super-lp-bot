@@ -156,6 +156,8 @@ def replay(
     mode: str,
     gas_pct: float = 0.0,
     swap_cost_bps: float = 0.0,
+    hysteresis_pct: float = 0.0,
+    cooldown_blocks: int = 0,
 ) -> Dict[str, Any]:
     """
     swaps: list of {price, liquidity(int active L), amount1(int raw), block}, time-ordered.
@@ -163,6 +165,11 @@ def replay(
     mode: 'passive' or 'active'.
     gas_pct: rebalance gas as fraction of position value per rebalance.
     swap_cost_bps: rebalance inventory cost in bps per rebalance.
+    hysteresis_pct: deadband BEYOND the band edge (in %) a breach must exceed to
+        justify a rebalance. 0.0 => rebalance on any exit (aggressive).
+    cooldown_blocks: minimum blocks between two rebalances. 0 => no cooldown.
+        Together these model the operator's Tier-A/B policy: ignore brief/shallow
+        pokes outside the range, only re-center on a sustained, sizeable breach.
     Returns dict:
       {mode, entry_price, end_price, n_swaps, fees_quote, rebalances,
        rebal_cost_quote, lp_value_end, il_quote, net_quote, net_pct,
@@ -230,9 +237,11 @@ def replay(
     capital = 1.0
     l_pos_raw = position_liquidity_raw(capital, anchor, range_pct, dec0, dec1)
     l_base_per_unit = position_liquidity_raw(1.0, anchor, range_pct, dec0, dec1)
+    last_rebal_block = int(sorted_swaps[0].get("block", 0) or 0)
 
     for s in sorted_swaps:
         p = float(s["price"])
+        blk = int(s.get("block", 0) or 0)
         in_range = lower <= p <= upper
         if in_range:
             in_range_count += 1
@@ -243,27 +252,40 @@ def replay(
                 fee_tier,
                 dec1,
             )
+            continue
+
+        # Out of range. Gate the rebalance on hysteresis (breach depth) + cooldown.
+        if p > upper:
+            breach_pct = (p - upper) / upper * 100.0
         else:
-            cur_val = capital * lp_position_value_usd(1.0, anchor, range_pct, p)
-            cost = cur_val * (gas_pct + swap_cost_bps / 10000.0)
-            rebal_cost_quote += cost
-            capital = cur_val - cost
-            rebalances += 1
+            breach_pct = (lower - p) / lower * 100.0
+        deep_enough = breach_pct >= hysteresis_pct
+        cooled_down = (blk - last_rebal_block) >= cooldown_blocks
+        if not (deep_enough and cooled_down):
+            # Hold out-of-range: earn no fee, do NOT churn. (transient/shallow poke)
+            continue
 
-            anchor = p
-            lower = anchor * (1.0 - range_pct / 100.0)
-            upper = anchor * (1.0 + range_pct / 100.0)
-            l_pos_raw = position_liquidity_raw(capital, anchor, range_pct, dec0, dec1)
-            l_base_per_unit = position_liquidity_raw(1.0, anchor, range_pct, dec0, dec1)
+        cur_val = capital * lp_position_value_usd(1.0, anchor, range_pct, p)
+        cost = cur_val * (gas_pct + swap_cost_bps / 10000.0)
+        rebal_cost_quote += cost
+        capital = cur_val - cost
+        rebalances += 1
+        last_rebal_block = blk
 
-            in_range_count += 1
-            fees_quote += capital * fee_for_swap_usd(
-                l_base_per_unit,
-                float(s.get("liquidity", 0) or 0),
-                int(s.get("amount1", 0)),
-                fee_tier,
-                dec1,
-            )
+        anchor = p
+        lower = anchor * (1.0 - range_pct / 100.0)
+        upper = anchor * (1.0 + range_pct / 100.0)
+        l_pos_raw = position_liquidity_raw(capital, anchor, range_pct, dec0, dec1)
+        l_base_per_unit = position_liquidity_raw(1.0, anchor, range_pct, dec0, dec1)
+
+        in_range_count += 1
+        fees_quote += capital * fee_for_swap_usd(
+            l_base_per_unit,
+            float(s.get("liquidity", 0) or 0),
+            int(s.get("amount1", 0)),
+            fee_tier,
+            dec1,
+        )
 
     capital_value_end = capital * lp_position_value_usd(1.0, anchor, range_pct, end_price)
     il_quote = lp_impermanent_loss_usd(1.0, entry_price, range_pct, end_price)
@@ -301,6 +323,10 @@ def _build_parser() -> argparse.Namespace:
     p.add_argument("--config", type=str, help="Path to JSON config file")
     p.add_argument("--gas-pct", type=float, default=0.001)
     p.add_argument("--swap-cost-bps", type=float, default=5.0)
+    p.add_argument("--hysteresis-pct", type=float, default=2.0,
+                   help="deadband beyond band edge (%) before a rebalance is allowed (hyst mode)")
+    p.add_argument("--cooldown-blocks", type=int, default=10800,
+                   help="min blocks between rebalances in hyst mode (~6h on Base @2s)")
     p.add_argument("--self-test", action="store_true", help="Run synthetic self-test (no RPC)")
     p.add_argument("--out", type=str, default=default_out)
     return p.parse_args()
@@ -345,6 +371,24 @@ def _run_self_test() -> None:
     out_nodata = replay([], range_pct=10, fee_tier=0.003, dec0=18, dec1=18, mode="passive")
     print(json.dumps(out_nodata, indent=2, sort_keys=True))
 
+    print("[self-test] Hysteresis+cooldown suppresses churn vs aggressive")
+    # price pokes just past +10% band repeatedly then returns; shallow breaches.
+    choppy = [
+        {"block": 1, "price": 1.00, "liquidity": 5000000, "amount1": 10**18},
+        {"block": 2, "price": 1.11, "liquidity": 5000000, "amount1": 10**18},  # +11% shallow poke
+        {"block": 3, "price": 1.00, "liquidity": 5000000, "amount1": 10**18},
+        {"block": 4, "price": 1.11, "liquidity": 5000000, "amount1": 10**18},  # poke again
+        {"block": 5, "price": 1.00, "liquidity": 5000000, "amount1": 10**18},
+    ]
+    aggr = replay(choppy, range_pct=10, fee_tier=0.003, dec0=18, dec1=18, mode="active",
+                  gas_pct=0.001, swap_cost_bps=5, hysteresis_pct=0.0, cooldown_blocks=0)
+    hyst = replay(choppy, range_pct=10, fee_tier=0.003, dec0=18, dec1=18, mode="active",
+                  gas_pct=0.001, swap_cost_bps=5, hysteresis_pct=5.0, cooldown_blocks=0)
+    print(f"aggressive rebalances={aggr['rebalances']} net={aggr['net_pct']:.3f}% | "
+          f"hyst(5% deadband) rebalances={hyst['rebalances']} net={hyst['net_pct']:.3f}%")
+    assert hyst["rebalances"] < aggr["rebalances"], (hyst["rebalances"], aggr["rebalances"])
+    print("OK: hysteresis suppressed shallow-poke churn")
+
 
 def main() -> None:
     args = _build_parser()
@@ -373,32 +417,22 @@ def main() -> None:
         to_block = entry_block + blocks_forward
         swaps = fetch_pool_swaps(pool, from_block, to_block, dec0, dec1)
 
-        passive = replay(
-            swaps,
-            range_pct=range_pct,
-            fee_tier=fee_tier,
-            dec0=dec0,
-            dec1=dec1,
-            mode="passive",
-            gas_pct=args.gas_pct,
-            swap_cost_bps=args.swap_cost_bps,
-        )
-        active = replay(
-            swaps,
-            range_pct=range_pct,
-            fee_tier=fee_tier,
-            dec0=dec0,
-            dec1=dec1,
-            mode="active",
-            gas_pct=args.gas_pct,
-            swap_cost_bps=args.swap_cost_bps,
-        )
+        common = dict(range_pct=range_pct, fee_tier=fee_tier, dec0=dec0, dec1=dec1,
+                      gas_pct=args.gas_pct, swap_cost_bps=args.swap_cost_bps)
+        passive = replay(swaps, mode="passive", **common)
+        # aggressive = rebalance on any exit (hysteresis 0, cooldown 0)
+        active_aggr = replay(swaps, mode="active", hysteresis_pct=0.0, cooldown_blocks=0, **common)
+        # hysteresis + cooldown (the operator's actual policy)
+        active_hyst = replay(swaps, mode="active",
+                             hysteresis_pct=args.hysteresis_pct,
+                             cooldown_blocks=args.cooldown_blocks, **common)
 
         rec = {
             "label": label,
             "pool": pool,
             "passive": passive,
-            "active": active,
+            "active_aggr": active_aggr,
+            "active_hyst": active_hyst,
             "swaps": len(swaps),
             "entry_block": entry_block,
             "to_block": to_block,
@@ -406,25 +440,38 @@ def main() -> None:
             "fee_tier": fee_tier,
             "dec0": dec0,
             "dec1": dec1,
+            "hysteresis_pct": args.hysteresis_pct,
+            "cooldown_blocks": args.cooldown_blocks,
         }
         records.append(rec)
 
         p_np = _fmt_pct(passive["net_pct"])
-        a_np = _fmt_pct(active["net_pct"])
-        rebal = int(active["rebalances"] or 0)
-        inr = (active["frac_swaps_in_range"] or 0.0) * 100.0
-        nsw = int(active["n_swaps"] or 0)
-        print(f"{label}: passive net {p_np} / active net {a_np} (rebal {rebal}, in_range {inr:.1f}%, swaps {nsw})")
+        ag_np = _fmt_pct(active_aggr["net_pct"])
+        hy_np = _fmt_pct(active_hyst["net_pct"])
+        ag_rb = int(active_aggr["rebalances"] or 0)
+        hy_rb = int(active_hyst["rebalances"] or 0)
+        nsw = int(passive["n_swaps"] or 0)
+        print(f"{label} (±{range_pct:.1f}%): passive {p_np} | aggr {ag_np} (rb {ag_rb}) | "
+              f"hyst {hy_np} (rb {hy_rb}) | swaps {nsw}")
 
-    passive_vals = [r["passive"]["net_pct"] for r in records if r["passive"]["net_pct"] is not None]
-    active_vals = [r["active"]["net_pct"] for r in records if r["active"]["net_pct"] is not None]
+    def _vals(key):
+        return [r[key]["net_pct"] for r in records if r[key]["net_pct"] is not None]
+
+    passive_vals = _vals("passive")
+    aggr_vals = _vals("active_aggr")
+    hyst_vals = _vals("active_hyst")
+
+    def _share_pos(vals):
+        return (sum(1 for v in vals if v > 0) / len(vals) * 100.0) if vals else 0.0
 
     aggregate = {
         "n_pools": len(records),
         "median_passive_net_pct": _median(passive_vals) if passive_vals else None,
-        "median_active_net_pct": _median(active_vals) if active_vals else None,
-        "share_passive_positive": (sum(1 for v in passive_vals if v > 0) / len(passive_vals) * 100.0) if passive_vals else 0.0,
-        "share_active_positive": (sum(1 for v in active_vals if v > 0) / len(active_vals) * 100.0) if active_vals else 0.0,
+        "median_active_aggr_net_pct": _median(aggr_vals) if aggr_vals else None,
+        "median_active_hyst_net_pct": _median(hyst_vals) if hyst_vals else None,
+        "share_passive_positive": _share_pos(passive_vals),
+        "share_active_aggr_positive": _share_pos(aggr_vals),
+        "share_active_hyst_positive": _share_pos(hyst_vals),
     }
 
     print("Aggregate")
