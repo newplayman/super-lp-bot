@@ -85,6 +85,9 @@ DEFAULTS = dict(
     suspect_vol_tvl=20.0,     # daily volume > 20x TVL => wash-volume suspect
 )
 
+REWARD_PERSISTENCE_MIN_HOURS = 6.0
+REWARD_PERSISTENCE_TRUSTED_HOURS = 24.0
+
 
 # ---------------------------------------------------------------------------
 # PURE FUNCTIONS (unit-tested, no network)
@@ -119,6 +122,75 @@ def headline_apr(p):
 
 def total_apr_now(p):
     return float(p.get("apyBase") or 0.0) + float(p.get("apyReward") or 0.0)
+
+
+def reward_persistence_gate(p, *, min_hours=REWARD_PERSISTENCE_MIN_HOURS,
+                            trusted_hours=REWARD_PERSISTENCE_TRUSTED_HOURS):
+    """Return the fail-closed RewardPersistence decision for a pool.
+
+    `reward_high_duration` is the canonical input (hours); the explicit
+    `reward_high_duration_hours` spelling is also accepted.  A reward-bearing
+    pool with missing/invalid evidence is SHADOW-only and its reward gets zero
+    scoring weight.  Fee-only pools remain compatible because persistence is
+    not applicable.  Between 6h and 24h the reward receives a linear credibility
+    haircut; at 24h it is fully trusted per PRD v1 section 16.
+    """
+    reward_apr = float(p.get("apyReward", p.get("reward_apr", 0.0)) or 0.0)
+    if reward_apr <= 0.0:
+        return {
+            "entry_eligible": True,
+            "status": "NOT_APPLICABLE",
+            "duration_hours": None,
+            "score_factor": 1.0,
+            "reason": None,
+        }
+
+    raw_duration = p.get("reward_high_duration_hours")
+    if raw_duration is None:
+        raw_duration = p.get("reward_high_duration")
+    if raw_duration is None:
+        return {
+            "entry_eligible": False,
+            "status": "MISSING_FAIL_CLOSED",
+            "duration_hours": None,
+            "score_factor": 0.0,
+            "reason": "REWARD_PERSISTENCE_MISSING",
+        }
+    try:
+        duration = float(raw_duration)
+    except (TypeError, ValueError):
+        duration = -1.0
+    if duration < 0.0:
+        return {
+            "entry_eligible": False,
+            "status": "INVALID_FAIL_CLOSED",
+            "duration_hours": None,
+            "score_factor": 0.0,
+            "reason": "REWARD_PERSISTENCE_INVALID",
+        }
+    if duration < float(min_hours):
+        return {
+            "entry_eligible": False,
+            "status": "TOO_YOUNG_SHADOW_ONLY",
+            "duration_hours": duration,
+            "score_factor": 0.0,
+            "reason": "REWARD_PERSISTENCE_LT_6H",
+        }
+    if duration < float(trusted_hours):
+        return {
+            "entry_eligible": True,
+            "status": "MINIMUM_6H",
+            "duration_hours": duration,
+            "score_factor": duration / float(trusted_hours),
+            "reason": None,
+        }
+    return {
+        "entry_eligible": True,
+        "status": "TRUSTED_24H",
+        "duration_hours": duration,
+        "score_factor": 1.0,
+        "reason": None,
+    }
 
 
 def classify_tier_by_apr(apr):
@@ -163,7 +235,14 @@ def score_pool(p):
     mean it's a spike (discount); persistence (mean near or above spot) scores
     full. This is a LEAD score; Stage 2 fee_cover is the real edge metric.
     """
-    h = headline_apr(p)
+    persistence_gate = reward_persistence_gate(p)
+    base = float(p.get("apyBase") or 0.0)
+    reward = float(p.get("apyReward") or 0.0)
+    adjusted_spot = base + reward * persistence_gate["score_factor"]
+    # Never let a stale 30d headline exceed what the current, persistence-
+    # adjusted fee+reward observation supports.  This is the Reward Decay
+    # no-extrapolation rule from PRD v2.1 section 12.4.
+    h = min(headline_apr(p), adjusted_spot) if reward > 0.0 else headline_apr(p)
     spot = total_apr_now(p)
     if spot > 0:
         persistence = min(1.0, h / spot)  # mean<spot => spike => <1
@@ -179,6 +258,10 @@ def assess(p, gates):
     ok, reason = passes_gates(p, min_tvl=gates["min_tvl"], min_vol1d=gates["min_vol1d"])
     suspect = is_suspect(p, suspect_reward_apr=gates["suspect_reward_apr"],
                          suspect_vol_tvl=gates["suspect_vol_tvl"])
+    persistence = reward_persistence_gate(p)
+    entry_block_reasons = []
+    if not persistence["entry_eligible"]:
+        entry_block_reasons.append(persistence["reason"])
     return {
         "symbol": p.get("symbol"), "project": p.get("project"),
         "llama_pool_id": p.get("pool"), "poolMeta": p.get("poolMeta"),
@@ -194,6 +277,15 @@ def assess(p, gates):
         "score": round(score_pool(p), 2),
         "gate_ok": ok, "gate_reason": reason,
         "suspect": suspect,
+        "entry_eligible": bool(ok and persistence["entry_eligible"]),
+        "entry_block_reasons": entry_block_reasons,
+        "reward_high_duration": persistence["duration_hours"],
+        "reward_persistence_status": persistence["status"],
+        "reward_persistence_score": round(float(persistence["score_factor"]), 4),
+        "reward_persistence_semantics": (
+            "reward-bearing missing/invalid data fail closed; <6h shadow-only; "
+            "6h minimum with haircut; >=24h trusted; fee-only not applicable"
+        ),
     }
 
 
@@ -256,8 +348,8 @@ def _fmt(results, gates, n_total, n_base):
         rows = [r for r in results if r["tier"] == tier and r["gate_ok"]]
         rows.sort(key=lambda r: -r["score"])
         out.append(f"## Tier {tier} (by APR) — {len(rows)} candidates")
-        out.append("| symbol | qual | project | fee | TVL($M) | apyBase | apyReward | head_APR | vol1d($M) | score | flags |")
-        out.append("|---|---|---|---|---|---|---|---|---|---|---|")
+        out.append("| symbol | qual | project | fee | TVL($M) | apyBase | apyReward | reward persistence | head_APR | vol1d($M) | score | flags |")
+        out.append("|---|---|---|---|---|---|---|---|---|---|---|---|")
         for r in rows[:12]:
             fee = f"{r['fee_tier']*100:.2f}%" if r['fee_tier'] else "?"
             tvl = (r['tvlUsd'] or 0)/1e6
@@ -265,9 +357,11 @@ def _fmt(results, gates, n_total, n_base):
             ab = "n/a" if r['apyBase'] is None else f"{r['apyBase']:.1f}"
             ar = "n/a" if r['apyReward'] is None else f"{r['apyReward']:.1f}"
             flags = "⚠" + ";".join(r["suspect"]) if r["suspect"] else ""
+            if not r["entry_eligible"]:
+                flags = (flags + ";" if flags else "⚠") + ";".join(r["entry_block_reasons"])
             qmark = "" if r.get("tier_quality") == tier else f"!{r.get('tier_quality')}"
             out.append(f"| {r['symbol']} | {r.get('tier_quality')}{qmark} | {r['project'][:10]} | {fee} | {tvl:.1f} | {ab} | {ar} "
-                       f"| {r['headline_apr']:.1f} | {vol:.1f} | {r['score']:.0f} | {flags} |")
+                       f"| {r['reward_persistence_status']} | {r['headline_apr']:.1f} | {vol:.1f} | {r['score']:.0f} | {flags} |")
         out.append("")
     return "\n".join(out)
 
@@ -313,8 +407,10 @@ def main():
         print(f"  [{r['tier']}] {r['symbol']:16s} {r['project'][:18]:18s} "
               f"head_APR {r['headline_apr']:7.1f}% TVL ${ (r['tvlUsd'] or 0)/1e6:6.1f}M score {r['score']:6.1f}{flags}")
 
-    # emit a candidate list for Stage-2 resolution (top-N, non-suspect first)
-    ranked = sorted(passed, key=lambda r: (bool(r["suspect"]), -r["score"]))
+    # Young/missing reward evidence stays in screen.json for Shadow observation,
+    # but it cannot silently flow into Stage 2 as an ENTER candidate.
+    enterable = [r for r in passed if r["entry_eligible"]]
+    ranked = sorted(enterable, key=lambda r: (bool(r["suspect"]), -r["score"]))
     candidates = ranked[:args.top]
 
     with open(os.path.join(out_dir, "screen.md"), "w") as f:

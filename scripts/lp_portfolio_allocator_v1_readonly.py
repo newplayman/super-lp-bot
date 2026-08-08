@@ -33,6 +33,7 @@ from scripts.lp_netcover_engine_v1_readonly import (  # noqa: E402
     absolute_profit_gate,
     position_cap_usd,
 )
+from scripts.lp_universe_screener_v1_readonly import reward_persistence_gate  # noqa: E402
 
 DEFAULT_TOTAL = 10000.0
 DEFAULT_TIER_WEIGHTS = {"A": 0.70, "B": 0.30, "C": 0.0}
@@ -49,6 +50,14 @@ def is_enterable(rec: Mapping[str, Any]) -> bool:
     if rec.get("resolve_status") not in (None, "OK"):
         return False
     if rec.get("wash_flag"):
+        return False
+    # Defense in depth: Stage 1 normally supplies entry_eligible, but allocator
+    # independently recomputes persistence from raw evidence.  Reward-bearing
+    # legacy records without duration evidence fail closed; fee-only legacy
+    # records remain compatible (persistence is NOT_APPLICABLE).
+    if rec.get("entry_eligible") is False:
+        return False
+    if not reward_persistence_gate(rec)["entry_eligible"]:
         return False
     score = rec.get("composite_score")
     if score is None or float(score) <= 0.0:
@@ -86,7 +95,14 @@ def rank_metric(rec: Mapping[str, Any]) -> float:
     il = rec.get("il_apr")
     if inc is not None:
         try:
-            return max(float(inc) - float(il or 0.0), 0.0)
+            income = float(inc)
+            reward = float(rec.get("reward_apr", rec.get("apyReward", 0.0)) or 0.0)
+            persistence = reward_persistence_gate(rec)
+            # total_income_apr may have been computed before persistence was
+            # known. Replace its reward component with the credibility-adjusted
+            # current reward so a stale high APR cannot dominate allocation.
+            income = income - reward + reward * float(persistence["score_factor"])
+            return max(income - float(il or 0.0), 0.0)
         except (TypeError, ValueError):
             pass
     try:
