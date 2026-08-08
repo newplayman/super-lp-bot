@@ -258,7 +258,10 @@ def score_pool(p):
     # Never let a stale 30d headline exceed what the current, persistence-
     # adjusted fee+reward observation supports.  This is the Reward Decay
     # no-extrapolation rule from PRD v2.1 section 12.4.
-    h = min(headline_apr(p), adjusted_spot) if reward > 0.0 else headline_apr(p)
+    # Cap historical yield for every pool, including rewards that have decayed
+    # all the way to zero.  Otherwise an expired incentive with apyReward=0
+    # could be resurrected from a stale apyMean30d value.
+    h = min(headline_apr(p), adjusted_spot)
     spot = total_apr_now(p)
     if spot > 0:
         persistence = min(1.0, h / spot)  # mean<spot => spike => <1

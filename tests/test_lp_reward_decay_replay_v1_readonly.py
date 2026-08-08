@@ -120,6 +120,12 @@ def test_nonfinite_duration_is_invalid_fail_closed():
     assert decision["status"] == "INVALID_FAIL_CLOSED"
 
 
+def test_expired_reward_is_not_resurrected_from_stale_30d_mean():
+    expired = _pool(reward_apr=0.0, duration_hours=None)
+    expired["apyMean30d"] = 320.0
+    assert score_pool(expired) == 20.0  # current fee APR only
+
+
 def test_decay_replay_uses_real_screener_allocator_scoring_chain():
     points = build_decay_trajectory()
     assert [p["reward_apr"] for p in points] == [100.0, 30.0, 5.0]
