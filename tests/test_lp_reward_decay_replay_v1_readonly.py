@@ -120,6 +120,13 @@ def test_nonfinite_duration_is_invalid_fail_closed():
     assert decision["status"] == "INVALID_FAIL_CLOSED"
 
 
+def test_negative_reward_apr_is_corrupt_evidence_not_fee_only():
+    decision = reward_persistence_gate({"apyBase": 20.0, "apyReward": -1.0})
+    assert decision["entry_eligible"] is False
+    assert decision["status"] == "INVALID_REWARD_FAIL_CLOSED"
+    assert decision["reason"] == "REWARD_APR_INVALID"
+
+
 def test_expired_reward_is_not_resurrected_from_stale_30d_mean():
     expired = _pool(reward_apr=0.0, duration_hours=None)
     expired["apyMean30d"] = 320.0
