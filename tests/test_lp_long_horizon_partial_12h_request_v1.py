@@ -199,11 +199,16 @@ def test_g_launch_process_alive_or_completed() -> None:
     """Either process is alive (running) or already completed and finalized."""
     pid_path = REPORT_DIR / "tmux_or_nohup_start_healthcheck.json"
     d = json.loads(pid_path.read_text())
-    if d.get("process_alive"):
+    finalize_marker = (REPORT_DIR.parent.parent / "lp_long_horizon_readonly_12h_run" / "20260606_131323" / ".finalize_succeeded")
+    if d.get("process_alive") and not finalize_marker.exists():
         pid = d.get("process_pid")
         rc = subprocess.run(["ps", "-p", str(pid)], capture_output=True, text=True)
-        # Process might have completed in meantime; that's also OK
         assert rc.returncode == 0 or "no such process" in rc.stdout + rc.stderr
+    elif finalize_marker.exists():
+        # 12h completed cleanly — that's a pass
+        pass
+    else:
+        pytest.fail("process not alive AND no finalize marker — unexpected state")
 
 
 def test_g_launch_no_wallet_tx_probe() -> None:
