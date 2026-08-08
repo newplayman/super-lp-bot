@@ -469,6 +469,30 @@ class DefaultStages:
         self.n_windows = int(n_windows)
         self.yc_min = float(yc_min)
 
+    def _live_with_rotating_rpc(self, live: Mapping[str, Any]) -> Dict[str, Any]:
+        """Replace legacy single-URL helpers with the verified shared RpcPool."""
+        rpc_module = importlib.import_module("scripts.lp_rpc_pool_v1_readonly")
+        chain_key = self.chain.strip().lower()
+        pool = rpc_module.RpcPool(chain_key)
+        injected = dict(live)
+        raw_fetch = injected["fetch_pool_swaps"]
+
+        def fetch_with_pool(
+            address: str, from_block: int, to_block: int, dec0: int, dec1: int
+        ) -> Any:
+            return raw_fetch(
+                address,
+                from_block,
+                to_block,
+                dec0,
+                dec1,
+                rpc_call=pool.call,
+            )
+
+        injected["_rpc_with_retry"] = pool.call
+        injected["fetch_pool_swaps"] = fetch_with_pool
+        return injected
+
     def screen(self) -> ScreenBatch:
         screener = importlib.import_module("scripts.lp_universe_screener_v1_readonly")
         pools = screener.fetch_pools()
@@ -493,7 +517,7 @@ class DefaultStages:
 
     def resolve(self, candidates: Sequence[Mapping[str, Any]]) -> List[Dict[str, Any]]:
         bridge = importlib.import_module("scripts.lp_pool_resolve_and_rank_v1_readonly")
-        live = bridge._load_live_helpers()
+        live = self._live_with_rotating_rpc(bridge._load_live_helpers())
         current_block = bridge._eth_block_number(live["_rpc_with_retry"])
         caches: Dict[str, Dict[Any, Any]] = {"pool": {}, "decimals": {}}
         records = [
@@ -508,7 +532,7 @@ class DefaultStages:
         configs = bridge.build_policy_config(resolved)
         if not configs:
             return []
-        live = stability._live()
+        live = self._live_with_rotating_rpc(stability._live())
         tip = int(live["_rpc_with_retry"]("eth_blockNumber", []), 16)
         results: List[Dict[str, Any]] = []
         for config in configs:
