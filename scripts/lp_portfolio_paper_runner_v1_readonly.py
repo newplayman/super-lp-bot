@@ -46,6 +46,16 @@ from scripts.lp_v3_fee_share import (  # noqa: E402
 from scripts.lp_swap_cost_model_v1_readonly import (  # noqa: E402
     exit_conversion_cost_usd,
 )
+from scripts.lp_rpc_pool_v1_readonly import RpcPool  # noqa: E402
+
+# Rotating free-public-RPC pool, set up in run(). Until then, calls fall back to
+# the single-URL _rpc_with_retry so the pure engine + tests need no network.
+_POOL = None
+
+
+def _rpc():
+    """The active RPC entrypoint: rotating pool if initialized, else single-URL."""
+    return _POOL.call if _POOL is not None else _rpc_with_retry
 
 
 # ---------------------------------------------------------------------------
@@ -217,7 +227,7 @@ def _now_utc():
 
 
 def _latest_block():
-    return int(_rpc_with_retry("eth_blockNumber", []), 16)
+    return int(_rpc()("eth_blockNumber", []), 16)
 
 
 def _report_dir(out):
@@ -246,7 +256,7 @@ def _init_book(allocs, *, entry_window_blocks, latest):
         pool = a["pool"]
         dec0, dec1 = int(a["dec0"]), int(a["dec1"])
         from_b = max(0, latest - entry_window_blocks)
-        swaps = fetch_pool_swaps(pool, from_b, latest, dec0, dec1)
+        swaps = fetch_pool_swaps(pool, from_b, latest, dec0, dec1, rpc_call=_rpc())
         if not swaps:
             print(f"[warn] {a['symbol']} {pool}: no swaps in entry window; skipping")
             continue
@@ -288,7 +298,8 @@ def _tick(book, *, last_ts):
             pool_net = mk["net_quote"]  # exited mark already includes reward
             n_swaps, new_breach = 0, False
         else:
-            swaps = fetch_pool_swaps(p["pool"], st["last_block"] + 1, latest, st["dec0"], st["dec1"])
+            swaps = fetch_pool_swaps(p["pool"], st["last_block"] + 1, latest,
+                                     st["dec0"], st["dec1"], rpc_call=_rpc())
             n_breach_before = len(st["breaches"])
             # book reward for elapsed BEFORE update, so a same-tick exit keeps it
             st["reward_quote"] += accrue_reward(st["capital"], p["reward_apr"], elapsed)
@@ -343,13 +354,16 @@ def _append_hourly_csv(run_dir, rec, tick):
         f.write(f"{rec['ts_utc']},{tick},{rec['block']},{rec['portfolio_net_usd']}\n")
 
 
-def run(allocation_path, *, poll_secs=300, max_ticks=None, out=None,
-        entry_window_blocks=4000):
+def run(allocation_path, *, poll_secs=1800, max_ticks=None, out=None,
+        entry_window_blocks=4000, chain="base"):
+    global _POOL
+    _POOL = RpcPool(chain)
     allocs = _load_allocation(allocation_path)
     run_dir = _report_dir(out)
     _write_pid(run_dir)
     print(f"[run] dir={run_dir} pools={len(allocs)} poll={poll_secs}s "
-          f"max_ticks={max_ticks}")
+          f"max_ticks={max_ticks} chain={chain} "
+          f"rpc_pool={len(_POOL._endpoints)} endpoints (rotating, free public)")
 
     latest = _latest_block()
     book = _init_book(allocs, entry_window_blocks=entry_window_blocks, latest=latest)
@@ -487,7 +501,11 @@ def run_self_test():
 def main():
     ap = argparse.ArgumentParser(description="Multi-pool LP paper-shadow runner (read-only)")
     ap.add_argument("--allocation", help="path to allocator allocation.json")
-    ap.add_argument("--poll-secs", type=int, default=300)
+    ap.add_argument("--poll-secs", type=int, default=1800,
+                    help="seconds between ticks; default 1800 (30min) keeps "
+                         "free-RPC load low")
+    ap.add_argument("--chain", default="base",
+                    help="chain key for the rotating free-RPC pool")
     ap.add_argument("--max-ticks", type=int, default=None)
     ap.add_argument("--out", default=None)
     ap.add_argument("--entry-window-blocks", type=int, default=4000)
@@ -500,7 +518,7 @@ def main():
     if not args.allocation:
         ap.error("--allocation is required (or use --self-test)")
     run(args.allocation, poll_secs=args.poll_secs, max_ticks=args.max_ticks,
-        out=args.out, entry_window_blocks=args.entry_window_blocks)
+        out=args.out, entry_window_blocks=args.entry_window_blocks, chain=args.chain)
 
 
 if __name__ == "__main__":

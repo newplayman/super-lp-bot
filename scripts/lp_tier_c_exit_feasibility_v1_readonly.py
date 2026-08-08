@@ -273,13 +273,19 @@ def _rpc_with_retry(method, params, attempts=4):
     raise RuntimeError(f"RPC {method} failed after {attempts} attempts: {last}")
 
 
-def fetch_pool_swaps(pool, from_block, to_block, dec0, dec1):
-    """Fetch + decode V3 swaps for `pool` over [from_block, to_block]."""
+def fetch_pool_swaps(pool, from_block, to_block, dec0, dec1, rpc_call=None):
+    """Fetch + decode V3 swaps for `pool` over [from_block, to_block].
+
+    ``rpc_call(method, params)`` is injectable so callers can supply a rotating
+    multi-endpoint pool (see ``lp_rpc_pool_v1_readonly.RpcPool.call``); defaults
+    to the module's single-URL ``_rpc_with_retry``.
+    """
+    rpc_call = rpc_call or _rpc_with_retry
     swaps = []
     b = from_block
     while b <= to_block:
         to_b = min(b + POLL_BLOCK_WINDOW, to_block)
-        logs = _rpc_with_retry(
+        logs = rpc_call(
             "eth_getLogs",
             [{
                 "address": pool,

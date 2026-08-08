@@ -11,6 +11,17 @@ import math
 import scripts.lp_tier_c_exit_feasibility_v1_readonly as m
 
 
+def test_fetch_pool_swaps_uses_injected_rpc_call():
+    calls = []
+
+    def rpc_call(method, params):
+        calls.append((method, params))
+        return []
+
+    assert m.fetch_pool_swaps("0xpool", 10, 12, 18, 6, rpc_call=rpc_call) == []
+    assert [method for method, _ in calls] == ["eth_getLogs"]
+
+
 def test_price_from_sqrt_x96_weth_usdc():
     # 0xb2cc convention: token0=WETH(18), token1=USDC(6) -> USDC per WETH.
     # sqrtPriceX96 for ~price 1795: pick a value and check round-trip magnitude.

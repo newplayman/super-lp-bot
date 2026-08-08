@@ -1,9 +1,12 @@
 """Pure tests for the multi-pool LP paper-shadow runner (no network)."""
+import inspect
+
 from scripts.lp_portfolio_paper_runner_v1_readonly import (
     init_state,
     update_position,
     mark_position,
     accrue_reward,
+    run,
 )
 
 DEC = 18
@@ -11,6 +14,12 @@ FEE = 0.003
 R = 10.0
 L = 10 ** 24       # deep pool (human_L = 1e6): realistic, low-slippage
 AMT1 = 10 ** 18    # 1.0 token1 raw
+
+
+def test_shadow_runner_defaults_to_low_rate_base_polling():
+    params = inspect.signature(run).parameters
+    assert params["poll_secs"].default == 1800
+    assert params["chain"].default == "base"
 
 
 def _state(cap=1000.0, anchor=1.0):
