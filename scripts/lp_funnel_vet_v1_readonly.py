@@ -80,12 +80,11 @@ def index_netcover(netcover_records):
 
 
 def vet_record(bridge_rec, stab_summary, *, yc_min=1.0,
-               netcover_value=None, require_netcover=False):
+               netcover_value=None, require_netcover=True):
     """Annotate one bridge record and apply every requested gate.
 
-    ``require_netcover=False`` preserves the historical pure bridge API.  The
-    M0 scanner supplies a NetCover artifact and therefore uses strict,
-    fail-closed fifth-gate mode.
+    Missing NetCover fails closed by default.  ``require_netcover=False`` is an
+    explicitly named intermediate/research-only compatibility path.
     """
     rec = dict(bridge_rec)
     sub = stab_summary or {}
@@ -130,10 +129,10 @@ def vet_record(bridge_rec, stab_summary, *, yc_min=1.0,
 
 
 def funnel_vet(bridge_records, stability_records, *, yc_min=1.0,
-               netcover_records=None):
-    """Merge artifacts and apply strict NetCover when its artifact is supplied."""
+               netcover_records=None, allow_legacy_without_netcover=False):
+    """Merge artifacts; fifth-gate bypass requires an explicit legacy opt-in."""
     stab = index_stability(stability_records)
-    strict = netcover_records is not None
+    strict = not allow_legacy_without_netcover
     cover = index_netcover(netcover_records or [])
     return [
         vet_record(
@@ -208,7 +207,9 @@ def run_self_test():
         {"pool": "0xddd", "fee_cover_stability": {"stable": True, "enter_frac": 1.0}},
         {"pool": "0xeee", "fee_cover_stability": {"stable": True, "enter_frac": 1.0}},
     ]
-    vetted = vetted_menu(funnel_vet(bridge, stab))
+    vetted = vetted_menu(funnel_vet(
+        bridge, stab, allow_legacy_without_netcover=True,
+    ))
     syms = [r["symbol"] for r in vetted]
     assert syms == ["GOOD"], f"only GOOD passes all 3 gates, got {syms}"
     print("self-test OK: GOOD passes; UNSTABLE(stability), LOWYC(yc), "
@@ -220,6 +221,8 @@ def main():
     ap.add_argument("--bridge", help="resolve_and_rank.json from the Stage-2 bridge")
     ap.add_argument("--stability", help="stability.json from multi-window stability")
     ap.add_argument("--netcover", help="WP-04 full-cost NetCover records (enables strict fifth gate)")
+    ap.add_argument("--legacy-allow-missing-netcover", action="store_true",
+                    help="research/intermediate only: bypass strict fifth gate")
     ap.add_argument("--yc-min", type=float, default=1.0)
     ap.add_argument("--out", default=None, help="dir to write vetted_menu.json / .md")
     ap.add_argument("--self-test", action="store_true")
@@ -234,7 +237,10 @@ def main():
     bridge = _as_list(_load(args.bridge))
     stab = _as_list(_load(args.stability))
     cover = _as_list(_load(args.netcover)) if args.netcover else None
-    merged = funnel_vet(bridge, stab, yc_min=args.yc_min, netcover_records=cover)
+    merged = funnel_vet(
+        bridge, stab, yc_min=args.yc_min, netcover_records=cover,
+        allow_legacy_without_netcover=args.legacy_allow_missing_netcover,
+    )
     menu = vetted_menu(merged)
 
     print(f"vetted {len(menu)}/{len(merged)} pools (yc_min={args.yc_min}):")

@@ -186,7 +186,7 @@ def _runtime_gate(rec: Mapping[str, Any]):
 
 def allocate(records, *, total=DEFAULT_TOTAL, tier_weights=None, max_pools=None,
              min_pool_usd=DEFAULT_MIN_POOL_USD, require_stable=False,
-             enforce_runtime_gates=False):
+             enforce_runtime_gates=True):
     """Allocate `total` across enterable pools by tier weight then rank_metric.
 
     Tier weights for tiers with NO enterable pools are redistributed pro-rata to
@@ -304,7 +304,7 @@ def run_self_test():
         {"symbol": "WEAK", "tier": "B", "status": "OK", "resolve_status": "OK",
          "composite_score": 5, "yield_cover": 0.5, "wash_flag": False},
     ]
-    out = allocate(recs, total=10000)
+    out = allocate(recs, total=10000, enforce_runtime_gates=False)
     syms = [a["symbol"] for a in out["allocations"]]
     assert "WASH" not in syms and "WEAK" not in syms, syms      # gated out
     assert "A4" not in syms, "tier A capped at 3"               # A capped
@@ -316,7 +316,10 @@ def run_self_test():
     assert aa["A1"] > aa["A2"] > aa["A3"]
     assert abs(out["deployed"] - 10000) < 1 and out["n_pools"] == 4
     # redistribution: no B picks -> A gets everything
-    out2 = allocate([r for r in recs if r["tier"] == "A"][:3], total=10000)
+    out2 = allocate(
+        [r for r in recs if r["tier"] == "A"][:3], total=10000,
+        enforce_runtime_gates=False,
+    )
     assert abs(sum(a["usd"] for a in out2["allocations"]) - 10000) < 1
     print("ALL SELF-TESTS PASSED")
 
