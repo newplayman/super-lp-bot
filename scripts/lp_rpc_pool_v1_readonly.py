@@ -51,6 +51,15 @@ SOLANA_HEAVY_METHODS = (
 # Public, well-known program/account identifiers used only by the live probe.
 _SOLANA_SYSTEM_PROGRAM = "11111111111111111111111111111111"
 _SOLANA_MEMO_PROGRAM = "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"
+_FORBIDDEN_WRITE_METHODS = frozenset({
+    "eth_sendTransaction",
+    "eth_sendRawTransaction",
+    "eth_sign",
+    "eth_signTransaction",
+    "personal_sign",
+    "personal_sendTransaction",
+    "sendTransaction",
+})
 
 # ---------------------------------------------------------------------------
 # Per-chain free public endpoint registry (extensible: add chains as needed)
@@ -236,6 +245,8 @@ class RpcPool:
     # --- endpoint selection ------------------------------------------------
 
     def _supporting(self, method):
+        if method in _FORBIDDEN_WRITE_METHODS:
+            raise ValueError(f"forbidden write/signing method {method!r}")
         if self.chain == "solana":
             if method in SOLANA_CHEAP_METHODS:
                 capability = "cheap_methods"

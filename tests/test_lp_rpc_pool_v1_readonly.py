@@ -131,8 +131,25 @@ def test_solana_rejects_non_allowlisted_including_write_methods():
     post, calls = ok_recorder()
     pool = RpcPool("solana", post=post, clock=Clock())
 
-    with pytest.raises(ValueError, match="not an allowed read method"):
+    with pytest.raises(ValueError, match="forbidden write/signing method"):
         pool.call("sendTransaction", ["not-a-real-transaction"])
+    assert calls == []
+
+
+@pytest.mark.parametrize("method", [
+    "eth_sendTransaction",
+    "eth_sendRawTransaction",
+    "eth_sign",
+    "eth_signTransaction",
+    "personal_sign",
+    "personal_sendTransaction",
+])
+def test_evm_pool_rejects_write_and_signing_rpc_methods(method):
+    post, calls = ok_recorder()
+    pool = RpcPool("base", post=post, clock=Clock())
+
+    with pytest.raises(ValueError, match="forbidden write/signing method"):
+        pool.call(method, [])
     assert calls == []
 
 
