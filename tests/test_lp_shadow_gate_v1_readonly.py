@@ -12,11 +12,12 @@ from scripts.lp_shadow_gate_v1_readonly import (
 )
 
 
-def _heartbeat(*, as_of, pools, nav=5_100.0, rpc_health="NORMAL"):
+def _heartbeat(*, as_of, pools, net_pnl=100.0, portfolio_nav=5_100.0, rpc_health="NORMAL"):
     return {
         "ledger_schema_version": 2,
         "ts_utc": as_of,
-        "portfolio_net_usd": nav,
+        "portfolio_net_usd": net_pnl,
+        "portfolio_nav_usd": portfolio_nav,
         "rpc_health": rpc_health,
         "by_pool": pools,
     }
@@ -54,7 +55,8 @@ def test_runner_heartbeat_is_idempotently_recorded_with_public_fee_error_formula
     heartbeat = _heartbeat(
         as_of="2026-08-08T00:00:00+00:00",
         pools=[_pool(1, predicted=10.0, actual=8.0, pnl=3.0)],
-        nav=103.0,
+        net_pnl=3.0,
+        portfolio_nav=103.0,
     )
 
     first = store.record_heartbeat("run-a", 7, heartbeat)
@@ -88,12 +90,18 @@ def test_drawdown_uses_running_portfolio_peak_and_rpc_incident_resolves_on_norma
     store.record_heartbeat(
         "run-a",
         0,
-        _heartbeat(as_of="2026-08-08T00:00:00+00:00", pools=[_pool(1)], nav=100.0),
+        _heartbeat(
+            as_of="2026-08-08T00:00:00+00:00", pools=[_pool(1)],
+            net_pnl=0.0, portfolio_nav=100.0,
+        ),
     )
     row = store.record_heartbeat(
         "run-a",
         1,
-        _heartbeat(as_of="2026-08-08T01:00:00+00:00", pools=[_pool(1)], nav=92.0),
+        _heartbeat(
+            as_of="2026-08-08T01:00:00+00:00", pools=[_pool(1)],
+            net_pnl=-8.0, portfolio_nav=92.0,
+        ),
     )
     assert row["simulated_drawdown_pct"] == pytest.approx(8.0)
 
@@ -109,12 +117,18 @@ def test_gate_report_applies_exact_section_12_thresholds_and_keeps_evidence(tmp_
     store.record_heartbeat(
         "run-a",
         0,
-        _heartbeat(as_of="2026-07-25T00:00:00+00:00", pools=pools, nav=5_000.0),
+        _heartbeat(
+            as_of="2026-07-25T00:00:00+00:00", pools=pools,
+            net_pnl=0.0, portfolio_nav=5_000.0,
+        ),
     )
     store.record_heartbeat(
         "run-a",
         1,
-        _heartbeat(as_of="2026-08-08T00:00:00+00:00", pools=pools, nav=5_100.0),
+        _heartbeat(
+            as_of="2026-08-08T00:00:00+00:00", pools=pools,
+            net_pnl=100.0, portfolio_nav=5_100.0,
+        ),
     )
 
     report = evaluate_shadow_gate(store.path, as_of="2026-08-08T00:00:00+00:00")
