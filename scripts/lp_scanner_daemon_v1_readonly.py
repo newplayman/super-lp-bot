@@ -700,6 +700,53 @@ def _unique_sessions(records: Iterable[Mapping[str, Any]]) -> List[Dict[str, Any
     return list(unique.values())
 
 
+def export_latest_vetted_menu(
+    db_path: str | os.PathLike[str], out_path: str | os.PathLike[str]
+) -> Dict[str, Any]:
+    """Export the latest *live-scanned* accepted score records for allocator.
+
+    Malformed or semantically inconsistent score_json rows are rejected rather
+    than repaired.  A zero-record output is valid evidence that the live funnel
+    found no enterable opportunity; callers must not substitute a fixture and
+    call it live-vetted.
+    """
+    db = Path(db_path)
+    uri = f"file:{db.resolve()}?mode=ro"
+    with sqlite3.connect(uri, uri=True, timeout=5.0) as connection:
+        latest_row = connection.execute(
+            "SELECT max(as_of) FROM opportunity_scores"
+        ).fetchone()
+        latest = latest_row[0] if latest_row else None
+        rows = [] if latest is None else connection.execute(
+            "SELECT score_json FROM opportunity_scores WHERE as_of=? AND accepted=1 ORDER BY pool",
+            (latest,),
+        ).fetchall()
+    records: List[Dict[str, Any]] = []
+    invalid = 0
+    for (raw,) in rows:
+        try:
+            record = json.loads(raw)
+        except (json.JSONDecodeError, TypeError):
+            invalid += 1
+            continue
+        if not isinstance(record, dict) or not record.get("vetted") or not record.get("netcover_pass"):
+            invalid += 1
+            continue
+        record["scanner_as_of"] = latest
+        record["scanner_evidence_origin"] = "live_opportunity_scores"
+        records.append(record)
+    out = Path(out_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(records, indent=2, allow_nan=False) + "\n", encoding="utf-8")
+    return {
+        "as_of": latest,
+        "accepted_rows": len(rows),
+        "exported_records": len(records),
+        "invalid_records": invalid,
+        "out": str(out),
+    }
+
+
 class FunnelOrchestrator:
     """Owns the coarse-screen cache and publishes complete scan cycles."""
 

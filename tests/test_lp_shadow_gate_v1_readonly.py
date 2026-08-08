@@ -5,6 +5,8 @@ import sqlite3
 
 import pytest
 
+import scripts.lp_portfolio_paper_runner_v1_readonly as runner
+
 from scripts.lp_shadow_gate_v1_readonly import (
     GateStore,
     build_gate_report_markdown,
@@ -158,3 +160,51 @@ def test_gate_evaluation_fails_closed_without_observations(tmp_path):
     assert report["overall_status"] == "INSUFFICIENT_EVIDENCE"
     assert report["checks"]["fee_prediction_error_pct"]["status"] == "UNKNOWN"
     assert report["checks"]["rpc_severe_unresolved"]["status"] == "PASS"
+
+
+def test_runner_tick_exposes_nav_fee_prediction_and_rpc_health(monkeypatch):
+    state = runner.init_state(
+        capital=100.0, anchor=1.0, range_pct=10.0, fee_tier=0.003,
+        dec0=18, dec1=18, last_block=0,
+    )
+    book = [{
+        "symbol": "TEST/USDC", "project": "test", "tier": "A", "pool": "0x1",
+        "fee_apr_onchain": 10.0, "reward_apr": 0.0,
+        "reward_price_usd": 1.0, "last_price": 1.0, "state": state,
+    }]
+    class HealthyPool:
+        def call(self, method, params):
+            raise AssertionError((method, params))
+
+        def health_snapshot(self):
+            return {"state": "NORMAL"}
+    monkeypatch.setattr(runner, "_POOL", HealthyPool())
+    monkeypatch.setattr(runner, "_latest_block", lambda: 1)
+    monkeypatch.setattr(runner, "fetch_pool_swaps", lambda *args, **kwargs: [])
+    monkeypatch.setattr(
+        runner, "_now_utc",
+        lambda: __import__("datetime").datetime(2026, 8, 8, tzinfo=__import__("datetime").timezone.utc),
+    )
+
+    record, _ = runner._tick(
+        book,
+        last_ts=__import__("datetime").datetime(2025, 8, 8, tzinfo=__import__("datetime").timezone.utc),
+    )
+
+    assert record["rpc_health"] == "NORMAL"
+    assert record["portfolio_nav_usd"] == pytest.approx(100.0)
+    assert record["portfolio_net_usd"] == pytest.approx(0.0)
+    assert record["by_pool"][0]["fee_prediction_usd"] == pytest.approx(10.0)
+
+
+def test_runner_gate_write_is_normal_tick_path_not_manual_helper(tmp_path):
+    store = GateStore(tmp_path / "scanner.db")
+    heartbeat = _heartbeat(
+        as_of="2026-08-08T00:00:00+00:00",
+        pools=[_pool(1)], net_pnl=2.0, portfolio_nav=102.0,
+    )
+
+    row = runner._record_gate_observation(store, "run-a", 3, heartbeat)
+
+    assert row["source_run"] == "run-a"
+    assert row["tick"] == 3
