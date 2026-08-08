@@ -11,9 +11,8 @@ the whole load.
 
 Design
 ------
-* **Method-aware**: ``eth_getLogs`` is only routed to endpoints empirically
-  verified to serve a useful block range (most free endpoints cap getLogs to
-  10-50 blocks or disable it). Cheap calls (``eth_blockNumber`` etc.) rotate
+* **Method-aware**: EVM ``eth_getLogs`` and Solana heavy read methods are only
+  routed to endpoints empirically verified to support them. Cheap calls rotate
   across the full pool.
 * **Rotation**: consecutive calls start at the next endpoint, distributing load.
 * **Health / backoff**: a failing endpoint (transport error, HTTP 429/403/5xx,
@@ -23,8 +22,8 @@ Design
 Drop-in: ``RpcPool.call(method, params)`` matches the signature of the old
 ``_rpc_with_retry(method, params)``, so it slots straight into existing readers.
 
-Endpoint capabilities below were probed live on 2026-06-24 (Base). Re-probe with
-``--probe`` if providers change. Pure-logic paths are covered by
+Endpoint capabilities below were probed live on 2026-06-24 (Base) and
+2026-08-08 (Solana). Re-probe with ``--probe`` if providers change. Pure-logic paths are covered by
 ``tests/test_lp_rpc_pool_v1_readonly.py`` (transport + clock injected).
 """
 from __future__ import annotations
@@ -34,6 +33,24 @@ import json
 import os
 import time
 import urllib.request
+
+
+SOLANA_CHEAP_METHODS = (
+    "getSlot",
+    "getHealth",
+    "getLatestBlockhash",
+    "getAccountInfo",
+    "getMultipleAccounts",
+)
+SOLANA_HEAVY_METHODS = (
+    "getSignaturesForAddress",
+    "getTransaction",
+    "getProgramAccounts",
+)
+
+# Public, well-known program/account identifiers used only by the live probe.
+_SOLANA_SYSTEM_PROGRAM = "11111111111111111111111111111111"
+_SOLANA_MEMO_PROGRAM = "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"
 
 # ---------------------------------------------------------------------------
 # Per-chain free public endpoint registry (extensible: add chains as needed)
@@ -88,6 +105,68 @@ CHAINS = {
             {"url": "https://mainnet.optimism.io", "getlogs": False},
         ],
     },
+    "solana": {
+        "chain_id": "mainnet-beta",
+        # Solana's official public limit is 100 requests/10s/IP overall and
+        # 40 requests/10s/IP per method. These floors target at most 50% of
+        # each allowance across the whole pool: <=5 calls/s overall and
+        # <=2 calls/s for any one method. Heavy reads are slower still.
+        "pool_min_interval_secs": 0.2,
+        "method_min_interval_secs": {
+            **{method: 0.5 for method in SOLANA_CHEAP_METHODS},
+            **{method: 2.0 for method in SOLANA_HEAVY_METHODS},
+        },
+        "endpoints": [
+            {
+                "url": "https://api.mainnet-beta.solana.com",
+                "provider": "solana-foundation",
+                "cheap_methods": SOLANA_CHEAP_METHODS,
+                "heavy_methods": SOLANA_HEAVY_METHODS,
+                "min_interval_secs": 0.2,
+            },
+            {
+                "url": "https://api.mainnet.solana.com",
+                "provider": "solana-foundation",
+                "cheap_methods": SOLANA_CHEAP_METHODS,
+                "heavy_methods": SOLANA_HEAVY_METHODS,
+                "min_interval_secs": 0.2,
+            },
+            {
+                "url": "https://solana-rpc.publicnode.com",
+                "provider": "publicnode",
+                "cheap_methods": SOLANA_CHEAP_METHODS,
+                "heavy_methods": (
+                    "getSignaturesForAddress", "getTransaction",
+                ),
+                "min_interval_secs": 0.2,
+            },
+            {
+                "url": "https://solana.publicnode.com",
+                "provider": "publicnode",
+                "cheap_methods": SOLANA_CHEAP_METHODS,
+                "heavy_methods": (
+                    "getSignaturesForAddress", "getTransaction",
+                ),
+                "min_interval_secs": 0.2,
+            },
+            {
+                "url": "https://solana.lava.build",
+                "provider": "lava",
+                "cheap_methods": SOLANA_CHEAP_METHODS,
+                "heavy_methods": SOLANA_HEAVY_METHODS,
+                "min_interval_secs": 0.2,
+            },
+            {
+                "url": "https://rpc.solanatracker.io/public",
+                "provider": "solana-tracker",
+                "cheap_methods": SOLANA_CHEAP_METHODS,
+                "heavy_methods": (
+                    "getSignaturesForAddress", "getTransaction",
+                ),
+                "min_interval_secs": 0.2,
+            },
+        ],
+    },
 }
 
 DEFAULT_CHAIN = "base"
@@ -132,6 +211,7 @@ class RpcPool:
         self._endpoints = list(CHAINS[chain]["endpoints"])
         self._post = post or _default_post
         self._clock = clock or _SystemClock()
+        self._chain_cfg = CHAINS[chain]
         # exponential backoff: base * 2**(fails-1), capped at max
         self._cooldown_base = (cooldown_base
                                if cooldown_base is not None
@@ -139,16 +219,32 @@ class RpcPool:
         self._cooldown_max = (cooldown_max
                               if cooldown_max is not None
                               else float(os.environ.get("RPC_COOLDOWN_MAX", "300.0")))
-        self._pace = (pace_secs
-                      if pace_secs is not None
-                      else float(os.environ.get("RPC_CALL_PACE_SECS", "0.2")))
+        requested_pace = (pace_secs
+                          if pace_secs is not None
+                          else float(os.environ.get("RPC_CALL_PACE_SECS", "0.2")))
+        self._pace = max(
+            requested_pace,
+            float(self._chain_cfg.get("pool_min_interval_secs", 0.0)),
+        )
         self._fails = {}            # url -> consecutive fail count
         self._cooldown_until = {}   # url -> epoch seconds
         self._rr = 0                # round-robin cursor
+        self._last_pool_request = None
+        self._last_endpoint_request = {}
+        self._last_method_request = {}
 
     # --- endpoint selection ------------------------------------------------
 
     def _supporting(self, method):
+        if self.chain == "solana":
+            if method in SOLANA_CHEAP_METHODS:
+                capability = "cheap_methods"
+            elif method in SOLANA_HEAVY_METHODS:
+                capability = "heavy_methods"
+            else:
+                raise ValueError(
+                    f"Solana RPC method {method!r} is not an allowed read method")
+            return [e for e in self._endpoints if method in e[capability]]
         if method == "eth_getLogs":
             return [e for e in self._endpoints if e["getlogs"]]
         return list(self._endpoints)
@@ -170,6 +266,30 @@ class RpcPool:
         self._fails.pop(url, None)
         self._cooldown_until.pop(url, None)
 
+    # --- pacing ------------------------------------------------------------
+
+    def _pace_request(self, endpoint, method):
+        """Apply pool, endpoint, and per-method minimum request intervals."""
+        now = self._clock.now()
+        waits = [self._pace if self._last_pool_request is None else
+                 self._last_pool_request + self._pace - now]
+
+        url = endpoint["url"]
+        if url in self._last_endpoint_request:
+            endpoint_pace = float(endpoint.get("min_interval_secs", 0.0))
+            waits.append(self._last_endpoint_request[url] + endpoint_pace - now)
+
+        if method in self._last_method_request:
+            method_pace = float(
+                self._chain_cfg.get("method_min_interval_secs", {}).get(method, 0.0))
+            waits.append(self._last_method_request[method] + method_pace - now)
+
+        self._clock.sleep(max(0.0, *waits))
+        sent_at = self._clock.now()
+        self._last_pool_request = sent_at
+        self._last_endpoint_request[url] = sent_at
+        self._last_method_request[method] = sent_at
+
     # --- the call ----------------------------------------------------------
 
     def call(self, method, params, timeout=20):
@@ -181,13 +301,17 @@ class RpcPool:
         if not cands:
             cands = self._supporting(method)   # all cooled down: try anyway
         n = len(cands)
+        if not n:
+            raise RuntimeError(
+                f"RPC {method} has no capable {self.chain} endpoints")
         start = self._rr % n
         self._rr += 1
         last = None
         for i in range(n):
-            url = cands[(start + i) % n]["url"]
+            endpoint = cands[(start + i) % n]
+            url = endpoint["url"]
             try:
-                self._clock.sleep(self._pace)
+                self._pace_request(endpoint, method)
                 resp = self._post(url, method, params, timeout=timeout)
                 if isinstance(resp, dict) and "result" in resp:
                     self._reset(url)
@@ -205,6 +329,9 @@ class RpcPool:
     def block_number(self):
         return int(self.call("eth_blockNumber", []), 16)
 
+    def slot(self):
+        return int(self.call("getSlot", []))
+
 
 # ---------------------------------------------------------------------------
 # CLI: live probe of endpoint health + getLogs capability
@@ -220,6 +347,8 @@ _V3_SWAP_TOPIC = "0xc42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115fbc
 
 
 def _probe(chain):
+    if chain == "solana":
+        return _probe_solana()
     cfg = CHAINS[chain]
     pool_addr = _PROBE_POOLS.get(chain)
     print(f"# probing {chain} (chain_id={cfg['chain_id']}) — {len(cfg['endpoints'])} endpoints")
@@ -246,6 +375,73 @@ def _probe(chain):
         print(f"  UP blk={bn}  {flag}  getLogs2k={gl}  {url}")
 
 
+def _solana_probe_call(url, method, params):
+    """Paced direct call used to report one specific endpoint honestly."""
+    time.sleep(CHAINS["solana"]["pool_min_interval_secs"])
+    response = _default_post(url, method, params, timeout=10)
+    if not isinstance(response, dict) or "result" not in response:
+        error = response.get("error") if isinstance(response, dict) else response
+        raise RuntimeError(str(error))
+    return response["result"]
+
+
+def _probe_solana():
+    cfg = CHAINS["solana"]
+    print(f"# probing solana (cluster={cfg['chain_id']}) — {len(cfg['endpoints'])} endpoints")
+    for endpoint in cfg["endpoints"]:
+        url = endpoint["url"]
+        checks = {}
+        signature = None
+        try:
+            checks["getHealth"] = _solana_probe_call(url, "getHealth", []) == "ok"
+            slot = _solana_probe_call(url, "getSlot", [])
+            checks["getSlot"] = isinstance(slot, int) and slot > 0
+        except Exception as ex:  # noqa: BLE001
+            print(f"  DOWN   {url}  ({str(ex)[:70]})")
+            continue
+
+        try:
+            signatures = _solana_probe_call(
+                url, "getSignaturesForAddress",
+                [_SOLANA_SYSTEM_PROGRAM, {"limit": 1}],
+            )
+            checks["getSignaturesForAddress"] = isinstance(signatures, list)
+            if signatures:
+                signature = signatures[0].get("signature")
+        except Exception:  # noqa: BLE001
+            checks["getSignaturesForAddress"] = False
+
+        try:
+            transaction = _solana_probe_call(
+                url, "getTransaction",
+                [signature, {"encoding": "json", "maxSupportedTransactionVersion": 0}],
+            ) if signature else None
+            checks["getTransaction"] = isinstance(transaction, dict)
+        except Exception:  # noqa: BLE001
+            checks["getTransaction"] = False
+
+        try:
+            accounts = _solana_probe_call(
+                url, "getProgramAccounts",
+                [_SOLANA_MEMO_PROGRAM, {
+                    "encoding": "base64",
+                    "dataSlice": {"offset": 0, "length": 0},
+                    "filters": [{"dataSize": 1}],
+                }],
+            )
+            checks["getProgramAccounts"] = isinstance(accounts, list)
+        except Exception:  # noqa: BLE001
+            checks["getProgramAccounts"] = False
+
+        cheap = "OK" if checks["getHealth"] and checks["getSlot"] else "NO"
+        heavy = ",".join(
+            f"{method}={'OK' if checks.get(method) else 'NO'}"
+            for method in SOLANA_HEAVY_METHODS
+        )
+        status = "UP" if cheap == "OK" else "DOWN"
+        print(f"  {status:<4} slot={slot} cheap={cheap} heavy=[{heavy}]  {url}")
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--chain", default=DEFAULT_CHAIN, choices=list(CHAINS))
@@ -256,7 +452,10 @@ def main(argv=None):
         _probe(a.chain)
     else:
         pool = RpcPool(a.chain)
-        print(f"{a.chain} latest block = {pool.block_number()}")
+        if a.chain == "solana":
+            print(f"solana latest slot = {pool.slot()}")
+        else:
+            print(f"{a.chain} latest block = {pool.block_number()}")
     return 0
 
 
