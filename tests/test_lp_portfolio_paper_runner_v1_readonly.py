@@ -8,6 +8,7 @@ from scripts.lp_portfolio_paper_runner_v1_readonly import (
     accrue_reward,
     run,
 )
+from scripts.lp_exit_policy_v1_readonly import QuoteResult
 
 DEC = 18
 FEE = 0.003
@@ -193,3 +194,119 @@ def test_tier_a_default_does_not_exit():
     update_position(st, [{"block": 1, "price": 1.5, "liquidity": L, "amount1": AMT1}], now_block=1)
     assert st["exited"] is None                       # Tier-A holds passive
     assert len(st["breaches"]) == 1                   # but still logs the breach
+
+
+# --- WP-03 directional exit-policy integration ----------------------------
+
+def _policy_state(**overrides):
+    kwargs = {
+        "capital": 1000.0,
+        "anchor": 1.0,
+        "range_pct": R,
+        "fee_tier": FEE,
+        "dec0": DEC,
+        "dec1": DEC,
+        "last_block": 0,
+        "exit_policy_enabled": True,
+        "profile": "MAJORS",
+        "risky_token_side": "token0:ETH",
+        "stable_token_side": "token1:USDC",
+        "risky_inventory_target": 0.25,
+        "max_exit_slippage_bps": 75.0,
+    }
+    kwargs.update(overrides)
+    return init_state(**kwargs)
+
+
+def test_policy_context_is_saved_and_missing_policy_defaults_record_only():
+    default = _state()
+    assert default["exit_policy_context"]["enabled"] is False
+    assert default["exit_policy_context"]["state"] == "HEALTHY"
+    strict = _policy_state()
+    ctx = strict["exit_policy_context"]
+    assert ctx["enabled"] is True
+    assert ctx["profile"] == "MAJORS"
+    assert ctx["risky_token_side"] == "token0:ETH"
+    assert ctx["stable_token_side"] == "token1:USDC"
+    assert ctx["risky_inventory_target"] == 0.25
+
+
+def test_strict_policy_single_lower_breach_records_five_fields_but_does_not_exit():
+    st = _policy_state()
+    update_position(st, [{"block": 1, "price": 0.80, "liquidity": L, "amount1": AMT1}], now_block=1)
+    assert st["exited"] is None
+    assert st["exit_policy_context"]["state"] == "WATCH"
+    event = st["breaches"][0]
+    for field in (
+        "breach_direction",
+        "post_remove_inventory_ratio",
+        "post_remove_delta_usd",
+        "recommended_exit_mode",
+        "expected_swap_cost",
+    ):
+        assert field in event
+    assert event["breach_direction"] == "LOWER"
+    assert event["post_remove_inventory_ratio"] > 0.80
+
+
+def test_strict_lower_combination_quotes_then_simulates_remove_to_stable():
+    st = _policy_state()
+    swap = {
+        "block": 1,
+        "price": 0.80,
+        "liquidity": 10 ** 27,
+        "amount1": AMT1,
+        "risk_signals": {"trend_continuation": True, "netcover_forward": 0.8},
+    }
+    update_position(st, [swap], now_block=1)
+    event = st["breaches"][0]
+    assert event["recommended_exit_mode"] == "REMOVE_TO_STABLE"
+    assert event["action_plan"]["quote_required"] is True
+    assert event["action_plan"]["swap_allowed"] is True
+    assert event["action_plan"]["paper_only"] is True
+    assert st["exit_policy_context"]["state"] == "COOLDOWN"
+    assert st["exited"]["exit_mode"] == "REMOVE_TO_STABLE"
+
+
+def test_strict_upper_stable_inventory_remove_only_never_swaps():
+    st = _policy_state()
+    swap = {
+        "block": 1,
+        "price": 1.20,
+        "liquidity": L,
+        "amount1": AMT1,
+        "risk_signals": {"structural_risk_worsening": True},
+    }
+    update_position(st, [swap], now_block=1)
+    event = st["breaches"][0]
+    assert event["breach_direction"] == "UPPER"
+    assert event["recommended_exit_mode"] == "REMOVE_ONLY"
+    assert event["action_plan"]["swap_requested"] is False
+    assert event["action_plan"]["swap_allowed"] is False
+    assert st["exited"]["exit_cost_quote"] == 0.0
+
+
+def test_strict_quote_failure_stages_without_swap_or_cooldown():
+    st = _policy_state()
+    swap = {
+        "block": 1,
+        "price": 0.80,
+        "liquidity": L,
+        "amount1": AMT1,
+        "risk_signals": {"trend_continuation": True, "netcover_forward": 0.8},
+        "exit_quote": QuoteResult.failed("unavailable"),
+    }
+    update_position(st, [swap], now_block=1)
+    plan = st["breaches"][0]["action_plan"]
+    assert plan["swap_allowed"] is False
+    assert plan["substate"] == "staged/limit_exit"
+    assert plan["alert"] is True
+    assert st["exit_policy_context"]["state"] == "EXITING"
+    assert st["exited"]["risk_off_complete"] is False
+
+
+def test_explicit_legacy_exit_flag_isolated_from_missing_field_default():
+    # Explicit old flag remains compatible; allocations with the field missing
+    # no longer infer exit behavior merely from tier.
+    explicit = _state_b()
+    assert explicit["exit_policy_context"]["legacy_operator_confirmed"] is True
