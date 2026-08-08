@@ -540,10 +540,44 @@ class DefaultStages:
         return list(funnel.funnel_vet(resolved, stability, yc_min=self.yc_min))
 
     @staticmethod
-    def _fail_closed_netcover(
-        records: Sequence[Mapping[str, Any]], reason: str
+    def _enforce_fifth_gate(
+        sources: Sequence[Mapping[str, Any]], assessed: Sequence[Mapping[str, Any]]
     ) -> List[Dict[str, Any]]:
-        return [
+        if len(sources) != len(assessed):
+            raise ValueError("NetCover adapter changed the record count")
+        output: List[Dict[str, Any]] = []
+        for source, result in zip(sources, assessed):
+            rec = dict(result)
+            passed = bool(rec.get("netcover_pass", False))
+            gates = dict(source.get("gates") or {})
+            gates.update(rec.get("gates") or {})
+            gates["netcover_shadow"] = passed
+            rec["gates"] = gates
+            reason = str(rec.get("rejection_reason") or "")
+            if passed:
+                status = "PASS"
+            elif reason.startswith("NETCOVER_INPUT_MISSING:"):
+                status = "MISSING_FAIL_CLOSED"
+            elif reason.startswith("NETCOVER_INPUT_INVALID:"):
+                status = "INVALID_FAIL_CLOSED"
+            elif rec.get("netcover_ratio") is None:
+                status = "UNAVAILABLE_FAIL_CLOSED"
+            else:
+                status = "BELOW_SHADOW"
+            rec["netcover_gate_status"] = status
+            prior_vetted = bool(source.get("vetted", False))
+            rec["vetted_before_netcover"] = prior_vetted
+            rec["vetted"] = prior_vetted and passed
+            if not rec["vetted"] and not rec.get("rejection_reason"):
+                rec["rejection_reason"] = _explain_rejection(source, False)
+            output.append(rec)
+        return output
+
+    @classmethod
+    def _fail_closed_netcover(
+        cls, records: Sequence[Mapping[str, Any]], reason: str
+    ) -> List[Dict[str, Any]]:
+        rejected = [
             dict(
                 record,
                 netcover_pass=False,
@@ -551,6 +585,7 @@ class DefaultStages:
             )
             for record in records
         ]
+        return cls._enforce_fifth_gate(records, rejected)
 
     def netcover(self, records: Sequence[Mapping[str, Any]]) -> List[Dict[str, Any]]:
         """Invoke WP-04 through its record adapter, never duplicate its math.
@@ -572,7 +607,10 @@ class DefaultStages:
                     result = adapter(list(records))
                 except Exception as exc:
                     return self._fail_closed_netcover(records, f"netcover error: {exc}")
-                return [dict(record) for record in result]
+                try:
+                    return self._enforce_fifth_gate(records, [dict(record) for record in result])
+                except Exception as exc:
+                    return self._fail_closed_netcover(records, f"netcover adapter error: {exc}")
         return self._fail_closed_netcover(records, "netcover unavailable (record adapter missing)")
 
 
