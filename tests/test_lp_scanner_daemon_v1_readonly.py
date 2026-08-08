@@ -200,6 +200,62 @@ def test_wp04_adapter_is_the_strict_fifth_gate_not_only_a_diagnostic():
     assert rejected["rejection_reason"].startswith("NETCOVER_INPUT_MISSING:")
 
 
+def test_default_live_stages_inject_rotating_rpc_pool_into_calls_and_logs(monkeypatch):
+    import scripts.lp_multiwindow_stability_v1_readonly as stability
+    import scripts.lp_pool_resolve_and_rank_v1_readonly as bridge
+    import scripts.lp_rpc_pool_v1_readonly as rpc_module
+
+    calls = []
+
+    class FakeRpcPool:
+        def __init__(self, chain):
+            assert chain == "base"
+
+        def call(self, method, params, timeout=20):
+            calls.append((method, params, timeout))
+            return "0x64" if method == "eth_blockNumber" else []
+
+    def raw_fetch(pool, lo, hi, dec0, dec1, rpc_call=None):
+        assert rpc_call is not None
+        rpc_call("eth_getLogs", [{"address": pool}])
+        return []
+
+    live = {"_rpc_with_retry": lambda *_: pytest.fail("legacy RPC used"), "fetch_pool_swaps": raw_fetch}
+    monkeypatch.setattr(rpc_module, "RpcPool", FakeRpcPool)
+    monkeypatch.setattr(bridge, "_load_live_helpers", lambda: dict(live))
+    monkeypatch.setattr(bridge, "_eth_block_number", lambda rpc: int(rpc("eth_blockNumber", []), 16))
+
+    def process(candidate, window_blocks, current_block, caches, injected):
+        assert current_block == 100
+        injected["fetch_pool_swaps"]("0x1", 1, 2, 18, 6)
+        return dict(candidate, status="OK")
+
+    monkeypatch.setattr(bridge, "process_candidate", process)
+    monkeypatch.setattr(stability, "_live", lambda: dict(live))
+    monkeypatch.setattr(
+        stability,
+        "assess_pool",
+        lambda injected, cfg, *_: (
+            injected["fetch_pool_swaps"]("0x1", 1, 2, 18, 6) or {"pool": cfg["pool"]}
+        ),
+    )
+    monkeypatch.setattr(
+        bridge,
+        "build_policy_config",
+        lambda records: [{"pool": "0x1", "dec0": 18, "dec1": 6, "fee_tier": 0.0005}],
+    )
+
+    stages = DefaultStages(chain="Base")
+    assert stages.resolve([{"pool": "0x1"}])[0]["status"] == "OK"
+    assert stages.multiwindow([{"pool": "0x1"}]) == [{"pool": "0x1"}]
+    assert [method for method, _, _ in calls] == [
+        "eth_blockNumber",
+        "eth_getLogs",
+        "eth_blockNumber",
+        "eth_getLogs",
+    ]
+
+
 def test_store_rolls_back_the_whole_cycle_on_invalid_market_session(tmp_path):
     stages = FakeStages()
     original = stages.screen
