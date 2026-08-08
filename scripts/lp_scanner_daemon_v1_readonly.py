@@ -561,7 +561,19 @@ class DefaultStages:
         stability: Sequence[Mapping[str, Any]],
     ) -> List[Dict[str, Any]]:
         funnel = importlib.import_module("scripts.lp_funnel_vet_v1_readonly")
-        return list(funnel.funnel_vet(resolved, stability, yc_min=self.yc_min))
+        # This is explicitly the intermediate four-gate result because the
+        # task-package sequence puts the WP-04 NetCover calculation next.  The
+        # public funnel API itself remains fail-closed by default; only this
+        # orchestrated path opts into the intermediate state, and
+        # ``_enforce_fifth_gate`` below produces the final vetted value.
+        return list(
+            funnel.funnel_vet(
+                resolved,
+                stability,
+                yc_min=self.yc_min,
+                allow_legacy_without_netcover=True,
+            )
+        )
 
     @staticmethod
     def _enforce_fifth_gate(
