@@ -142,6 +142,14 @@ def test_cache_expiry_refreshes_and_robinhood_rate_limit_is_explicit():
     assert len(transport.calls) == 4
 
 
+def test_robinhood_rate_limit_counts_actual_http_requests():
+    client = RobinhoodAnchorClient(transport=FakeTransport({"": {}}), clock=FakeClock())
+    for _ in range(60):
+        client._get_json("https://api.robinhood.com/rhj/assets")
+    with pytest.raises(AnchorUnavailable, match="rate limit"):
+        client._get_json("https://api.robinhood.com/rhj/assets")
+
+
 def test_no_client_accepts_or_stores_api_credentials():
     for cls in (XStocksAnchorClient, BybitAnchorClient, RobinhoodAnchorClient):
         assert "api_key" not in cls.__init__.__annotations__

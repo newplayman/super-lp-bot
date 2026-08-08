@@ -122,7 +122,7 @@ class _CachedClient:
         self._transport = transport or UrllibJsonTransport()
         self._clock = clock or time.time
         self._cache: dict[tuple[str, str], _CacheEntry] = {}
-        self._last_fetch_at: float | None = None
+        self._request_times: list[float] = []
 
     def _cached(self, symbol: str, session: str) -> PriceObservation | None:
         entry = self._cache.get((symbol, session))
@@ -131,12 +131,17 @@ class _CachedClient:
         return None
 
     def _begin_fetch(self) -> float:
+        return float(self._clock())
+
+    def _get_json(self, url: str) -> object:
+        """Count transport requests in a rolling second before doing any I/O."""
+
         now = float(self._clock())
-        minimum_interval = 1.0 / self.max_requests_per_second
-        if self._last_fetch_at is not None and now - self._last_fetch_at < minimum_interval:
+        self._request_times = [stamp for stamp in self._request_times if now - stamp < 1.0]
+        if len(self._request_times) >= int(self.max_requests_per_second):
             raise AnchorUnavailable(f"{self.source_name}: local public-API rate limit")
-        self._last_fetch_at = now
-        return now
+        self._request_times.append(now)
+        return self._transport.get_json(url)
 
     def _store(self, symbol: str, session: str, stored_at: float, observation: PriceObservation) -> PriceObservation:
         self._cache[(symbol, session)] = _CacheEntry(stored_at, observation)
@@ -157,19 +162,19 @@ class XStocksAnchorClient(_CachedClient):
         if cached is not None:
             return cached
         stored_at = self._begin_fetch()
-        token_payload = _mapping(self._transport.get_json(f"{self.base_url}/token?type=xstocks"), self.source_name, "token payload")
+        token_payload = _mapping(self._get_json(f"{self.base_url}/token?type=xstocks"), self.source_name, "token payload")
         nodes = _list(token_payload.get("nodes"), self.source_name, "nodes")
         metadata = next((row for row in nodes if isinstance(row, Mapping) and row.get("symbol") == token_symbol), None)
         if metadata is None:
             raise AnchorUnavailable(f"{self.source_name}: token metadata not found for {token_symbol}")
         multiplier_payload = _mapping(
-            self._transport.get_json(
+            self._get_json(
                 f"{self.base_url}/token/{quote(token_symbol, safe='')}/multiplier?{urlencode({'network': 'Solana'})}"
             ), self.source_name, "multiplier payload",
         )
         multiplier = _positive_decimal(multiplier_payload.get("currentMultiplier"), self.source_name, "currentMultiplier")
         quote_payload = _mapping(
-            self._transport.get_json(f"{self.base_url}/quotes/assets/{quote(token_symbol, safe='')}"),
+            self._get_json(f"{self.base_url}/quotes/assets/{quote(token_symbol, safe='')}"),
             self.source_name, "quote payload",
         )
         # AssetAvailabilityResponse defines both values as USD cents.
@@ -208,7 +213,7 @@ class BybitAnchorClient(_CachedClient):
         if cached is not None:
             return cached
         stored_at = self._begin_fetch()
-        payload = _mapping(self._transport.get_json(
+        payload = _mapping(self._get_json(
             f"{self.base_url}/v5/market/tickers?{urlencode({'category': 'spot', 'symbol': market_symbol})}"
         ), self.source_name, "ticker payload")
         if payload.get("retCode") != 0:
@@ -224,7 +229,7 @@ class BybitAnchorClient(_CachedClient):
         if not base.endswith("X"):
             raise AnchorUnavailable(f"{self.source_name}: symbol is not an xStock")
         token_symbol = base[:-1] + "x"
-        multiplier_payload = _mapping(self._transport.get_json(
+        multiplier_payload = _mapping(self._get_json(
             f"{self.metadata_url}/token/{quote(token_symbol, safe='')}/multiplier?{urlencode({'network': 'Solana'})}"
         ), self.source_name, "official multiplier payload")
         multiplier = _positive_decimal(multiplier_payload.get("currentMultiplier"), self.source_name, "currentMultiplier")
@@ -254,14 +259,14 @@ class RobinhoodAnchorClient(_CachedClient):
         if cached is not None:
             return cached
         stored_at = self._begin_fetch()
-        price_payload = _mapping(self._transport.get_json(
+        price_payload = _mapping(self._get_json(
             f"{self.base_url}/prices/{quote(token_symbol, safe='')}"
         ), self.source_name, "price payload")
         quotes = _list(price_payload.get("quotes"), self.source_name, "quotes")
         price_row = next((row for row in quotes if isinstance(row, Mapping) and row.get("tokenSymbol") == token_symbol), None)
         if price_row is None:
             raise AnchorUnavailable(f"{self.source_name}: quote not found for {token_symbol}")
-        asset_payload = _mapping(self._transport.get_json(f"{self.base_url}/assets"), self.source_name, "assets payload")
+        asset_payload = _mapping(self._get_json(f"{self.base_url}/assets"), self.source_name, "assets payload")
         assets = _list(asset_payload.get("assets"), self.source_name, "assets")
         asset = next((row for row in assets if isinstance(row, Mapping) and row.get("tokenSymbol") == token_symbol), None)
         if asset is None:
