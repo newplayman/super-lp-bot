@@ -21,11 +21,13 @@ from __future__ import annotations
 import argparse
 from dataclasses import asdict
 import json
+import math
 import os
 import signal
 import sys
 import time
 from datetime import datetime, timezone
+from pathlib import Path
 
 # repo-root import shim so `scripts.*` resolves when run as a file
 _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -75,6 +77,10 @@ from scripts.lp_tg_alerter_v1_readonly import (  # noqa: E402
     TelegramAlerter,
     safe_send_event,
 )
+from scripts.lp_shadow_gate_v1_readonly import (  # noqa: E402
+    DEFAULT_DB_PATH as DEFAULT_GATE_DB_PATH,
+    GateStore,
+)
 
 # Rotating free-public-RPC pool, set up in run(). Until then, calls fall back to
 # the single-URL _rpc_with_retry so the pure engine + tests need no network.
@@ -113,6 +119,17 @@ ATTRIBUTION_SEMANTICS = {
 def _rpc():
     """The active RPC entrypoint: rotating pool if initialized, else single-URL."""
     return _POOL.call if _POOL is not None else _rpc_with_retry
+
+
+def _rpc_health_state():
+    """Expose only observed pool health; missing evidence stays UNKNOWN."""
+    if _POOL is None:
+        return "UNKNOWN"
+    try:
+        state = str(_POOL.health_snapshot().get("state") or "UNKNOWN").upper()
+    except Exception:  # noqa: BLE001 - health evidence must fail closed
+        return "UNKNOWN"
+    return state if state in {"NORMAL", "DEGRADED", "EXIT_ONLY"} else "UNKNOWN"
 
 
 # ---------------------------------------------------------------------------
@@ -735,6 +752,24 @@ def accrue_capital_time(state, elapsed_seconds):
     return state
 
 
+def cumulative_fee_prediction_usd(state, fee_apr_pct):
+    """Cumulative paper fee prediction over observed in-range capital time.
+
+    ``fee_apr_pct`` is the conservative on-chain fee APR frozen in the
+    allocation.  Missing/non-finite/non-positive evidence returns ``None`` so
+    the §12.0 gate reports UNKNOWN instead of a fabricated zero error.
+    """
+    try:
+        apr = float(fee_apr_pct)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(apr) or apr <= 0.0:
+        return None
+    capital_time = float(state.get("capital_time", {}).get("time_in_range_seconds", 0.0))
+    predicted = float(state["capital"]) * (apr / 100.0) * capital_time / (365.0 * 86400.0)
+    return predicted if math.isfinite(predicted) and predicted > 0.0 else None
+
+
 def attribution_ledger(state, mark):
     """Build the PRD v2.1 section 11.1 per-position attribution record."""
     reward = _reward_accounting(state)
@@ -897,6 +932,7 @@ def _init_book(allocs, *, entry_window_blocks, latest):
             "symbol": a["symbol"], "project": a.get("project", ""),
             "tier": a.get("tier", ""), "pool": pool,
             "reward_apr": float(a.get("reward_apr", 0.0)),
+            "fee_apr_onchain": a.get("fee_apr_onchain"),
             "reward_price_usd": float(a.get("reward_token_price_usd", 1.0)),
             "last_price": anchor, "state": st,
         })
@@ -1005,6 +1041,7 @@ def _tick(book, *, last_ts, alerter=None):
     elapsed = (now - last_ts).total_seconds()
     by_pool = []
     portfolio_net = 0.0
+    portfolio_nav = 0.0
     for p in book:
         st = p["state"]
         staged_inventory = bool(
@@ -1054,6 +1091,7 @@ def _tick(book, *, last_ts, alerter=None):
         portfolio_net += pool_net
         _emit_runner_alerts(p, alerter)
         attribution = attribution_ledger(st, mk)
+        portfolio_nav += attribution["entry_capital_usd"] + attribution["pnl_vs_usdc"]
         by_pool.append({
             "symbol": p["symbol"], "tier": p["tier"], "pool": p["pool"],
             "net_pct": round(mk["net_pct"], 4),
@@ -1074,11 +1112,17 @@ def _tick(book, *, last_ts, alerter=None):
             "exited": bool(st.get("exited")),
             "risk_state": st["exit_policy_context"]["state"],
             "exit_substate": st["exit_policy_context"]["substate"],
+            "fee_prediction_usd": cumulative_fee_prediction_usd(
+                st, p.get("fee_apr_onchain")
+            ),
             **attribution,
         })
     return {"ledger_schema_version": LEDGER_SCHEMA_VERSION,
             "ts_utc": now.isoformat(), "block": latest,
-            "portfolio_net_usd": round(portfolio_net, 2), "by_pool": by_pool}, now
+            "rpc_health": _rpc_health_state(),
+            "portfolio_net_usd": round(portfolio_net, 2),
+            "portfolio_nav_usd": round(portfolio_nav, 2),
+            "by_pool": by_pool}, now
 
 
 def _write_pid(run_dir):
@@ -1090,6 +1134,11 @@ def _append_heartbeat(run_dir, rec, tick):
     rec = {"tick": tick, **rec}
     with open(os.path.join(run_dir, "heartbeat.jsonl"), "a") as f:
         f.write(json.dumps(rec) + "\n")
+
+
+def _record_gate_observation(store, source_run, tick, rec):
+    """Normal runner-tick hook; kept injectable for deterministic tests."""
+    return store.record_heartbeat(source_run, tick, rec)
 
 
 _CSV_HEADER = "ts_utc,tick,block,portfolio_net_usd\n"
@@ -1105,12 +1154,15 @@ def _append_hourly_csv(run_dir, rec, tick):
 
 
 def run(allocation_path, *, poll_secs=1800, max_ticks=None, out=None,
-        entry_window_blocks=4000, chain="base", alerter=None):
+        entry_window_blocks=4000, chain="base", alerter=None,
+        gate_db=DEFAULT_GATE_DB_PATH):
     global _POOL
     _POOL = RpcPool(chain)
     selected_alerter = TelegramAlerter.from_env() if alerter is None else alerter
     allocs = _load_allocation(allocation_path)
     run_dir = _report_dir(out)
+    gate_store = GateStore(gate_db) if gate_db else None
+    source_run = str(Path(run_dir).resolve())
     _write_pid(run_dir)
     print(f"[run] dir={run_dir} pools={len(allocs)} poll={poll_secs}s "
           f"max_ticks={max_ticks} chain={chain} "
@@ -1139,6 +1191,8 @@ def run(allocation_path, *, poll_secs=1800, max_ticks=None, out=None,
         while not stop["flag"]:
             rec, last_ts = _tick(book, last_ts=last_ts, alerter=selected_alerter)
             _append_heartbeat(run_dir, rec, tick)
+            if gate_store is not None:
+                _record_gate_observation(gate_store, source_run, tick, rec)
             cur_hour = datetime.fromisoformat(rec["ts_utc"]).hour
             if cur_hour != last_hour:
                 _append_hourly_csv(run_dir, rec, tick)
@@ -1272,6 +1326,10 @@ def main():
     ap.add_argument("--max-ticks", type=int, default=None)
     ap.add_argument("--out", default=None)
     ap.add_argument("--entry-window-blocks", type=int, default=4000)
+    ap.add_argument(
+        "--gate-db", default=str(DEFAULT_GATE_DB_PATH),
+        help="scanner.db receiving automatic §12.0 evidence each successful tick",
+    )
     ap.add_argument("--self-test", action="store_true")
     args = ap.parse_args()
 
@@ -1281,7 +1339,8 @@ def main():
     if not args.allocation:
         ap.error("--allocation is required (or use --self-test)")
     run(args.allocation, poll_secs=args.poll_secs, max_ticks=args.max_ticks,
-        out=args.out, entry_window_blocks=args.entry_window_blocks, chain=args.chain)
+        out=args.out, entry_window_blocks=args.entry_window_blocks, chain=args.chain,
+        gate_db=args.gate_db)
 
 
 if __name__ == "__main__":

@@ -112,6 +112,12 @@ def test_drawdown_uses_running_portfolio_peak_and_rpc_incident_resolves_on_norma
     store.record_rpc_health("NORMAL", as_of="2026-08-08T01:02:00+00:00", source="scanner")
     assert store.unresolved_rpc_severe_count() == 0
 
+    store.record_rpc_health("KILLED", as_of="2026-08-08T01:03:00+00:00", source="runner")
+    store.record_rpc_health("DEGRADED", as_of="2026-08-08T01:04:00+00:00", source="runner")
+    assert store.unresolved_rpc_severe_count() == 1
+    store.record_rpc_health("NORMAL", as_of="2026-08-08T01:05:00+00:00", source="runner")
+    assert store.unresolved_rpc_severe_count() == 0
+
 
 def test_gate_report_applies_exact_section_12_thresholds_and_keeps_evidence(tmp_path):
     store = GateStore(tmp_path / "scanner.db")

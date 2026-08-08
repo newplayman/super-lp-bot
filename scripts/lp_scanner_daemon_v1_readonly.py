@@ -810,6 +810,7 @@ class ScannerDaemon:
         pid_file: str | os.PathLike[str] | None = None,
         on_shutdown: Optional[Callable[[], None]] = None,
         event_hook: Any = None,
+        rpc_health_recorder: Optional[Callable[[str], None]] = None,
         monotonic: Callable[[], float] = time.monotonic,
     ):
         if coarse_interval_secs <= 0 or top_interval_secs <= 0:
@@ -820,10 +821,15 @@ class ScannerDaemon:
         self.pid_file = Path(pid_file) if pid_file else None
         self.on_shutdown = on_shutdown
         self.event_hook = event_hook
+        self.rpc_health_recorder = rpc_health_recorder
         self.monotonic = monotonic
         self._stop = threading.Event()
 
     def _notify_cycle(self, result: Any) -> None:
+        if self.rpc_health_recorder is not None:
+            health = result.get("rpc_health") if isinstance(result, Mapping) else getattr(result, "rpc_health", None)
+            if health is not None:
+                self.rpc_health_recorder(str(health))
         if self.event_hook is None:
             return
         try:
@@ -939,6 +945,10 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--window-days", type=float, default=1.0)
     parser.add_argument("--n-windows", type=int, default=6)
     parser.add_argument("--yc-min", type=float, default=1.0)
+    parser.add_argument(
+        "--vetted-menu-out", default=None,
+        help="after exit, export latest live accepted score_json rows for allocator",
+    )
     return parser
 
 
@@ -987,6 +997,9 @@ def main(
         digest_provider=digest_provider,
         utc_now=now,
     )
+    from scripts.lp_shadow_gate_v1_readonly import GateStore
+
+    gate_store = GateStore(args.db)
 
     def cycle(refresh_coarse: bool) -> CycleResult:
         result = orchestrator.run_once(refresh_coarse=refresh_coarse, as_of=now())
@@ -1005,9 +1018,20 @@ def main(
         top_interval_secs=args.top_interval_secs,
         pid_file=pid_file,
         event_hook=event_hook,
+        rpc_health_recorder=lambda health: gate_store.record_rpc_health(
+            health, as_of=now(), source="scanner"
+        ),
     )
     try:
-        return daemon.run(once=args.once)
+        rc = daemon.run(once=args.once)
+        if args.vetted_menu_out:
+            result = export_latest_vetted_menu(args.db, args.vetted_menu_out)
+            print(
+                f"[scanner] vetted_menu exported={result['exported_records']} "
+                f"invalid={result['invalid_records']} out={result['out']}",
+                flush=True,
+            )
+        return rc
     except Exception as exc:
         print(f"[scanner] fatal: {exc}", file=sys.stderr)
         return 1

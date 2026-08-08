@@ -265,7 +265,7 @@ class GateStore:
         state = str(health).upper()
         stamp = _as_of(as_of)
         with self._connect() as connection:
-            if state == "EXIT_ONLY":
+            if state in {"EXIT_ONLY", "KILLED"}:
                 connection.execute(
                     """
                     INSERT OR IGNORE INTO rpc_severe_incidents(
