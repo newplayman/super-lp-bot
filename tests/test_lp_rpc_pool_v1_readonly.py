@@ -245,6 +245,25 @@ def test_backoff_grows_with_consecutive_failures():
     assert second > first
 
 
+def test_health_snapshot_reports_endpoint_impairment_and_recovery_without_io():
+    pool = RpcPool("base", post=lambda *a, **k: {"result": "x"}, clock=Clock())
+    first = CHAINS["base"]["endpoints"][0]["url"]
+
+    healthy = pool.health_snapshot()
+    pool._penalize(first)
+    degraded = pool.health_snapshot()
+    pool._reset(first)
+    recovered = pool.health_snapshot()
+
+    assert healthy["state"] == "NORMAL"
+    assert healthy["impaired_endpoints"] == 0
+    assert degraded["state"] == "DEGRADED"
+    assert degraded["impaired_endpoints"] == 1
+    assert degraded["cooling_endpoints"] == 1
+    assert degraded["total_endpoints"] == len(CHAINS["base"]["endpoints"])
+    assert recovered["state"] == "NORMAL"
+
+
 def test_all_endpoints_failing_raises_not_loops():
     post = lambda url, method, params, timeout=20: (_ for _ in ()).throw(OSError("403"))
     pool = RpcPool("base", post=post, clock=Clock())

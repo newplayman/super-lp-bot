@@ -19,11 +19,13 @@ from scripts.lp_scanner_daemon_v1_readonly import (
     MARKET_SESSION_COLUMNS,
     OPPORTUNITY_SCORE_COLUMNS,
     POOL_SNAPSHOT_COLUMNS,
+    CycleResult,
     FunnelOrchestrator,
     ScannerStore,
     ScreenBatch,
     main,
 )
+from scripts.lp_tg_alerter_v1_readonly import ScannerAlertBridge
 
 
 AS_OF = datetime(2026, 8, 8, 12, 0, tzinfo=timezone.utc)
@@ -270,6 +272,111 @@ def test_default_live_stages_inject_rotating_rpc_pool_into_calls_and_logs(monkey
         "eth_blockNumber",
         "eth_getLogs",
     ]
+
+
+def test_default_stages_reuses_one_rpc_pool_and_exports_real_health_snapshot():
+    class PersistentPool:
+        def __init__(self):
+            self.state = "NORMAL"
+
+        def call(self, method, params, timeout=20):
+            return "0x64" if method == "eth_blockNumber" else []
+
+        def health_snapshot(self):
+            return {"state": self.state, "impaired_endpoints": int(self.state != "NORMAL")}
+
+    pool = PersistentPool()
+    stages = DefaultStages(chain="Base", rpc_pool=pool)
+    raw = lambda *args, **kwargs: []
+
+    first = stages._live_with_rotating_rpc({"fetch_pool_swaps": raw})
+    second = stages._live_with_rotating_rpc({"fetch_pool_swaps": raw})
+
+    assert first["_rpc_with_retry"].__self__ is pool
+    assert second["_rpc_with_retry"].__self__ is pool
+    assert stages.rpc_health == "NORMAL"
+    pool.state = "DEGRADED"
+    assert stages.rpc_health == "DEGRADED"
+
+
+def test_real_pool_degradation_and_recovery_flow_through_daemon_alert_hook():
+    from scripts.lp_rpc_pool_v1_readonly import CHAINS, RpcPool
+
+    class Clock:
+        def now(self):
+            return 1000.0
+
+        def sleep(self, secs):
+            pass
+
+    class RecordingAlerter:
+        def __init__(self):
+            self.events = []
+
+        def send_event(self, event_type, message, **kwargs):
+            self.events.append(event_type)
+
+    pool = RpcPool("base", post=lambda *a, **k: {"result": "0x1"}, clock=Clock())
+    impaired = CHAINS["base"]["endpoints"][0]["url"]
+    stages = DefaultStages(chain="Base", rpc_pool=pool)
+    alerter = RecordingAlerter()
+    hook = ScannerAlertBridge(alerter, utc_now=lambda: AS_OF)
+
+    def cycle(refresh_coarse):
+        return CycleResult(AS_OF.isoformat(), 0, 0, 0, 0, 0, 0, stages.rpc_health)
+
+    daemon = ScannerDaemon(cycle, event_hook=hook)
+    pool._penalize(impaired)
+    assert daemon.run(once=True) == 0
+    pool._reset(impaired)
+    assert daemon.run(once=True) == 0
+
+    assert alerter.events == ["rpc_degraded", "rpc_normal"]
+
+
+def test_all_endpoint_cycle_failure_alerts_exit_only_then_success_recovers_normal():
+    from scripts.lp_rpc_pool_v1_readonly import CHAINS, RpcPool
+
+    class Clock:
+        def now(self):
+            return 1000.0
+
+        def sleep(self, secs):
+            pass
+
+    class RecordingAlerter:
+        def __init__(self):
+            self.events = []
+
+        def send_event(self, event_type, message, **kwargs):
+            self.events.append(event_type)
+
+    failing = [True]
+
+    def post(url, method, params, timeout=20):
+        if failing[0]:
+            raise OSError("public endpoint unavailable")
+        return {"result": "0x1"}
+
+    pool = RpcPool("base", post=post, clock=Clock())
+    stages = DefaultStages(chain="Base", rpc_pool=pool)
+    alerter = RecordingAlerter()
+    hook = ScannerAlertBridge(alerter, utc_now=lambda: AS_OF)
+
+    def cycle(refresh_coarse):
+        pool.call("eth_blockNumber", [])
+        return CycleResult(AS_OF.isoformat(), 0, 0, 0, 0, 0, 0, stages.rpc_health)
+
+    daemon = ScannerDaemon(cycle, event_hook=hook)
+    with pytest.raises(RuntimeError, match="failed on all"):
+        daemon.run(once=True)
+
+    failing[0] = False
+    for endpoint in CHAINS["base"]["endpoints"]:
+        pool._reset(endpoint["url"])
+    assert daemon.run(once=True) == 0
+
+    assert alerter.events == ["rpc_exit_only", "rpc_normal"]
 
 
 def test_store_rolls_back_the_whole_cycle_on_invalid_market_session(tmp_path):
