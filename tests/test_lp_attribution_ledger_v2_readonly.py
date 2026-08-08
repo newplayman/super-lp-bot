@@ -165,6 +165,71 @@ def test_every_exit_records_cost_basis_and_missing_depth_fallback(swap, basis, f
     assert ledger["exit_swap_cost"] == pytest.approx(state["exited"]["exit_cost_quote"])
 
 
+@pytest.mark.parametrize(
+    ("price", "signals", "expected_mode"),
+    [
+        (1.2, {"structural_risk_worsening": True}, "REMOVE_ONLY"),
+        (0.8, {"tvl_worsening": True}, "REMOVE_TO_TARGET"),
+        (0.8, {"trend_continuation": True, "netcover_forward": 0.8}, "REMOVE_TO_STABLE"),
+        (0.8, {"kill_switch": True}, "PANIC_EXIT"),
+    ],
+)
+def test_all_exit_modes_leave_an_explicit_allowed_cost_basis(price, signals, expected_mode):
+    state = _state(
+        exit_policy_enabled=True,
+        risky_token_side="token0:TEST",
+        stable_token_side="token1:USDC",
+        risky_inventory_target=0.25,
+    )
+    runner.update_position(
+        state,
+        [
+            {
+                "block": 1,
+                "price": price,
+                "liquidity": LIQUIDITY,
+                "amount1": AMOUNT1,
+                "risk_signals": signals,
+            }
+        ],
+        now_block=1,
+    )
+    assert state["exited"]["exit_mode"] == expected_mode
+    assert state["exited"]["exit_cost_basis"] in {"depth_model", "flat_placeholder"}
+    if expected_mode == "REMOVE_ONLY":
+        assert state["exited"]["exit_cost_quote"] == 0.0
+        assert state["exited"]["exit_cost_fallback_reason"] is None
+
+
+def test_staged_remove_does_not_simulate_reward_claim_before_risk_off_complete():
+    state = _state(
+        exit_policy_enabled=True,
+        risky_token_side="token0:TEST",
+        stable_token_side="token1:USDC",
+        risky_inventory_target=0.25,
+    )
+    runner.accrue_reward_ledger(state, 10.0, reward_token_price_usd=2.0)
+    runner.update_position(
+        state,
+        [
+            {
+                "block": 1,
+                "price": 0.8,
+                "liquidity": LIQUIDITY,
+                "amount1": AMOUNT1,
+                "risk_signals": {"trend_continuation": True, "netcover_forward": 0.8},
+                "exit_quote": QuoteResult.failed("unavailable"),
+            }
+        ],
+        now_block=1,
+    )
+    ledger = runner.attribution_ledger(state, runner.mark_position(state, 0.8))
+    assert state["exited"]["risk_off_complete"] is False
+    assert ledger["reward_income_marked"] == 10.0
+    assert ledger["reward_income_realized"] == 0.0
+    assert state["reward_accounting"]["simulated_claim_count"] == 0
+
+
 def test_staged_remove_tick_keeps_readonly_price_monitoring_without_lp_accrual(monkeypatch):
     state = _state(
         exit_policy_enabled=True,

@@ -103,6 +103,10 @@ ATTRIBUTION_SEMANTICS = {
     "capital_time_weighted": "USD_seconds_in_range",
     "ACE": "swap_fee_income_USD_per_USD_second_in_range",
     "realized_net_pnl": "zero_until_paper_position_is_converted_to_cash",
+    "exit_cost_basis": (
+        "depth_model=liquidity-backed path (zero when no swap requested); "
+        "flat_placeholder=missing-liquidity fallback"
+    ),
 }
 
 
