@@ -5,7 +5,12 @@ deterministic and offline.
 """
 import pytest
 
-from scripts.lp_rpc_pool_v1_readonly import RpcPool, CHAINS, _build_request
+from scripts.lp_rpc_pool_v1_readonly import (
+    CHAINS,
+    RpcPool,
+    RpcPoolExhaustedError,
+    _build_request,
+)
 
 GETLOGS = "eth_getLogs"
 CHEAP = "eth_blockNumber"
@@ -267,7 +272,16 @@ def test_health_snapshot_reports_endpoint_impairment_and_recovery_without_io():
 def test_all_endpoints_failing_raises_not_loops():
     post = lambda url, method, params, timeout=20: (_ for _ in ()).throw(OSError("403"))
     pool = RpcPool("base", post=post, clock=Clock())
-    with pytest.raises(RuntimeError):
+    with pytest.raises(RpcPoolExhaustedError) as caught:
+        pool.call(CHEAP, [])
+    assert isinstance(caught.value, RuntimeError)
+
+
+def test_no_capable_endpoint_uses_dedicated_exhaustion_error():
+    pool = RpcPool("base", post=lambda *a, **k: {"result": "x"}, clock=Clock())
+    pool._endpoints = []
+
+    with pytest.raises(RpcPoolExhaustedError, match="no capable"):
         pool.call(CHEAP, [])
 
 

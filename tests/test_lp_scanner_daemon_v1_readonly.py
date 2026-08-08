@@ -380,6 +380,29 @@ def test_all_endpoint_cycle_failure_alerts_exit_only_then_success_recovers_norma
     assert alerter.events == ["rpc_exit_only", "rpc_normal"]
 
 
+def test_non_rpc_cycle_error_never_masquerades_as_exit_only():
+    class RecordingAlerter:
+        def __init__(self):
+            self.events = []
+
+        def send_event(self, event_type, message, **kwargs):
+            self.events.append(event_type)
+
+    alerter = RecordingAlerter()
+    hook = ScannerAlertBridge(alerter, utc_now=lambda: AS_OF)
+
+    def invalid_market_session(refresh_coarse):
+        raise ValueError("invalid market_session")
+
+    daemon = ScannerDaemon(invalid_market_session, event_hook=hook)
+
+    with pytest.raises(ValueError, match="market_session"):
+        daemon.run(once=True)
+
+    assert alerter.events == ["scanner_cycle_error"]
+    assert "rpc_exit_only" not in alerter.events
+
+
 def test_store_rolls_back_the_whole_cycle_on_invalid_market_session(tmp_path):
     stages = FakeStages()
     original = stages.screen
