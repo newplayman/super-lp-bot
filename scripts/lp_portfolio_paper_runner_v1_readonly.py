@@ -19,6 +19,8 @@ writes. RPC reads only. Honors FETCH_PACE_SECS for getLogs pacing.
 from __future__ import annotations
 
 import argparse
+import base64
+import binascii
 from dataclasses import asdict
 import json
 import math
@@ -85,6 +87,12 @@ from scripts.lp_shadow_gate_v1_readonly import (  # noqa: E402
 # Rotating free-public-RPC pool, set up in run(). Until then, calls fall back to
 # the single-URL _rpc_with_retry so the pure engine + tests need no network.
 _POOL = None
+
+ORCA_WHIRLPOOL_PROGRAM_ID = "whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc"
+ORCA_WHIRLPOOL_ACCOUNT_SIZE = 653
+ORCA_WHIRLPOOL_DISCRIMINATOR = bytes.fromhex("3f95d10ce1806309")
+ORCA_WHIRLPOOL_ADAPTER = "orca_whirlpool_account_v1"
+ORCA_WHIRLPOOL_PROTOCOL = "orca_whirlpool"
 
 LEDGER_SCHEMA_VERSION = 2
 ATTRIBUTION_FIELDS = (
@@ -860,6 +868,11 @@ def _now_utc():
 
 
 def _latest_block():
+    if _POOL is not None and getattr(_POOL, "chain", None) == "solana":
+        slot = _rpc()("getSlot", [])
+        if isinstance(slot, bool) or not isinstance(slot, int) or slot <= 0:
+            raise ValueError("Solana getSlot returned an invalid slot")
+        return slot
     return int(_rpc()("eth_blockNumber", []), 16)
 
 
@@ -882,18 +895,141 @@ def _load_allocation(path):
     return allocs
 
 
-def _init_book(allocs, *, entry_window_blocks, latest):
+def _decode_orca_whirlpool_account(account_result, *, decimals_a, decimals_b):
+    """Validate and decode one Orca Whirlpool account, failing closed.
+
+    Whirlpool ``sqrt_price`` is Q64.64 sqrt(raw token-B/token-A).  The
+    human-price direction emitted here is therefore token B per token A:
+
+      (sqrt_price_x64 / 2**64)**2 * 10**(decimals_a - decimals_b)
+
+    Only the two immutable layout fields needed for a state observation are
+    decoded. No API metadata, address guessing, transaction, or swap evidence
+    is involved.
+    """
+    if not isinstance(account_result, dict):
+        raise ValueError("Whirlpool account result is missing")
+    value = account_result.get("value")
+    if not isinstance(value, dict):
+        raise ValueError("Whirlpool account value is missing")
+    if value.get("owner") != ORCA_WHIRLPOOL_PROGRAM_ID:
+        raise ValueError("Whirlpool account owner mismatch")
+    if value.get("space") != ORCA_WHIRLPOOL_ACCOUNT_SIZE:
+        raise ValueError("Whirlpool account space mismatch")
+
+    encoded = value.get("data")
+    if (
+        not isinstance(encoded, list)
+        or len(encoded) != 2
+        or encoded[1] != "base64"
+        or not isinstance(encoded[0], str)
+    ):
+        raise ValueError("Whirlpool account data must be base64")
+    try:
+        raw = base64.b64decode(encoded[0], validate=True)
+    except (binascii.Error, ValueError) as exc:
+        raise ValueError("Whirlpool account base64 is malformed") from exc
+    if len(raw) != ORCA_WHIRLPOOL_ACCOUNT_SIZE:
+        raise ValueError("Whirlpool decoded account space mismatch")
+    if raw[:8] != ORCA_WHIRLPOOL_DISCRIMINATOR:
+        raise ValueError("Whirlpool account discriminator mismatch")
+
+    # Anchor Whirlpool layout offsets (little-endian): discriminator 0..8,
+    # config/bump/tick/fee fields 8..49, liquidity 49..65, sqrt-price 65..81.
+    liquidity = int.from_bytes(raw[49:65], "little", signed=False)
+    sqrt_price_x64 = int.from_bytes(raw[65:81], "little", signed=False)
+    if liquidity <= 0:
+        raise ValueError("Whirlpool liquidity must be positive")
+    if sqrt_price_x64 <= 0:
+        raise ValueError("Whirlpool sqrt_price must be positive")
+
+    try:
+        decimal_scale = 10.0 ** (int(decimals_a) - int(decimals_b))
+        price = (sqrt_price_x64 / float(1 << 64)) ** 2 * decimal_scale
+    except (OverflowError, TypeError, ValueError) as exc:
+        raise ValueError("Whirlpool price must be finite and positive") from exc
+    if not math.isfinite(price) or price <= 0.0:
+        raise ValueError("Whirlpool price must be finite and positive")
+
+    return {
+        "owner": value["owner"],
+        "space": value["space"],
+        "sqrt_price_x64": sqrt_price_x64,
+        "liquidity": liquidity,
+        "price": price,
+        "price_direction": "token_b_per_token_a",
+        "decimals_a": int(decimals_a),
+        "decimals_b": int(decimals_b),
+    }
+
+
+def _solana_whirlpool_observation(
+    pool, *, decimals_a, decimals_b, rpc_call=None
+):
+    """Read one verified Whirlpool account-state observation via WP-01."""
+    call = rpc_call or _rpc()
+    result = call(
+        "getAccountInfo",
+        [pool, {"encoding": "base64", "commitment": "confirmed"}],
+    )
+    decoded = _decode_orca_whirlpool_account(
+        result, decimals_a=decimals_a, decimals_b=decimals_b
+    )
+    context = result.get("context")
+    slot = context.get("slot") if isinstance(context, dict) else None
+    if isinstance(slot, bool) or not isinstance(slot, int) or slot <= 0:
+        raise ValueError("Whirlpool account context slot is invalid")
+    return {
+        "block": slot,
+        "price": decoded["price"],
+        "liquidity": decoded["liquidity"],
+        # Account state proves no swap volume. Keeping amount1 exactly zero
+        # lets the common passive-position engine observe price/range without
+        # manufacturing fee income.
+        "amount1": 0,
+        "observation_kind": "account_state",
+        **decoded,
+    }
+
+
+def _require_solana_allocation_adapter(allocation):
+    protocol = allocation.get("protocol")
+    adapter = allocation.get("solana_adapter")
+    if not protocol:
+        raise ValueError("Solana allocation requires explicit protocol")
+    if not adapter:
+        raise ValueError("Solana allocation requires explicit solana_adapter")
+    if protocol != ORCA_WHIRLPOOL_PROTOCOL:
+        raise ValueError(f"unsupported Solana protocol {protocol!r}")
+    if adapter != ORCA_WHIRLPOOL_ADAPTER:
+        raise ValueError(f"unsupported Solana solana_adapter {adapter!r}")
+    return protocol, adapter
+
+
+def _init_book(allocs, *, entry_window_blocks, latest, chain="base"):
     """Tick 0: fetch a small recent window per pool to set the entry anchor."""
     book = []
     for a in allocs:
         pool = a["pool"]
         dec0, dec1 = int(a["dec0"]), int(a["dec1"])
-        from_b = max(0, latest - entry_window_blocks)
-        swaps = fetch_pool_swaps(pool, from_b, latest, dec0, dec1, rpc_call=_rpc())
-        if not swaps:
-            print(f"[warn] {a['symbol']} {pool}: no swaps in entry window; skipping")
-            continue
-        anchor = swaps[-1]["price"]
+        last_observation = None
+        if chain == "solana":
+            protocol, solana_adapter = _require_solana_allocation_adapter(a)
+            last_observation = _solana_whirlpool_observation(
+                pool, decimals_a=dec0, decimals_b=dec1
+            )
+            anchor = last_observation["price"]
+        else:
+            protocol = a.get("protocol", a.get("project", ""))
+            solana_adapter = None
+            from_b = max(0, latest - entry_window_blocks)
+            swaps = fetch_pool_swaps(
+                pool, from_b, latest, dec0, dec1, rpc_call=_rpc()
+            )
+            if not swaps:
+                print(f"[warn] {a['symbol']} {pool}: no swaps in entry window; skipping")
+                continue
+            anchor = swaps[-1]["price"]
         tier = str(a.get("tier", "")).upper()
         # Missing WP-03 fields are conservatively record-only for every tier.
         # Only an explicit old boolean enables the isolated compatibility path.
@@ -930,11 +1066,13 @@ def _init_book(allocs, *, entry_window_blocks, latest):
         st["tier"] = tier
         book.append({
             "symbol": a["symbol"], "project": a.get("project", ""),
-            "tier": a.get("tier", ""), "pool": pool,
+            "protocol": protocol, "solana_adapter": solana_adapter,
+            "chain": chain, "tier": a.get("tier", ""), "pool": pool,
             "reward_apr": float(a.get("reward_apr", 0.0)),
             "fee_apr_onchain": a.get("fee_apr_onchain"),
             "reward_price_usd": float(a.get("reward_token_price_usd", 1.0)),
-            "last_price": anchor, "state": st,
+            "last_price": anchor, "last_observation": last_observation,
+            "state": st,
         })
         print(f"[init] {a['symbol']:14s} {a['tier']} cap={a['usd']:.0f} "
               f"anchor={anchor:.6g} range=±{a['range_pct']:.2f}% "
@@ -943,6 +1081,29 @@ def _init_book(allocs, *, entry_window_blocks, latest):
     if not book:
         raise SystemExit("no pools initialized (no swaps found)")
     return book
+
+
+def _fetch_position_observations(pool_record, latest):
+    """Return common-engine observations and an honest swap count."""
+    state = pool_record["state"]
+    if pool_record.get("solana_adapter") == ORCA_WHIRLPOOL_ADAPTER:
+        observation = _solana_whirlpool_observation(
+            pool_record["pool"],
+            decimals_a=state["dec0"],
+            decimals_b=state["dec1"],
+        )
+        observation["account_context_slot"] = observation["block"]
+        # The runner's monotonic cursor is the getSlot result. Account context
+        # is retained separately in evidence rather than used to invent an
+        # event ordering beyond the observed runner tick.
+        observation["block"] = latest
+        pool_record["last_observation"] = observation
+        return [observation], 0
+    swaps = fetch_pool_swaps(
+        pool_record["pool"], state["last_block"] + 1, latest,
+        state["dec0"], state["dec1"], rpc_call=_rpc(),
+    )
+    return swaps, len(swaps)
 
 
 def _runner_exit_alert_status(state):
@@ -1059,18 +1220,16 @@ def _tick(book, *, last_ts, alerter=None):
             # LP liquidity is gone, but risky withdrawn inventory remains. Keep
             # a read-only market mark and block all LP fee/reward accrual until
             # a later execution path proves risk-off complete (INV-EXIT-01).
-            swaps = fetch_pool_swaps(p["pool"], st["last_block"] + 1, latest,
-                                     st["dec0"], st["dec1"], rpc_call=_rpc())
-            update_position(st, swaps, now_block=latest)
-            if swaps:
-                p["last_price"] = swaps[-1]["price"]
+            observations, n_swaps = _fetch_position_observations(p, latest)
+            update_position(st, observations, now_block=latest)
+            if observations:
+                p["last_price"] = observations[-1]["price"]
             mk = mark_position(st, p["last_price"])
             pool_net = mk["net_quote"]
-            n_swaps, new_breach = len(swaps), False
+            new_breach = False
             time.sleep(float(os.environ.get("CALL_PACE_SECS", "0.0")))
         else:
-            swaps = fetch_pool_swaps(p["pool"], st["last_block"] + 1, latest,
-                                     st["dec0"], st["dec1"], rpc_call=_rpc())
+            observations, n_swaps = _fetch_position_observations(p, latest)
             n_breach_before = len(st["breaches"])
             # book reward for elapsed BEFORE update, so a same-tick exit keeps it
             accrue_capital_time(st, elapsed)
@@ -1079,20 +1238,19 @@ def _tick(book, *, last_ts, alerter=None):
                 accrue_reward(st["capital"], p["reward_apr"], elapsed),
                 reward_token_price_usd=p.get("reward_price_usd", 1.0),
             )
-            update_position(st, swaps, now_block=latest)
-            if swaps:
-                p["last_price"] = swaps[-1]["price"]
+            update_position(st, observations, now_block=latest)
+            if observations:
+                p["last_price"] = observations[-1]["price"]
             mk = mark_position(st, p["last_price"])
             # active mark excludes reward; exited mark includes it
             pool_net = mk["net_quote"] if st.get("exited") else mk["net_quote"] + st["reward_quote"]
-            n_swaps = len(swaps)
             new_breach = len(st["breaches"]) > n_breach_before
             time.sleep(float(os.environ.get("CALL_PACE_SECS", "0.0")))
         portfolio_net += pool_net
         _emit_runner_alerts(p, alerter)
         attribution = attribution_ledger(st, mk)
         portfolio_nav += attribution["entry_capital_usd"] + attribution["pnl_vs_usdc"]
-        by_pool.append({
+        pool_output = {
             "symbol": p["symbol"], "tier": p["tier"], "pool": p["pool"],
             "net_pct": round(mk["net_pct"], 4),
             "net_usd": round(pool_net, 2),
@@ -1116,7 +1274,26 @@ def _tick(book, *, last_ts, alerter=None):
                 st, p.get("fee_apr_onchain")
             ),
             **attribution,
-        })
+        }
+        if p.get("solana_adapter"):
+            observation = p.get("last_observation") or {}
+            pool_output.update({
+                "protocol": p["protocol"],
+                "solana_adapter": p["solana_adapter"],
+                "observation_kind": "account_state",
+                "account_state": {
+                    "slot": observation.get(
+                        "account_context_slot", observation.get("block")
+                    ),
+                    "owner": observation.get("owner"),
+                    "space": observation.get("space"),
+                    "sqrt_price_x64": observation.get("sqrt_price_x64"),
+                    "liquidity": observation.get("liquidity"),
+                    "price": observation.get("price"),
+                    "price_direction": observation.get("price_direction"),
+                },
+            })
+        by_pool.append(pool_output)
     return {"ledger_schema_version": LEDGER_SCHEMA_VERSION,
             "ts_utc": now.isoformat(), "block": latest,
             "rpc_health": _rpc_health_state(),
@@ -1169,7 +1346,10 @@ def run(allocation_path, *, poll_secs=1800, max_ticks=None, out=None,
           f"rpc_pool={len(_POOL._endpoints)} endpoints (rotating, free public)")
 
     latest = _latest_block()
-    book = _init_book(allocs, entry_window_blocks=entry_window_blocks, latest=latest)
+    book = _init_book(
+        allocs, entry_window_blocks=entry_window_blocks, latest=latest,
+        chain=chain,
+    )
     # snapshot the resolved book for reproducibility
     with open(os.path.join(run_dir, "book_init.json"), "w") as f:
         json.dump([{k: v for k, v in p.items() if k != "state"} | {
@@ -1223,7 +1403,7 @@ def _flush_state(run_dir, book, tick):
         mk = mark_position(st, p["last_price"])
         net_quote = mk["net_quote"] if st.get("exited") else mk["net_quote"] + st["reward_quote"]
         attribution = attribution_ledger(st, mk)
-        snap["pools"].append({
+        pool_snapshot = {
             "symbol": p["symbol"], "tier": p["tier"], "pool": p["pool"],
             "capital": st["capital"], "anchor": st["anchor"],
             "range_pct": st["range_pct"], "last_price": p["last_price"],
@@ -1243,7 +1423,26 @@ def _flush_state(run_dir, book, tick):
             "exit_policy_context": st["exit_policy_context"],
             "exited": st.get("exited"),
             **attribution,
-        })
+        }
+        if p.get("solana_adapter"):
+            observation = p.get("last_observation") or {}
+            pool_snapshot.update({
+                "protocol": p["protocol"],
+                "solana_adapter": p["solana_adapter"],
+                "observation_kind": "account_state",
+                "account_state": {
+                    "slot": observation.get(
+                        "account_context_slot", observation.get("block")
+                    ),
+                    "owner": observation.get("owner"),
+                    "space": observation.get("space"),
+                    "sqrt_price_x64": observation.get("sqrt_price_x64"),
+                    "liquidity": observation.get("liquidity"),
+                    "price": observation.get("price"),
+                    "price_direction": observation.get("price_direction"),
+                },
+            })
+        snap["pools"].append(pool_snapshot)
     with open(os.path.join(run_dir, "final_state.json"), "w") as f:
         json.dump(snap, f, indent=2)
 

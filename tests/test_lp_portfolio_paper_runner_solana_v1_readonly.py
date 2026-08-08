@@ -4,6 +4,7 @@ from __future__ import annotations
 import base64
 import json
 import math
+import sqlite3
 
 import pytest
 
@@ -218,3 +219,9 @@ def test_solana_runner_init_and_one_tick_emit_ledger_without_evm_calls(
     assert final["final_tick"] == 1
     assert final["pools"][0]["protocol"] == "orca_whirlpool"
     assert gate_db.exists()
+    with sqlite3.connect(gate_db) as conn:
+        gate_row = conn.execute(
+            "SELECT current_position_count, actual_fee_usd, rpc_health, "
+            "evidence_status FROM shadow_gate_observations"
+        ).fetchone()
+    assert gate_row == (1, 0.0, "NORMAL", "COMPLETE")
