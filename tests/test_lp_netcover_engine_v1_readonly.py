@@ -11,6 +11,7 @@ from scripts.lp_netcover_engine_v1_readonly import (
     SAFETY_MULTIPLE,
     NetCoverEstimate,
     absolute_profit_gate,
+    apply_netcover_gate,
     adjusted_income_ev,
     evaluate_netcover,
     expected_risk_cost,
@@ -98,3 +99,20 @@ def test_position_cap_validates_inputs_fail_closed():
     with pytest.raises(ValueError):
         position_cap_usd(60, 0, 10_000)
 
+
+def test_scanner_adapter_is_full_cost_and_missing_fields_fail_closed():
+    assert apply_netcover_gate([{"pool": "0xmissing"}])[0]["netcover_pass"] is False
+    rec = {
+        "pool": "0xok", "capital_usd": 100,
+        "fee_ev_usd": 4, "reward_ev_usd": 2, "il_ev_usd": 1,
+        "entry_cost_usd": 0.1, "exit_cost_usd": 0.1, "gas_usd": 0.1,
+        "slippage_usd": 0.1, "reward_conversion_cost_usd": 0.1,
+        "exit_latency_loss_usd": 0.1,
+    }
+    out = apply_netcover_gate([rec], reward_haircut=0.5, lvr_coefficient=0.5)[0]
+    assert out["lvr_ev_usd"] == 0.5
+    assert out["risk_usd"] == pytest.approx(2.1)
+    assert out["expected_net_yield_usd"] == pytest.approx(2.9)
+    assert out["expected_net_yield_pct"] == pytest.approx(2.9)
+    assert out["netcover_ratio"] == out["netcover"]
+    assert out["netcover_pass"] is True
