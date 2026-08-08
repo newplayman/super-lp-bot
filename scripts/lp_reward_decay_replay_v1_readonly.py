@@ -12,15 +12,18 @@ import argparse
 import json
 import math
 import os
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, Optional
 
-from scripts.lp_portfolio_allocator_v1_readonly import is_enterable, rank_metric
-from scripts.lp_universe_screener_v1_readonly import assess
-
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _ROOT = os.path.dirname(_HERE)
+if _ROOT not in sys.path:
+    sys.path.insert(0, _ROOT)
+
+from scripts.lp_portfolio_allocator_v1_readonly import is_enterable, rank_metric  # noqa: E402
+from scripts.lp_universe_screener_v1_readonly import assess  # noqa: E402
 
 SCHEMA_VERSION = "lp-reward-decay-replay-v1"
 DEFAULT_GATES = {
