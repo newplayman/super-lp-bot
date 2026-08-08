@@ -1,0 +1,24 @@
+{
+  "il_error_limit_bps_of_nav": 5.0,
+  "inventory_error_limit_pct": 0.1,
+  "max_il_error_bps_of_nav": 5.6840610930942973e-11,
+  "max_inventory_error_pct": 1.1241070526982887e-12,
+  "read_only": true,
+  "real_source": "/opt/lpbot/lp-bot-v3-origin-check/reports/strategy_evidence_r4_swap_event_fee_replay/20260611_080000/swap_events_0xb2cc22.jsonl",
+  "real_source_sampling": "streamed first 128 decoded swaps; six unmodified 8-event windows",
+  "real_source_schema": "JSONL raw Base Swap logs: pool/block/tx/topics/data",
+  "real_source_sha256": "9c0ccb67570ba714748985651dabc4979c6559b4935157d399fddbb854613a17",
+  "real_trajectory_count": 6,
+  "reference_math": "independent canonical V3 amount0/amount1 equations in replay module",
+  "scenario_distribution": {
+    "gap_through": 10,
+    "inside": 10,
+    "lower_breach": 10,
+    "sustained_trend": 10,
+    "upper_breach": 10,
+    "v_shape": 10
+  },
+  "status": "PASS",
+  "synthetic_trajectory_count": 54,
+  "trajectory_count": 60
+}
