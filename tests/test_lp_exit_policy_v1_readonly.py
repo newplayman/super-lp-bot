@@ -246,6 +246,21 @@ def test_panic_exit_also_requires_quote_and_never_blind_swaps():
     assert plan.alert is True
 
 
+def test_killed_rpc_reports_no_remove_simulation_and_no_paper_actions():
+    plan = build_paper_action_plan(
+        mode=ExitMode.PANIC_EXIT,
+        rpc_health=RpcHealth.KILLED,
+        quote=QuoteResult.ok(expected_slippage_bps=10.0, expected_swap_cost_usd=1.0),
+        config=_config(),
+        post_trade_risky_inventory_ratio=0.90,
+    )
+    assert plan.paper_only is True
+    assert plan.remove_simulated is False
+    assert plan.swap_allowed is False
+    assert plan.paper_actions == ()
+    assert plan.block_reason == "rpc_killed"
+
+
 def test_successful_quote_exposes_expected_and_actual_slippage_interfaces():
     quote = QuoteResult.ok(expected_slippage_bps=25.0, expected_swap_cost_usd=2.5)
     plan = build_paper_action_plan(

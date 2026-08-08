@@ -305,6 +305,29 @@ def test_strict_quote_failure_stages_without_swap_or_cooldown():
     assert st["exited"]["risk_off_complete"] is False
 
 
+def test_staged_remove_inventory_keeps_marking_risk_and_state_stays_exiting():
+    st = _policy_state()
+    swap = {
+        "block": 1,
+        "price": 0.80,
+        "liquidity": L,
+        "amount1": AMT1,
+        "risk_signals": {"trend_continuation": True, "netcover_forward": 0.8},
+        "exit_quote": QuoteResult.failed("unavailable"),
+    }
+    update_position(st, [swap], now_block=1)
+    holdings = st["exited"]["inventory_holdings"]
+    assert holdings["q0"] > 0.0
+    assert st["exit_policy_context"]["state"] == "EXITING"
+
+    low_mark = mark_position(st, 0.70)
+    high_mark = mark_position(st, 0.90)
+    assert low_mark["lp_value_quote"] < high_mark["lp_value_quote"]
+    assert low_mark["net_quote"] < high_mark["net_quote"]
+    assert st["exit_policy_context"]["state"] == "EXITING"
+    assert st["exited"]["risk_off_complete"] is False
+
+
 def test_explicit_legacy_exit_flag_isolated_from_missing_field_default():
     # Explicit old flag remains compatible; allocations with the field missing
     # no longer infer exit behavior merely from tier.
