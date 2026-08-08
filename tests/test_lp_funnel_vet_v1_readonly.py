@@ -80,3 +80,31 @@ def test_missing_stability_means_not_stable():
     # a bridge record with no stability entry must NOT pass (fluke-protection default)
     merged = funnel_vet([_b("ORPHAN", "B", 9.0, "0xZZZ")], [])
     assert merged[0]["vetted"] is False and merged[0]["stable"] is False
+
+
+def test_fifth_gate_rejects_below_shadow_netcover():
+    bridge = [_b("LOW_NETCOVER", "A", 20.0, "0xAAA")]
+    stability = [{"pool": "0xaaa", "fee_cover_stability": {"stable": True}}]
+    netcover = [{"pool": "0xaaa", "netcover": 0.99}]
+    rec = funnel_vet(bridge, stability, netcover_records=netcover)[0]
+    assert rec["gates"]["netcover_shadow"] is False
+    assert rec["vetted"] is False
+
+
+def test_fifth_gate_passes_at_exact_inv_gate_01_threshold():
+    bridge = [_b("AT_THRESHOLD", "A", 20.0, "0xAAA")]
+    stability = [{"pool": "0xaaa", "fee_cover_stability": {"stable": True}}]
+    netcover = [{"resolved_pool": "0xAAA", "netcover": 1.0}]
+    rec = funnel_vet(bridge, stability, netcover_records=netcover)[0]
+    assert rec["gates"]["netcover_shadow"] is True
+    assert rec["netcover"] == 1.0
+    assert rec["vetted"] is True
+
+
+def test_explicit_netcover_mode_fails_closed_when_pool_has_no_score():
+    bridge = [_b("MISSING", "A", 20.0, "0xAAA")]
+    stability = [{"pool": "0xaaa", "fee_cover_stability": {"stable": True}}]
+    rec = funnel_vet(bridge, stability, netcover_records=[])[0]
+    assert rec["gates"]["netcover_shadow"] is False
+    assert rec["netcover_gate_status"] == "MISSING_FAIL_CLOSED"
+    assert rec["vetted"] is False

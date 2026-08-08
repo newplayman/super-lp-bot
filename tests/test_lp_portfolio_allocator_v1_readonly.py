@@ -88,3 +88,47 @@ def test_allocate_empty_when_none_enterable():
     recs = [_rec("w", "B", 99, wash=True), _rec("weak", "A", 5, yc=0.2)]
     out = allocate(recs, total=10000)
     assert out["n_pools"] == 0 and out["deployed"] == 0.0 and out["idle"] == 10000
+
+
+def _runtime_rec(sym="RUNTIME", **overrides):
+    rec = _rec(sym, "A", 100)
+    rec.update({
+        "tvlUsd": 1_000_000.0,
+        "active_liquidity_notional_usd": 10_000.0,
+        "tier_configured_max_usd": 500.0,
+        "expected_net_profit_h": 2.0,
+        "round_trip_cost_usd": 0.2,
+        "netcover": 2.0,
+    })
+    rec.update(overrides)
+    return rec
+
+
+def test_allocator_applies_runtime_position_cap_before_output():
+    out = allocate([_runtime_rec()], total=1_000, enforce_runtime_gates=True)
+    assert out["n_pools"] == 1
+    assert out["allocations"][0]["position_cap_usd"] == 200.0
+    assert out["allocations"][0]["usd"] == 200.0
+    assert out["deployed"] == 200.0
+    assert out["idle"] == 800.0
+
+
+def test_allocator_active_liquidity_term_can_be_binding():
+    out = allocate([
+        _runtime_rec(tvlUsd=100_000_000, active_liquidity_notional_usd=1_000)
+    ], total=1_000, enforce_runtime_gates=True)
+    assert out["allocations"][0]["position_cap_usd"] == 20.0
+    assert out["allocations"][0]["usd"] == 20.0
+
+
+def test_allocator_inv_cost_01_skips_high_apr_tiny_absolute_profit():
+    rec = _runtime_rec(total_income_apr=80.0, expected_net_profit_h=0.08, round_trip_cost_usd=0.10)
+    out = allocate([rec], total=30.0, min_pool_usd=0, enforce_runtime_gates=True)
+    assert out["allocations"] == []
+    assert out["skipped"][0]["reason"] == "INV-COST-01_EXPECTED_NET_PROFIT_TOO_LOW"
+
+
+def test_allocator_runtime_gate_missing_inputs_fails_closed():
+    out = allocate([_rec("INCOMPLETE", "A", 100)], total=100, enforce_runtime_gates=True)
+    assert out["allocations"] == []
+    assert out["skipped"][0]["reason"] == "RUNTIME_GATE_INPUT_MISSING"
