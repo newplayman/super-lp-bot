@@ -323,6 +323,17 @@ class ScannerAlertBridge:
         self._emit_health_transition(_rpc_health_from_result(result))
         self._emit_due_digest()
 
+    def after_cycle_error(self, error_type: str) -> None:
+        """Report scanner failures without changing the RPC health state."""
+        safe_send_event(
+            self.alerter,
+            "scanner_cycle_error",
+            f"scanner cycle failed error_type={error_type}; RPC state unchanged",
+            severity="WARNING",
+            throttle_key="scanner:cycle-error",
+            stdout=self.stdout,
+        )
+
 
 __all__ = [
     "AlertResult",

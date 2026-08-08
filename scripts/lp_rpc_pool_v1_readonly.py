@@ -181,6 +181,10 @@ CHAINS = {
 DEFAULT_CHAIN = "base"
 
 
+class RpcPoolExhaustedError(RuntimeError):
+    """Every capable public endpoint was exhausted for one read call."""
+
+
 class _SystemClock:
     def now(self):
         return time.time()
@@ -338,7 +342,7 @@ class RpcPool:
             cands = self._supporting(method)   # all cooled down: try anyway
         n = len(cands)
         if not n:
-            raise RuntimeError(
+            raise RpcPoolExhaustedError(
                 f"RPC {method} has no capable {self.chain} endpoints")
         start = self._rr % n
         self._rr += 1
@@ -357,7 +361,7 @@ class RpcPool:
             except Exception as e:   # noqa: BLE001  (transport/HTTP error)
                 last = str(e)
                 self._penalize(url)
-        raise RuntimeError(
+        raise RpcPoolExhaustedError(
             f"RPC {method} failed on all {n} {self.chain} endpoints: {last}")
 
     # --- convenience -------------------------------------------------------

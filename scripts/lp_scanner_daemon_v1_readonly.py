@@ -42,6 +42,7 @@ from scripts.lp_tg_alerter_v1_readonly import (  # noqa: E402
     ScannerAlertBridge,
     TelegramAlerter,
 )
+from scripts.lp_rpc_pool_v1_readonly import RpcPoolExhaustedError  # noqa: E402
 
 DEFAULT_DB_PATH = REPO_ROOT / "reports/lp_scanner/scanner.db"
 DEFAULT_COARSE_INTERVAL_SECS = 15 * 60
@@ -788,12 +789,23 @@ class ScannerDaemon:
             )
 
     def _notify_cycle_failure(self, exc: Exception) -> None:
-        # A cycle exception means the scanner cannot safely monitor entries.
-        # Publish EXIT_ONLY evidence without changing or broadening any action
-        # allowlist; the exit policy remains the sole action authority.
-        self._notify_cycle(
-            {"rpc_health": "EXIT_ONLY", "cycle_error": type(exc).__name__}
-        )
+        if isinstance(exc, RpcPoolExhaustedError):
+            # Only endpoint exhaustion is RPC evidence strong enough to claim
+            # EXIT_ONLY. The exit policy remains the sole action authority.
+            self._notify_cycle(
+                {"rpc_health": "EXIT_ONLY", "cycle_error": type(exc).__name__}
+            )
+            return
+        if self.event_hook is None or not hasattr(self.event_hook, "after_cycle_error"):
+            return
+        try:
+            self.event_hook.after_cycle_error(type(exc).__name__)
+        except Exception as hook_exc:  # noqa: BLE001 - diagnostics stay best-effort
+            print(
+                f"[scanner] alert hook failed: {type(hook_exc).__name__}",
+                file=sys.stderr,
+                flush=True,
+            )
 
     def request_stop(self, signum: int | None = None, frame: Any = None) -> None:
         del signum, frame
