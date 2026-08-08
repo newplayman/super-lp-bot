@@ -25,6 +25,14 @@ from typing import Any, Dict, List, Mapping, Sequence
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _ROOT = os.path.dirname(_HERE)
+if _ROOT not in sys.path:
+    sys.path.insert(0, _ROOT)
+
+from scripts.lp_netcover_engine_v1_readonly import (  # noqa: E402
+    NETCOVER_SHADOW,
+    absolute_profit_gate,
+    position_cap_usd,
+)
 
 DEFAULT_TOTAL = 10000.0
 DEFAULT_TIER_WEIGHTS = {"A": 0.70, "B": 0.30, "C": 0.0}
@@ -50,7 +58,17 @@ def is_enterable(rec: Mapping[str, Any]) -> bool:
         ycv = math.inf if (yc in (None, "inf") or (isinstance(yc, float) and math.isinf(yc))) else float(yc)
     except (TypeError, ValueError):
         ycv = 0.0
-    return ycv >= 1.0
+    if ycv < 1.0:
+        return False
+    # Gross/yield cover remains diagnostic.  When a full-cost NetCover value is
+    # present it must independently pass the Shadow threshold.
+    if rec.get("netcover") is not None:
+        try:
+            if float(rec["netcover"]) < NETCOVER_SHADOW:
+                return False
+        except (TypeError, ValueError):
+            return False
+    return True
 
 
 def _tier_of(rec: Mapping[str, Any]) -> str:
@@ -104,8 +122,71 @@ def _weight_within(selected: Sequence[Mapping[str, Any]]) -> List[float]:
     return [x / s for x in scores]
 
 
+def _runtime_gate(rec: Mapping[str, Any]):
+    """Return (annotated_record, rejection) for allocator's final hard gates."""
+    required = {
+        "pool_tvl": rec.get("tvlUsd", rec.get("pool_tvl_usd")),
+        "active_liquidity_notional": rec.get("active_liquidity_notional_usd"),
+        "tier_configured_max": rec.get("tier_configured_max_usd"),
+        "expected_net_profit_h": rec.get("expected_net_profit_h"),
+        "round_trip_cost": rec.get("round_trip_cost_usd"),
+        "netcover": rec.get("netcover", rec.get("netcover_ratio")),
+    }
+    missing = [name for name, value in required.items() if value is None]
+    if missing:
+        return None, {
+            "symbol": rec.get("symbol"),
+            "pool": rec.get("resolved_pool") or rec.get("pool"),
+            "reason": "RUNTIME_GATE_INPUT_MISSING",
+            "missing": missing,
+        }
+    try:
+        cover = float(required["netcover"])
+    except (TypeError, ValueError):
+        cover = -math.inf
+    if not math.isfinite(cover) or cover < NETCOVER_SHADOW:
+        return None, {
+            "symbol": rec.get("symbol"),
+            "pool": rec.get("resolved_pool") or rec.get("pool"),
+            "reason": "NETCOVER_BELOW_SHADOW",
+            "netcover": required["netcover"],
+        }
+    try:
+        cap = position_cap_usd(
+            required["tier_configured_max"], required["pool_tvl"],
+            required["active_liquidity_notional"],
+        )
+        profit = absolute_profit_gate(
+            required["expected_net_profit_h"], required["round_trip_cost"],
+        )
+    except ValueError as exc:
+        return None, {
+            "symbol": rec.get("symbol"),
+            "pool": rec.get("resolved_pool") or rec.get("pool"),
+            "reason": "RUNTIME_GATE_INPUT_INVALID",
+            "detail": str(exc),
+        }
+    if not profit.allowed:
+        return None, {
+            "symbol": rec.get("symbol"),
+            "pool": rec.get("resolved_pool") or rec.get("pool"),
+            "reason": profit.reason,
+            "expected_net_profit_h": profit.expected_net_profit_usd,
+            "required_profit_usd": profit.required_profit_usd,
+        }
+    annotated = dict(rec)
+    annotated["position_cap_usd"] = cap
+    annotated["absolute_profit_gate"] = {
+        "allowed": True,
+        "expected_net_profit_h": profit.expected_net_profit_usd,
+        "required_profit_usd": profit.required_profit_usd,
+    }
+    return annotated, None
+
+
 def allocate(records, *, total=DEFAULT_TOTAL, tier_weights=None, max_pools=None,
-             min_pool_usd=DEFAULT_MIN_POOL_USD, require_stable=False):
+             min_pool_usd=DEFAULT_MIN_POOL_USD, require_stable=False,
+             enforce_runtime_gates=False):
     """Allocate `total` across enterable pools by tier weight then rank_metric.
 
     Tier weights for tiers with NO enterable pools are redistributed pro-rata to
@@ -116,24 +197,36 @@ def allocate(records, *, total=DEFAULT_TOTAL, tier_weights=None, max_pools=None,
     """
     tier_weights = dict(tier_weights or DEFAULT_TIER_WEIGHTS)
     max_pools = dict(max_pools or DEFAULT_MAX_POOLS)
-    by_tier = select_per_tier(records, max_pools, require_stable=require_stable)
+    skipped: List[Dict[str, Any]] = []
+    eligible = list(records)
+    if enforce_runtime_gates:
+        eligible = []
+        for rec in records:
+            annotated, rejection = _runtime_gate(rec)
+            if rejection:
+                skipped.append(rejection)
+            else:
+                eligible.append(annotated)
+    by_tier = select_per_tier(eligible, max_pools, require_stable=require_stable)
 
     active = {t: w for t, w in tier_weights.items() if w > 0 and by_tier.get(t)}
     wsum = sum(active.values())
     if wsum <= 0:
         return {"allocations": [], "by_tier_usd": {}, "deployed": 0.0,
-                "idle": total, "n_pools": 0}
+                "idle": total, "n_pools": 0, "skipped": skipped,
+                "runtime_gates_enforced": enforce_runtime_gates}
     norm = {t: w / wsum for t, w in active.items()}
 
     allocations: List[Dict[str, Any]] = []
     by_tier_usd: Dict[str, float] = {}
     for t, frac in norm.items():
         tier_usd = total * frac
-        by_tier_usd[t] = round(tier_usd, 2)
         sel = by_tier[t]
         weights = _weight_within(sel)
         for r, w in zip(sel, weights):
-            usd = tier_usd * w
+            proposed_usd = tier_usd * w
+            cap = r.get("position_cap_usd") if enforce_runtime_gates else None
+            usd = min(proposed_usd, float(cap)) if cap is not None else proposed_usd
             allocations.append({
                 "tier": t,
                 "symbol": r.get("symbol"),
@@ -148,15 +241,23 @@ def allocate(records, *, total=DEFAULT_TOTAL, tier_weights=None, max_pools=None,
                 "reward_apr": r.get("reward_apr"),
                 "usd": round(usd, 2),
                 "weight_in_tier": round(w, 4),
+                "position_cap_usd": round(float(cap), 2) if cap is not None else None,
+                "proposed_usd_before_runtime_cap": round(proposed_usd, 2),
+                "absolute_profit_gate": r.get("absolute_profit_gate"),
             })
     allocations.sort(key=lambda a: (a["tier"], -a["usd"]))
     deployed = round(sum(a["usd"] for a in allocations), 2)
     # flag sub-minimum positions (capital too thin to bother / monitor)
     for a in allocations:
         a["below_min"] = a["usd"] < min_pool_usd
+    by_tier_usd = {
+        tier: round(sum(a["usd"] for a in allocations if a["tier"] == tier), 2)
+        for tier in norm
+    }
     return {"allocations": allocations, "by_tier_usd": by_tier_usd,
             "deployed": deployed, "idle": round(total - deployed, 2),
-            "n_pools": len(allocations)}
+            "n_pools": len(allocations), "skipped": skipped,
+            "runtime_gates_enforced": enforce_runtime_gates}
 
 
 # ---------------------------------------------------------------------------
@@ -251,6 +352,8 @@ def main():
     ap.add_argument("--stability", help="multiwindow stability.json (enables stability gate)")
     ap.add_argument("--require-stable", action="store_true",
                     help="only allocate to multi-window-stable pools (needs --stability)")
+    ap.add_argument("--legacy-no-runtime-gates", action="store_true",
+                    help="research compatibility only; bypass WP-04 hard runtime gates")
     ap.add_argument("--total", type=float, default=DEFAULT_TOTAL)
     ap.add_argument("--out", default=None)
     ap.add_argument("--self-test", action="store_true")
@@ -264,7 +367,10 @@ def main():
     records = json.load(open(args.ranked))
     if args.stability:
         records = merge_stability(records, json.load(open(args.stability)))
-    out = allocate(records, total=args.total, require_stable=args.require_stable)
+    out = allocate(
+        records, total=args.total, require_stable=args.require_stable,
+        enforce_runtime_gates=not args.legacy_no_runtime_gates,
+    )
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     d = args.out or os.path.join(_ROOT, "reports", "lp_portfolio_allocator", stamp)
     os.makedirs(d, exist_ok=True)
