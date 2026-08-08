@@ -19,6 +19,7 @@ writes. RPC reads only. Honors FETCH_PACE_SECS for getLogs pacing.
 from __future__ import annotations
 
 import argparse
+from dataclasses import asdict
 import json
 import os
 import signal
@@ -37,6 +38,7 @@ from scripts.lp_tier_c_exit_feasibility_v1_readonly import (  # noqa: E402
 )
 from scripts.lp_il_inventory_engine_v1_readonly import (  # noqa: E402
     alpha_vs_hodl,
+    current_inventory,
     hodl_nav,
     il_pct,
     il_usd,
@@ -51,6 +53,21 @@ from scripts.lp_v3_fee_share import (  # noqa: E402
 )
 from scripts.lp_swap_cost_model_v1_readonly import (  # noqa: E402
     exit_conversion_cost_usd,
+    slippage_bps_for_swap,
+)
+from scripts.lp_exit_policy_v1_readonly import (  # noqa: E402
+    BreachDirection,
+    BreachObservation,
+    ExitMode,
+    ExitPolicyConfig,
+    QuoteResult,
+    RiskSignals,
+    RiskState,
+    RpcHealth,
+    build_paper_action_plan,
+    classify_breach,
+    evaluate_risk,
+    transition_state,
 )
 from scripts.lp_rpc_pool_v1_readonly import RpcPool  # noqa: E402
 
@@ -69,7 +86,12 @@ def _rpc():
 # ---------------------------------------------------------------------------
 
 def init_state(*, capital, anchor, range_pct, fee_tier, dec0, dec1, last_block,
-               exit_on_breach=False, exit_cost_bps=None, entry_swap_cost=0.0):
+               exit_on_breach=False, exit_cost_bps=None, entry_swap_cost=0.0,
+               exit_policy_enabled=False, profile="MAJORS",
+               risky_token_side="token0:risky", stable_token_side="token1:quote",
+               risky_inventory_target=0.25, max_exit_slippage_bps=75.0,
+               rpc_health="NORMAL", major_cooldown_minutes=30,
+               risk_signals=None):
     """Build a fresh passive-position state dict.
 
     exit_on_breach: Tier-B policy — on the first band breach, auto-exit the LP
@@ -81,6 +103,15 @@ def init_state(*, capital, anchor, range_pct, fee_tier, dec0, dec1, last_block,
     """
     if exit_cost_bps is None:
         exit_cost_bps = round(float(fee_tier) * 1e4) + 10.0
+    config = ExitPolicyConfig(
+        profile=str(profile),
+        risky_token_side=str(risky_token_side),
+        stable_token_side=str(stable_token_side),
+        risky_inventory_target=float(risky_inventory_target),
+        max_slippage_bps=float(max_exit_slippage_bps),
+        major_cooldown_minutes=int(major_cooldown_minutes),
+    )
+    rpc_state = RpcHealth(str(rpc_health).upper())
     paper_position = position_state_from_capital(anchor, capital, range_pct)
     baseline = paper_entry_baseline(anchor, capital, range_pct, entry_swap_cost)
     return {
@@ -105,6 +136,25 @@ def init_state(*, capital, anchor, range_pct, fee_tier, dec0, dec1, last_block,
         "exit_on_breach": bool(exit_on_breach),
         "exit_cost_bps": float(exit_cost_bps),
         "exited": None,
+        # WP-03 context is JSON-safe because runner snapshots are persistent I/O.
+        # An explicit legacy exit flag is treated as operator-confirmed intent;
+        # missing policy fields stay conservatively record-only.
+        "exit_policy_context": {
+            "enabled": bool(exit_policy_enabled or exit_on_breach),
+            "legacy_operator_confirmed": bool(exit_on_breach),
+            "profile": config.profile,
+            "risky_token_side": config.risky_token_side,
+            "stable_token_side": config.stable_token_side,
+            "risky_inventory_target": config.risky_inventory_target,
+            "max_slippage_bps": config.max_slippage_bps,
+            "major_cooldown_minutes": config.major_cooldown_minutes,
+            "rpc_health": rpc_state.value,
+            "state": RiskState.HEALTHY.value,
+            "cooldown": None,
+            "substate": None,
+            "alerts": [],
+            "risk_signals": dict(risk_signals or {}),
+        },
     }
 
 
@@ -144,6 +194,182 @@ def _do_exit(state, *, exit_price, block, l_active_raw=None):
     return state
 
 
+def _policy_config(state):
+    ctx = state["exit_policy_context"]
+    return ExitPolicyConfig(
+        profile=ctx["profile"],
+        risky_token_side=ctx["risky_token_side"],
+        stable_token_side=ctx["stable_token_side"],
+        risky_inventory_target=ctx["risky_inventory_target"],
+        max_slippage_bps=ctx["max_slippage_bps"],
+        major_cooldown_minutes=ctx["major_cooldown_minutes"],
+    )
+
+
+def _inventory_observation(state, *, price, direction, l_active_raw=None):
+    """Build the mandatory directional breach observation from LP principal."""
+    config = _policy_config(state)
+    inv = current_inventory(state["lp_principal_state"], price)
+    token0_value = inv.q0 * price
+    token1_value = inv.q1
+    risky_is_token0 = config.risky_token_side.lower().startswith("token0")
+    risky_value = token0_value if risky_is_token0 else token1_value
+    nav = inv.nav_quote
+    ratio = risky_value / nav if nav > 0 else 0.0
+    delta = max(0.0, risky_value - config.risky_inventory_target * nav)
+    if delta > 0 and l_active_raw and l_active_raw > 0:
+        side = "sell_base" if risky_is_token0 else "buy_base"
+        expected_cost = exit_conversion_cost_usd(
+            delta, l_active_raw, price, state["fee_tier"],
+            state["dec0"], state["dec1"], side=side,
+        )
+    elif delta > 0:
+        expected_cost = delta * state["exit_cost_bps"] / 1e4
+    else:
+        expected_cost = 0.0
+    return BreachObservation(
+        breach_direction=direction,
+        post_remove_inventory_ratio=ratio,
+        post_remove_delta_usd=delta,
+        expected_swap_cost=expected_cost,
+    ), inv
+
+
+def _signals_for_breach(direction, raw, *, legacy_confirmed=False):
+    values = dict(raw or {})
+    values["lower_breach"] = direction is BreachDirection.LOWER
+    values["upper_breach"] = direction is BreachDirection.UPPER
+    values.setdefault("range_distance_fraction", 1.0)
+    if legacy_confirmed:
+        # Compatibility is explicit and isolated: the old boolean represented
+        # an operator-confirmed exit instruction, never a missing-field default.
+        if direction is BreachDirection.LOWER:
+            values.setdefault("trend_continuation", True)
+        else:
+            values.setdefault("structural_risk_worsening", True)
+    return RiskSignals(**values)
+
+
+def _advance_policy(ctx, signals, observation, config, *, tier=""):
+    """Advance sequential legal states for one fully observed event."""
+    decision = evaluate_risk(RiskState(ctx["state"]), signals, observation, config, tier=tier)
+    for _ in range(3):
+        if decision.next_state is decision.previous_state or decision.next_state is RiskState.EXITING:
+            break
+        ctx["state"] = transition_state(decision.previous_state, decision.next_state).value
+        decision = evaluate_risk(RiskState(ctx["state"]), signals, observation, config, tier=tier)
+    if decision.next_state is RiskState.EXITING:
+        if decision.hard_risk_override:
+            ctx["state"] = transition_state(
+                RiskState(ctx["state"]), RiskState.EXITING, hard_veto=True
+            ).value
+        else:
+            ctx["state"] = transition_state(
+                RiskState(ctx["state"]), RiskState.EXITING
+            ).value
+    elif decision.next_state is not decision.previous_state:
+        ctx["state"] = transition_state(decision.previous_state, decision.next_state).value
+    return decision
+
+
+def _depth_quote(state, observation, *, price, l_active_raw):
+    if observation.post_remove_delta_usd <= 0:
+        return QuoteResult.ok(expected_slippage_bps=0.0, expected_swap_cost_usd=0.0)
+    if not l_active_raw or l_active_raw <= 0:
+        return QuoteResult.failed("missing_liquidity_for_quote")
+    risky_is_token0 = _policy_config(state).risky_token_side.lower().startswith("token0")
+    side = "sell_base" if risky_is_token0 else "buy_base"
+    slip = slippage_bps_for_swap(
+        observation.post_remove_delta_usd, l_active_raw, price,
+        state["dec0"], state["dec1"], side,
+    )
+    cost = exit_conversion_cost_usd(
+        observation.post_remove_delta_usd, l_active_raw, price,
+        state["fee_tier"], state["dec0"], state["dec1"], side=side,
+    )
+    return QuoteResult.ok(expected_slippage_bps=slip, expected_swap_cost_usd=cost)
+
+
+def _do_remove_only(state, *, exit_price, block, inventory, mode, plan):
+    """Simulate LP removal while continuing to mark the withdrawn inventory."""
+    lp_value = inventory.nav_quote
+    entry_hodl = hodl_nav(state["entry_baseline"], exit_price, 1.0)
+    il = il_usd(lp_value, entry_hodl)
+    state["exited"] = {
+        "block": int(block),
+        "price": float(exit_price),
+        "lp_value_quote": lp_value,
+        "lp_nav_ex_fee_quote": lp_value,
+        "il_quote": il,
+        "il_pct": il_pct(il, entry_hodl),
+        "fees_quote": state["fees_quote"],
+        "exit_cost_quote": 0.0,
+        "realized_quote": lp_value + state["fees_quote"],
+        "inventory_holdings": {"q0": inventory.q0, "q1": inventory.q1},
+        "exit_mode": mode.value,
+        "risk_off_complete": plan.risk_off_complete,
+        "paper_only": True,
+    }
+    return state
+
+
+def _execute_policy_decision(state, decision, observation, inventory, swap):
+    """Turn a decision into a paper action plan; never builds or sends a tx."""
+    ctx = state["exit_policy_context"]
+    config = _policy_config(state)
+    mode = decision.recommended_exit_mode
+    rpc_health = RpcHealth(ctx["rpc_health"])
+    supplied_quote = swap.get("exit_quote")
+    quote = supplied_quote if isinstance(supplied_quote, QuoteResult) else None
+    if mode is not ExitMode.REMOVE_ONLY and quote is None:
+        quote = _depth_quote(
+            state, observation, price=swap["price"], l_active_raw=swap.get("liquidity")
+        )
+    predicted_ratio = observation.post_remove_inventory_ratio
+    if (
+        quote is not None
+        and quote.succeeded
+        and quote.expected_slippage_bps is not None
+        and quote.expected_slippage_bps <= config.max_slippage_bps
+        and rpc_health is not RpcHealth.KILLED
+        and not (rpc_health is RpcHealth.EXIT_ONLY and mode is ExitMode.REMOVE_TO_TARGET)
+    ):
+        predicted_ratio = config.risky_inventory_target
+    plan = build_paper_action_plan(
+        mode=mode,
+        rpc_health=rpc_health,
+        quote=quote,
+        config=config,
+        post_trade_risky_inventory_ratio=predicted_ratio,
+        actual_slippage_bps=swap.get("actual_slippage_bps"),
+        exit_latency_loss_usd=swap.get("exit_latency_loss_usd"),
+    )
+    if mode is ExitMode.REMOVE_ONLY or not plan.swap_allowed:
+        _do_remove_only(
+            state, exit_price=swap["price"], block=swap["block"],
+            inventory=inventory, mode=mode, plan=plan,
+        )
+    else:
+        _do_exit(
+            state, exit_price=swap["price"], block=swap["block"],
+            l_active_raw=swap.get("liquidity"),
+        )
+        state["exited"].update({
+            "exit_mode": mode.value,
+            "risk_off_complete": plan.risk_off_complete,
+            "paper_only": True,
+        })
+    ctx["substate"] = plan.substate
+    if plan.alert:
+        ctx["alerts"].append(plan.block_reason)
+    ctx["state"] = transition_state(
+        RiskState.EXITING,
+        RiskState.COOLDOWN,
+        risk_off_complete=plan.risk_off_complete,
+    ).value
+    return plan
+
+
 def update_position(state, swaps, *, now_block):
     """Advance a passive position with new swaps (block > state['last_block']).
 
@@ -151,8 +377,10 @@ def update_position(state, swaps, *, now_block):
     NO fee and record a breach once per crossing (in->out transition). The
     anchor and capital never change — this is a passive, no-rebalance position.
 
-    If exit_on_breach is set (Tier-B), the FIRST out-of-range swap closes the
-    position (convert to base) and no further swaps are processed.
+    Strict WP-03 mode never exits on a lone breach.  It records the directional
+    decision first, then acts only after a PRD combination or hard-risk veto.
+    The deprecated explicit exit_on_breach flag is an isolated compatibility
+    adapter for already-authored allocations.
     """
     if state.get("exited"):  # closed: holds base cash, accrues nothing
         state["last_block"] = int(now_block)
@@ -177,15 +405,70 @@ def update_position(state, swaps, *, now_block):
             state["fees_quote"] += cap * fee_unit
             in_range = True
         else:
+            crossed = in_range
             if in_range:  # only log the crossing, not every out-of-range tick
-                state["breaches"].append({"block": s["block"], "price": price})
+                direction = classify_breach(price=price, lower_bound=lo, upper_bound=hi)
+                observation, inventory = _inventory_observation(
+                    state, price=price, direction=direction, l_active_raw=s.get("liquidity")
+                )
+                ctx = state["exit_policy_context"]
+                raw_signals = s.get("risk_signals", ctx.get("risk_signals"))
+                if isinstance(raw_signals, RiskSignals):
+                    raw_signals = asdict(raw_signals)
+                signals = _signals_for_breach(
+                    direction,
+                    raw_signals,
+                    legacy_confirmed=ctx["legacy_operator_confirmed"],
+                )
+                config = _policy_config(state)
+                if ctx["enabled"]:
+                    decision = _advance_policy(
+                        ctx, signals, observation, config, tier=str(state.get("tier", ""))
+                    )
+                else:
+                    # What-if decision is recorded, but disabled/missing policy
+                    # configuration cannot mutate state or execute anything.
+                    decision = evaluate_risk(
+                        RiskState(ctx["state"]), signals, observation, config,
+                        tier=str(state.get("tier", "")),
+                    )
+                event = {
+                    "block": s["block"],
+                    "price": price,
+                    "breach_direction": decision.breach_direction.value,
+                    "post_remove_inventory_ratio": decision.post_remove_inventory_ratio,
+                    "post_remove_delta_usd": decision.post_remove_delta_usd,
+                    "recommended_exit_mode": decision.recommended_exit_mode.value,
+                    "expected_swap_cost": decision.expected_swap_cost,
+                    "risk_state_before": decision.previous_state.value,
+                    "risk_state_after": ctx["state"],
+                    "decision_reason": decision.reason,
+                    "hard_risk_override": decision.hard_risk_override,
+                }
+                state["breaches"].append(event)
             in_range = False
-            if state.get("exit_on_breach"):
+            if crossed and ctx["enabled"] and ctx["legacy_operator_confirmed"]:
+                # Exact old API compatibility is explicit, never inferred from
+                # tier or missing fields.  Strict policy users take the branch
+                # below and are subject to quote/slippage/inventory gates.
+                event["compatibility_adapter"] = True
                 _do_exit(state, exit_price=price, block=s["block"],
                          l_active_raw=s.get("liquidity"))
+                state["exited"].update({
+                    "exit_mode": decision.recommended_exit_mode.value,
+                    "paper_only": True,
+                })
+                ctx["state"] = RiskState.COOLDOWN.value
                 state["last_block"] = int(now_block)
                 state["in_range_now"] = False
                 return state  # stop: position closed at the breach
+            if crossed and ctx["enabled"] and decision.should_execute:
+                plan = _execute_policy_decision(state, decision, observation, inventory, s)
+                event["action_plan"] = asdict(plan)
+                event["risk_state_after"] = ctx["state"]
+                state["last_block"] = int(now_block)
+                state["in_range_now"] = False
+                return state
 
     state["last_block"] = int(now_block)
     state["in_range_now"] = in_range
@@ -202,6 +485,29 @@ def mark_position(state, current_price):
     current_hodl = hodl_nav(state["entry_baseline"], current_price, 1.0)
     if state.get("exited"):
         ex = state["exited"]
+        holdings = ex.get("inventory_holdings")
+        if holdings is not None:
+            principal_now = holdings["q0"] * current_price + holdings["q1"]
+            current_total = principal_now + ex["fees_quote"] + state["reward_quote"]
+            net = current_total - cap
+            return {
+                "lp_value_quote": principal_now,
+                "il_quote": ex["il_quote"],
+                "fees_quote": ex["fees_quote"],
+                "net_quote": net,
+                "net_pct": (net / cap * 100) if cap else 0.0,
+                "hodl_nav_quote": current_hodl,
+                "lp_nav_ex_fee_quote": ex["lp_nav_ex_fee_quote"],
+                "il_vs_hodl_quote": ex["il_quote"],
+                "il_vs_hodl_pct": ex["il_pct"],
+                "realized_il_at_exit_quote": ex["il_quote"],
+                "current_total_nav_quote": current_total,
+                "pnl_vs_usdc_quote": pnl_vs_usdc(current_total, cap),
+                "alpha_vs_hodl_quote": alpha_vs_hodl(current_total, current_hodl),
+                "exited": True,
+                "exit_price": ex["price"],
+                "exit_cost_quote": ex["exit_cost_quote"],
+            }
         realized = ex["realized_quote"]
         current_total = realized + state["reward_quote"]
         net = current_total - cap
@@ -300,13 +606,31 @@ def _init_book(allocs, *, entry_window_blocks, latest):
             continue
         anchor = swaps[-1]["price"]
         tier = str(a.get("tier", "")).upper()
-        # Tier-B auto-exits on breach (convert to base); Tier-A is wide-passive.
-        exit_on_breach = a.get("exit_on_breach", tier == "B")
+        # Missing WP-03 fields are conservatively record-only for every tier.
+        # Only an explicit old boolean enables the isolated compatibility path.
+        exit_on_breach = bool(a.get("exit_on_breach", False))
+        policy_keys = {
+            "profile", "risky_token_side", "stable_token_side",
+            "risky_inventory_target", "max_exit_slippage_bps", "rpc_health",
+        }
+        exit_policy_enabled = bool(
+            a.get("exit_policy_enabled", any(key in a for key in policy_keys))
+        )
         st = init_state(
             capital=a["usd"], anchor=anchor, range_pct=a["range_pct"],
             fee_tier=a["fee_tier"], dec0=dec0, dec1=dec1, last_block=latest,
             exit_on_breach=exit_on_breach, exit_cost_bps=a.get("exit_cost_bps"),
+            exit_policy_enabled=exit_policy_enabled,
+            profile=a.get("profile", "MAJORS"),
+            risky_token_side=a.get("risky_token_side", "token0:risky"),
+            stable_token_side=a.get("stable_token_side", "token1:quote"),
+            risky_inventory_target=a.get("risky_inventory_target", 0.25),
+            max_exit_slippage_bps=a.get("max_exit_slippage_bps", 75.0),
+            rpc_health=a.get("rpc_health", "NORMAL"),
+            major_cooldown_minutes=a.get("major_cooldown_minutes", 30),
+            risk_signals=a.get("risk_signals"),
         )
+        st["tier"] = tier
         book.append({
             "symbol": a["symbol"], "project": a.get("project", ""),
             "tier": a.get("tier", ""), "pool": pool,
@@ -369,6 +693,8 @@ def _tick(book, *, last_ts):
             "new_breach": new_breach,
             "in_range": st["in_range_now"],
             "exited": bool(st.get("exited")),
+            "risk_state": st["exit_policy_context"]["state"],
+            "exit_substate": st["exit_policy_context"]["substate"],
         })
     return {"ts_utc": now.isoformat(), "block": latest,
             "portfolio_net_usd": round(portfolio_net, 2), "by_pool": by_pool}, now
@@ -477,6 +803,7 @@ def _flush_state(run_dir, book, tick):
             "net_pct": mk["net_pct"], "n_breaches": len(st["breaches"]),
             "in_range": st["in_range_now"], "breaches": st["breaches"],
             "exit_on_breach": st.get("exit_on_breach", False),
+            "exit_policy_context": st["exit_policy_context"],
             "exited": st.get("exited"),
         })
     with open(os.path.join(run_dir, "final_state.json"), "w") as f:
