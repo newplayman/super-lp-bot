@@ -102,6 +102,24 @@ def test_missing_duration_reward_record_is_fail_closed_at_allocator():
     }) is True
 
 
+def test_normalized_reward_field_cannot_be_bypassed_by_null_aggregator_field():
+    normalized = {
+        "apyReward": None,
+        "reward_apr": 100.0,
+        "reward_high_duration": None,
+        "status": "OK", "resolve_status": "OK", "wash_flag": False,
+        "composite_score": 80.0, "yield_cover": 5.0,
+    }
+    assert reward_persistence_gate(normalized)["status"] == "MISSING_FAIL_CLOSED"
+    assert is_enterable(normalized) is False
+
+
+def test_nonfinite_duration_is_invalid_fail_closed():
+    decision = reward_persistence_gate(_pool(duration_hours=float("nan")))
+    assert decision["entry_eligible"] is False
+    assert decision["status"] == "INVALID_FAIL_CLOSED"
+
+
 def test_decay_replay_uses_real_screener_allocator_scoring_chain():
     points = build_decay_trajectory()
     assert [p["reward_apr"] for p in points] == [100.0, 30.0, 5.0]

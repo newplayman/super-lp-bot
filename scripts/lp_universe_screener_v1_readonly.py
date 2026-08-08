@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import re
 import sys
@@ -135,7 +136,22 @@ def reward_persistence_gate(p, *, min_hours=REWARD_PERSISTENCE_MIN_HOURS,
     not applicable.  Between 6h and 24h the reward receives a linear credibility
     haircut; at 24h it is fully trusted per PRD v1 section 16.
     """
-    reward_apr = float(p.get("apyReward", p.get("reward_apr", 0.0)) or 0.0)
+    raw_reward = p.get("apyReward")
+    if raw_reward is None:
+        raw_reward = p.get("reward_apr", 0.0)
+    try:
+        reward_apr = float(raw_reward or 0.0)
+    except (TypeError, ValueError):
+        reward_apr = math.nan
+    if not math.isfinite(reward_apr):
+        # Corrupt explicit reward evidence is not equivalent to "no reward".
+        return {
+            "entry_eligible": False,
+            "status": "INVALID_REWARD_FAIL_CLOSED",
+            "duration_hours": None,
+            "score_factor": 0.0,
+            "reason": "REWARD_APR_INVALID",
+        }
     if reward_apr <= 0.0:
         return {
             "entry_eligible": True,
@@ -160,7 +176,7 @@ def reward_persistence_gate(p, *, min_hours=REWARD_PERSISTENCE_MIN_HOURS,
         duration = float(raw_duration)
     except (TypeError, ValueError):
         duration = -1.0
-    if duration < 0.0:
+    if not math.isfinite(duration) or duration < 0.0:
         return {
             "entry_eligible": False,
             "status": "INVALID_FAIL_CLOSED",
