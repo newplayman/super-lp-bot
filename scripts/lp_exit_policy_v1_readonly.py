@@ -442,7 +442,7 @@ def build_paper_action_plan(
     return PaperActionPlan(
         mode=mode,
         paper_only=True,
-        remove_simulated=True,
+        remove_simulated=remove_permitted,
         swap_requested=swap_requested,
         quote_required=quote_required,
         quote_succeeded=quote_succeeded,
