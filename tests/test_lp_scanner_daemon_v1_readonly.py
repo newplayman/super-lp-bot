@@ -24,6 +24,7 @@ from scripts.lp_scanner_daemon_v1_readonly import (
     ScannerDaemon,
     ScannerStore,
     ScreenBatch,
+    export_latest_vetted_menu,
     main,
 )
 from scripts.lp_tg_alerter_v1_readonly import ScannerAlertBridge
@@ -106,6 +107,41 @@ def _table_columns(db: Path, table: str):
 def test_default_scanner_cadence_matches_task_package():
     assert DEFAULT_COARSE_INTERVAL_SECS == 15 * 60
     assert DEFAULT_TOP_INTERVAL_SECS == 60
+
+
+def test_latest_vetted_menu_exports_only_live_accepted_records_and_fails_closed(tmp_path):
+    db = tmp_path / "scanner.db"
+    store = ScannerStore(db)
+    store.write_cycle(
+        AS_OF,
+        pool_snapshots=[],
+        opportunity_scores=[
+            {
+                "pool": "0x1",
+                "source": "live",
+                "accepted": True,
+                "score_json": json.dumps({
+                    "pool": "0x1", "vetted": True, "netcover_pass": True,
+                    "tvlUsd": 1_000_000, "active_liquidity_notional_usd": 50_000,
+                }),
+            },
+            {
+                "pool": "0x2", "source": "live", "accepted": False,
+                "score_json": json.dumps({"pool": "0x2", "vetted": False}),
+            },
+            {"pool": "0x3", "source": "live", "accepted": True, "score_json": "not-json"},
+        ],
+        market_sessions=[],
+    )
+    out = tmp_path / "vetted_menu.json"
+
+    result = export_latest_vetted_menu(db, out)
+
+    assert result["as_of"] == AS_OF.isoformat()
+    assert result["accepted_rows"] == 2
+    assert result["exported_records"] == 1
+    assert result["invalid_records"] == 1
+    assert json.loads(out.read_text())[0]["pool"] == "0x1"
 
 
 @pytest.mark.parametrize(
