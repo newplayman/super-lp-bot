@@ -1,0 +1,119 @@
+{
+  "schema_version": 1,
+  "as_of": "2026-08-08",
+  "wp10_status": "DONE",
+  "authorization": {
+    "m0_code_and_integration_smoke": "COMPLETE",
+    "shadow_14d_started": false,
+    "shadow_gate_status": "FAIL",
+    "m1_authorized": false
+  },
+  "tests": {
+    "post_solana_targeted": "93 passed",
+    "post_solana_full_suite": "2660 passed, 14 skipped in 37.51s",
+    "post_solana_collect": "2674 tests collected in 1.06s",
+    "legacy_environment_bound_skips": 14
+  },
+  "live_scanner": {
+    "screened": 736,
+    "top": 1,
+    "resolved": 1,
+    "scored": 1,
+    "accepted": 0,
+    "netcover_gate_status": "MISSING_FAIL_CLOSED",
+    "missing_horizon_usd_fields": [
+      "fee_ev_usd",
+      "reward_ev_usd",
+      "il_ev_usd",
+      "entry_cost_usd",
+      "exit_cost_usd",
+      "gas_usd",
+      "slippage_usd",
+      "reward_conversion_cost_usd",
+      "exit_latency_loss_usd"
+    ],
+    "vetted_menu_count": 0
+  },
+  "live_allocator": {
+    "n_pools": 0,
+    "deployed_usd": 0.0,
+    "idle_usd": 100.0,
+    "runtime_gates_enforced": true
+  },
+  "base_runner": {
+    "allocation_evidence_origin": "fixture_only_not_live_vetted",
+    "fixture_source": "historical_real_base_vetted_pool",
+    "purpose": "integration_plumbing_only",
+    "symbol": "WETH-USDC",
+    "ticks": 1,
+    "block": 49712404,
+    "rpc_health": "NORMAL",
+    "portfolio_nav_usd": 100.0,
+    "attribution_fields": 23,
+    "sqlite_gate_auto_write": true
+  },
+  "solana_runner": {
+    "allocation_evidence_origin": "fixture_only_not_live_vetted",
+    "account_observation": "live_onchain",
+    "symbol": "SPYx-USDC",
+    "pool": "Fae5dWVntUt6zbWu2voXxioDpMii7SqQwtsxBmoVCsHR",
+    "protocol": "orca_whirlpool",
+    "solana_adapter": "orca_whirlpool_account_v1",
+    "rpc_pool_endpoints": 6,
+    "ticks": 1,
+    "tick_block": 438047909,
+    "account_slot": 438047910,
+    "owner": "whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc",
+    "space": 653,
+    "sqrt_price_x64": 51442595230560696483,
+    "liquidity": 619420826944,
+    "price": 777.6896076046631,
+    "price_direction": "token_b_per_token_a",
+    "rpc_health": "NORMAL",
+    "portfolio_nav_usd": 100.0,
+    "n_swaps": 0,
+    "fees_usd": 0.0,
+    "risk_state": "HEALTHY",
+    "attribution_fields": 23,
+    "sqlite_gate_auto_write": true,
+    "semantic_limit": "account_state_observation_not_swap_event_or_fee_evidence"
+  },
+  "gate_after_solana": {
+    "overall_status": "FAIL",
+    "shadow_duration_days": {
+      "value": 0.01499527079861111,
+      "status": "FAIL"
+    },
+    "simulated_positions": {
+      "value": 2,
+      "status": "FAIL"
+    },
+    "fee_prediction_error_pct": {
+      "value": 100.0,
+      "status": "FAIL"
+    },
+    "shadow_net_pnl_usd": {
+      "raw_value": 1.4210854715202004e-14,
+      "normalized_value": 0.0,
+      "status": "FAIL"
+    },
+    "simulated_drawdown_pct": {
+      "value": 0.0,
+      "status": "PASS"
+    },
+    "rpc_severe_unresolved": {
+      "value": 0,
+      "status": "PASS"
+    }
+  },
+  "source_artifact_sha256": {
+    "scanner.db": "47faf0a444bdff11ebd656fd3ce0a00e71773d5ab4baaa5339907f4f6778070a",
+    "vetted_menu_live.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "allocation_live/allocation.json": "015bad4b44b16f9f4407c85edb982c704f61e9ca5600c5d2eb3cd4bcf4b71429",
+    "base_runner_1tick/heartbeat.jsonl": "952f0f731c9af604429c9765099723d0b91ca0618f2c609a654b5b7f359f8933",
+    "base_runner_1tick/final_state.json": "fd42fced26bb80ac4b8f30f3d7937f906e13638aae6ea8c6dadb8b5110326acb",
+    "solana_runner_1tick/heartbeat.jsonl": "5873d2b8c92d45ff71d4147f374bea836ec553a65d970c66337befdba1ced4d8",
+    "solana_runner_1tick/final_state.json": "05bbd40b86c7933fb217122c812b4c75df6dfb0f03730ca734ba62ef75d56741",
+    "gate_report_after_solana.json": "e73e9dba70bdd73af6c139282acc6220ff7296c5856e524807cea2156f56495d"
+  }
+}

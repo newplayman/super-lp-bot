@@ -1,15 +1,18 @@
-# M0 integration smoke — PENDING_SOL_SMOKE
+# M0 integration smoke — SOL evidence index
 
-本文件是验收官 gpt-5.6-sol 的真实输出承载位置。Luna 未执行、未伪造任何全链路结果。
+原 `PENDING_SOL_SMOKE` 承载位已由验收官真实输出替换。WP-10 已完成；本文件仅保留兼容索引，避免旧链接失效。
 
-## Required chain
+## Tracked evidence
 
-1. `scanner daemon --once --vetted-menu-out ...`：保留 screened/resolved/scored/accepted 原始 stdout；accepted=0 也是有效真实事实。
-2. 仅把 `scanner_evidence_origin=live_opportunity_scores` 的记录称为 live vetted；若 accepted=0，可用显式 `fixture_only_not_live_vetted` 的审计 fixture 验证 bridge/allocator 机械链路，但两类证据必须分开。
-3. allocator 必须显示 NetCover、PositionCap、absolute-profit gate 结果。
-4. Base 真实池 paper runner 1 tick：保留 heartbeat/final_state，核对三口径、exit state、23 字段、`portfolio_nav_usd`、`fee_prediction_usd`、scanner.db gate row。
-5. Solana：经 WP01 RpcPool 做真实 `getSlot` + `getAccountInfo`。当前 runner swap decoder 是 EVM-only，除非另有已验收 connector，不得将该探活称为完整 LP tick。
+- 完整验收：`SOL_ACCEPTANCE_20260808.md`
+- 机器可读摘要：`evidence_20260808/acceptance_summary.json`
+- Solana tick-0 heartbeat：`evidence_20260808/solana_runner_heartbeat_tick0.json`
+- Solana final state：`evidence_20260808/solana_runner_final_state.json`
 
-## SOL output
+## Boundary
 
-`PENDING_SOL_SMOKE`
+- live scanner：`screened=736 top=1 resolved=1 scored=1 accepted=0`；live allocation 为空且 deployed=0。
+- Base WETH-USDC 与 Solana SPYx-USDC 的非空 allocation 均明确为 `fixture_only_not_live_vetted`，只用于集成接线验证。
+- Solana runner 已完成真实 Orca account-state 1-tick，并进入 23 字段与 SQLite gate 路径；`n_swaps=0`、fees=0，不冒充 swap/fee evidence。
+- 实现后最终测试：`2660 passed, 14 skipped in 37.51s`；collect：`2674 tests collected in 1.06s`。
+- 14d shadow 未启动，§12.0 gate=`FAIL`，M1 未授权。

@@ -15,7 +15,7 @@ Solana 账户证据：
 
 - Raydium `6truu3rZuiB9rKQg4VYC3Dt3QwV7DgwGqXrYUcrvnDDE`：owner `CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK`，space 1544，slot 438043367。
 - Orca `Fae5dWVntUt6zbWu2voXxioDpMii7SqQwtsxBmoVCsHR`：owner `whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc`，space 653，slot 438043367。
-- 这只证明 WP01 registry 的 slot/account read 能力；当前 Python paper runner 的 swap decoder 仍是 EVM-only，**不得称为完整 Solana LP tick**。
+- 该快照最初证明 WP01 registry 的 slot/account read 能力。WP-10 随后已通过同一免费 RpcPool 对上述 Orca 池完成真实 account-state runner 1-tick，并校验 owner、base64/653-byte space、discriminator、正 sqrt-price/liquidity 与 decimals 方向价格；证据见 `reports/lp_m0_integration_smoke/SOL_ACCEPTANCE_20260808.md`。其语义仍严格限于账户状态 observation：`amount1=0`、`n_swaps=0`、fees=0，不得称为 swap event 或 fee evidence。
 
 ## 2. xStocks 当前池清单
 

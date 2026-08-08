@@ -2,7 +2,7 @@
 
 **分支：** `feat/prd-v2.1-m0-shadow`
 
-**状态：** WP-00～09 已由 sol 分项验收；WP-10 实现已就位，等待 sol 亲跑全量测试与真实集成 smoke。**14 天 shadow 尚未启动，§12.0 gate 尚未通过。**
+**状态：** WP-00～10 已由 sol 验收，M0 代码与只读集成 smoke 完成。**14 天 shadow 尚未启动，§12.0 gate 当前为 FAIL；M1 未放行。**
 
 **发布边界：** 未合并、未推送远端；等待指挥官 review。本文不构成 M1 放行。
 
@@ -22,7 +22,7 @@
 | WP-07 | DONE | `d63cb15 19f9a0e b80f51c a9f4de3 32cb308 1d3a6ed f1a5dea b425c58 bec89e7` | alerter 13；无 test token，已验 stdout 降级；全局 ≥60s throttle |
 | WP-08 | DONE | `7879194 688376c b538af2 e589266` | ledger-v2 12；heartbeat/final 23 字段、退出成本语义、旧 heartbeat 兼容 |
 | WP-09 | DONE | `853e590 bc586ad 39aff95 c8d35b0 9f9d5a6 74fc774 cd317fb cda1d0b 184ce07` | reward replay 10；报告 `reports/lp_reward_decay_replay/20260808_173832/` |
-| WP-10 | **PENDING_SOL_ACCEPTANCE** | 关键提交 `d3c9c96 7d5a59d f5b4988 44dab96 b8441b1 b624a70`（TDD 含 `8afbe25 4f4a8be ddfad55`） | gate 配对测试含零噪声边界；全量与 live smoke 由 sol 亲跑 |
+| WP-10 | **DONE** | 关键提交 `d3c9c96 7d5a59d f5b4988 44dab96 b8441b1 b624a70 fb88eb2`（TDD 含 `8afbe25 4f4a8be ddfad55 920c85f`） | Solana+runner+ledger+RpcPool+gate 定向 93；Base + Orca account-state 各 1 tick；全量 `2660 passed, 14 skipped` |
 
 ## 2. 指挥官批准后才可执行的启动命令
 
@@ -87,8 +87,8 @@ python3 -u scripts/lp_portfolio_paper_runner_v1_readonly.py \
 - exporter 只接受 SQLite 最新 cycle 中 `accepted=1` 且 score_json 同时证明 `vetted=true`、`netcover_pass=true` 的记录，并加 `scanner_evidence_origin=live_opportunity_scores`。
 - 若真实 scanner `accepted=0`，链路应诚实停在 0 allocation；这是有效结果，不得用 fixture 冒充 live-vetted。
 - 审计 fixture 只允许标 `fixture_only_not_live_vetted`，用于验证 bridge/allocator 机械接线。
-- sol 的完整 stdout/JSON 承载位置：`reports/lp_m0_integration_smoke/PENDING_SOL_SMOKE.md`。
-- Solana 仅可经 WP01 RpcPool 做 `getSlot` / `getAccountInfo` 真实探活。当前 Python runner 没有 Raydium/Orca swap decoder，不能宣称完成 Solana LP 1-tick；这是已知 coverage gap，不以模拟数据遮盖。
+- sol 的完整 stdout/JSON 归档：`reports/lp_m0_integration_smoke/SOL_ACCEPTANCE_20260808.md` 与 `reports/lp_m0_integration_smoke/evidence_20260808/`；旧 `PENDING_SOL_SMOKE.md` 仅为兼容索引。
+- Solana runner 已通过 WP01 免费 RpcPool 对真实 Orca Whirlpool 完成 account-state 1-tick：显式 `protocol=orca_whirlpool` / `solana_adapter=orca_whirlpool_account_v1`，校验 owner、base64、653-byte space、discriminator、正 sqrt/liquidity 与 decimal price。该 tick 是账户状态 observation，`amount1=0`、`n_swaps=0`、fees=0；不是 swap event decoder 或 fee evidence。
 
 ## 4. §12.0 gate 报告读法
 
@@ -129,18 +129,19 @@ Shadow 五问在 14d 数据前均为 **PENDING_EVIDENCE**，不得提前作答�
 - Reward persistence 缺失/无效/负值 fail-closed；`<6h` 不 ENTER，6–24h haircut，≥24h 才 trusted。
 - Telegram 未配置 `LPBOT_TG_TOKEN/LPBOT_TG_CHAT` 时降级 stdout、不崩溃；尚未发送真实测试消息。旧 Telegram token 必须由指挥官在外部立即轮换，禁止在报告/commit 回显旧值。
 - Base public RPC 与 Solana public RPC 都有可变限流；没有付费 fallback。任何付费 RPC 只允许生成建议报告，必须指挥官人工批准。
-- 当前 Solana coverage 是 registry + 真实只读 slot/account，不是 runner CLMM swap/fee tick；M0 不允许借机实现 M1 TS sidecar。
+- 当前 Solana coverage 是经 registry 的真实 Orca account-state runner tick，并已进入 ledger-v2/gate；它不解码 swap event，也不产生 fee evidence。M0 不允许借机实现 M1 TS sidecar。
 - Raydium 市场快照是单次 top-1000 page，`hasNextPage=true`，页外池 unavailable/unverified；Orca 当次 page `next=null`。详见 `MARKET_SNAPSHOT_M0.md`。
 - Cost sensitivity 使用历史 swap/模型参数，不保证未来收益；已验收的历史结论是 25U 不经济，50U 起才在该样例过 gate。
 - 14d shadow 启动、gate 评审、合并、推送、M1 放行均由指挥官决定。**M1-A 签名 sidecar / M1-B EVM 执行严格禁止开工。**
 
-## 6. sol 最终验收待填
+## 6. sol 最终验收
 
 测试卫生说明：全量中的 14 个 `legacy_environment_bound` 节点是**精确 nodeid skip，不是 pass**。其中 6 个锁定已结束的 2026-06-05 in-flight PID/4-of-6/固定文件计数，1 个把冻结合法 `COMPRESSED_PASS` 错写成只接受 `PASS`，7 个会把指挥官要求保留的只读 paper PID 1349731 误判为禁用进程。同文件其余测试照常运行；未忽略整文件、未改冻结报告、未改 `scripts/lp_long_horizon/`、未停止进程。精确清单与理由在 `tests/conftest.py::LEGACY_ENVIRONMENT_BOUND_NODEIDS`。
 
-- `pytest tests/ -q`: Luna 卫生修复后预验 `2647 passed, 14 skipped`；14 skips 分类如上，等待 sol 最终确认
-- `pytest tests/ --collect-only -q`: Luna 预验 `2661 tests collected, 0 error`，等待 sol 最终确认
-- Base live 1-tick + SQLite gate row: `PENDING_SOL_SMOKE`
-- Solana WP01 slot/account probe: `PENDING_SOL_SMOKE`
-- 红线扫描与 diff review: `PENDING_SOL_ACCEPTANCE`
-- 最终裁决：`PENDING_SOL_ACCEPTANCE`
+- `pytest tests/ -q`: sol 在 Solana runner 实现后亲跑，`2660 passed, 14 skipped in 37.51s`
+- `pytest tests/ --collect-only -q`: sol 在实现后亲跑，`2674 tests collected in 1.06s`，0 error
+- 定向 Solana+runner+ledger+RpcPool+gate：`93 passed`
+- Base 1-tick + SQLite gate row：完成；输入为显式 `fixture_only_not_live_vetted` 的历史真实 WETH-USDC，只证明集成接线
+- Solana Orca account-state 1-tick + 23 字段 + SQLite gate row：完成；live account slot `438047910`，RPC `NORMAL`，`n_swaps=0`、fees=0
+- 集成详情与哈希：`reports/lp_m0_integration_smoke/SOL_ACCEPTANCE_20260808.md`
+- 最终裁决：WP-10 `DONE`；14d shadow 未启动，gate `FAIL`，M1 **NOT AUTHORIZED**
