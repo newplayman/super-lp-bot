@@ -152,7 +152,15 @@ def reward_persistence_gate(p, *, min_hours=REWARD_PERSISTENCE_MIN_HOURS,
             "score_factor": 0.0,
             "reason": "REWARD_APR_INVALID",
         }
-    if reward_apr <= 0.0:
+    if reward_apr < 0.0:
+        return {
+            "entry_eligible": False,
+            "status": "INVALID_REWARD_FAIL_CLOSED",
+            "duration_hours": None,
+            "score_factor": 0.0,
+            "reason": "REWARD_APR_INVALID",
+        }
+    if reward_apr == 0.0:
         return {
             "entry_eligible": True,
             "status": "NOT_APPLICABLE",
