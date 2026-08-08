@@ -1,0 +1,80 @@
+{
+  "assertions": {
+    "all_passed": true,
+    "allocator_scores_strictly_decrease": true,
+    "finite_scores": true,
+    "main_points_enterable": true,
+    "missing_persistence_fail_closed": true,
+    "required_reward_path": true,
+    "scores_strictly_decrease": true,
+    "young_300pct_rejected": true
+  },
+  "generated_at": "2026-08-08T17:38:32.777200+00:00",
+  "missing_persistence_fixture": {
+    "entry_eligible": false,
+    "reasons": [
+      "REWARD_PERSISTENCE_MISSING"
+    ],
+    "reward_apr": 100.0,
+    "reward_high_duration": null,
+    "status": "MISSING_FAIL_CLOSED"
+  },
+  "mode": "paper-only/read-only",
+  "schema_version": "lp-reward-decay-replay-v1",
+  "semantics": {
+    "6h_to_24h": "ENTER_MINIMUM_WITH_LINEAR_CREDIBILITY_HAIRCUT",
+    "at_least_24h": "TRUSTED_CURRENT_REWARD_APR",
+    "fee_only_legacy": "COMPATIBLE_NOT_APPLICABLE",
+    "missing_reward_persistence": "FAIL_CLOSED_SHADOW_ONLY_REWARD_SCORE_ZERO",
+    "stale_historical_apr": "CAPPED_AT_CURRENT_PERSISTENCE_ADJUSTED_APR",
+    "under_6h": "SHADOW_ONLY_REWARD_SCORE_ZERO"
+  },
+  "source_chain": [
+    "lp_universe_screener_v1_readonly.assess/score_pool",
+    "lp_portfolio_allocator_v1_readonly.is_enterable/rank_metric"
+  ],
+  "trajectory": [
+    {
+      "allocator_rank_metric": 115.0,
+      "elapsed_hours": 24.0,
+      "entry_eligible": true,
+      "reward_apr": 100.0,
+      "reward_persistence_score": 1.0,
+      "reward_persistence_status": "TRUSTED_24H",
+      "screener_score": 120.0,
+      "stale_apy_mean_30d": 120.0,
+      "step": 0
+    },
+    {
+      "allocator_rank_metric": 45.0,
+      "elapsed_hours": 30.0,
+      "entry_eligible": true,
+      "reward_apr": 30.0,
+      "reward_persistence_score": 1.0,
+      "reward_persistence_status": "TRUSTED_24H",
+      "screener_score": 50.0,
+      "stale_apy_mean_30d": 120.0,
+      "step": 1
+    },
+    {
+      "allocator_rank_metric": 20.0,
+      "elapsed_hours": 36.0,
+      "entry_eligible": true,
+      "reward_apr": 5.0,
+      "reward_persistence_score": 1.0,
+      "reward_persistence_status": "TRUSTED_24H",
+      "screener_score": 25.0,
+      "stale_apy_mean_30d": 120.0,
+      "step": 2
+    }
+  ],
+  "young_incentive_fixture": {
+    "entry_eligible": false,
+    "reasons": [
+      "REWARD_PERSISTENCE_LT_6H"
+    ],
+    "reward_apr": 300.0,
+    "reward_high_duration": 0.5,
+    "status": "TOO_YOUNG_SHADOW_ONLY"
+  }
+}
