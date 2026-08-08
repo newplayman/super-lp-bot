@@ -4,6 +4,7 @@ Documentation=file:/opt/lpbot/lp-bot-v3-origin-check/scripts/lp_scanner_daemon_v
 Wants=network-online.target
 After=network-online.target
 ConditionPathExists=/opt/lpbot/lp-bot-v3-origin-check/scripts/lp_scanner_daemon_v1_readonly.py
+ConditionPathIsDirectory=/opt/lpbot/lp-bot-v3-origin-check/reports/lp_scanner
 
 [Service]
 Type=simple
@@ -14,7 +15,7 @@ UMask=0077
 
 # Preflight only. Installation/enabling remains an explicit operator action.
 ExecStartPre=/usr/bin/test -r /opt/lpbot/lp-bot-v3-origin-check/scripts/lp_scanner_daemon_v1_readonly.py
-ExecStartPre=/usr/bin/test -w /opt/lpbot/lp-bot-v3-origin-check/reports
+ExecStartPre=/usr/bin/test -w /opt/lpbot/lp-bot-v3-origin-check/reports/lp_scanner
 ExecStart=/usr/bin/python3 -u /opt/lpbot/lp-bot-v3-origin-check/scripts/lp_scanner_daemon_v1_readonly.py --db /opt/lpbot/lp-bot-v3-origin-check/reports/lp_scanner/scanner.db --coarse-interval-secs 900 --top-interval-secs 60
 
 KillSignal=SIGTERM
