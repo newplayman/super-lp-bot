@@ -94,9 +94,9 @@ def init_state(*, capital, anchor, range_pct, fee_tier, dec0, dec1, last_block,
                risk_signals=None):
     """Build a fresh passive-position state dict.
 
-    exit_on_breach: Tier-B policy — on the first band breach, auto-exit the LP
-      position and convert back to base currency (holding the breached token is
-      risky). Tier-A leaves this False (wide-range passive: breach = log only).
+    exit_on_breach: deprecated explicit compatibility instruction for old
+      allocations. Missing fields never infer this from Tier; new callers use
+      exit_policy_enabled plus combination signals.
     exit_cost_bps: conversion cost charged on exit (swap fee + slippage). If
       None, a placeholder = round(fee_tier*1e4)+10bps is used until the
       depth/slippage model (lp_swap_cost_model) is wired in to size it properly.
@@ -821,7 +821,9 @@ def run_self_test():
     anchor = 1.0
     st = init_state(capital=1000.0, anchor=anchor, range_pct=r,
                     fee_tier=fee_tier, dec0=dec0, dec1=dec1, last_block=0)
-    L = 10 ** 18
+    # Deep enough to keep the paper exit quote economically valid in this
+    # invariant smoke test (dec0=dec1=18 => human liquidity 1e6).
+    L = 10 ** 24
     amt1 = 10 ** 18  # 1.0 token1 raw
     # two in-range swaps
     in_swaps = [
@@ -856,13 +858,13 @@ def run_self_test():
     assert abs(half * 2 - full) < 1e-9, "reward linear in elapsed"
     assert abs(accrue_reward(2000.0, 50.0, 365 * 86400) - 1000.0) < 1e-6, "linear in capital"
 
-    # Tier-B auto-exit on breach: position closes, converts to base, stops accruing
+    # Explicit legacy compatibility: closes, converts to base, stops accruing.
     stb = init_state(capital=1000.0, anchor=1.0, range_pct=r, fee_tier=fee_tier,
                      dec0=dec0, dec1=dec1, last_block=0, exit_on_breach=True)
     update_position(stb, [{"block": 1, "price": 1.0, "liquidity": L, "amount1": amt1}], now_block=1)
     assert stb["exited"] is None, "in-range: not exited"
     update_position(stb, [{"block": 2, "price": 1.5, "liquidity": L, "amount1": amt1}], now_block=2)
-    assert stb["exited"] is not None, "breach must trigger exit for Tier-B"
+    assert stb["exited"] is not None, "explicit legacy exit instruction must remain compatible"
     assert stb["exited"]["exit_cost_quote"] > 0, "exit pays a conversion cost"
     fees_at_exit = stb["fees_quote"]
     # further swaps after exit accrue nothing (holds base cash)
@@ -872,7 +874,7 @@ def run_self_test():
     assert mkb["exited"] is True and mkb["lp_value_quote"] == stb["exited"]["realized_quote"]
 
     print("self-test OK: fees accrue in-range, breaches logged out-of-range, "
-          "anchor passive, IL sign correct, reward linear, Tier-B auto-exit works.")
+          "anchor passive, IL sign correct, reward linear, legacy adapter works.")
 
 
 def main():
