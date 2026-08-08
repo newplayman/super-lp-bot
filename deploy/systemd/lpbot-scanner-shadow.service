@@ -1,0 +1,38 @@
+[Unit]
+Description=LP Bot read-only scanner shadow
+Documentation=file:/opt/lpbot/lp-bot-v3-origin-check/scripts/lp_scanner_daemon_v1_readonly.py
+Wants=network-online.target
+After=network-online.target
+ConditionPathExists=/opt/lpbot/lp-bot-v3-origin-check/scripts/lp_scanner_daemon_v1_readonly.py
+
+[Service]
+Type=simple
+User=lpbot
+Group=lpbot
+WorkingDirectory=/opt/lpbot/lp-bot-v3-origin-check
+UMask=0077
+
+# Preflight only. Installation/enabling remains an explicit operator action.
+ExecStartPre=/usr/bin/test -r /opt/lpbot/lp-bot-v3-origin-check/scripts/lp_scanner_daemon_v1_readonly.py
+ExecStartPre=/usr/bin/test -w /opt/lpbot/lp-bot-v3-origin-check/reports
+ExecStart=/usr/bin/python3 -u /opt/lpbot/lp-bot-v3-origin-check/scripts/lp_scanner_daemon_v1_readonly.py --db /opt/lpbot/lp-bot-v3-origin-check/reports/lp_scanner/scanner.db --coarse-interval-secs 900 --top-interval-secs 60
+
+KillSignal=SIGTERM
+TimeoutStopSec=120
+Restart=on-failure
+RestartSec=15
+StandardOutput=journal
+StandardError=journal
+
+# Keep the shadow scanner confined to its report directory.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/opt/lpbot/lp-bot-v3-origin-check/reports/lp_scanner
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target
