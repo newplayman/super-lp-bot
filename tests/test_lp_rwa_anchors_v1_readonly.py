@@ -71,10 +71,13 @@ def test_xstocks_missing_timestamp_fails_closed_even_with_prices():
 
 
 def test_bybit_parses_public_spot_ticker_and_server_timestamp():
-    transport = FakeTransport({"/v5/market/tickers": {
-        "retCode": 0, "retMsg": "OK", "time": 1786114800000,
-        "result": {"category": "spot", "list": [{"symbol": "AAPLXUSDT", "bid1Price": "99.9", "ask1Price": "100.1"}]},
-    }})
+    transport = FakeTransport({
+        "/v5/market/tickers": {
+            "retCode": 0, "retMsg": "OK", "time": 1786114800000,
+            "result": {"category": "spot", "list": [{"symbol": "AAPLXUSDT", "bid1Price": "99.9", "ask1Price": "100.1"}]},
+        },
+        "/token/AAPLx/multiplier": {"currentMultiplier": 1},
+    })
     quote = BybitAnchorClient(transport=transport, clock=FakeClock()).quote("AAPLXUSDT", market_session="REGULAR")
     assert quote.source_name == "bybit_public_spot"
     assert quote.instrument.instrument_id == "backed:AAPLx"
@@ -143,4 +146,3 @@ def test_no_client_accepts_or_stores_api_credentials():
         assert "api_key" not in cls.__init__.__annotations__
         with pytest.raises(TypeError):
             cls(transport=FakeTransport({}), clock=FakeClock(), api_key="forbidden")
-
