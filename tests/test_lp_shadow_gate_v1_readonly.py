@@ -168,6 +168,66 @@ def test_gate_evaluation_fails_closed_without_observations(tmp_path):
     assert report["checks"]["rpc_severe_unresolved"]["status"] == "PASS"
 
 
+@pytest.mark.parametrize(
+    "raw_pnl",
+    [0.0, 1.4210854715202004e-14, 1e-9, -1e-9],
+)
+def test_shadow_net_pnl_near_zero_noise_never_passes_positive_gate(tmp_path, raw_pnl):
+    store = GateStore(tmp_path / "scanner.db")
+    pools = [_pool(index, pnl=0.0) for index in range(50)]
+    store.record_heartbeat(
+        "run-a", 0,
+        _heartbeat(
+            as_of="2026-07-25T00:00:00+00:00", pools=pools,
+            net_pnl=0.0, portfolio_nav=5_000.0,
+        ),
+    )
+    pools[-1]["pnl_vs_usdc"] = raw_pnl
+    store.record_heartbeat(
+        "run-a", 1,
+        _heartbeat(
+            as_of="2026-08-08T00:00:00+00:00", pools=pools,
+            net_pnl=raw_pnl, portfolio_nav=5_000.0 + raw_pnl,
+        ),
+    )
+
+    check = evaluate_shadow_gate(store.path)["checks"]["shadow_net_pnl_usd"]
+
+    assert check["raw_value"] == pytest.approx(raw_pnl)
+    assert check["value"] == 0.0
+    assert check["status"] == "FAIL"
+
+
+def test_shadow_net_pnl_above_published_zero_tolerance_can_pass(tmp_path):
+    store = GateStore(tmp_path / "scanner.db")
+    pools = [_pool(index, pnl=0.0) for index in range(50)]
+    store.record_heartbeat(
+        "run-a", 0,
+        _heartbeat(
+            as_of="2026-07-25T00:00:00+00:00", pools=pools,
+            net_pnl=0.0, portfolio_nav=5_000.0,
+        ),
+    )
+    meaningful = 1.000001e-9
+    pools[-1]["pnl_vs_usdc"] = meaningful
+    store.record_heartbeat(
+        "run-a", 1,
+        _heartbeat(
+            as_of="2026-08-08T00:00:00+00:00", pools=pools,
+            net_pnl=meaningful, portfolio_nav=5_000.0 + meaningful,
+        ),
+    )
+
+    report = evaluate_shadow_gate(store.path)
+    check = report["checks"]["shadow_net_pnl_usd"]
+
+    assert check["raw_value"] == pytest.approx(meaningful)
+    assert check["value"] == pytest.approx(meaningful)
+    assert check["status"] == "PASS"
+    assert report["measurement_precision"]["usd_near_zero_tolerance"] == 1e-9
+    assert "<= 1e-09 USD" in build_gate_report_markdown(report)
+
+
 def test_runner_tick_exposes_nav_fee_prediction_and_rpc_health(monkeypatch):
     state = runner.init_state(
         capital=100.0, anchor=1.0, range_pct=10.0, fee_tier=0.003,
