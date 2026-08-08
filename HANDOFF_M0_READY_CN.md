@@ -107,7 +107,7 @@ python3 -u scripts/lp_shadow_gate_v1_readonly.py \
   --json-out reports/lp_shadow_gate/latest/gate_report.json
 ```
 
-硬 gate（代码显式常量，严格不等号）：≥14d；≥50 unique positions；fee 预测误差 `<20%`；shadow net PnL `>0`；max DD `<8%`；未处理严重 RPC `=0`。
+硬 gate（代码显式常量，严格不等号）：≥14d；≥50 unique positions；fee 预测误差 `<20%`；shadow net PnL `>0`；max DD `<8%`；未处理严重 RPC `=0`。PnL 判定边界先把绝对值 `<=1e-9 USD` 的浮点消去噪声保守归零，原始和保留为报告 `raw_value`；因此 0 或微小正噪声不得通过 `>0`。
 
 fee 误差公式：
 

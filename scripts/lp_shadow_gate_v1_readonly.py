@@ -29,6 +29,10 @@ from typing import Any, Mapping, Optional, Sequence
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_DB_PATH = REPO_ROOT / "reports/lp_scanner/scanner.db"
 SECONDS_PER_DAY = 86_400.0
+# USD values at/below this absolute magnitude are indistinguishable from
+# binary floating-point cancellation in the paper ledger.  The gate preserves
+# the raw sum for audit, but normalizes it to zero before applying PnL > 0.
+USD_NEAR_ZERO_TOLERANCE = 1e-9
 
 GATE_THRESHOLDS = {
     "minimum_shadow_days": 14.0,
@@ -108,6 +112,13 @@ def _as_of(value: Any = None) -> str:
     if dt.tzinfo is None or dt.utcoffset() is None:
         raise ValueError("as_of must be timezone-aware")
     return dt.astimezone(timezone.utc).isoformat()
+
+
+def _normalize_usd_near_zero(value: Optional[float]) -> Optional[float]:
+    """Conservatively remove sub-nanodollar floating-point gate noise."""
+    if value is None:
+        return None
+    return 0.0 if abs(value) <= USD_NEAR_ZERO_TOLERANCE else value
 
 
 def _position_identity(pool: Mapping[str, Any], index: int) -> str:
@@ -335,7 +346,7 @@ def evaluate_shadow_gate(path: str | Path, *, as_of: Any = None) -> dict[str, An
         ).total_seconds() / SECONDS_PER_DAY
 
     fee_error = None
-    net_pnl = None
+    net_pnl_raw = None
     if latest:
         predicted = [_finite(row["predicted_fee_usd"]) for row in latest]
         actual = [_finite(row["actual_fee_usd"]) for row in latest]
@@ -347,7 +358,8 @@ def evaluate_shadow_gate(path: str | Path, *, as_of: Any = None) -> dict[str, An
             if predicted_total > 0.0:
                 fee_error = abs(actual_total - predicted_total) / predicted_total * 100.0
         if all(v is not None for v in pnls):
-            net_pnl = sum(v for v in pnls if v is not None)
+            net_pnl_raw = sum(v for v in pnls if v is not None)
+    net_pnl = _normalize_usd_near_zero(net_pnl_raw)
     max_dd = _finite(max_dd_row[0]) if max_dd_row else None
 
     checks = {
@@ -368,6 +380,7 @@ def evaluate_shadow_gate(path: str | Path, *, as_of: Any = None) -> dict[str, An
         },
         "shadow_net_pnl_usd": {
             "value": net_pnl,
+            "raw_value": net_pnl_raw,
             "threshold": "> 0",
             "status": _status(net_pnl, lambda v: v > 0.0),
         },
@@ -390,6 +403,10 @@ def evaluate_shadow_gate(path: str | Path, *, as_of: Any = None) -> dict[str, An
         "source_db": str(Path(path)),
         "evidence_window": {"first_as_of": first_as_of, "last_as_of": last_as_of},
         "thresholds": dict(GATE_THRESHOLDS),
+        "measurement_precision": {
+            "usd_near_zero_tolerance": USD_NEAR_ZERO_TOLERANCE,
+            "rule": "abs(raw_shadow_net_pnl_usd) <= tolerance normalizes to 0 before >0 gate",
+        },
         "checks": checks,
         "overall_status": overall,
         "authorization": "evidence_only_not_M1_authorization",
@@ -407,6 +424,10 @@ def build_gate_report_markdown(report: Mapping[str, Any]) -> str:
         "Fee formula: `fee_prediction_error_pct = abs(actual - predicted) / predicted * 100`。",
         "缺失、非有限、零或负预测值均记为 `UNKNOWN`，绝不记作 0% 误差。",
         "模拟仓按唯一 `(source_run, position_identity)` 计数，重复 tick 不增加仓数。",
+        (
+            f"PnL gate 精度：`abs(raw shadow net PnL) <= "
+            f"{USD_NEAR_ZERO_TOLERANCE:g} USD` 在判定前保守归零；原值保留在 `raw_value`。"
+        ),
         "",
         "| Check | Value | Threshold | Status |",
         "|---|---:|---:|---|",
