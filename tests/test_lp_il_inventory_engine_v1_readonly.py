@@ -154,7 +154,7 @@ def test_runner_fee_reward_do_not_change_lp_nav_or_il():
     assert after["il_vs_hodl_quote"] == before["il_vs_hodl_quote"]
 
 
-def test_runner_exit_keeps_current_hodl_and_il_semantics_truthful():
+def test_runner_exit_freezes_realized_il_but_keeps_hodl_and_alpha_current():
     state = init_state(
         capital=1_000.0, anchor=100.0, range_pct=10.0, fee_tier=0.003,
         dec0=18, dec1=6, last_block=0, exit_on_breach=True,
@@ -164,7 +164,11 @@ def test_runner_exit_keeps_current_hodl_and_il_semantics_truthful():
     mark_160 = mark_position(state, 160.0)
     assert mark_120["lp_value_quote"] == mark_160["lp_value_quote"]  # legacy cash field
     assert mark_120["hodl_nav_quote"] != mark_160["hodl_nav_quote"]
-    assert mark_120["il_vs_hodl_quote"] != mark_160["il_vs_hodl_quote"]
+    # No LP exists after exit: IL is the realized observation at exit, while
+    # alpha carries the changing opportunity cost versus the live HODL basket.
+    assert mark_120["il_vs_hodl_quote"] == mark_160["il_vs_hodl_quote"]
+    assert mark_120["realized_il_at_exit_quote"] == mark_160["realized_il_at_exit_quote"]
+    assert mark_120["alpha_vs_hodl_quote"] != mark_160["alpha_vs_hodl_quote"]
     assert mark_160["alpha_vs_hodl_quote"] == pytest.approx(
         mark_160["current_total_nav_quote"] - mark_160["hodl_nav_quote"]
     )

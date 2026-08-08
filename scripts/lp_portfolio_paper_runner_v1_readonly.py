@@ -136,6 +136,7 @@ def _do_exit(state, *, exit_price, block, l_active_raw=None):
         "lp_value_quote": lp_value,
         "lp_nav_ex_fee_quote": lp_value,
         "il_quote": il,
+        "il_pct": il_pct(il, entry_hodl),
         "fees_quote": state["fees_quote"],
         "exit_cost_quote": cost,
         "realized_quote": lp_value - cost + state["fees_quote"],  # base cash recovered
@@ -204,21 +205,22 @@ def mark_position(state, current_price):
         realized = ex["realized_quote"]
         current_total = realized + state["reward_quote"]
         net = current_total - cap
-        # The LP principal was realized at exit, but the counterfactual HODL
-        # basket keeps marking at today's price.  Preserve the IL identity
-        # instead of freezing it merely because cash is now frozen.
+        # No LP exists after exit: freeze the realized exit observation.  The
+        # counterfactual HODL basket and alpha continue marking below, so the
+        # post-exit opportunity cost is not mislabeled as impermanent loss.
         principal_at_exit = ex["lp_nav_ex_fee_quote"]
-        current_il = il_usd(principal_at_exit, current_hodl)
+        realized_il = ex["il_quote"]
         return {
             "lp_value_quote": realized,  # now base cash, not an LP position
-            "il_quote": current_il,
+            "il_quote": realized_il,
             "fees_quote": ex["fees_quote"],
             "net_quote": net,
             "net_pct": (net / cap * 100) if cap else 0.0,
             "hodl_nav_quote": current_hodl,
             "lp_nav_ex_fee_quote": principal_at_exit,
-            "il_vs_hodl_quote": current_il,
-            "il_vs_hodl_pct": il_pct(current_il, current_hodl),
+            "il_vs_hodl_quote": realized_il,
+            "il_vs_hodl_pct": ex["il_pct"],
+            "realized_il_at_exit_quote": realized_il,
             "current_total_nav_quote": current_total,
             "pnl_vs_usdc_quote": pnl_vs_usdc(current_total, cap),
             "alpha_vs_hodl_quote": alpha_vs_hodl(current_total, current_hodl),
