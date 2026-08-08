@@ -34,7 +34,10 @@ def _b(sym, q, yc, pool, wash=False, status="OK", resolve="OK"):
 
 
 def test_vet_record_all_gates_pass():
-    r = vet_record(_b("G", "B", 8.2, "0xAAA"), {"stable": True, "enter_frac": 0.83})
+    r = vet_record(
+        _b("G", "B", 8.2, "0xAAA"), {"stable": True, "enter_frac": 0.83},
+        require_netcover=False,
+    )
     assert r["vetted"] is True
     assert r["gates"] == {"quality": True, "yield_cover": True, "stable": True, "status_ok": True}
     assert r["stable"] is True and r["enter_frac"] == 0.83
@@ -42,19 +45,19 @@ def test_vet_record_all_gates_pass():
 
 def test_vet_record_each_gate_can_fail():
     # unstable
-    assert vet_record(_b("U", "B", 14, "0xB"), {"stable": False})["vetted"] is False
+    assert vet_record(_b("U", "B", 14, "0xB"), {"stable": False}, require_netcover=False)["vetted"] is False
     # low yield_cover
-    assert vet_record(_b("L", "A", 0.4, "0xC"), {"stable": True})["vetted"] is False
+    assert vet_record(_b("L", "A", 0.4, "0xC"), {"stable": True}, require_netcover=False)["vetted"] is False
     # bad quality tier
-    assert vet_record(_b("J", "C", 99, "0xD"), {"stable": True})["vetted"] is False
+    assert vet_record(_b("J", "C", 99, "0xD"), {"stable": True}, require_netcover=False)["vetted"] is False
     # wash-flagged
-    assert vet_record(_b("W", "B", 50, "0xE", wash=True), {"stable": True})["vetted"] is False
+    assert vet_record(_b("W", "B", 50, "0xE", wash=True), {"stable": True}, require_netcover=False)["vetted"] is False
     # unresolved
-    assert vet_record(_b("N", "B", 50, "0xF", resolve="NOT_FOUND"), {"stable": True})["vetted"] is False
+    assert vet_record(_b("N", "B", 50, "0xF", resolve="NOT_FOUND"), {"stable": True}, require_netcover=False)["vetted"] is False
 
 
 def test_vet_record_inf_yc_passes_yield_gate():
-    r = vet_record(_b("I", "A", "inf", "0xA"), {"stable": True})
+    r = vet_record(_b("I", "A", "inf", "0xA"), {"stable": True}, require_netcover=False)
     assert r["gates"]["yield_cover"] is True and r["vetted"] is True
 
 
@@ -71,14 +74,17 @@ def test_funnel_vet_and_menu_end_to_end():
         {"pool": "0xccc", "fee_cover_stability": {"stable": True, "enter_frac": 1.0}},
         {"pool": "0xfff", "fee_cover_stability": {"stable": True, "enter_frac": 1.0}},
     ]
-    menu = vetted_menu(funnel_vet(bridge, stab))
+    menu = vetted_menu(funnel_vet(bridge, stab, allow_legacy_without_netcover=True))
     # GOOD + BEST pass; sorted by yc desc => BEST first
     assert [r["symbol"] for r in menu] == ["BEST", "GOOD"]
 
 
 def test_missing_stability_means_not_stable():
     # a bridge record with no stability entry must NOT pass (fluke-protection default)
-    merged = funnel_vet([_b("ORPHAN", "B", 9.0, "0xZZZ")], [])
+    merged = funnel_vet(
+        [_b("ORPHAN", "B", 9.0, "0xZZZ")], [],
+        allow_legacy_without_netcover=True,
+    )
     assert merged[0]["vetted"] is False and merged[0]["stable"] is False
 
 
@@ -105,6 +111,15 @@ def test_explicit_netcover_mode_fails_closed_when_pool_has_no_score():
     bridge = [_b("MISSING", "A", 20.0, "0xAAA")]
     stability = [{"pool": "0xaaa", "fee_cover_stability": {"stable": True}}]
     rec = funnel_vet(bridge, stability, netcover_records=[])[0]
+    assert rec["gates"]["netcover_shadow"] is False
+    assert rec["netcover_gate_status"] == "MISSING_FAIL_CLOSED"
+    assert rec["vetted"] is False
+
+
+def test_default_funnel_is_fail_closed_without_netcover():
+    bridge = [_b("NO_BYPASS", "A", 20.0, "0xAAA")]
+    stability = [{"pool": "0xaaa", "fee_cover_stability": {"stable": True}}]
+    rec = funnel_vet(bridge, stability)[0]
     assert rec["gates"]["netcover_shadow"] is False
     assert rec["netcover_gate_status"] == "MISSING_FAIL_CLOSED"
     assert rec["vetted"] is False

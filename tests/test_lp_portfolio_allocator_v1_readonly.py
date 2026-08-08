@@ -36,7 +36,7 @@ def test_require_stable_gate_drops_unstable():
         {"symbol": "U1", "tier": "A", "status": "OK", "resolve_status": "OK",
          "composite_score": 99, "yield_cover": 9, "wash_flag": False, "stable": False, "range_pct": 10},
     ]
-    out = allocate(recs, total=10000, require_stable=True)
+    out = allocate(recs, total=10000, require_stable=True, enforce_runtime_gates=False)
     syms = [a["symbol"] for a in out["allocations"]]
     assert "S1" in syms and "U1" not in syms    # unstable dropped despite higher score
 
@@ -66,7 +66,7 @@ def test_select_per_tier_caps_and_sorts():
 def test_allocate_tier_weights_and_score_weighting():
     recs = [_rec("A1", "A", 100), _rec("A2", "A", 50), _rec("A3", "A", 25),
             _rec("A4", "A", 10), _rec("B1", "B", 40)]
-    out = allocate(recs, total=10000)
+    out = allocate(recs, total=10000, enforce_runtime_gates=False)
     a_usd = sum(a["usd"] for a in out["allocations"] if a["tier"] == "A")
     b_usd = sum(a["usd"] for a in out["allocations"] if a["tier"] == "B")
     assert abs(a_usd - 7000) < 1 and abs(b_usd - 3000) < 1
@@ -79,14 +79,14 @@ def test_allocate_tier_weights_and_score_weighting():
 def test_allocate_redistributes_empty_tier():
     # only Tier A enterable -> A absorbs the whole book (B weight redistributed)
     recs = [_rec("A1", "A", 100), _rec("A2", "A", 50)]
-    out = allocate(recs, total=10000)
+    out = allocate(recs, total=10000, enforce_runtime_gates=False)
     assert abs(out["deployed"] - 10000) < 1
     assert all(a["tier"] == "A" for a in out["allocations"])
 
 
 def test_allocate_empty_when_none_enterable():
     recs = [_rec("w", "B", 99, wash=True), _rec("weak", "A", 5, yc=0.2)]
-    out = allocate(recs, total=10000)
+    out = allocate(recs, total=10000, enforce_runtime_gates=False)
     assert out["n_pools"] == 0 and out["deployed"] == 0.0 and out["idle"] == 10000
 
 
@@ -131,4 +131,11 @@ def test_allocator_inv_cost_01_skips_high_apr_tiny_absolute_profit():
 def test_allocator_runtime_gate_missing_inputs_fails_closed():
     out = allocate([_rec("INCOMPLETE", "A", 100)], total=100, enforce_runtime_gates=True)
     assert out["allocations"] == []
+    assert out["skipped"][0]["reason"] == "RUNTIME_GATE_INPUT_MISSING"
+
+
+def test_allocator_defaults_to_fail_closed_runtime_gates():
+    out = allocate([_rec("NO_BYPASS", "A", 100)], total=100)
+    assert out["allocations"] == []
+    assert out["runtime_gates_enforced"] is True
     assert out["skipped"][0]["reason"] == "RUNTIME_GATE_INPUT_MISSING"
