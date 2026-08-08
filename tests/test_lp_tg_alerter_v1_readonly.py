@@ -221,6 +221,49 @@ def test_runner_tick_emits_one_breach_and_risk_off_complete_event(monkeypatch):
     ]
 
 
+def test_runner_retries_same_tick_transition_blocked_by_global_throttle(monkeypatch):
+    state = init_state(
+        capital=1000.0,
+        anchor=1.0,
+        range_pct=10.0,
+        fee_tier=0.003,
+        dec0=18,
+        dec1=18,
+        last_block=0,
+        exit_on_breach=True,
+    )
+    _set_one_tick(
+        monkeypatch,
+        {"block": 1, "price": 1.5, "liquidity": 10**27, "amount1": 10**18},
+    )
+    calls = []
+    clock = FakeClock(0.0)
+    alerter = TelegramAlerter.from_env(
+        env={"LPBOT_TG_TOKEN": "unit-test-token", "LPBOT_TG_CHAT": "test-chat"},
+        transport=lambda url, payload, timeout: calls.append(payload) or {"ok": True},
+        clock=clock,
+        stdout=io.StringIO(),
+    )
+    book = _book(state)
+
+    _tick(
+        book,
+        last_ts=datetime(2026, 8, 8, 12, 0, tzinfo=timezone.utc),
+        alerter=alerter,
+    )
+    assert len(calls) == 1
+    assert "[breach]" in calls[0]["text"]
+
+    clock.value += MIN_INTERVAL_SECS
+    _tick(
+        book,
+        last_ts=datetime(2026, 8, 8, 12, 0, tzinfo=timezone.utc),
+        alerter=alerter,
+    )
+    assert len(calls) == 2
+    assert "[risk_off_complete]" in calls[1]["text"]
+
+
 def test_runner_staged_remove_is_not_reported_as_risk_off_complete(monkeypatch):
     state = init_state(
         capital=1000.0,
@@ -331,6 +374,31 @@ def test_scanner_bridge_alerts_rpc_transitions_and_previous_day_digest_once():
         "daily_digest",
     ]
     assert digest_days == ["2026-08-08"]
+
+
+def test_scanner_retries_rpc_transition_blocked_by_global_throttle():
+    calls = []
+    clock = FakeClock(0.0)
+    alerter = TelegramAlerter.from_env(
+        env={"LPBOT_TG_TOKEN": "unit-test-token", "LPBOT_TG_CHAT": "test-chat"},
+        transport=lambda url, payload, timeout: calls.append(payload) or {"ok": True},
+        clock=clock,
+        stdout=io.StringIO(),
+    )
+    bridge = ScannerAlertBridge(
+        alerter,
+        utc_now=lambda: datetime(2026, 8, 8, 12, 0, tzinfo=timezone.utc),
+    )
+
+    bridge.after_cycle({"rpc_health": "DEGRADED"})
+    bridge.after_cycle({"rpc_health": "EXIT_ONLY"})
+    assert len(calls) == 1
+    assert "[rpc_degraded]" in calls[0]["text"]
+
+    clock.value += MIN_INTERVAL_SECS
+    bridge.after_cycle({"rpc_health": "EXIT_ONLY"})
+    assert len(calls) == 2
+    assert "[rpc_exit_only]" in calls[1]["text"]
 
 
 def test_scanner_daemon_hook_failure_cannot_interrupt_completed_cycle():

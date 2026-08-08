@@ -38,6 +38,11 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+from scripts.lp_tg_alerter_v1_readonly import (  # noqa: E402
+    ScannerAlertBridge,
+    TelegramAlerter,
+)
+
 DEFAULT_DB_PATH = REPO_ROOT / "reports/lp_scanner/scanner.db"
 DEFAULT_COARSE_INTERVAL_SECS = 15 * 60
 DEFAULT_TOP_INTERVAL_SECS = 60
@@ -437,6 +442,7 @@ class CycleResult:
     scored: int
     accepted: int
     market_sessions: int
+    rpc_health: str = "NORMAL"
 
 
 class DefaultStages:
@@ -727,6 +733,7 @@ class FunnelOrchestrator:
             scored=len(scored),
             accepted=sum(1 for row in score_rows if row["accepted"]),
             market_sessions=len(sessions),
+            rpc_health=str(getattr(self.stages, "rpc_health", "NORMAL")).upper(),
         )
 
 
@@ -741,6 +748,7 @@ class ScannerDaemon:
         top_interval_secs: float = DEFAULT_TOP_INTERVAL_SECS,
         pid_file: str | os.PathLike[str] | None = None,
         on_shutdown: Optional[Callable[[], None]] = None,
+        event_hook: Any = None,
         monotonic: Callable[[], float] = time.monotonic,
     ):
         if coarse_interval_secs <= 0 or top_interval_secs <= 0:
@@ -750,8 +758,21 @@ class ScannerDaemon:
         self.top_interval_secs = float(top_interval_secs)
         self.pid_file = Path(pid_file) if pid_file else None
         self.on_shutdown = on_shutdown
+        self.event_hook = event_hook
         self.monotonic = monotonic
         self._stop = threading.Event()
+
+    def _notify_cycle(self, result: Any) -> None:
+        if self.event_hook is None:
+            return
+        try:
+            self.event_hook.after_cycle(result)
+        except Exception as exc:  # noqa: BLE001 - alerts cannot stop persistence loop
+            print(
+                f"[scanner] alert hook failed: {type(exc).__name__}",
+                file=sys.stderr,
+                flush=True,
+            )
 
     def request_stop(self, signum: int | None = None, frame: Any = None) -> None:
         del signum, frame
@@ -782,7 +803,8 @@ class ScannerDaemon:
         last_coarse = self.monotonic()
         try:
             if not self._stop.is_set():
-                self.cycle(True)
+                result = self.cycle(True)
+                self._notify_cycle(result)
                 last_coarse = self.monotonic()
             if once:
                 return 0
@@ -790,7 +812,8 @@ class ScannerDaemon:
                 now = self.monotonic()
                 refresh_coarse = now - last_coarse >= self.coarse_interval_secs
                 try:
-                    self.cycle(refresh_coarse)
+                    result = self.cycle(refresh_coarse)
+                    self._notify_cycle(result)
                 except Exception as exc:
                     print(f"[scanner] cycle failed: {exc}", file=sys.stderr, flush=True)
                 if refresh_coarse:
@@ -839,6 +862,8 @@ def main(
     *,
     stages: Any = None,
     now: Callable[[], datetime] = _utc_now,
+    alerter: Any = None,
+    digest_provider: Optional[Callable[[str], str]] = None,
 ) -> int:
     args = _parser().parse_args(argv)
     if args.top <= 0 or args.window_blocks <= 0 or args.window_days <= 0 or args.n_windows <= 0:
@@ -857,6 +882,27 @@ def main(
     )
     orchestrator = FunnelOrchestrator(selected_stages, store)
 
+    selected_alerter = TelegramAlerter.from_env() if alerter is None else alerter
+    if digest_provider is None:
+        def digest_provider(day: str) -> str:
+            from scripts.lp_report_digest_v1_readonly import (
+                DEFAULT_HEARTBEAT,
+                build_digest_markdown,
+                summarize_heartbeat,
+                summarize_scanner_db,
+            )
+
+            return build_digest_markdown(
+                summarize_heartbeat(DEFAULT_HEARTBEAT, day=day),
+                summarize_scanner_db(args.db),
+                generated_at=now().isoformat(),
+            )
+    event_hook = ScannerAlertBridge(
+        selected_alerter,
+        digest_provider=digest_provider,
+        utc_now=now,
+    )
+
     def cycle(refresh_coarse: bool) -> CycleResult:
         result = orchestrator.run_once(refresh_coarse=refresh_coarse, as_of=now())
         print(
@@ -873,6 +919,7 @@ def main(
         coarse_interval_secs=args.coarse_interval_secs,
         top_interval_secs=args.top_interval_secs,
         pid_file=pid_file,
+        event_hook=event_hook,
     )
     try:
         return daemon.run(once=args.once)

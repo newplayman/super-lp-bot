@@ -70,6 +70,10 @@ from scripts.lp_exit_policy_v1_readonly import (  # noqa: E402
     transition_state,
 )
 from scripts.lp_rpc_pool_v1_readonly import RpcPool  # noqa: E402
+from scripts.lp_tg_alerter_v1_readonly import (  # noqa: E402
+    TelegramAlerter,
+    safe_send_event,
+)
 
 # Rotating free-public-RPC pool, set up in run(). Until then, calls fall back to
 # the single-URL _rpc_with_retry so the pure engine + tests need no network.
@@ -646,7 +650,97 @@ def _init_book(allocs, *, entry_window_blocks, latest):
     return book
 
 
-def _tick(book, *, last_ts):
+def _runner_exit_alert_status(state):
+    exited = state.get("exited")
+    if not exited:
+        return None
+    ctx = state["exit_policy_context"]
+    complete = exited.get("risk_off_complete")
+    if complete is True:
+        return "risk_off_complete"
+    if complete is False and ctx.get("state") == RiskState.EXITING.value:
+        return "exit_staged"
+    # The explicit legacy compatibility path predates risk_off_complete but
+    # converts to base cash and moves directly to COOLDOWN.
+    if complete is None and ctx.get("legacy_operator_confirmed"):
+        return "risk_off_complete"
+    return None
+
+
+def _emit_runner_alerts(pool_record, alerter):
+    """Emit each semantic runner transition once; never mutate accounting."""
+    if alerter is None:
+        return
+    state = pool_record["state"]
+    cursor = pool_record.setdefault(
+        "_tg_alert_cursor",
+        {"breaches": 0, "exit_status": None, "rpc_health": None},
+    )
+    symbol = pool_record["symbol"]
+    pool = pool_record["pool"]
+
+    breach_count = len(state["breaches"])
+    delivered_breaches = cursor["breaches"]
+    for index, event in enumerate(
+        state["breaches"][cursor["breaches"]:breach_count],
+        start=cursor["breaches"],
+    ):
+        direction = event.get("breach_direction", "UNKNOWN")
+        result = safe_send_event(
+            alerter,
+            "breach",
+            f"{symbol} pool={pool} direction={direction} block={event.get('block')}",
+            severity="WARNING",
+            throttle_key=f"runner:{pool}:breach:{direction}",
+        )
+        if getattr(result, "delivery", None) == "THROTTLED":
+            break
+        delivered_breaches = index + 1
+    cursor["breaches"] = delivered_breaches
+
+    exit_status = _runner_exit_alert_status(state)
+    if exit_status is not None and exit_status != cursor["exit_status"]:
+        exited = state["exited"]
+        if exit_status == "exit_staged":
+            message = (
+                f"{symbol} pool={pool} LP removed but risky inventory remains; "
+                "state=EXITING risk_off_complete=false"
+            )
+            severity = "WARNING"
+        else:
+            message = (
+                f"{symbol} pool={pool} risk-off complete "
+                f"mode={exited.get('exit_mode', 'LEGACY')}"
+            )
+            severity = "INFO"
+        result = safe_send_event(
+            alerter,
+            exit_status,
+            message,
+            severity=severity,
+            throttle_key=f"runner:{pool}:{exit_status}",
+        )
+        if getattr(result, "delivery", None) != "THROTTLED":
+            cursor["exit_status"] = exit_status
+    elif exit_status is None:
+        cursor["exit_status"] = None
+
+    rpc_health = str(state["exit_policy_context"].get("rpc_health", "NORMAL")).upper()
+    if rpc_health == RpcHealth.KILLED.value and cursor["rpc_health"] != rpc_health:
+        result = safe_send_event(
+            alerter,
+            "kill",
+            f"{symbol} pool={pool} RPC health KILLED; all actions blocked",
+            severity="CRITICAL",
+            throttle_key=f"runner:{pool}:kill",
+        )
+        if getattr(result, "delivery", None) != "THROTTLED":
+            cursor["rpc_health"] = rpc_health
+    elif rpc_health != RpcHealth.KILLED.value:
+        cursor["rpc_health"] = rpc_health
+
+
+def _tick(book, *, last_ts, alerter=None):
     latest = _latest_block()
     now = _now_utc()
     elapsed = (now - last_ts).total_seconds()
@@ -675,6 +769,7 @@ def _tick(book, *, last_ts):
             new_breach = len(st["breaches"]) > n_breach_before
             time.sleep(float(os.environ.get("CALL_PACE_SECS", "0.0")))
         portfolio_net += pool_net
+        _emit_runner_alerts(p, alerter)
         by_pool.append({
             "symbol": p["symbol"], "tier": p["tier"], "pool": p["pool"],
             "net_pct": round(mk["net_pct"], 4),
@@ -724,9 +819,10 @@ def _append_hourly_csv(run_dir, rec, tick):
 
 
 def run(allocation_path, *, poll_secs=1800, max_ticks=None, out=None,
-        entry_window_blocks=4000, chain="base"):
+        entry_window_blocks=4000, chain="base", alerter=None):
     global _POOL
     _POOL = RpcPool(chain)
+    selected_alerter = TelegramAlerter.from_env() if alerter is None else alerter
     allocs = _load_allocation(allocation_path)
     run_dir = _report_dir(out)
     _write_pid(run_dir)
@@ -755,7 +851,7 @@ def run(allocation_path, *, poll_secs=1800, max_ticks=None, out=None,
 
     try:
         while not stop["flag"]:
-            rec, last_ts = _tick(book, last_ts=last_ts)
+            rec, last_ts = _tick(book, last_ts=last_ts, alerter=selected_alerter)
             _append_heartbeat(run_dir, rec, tick)
             cur_hour = datetime.fromisoformat(rec["ts_utc"]).hour
             if cur_hour != last_hour:

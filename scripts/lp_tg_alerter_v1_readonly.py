@@ -15,6 +15,7 @@ import sys
 import time
 import urllib.request
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Any, Callable, Mapping, Optional, TextIO
 
 
@@ -174,11 +175,162 @@ class TelegramAlerter:
         return AlertResult(delivery="TELEGRAM", event_type=event)
 
 
+def safe_send_event(
+    alerter: Any,
+    event_type: str,
+    message: str,
+    *,
+    severity: str = "INFO",
+    throttle_key: Optional[str] = None,
+    stdout: TextIO = sys.stdout,
+) -> Optional[AlertResult]:
+    """Call an injected alerter without letting notification code escape.
+
+    ``TelegramAlerter`` already satisfies this property internally.  This
+    wrapper preserves it for arbitrary injected adapters and test doubles.
+    Exception text is deliberately omitted because transports may embed a bot
+    URL in it.
+    """
+    if alerter is None:
+        return None
+    try:
+        return alerter.send_event(
+            event_type,
+            message,
+            severity=severity,
+            throttle_key=throttle_key,
+        )
+    except Exception as exc:  # noqa: BLE001 - hooks must be best-effort
+        error = type(exc).__name__
+        print(
+            f"[tg-hook-fallback] event={event_type} alert_error={error}",
+            file=stdout,
+            flush=True,
+        )
+        return AlertResult(delivery="FAILED", event_type=event_type, error=error)
+
+
+def _rpc_health_from_result(result: Any) -> Optional[str]:
+    raw = result.get("rpc_health") if isinstance(result, Mapping) else getattr(
+        result, "rpc_health", None
+    )
+    if raw is None:
+        return None
+    value = str(raw).upper()
+    return value if value in {"NORMAL", "DEGRADED", "EXIT_ONLY", "KILLED"} else None
+
+
+def _accepted_or_logged(result: Optional[AlertResult]) -> bool:
+    """Whether a hook may advance its cursor after this delivery attempt."""
+    return result is None or result.delivery != "THROTTLED"
+
+
+class ScannerAlertBridge:
+    """Translate scanner cycle state and UTC rollover into alert events."""
+
+    def __init__(
+        self,
+        alerter: Any,
+        *,
+        digest_provider: Optional[Callable[[str], str]] = None,
+        utc_now: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
+        stdout: TextIO = sys.stdout,
+    ):
+        self.alerter = alerter
+        self.digest_provider = digest_provider
+        self.utc_now = utc_now
+        self.stdout = stdout
+        self._rpc_health: Optional[str] = None
+        self._digest_day = self._today()
+
+    def _today(self):
+        value = self.utc_now()
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=timezone.utc)
+        return value.astimezone(timezone.utc).date()
+
+    def _emit_health_transition(self, current: Optional[str]) -> None:
+        previous = self._rpc_health
+        if current is None or current == previous:
+            return
+        result: Optional[AlertResult] = None
+        if current == "DEGRADED":
+            result = safe_send_event(
+                self.alerter,
+                "rpc_degraded",
+                f"scanner RPC health changed {previous or 'UNKNOWN'} -> DEGRADED; new entries blocked",
+                severity="WARNING",
+                throttle_key="scanner:rpc-health",
+                stdout=self.stdout,
+            )
+        elif current == "EXIT_ONLY":
+            result = safe_send_event(
+                self.alerter,
+                "rpc_exit_only",
+                f"scanner RPC health changed {previous or 'UNKNOWN'} -> EXIT_ONLY; reduce-risk actions only",
+                severity="CRITICAL",
+                throttle_key="scanner:rpc-health",
+                stdout=self.stdout,
+            )
+        elif current == "KILLED":
+            result = safe_send_event(
+                self.alerter,
+                "rpc_killed",
+                f"scanner RPC health changed {previous or 'UNKNOWN'} -> KILLED; all actions blocked",
+                severity="CRITICAL",
+                throttle_key="scanner:rpc-health",
+                stdout=self.stdout,
+            )
+        elif current == "NORMAL" and previous not in (None, "NORMAL"):
+            result = safe_send_event(
+                self.alerter,
+                "rpc_normal",
+                f"scanner RPC health recovered {previous} -> NORMAL",
+                severity="INFO",
+                throttle_key="scanner:rpc-health",
+                stdout=self.stdout,
+            )
+        if _accepted_or_logged(result):
+            self._rpc_health = current
+
+    def _emit_due_digest(self) -> None:
+        today = self._today()
+        if self.digest_provider is None or today <= self._digest_day:
+            return
+        report_day = self._digest_day.isoformat()
+        try:
+            message = self.digest_provider(report_day)
+        except Exception as exc:  # noqa: BLE001 - digest failure cannot stop scanner
+            print(
+                f"[tg-hook-fallback] event=daily_digest provider_error={type(exc).__name__}",
+                file=self.stdout,
+                flush=True,
+            )
+            return
+        result = safe_send_event(
+            self.alerter,
+            "daily_digest",
+            message,
+            severity="INFO",
+            throttle_key=f"scanner:daily-digest:{report_day}",
+            stdout=self.stdout,
+        )
+        # A globally throttled alert is retried on the next scanner cycle.
+        if _accepted_or_logged(result):
+            self._digest_day = today
+
+    def after_cycle(self, result: Any) -> None:
+        self._emit_health_transition(_rpc_health_from_result(result))
+        self._emit_due_digest()
+
+
 __all__ = [
     "AlertResult",
     "DEFAULT_TIMEOUT_SECS",
     "MAX_MESSAGE_CHARS",
     "MIN_INTERVAL_SECS",
+    "ScannerAlertBridge",
     "TelegramAlerter",
     "TelegramTransportError",
+    "safe_send_event",
 ]
