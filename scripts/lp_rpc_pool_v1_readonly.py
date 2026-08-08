@@ -277,6 +277,31 @@ class RpcPool:
         self._fails.pop(url, None)
         self._cooldown_until.pop(url, None)
 
+    def health_snapshot(self):
+        """Return a read-only aggregate of persistent endpoint health.
+
+        A failure remains impaired until that endpoint succeeds and ``_reset``
+        clears it; merely reaching the end of cooldown makes it eligible for a
+        probe but does not claim recovery.  Action policy is intentionally not
+        encoded here—the scanner maps this evidence to its fail-closed state.
+        """
+        urls = {endpoint["url"] for endpoint in self._endpoints}
+        now = self._clock.now()
+        failed = {url for url in urls if self._fails.get(url, 0) > 0}
+        cooling = {
+            url for url in urls if self._cooldown_until.get(url, 0.0) > now
+        }
+        impaired = failed | cooling
+        return {
+            "state": "DEGRADED" if impaired else "NORMAL",
+            "total_endpoints": len(urls),
+            "impaired_endpoints": len(impaired),
+            "cooling_endpoints": len(cooling),
+            "max_consecutive_failures": max(
+                (self._fails.get(url, 0) for url in urls), default=0
+            ),
+        }
+
     # --- pacing ------------------------------------------------------------
 
     def _pace_request(self, endpoint, method):

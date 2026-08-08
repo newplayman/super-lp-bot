@@ -464,6 +464,7 @@ class DefaultStages:
         window_days: float = 1.0,
         n_windows: int = 6,
         yc_min: float = 1.0,
+        rpc_pool: Any = None,
     ):
         self.chain = chain
         self.projects = tuple(projects)
@@ -474,12 +475,24 @@ class DefaultStages:
         self.window_days = float(window_days)
         self.n_windows = int(n_windows)
         self.yc_min = float(yc_min)
+        if rpc_pool is None:
+            rpc_module = importlib.import_module("scripts.lp_rpc_pool_v1_readonly")
+            rpc_pool = rpc_module.RpcPool(self.chain.strip().lower())
+        self._rpc_pool = rpc_pool
+
+    @property
+    def rpc_health(self) -> str:
+        """Current health from the persistent read-only RPC pool."""
+        try:
+            snapshot = self._rpc_pool.health_snapshot()
+            state = str(snapshot.get("state", "DEGRADED")).upper()
+        except Exception:  # noqa: BLE001 - missing health evidence is degraded
+            return "DEGRADED"
+        return state if state in {"NORMAL", "DEGRADED"} else "DEGRADED"
 
     def _live_with_rotating_rpc(self, live: Mapping[str, Any]) -> Dict[str, Any]:
         """Replace legacy single-URL helpers with the verified shared RpcPool."""
-        rpc_module = importlib.import_module("scripts.lp_rpc_pool_v1_readonly")
-        chain_key = self.chain.strip().lower()
-        pool = rpc_module.RpcPool(chain_key)
+        pool = self._rpc_pool
         injected = dict(live)
         raw_fetch = injected["fetch_pool_swaps"]
 
@@ -774,6 +787,14 @@ class ScannerDaemon:
                 flush=True,
             )
 
+    def _notify_cycle_failure(self, exc: Exception) -> None:
+        # A cycle exception means the scanner cannot safely monitor entries.
+        # Publish EXIT_ONLY evidence without changing or broadening any action
+        # allowlist; the exit policy remains the sole action authority.
+        self._notify_cycle(
+            {"rpc_health": "EXIT_ONLY", "cycle_error": type(exc).__name__}
+        )
+
     def request_stop(self, signum: int | None = None, frame: Any = None) -> None:
         del signum, frame
         self._stop.set()
@@ -803,7 +824,11 @@ class ScannerDaemon:
         last_coarse = self.monotonic()
         try:
             if not self._stop.is_set():
-                result = self.cycle(True)
+                try:
+                    result = self.cycle(True)
+                except Exception as exc:
+                    self._notify_cycle_failure(exc)
+                    raise
                 self._notify_cycle(result)
                 last_coarse = self.monotonic()
             if once:
@@ -815,6 +840,7 @@ class ScannerDaemon:
                     result = self.cycle(refresh_coarse)
                     self._notify_cycle(result)
                 except Exception as exc:
+                    self._notify_cycle_failure(exc)
                     print(f"[scanner] cycle failed: {exc}", file=sys.stderr, flush=True)
                 if refresh_coarse:
                     last_coarse = now

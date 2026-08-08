@@ -21,6 +21,7 @@ from scripts.lp_scanner_daemon_v1_readonly import (
     POOL_SNAPSHOT_COLUMNS,
     CycleResult,
     FunnelOrchestrator,
+    ScannerDaemon,
     ScannerStore,
     ScreenBatch,
     main,
