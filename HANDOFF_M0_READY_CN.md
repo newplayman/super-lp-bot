@@ -22,7 +22,7 @@
 | WP-07 | DONE | `d63cb15 19f9a0e b80f51c a9f4de3 32cb308 1d3a6ed f1a5dea b425c58 bec89e7` | alerter 13；无 test token，已验 stdout 降级；全局 ≥60s throttle |
 | WP-08 | DONE | `7879194 688376c b538af2 e589266` | ledger-v2 12；heartbeat/final 23 字段、退出成本语义、旧 heartbeat 兼容 |
 | WP-09 | DONE | `853e590 bc586ad 39aff95 c8d35b0 9f9d5a6 74fc774 cd317fb cda1d0b 184ce07` | reward replay 10；报告 `reports/lp_reward_decay_replay/20260808_173832/` |
-| WP-10 | **PENDING_SOL_ACCEPTANCE** | `8afbe25 4a11612 d3c9c96 7d5a59d 5478316 f5b4988 44dab96` | gate 配对 11；本 WP 联合目标回归已 125 passed；全量与 live smoke 由 sol 亲跑 |
+| WP-10 | **PENDING_SOL_ACCEPTANCE** | 关键提交 `d3c9c96 7d5a59d f5b4988 44dab96 b8441b1`（TDD 含 `8afbe25 4f4a8be`） | gate 配对测试含零噪声边界；全量与 live smoke 由 sol 亲跑 |
 
 ## 2. 指挥官批准后才可执行的启动命令
 
