@@ -200,6 +200,22 @@ def test_wp04_adapter_is_the_strict_fifth_gate_not_only_a_diagnostic():
     assert rejected["rejection_reason"].startswith("NETCOVER_INPUT_MISSING:")
 
 
+def test_scanner_marks_prefifth_funnel_as_explicit_intermediate(monkeypatch):
+    import scripts.lp_funnel_vet_v1_readonly as funnel
+
+    observed = {}
+
+    def intermediate(bridge, stability, **kwargs):
+        observed.update(kwargs)
+        return [dict(bridge[0], vetted=True)]
+
+    monkeypatch.setattr(funnel, "funnel_vet", intermediate)
+    out = DefaultStages().funnel([{"pool": "0x1"}], [])
+
+    assert out[0]["vetted"] is True
+    assert observed["allow_legacy_without_netcover"] is True
+
+
 def test_default_live_stages_inject_rotating_rpc_pool_into_calls_and_logs(monkeypatch):
     import scripts.lp_multiwindow_stability_v1_readonly as stability
     import scripts.lp_pool_resolve_and_rank_v1_readonly as bridge
