@@ -8,11 +8,12 @@ The screener funnel is 3 stages run as separate scripts:
 
 This script is the final, previously-ad-hoc merge: it joins the bridge
 records with the multi-window stability records by resolved pool address and
-applies the THREE gates that define an enterable pool:
+applies the legacy gates plus the WP-04 full-cost NetCover gate:
 
   gate_quality   : tier_quality in {A, B}        (blue-chip / one-major-leg)
   gate_yield     : on-chain yield_cover >= yc_min (fees+reward beat IL)
   gate_stable    : multi-window stable             (not a single-window fluke)
+  gate_netcover  : full-cost NetCover >= 1.0       (when WP-04 input supplied)
   (status_ok     : resolved OK and not wash-flagged)
 
 A record is `vetted` only if all gates pass. This is read-only: it consumes
@@ -62,8 +63,30 @@ def index_stability(stability_records):
     return out
 
 
-def vet_record(bridge_rec, stab_summary, *, yc_min=1.0):
-    """Annotate one bridge record with stability + the 3 gates; set `vetted`."""
+def index_netcover(netcover_records):
+    """Map pool address to an explicit full-cost NetCover value."""
+    out = {}
+    for item in netcover_records:
+        addr = _pool_key(item)
+        if not addr:
+            continue
+        value = item.get("netcover", item.get("netcover_ratio"))
+        try:
+            value = float(value)
+        except (TypeError, ValueError):
+            value = None
+        out[addr] = value
+    return out
+
+
+def vet_record(bridge_rec, stab_summary, *, yc_min=1.0,
+               netcover_value=None, require_netcover=False):
+    """Annotate one bridge record and apply every requested gate.
+
+    ``require_netcover=False`` preserves the historical pure bridge API.  The
+    M0 scanner supplies a NetCover artifact and therefore uses strict,
+    fail-closed fifth-gate mode.
+    """
     rec = dict(bridge_rec)
     sub = stab_summary or {}
     rec["stable"] = bool(sub.get("stable", False))
@@ -88,14 +111,37 @@ def vet_record(bridge_rec, stab_summary, *, yc_min=1.0):
         "stable": gate_stable,
         "status_ok": status_ok,
     }
-    rec["vetted"] = gate_quality and gate_yield and gate_stable and status_ok
+    gate_netcover = True
+    if require_netcover:
+        rec["netcover"] = netcover_value
+        gate_netcover = netcover_value is not None and netcover_value >= 1.0
+        rec["gates"]["netcover_shadow"] = gate_netcover
+        rec["netcover_gate_status"] = (
+            "PASS" if gate_netcover
+            else "MISSING_FAIL_CLOSED" if netcover_value is None
+            else "BELOW_SHADOW"
+        )
+    else:
+        rec["netcover_gate_status"] = "LEGACY_NOT_APPLIED"
+    rec["vetted"] = (
+        gate_quality and gate_yield and gate_stable and status_ok and gate_netcover
+    )
     return rec
 
 
-def funnel_vet(bridge_records, stability_records, *, yc_min=1.0):
-    """Merge bridge + stability records and apply the 3 gates to each."""
+def funnel_vet(bridge_records, stability_records, *, yc_min=1.0,
+               netcover_records=None):
+    """Merge artifacts and apply strict NetCover when its artifact is supplied."""
     stab = index_stability(stability_records)
-    return [vet_record(r, stab.get(_pool_key(r), {}), yc_min=yc_min) for r in bridge_records]
+    strict = netcover_records is not None
+    cover = index_netcover(netcover_records or [])
+    return [
+        vet_record(
+            r, stab.get(_pool_key(r), {}), yc_min=yc_min,
+            netcover_value=cover.get(_pool_key(r)), require_netcover=strict,
+        )
+        for r in bridge_records
+    ]
 
 
 def vetted_menu(records):
@@ -126,7 +172,7 @@ def _render_md(records, yc_min):
     lines = [
         "# Funnel vetting — merged menu",
         "",
-        f"3 gates: tier_quality in {{A,B}} · on-chain yield_cover ≥ {yc_min} · multi-window stable · resolved/not-wash.",
+        f"Entry gates: quality · on-chain yield_cover ≥ {yc_min} · multi-window stable · resolved/not-wash · full-cost NetCover ≥ 1.0 (strict when supplied).",
         "",
         "| symbol | tier_q | pool | yc | stable | enter_frac | VETTED |",
         "| --- | --- | --- | --- | --- | --- | --- |",
@@ -173,6 +219,7 @@ def main():
     ap = argparse.ArgumentParser(description="Merge bridge + stability artifacts into a vetted menu (read-only)")
     ap.add_argument("--bridge", help="resolve_and_rank.json from the Stage-2 bridge")
     ap.add_argument("--stability", help="stability.json from multi-window stability")
+    ap.add_argument("--netcover", help="WP-04 full-cost NetCover records (enables strict fifth gate)")
     ap.add_argument("--yc-min", type=float, default=1.0)
     ap.add_argument("--out", default=None, help="dir to write vetted_menu.json / .md")
     ap.add_argument("--self-test", action="store_true")
@@ -186,7 +233,8 @@ def main():
 
     bridge = _as_list(_load(args.bridge))
     stab = _as_list(_load(args.stability))
-    merged = funnel_vet(bridge, stab, yc_min=args.yc_min)
+    cover = _as_list(_load(args.netcover)) if args.netcover else None
+    merged = funnel_vet(bridge, stab, yc_min=args.yc_min, netcover_records=cover)
     menu = vetted_menu(merged)
 
     print(f"vetted {len(menu)}/{len(merged)} pools (yc_min={args.yc_min}):")
