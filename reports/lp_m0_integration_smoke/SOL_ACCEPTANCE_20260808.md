@@ -1,8 +1,11 @@
 # LP Bot PRD v2.1 · WP-10 SOL 最终验收归档
 
-**日期：** 2026-08-08  
-**分支：** `feat/prd-v2.1-m0-shadow`  
-**WP-10：** `DONE`  
+**日期：** 2026-08-08
+
+**分支：** `feat/prd-v2.1-m0-shadow`
+
+**WP-10：** `DONE`
+
 **授权边界：** M0 代码与集成 smoke 完成；14d shadow 未启动，§12.0 gate 为 `FAIL`，本文不授权 M1、合并、推送或真实交易。
 
 ## 1. 测试裁决
@@ -66,7 +69,7 @@ runner 仅调用 `getSlot` 与 `getAccountInfo`，没有钱包、签名、approv
 ### 4.2 验收官 stdout
 
 ```text
-[run] dir=reports/lp_m0_integration_smoke/20260808_sol_acceptance/solana_runner_1tick pools=1 poll=0s max_ticks=1 chain=solana rpc_pool=6 endpoints (rotating, free public)
+[run] dir=reports/lp_m0_integration_smoke/20260808_sol_acceptance/solana_runner_1tick pools=1 poll=1s max_ticks=1 chain=solana rpc_pool=6 endpoints (rotating, free public)
 [init] SPYx-USDC      B cap=100 anchor=777.69 range=±10.00% exit_on_breach=False pool=Fae5dWVntUt6zbWu2voXxioDpMii7SqQwtsxBmoVCsHR
 [tick 0] blk=438047909 net=$0.00 SPYx-USDC:+0.00%
 [done] 1 ticks; state flushed to reports/lp_m0_integration_smoke/20260808_sol_acceptance/solana_runner_1tick
