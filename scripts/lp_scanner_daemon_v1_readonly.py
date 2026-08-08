@@ -367,6 +367,10 @@ class ScannerStore:
                 value = row.get(column)
                 if column == "accepted":
                     value = int(bool(value))
+                elif table == "opportunity_scores" and column == "score_json" and value is None:
+                    value = json.dumps(
+                        _json_safe(dict(row)), sort_keys=True, separators=(",", ":")
+                    )
                 value_row.append(value)
             values.append(value_row)
         connection.executemany(sql, values)
