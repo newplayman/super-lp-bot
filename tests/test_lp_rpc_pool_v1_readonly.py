@@ -9,6 +9,8 @@ from scripts.lp_rpc_pool_v1_readonly import RpcPool, CHAINS, _build_request
 
 GETLOGS = "eth_getLogs"
 CHEAP = "eth_blockNumber"
+SOLANA_CHEAP = "getSlot"
+SOLANA_HEAVY = "getProgramAccounts"
 
 
 # --- transport doubles -----------------------------------------------------
@@ -48,6 +50,16 @@ class Clock:
         pass
 
 
+class AdvancingClock(Clock):
+    def __init__(self):
+        super().__init__()
+        self.sleeps = []
+
+    def sleep(self, secs):
+        self.sleeps.append(secs)
+        self.t += secs
+
+
 # --- registry --------------------------------------------------------------
 
 def test_base_chain_has_verified_getlogs_endpoints():
@@ -68,7 +80,60 @@ def test_multichain_registry_is_extensible():
     for chain, cfg in CHAINS.items():
         assert "endpoints" in cfg and cfg["endpoints"]
         for e in cfg["endpoints"]:
-            assert "url" in e and "getlogs" in e
+            assert "url" in e
+            if chain != "solana":
+                assert "getlogs" in e
+
+
+def test_solana_registry_declares_read_capabilities_and_conservative_budgets():
+    cfg = CHAINS["solana"]
+    endpoints = cfg["endpoints"]
+    required_cheap = {
+        "getSlot", "getHealth", "getLatestBlockhash",
+        "getAccountInfo", "getMultipleAccounts",
+    }
+    required_heavy = {
+        "getSignaturesForAddress", "getTransaction", "getProgramAccounts",
+    }
+
+    assert len(endpoints) >= 5
+    assert endpoints[0]["url"] == "https://api.mainnet-beta.solana.com"
+    assert cfg["pool_min_interval_secs"] >= 0.2  # <= 50% of 100 req/10s
+    for method in required_cheap | required_heavy:
+        assert cfg["method_min_interval_secs"][method] >= 0.5
+    for endpoint in endpoints:
+        assert endpoint["min_interval_secs"] >= 0.2
+        assert required_cheap <= set(endpoint["cheap_methods"])
+        assert set(endpoint["heavy_methods"]) <= required_heavy
+
+
+def test_solana_heavy_methods_only_route_to_probed_capable_endpoints():
+    post, calls = ok_recorder()
+    pool = RpcPool("solana", post=post, clock=Clock())
+    capable = {
+        e["url"] for e in CHAINS["solana"]["endpoints"]
+        if SOLANA_HEAVY in e["heavy_methods"]
+    }
+    restricted = {
+        e["url"] for e in CHAINS["solana"]["endpoints"]
+        if SOLANA_HEAVY not in e["heavy_methods"]
+    }
+    assert capable and restricted
+
+    for _ in range(30):
+        pool.call(SOLANA_HEAVY, [])
+    used = {url for url, _method in calls}
+    assert used <= capable
+    assert used.isdisjoint(restricted)
+
+
+def test_solana_rejects_non_allowlisted_including_write_methods():
+    post, calls = ok_recorder()
+    pool = RpcPool("solana", post=post, clock=Clock())
+
+    with pytest.raises(ValueError, match="not an allowed read method"):
+        pool.call("sendTransaction", ["not-a-real-transaction"])
+    assert calls == []
 
 
 # --- method-aware endpoint selection --------------------------------------
@@ -183,6 +248,63 @@ def test_json_rpc_error_response_falls_through_to_next_endpoint():
 
     pool = RpcPool("base", post=post, clock=Clock())
     assert pool.call(CHEAP, []) == "0xfee"     # error response is not returned as success
+
+
+@pytest.mark.parametrize("rate_limit_mode", ["http_exception", "rpc_error"])
+def test_solana_429_enters_cooldown_and_rotation_skips_endpoint(rate_limit_mode):
+    bad = CHAINS["solana"]["endpoints"][0]["url"]
+    calls = []
+
+    def post(url, method, params, timeout=20):
+        calls.append((url, method))
+        if url == bad:
+            if rate_limit_mode == "http_exception":
+                raise OSError("HTTP Error 429: Too Many Requests")
+            return {"error": {"code": 429, "message": "Too Many Requests"}}
+        return {"result": 123}
+
+    clock = Clock()
+    pool = RpcPool("solana", post=post, clock=clock)
+    assert pool.call(SOLANA_CHEAP, []) == 123
+    assert pool._cooldown_until[bad] > clock.now()
+
+    calls.clear()
+    for _ in range(20):
+        pool.call(SOLANA_CHEAP, [])
+    assert all(url != bad for url, _method in calls)
+
+
+def test_solana_method_pace_is_shared_across_rotated_endpoints():
+    clock = AdvancingClock()
+    request_times = []
+
+    def post(url, method, params, timeout=20):
+        request_times.append(clock.now())
+        return {"result": 123}
+
+    pool = RpcPool("solana", post=post, clock=clock, pace_secs=0.0)
+    pool.call(SOLANA_CHEAP, [])
+    pool.call(SOLANA_CHEAP, [])
+
+    configured = CHAINS["solana"]["method_min_interval_secs"][SOLANA_CHEAP]
+    assert request_times[1] - request_times[0] >= configured
+
+
+def test_solana_endpoint_pace_applies_between_different_methods():
+    clock = AdvancingClock()
+    request_times = []
+
+    def post(url, method, params, timeout=20):
+        request_times.append(clock.now())
+        return {"result": 123}
+
+    pool = RpcPool("solana", post=post, clock=clock, pace_secs=0.0)
+    endpoint = dict(CHAINS["solana"]["endpoints"][0])
+    pool._endpoints = [endpoint]
+    pool.call("getSlot", [])
+    pool.call("getHealth", [])
+
+    assert request_times[1] - request_times[0] >= endpoint["min_interval_secs"]
 
 
 def test_call_unwraps_result_value():
