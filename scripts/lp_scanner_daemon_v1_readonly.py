@@ -829,7 +829,14 @@ class ScannerDaemon:
         if self.rpc_health_recorder is not None:
             health = result.get("rpc_health") if isinstance(result, Mapping) else getattr(result, "rpc_health", None)
             if health is not None:
-                self.rpc_health_recorder(str(health))
+                try:
+                    self.rpc_health_recorder(str(health))
+                except Exception as exc:  # noqa: BLE001 - scanner evidence remains committed
+                    print(
+                        f"[scanner] gate evidence write failed: {type(exc).__name__}",
+                        file=sys.stderr,
+                        flush=True,
+                    )
         if self.event_hook is None:
             return
         try:

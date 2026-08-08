@@ -109,6 +109,27 @@ def test_default_scanner_cadence_matches_task_package():
     assert DEFAULT_TOP_INTERVAL_SECS == 60
 
 
+def test_gate_db_failure_does_not_turn_completed_scanner_cycle_fatal(capsys):
+    class Hook:
+        def __init__(self):
+            self.results = []
+
+        def after_cycle(self, result):
+            self.results.append(result)
+
+    hook = Hook()
+    daemon = ScannerDaemon(
+        lambda refresh: None,
+        event_hook=hook,
+        rpc_health_recorder=lambda health: (_ for _ in ()).throw(sqlite3.OperationalError("locked")),
+    )
+
+    daemon._notify_cycle({"rpc_health": "NORMAL"})
+
+    assert hook.results == [{"rpc_health": "NORMAL"}]
+    assert "gate evidence write failed: OperationalError" in capsys.readouterr().err
+
+
 def test_latest_vetted_menu_exports_only_live_accepted_records_and_fails_closed(tmp_path):
     db = tmp_path / "scanner.db"
     store = ScannerStore(db)
