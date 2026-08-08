@@ -24,6 +24,8 @@
 screened=736 top=1 resolved=1 scored=1 accepted=0
 ```
 
+scanner 原始 stdout 未单独落 log；这里只归档验收官保留并确认的计数行，不补写或杜撰其他 stdout 字段。
+
 唯一进入 score 阶段的记录缺少以下 9 个 horizon USD 输入，NetCover 按 fail-closed 返回 `MISSING_FAIL_CLOSED`：
 
 ```text
@@ -51,6 +53,15 @@ purpose=integration_plumbing_only
 ```
 
 该 fixture 不属于本次 live-vetted menu，不得用于启动 14d shadow。Base runner 完成 1 tick：block `49712404`、`portfolio_nav_usd=100.0`、RPC `NORMAL`、23 个 attribution 字段齐全，并自动写入同一 `scanner.db`。Base-only gate 当时为：0d FAIL、1 position FAIL、fee error 100% FAIL、raw PnL `1.4210854715202004e-14` 经 `<=1e-9 USD` 去噪归零后 PnL FAIL、DD 0 PASS、未解决 severe RPC 0 PASS。
+
+验收官保留的 Base runner stdout 全文：
+
+```text
+[run] dir=reports/lp_m0_integration_smoke/20260808_sol_acceptance/base_runner_1tick pools=1 poll=1s max_ticks=1 chain=base rpc_pool=11 endpoints (rotating, free public)
+[init] WETH-USDC      B cap=100 anchor=1919.28 range=±10.00% exit_on_breach=False pool=0xb2cc224c1c9fee385f8ad6a55b4d94e92359dc59
+[tick 0] blk=49712404 net=$0.00 WETH-USDC:+0.00%
+[done] 1 ticks; state flushed to reports/lp_m0_integration_smoke/20260808_sol_acceptance/base_runner_1tick
+```
 
 ## 4. Solana Orca Whirlpool 1-tick
 
