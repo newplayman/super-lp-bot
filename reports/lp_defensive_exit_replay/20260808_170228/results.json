@@ -1,0 +1,225 @@
+{
+  "generated_at_utc": "2026-08-08T17:02:41.436972+00:00",
+  "paper_only": true,
+  "passed": true,
+  "passed_scenarios": 7,
+  "results": [
+    {
+      "assertions": {
+        "cannot_enter_cooldown": true,
+        "inventory_at_least_80pct": true,
+        "remove_does_not_complete_risk_off": true
+      },
+      "observed": {
+        "actual_slippage_bps": null,
+        "alert": false,
+        "block_reason": null,
+        "exit_latency_loss_usd": 1.0,
+        "expected_slippage_bps": null,
+        "expected_swap_cost_usd": null,
+        "mode": "REMOVE_ONLY",
+        "next_state": "EXITING",
+        "paper_actions": [
+          "simulate_remove"
+        ],
+        "paper_only": true,
+        "post_trade_risky_inventory_ratio": 0.82,
+        "quote_required": false,
+        "quote_succeeded": false,
+        "remove_simulated": true,
+        "risk_off_complete": false,
+        "substate": "remove_only",
+        "swap_allowed": false,
+        "swap_requested": false
+      },
+      "paper_only": true,
+      "passed": true,
+      "scenario": "lower_breach_80pct_risky"
+    },
+    {
+      "assertions": {
+        "inventory_target_met": true,
+        "remove_is_simulated": true,
+        "swap_not_allowed": true,
+        "swap_not_requested": true
+      },
+      "observed": {
+        "actual_slippage_bps": null,
+        "alert": false,
+        "block_reason": null,
+        "exit_latency_loss_usd": null,
+        "expected_slippage_bps": null,
+        "expected_swap_cost_usd": null,
+        "mode": "REMOVE_ONLY",
+        "next_state": "COOLDOWN",
+        "paper_actions": [
+          "simulate_remove"
+        ],
+        "paper_only": true,
+        "post_trade_risky_inventory_ratio": 0.2,
+        "quote_required": false,
+        "quote_succeeded": false,
+        "remove_simulated": true,
+        "risk_off_complete": true,
+        "substate": "remove_only",
+        "swap_allowed": false,
+        "swap_requested": false
+      },
+      "paper_only": true,
+      "passed": true,
+      "scenario": "remove_only"
+    },
+    {
+      "assertions": {
+        "latency_loss_field_recorded": true,
+        "quote_passed": true,
+        "quote_required": true,
+        "slippage_fields_recorded": true,
+        "swap_allowed": true
+      },
+      "observed": {
+        "actual_slippage_bps": 22.0,
+        "alert": false,
+        "block_reason": null,
+        "exit_latency_loss_usd": 0.75,
+        "expected_slippage_bps": 20.0,
+        "expected_swap_cost_usd": 2.0,
+        "mode": "REMOVE_TO_STABLE",
+        "next_state": "COOLDOWN",
+        "paper_actions": [
+          "simulate_remove",
+          "simulate_swap_to_stable"
+        ],
+        "paper_only": true,
+        "post_trade_risky_inventory_ratio": 0.25,
+        "quote_required": true,
+        "quote_succeeded": true,
+        "remove_simulated": true,
+        "risk_off_complete": true,
+        "substate": "paper_swap_ready",
+        "swap_allowed": true,
+        "swap_requested": true
+      },
+      "paper_only": true,
+      "passed": true,
+      "scenario": "remove_to_stable"
+    },
+    {
+      "assertions": {
+        "alerted": true,
+        "no_swap": true,
+        "reason_recorded": true,
+        "staged_limit_exit": true
+      },
+      "observed": {
+        "actual_slippage_bps": null,
+        "alert": true,
+        "block_reason": "quote_failed",
+        "exit_latency_loss_usd": null,
+        "expected_slippage_bps": null,
+        "expected_swap_cost_usd": null,
+        "mode": "REMOVE_TO_STABLE",
+        "next_state": "EXITING",
+        "paper_actions": [
+          "simulate_remove"
+        ],
+        "paper_only": true,
+        "post_trade_risky_inventory_ratio": 0.82,
+        "quote_required": true,
+        "quote_succeeded": false,
+        "remove_simulated": true,
+        "risk_off_complete": false,
+        "substate": "staged/limit_exit",
+        "swap_allowed": false,
+        "swap_requested": true
+      },
+      "paper_only": true,
+      "passed": true,
+      "scenario": "quote_failure"
+    },
+    {
+      "assertions": {
+        "alerted": true,
+        "panic_never_blind_swaps": true,
+        "reason_recorded": true,
+        "staged_limit_exit": true
+      },
+      "observed": {
+        "actual_slippage_bps": null,
+        "alert": true,
+        "block_reason": "slippage_limit",
+        "exit_latency_loss_usd": null,
+        "expected_slippage_bps": 125.0,
+        "expected_swap_cost_usd": 12.5,
+        "mode": "PANIC_EXIT",
+        "next_state": "EXITING",
+        "paper_actions": [
+          "simulate_remove"
+        ],
+        "paper_only": true,
+        "post_trade_risky_inventory_ratio": 0.9,
+        "quote_required": true,
+        "quote_succeeded": true,
+        "remove_simulated": true,
+        "risk_off_complete": false,
+        "substate": "staged/limit_exit",
+        "swap_allowed": false,
+        "swap_requested": true
+      },
+      "paper_only": true,
+      "passed": true,
+      "scenario": "slippage_limit"
+    },
+    {
+      "assertions": {
+        "inventory_monitoring_continues": true,
+        "open_and_add_blocked": true,
+        "risk_reduction_allowed": true
+      },
+      "observed": {
+        "add_allowed": false,
+        "approve_allowed": false,
+        "collect_allowed": true,
+        "monitor_allowed": true,
+        "open_allowed": false,
+        "rebalance_allowed": false,
+        "remove_allowed": true,
+        "rpc_health": "DEGRADED",
+        "swap_to_usdc_allowed": true
+      },
+      "paper_only": true,
+      "passed": true,
+      "scenario": "rpc_degraded"
+    },
+    {
+      "assertions": {
+        "approve_blocked": true,
+        "growth_actions_blocked": true,
+        "only_reduction_allowlist": true
+      },
+      "observed": {
+        "add_allowed": false,
+        "approve_allowed": false,
+        "collect_allowed": true,
+        "monitor_allowed": false,
+        "open_allowed": false,
+        "rebalance_allowed": false,
+        "remove_allowed": true,
+        "rpc_health": "EXIT_ONLY",
+        "swap_to_usdc_allowed": true
+      },
+      "paper_only": true,
+      "passed": true,
+      "scenario": "rpc_exit_only"
+    }
+  ],
+  "safety": {
+    "approval": false,
+    "broadcast": false,
+    "paid_service": false,
+    "private_key": false,
+    "signing": false
+  },
+  "schema_version": "lp_defensive_exit_replay_v1",
+  "total_scenarios": 7
+}
