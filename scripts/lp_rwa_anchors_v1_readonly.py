@@ -172,7 +172,8 @@ class XStocksAnchorClient(_CachedClient):
             self._transport.get_json(f"{self.base_url}/quotes/assets/{quote(token_symbol, safe='')}"),
             self.source_name, "quote payload",
         )
-        price = _mid(quote_payload.get("bid"), quote_payload.get("ask"), self.source_name)
+        # AssetAvailabilityResponse defines both values as USD cents.
+        price = _mid(quote_payload.get("bid"), quote_payload.get("ask"), self.source_name) / Decimal("100")
         timestamp_value = quote_payload.get("sourceTimestamp", quote_payload.get("timestamp"))
         timestamp = _iso_timestamp(timestamp_value, self.source_name)
         halted = bool(metadata.get("isTradingHalted")) or bool(quote_payload.get("isTradingHalted"))
@@ -286,4 +287,3 @@ def quote_to_safe_mapping(observation: PriceObservation) -> dict[str, object]:
     """Small live-smoke output; never exposes response bodies or headers."""
 
     return {"source": observation.source_name, "price": str(observation.price), "instrument": observation.instrument.to_mapping()}
-

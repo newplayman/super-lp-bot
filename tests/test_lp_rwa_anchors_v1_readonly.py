@@ -37,14 +37,15 @@ def test_xstocks_parses_mocked_official_contract_to_nine_fields():
     transport = FakeTransport({
         "/token?type=xstocks": {"nodes": [{"id": "id1", "symbol": "AAPLx", "underlyingSymbol": "AAPL", "isTradingHalted": False}]},
         "/token/AAPLx/multiplier": {"currentMultiplier": 0.5, "newMultiplier": 0, "activationDateTime": 0},
-        "/quotes/assets/AAPLx": {"symbol": "AAPLx", "currency": "USD", "bid": 49.9, "ask": 50.1,
+        # Official contract documents bid/ask as integer USD cents.
+        "/quotes/assets/AAPLx": {"symbol": "AAPLx", "currency": "USD", "bid": 4990, "ask": 5010,
                                     "isTradingHalted": False, "canQuote": True, "sourceTimestamp": "2026-08-07T15:00:00Z"},
     })
     quote = XStocksAnchorClient(transport=transport, clock=FakeClock()).quote("AAPLx", market_session="REGULAR")
     assert quote.instrument.issuer == "Backed"
     assert quote.instrument.underlying_ticker == "AAPL"
     assert str(quote.instrument.multiplier) == "0.5"
-    assert str(quote.price) == "50.0"
+    assert str(quote.price) == "50"
     assert len(quote.instrument.to_mapping()) == 9
 
 
