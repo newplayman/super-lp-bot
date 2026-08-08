@@ -15,6 +15,7 @@ import pytest
 from scripts.lp_scanner_daemon_v1_readonly import (
     DEFAULT_COARSE_INTERVAL_SECS,
     DEFAULT_TOP_INTERVAL_SECS,
+    DefaultStages,
     MARKET_SESSION_COLUMNS,
     OPPORTUNITY_SCORE_COLUMNS,
     POOL_SNAPSHOT_COLUMNS,
@@ -167,6 +168,36 @@ def test_netcover_unavailable_is_fail_closed_and_explained(tmp_path):
         ).fetchone()
     assert accepted == 0
     assert reason == "netcover unavailable"
+
+
+def test_wp04_adapter_is_the_strict_fifth_gate_not_only_a_diagnostic():
+    complete = {
+        "pool": "0x1",
+        "vetted": True,
+        "gates": {"quality": True, "yield_cover": True, "stable": True, "status_ok": True},
+        "capital_usd": 100.0,
+        "fee_ev_usd": 4.0,
+        "reward_ev_usd": 2.0,
+        "il_ev_usd": 1.0,
+        "entry_cost_usd": 0.1,
+        "exit_cost_usd": 0.1,
+        "gas_usd": 0.1,
+        "slippage_usd": 0.1,
+        "reward_conversion_cost_usd": 0.1,
+        "exit_latency_loss_usd": 0.1,
+    }
+    missing = {"pool": "0x2", "vetted": True, "gates": {"quality": True}}
+
+    passed, rejected = DefaultStages().netcover([complete, missing])
+
+    assert passed["netcover_pass"] is True
+    assert passed["gates"]["netcover_shadow"] is True
+    assert passed["vetted"] is True
+    assert rejected["netcover_pass"] is False
+    assert rejected["gates"]["netcover_shadow"] is False
+    assert rejected["netcover_gate_status"] == "MISSING_FAIL_CLOSED"
+    assert rejected["vetted"] is False
+    assert rejected["rejection_reason"].startswith("NETCOVER_INPUT_MISSING:")
 
 
 def test_store_rolls_back_the_whole_cycle_on_invalid_market_session(tmp_path):
