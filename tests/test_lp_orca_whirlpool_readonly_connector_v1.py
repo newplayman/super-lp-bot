@@ -1,4 +1,8 @@
-"""Tests for LP_ORCA_WHIRLPOOL_READONLY_CONNECTOR_V1 stage.
+"""Frozen report assertions for LP_ORCA_WHIRLPOOL_READONLY_CONNECTOR_V1.
+
+These checks only validate archived report artifacts. They do not import,
+execute, or establish the existence/correctness of connector implementation
+code and must not be presented as connector code coverage.
 
 Properties asserted:
   * no keypair / no private key / no seed phrase anywhere
@@ -21,6 +25,8 @@ import re
 from pathlib import Path
 
 import pytest
+
+pytestmark = pytest.mark.frozen_report_assertion
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 RUN_ID = "20260604_025414"
