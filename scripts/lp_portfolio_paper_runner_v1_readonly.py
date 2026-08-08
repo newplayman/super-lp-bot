@@ -35,9 +35,15 @@ from scripts.lp_tier_c_exit_feasibility_v1_readonly import (  # noqa: E402
     fetch_pool_swaps,
     _rpc_with_retry,
 )
-from scripts.lp_v3_position_value import (  # noqa: E402
-    lp_position_value_usd,
-    lp_impermanent_loss_usd,
+from scripts.lp_il_inventory_engine_v1_readonly import (  # noqa: E402
+    alpha_vs_hodl,
+    hodl_nav,
+    il_pct,
+    il_usd,
+    lp_nav_ex_fee,
+    paper_entry_baseline,
+    pnl_vs_usdc,
+    position_state_from_capital,
 )
 from scripts.lp_v3_fee_share import (  # noqa: E402
     position_liquidity_raw,
@@ -63,7 +69,7 @@ def _rpc():
 # ---------------------------------------------------------------------------
 
 def init_state(*, capital, anchor, range_pct, fee_tier, dec0, dec1, last_block,
-               exit_on_breach=False, exit_cost_bps=None):
+               exit_on_breach=False, exit_cost_bps=None, entry_swap_cost=0.0):
     """Build a fresh passive-position state dict.
 
     exit_on_breach: Tier-B policy — on the first band breach, auto-exit the LP
@@ -75,6 +81,8 @@ def init_state(*, capital, anchor, range_pct, fee_tier, dec0, dec1, last_block,
     """
     if exit_cost_bps is None:
         exit_cost_bps = round(float(fee_tier) * 1e4) + 10.0
+    paper_position = position_state_from_capital(anchor, capital, range_pct)
+    baseline = paper_entry_baseline(anchor, capital, range_pct, entry_swap_cost)
     return {
         "capital": float(capital),
         "anchor": float(anchor),
@@ -85,6 +93,10 @@ def init_state(*, capital, anchor, range_pct, fee_tier, dec0, dec1, last_block,
         # liquidity for ONE unit of capital (size=1.0); fees are scaled by
         # capital afterwards, exactly like the passive replay convention.
         "l_pos_raw": position_liquidity_raw(1.0, anchor, range_pct, int(dec0), int(dec1)),
+        # INV-IL-02: actual post-ratio-swap V3 legs, frozen by dataclass.
+        "entry_baseline": baseline,
+        # Principal-only range/liquidity state used by the single IL/NAV engine.
+        "lp_principal_state": paper_position,
         "fees_quote": 0.0,
         "reward_quote": 0.0,
         "last_block": int(last_block),
@@ -108,8 +120,9 @@ def _do_exit(state, *, exit_price, block, l_active_raw=None):
     holds base cash and accrues nothing.
     """
     cap = state["capital"]
-    lp_value = cap * lp_position_value_usd(1.0, state["anchor"], state["range_pct"], exit_price)
-    il = lp_impermanent_loss_usd(cap, state["anchor"], state["range_pct"], exit_price)
+    lp_value = lp_nav_ex_fee(state["lp_principal_state"], exit_price)
+    entry_hodl = hodl_nav(state["entry_baseline"], exit_price, 1.0)
+    il = il_usd(lp_value, entry_hodl)
     if l_active_raw and l_active_raw > 0:
         cost = exit_conversion_cost_usd(
             lp_value, l_active_raw, exit_price, state["fee_tier"],
@@ -121,6 +134,7 @@ def _do_exit(state, *, exit_price, block, l_active_raw=None):
         "block": int(block),
         "price": float(exit_price),
         "lp_value_quote": lp_value,
+        "lp_nav_ex_fee_quote": lp_value,
         "il_quote": il,
         "fees_quote": state["fees_quote"],
         "exit_cost_quote": cost,
@@ -184,31 +198,53 @@ def mark_position(state, current_price):
     the marks are the frozen realized values (plus reward accrued to exit).
     """
     cap = state["capital"]
+    current_hodl = hodl_nav(state["entry_baseline"], current_price, 1.0)
     if state.get("exited"):
         ex = state["exited"]
         realized = ex["realized_quote"]
-        net = realized + state["reward_quote"] - cap
+        current_total = realized + state["reward_quote"]
+        net = current_total - cap
+        # The LP principal was realized at exit, but the counterfactual HODL
+        # basket keeps marking at today's price.  Preserve the IL identity
+        # instead of freezing it merely because cash is now frozen.
+        principal_at_exit = ex["lp_nav_ex_fee_quote"]
+        current_il = il_usd(principal_at_exit, current_hodl)
         return {
             "lp_value_quote": realized,  # now base cash, not an LP position
-            "il_quote": ex["il_quote"],  # IL realized at exit (frozen)
+            "il_quote": current_il,
             "fees_quote": ex["fees_quote"],
             "net_quote": net,
             "net_pct": (net / cap * 100) if cap else 0.0,
+            "hodl_nav_quote": current_hodl,
+            "lp_nav_ex_fee_quote": principal_at_exit,
+            "il_vs_hodl_quote": current_il,
+            "il_vs_hodl_pct": il_pct(current_il, current_hodl),
+            "current_total_nav_quote": current_total,
+            "pnl_vs_usdc_quote": pnl_vs_usdc(current_total, cap),
+            "alpha_vs_hodl_quote": alpha_vs_hodl(current_total, current_hodl),
             "exited": True,
             "exit_price": ex["price"],
             "exit_cost_quote": ex["exit_cost_quote"],
         }
-    lp_value = cap * lp_position_value_usd(1.0, state["anchor"], state["range_pct"], current_price)
-    il = lp_impermanent_loss_usd(cap, state["anchor"], state["range_pct"], current_price)
+    lp_value = lp_nav_ex_fee(state["lp_principal_state"], current_price)
+    il = il_usd(lp_value, current_hodl)
     fees = state["fees_quote"]
     net = lp_value + fees - cap
     net_pct = (net / cap * 100) if cap else 0.0
+    current_total = lp_value + fees + state["reward_quote"]
     return {
         "lp_value_quote": lp_value,
         "il_quote": il,
         "fees_quote": fees,
         "net_quote": net,
         "net_pct": net_pct,
+        "hodl_nav_quote": current_hodl,
+        "lp_nav_ex_fee_quote": lp_value,
+        "il_vs_hodl_quote": il,
+        "il_vs_hodl_pct": il_pct(il, current_hodl),
+        "current_total_nav_quote": current_total,
+        "pnl_vs_usdc_quote": pnl_vs_usdc(current_total, cap),
+        "alpha_vs_hodl_quote": alpha_vs_hodl(current_total, current_hodl),
         "exited": False,
     }
 
@@ -319,6 +355,11 @@ def _tick(book, *, last_ts):
             "net_usd": round(pool_net, 2),
             "fees": round(st["fees_quote"], 4),
             "il": round(mk["il_quote"], 4),
+            "hodl_nav": round(mk["hodl_nav_quote"], 4),
+            "lp_nav_ex_fee": round(mk["lp_nav_ex_fee_quote"], 4),
+            "current_total_nav": round(mk["current_total_nav_quote"], 4),
+            "pnl_vs_usdc": round(mk["pnl_vs_usdc_quote"], 4),
+            "alpha_vs_hodl": round(mk["alpha_vs_hodl_quote"], 4),
             "reward": round(st["reward_quote"], 4),
             "lp_value": round(mk["lp_value_quote"], 2),
             "n_swaps": n_swaps,
@@ -423,6 +464,13 @@ def _flush_state(run_dir, book, tick):
             "range_pct": st["range_pct"], "last_price": p["last_price"],
             "fees_quote": st["fees_quote"], "reward_quote": st["reward_quote"],
             "il_quote": mk["il_quote"], "lp_value_quote": mk["lp_value_quote"],
+            "hodl_nav_quote": mk["hodl_nav_quote"],
+            "lp_nav_ex_fee_quote": mk["lp_nav_ex_fee_quote"],
+            "il_vs_hodl_quote": mk["il_vs_hodl_quote"],
+            "il_vs_hodl_pct": mk["il_vs_hodl_pct"],
+            "current_total_nav_quote": mk["current_total_nav_quote"],
+            "pnl_vs_usdc_quote": mk["pnl_vs_usdc_quote"],
+            "alpha_vs_hodl_quote": mk["alpha_vs_hodl_quote"],
             "net_quote": net_quote,
             "net_pct": mk["net_pct"], "n_breaches": len(st["breaches"]),
             "in_range": st["in_range_now"], "breaches": st["breaches"],
