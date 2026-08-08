@@ -9,6 +9,7 @@ from scripts.lp_cost_sensitivity_v1_readonly import (
     BasePoolParameters,
     analyse_sizes,
     default_base_vetted_pool,
+    price_from_sqrt_x96,
     render_report,
     write_report,
 )
@@ -24,6 +25,19 @@ def test_default_parameters_are_traceable_real_base_vetted_pool():
     assert all(path.startswith("reports/") for path in pool.source_paths)
     assert pool.pool_tvl_usd > 0
     assert pool.active_liquidity_notional_usd > 0
+
+
+def test_price_and_raw_liquidity_come_from_real_swap_not_range_l_factor():
+    pool = default_base_vetted_pool()
+    # First matching historical Swap row: sqrtPriceX96 and raw active liquidity.
+    sqrt_price_x96 = 3237636589800383610325516
+    assert pool.price_usd == pytest.approx(
+        price_from_sqrt_x96(sqrt_price_x96, dec0=18, dec1=6)
+    )
+    assert pool.price_usd == pytest.approx(1669.9252504577303)
+    assert pool.price_usd != pytest.approx(1721.743864340594)  # R4B l_factor, not price
+    assert pool.l_active_raw_historical == 2641450665466979248
+    assert any("swap_event_fee_replay" in path for path in pool.source_paths)
 
 
 def test_six_required_sizes_and_cost_math_are_self_consistent():
@@ -60,4 +74,3 @@ def test_report_writes_json_and_markdown_to_requested_directory(tmp_path):
     assert "break-even" in md
     assert "MinEconomicPosition" in md
     assert render_report(pool, rows, "2026-08-08T00:00:00Z") == md
-
