@@ -22,7 +22,7 @@
 | WP-07 | DONE | `d63cb15 19f9a0e b80f51c a9f4de3 32cb308 1d3a6ed f1a5dea b425c58 bec89e7` | alerter 13；无 test token，已验 stdout 降级；全局 ≥60s throttle |
 | WP-08 | DONE | `7879194 688376c b538af2 e589266` | ledger-v2 12；heartbeat/final 23 字段、退出成本语义、旧 heartbeat 兼容 |
 | WP-09 | DONE | `853e590 bc586ad 39aff95 c8d35b0 9f9d5a6 74fc774 cd317fb cda1d0b 184ce07` | reward replay 10；报告 `reports/lp_reward_decay_replay/20260808_173832/` |
-| WP-10 | **PENDING_SOL_ACCEPTANCE** | 关键提交 `d3c9c96 7d5a59d f5b4988 44dab96 b8441b1`（TDD 含 `8afbe25 4f4a8be`） | gate 配对测试含零噪声边界；全量与 live smoke 由 sol 亲跑 |
+| WP-10 | **PENDING_SOL_ACCEPTANCE** | 关键提交 `d3c9c96 7d5a59d f5b4988 44dab96 b8441b1 b624a70`（TDD 含 `8afbe25 4f4a8be ddfad55`） | gate 配对测试含零噪声边界；全量与 live smoke 由 sol 亲跑 |
 
 ## 2. 指挥官批准后才可执行的启动命令
 
@@ -136,8 +136,10 @@ Shadow 五问在 14d 数据前均为 **PENDING_EVIDENCE**，不得提前作答�
 
 ## 6. sol 最终验收待填
 
-- `pytest tests/ -q`: `PENDING_SOL_ACCEPTANCE`
-- `pytest tests/ --collect-only -q`: `PENDING_SOL_ACCEPTANCE`
+测试卫生说明：全量中的 14 个 `legacy_environment_bound` 节点是**精确 nodeid skip，不是 pass**。其中 6 个锁定已结束的 2026-06-05 in-flight PID/4-of-6/固定文件计数，1 个把冻结合法 `COMPRESSED_PASS` 错写成只接受 `PASS`，7 个会把指挥官要求保留的只读 paper PID 1349731 误判为禁用进程。同文件其余测试照常运行；未忽略整文件、未改冻结报告、未改 `scripts/lp_long_horizon/`、未停止进程。精确清单与理由在 `tests/conftest.py::LEGACY_ENVIRONMENT_BOUND_NODEIDS`。
+
+- `pytest tests/ -q`: Luna 卫生修复后预验 `2647 passed, 14 skipped`；14 skips 分类如上，等待 sol 最终确认
+- `pytest tests/ --collect-only -q`: Luna 预验 `2661 tests collected, 0 error`，等待 sol 最终确认
 - Base live 1-tick + SQLite gate row: `PENDING_SOL_SMOKE`
 - Solana WP01 slot/account probe: `PENDING_SOL_SMOKE`
 - 红线扫描与 diff review: `PENDING_SOL_ACCEPTANCE`
