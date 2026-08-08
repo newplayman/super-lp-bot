@@ -28,6 +28,7 @@ coverage.out
 !.env.dashboard.example
 !.env.redis.example
 !.env.d4.example
+.runtime.shadow.env
 
 # data
 *.db
