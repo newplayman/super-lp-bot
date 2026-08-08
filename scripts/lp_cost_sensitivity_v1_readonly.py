@@ -10,7 +10,6 @@ from __future__ import annotations
 import argparse
 import csv
 import json
-import math
 import os
 import sys
 from dataclasses import asdict, dataclass
@@ -42,6 +41,15 @@ HOURS_PER_YEAR = 365.0 * 24.0
 QUALITY_SOURCE = "reports/lp_pool_resolve_and_rank/run_qualityA/resolve_and_rank.json"
 DEPTH_SOURCE = "reports/lp_quote_depth_curve_fix/20260601_091739/quote_depth_curve_v2_results.csv"
 REPLAY_SOURCE = "reports/strategy_evidence_r4b_active_liquidity_corrected_replay/20260612_090000/active_liquidity_corrected_replay_matrix.jsonl"
+SWAP_SOURCE = "reports/strategy_evidence_r4_swap_event_fee_replay/20260611_080000/swap_events_decoded.csv"
+
+
+def price_from_sqrt_x96(sqrt_price_x96: int, *, dec0: int, dec1: int) -> float:
+    """Convert a V3 Swap event sqrtPriceX96 to human token1/token0 price."""
+    value = int(sqrt_price_x96)
+    if value <= 0:
+        raise ValueError("sqrt_price_x96 must be positive")
+    return (value / 2**96) ** 2 * 10 ** (dec0 - dec1)
 
 
 @dataclass(frozen=True)
@@ -52,6 +60,7 @@ class BasePoolParameters:
     project: str
     pool_tvl_usd: float
     active_liquidity_notional_usd: float
+    l_active_raw_historical: int
     price_usd: float
     fee_tier: float
     dec0: int
@@ -68,14 +77,6 @@ class BasePoolParameters:
     holding_horizon_hours: float
     source_paths: tuple[str, ...]
     source_kind: str = "historical_real_base_vetted_pool"
-
-    @property
-    def l_active_raw_model(self) -> float:
-        # Convert the historical active-liquidity notional proxy into the
-        # swap-cost module's balanced-at-price raw-liquidity convention.
-        human_l = self.active_liquidity_notional_usd / (2.0 * math.sqrt(self.price_usd))
-        return human_l * 10 ** ((self.dec0 + self.dec1) / 2.0)
-
 
 def _load_jsonl_first_matching(path: Path, address: str) -> dict[str, Any]:
     with path.open() as handle:
@@ -101,6 +102,10 @@ def default_base_vetted_pool(repo_root: Path | str = _ROOT) -> BasePoolParameter
         if row["pool_id"].lower() == DEFAULT_POOL_ADDRESS and float(row["virtual_notional_usd"]) == 100.0
     )
     replay = _load_jsonl_first_matching(root / REPLAY_SOURCE, DEFAULT_POOL_ADDRESS)
+    with (root / SWAP_SOURCE).open(newline="") as handle:
+        swap_rows = list(csv.DictReader(handle))
+    swap = next(row for row in swap_rows if row["pool"].lower() == DEFAULT_POOL_ADDRESS)
+    dec0, dec1 = int(qrow["dec0"]), int(qrow["dec1"])
 
     # PRD v2.1: min(APR24h, APR7d) × 0.65.  The historical artifacts have an
     # on-chain annualized fee estimate and DefiLlama base APR; use the smaller.
@@ -112,10 +117,13 @@ def default_base_vetted_pool(repo_root: Path | str = _ROOT) -> BasePoolParameter
         project=str(qrow["project"]),
         pool_tvl_usd=float(qrow["tvlUsd"]),
         active_liquidity_notional_usd=float(drow["reserve_liquidity_usd"]),
-        price_usd=float(replay["l_factor"]),
+        l_active_raw_historical=int(swap["liquidity"]),
+        price_usd=price_from_sqrt_x96(
+            int(swap["sqrtPriceX96"]), dec0=dec0, dec1=dec1,
+        ),
         fee_tier=float(qrow["fee_tier"]),
-        dec0=int(qrow["dec0"]),
-        dec1=int(qrow["dec1"]),
+        dec0=dec0,
+        dec1=dec1,
         conservative_fee_apr_pct=conservative_fee_apr,
         reward_apr_pct=float(qrow.get("reward_apr") or 0.0),
         expected_il_apr_pct=float(qrow["il_apr"]),
@@ -127,17 +135,17 @@ def default_base_vetted_pool(repo_root: Path | str = _ROOT) -> BasePoolParameter
         gas_usd_historical=float(replay["gas_usd"]),
         tier_configured_max_usd=500.0,
         holding_horizon_hours=DEFAULT_HOLDING_HOURS,
-        source_paths=(QUALITY_SOURCE, DEPTH_SOURCE, REPLAY_SOURCE),
+        source_paths=(QUALITY_SOURCE, DEPTH_SOURCE, REPLAY_SOURCE, SWAP_SOURCE),
     )
 
 
 def _swap_components(size_usd: float, pool: BasePoolParameters) -> dict[str, float]:
     entry_total = exit_conversion_cost_usd(
-        size_usd, pool.l_active_raw_model, pool.price_usd, pool.fee_tier,
+        size_usd, pool.l_active_raw_historical, pool.price_usd, pool.fee_tier,
         pool.dec0, pool.dec1, "buy_base",
     )
     exit_total = exit_conversion_cost_usd(
-        size_usd, pool.l_active_raw_model, pool.price_usd, pool.fee_tier,
+        size_usd, pool.l_active_raw_historical, pool.price_usd, pool.fee_tier,
         pool.dec0, pool.dec1, "sell_base",
     )
     entry_fee = size_usd * pool.fee_tier
@@ -257,8 +265,9 @@ def render_report(pool: BasePoolParameters, rows: Sequence[dict[str, Any]], as_o
         f"conservative fee APR {pool.conservative_fee_apr_pct:.4f}%; "
         f"reward APR {pool.reward_apr_pct:.4f}% × haircut {pool.reward_haircut:.2f}.",
         "",
-        "LVR and exit-latency are model estimates. Active liquidity is a historical "
-        "notional proxy from the cited depth artifact; gas is a historical replay observation.",
+        "LVR and exit-latency are model estimates. Position cap uses a historical "
+        "active-notional depth proxy; swap math uses price and raw active liquidity "
+        "decoded from a real Swap event; gas is a historical replay observation.",
         "",
         "| size U | round-trip U | fixed cost U | break-even h | MinEconomicPosition U | NetCover 30d | abs-profit gate | runtime cap U |",
         "|---:|---:|---:|---:|---:|---:|:---:|---:|",

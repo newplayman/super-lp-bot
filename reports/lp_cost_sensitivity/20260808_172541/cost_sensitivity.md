@@ -1,21 +1,22 @@
 # LP Cost Sensitivity — Base vetted pool
 
-As of analysis: `2026-08-08T17:25:41.290916+00:00` (historical inputs; no live/network calls)
+As of analysis: `2026-08-08T17:28:42.081253+00:00` (historical inputs; no live/network calls)
 Pool: `0xb2cc224c1c9fee385f8ad6a55b4d94e92359dc59` · aerodrome-slipstream WETH-USDC
 Horizon for MinEconomicPosition: 720h; conservative fee APR 20.1462%; reward APR 67.6834% × haircut 0.50.
 
-LVR and exit-latency are model estimates. Active liquidity is a historical notional proxy from the cited depth artifact; gas is a historical replay observation.
+LVR and exit-latency are model estimates. Position cap uses a historical active-notional depth proxy; swap math uses price and raw active liquidity decoded from a real Swap event; gas is a historical replay observation.
 
 | size U | round-trip U | fixed cost U | break-even h | MinEconomicPosition U | NetCover 30d | abs-profit gate | runtime cap U |
 |---:|---:|---:|---:|---:|---:|:---:|---:|
-| 25 | 0.042263 | 0.121763 | 104.36 | 33.83 | 2.837 | SKIP | 500.00 |
-| 50 | 0.084852 | 0.164352 | 70.43 | 33.83 | 3.157 | PASS | 500.00 |
-| 75 | 0.127766 | 0.207266 | 59.21 | 33.83 | 3.279 | PASS | 500.00 |
-| 100 | 0.171007 | 0.250507 | 53.67 | 33.83 | 3.343 | PASS | 500.00 |
-| 200 | 0.347228 | 0.426728 | 45.72 | 33.83 | 3.439 | PASS | 500.00 |
-| 500 | 0.907174 | 0.986674 | 42.28 | 33.83 | 3.482 | PASS | 500.00 |
+| 25 | 0.042112 | 0.121612 | 104.23 | 33.82 | 2.838 | SKIP | 500.00 |
+| 50 | 0.084246 | 0.163746 | 70.17 | 33.82 | 3.160 | PASS | 500.00 |
+| 75 | 0.126404 | 0.205904 | 58.82 | 33.82 | 3.283 | PASS | 500.00 |
+| 100 | 0.168585 | 0.248085 | 53.15 | 33.82 | 3.349 | PASS | 500.00 |
+| 200 | 0.337541 | 0.417041 | 44.68 | 33.82 | 3.452 | PASS | 500.00 |
+| 500 | 0.846632 | 0.926132 | 39.69 | 33.82 | 3.516 | PASS | 500.00 |
 
 Sources:
 - `reports/lp_pool_resolve_and_rank/run_qualityA/resolve_and_rank.json`
 - `reports/lp_quote_depth_curve_fix/20260601_091739/quote_depth_curve_v2_results.csv`
 - `reports/strategy_evidence_r4b_active_liquidity_corrected_replay/20260612_090000/active_liquidity_corrected_replay_matrix.jsonl`
+- `reports/strategy_evidence_r4_swap_event_fee_replay/20260611_080000/swap_events_decoded.csv`
