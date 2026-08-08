@@ -44,7 +44,7 @@ def test_schema_is_exact_nine_fields_and_strictly_typed():
         "redemption_status",
     )
     assert instrument.multiplier == Decimal("1")
-    assert instrument.source_timestamp is NOW
+    assert instrument.source_timestamp == NOW
 
 
 @pytest.mark.parametrize("missing", list(Instrument.FIELD_NAMES))
@@ -106,4 +106,3 @@ def test_dynamic_threshold_volatility_buffer_grows_with_age():
     aged = divergence_threshold(spread_bps="1", sigma_short_bps="30", source_age_seconds=30)
     assert fresh == Decimal("40")
     assert aged > fresh
-
