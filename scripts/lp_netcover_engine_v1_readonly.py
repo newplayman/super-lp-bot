@@ -46,6 +46,17 @@ def _amount(name: str, value: Any, *, positive: bool = False) -> float:
     return result
 
 
+def _finite(name: str, value: Any) -> float:
+    """Validate a signed finite value (used for net profit/PnL)."""
+    try:
+        result = float(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{name} must be a finite number") from exc
+    if not math.isfinite(result):
+        raise ValueError(f"{name} must be a finite number")
+    return result
+
+
 def _haircut_value(haircuts: float | Mapping[str, Any]) -> float:
     if isinstance(haircuts, Mapping):
         category = str(haircuts.get("category") or "")
@@ -203,7 +214,7 @@ def absolute_profit_gate(
     safety_multiple: float = SAFETY_MULTIPLE,
 ) -> AbsoluteProfitDecision:
     """INV-COST-01: enforce absolute economics regardless of displayed APR."""
-    profit = _amount("expected_net_profit_h", expected_net_profit_h)
+    profit = _finite("expected_net_profit_h", expected_net_profit_h)
     round_trip = _amount("round_trip_cost", round_trip_cost)
     minimum = _amount("min_profit_usd", min_profit_usd)
     multiple = _amount("safety_multiple", safety_multiple, positive=True)

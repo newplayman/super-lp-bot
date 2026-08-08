@@ -85,6 +85,7 @@ def test_inv_cost_01_high_apr_but_tiny_absolute_profit_is_skip():
 
 
 def test_absolute_profit_gate_uses_five_times_roundtrip_when_larger():
+    assert absolute_profit_gate(-0.5, 0.1).allowed is False
     assert absolute_profit_gate(2.49, 0.5).allowed is False
     assert absolute_profit_gate(2.5, 0.5).allowed is True
 
