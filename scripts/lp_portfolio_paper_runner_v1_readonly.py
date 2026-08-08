@@ -754,7 +754,7 @@ def attribution_ledger(state, mark):
         + float(costs.get("gas_cost", 0.0))
         + float(costs.get("priority_fee", 0.0))
         + float(costs.get("switching_cost", 0.0))
-        + float(costs.get("exit_latency_loss", 0.0))
+        + (float(costs.get("exit_latency_loss", 0.0)) if state.get("exited") else 0.0)
     )
     pnl_cash_adjusted = float(mark["pnl_vs_usdc_quote"]) - external_costs
     alpha_adjusted = float(mark["alpha_vs_hodl_quote"]) - external_costs
