@@ -796,6 +796,183 @@ def test_reentry_limit_survives_restart_from_persisted_position_identity():
     }
 
 
+def test_run_restart_restores_final_state_lineage_and_blocks_fourth_reentry(
+    tmp_path, monkeypatch
+):
+    """Exercise three run lifetimes across enter, exit, and blocked re-entry."""
+    allocation_path = tmp_path / "allocation.json"
+    run_dir = tmp_path / "runner"
+    gate_db = tmp_path / "scanner.db"
+    started = datetime(2026, 8, 9, 0, 0, tzinfo=timezone.utc)
+    allocation = {
+        "allocations": [{
+            "pool": "0xPool",
+            "position_id": "position-1:reentry:2",
+            "reentry_evidence": _passing_reentry_evidence(
+                as_of=(started + timedelta(minutes=31)).isoformat(),
+                position_identity="position-1:reentry:2",
+            ),
+        }]
+    }
+    allocation_path.write_text(json.dumps(allocation))
+
+    def fresh_book(allocs, **_kwargs):
+        pool, _ = _cooled_down_pool(evidence=allocs[0].get("reentry_evidence"))
+        pool["position_id"] = allocs[0].get("position_id")
+        pool["state"]["exit_policy_context"]["cooldown"][
+            "position_identity"
+        ] = pool["position_id"]
+        return [pool]
+
+    calls = {"count": 0}
+
+    def one_tick(book, *, last_ts, alerter=None):
+        del last_ts, alerter
+        calls["count"] += 1
+        if calls["count"] == 1:
+            assert _maybe_reenter_position(
+                book[0], now=started + timedelta(minutes=31), latest_block=2
+            ) is True
+            # _maybe_reenter_position must fsync the new sequence before it
+            # returns to the outer run loop (the SIGKILL/power-loss boundary).
+            durable = json.loads(
+                (run_dir / "runner_checkpoint.json").read_text()
+            )
+            assert durable["pools"][0]["position_id"] == "position-1:reentry:3"
+            assert durable["pools"][0]["_reentry_sequence"] == 3
+        elif calls["count"] == 2:
+            assert book[0]["position_id"] == "position-1:reentry:3"
+            assert book[0]["_position_root_id"] == "position-1"
+            assert book[0]["_reentry_sequence"] == MAX_REENTRIES_PER_ROOT
+            assert book[0]["state"]["exited"] is None
+            update_position(
+                book[0]["state"],
+                [{
+                    "block": 3,
+                    "price": 0.70,
+                    "liquidity": 10 ** 27,
+                    "amount1": AMT1,
+                    "risk_signals": {"rug_risk": True},
+                }],
+                now_block=3,
+            )
+            assert book[0]["state"]["exit_policy_context"]["state"] == "COOLDOWN"
+            assert book[0]["state"]["exited"] is not None
+            _ensure_position_cooldown(book[0], now=started)
+        elif calls["count"] == 3:
+            assert book[0]["position_id"] == "position-1:reentry:3"
+            assert book[0]["state"]["exit_policy_context"]["state"] == "COOLDOWN"
+            assert book[0]["state"]["exited"] is not None
+            assert _maybe_reenter_position(
+                book[0], now=started + timedelta(minutes=31), latest_block=2
+            ) is False
+            assert book[0]["reentry_rejection"]["reason"] == (
+                "MAX_REENTRIES_PER_ROOT_REACHED"
+            )
+        return {
+            "ledger_schema_version": LEDGER_SCHEMA_VERSION,
+            "ts_utc": started.isoformat(),
+            "block": 2,
+            "rpc_health": "NORMAL",
+            "portfolio_net_usd": 0.0,
+            "portfolio_nav_usd": 1000.0 + calls["count"],
+            "by_pool": [{
+                "symbol": book[0]["symbol"],
+                "pool": book[0]["pool"],
+                "position_id": book[0]["position_id"],
+                "fee_prediction_usd": 1.0,
+                "swap_fee_income": 0.0,
+                "pnl_vs_usdc": 0.0,
+                "net_pct": 0.0,
+                "new_breach": False,
+                "in_range": False,
+                "exited": book[0]["state"]["exited"],
+            }],
+        }, started
+
+    monkeypatch.setattr(runner, "_latest_block", lambda: 2)
+    monkeypatch.setattr(runner, "_init_book", fresh_book)
+    monkeypatch.setattr(runner, "_tick", one_tick)
+
+    run(
+        allocation_path,
+        max_ticks=1,
+        out=str(run_dir),
+        gate_db=gate_db,
+    )
+    first_final = json.loads((run_dir / "final_state.json").read_text())
+    assert first_final["pools"][0]["position_id"] == "position-1:reentry:3"
+    assert first_final["pools"][0]["position_root_id"] == "position-1"
+    assert first_final["pools"][0]["reentry_sequence"] == MAX_REENTRIES_PER_ROOT
+
+    # A restarted process receives a stale static identity.  The durable full
+    # checkpoint must win and keep the third position ACTIVE, not create it
+    # again. This lifetime then exits that same restored position to COOLDOWN.
+    allocation["allocations"][0]["position_id"] = "position-1"
+    allocation["allocations"][0]["reentry_evidence"][
+        "position_identity"
+    ] = "position-1:reentry:3"
+    allocation_path.write_text(json.dumps(allocation))
+    run(
+        allocation_path,
+        max_ticks=1,
+        out=str(run_dir),
+        gate_db=gate_db,
+    )
+    exited_final = json.loads((run_dir / "final_state.json").read_text())
+    assert exited_final["pools"][0]["position_id"] == "position-1:reentry:3"
+    assert exited_final["pools"][0]["exit_policy_context"]["state"] == "COOLDOWN"
+
+    # The next real run lifetime must restore COOLDOWN rather than initializing
+    # a fourth ACTIVE position, and the limit then rejects re-entry.
+    run(
+        allocation_path,
+        max_ticks=1,
+        out=str(run_dir),
+        gate_db=gate_db,
+    )
+    assert calls["count"] == 3
+    restarted_final = json.loads((run_dir / "final_state.json").read_text())
+    assert restarted_final["pools"][0]["reentry_rejection"]["reason"] == (
+        "MAX_REENTRIES_PER_ROOT_REACHED"
+    )
+    with sqlite3.connect(gate_db) as connection:
+        gate_rows = connection.execute(
+            "SELECT tick, portfolio_nav_usd FROM shadow_gate_observations "
+            "ORDER BY tick"
+        ).fetchall()
+    assert gate_rows == [(0, 1001.0), (1, 1002.0), (2, 1003.0)]
+
+
+def test_run_restart_legacy_exited_final_without_checkpoint_fails_closed(
+    tmp_path, monkeypatch
+):
+    run_dir = tmp_path / "legacy-runner"
+    run_dir.mkdir()
+    pool, _ = _cooled_down_pool(evidence=None)
+    pool["position_id"] = "position-1:reentry:3"
+    _flush_state(str(run_dir), [pool], 7)
+    allocation_path = tmp_path / "allocation.json"
+    allocation_path.write_text(json.dumps({"allocations": [{"pool": "0xPool"}]}))
+
+    def fresh_book(allocs, **_kwargs):
+        fresh, _ = _cooled_down_pool(evidence=None)
+        fresh["state"] = _state()
+        fresh["position_id"] = allocs[0].get("position_id")
+        return [fresh]
+
+    monkeypatch.setattr(runner, "_latest_block", lambda: 8)
+    monkeypatch.setattr(runner, "_init_book", fresh_book)
+    with pytest.raises(RuntimeError, match="refusing to create a fresh ACTIVE"):
+        run(
+            allocation_path,
+            max_ticks=1,
+            out=str(run_dir),
+            gate_db=None,
+        )
+    assert not (run_dir / "runner_checkpoint.json").exists()
+
+
 @pytest.mark.parametrize("bad_sequence", ["bad", -1])
 def test_invalid_reentry_sequence_fails_closed_with_reason(bad_sequence):
     pool, started = _cooled_down_pool(evidence=_passing_reentry_evidence())
@@ -807,6 +984,37 @@ def test_invalid_reentry_sequence_fails_closed_with_reason(bad_sequence):
     assert pool["reentry_rejection"]["reason"] == (
         "INVALID_REENTRY_SEQUENCE_FAIL_CLOSED"
     )
+
+
+@pytest.mark.parametrize(
+    "malformed_identity",
+    [
+        "position-1:reentry:3:reentry:1",
+        "position-1:reentry:not-a-number",
+        "position-1:reentry:0",
+    ],
+)
+def test_untrusted_malformed_reentry_identity_cannot_reset_sequence(
+    malformed_identity,
+):
+    pool, started = _cooled_down_pool(evidence=_passing_reentry_evidence())
+    pool["position_id"] = malformed_identity
+    pool["reentry_evidence"]["position_identity"] = malformed_identity
+    pool["state"]["exit_policy_context"]["cooldown"][
+        "position_identity"
+    ] = malformed_identity
+
+    assert _maybe_reenter_position(
+        pool, now=started + timedelta(minutes=31), latest_block=2
+    ) is False
+    assert pool["state"]["exited"] is not None
+    assert pool["reentry_rejection"] == {
+        "reason": "INVALID_REENTRY_SEQUENCE_FAIL_CLOSED",
+        "root_identity": None,
+        "observed_identity": malformed_identity,
+        "observed_sequence": None,
+        "limit": MAX_REENTRIES_PER_ROOT,
+    }
 
 
 def test_strict_upper_stable_inventory_remove_only_never_swaps():

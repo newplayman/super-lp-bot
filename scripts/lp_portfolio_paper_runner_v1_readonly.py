@@ -42,6 +42,8 @@ from scripts.lp_tier_c_exit_feasibility_v1_readonly import (  # noqa: E402
     _rpc_with_retry,
 )
 from scripts.lp_il_inventory_engine_v1_readonly import (  # noqa: E402
+    EntryBaseline,
+    V3PositionState,
     alpha_vs_hodl,
     current_inventory,
     hodl_nav,
@@ -105,6 +107,8 @@ ORCA_WHIRLPOOL_PROTOCOL = "orca_whirlpool"
 LEDGER_SCHEMA_VERSION = 2
 REENTRY_EVIDENCE_MAX_AGE_SECONDS = 3600.0
 MAX_REENTRIES_PER_ROOT = 3
+RUNNER_CHECKPOINT_SCHEMA_VERSION = 1
+_RUNNER_CHECKPOINT_FILE = "runner_checkpoint.json"
 _REENTRY_IDENTITY_SUFFIX = re.compile(r":reentry:(\d+)$")
 ATTRIBUTION_FIELDS = (
     "entry_capital_usd", "hodl_nav", "lp_nav_ex_fee",
@@ -918,6 +922,240 @@ def _load_allocation(path):
     return allocs
 
 
+def _reentry_lineage(position_identity):
+    """Validate one persisted identity and return its root and sequence."""
+    if not isinstance(position_identity, str) or not position_identity.strip():
+        raise ValueError("persisted position_identity must be a non-empty string")
+    identity = position_identity.strip()
+    root_identity = root_position_identity(identity)
+    if not root_identity:
+        raise ValueError("persisted position_identity has an empty root")
+    if identity == root_identity:
+        if ":reentry:" in identity:
+            raise ValueError("persisted re-entry identity has a malformed suffix")
+        return root_identity, 0
+    suffix = _REENTRY_IDENTITY_SUFFIX.search(identity)
+    if suffix is None:
+        raise ValueError("persisted re-entry identity has an invalid suffix")
+    sequence = int(suffix.group(1))
+    if sequence <= 0 or identity != f"{root_identity}:reentry:{sequence}":
+        raise ValueError("persisted re-entry identity has an invalid lineage")
+    return root_identity, sequence
+
+
+def _restore_reentry_state_from_final(run_dir, book):
+    """Restore anti-churn lineage when restarting an existing runner output.
+
+    ``_init_book`` intentionally builds fresh pricing/accounting state from the
+    live allocation.  The W1 re-entry allowance, however, is durable policy
+    state: silently resetting it on process restart would permit a fourth (or
+    later) re-entry.  Recover that narrow state from the runner's own final
+    snapshot before the first tick.  Any matching but malformed or internally
+    inconsistent snapshot aborts startup fail-closed.
+    """
+    final_path = os.path.join(run_dir, "final_state.json")
+    if not os.path.exists(final_path):
+        return False, 0
+    try:
+        with open(final_path, encoding="utf-8") as handle:
+            snapshot = json.load(handle)
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise RuntimeError(
+            f"cannot safely resume re-entry lineage from {final_path}"
+        ) from exc
+    if not isinstance(snapshot, dict) or not isinstance(snapshot.get("pools"), list):
+        raise RuntimeError(f"invalid persisted runner state in {final_path}")
+
+    persisted_by_pool = {}
+    for persisted in snapshot["pools"]:
+        if not isinstance(persisted, dict) or not persisted.get("pool"):
+            raise RuntimeError(f"invalid persisted pool state in {final_path}")
+        pool_key = str(persisted["pool"]).lower()
+        if pool_key in persisted_by_pool:
+            raise RuntimeError(f"duplicate persisted pool {pool_key} in {final_path}")
+        persisted_by_pool[pool_key] = persisted
+
+    seen_current = set()
+    restored = False
+    for pool_record in book:
+        pool_key = str(pool_record.get("pool") or "").lower()
+        if not pool_key or pool_key in seen_current:
+            raise RuntimeError("current runner book contains a missing or duplicate pool")
+        seen_current.add(pool_key)
+        persisted = persisted_by_pool.get(pool_key)
+        if persisted is None:
+            continue
+        persisted_risk_state = str(
+            (persisted.get("exit_policy_context") or {}).get("state") or ""
+        ).upper()
+        if persisted.get("exited") or persisted_risk_state in {
+            RiskState.EXITING.value,
+            RiskState.COOLDOWN.value,
+        }:
+            raise RuntimeError(
+                "legacy final_state contains a non-active position but no "
+                "durable full-state checkpoint; refusing to create a fresh "
+                f"ACTIVE position for pool {pool_key}"
+            )
+        try:
+            identity = persisted["position_id"]
+            root_identity, identity_sequence = _reentry_lineage(identity)
+            stored_root = persisted.get("position_root_id", root_identity)
+            stored_sequence = persisted.get(
+                "reentry_sequence", identity_sequence
+            )
+            if (
+                isinstance(stored_sequence, bool)
+                or not isinstance(stored_sequence, int)
+                or stored_sequence < 0
+                or str(stored_root) != root_identity
+                or stored_sequence != identity_sequence
+            ):
+                raise ValueError("persisted re-entry lineage fields disagree")
+        except (KeyError, TypeError, ValueError) as exc:
+            raise RuntimeError(
+                f"invalid persisted re-entry lineage for pool {pool_key}"
+            ) from exc
+
+        pool_record["position_id"] = identity
+        pool_record["_position_root_id"] = root_identity
+        pool_record["_reentry_sequence"] = identity_sequence
+        if persisted.get("reentry_of"):
+            pool_record["reentry_of"] = str(persisted["reentry_of"])
+        cooldown = (
+            pool_record.get("state", {})
+            .get("exit_policy_context", {})
+            .get("cooldown")
+        )
+        if isinstance(cooldown, dict):
+            cooldown["position_identity"] = identity
+        restored = True
+    final_tick = snapshot.get("final_tick", 0)
+    if isinstance(final_tick, bool) or not isinstance(final_tick, int) or final_tick < 0:
+        raise RuntimeError(f"invalid final_tick in {final_path}")
+    return restored, final_tick
+
+
+def _checkpoint_state_payload(state):
+    payload = dict(state)
+    payload["entry_baseline"] = asdict(state["entry_baseline"])
+    payload["lp_principal_state"] = asdict(state["lp_principal_state"])
+    return payload
+
+
+def _checkpoint_pool_payload(pool_record):
+    return {
+        key: value
+        for key, value in pool_record.items()
+        if key != "state" and not key.startswith("_durable_")
+    } | {"state": _checkpoint_state_payload(pool_record["state"])}
+
+
+def _write_runner_checkpoint(run_dir, book, *, next_tick, last_ts):
+    """Atomically persist the complete paper book and monotonic gate cursor."""
+    if isinstance(next_tick, bool) or not isinstance(next_tick, int) or next_tick < 0:
+        raise ValueError("checkpoint next_tick must be a non-negative integer")
+    if last_ts.tzinfo is None or last_ts.utcoffset() is None:
+        raise ValueError("checkpoint last_ts must be timezone-aware")
+    payload = {
+        "checkpoint_schema_version": RUNNER_CHECKPOINT_SCHEMA_VERSION,
+        "next_tick": next_tick,
+        "last_ts": last_ts.astimezone(timezone.utc).isoformat(),
+        "pools": [_checkpoint_pool_payload(pool) for pool in book],
+    }
+    checkpoint_path = os.path.join(run_dir, _RUNNER_CHECKPOINT_FILE)
+    temporary_path = f"{checkpoint_path}.{os.getpid()}.tmp"
+    try:
+        with open(temporary_path, "w", encoding="utf-8") as handle:
+            json.dump(payload, handle, indent=2)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary_path, checkpoint_path)
+        directory_fd = os.open(run_dir, os.O_RDONLY)
+        try:
+            os.fsync(directory_fd)
+        finally:
+            os.close(directory_fd)
+    finally:
+        try:
+            os.unlink(temporary_path)
+        except FileNotFoundError:
+            pass
+
+
+def _restore_runner_checkpoint(run_dir, allocs, *, chain):
+    """Load a complete durable book, or return None for a genuinely fresh run."""
+    checkpoint_path = os.path.join(run_dir, _RUNNER_CHECKPOINT_FILE)
+    if not os.path.exists(checkpoint_path):
+        return None
+    try:
+        with open(checkpoint_path, encoding="utf-8") as handle:
+            payload = json.load(handle)
+        if (
+            not isinstance(payload, dict)
+            or payload.get("checkpoint_schema_version")
+            != RUNNER_CHECKPOINT_SCHEMA_VERSION
+            or not isinstance(payload.get("pools"), list)
+            or not payload["pools"]
+        ):
+            raise ValueError("invalid checkpoint envelope")
+        next_tick = payload["next_tick"]
+        if isinstance(next_tick, bool) or not isinstance(next_tick, int) or next_tick < 0:
+            raise ValueError("invalid checkpoint next_tick")
+        last_ts = datetime.fromisoformat(str(payload["last_ts"]).replace("Z", "+00:00"))
+        if last_ts.tzinfo is None or last_ts.utcoffset() is None:
+            raise ValueError("invalid checkpoint last_ts")
+
+        allocation_pools = [
+            str(allocation.get("pool") or "").lower() for allocation in allocs
+        ]
+        if (
+            any(not pool for pool in allocation_pools)
+            or len(set(allocation_pools)) != len(allocation_pools)
+        ):
+            raise ValueError("allocation contains missing or duplicate pools")
+
+        book = []
+        checkpoint_pools = []
+        for raw_pool in payload["pools"]:
+            if not isinstance(raw_pool, dict) or not isinstance(raw_pool.get("state"), dict):
+                raise ValueError("invalid checkpoint pool")
+            pool_record = dict(raw_pool)
+            state = dict(pool_record["state"])
+            state["entry_baseline"] = EntryBaseline(**state["entry_baseline"])
+            state["lp_principal_state"] = V3PositionState(
+                **state["lp_principal_state"]
+            )
+            pool_record["state"] = state
+            pool_key = str(pool_record.get("pool") or "").lower()
+            if not pool_key or pool_key in checkpoint_pools:
+                raise ValueError("checkpoint contains missing or duplicate pools")
+            checkpoint_pools.append(pool_key)
+            if str(pool_record.get("chain") or chain).lower() != str(chain).lower():
+                raise ValueError("checkpoint chain disagrees with requested chain")
+            identity = _paper_position_identity(pool_record)
+            root_identity, identity_sequence = _reentry_lineage(identity)
+            stored_root = pool_record.get("_position_root_id", root_identity)
+            stored_sequence = pool_record.get("_reentry_sequence", identity_sequence)
+            if (
+                isinstance(stored_sequence, bool)
+                or not isinstance(stored_sequence, int)
+                or str(stored_root) != root_identity
+                or stored_sequence != identity_sequence
+            ):
+                raise ValueError("checkpoint re-entry lineage fields disagree")
+            pool_record["_position_root_id"] = root_identity
+            pool_record["_reentry_sequence"] = identity_sequence
+            book.append(pool_record)
+        if set(checkpoint_pools) != set(allocation_pools):
+            raise ValueError("checkpoint pool set disagrees with allocation")
+    except (KeyError, OSError, TypeError, UnicodeError, ValueError, json.JSONDecodeError) as exc:
+        raise RuntimeError(
+            f"cannot safely resume runner checkpoint from {checkpoint_path}"
+        ) from exc
+    return book, next_tick, last_ts
+
+
 def _refresh_reentry_evidence(book, allocation_path):
     """Refresh externally recomputed evidence without risking the main loop.
 
@@ -1416,9 +1654,17 @@ def _maybe_reenter_position(pool_record, *, now, latest_block):
     # Derive the root and at least the current sequence from the persisted
     # identity.  This prevents a runner restart (which loses private in-memory
     # keys) from resetting the anti-churn allowance back to zero.
-    root_identity = root_position_identity(old_identity)
-    suffix = _REENTRY_IDENTITY_SUFFIX.search(old_identity)
-    identity_sequence = int(suffix.group(1)) if suffix else 0
+    try:
+        root_identity, identity_sequence = _reentry_lineage(old_identity)
+    except ValueError:
+        pool_record["reentry_rejection"] = {
+            "reason": "INVALID_REENTRY_SEQUENCE_FAIL_CLOSED",
+            "root_identity": None,
+            "observed_identity": old_identity,
+            "observed_sequence": pool_record.get("_reentry_sequence"),
+            "limit": MAX_REENTRIES_PER_ROOT,
+        }
+        return False
     try:
         private_sequence = int(
             pool_record.get("_reentry_sequence", identity_sequence)
@@ -1548,6 +1794,11 @@ def _maybe_reenter_position(pool_record, *, now, latest_block):
     pool_record["last_reentry_evidence"] = dict(evidence)
     pool_record["reentry_evidence"] = None
     pool_record.pop("reentry_rejection", None)
+    durable_checkpoint = pool_record.get("_durable_checkpoint_after_reentry")
+    if callable(durable_checkpoint):
+        # The anti-churn sequence must survive SIGKILL/power loss immediately;
+        # waiting for the outer loop or graceful-finally would reopen W1.
+        durable_checkpoint()
     return True
 
 
@@ -1763,22 +2014,46 @@ def run(allocation_path, *, poll_secs=1800, max_ticks=None, out=None,
           f"max_ticks={max_ticks} chain={chain} "
           f"rpc_pool={len(_POOL._endpoints)} endpoints (rotating, free public)")
 
-    latest = _latest_block()
-    book = _init_book(
-        allocs, entry_window_blocks=entry_window_blocks, latest=latest,
-        chain=chain,
-    )
-    # snapshot the resolved book for reproducibility
-    with open(os.path.join(run_dir, "book_init.json"), "w") as f:
-        json.dump([{k: v for k, v in p.items() if k != "state"} | {
-            "anchor": p["state"]["anchor"], "capital": p["state"]["capital"],
-            "range_pct": p["state"]["range_pct"], "fee_tier": p["state"]["fee_tier"],
-        } for p in book], f, indent=2)
+    restored_checkpoint = _restore_runner_checkpoint(run_dir, allocs, chain=chain)
+    fresh_run = restored_checkpoint is None
+    if restored_checkpoint is not None:
+        book, tick, last_ts = restored_checkpoint
+        print(f"[resume] restored full runner checkpoint from {run_dir} next_tick={tick}")
+    else:
+        latest = _latest_block()
+        book = _init_book(
+            allocs, entry_window_blocks=entry_window_blocks, latest=latest,
+            chain=chain,
+        )
+        restored_lineage, tick = _restore_reentry_state_from_final(run_dir, book)
+        if restored_lineage:
+            print(f"[resume] restored legacy re-entry lineage from {run_dir}")
+        last_ts = _now_utc()
+    if fresh_run:
+        # snapshot the resolved book for reproducibility
+        with open(os.path.join(run_dir, "book_init.json"), "w") as f:
+            json.dump([{k: v for k, v in p.items() if k != "state"} | {
+                "anchor": p["state"]["anchor"], "capital": p["state"]["capital"],
+                "range_pct": p["state"]["range_pct"], "fee_tier": p["state"]["fee_tier"],
+            } for p in book], f, indent=2)
 
-    last_ts = _now_utc()
     last_hour = -1
-    tick = 0
     stop = {"flag": False}
+    checkpoint_runtime = {"next_tick": tick, "last_ts": last_ts}
+
+    def _durable_reentry_checkpoint():
+        _write_runner_checkpoint(
+            run_dir,
+            book,
+            next_tick=checkpoint_runtime["next_tick"],
+            last_ts=checkpoint_runtime["last_ts"],
+        )
+
+    for pool_record in book:
+        pool_record["_durable_checkpoint_after_reentry"] = (
+            _durable_reentry_checkpoint
+        )
+    _durable_reentry_checkpoint()
 
     def _handle(signum, frame):  # graceful flush
         stop["flag"] = True
@@ -1789,6 +2064,9 @@ def run(allocation_path, *, poll_secs=1800, max_ticks=None, out=None,
         while not stop["flag"]:
             _refresh_reentry_evidence(book, allocation_path)
             rec, last_ts = _tick(book, last_ts=last_ts, alerter=selected_alerter)
+            checkpoint_runtime["last_ts"] = last_ts
+            # Captures all state transitions before non-durable reporting I/O.
+            _durable_reentry_checkpoint()
             _append_heartbeat(run_dir, rec, tick)
             if gate_store is not None:
                 _record_gate_observation(gate_store, source_run, tick, rec)
@@ -1802,6 +2080,8 @@ def run(allocation_path, *, poll_secs=1800, max_ticks=None, out=None,
                              + ("·EXIT" if p.get("exited") else ("" if p["in_range"] else "·OOR"))
                              for p in rec["by_pool"]))
             tick += 1
+            checkpoint_runtime["next_tick"] = tick
+            _durable_reentry_checkpoint()
             if max_ticks is not None and tick >= max_ticks:
                 break
             if stop["flag"]:
@@ -1812,6 +2092,8 @@ def run(allocation_path, *, poll_secs=1800, max_ticks=None, out=None,
                 time.sleep(1)
     finally:
         _flush_state(run_dir, book, tick)
+        checkpoint_runtime["next_tick"] = tick
+        _durable_reentry_checkpoint()
         print(f"[done] {tick} ticks; state flushed to {run_dir}")
 
 
@@ -1819,6 +2101,8 @@ def _flush_state(run_dir, book, tick):
     snap = {"ledger_schema_version": LEDGER_SCHEMA_VERSION, "final_tick": tick, "pools": []}
     for p in book:
         st = p["state"]
+        position_identity = _paper_position_identity(p)
+        position_root_id, identity_sequence = _reentry_lineage(position_identity)
         mk = mark_position(st, p["last_price"])
         net_quote = mk["net_quote"] if st.get("exited") else mk["net_quote"] + st["reward_quote"]
         attribution = attribution_ledger(st, mk)
@@ -1828,7 +2112,9 @@ def _flush_state(run_dir, book, tick):
         run_capital = float(p.get("run_entry_capital_usd", st["capital"]))
         pool_snapshot = {
             "symbol": p["symbol"], "tier": p["tier"], "pool": p["pool"],
-            "position_id": _paper_position_identity(p),
+            "position_id": position_identity,
+            "position_root_id": position_root_id,
+            "reentry_sequence": identity_sequence,
             "capital": st["capital"], "anchor": st["anchor"],
             "range_pct": st["range_pct"], "last_price": p["last_price"],
             "fees_quote": st["fees_quote"], "reward_quote": st["reward_quote"],
