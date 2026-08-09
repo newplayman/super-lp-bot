@@ -1,0 +1,25 @@
+{
+  "as_of": "2026-08-09T08:18:08.524697+00:00",
+  "mode": "final_code_one_window_diagnostic_not_W6_acceptance",
+  "command_profile": {
+    "top": 10,
+    "window_blocks": 1000,
+    "window_days": 0.01,
+    "n_windows": 1
+  },
+  "screened": 734,
+  "resolved": 10,
+  "scored": 10,
+  "accepted": 0,
+  "fully_calculable_netcover_records": 0,
+  "reason": "one window cannot supply the multiwindow ER holding-horizon evidence",
+  "used_as_acceptance_evidence": false,
+  "rejection_reason_distribution": {
+    "NETCOVER_INPUT_MISSING:fee_ev_usd,reward_ev_usd,il_ev_usd,entry_cost_usd,exit_cost_usd,slippage_usd,reward_conversion_cost_usd,exit_latency_loss_usd": 8,
+    "NETCOVER_INPUT_MISSING:fee_ev_usd,reward_ev_usd,il_ev_usd,reward_conversion_cost_usd,exit_latency_loss_usd": 2
+  },
+  "sha256": {
+    "scanner.db": "3028c3cd0fdadcfff372d6767ee8b71e19801d29978f27ac8fefd5d4c7b1fe39",
+    "vetted_menu.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+  }
+}

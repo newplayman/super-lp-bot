@@ -1,0 +1,56 @@
+{
+  "as_of": "2026-08-09T08:19:38.034782+00:00",
+  "mode": "final_code_live_readonly_scanner_once_default_multiwindow",
+  "command_profile": {
+    "top": 10,
+    "window_blocks": 86400,
+    "window_days": 1.0,
+    "n_windows": 6
+  },
+  "screened": 734,
+  "top": 10,
+  "resolved": 10,
+  "scored": 10,
+  "accepted": 0,
+  "fully_calculable_netcover_records": 1,
+  "inv_gate_01": {
+    "netcover_shadow_threshold": 1.0,
+    "threshold_relaxed": false,
+    "accepted_targeted": false
+  },
+  "calculable_example": {
+    "symbol": "USDC-VVV",
+    "pool": "0x67a11022b7b6ed66f81233f6c8ed6e48f7826530",
+    "holding_horizon_hours": 168.0,
+    "holding_horizon_source": "measured:latest_multiwindow_ER_policy",
+    "fee_ev_usd": 0.06129008219178084,
+    "reward_ev_usd": 0.0,
+    "il_ev_usd": 0.7415997042459544,
+    "entry_cost_usd": 0.15,
+    "exit_cost_usd": 0.15,
+    "gas_usd": 0.0795,
+    "slippage_usd": 0.0013664250741037276,
+    "reward_conversion_cost_usd": 0.0,
+    "exit_latency_loss_usd": 0.004794520547945206,
+    "netcover_ratio": 0.040912955191278286,
+    "netcover_gate_status": "BELOW_SHADOW",
+    "accepted": false,
+    "rejection_reason": "NETCOVER_BELOW_SHADOW"
+  },
+  "rejection_reason_distribution": {
+    "NETCOVER_BELOW_SHADOW": 1,
+    "NETCOVER_INPUT_MISSING:entry_cost_usd,exit_cost_usd,slippage_usd,reward_conversion_cost_usd": 5,
+    "NETCOVER_INPUT_MISSING:fee_ev_usd,reward_ev_usd,il_ev_usd,entry_cost_usd,exit_cost_usd,slippage_usd,reward_conversion_cost_usd,exit_latency_loss_usd": 3,
+    "NETCOVER_INPUT_MISSING:fee_ev_usd,reward_ev_usd,il_ev_usd,reward_conversion_cost_usd,exit_latency_loss_usd": 1
+  },
+  "notes": [
+    "This run used the final raw-evidence-only assembler after audit hardening.",
+    "accepted=0 is the honest market/funnel result; no gate was relaxed.",
+    "Upstream prefilled nine-field values, including zero, cannot override missing raw evidence.",
+    "A separate one-window diagnostic produced zero calculable records because it lacked the multiwindow ER horizon; it was not used as W6 acceptance evidence."
+  ],
+  "sha256": {
+    "scanner.db": "a10d7f2bb05166c7211823343efc1f3101d21bd1672b9d3668be064f765ac273",
+    "vetted_menu.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+  }
+}

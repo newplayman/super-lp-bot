@@ -1,7 +1,7 @@
 {
   "gate_schema_version": 1,
-  "generated_at": "2026-08-09T07:53:01.483867+00:00",
-  "source_db": "reports/lp_netcover_inputs/20260809_073030/scanner.db",
+  "generated_at": "2026-08-09T08:31:47.198038+00:00",
+  "source_db": "reports/lp_netcover_inputs/20260809_final_default/scanner.db",
   "evidence_window": {
     "first_as_of": null,
     "last_as_of": null

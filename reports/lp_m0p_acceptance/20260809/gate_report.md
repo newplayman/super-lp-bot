@@ -1,6 +1,6 @@
 # M0 Shadow §12.0 Gate Report
 
-_generated 2026-08-09T07:53:01.483867+00:00 · evidence-only · read-only/paper-only_
+_generated 2026-08-09T08:31:47.198038+00:00 · evidence-only · read-only/paper-only_
 
 Overall: **INSUFFICIENT_EVIDENCE**
 

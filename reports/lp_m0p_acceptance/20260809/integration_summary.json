@@ -3,13 +3,16 @@
   "as_of_date": "2026-08-09",
   "mode": "paper_readonly",
   "scanner_full_cycle": {
+    "as_of": "2026-08-09T08:19:38.034782+00:00",
+    "source_dir": "reports/lp_netcover_inputs/20260809_final_default",
+    "raw_evidence_only_assembler": true,
     "screened": 734,
     "top": 10,
     "resolved": 10,
     "scored": 10,
     "accepted": 0,
     "fully_calculable_netcover_records": 1,
-    "calculable_example_netcover_ratio": 0.03428025155511409,
+    "calculable_example_netcover_ratio": 0.040912955191278286,
     "calculable_example_status": "BELOW_SHADOW"
   },
   "runner": {
@@ -17,17 +20,17 @@
     "reason": "no non-empty live-vetted allocation; fixture substitution is forbidden"
   },
   "panel_smoke": {
-    "bind": "127.0.0.1:18891 temporary acceptance port",
+    "bind": "127.0.0.1:18893 temporary acceptance port",
     "unauthorized_api_status": 401,
     "authorized_api_status": 200,
     "authorized_html_status": 200,
     "post_status": 405,
     "gate_checks": 6,
     "initial_funnel": [734, 10, 7, 10, 0],
-    "post_concurrent_scanner_funnel": [734, 1, 0, 1, 0],
+    "post_concurrent_scanner_funnel": [732, 1, 1, 1, 0],
     "concurrent_scanner_completed": true,
     "database_status": "OK",
-    "access_log_lines": 6,
+    "access_log_lines": 5,
     "query_token_logged": false,
     "token_value_logged": false,
     "token_archived": false
@@ -38,8 +41,8 @@
     "unique_root_pools": 0
   },
   "tests": {
-    "collected": 2761,
-    "passed": 2747,
+    "collected": 2769,
+    "passed": 2755,
     "skipped": 14,
     "collection_errors": 0
   },

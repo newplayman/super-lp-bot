@@ -2,7 +2,7 @@
 
 **分支：** `feat/prd-v2.1-m0-shadow`
 
-**状态：** WP-00～10、M0R 与 M0P（W6/P1/W1/W3/W4/DOC）已由 sol 复验通过；M0P 全量 `2747 passed, 14 skipped`、`2761 collected`，详见 `M0P_ACCEPTANCE_20260809.md`。live scanner 的 NetCover 已可计算，但本次诚实结果为 `accepted=0`；**14 天 shadow 尚未启动，§12.0 gate 为 `INSUFFICIENT_EVIDENCE`，M1 未放行。**
+**状态：** WP-00～10、M0R 与 M0P（W6/P1/W1/W3/W4/DOC）已由 sol 复验通过；M0P 全量 `2755 passed, 14 skipped`、`2769 collected`，详见 `M0P_ACCEPTANCE_20260809.md`。live scanner 的 NetCover 已可计算，但本次诚实结果为 `accepted=0`；**14 天 shadow 尚未启动，§12.0 gate 为 `INSUFFICIENT_EVIDENCE`，M1 未放行。**
 
 **发布边界：** 未合并、未推送远端；等待指挥官 review。本文不构成 M1 放行。
 
@@ -36,9 +36,9 @@
 | M0R-R3 | DONE | `59fcee4` | 退役 Solana registry 并归档 probe；仅记录该修复提交，不冒充本轮全量验收 |
 | M0R-D2 | DONE | `5b92e1f` | 只读 RWA session collector 与 unit 已建；尚未启动 14d shadow |
 | M0R-DOC | DONE | `42c79da` | D1-D4、RWA 启动式、M1 `1 × 50–60U` 与 REGULAR cent-units TODO 已收口 |
-| M0P-W6 | DONE | `0541c1f` | NetCover 9 项 USD 输入装配；定向 65；live 734→10→10→10→0，1 条完整可计算，阈值未放宽 |
-| M0P-P1 | DONE | `6b381fb` | 标准库只读 panel；定向 21；鉴权/方法/脱敏/限流/只读库/并发 scanner smoke 通过，unit 未安装 |
-| M0P-W1 | DONE | `e7b30ee` | ≥50 unique identities 且 ≥5 root pools；同 root 最多重入 3 次；定向 68 |
+| M0P-W6 | DONE | `0541c1f 518f8db` | raw-only NetCover 9 项装配；定向 67；最终 live 734→10→10→10→0，1 条完整可计算，阈值未放宽 |
+| M0P-P1 | DONE | `6b381fb 8c6ee4a` | 标准库只读 panel；定向 22；路径型密钥脱敏、固定 runner 输入与 systemd ownership 交接闭合，unit 未安装 |
+| M0P-W1 | DONE | `e7b30ee c7b7e9f` | ≥50 identities 且 ≥5 roots；每 root 最多重入 3 次；原子 checkpoint 与单调 tick 防重启绕过；定向 68 |
 | M0P-W3 | DONE | `a0a43ce` | 旧失效断言改为校验薄壳不重做 redaction 且转发 canonical registry |
 | M0P-W4 | DONE | `4ee3860` | 4 类 runner 层 hard-risk 退出回归；W2 入场拒绝口径固化 |
 
@@ -188,7 +188,7 @@ Shadow 五问在 14d 数据前均为 **PENDING_EVIDENCE**，不得提前作答�
 - 当前 Solana coverage 是经 registry 的真实 Orca account-state runner tick，并已进入 ledger-v2/gate；它不解码 swap event，也不产生 fee evidence。M0 不允许借机实现 M1 TS sidecar。
 - Raydium 市场快照是单次 top-1000 page，`hasNextPage=true`，页外池 unavailable/unverified；Orca 当次 page `next=null`。详见 `MARKET_SNAPSHOT_M0.md`。
 - Cost sensitivity 使用历史 swap/模型参数，不保证未来收益；已验收的历史结论是 25U 不经济，50U 起才在该样例过 gate。
-- M0P live scanner 本次 `screened=734`、`scored=10`、`accepted=0`；其中 1 条候选九项输入完整、NetCover `0.03428025` 并按原阈值诚实拒绝，其余继续因真实数据缺失 fail-closed。没有 live-vetted allocation，因此 paper runner 未启动，禁止用 fixture 代替。
+- M0P 最终代码 live scanner 本次 `screened=734`、`scored=10`、`accepted=0`；其中 1 条候选九项输入完整、NetCover `0.040912955191278286` 并按原阈值诚实拒绝，其余继续因真实数据缺失 fail-closed。没有 live-vetted allocation，因此 paper runner 未启动，禁止用 fixture 代替。
 - 14d shadow 启动、gate 评审、合并、推送、M1 放行均由指挥官决定。**M1-A 签名 sidecar / M1-B EVM 执行严格禁止开工。**
 
 ## 6. sol 原 M0 验收
@@ -216,10 +216,10 @@ Shadow 五问在 14d 数据前均为 **PENDING_EVIDENCE**，不得提前作答�
 
 ## 8. sol M0P 复验（2026-08-09）
 
-- `pytest tests/ --collect-only -q`：`2761 tests collected`，0 error。
-- `pytest tests/ -q`：`2747 passed, 14 skipped`；skip 数与 D1 精确清单一致。
-- W6 live scanner：734 screened、10 resolved/scored、0 accepted；USDC-VVV 九项输入完整，NetCover `0.03428025155511409`、`BELOW_SHADOW`，证明第五闸可计算且未放宽。
-- panel 临时端口 smoke：无鉴权 `401`、鉴权 JSON/HTML `200`、POST `405`；panel 在读库时并发 scanner 成功写入，访问日志不含 token/query 值；unit 仅写入仓库，未安装。
+- `pytest tests/ --collect-only -q`：`2769 tests collected`，0 error。
+- `pytest tests/ -q`：`2755 passed, 14 skipped`；skip 数与 D1 精确清单一致。
+- W6 最终代码 live scanner：734 screened、10 resolved/scored、0 accepted；USDC-VVV 九项输入完整，NetCover `0.040912955191278286`、`BELOW_SHADOW`，证明第五闸可计算且未放宽；显式零/伪 provenance 不再受信。
+- panel 最终代码临时端口 smoke：无鉴权 `401`、鉴权 JSON/HTML `200`、POST `405`；panel 在读库时并发 scanner 成功写入，访问日志不含 token/query 值，RPC 只显示 origin；unit 仅写入仓库，未安装。
 - §12.0 gate：`INSUFFICIENT_EVIDENCE`，0 identities / 0 root pools；当前没有非空 live-vetted allocation，runner 按契约不启动。
 - 详细证据：`M0P_ACCEPTANCE_20260809.md` 与 `reports/lp_m0p_acceptance/20260809/`。
 - M0P 裁决：**PASS / READY FOR COMMANDER REVIEW**。是否启动 scanner + RWA collector + panel 的 14d shadow 由指挥官决定；runner 仍须等待真实非空 live-vetted allocation。
