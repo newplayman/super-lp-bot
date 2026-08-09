@@ -1,0 +1,38 @@
+[Unit]
+Description=LP Bot read-only M0 shadow panel
+Documentation=file:/opt/lpbot/lp-bot-v3-origin-check/scripts/lp_panel_server_v1_readonly.py
+After=network.target
+ConditionPathExists=/opt/lpbot/lp-bot-v3-origin-check/scripts/lp_panel_server_v1_readonly.py
+ConditionPathIsDirectory=/opt/lpbot/lp-bot-v3-origin-check/reports/lp_panel
+
+[Service]
+Type=simple
+User=lpbot
+Group=lpbot
+WorkingDirectory=/opt/lpbot/lp-bot-v3-origin-check
+UMask=0077
+
+# The service manager must receive LPBOT_PANEL_TOKEN from its environment.
+# No token value or credential is stored in this unit.
+PassEnvironment=LPBOT_PANEL_TOKEN
+ExecStartPre=/usr/bin/test -r /opt/lpbot/lp-bot-v3-origin-check/scripts/lp_panel_server_v1_readonly.py
+ExecStartPre=/usr/bin/test -w /opt/lpbot/lp-bot-v3-origin-check/reports/lp_panel
+ExecStart=/usr/bin/python3 -u /opt/lpbot/lp-bot-v3-origin-check/scripts/lp_panel_server_v1_readonly.py --host 0.0.0.0 --port 8899 --db /opt/lpbot/lp-bot-v3-origin-check/reports/lp_scanner/scanner.db --heartbeat /opt/lpbot/lp-bot-v3-origin-check/reports/lp_portfolio_paper_runner/latest/heartbeat.jsonl --portfolio-csv /opt/lpbot/lp-bot-v3-origin-check/reports/lp_portfolio_paper_runner/latest/portfolio_state_hourly.csv --rwa-jsonl-dir /opt/lpbot/lp-bot-v3-origin-check/reports/lp_scanner/rwa_sessions --probe-dir /opt/lpbot/lp-bot-v3-origin-check/reports/lp_rpc_pool_probe --access-log /opt/lpbot/lp-bot-v3-origin-check/reports/lp_panel/access.log
+
+Restart=on-failure
+RestartSec=15
+TimeoutStopSec=30
+StandardOutput=journal
+StandardError=journal
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/opt/lpbot/lp-bot-v3-origin-check/reports/lp_panel
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target
