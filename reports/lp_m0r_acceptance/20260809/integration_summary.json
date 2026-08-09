@@ -1,0 +1,56 @@
+{
+  "as_of_utc": "2026-08-09T06:25:03.015446+00:00",
+  "mode": "paper_readonly",
+  "scanner": {
+    "screened": 735,
+    "top": 10,
+    "resolved": 10,
+    "scored": 10,
+    "accepted": 0,
+    "sessions": 0,
+    "rpc_health": "DEGRADED",
+    "vetted_menu_exported": 0,
+    "vetted_menu_invalid": 0
+  },
+  "sqlite": {
+    "integrity_check": "ok",
+    "sha256": "80f8959763207c8d3bdf476c3642f66eaf039968c062ebfeab4e2b595a5c8de4",
+    "pool_snapshots": 735,
+    "opportunity_scores": 10,
+    "market_sessions": 20,
+    "shadow_positions": 1,
+    "shadow_gate_observations": 1
+  },
+  "rwa_collector": {
+    "symbols": 5,
+    "available_anchors": 8,
+    "available_dex_quotes": 5,
+    "market_session": "PRIMARY_CLOSED",
+    "market_session_rows": 20,
+    "sources": {
+      "bybit_public_spot": 3,
+      "bybit_public_spot:unavailable": 2,
+      "raydium_api_v3": 5,
+      "robinhood_stock_token": 5,
+      "xstocks_official:unavailable": 5
+    },
+    "robinhood_non_null_basis_rows": 0,
+    "jsonl_rows_per_symbol": 5
+  },
+  "runner": {
+    "classification": "fixture_only_not_live_vetted",
+    "input": "reports/lp_m0_integration_smoke/20260808_sol_acceptance/allocation_fixture/allocation.json",
+    "chain": "base",
+    "ticks": 1,
+    "pools": 1,
+    "rpc_health": "NORMAL",
+    "portfolio_nav_usd": 100.0,
+    "portfolio_net_usd": 0.0,
+    "final_state_sha256": "83651226bab56f96133a1321c864b03f563940676e6abee4e3aa6af3906420b6"
+  },
+  "launch_state": {
+    "shadow_14d_started": false,
+    "m1_authorized": false,
+    "fix_r4_deferred_to_shadow_week_1": true
+  }
+}

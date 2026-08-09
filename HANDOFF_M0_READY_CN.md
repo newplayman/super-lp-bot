@@ -2,7 +2,7 @@
 
 **分支：** `feat/prd-v2.1-m0-shadow`
 
-**状态：** WP-00～10 已由 sol 验收，M0 代码与只读集成 smoke 完成。M0R 的 R1/R2/R3/D2 已落提交，FIX-DOC 已补齐并完成 allocator 定向测试；这不是一次新的全量验收声明。**14 天 shadow 尚未启动，§12.0 gate 当前为 FAIL；M1 未放行。**
+**状态：** WP-00～10 与 M0R（R1/R2/R3/D2/DOC）已由 sol 复验通过；M0R 全量 `2694 passed, 14 skipped`，完整只读集成链已落数，详见 `M0R_ACCEPTANCE_20260809.md`。**14 天 shadow 尚未启动，§12.0 gate 当前为 FAIL；M1 未放行。**
 
 **发布边界：** 未合并、未推送远端；等待指挥官 review。本文不构成 M1 放行。
 
@@ -34,6 +34,7 @@
 | M0R-R2 | DONE | `25f9e94` | fail-closed cooldown reentry 接线；仅记录该修复提交，不冒充本轮全量验收 |
 | M0R-R3 | DONE | `59fcee4` | 退役 Solana registry 并归档 probe；仅记录该修复提交，不冒充本轮全量验收 |
 | M0R-D2 | DONE | `5b92e1f` | 只读 RWA session collector 与 unit 已建；尚未启动 14d shadow |
+| M0R-DOC | DONE | `42c79da` | D1-D4、RWA 启动式、M1 `1 × 50–60U` 与 REGULAR cent-units TODO 已收口 |
 
 ## 2. 指挥官批准后才可执行的启动命令
 
@@ -154,7 +155,7 @@ Shadow 五问在 14d 数据前均为 **PENDING_EVIDENCE**，不得提前作答�
 - Cost sensitivity 使用历史 swap/模型参数，不保证未来收益；已验收的历史结论是 25U 不经济，50U 起才在该样例过 gate。
 - 14d shadow 启动、gate 评审、合并、推送、M1 放行均由指挥官决定。**M1-A 签名 sidecar / M1-B EVM 执行严格禁止开工。**
 
-## 6. sol 原 M0 验收（非本轮 M0R 全量验收）
+## 6. sol 原 M0 验收
 
 测试卫生说明：全量中的 14 个 `legacy_environment_bound` 节点是**精确 nodeid skip，不是 pass**。其中 6 个锁定已结束的 2026-06-05 in-flight PID/4-of-6/固定文件计数，1 个把冻结合法 `COMPRESSED_PASS` 错写成只接受 `PASS`，7 个会把指挥官要求保留的只读 paper PID 1349731 误判为禁用进程。同文件其余测试照常运行；未忽略整文件、未改冻结报告、未改 `scripts/lp_long_horizon/`、未停止进程。精确清单与理由在 `tests/conftest.py::LEGACY_ENVIRONMENT_BOUND_NODEIDS`。
 
@@ -165,3 +166,14 @@ Shadow 五问在 14d 数据前均为 **PENDING_EVIDENCE**，不得提前作答�
 - Solana Orca account-state 1-tick + 23 字段 + SQLite gate row：完成；live account slot `438047910`，RPC `NORMAL`，`n_swaps=0`、fees=0
 - 集成详情与哈希：`reports/lp_m0_integration_smoke/SOL_ACCEPTANCE_20260808.md`
 - 最终裁决：WP-10 `DONE`；14d shadow 未启动，gate `FAIL`，M1 **NOT AUTHORIZED**
+
+## 7. sol M0R 复验（2026-08-09）
+
+- `pytest tests/ --collect-only -q`：`2708 tests collected`，0 error。
+- `pytest tests/ -q`：`2694 passed, 14 skipped`；14 个 skip 与 D1 追认的精确 nodeid 一致，未新增 skip。
+- 防御退出 replay：`reports/lp_defensive_exit_replay/20260809_m0r_acceptance/`，`7/7 PASS`。
+- live scanner `--once`：735 个快照、10 个机会评分、0 accepted；公共 Base RPC 为 `DEGRADED`，按 fail-closed 不生成 live allocation。
+- RWA collector `--once`：同库新增 20 个 `market_sessions` 行；周末 5 个 xStocks 锚显式 unavailable，Robinhood 5/5 basis 为 NULL。
+- runner 1-tick：只用 `fixture_only_not_live_vetted` 验证机械接线，同库新增 1 个唯一 `shadow_positions`；该 fixture 不可用于 14d 启动。
+- 红线扫描通过：没有新增私钥、签名、广播、付费端点或明文凭据；未触碰 Go、`scripts/lp_long_horizon/`、M1-A/M1-B。
+- M0R 裁决：**PASS / READY FOR COMMANDER LAUNCH**。启动 14d shadow、注入 Telegram 环境并验证首条真实推送仍是指挥官动作；R4 按任务包留到 shadow 第 1 周真实轨迹出现后执行。
