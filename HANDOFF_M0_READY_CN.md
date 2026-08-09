@@ -2,7 +2,7 @@
 
 **分支：** `feat/prd-v2.1-m0-shadow`
 
-**状态：** WP-00～10 与 M0R（R1/R2/R3/D2/DOC）已由 sol 复验通过；M0R 全量 `2694 passed, 14 skipped`，完整只读集成链已落数，详见 `M0R_ACCEPTANCE_20260809.md`。**14 天 shadow 尚未启动，§12.0 gate 当前为 FAIL；M1 未放行。**
+**状态：** WP-00～10、M0R 与 M0P（W6/P1/W1/W3/W4/DOC）已由 sol 复验通过；M0P 全量 `2747 passed, 14 skipped`、`2761 collected`，详见 `M0P_ACCEPTANCE_20260809.md`。live scanner 的 NetCover 已可计算，但本次诚实结果为 `accepted=0`；**14 天 shadow 尚未启动，§12.0 gate 为 `INSUFFICIENT_EVIDENCE`，M1 未放行。**
 
 **发布边界：** 未合并、未推送远端；等待指挥官 review。本文不构成 M1 放行。
 
@@ -12,8 +12,9 @@
 - **D2 — RWA daemon 已建：** 只读 RWA session collector、配对测试和 systemd unit 已由提交 `5b92e1f` 建立；当前仅表示实现完成，**未表示 daemon 或 14d shadow 已启动**。
 - **D3 — 测试期 token：** 测试阶段沿用现有 Telegram token；进入任何真钱阶段前必须在外部强制轮换。token/chat 禁止写入源码、命令行、报告、日志、commit 或本文，亦禁止把值回写仓库。
 - **D4 — M1 资金档：** M1 固定为 `1 × 50–60U`。这是后续资金档定义，不构成 M1 放行；`§12.0` gate 未通过前继续禁止真钱执行。
+- **D5 — 外网只读面板：** 指挥官明确要求 panel 监听 `0.0.0.0:8899`。默认必须从环境读取不少于 32 字符的 `LPBOT_PANEL_TOKEN` 并鉴权；仅在显式 `--no-auth` 时允许无鉴权且必须留下醒目告警/访问日志。建议防火墙只放行指挥官固定出口 IP；进入任何真钱阶段前必须重新评估面板暴露的选池、仓位和策略参数风险。
 
-## 1. WP / M0R 状态与证据
+## 1. WP / M0R / M0P 状态与证据
 
 “配对测试数”是当前目标文件的 collect 数，不冒充全仓验收总数；最终通过数与全量输出由 sol 验收报告填写。
 
@@ -35,6 +36,11 @@
 | M0R-R3 | DONE | `59fcee4` | 退役 Solana registry 并归档 probe；仅记录该修复提交，不冒充本轮全量验收 |
 | M0R-D2 | DONE | `5b92e1f` | 只读 RWA session collector 与 unit 已建；尚未启动 14d shadow |
 | M0R-DOC | DONE | `42c79da` | D1-D4、RWA 启动式、M1 `1 × 50–60U` 与 REGULAR cent-units TODO 已收口 |
+| M0P-W6 | DONE | `0541c1f` | NetCover 9 项 USD 输入装配；定向 65；live 734→10→10→10→0，1 条完整可计算，阈值未放宽 |
+| M0P-P1 | DONE | `6b381fb` | 标准库只读 panel；定向 21；鉴权/方法/脱敏/限流/只读库/并发 scanner smoke 通过，unit 未安装 |
+| M0P-W1 | DONE | `e7b30ee` | ≥50 unique identities 且 ≥5 root pools；同 root 最多重入 3 次；定向 68 |
+| M0P-W3 | DONE | `a0a43ce` | 旧失效断言改为校验薄壳不重做 redaction 且转发 canonical registry |
+| M0P-W4 | DONE | `4ee3860` | 4 类 runner 层 hard-risk 退出回归；W2 入场拒绝口径固化 |
 
 ## 2. 指挥官批准后才可执行的启动命令
 
@@ -44,7 +50,7 @@
 
 ```bash
 cd /opt/lpbot/lp-bot-v3-origin-check
-install -d -m 700 reports/lp_scanner reports/lp_scanner/rwa_sessions reports/lp_shadow_launch
+install -d -m 700 reports/lp_scanner reports/lp_scanner/rwa_sessions reports/lp_shadow_launch reports/lp_panel
 nohup python3 -u scripts/lp_scanner_daemon_v1_readonly.py \
   --db reports/lp_scanner/scanner.db \
   --coarse-interval-secs 900 --top-interval-secs 60 \
@@ -53,6 +59,16 @@ nohup python3 -u scripts/lp_rwa_collector_daemon_v1_readonly.py \
   --db reports/lp_scanner/scanner.db \
   --jsonl-dir reports/lp_scanner/rwa_sessions --interval-secs 30 \
   > reports/lp_shadow_launch/rwa_collector.log 2>&1 &
+test "${#LPBOT_PANEL_TOKEN}" -ge 32
+nohup python3 -u scripts/lp_panel_server_v1_readonly.py \
+  --host 0.0.0.0 --port 8899 \
+  --db reports/lp_scanner/scanner.db \
+  --heartbeat reports/lp_portfolio_paper_runner/latest/heartbeat.jsonl \
+  --portfolio-csv reports/lp_portfolio_paper_runner/latest/portfolio_state_hourly.csv \
+  --rwa-jsonl-dir reports/lp_scanner/rwa_sessions \
+  --probe-dir reports/lp_rpc_pool_probe \
+  --access-log reports/lp_panel/access.log \
+  > reports/lp_shadow_launch/panel.log 2>&1 &
 nohup python3 -u scripts/lp_portfolio_paper_runner_v1_readonly.py \
   --allocation "$APPROVED_ALLOCATION" --chain base --poll-secs 1800 \
   --gate-db reports/lp_scanner/scanner.db \
@@ -68,12 +84,17 @@ scanner 有已审计 unit；安装/启用是指挥官动作：
 ```bash
 sudo install -m 0644 deploy/systemd/lpbot-scanner-shadow.service /etc/systemd/system/lpbot-scanner-shadow.service
 sudo install -m 0644 deploy/systemd/lpbot-rwa-collector-shadow.service /etc/systemd/system/lpbot-rwa-collector-shadow.service
+sudo install -m 0644 deploy/systemd/lpbot-panel-shadow.service /etc/systemd/system/lpbot-panel-shadow.service
 sudo systemctl daemon-reload
 sudo systemctl enable --now lpbot-scanner-shadow.service
 sudo systemctl enable --now lpbot-rwa-collector-shadow.service
+sudo systemctl enable --now lpbot-panel-shadow.service
 sudo systemctl status lpbot-scanner-shadow.service --no-pager
 sudo systemctl status lpbot-rwa-collector-shadow.service --no-pager
+sudo systemctl status lpbot-panel-shadow.service --no-pager
 ```
+
+panel unit 只使用服务管理器继承的 `LPBOT_PANEL_TOKEN` 环境变量；不要把 token 值写入 unit、命令行、shell history 或报告。主机防火墙建议仅允许指挥官出口 IP，例如 `ufw allow from <COMMANDER_PUBLIC_IP> to any port 8899 proto tcp`，禁止对所有来源放行 8899。
 
 paper runner 暂无常驻 unit，避免把 allocation 路径静态写死。指挥官可用 transient unit（命令仍未执行）：
 
@@ -115,7 +136,7 @@ python3 -u scripts/lp_portfolio_paper_runner_v1_readonly.py \
 
 runner 每个成功 tick 自动写同一 `scanner.db`：
 
-- `shadow_positions`：按唯一 `(source_run, position_identity)` 计模拟仓，重复 tick 不增加仓数。
+- `shadow_positions`：按唯一 `(source_run, position_identity)` 计模拟仓，重复 tick 不增加仓数；gate 另把尾部 `:reentry:N` 归并为 root pool，仓位闸同时要求 ≥50 unique identities 与 ≥5 unique root pools。同池重入不能刷过覆盖广度；runner 每个 root 最多重入 3 次。
 - `shadow_gate_observations`：portfolio NAV、fee prediction/actual/error、shadow PnL、running-peak DD、RPC health 与 evidence status。
 - `rpc_severe_incidents`：`EXIT_ONLY` / `KILLED` 开严重故障，只有 `NORMAL` 闭环；`DEGRADED` 只观察、不误闭环。
 
@@ -147,12 +168,14 @@ Shadow 五问在 14d 数据前均为 **PENDING_EVIDENCE**，不得提前作答�
 - `reward_income_realized` 是 paper simulated claim；reward marked/realized/price PnL 已拆分，但没有 farm/gauge on-chain claim 证据。
 - `lvr_estimate`、`exit_latency_loss` 是模型估计，不是 observed execution；退出记录 `depth_model` 或 `flat_placeholder` 成本 basis。
 - `PRIMARY_CLOSED` 永远 shadow-only，不与 REGULAR 平均后转正。
+- `tvl_worsening` / `liquidity_worsening` 的硬动作是 v1 §23 入场拒绝，不进入存量仓 hard-risk 直通；存量仓不会仅因 TVL/流动性衰减自动退出，相关风险由入场筛选承担。
 - Reward persistence 缺失/无效/负值 fail-closed；`<6h` 不 ENTER，6–24h haircut，≥24h 才 trusted。
 - Telegram 未配置 `LPBOT_TG_TOKEN/LPBOT_TG_CHAT` 时降级 stdout、不崩溃；尚未发送真实测试消息。按 D3，测试阶段沿用现有 token，但进入真钱阶段前必须在外部强制轮换；任何 token/chat 值禁止回写源码、命令行、报告、日志或 commit。
 - Base public RPC 与 Solana public RPC 都有可变限流；没有付费 fallback。任何付费 RPC 只允许生成建议报告，必须指挥官人工批准。
 - 当前 Solana coverage 是经 registry 的真实 Orca account-state runner tick，并已进入 ledger-v2/gate；它不解码 swap event，也不产生 fee evidence。M0 不允许借机实现 M1 TS sidecar。
 - Raydium 市场快照是单次 top-1000 page，`hasNextPage=true`，页外池 unavailable/unverified；Orca 当次 page `next=null`。详见 `MARKET_SNAPSHOT_M0.md`。
 - Cost sensitivity 使用历史 swap/模型参数，不保证未来收益；已验收的历史结论是 25U 不经济，50U 起才在该样例过 gate。
+- M0P live scanner 本次 `screened=734`、`scored=10`、`accepted=0`；其中 1 条候选九项输入完整、NetCover `0.03428025` 并按原阈值诚实拒绝，其余继续因真实数据缺失 fail-closed。没有 live-vetted allocation，因此 paper runner 未启动，禁止用 fixture 代替。
 - 14d shadow 启动、gate 评审、合并、推送、M1 放行均由指挥官决定。**M1-A 签名 sidecar / M1-B EVM 执行严格禁止开工。**
 
 ## 6. sol 原 M0 验收
@@ -177,3 +200,13 @@ Shadow 五问在 14d 数据前均为 **PENDING_EVIDENCE**，不得提前作答�
 - runner 1-tick：只用 `fixture_only_not_live_vetted` 验证机械接线，同库新增 1 个唯一 `shadow_positions`；该 fixture 不可用于 14d 启动。
 - 红线扫描通过：没有新增私钥、签名、广播、付费端点或明文凭据；未触碰 Go、`scripts/lp_long_horizon/`、M1-A/M1-B。
 - M0R 裁决：**PASS / READY FOR COMMANDER LAUNCH**。启动 14d shadow、注入 Telegram 环境并验证首条真实推送仍是指挥官动作；R4 按任务包留到 shadow 第 1 周真实轨迹出现后执行。
+
+## 8. sol M0P 复验（2026-08-09）
+
+- `pytest tests/ --collect-only -q`：`2761 tests collected`，0 error。
+- `pytest tests/ -q`：`2747 passed, 14 skipped`；skip 数与 D1 精确清单一致。
+- W6 live scanner：734 screened、10 resolved/scored、0 accepted；USDC-VVV 九项输入完整，NetCover `0.03428025155511409`、`BELOW_SHADOW`，证明第五闸可计算且未放宽。
+- panel 临时端口 smoke：无鉴权 `401`、鉴权 JSON/HTML `200`、POST `405`；panel 在读库时并发 scanner 成功写入，访问日志不含 token/query 值；unit 仅写入仓库，未安装。
+- §12.0 gate：`INSUFFICIENT_EVIDENCE`，0 identities / 0 root pools；当前没有非空 live-vetted allocation，runner 按契约不启动。
+- 详细证据：`M0P_ACCEPTANCE_20260809.md` 与 `reports/lp_m0p_acceptance/20260809/`。
+- M0P 裁决：**PASS / READY FOR COMMANDER REVIEW**。是否启动 scanner + RWA collector + panel 的 14d shadow 由指挥官决定；runner 仍须等待真实非空 live-vetted allocation。

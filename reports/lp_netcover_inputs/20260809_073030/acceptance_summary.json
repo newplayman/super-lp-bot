@@ -43,10 +43,12 @@
   "notes": [
     "accepted=0 is the honest market/funnel result; no gate was relaxed.",
     "Non-stable quote pairs have no USD-normalized depth cost and remain fail-closed.",
-    "Reward-bearing pools without a measured reward-token-to-USDC route keep reward_conversion_cost_usd=null."
+    "Reward-bearing pools without a measured reward-token-to-USDC route keep reward_conversion_cost_usd=null.",
+    "After the archived full-cycle result, a top=1 scanner cycle was run concurrently with the authenticated panel to verify that its read-only SQLite connection does not block writes."
   ],
   "sha256": {
-    "scanner.db": "9dab9665b3494f84f356fbcb0c6a2818481a9fa9190b9b8e4d437b25f6903ed2",
-    "vetted_menu.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    "scanner.db_after_concurrent_panel_smoke": "d20fbe7736884502239ec8a0ecbfd792bd6059e50c28abe6047d1ed91c517740",
+    "vetted_menu.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "vetted_menu_concurrent.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
   }
 }

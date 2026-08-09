@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "as_of_date": "2026-08-09",
+  "mode": "paper_readonly",
+  "scanner_full_cycle": {
+    "screened": 734,
+    "top": 10,
+    "resolved": 10,
+    "scored": 10,
+    "accepted": 0,
+    "fully_calculable_netcover_records": 1,
+    "calculable_example_netcover_ratio": 0.03428025155511409,
+    "calculable_example_status": "BELOW_SHADOW"
+  },
+  "runner": {
+    "started": false,
+    "reason": "no non-empty live-vetted allocation; fixture substitution is forbidden"
+  },
+  "panel_smoke": {
+    "bind": "127.0.0.1:18891 temporary acceptance port",
+    "unauthorized_api_status": 401,
+    "authorized_api_status": 200,
+    "authorized_html_status": 200,
+    "post_status": 405,
+    "gate_checks": 6,
+    "initial_funnel": [734, 10, 7, 10, 0],
+    "post_concurrent_scanner_funnel": [734, 1, 0, 1, 0],
+    "concurrent_scanner_completed": true,
+    "database_status": "OK",
+    "access_log_lines": 6,
+    "query_token_logged": false,
+    "token_value_logged": false,
+    "token_archived": false
+  },
+  "gate": {
+    "overall_status": "INSUFFICIENT_EVIDENCE",
+    "unique_position_identities": 0,
+    "unique_root_pools": 0
+  },
+  "tests": {
+    "collected": 2761,
+    "passed": 2747,
+    "skipped": 14,
+    "collection_errors": 0
+  },
+  "authorization": "evidence_only_not_M1_authorization"
+}
