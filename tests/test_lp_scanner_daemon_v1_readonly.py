@@ -276,6 +276,58 @@ def test_scanner_marks_prefifth_funnel_as_explicit_intermediate(monkeypatch):
     assert observed["allow_legacy_without_netcover"] is True
 
 
+def test_w6_scanner_carries_er_horizon_and_reads_depth_before_assembly(monkeypatch):
+    import scripts.lp_funnel_vet_v1_readonly as funnel
+
+    class ReadOnlyPool:
+        def __init__(self):
+            self.calls = []
+
+        def call(self, method, params, timeout=20):
+            assert method == "eth_call"
+            selector = params[0]["data"]
+            self.calls.append(selector)
+            value = 2**96 if selector == "0x3850c7bd" else 10**24
+            return "0x" + f"{value:064x}"
+
+        def health_snapshot(self):
+            return {"state": "NORMAL"}
+
+    monkeypatch.setattr(
+        funnel,
+        "funnel_vet",
+        lambda bridge, stability, **kwargs: [dict(bridge[0], vetted=True)],
+    )
+    rpc_pool = ReadOnlyPool()
+    stages = DefaultStages(rpc_pool=rpc_pool)
+    resolved = [{
+        "pool": "0x1111111111111111111111111111111111111111",
+        "project": "uniswap-v3",
+        "tier": "A",
+    }]
+    stability = [{
+        "pool": resolved[0]["pool"],
+        "windows": [{"sigma_daily": 0.02, "er": 0.3}],
+    }]
+    carried = stages.funnel(resolved, stability)[0]
+    assert carried["holding_horizon_days"] == 14
+    assert carried["sigma_pair"] == 0.02
+    assert carried["holding_horizon_source"].startswith("measured:")
+
+    enriched = stages._attach_live_pool_state(carried)
+    assert enriched["sqrt_price_x96"] == 2**96
+    assert enriched["l_active_raw"] == 10**24
+    assert enriched["sqrt_price_x96_source"].startswith("measured:")
+
+    already_measured = stages._attach_live_pool_state({
+        "pool": resolved[0]["pool"],
+        "last_swap_price_token1_per_token0": 1.5,
+        "last_swap_liquidity_raw": 999,
+    })
+    assert already_measured["last_swap_liquidity_raw"] == 999
+    assert rpc_pool.calls == ["0x3850c7bd", "0x1a686502"]
+
+
 def test_default_live_stages_inject_rotating_rpc_pool_into_calls_and_logs(monkeypatch):
     import scripts.lp_multiwindow_stability_v1_readonly as stability
     import scripts.lp_pool_resolve_and_rank_v1_readonly as bridge

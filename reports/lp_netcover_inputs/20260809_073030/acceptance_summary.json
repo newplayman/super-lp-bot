@@ -1,0 +1,52 @@
+{
+  "as_of": "2026-08-09T07:30:31.588824+00:00",
+  "mode": "live_readonly_scanner_once",
+  "screened": 734,
+  "top": 10,
+  "resolved": 10,
+  "scored": 10,
+  "accepted": 0,
+  "fully_calculable_netcover_records": 1,
+  "inv_gate_01": {
+    "netcover_shadow_threshold": 1.0,
+    "threshold_relaxed": false,
+    "accepted_targeted": false
+  },
+  "calculable_example": {
+    "symbol": "USDC-VVV",
+    "pool": "0x67a11022b7b6ed66f81233f6c8ed6e48f7826530",
+    "holding_horizon_hours": 168.0,
+    "holding_horizon_source": "measured:latest_multiwindow_ER_policy",
+    "depth_source": "measured:latest_decoded_swap_event",
+    "fee_ev_usd": 0.06129008219178084,
+    "reward_ev_usd": 0.0,
+    "il_ev_usd": 0.9348140139088524,
+    "entry_cost_usd": 0.15,
+    "exit_cost_usd": 0.15,
+    "gas_usd": 0.0795,
+    "slippage_usd": 0.0013967232710139776,
+    "reward_conversion_cost_usd": 0.0,
+    "exit_latency_loss_usd": 0.004794520547945206,
+    "risk_usd": 1.7879122646822379,
+    "expected_net_yield_usd": -1.726622182490457,
+    "netcover_ratio": 0.03428025155511409,
+    "netcover_gate_status": "BELOW_SHADOW",
+    "accepted": false,
+    "rejection_reason": "NETCOVER_BELOW_SHADOW"
+  },
+  "rejection_reason_distribution": {
+    "NETCOVER_BELOW_SHADOW": 1,
+    "NETCOVER_INPUT_MISSING:entry_cost_usd,exit_cost_usd,slippage_usd,reward_conversion_cost_usd": 4,
+    "NETCOVER_INPUT_MISSING:fee_ev_usd,reward_ev_usd,il_ev_usd,entry_cost_usd,exit_cost_usd,slippage_usd,reward_conversion_cost_usd,exit_latency_loss_usd": 4,
+    "NETCOVER_INPUT_MISSING:fee_ev_usd,reward_ev_usd,il_ev_usd,reward_conversion_cost_usd,exit_latency_loss_usd": 1
+  },
+  "notes": [
+    "accepted=0 is the honest market/funnel result; no gate was relaxed.",
+    "Non-stable quote pairs have no USD-normalized depth cost and remain fail-closed.",
+    "Reward-bearing pools without a measured reward-token-to-USDC route keep reward_conversion_cost_usd=null."
+  ],
+  "sha256": {
+    "scanner.db": "9dab9665b3494f84f356fbcb0c6a2818481a9fa9190b9b8e4d437b25f6903ed2",
+    "vetted_menu.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+  }
+}

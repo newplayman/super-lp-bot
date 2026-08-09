@@ -586,7 +586,7 @@ class DefaultStages:
         # public funnel API itself remains fail-closed by default; only this
         # orchestrated path opts into the intermediate state, and
         # ``_enforce_fifth_gate`` below produces the final vetted value.
-        return list(
+        records = list(
             funnel.funnel_vet(
                 resolved,
                 stability,
@@ -594,6 +594,74 @@ class DefaultStages:
                 allow_legacy_without_netcover=True,
             )
         )
+        # W6: carry the already-measured latest pair sigma/ER into the input
+        # assembler and reuse the existing ER policy's discrete PASSIVE H.
+        # Missing measurements remain absent; no horizon is guessed here.
+        stability_by_pool = {
+            _pool_identity(item): item for item in stability
+            if item.get("pool") or item.get("resolved_pool")
+        }
+        policy_module = importlib.import_module("scripts.lp_tier_range_policy_v1_readonly")
+        for record in records:
+            evidence = stability_by_pool.get(_pool_identity(record), {})
+            windows = evidence.get("windows") or ()
+            latest = windows[0] if windows and isinstance(windows[0], Mapping) else {}
+            sigma = _finite_float(latest.get("sigma_daily"))
+            er = _finite_float(latest.get("er"))
+            if sigma is None or er is None:
+                continue
+            policy = policy_module.build_policy(
+                sigma, er, tier_hint=str(record.get("tier") or "")
+            )
+            record["sigma_pair"] = sigma
+            record["er"] = er
+            record["holding_horizon_days"] = policy["H_days"]
+            record["holding_horizon_source"] = "measured:latest_multiwindow_ER_policy"
+        return records
+
+    def _attach_live_pool_state(self, source: Mapping[str, Any]) -> Dict[str, Any]:
+        """Read slot0/liquidity through the shared read-only RPC pool for W6."""
+        record = dict(source)
+        if (
+            _first(
+                record,
+                "l_active_raw",
+                "active_liquidity_raw",
+                "l_active_raw_historical",
+                "last_swap_liquidity_raw",
+            )
+            is not None
+            and _first(
+                record,
+                "sqrtPriceX96",
+                "sqrt_price_x96",
+                "price_usd",
+                "last_swap_price_token1_per_token0",
+            )
+            is not None
+        ):
+            return record
+        pool = _first(record, "resolved_pool", "pool")
+        if not pool:
+            return record
+        try:
+            slot0 = self._rpc_pool.call(
+                "eth_call", [{"to": str(pool), "data": "0x3850c7bd"}, "latest"]
+            )
+            liquidity = self._rpc_pool.call(
+                "eth_call", [{"to": str(pool), "data": "0x1a686502"}, "latest"]
+            )
+            slot0_text = str(slot0 or "")
+            liquidity_text = str(liquidity or "")
+            if slot0_text.startswith("0x") and len(slot0_text) >= 66:
+                record["sqrt_price_x96"] = int(slot0_text[2:66], 16)
+                record["sqrt_price_x96_source"] = "measured:pool.slot0_latest"
+            if liquidity_text.startswith("0x") and len(liquidity_text) >= 66:
+                record["l_active_raw"] = int(liquidity_text[2:66], 16)
+                record["l_active_raw_source"] = "measured:pool.liquidity_latest"
+        except Exception as exc:  # missing depth evidence must remain fail-closed
+            record["netcover_depth_error"] = f"{type(exc).__name__}: {exc}"
+        return record
 
     @staticmethod
     def _enforce_fifth_gate(
@@ -644,13 +712,22 @@ class DefaultStages:
         return cls._enforce_fifth_gate(records, rejected)
 
     def netcover(self, records: Sequence[Mapping[str, Any]]) -> List[Dict[str, Any]]:
-        """Invoke WP-04 through its record adapter, never duplicate its math.
+        """Assemble horizon-USD inputs, then invoke WP-04 without duplicating math.
 
         During independent Wave-2 development the module may not exist yet.
         Missing/unknown interfaces are an explicit rejection, never a silent
         fee-cover fallback.  WP-04 may expose either of the documented record
         adapter names below without creating an import cycle.
         """
+        try:
+            inputs_module = importlib.import_module("scripts.lp_netcover_inputs_v1_readonly")
+            assembler = getattr(inputs_module, "assemble_netcover_inputs")
+            assembled = [
+                assembler(self._attach_live_pool_state(record)) for record in records
+            ]
+        except Exception as exc:
+            return self._fail_closed_netcover(records, f"netcover input assembly error: {exc}")
+
         try:
             module = importlib.import_module("scripts.lp_netcover_engine_v1_readonly")
         except ImportError:
@@ -660,7 +737,7 @@ class DefaultStages:
             adapter = getattr(module, name, None)
             if callable(adapter):
                 try:
-                    result = adapter(list(records))
+                    result = adapter(assembled)
                 except Exception as exc:
                     return self._fail_closed_netcover(records, f"netcover error: {exc}")
                 try:

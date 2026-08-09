@@ -16,8 +16,24 @@ from scripts.lp_pool_resolve_and_rank_v1_readonly import (
     composite_score,
     encode_address_word,
     encode_int_word,
+    latest_swap_cost_state,
     reward_adjusted_cover,
 )
+
+
+def test_w6_latest_swap_price_and_raw_liquidity_are_carried_without_tvl_guess() -> None:
+    out = latest_swap_cost_state([
+        {"price": 2.5, "liquidity": 123, "block": 1},
+        {"price": 2.75, "liquidity": 456, "block": 2},
+    ])
+    assert out == {
+        "last_swap_price_token1_per_token0": 2.75,
+        "last_swap_liquidity_raw": 456,
+        "last_swap_cost_state_source": "measured:latest_decoded_swap_event",
+    }
+    assert latest_swap_cost_state([{"price": 2.0, "liquidity": 0}])[
+        "last_swap_liquidity_raw"
+    ] is None
 
 
 def test_abi_encode_helpers_address_and_int24() -> None:

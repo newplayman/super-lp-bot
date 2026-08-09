@@ -383,6 +383,38 @@ def _extract_swap_amount1(swap: Any) -> float:
     return 0.0
 
 
+def latest_swap_cost_state(swaps: Sequence[Any]) -> Dict[str, Any]:
+    """Return measured terminal price/liquidity without substituting pool TVL.
+
+    ``fetch_pool_swaps`` already decodes both values from the Swap event.  W6
+    carries them forward so NetCover can use depth evidence without another
+    source or a TVL-as-liquidity approximation.  Invalid/absent evidence stays
+    ``None`` and therefore fails closed downstream.
+    """
+    for swap in reversed(swaps):
+        if not isinstance(swap, Mapping):
+            continue
+        args = swap.get("args") if isinstance(swap.get("args"), Mapping) else swap
+        price = _safe_float(
+            args.get("price", args.get("price_token1_per_token0")), None
+        )
+        liquidity = _safe_int(
+            args.get("liquidity", args.get("active_liquidity_raw")), None
+        )
+        if price is None or price <= 0 or liquidity is None or liquidity <= 0:
+            continue
+        return {
+            "last_swap_price_token1_per_token0": float(price),
+            "last_swap_liquidity_raw": int(liquidity),
+            "last_swap_cost_state_source": "measured:latest_decoded_swap_event",
+        }
+    return {
+        "last_swap_price_token1_per_token0": None,
+        "last_swap_liquidity_raw": None,
+        "last_swap_cost_state_source": None,
+    }
+
+
 def _extract_replay_metrics(result: Any) -> Tuple[float, float]:
     if isinstance(result, Mapping):
         fees_quote = _safe_float(
@@ -513,6 +545,7 @@ def process_candidate(
         )
         swap_count = len(swaps)
         record["swap_count"] = swap_count
+        record.update(latest_swap_cost_state(swaps))
 
         window_days = float(window_blocks) / BASE_BLOCKS_PER_DAY
         amount1_sum = sum(abs(_extract_swap_amount1(swap)) for swap in swaps)
