@@ -422,9 +422,19 @@ def read_probe_outputs(path: Path, current_health: str) -> dict[str, Any]:
             if not match:
                 continue
             endpoint = urlsplit(match.group(2).rstrip(",;"))
-            safe_netloc = endpoint.netloc.rsplit("@", 1)[-1]
+            hostname = endpoint.hostname
+            if not hostname:
+                continue
+            try:
+                port = endpoint.port
+            except ValueError:
+                continue
+            safe_host = f"[{hostname}]" if ":" in hostname else hostname
+            safe_netloc = f"{safe_host}:{port}" if port is not None else safe_host
             endpoints.append({
-                "endpoint": f"{endpoint.scheme}://{safe_netloc}{endpoint.path}",
+                # Probe URLs may carry provider credentials in the userinfo,
+                # path or query.  The panel only needs the canonical origin.
+                "endpoint": f"{endpoint.scheme.lower()}://{safe_netloc}",
                 "status": "UP" if match.group(1) == "UP" else "DOWN",
                 "cooldown": "not_persisted",
                 "recent_429_count": sum("429" in item for item in lines),

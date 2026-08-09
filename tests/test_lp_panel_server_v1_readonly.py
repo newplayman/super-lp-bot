@@ -15,6 +15,7 @@ from scripts import lp_panel_server_v1_readonly as panel
 
 TOKEN = "p" * 40
 BOT_TOKEN_SHAPE = "1234567890:" + "A" * 35
+RPC_PATH_KEY = "K" * 40
 
 
 def make_db(path: Path) -> None:
@@ -108,7 +109,8 @@ def make_files(root: Path) -> tuple[Path, Path, Path, Path]:
     probe = root / "probe"
     probe.mkdir()
     (probe / "probe_solana.txt").write_text(
-        "UP slot=1 https://rpc.example.test/path?api-key=must-not-leak\n429\n",
+        f"UP slot=1 https://user:pass@rpc.example.test:8545/v2/{RPC_PATH_KEY}"
+        "?api-key=must-not-leak\n429\n",
         encoding="utf-8",
     )
     return heartbeat, portfolio, rwa, probe
@@ -235,16 +237,19 @@ def test_only_whitelisted_paths_and_request_body_limit(tmp_path, monkeypatch):
         stop(server, thread)
 
 
-def test_payload_scrubs_sensitive_keys_values_and_endpoint_queries(tmp_path):
+def test_payload_exposes_only_probe_origin_and_scrubs_generic_path_key(tmp_path):
     builder = make_builder(tmp_path)
     state = builder.build()
     encoded = json.dumps(state)
     assert "do-not-emit" not in encoded
     assert BOT_TOKEN_SHAPE not in encoded
     assert "must-not-leak" not in encoded
+    assert RPC_PATH_KEY not in encoded
+    assert "user:pass" not in encoded
+    assert "/v2/" not in encoded
     assert "api_key" not in encoded
     assert "private_key" not in encoded
-    assert state["rpc"]["chains"][0]["endpoints"][0]["endpoint"] == "https://rpc.example.test/path"
+    assert state["rpc"]["chains"][0]["endpoints"][0]["endpoint"] == "https://rpc.example.test:8545"
 
 
 def test_http_response_has_no_secret_shapes(tmp_path, monkeypatch):
@@ -374,6 +379,64 @@ def test_systemd_unit_is_hardened_and_has_no_embedded_credential():
         assert required in unit
     assert "Environment=LPBOT_PANEL_TOKEN=" not in unit
     assert "--no-auth" not in unit
+
+
+def test_handoff_runner_output_matches_panel_inputs_and_imports_token_environment():
+    handoff = (panel.REPO_ROOT / "HANDOFF_M0_READY_CN.md").read_text()
+    unit = (panel.REPO_ROOT / "deploy/systemd/lpbot-panel-shadow.service").read_text()
+    runner_dir = "reports/lp_portfolio_paper_runner/latest"
+    absolute_runner_dir = f"{panel.REPO_ROOT}/{runner_dir}"
+
+    # Both commander-approved long-running runner launch forms (nohup and
+    # transient unit) must write where both panel launch forms read.
+    assert sum(
+        line.strip().startswith(f"--out {runner_dir}")
+        for line in handoff.splitlines()
+    ) == 2
+    assert f"--heartbeat {runner_dir}/heartbeat.jsonl" in handoff
+    assert f"--portfolio-csv {runner_dir}/portfolio_state_hourly.csv" in handoff
+    assert f"--heartbeat {absolute_runner_dir}/heartbeat.jsonl" in unit
+    assert f"--portfolio-csv {absolute_runner_dir}/portfolio_state_hourly.csv" in unit
+    assert runner_dir in handoff.split("install -d -m 700", 1)[1].splitlines()[0]
+
+    import_command = (
+        "sudo --preserve-env=LPBOT_PANEL_TOKEN systemctl "
+        "import-environment LPBOT_PANEL_TOKEN"
+    )
+    assert import_command in handoff
+    assert handoff.index(import_command) < handoff.index(
+        "sudo systemctl enable --now lpbot-panel-shadow.service"
+    )
+
+    first_unit_install = handoff.index(
+        "sudo install -m 0644 deploy/systemd/lpbot-scanner-shadow.service"
+    )
+    first_enable = handoff.index(
+        "sudo systemctl enable --now lpbot-scanner-shadow.service"
+    )
+    owner_prep_prefix = "sudo install -d -o lpbot -g lpbot -m 0700 "
+    for relative_dir in (
+        "reports/lp_panel",
+        "reports/lp_scanner",
+        "reports/lp_scanner/rwa_sessions",
+        runner_dir,
+    ):
+        owner_prep = f"{owner_prep_prefix}{panel.REPO_ROOT}/{relative_dir}"
+        assert owner_prep in handoff
+        assert handoff.index(owner_prep) < first_unit_install < first_enable
+
+    ownership_commands = {
+        line.strip()
+        for line in handoff.splitlines()
+        if line.strip().startswith("sudo chown -R lpbot:lpbot ")
+    }
+    expected_ownership_commands = {
+        f"sudo chown -R lpbot:lpbot {panel.REPO_ROOT}/reports/lp_scanner",
+        f"sudo chown -R lpbot:lpbot {panel.REPO_ROOT}/reports/lp_panel",
+        f"sudo chown -R lpbot:lpbot {panel.REPO_ROOT}/{runner_dir}",
+    }
+    assert ownership_commands == expected_ownership_commands
+    assert all(handoff.index(command) < first_unit_install for command in ownership_commands)
 
 
 def test_source_has_no_execution_or_static_file_server_surface():

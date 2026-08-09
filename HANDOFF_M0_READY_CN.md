@@ -50,7 +50,7 @@
 
 ```bash
 cd /opt/lpbot/lp-bot-v3-origin-check
-install -d -m 700 reports/lp_scanner reports/lp_scanner/rwa_sessions reports/lp_shadow_launch reports/lp_panel
+install -d -m 700 reports/lp_scanner reports/lp_scanner/rwa_sessions reports/lp_shadow_launch reports/lp_panel reports/lp_portfolio_paper_runner/latest
 nohup python3 -u scripts/lp_scanner_daemon_v1_readonly.py \
   --db reports/lp_scanner/scanner.db \
   --coarse-interval-secs 900 --top-interval-secs 60 \
@@ -72,6 +72,7 @@ nohup python3 -u scripts/lp_panel_server_v1_readonly.py \
 nohup python3 -u scripts/lp_portfolio_paper_runner_v1_readonly.py \
   --allocation "$APPROVED_ALLOCATION" --chain base --poll-secs 1800 \
   --gate-db reports/lp_scanner/scanner.db \
+  --out reports/lp_portfolio_paper_runner/latest \
   > reports/lp_shadow_launch/runner.log 2>&1 &
 ```
 
@@ -82,10 +83,19 @@ nohup python3 -u scripts/lp_portfolio_paper_runner_v1_readonly.py \
 scanner 有已审计 unit；安装/启用是指挥官动作：
 
 ```bash
+sudo install -d -o lpbot -g lpbot -m 0700 /opt/lpbot/lp-bot-v3-origin-check/reports/lp_panel
+sudo install -d -o lpbot -g lpbot -m 0700 /opt/lpbot/lp-bot-v3-origin-check/reports/lp_scanner
+sudo install -d -o lpbot -g lpbot -m 0700 /opt/lpbot/lp-bot-v3-origin-check/reports/lp_scanner/rwa_sessions
+sudo install -d -o lpbot -g lpbot -m 0700 /opt/lpbot/lp-bot-v3-origin-check/reports/lp_portfolio_paper_runner/latest
+sudo chown -R lpbot:lpbot /opt/lpbot/lp-bot-v3-origin-check/reports/lp_scanner
+sudo chown -R lpbot:lpbot /opt/lpbot/lp-bot-v3-origin-check/reports/lp_panel
+sudo chown -R lpbot:lpbot /opt/lpbot/lp-bot-v3-origin-check/reports/lp_portfolio_paper_runner/latest
 sudo install -m 0644 deploy/systemd/lpbot-scanner-shadow.service /etc/systemd/system/lpbot-scanner-shadow.service
 sudo install -m 0644 deploy/systemd/lpbot-rwa-collector-shadow.service /etc/systemd/system/lpbot-rwa-collector-shadow.service
 sudo install -m 0644 deploy/systemd/lpbot-panel-shadow.service /etc/systemd/system/lpbot-panel-shadow.service
 sudo systemctl daemon-reload
+test "${#LPBOT_PANEL_TOKEN}" -ge 32
+sudo --preserve-env=LPBOT_PANEL_TOKEN systemctl import-environment LPBOT_PANEL_TOKEN
 sudo systemctl enable --now lpbot-scanner-shadow.service
 sudo systemctl enable --now lpbot-rwa-collector-shadow.service
 sudo systemctl enable --now lpbot-panel-shadow.service
@@ -94,7 +104,7 @@ sudo systemctl status lpbot-rwa-collector-shadow.service --no-pager
 sudo systemctl status lpbot-panel-shadow.service --no-pager
 ```
 
-panel unit 只使用服务管理器继承的 `LPBOT_PANEL_TOKEN` 环境变量；不要把 token 值写入 unit、命令行、shell history 或报告。主机防火墙建议仅允许指挥官出口 IP，例如 `ufw allow from <COMMANDER_PUBLIC_IP> to any port 8899 proto tcp`，禁止对所有来源放行 8899。
+上述绝对路径的 `install -d` 是 systemd 启动前置：它们必须属于 `lpbot:lpbot` 且权限为 `0700`，否则 unit 的 `User=lpbot` 与可写预检会 fail-closed。由于 `install -d` 不会修正已有 `scanner.db` 等文件的 owner，紧随其后的 ownership 交接必须保留，且 `chown -R` 仅允许指向上述 scanner、panel 和 runner/latest 三个明确子树，禁止对仓库根或 `reports/` 根执行。panel unit 只使用服务管理器继承的 `LPBOT_PANEL_TOKEN` 环境变量；启动前必须用上述 `systemctl import-environment LPBOT_PANEL_TOKEN` 把当前 shell 中的变量导入 system manager，`--preserve-env` 仅传递环境变量而不把值放进命令行。不要把 token 值写入 unit、命令行、shell history 或报告。主机防火墙建议仅允许指挥官出口 IP，例如 `ufw allow from <COMMANDER_PUBLIC_IP> to any port 8899 proto tcp`，禁止对所有来源放行 8899。
 
 paper runner 暂无常驻 unit，避免把 allocation 路径静态写死。指挥官可用 transient unit（命令仍未执行）：
 
@@ -105,8 +115,11 @@ sudo systemd-run --unit=lpbot-paper-shadow \
   --property=NoNewPrivileges=yes \
   /usr/bin/python3 -u scripts/lp_portfolio_paper_runner_v1_readonly.py \
   --allocation "$APPROVED_ALLOCATION" --chain base --poll-secs 1800 \
-  --gate-db reports/lp_scanner/scanner.db
+  --gate-db reports/lp_scanner/scanner.db \
+  --out reports/lp_portfolio_paper_runner/latest
 ```
+
+nohup 与 transient unit 两种启动方式都必须保留上述显式 `--out reports/lp_portfolio_paper_runner/latest`；panel 与 `lpbot-panel-shadow.service` 只读取该固定目录，不会自动猜测 runner 的时间戳目录。不得在同一固定目录上并发启动第二个 runner。
 
 ## 3. scanner → allocator → runner 的可审计路径
 
