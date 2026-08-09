@@ -81,7 +81,7 @@ DefiLlama 的 `apyMean30d`、`apyBase7d` 与变化百分比描述总 APY/错配�
 
 ### 3.3 对抗验收发现与修复
 
-独立探针发现旧终闸只合取前四闸和 NetCover，没有再次合取 `entry_eligible`；若 WEAK/ABSENT 的其余闸全部通过，理论上可被错误 accepted。该问题在正式 Base 证据前被发现，旧批次 `reports/lp_m0n_acceptance/20260809_base_once/` 立即作废并停止；其数据库只有 schema、0 score，不作为证据。
+独立探针发现旧终闸只合取前四闸和 NetCover，没有再次合取 `entry_eligible`。这不只是理论风险：M0F 两个真实批次中的 MSUSD-USDC 均已出现 `netcover_pass=True` 且 `entry_eligible=False`，仅因独立的 `stable` 闸同时失败才没有被误放行。该问题在 M0N 正式 Base 证据前被发现，旧批次 `reports/lp_m0n_acceptance/20260809_base_once/` 立即作废并停止；其数据库只有 schema、0 score，不作为证据。
 
 `a08b74f` 修复两层边界：
 
@@ -152,7 +152,7 @@ INSUFFICIENT_EVIDENCE reports/lp_m0n_acceptance/20260809_base_once_postfix/gate_
 
 0 unique position identities、0 unique root pools；duration、fee error、PnL、drawdown 均 UNKNOWN；未关闭严重 RPC incident 为 0、该子闸 PASS。gate JSON/Markdown SHA-256 分别为 `b7a71eed7078118becea5950c8899b6374e44841999c2b8f3494f79787d54ad9` / `eb7dcae804cb07bd078bc26cbe7e04e1ceac9dfb34239ae949a666326cf4208e`。
 
-- 全量：`2858 passed, 14 skipped in 140.81s`；总计 2872 tests，0 collection error。14 skips 仍是既有精确历史环境 nodeids，没有新增 skip。
+- TP-C 最终收口全量复测：`2906 passed, 14 skipped in 253.87s`；总计 2920 tests，0 collection error。14 skips 仍是既有精确历史环境 nodeids，没有新增 skip。
 - N1/N2 独立定向复核 120 passed；终闸联合相关回归 188 passed；N4 相关测试及 DB 交叉断言通过。
 - 相对 `1e207af`，任务包点名的三个阈值保护文件 `lp_netcover_engine`、`lp_tier_range_policy`、`lp_multiwindow_stability` diff 为空。
 - Go、`scripts/lp_long_horizon/`、M1、依赖清单与 `/opt/lpbot/lp-bot-v3` 封存仓均 0 改动；tracked `.pyc=0`。

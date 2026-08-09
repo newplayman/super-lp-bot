@@ -1,0 +1,262 @@
+{
+  "gap_through_count": 1,
+  "generated_at_utc": "2026-08-09T17:54:19.066999+00:00",
+  "paper_only": true,
+  "passed": true,
+  "results": [
+    {
+      "assertions": {
+        "actual_cost_comparison_recorded": true,
+        "five_mandatory_fields": true,
+        "paper_only": true,
+        "paper_remove_and_swap": true,
+        "post_risky_inventory_at_target": true,
+        "real_lower_breach": true,
+        "remove_to_stable_recommended": true,
+        "risk_off_complete": true
+      },
+      "breach": {
+        "before_block": 47220999,
+        "before_price": 1670.878720253839,
+        "before_tx": "0xc3c7e7ae946dcf5ebb1caa5054ace1f8073e562abf8d7911f54db53803e31b3c",
+        "breach_block": 47222801,
+        "breach_price": 1669.9252504577303,
+        "breach_tx": "0x629a623213901ec9d4a86ec0e4c65451650d46d303d748b0415f2343af9b6098",
+        "gap_bps": 5.706397385705348,
+        "gap_through": false,
+        "lower_bound": 1670.4019853557847
+      },
+      "cost_comparison": {
+        "absolute_deviation_pct": 20.881335590702548,
+        "actual_notional_usd": 133.41807104916518,
+        "benchmark_before_block": 47222835,
+        "benchmark_block": 47222838,
+        "benchmark_tx": "0x9b6567c4e2e7898c9836b65cb67c9f892cb6b47ef9f3873da56729e2451a5468",
+        "model_cost_usd": 0.06691148457642976,
+        "model_minus_actual_pct": -20.881335590702548,
+        "replay_actual_cost_usd": 0.08457104916519143,
+        "selection_rule": "first later distinct-block plausible sell-base event; not selected on model agreement"
+      },
+      "decision": {
+        "breach_direction": "LOWER",
+        "expected_swap_cost": 0.018770730568938656,
+        "hard_risk_override": false,
+        "next_state": "EXITING",
+        "post_remove_delta_usd": 37.5,
+        "post_remove_inventory_ratio": 1.0,
+        "previous_state": "RISK_OFF_READY",
+        "reason": "exit_mode_selected",
+        "recommended_exit_mode": "REMOVE_TO_STABLE",
+        "should_execute": true
+      },
+      "five_mandatory_fields": {
+        "breach_direction": "LOWER",
+        "expected_swap_cost": 0.018770730568938656,
+        "post_remove_delta_usd": 37.5,
+        "post_remove_inventory_ratio": 1.0,
+        "recommended_exit_mode": "REMOVE_TO_STABLE"
+      },
+      "paper_only": true,
+      "paper_plan": {
+        "actual_slippage_bps": null,
+        "alert": false,
+        "block_reason": null,
+        "exit_latency_loss_usd": 0.0,
+        "expected_slippage_bps": 0.005528151716975067,
+        "expected_swap_cost_usd": 0.018770730568938656,
+        "mode": "REMOVE_TO_STABLE",
+        "next_state": "COOLDOWN",
+        "paper_actions": [
+          "simulate_remove",
+          "simulate_swap_to_stable"
+        ],
+        "paper_only": true,
+        "post_trade_risky_inventory_ratio": 0.25,
+        "quote_required": true,
+        "quote_succeeded": true,
+        "remove_simulated": true,
+        "risk_off_complete": true,
+        "substate": "paper_swap_ready",
+        "swap_allowed": true,
+        "swap_requested": true
+      },
+      "passed": true,
+      "scenario": "Aerodrome Slipstream WETH/USDC 0.05%",
+      "source_event_count": 1000
+    },
+    {
+      "assertions": {
+        "actual_cost_comparison_recorded": true,
+        "five_mandatory_fields": true,
+        "paper_only": true,
+        "paper_remove_and_swap": true,
+        "post_risky_inventory_at_target": true,
+        "real_lower_breach": true,
+        "remove_to_stable_recommended": true,
+        "risk_off_complete": true
+      },
+      "breach": {
+        "before_block": 47223197,
+        "before_price": 1669.490817104388,
+        "before_tx": "0xa5abeccda958723225ccc5f4734b4feb501571d3833f519c3918ceabe5d56f52",
+        "breach_block": 47223198,
+        "breach_price": 1668.580386097612,
+        "breach_tx": "0x0492342b915ec2a4075982f6058bc9d9556e9644e68fd278d894076f257ceecd",
+        "gap_bps": 5.453345399976844,
+        "gap_through": false,
+        "lower_bound": 1669.035601601
+      },
+      "cost_comparison": {
+        "absolute_deviation_pct": 1.2372227451776039,
+        "actual_notional_usd": 265.93265132156085,
+        "benchmark_before_block": 47223205,
+        "benchmark_block": 47223206,
+        "benchmark_tx": "0xa1af92c2306ac211ee2dd006886333f949ccedb7f2ee4dbd322051e6cc77af6c",
+        "model_cost_usd": 0.029185705889007853,
+        "model_minus_actual_pct": -1.2372227451776039,
+        "replay_actual_cost_usd": 0.029551321560859378,
+        "selection_rule": "first later distinct-block plausible sell-base event; not selected on model agreement"
+      },
+      "decision": {
+        "breach_direction": "LOWER",
+        "expected_swap_cost": 0.0038015553960621786,
+        "hard_risk_override": false,
+        "next_state": "EXITING",
+        "post_remove_delta_usd": 37.5,
+        "post_remove_inventory_ratio": 1.0,
+        "previous_state": "RISK_OFF_READY",
+        "reason": "exit_mode_selected",
+        "recommended_exit_mode": "REMOVE_TO_STABLE",
+        "should_execute": true
+      },
+      "five_mandatory_fields": {
+        "breach_direction": "LOWER",
+        "expected_swap_cost": 0.0038015553960621786,
+        "post_remove_delta_usd": 37.5,
+        "post_remove_inventory_ratio": 1.0,
+        "recommended_exit_mode": "REMOVE_TO_STABLE"
+      },
+      "paper_only": true,
+      "paper_plan": {
+        "actual_slippage_bps": null,
+        "alert": false,
+        "block_reason": null,
+        "exit_latency_loss_usd": 0.0,
+        "expected_slippage_bps": 0.013748105616580828,
+        "expected_swap_cost_usd": 0.0038015553960621786,
+        "mode": "REMOVE_TO_STABLE",
+        "next_state": "COOLDOWN",
+        "paper_actions": [
+          "simulate_remove",
+          "simulate_swap_to_stable"
+        ],
+        "paper_only": true,
+        "post_trade_risky_inventory_ratio": 0.25,
+        "quote_required": true,
+        "quote_succeeded": true,
+        "remove_simulated": true,
+        "risk_off_complete": true,
+        "substate": "paper_swap_ready",
+        "swap_allowed": true,
+        "swap_requested": true
+      },
+      "passed": true,
+      "scenario": "PancakeSwap V3 WETH/USDC 0.01%",
+      "source_event_count": 1000
+    },
+    {
+      "assertions": {
+        "actual_cost_comparison_recorded": true,
+        "alerted": true,
+        "five_mandatory_fields": true,
+        "inventory_not_falsely_complete": true,
+        "paper_only": true,
+        "real_lower_breach": true,
+        "remove_to_stable_recommended": true,
+        "slippage_limit_recorded": true,
+        "staged_exit": true,
+        "unacceptable_quote_no_swap": true
+      },
+      "breach": {
+        "before_block": 47219128,
+        "before_price": 1664.9535761268141,
+        "before_tx": "0x7e0993aed110db1a430c4f4a4800692b07f53d35c19f538a076d380fa7202078",
+        "breach_block": 47219137,
+        "breach_price": 1662.829597951634,
+        "breach_tx": "0x24b4bac93d051d21710d6e0f66a57e6a506c8375c4fca9407e5114e85ed7ea18",
+        "gap_bps": 12.756981369541508,
+        "gap_through": true,
+        "lower_bound": 1663.891587039224
+      },
+      "cost_comparison": {
+        "absolute_deviation_pct": 0.26800003102424425,
+        "actual_notional_usd": 499.39169200282737,
+        "benchmark_before_block": 47219138,
+        "benchmark_block": 47219141,
+        "benchmark_tx": "0x3fef40b27c85be9d2dea3387ab6232b958409a666d9f3aa2e0aaf69c6c73b70c",
+        "model_cost_usd": 0.2938024961683854,
+        "model_minus_actual_pct": -0.26800003102424425,
+        "replay_actual_cost_usd": 0.29459200282735765,
+        "selection_rule": "first later distinct-block plausible sell-base event; not selected on model agreement"
+      },
+      "decision": {
+        "breach_direction": "LOWER",
+        "expected_swap_cost": 0.018998701479215615,
+        "hard_risk_override": false,
+        "next_state": "EXITING",
+        "post_remove_delta_usd": 37.5,
+        "post_remove_inventory_ratio": 1.0,
+        "previous_state": "RISK_OFF_READY",
+        "reason": "exit_mode_selected",
+        "recommended_exit_mode": "REMOVE_TO_STABLE",
+        "should_execute": true
+      },
+      "five_mandatory_fields": {
+        "breach_direction": "LOWER",
+        "expected_swap_cost": 0.018998701479215615,
+        "post_remove_delta_usd": 37.5,
+        "post_remove_inventory_ratio": 1.0,
+        "recommended_exit_mode": "REMOVE_TO_STABLE"
+      },
+      "paper_only": true,
+      "paper_plan": {
+        "actual_slippage_bps": null,
+        "alert": true,
+        "block_reason": "slippage_limit",
+        "exit_latency_loss_usd": 0.0,
+        "expected_slippage_bps": 76.0,
+        "expected_swap_cost_usd": 0.018998701479215615,
+        "mode": "REMOVE_TO_STABLE",
+        "next_state": "EXITING",
+        "paper_actions": [
+          "simulate_remove"
+        ],
+        "paper_only": true,
+        "post_trade_risky_inventory_ratio": 1.0,
+        "quote_required": true,
+        "quote_succeeded": true,
+        "remove_simulated": true,
+        "risk_off_complete": false,
+        "substate": "staged/limit_exit",
+        "swap_allowed": false,
+        "swap_requested": true
+      },
+      "passed": true,
+      "scenario": "PancakeSwap V3 WETH/USDC 0.05%",
+      "source_event_count": 1000
+    }
+  ],
+  "safety": {
+    "broadcast": false,
+    "signing": false,
+    "threshold_changes": false,
+    "wallet": false
+  },
+  "scenario_count": 3,
+  "schema_version": "lp_defensive_exit_lower_replay_v1",
+  "source": {
+    "path": "reports/strategy_evidence_r4_swap_event_fee_replay/20260611_080000/swap_events_decoded.csv",
+    "real_historical_swap_rows": 3000,
+    "sha256": "6b70c073a0c3d31fcf562eff33954af78fd9674d4df80fce006e2e2bd38a7c03"
+  }
+}

@@ -12,6 +12,9 @@ from scripts.lp_cost_sensitivity_v1_readonly import (
     default_base_vetted_pool,
 )
 from scripts.lp_netcover_engine_v1_readonly import (
+    ACTIVE_SHARE_LIMIT,
+    HARD_POSITION_TVL_SHARE,
+    POSITION_TVL_SHARE,
     NETCOVER_SHADOW,
     NETCOVER_TINY_LIVE,
     absolute_profit_gate,
@@ -78,6 +81,35 @@ def test_all_nine_fields_are_calculated_and_each_has_semantics():
     assert out["reward_conversion_cost_usd"] == 0.0
     assert out["exit_latency_loss_usd"] > 0
     assert out["netcover_input_semantics"] == INPUT_SEMANTICS
+
+
+def test_m1_runtime_position_cap_is_persisted_and_hard_share_verified():
+    out = assemble_netcover_inputs(_complete(tvlUsd=150_000.0))
+
+    assert out["capital_tier"] == "M1"
+    assert out["tier_configured_max_usd"] == 60.0
+    assert out["active_liquidity_notional_usd"] > 0.0
+    assert out["position_cap_usd"] == 60.0
+    assert out["position_investable_usd"] == M1_MIN_POSITION_USD
+    assert out["position_cap_tvl_share"] == pytest.approx(0.0004)
+    assert out["position_cap_regular_tvl_share_limit"] == POSITION_TVL_SHARE
+    assert out["position_cap_active_share_limit"] == ACTIVE_SHARE_LIMIT
+    assert out["position_cap_tvl_share"] <= HARD_POSITION_TVL_SHARE
+    assert out["position_cap_hard_tvl_share_ok"] is True
+    assert out["position_cap_pass"] is True
+
+
+def test_thin_active_liquidity_fails_closed_below_m1_actual_position():
+    out = assemble_netcover_inputs(_complete(
+        tvlUsd=1_000_000.0,
+        l_active_raw=1,
+        last_swap_liquidity_raw=1,
+    ))
+
+    assert out["position_cap_usd"] < M1_MIN_POSITION_USD
+    assert out["position_investable_usd"] == out["position_cap_usd"]
+    assert out["position_cap_pass"] is False
+    assert out["position_cap_reason"] == "INV-TVLSHARE-01_POSITION_CAP_BELOW_M1_MIN"
     assert set(INPUT_SEMANTICS.values()) <= {
         "measured", "model_estimate", "historical_observation"
     }

@@ -49,6 +49,13 @@ from scripts.lp_reward_persistence_v1_readonly import (  # noqa: E402
     MIN_REWARD_OBSERVATION_HOURS,
     reward_high_duration_from_observations,
 )
+from scripts.lp_capital_tiers_v1_readonly import (  # noqa: E402
+    CAPITAL_TIERS,
+    CAPITAL_TIER_CONFIGURED_MAX_USD,
+    DEFAULT_CAPITAL_TIER,
+    coarse_tvl_min_usd,
+    normalize_capital_tier,
+)
 
 DEFAULT_DB_PATH = REPO_ROOT / "reports/lp_scanner/scanner.db"
 DEFAULT_COARSE_INTERVAL_SECS = 15 * 60
@@ -356,7 +363,8 @@ def _score_row(rec: Mapping[str, Any]) -> Dict[str, Any]:
     # Defense in depth: a malicious/stale adapter cannot persist acceptance by
     # asserting both terminal booleans while carrying an explicit entry veto.
     entry_allowed = rec.get("entry_eligible") is not False
-    accepted = vetted and netcover_pass and entry_allowed
+    position_cap_allowed = rec.get("position_cap_pass") is True
+    accepted = vetted and netcover_pass and entry_allowed and position_cap_allowed
     return {
         "pool": _pool_identity(rec),
         "symbol": rec.get("symbol"),
@@ -572,7 +580,8 @@ class DefaultStages:
         chain: str = "Base",
         projects: Sequence[str] = ("aerodrome-slipstream", "uniswap-v3"),
         top: int = 30,
-        min_tvl: float = 500_000.0,
+        capital_tier: str = DEFAULT_CAPITAL_TIER,
+        min_tvl: Optional[float] = None,
         min_vol1d: float = 50_000.0,
         window_blocks: int = 86_400,
         window_days: float = 1.0,
@@ -583,7 +592,11 @@ class DefaultStages:
         self.chain = chain
         self.projects = tuple(projects)
         self.top = int(top)
-        self.min_tvl = float(min_tvl)
+        self.capital_tier = normalize_capital_tier(capital_tier)
+        self.min_tvl = coarse_tvl_min_usd(self.capital_tier, min_tvl)
+        self.tier_configured_max_usd = CAPITAL_TIER_CONFIGURED_MAX_USD[
+            self.capital_tier
+        ]
         self.min_vol1d = float(min_vol1d)
         self.window_blocks = int(window_blocks)
         self.window_days = float(window_days)
@@ -684,6 +697,11 @@ class DefaultStages:
         assessed = []
         for pool in selected:
             record = dict(screener.assess(pool, gates), chain=self.chain)
+            record.update({
+                "capital_tier": self.capital_tier,
+                "coarse_tvl_min_usd": self.min_tvl,
+                "tier_configured_max_usd": self.tier_configured_max_usd,
+            })
             if (
                 self._is_solana()
                 and str(record.get("project") or "").lower()
@@ -1090,7 +1108,9 @@ class DefaultStages:
             permanent_reason = rec.get("permanent_fail_closed_reason") or source.get(
                 "permanent_fail_closed_reason"
             )
-            passed = bool(rec.get("netcover_pass", False)) and not permanent_reason
+            netcover_passed = bool(rec.get("netcover_pass", False)) and not permanent_reason
+            position_cap_passed = rec.get("position_cap_pass") is True
+            passed = netcover_passed and position_cap_passed
             if permanent_reason:
                 rec["permanent_fail_closed_reason"] = str(permanent_reason)
                 rec["netcover_pass"] = False
@@ -1099,12 +1119,13 @@ class DefaultStages:
                 rec["rejection_reason"] = f"PERMANENT_FAIL_CLOSED:{permanent_reason}"
             gates = dict(source.get("gates") or {})
             gates.update(rec.get("gates") or {})
-            gates["netcover_shadow"] = passed
+            gates["netcover_shadow"] = netcover_passed
+            gates["position_cap"] = position_cap_passed
             rec["gates"] = gates
             reason = str(rec.get("rejection_reason") or "")
             if permanent_reason:
                 status = "PERMANENT_FAIL_CLOSED"
-            elif passed:
+            elif netcover_passed:
                 status = "PASS"
             elif reason.startswith("NETCOVER_INPUT_MISSING:"):
                 status = "MISSING_FAIL_CLOSED"
@@ -1115,6 +1136,12 @@ class DefaultStages:
             else:
                 status = "BELOW_SHADOW"
             rec["netcover_gate_status"] = status
+            rec["position_cap_gate_status"] = (
+                "PASS" if position_cap_passed else str(
+                    rec.get("position_cap_reason")
+                    or "INV-TVLSHARE-01_INPUT_MISSING_OR_INVALID"
+                )
+            )
             prior_vetted = bool(source.get("vetted", False))
             rec["vetted_before_netcover"] = prior_vetted
             # Pre-NetCover entry eligibility is authoritative.  A terminal
@@ -1132,6 +1159,8 @@ class DefaultStages:
                 prior_vetted and passed and entry_eligible is not False
             )
             if not rec["vetted"]:
+                if netcover_passed and not position_cap_passed:
+                    rec["rejection_reason"] = rec["position_cap_gate_status"]
                 explanation_record = dict(source)
                 explanation_record.update(rec)
                 rec["rejection_reason"] = _explain_rejection(
@@ -1287,7 +1316,13 @@ def export_latest_vetted_menu(
         except (json.JSONDecodeError, TypeError):
             invalid += 1
             continue
-        if not isinstance(record, dict) or not record.get("vetted") or not record.get("netcover_pass"):
+        if (
+            not isinstance(record, dict)
+            or not record.get("vetted")
+            or not record.get("netcover_pass")
+            or record.get("position_cap_pass") is not True
+            or record.get("position_cap_usd") is None
+        ):
             invalid += 1
             continue
         record["scanner_as_of"] = latest
@@ -1570,7 +1605,14 @@ def _parser() -> argparse.ArgumentParser:
         "--projects", nargs="+", default=["aerodrome-slipstream", "uniswap-v3"]
     )
     parser.add_argument("--top", type=int, default=30)
-    parser.add_argument("--min-tvl", type=float, default=500_000.0)
+    parser.add_argument(
+        "--capital-tier", choices=CAPITAL_TIERS, default=DEFAULT_CAPITAL_TIER,
+        help="PRD v2.1 capital tier used for coarse TVL and runtime sizing",
+    )
+    parser.add_argument(
+        "--min-tvl", type=float, default=None,
+        help="optional tightening-only override; cannot lower the tier floor",
+    )
     parser.add_argument("--min-vol1d", type=float, default=50_000.0)
     parser.add_argument("--window-blocks", type=int, default=86_400)
     parser.add_argument("--window-days", type=float, default=1.0)
@@ -1599,6 +1641,7 @@ def main(
         chain=args.chain,
         projects=args.projects,
         top=args.top,
+        capital_tier=args.capital_tier,
         min_tvl=args.min_tvl,
         min_vol1d=args.min_vol1d,
         window_blocks=args.window_blocks,

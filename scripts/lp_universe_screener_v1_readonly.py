@@ -40,6 +40,12 @@ from scripts.lp_reward_persistence_v1_readonly import (  # noqa: E402
     MIN_REWARD_OBSERVATION_HOURS,
     reward_persistence_surrogate,
 )
+from scripts.lp_capital_tiers_v1_readonly import (  # noqa: E402
+    CAPITAL_TIERS,
+    CAPITAL_TIER_TVL_MIN_USD,
+    DEFAULT_CAPITAL_TIER,
+    coarse_tvl_min_usd,
+)
 
 DEFILLAMA_POOLS_URL = "https://yields.llama.fi/pools"
 # CLMM projects whose on-chain swaps Stage 2 (V3 Swap topic) can replay.
@@ -87,7 +93,8 @@ def classify_tier_by_quality(symbol):
 
 # Default gates (all CLI-tunable).
 DEFAULTS = dict(
-    min_tvl=500_000.0,        # capacity + not-easily-rugged
+    # PRD v2.1 section 2.1 M1 coarse floor; runtime PositionCap is final.
+    min_tvl=CAPITAL_TIER_TVL_MIN_USD[DEFAULT_CAPITAL_TIER],
     min_vol1d=50_000.0,       # some real flow
     suspect_reward_apr=300.0, # apyReward above this => likely incentive-farm/wash
     suspect_vol_tvl=20.0,     # daily volume > 20x TVL => wash-volume suspect
@@ -495,7 +502,14 @@ def _fmt(results, gates, n_total, n_base):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--projects", nargs="*", default=list(DEFAULT_PROJECTS))
-    ap.add_argument("--min-tvl", type=float, default=DEFAULTS["min_tvl"])
+    ap.add_argument(
+        "--capital-tier", choices=CAPITAL_TIERS, default=DEFAULT_CAPITAL_TIER,
+        help="PRD v2.1 capital tier used for the coarse TVL floor (default: M1)",
+    )
+    ap.add_argument(
+        "--min-tvl", type=float, default=None,
+        help="optional tightening-only override; cannot lower the tier floor",
+    )
     ap.add_argument("--min-vol1d", type=float, default=DEFAULTS["min_vol1d"])
     ap.add_argument("--suspect-reward-apr", type=float, default=DEFAULTS["suspect_reward_apr"])
     ap.add_argument("--suspect-vol-tvl", type=float, default=DEFAULTS["suspect_vol_tvl"])
@@ -511,7 +525,8 @@ def main():
         run_self_test()
         return
 
-    gates = dict(min_tvl=args.min_tvl, min_vol1d=args.min_vol1d,
+    gates = dict(min_tvl=coarse_tvl_min_usd(args.capital_tier, args.min_tvl),
+                 min_vol1d=args.min_vol1d,
                  suspect_reward_apr=args.suspect_reward_apr,
                  suspect_vol_tvl=args.suspect_vol_tvl)
 

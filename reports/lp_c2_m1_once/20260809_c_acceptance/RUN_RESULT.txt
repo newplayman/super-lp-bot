@@ -1,0 +1,4 @@
+command: python3 scripts/lp_scanner_daemon_v1_readonly.py --once --capital-tier M1 --db reports/lp_c2_m1_once/20260809_c_acceptance/scanner.db --pid-file reports/lp_c2_m1_once/20260809_c_acceptance/scanner.pid --vetted-menu-out reports/lp_c2_m1_once/20260809_c_acceptance/vetted_menu.json
+[scanner] as_of=2026-08-09T17:56:14.163747+00:00 screened=730 top=30 resolved=30 scored=30 accepted=0 sessions=0
+[tg-fallback] event=rpc_degraded text=[LPBOT][WARNING][rpc_degraded] scanner RPC health changed UNKNOWN -> DEGRADED; new entries blocked
+[scanner] vetted_menu exported=0 invalid=0 out=reports/lp_c2_m1_once/20260809_c_acceptance/vetted_menu.json

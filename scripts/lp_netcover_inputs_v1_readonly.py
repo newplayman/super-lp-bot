@@ -21,7 +21,18 @@ from scripts.lp_cost_sensitivity_v1_readonly import (  # exact WP-04 assembly ma
     _swap_components,
     price_from_sqrt_x96,
 )
-from scripts.lp_netcover_engine_v1_readonly import REWARD_HAIRCUTS
+from scripts.lp_capital_tiers_v1_readonly import (
+    CAPITAL_TIER_CONFIGURED_MAX_USD,
+    DEFAULT_CAPITAL_TIER,
+    normalize_capital_tier,
+)
+from scripts.lp_netcover_engine_v1_readonly import (
+    ACTIVE_SHARE_LIMIT,
+    HARD_POSITION_TVL_SHARE,
+    POSITION_TVL_SHARE,
+    REWARD_HAIRCUTS,
+    position_cap_usd,
+)
 from scripts.lp_portfolio_allocator_v1_readonly import M1_MIN_POSITION_USD
 from scripts.lp_universe_screener_v1_readonly import reward_persistence_gate
 from scripts.lp_swap_cost_model_v1_readonly import exit_conversion_cost_usd
@@ -359,6 +370,7 @@ def _range_aware_fee_ev(
         "fee_capture_share_ratio": None,
         "fee_capture_evidence_apr_pct": fee_apr_pct,
         "fee_capture_haircut": fee_haircut,
+        "active_liquidity_notional_usd": None,
     }
     # Generic DefiLlama ``sigma`` may be headline APR dispersion.  Fee density
     # accepts only pair-price volatility measured by the multi-window path.
@@ -452,17 +464,25 @@ def _range_aware_fee_ev(
             * (horizon_hours / HOURS_PER_YEAR)
         )
         fee_ev = fee_anchor * share_ratio
+        active_liquidity_notional_usd = l_active / l_target * size_usd
     except (ArithmeticError, OverflowError, ValueError):
         return None, metadata
     if not all(
         math.isfinite(value) and value >= 0.0
-        for value in (reference_share, target_share, share_ratio, fee_ev)
+        for value in (
+            reference_share,
+            target_share,
+            share_ratio,
+            fee_ev,
+            active_liquidity_notional_usd,
+        )
     ):
         return None, metadata
     metadata.update({
         "fee_capture_reference_share": reference_share,
         "fee_capture_target_share": target_share,
         "fee_capture_share_ratio": share_ratio,
+        "active_liquidity_notional_usd": active_liquidity_notional_usd,
     })
     return fee_ev, metadata
 
@@ -764,6 +784,62 @@ def assemble_netcover_inputs(
         ),
     })
     record.update(fee_capture_metadata)
+    # INV-TVLSHARE-01: the coarse TVL tier is never final sizing.  Recompute
+    # investable notional from this cycle's trusted active-L evidence, then
+    # persist the cap and the separate 0.10% hard-ceiling verification.
+    try:
+        capital_tier = normalize_capital_tier(
+            record.get("capital_tier") or DEFAULT_CAPITAL_TIER
+        )
+    except ValueError:
+        capital_tier = None
+    pool_tvl = _first_number(record, "tvlUsd", "tvl_usd", "tvl", positive=True)
+    active_notional = _number(
+        record.get("active_liquidity_notional_usd"), positive=True
+    )
+    tier_max = (
+        CAPITAL_TIER_CONFIGURED_MAX_USD[capital_tier]
+        if capital_tier is not None
+        else None
+    )
+    cap = None
+    hard_share = None
+    hard_ok = False
+    if None not in (tier_max, pool_tvl, active_notional):
+        try:
+            cap = position_cap_usd(tier_max, pool_tvl, active_notional)
+            hard_share = cap / pool_tvl
+            hard_ok = hard_share <= HARD_POSITION_TVL_SHARE
+        except ValueError:
+            cap = None
+    cap_pass = bool(cap is not None and cap >= size and hard_ok)
+    if cap is None:
+        cap_reason = "INV-TVLSHARE-01_INPUT_MISSING_OR_INVALID"
+    elif not hard_ok:
+        cap_reason = "INV-TVLSHARE-01_HARD_TVL_SHARE_EXCEEDED"
+    elif cap < size:
+        cap_reason = "INV-TVLSHARE-01_POSITION_CAP_BELOW_M1_MIN"
+    else:
+        cap_reason = "PASS"
+    record.update({
+        "capital_tier": capital_tier,
+        "tier_configured_max_usd": tier_max,
+        "position_requested_usd": size,
+        "position_investable_usd": min(size, cap) if cap is not None else None,
+        "position_cap_usd": cap,
+        "position_cap_tvl_share": hard_share,
+        "position_cap_regular_tvl_share_limit": POSITION_TVL_SHARE,
+        "position_cap_active_share_limit": ACTIVE_SHARE_LIMIT,
+        "position_cap_hard_tvl_share_limit": HARD_POSITION_TVL_SHARE,
+        "position_cap_hard_tvl_share_ok": hard_ok,
+        "position_cap_pass": cap_pass,
+        "position_cap_reason": cap_reason,
+        "active_liquidity_notional_usd_source": (
+            "measured:current_active_L_over_target_range"
+            if active_notional is not None
+            else None
+        ),
+    })
     record.update(reward_route_metadata)
     if scanner_measured_evidence:
         record["scanner_measured_cross_pool_evidence"] = dict(scanner_measured_evidence)

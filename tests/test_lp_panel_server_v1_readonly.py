@@ -578,7 +578,13 @@ def test_handoff_runner_output_matches_panel_inputs_and_imports_token_environmen
     assert f"--portfolio-csv {runner_dir}/portfolio_state_hourly.csv" in handoff
     assert f"--heartbeat {absolute_runner_dir}/heartbeat.jsonl" in unit
     assert f"--portfolio-csv {absolute_runner_dir}/portfolio_state_hourly.csv" in unit
-    assert runner_dir in handoff.split("install -d -m 700", 1)[1].splitlines()[0]
+    nohup_section = handoff.split("### 2.1 nohup", 1)[1].split("### 2.2", 1)[0]
+    nohup_install_lines = [
+        line for line in nohup_section.splitlines()
+        if line.startswith("install -d -m 700 ")
+    ]
+    assert len(nohup_install_lines) == 1
+    assert runner_dir in nohup_install_lines[0]
 
     import_command = (
         "sudo --preserve-env=LPBOT_PANEL_TOKEN systemctl "

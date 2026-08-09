@@ -98,6 +98,10 @@ class FakeStages:
                 expected_net_yield_pct=0.275,
                 netcover_ratio=1.8,
                 netcover_pass=True,
+                position_cap_usd=60.0,
+                position_cap_hard_tvl_share_ok=True,
+                position_cap_pass=True,
+                position_cap_reason="PASS",
             )
         ]
 
@@ -147,6 +151,7 @@ def test_latest_vetted_menu_exports_only_live_accepted_records_and_fails_closed(
                 "score_json": json.dumps({
                     "pool": "0x1", "vetted": True, "netcover_pass": True,
                     "tvlUsd": 1_000_000, "active_liquidity_notional_usd": 50_000,
+                    "position_cap_usd": 60.0, "position_cap_pass": True,
                 }),
             },
             {
@@ -484,6 +489,10 @@ def test_terminal_acceptance_conjoins_four_gates_netcover_and_reward_entry(
             "netcover_pass": True,
             "netcover": 2.0,
             "netcover_ratio": 2.0,
+            "position_cap_usd": 60.0,
+            "position_cap_hard_tvl_share_ok": True,
+            "position_cap_pass": True,
+            "position_cap_reason": "PASS",
             "rejection_reason": None,
         }],
     )[0]
@@ -538,6 +547,7 @@ def test_score_row_defense_in_depth_rejects_entry_veto_despite_true_terminal_fla
                 "pool": "0x1",
                 "vetted": True,
                 "netcover_pass": True,
+                "position_cap_pass": True,
                 "rejection_reason": "stale rejection",
             },
             None,
@@ -665,6 +675,7 @@ def test_wp04_adapter_is_the_strict_fifth_gate_not_only_a_diagnostic():
         "fee_tier": 0.0001,
         "dec0": 18,
         "dec1": 6,
+        "tvlUsd": 150_000.0,
     }
     missing = {
         "pool": "0x2",
