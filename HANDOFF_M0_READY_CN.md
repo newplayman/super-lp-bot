@@ -209,7 +209,7 @@ Shadow 五问在 14d 数据前均为 **PENDING_EVIDENCE**，不得提前作答�
 - Raydium 市场快照是单次 top-1000 page，`hasNextPage=true`，页外池 unavailable/unverified；Orca 当次 page `next=null`。详见 `MARKET_SNAPSHOT_M0.md`。
 - Cost sensitivity 使用历史 swap/模型参数，不保证未来收益；已验收的历史结论是 25U 不经济，50U 起才在该样例过 gate。
 - M0P 最终代码 live scanner 本次 `screened=734`、`scored=10`、`accepted=0`；其中 1 条候选九项输入完整、NetCover `0.040912955191278286` 并按原阈值诚实拒绝，其余继续因真实数据缺失 fail-closed。没有 live-vetted allocation，因此 paper runner 未启动，禁止用 fixture 代替。
-- 14d shadow 启动、gate 评审、合并、推送、M1 放行均由指挥官决定。**M1-A 签名 sidecar / M1-B EVM 执行严格禁止开工。**
+- 14d shadow 启动、gate 评审、合并、推送、M1 放行均由指挥官决定。该 M0 历史阶段的 **M1-A 签名 sidecar / M1-B EVM 执行禁止开工**；M1-B 后续仅由 TP-C 授权为 §12 所述 Base C4/C5 零广播实现，M1-A 仍禁止。
 
 ## 6. sol 原 M0 验收
 
@@ -271,9 +271,17 @@ M0F 没有放宽 NetCover/风险阈值，没有启动 daemon 或 14 天计时，
 - **N1 收入口径：** `fee_ev=size×feeAPR/100×fee_haircut×(H/8760)×share_ratio(H)`；`reward_ev=size×rewardAPR/100×(H/8760)×share_ratio(H)`，reward category/persistence haircut 仍只在 engine 侧乘一次。3 个 reward 与 3 个 no-reward 池的 FeeEV 720/168 为 `2.0763～2.1057`，3 个 reward 池的 RewardEV 比为 `2.0811～2.0879`，均在理论 `sqrt(720/168)=2.0702` 的 ±5% 内；reward=0 明记 N/A，不伪造 0/0。USDC-USDT 的 M0F/N1 H720 NetCover 为 `0.320462→0.167697`，USDC-VVV 为 `0.154035→0.660149`，变化来源已逐项拆分。
 - **N2 B 轨：** 正式 Base 30 条中 `SURROGATE_STRONG=12`（factor 0.25，可继续过 entry persistence 但不是 trusted）、`SURROGATE_WEAK=16`（factor 0、entry veto）、fee-only `NOT_APPLICABLE=2`。MSUSD-USDC 从 M0F 的 `REWARD_PERSISTENCE_MISSING` 变为 strong，最终因 NetCover `0.419744<1.0` 拒绝；canonical USDC-CBBTC 变为 weak，最终理由 `ENTRY_INELIGIBLE:REWARD_PERSISTENCE_SURROGATE_WEAK`，另两条同名记录仍等待权威 factory 映射。
 - **N2 A 轨：** `reward_observations` 在正式 Base 当轮落 30 行、Solana 当轮落 100 行；当轮判定先于写入。真实证据以 DefiLlama pool UUID + chain 隔离，连续正 reward suffix 的最大间隔为 0.5h，少于 24h 不覆盖 B 轨，重启后 SQLite 历史不丢失。
-- **对抗验收：** 独立探针发现前置 `entry_eligible=false` 可被旧终闸漏掉；`a08b74f` 修复后，终端适配器即使恶意翻转 entry 位/清空原因，WEAK/ABSENT 仍无法 `vetted/accepted`，STRONG 在其他闸全过时仍可正常接受。
+- **对抗验收：** 独立探针确认旧终闸会漏掉前置 `entry_eligible=false`；M0F 两个真实批次中的 MSUSD-USDC 都已同时出现 `netcover_pass=true` 与 `entry_eligible=false`，只是独立的 `stable` 闸也失败才未被误放行，并非纯理论风险。`a08b74f` 修复后，终端适配器即使恶意翻转 entry 位/清空原因，WEAK/ABSENT 仍无法 `vetted/accepted`，STRONG 在其他闸全过时仍可正常接受。
 - **N3：** 同分母覆盖为 `1/10→4/10`；`16/30` 明确含采样窗口扩大。Spearman 补齐 `n=16, t=2.011613, df=14, p=0.063919`，业务阈值不是显著性检验，结论为“边缘相关，证据不足以强推”。14 条歧义池状态为 `blocked_pending_authoritative_pool_mapping`。
 - **N4：** 正式 Solana top100 扫描不再误入 EVM RPC；100 条候选均 TACTICAL 并逐池落库，但缺 DefiLlama UUID→权威 Solana pool account 映射，因此 H、H source、ER-policy H 均为空、accepted 0。这是 fail-closed 生产诊断，不是 TACTICAL 经济模型已走通。
-- **最终 E2E/gate：** Base stdout `730→30→30→30→0`，finite NetCover 16、菜单 `[]`、RPC `DEGRADED`；Solana stdout `1958→100→100→100→0`。§12.0 gate 为 `INSUFFICIENT_EVIDENCE`，0 identities / 0 roots，未关闭严重 RPC incident 为 0。测试为 `2858 passed, 14 skipped`；三阈值保护文件、Go、`lp_long_horizon`、M1、依赖与封存仓均无改动。
+- **最终 E2E/gate：** Base stdout `730→30→30→30→0`，finite NetCover 16、菜单 `[]`、RPC `DEGRADED`；Solana stdout `1958→100→100→100→0`。§12.0 gate 为 `INSUFFICIENT_EVIDENCE`，0 identities / 0 roots，未关闭严重 RPC incident 为 0。TP-C 最终收口全量复测为 `2906 passed, 14 skipped in 253.87s`（2920 collected，0 collection error）；阈值保护文件、Go、`lp_long_horizon`、M1、依赖与封存仓均无改动。
 
 M0N 没有放宽任何闸值，没有用 surrogate 冒充实测，没有启动 scanner 常驻、runner 或 14 天计时。N1+N2 技术验收通过只是必要条件；正式起算仍必须有指挥官显式命令，且 runner 必须消费非空、人工批准的 live-vetted allocation。
+
+## 12. TP-C 收口 + 100U 最快合法路径（2026-08-09）
+
+完整验收见 `C_ACCEPTANCE_20260809.md`。C1–C5 已完成，C6/C7 未执行；C2 真实 M1 扫描为 `730→30→30→30→0`，15/30 PositionCap 通过但终端 accepted 仍为 0，因此当前没有合法 smoke 候选。C5 的开仓与退出仅使用公开地址/公开 position 进行 `eth_call` 校准，signed=false、keystore=false、broadcast_count=0，不能覆盖 C2 终闸。
+
+100U 参数已写入 `configs/base_m1_micro_live_v1.example.json`：单仓 50–60U、Reserve 40U、最大活跃仓 1、日亏 -5U 停新仓、总回撤 -10U 进入 EXIT_ONLY、TVL 常规/硬占比 0.05%/0.10%、滑点硬限 75 bps、KILL 从首笔真实开仓起算。`live_trading`、`c6_authorized`、`c7_authorized` 均保持 false。
+
+下一合法动作不是直接上 100U：先等终端 accepted 候选，再由指挥官单独明确放行 10–20 USDC C6；C6 完整 flat 对账后，C7 仍需第二次明确放行。当前不得创建真钱 keystore、不得启动 live daemon、不得桥接或广播。

@@ -1,0 +1,145 @@
+{
+  "approve_exact": [
+    {
+      "amount_raw": 13022862280367374,
+      "calldata": "0x095ea7b300000000000000000000000003a520b32c04bf3beef7beb72e919cf822ed34f1000000000000000000000000000000000000000000000000002e4439682e1d0e",
+      "gas_estimate": 29291,
+      "policy": "ApproveExact",
+      "simulation_result": "0x0000000000000000000000000000000000000000000000000000000000000001",
+      "spender": "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1",
+      "token": "0x4200000000000000000000000000000000000006"
+    },
+    {
+      "amount_raw": 25000000,
+      "calldata": "0x095ea7b300000000000000000000000003a520b32c04bf3beef7beb72e919cf822ed34f100000000000000000000000000000000000000000000000000000000017d7840",
+      "gas_estimate": 38716,
+      "policy": "ApproveExact",
+      "simulation_result": "0x0000000000000000000000000000000000000000000000000000000000000001",
+      "spender": "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1",
+      "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
+    }
+  ],
+  "broadcast_count": 0,
+  "chain_id": 8453,
+  "eip1559": {
+    "max_fee_per_gas": 11089966,
+    "max_priority_fee_per_gas": 1089966
+  },
+  "estimated_max_cost_wei": 5081699670350,
+  "generated_at": "2026-08-09T18:21:57.650180+00:00",
+  "latest_block": 49755184,
+  "mint_intent": {
+    "action": "mint",
+    "amount": 0,
+    "amount0_desired": 13022862280367374,
+    "amount0_min": 11935930130447269,
+    "amount1_desired": 25000000,
+    "amount1_min": 24812500,
+    "deadline": 1786300316,
+    "fee": 500,
+    "idempotency_key": "c5-open-20260809-v1",
+    "liquidity": 0,
+    "notional_usd": 50.0,
+    "npm": "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1",
+    "pool": "0xd0b53D9277642d899DF5C87A3966A349A798F224",
+    "protocol": "uniswap_v3",
+    "risk_verdict_id": "C5-SIMULATION-ONLY",
+    "slippage_bps": 75,
+    "spender": null,
+    "sqrt_price_x96": 0,
+    "strategy_decision_id": "C5-OPEN-20260809",
+    "tick_lower": -200980,
+    "tick_spacing": null,
+    "tick_upper": -200480,
+    "token": null,
+    "token0": "0x4200000000000000000000000000000000000006",
+    "token1": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+    "token_id": null,
+    "wallet": "0xc216bfa5da000965e820845c32e6fd88db275743"
+  },
+  "mint_simulation": {
+    "gas_estimate": 390218,
+    "ok": true,
+    "result": "0x000000000000000000000000000000000000000000000000000000000057c02b0000000000000000000000000000000000000000000000000000282dee919649000000000000000000000000000000000000000000000000002ab9b2acc8faf800000000000000000000000000000000000000000000000000000000017d7840"
+  },
+  "mint_transaction": {
+    "action": "mint",
+    "data": "0x883164560000000000000000000000004200000000000000000000000000000000000006000000000000000000000000833589fcd6edb6e08f4c7c32d4f71b54bda0291300000000000000000000000000000000000000000000000000000000000001f4fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffceeecfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffcf0e0000000000000000000000000000000000000000000000000002e4439682e1d0e00000000000000000000000000000000000000000000000000000000017d7840000000000000000000000000000000000000000000000000002a67aa4b7d3ba500000000000000000000000000000000000000000000000000000000017a9bd4000000000000000000000000c216bfa5da000965e820845c32e6fd88db275743000000000000000000000000000000000000000000000000000000006a78c79c",
+    "deadline": 1786300316,
+    "from_address": "0xc216bfa5da000965e820845c32e6fd88db275743",
+    "idempotency_key": "c5-open-20260809-v1",
+    "notional_usd": 50.0,
+    "risk_verdict_id": "C5-SIMULATION-ONLY",
+    "strategy_decision_id": "C5-OPEN-20260809",
+    "to": "0x03a520b32c04bf3beef7beb72e919cf822ed34f1",
+    "value_wei": 0
+  },
+  "pool": {
+    "address": "0xd0b53D9277642d899DF5C87A3966A349A798F224",
+    "fee": 500,
+    "liquidity": 1158814810414273181,
+    "price_usdc_per_weth": 1919.7008661981147,
+    "protocol": "Uniswap v3",
+    "sqrt_price_x96": 3471506855558778545205448,
+    "tick": -200721,
+    "tick_spacing": 10,
+    "token0": "0x4200000000000000000000000000000000000006",
+    "token1": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
+  },
+  "position_cap": {
+    "active_2pct_cap_usd": 25226.922804145473,
+    "active_liquidity_notional_usd": 1261346.1402072737,
+    "capital_tier": "M1",
+    "hard_0_10pct_pass": true,
+    "planned_notional_usd": 50.0,
+    "position_cap_usd": 60.0,
+    "tier_max_usd": 60.0,
+    "tvl_0_05pct_cap_usd": 5089.860665,
+    "tvl_evidence": {
+      "dex_id": "uniswap",
+      "observed_liquidity": {
+        "base": 3670.2858,
+        "quote": 3133170,
+        "usd": 10179721.33
+      },
+      "observed_volume": {
+        "h1": 53647.81,
+        "h24": 1468344.16,
+        "h6": 407703.83,
+        "m5": 3119.18
+      },
+      "pair_address": "0xd0b53D9277642d899DF5C87A3966A349A798F224",
+      "source": "https://api.dexscreener.com/latest/dex/pairs/base/0xd0b53D9277642d899DF5C87A3966A349A798F224"
+    },
+    "tvl_share": 4.911725810474617e-06,
+    "tvl_usd": 10179721.33
+  },
+  "preflight": {
+    "basis": true,
+    "quote": true,
+    "rpc_health": true,
+    "simulate": true,
+    "wallet_balance": true
+  },
+  "preflight_all_pass": true,
+  "quote_consumed": {
+    "amount0": 12026126076017400,
+    "amount1": 25000000
+  },
+  "quote_result": "0x000000000000000000000000000000000000000000000000000000000057c02b0000000000000000000000000000000000000000000000000000282dee919649000000000000000000000000000000000000000000000000002ab9b2acc8faf800000000000000000000000000000000000000000000000000000000017d7840",
+  "rpc_url": "https://base-rpc.publicnode.com",
+  "selection": {
+    "accepted_for_live": false,
+    "reason": "C2 produced no eligible live candidate. This authoritative Uniswap v3 WETH/USDC pool validates the pipe only and cannot be promoted to C6 without a later terminal-gate pass.",
+    "source": "calibration fallback after C2 terminal accepted_count=0"
+  },
+  "signed": false,
+  "simulation_identity": {
+    "keystore_loaded": false,
+    "production_wallet": false,
+    "sender": "0xc216bfa5da000965e820845c32e6fd88db275743",
+    "source": "public on-chain address used only as eth_call from"
+  },
+  "stage": "C5_OPEN_DRY_RUN",
+  "transaction_hashes": []
+}

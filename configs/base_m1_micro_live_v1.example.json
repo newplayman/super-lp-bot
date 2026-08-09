@@ -1,0 +1,27 @@
+{
+  "stage": "C7_PARAMETERS_ONLY_NOT_AUTHORIZED",
+  "chain": "base",
+  "chain_id": 8453,
+  "protocol_allowlist": [
+    "uniswap_v3",
+    "aerodrome_slipstream"
+  ],
+  "total_capital_usd": 100.0,
+  "single_position_min_usd": 50.0,
+  "single_position_max_usd": 60.0,
+  "reserve_usd": 40.0,
+  "max_active_positions": 1,
+  "daily_stop_new_entries_pnl_usd": -5.0,
+  "total_drawdown_kill_usd": -10.0,
+  "kill_basis": "first_real_open",
+  "position_cap_formula": "min(60, TVL*0.0005, ActiveLiquidityNotional*0.02)",
+  "regular_pool_tvl_share": 0.0005,
+  "hard_pool_tvl_share": 0.001,
+  "max_slippage_bps": 75,
+  "target_pool_profile": "low_fee_0.05_or_0.01pct_stable_or_near_anchor_long_hold",
+  "live_trading": false,
+  "c6_authorized": false,
+  "c7_authorized": false,
+  "broadcast_count": 0,
+  "warning": "loss floor is not a guaranteed maximum loss; plan for -11 to -12U around a -10U kill"
+}

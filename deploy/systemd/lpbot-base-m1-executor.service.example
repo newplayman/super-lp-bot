@@ -1,0 +1,24 @@
+[Unit]
+Description=LPBot Base M1 isolated executor
+After=network-online.target
+
+[Service]
+Type=simple
+User=lpbot-executor
+Group=lpbot-executor
+UMask=0077
+Environment=LIVE_TRADING=false
+EnvironmentFile=-/etc/lpbot/base-m1-executor.env
+ExecStart=/usr/bin/python3 -m execution.base_m1_executor_service
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/lpbot-executor
+ReadOnlyPaths=/etc/lpbot-executor
+
+# The strategy service must run as a different user and must not receive
+# /etc/lpbot-executor or /var/lib/lpbot-executor in ReadOnlyPaths/ReadWritePaths.
+
+[Install]
+WantedBy=multi-user.target
