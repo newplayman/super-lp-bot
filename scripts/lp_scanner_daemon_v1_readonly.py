@@ -627,9 +627,9 @@ class DefaultStages:
                 allow_legacy_without_netcover=True,
             )
         )
-        # W6: carry the already-measured latest pair sigma/ER into the input
-        # assembler and reuse the existing ER policy's discrete PASSIVE H.
-        # Missing measurements remain absent; no horizon is guessed here.
+        # W6/R6: carry the already-measured latest pair sigma/ER into the input
+        # assembler and translate its regime through the record's own profile.
+        # Missing measurements/profile remain absent; no horizon is guessed.
         stability_by_pool = {
             _pool_identity(item): item for item in stability
             if item.get("pool") or item.get("resolved_pool")
@@ -666,14 +666,24 @@ class DefaultStages:
             )
             record["sigma_pair"] = sigma
             record["er"] = er
-            er_hours = float(policy["H_days"]) * 24.0
             profile = inputs_module.profile_kind(record)
+            er_hours = {
+                "PASSIVE": {
+                    "range-bound": 168.0,
+                    "neutral": 336.0,
+                    "trending": 720.0,
+                },
+                "TACTICAL": {
+                    "range-bound": 6.0,
+                    "neutral": 24.0,
+                    "trending": 72.0,
+                },
+            }.get(profile, {}).get(policy.get("regime"))
             legal = inputs_module.PROFILE_HORIZONS_HOURS.get(profile, ())
-            # The existing range policy currently emits PASSIVE day horizons.
-            # Do not guess a cross-profile mapping here; R6 owns tactical ER
-            # candidates.  Once a legal candidate exists, ADD-1 may only move
-            # upward through that same frozen discrete set.
-            if er_hours not in legal:
+            # 12h is intentionally not an ER base candidate; ADD-1 can select
+            # it only by moving upward from the tactical 6h candidate.  The
+            # same legal-set check fails closed on unknown/cross-profile H.
+            if er_hours is None or er_hours not in legal:
                 continue
             chain = str(record.get("chain") or record.get("network") or "").lower()
             selection = inputs_module.select_drag_adjusted_horizon(

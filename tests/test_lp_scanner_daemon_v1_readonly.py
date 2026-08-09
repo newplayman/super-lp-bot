@@ -508,6 +508,122 @@ def test_add1_scanner_moves_to_smallest_legal_h_for_fixed_drag(monkeypatch):
     assert carried["high_drag_flag"] is False
 
 
+@pytest.mark.parametrize(
+    ("er", "expected_hours"),
+    [
+        (0.10, 6.0),   # range-bound
+        (0.35, 24.0),  # neutral
+        (0.80, 72.0),  # trending
+    ],
+)
+def test_r6_tactical_er_regime_selects_profile_legal_horizon(
+    monkeypatch, er, expected_hours
+):
+    import scripts.lp_funnel_vet_v1_readonly as funnel
+
+    monkeypatch.setattr(
+        funnel,
+        "funnel_vet",
+        lambda bridge, stability, **kwargs: [dict(bridge[0], vetted=True)],
+    )
+    resolved = [{
+        "pool": "0x1111111111111111111111111111111111111111",
+        "chain": "Unknown",  # no gas evidence: preserve the measured-ER candidate
+        "project": "uniswap-v3",
+        "profile": "TACTICAL",
+        "tier": "A",
+        "fee_tier": 0.0001,
+        # A candidate-prefilled PASSIVE H must never cross the profile boundary.
+        "holding_horizon_hours": 168.0,
+        "holding_horizon_source": "candidate_prefill",
+    }]
+    stability = [{
+        "pool": resolved[0]["pool"],
+        "windows": [{"sigma_daily": 0.02, "er": er}],
+    }]
+
+    carried = DefaultStages().funnel(resolved, stability)[0]
+
+    assert carried["holding_horizon_er_policy_hours"] == expected_hours
+    assert carried["holding_horizon_hours"] == expected_hours
+    assert carried["holding_horizon_source"] == "ER_policy"
+    assert carried["holding_horizon_hours"] in {6.0, 12.0, 24.0, 72.0}
+
+
+def test_r6_tactical_drag_moves_only_upward_through_profile_legal_set(monkeypatch):
+    import scripts.lp_funnel_vet_v1_readonly as funnel
+    import scripts.lp_netcover_inputs_v1_readonly as inputs
+
+    monkeypatch.setattr(
+        funnel,
+        "funnel_vet",
+        lambda bridge, stability, **kwargs: [dict(bridge[0], vetted=True)],
+    )
+    # At M1_MIN_POSITION_USD this measured gas makes 6h exceed the drag model
+    # while 12h is the first legal tactical horizon at/below it.
+    monkeypatch.setitem(inputs.HISTORICAL_GAS_USD, "base", 0.0075)
+    resolved = [{
+        "pool": "0x1111111111111111111111111111111111111111",
+        "chain": "Base",
+        "project": "uniswap-v3",
+        "profile": "TACTICAL",
+        "tier": "A",
+        "fee_tier": 0.0,
+    }]
+    stability = [{
+        "pool": resolved[0]["pool"],
+        "windows": [{"sigma_daily": 0.02, "er": 0.10}],
+    }]
+
+    carried = DefaultStages().funnel(resolved, stability)[0]
+
+    assert carried["holding_horizon_er_policy_hours"] == 6.0
+    assert carried["holding_horizon_hours"] == 12.0
+    assert carried["holding_horizon_source"] == "drag_adjusted(from=6)"
+    assert carried["holding_horizon_hours"] in {6.0, 12.0, 24.0, 72.0}
+    assert carried["drag_apr_pct"] <= carried["drag_apr_max_pct"]
+    assert carried["high_drag_flag"] is False
+
+
+def test_r6_unknown_profile_with_measured_er_drops_prefilled_horizon(monkeypatch):
+    import scripts.lp_funnel_vet_v1_readonly as funnel
+
+    monkeypatch.setattr(
+        funnel,
+        "funnel_vet",
+        lambda bridge, stability, **kwargs: [dict(bridge[0], vetted=True)],
+    )
+    resolved = [{
+        "pool": "0x1111111111111111111111111111111111111111",
+        "chain": "Base",
+        "project": "unknown-project",
+        "profile": "UNKNOWN",
+        "fee_tier": 0.0001,
+        "holding_horizon_hours": 168.0,
+        "holding_horizon_source": "candidate_prefill",
+        "drag_apr_pct": 0.0,
+    }]
+    stability = [{
+        "pool": resolved[0]["pool"],
+        "windows": [{"sigma_daily": 0.02, "er": 0.10}],
+    }]
+
+    carried = DefaultStages().funnel(resolved, stability)[0]
+
+    assert carried["sigma_pair"] == 0.02
+    assert carried["er"] == 0.10
+    for key in (
+        "holding_horizon_er_policy_hours",
+        "holding_horizon_hours",
+        "holding_horizon_days",
+        "holding_horizon_source",
+        "drag_apr_pct",
+        "drag_apr_max_pct",
+        "high_drag_flag",
+    ):
+        assert key not in carried
+
+
 def test_default_live_stages_inject_rotating_rpc_pool_into_calls_and_logs(monkeypatch):
     import scripts.lp_multiwindow_stability_v1_readonly as stability
     import scripts.lp_pool_resolve_and_rank_v1_readonly as bridge
