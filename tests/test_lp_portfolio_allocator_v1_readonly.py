@@ -1,10 +1,18 @@
 """Pure tests for the portfolio allocator (no network)."""
+import json
+import sys
+
+import pytest
+
 from scripts.lp_portfolio_allocator_v1_readonly import (
+    M1_MIN_POSITION_EVIDENCE,
+    M1_MIN_POSITION_USD,
     is_enterable,
     select_per_tier,
     allocate,
     rank_metric,
     merge_stability,
+    main,
 )
 
 
@@ -123,7 +131,7 @@ def test_allocator_active_liquidity_term_can_be_binding():
 
 def test_allocator_inv_cost_01_skips_high_apr_tiny_absolute_profit():
     rec = _runtime_rec(total_income_apr=80.0, expected_net_profit_h=0.08, round_trip_cost_usd=0.10)
-    out = allocate([rec], total=30.0, min_pool_usd=0, enforce_runtime_gates=True)
+    out = allocate([rec], total=30.0, enforce_runtime_gates=True)
     assert out["allocations"] == []
     assert out["skipped"][0]["reason"] == "INV-COST-01_EXPECTED_NET_PROFIT_TOO_LOW"
 
@@ -139,3 +147,52 @@ def test_allocator_defaults_to_fail_closed_runtime_gates():
     assert out["allocations"] == []
     assert out["runtime_gates_enforced"] is True
     assert out["skipped"][0]["reason"] == "RUNTIME_GATE_INPUT_MISSING"
+
+
+def test_m1_min_position_boundary_is_annotation_only():
+    below = allocate([_runtime_rec()], total=49.0, enforce_runtime_gates=True)
+    at_min = allocate([_runtime_rec()], total=50.0, enforce_runtime_gates=True)
+
+    assert M1_MIN_POSITION_USD == 50.0
+    assert below["allocations"][0]["usd"] == 49.0
+    assert below["allocations"][0]["below_min"] is True
+    assert at_min["allocations"][0]["usd"] == 50.0
+    assert at_min["allocations"][0]["below_min"] is False
+    assert at_min["runtime_gates_enforced"] is True
+
+
+def test_cli_records_m1_min_position_config(tmp_path, monkeypatch):
+    ranked = tmp_path / "ranked.json"
+    ranked.write_text(json.dumps([_runtime_rec()]), encoding="utf-8")
+    output = tmp_path / "allocation"
+    monkeypatch.setattr(sys, "argv", [
+        "lp_portfolio_allocator_v1_readonly.py",
+        "--ranked", str(ranked),
+        "--total", "50",
+        "--min-position-usd", "50",
+        "--out", str(output),
+    ])
+
+    main()
+
+    result = json.loads((output / "allocation.json").read_text(encoding="utf-8"))
+    assert result["config"] == {
+        "min_position_profile": "M1_1x50_60U",
+        "min_position_usd": 50.0,
+        "min_position_evidence": M1_MIN_POSITION_EVIDENCE,
+    }
+    assert result["allocations"][0]["below_min"] is False
+
+
+def test_min_position_must_be_finite_and_positive_for_api_and_cli(monkeypatch):
+    for invalid in (0, -1, float("nan"), float("inf"), "not-a-number"):
+        with pytest.raises(ValueError, match="min_pool_usd must be finite and positive"):
+            allocate([_runtime_rec()], total=50, min_pool_usd=invalid)
+
+    monkeypatch.setattr(sys, "argv", [
+        "lp_portfolio_allocator_v1_readonly.py", "--self-test",
+        "--min-position-usd", "0",
+    ])
+    with pytest.raises(SystemExit) as exc_info:
+        main()
+    assert exc_info.value.code == 2

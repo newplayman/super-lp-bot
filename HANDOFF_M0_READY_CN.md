@@ -2,27 +2,38 @@
 
 **分支：** `feat/prd-v2.1-m0-shadow`
 
-**状态：** WP-00～10 已由 sol 验收，M0 代码与只读集成 smoke 完成。**14 天 shadow 尚未启动，§12.0 gate 当前为 FAIL；M1 未放行。**
+**状态：** WP-00～10 已由 sol 验收，M0 代码与只读集成 smoke 完成。M0R 的 R1/R2/R3/D2 已落提交，FIX-DOC 已补齐并完成 allocator 定向测试；这不是一次新的全量验收声明。**14 天 shadow 尚未启动，§12.0 gate 当前为 FAIL；M1 未放行。**
 
 **发布边界：** 未合并、未推送远端；等待指挥官 review。本文不构成 M1 放行。
 
-## 1. WP 状态与证据
+## 指挥官决策记录 2026-08-09
+
+- **D1 — 追认 14 个节点：** 追认 `tests/conftest.py::LEGACY_ENVIRONMENT_BOUND_NODEIDS` 中 14 个精确 nodeid 为 `legacy_environment_bound` skip；它们仍是 skip，不得写成 pass，也不得扩大为整文件忽略。
+- **D2 — RWA daemon 已建：** 只读 RWA session collector、配对测试和 systemd unit 已由提交 `5b92e1f` 建立；当前仅表示实现完成，**未表示 daemon 或 14d shadow 已启动**。
+- **D3 — 测试期 token：** 测试阶段沿用现有 Telegram token；进入任何真钱阶段前必须在外部强制轮换。token/chat 禁止写入源码、命令行、报告、日志、commit 或本文，亦禁止把值回写仓库。
+- **D4 — M1 资金档：** M1 固定为 `1 × 50–60U`。这是后续资金档定义，不构成 M1 放行；`§12.0` gate 未通过前继续禁止真钱执行。
+
+## 1. WP / M0R 状态与证据
 
 “配对测试数”是当前目标文件的 collect 数，不冒充全仓验收总数；最终通过数与全量输出由 sol 验收报告填写。
 
-| WP | 状态 | commits | 当前配对测试数 / 验收证据 |
+| WP / M0R | 状态 | commits | 当前配对测试数 / 验收证据 |
 |---|---|---|---|
 | WP-00 | DONE | `0600453 3caae9b 88f9a3d 6001355 3156a5f 849a215 10db4d8 e50220c` | vol-range 配对 6；collection quarantine、凭据清除、环境文件 ignore |
 | WP-01 | DONE | `68b5bfd 7f42f78 38c66f5` | RpcPool 28；Solana 方法路由/退避/写方法阻断；sol live probe 6/6 UP |
 | WP-02 | DONE | `1f98f1a b6379e4 541574c b234bed` | 引擎+replay+runner 46；60 轨迹报告 `reports/lp_il_math_replay/20260808_000000/` |
 | WP-03 | DONE | `695fc1b 306699c 22185ed 92a994e 4d01bbb a51e44e 17fc81e 37763ed 0d2f6f0` | policy+replay+runner 59；7/7 replay `reports/lp_defensive_exit_replay/20260808_170228/` |
-| WP-04 | DONE | `8deedca a96dfcd 1518c96 e1d6b3a 38b18f0 63c14dc 017700e 5983c55 b481fa2 f46625a` | netcover/cost/funnel/allocator 46；报告 `reports/lp_cost_sensitivity/20260808_172541/` |
+| WP-04 | DONE | `8deedca a96dfcd 1518c96 e1d6b3a 38b18f0 63c14dc 017700e 5983c55 b481fa2 f46625a` | netcover/cost/funnel/allocator 49；报告 `reports/lp_cost_sensitivity/20260808_172541/` |
 | WP-05 | DONE | `2ab4d29 9a4d70c e7017b4 baf683b 4bfabdc` | instrument/anchors/session 38；周末 xStocks quote unavailable 按 fail-closed |
 | WP-06 | DONE | `ec1ea15 fd4b6ab 5495410 88144b6 2643f96 bfecb5c 788af85 4d2322a 0c83aae d71ec5a d655306 9e995e9` | scanner+digest 24；真实 `--once` 已落 SQLite，unit 未安装/未启动 |
 | WP-07 | DONE | `d63cb15 19f9a0e b80f51c a9f4de3 32cb308 1d3a6ed f1a5dea b425c58 bec89e7` | alerter 13；无 test token，已验 stdout 降级；全局 ≥60s throttle |
 | WP-08 | DONE | `7879194 688376c b538af2 e589266` | ledger-v2 12；heartbeat/final 23 字段、退出成本语义、旧 heartbeat 兼容 |
 | WP-09 | DONE | `853e590 bc586ad 39aff95 c8d35b0 9f9d5a6 74fc774 cd317fb cda1d0b 184ce07` | reward replay 10；报告 `reports/lp_reward_decay_replay/20260808_173832/` |
 | WP-10 | **DONE** | 关键提交 `d3c9c96 7d5a59d f5b4988 44dab96 b8441b1 b624a70 fb88eb2`（TDD 含 `8afbe25 4f4a8be ddfad55 920c85f`） | Solana+runner+ledger+RpcPool+gate 定向 93；Base + Orca account-state 各 1 tick；全量 `2660 passed, 14 skipped` |
+| M0R-R1 | DONE | `792663e` | hard risk exit 可绕过 disabled policy；仅记录该修复提交，不冒充本轮全量验收 |
+| M0R-R2 | DONE | `25f9e94` | fail-closed cooldown reentry 接线；仅记录该修复提交，不冒充本轮全量验收 |
+| M0R-R3 | DONE | `59fcee4` | 退役 Solana registry 并归档 probe；仅记录该修复提交，不冒充本轮全量验收 |
+| M0R-D2 | DONE | `5b92e1f` | 只读 RWA session collector 与 unit 已建；尚未启动 14d shadow |
 
 ## 2. 指挥官批准后才可执行的启动命令
 
@@ -32,11 +43,15 @@
 
 ```bash
 cd /opt/lpbot/lp-bot-v3-origin-check
-install -d -m 700 reports/lp_scanner reports/lp_shadow_launch
+install -d -m 700 reports/lp_scanner reports/lp_scanner/rwa_sessions reports/lp_shadow_launch
 nohup python3 -u scripts/lp_scanner_daemon_v1_readonly.py \
   --db reports/lp_scanner/scanner.db \
   --coarse-interval-secs 900 --top-interval-secs 60 \
   > reports/lp_shadow_launch/scanner.log 2>&1 &
+nohup python3 -u scripts/lp_rwa_collector_daemon_v1_readonly.py \
+  --db reports/lp_scanner/scanner.db \
+  --jsonl-dir reports/lp_scanner/rwa_sessions --interval-secs 30 \
+  > reports/lp_shadow_launch/rwa_collector.log 2>&1 &
 nohup python3 -u scripts/lp_portfolio_paper_runner_v1_readonly.py \
   --allocation "$APPROVED_ALLOCATION" --chain base --poll-secs 1800 \
   --gate-db reports/lp_scanner/scanner.db \
@@ -51,9 +66,12 @@ scanner 有已审计 unit；安装/启用是指挥官动作：
 
 ```bash
 sudo install -m 0644 deploy/systemd/lpbot-scanner-shadow.service /etc/systemd/system/lpbot-scanner-shadow.service
+sudo install -m 0644 deploy/systemd/lpbot-rwa-collector-shadow.service /etc/systemd/system/lpbot-rwa-collector-shadow.service
 sudo systemctl daemon-reload
 sudo systemctl enable --now lpbot-scanner-shadow.service
+sudo systemctl enable --now lpbot-rwa-collector-shadow.service
 sudo systemctl status lpbot-scanner-shadow.service --no-pager
+sudo systemctl status lpbot-rwa-collector-shadow.service --no-pager
 ```
 
 paper runner 暂无常驻 unit，避免把 allocation 路径静态写死。指挥官可用 transient unit（命令仍未执行）：
@@ -76,7 +94,8 @@ python3 -u scripts/lp_scanner_daemon_v1_readonly.py --once \
   --vetted-menu-out reports/lp_m0_integration_smoke/vetted_menu_live.json
 python3 -u scripts/lp_portfolio_allocator_v1_readonly.py \
   --ranked reports/lp_m0_integration_smoke/vetted_menu_live.json \
-  --total 100 --out reports/lp_m0_integration_smoke/allocation_live
+  --total 50 --min-position-usd 50 \
+  --out reports/lp_m0_integration_smoke/allocation_live
 python3 -u scripts/lp_portfolio_paper_runner_v1_readonly.py \
   --allocation reports/lp_m0_integration_smoke/allocation_live/allocation.json \
   --chain base --max-ticks 1 --poll-secs 1800 \
@@ -87,6 +106,7 @@ python3 -u scripts/lp_portfolio_paper_runner_v1_readonly.py \
 - exporter 只接受 SQLite 最新 cycle 中 `accepted=1` 且 score_json 同时证明 `vetted=true`、`netcover_pass=true` 的记录，并加 `scanner_evidence_origin=live_opportunity_scores`。
 - 若真实 scanner `accepted=0`，链路应诚实停在 0 allocation；这是有效结果，不得用 fixture 冒充 live-vetted。
 - 审计 fixture 只允许标 `fixture_only_not_live_vetted`，用于验证 bridge/allocator 机械接线。
+- allocator 的 M1 默认配置明确记录 `min_position_usd=50`；该阈值只产生 `below_min` 标记，不替代或放宽 runtime hard gates。依据 `reports/lp_cost_sensitivity/20260808_172541/`：同一历史样例 25U 为 `SKIP`、50U 为 `PASS`。
 - sol 的完整 stdout/JSON 归档：`reports/lp_m0_integration_smoke/SOL_ACCEPTANCE_20260808.md` 与 `reports/lp_m0_integration_smoke/evidence_20260808/`；旧 `PENDING_SOL_SMOKE.md` 仅为兼容索引。
 - Solana runner 已通过 WP01 免费 RpcPool 对真实 Orca Whirlpool 完成 account-state 1-tick：显式 `protocol=orca_whirlpool` / `solana_adapter=orca_whirlpool_account_v1`，校验 owner、base64、653-byte space、discriminator、正 sqrt/liquidity 与 decimal price。该 tick 是账户状态 observation，`amount1=0`、`n_swaps=0`、fees=0；不是 swap event decoder 或 fee evidence。
 
@@ -127,14 +147,14 @@ Shadow 五问在 14d 数据前均为 **PENDING_EVIDENCE**，不得提前作答�
 - `lvr_estimate`、`exit_latency_loss` 是模型估计，不是 observed execution；退出记录 `depth_model` 或 `flat_placeholder` 成本 basis。
 - `PRIMARY_CLOSED` 永远 shadow-only，不与 REGULAR 平均后转正。
 - Reward persistence 缺失/无效/负值 fail-closed；`<6h` 不 ENTER，6–24h haircut，≥24h 才 trusted。
-- Telegram 未配置 `LPBOT_TG_TOKEN/LPBOT_TG_CHAT` 时降级 stdout、不崩溃；尚未发送真实测试消息。旧 Telegram token 必须由指挥官在外部立即轮换，禁止在报告/commit 回显旧值。
+- Telegram 未配置 `LPBOT_TG_TOKEN/LPBOT_TG_CHAT` 时降级 stdout、不崩溃；尚未发送真实测试消息。按 D3，测试阶段沿用现有 token，但进入真钱阶段前必须在外部强制轮换；任何 token/chat 值禁止回写源码、命令行、报告、日志或 commit。
 - Base public RPC 与 Solana public RPC 都有可变限流；没有付费 fallback。任何付费 RPC 只允许生成建议报告，必须指挥官人工批准。
 - 当前 Solana coverage 是经 registry 的真实 Orca account-state runner tick，并已进入 ledger-v2/gate；它不解码 swap event，也不产生 fee evidence。M0 不允许借机实现 M1 TS sidecar。
 - Raydium 市场快照是单次 top-1000 page，`hasNextPage=true`，页外池 unavailable/unverified；Orca 当次 page `next=null`。详见 `MARKET_SNAPSHOT_M0.md`。
 - Cost sensitivity 使用历史 swap/模型参数，不保证未来收益；已验收的历史结论是 25U 不经济，50U 起才在该样例过 gate。
 - 14d shadow 启动、gate 评审、合并、推送、M1 放行均由指挥官决定。**M1-A 签名 sidecar / M1-B EVM 执行严格禁止开工。**
 
-## 6. sol 最终验收
+## 6. sol 原 M0 验收（非本轮 M0R 全量验收）
 
 测试卫生说明：全量中的 14 个 `legacy_environment_bound` 节点是**精确 nodeid skip，不是 pass**。其中 6 个锁定已结束的 2026-06-05 in-flight PID/4-of-6/固定文件计数，1 个把冻结合法 `COMPRESSED_PASS` 错写成只接受 `PASS`，7 个会把指挥官要求保留的只读 paper PID 1349731 误判为禁用进程。同文件其余测试照常运行；未忽略整文件、未改冻结报告、未改 `scripts/lp_long_horizon/`、未停止进程。精确清单与理由在 `tests/conftest.py::LEGACY_ENVIRONMENT_BOUND_NODEIDS`。
 

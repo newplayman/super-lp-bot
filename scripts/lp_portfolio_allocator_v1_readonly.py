@@ -38,7 +38,12 @@ from scripts.lp_universe_screener_v1_readonly import reward_persistence_gate  # 
 DEFAULT_TOTAL = 10000.0
 DEFAULT_TIER_WEIGHTS = {"A": 0.70, "B": 0.30, "C": 0.0}
 DEFAULT_MAX_POOLS = {"A": 3, "B": 2, "C": 0}
-DEFAULT_MIN_POOL_USD = 1000.0
+# M1 commander's capital tier is one 50--60U position.  The lower bound is an
+# output annotation threshold only; it does not bypass or weaken any runtime
+# NetCover, absolute-profit, or position-cap gate.
+M1_MIN_POSITION_USD = 50.0
+M1_MIN_POSITION_EVIDENCE = "reports/lp_cost_sensitivity/20260808_172541"
+DEFAULT_MIN_POOL_USD = M1_MIN_POSITION_USD
 
 
 # ---------------------------------------------------------------------------
@@ -211,6 +216,12 @@ def allocate(records, *, total=DEFAULT_TOTAL, tier_weights=None, max_pools=None,
     stability map has been merged in via merge_stability().
     Returns {allocations:[...], by_tier_usd:{}, deployed, idle, n_pools}.
     """
+    try:
+        min_pool_usd = float(min_pool_usd)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("min_pool_usd must be finite and positive") from exc
+    if not math.isfinite(min_pool_usd) or min_pool_usd <= 0:
+        raise ValueError("min_pool_usd must be finite and positive")
     tier_weights = dict(tier_weights or DEFAULT_TIER_WEIGHTS)
     max_pools = dict(max_pools or DEFAULT_MAX_POOLS)
     skipped: List[Dict[str, Any]] = []
@@ -230,7 +241,12 @@ def allocate(records, *, total=DEFAULT_TOTAL, tier_weights=None, max_pools=None,
     if wsum <= 0:
         return {"allocations": [], "by_tier_usd": {}, "deployed": 0.0,
                 "idle": total, "n_pools": 0, "skipped": skipped,
-                "runtime_gates_enforced": enforce_runtime_gates}
+                "runtime_gates_enforced": enforce_runtime_gates,
+                "config": {
+                    "min_position_profile": "M1_1x50_60U",
+                    "min_position_usd": min_pool_usd,
+                    "min_position_evidence": M1_MIN_POSITION_EVIDENCE,
+                }}
     norm = {t: w / wsum for t, w in active.items()}
 
     allocations: List[Dict[str, Any]] = []
@@ -273,7 +289,12 @@ def allocate(records, *, total=DEFAULT_TOTAL, tier_weights=None, max_pools=None,
     return {"allocations": allocations, "by_tier_usd": by_tier_usd,
             "deployed": deployed, "idle": round(total - deployed, 2),
             "n_pools": len(allocations), "skipped": skipped,
-            "runtime_gates_enforced": enforce_runtime_gates}
+            "runtime_gates_enforced": enforce_runtime_gates,
+            "config": {
+                "min_position_profile": "M1_1x50_60U",
+                "min_position_usd": min_pool_usd,
+                "min_position_evidence": M1_MIN_POSITION_EVIDENCE,
+            }}
 
 
 # ---------------------------------------------------------------------------
@@ -365,6 +386,16 @@ def _f(v):
     return "-" if v is None else (f"{v:.1f}" if isinstance(v, (int, float)) else str(v))
 
 
+def _positive_usd(value):
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError) as exc:
+        raise argparse.ArgumentTypeError("must be a finite positive USD amount") from exc
+    if not math.isfinite(parsed) or parsed <= 0:
+        raise argparse.ArgumentTypeError("must be a finite positive USD amount")
+    return parsed
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--ranked", help="bridge resolve_and_rank.json")
@@ -374,6 +405,13 @@ def main():
     ap.add_argument("--legacy-no-runtime-gates", action="store_true",
                     help="research compatibility only; bypass WP-04 hard runtime gates")
     ap.add_argument("--total", type=float, default=DEFAULT_TOTAL)
+    ap.add_argument(
+        "--min-position-usd", type=_positive_usd, default=M1_MIN_POSITION_USD,
+        help=(
+            "below-min annotation threshold (M1 default: 50U, supported by "
+            "reports/lp_cost_sensitivity/20260808_172541)"
+        ),
+    )
     ap.add_argument("--out", default=None)
     ap.add_argument("--self-test", action="store_true")
     args = ap.parse_args()
@@ -388,6 +426,7 @@ def main():
         records = merge_stability(records, json.load(open(args.stability)))
     out = allocate(
         records, total=args.total, require_stable=args.require_stable,
+        min_pool_usd=args.min_position_usd,
         enforce_runtime_gates=not args.legacy_no_runtime_gates,
     )
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")

@@ -131,3 +131,56 @@ Raydium response 的 `day.fee` 对这些行均为 null；本文没有用 APR 倒
 - Raydium 当次 `hasNextPage=true`，因此“页外无池”不可证；本文明确记为 unavailable/unverified。
 - xStocks 官方 quote 在周末可能没有 bid/ask；这与 token inventory/pool inventory 是不同接口。本快照只证明 metadata/pool 列表，不证明当前可赎回、可交易或 anchor 新鲜。
 - Uniswap v4 hook/LP fee/protocol fee 必须运行时读链；DefiLlama 汇总数不能满足 INV-V4-01。
+
+### xStocks cent units 待验证项
+
+当前只读 adapter 按 Backed `AssetAvailabilityResponse` 的 `bid` / `ask` 为 **USD cents** 处理，即先取 mid 再除以 100。由于本快照采于周末、官方 quote 当时可能没有 bid/ask，这一单位解释仍标记为 **TODO：首个可用的 `REGULAR` session 实测**，不得把周末 unavailable 当成已验证，也不得据此放行真钱执行。
+
+在首个 `REGULAR` session 执行以下只读命令。命令不需要、也不得加入任何 token；它先跑 collector 单次 tick，再核对 JSONL 与 SQLite 的同一已归一化价格，并用最新官方 raw bid/ask 检查 cent→USD 不存在 100 倍量级错误：
+
+```bash
+cd /opt/lpbot/lp-bot-v3-origin-check
+python3 -u scripts/lp_rwa_collector_daemon_v1_readonly.py --once \
+  --watchlist SPYx \
+  --db reports/lp_scanner/scanner.db \
+  --jsonl-dir reports/lp_scanner/rwa_sessions
+python3 - <<'PY'
+import json
+import sqlite3
+import urllib.request
+from decimal import Decimal
+from pathlib import Path
+
+rows = [json.loads(line) for line in Path(
+    "reports/lp_scanner/rwa_sessions/SPYx.jsonl"
+).read_text(encoding="utf-8").splitlines()]
+jsonl = next(row for row in reversed(rows) if row.get("source") == "xstocks_official")
+assert jsonl["session"] == "REGULAR", jsonl["session"]
+jsonl_price = Decimal(jsonl["observed_price"])
+
+with sqlite3.connect("reports/lp_scanner/scanner.db") as db:
+    db_row = db.execute(
+        "SELECT market_session, reference_price FROM market_sessions "
+        "WHERE instrument_id='backed:SPYx' AND source='xstocks_official' "
+        "ORDER BY id DESC LIMIT 1"
+    ).fetchone()
+assert db_row and db_row[0] == "REGULAR", db_row
+db_price = Decimal(str(db_row[1]))
+assert db_price == jsonl_price, (db_price, jsonl_price)
+
+request = urllib.request.Request(
+    "https://api.backed.fi/api/v1/quotes/assets/SPYx",
+    headers={"Accept": "application/json", "User-Agent": "lpbot-rwa-readonly/1"},
+    method="GET",
+)
+with urllib.request.urlopen(request, timeout=20) as response:
+    raw = json.load(response)
+raw_mid_usd = (Decimal(str(raw["bid"])) + Decimal(str(raw["ask"]))) / Decimal("200")
+ratio = jsonl_price / raw_mid_usd
+assert Decimal("0.9") <= ratio <= Decimal("1.1"), (raw, jsonl_price, raw_mid_usd)
+print({"status": "PASS", "jsonl_usd": str(jsonl_price), "db_usd": str(db_price),
+       "latest_raw_mid_usd": str(raw_mid_usd), "ratio": str(ratio)})
+PY
+```
+
+仅当上述输出为 `PASS` 且人工确认 source timestamp 接近同一采样窗口后，才可关闭该 TODO；若失败或 source 不新鲜，保持 fail-closed 并保留 JSONL/DB 证据，不做单位猜测修正。
