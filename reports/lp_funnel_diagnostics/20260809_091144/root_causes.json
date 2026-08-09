@@ -1,0 +1,1598 @@
+{
+  "code_evidence": {
+    "attach_calls": "scripts/lp_scanner_daemon_v1_readonly.py:648-663",
+    "attach_short_circuit": "scripts/lp_scanner_daemon_v1_readonly.py:625-646",
+    "config_filter": "scripts/lp_pool_resolve_and_rank_v1_readonly.py:636-658",
+    "cost_state": "scripts/lp_netcover_inputs_v1_readonly.py:209-263",
+    "fee_metadata": "scripts/lp_universe_screener_v1_readonly.py:96-111,281-296",
+    "range_domain": "scripts/lp_v3_fee_share.py:6-9",
+    "resolve": "scripts/lp_pool_resolve_and_rank_v1_readonly.py:515-545",
+    "resolve_fail": "scripts/lp_pool_resolve_and_rank_v1_readonly.py:515-526",
+    "reward_conversion": "scripts/lp_netcover_inputs_v1_readonly.py:266-297",
+    "status_exception": "scripts/lp_pool_resolve_and_rank_v1_readonly.py:586-589",
+    "swap_count": "scripts/lp_pool_resolve_and_rank_v1_readonly.py:542-548"
+  },
+  "generated_at": "2026-08-09T09:12:02.750139+00:00",
+  "probe_tip": 49738687,
+  "probe_tip_hex": "0x2f6f3bf",
+  "records": [
+    {
+      "classification": "NO_MEASURED_USD_QUOTE_AND_REWARD_CONVERSION_DEPTH",
+      "missing_fields": [
+        "entry_cost_usd",
+        "exit_cost_usd",
+        "slippage_usd",
+        "reward_conversion_cost_usd"
+      ],
+      "path_break": {
+        "l_active_raw_selected": 2505607705702,
+        "price_pair_selected": 0.029611892452103983,
+        "price_usd_direct": null,
+        "reward_conversion_inputs": {
+          "reward_conversion_dec0": null,
+          "reward_conversion_dec1": null,
+          "reward_conversion_fee_tier": null,
+          "reward_conversion_l_active_raw": null,
+          "reward_conversion_price_usd": null
+        }
+      },
+      "project": "aerodrome-slipstream",
+      "repairability": "ENGINEERING_WITH_RAW_CROSS_POOL_EVIDENCE",
+      "resolve": {
+        "dec0": 18,
+        "dec1": 8,
+        "fee_tier_from_pool_meta": 0.000125,
+        "pool": "0xffa192f04b1e5f9f5124fb40a96407564492ed20",
+        "pool_meta": "CL10 - 0.0125%",
+        "status": "OK",
+        "tick_spacing_from_pool_meta": 10,
+        "token0": "0x4200000000000000000000000000000000000006",
+        "token1": "0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+        "underlying_tokens": [
+          "0x4200000000000000000000000000000000000006",
+          "0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf"
+        ]
+      },
+      "root_cause": "Swap active-liquidity and pair-price evidence exists, but neither pool token is a recognized USD stable quote. The cost-state normalizer returns None. Positive AERO reward conversion also lacks its own five measured pool-state fields.",
+      "rpc_evidence": {
+        "contract_code": {
+          "ok": true,
+          "prefix": "0x363d3d373d3d3d363d73ec8e5342b19977b4ef88",
+          "return_bytes": 45
+        },
+        "fee": {
+          "decoded_first_word_uint": 500,
+          "ok": true,
+          "raw": "0x00000000000000000000000000000000000000000000000000000000000001f4",
+          "return_bytes": 32
+        },
+        "liquidity": {
+          "decoded_first_word_uint": 2505607705702,
+          "ok": true,
+          "raw": "0x0000000000000000000000000000000000000000000000000000024761db7466",
+          "return_bytes": 32
+        },
+        "slot0": {
+          "decoded_first_word_uint": 136215526582651411176191,
+          "ok": true,
+          "raw": "0x000000000000000000000000000000000000000000001cd8422c8e21843b1afffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffbf2f20000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001",
+          "return_bytes": 192
+        },
+        "token0": {
+          "decoded_address": "0x4200000000000000000000000000000000000006",
+          "ok": true,
+          "raw": "0x0000000000000000000000004200000000000000000000000000000000000006",
+          "return_bytes": 32
+        },
+        "token0_decimals": {
+          "decoded_uint": 18,
+          "ok": true,
+          "raw": "0x0000000000000000000000000000000000000000000000000000000000000012",
+          "return_bytes": 32
+        },
+        "token1": {
+          "decoded_address": "0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+          "ok": true,
+          "raw": "0x000000000000000000000000cbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+          "return_bytes": 32
+        },
+        "token1_decimals": {
+          "decoded_uint": 8,
+          "ok": true,
+          "raw": "0x0000000000000000000000000000000000000000000000000000000000000008",
+          "return_bytes": 32
+        }
+      },
+      "suggested_fix": "Add measured, provenance-labelled USD cross-pool pricing and AERO conversion depth; if both raw paths are unavailable, retain fail-closed instead of estimating.",
+      "swaps": {
+        "count_in_source_window": 28,
+        "last_active_liquidity_raw": 2505607705702,
+        "last_price_token1_per_token0": 0.029611892452103983,
+        "source_error": null,
+        "source_status": "OK"
+      },
+      "symbol": "WETH-CBBTC"
+    },
+    {
+      "classification": "NO_MEASURED_USD_QUOTE_AND_REWARD_CONVERSION_DEPTH",
+      "missing_fields": [
+        "entry_cost_usd",
+        "exit_cost_usd",
+        "slippage_usd",
+        "reward_conversion_cost_usd"
+      ],
+      "path_break": {
+        "l_active_raw_selected": 644831073085433479916500,
+        "price_pair_selected": 998.4503656300192,
+        "price_usd_direct": null,
+        "reward_conversion_inputs": {
+          "reward_conversion_dec0": null,
+          "reward_conversion_dec1": null,
+          "reward_conversion_fee_tier": null,
+          "reward_conversion_l_active_raw": null,
+          "reward_conversion_price_usd": null
+        }
+      },
+      "project": "aerodrome-slipstream",
+      "repairability": "ENGINEERING_WITH_RAW_CROSS_POOL_EVIDENCE",
+      "resolve": {
+        "dec0": 18,
+        "dec1": 18,
+        "fee_tier_from_pool_meta": 0.0027089999999999996,
+        "pool": "0xb5f0b4ae66c14f7efaa9aa1468e8fc536a3e288c",
+        "pool_meta": "CL200 - 0.2709%",
+        "status": "OK",
+        "tick_spacing_from_pool_meta": 200,
+        "token0": "0x4200000000000000000000000000000000000006",
+        "token1": "0xbaa5cc21fd487b8fcc2f632f3f4e8d37262a0842",
+        "underlying_tokens": [
+          "0x4200000000000000000000000000000000000006",
+          "0xBAa5CC21fd487B8Fcc2F632f3F4E8D37262a0842"
+        ]
+      },
+      "root_cause": "Swap active-liquidity and pair-price evidence exists, but neither pool token is a recognized USD stable quote. The cost-state normalizer returns None. Positive AERO reward conversion also lacks its own five measured pool-state fields.",
+      "rpc_evidence": {
+        "contract_code": {
+          "ok": true,
+          "prefix": "0x363d3d373d3d3d363d73ec8e5342b19977b4ef88",
+          "return_bytes": 45
+        },
+        "fee": {
+          "decoded_first_word_uint": 2736,
+          "ok": true,
+          "raw": "0x0000000000000000000000000000000000000000000000000000000000000ab0",
+          "return_bytes": 32
+        },
+        "liquidity": {
+          "decoded_first_word_uint": 150463639726922763429564,
+          "ok": true,
+          "raw": "0x000000000000000000000000000000000000000000001fdca677051b602d66bc",
+          "return_bytes": 32
+        },
+        "slot0": {
+          "decoded_first_word_uint": 2501119084576957346566566337061,
+          "ok": true,
+          "raw": "0x000000000000000000000000000000000000001f918d37692a275c4357a05a250000000000000000000000000000000000000000000000000000000000010db60000000000000000000000000000000000000000000000000000000000000023000000000000000000000000000000000000000000000000000000000000038400000000000000000000000000000000000000000000000000000000000003840000000000000000000000000000000000000000000000000000000000000001",
+          "return_bytes": 192
+        },
+        "token0": {
+          "decoded_address": "0x4200000000000000000000000000000000000006",
+          "ok": true,
+          "raw": "0x0000000000000000000000004200000000000000000000000000000000000006",
+          "return_bytes": 32
+        },
+        "token0_decimals": {
+          "decoded_uint": 18,
+          "ok": true,
+          "raw": "0x0000000000000000000000000000000000000000000000000000000000000012",
+          "return_bytes": 32
+        },
+        "token1": {
+          "decoded_address": "0xbaa5cc21fd487b8fcc2f632f3f4e8d37262a0842",
+          "ok": true,
+          "raw": "0x000000000000000000000000baa5cc21fd487b8fcc2f632f3f4e8d37262a0842",
+          "return_bytes": 32
+        },
+        "token1_decimals": {
+          "decoded_uint": 18,
+          "ok": true,
+          "raw": "0x0000000000000000000000000000000000000000000000000000000000000012",
+          "return_bytes": 32
+        }
+      },
+      "suggested_fix": "Add measured, provenance-labelled USD cross-pool pricing and AERO conversion depth; if both raw paths are unavailable, retain fail-closed instead of estimating.",
+      "swaps": {
+        "count_in_source_window": 4154,
+        "last_active_liquidity_raw": 644831073085433479916500,
+        "last_price_token1_per_token0": 998.4503656300192,
+        "source_error": null,
+        "source_status": "OK"
+      },
+      "symbol": "WETH-MORPHO"
+    },
+    {
+      "classification": "NO_MEASURED_USD_QUOTE_AND_REWARD_CONVERSION_DEPTH",
+      "missing_fields": [
+        "entry_cost_usd",
+        "exit_cost_usd",
+        "slippage_usd",
+        "reward_conversion_cost_usd"
+      ],
+      "path_break": {
+        "l_active_raw_selected": 1170095723197310237,
+        "price_pair_selected": 6.649526360477692e-06,
+        "price_usd_direct": null,
+        "reward_conversion_inputs": {
+          "reward_conversion_dec0": null,
+          "reward_conversion_dec1": null,
+          "reward_conversion_fee_tier": null,
+          "reward_conversion_l_active_raw": null,
+          "reward_conversion_price_usd": null
+        }
+      },
+      "project": "aerodrome-slipstream",
+      "repairability": "ENGINEERING_WITH_RAW_CROSS_POOL_EVIDENCE",
+      "resolve": {
+        "dec0": 18,
+        "dec1": 8,
+        "fee_tier_from_pool_meta": 0.00075,
+        "pool": "0xdfe5f275020def30993f042174fc2d335678b626",
+        "pool_meta": "CL200 - 0.075%",
+        "status": "OK",
+        "tick_spacing_from_pool_meta": 200,
+        "token0": "0x940181a94a35a4569e4529a3cdfb74e38fd98631",
+        "token1": "0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+        "underlying_tokens": [
+          "0x940181a94A35A4569E4529A3CDfB74e38FD98631",
+          "0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf"
+        ]
+      },
+      "root_cause": "Swap active-liquidity and pair-price evidence exists, but neither pool token is a recognized USD stable quote. The cost-state normalizer returns None. Positive AERO reward conversion also lacks its own five measured pool-state fields.",
+      "rpc_evidence": {
+        "contract_code": {
+          "ok": true,
+          "prefix": "0x363d3d373d3d3d363d73ec8e5342b19977b4ef88",
+          "return_bytes": 45
+        },
+        "fee": {
+          "decoded_first_word_uint": 750,
+          "ok": true,
+          "raw": "0x00000000000000000000000000000000000000000000000000000000000002ee",
+          "return_bytes": 32
+        },
+        "liquidity": {
+          "decoded_first_word_uint": 961901360530618488,
+          "ok": true,
+          "raw": "0x0000000000000000000000000000000000000000000000000d595c30e7647878",
+          "return_bytes": 32
+        },
+        "slot0": {
+          "decoded_first_word_uint": 2032341783631509296301,
+          "ok": true,
+          "raw": "0x00000000000000000000000000000000000000000000006e2c68746793e794adfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffaaa69000000000000000000000000000000000000000000000000000000000000015a000000000000000000000000000000000000000000000000000000000000016800000000000000000000000000000000000000000000000000000000000001680000000000000000000000000000000000000000000000000000000000000001",
+          "return_bytes": 192
+        },
+        "token0": {
+          "decoded_address": "0x940181a94a35a4569e4529a3cdfb74e38fd98631",
+          "ok": true,
+          "raw": "0x000000000000000000000000940181a94a35a4569e4529a3cdfb74e38fd98631",
+          "return_bytes": 32
+        },
+        "token0_decimals": {
+          "decoded_uint": 18,
+          "ok": true,
+          "raw": "0x0000000000000000000000000000000000000000000000000000000000000012",
+          "return_bytes": 32
+        },
+        "token1": {
+          "decoded_address": "0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+          "ok": true,
+          "raw": "0x000000000000000000000000cbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+          "return_bytes": 32
+        },
+        "token1_decimals": {
+          "decoded_uint": 8,
+          "ok": true,
+          "raw": "0x0000000000000000000000000000000000000000000000000000000000000008",
+          "return_bytes": 32
+        }
+      },
+      "suggested_fix": "Add measured, provenance-labelled USD cross-pool pricing and AERO conversion depth; if both raw paths are unavailable, retain fail-closed instead of estimating.",
+      "swaps": {
+        "count_in_source_window": 3974,
+        "last_active_liquidity_raw": 1170095723197310237,
+        "last_price_token1_per_token0": 6.649526360477692e-06,
+        "source_error": null,
+        "source_status": "OK"
+      },
+      "symbol": "AERO-CBBTC"
+    },
+    {
+      "classification": "NO_MEASURED_USD_QUOTE_AND_REWARD_CONVERSION_DEPTH",
+      "missing_fields": [
+        "entry_cost_usd",
+        "exit_cost_usd",
+        "slippage_usd",
+        "reward_conversion_cost_usd"
+      ],
+      "path_break": {
+        "l_active_raw_selected": 470281896979555593430615,
+        "price_pair_selected": 4448.500999485687,
+        "price_usd_direct": null,
+        "reward_conversion_inputs": {
+          "reward_conversion_dec0": null,
+          "reward_conversion_dec1": null,
+          "reward_conversion_fee_tier": null,
+          "reward_conversion_l_active_raw": null,
+          "reward_conversion_price_usd": null
+        }
+      },
+      "project": "aerodrome-slipstream",
+      "repairability": "ENGINEERING_WITH_RAW_CROSS_POOL_EVIDENCE",
+      "resolve": {
+        "dec0": 18,
+        "dec1": 18,
+        "fee_tier_from_pool_meta": 0.0020250000000000003,
+        "pool": "0x82321f3beb69f503380d6b233857d5c43562e2d0",
+        "pool_meta": "CL200 - 0.2025%",
+        "status": "OK",
+        "tick_spacing_from_pool_meta": 200,
+        "token0": "0x4200000000000000000000000000000000000006",
+        "token1": "0x940181a94a35a4569e4529a3cdfb74e38fd98631",
+        "underlying_tokens": [
+          "0x4200000000000000000000000000000000000006",
+          "0x940181a94A35A4569E4529A3CDfB74e38FD98631"
+        ]
+      },
+      "root_cause": "Swap active-liquidity and pair-price evidence exists, but neither pool token is a recognized USD stable quote. The cost-state normalizer returns None. Positive AERO reward conversion also lacks its own five measured pool-state fields.",
+      "rpc_evidence": {
+        "contract_code": {
+          "ok": true,
+          "prefix": "0x363d3d373d3d3d363d73ec8e5342b19977b4ef88",
+          "return_bytes": 45
+        },
+        "fee": {
+          "decoded_first_word_uint": 3136,
+          "ok": true,
+          "raw": "0x0000000000000000000000000000000000000000000000000000000000000c40",
+          "return_bytes": 32
+        },
+        "liquidity": {
+          "decoded_first_word_uint": 470308355891400914668149,
+          "ok": true,
+          "raw": "0x00000000000000000000000000000000000000000000639777913ac410328a75",
+          "return_bytes": 32
+        },
+        "slot0": {
+          "decoded_first_word_uint": 5304495866243803364387298816951,
+          "ok": true,
+          "raw": "0x0000000000000000000000000000000000000042f3c023d2187090eb6e5133b70000000000000000000000000000000000000000000000000000000000014873000000000000000000000000000000000000000000000000000000000000023a000000000000000000000000000000000000000000000000000000000000038400000000000000000000000000000000000000000000000000000000000003840000000000000000000000000000000000000000000000000000000000000001",
+          "return_bytes": 192
+        },
+        "token0": {
+          "decoded_address": "0x4200000000000000000000000000000000000006",
+          "ok": true,
+          "raw": "0x0000000000000000000000004200000000000000000000000000000000000006",
+          "return_bytes": 32
+        },
+        "token0_decimals": {
+          "decoded_uint": 18,
+          "ok": true,
+          "raw": "0x0000000000000000000000000000000000000000000000000000000000000012",
+          "return_bytes": 32
+        },
+        "token1": {
+          "decoded_address": "0x940181a94a35a4569e4529a3cdfb74e38fd98631",
+          "ok": true,
+          "raw": "0x000000000000000000000000940181a94a35a4569e4529a3cdfb74e38fd98631",
+          "return_bytes": 32
+        },
+        "token1_decimals": {
+          "decoded_uint": 18,
+          "ok": true,
+          "raw": "0x0000000000000000000000000000000000000000000000000000000000000012",
+          "return_bytes": 32
+        }
+      },
+      "suggested_fix": "Add measured, provenance-labelled USD cross-pool pricing and AERO conversion depth; if both raw paths are unavailable, retain fail-closed instead of estimating.",
+      "swaps": {
+        "count_in_source_window": 1674,
+        "last_active_liquidity_raw": 470281896979555593430615,
+        "last_price_token1_per_token0": 4448.500999485687,
+        "source_error": null,
+        "source_status": "OK"
+      },
+      "symbol": "WETH-AERO"
+    },
+    {
+      "classification": "STALE_FACTORY_REGISTRY",
+      "missing_fields": [
+        "fee_ev_usd",
+        "reward_ev_usd",
+        "il_ev_usd",
+        "entry_cost_usd",
+        "exit_cost_usd",
+        "slippage_usd",
+        "reward_conversion_cost_usd",
+        "exit_latency_loss_usd"
+      ],
+      "path_break": {
+        "l_active_raw_selected": null,
+        "price_pair_selected": null,
+        "price_usd_direct": null,
+        "reward_conversion_inputs": {
+          "reward_conversion_dec0": null,
+          "reward_conversion_dec1": null,
+          "reward_conversion_fee_tier": null,
+          "reward_conversion_l_active_raw": null,
+          "reward_conversion_price_usd": null
+        }
+      },
+      "project": "aerodrome-slipstream",
+      "repairability": "ENGINEERING",
+      "resolve": {
+        "dec0": null,
+        "dec1": null,
+        "fee_tier_from_pool_meta": 0.003,
+        "pool": null,
+        "pool_meta": "CL200 - 0.3%",
+        "status": "NOT_FOUND",
+        "tick_spacing_from_pool_meta": 200,
+        "token0": null,
+        "token1": null,
+        "underlying_tokens": [
+          "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+          "0xcb111E6A2a3bde90856D299d61341ac302167D23"
+        ]
+      },
+      "root_cause": "The production resolver probes only the Initial Slipstream factory. The same exact token pair/tick call returns a live pool from the official Gauges V3 factory, with readable slot0/liquidity and real swaps.",
+      "rpc_evidence": {
+        "candidate_pools": {
+          "0x0150e3d89e161518c044ad191c4bdf6b40df6e83": {
+            "factories": [
+              "gauges_v3",
+              "gauges_v3"
+            ],
+            "state": {
+              "contract_code": {
+                "ok": true,
+                "prefix": "0x363d3d373d3d3d363d73c770898522d2a9c8da7a",
+                "return_bytes": 45
+              },
+              "fee": {
+                "decoded_first_word_uint": 3000,
+                "ok": true,
+                "raw": "0x0000000000000000000000000000000000000000000000000000000000000bb8",
+                "return_bytes": 32
+              },
+              "liquidity": {
+                "decoded_first_word_uint": 246169019231053791598,
+                "ok": true,
+                "raw": "0x00000000000000000000000000000000000000000000000d58480abb3543c16e",
+                "return_bytes": 32
+              },
+              "slot0": {
+                "decoded_first_word_uint": 414877988073848118722974369749133523,
+                "ok": true,
+                "raw": "0x00000000000000000000000000000000004fe7106755b1827997fc17fdb3e8d3000000000000000000000000000000000000000000000000000000000004b8be000000000000000000000000000000000000000000000000000000000000002a000000000000000000000000000000000000000000000000000000000000016800000000000000000000000000000000000000000000000000000000000001680000000000000000000000000000000000000000000000000000000000000001",
+                "return_bytes": 192
+              },
+              "token0": {
+                "decoded_address": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+                "ok": true,
+                "raw": "0x000000000000000000000000833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+                "return_bytes": 32
+              },
+              "token0_decimals": {
+                "decoded_uint": 6,
+                "ok": true,
+                "raw": "0x0000000000000000000000000000000000000000000000000000000000000006",
+                "return_bytes": 32
+              },
+              "token1": {
+                "decoded_address": "0xcb111e6a2a3bde90856d299d61341ac302167d23",
+                "ok": true,
+                "raw": "0x000000000000000000000000cb111e6a2a3bde90856d299d61341ac302167d23",
+                "return_bytes": 32
+              },
+              "token1_decimals": {
+                "decoded_uint": 18,
+                "ok": true,
+                "raw": "0x0000000000000000000000000000000000000000000000000000000000000012",
+                "return_bytes": 32
+              }
+            },
+            "swaps": {
+              "count": 1620,
+              "last_liquidity_raw": 261836190911338062747,
+              "last_price": 27.42089458545329,
+              "max_price": 28.790999787578752,
+              "min_price": 27.054397574482397,
+              "ok": true,
+              "window_blocks": 86400
+            }
+          }
+        },
+        "factory_exact_tick_probes": {
+          "gauge_caps": {
+            "factory": "0xade65c38cd4849adba595a4323a8c7ddfe89716a",
+            "orders": [
+              {
+                "decoded_address": "0x0000000000000000000000000000000000000000",
+                "ok": true,
+                "raw": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                "return_bytes": 32
+              },
+              {
+                "decoded_address": "0x0000000000000000000000000000000000000000",
+                "ok": true,
+                "raw": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                "return_bytes": 32
+              }
+            ]
+          },
+          "gauges_v3": {
+            "factory": "0xf8f2eb4940cfe7d13603dddd87f123820fc061ef",
+            "orders": [
+              {
+                "decoded_address": "0x0150e3d89e161518c044ad191c4bdf6b40df6e83",
+                "ok": true,
+                "raw": "0x0000000000000000000000000150e3d89e161518c044ad191c4bdf6b40df6e83",
+                "return_bytes": 32
+              },
+              {
+                "decoded_address": "0x0150e3d89e161518c044ad191c4bdf6b40df6e83",
+                "ok": true,
+                "raw": "0x0000000000000000000000000150e3d89e161518c044ad191c4bdf6b40df6e83",
+                "return_bytes": 32
+              }
+            ]
+          },
+          "initial": {
+            "factory": "0x5e7bb104d84c7cb9b682aac2f3d509f5f406809a",
+            "orders": [
+              {
+                "decoded_address": "0x0000000000000000000000000000000000000000",
+                "ok": true,
+                "raw": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                "return_bytes": 32
+              },
+              {
+                "decoded_address": "0x0000000000000000000000000000000000000000",
+                "ok": true,
+                "raw": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                "return_bytes": 32
+              }
+            ]
+          }
+        },
+        "factory_registry_source": "https://github.com/aerodrome-finance/slipstream#deployments (Base Initial/Gauge Caps/Gauges V3)",
+        "initial_factory_spacing_probes": {
+          "1": [
+            {
+              "decoded_address": "0x0000000000000000000000000000000000000000",
+              "ok": true,
+              "raw": "0x0000000000000000000000000000000000000000000000000000000000000000",
+              "return_bytes": 32
+            },
+            {
+              "decoded_address": "0x0000000000000000000000000000000000000000",
+              "ok": true,
+              "raw": "0x0000000000000000000000000000000000000000000000000000000000000000",
+              "return_bytes": 32
+            }
+          ],
+          "10": [
+            {
+              "decoded_address": "0x0000000000000000000000000000000000000000",
+              "ok": true,
+              "raw": "0x0000000000000000000000000000000000000000000000000000000000000000",
+              "return_bytes": 32
+            },
+            {
+              "decoded_address": "0x0000000000000000000000000000000000000000",
+              "ok": true,
+              "raw": "0x0000000000000000000000000000000000000000000000000000000000000000",
+              "return_bytes": 32
+            }
+          ],
+          "100": [
+            {
+              "decoded_address": "0x0000000000000000000000000000000000000000",
+              "ok": true,
+              "raw": "0x0000000000000000000000000000000000000000000000000000000000000000",
+              "return_bytes": 32
+            },
+            {
+              "decoded_address": "0x0000000000000000000000000000000000000000",
+              "ok": true,
+              "raw": "0x0000000000000000000000000000000000000000000000000000000000000000",
+              "return_bytes": 32
+            }
+          ],
+          "200": [
+            {
+              "decoded_address": "0x0000000000000000000000000000000000000000",
+              "ok": true,
+              "raw": "0x0000000000000000000000000000000000000000000000000000000000000000",
+              "return_bytes": 32
+            },
+            {
+              "decoded_address": "0x0000000000000000000000000000000000000000",
+              "ok": true,
+              "raw": "0x0000000000000000000000000000000000000000000000000000000000000000",
+              "return_bytes": 32
+            }
+          ],
+          "2000": [
+            {
+              "decoded_address": "0x0000000000000000000000000000000000000000",
+              "ok": true,
+              "raw": "0x0000000000000000000000000000000000000000000000000000000000000000",
+              "return_bytes": 32
+            },
+            {
+              "decoded_address": "0x0000000000000000000000000000000000000000",
+              "ok": true,
+              "raw": "0x0000000000000000000000000000000000000000000000000000000000000000",
+              "return_bytes": 32
+            }
+          ],
+          "50": [
+            {
+              "decoded_address": "0x0000000000000000000000000000000000000000",
+              "ok": true,
+              "raw": "0x0000000000000000000000000000000000000000000000000000000000000000",
+              "return_bytes": 32
+            },
+            {
+              "decoded_address": "0x0000000000000000000000000000000000000000",
+              "ok": true,
+              "raw": "0x0000000000000000000000000000000000000000000000000000000000000000",
+              "return_bytes": 32
+            }
+          ]
+        },
+        "underlying_decimals": [
+          {
+            "decoded_uint": 6,
+            "ok": true,
+            "raw": "0x0000000000000000000000000000000000000000000000000000000000000006",
+            "return_bytes": 32,
+            "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
+          },
+          {
+            "decoded_uint": 18,
+            "ok": true,
+            "raw": "0x0000000000000000000000000000000000000000000000000000000000000012",
+            "return_bytes": 32,
+            "token": "0xcb111e6a2a3bde90856d299d61341ac302167d23"
+          }
+        ]
+      },
+      "suggested_fix": "Use the official versioned factory registry, validate token0/token1/tick, and record factory provenance; never treat first non-zero as authoritative without validation.",
+      "swaps": {
+        "count_in_source_window": 0,
+        "last_active_liquidity_raw": null,
+        "last_price_token1_per_token0": null,
+        "source_error": null,
+        "source_status": "NOT_FOUND"
+      },
+      "symbol": "USDC-CBMEGA"
+    },
+    {
+      "classification": "STALE_FACTORY_REGISTRY",
+      "missing_fields": [
+        "fee_ev_usd",
+        "reward_ev_usd",
+        "il_ev_usd",
+        "entry_cost_usd",
+        "exit_cost_usd",
+        "slippage_usd",
+        "reward_conversion_cost_usd",
+        "exit_latency_loss_usd"
+      ],
+      "path_break": {
+        "l_active_raw_selected": null,
+        "price_pair_selected": null,
+        "price_usd_direct": null,
+        "reward_conversion_inputs": {
+          "reward_conversion_dec0": null,
+          "reward_conversion_dec1": null,
+          "reward_conversion_fee_tier": null,
+          "reward_conversion_l_active_raw": null,
+          "reward_conversion_price_usd": null
+        }
+      },
+      "project": "aerodrome-slipstream",
+      "repairability": "ENGINEERING",
+      "resolve": {
+        "dec0": null,
+        "dec1": null,
+        "fee_tier_from_pool_meta": 0.003,
+        "pool": null,
+        "pool_meta": "CL200 - 0.3%",
+        "status": "NOT_FOUND",
+        "tick_spacing_from_pool_meta": 200,
+        "token0": null,
+        "token1": null,
+        "underlying_tokens": [
+          "0x182FA643E5f29d5EcA75e7b9CF9336A3fe4620b2",
+          "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+        ]
+      },
+      "root_cause": "The production resolver probes only the Initial Slipstream factory. The same exact token pair/tick call returns a live pool from the official Gauges V3 factory, with readable slot0/liquidity and real swaps.",
+      "rpc_evidence": {
+        "candidate_pools": {
+          "0x8d479a4c680a76d4ae03f10203569558405ddfff": {
+            "factories": [
+              "gauges_v3",
+              "gauges_v3"
+            ],
+            "state": {
+              "contract_code": {
+                "ok": true,
+                "prefix": "0x363d3d373d3d3d363d73c770898522d2a9c8da7a",
+                "return_bytes": 45
+              },
+              "fee": {
+                "decoded_first_word_uint": 3000,
+                "ok": true,
+                "raw": "0x0000000000000000000000000000000000000000000000000000000000000bb8",
+                "return_bytes": 32
+              },
+              "liquidity": {
+                "decoded_first_word_uint": 32518168685543312718,
+                "ok": true,
+                "raw": "0x000000000000000000000000000000000000000000000001c347be21800a4d4e",
+                "return_bytes": 32
+              },
+              "slot0": {
+                "decoded_first_word_uint": 54054502314745002770462,
+                "ok": true,
+                "raw": "0x000000000000000000000000000000000000000000000b724ce9c63baa2cc01efffffffffffffffffffffffffffffffffffffffffffffffffffffffffffbaabc000000000000000000000000000000000000000000000000000000000000002d000000000000000000000000000000000000000000000000000000000000016800000000000000000000000000000000000000000000000000000000000001680000000000000000000000000000000000000000000000000000000000000001",
+                "return_bytes": 192
+              },
+              "token0": {
+                "decoded_address": "0x182fa643e5f29d5eca75e7b9cf9336a3fe4620b2",
+                "ok": true,
+                "raw": "0x000000000000000000000000182fa643e5f29d5eca75e7b9cf9336a3fe4620b2",
+                "return_bytes": 32
+              },
+              "token0_decimals": {
+                "decoded_uint": 18,
+                "ok": true,
+                "raw": "0x0000000000000000000000000000000000000000000000000000000000000012",
+                "return_bytes": 32
+              },
+              "token1": {
+                "decoded_address": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+                "ok": true,
+                "raw": "0x000000000000000000000000833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+                "return_bytes": 32
+              },
+              "token1_decimals": {
+                "decoded_uint": 6,
+                "ok": true,
+                "raw": "0x0000000000000000000000000000000000000000000000000000000000000006",
+                "return_bytes": 32
+              }
+            },
+            "swaps": {
+              "count": 6479,
+              "last_liquidity_raw": 34917407877746393554,
+              "last_price": 0.4654838327649667,
+              "max_price": 0.49676923375263493,
+              "min_price": 0.46450433065114444,
+              "ok": true,
+              "window_blocks": 86400
+            }
+          }
+        },
+        "factory_exact_tick_probes": {
+          "gauge_caps": {
+            "factory": "0xade65c38cd4849adba595a4323a8c7ddfe89716a",
+            "orders": [
+              {
+                "decoded_address": "0x0000000000000000000000000000000000000000",
+                "ok": true,
+                "raw": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                "return_bytes": 32
+              },
+              {
+                "decoded_address": "0x0000000000000000000000000000000000000000",
+                "ok": true,
+                "raw": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                "return_bytes": 32
+              }
+            ]
+          },
+          "gauges_v3": {
+            "factory": "0xf8f2eb4940cfe7d13603dddd87f123820fc061ef",
+            "orders": [
+              {
+                "decoded_address": "0x8d479a4c680a76d4ae03f10203569558405ddfff",
+                "ok": true,
+                "raw": "0x0000000000000000000000008d479a4c680a76d4ae03f10203569558405ddfff",
+                "return_bytes": 32
+              },
+              {
+                "decoded_address": "0x8d479a4c680a76d4ae03f10203569558405ddfff",
+                "ok": true,
+                "raw": "0x0000000000000000000000008d479a4c680a76d4ae03f10203569558405ddfff",
+                "return_bytes": 32
+              }
+            ]
+          },
+          "initial": {
+            "factory": "0x5e7bb104d84c7cb9b682aac2f3d509f5f406809a",
+            "orders": [
+              {
+                "decoded_address": "0x0000000000000000000000000000000000000000",
+                "ok": true,
+                "raw": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                "return_bytes": 32
+              },
+              {
+                "decoded_address": "0x0000000000000000000000000000000000000000",
+                "ok": true,
+                "raw": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                "return_bytes": 32
+              }
+            ]
+          }
+        },
+        "factory_registry_source": "https://github.com/aerodrome-finance/slipstream#deployments (Base Initial/Gauge Caps/Gauges V3)",
+        "initial_factory_spacing_probes": {
+          "1": [
+            {
+              "decoded_address": "0x0000000000000000000000000000000000000000",
+              "ok": true,
+              "raw": "0x0000000000000000000000000000000000000000000000000000000000000000",
+              "return_bytes": 32
+            },
+            {
+              "decoded_address": "0x0000000000000000000000000000000000000000",
+              "ok": true,
+              "raw": "0x0000000000000000000000000000000000000000000000000000000000000000",
+              "return_bytes": 32
+            }
+          ],
+          "10": [
+            {
+              "decoded_address": "0x0000000000000000000000000000000000000000",
+              "ok": true,
+              "raw": "0x0000000000000000000000000000000000000000000000000000000000000000",
+              "return_bytes": 32
+            },
+            {
+              "decoded_address": "0x0000000000000000000000000000000000000000",
+              "ok": true,
+              "raw": "0x0000000000000000000000000000000000000000000000000000000000000000",
+              "return_bytes": 32
+            }
+          ],
+          "100": [
+            {
+              "decoded_address": "0x0000000000000000000000000000000000000000",
+              "ok": true,
+              "raw": "0x0000000000000000000000000000000000000000000000000000000000000000",
+              "return_bytes": 32
+            },
+            {
+              "decoded_address": "0x0000000000000000000000000000000000000000",
+              "ok": true,
+              "raw": "0x0000000000000000000000000000000000000000000000000000000000000000",
+              "return_bytes": 32
+            }
+          ],
+          "200": [
+            {
+              "decoded_address": "0x0000000000000000000000000000000000000000",
+              "ok": true,
+              "raw": "0x0000000000000000000000000000000000000000000000000000000000000000",
+              "return_bytes": 32
+            },
+            {
+              "decoded_address": "0x0000000000000000000000000000000000000000",
+              "ok": true,
+              "raw": "0x0000000000000000000000000000000000000000000000000000000000000000",
+              "return_bytes": 32
+            }
+          ],
+          "2000": [
+            {
+              "decoded_address": "0x0000000000000000000000000000000000000000",
+              "ok": true,
+              "raw": "0x0000000000000000000000000000000000000000000000000000000000000000",
+              "return_bytes": 32
+            },
+            {
+              "decoded_address": "0x0000000000000000000000000000000000000000",
+              "ok": true,
+              "raw": "0x0000000000000000000000000000000000000000000000000000000000000000",
+              "return_bytes": 32
+            }
+          ],
+          "50": [
+            {
+              "decoded_address": "0x0000000000000000000000000000000000000000",
+              "ok": true,
+              "raw": "0x0000000000000000000000000000000000000000000000000000000000000000",
+              "return_bytes": 32
+            },
+            {
+              "decoded_address": "0x0000000000000000000000000000000000000000",
+              "ok": true,
+              "raw": "0x0000000000000000000000000000000000000000000000000000000000000000",
+              "return_bytes": 32
+            }
+          ]
+        },
+        "underlying_decimals": [
+          {
+            "decoded_uint": 18,
+            "ok": true,
+            "raw": "0x0000000000000000000000000000000000000000000000000000000000000012",
+            "return_bytes": 32,
+            "token": "0x182fa643e5f29d5eca75e7b9cf9336a3fe4620b2"
+          },
+          {
+            "decoded_uint": 6,
+            "ok": true,
+            "raw": "0x0000000000000000000000000000000000000000000000000000000000000006",
+            "return_bytes": 32,
+            "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
+          }
+        ]
+      },
+      "suggested_fix": "Use the official versioned factory registry, validate token0/token1/tick, and record factory provenance; never treat first non-zero as authoritative without validation.",
+      "swaps": {
+        "count_in_source_window": 0,
+        "last_active_liquidity_raw": null,
+        "last_price_token1_per_token0": null,
+        "source_error": null,
+        "source_status": "NOT_FOUND"
+      },
+      "symbol": "O-USDC"
+    },
+    {
+      "classification": "OBSERVED_RANGE_EXCEEDS_MATH_DOMAIN",
+      "missing_fields": [
+        "fee_ev_usd",
+        "reward_ev_usd",
+        "il_ev_usd",
+        "reward_conversion_cost_usd",
+        "exit_latency_loss_usd"
+      ],
+      "path_break": {
+        "l_active_raw_selected": 230089266101,
+        "price_pair_selected": 1905.9482989103892,
+        "price_usd_direct": null,
+        "reward_conversion_inputs": {
+          "reward_conversion_dec0": null,
+          "reward_conversion_dec1": null,
+          "reward_conversion_fee_tier": null,
+          "reward_conversion_l_active_raw": null,
+          "reward_conversion_price_usd": null
+        }
+      },
+      "project": "aerodrome-slipstream",
+      "repairability": "PARTIAL_FAIL_CLOSED_ONLY",
+      "resolve": {
+        "dec0": 18,
+        "dec1": 6,
+        "fee_tier_from_pool_meta": 0.0002,
+        "pool": "0xaad23a67f2ac693abbe543489aeb3f24f561d517",
+        "pool_meta": "CL50 - 0.02%",
+        "status": "OK",
+        "tick_spacing_from_pool_meta": 50,
+        "token0": "0x4200000000000000000000000000000000000006",
+        "token1": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+        "underlying_tokens": [
+          "0x4200000000000000000000000000000000000006",
+          "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+        ]
+      },
+      "root_cause": "The measured price path drives recommended range above 100%; p_lo becomes negative and replay raises ValueError at sqrt(p_lo). The ERROR row is excluded from multiwindow, so horizon/fee/reward/IL/latency remain absent.",
+      "rpc_evidence": {
+        "contract_code": {
+          "ok": true,
+          "prefix": "0x363d3d373d3d3d363d73ec8e5342b19977b4ef88",
+          "return_bytes": 45
+        },
+        "fee": {
+          "decoded_first_word_uint": 500,
+          "ok": true,
+          "raw": "0x00000000000000000000000000000000000000000000000000000000000001f4",
+          "return_bytes": 32
+        },
+        "liquidity": {
+          "decoded_first_word_uint": 230089266101,
+          "ok": true,
+          "raw": "0x00000000000000000000000000000000000000000000000000000035926393b5",
+          "return_bytes": 32
+        },
+        "slot0": {
+          "decoded_first_word_uint": 3458877184094239258535802,
+          "ok": true,
+          "raw": "0x00000000000000000000000000000000000000000002dc721b9d38f9d707677afffffffffffffffffffffffffffffffffffffffffffffffffffffffffffcefa70000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001",
+          "return_bytes": 192
+        },
+        "token0": {
+          "decoded_address": "0x4200000000000000000000000000000000000006",
+          "ok": true,
+          "raw": "0x0000000000000000000000004200000000000000000000000000000000000006",
+          "return_bytes": 32
+        },
+        "token0_decimals": {
+          "decoded_uint": 18,
+          "ok": true,
+          "raw": "0x0000000000000000000000000000000000000000000000000000000000000012",
+          "return_bytes": 32
+        },
+        "token1": {
+          "decoded_address": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "ok": true,
+          "raw": "0x000000000000000000000000833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "return_bytes": 32
+        },
+        "token1_decimals": {
+          "decoded_uint": 6,
+          "ok": true,
+          "raw": "0x0000000000000000000000000000000000000000000000000000000000000006",
+          "return_bytes": 32
+        }
+      },
+      "suggested_fix": "Validate range domain before replay and emit an explicit permanent fail-closed reason; do not clamp or replace the measured price path merely to make NetCover calculable.",
+      "swaps": {
+        "count_in_source_window": 27,
+        "last_active_liquidity_raw": 230089266101,
+        "last_price_token1_per_token0": 1905.9482989103892,
+        "source_error": "math domain error",
+        "source_status": "ERROR"
+      },
+      "symbol": "WETH-USDC"
+    },
+    {
+      "classification": "MULTI_FACTORY_POOL_AMBIGUITY",
+      "missing_fields": [
+        "fee_ev_usd",
+        "reward_ev_usd",
+        "il_ev_usd",
+        "entry_cost_usd",
+        "exit_cost_usd",
+        "slippage_usd",
+        "reward_conversion_cost_usd",
+        "exit_latency_loss_usd"
+      ],
+      "path_break": {
+        "l_active_raw_selected": null,
+        "price_pair_selected": null,
+        "price_usd_direct": null,
+        "reward_conversion_inputs": {
+          "reward_conversion_dec0": null,
+          "reward_conversion_dec1": null,
+          "reward_conversion_fee_tier": null,
+          "reward_conversion_l_active_raw": null,
+          "reward_conversion_price_usd": null
+        }
+      },
+      "project": "aerodrome-slipstream",
+      "repairability": "ENGINEERING_REQUIRES_AUTHORITATIVE_MAPPING",
+      "resolve": {
+        "dec0": null,
+        "dec1": null,
+        "fee_tier_from_pool_meta": 0.0025,
+        "pool": null,
+        "pool_meta": "CL200 - 0.25%",
+        "status": "NOT_FOUND",
+        "tick_spacing_from_pool_meta": 200,
+        "token0": null,
+        "token1": null,
+        "underlying_tokens": [
+          "0x526728DBc96689597F85ae4cd716d4f7fCcBAE9d",
+          "0x7Ba6F01772924a82D9626c126347A28299E98c98"
+        ]
+      },
+      "root_cause": "The production resolver probes only Initial, while two official later factories both return distinct live pools for the same pair/tick. Both have swaps, so token pair alone cannot identify the DefiLlama pool.",
+      "rpc_evidence": {
+        "candidate_pools": {
+          "0x00145e8fc9f06a0b71bd57fefbf451ec1db9d69f": {
+            "factories": [
+              "gauges_v3",
+              "gauges_v3"
+            ],
+            "state": {
+              "contract_code": {
+                "ok": true,
+                "prefix": "0x363d3d373d3d3d363d73c770898522d2a9c8da7a",
+                "return_bytes": 45
+              },
+              "fee": {
+                "decoded_first_word_uint": 2500,
+                "ok": true,
+                "raw": "0x00000000000000000000000000000000000000000000000000000000000009c4",
+                "return_bytes": 32
+              },
+              "liquidity": {
+                "decoded_first_word_uint": 348106337351228565330495,
+                "ok": true,
+                "raw": "0x0000000000000000000000000000000000000000000049b6e1e26285a0159a3f",
+                "return_bytes": 32
+              },
+              "slot0": {
+                "decoded_first_word_uint": 1808243095890704772642846233,
+                "ok": true,
+                "raw": "0x000000000000000000000000000000000000000005d7be5ea5b77904051b3619fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffed8ac00000000000000000000000000000000000000000000000000000000000000a4000000000000000000000000000000000000000000000000000000000000016800000000000000000000000000000000000000000000000000000000000001680000000000000000000000000000000000000000000000000000000000000001",
+                "return_bytes": 192
+              },
+              "token0": {
+                "decoded_address": "0x526728dbc96689597f85ae4cd716d4f7fccbae9d",
+                "ok": true,
+                "raw": "0x000000000000000000000000526728dbc96689597f85ae4cd716d4f7fccbae9d",
+                "return_bytes": 32
+              },
+              "token0_decimals": {
+                "decoded_uint": 18,
+                "ok": true,
+                "raw": "0x0000000000000000000000000000000000000000000000000000000000000012",
+                "return_bytes": 32
+              },
+              "token1": {
+                "decoded_address": "0x7ba6f01772924a82d9626c126347a28299e98c98",
+                "ok": true,
+                "raw": "0x0000000000000000000000007ba6f01772924a82d9626c126347a28299e98c98",
+                "return_bytes": 32
+              },
+              "token1_decimals": {
+                "decoded_uint": 18,
+                "ok": true,
+                "raw": "0x0000000000000000000000000000000000000000000000000000000000000012",
+                "return_bytes": 32
+              }
+            },
+            "swaps": {
+              "count": 573,
+              "last_liquidity_raw": 348106337351228565330495,
+              "last_price": 0.0005209001274271969,
+              "max_price": 0.0005327258653731583,
+              "min_price": 0.0005140550448852244,
+              "ok": true,
+              "window_blocks": 86400
+            }
+          },
+          "0x8845126640b36df1d24bf3df9b2903fd4c730fe6": {
+            "factories": [
+              "gauge_caps",
+              "gauge_caps"
+            ],
+            "state": {
+              "contract_code": {
+                "ok": true,
+                "prefix": "0x363d3d373d3d3d363d73942e97a4c6fdc38b4cd1",
+                "return_bytes": 45
+              },
+              "fee": {
+                "decoded_first_word_uint": 3000,
+                "ok": true,
+                "raw": "0x0000000000000000000000000000000000000000000000000000000000000bb8",
+                "return_bytes": 32
+              },
+              "liquidity": {
+                "decoded_first_word_uint": 128763723306324550911,
+                "ok": true,
+                "raw": "0x000000000000000000000000000000000000000000000006faf4a420ae2964ff",
+                "return_bytes": 32
+              },
+              "slot0": {
+                "decoded_first_word_uint": 1808769945899322021674267558,
+                "ok": true,
+                "raw": "0x000000000000000000000000000000000000000005d82def3e57c36cdf58b3a6fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffed8b2000000000000000000000000000000000000000000000000000000000000006d000000000000000000000000000000000000000000000000000000000000016800000000000000000000000000000000000000000000000000000000000001680000000000000000000000000000000000000000000000000000000000000001",
+                "return_bytes": 192
+              },
+              "token0": {
+                "decoded_address": "0x526728dbc96689597f85ae4cd716d4f7fccbae9d",
+                "ok": true,
+                "raw": "0x000000000000000000000000526728dbc96689597f85ae4cd716d4f7fccbae9d",
+                "return_bytes": 32
+              },
+              "token0_decimals": {
+                "decoded_uint": 18,
+                "ok": true,
+                "raw": "0x0000000000000000000000000000000000000000000000000000000000000012",
+                "return_bytes": 32
+              },
+              "token1": {
+                "decoded_address": "0x7ba6f01772924a82d9626c126347a28299e98c98",
+                "ok": true,
+                "raw": "0x0000000000000000000000007ba6f01772924a82d9626c126347a28299e98c98",
+                "return_bytes": 32
+              },
+              "token1_decimals": {
+                "decoded_uint": 18,
+                "ok": true,
+                "raw": "0x0000000000000000000000000000000000000000000000000000000000000012",
+                "return_bytes": 32
+              }
+            },
+            "swaps": {
+              "count": 23,
+              "last_liquidity_raw": 128763723306324550911,
+              "last_price": 0.0005212037107420081,
+              "max_price": 0.0005308861869368318,
+              "min_price": 0.0005157128264109389,
+              "ok": true,
+              "window_blocks": 86400
+            }
+          }
+        },
+        "factory_exact_tick_probes": {
+          "gauge_caps": {
+            "factory": "0xade65c38cd4849adba595a4323a8c7ddfe89716a",
+            "orders": [
+              {
+                "decoded_address": "0x8845126640b36df1d24bf3df9b2903fd4c730fe6",
+                "ok": true,
+                "raw": "0x0000000000000000000000008845126640b36df1d24bf3df9b2903fd4c730fe6",
+                "return_bytes": 32
+              },
+              {
+                "decoded_address": "0x8845126640b36df1d24bf3df9b2903fd4c730fe6",
+                "ok": true,
+                "raw": "0x0000000000000000000000008845126640b36df1d24bf3df9b2903fd4c730fe6",
+                "return_bytes": 32
+              }
+            ]
+          },
+          "gauges_v3": {
+            "factory": "0xf8f2eb4940cfe7d13603dddd87f123820fc061ef",
+            "orders": [
+              {
+                "decoded_address": "0x00145e8fc9f06a0b71bd57fefbf451ec1db9d69f",
+                "ok": true,
+                "raw": "0x00000000000000000000000000145e8fc9f06a0b71bd57fefbf451ec1db9d69f",
+                "return_bytes": 32
+              },
+              {
+                "decoded_address": "0x00145e8fc9f06a0b71bd57fefbf451ec1db9d69f",
+                "ok": true,
+                "raw": "0x00000000000000000000000000145e8fc9f06a0b71bd57fefbf451ec1db9d69f",
+                "return_bytes": 32
+              }
+            ]
+          },
+          "initial": {
+            "factory": "0x5e7bb104d84c7cb9b682aac2f3d509f5f406809a",
+            "orders": [
+              {
+                "decoded_address": "0x0000000000000000000000000000000000000000",
+                "ok": true,
+                "raw": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                "return_bytes": 32
+              },
+              {
+                "decoded_address": "0x0000000000000000000000000000000000000000",
+                "ok": true,
+                "raw": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                "return_bytes": 32
+              }
+            ]
+          }
+        },
+        "factory_registry_source": "https://github.com/aerodrome-finance/slipstream#deployments (Base Initial/Gauge Caps/Gauges V3)",
+        "initial_factory_spacing_probes": {
+          "1": [
+            {
+              "decoded_address": "0x0000000000000000000000000000000000000000",
+              "ok": true,
+              "raw": "0x0000000000000000000000000000000000000000000000000000000000000000",
+              "return_bytes": 32
+            },
+            {
+              "decoded_address": "0x0000000000000000000000000000000000000000",
+              "ok": true,
+              "raw": "0x0000000000000000000000000000000000000000000000000000000000000000",
+              "return_bytes": 32
+            }
+          ],
+          "10": [
+            {
+              "decoded_address": "0x0000000000000000000000000000000000000000",
+              "ok": true,
+              "raw": "0x0000000000000000000000000000000000000000000000000000000000000000",
+              "return_bytes": 32
+            },
+            {
+              "decoded_address": "0x0000000000000000000000000000000000000000",
+              "ok": true,
+              "raw": "0x0000000000000000000000000000000000000000000000000000000000000000",
+              "return_bytes": 32
+            }
+          ],
+          "100": [
+            {
+              "decoded_address": "0x0000000000000000000000000000000000000000",
+              "ok": true,
+              "raw": "0x0000000000000000000000000000000000000000000000000000000000000000",
+              "return_bytes": 32
+            },
+            {
+              "decoded_address": "0x0000000000000000000000000000000000000000",
+              "ok": true,
+              "raw": "0x0000000000000000000000000000000000000000000000000000000000000000",
+              "return_bytes": 32
+            }
+          ],
+          "200": [
+            {
+              "decoded_address": "0x0000000000000000000000000000000000000000",
+              "ok": true,
+              "raw": "0x0000000000000000000000000000000000000000000000000000000000000000",
+              "return_bytes": 32
+            },
+            {
+              "decoded_address": "0x0000000000000000000000000000000000000000",
+              "ok": true,
+              "raw": "0x0000000000000000000000000000000000000000000000000000000000000000",
+              "return_bytes": 32
+            }
+          ],
+          "2000": [
+            {
+              "decoded_address": "0x0000000000000000000000000000000000000000",
+              "ok": true,
+              "raw": "0x0000000000000000000000000000000000000000000000000000000000000000",
+              "return_bytes": 32
+            },
+            {
+              "decoded_address": "0x0000000000000000000000000000000000000000",
+              "ok": true,
+              "raw": "0x0000000000000000000000000000000000000000000000000000000000000000",
+              "return_bytes": 32
+            }
+          ],
+          "50": [
+            {
+              "decoded_address": "0x0000000000000000000000000000000000000000",
+              "ok": true,
+              "raw": "0x0000000000000000000000000000000000000000000000000000000000000000",
+              "return_bytes": 32
+            },
+            {
+              "decoded_address": "0x0000000000000000000000000000000000000000",
+              "ok": true,
+              "raw": "0x0000000000000000000000000000000000000000000000000000000000000000",
+              "return_bytes": 32
+            }
+          ]
+        },
+        "underlying_decimals": [
+          {
+            "decoded_uint": 18,
+            "ok": true,
+            "raw": "0x0000000000000000000000000000000000000000000000000000000000000012",
+            "return_bytes": 32,
+            "token": "0x526728dbc96689597f85ae4cd716d4f7fccbae9d"
+          },
+          {
+            "decoded_uint": 18,
+            "ok": true,
+            "raw": "0x0000000000000000000000000000000000000000000000000000000000000012",
+            "return_bytes": 32,
+            "token": "0x7ba6f01772924a82d9626c126347a28299e98c98"
+          }
+        ]
+      },
+      "suggested_fix": "Resolve by verified DefiLlama pool-id/address/factory provenance and reject ambiguity; until mapped, permanent_fail_closed_reason=ambiguous_multi_factory_pool.",
+      "swaps": {
+        "count_in_source_window": 0,
+        "last_active_liquidity_raw": null,
+        "last_price_token1_per_token0": null,
+        "source_error": null,
+        "source_status": "NOT_FOUND"
+      },
+      "symbol": "MSUSD-MSETH"
+    },
+    {
+      "classification": "FULLY_CALCULABLE_BELOW_GATE",
+      "missing_fields": [],
+      "path_break": {
+        "l_active_raw_selected": 1093628556576848441,
+        "price_pair_selected": 0.08932465650073723,
+        "price_usd_direct": null,
+        "reward_conversion_inputs": {
+          "reward_conversion_dec0": null,
+          "reward_conversion_dec1": null,
+          "reward_conversion_fee_tier": null,
+          "reward_conversion_l_active_raw": null,
+          "reward_conversion_price_usd": null
+        }
+      },
+      "project": "uniswap-v3",
+      "repairability": "NOT_APPLICABLE",
+      "resolve": {
+        "dec0": 6,
+        "dec1": 18,
+        "fee_tier_from_pool_meta": 0.003,
+        "pool": "0x67a11022b7b6ed66f81233f6c8ed6e48f7826530",
+        "pool_meta": "0.3%",
+        "status": "OK",
+        "tick_spacing_from_pool_meta": null,
+        "token0": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+        "token1": "0xacfe6019ed1a7dc6f7b508c02d1b04ec88cc21bf",
+        "underlying_tokens": [
+          "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "0xacfe6019ed1a7dc6f7b508c02d1b04ec88cc21bf"
+        ]
+      },
+      "root_cause": "No input is missing; the measured NetCover is honestly below the shadow gate.",
+      "rpc_evidence": {
+        "contract_code": {
+          "ok": true,
+          "prefix": "0x608060405234801561001057600080fd5b506004",
+          "return_bytes": 22142
+        },
+        "fee": {
+          "decoded_first_word_uint": 3000,
+          "ok": true,
+          "raw": "0x0000000000000000000000000000000000000000000000000000000000000bb8",
+          "return_bytes": 32
+        },
+        "liquidity": {
+          "decoded_first_word_uint": 1093628556576848441,
+          "ok": true,
+          "raw": "0x0000000000000000000000000000000000000000000000000f2d5960befc7a39",
+          "return_bytes": 32
+        },
+        "slot0": {
+          "decoded_first_word_uint": 23684791309868305995397794859414705,
+          "ok": true,
+          "raw": "0x0000000000000000000000000000000000048fc01837e332adffaec3b67174b1000000000000000000000000000000000000000000000000000000000003d90c00000000000000000000000000000000000000000000000000000000000000810000000000000000000000000000000000000000000000000000000000000168000000000000000000000000000000000000000000000000000000000000016800000000000000000000000000000000000000000000000000000000000000660000000000000000000000000000000000000000000000000000000000000001",
+          "return_bytes": 224
+        },
+        "token0": {
+          "decoded_address": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "ok": true,
+          "raw": "0x000000000000000000000000833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "return_bytes": 32
+        },
+        "token0_decimals": {
+          "decoded_uint": 6,
+          "ok": true,
+          "raw": "0x0000000000000000000000000000000000000000000000000000000000000006",
+          "return_bytes": 32
+        },
+        "token1": {
+          "decoded_address": "0xacfe6019ed1a7dc6f7b508c02d1b04ec88cc21bf",
+          "ok": true,
+          "raw": "0x000000000000000000000000acfe6019ed1a7dc6f7b508c02d1b04ec88cc21bf",
+          "return_bytes": 32
+        },
+        "token1_decimals": {
+          "decoded_uint": 18,
+          "ok": true,
+          "raw": "0x0000000000000000000000000000000000000000000000000000000000000012",
+          "return_bytes": 32
+        }
+      },
+      "suggested_fix": "None; do not change the gate.",
+      "swaps": {
+        "count_in_source_window": 1123,
+        "last_active_liquidity_raw": 1093628556576848441,
+        "last_price_token1_per_token0": 0.08932465650073723,
+        "source_error": null,
+        "source_status": "OK"
+      },
+      "symbol": "USDC-VVV"
+    },
+    {
+      "classification": "NO_MEASURED_USD_QUOTE_AND_REWARD_CONVERSION_DEPTH",
+      "missing_fields": [
+        "entry_cost_usd",
+        "exit_cost_usd",
+        "slippage_usd",
+        "reward_conversion_cost_usd"
+      ],
+      "path_break": {
+        "l_active_raw_selected": 78491406838993863226909,
+        "price_pair_selected": 25.261762857305868,
+        "price_usd_direct": null,
+        "reward_conversion_inputs": {
+          "reward_conversion_dec0": null,
+          "reward_conversion_dec1": null,
+          "reward_conversion_fee_tier": null,
+          "reward_conversion_l_active_raw": null,
+          "reward_conversion_price_usd": null
+        }
+      },
+      "project": "aerodrome-slipstream",
+      "repairability": "ENGINEERING_WITH_RAW_CROSS_POOL_EVIDENCE",
+      "resolve": {
+        "dec0": 18,
+        "dec1": 18,
+        "fee_tier_from_pool_meta": 0.0015,
+        "pool": "0x0225ba893d5f8ecd6d2022f9dec59b34f61098a1",
+        "pool_meta": "CL200 - 0.15%",
+        "status": "OK",
+        "tick_spacing_from_pool_meta": 200,
+        "token0": "0x4200000000000000000000000000000000000006",
+        "token1": "0x9b8df6e244526ab5f6e6400d331db28c8fdddb55",
+        "underlying_tokens": [
+          "0x4200000000000000000000000000000000000006",
+          "0x9B8Df6E244526ab5F6e6400d331DB28C8fdDdb55"
+        ]
+      },
+      "root_cause": "Swap active-liquidity and pair-price evidence exists, but neither pool token is a recognized USD stable quote. The cost-state normalizer returns None. Positive AERO reward conversion also lacks its own five measured pool-state fields.",
+      "rpc_evidence": {
+        "contract_code": {
+          "ok": true,
+          "prefix": "0x363d3d373d3d3d363d73ec8e5342b19977b4ef88",
+          "return_bytes": 45
+        },
+        "fee": {
+          "decoded_first_word_uint": 1500,
+          "ok": true,
+          "raw": "0x00000000000000000000000000000000000000000000000000000000000005dc",
+          "return_bytes": 32
+        },
+        "liquidity": {
+          "decoded_first_word_uint": 78661380351677060652769,
+          "ok": true,
+          "raw": "0x0000000000000000000000000000000000000000000010a83df1f7fed2e09ee1",
+          "return_bytes": 32
+        },
+        "slot0": {
+          "decoded_first_word_uint": 397885443970175805248711096505,
+          "ok": true,
+          "raw": "0x000000000000000000000000000000000000000505a32011a425e00313daf8b90000000000000000000000000000000000000000000000000000000000007e160000000000000000000000000000000000000000000000000000000000000163000000000000000000000000000000000000000000000000000000000000016800000000000000000000000000000000000000000000000000000000000001680000000000000000000000000000000000000000000000000000000000000001",
+          "return_bytes": 192
+        },
+        "token0": {
+          "decoded_address": "0x4200000000000000000000000000000000000006",
+          "ok": true,
+          "raw": "0x0000000000000000000000004200000000000000000000000000000000000006",
+          "return_bytes": 32
+        },
+        "token0_decimals": {
+          "decoded_uint": 18,
+          "ok": true,
+          "raw": "0x0000000000000000000000000000000000000000000000000000000000000012",
+          "return_bytes": 32
+        },
+        "token1": {
+          "decoded_address": "0x9b8df6e244526ab5f6e6400d331db28c8fdddb55",
+          "ok": true,
+          "raw": "0x0000000000000000000000009b8df6e244526ab5f6e6400d331db28c8fdddb55",
+          "return_bytes": 32
+        },
+        "token1_decimals": {
+          "decoded_uint": 18,
+          "ok": true,
+          "raw": "0x0000000000000000000000000000000000000000000000000000000000000012",
+          "return_bytes": 32
+        }
+      },
+      "suggested_fix": "Add measured, provenance-labelled USD cross-pool pricing and AERO conversion depth; if both raw paths are unavailable, retain fail-closed instead of estimating.",
+      "swaps": {
+        "count_in_source_window": 1213,
+        "last_active_liquidity_raw": 78491406838993863226909,
+        "last_price_token1_per_token0": 25.261762857305868,
+        "source_error": null,
+        "source_status": "OK"
+      },
+      "symbol": "WETH-USOL"
+    }
+  ],
+  "rpc_health_after_probe": {
+    "cooling_endpoints": 2,
+    "impaired_endpoints": 2,
+    "max_consecutive_failures": 7,
+    "state": "DEGRADED",
+    "total_endpoints": 11
+  },
+  "schema_version": "lp_funnel_root_causes_v1",
+  "source_db": "reports/lp_netcover_inputs/20260809_final_default/scanner.db",
+  "source_scan_as_of": "2026-08-09T08:19:38.034782+00:00",
+  "source_window_blocks": 86400
+}
