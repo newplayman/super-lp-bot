@@ -488,7 +488,7 @@ class DefaultStages:
         *,
         chain: str = "Base",
         projects: Sequence[str] = ("aerodrome-slipstream", "uniswap-v3"),
-        top: int = 10,
+        top: int = 30,
         min_tvl: float = 500_000.0,
         min_vol1d: float = 50_000.0,
         window_blocks: int = 86_400,
@@ -559,10 +559,12 @@ class DefaultStages:
             "suspect_vol_tvl": screener.DEFAULTS["suspect_vol_tvl"],
         }
         assessed = [dict(screener.assess(pool, gates), chain=self.chain) for pool in selected]
+        rerank = importlib.import_module("scripts.lp_funnel_rerank_v1_readonly")
+        assessed = rerank.enrich_with_proxy(assessed)
         passed = [record for record in assessed if record.get("gate_ok")]
-        ranked = sorted(
+        ranked = rerank.rank_stage1(
             passed,
-            key=lambda record: (bool(record.get("suspect")), -float(record.get("score") or 0.0)),
+            correlation_evidence=rerank.PRODUCTION_EVIDENCE,
         )
         return ScreenBatch(all_records=assessed, candidates=ranked[: self.top])
 
@@ -1323,7 +1325,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--projects", nargs="+", default=["aerodrome-slipstream", "uniswap-v3"]
     )
-    parser.add_argument("--top", type=int, default=10)
+    parser.add_argument("--top", type=int, default=30)
     parser.add_argument("--min-tvl", type=float, default=500_000.0)
     parser.add_argument("--min-vol1d", type=float, default=50_000.0)
     parser.add_argument("--window-blocks", type=int, default=86_400)

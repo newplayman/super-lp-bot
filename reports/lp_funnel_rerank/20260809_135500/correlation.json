@@ -1,0 +1,219 @@
+{
+  "schema_version": "lp_funnel_rerank_r2_v1",
+  "generated_at": "2026-08-09T12:43:24.916952+00:00",
+  "scanner_as_of": "2026-08-09T11:56:19.991045+00:00",
+  "command": "python3 scripts/lp_funnel_rerank_evaluation_v1_readonly.py --stamp 20260809_135500 --top 30 --top-k 10 --window-blocks 86400 --window-days 1 --n-windows 6",
+  "cycle": {
+    "as_of": "2026-08-09T11:56:19.991045+00:00",
+    "screened": 733,
+    "candidates": 47,
+    "resolved": 47,
+    "scored": 47,
+    "accepted": 0,
+    "market_sessions": 0,
+    "rpc_health": "DEGRADED"
+  },
+  "stage1": {
+    "free_universe_records": 733,
+    "passed_coarse_gates": 51,
+    "proxy_calculable": 51,
+    "research_top_n": 30,
+    "evaluated_union_records": 47,
+    "terminal_in_memory_records": 47,
+    "sqlite_persisted_unique_pool_rows": 47,
+    "sqlite_deduplication_note": "operational scanner schema is unique by resolved pool; correlation uses the full in-memory selected-lead cohort before any INSERT OR REPLACE collapse",
+    "correlation_cohort": "PROXY_TOP_N_ONLY",
+    "production_ranking_was_not_changed_by_this_runner": true
+  },
+  "correlation": {
+    "same_batch_records": 30,
+    "fully_calculable_pairs": 16,
+    "excluded_missing_proxy_or_true_netcover": 14,
+    "spearman": 0.47352941176470587,
+    "validity_threshold": 0.3,
+    "minimum_correlation_pairs": 8,
+    "proxy_valid": true,
+    "production_ranking": "PROXY_NETCOVER",
+    "top_k_requested": 10,
+    "top_k_denominator": 10,
+    "top_k_hits": 7,
+    "top_k_hit_rate": 0.7,
+    "top_k_definition": "intersection(proxy descending top-K, true NetCover descending top-K) / min(K, fully calculable same-batch pairs)"
+  },
+  "targets": [
+    {
+      "symbol": "USDC-AVAIL",
+      "live_universe_matches": 1,
+      "coarse_gate_passed_matches": 0,
+      "best_proxy_rank": null,
+      "best_proxy_netcover": null,
+      "in_proxy_top_n": false,
+      "stage2_terminal_rows": 1,
+      "fully_calculable_rows": 1,
+      "best_true_netcover": 0.2786699006896672,
+      "accepted_rows": 0,
+      "terminal_outcomes": [
+        "RESEARCH_ONLY_NOT_PROXY_TOP_N:TVL 125909 < 500000;NETCOVER_GATE_BELOW_SHADOW"
+      ],
+      "live_status": "LIVE_BUT_NOT_COARSE_GATE_ELIGIBLE",
+      "target_semantics": "validation_target_only_never_allowlist_or_gate_bypass"
+    },
+    {
+      "symbol": "CADC-USDC",
+      "live_universe_matches": 1,
+      "coarse_gate_passed_matches": 0,
+      "best_proxy_rank": null,
+      "best_proxy_netcover": null,
+      "in_proxy_top_n": false,
+      "stage2_terminal_rows": 1,
+      "fully_calculable_rows": 1,
+      "best_true_netcover": 1.3570830008270491,
+      "accepted_rows": 0,
+      "terminal_outcomes": [
+        "RESEARCH_ONLY_NOT_PROXY_TOP_N:TVL 138832 < 500000;NETCOVER_GATE_PASS"
+      ],
+      "live_status": "LIVE_BUT_NOT_COARSE_GATE_ELIGIBLE",
+      "target_semantics": "validation_target_only_never_allowlist_or_gate_bypass"
+    },
+    {
+      "symbol": "MSUSD-USDC",
+      "live_universe_matches": 2,
+      "coarse_gate_passed_matches": 1,
+      "best_proxy_rank": 4,
+      "best_proxy_netcover": 15.169472311842174,
+      "in_proxy_top_n": true,
+      "stage2_terminal_rows": 2,
+      "fully_calculable_rows": 2,
+      "best_true_netcover": 1.0732473876748672,
+      "accepted_rows": 0,
+      "terminal_outcomes": [
+        "ENTRY_INELIGIBLE:REWARD_PERSISTENCE_MISSING",
+        "RESEARCH_ONLY_NOT_PROXY_TOP_N:TVL 11274 < 500000;NETCOVER_GATE_BELOW_SHADOW"
+      ],
+      "live_status": "LIVE",
+      "target_semantics": "validation_target_only_never_allowlist_or_gate_bypass"
+    },
+    {
+      "symbol": "XSGD-USDC",
+      "live_universe_matches": 1,
+      "coarse_gate_passed_matches": 0,
+      "best_proxy_rank": null,
+      "best_proxy_netcover": null,
+      "in_proxy_top_n": false,
+      "stage2_terminal_rows": 1,
+      "fully_calculable_rows": 1,
+      "best_true_netcover": 1.6533301319894982,
+      "accepted_rows": 0,
+      "terminal_outcomes": [
+        "RESEARCH_ONLY_NOT_PROXY_TOP_N:TVL 454687 < 500000;NETCOVER_GATE_PASS"
+      ],
+      "live_status": "LIVE_BUT_NOT_COARSE_GATE_ELIGIBLE",
+      "target_semantics": "validation_target_only_never_allowlist_or_gate_bypass"
+    },
+    {
+      "symbol": "VCHF-USDC",
+      "live_universe_matches": 1,
+      "coarse_gate_passed_matches": 0,
+      "best_proxy_rank": null,
+      "best_proxy_netcover": null,
+      "in_proxy_top_n": false,
+      "stage2_terminal_rows": 1,
+      "fully_calculable_rows": 1,
+      "best_true_netcover": 0.18968494808988964,
+      "accepted_rows": 0,
+      "terminal_outcomes": [
+        "RESEARCH_ONLY_NOT_PROXY_TOP_N:TVL 186721 < 500000;NETCOVER_GATE_BELOW_SHADOW"
+      ],
+      "live_status": "LIVE_BUT_NOT_COARSE_GATE_ELIGIBLE",
+      "target_semantics": "validation_target_only_never_allowlist_or_gate_bypass"
+    },
+    {
+      "symbol": "WETH-USDC",
+      "live_universe_matches": 7,
+      "coarse_gate_passed_matches": 2,
+      "best_proxy_rank": 25,
+      "best_proxy_netcover": 1.1169093645846442,
+      "in_proxy_top_n": true,
+      "stage2_terminal_rows": 7,
+      "fully_calculable_rows": 3,
+      "best_true_netcover": 0.32038649731681784,
+      "accepted_rows": 0,
+      "terminal_outcomes": [
+        "PERMANENT_FAIL_CLOSED:ambiguous_multi_factory_pool",
+        "RESEARCH_ONLY_NOT_PROXY_TOP_N:TVL 12141 < 500000;NETCOVER_GATE_BELOW_SHADOW",
+        "RESEARCH_ONLY_NOT_PROXY_TOP_N:TVL 182492 < 500000;NETCOVER_GATE_BELOW_SHADOW",
+        "RESEARCH_ONLY_NOT_PROXY_TOP_N:target_expansion_only;NETCOVER_GATE_BELOW_SHADOW"
+      ],
+      "live_status": "LIVE",
+      "target_semantics": "validation_target_only_never_allowlist_or_gate_bypass"
+    },
+    {
+      "symbol": "WETH-CBBTC",
+      "live_universe_matches": 4,
+      "coarse_gate_passed_matches": 3,
+      "best_proxy_rank": 5,
+      "best_proxy_netcover": 9.79868697025732,
+      "in_proxy_top_n": true,
+      "stage2_terminal_rows": 4,
+      "fully_calculable_rows": 1,
+      "best_true_netcover": 0.15004450616494966,
+      "accepted_rows": 0,
+      "terminal_outcomes": [
+        "PERMANENT_FAIL_CLOSED:ambiguous_multi_factory_pool",
+        "RESEARCH_ONLY_NOT_PROXY_TOP_N:target_expansion_only;NETCOVER_GATE_BELOW_SHADOW"
+      ],
+      "live_status": "LIVE",
+      "target_semantics": "validation_target_only_never_allowlist_or_gate_bypass"
+    },
+    {
+      "symbol": "USDC-CBBTC",
+      "live_universe_matches": 7,
+      "coarse_gate_passed_matches": 4,
+      "best_proxy_rank": 6,
+      "best_proxy_netcover": 7.047688178119079,
+      "in_proxy_top_n": true,
+      "stage2_terminal_rows": 7,
+      "fully_calculable_rows": 3,
+      "best_true_netcover": 0.9359786125067984,
+      "accepted_rows": 0,
+      "terminal_outcomes": [
+        "ENTRY_INELIGIBLE:REWARD_PERSISTENCE_MISSING",
+        "PERMANENT_FAIL_CLOSED:ambiguous_multi_factory_pool",
+        "RESEARCH_ONLY_NOT_PROXY_TOP_N:target_expansion_only;NETCOVER_GATE_BELOW_SHADOW",
+        "RESEARCH_ONLY_NOT_PROXY_TOP_N:vol1d 31807 < 50000;NETCOVER_GATE_BELOW_SHADOW"
+      ],
+      "live_status": "LIVE",
+      "target_semantics": "validation_target_only_never_allowlist_or_gate_bypass"
+    }
+  ],
+  "target_identity_limitation": "audit table has no pool ids; exact chain/project/symbol labels expand to all live matching rows; stale income APR is never used to guess identity",
+  "rpc_budget": {
+    "top_n": 47,
+    "n_windows": 6,
+    "measured_calls_by_method": {
+      "eth_blockNumber": 3,
+      "eth_call": 746,
+      "eth_getCode": 78,
+      "eth_getLogs": 4752
+    },
+    "measured_total_calls": 5579,
+    "upper_components": {
+      "batch_tip_calls": 2,
+      "resolve_factory_lookup_calls": 282,
+      "resolve_candidate_validation_calls": 846,
+      "resolve_window_log_calls": 2068,
+      "stability_window_log_calls": 6204,
+      "terminal_live_state_calls": 94,
+      "cross_route_fixed_batch_calls": 89
+    },
+    "upper_total_calls": 9585,
+    "upper_bound_semantics": "conservative request count before provider retry attempts; cross routes are one fixed-block batch snapshot, not top_n multiplied"
+  },
+  "redlines": {
+    "wallet_or_signing": false,
+    "broadcast": false,
+    "paid_data": false,
+    "threshold_change": false,
+    "long_running_process_started": false
+  }
+}
