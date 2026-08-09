@@ -1,0 +1,61 @@
+{
+  "schema_version": "lp_funnel_depth_fix_r1b_v1",
+  "baseline": {
+    "artifact": "reports/lp_netcover_inputs/20260809_final_default/scanner.db",
+    "as_of": "2026-08-09T08:19:38.034782+00:00",
+    "screened": 734,
+    "top": 10,
+    "fully_calculable_netcover_records": 1,
+    "accepted": 0
+  },
+  "final_live": {
+    "artifact": "reports/lp_funnel_depth_fix/20260809_100700/scanner.db",
+    "as_of": "2026-08-09T10:06:43.620485+00:00",
+    "command": "CALL_PACE_SECS=0 python3 scripts/lp_scanner_daemon_v1_readonly.py --once --db reports/lp_funnel_depth_fix/20260809_100700/scanner.db --top 10 --window-blocks 86400 --window-days 1 --n-windows 6 --vetted-menu-out reports/lp_funnel_depth_fix/20260809_100700/vetted_menu.json",
+    "screened": 733,
+    "top": 10,
+    "resolved": 10,
+    "scored": 10,
+    "fully_calculable_netcover_records": 4,
+    "accepted": 0,
+    "rpc_health": "DEGRADED",
+    "fixed_route_block": 49740557,
+    "watchlist_assertion": {"records_checked": 10, "routes_per_record": 2, "all_executable": false, "all_routes_executable_values": [false, false]},
+    "cohort_matches_baseline": false,
+    "cohort_drift_note": "The live DefiLlama top-10 changed; 1/10 to 4/10 is a live capability comparison, not a paired estimate over identical rows."
+  },
+  "records": [
+    {"symbol": "USDC-CBMEGA", "llama_pool_id": "f9fbb53c-9584-498d-9a17-a67376550b5d", "fully_calculable": true, "netcover_ratio": 0.42205850941843814, "accepted": false, "reason": "NETCOVER_BELOW_SHADOW"},
+    {"symbol": "O-USDC", "llama_pool_id": "e49edb6d-8e1d-4c76-8896-2357e7db849e", "fully_calculable": true, "netcover_ratio": 0.3119850282774748, "accepted": false, "reason": "NETCOVER_BELOW_SHADOW"},
+    {"symbol": "WETH-MORPHO", "llama_pool_id": "f884e3f7-f6e1-4b9e-b041-8624411ccddf", "fully_calculable": true, "netcover_ratio": 0.4384595312421452, "accepted": false, "reason": "NETCOVER_BELOW_SHADOW"},
+    {"symbol": "WETH-VVV", "llama_pool_id": "7185982b-0632-4e70-89ca-441c2f0b2618", "fully_calculable": false, "accepted": false, "permanent_fail_closed_reason": "ambiguous_multi_factory_pool"},
+    {"symbol": "WETH-USDC", "llama_pool_id": "1328ac9d-9939-4719-a85a-114935209e08", "fully_calculable": false, "accepted": false, "permanent_fail_closed_reason": "ambiguous_multi_factory_pool"},
+    {"symbol": "WETH-AERO", "llama_pool_id": "3aebe700-db0b-49e2-82f6-564acdfae434", "fully_calculable": false, "accepted": false, "permanent_fail_closed_reason": "ambiguous_multi_factory_pool"},
+    {"symbol": "AERO-CBBTC", "llama_pool_id": "3707d5ff-690b-423b-b3bb-4b7c7cca2990", "fully_calculable": false, "accepted": false, "permanent_fail_closed_reason": "ambiguous_multi_factory_pool"},
+    {"symbol": "MSUSD-MSETH", "llama_pool_id": "3fea9aec-48b6-4ad3-bd04-f69188bead1d", "fully_calculable": false, "accepted": false, "permanent_fail_closed_reason": "ambiguous_multi_factory_pool"},
+    {"symbol": "AERO-CBBTC", "llama_pool_id": "53b7036a-ec2a-494b-ad8e-ae53f35c20b8", "fully_calculable": false, "accepted": false, "permanent_fail_closed_reason": "ambiguous_multi_factory_pool"},
+    {"symbol": "WETH-USOL", "llama_pool_id": "a09feb82-76db-4291-aea9-dc6e88343e09", "fully_calculable": true, "netcover_ratio": 0.0704295892013549, "accepted": false, "reason": "NETCOVER_BELOW_SHADOW"}
+  ],
+  "route_policy": {
+    "usd_anchors": ["weth_usdc_initial_tick50", "weth_cbbtc_initial_tick10"],
+    "active_aero_reward_routes": ["aero_usdc_initial_tick50", "aero_usdc_initial_tick100", "aero_usdc_initial_tick200", "aero_usdc_initial_tick2000"],
+    "excluded_zero_liquidity_watchlist": [
+      {"route_id": "aero_usdc_gauge_caps_tick1", "pool": "0x3b90dcfdb23b0a8484bf6a4767578861fbe1b21b", "factory": "0xade65c38cd4849adba595a4323a8c7ddfe89716a", "fee_tier": 0.0001, "l_active_raw": 0, "status": "EXCLUDED_ZERO_LIQUIDITY"},
+      {"route_id": "aero_usdc_gauges_v3_tick10", "pool": "0x12619a0f9d0c7f58528a77e45dd315ec49b875ef", "factory": "0xf8f2eb4940cfe7d13603dddd87f123820fc061ef", "fee_tier": 0.0005, "l_active_raw": 0, "status": "EXCLUDED_ZERO_LIQUIDITY"}
+    ],
+    "preregistration_rule": "all official candidates are fixed-block validated; only L>0 routes enter the executable allowlist; excluded L=0 routes are mandatory watchlist probes and becoming executable fails closed pending review",
+    "selection_rule": "highest_measured_conversion_cost_across_all_preregistered_executable_routes"
+  },
+  "controlled_r1a_component_reassembly": {
+    "scope": "input assembly only; not a same-cohort full-funnel result",
+    "records_now_nine_fields_complete": [
+      {"symbol": "WETH-CBBTC", "measured_token1_usd": 64478.81627411568},
+      {"symbol": "WETH-MORPHO", "measured_token1_usd": 1.9089064058860268},
+      {"symbol": "AERO-CBBTC", "measured_token1_usd": 64478.81627411568},
+      {"symbol": "WETH-AERO", "measured_token1_usd": 0.4284473127309053},
+      {"symbol": "WETH-USOL", "measured_token1_usd": 75.44795308531592}
+    ]
+  },
+  "targeted_tests": "60 passed in 13.63s",
+  "threshold_files_changed": false
+}

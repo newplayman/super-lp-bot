@@ -232,7 +232,11 @@ def _pool_cost_state(record: Mapping[str, Any]) -> tuple[float, int, int] | None
     return None
 
 
-def _swap_costs(record: Mapping[str, Any], size_usd: float) -> dict[str, float | None]:
+def _swap_costs(
+    record: Mapping[str, Any],
+    size_usd: float,
+    scanner_measured_evidence: Mapping[str, Any] | None = None,
+) -> dict[str, float | None]:
     l_raw = _first_number(
         record,
         "l_active_raw",
@@ -243,13 +247,24 @@ def _swap_costs(record: Mapping[str, Any], size_usd: float) -> dict[str, float |
     )
     state = _pool_cost_state(record)
     fee_tier = _first_number(record, "fee_tier")
+    quote_usd = None
+    if state is None and scanner_measured_evidence:
+        quote_usd = _number(scanner_measured_evidence.get("token1_usd"), positive=True)
+        pair_price = _first_number(
+            record, "last_swap_price_token1_per_token0", positive=True
+        )
+        dec0 = _first_number(record, "dec0")
+        dec1 = _first_number(record, "dec1")
+        if None not in (quote_usd, pair_price, dec0, dec1):
+            state = (float(pair_price), int(dec0), int(dec1))
     if l_raw is None or state is None or fee_tier is None:
         return {key: None for key in ("entry_cost_usd", "exit_cost_usd", "slippage_usd")}
     price, dec0, dec1 = state
     try:
+        notional_quote = size_usd / quote_usd if quote_usd is not None else size_usd
         # Reuse the exact component split exercised by cost sensitivity.
         components = _swap_components(
-            size_usd,
+            notional_quote,
             SimpleNamespace(
                 l_active_raw_historical=l_raw,
                 price_usd=price,
@@ -260,29 +275,114 @@ def _swap_costs(record: Mapping[str, Any], size_usd: float) -> dict[str, float |
         )
     except (ArithmeticError, ValueError):
         return {key: None for key in ("entry_cost_usd", "exit_cost_usd", "slippage_usd")}
+    if quote_usd is not None:
+        components = {key: value * quote_usd for key, value in components.items()}
     return {key: components[key] for key in ("entry_cost_usd", "exit_cost_usd", "slippage_usd")}
 
 
 def _reward_conversion_cost(
-    record: Mapping[str, Any], reward_ev_usd: float | None, category: str | None
-) -> float | None:
+    record: Mapping[str, Any],
+    reward_ev_usd: float | None,
+    category: str | None,
+    scanner_measured_evidence: Mapping[str, Any] | None = None,
+) -> tuple[float | None, dict[str, Any]]:
+    metadata: dict[str, Any] = {
+        "reward_conversion_route_costs": [],
+        "reward_conversion_selected_route_id": None,
+        "reward_conversion_route_selection_rule": None,
+    }
     if reward_ev_usd is None:
-        return None
+        return None, metadata
     if reward_ev_usd == 0.0:
-        return 0.0
+        return 0.0, metadata
     if category == "points":
         # Points carry a zero income haircut and are not a swappable token.
-        return 0.0
+        return 0.0, metadata
+    if scanner_measured_evidence is not None:
+        if not scanner_measured_evidence.get("complete"):
+            return None, metadata
+        routes = scanner_measured_evidence.get("aero_reward_routes")
+        if not isinstance(routes, list) or not routes:
+            return None, metadata
+        measured_costs = []
+        for route in routes:
+            if not isinstance(route, Mapping):
+                return None, metadata
+            required = {
+                "route_id", "pool", "factory", "token0", "token1", "dec0", "dec1",
+                "fee_tier", "pair_price_token1_per_token0", "l_active_raw",
+                "observed_block", "measurement_source", "executable", "tick_spacing",
+            }
+            if not required <= set(route):
+                return None, metadata
+            if not str(route["measurement_source"]).startswith(
+                "measured:scanner_internal_rpc:"
+            ):
+                return None, metadata
+            if not route.get("executable"):
+                return None, metadata
+            token0 = str(route["token0"]).lower()
+            token1 = str(route["token1"]).lower()
+            pair_price = _number(route["pair_price_token1_per_token0"], positive=True)
+            l_route = _number(route["l_active_raw"], positive=True)
+            fee_route = _number(route["fee_tier"])
+            dec0_route = _number(route["dec0"])
+            dec1_route = _number(route["dec1"])
+            if None in (pair_price, l_route, fee_route, dec0_route, dec1_route):
+                return None, metadata
+            if token0 == next(iter(_KNOWN_REWARD_TOKEN_CATEGORIES)) and token1 in _BASE_STABLE_TOKENS:
+                normalized_price = float(pair_price)
+                normalized_dec0, normalized_dec1 = int(dec0_route), int(dec1_route)
+            elif token1 == next(iter(_KNOWN_REWARD_TOKEN_CATEGORIES)) and token0 in _BASE_STABLE_TOKENS:
+                normalized_price = 1.0 / float(pair_price)
+                normalized_dec0, normalized_dec1 = int(dec1_route), int(dec0_route)
+            else:
+                return None, metadata
+            try:
+                cost = exit_conversion_cost_usd(
+                    reward_ev_usd,
+                    float(l_route),
+                    normalized_price,
+                    float(fee_route),
+                    normalized_dec0,
+                    normalized_dec1,
+                    "sell_base",
+                )
+            except (ArithmeticError, ValueError):
+                return None, metadata
+            measured_costs.append({
+                "route_id": str(route["route_id"]),
+                "pool": str(route["pool"]),
+                "status": "MEASURED_EXECUTABLE",
+                "observed_block": route["observed_block"],
+                "measured_conversion_cost_usd": cost,
+            })
+        executable = [
+            item for item in measured_costs
+            if item["measured_conversion_cost_usd"] is not None
+        ]
+        metadata["reward_conversion_route_costs"] = measured_costs
+        if not executable:
+            return None, metadata
+        selected = max(
+            executable,
+            key=lambda item: (float(item["measured_conversion_cost_usd"]), item["route_id"]),
+        )
+        metadata["reward_conversion_selected_route_id"] = selected["route_id"]
+        metadata["reward_conversion_route_selection_rule"] = (
+            "highest_measured_conversion_cost_across_all_preregistered_executable_routes"
+        )
+        return float(selected["measured_conversion_cost_usd"]), metadata
     l_raw = _first_number(record, "reward_conversion_l_active_raw", positive=True)
     price = _first_number(record, "reward_conversion_price_usd", positive=True)
     fee_tier = _first_number(record, "reward_conversion_fee_tier")
     dec0 = _first_number(record, "reward_conversion_dec0")
     dec1 = _first_number(record, "reward_conversion_dec1")
     if None in (l_raw, price, fee_tier, dec0, dec1):
-        return None
+        return None, metadata
     side = str(record.get("reward_conversion_side") or "sell_base")
     if side not in {"buy_base", "sell_base"}:
-        return None
+        return None, metadata
     try:
         return exit_conversion_cost_usd(
             reward_ev_usd,
@@ -292,18 +392,30 @@ def _reward_conversion_cost(
             int(dec0),
             int(dec1),
             side,
-        )
+        ), metadata
     except (ArithmeticError, ValueError):
-        return None
+        return None, metadata
 
 
 def assemble_netcover_inputs(
     source: Mapping[str, Any],
     *,
     position_usd: float = M1_MIN_POSITION_USD,
+    scanner_measured_evidence: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Return a copy with all nine USD keys and auditable semantics attached."""
     record = dict(source)
+    # Caller-supplied route claims are untrusted and must not survive assembly.
+    # Live evidence arrives only through the separate scanner-internal argument
+    # after fixed-block RPC identity/state validation; a self-declared
+    # ``complete`` field therefore cannot reopen the 518f8db evidence boundary.
+    for key in (
+        "reward_conversion_routes",
+        "reward_conversion_route_costs",
+        "reward_conversion_selected_route_id",
+        "reward_conversion_route_selection_rule",
+    ):
+        record.pop(key, None)
     size = _number(position_usd, positive=True)
     if size is None:
         raise ValueError("position_usd must be finite and positive")
@@ -339,10 +451,12 @@ def assemble_netcover_inputs(
         else None
     )
 
-    costs = _swap_costs(record, size)
+    costs = _swap_costs(record, size, scanner_measured_evidence)
     chain = str(record.get("chain") or record.get("network") or "").strip().lower()
     gas = HISTORICAL_GAS_USD.get(chain)
-    reward_conversion = _reward_conversion_cost(record, reward_ev, category)
+    reward_conversion, reward_route_metadata = _reward_conversion_cost(
+        record, reward_ev, category, scanner_measured_evidence
+    )
     exit_latency = (
         size * EXIT_LATENCY_LOSS_APR_PCT_MODEL / 100.0 * fraction
         if fraction is not None
@@ -391,6 +505,14 @@ def assemble_netcover_inputs(
             "lp_netcover_inputs_v1_readonly:raw_evidence_calculated_only"
         ),
     })
+    record.update(reward_route_metadata)
+    if scanner_measured_evidence:
+        record["scanner_measured_cross_pool_evidence"] = dict(scanner_measured_evidence)
+        if scanner_measured_evidence.get("token1_usd") is not None:
+            record["measured_token1_usd"] = scanner_measured_evidence["token1_usd"]
+            record["measured_token1_usd_source"] = scanner_measured_evidence.get(
+                "token1_usd_source"
+            )
     # A positive calculated reward EV always requires a classified category;
     # zero-reward records do not need to override WP-04's irrelevant default.
     if haircut is not None:
@@ -401,6 +523,45 @@ def assemble_netcover_inputs(
         )
     else:
         record["round_trip_cost_usd"] = None
+
+    reasons = list(record.get("permanent_fail_closed_reasons") or ())
+    primary = record.get("permanent_fail_closed_reason") or (
+        scanner_measured_evidence.get("permanent_fail_closed_reason")
+        if scanner_measured_evidence else None
+    )
+    if primary and primary not in reasons:
+        reasons.append(str(primary))
+    token0 = str(record.get("token0") or "").lower()
+    token1 = str(record.get("token1") or "").lower()
+    if any(costs[field] is None for field in ("entry_cost_usd", "exit_cost_usd", "slippage_usd")):
+        if (
+            token0
+            and token1
+            and token0 not in _BASE_STABLE_TOKENS
+            and token1 not in _BASE_STABLE_TOKENS
+            and _first_number(
+                record, "last_swap_price_token1_per_token0", positive=True
+            ) is not None
+            and _first_number(
+                record, "last_swap_liquidity_raw", "l_active_raw", positive=True
+            ) is not None
+        ):
+            reasons.append("no_measured_usd_quote_route")
+    if reward_ev not in (None, 0.0) and reward_conversion is None:
+        reasons.append("reward_conversion_route_unavailable")
+    reasons = list(dict.fromkeys(reasons))
+    if reasons:
+        record["permanent_fail_closed_reasons"] = reasons
+        record["permanent_fail_closed_reason"] = str(primary or reasons[0])
+        if not record.get("permanent_fail_closed_r1a_classification"):
+            if "no_measured_usd_quote_route" in reasons:
+                record["permanent_fail_closed_r1a_classification"] = (
+                    "NO_MEASURED_USD_QUOTE_AND_REWARD_CONVERSION_DEPTH"
+                )
+            elif "reward_conversion_route_unavailable" in reasons:
+                record["permanent_fail_closed_r1a_classification"] = (
+                    "MISSING_REWARD_CONVERSION_EVIDENCE"
+                )
     return record
 
 

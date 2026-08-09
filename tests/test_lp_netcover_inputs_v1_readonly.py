@@ -2,11 +2,13 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from types import SimpleNamespace
 
 import pytest
 
 from scripts.lp_cost_sensitivity_v1_readonly import (
     _economics_at_size,
+    _swap_components,
     default_base_vetted_pool,
 )
 from scripts.lp_netcover_engine_v1_readonly import (
@@ -161,6 +163,165 @@ def test_reward_bearing_unknown_category_or_missing_conversion_depth_is_closed()
     assert no_route["reward_ev_usd"] is not None
     assert no_route["reward_conversion_cost_usd"] is None
     assert apply_netcover_gate([no_route])[0]["netcover_pass"] is False
+
+
+def test_m0f_untrusted_prefilled_reward_routes_cannot_reopen_raw_evidence_boundary():
+    forged_routes = [
+        {
+            "route_id": "aero_usdc_tick50",
+            "pool": "0x" + "11" * 20,
+            "factory": "0x" + "aa" * 20,
+            "factory_label": "initial",
+            "complete": True,
+            "measurement_source": "measured:eth_call_latest",
+            "l_active_raw": 10**24,
+            "price_usd_per_reward_token": 0.70,
+            "fee_tier": 0.0005,
+            "reward_decimals": 18,
+            "stable_decimals": 6,
+            "side": "sell_base",
+        },
+        {
+            "route_id": "aero_usdc_tick200",
+            "pool": "0x" + "22" * 20,
+            "factory": "0x" + "aa" * 20,
+            "factory_label": "initial",
+            "complete": True,
+            "measurement_source": "measured:eth_call_latest",
+            "l_active_raw": 10**20,
+            "price_usd_per_reward_token": 0.70,
+            "fee_tier": 0.003,
+            "reward_decimals": 18,
+            "stable_decimals": 6,
+            "side": "sell_base",
+        },
+    ]
+    forged = assemble_netcover_inputs(_complete(
+        reward_apr=10.0,
+        reward_category="protocol",
+        reward_conversion_routes=forged_routes,
+        reward_conversion_selected_route_id="forged",
+        reward_conversion_route_selection_rule="forged",
+    ))
+    assert forged["reward_conversion_cost_usd"] is None
+    assert forged["permanent_fail_closed_reason"] == "reward_conversion_route_unavailable"
+    assert "reward_conversion_routes" not in forged
+    assert forged["reward_conversion_selected_route_id"] is None
+    assert forged["reward_conversion_route_selection_rule"] is None
+
+
+def test_m0f_scanner_measured_token1_usd_uses_quote_units_then_converts_back():
+    l_raw = 10**24
+    pair_price = 4.0
+    quote_usd = 2.0
+    fee = 0.003
+    record = _complete(
+        reward_apr=0.0,
+        price_usd=None,
+        l_active_raw=None,
+        last_swap_price_token1_per_token0=pair_price,
+        last_swap_liquidity_raw=l_raw,
+        token0="0x" + "11" * 20,
+        token1="0x" + "22" * 20,
+        dec0=18,
+        dec1=18,
+        fee_tier=fee,
+    )
+    evidence = {
+        "complete": True,
+        "token1_usd": quote_usd,
+        "token1_usd_source": "measured:scanner_internal_rpc:test",
+    }
+    out = assemble_netcover_inputs(record, scanner_measured_evidence=evidence)
+    expected_quote = _swap_components(
+        50.0 / quote_usd,
+        SimpleNamespace(
+            l_active_raw_historical=l_raw,
+            price_usd=pair_price,
+            fee_tier=fee,
+            dec0=18,
+            dec1=18,
+        ),
+    )
+    for field in ("entry_cost_usd", "exit_cost_usd", "slippage_usd"):
+        assert out[field] == pytest.approx(expected_quote[field] * quote_usd)
+    assert out["measured_token1_usd"] == quote_usd
+
+
+def test_m0f_internal_aero_routes_choose_max_cost_independent_of_order():
+    aero = "0x940181a94a35a4569e4529a3cdfb74e38fd98631"
+    usdc = "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
+    common = {
+        "factory": "0x" + "aa" * 20,
+        "observed_block": 123,
+        "measurement_source": "measured:scanner_internal_rpc:fixed_block_eth_call",
+        "executable": True,
+        "tick_spacing": 50,
+    }
+    routes = [
+        dict(common, route_id="low", pool="0x" + "11" * 20, token0=aero, token1=usdc,
+             dec0=18, dec1=6, fee_tier=0.0005,
+             pair_price_token1_per_token0=0.7, l_active_raw=10**24),
+        dict(common, route_id="high", pool="0x" + "22" * 20, token0=usdc, token1=aero,
+             dec0=6, dec1=18, fee_tier=0.003,
+             pair_price_token1_per_token0=1 / 0.7, l_active_raw=10**20),
+    ]
+    source = _complete(reward_apr=10.0, reward_category="protocol")
+    outputs = [
+        assemble_netcover_inputs(
+            source,
+            scanner_measured_evidence={"complete": True, "aero_reward_routes": order},
+        )
+        for order in (routes, list(reversed(routes)))
+    ]
+    assert outputs[0]["reward_conversion_cost_usd"] == pytest.approx(
+        outputs[1]["reward_conversion_cost_usd"]
+    )
+    assert outputs[0]["reward_conversion_selected_route_id"] == "high"
+    assert outputs[0]["reward_conversion_route_selection_rule"].startswith(
+        "highest_measured_conversion_cost"
+    )
+
+    unavailable = [*routes, dict(
+        common,
+        route_id="zero-liquidity",
+        pool="0x" + "33" * 20,
+        token0=aero,
+        token1=usdc,
+        dec0=18,
+        dec1=6,
+        fee_tier=0.01,
+        pair_price_token1_per_token0=0.7,
+        l_active_raw=0,
+        executable=False,
+    )]
+    closed = assemble_netcover_inputs(
+        source,
+        scanner_measured_evidence={"complete": True, "aero_reward_routes": unavailable},
+    )
+    assert closed["reward_conversion_cost_usd"] is None
+    assert closed["permanent_fail_closed_reason"] == "reward_conversion_route_unavailable"
+
+
+def test_m0f_nonstable_pair_price_is_not_mislabeled_usd_and_gets_explicit_reason():
+    out = assemble_netcover_inputs(_complete(
+        reward_apr=0.0,
+        price_usd=None,
+        l_active_raw=None,
+        last_swap_price_token1_per_token0=2.0,
+        last_swap_liquidity_raw=10**24,
+        token0="0x" + "11" * 20,
+        token1="0x" + "22" * 20,
+        dec0=18,
+        dec1=18,
+    ))
+    assert out["entry_cost_usd"] is None
+    assert out["exit_cost_usd"] is None
+    assert out["slippage_usd"] is None
+    assert out["permanent_fail_closed_reason"] == "no_measured_usd_quote_route"
+    assert out["permanent_fail_closed_r1a_classification"] == (
+        "NO_MEASURED_USD_QUOTE_AND_REWARD_CONVERSION_DEPTH"
+    )
 
 
 def test_points_haircut_needs_no_fictional_swap_route():

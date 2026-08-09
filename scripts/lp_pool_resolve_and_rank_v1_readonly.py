@@ -17,16 +17,54 @@ if str(REPO_ROOT) not in sys.path:
 
 UNISWAP_V3_FACTORY = "0x33128a8fC17869897dcE68Ed026d694621f6FDfD"
 AERODROME_SLIPSTREAM_FACTORY = "0x5e7BB104d84c7CB9B682AaC2F3d509f5F406809A"
+AERODROME_SLIPSTREAM_FACTORIES = (
+    {"label": "initial", "factory": AERODROME_SLIPSTREAM_FACTORY},
+    {"label": "gauge_caps", "factory": "0xaDe65c38CD4849aDBA595a4323a8C7DdfE89716a"},
+    {"label": "gauges_v3", "factory": "0xf8f2eB4940CFE7d13603DDDD87f123820Fc061Ef"},
+)
+AERODROME_FACTORY_REGISTRY_SOURCE = (
+    "official:https://github.com/aerodrome-finance/slipstream#deployments"
+)
 
 SELECTOR_GET_POOL_UNISWAP = "0x1698ee82"
 SELECTOR_GET_POOL_AERODROME = "0x28af8d0b"
 SELECTOR_DECIMALS = "0x313ce567"
 SELECTOR_TOKEN0 = "0x0dfe1681"
 SELECTOR_TOKEN1 = "0xd21220a7"
+SELECTOR_TICK_SPACING = "0xd0c93a7c"
 
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 DEFAULT_CALL_PACE_SECS = 0.15
 BASE_BLOCKS_PER_DAY = 43200.0
+
+
+class PoolResolutionError(RuntimeError):
+    reason = "pool_resolution_failed"
+
+
+class PoolResolutionIncompleteError(PoolResolutionError):
+    reason = "factory_registry_probe_incomplete"
+
+
+class AmbiguousMultiFactoryPoolError(PoolResolutionError):
+    reason = "ambiguous_multi_factory_pool"
+
+    def __init__(self, valid_candidates: Sequence[Mapping[str, Any]]):
+        self.valid_candidates = [dict(item) for item in valid_candidates]
+        self.valid_pool_addresses = sorted({str(item["pool"]) for item in valid_candidates})
+        super().__init__(
+            f"{self.reason}: distinct validated pools={','.join(self.valid_pool_addresses)}"
+        )
+
+
+class ObservedRangeDomainError(ValueError):
+    reason = "observed_range_gte_100"
+
+    def __init__(self, evidence: Mapping[str, float | None], *, reason: str | None = None):
+        self.evidence = dict(evidence)
+        if reason is not None:
+            self.reason = reason
+        super().__init__(f"{self.reason}: {json.dumps(self.evidence, sort_keys=True)}")
 
 
 def _utc_stamp() -> str:
@@ -305,6 +343,196 @@ def _resolve_pool_once(
     return pool
 
 
+def _resolve_pool_at_factory(
+    rpc_with_retry: Any,
+    factory: str,
+    token_a: str,
+    token_b: str,
+    tick_spacing: int,
+    cache: MutableMapping[Tuple[str, str, str, int], str],
+) -> List[str]:
+    normalized_factory = normalize_address(factory)
+    left = normalize_address(token_a)
+    right = normalize_address(token_b)
+    key = (normalized_factory, left, right, int(tick_spacing))
+    if key not in cache:
+        raw = _eth_call_hex(
+            rpc_with_retry,
+            normalized_factory,
+            build_aerodrome_get_pool_calldata(left, right, int(tick_spacing)),
+        )
+        cache[key] = decode_address_word(raw)
+    reverse_key = (normalized_factory, right, left, int(tick_spacing))
+    if reverse_key not in cache:
+        raw = _eth_call_hex(
+            rpc_with_retry,
+            normalized_factory,
+            build_aerodrome_get_pool_calldata(right, left, int(tick_spacing)),
+        )
+        cache[reverse_key] = decode_address_word(raw)
+    return sorted({
+        pool for pool in (cache[key], cache[reverse_key]) if pool != ZERO_ADDRESS
+    })
+
+
+def _validate_aerodrome_candidate(
+    rpc_with_retry: Any,
+    pool: str,
+    token_a: str,
+    token_b: str,
+    tick_spacing: int,
+) -> Dict[str, Any]:
+    """Validate contract identity before a factory result can enter the funnel."""
+    normalized_pool = normalize_address(pool)
+    code = rpc_with_retry("eth_getCode", [normalized_pool, "latest"])
+    if not isinstance(code, str) or code.lower() in {"0x", "0x0", "0x00"}:
+        return {"valid": False, "validation_reason": "missing_contract_bytecode"}
+    token0 = decode_address_word(_eth_call_hex(rpc_with_retry, normalized_pool, SELECTOR_TOKEN0))
+    token1 = decode_address_word(_eth_call_hex(rpc_with_retry, normalized_pool, SELECTOR_TOKEN1))
+    actual_tokens = sorted((token0, token1))
+    expected_tokens = sorted((normalize_address(token_a), normalize_address(token_b)))
+    if actual_tokens != expected_tokens:
+        return {
+            "valid": False,
+            "validation_reason": "token_pair_mismatch",
+            "actual_tokens": actual_tokens,
+        }
+    decoded_tick = decode_uint_word(
+        _eth_call_hex(rpc_with_retry, normalized_pool, SELECTOR_TICK_SPACING)
+    )
+    if decoded_tick != int(tick_spacing):
+        return {
+            "valid": False,
+            "validation_reason": "tick_spacing_mismatch",
+            "actual_tick_spacing": decoded_tick,
+        }
+    decimals = []
+    for token in (token0, token1):
+        value = decode_uint_word(_eth_call_hex(rpc_with_retry, token, SELECTOR_DECIMALS))
+        if value < 0 or value > 36:
+            return {
+                "valid": False,
+                "validation_reason": "token_decimals_out_of_range",
+                "token": token,
+                "decimals": value,
+            }
+        decimals.append(value)
+    return {
+        "valid": True,
+        "token0": token0,
+        "token1": token1,
+        "dec0": decimals[0],
+        "dec1": decimals[1],
+        "validated_token_set": expected_tokens,
+        "validated_tick_spacing": decoded_tick,
+        "contract_code_bytes": (len(code) - 2) // 2,
+    }
+
+
+def resolve_pool_with_provenance(
+    rpc_with_retry: Any,
+    project: str,
+    token_a: str,
+    token_b: str,
+    fee_or_spacing: int,
+    cache: MutableMapping[Tuple[str, str, str, int], str],
+) -> Dict[str, Any]:
+    """Resolve only after exhaustive factory probing and identity validation.
+
+    A partial registry view is never interpreted as uniqueness.  Repeated
+    returns of the same canonical pool address are de-duplicated while every
+    factory provenance entry is retained.
+    """
+    key = _project_key(project)
+    if key == "uniswap-v3":
+        pool = resolve_pool_address(
+            rpc_with_retry, project, token_a, token_b, fee_or_spacing, cache
+        )
+        return {
+            "pool": pool,
+            "factory": normalize_address(UNISWAP_V3_FACTORY),
+            "factory_label": "uniswap_v3_base",
+            "factory_labels": ["uniswap_v3_base"],
+            "factory_registry_source": "configured:uniswap_v3_base_factory",
+        }
+
+    observations: Dict[str, Dict[str, Any]] = {}
+    probe_errors: List[Dict[str, str]] = []
+    for item in AERODROME_SLIPSTREAM_FACTORIES:
+        label = str(item["label"])
+        factory = normalize_address(str(item["factory"]))
+        try:
+            pools = _resolve_pool_at_factory(
+                rpc_with_retry, factory, token_a, token_b, fee_or_spacing, cache
+            )
+        except Exception as exc:
+            probe_errors.append({
+                "factory_label": label,
+                "factory": factory,
+                "error": f"{type(exc).__name__}: {exc}",
+            })
+            continue
+        for pool in pools:
+            canonical = normalize_address(pool)
+            observation = observations.setdefault(
+                canonical, {"pool": canonical, "factory_labels": [], "factories": []}
+            )
+            if label not in observation["factory_labels"]:
+                observation["factory_labels"].append(label)
+            if factory not in observation["factories"]:
+                observation["factories"].append(factory)
+
+    validations: List[Dict[str, Any]] = []
+    for observation in observations.values():
+        try:
+            validation = _validate_aerodrome_candidate(
+                rpc_with_retry,
+                observation["pool"],
+                token_a,
+                token_b,
+                fee_or_spacing,
+            )
+        except Exception as exc:
+            probe_errors.append({
+                "factory_label": ",".join(observation["factory_labels"]),
+                "factory": ",".join(observation["factories"]),
+                "error": f"candidate_validation:{type(exc).__name__}: {exc}",
+            })
+            continue
+        validations.append({**observation, **validation})
+
+    # Any UNKNOWN means other valid candidates may exist, so uniqueness has not
+    # been proven and no partial answer may be used.
+    if probe_errors:
+        error = PoolResolutionIncompleteError(
+            f"factory_registry_probe_incomplete: {json.dumps(probe_errors, sort_keys=True)}"
+        )
+        error.probe_errors = probe_errors
+        raise error
+    valid = [item for item in validations if item.get("valid")]
+    if len(valid) > 1:
+        raise AmbiguousMultiFactoryPoolError(valid)
+    if not valid:
+        invalid = [item for item in validations if not item.get("valid")]
+        return {
+            "pool": ZERO_ADDRESS,
+            "factory": None,
+            "factory_label": None,
+            "factory_labels": [],
+            "factory_registry_source": AERODROME_FACTORY_REGISTRY_SOURCE,
+            "validation_failures": invalid,
+            "not_found_reason": (
+                "non_standard_pool_contract"
+                if invalid else "pool_not_found_in_supported_factory"
+            ),
+        }
+    selected = dict(valid[0])
+    selected["factory"] = selected["factories"][0]
+    selected["factory_label"] = selected["factory_labels"][0]
+    selected["factory_registry_source"] = AERODROME_FACTORY_REGISTRY_SOURCE
+    return selected
+
+
 def resolve_pool_address(
     rpc_with_retry: Any,
     project: str,
@@ -313,6 +541,9 @@ def resolve_pool_address(
     fee_or_spacing: int,
     cache: MutableMapping[Tuple[str, str, str, int], str],
 ) -> str:
+    # Compatibility helper used by the standalone Uniswap resolver path.  The
+    # production candidate path uses ``resolve_pool_with_provenance`` so all
+    # Aerodrome factories are exhausted and validated before selection.
     pool = _resolve_pool_once(rpc_with_retry, project, token_a, token_b, fee_or_spacing, cache)
     if pool != ZERO_ADDRESS:
         return pool
@@ -455,7 +686,30 @@ def _measure_range_and_replay(
     if sigma_daily is None:
         return None, 0.0, 0.0
 
-    range_pct = live["recommend_range_pct"](sigma_daily, 14)
+    horizon_days = 14.0
+    range_pct = _safe_float(live["recommend_range_pct"](sigma_daily, horizon_days), None)
+    entry_price = _safe_float(
+        swaps[0].get("price") if isinstance(swaps[0], Mapping) else None,
+        None,
+    )
+    lower_bound = (
+        entry_price * (1.0 - range_pct / 100.0)
+        if entry_price is not None and range_pct is not None
+        else None
+    )
+    evidence = {
+        "measured_sigma_daily": float(sigma_daily),
+        "measured_horizon_days": horizon_days,
+        "measured_range_pct": range_pct,
+        "measured_entry_price_token1_per_token0": entry_price,
+        "measured_lower_bound_token1_per_token0": lower_bound,
+    }
+    if range_pct is None or not math.isfinite(range_pct):
+        raise ObservedRangeDomainError(evidence, reason="observed_range_non_finite")
+    if entry_price is None or entry_price <= 0.0:
+        raise ObservedRangeDomainError(evidence, reason="observed_entry_price_invalid")
+    if range_pct >= 100.0 or lower_bound is None or lower_bound <= 0.0:
+        raise ObservedRangeDomainError(evidence)
     replay_result = live["replay"](
         swaps,
         range_pct=range_pct,
@@ -512,7 +766,7 @@ def process_candidate(
             if fee_or_spacing is None:
                 raise ValueError("tick_spacing is required for aerodrome-slipstream")
 
-        pool = resolve_pool_address(
+        resolution = resolve_pool_with_provenance(
             live["_rpc_with_retry"],
             project,
             token_a,
@@ -520,9 +774,18 @@ def process_candidate(
             fee_or_spacing,
             caches["pool"],
         )
+        pool = str(resolution["pool"])
         if pool == ZERO_ADDRESS:
             record["resolve_status"] = "NOT_FOUND"
             record["status"] = "NOT_FOUND"
+            record["permanent_fail_closed_reason"] = resolution.get(
+                "not_found_reason", "pool_not_found_in_supported_factory"
+            )
+            record["permanent_fail_closed_r1a_classification"] = (
+                "POOL_NOT_IN_SUPPORTED_FACTORY"
+            )
+            record["factory_registry_source"] = resolution.get("factory_registry_source")
+            record["pool_validation_failures"] = resolution.get("validation_failures", [])
             return finalize_record(record)
 
         token0, token1, dec0, dec1 = _read_pool_token_order_and_decimals(
@@ -538,6 +801,15 @@ def process_candidate(
         record["dec0"] = dec0
         record["dec1"] = dec1
         record["resolve_status"] = "OK"
+        record["resolved_factory"] = resolution.get("factory")
+        record["resolved_factory_label"] = resolution.get("factory_label")
+        record["resolved_factory_labels"] = resolution.get("factory_labels")
+        record["factory_registry_source"] = resolution.get("factory_registry_source")
+        record["pool_identity_validation"] = {
+            "validated_token_set": resolution.get("validated_token_set"),
+            "validated_tick_spacing": resolution.get("validated_tick_spacing"),
+            "contract_code_bytes": resolution.get("contract_code_bytes"),
+        }
 
         start_block = max(current_block - int(window_blocks), 0)
         swaps = _fetch_swaps_for_window(
@@ -546,6 +818,11 @@ def process_candidate(
         swap_count = len(swaps)
         record["swap_count"] = swap_count
         record.update(latest_swap_cost_state(swaps))
+        if swap_count == 0:
+            record["status"] = "INSUFFICIENT_DATA"
+            record["permanent_fail_closed_reason"] = "no_swaps_in_window"
+            record["permanent_fail_closed_r1a_classification"] = "NO_SWAPS_IN_WINDOW"
+            return finalize_record(record)
 
         window_days = float(window_blocks) / BASE_BLOCKS_PER_DAY
         amount1_sum = sum(abs(_extract_swap_amount1(swap)) for swap in swaps)
@@ -565,6 +842,13 @@ def process_candidate(
             live, swaps, fee_fraction or 0.0, dec0, dec1
         )
         record["range_pct"] = range_pct
+        if range_pct is None:
+            record["status"] = "INSUFFICIENT_DATA"
+            record["permanent_fail_closed_reason"] = "insufficient_price_observations"
+            record["permanent_fail_closed_r1a_classification"] = (
+                "INSUFFICIENT_PRICE_OBSERVATIONS"
+            )
+            return finalize_record(record)
 
         fee_cover = live["fee_cover_ratio"](fees_quote, il_quote)
         record["fee_cover"] = fee_cover if fee_cover != math.inf else "inf"
@@ -582,6 +866,36 @@ def process_candidate(
         record["yield_cover"] = cover["yield_cover"]
 
         record["status"] = "OK"
+        return finalize_record(record)
+    except AmbiguousMultiFactoryPoolError as exc:
+        record["resolve_status"] = "AMBIGUOUS"
+        record["status"] = "FAIL_CLOSED"
+        record["permanent_fail_closed_reason"] = exc.reason
+        record["permanent_fail_closed_r1a_classification"] = (
+            "MULTI_FACTORY_POOL_AMBIGUITY"
+        )
+        record["validated_pool_candidates"] = exc.valid_candidates
+        record["error"] = str(exc)
+        return finalize_record(record)
+    except PoolResolutionIncompleteError as exc:
+        record["resolve_status"] = "UNKNOWN"
+        record["status"] = "FAIL_CLOSED"
+        record["permanent_fail_closed_reason"] = exc.reason
+        record["permanent_fail_closed_r1a_classification"] = (
+            "FACTORY_REGISTRY_PROBE_INCOMPLETE"
+        )
+        record["factory_probe_errors"] = getattr(exc, "probe_errors", [])
+        record["error"] = str(exc)
+        return finalize_record(record)
+    except ObservedRangeDomainError as exc:
+        record["status"] = "FAIL_CLOSED"
+        record["permanent_fail_closed_reason"] = exc.reason
+        record["permanent_fail_closed_r1a_classification"] = (
+            "OBSERVED_RANGE_EXCEEDS_MATH_DOMAIN"
+        )
+        record.update(exc.evidence)
+        record["range_pct"] = exc.evidence.get("measured_range_pct")
+        record["error"] = str(exc)
         return finalize_record(record)
     except Exception as exc:
         record["status"] = "ERROR"

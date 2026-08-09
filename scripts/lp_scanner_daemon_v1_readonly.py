@@ -55,6 +55,36 @@ VALID_MARKET_SESSIONS = {
     "HALTED",
 }
 
+BASE_USDC = "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
+BASE_AERO = "0x940181a94a35a4569e4529a3cdfb74e38fd98631"
+BASE_WETH = "0x4200000000000000000000000000000000000006"
+BASE_CBBTC = "0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf"
+BASE_AERODROME_INITIAL_FACTORY = "0x5e7bb104d84c7cb9b682aac2f3d509f5f406809a"
+BASE_AERODROME_GAUGE_CAPS_FACTORY = "0xade65c38cd4849adba595a4323a8c7ddfe89716a"
+BASE_AERODROME_GAUGES_V3_FACTORY = "0xf8f2eb4940cfe7d13603dddd87f123820fc061ef"
+# Fixed before evaluation from the official Initial Slipstream deployment.
+# Each route had positive live liquidity during R1b's preregistration probe;
+# runtime still validates factory membership, identity and every state word.
+BASE_AERO_USDC_REWARD_ROUTES = (
+    {"route_id": "aero_usdc_initial_tick50", "pool": "0x9ed0f0f21b83d1595147dc6b32b5607647bdcd56", "tick_spacing": 50, "factory": BASE_AERODROME_INITIAL_FACTORY},
+    {"route_id": "aero_usdc_initial_tick100", "pool": "0xa4fdd479eda160671636e2ecf8f993cbf86258a8", "tick_spacing": 100, "factory": BASE_AERODROME_INITIAL_FACTORY},
+    {"route_id": "aero_usdc_initial_tick200", "pool": "0xccd9cc53b63662088c738b8bc06e9078fb8d9ad4", "tick_spacing": 200, "factory": BASE_AERODROME_INITIAL_FACTORY},
+    {"route_id": "aero_usdc_initial_tick2000", "pool": "0xbe00ff35af70e8415d0eb605a286d8a45466a4c1", "tick_spacing": 2000, "factory": BASE_AERODROME_INITIAL_FACTORY},
+)
+# These official pools were measured with zero active liquidity during R1b and
+# are therefore not executable conversion routes.  They remain mandatory
+# watchlist probes: a read/identity failure, or becoming executable, closes the
+# whole evidence package until the frozen allowlist is reviewed.  This avoids
+# silently ignoring a newly viable route that might have a higher cost.
+BASE_AERO_USDC_ZERO_LIQUIDITY_WATCHLIST = (
+    {"route_id": "aero_usdc_gauge_caps_tick1", "pool": "0x3b90dcfdb23b0a8484bf6a4767578861fbe1b21b", "tick_spacing": 1, "factory": BASE_AERODROME_GAUGE_CAPS_FACTORY},
+    {"route_id": "aero_usdc_gauges_v3_tick10", "pool": "0x12619a0f9d0c7f58528a77e45dd315ec49b875ef", "tick_spacing": 10, "factory": BASE_AERODROME_GAUGES_V3_FACTORY},
+)
+BASE_USD_ANCHOR_ROUTES = (
+    {"route_id": "weth_usdc_initial_tick50", "pool": "0xaad23a67f2ac693abbe543489aeb3f24f561d517", "tick_spacing": 50, "factory": BASE_AERODROME_INITIAL_FACTORY, "token_a": BASE_WETH, "token_b": BASE_USDC},
+    {"route_id": "weth_cbbtc_initial_tick10", "pool": "0xffa192f04b1e5f9f5124fb40a96407564492ed20", "tick_spacing": 10, "factory": BASE_AERODROME_INITIAL_FACTORY, "token_a": BASE_WETH, "token_b": BASE_CBBTC},
+)
+
 # Public column contracts. ``id`` is deliberately omitted: it is an internal
 # SQLite surrogate and not part of the PRD snapshot payload.
 POOL_SNAPSHOT_COLUMNS = (
@@ -480,6 +510,7 @@ class DefaultStages:
             rpc_module = importlib.import_module("scripts.lp_rpc_pool_v1_readonly")
             rpc_pool = rpc_module.RpcPool(self.chain.strip().lower())
         self._rpc_pool = rpc_pool
+        self._base_cross_pool_measurements: Optional[Dict[str, Any]] = None
 
     @property
     def rpc_health(self) -> str:
@@ -663,6 +694,194 @@ class DefaultStages:
             record["netcover_depth_error"] = f"{type(exc).__name__}: {exc}"
         return record
 
+    def _measure_preregistered_slipstream_route(
+        self, spec: Mapping[str, Any], *, observed_block: int
+    ) -> Dict[str, Any]:
+        """Build one route exclusively from validated latest-chain state."""
+        bridge = importlib.import_module("scripts.lp_pool_resolve_and_rank_v1_readonly")
+        costs = importlib.import_module("scripts.lp_cost_sensitivity_v1_readonly")
+        token_a = str(spec.get("token_a") or BASE_AERO).lower()
+        token_b = str(spec.get("token_b") or BASE_USDC).lower()
+        factory = str(spec["factory"]).lower()
+        expected_pool = str(spec["pool"]).lower()
+        tick_spacing = int(spec["tick_spacing"])
+        block_tag = hex(int(observed_block))
+        returned = set()
+        for left, right in ((token_a, token_b), (token_b, token_a)):
+            data = bridge.build_aerodrome_get_pool_calldata(left, right, tick_spacing)
+            raw = self._rpc_pool.call(
+                "eth_call", [{"to": factory, "data": data}, block_tag]
+            )
+            address = bridge.decode_address_word(str(raw))
+            if address != bridge.ZERO_ADDRESS:
+                returned.add(address)
+        if returned != {expected_pool}:
+            raise ValueError(
+                f"factory route mismatch {spec['route_id']}: {sorted(returned)}"
+            )
+        code = self._rpc_pool.call("eth_getCode", [expected_pool, block_tag])
+        if not isinstance(code, str) or code.lower() in {"0x", "0x0", "0x00"}:
+            raise ValueError(f"route bytecode unavailable: {spec['route_id']}")
+
+        def call_word(selector: str) -> str:
+            raw = self._rpc_pool.call(
+                "eth_call", [{"to": expected_pool, "data": selector}, block_tag]
+            )
+            text = str(raw or "")
+            if not text.startswith("0x") or len(text) < 66:
+                raise ValueError(f"short route state {spec['route_id']} {selector}")
+            return text
+
+        token0 = bridge.decode_address_word(call_word("0x0dfe1681"))
+        token1 = bridge.decode_address_word(call_word("0xd21220a7"))
+        if sorted((token0, token1)) != sorted((token_a, token_b)):
+            raise ValueError(f"route token mismatch: {spec['route_id']}")
+        tick = bridge.decode_uint_word(call_word("0xd0c93a7c"))
+        if tick != tick_spacing:
+            raise ValueError(f"route tick mismatch: {spec['route_id']}")
+        decimals = []
+        for token in (token0, token1):
+            raw = self._rpc_pool.call(
+                "eth_call", [{"to": token, "data": "0x313ce567"}, block_tag]
+            )
+            value = bridge.decode_uint_word(str(raw))
+            if value < 0 or value > 36:
+                raise ValueError(f"route decimals invalid: {spec['route_id']}")
+            decimals.append(value)
+        fee_raw = bridge.decode_uint_word(call_word("0xddca3f43"))
+        sqrt_price_x96 = int(call_word("0x3850c7bd")[2:66], 16)
+        liquidity_raw = int(call_word("0x1a686502")[2:66], 16)
+        pair_price = costs.price_from_sqrt_x96(
+            sqrt_price_x96, dec0=decimals[0], dec1=decimals[1]
+        )
+        if pair_price <= 0.0 or fee_raw < 0:
+            raise ValueError(f"route price/fee invalid: {spec['route_id']}")
+        return {
+            "route_id": str(spec["route_id"]),
+            "pool": expected_pool,
+            "factory": factory,
+            "factory_registry_source": (
+                "official:https://github.com/aerodrome-finance/slipstream#deployments"
+            ),
+            "tick_spacing": tick,
+            "token0": token0,
+            "token1": token1,
+            "dec0": decimals[0],
+            "dec1": decimals[1],
+            "fee_tier": fee_raw / 1_000_000.0,
+            "sqrt_price_x96": sqrt_price_x96,
+            "pair_price_token1_per_token0": pair_price,
+            "l_active_raw": liquidity_raw,
+            "executable": liquidity_raw > 0,
+            "observed_block": observed_block,
+            "measurement_source": "measured:scanner_internal_rpc:fixed_block_eth_call",
+        }
+
+    def _read_base_cross_pool_measurements(self) -> Dict[str, Any]:
+        """Measure the fixed route registry once per scanner process/cycle set."""
+        if self._base_cross_pool_measurements is not None:
+            return self._base_cross_pool_measurements
+        evidence: Dict[str, Any] = {
+            "complete": False,
+            "anchors": [],
+            "aero_reward_routes": [],
+            "aero_reward_route_watchlist": [],
+            "errors": [],
+        }
+        try:
+            tip_raw = self._rpc_pool.call("eth_blockNumber", [])
+            tip = int(str(tip_raw), 16)
+            for spec in BASE_USD_ANCHOR_ROUTES:
+                route = self._measure_preregistered_slipstream_route(
+                    spec, observed_block=tip
+                )
+                if route.get("executable") is not True:
+                    raise ValueError(f"anchor route not executable: {route['route_id']}")
+                evidence["anchors"].append(route)
+            for spec in BASE_AERO_USDC_REWARD_ROUTES:
+                route = self._measure_preregistered_slipstream_route(
+                    spec, observed_block=tip
+                )
+                if route.get("executable") is not True:
+                    raise ValueError(f"reward route not executable: {route['route_id']}")
+                evidence["aero_reward_routes"].append(route)
+            for spec in BASE_AERO_USDC_ZERO_LIQUIDITY_WATCHLIST:
+                route = self._measure_preregistered_slipstream_route(
+                    spec, observed_block=tip
+                )
+                if route.get("executable") is not False:
+                    evidence["permanent_fail_closed_reason"] = (
+                        "preregistered_watchlist_became_executable"
+                    )
+                    raise ValueError(
+                        f"watched route became executable; allowlist review required: {route['route_id']}"
+                    )
+                evidence["aero_reward_route_watchlist"].append(route)
+            evidence["observed_block"] = tip
+            evidence["complete"] = True
+        except Exception as exc:
+            evidence["errors"].append(f"{type(exc).__name__}: {exc}")
+        self._base_cross_pool_measurements = evidence
+        return evidence
+
+    def _scanner_cross_pool_evidence(self, record: Mapping[str, Any]) -> Dict[str, Any]:
+        measured = self._read_base_cross_pool_measurements()
+        output: Dict[str, Any] = {
+            "complete": bool(measured.get("complete")),
+            "errors": list(measured.get("errors") or ()),
+            "observed_block": measured.get("observed_block"),
+            "permanent_fail_closed_reason": measured.get(
+                "permanent_fail_closed_reason"
+            ),
+        }
+        if not output["complete"]:
+            return output
+        anchors = {item["route_id"]: item for item in measured["anchors"]}
+        weth_route = anchors["weth_usdc_initial_tick50"]
+        cbbtc_route = anchors["weth_cbbtc_initial_tick10"]
+
+        def usd_per_token(route: Mapping[str, Any], token: str) -> float:
+            pair = float(route["pair_price_token1_per_token0"])
+            if route["token0"] == token and route["token1"] == BASE_USDC:
+                return pair
+            if route["token1"] == token and route["token0"] == BASE_USDC:
+                return 1.0 / pair
+            raise ValueError(f"route does not quote {token} in USDC")
+
+        weth_usd = usd_per_token(weth_route, BASE_WETH)
+        cbbtc_per_weth = float(cbbtc_route["pair_price_token1_per_token0"])
+        if cbbtc_route["token0"] == BASE_CBBTC:
+            cbbtc_per_weth = 1.0 / cbbtc_per_weth
+        cbbtc_usd = weth_usd / cbbtc_per_weth
+        token0 = str(record.get("token0") or "").lower()
+        token1 = str(record.get("token1") or "").lower()
+        pair = _finite_float(record.get("last_swap_price_token1_per_token0"))
+        token1_usd = None
+        quote_source = None
+        if token1 == BASE_CBBTC:
+            token1_usd = cbbtc_usd
+            quote_source = "measured:weth_usdc_anchor_plus_weth_cbbtc_route"
+        elif token1 == BASE_WETH:
+            token1_usd = weth_usd
+            quote_source = "measured:weth_usdc_anchor"
+        elif token0 == BASE_WETH and pair is not None and pair > 0.0:
+            token1_usd = weth_usd / pair
+            quote_source = "measured:weth_usdc_anchor_div_main_pair_price"
+        if token1_usd is not None and token1_usd > 0.0:
+            output["token1_usd"] = token1_usd
+            output["token1_usd_source"] = quote_source
+            output["usd_anchor_routes"] = list(measured["anchors"])
+
+        reward_tokens = record.get("rewardTokens") or record.get("reward_tokens") or ()
+        if isinstance(reward_tokens, str):
+            reward_tokens = (reward_tokens,)
+        if {str(token).lower() for token in reward_tokens} == {BASE_AERO}:
+            output["aero_reward_routes"] = list(measured["aero_reward_routes"])
+            output["aero_reward_route_watchlist"] = list(
+                measured["aero_reward_route_watchlist"]
+            )
+        return output
+
     @staticmethod
     def _enforce_fifth_gate(
         sources: Sequence[Mapping[str, Any]], assessed: Sequence[Mapping[str, Any]]
@@ -672,13 +891,24 @@ class DefaultStages:
         output: List[Dict[str, Any]] = []
         for source, result in zip(sources, assessed):
             rec = dict(result)
-            passed = bool(rec.get("netcover_pass", False))
+            permanent_reason = rec.get("permanent_fail_closed_reason") or source.get(
+                "permanent_fail_closed_reason"
+            )
+            passed = bool(rec.get("netcover_pass", False)) and not permanent_reason
+            if permanent_reason:
+                rec["permanent_fail_closed_reason"] = str(permanent_reason)
+                rec["netcover_pass"] = False
+                rec["netcover"] = None
+                rec["netcover_ratio"] = None
+                rec["rejection_reason"] = f"PERMANENT_FAIL_CLOSED:{permanent_reason}"
             gates = dict(source.get("gates") or {})
             gates.update(rec.get("gates") or {})
             gates["netcover_shadow"] = passed
             rec["gates"] = gates
             reason = str(rec.get("rejection_reason") or "")
-            if passed:
+            if permanent_reason:
+                status = "PERMANENT_FAIL_CLOSED"
+            elif passed:
                 status = "PASS"
             elif reason.startswith("NETCOVER_INPUT_MISSING:"):
                 status = "MISSING_FAIL_CLOSED"
@@ -719,12 +949,44 @@ class DefaultStages:
         fee-cover fallback.  WP-04 may expose either of the documented record
         adapter names below without creating an import cycle.
         """
+        # Public route state is one fixed-block snapshot shared only within this
+        # batch.  The next daemon cycle must remeasure rather than reuse stale L.
+        self._base_cross_pool_measurements = None
         try:
             inputs_module = importlib.import_module("scripts.lp_netcover_inputs_v1_readonly")
             assembler = getattr(inputs_module, "assemble_netcover_inputs")
-            assembled = [
-                assembler(self._attach_live_pool_state(record)) for record in records
-            ]
+            assembled = []
+            for source in records:
+                # Route claims from the upstream screen are not raw chain
+                # evidence.  M0F keeps conversion fail-closed until the scanner
+                # can construct every preregistered route from validated calls.
+                record = dict(source)
+                for key in tuple(record):
+                    if (
+                        key.startswith("reward_conversion_")
+                        or key.startswith("usd_quote_route")
+                        or key.startswith("scanner_measured_")
+                    ):
+                        record.pop(key, None)
+                token0 = str(record.get("token0") or "").lower()
+                token1 = str(record.get("token1") or "").lower()
+                reward_tokens = record.get("rewardTokens") or record.get("reward_tokens") or ()
+                if isinstance(reward_tokens, str):
+                    reward_tokens = (reward_tokens,)
+                needs_quote = bool(
+                    token0 and token1 and BASE_USDC not in {token0, token1}
+                )
+                needs_reward = {str(token).lower() for token in reward_tokens} == {BASE_AERO}
+                measured_evidence = (
+                    self._scanner_cross_pool_evidence(record)
+                    if needs_quote or needs_reward else None
+                )
+                assembled.append(
+                    assembler(
+                        self._attach_live_pool_state(record),
+                        scanner_measured_evidence=measured_evidence,
+                    )
+                )
         except Exception as exc:
             return self._fail_closed_netcover(records, f"netcover input assembly error: {exc}")
 

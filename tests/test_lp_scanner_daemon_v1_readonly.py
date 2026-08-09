@@ -26,6 +26,7 @@ from scripts.lp_scanner_daemon_v1_readonly import (
     ScreenBatch,
     export_latest_vetted_menu,
     main,
+    _score_row,
 )
 from scripts.lp_tg_alerter_v1_readonly import ScannerAlertBridge
 
@@ -228,6 +229,96 @@ def test_netcover_unavailable_is_fail_closed_and_explained(tmp_path):
         ).fetchone()
     assert accepted == 0
     assert reason == "netcover unavailable"
+
+
+def test_m0f_permanent_reason_forces_rejection_and_survives_score_json():
+    source = {
+        "pool": "0x1",
+        "symbol": "WETH-USDC",
+        "vetted": True,
+        "gates": {"quality": True, "yield_cover": True, "stable": True},
+        "permanent_fail_closed_reason": "observed_range_gte_100",
+        "permanent_fail_closed_r1a_classification": "OBSERVED_RANGE_EXCEEDS_MATH_DOMAIN",
+        "measured_sigma_daily": 0.5,
+        "measured_horizon_days": 14.0,
+        "measured_range_pct": 224.5,
+        "measured_entry_price_token1_per_token0": 2_000.0,
+        "measured_lower_bound_token1_per_token0": -2_490.0,
+    }
+    malicious = dict(source, netcover=99.0, netcover_ratio=99.0, netcover_pass=True)
+
+    final = DefaultStages._enforce_fifth_gate([source], [malicious])[0]
+    row = _score_row(final)
+    persisted = json.loads(row["score_json"])
+
+    assert final["netcover_pass"] is False
+    assert final["vetted"] is False
+    assert final["netcover_ratio"] is None
+    assert final["netcover_gate_status"] == "PERMANENT_FAIL_CLOSED"
+    assert row["accepted"] is False
+    assert row["netcover_ratio"] is None
+    assert persisted["permanent_fail_closed_reason"] == "observed_range_gte_100"
+    assert persisted["measured_range_pct"] == 224.5
+
+
+def test_m0f_zero_liquidity_anchor_makes_cross_pool_evidence_incomplete(monkeypatch):
+    class TipOnlyPool:
+        def call(self, method, params, timeout=20):
+            assert method == "eth_blockNumber"
+            return "0x64"
+
+        def health_snapshot(self):
+            return {"state": "NORMAL"}
+
+    stages = DefaultStages(rpc_pool=TipOnlyPool())
+    monkeypatch.setattr(
+        stages,
+        "_measure_preregistered_slipstream_route",
+        lambda spec, observed_block: {
+            "route_id": spec["route_id"],
+            "executable": False,
+            "observed_block": observed_block,
+        },
+    )
+    measured = stages._read_base_cross_pool_measurements()
+    assert measured["complete"] is False
+    assert measured["anchors"] == []
+    assert "anchor route not executable" in measured["errors"][0]
+    record_evidence = stages._scanner_cross_pool_evidence({
+        "token0": "0x4200000000000000000000000000000000000006",
+        "token1": "0x" + "22" * 20,
+        "last_swap_price_token1_per_token0": 2.0,
+    })
+    assert record_evidence["complete"] is False
+    assert "token1_usd" not in record_evidence
+
+
+def test_m0f_watched_zero_liquidity_route_becoming_executable_requires_review(monkeypatch):
+    class TipOnlyPool:
+        def call(self, method, params, timeout=20):
+            assert method == "eth_blockNumber"
+            return "0x65"
+
+        def health_snapshot(self):
+            return {"state": "NORMAL"}
+
+    stages = DefaultStages(rpc_pool=TipOnlyPool())
+    monkeypatch.setattr(
+        stages,
+        "_measure_preregistered_slipstream_route",
+        lambda spec, observed_block: {
+            "route_id": spec["route_id"],
+            "executable": True,
+            "observed_block": observed_block,
+        },
+    )
+    measured = stages._read_base_cross_pool_measurements()
+    assert measured["complete"] is False
+    assert measured["permanent_fail_closed_reason"] == (
+        "preregistered_watchlist_became_executable"
+    )
+    assert "watched route became executable" in measured["errors"][0]
+    assert "allowlist review required" in measured["errors"][0]
 
 
 def test_wp04_adapter_is_the_strict_fifth_gate_not_only_a_diagnostic():
