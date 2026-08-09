@@ -316,6 +316,84 @@ def test_disabled_policy_hard_risk_executes_paper_exit_and_records_gate(
     assert json.loads(row[1])["position_identities"] == [f"fix-r1-{hard_signal}"]
 
 
+@pytest.mark.parametrize(
+    ("case_name", "risk_signals"),
+    [
+        (
+            "il_hard_breach_combo",
+            {"il_hard_breach": True, "netcover_forward": 0.9},
+        ),
+        (
+            "netcover_persistently_below_one",
+            {"netcover_persistently_below_one": True},
+        ),
+        ("strong_trend_regime", {"strong_trend_regime": True}),
+        (
+            "risky_lower_hard_cap",
+            {"risky_inventory_hard_cap_breach": True},
+        ),
+    ],
+)
+def test_disabled_policy_remaining_hard_risk_classes_execute_and_record_gate(
+    case_name, risk_signals, tmp_path
+):
+    """W4: the four composite hard-risk classes reach runner/gate, not just policy."""
+    st = _policy_state(exit_policy_enabled=False)
+    swap = {
+        "block": 1,
+        "price": 0.80,
+        "liquidity": 10 ** 27,
+        "amount1": AMT1,
+        "risk_signals": risk_signals,
+    }
+
+    update_position(st, [swap], now_block=1)
+
+    assert st["exit_policy_context"]["enabled"] is False
+    assert st["exit_policy_context"]["state"] == "COOLDOWN"
+    assert st["exited"] is not None
+    assert st["exited"]["paper_only"] is True
+    event = st["breaches"][0]
+    assert st["exited"]["exit_mode"] == event["recommended_exit_mode"]
+    for field in (
+        "breach_direction",
+        "post_remove_inventory_ratio",
+        "post_remove_delta_usd",
+        "recommended_exit_mode",
+        "expected_swap_cost",
+    ):
+        assert field in event
+    assert event["hard_risk_override"] is True
+    assert event["exit_cost_basis"] == "depth_model"
+
+    mark = mark_position(st, swap["price"])
+    ledger = attribution_ledger(st, mark)
+    heartbeat = {
+        "ledger_schema_version": LEDGER_SCHEMA_VERSION,
+        "ts_utc": "2026-08-09T00:00:00+00:00",
+        "rpc_health": "NORMAL",
+        "portfolio_nav_usd": ledger["entry_capital_usd"] + ledger["pnl_vs_usdc"],
+        "by_pool": [
+            {
+                "pool": f"fix-w4-{case_name}",
+                "fee_prediction_usd": 1.0,
+                **ledger,
+            }
+        ],
+    }
+    gate_db = tmp_path / "scanner.db"
+    _record_gate_observation(GateStore(gate_db), "fix-w4", 0, heartbeat)
+    with sqlite3.connect(gate_db) as connection:
+        row = connection.execute(
+            "SELECT current_position_count, evidence_json "
+            "FROM shadow_gate_observations WHERE source_run=? AND tick=?",
+            ("fix-w4", 0),
+        ).fetchone()
+    assert row is not None
+    assert row[0] == 1
+    assert json.loads(row[1])["position_identities"] == [f"fix-w4-{case_name}"]
+
+
 def test_disabled_policy_soft_combination_remains_record_only():
     st = _policy_state(exit_policy_enabled=False)
     swap = {

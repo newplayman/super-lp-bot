@@ -210,6 +210,9 @@ def _has_unconditional_veto(signals: RiskSignals) -> bool:
     )
 
 
+# W2 commander policy boundary: TVL/liquidity worsening remains a v1 section 23
+# entry-screening veto, not a hard exit override for an existing position.
+# Only the explicit signals below may bypass a disabled exit policy.
 def _has_hard_risk(signals: RiskSignals, observation: BreachObservation, config: ExitPolicyConfig) -> bool:
     hard_il_combo = signals.il_hard_breach and (
         (signals.netcover_forward is not None and signals.netcover_forward < 1.0)
