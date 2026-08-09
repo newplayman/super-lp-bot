@@ -137,10 +137,12 @@ class SnapshotRecorder:
             "as_of": _aware(as_of).astimezone(timezone.utc).isoformat(),
             "instrument": instrument.to_mapping(),
             "observed_price": _decimal_string(observed_price, "observed_price"),
-            "basis_bps": _decimal_string(basis_bps, "basis_bps"),
+            # ``None`` is an explicit fail-closed observation.  In particular,
+            # a Robinhood token is a different issuer/instrument from Backed's
+            # xStock and therefore must never acquire a direct-basis value.
+            "basis_bps": None if basis_bps is None else _decimal_string(basis_bps, "basis_bps"),
             "session": instrument.market_session,
             "source": str(source).strip(),
         }
         _append_jsonl(self._sink, record)
         return record
-

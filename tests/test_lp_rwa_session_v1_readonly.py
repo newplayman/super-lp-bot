@@ -90,3 +90,14 @@ def test_snapshot_recorder_is_append_only_for_injected_sink():
                         observed_price="100", basis_bps=basis_bps, source="mock")
     assert len(sink.getvalue().splitlines()) == 2
 
+
+def test_snapshot_recorder_serializes_explicit_unavailable_basis_as_null():
+    sink = StringIO()
+
+    record = SnapshotRecorder(sink).append(
+        as_of=_utc("2026-08-07T15:00:01"), instrument=_instrument(),
+        observed_price="100", basis_bps=None, source="robinhood_stock_token",
+    )
+
+    assert record["basis_bps"] is None
+    assert json.loads(sink.getvalue())["basis_bps"] is None
