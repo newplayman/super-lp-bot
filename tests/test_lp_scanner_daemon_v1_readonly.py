@@ -231,6 +231,80 @@ def test_netcover_unavailable_is_fail_closed_and_explained(tmp_path):
     assert reason == "netcover unavailable"
 
 
+def test_entry_ineligible_reason_cannot_be_masked_by_explicit_ok(tmp_path):
+    record = {
+        "pool": "0x1",
+        "symbol": "MSUSD-USDC",
+        "vetted": False,
+        "entry_eligible": False,
+        "entry_block_reasons": ["REWARD_PERSISTENCE_MISSING"],
+        "netcover_pass": True,
+        "netcover_gate_status": "PASS",
+        "rejection_reason": "ok",
+        "gate_reason": "PASS",
+        "gates": {"quality": True, "netcover_shadow": True},
+    }
+
+    row = _score_row(record)
+
+    assert row["accepted"] is False
+    assert row["rejection_reason"] == (
+        "ENTRY_INELIGIBLE:REWARD_PERSISTENCE_MISSING"
+    )
+    db = tmp_path / "scanner.db"
+    ScannerStore(db).write_cycle(
+        AS_OF,
+        pool_snapshots=[],
+        opportunity_scores=[row],
+        market_sessions=[],
+    )
+    with sqlite3.connect(db) as connection:
+        persisted = connection.execute(
+            "SELECT accepted,rejection_reason FROM opportunity_scores"
+        ).fetchone()
+    assert persisted == (0, "ENTRY_INELIGIBLE:REWARD_PERSISTENCE_MISSING")
+
+
+@pytest.mark.parametrize(
+    ("record", "expected"),
+    [
+        (
+            {
+                "pool": "0x1",
+                "vetted": False,
+                "netcover_pass": True,
+                "permanent_fail_closed_reason": "ambiguous_pool",
+                "rejection_reason": "ok",
+            },
+            "PERMANENT_FAIL_CLOSED:ambiguous_pool",
+        ),
+        (
+            {
+                "pool": "0x1",
+                "vetted": True,
+                "netcover_pass": False,
+                "netcover_gate_status": "BELOW_SHADOW",
+                "rejection_reason": "NETCOVER_BELOW_SHADOW",
+            },
+            "NETCOVER_BELOW_SHADOW",
+        ),
+        (
+            {
+                "pool": "0x1",
+                "vetted": True,
+                "netcover_pass": True,
+                "rejection_reason": "stale rejection",
+            },
+            None,
+        ),
+    ],
+)
+def test_rejection_explanation_preserves_permanent_netcover_and_acceptance(
+    record, expected
+):
+    assert _score_row(record)["rejection_reason"] == expected
+
+
 def test_m0f_permanent_reason_forces_rejection_and_survives_score_json():
     source = {
         "pool": "0x1",
@@ -369,6 +443,62 @@ def test_wp04_adapter_is_the_strict_fifth_gate_not_only_a_diagnostic():
     assert rejected["netcover_gate_status"] == "MISSING_FAIL_CLOSED"
     assert rejected["vetted"] is False
     assert rejected["rejection_reason"].startswith("NETCOVER_INPUT_MISSING:")
+
+
+def test_netcover_entry_veto_normalizes_db_and_score_json_reason(tmp_path):
+    source = {
+        "pool": "0x1",
+        "symbol": "MSUSD-USDC",
+        "vetted": False,
+        "entry_eligible": False,
+        "entry_block_reasons": ["REWARD_PERSISTENCE_MISSING"],
+        "rejection_reason": "ok",
+        "gate_reason": "PASS",
+        "gates": {"quality": True, "yield_cover": True, "stable": True},
+        "chain": "Base",
+        "project": "uniswap-v3",
+        "profile": "PASSIVE_CL",
+        "holding_horizon_days": 14,
+        "is_new_pool": False,
+        "fee_apr_24h": 1_000.0,
+        "fee_apr_7d": 1_000.0,
+        "reward_apr": 0.0,
+        "il_apr": 1.0,
+        "sigma_pair": 0.01,
+        "l_active_raw": 10**30,
+        "last_swap_price_token1_per_token0": 1.0,
+        "last_swap_liquidity_raw": 10**30,
+        "last_swap_cost_state_source": "measured:latest_decoded_swap_event",
+        "token0": "0x4200000000000000000000000000000000000006",
+        "token1": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+        "fee_tier": 0.0001,
+        "dec0": 18,
+        "dec1": 6,
+    }
+
+    final = DefaultStages().netcover([source])[0]
+    row = _score_row(final)
+    db = tmp_path / "scanner.db"
+    ScannerStore(db).write_cycle(
+        AS_OF,
+        pool_snapshots=[],
+        opportunity_scores=[row],
+        market_sessions=[],
+    )
+    with sqlite3.connect(db) as connection:
+        accepted, reason, score_json = connection.execute(
+            "SELECT accepted,rejection_reason,score_json FROM opportunity_scores"
+        ).fetchone()
+    persisted_score = json.loads(score_json)
+
+    assert final["netcover_pass"] is True
+    assert final["vetted"] is False
+    assert final["rejection_reason"] == (
+        "ENTRY_INELIGIBLE:REWARD_PERSISTENCE_MISSING"
+    )
+    assert accepted == 0
+    assert reason == "ENTRY_INELIGIBLE:REWARD_PERSISTENCE_MISSING"
+    assert persisted_score["rejection_reason"] == reason
 
 
 def test_scanner_marks_prefifth_funnel_as_explicit_intermediate(monkeypatch):

@@ -480,6 +480,75 @@ def test_state_has_separate_nav_and_net_and_full_data_sections(tmp_path):
     assert state["rpc"]["chains"]
 
 
+def test_panel_recomputes_entry_veto_when_db_reason_is_ok(tmp_path):
+    db = tmp_path / "scanner.db"
+    make_db(db)
+    score = {
+        "resolve_status": "OK",
+        "symbol": "MSUSD-USDC",
+        "vetted": False,
+        "entry_eligible": False,
+        "entry_block_reasons": ["REWARD_PERSISTENCE_MISSING"],
+        "netcover_pass": True,
+        "netcover_gate_status": "PASS",
+        "rejection_reason": "ok",
+        "gate_reason": "PASS",
+        "gates": {"quality": True, "netcover_shadow": True},
+    }
+    connection = sqlite3.connect(db)
+    connection.execute(
+        "INSERT INTO opportunity_scores VALUES(?,?,?,?,?,?)",
+        (
+            "2026-08-09T00:01:00+00:00",
+            "pool-msusd",
+            0,
+            "ok",
+            json.dumps(score),
+            2.0,
+        ),
+    )
+    connection.commit()
+    connection.row_factory = sqlite3.Row
+
+    funnel = panel.read_funnel(connection)
+
+    connection.close()
+    assert funnel["accepted"] == 0
+    assert funnel["rejection_reasons"] == {
+        "ENTRY_INELIGIBLE:REWARD_PERSISTENCE_MISSING": 1
+    }
+
+
+def test_panel_preserves_score_reason_when_db_reason_is_empty(tmp_path):
+    db = tmp_path / "scanner.db"
+    make_db(db)
+    score = {
+        "resolve_status": "OK",
+        "vetted": True,
+        "netcover_pass": False,
+        "rejection_reason": "NETCOVER_BELOW_SHADOW",
+    }
+    connection = sqlite3.connect(db)
+    connection.execute(
+        "INSERT INTO opportunity_scores VALUES(?,?,?,?,?,?)",
+        (
+            "2026-08-09T00:01:00+00:00",
+            "pool-below",
+            0,
+            None,
+            json.dumps(score),
+            0.5,
+        ),
+    )
+    connection.commit()
+    connection.row_factory = sqlite3.Row
+
+    funnel = panel.read_funnel(connection)
+
+    connection.close()
+    assert funnel["rejection_reasons"] == {"NETCOVER_BELOW_SHADOW": 1}
+
+
 def test_systemd_unit_is_hardened_and_has_no_embedded_credential():
     unit = (panel.REPO_ROOT / "deploy/systemd/lpbot-panel-shadow.service").read_text()
     for required in (

@@ -29,8 +29,10 @@ from typing import Any, Callable, Mapping, Optional, Sequence
 from urllib.parse import parse_qs, urlsplit
 
 if __package__:
+    from scripts.lp_rejection_reason_v1_readonly import explain_rejection
     from scripts.lp_shadow_gate_v1_readonly import MIN_UNIQUE_ROOT_POOLS, _REENTRY_SUFFIX
 else:  # Preserve direct ``python scripts/lp_panel_server_v1_readonly.py`` operation.
+    from lp_rejection_reason_v1_readonly import explain_rejection
     from lp_shadow_gate_v1_readonly import MIN_UNIQUE_ROOT_POOLS, _REENTRY_SUFFIX
 
 
@@ -275,7 +277,13 @@ def read_funnel(connection: sqlite3.Connection) -> dict[str, Any]:
         if str(score.get("resolve_status", "")).upper() == "OK" or score.get("resolved_pool"):
             resolved += 1
         if not int(row["accepted"]):
-            reason = str(row["rejection_reason"] or score.get("rejection_reason") or "UNSPECIFIED")
+            reason_record = dict(score)
+            # The DB column is the persisted terminal explanation.  Preserve it
+            # as evidence, but let permanent/entry veto fields in score_json
+            # outrank stale upstream success sentinels such as ``ok``/``PASS``.
+            reason_record["persisted_rejection_reason"] = row["rejection_reason"]
+            reason = explain_rejection(reason_record, accepted=False)
+            assert reason is not None
             reasons[reason] += 1
     result["resolved"] = resolved
     result["gate_rejections"] = dict(sorted(gate_rejections.items()))

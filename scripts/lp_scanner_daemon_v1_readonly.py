@@ -43,6 +43,7 @@ from scripts.lp_tg_alerter_v1_readonly import (  # noqa: E402
     TelegramAlerter,
 )
 from scripts.lp_rpc_pool_v1_readonly import RpcPoolExhaustedError  # noqa: E402
+from scripts.lp_rejection_reason_v1_readonly import explain_rejection  # noqa: E402
 
 DEFAULT_DB_PATH = REPO_ROOT / "reports/lp_scanner/scanner.db"
 DEFAULT_COARSE_INTERVAL_SECS = 15 * 60
@@ -268,19 +269,7 @@ def _json_safe(value: Any) -> Any:
 
 
 def _explain_rejection(rec: Mapping[str, Any], accepted: bool) -> Optional[str]:
-    if accepted:
-        return None
-    explicit = _first(rec, "rejection_reason", "gate_reason", "error")
-    if explicit:
-        return str(explicit)
-    gates = rec.get("gates")
-    if isinstance(gates, Mapping):
-        failed = sorted(str(key) for key, passed in gates.items() if not bool(passed))
-        if failed:
-            return "failed gates: " + ", ".join(failed)
-    if not rec.get("vetted", False):
-        return "funnel vet rejected"
-    return "NetCover gate rejected"
+    return explain_rejection(rec, accepted)
 
 
 def _snapshot_row(rec: Mapping[str, Any]) -> Dict[str, Any]:
@@ -973,8 +962,12 @@ class DefaultStages:
             prior_vetted = bool(source.get("vetted", False))
             rec["vetted_before_netcover"] = prior_vetted
             rec["vetted"] = prior_vetted and passed
-            if not rec["vetted"] and not rec.get("rejection_reason"):
-                rec["rejection_reason"] = _explain_rejection(source, False)
+            if not rec["vetted"]:
+                explanation_record = dict(source)
+                explanation_record.update(rec)
+                rec["rejection_reason"] = _explain_rejection(
+                    explanation_record, False
+                )
             output.append(rec)
         return output
 
