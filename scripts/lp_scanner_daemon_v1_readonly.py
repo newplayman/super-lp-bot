@@ -13,8 +13,9 @@ is refreshed every 15 minutes; the cached top candidates are re-evaluated every
 60 seconds.  ``--once`` runs the complete funnel once for smoke tests/cron.
 
 SQLite follows PRD v1 section 30 and adds an explicit UTC ``as_of`` to every
-table.  Each scan cycle writes all three tables in one transaction so readers
-never observe a half-published cycle.
+table.  Each scan cycle writes the three operational tables plus reward
+observations in one transaction so readers never observe a half-published
+cycle.
 """
 from __future__ import annotations
 
@@ -44,6 +45,10 @@ from scripts.lp_tg_alerter_v1_readonly import (  # noqa: E402
 )
 from scripts.lp_rpc_pool_v1_readonly import RpcPoolExhaustedError  # noqa: E402
 from scripts.lp_rejection_reason_v1_readonly import explain_rejection  # noqa: E402
+from scripts.lp_reward_persistence_v1_readonly import (  # noqa: E402
+    MIN_REWARD_OBSERVATION_HOURS,
+    reward_high_duration_from_observations,
+)
 
 DEFAULT_DB_PATH = REPO_ROOT / "reports/lp_scanner/scanner.db"
 DEFAULT_COARSE_INTERVAL_SECS = 15 * 60
@@ -55,6 +60,9 @@ VALID_MARKET_SESSIONS = {
     "PRIMARY_CLOSED",
     "HALTED",
 }
+
+SOLANA_TACTICAL_PROJECTS = frozenset({"orca-dex", "raydium-amm"})
+SOLANA_POOL_MAPPING_BLOCK_REASON = "authoritative_pool_mapping_missing"
 
 BASE_USDC = "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
 BASE_AERO = "0x940181a94a35a4569e4529a3cdfb74e38fd98631"
@@ -134,6 +142,15 @@ MARKET_SESSION_COLUMNS = (
     "redemption_status",
     "source",
 )
+REWARD_OBSERVATION_COLUMNS = (
+    "as_of",
+    "pool",
+    "chain",
+    "apy_reward",
+    "apy_base",
+    "tvl_usd",
+    "source",
+)
 
 
 _SCHEMA = """
@@ -206,6 +223,21 @@ CREATE TABLE IF NOT EXISTS market_sessions (
 
 CREATE INDEX IF NOT EXISTS idx_market_sessions_instrument_as_of
     ON market_sessions(instrument_id, as_of DESC);
+
+CREATE TABLE IF NOT EXISTS reward_observations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    as_of TEXT NOT NULL,
+    pool TEXT NOT NULL,
+    chain TEXT NOT NULL,
+    apy_reward REAL,
+    apy_base REAL,
+    tvl_usd REAL,
+    source TEXT NOT NULL,
+    UNIQUE(as_of, pool, chain, source)
+);
+
+CREATE INDEX IF NOT EXISTS idx_reward_observations_pool_chain_as_of
+    ON reward_observations(pool, chain, as_of DESC);
 """
 
 
@@ -300,6 +332,22 @@ def _snapshot_row(rec: Mapping[str, Any]) -> Dict[str, Any]:
     }
 
 
+def _reward_observation_row(rec: Mapping[str, Any]) -> Optional[Dict[str, Any]]:
+    """Build one aggregator observation keyed by stable DefiLlama identity."""
+    llama_pool_id = rec.get("llama_pool_id")
+    chain = _first(rec, "chain", "network")
+    if not llama_pool_id or not chain:
+        return None
+    return {
+        "pool": str(llama_pool_id),
+        "chain": str(chain),
+        "apy_reward": _finite_float(_first(rec, "apyReward", "reward_apr")),
+        "apy_base": _finite_float(_first(rec, "apyBase", "fee_apr_7d")),
+        "tvl_usd": _finite_float(_first(rec, "tvlUsd", "tvl_usd", "tvl")),
+        "source": "defillama:/pools",
+    }
+
+
 def _score_row(rec: Mapping[str, Any]) -> Dict[str, Any]:
     vetted = bool(rec.get("vetted", False))
     netcover_pass = bool(
@@ -368,6 +416,41 @@ class ScannerStore:
         with self._connect() as connection:
             connection.executescript(_SCHEMA)
 
+    def reward_observation_evidence(
+        self,
+        identities: Sequence[tuple[str, str]],
+        *,
+        cutoff: datetime | str,
+    ) -> Dict[tuple[str, str], Dict[str, Any]]:
+        """Return contiguous prior-cycle evidence for requested llama identities."""
+        wanted = {(str(pool), str(chain).lower()) for pool, chain in identities if pool and chain}
+        if not wanted:
+            return {}
+        self.initialize_schema()
+        cutoff_text = _as_of_text(cutoff)
+        pools = sorted({pool for pool, _ in wanted})
+        placeholders = ",".join("?" for _ in pools)
+        query = (
+            "SELECT as_of,pool,chain,apy_reward FROM reward_observations "
+            f"WHERE as_of < ? AND pool IN ({placeholders}) "
+            "ORDER BY pool,chain,as_of"
+        )
+        with self._connect() as connection:
+            rows = connection.execute(query, (cutoff_text, *pools)).fetchall()
+        grouped: Dict[tuple[str, str], List[Dict[str, Any]]] = {}
+        for as_of, pool, chain, apy_reward in rows:
+            key = (str(pool), str(chain).lower())
+            if key not in wanted:
+                continue
+            grouped.setdefault(key, []).append({
+                "as_of": as_of,
+                "apy_reward": apy_reward,
+            })
+        return {
+            key: reward_high_duration_from_observations(values, cutoff=cutoff_text)
+            for key, values in grouped.items()
+        }
+
     @staticmethod
     def _insert_rows(
         connection: sqlite3.Connection,
@@ -407,6 +490,7 @@ class ScannerStore:
         pool_snapshots: Sequence[Mapping[str, Any]],
         opportunity_scores: Sequence[Mapping[str, Any]],
         market_sessions: Sequence[Mapping[str, Any]],
+        reward_observations: Sequence[Mapping[str, Any]] = (),
     ) -> None:
         as_of_text = _as_of_text(as_of)
         self.initialize_schema()
@@ -439,6 +523,13 @@ class ScannerStore:
                     MARKET_SESSION_COLUMNS,
                     as_of_text,
                     market_sessions,
+                )
+                self._insert_rows(
+                    connection,
+                    "reward_observations",
+                    REWARD_OBSERVATION_COLUMNS,
+                    as_of_text,
+                    reward_observations,
                 )
             except Exception:
                 connection.rollback()
@@ -501,6 +592,46 @@ class DefaultStages:
         self._rpc_pool = rpc_pool
         self._base_cross_pool_measurements: Optional[Dict[str, Any]] = None
 
+    def _is_solana(self) -> bool:
+        return self.chain.strip().lower() == "solana"
+
+    @staticmethod
+    def _solana_mapping_blocked_record(source: Mapping[str, Any]) -> Dict[str, Any]:
+        """Preserve a Solana lead without guessing a DefiLlama UUID's account.
+
+        DefiLlama's ``pool`` value is an aggregator identity, not an
+        authoritative Orca/Raydium account address.  Until a protocol-owned
+        mapping adapter exists, the only honest production result is a
+        candidate-level fail-closed row.  In particular, no symbol matching,
+        EVM resolver, prefilled horizon, or generic Solana account guess is
+        allowed to cross this boundary.
+        """
+        record = dict(source)
+        project = str(record.get("project") or "").lower()
+        if project in SOLANA_TACTICAL_PROJECTS:
+            record["profile"] = "TACTICAL"
+            record["netcover_profile"] = "TACTICAL"
+        record.update({
+            "resolved_pool": None,
+            "pool": None,
+            "resolve_status": "BLOCKED",
+            "status": "FAIL_CLOSED",
+            "mapping_status": "BLOCKED_PENDING_AUTHORITATIVE_POOL_MAPPING",
+            "blocked_reason": SOLANA_POOL_MAPPING_BLOCK_REASON,
+            "root_cause": SOLANA_POOL_MAPPING_BLOCK_REASON,
+            "rejection_reason": SOLANA_POOL_MAPPING_BLOCK_REASON,
+            "entry_eligible": False,
+            "entry_block_reasons": [SOLANA_POOL_MAPPING_BLOCK_REASON],
+            "holding_horizon_er_policy_hours": None,
+            "holding_horizon_hours": None,
+            "holding_horizon_days": None,
+            "holding_horizon_source": None,
+            "vetted": False,
+            "netcover_pass": False,
+            "composite_score": 0.0,
+        })
+        return record
+
     @property
     def rpc_health(self) -> str:
         """Current health from the persistent read-only RPC pool."""
@@ -537,7 +668,7 @@ class DefaultStages:
         screener = importlib.import_module("scripts.lp_universe_screener_v1_readonly")
         pools = screener.fetch_pools()
         selected = [
-            pool
+            screener.strip_untrusted_reward_evidence(pool)
             for pool in pools
             if pool.get("chain") == self.chain and pool.get("project") in self.projects
         ]
@@ -547,7 +678,17 @@ class DefaultStages:
             "suspect_reward_apr": screener.DEFAULTS["suspect_reward_apr"],
             "suspect_vol_tvl": screener.DEFAULTS["suspect_vol_tvl"],
         }
-        assessed = [dict(screener.assess(pool, gates), chain=self.chain) for pool in selected]
+        assessed = []
+        for pool in selected:
+            record = dict(screener.assess(pool, gates), chain=self.chain)
+            if (
+                self._is_solana()
+                and str(record.get("project") or "").lower()
+                in SOLANA_TACTICAL_PROJECTS
+            ):
+                record["profile"] = "TACTICAL"
+                record["netcover_profile"] = "TACTICAL"
+            assessed.append(record)
         rerank = importlib.import_module("scripts.lp_funnel_rerank_v1_readonly")
         assessed = rerank.enrich_with_proxy(assessed)
         passed = [record for record in assessed if record.get("gate_ok")]
@@ -558,6 +699,11 @@ class DefaultStages:
         return ScreenBatch(all_records=assessed, candidates=ranked[: self.top])
 
     def resolve(self, candidates: Sequence[Mapping[str, Any]]) -> List[Dict[str, Any]]:
+        if self._is_solana():
+            return [
+                self._solana_mapping_blocked_record(candidate)
+                for candidate in candidates
+            ]
         bridge = importlib.import_module("scripts.lp_pool_resolve_and_rank_v1_readonly")
         live = self._live_with_rotating_rpc(bridge._load_live_helpers())
         current_block = bridge._eth_block_number(live["_rpc_with_retry"])
@@ -569,6 +715,11 @@ class DefaultStages:
         return sorted(records, key=lambda record: record.get("composite_score", 0.0), reverse=True)
 
     def multiwindow(self, resolved: Sequence[Mapping[str, Any]]) -> List[Dict[str, Any]]:
+        if self._is_solana():
+            # No authoritative account means there is no pool on which to read
+            # slots/swaps.  Returning no evidence is intentional and avoids all
+            # EVM helpers as well as fabricated Solana stability windows.
+            return []
         bridge = importlib.import_module("scripts.lp_pool_resolve_and_rank_v1_readonly")
         stability = importlib.import_module("scripts.lp_multiwindow_stability_v1_readonly")
         configs = bridge.build_policy_config(resolved)
@@ -602,6 +753,8 @@ class DefaultStages:
         resolved: Sequence[Mapping[str, Any]],
         stability: Sequence[Mapping[str, Any]],
     ) -> List[Dict[str, Any]]:
+        if self._is_solana():
+            return [self._solana_mapping_blocked_record(record) for record in resolved]
         funnel = importlib.import_module("scripts.lp_funnel_vet_v1_readonly")
         # This is explicitly the intermediate four-gate result because the
         # task-package sequence puts the WP-04 NetCover calculation next.  The
@@ -993,6 +1146,12 @@ class DefaultStages:
         fee-cover fallback.  WP-04 may expose either of the documented record
         adapter names below without creating an import cycle.
         """
+        if self._is_solana():
+            # A whole Solana batch produced by ``resolve`` is already blocked at
+            # the authoritative identity boundary.  Short-circuit before the
+            # Base/EVM live-state and Q96 input assemblers are imported or used.
+            return [self._solana_mapping_blocked_record(record) for record in records]
+
         # Public route state is one fixed-block snapshot shared only within this
         # batch.  The next daemon cycle must remeasure rather than reuse stale L.
         self._base_cross_pool_measurements = None
@@ -1130,6 +1289,63 @@ def export_latest_vetted_menu(
     }
 
 
+def _apply_prior_reward_observations(
+    batch: ScreenBatch,
+    store: ScannerStore,
+    *,
+    cutoff: datetime | str,
+) -> ScreenBatch:
+    """Apply only pre-cycle measured history, otherwise recompute B-track."""
+    screener = importlib.import_module("scripts.lp_universe_screener_v1_readonly")
+    identities = [
+        (str(record.get("llama_pool_id") or ""), str(record.get("chain") or ""))
+        for record in batch.candidates
+    ]
+    evidence = store.reward_observation_evidence(identities, cutoff=cutoff)
+    updated_candidates: List[Dict[str, Any]] = []
+    for source in batch.candidates:
+        rec = screener.strip_untrusted_reward_evidence(source)
+        key = (
+            str(rec.get("llama_pool_id") or ""),
+            str(rec.get("chain") or "").lower(),
+        )
+        observed = evidence.get(key)
+        if observed is not None:
+            rec.update({
+                "reward_observation_history_status": observed["status"],
+                "reward_observation_history_duration_hours": observed["duration_hours"],
+                "reward_observation_history_sample_count": observed["sample_count"],
+                "reward_observation_history_first_as_of": observed["first_as_of"],
+                "reward_observation_history_last_as_of": observed["last_as_of"],
+            })
+            duration = observed.get("duration_hours")
+            if duration is not None and float(duration) >= MIN_REWARD_OBSERVATION_HOURS:
+                rec.update({
+                    "reward_high_duration": float(duration),
+                    "reward_persistence_evidence_source": "measured_observation",
+                    "reward_measured_observation_count": observed["sample_count"],
+                    "reward_measured_observation_first_as_of": observed["first_as_of"],
+                    "reward_measured_observation_last_as_of": observed["last_as_of"],
+                })
+        updated_candidates.append(screener.apply_reward_persistence_assessment(rec))
+
+    by_identity = {
+        (
+            str(record.get("llama_pool_id") or ""),
+            str(record.get("chain") or "").lower(),
+        ): record
+        for record in updated_candidates
+    }
+    updated_all = []
+    for source in batch.all_records:
+        key = (
+            str(source.get("llama_pool_id") or ""),
+            str(source.get("chain") or "").lower(),
+        )
+        updated_all.append(dict(by_identity.get(key, source)))
+    return ScreenBatch(all_records=updated_all, candidates=updated_candidates)
+
+
 class FunnelOrchestrator:
     """Owns the coarse-screen cache and publishes complete scan cycles."""
 
@@ -1145,6 +1361,9 @@ class FunnelOrchestrator:
     def run_once(
         self, *, refresh_coarse: bool, as_of: datetime | str | None = None
     ) -> CycleResult:
+        # Freeze the cutoff before screening.  The current snapshot is written
+        # only after all decisions, so one cycle can never certify itself.
+        stamp = _as_of_text(as_of)
         if refresh_coarse or self._screen_batch is None:
             batch = self.stages.screen()
             if not isinstance(batch, ScreenBatch):
@@ -1152,22 +1371,28 @@ class FunnelOrchestrator:
             self._screen_batch = batch
         batch = self._screen_batch
         assert batch is not None
+        batch = _apply_prior_reward_observations(batch, self.store, cutoff=stamp)
+        self._screen_batch = batch
 
         resolved = list(self.stages.resolve(batch.candidates))
         stability = list(self.stages.multiwindow(resolved))
         vetted = list(self.stages.funnel(resolved, stability))
         scored = list(self.stages.netcover(vetted))
-        stamp = _as_of_text(as_of)
 
         snapshot_records = _merge_snapshot_records(batch.all_records, resolved)
         snapshot_rows = [_snapshot_row(record) for record in snapshot_records]
         score_rows = [_score_row(record) for record in scored]
         sessions = _unique_sessions([*batch.all_records, *resolved, *scored])
+        observation_rows = [
+            row for row in (_reward_observation_row(record) for record in batch.candidates)
+            if row is not None
+        ]
         self.store.write_cycle(
             stamp,
             pool_snapshots=snapshot_rows,
             opportunity_scores=score_rows,
             market_sessions=sessions,
+            reward_observations=observation_rows,
         )
         return CycleResult(
             as_of=stamp,

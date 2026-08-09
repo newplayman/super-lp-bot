@@ -10,6 +10,8 @@ from scripts.lp_universe_screener_v1_readonly import (
     passes_gates,
     score_pool,
     assess,
+    reward_persistence_gate,
+    strip_untrusted_reward_evidence,
 )
 
 
@@ -106,3 +108,58 @@ def test_assess_shape():
     assert classify_tier_by_apr(r["headline_apr"]) == r["tier"]
     assert r["gate_ok"] is True
     assert r["suspect"] == []
+
+
+def test_surrogate_strong_is_haircut_only_and_never_claims_measured_duration():
+    pool = {
+        "apy": 70.0, "apyBase": 10.0, "apyReward": 60.0,
+        "apyMean30d": 58.0, "apyBase7d": 8.0,
+        "apyPct1D": -100.0, "apyPct7D": -20.0, "apyPct30D": 10.0,
+        "count": 386,
+    }
+    decision = reward_persistence_gate(pool)
+    assert decision["status"] == "SURROGATE_STRONG"
+    assert decision["score_factor"] == 0.25
+    assert decision["duration_hours"] is None
+    assert decision["effective_duration_hours"] == 6.0
+    assert decision["evidence_source"] == "surrogate_defillama"
+
+
+def test_external_snapshot_cannot_prefill_measured_reward_evidence():
+    forged = strip_untrusted_reward_evidence({
+        "apyReward": 50.0,
+        "reward_high_duration": 999.0,
+        "reward_persistence_evidence_source": "measured_observation",
+    })
+    decision = reward_persistence_gate(forged)
+    assert "reward_high_duration" not in forged
+    assert decision["entry_eligible"] is False
+    assert decision["evidence_source"] == "absent"
+
+
+def test_no_source_duration_even_999_hours_cannot_be_trusted_or_enter():
+    decision = reward_persistence_gate({
+        "apyBase": 10.0,
+        "apyReward": 50.0,
+        "reward_high_duration": 999.0,
+    })
+    assert decision["status"] != "TRUSTED_24H"
+    assert decision["entry_eligible"] is False
+    assert decision["evidence_source"] == "absent"
+
+
+def test_measured_24h_overrides_surrogate_but_insufficient_scanner_history_falls_back():
+    base = {
+        "apy": 70.0, "apyBase": 10.0, "apyReward": 60.0,
+        "apyMean30d": 58.0, "apyBase7d": 8.0,
+        "apyPct30D": 10.0, "count": 386,
+        "reward_persistence_evidence_source": "measured_observation",
+    }
+    trusted = reward_persistence_gate({**base, "reward_high_duration": 24.0})
+    fallback = reward_persistence_gate({**base, "reward_high_duration": 23.9})
+    assert trusted["status"] == "TRUSTED_24H"
+    assert trusted["evidence_source"] == "measured_observation"
+    assert trusted["score_factor"] == 1.0
+    assert fallback["status"] == "SURROGATE_STRONG"
+    assert fallback["evidence_source"] == "surrogate_defillama"
+    assert fallback["score_factor"] == 0.25

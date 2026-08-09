@@ -23,6 +23,7 @@ from scripts.lp_cost_sensitivity_v1_readonly import (  # exact WP-04 assembly ma
 )
 from scripts.lp_netcover_engine_v1_readonly import REWARD_HAIRCUTS
 from scripts.lp_portfolio_allocator_v1_readonly import M1_MIN_POSITION_USD
+from scripts.lp_universe_screener_v1_readonly import reward_persistence_gate
 from scripts.lp_swap_cost_model_v1_readonly import exit_conversion_cost_usd
 from scripts.lp_v3_fee_share import position_liquidity_raw
 from scripts.lp_vol_range_sizer_v1_readonly import recommend_range_pct
@@ -222,7 +223,14 @@ def profile_kind(record: Mapping[str, Any]) -> str | None:
     project = str(record.get("project") or "").lower()
     if project in {"aerodrome-slipstream", "uniswap-v3", "uniswap-v4"}:
         return "PASSIVE"
-    if project in {"orca", "raydium", "raydium-clmm", "orca-whirlpool"}:
+    if project in {
+        "orca",
+        "orca-dex",
+        "orca-whirlpool",
+        "raydium",
+        "raydium-amm",
+        "raydium-clmm",
+    }:
         return "TACTICAL"
     return None
 
@@ -667,7 +675,13 @@ def assemble_netcover_inputs(
 
     reward_apr = _first_number(record, "reward_apr", "apyReward")
     category = reward_category(record) if reward_apr not in (None, 0.0) else None
-    haircut = REWARD_HAIRCUTS.get(category) if category is not None else None
+    category_haircut = REWARD_HAIRCUTS.get(category) if category is not None else None
+    persistence = reward_persistence_gate(record)
+    persistence_haircut = float(persistence["score_factor"])
+    haircut = (
+        float(category_haircut) * persistence_haircut
+        if category_haircut is not None else None
+    )
     share_ratio = fee_capture_metadata["fee_capture_share_ratio"]
     # Slipstream gauge emissions, like fees, are distributed by in-range CL
     # liquidity weight.  Reward haircut remains an engine concern; this input
@@ -677,7 +691,7 @@ def assemble_netcover_inputs(
         if reward_apr is not None
         and fraction is not None
         and share_ratio is not None
-        and (reward_apr == 0.0 or haircut is not None)
+        and (reward_apr == 0.0 or category_haircut is not None)
         else None
     )
 
@@ -737,6 +751,10 @@ def assemble_netcover_inputs(
         "netcover_profile": profile_kind(record),
         "fee_apr_haircut": fee_haircut,
         "reward_category": category,
+        "reward_category_haircut": category_haircut,
+        "reward_persistence_haircut": persistence_haircut,
+        "reward_persistence_evidence_source": persistence["evidence_source"],
+        "reward_persistence_status": persistence["status"],
         "lvr_coefficient": LVR_COEFFICIENT_MODEL,
         "netcover_input_semantics": field_semantics,
         "gas_usd_source": HISTORICAL_GAS_SOURCES.get(chain),
@@ -757,6 +775,9 @@ def assemble_netcover_inputs(
     # A positive calculated reward EV always requires a classified category;
     # zero-reward records do not need to override WP-04's irrelevant default.
     if haircut is not None:
+        # The engine remains the sole multiplication point.  This attached
+        # value combines category reliability with persistence credibility;
+        # conversion cost above intentionally remains based on gross reward EV.
         record["reward_haircut"] = haircut
     if all(record[field] is not None for field in ("entry_cost_usd", "exit_cost_usd", "slippage_usd")):
         record["round_trip_cost_usd"] = (

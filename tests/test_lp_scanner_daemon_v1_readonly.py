@@ -7,7 +7,7 @@ import sqlite3
 import subprocess
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -19,11 +19,13 @@ from scripts.lp_scanner_daemon_v1_readonly import (
     MARKET_SESSION_COLUMNS,
     OPPORTUNITY_SCORE_COLUMNS,
     POOL_SNAPSHOT_COLUMNS,
+    REWARD_OBSERVATION_COLUMNS,
     CycleResult,
     FunnelOrchestrator,
     ScannerDaemon,
     ScannerStore,
     ScreenBatch,
+    SOLANA_POOL_MAPPING_BLOCK_REASON,
     export_latest_vetted_menu,
     main,
     _score_row,
@@ -181,6 +183,80 @@ def test_sqlite_schema_contains_prd_v1_section_30_fields_plus_as_of(tmp_path, ta
     assert "as_of" in _table_columns(db, table)
 
 
+def test_reward_observation_schema_migrates_existing_db_and_survives_restart(tmp_path):
+    db = tmp_path / "scanner.db"
+    with sqlite3.connect(db) as connection:
+        connection.execute("CREATE TABLE legacy_marker(value TEXT)")
+        connection.execute("INSERT INTO legacy_marker VALUES ('kept')")
+    store = ScannerStore(db)
+    store.write_cycle(
+        AS_OF,
+        pool_snapshots=[],
+        opportunity_scores=[],
+        market_sessions=[],
+        reward_observations=[{
+            "pool": "llama-1", "chain": "Base", "apy_reward": 2.0,
+            "apy_base": 18.0, "tvl_usd": 2_000_000,
+            "source": "defillama:/pools",
+        }],
+    )
+    assert set(REWARD_OBSERVATION_COLUMNS) <= _table_columns(db, "reward_observations")
+    with sqlite3.connect(db) as connection:
+        assert connection.execute("SELECT value FROM legacy_marker").fetchone() == ("kept",)
+    restarted = ScannerStore(db)
+    evidence = restarted.reward_observation_evidence(
+        [("llama-1", "Base")], cutoff=AS_OF.replace(minute=1)
+    )
+    assert evidence[("llama-1", "base")]["sample_count"] == 1
+
+
+def test_reward_observation_failure_rolls_back_whole_scanner_cycle(tmp_path):
+    db = tmp_path / "scanner.db"
+    store = ScannerStore(db)
+    with pytest.raises(sqlite3.IntegrityError):
+        store.write_cycle(
+            AS_OF,
+            pool_snapshots=[{"pool": "llama:one", "source": "test"}],
+            opportunity_scores=[],
+            market_sessions=[],
+            reward_observations=[{
+                "pool": "llama-1", "chain": "Base", "apy_reward": 2.0,
+                "apy_base": 18.0, "tvl_usd": 2_000_000,
+                "source": None,
+            }],
+        )
+    with sqlite3.connect(db) as connection:
+        assert connection.execute("SELECT count(*) FROM pool_snapshots").fetchone()[0] == 0
+        assert connection.execute("SELECT count(*) FROM reward_observations").fetchone()[0] == 0
+
+
+def test_reward_observations_are_isolated_by_llama_pool_and_chain(tmp_path):
+    db = tmp_path / "scanner.db"
+    store = ScannerStore(db)
+    store.initialize_schema()
+    rows = []
+    for step in range(50):
+        observed_at = AS_OF - timedelta(minutes=30 * (50 - step))
+        rows.extend([
+            (observed_at.isoformat(), "shared-id", "Base", 2.0, 1.0, 1.0, "defillama:/pools"),
+            (observed_at.isoformat(), "shared-id", "Solana", 0.0, 1.0, 1.0, "defillama:/pools"),
+            (observed_at.isoformat(), "other-id", "Base", 3.0, 1.0, 1.0, "defillama:/pools"),
+        ])
+    with sqlite3.connect(db) as connection:
+        connection.executemany(
+            "INSERT INTO reward_observations"
+            "(as_of,pool,chain,apy_reward,apy_base,tvl_usd,source) VALUES (?,?,?,?,?,?,?)",
+            rows,
+        )
+    evidence = store.reward_observation_evidence(
+        [("shared-id", "Base"), ("shared-id", "Solana"), ("other-id", "Base")],
+        cutoff=AS_OF,
+    )
+    assert evidence[("shared-id", "base")]["duration_hours"] == pytest.approx(24.5)
+    assert evidence[("shared-id", "solana")]["duration_hours"] == 0.0
+    assert evidence[("other-id", "base")]["duration_hours"] == pytest.approx(24.5)
+
+
 def test_once_executes_every_funnel_stage_and_persists_all_three_tables(tmp_path):
     db = tmp_path / "scanner.db"
     stages = FakeStages()
@@ -193,6 +269,7 @@ def test_once_executes_every_funnel_stage_and_persists_all_three_tables(tmp_path
         assert conn.execute("SELECT count(*) FROM pool_snapshots").fetchone()[0] == 1
         assert conn.execute("SELECT count(*) FROM opportunity_scores").fetchone()[0] == 1
         assert conn.execute("SELECT count(*) FROM market_sessions").fetchone()[0] == 1
+        assert conn.execute("SELECT count(*) FROM reward_observations").fetchone()[0] == 1
         accepted, reason = conn.execute(
             "SELECT accepted, rejection_reason FROM opportunity_scores"
         ).fetchone()
@@ -200,6 +277,61 @@ def test_once_executes_every_funnel_stage_and_persists_all_three_tables(tmp_path
         assert reason is None
         session = conn.execute("SELECT market_session FROM market_sessions").fetchone()[0]
         assert session == "PRIMARY_CLOSED"
+
+
+def test_current_cycle_observation_cannot_certify_itself_but_next_cycle_can(tmp_path):
+    class PersistenceStages(FakeStages):
+        def funnel(self, resolved, stability):
+            self.calls.append("funnel_vet")
+            return [dict(
+                resolved[0],
+                vetted=bool(resolved[0].get("entry_eligible")),
+                stable=True,
+                rejection_reason=None,
+            )]
+
+    db = tmp_path / "scanner.db"
+    store = ScannerStore(db)
+    store.initialize_schema()
+    historical = []
+    for half_hours in range(1, 49):
+        observed_at = AS_OF - timedelta(minutes=30 * half_hours)
+        historical.append((
+            observed_at.isoformat(), "llama-1", "Base", 2.0, 18.0,
+            2_000_000.0, "defillama:/pools",
+        ))
+    with sqlite3.connect(db) as connection:
+        connection.executemany(
+            "INSERT INTO reward_observations"
+            "(as_of,pool,chain,apy_reward,apy_base,tvl_usd,source) VALUES (?,?,?,?,?,?,?)",
+            historical,
+        )
+
+    orchestrator = FunnelOrchestrator(PersistenceStages(), store)
+    first = orchestrator.run_once(refresh_coarse=True, as_of=AS_OF)
+    assert first.accepted == 0
+    with sqlite3.connect(db) as connection:
+        first_score = json.loads(connection.execute(
+            "SELECT score_json FROM opportunity_scores WHERE as_of=?",
+            (AS_OF.isoformat(),),
+        ).fetchone()[0])
+        assert first_score["reward_persistence_evidence_source"] == "absent"
+        assert connection.execute(
+            "SELECT count(*) FROM reward_observations WHERE as_of=?",
+            (AS_OF.isoformat(),),
+        ).fetchone()[0] == 1
+
+    next_as_of = AS_OF + timedelta(minutes=30)
+    second = orchestrator.run_once(refresh_coarse=False, as_of=next_as_of)
+    assert second.accepted == 1
+    with sqlite3.connect(db) as connection:
+        second_score = json.loads(connection.execute(
+            "SELECT score_json FROM opportunity_scores WHERE as_of=?",
+            (next_as_of.isoformat(),),
+        ).fetchone()[0])
+    assert second_score["reward_persistence_status"] == "TRUSTED_24H"
+    assert second_score["reward_persistence_evidence_source"] == "measured_observation"
+    assert second_score["reward_high_duration"] == pytest.approx(24.0)
 
 
 def test_coarse_screen_is_cached_between_top_candidate_cycles(tmp_path):
@@ -211,6 +343,41 @@ def test_coarse_screen_is_cached_between_top_candidate_cycles(tmp_path):
 
     assert stages.calls.count("screen") == 1
     assert stages.calls.count("resolve") == 2
+
+
+def test_default_screen_strips_external_prefilled_measured_reward_evidence(monkeypatch):
+    import scripts.lp_universe_screener_v1_readonly as screener
+
+    malicious = {
+        "chain": "Base",
+        "project": "aerodrome-slipstream",
+        "symbol": "WETH-USDC",
+        "pool": "malicious-llama-id",
+        "poolMeta": "CL50 - 0.05%",
+        "underlyingTokens": ["0xbase", "0xquote"],
+        "rewardTokens": ["0x940181a94A35A4569E4529A3CDfB74e38FD98631"],
+        "tvlUsd": 2_000_000.0,
+        "volumeUsd1d": 500_000.0,
+        "apyBase": 20.0,
+        "apyReward": 50.0,
+        "apyMean30d": 60.0,
+        "sigma": 1.0,
+        "ilRisk": "yes",
+        "stablecoin": False,
+        "reward_high_duration": 999.0,
+        "reward_persistence_evidence_source": "measured_observation",
+    }
+    monkeypatch.setattr(screener, "fetch_pools", lambda: [malicious])
+
+    batch = DefaultStages(top=1, rpc_pool=object()).screen()
+
+    assert len(batch.candidates) == 1
+    screened = batch.candidates[0]
+    assert screened["llama_pool_id"] == "malicious-llama-id"
+    assert screened["reward_high_duration"] is None
+    assert screened["reward_persistence_status"] != "TRUSTED_24H"
+    assert screened["reward_persistence_evidence_source"] == "absent"
+    assert screened["entry_eligible"] is False
 
 
 def test_netcover_unavailable_is_fail_closed_and_explained(tmp_path):
@@ -228,7 +395,7 @@ def test_netcover_unavailable_is_fail_closed_and_explained(tmp_path):
             "SELECT accepted, rejection_reason FROM opportunity_scores"
         ).fetchone()
     assert accepted == 0
-    assert reason == "netcover unavailable"
+    assert reason == "ENTRY_INELIGIBLE:REWARD_PERSISTENCE_MISSING"
 
 
 def test_entry_ineligible_reason_cannot_be_masked_by_explicit_ok(tmp_path):
@@ -713,6 +880,108 @@ def test_r6_tactical_drag_moves_only_upward_through_profile_legal_set(monkeypatc
     assert carried["holding_horizon_hours"] in {6.0, 12.0, 24.0, 72.0}
     assert carried["drag_apr_pct"] <= carried["drag_apr_max_pct"]
     assert carried["high_drag_flag"] is False
+
+
+def test_m0n_solana_once_persists_candidate_level_mapping_blocks_without_evm(
+    monkeypatch, tmp_path
+):
+    import scripts.lp_universe_screener_v1_readonly as screener
+
+    pools = [
+        {
+            "chain": "Solana",
+            "project": "orca-dex",
+            "pool": "orca-llama-uuid",
+            "symbol": "SOL-USDC",
+            "poolMeta": None,
+            "underlyingTokens": [
+                "So11111111111111111111111111111111111111112",
+                "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+            ],
+            "tvlUsd": 2_000_000.0,
+            "volumeUsd1d": 500_000.0,
+            "apyBase": 20.0,
+            "apyReward": 0.0,
+            "apyMean30d": 18.0,
+        },
+        {
+            "chain": "Solana",
+            "project": "raydium-amm",
+            "pool": "raydium-llama-uuid",
+            "symbol": "SOL-USDT",
+            "poolMeta": "Concentrated - 0.25%",
+            "underlyingTokens": [
+                "So11111111111111111111111111111111111111112",
+                "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
+            ],
+            "tvlUsd": 1_500_000.0,
+            "volumeUsd1d": 300_000.0,
+            "apyBase": 15.0,
+            "apyReward": 0.0,
+            "apyMean30d": 14.0,
+        },
+    ]
+    monkeypatch.setattr(screener, "fetch_pools", lambda: pools)
+
+    class NoEvmRpc:
+        def __init__(self):
+            self.calls = []
+
+        def call(self, method, params, timeout=20):
+            self.calls.append((method, params, timeout))
+            raise AssertionError(f"Solana fail-closed path called RPC method {method}")
+
+        def health_snapshot(self):
+            return {"state": "NORMAL"}
+
+    rpc = NoEvmRpc()
+    stages = DefaultStages(
+        chain="Solana",
+        projects=("orca-dex", "raydium-amm"),
+        top=10,
+        rpc_pool=rpc,
+    )
+    db = tmp_path / "solana-scanner.db"
+    menu = tmp_path / "vetted-menu.json"
+    pid = tmp_path / "scanner.pid"
+
+    rc = main(
+        [
+            "--once",
+            "--db", str(db),
+            "--pid-file", str(pid),
+            "--vetted-menu-out", str(menu),
+        ],
+        stages=stages,
+        now=lambda: AS_OF,
+    )
+
+    assert rc == 0
+    assert rpc.calls == []
+    assert not pid.exists()
+    assert json.loads(menu.read_text()) == []
+    with sqlite3.connect(db) as connection:
+        assert connection.execute("SELECT count(*) FROM pool_snapshots").fetchone()[0] == 2
+        rows = connection.execute(
+            "SELECT accepted,rejection_reason,score_json FROM opportunity_scores "
+            "ORDER BY pool"
+        ).fetchall()
+    assert len(rows) == 2
+    for accepted, rejection_reason, raw_score in rows:
+        assert accepted == 0
+        assert rejection_reason == (
+            "ENTRY_INELIGIBLE:" + SOLANA_POOL_MAPPING_BLOCK_REASON
+        )
+        score = json.loads(raw_score)
+        assert score["profile"] == "TACTICAL"
+        assert score["netcover_profile"] == "TACTICAL"
+        assert score["blocked_reason"] == SOLANA_POOL_MAPPING_BLOCK_REASON
+        assert score["root_cause"] == SOLANA_POOL_MAPPING_BLOCK_REASON
+        assert score["holding_horizon_hours"] is None
+        assert score["holding_horizon_source"] is None
+        assert score["holding_horizon_er_policy_hours"] is None
+        assert score["vetted"] is False
+        assert score["netcover_pass"] is False
 
 
 def test_r6_unknown_profile_with_measured_er_drops_prefilled_horizon(monkeypatch):

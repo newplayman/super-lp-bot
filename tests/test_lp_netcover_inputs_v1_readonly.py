@@ -23,6 +23,7 @@ from scripts.lp_netcover_inputs_v1_readonly import (
     INPUT_SEMANTICS,
     NETCOVER_INPUT_FIELDS,
     assemble_netcover_inputs,
+    profile_kind,
     select_drag_adjusted_horizon,
 )
 from scripts.lp_portfolio_allocator_v1_readonly import M1_MIN_POSITION_USD
@@ -38,6 +39,8 @@ def _complete(**updates):
         "fee_apr_24h": 20.0,
         "fee_apr_7d": 10.0,
         "reward_apr": 0.0,
+        "reward_high_duration": 24.0,
+        "reward_persistence_evidence_source": "measured_observation",
         "il_apr": 4.0,
         "sigma": 0.02,
         "sigma_pair": 0.02,
@@ -54,6 +57,11 @@ def _complete(**updates):
     }
     record.update(updates)
     return record
+
+
+@pytest.mark.parametrize("project", ["orca-dex", "raydium-amm"])
+def test_m0n_defillama_solana_project_aliases_are_tactical(project):
+    assert profile_kind({"project": project}) == "TACTICAL"
 
 
 def test_all_nine_fields_are_calculated_and_each_has_semantics():
@@ -187,6 +195,52 @@ def test_prd_reward_haircut_table_is_attached(category, haircut):
         assert out["reward_conversion_cost_usd"] == 0.0
     else:
         assert out["reward_conversion_cost_usd"] > 0
+
+
+def test_reward_haircut_combines_category_with_surrogate_without_double_counting():
+    common = {
+        "reward_apr": 60.0,
+        "apyReward": 60.0,
+        "apy": 70.0,
+        "apyBase": 10.0,
+        "apyMean30d": 58.0,
+        "apyBase7d": 8.0,
+        "apyPct30D": 10.0,
+        "count": 386,
+        "reward_category": "protocol",
+        "reward_high_duration": None,
+        "reward_persistence_evidence_source": "surrogate_defillama",
+        "reward_conversion_l_active_raw": 10**24,
+        "reward_conversion_price_usd": 1.0,
+        "reward_conversion_fee_tier": 0.0005,
+        "reward_conversion_dec0": 18,
+        "reward_conversion_dec1": 6,
+    }
+    strong = assemble_netcover_inputs(_complete(**common))
+    weak = assemble_netcover_inputs(_complete(**{**common, "apyPct30D": -100.0}))
+    measured = assemble_netcover_inputs(_complete(
+        **{
+            key: value for key, value in common.items()
+            if key not in {"reward_persistence_evidence_source", "reward_high_duration"}
+        },
+        reward_high_duration=24.0,
+        reward_persistence_evidence_source="measured_observation",
+    ))
+
+    assert strong["reward_category_haircut"] == 0.50
+    assert strong["reward_persistence_haircut"] == 0.25
+    assert strong["reward_haircut"] == pytest.approx(0.125)
+    assert weak["reward_haircut"] == 0.0
+    assert measured["reward_haircut"] == 0.50
+    # Persistence changes income credibility, not the conservative cost of
+    # converting the same gross reward amount.
+    assert strong["reward_conversion_cost_usd"] == pytest.approx(
+        weak["reward_conversion_cost_usd"]
+    )
+    gated = apply_netcover_gate([strong])[0]
+    assert gated["expected_net_yield_usd"] + gated["risk_usd"] == pytest.approx(
+        strong["fee_ev_usd"] + strong["reward_ev_usd"] * 0.125
+    )
 
 
 def test_reward_bearing_unknown_category_or_missing_conversion_depth_is_closed():

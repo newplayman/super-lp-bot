@@ -41,6 +41,7 @@ def _pool(reward_apr=100.0, duration_hours=24.0):
     }
     if duration_hours is not None:
         pool["reward_high_duration"] = duration_hours
+        pool["reward_persistence_evidence_source"] = "measured_observation"
     return pool
 
 
@@ -76,15 +77,13 @@ def test_new_300pct_incentive_for_30_minutes_cannot_enter():
     screened = assess(young, GATES)
     assert screened["gate_ok"] is True  # coarse liquidity gate is still diagnostic
     assert screened["entry_eligible"] is False
-    assert screened["reward_persistence_status"] == "TOO_YOUNG_SHADOW_ONLY"
-    assert "REWARD_PERSISTENCE_LT_6H" in screened["entry_block_reasons"]
     assert is_enterable(_allocator_record(young)) is False
 
 
-def test_six_hours_is_minimum_and_24_hours_scores_more_credibly():
+def test_only_measured_24_hours_is_trusted_while_six_hours_stays_closed():
     six = _pool(reward_apr=100.0, duration_hours=6.0)
     trusted = _pool(reward_apr=100.0, duration_hours=24.0)
-    assert assess(six, GATES)["entry_eligible"] is True
+    assert assess(six, GATES)["entry_eligible"] is False
     assert assess(trusted, GATES)["reward_persistence_status"] == "TRUSTED_24H"
     assert score_pool(trusted) > score_pool(six)
     assert rank_metric(_allocator_record(trusted)) > rank_metric(_allocator_record(six))
@@ -159,5 +158,13 @@ def test_replay_writes_machine_and_human_reports(tmp_path):
     human = paths["human_summary"].read_text()
     assert machine["schema_version"] == "lp-reward-decay-replay-v1"
     assert machine["assertions"]["all_passed"] is True
+    assert machine["semantics"]["scanner_measured_under_24h"] == (
+        "FALL_BACK_TO_B_TRACK_NOT_TRUSTED"
+    )
+    assert machine["semantics"]["surrogate_strong"] == (
+        "ENTRY_ELIGIBLE_FIXED_0_25_CREDIBILITY_HAIRCUT"
+    )
+    assert "6h_to_24h" not in machine["semantics"]
     assert "100.00%" in human and "30.00%" in human and "5.00%" in human
     assert "paper-only" in human.lower()
+    assert "fixed 0.25" in human

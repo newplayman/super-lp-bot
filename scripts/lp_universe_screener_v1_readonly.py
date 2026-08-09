@@ -33,6 +33,13 @@ from datetime import datetime, timezone
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _ROOT = os.path.dirname(_HERE)
+if _ROOT not in sys.path:
+    sys.path.insert(0, _ROOT)
+
+from scripts.lp_reward_persistence_v1_readonly import (  # noqa: E402
+    MIN_REWARD_OBSERVATION_HOURS,
+    reward_persistence_surrogate,
+)
 
 DEFILLAMA_POOLS_URL = "https://yields.llama.fi/pools"
 # CLMM projects whose on-chain swaps Stage 2 (V3 Swap topic) can replay.
@@ -89,6 +96,15 @@ DEFAULTS = dict(
 REWARD_PERSISTENCE_MIN_HOURS = 6.0
 REWARD_PERSISTENCE_TRUSTED_HOURS = 24.0
 
+_UNTRUSTED_REWARD_EVIDENCE_KEYS = frozenset({
+    "reward_high_duration",
+    "reward_high_duration_hours",
+    "reward_persistence_evidence_source",
+    "reward_measured_observation_count",
+    "reward_measured_observation_first_as_of",
+    "reward_measured_observation_last_as_of",
+})
+
 
 # ---------------------------------------------------------------------------
 # PURE FUNCTIONS (unit-tested, no network)
@@ -125,6 +141,19 @@ def total_apr_now(p):
     return float(p.get("apyBase") or 0.0) + float(p.get("apyReward") or 0.0)
 
 
+def strip_untrusted_reward_evidence(p):
+    """Remove persistence claims supplied by an external snapshot.
+
+    The scanner adds measured evidence only after reading its own SQLite
+    history.  DefiLlama may provide surrogate inputs, but can never self-assert
+    scanner-owned duration/source fields.
+    """
+    return {
+        key: value for key, value in dict(p).items()
+        if key not in _UNTRUSTED_REWARD_EVIDENCE_KEYS
+    }
+
+
 def reward_persistence_gate(p, *, min_hours=REWARD_PERSISTENCE_MIN_HOURS,
                             trusted_hours=REWARD_PERSISTENCE_TRUSTED_HOURS):
     """Return the fail-closed RewardPersistence decision for a pool.
@@ -133,8 +162,8 @@ def reward_persistence_gate(p, *, min_hours=REWARD_PERSISTENCE_MIN_HOURS,
     `reward_high_duration_hours` spelling is also accepted.  A reward-bearing
     pool with missing/invalid evidence is SHADOW-only and its reward gets zero
     scoring weight.  Fee-only pools remain compatible because persistence is
-    not applicable.  Between 6h and 24h the reward receives a linear credibility
-    haircut; at 24h it is fully trusted per PRD v1 section 16.
+    not applicable.  Only scanner-owned measured observations spanning at
+    least 24h are fully trusted; all other records use the limited B-track.
     """
     raw_reward = p.get("apyReward")
     if raw_reward is None:
@@ -149,71 +178,96 @@ def reward_persistence_gate(p, *, min_hours=REWARD_PERSISTENCE_MIN_HOURS,
             "entry_eligible": False,
             "status": "INVALID_REWARD_FAIL_CLOSED",
             "duration_hours": None,
+            "measured_duration_hours": None,
+            "effective_duration_hours": None,
             "score_factor": 0.0,
             "reason": "REWARD_APR_INVALID",
+            "evidence_source": "absent",
         }
     if reward_apr < 0.0:
         return {
             "entry_eligible": False,
             "status": "INVALID_REWARD_FAIL_CLOSED",
             "duration_hours": None,
+            "measured_duration_hours": None,
+            "effective_duration_hours": None,
             "score_factor": 0.0,
             "reason": "REWARD_APR_INVALID",
+            "evidence_source": "absent",
         }
     if reward_apr == 0.0:
         return {
             "entry_eligible": True,
             "status": "NOT_APPLICABLE",
             "duration_hours": None,
+            "measured_duration_hours": None,
+            "effective_duration_hours": None,
             "score_factor": 1.0,
             "reason": None,
+            "evidence_source": "absent",
         }
 
     raw_duration = p.get("reward_high_duration_hours")
     if raw_duration is None:
         raw_duration = p.get("reward_high_duration")
-    if raw_duration is None:
-        return {
-            "entry_eligible": False,
-            "status": "MISSING_FAIL_CLOSED",
-            "duration_hours": None,
-            "score_factor": 0.0,
-            "reason": "REWARD_PERSISTENCE_MISSING",
-        }
-    try:
-        duration = float(raw_duration)
-    except (TypeError, ValueError):
-        duration = -1.0
-    if not math.isfinite(duration) or duration < 0.0:
-        return {
-            "entry_eligible": False,
-            "status": "INVALID_FAIL_CLOSED",
-            "duration_hours": None,
-            "score_factor": 0.0,
-            "reason": "REWARD_PERSISTENCE_INVALID",
-        }
-    if duration < float(min_hours):
-        return {
-            "entry_eligible": False,
-            "status": "TOO_YOUNG_SHADOW_ONLY",
-            "duration_hours": duration,
-            "score_factor": 0.0,
-            "reason": "REWARD_PERSISTENCE_LT_6H",
-        }
-    if duration < float(trusted_hours):
-        return {
-            "entry_eligible": True,
-            "status": "MINIMUM_6H",
-            "duration_hours": duration,
-            "score_factor": duration / float(trusted_hours),
-            "reason": None,
-        }
+    declared_source = str(p.get("reward_persistence_evidence_source") or "")
+    # A duration value is not self-authenticating.  Only scanner-owned measured
+    # observations may override the B-track, and only after the full 24h
+    # minimum.  Missing/other sources (including legacy prefilled durations)
+    # are ignored and re-evaluated exclusively through the surrogate.
+    measured_is_scanner = declared_source == "measured_observation"
+    if measured_is_scanner and raw_duration is not None:
+        try:
+            duration = float(raw_duration)
+        except (TypeError, ValueError):
+            duration = -1.0
+        if not math.isfinite(duration) or duration < 0.0:
+            return {
+                "entry_eligible": False,
+                "status": "INVALID_FAIL_CLOSED",
+                "duration_hours": None,
+                "measured_duration_hours": None,
+                "effective_duration_hours": None,
+                "score_factor": 0.0,
+                "reason": "REWARD_PERSISTENCE_INVALID",
+                "evidence_source": "absent",
+            }
+        required_hours = max(
+            float(trusted_hours), MIN_REWARD_OBSERVATION_HOURS
+        )
+        if duration >= required_hours:
+            return {
+                "entry_eligible": True,
+                "status": "TRUSTED_24H",
+                "duration_hours": duration,
+                "measured_duration_hours": duration,
+                "effective_duration_hours": duration,
+                "score_factor": 1.0,
+                "reason": None,
+                "evidence_source": "measured_observation",
+            }
+
+    surrogate = reward_persistence_surrogate(p)
+    tier = surrogate["tier"]
+    if tier == "SURROGATE_STRONG":
+        status = tier
+    elif tier == "SURROGATE_WEAK":
+        status = tier
+    else:
+        status = "MISSING_FAIL_CLOSED"
     return {
-        "entry_eligible": True,
-        "status": "TRUSTED_24H",
-        "duration_hours": duration,
-        "score_factor": 1.0,
-        "reason": None,
+        "entry_eligible": bool(surrogate["entry_eligible"]),
+        "status": status,
+        # A surrogate's virtual 6h grade must never populate the canonical
+        # measured-duration field or be promoted to TRUSTED_24H downstream.
+        "duration_hours": None,
+        "measured_duration_hours": None,
+        "effective_duration_hours": surrogate["effective_duration_hours"],
+        "score_factor": float(surrogate["score_factor"]),
+        "reason": surrogate["reason"],
+        "evidence_source": surrogate["evidence_source"],
+        "surrogate_tier": tier,
+        "surrogate_inputs": surrogate["inputs"],
     }
 
 
@@ -278,6 +332,46 @@ def score_pool(p):
     return h * (0.5 + 0.5 * persistence)
 
 
+def apply_reward_persistence_assessment(record):
+    """Recompute persistence fields after scanner-owned evidence injection."""
+    rec = dict(record)
+    persistence = reward_persistence_gate(rec)
+    persistence_reasons = {
+        "REWARD_APR_INVALID",
+        "REWARD_PERSISTENCE_INVALID",
+        "REWARD_PERSISTENCE_LT_6H",
+        "REWARD_PERSISTENCE_MISSING",
+        "REWARD_PERSISTENCE_SURROGATE_WEAK",
+    }
+    blocks = [
+        reason for reason in list(rec.get("entry_block_reasons") or ())
+        if reason not in persistence_reasons
+    ]
+    if not persistence["entry_eligible"] and persistence.get("reason"):
+        blocks.append(persistence["reason"])
+    rec.update({
+        "entry_eligible": bool(rec.get("gate_ok", True) and persistence["entry_eligible"]),
+        "entry_block_reasons": list(dict.fromkeys(blocks)),
+        # Only actual measured observations may occupy this canonical field.
+        "reward_high_duration": persistence.get("measured_duration_hours"),
+        "reward_persistence_effective_duration_hours": persistence.get(
+            "effective_duration_hours"
+        ),
+        "reward_persistence_status": persistence["status"],
+        "reward_persistence_score": round(float(persistence["score_factor"]), 4),
+        "reward_persistence_evidence_source": persistence["evidence_source"],
+        "reward_persistence_surrogate_status": persistence.get("surrogate_tier"),
+        "reward_persistence_surrogate_inputs": persistence.get("surrogate_inputs"),
+        "reward_persistence_semantics": (
+            "measured scanner history >=24h overrides DefiLlama surrogate; "
+            "strong surrogate is 6h-equivalent with 0.25 haircut and never "
+            "trusted; weak/absent remain shadow-only; fee-only not applicable"
+        ),
+    })
+    rec["score"] = round(score_pool(rec), 2)
+    return rec
+
+
 def assess(p, gates):
     ts, fee = parse_pool_meta(p.get("poolMeta"))
     h = headline_apr(p)
@@ -285,35 +379,40 @@ def assess(p, gates):
     ok, reason = passes_gates(p, min_tvl=gates["min_tvl"], min_vol1d=gates["min_vol1d"])
     suspect = is_suspect(p, suspect_reward_apr=gates["suspect_reward_apr"],
                          suspect_vol_tvl=gates["suspect_vol_tvl"])
-    persistence = reward_persistence_gate(p)
-    entry_block_reasons = []
-    if not persistence["entry_eligible"]:
-        entry_block_reasons.append(persistence["reason"])
-    return {
+    record = {
         "symbol": p.get("symbol"), "project": p.get("project"),
         "llama_pool_id": p.get("pool"), "poolMeta": p.get("poolMeta"),
         "tick_spacing": ts, "fee_tier": fee,
         "underlyingTokens": p.get("underlyingTokens"),
         "rewardTokens": p.get("rewardTokens"),
         "tvlUsd": p.get("tvlUsd"),
+        "apy": p.get("apy"),
         "apyBase": p.get("apyBase"), "apyReward": p.get("apyReward"),
+        "apyBase7d": p.get("apyBase7d"),
+        "apyPct1D": p.get("apyPct1D"), "apyPct7D": p.get("apyPct7D"),
+        "apyPct30D": p.get("apyPct30D"), "count": p.get("count"),
         "apyMean30d": p.get("apyMean30d"), "headline_apr": round(h, 2),
         "volumeUsd1d": p.get("volumeUsd1d"), "sigma": p.get("sigma"),
         "ilRisk": p.get("ilRisk"), "stablecoin": p.get("stablecoin"),
         "tier": tier, "tier_quality": classify_tier_by_quality(p.get("symbol")),
-        "score": round(score_pool(p), 2),
         "gate_ok": ok, "gate_reason": reason,
         "suspect": suspect,
-        "entry_eligible": bool(ok and persistence["entry_eligible"]),
-        "entry_block_reasons": entry_block_reasons,
-        "reward_high_duration": persistence["duration_hours"],
-        "reward_persistence_status": persistence["status"],
-        "reward_persistence_score": round(float(persistence["score_factor"]), 4),
-        "reward_persistence_semantics": (
-            "reward-bearing missing/invalid data fail closed; <6h shadow-only; "
-            "6h minimum with haircut; >=24h trusted; fee-only not applicable"
+        "entry_block_reasons": [],
+        "reward_high_duration": p.get(
+            "reward_high_duration_hours", p.get("reward_high_duration")
+        ),
+        "reward_persistence_evidence_source": p.get(
+            "reward_persistence_evidence_source"
         ),
     }
+    for key in (
+        "reward_measured_observation_count",
+        "reward_measured_observation_first_as_of",
+        "reward_measured_observation_last_as_of",
+    ):
+        if key in p:
+            record[key] = p[key]
+    return apply_reward_persistence_assessment(record)
 
 
 # ---------------------------------------------------------------------------
@@ -423,7 +522,11 @@ def main():
 
     pools = fetch_pools(cache_path=cache, use_cache=args.use_cache)
     n_total = len(pools)
-    base = [p for p in pools if p.get("chain") == args.chain and p.get("project") in args.projects]
+    base = [
+        strip_untrusted_reward_evidence(p)
+        for p in pools
+        if p.get("chain") == args.chain and p.get("project") in args.projects
+    ]
     results = [assess(p, gates) for p in base]
 
     passed = [r for r in results if r["gate_ok"]]

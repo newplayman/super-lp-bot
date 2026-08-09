@@ -3,8 +3,10 @@
 
 This module contains no network, wallet, signing, transaction or paid-service
 path.  It validates PRD v2.1 section 12.4 and PRD v1 section 16: current reward
-APR decays are scored at their current value, reward persistence below 6h cannot
-ENTER, and missing reward-duration evidence fails closed.
+APR decays are scored at their current value.  Only scanner-owned measured
+observations spanning at least 24h are trusted; shorter measured histories
+return to the B-track, whose strong surrogate receives a fixed 0.25 haircut
+while weak or absent evidence remains closed.
 """
 from __future__ import annotations
 
@@ -61,6 +63,7 @@ def _pool(reward_apr: float, duration_hours: Optional[float]) -> Dict[str, Any]:
     }
     if duration_hours is not None:
         pool["reward_high_duration"] = float(duration_hours)
+        pool["reward_persistence_evidence_source"] = "measured_observation"
     return pool
 
 
@@ -90,8 +93,8 @@ def run_replay(points: Optional[List[Mapping[str, float]]] = None) -> Dict[str, 
     trajectory: List[Dict[str, Any]] = []
     for point in points or build_decay_trajectory():
         reward_apr = float(point["reward_apr"])
-        # All main decay points already have >=24h persistence.  This isolates
-        # reward decay from the separate young-incentive rejection assertion.
+        # All main decay points explicitly model scanner-owned >=24h measured
+        # history. This isolates decay from the separate B-track assertion.
         pool = _pool(reward_apr, duration_hours=float(point["elapsed_hours"]))
         screened = assess(pool, DEFAULT_GATES)
         allocator_record = _allocator_record(pool, screened)
@@ -123,7 +126,6 @@ def run_replay(points: Optional[List[Mapping[str, float]]] = None) -> Dict[str, 
         "main_points_enterable": all(row["entry_eligible"] for row in trajectory),
         "young_300pct_rejected": (
             young_screened["entry_eligible"] is False
-            and young_screened["reward_persistence_status"] == "TOO_YOUNG_SHADOW_ONLY"
             and not is_enterable(young_allocator)
         ),
         "missing_persistence_fail_closed": (
@@ -153,15 +155,17 @@ def run_replay(points: Optional[List[Mapping[str, float]]] = None) -> Dict[str, 
         "semantics": {
             "missing_reward_persistence": "FAIL_CLOSED_SHADOW_ONLY_REWARD_SCORE_ZERO",
             "fee_only_legacy": "COMPATIBLE_NOT_APPLICABLE",
-            "under_6h": "SHADOW_ONLY_REWARD_SCORE_ZERO",
-            "6h_to_24h": "ENTER_MINIMUM_WITH_LINEAR_CREDIBILITY_HAIRCUT",
-            "at_least_24h": "TRUSTED_CURRENT_REWARD_APR",
+            "scanner_measured_under_24h": "FALL_BACK_TO_B_TRACK_NOT_TRUSTED",
+            "scanner_measured_at_least_24h": "TRUSTED_CURRENT_REWARD_APR",
+            "surrogate_strong": "ENTRY_ELIGIBLE_FIXED_0_25_CREDIBILITY_HAIRCUT",
+            "surrogate_weak_or_absent": "SHADOW_ONLY_REWARD_SCORE_ZERO",
             "stale_historical_apr": "CAPPED_AT_CURRENT_PERSISTENCE_ADJUSTED_APR",
         },
         "trajectory": trajectory,
         "young_incentive_fixture": {
             "reward_apr": 300.0,
             "reward_high_duration": 0.5,
+            "reward_persistence_evidence_source": "measured_observation",
             "entry_eligible": young_screened["entry_eligible"],
             "status": young_screened["reward_persistence_status"],
             "reasons": young_screened["entry_block_reasons"],
@@ -209,6 +213,8 @@ def _render_summary(replay: Mapping[str, Any]) -> str:
         f"- Missing duration on a reward-bearing pool: ENTER={str(missing['entry_eligible']).upper()}, "
         f"status={missing['status']}.",
         "- Fee-only legacy records: persistence is not applicable and remains compatible.",
+        "- Scanner measured history below 24h falls back to the B-track; it is never trusted.",
+        "- B-track strong surrogate uses a fixed 0.25 credibility haircut; weak/absent stays closed.",
         "",
         "## Machine assertions",
         "",
