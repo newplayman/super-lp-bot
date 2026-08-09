@@ -544,12 +544,17 @@ def update_position(state, swaps, *, now_block):
                         ctx, signals, observation, config, tier=str(state.get("tier", ""))
                     )
                 else:
-                    # What-if decision is recorded, but disabled/missing policy
-                    # configuration cannot mutate state or execute anything.
+                    # Disabled/missing policy keeps soft decisions as what-if
+                    # records, but a hard veto overrides Tier and the switch.
                     decision = evaluate_risk(
                         RiskState(ctx["state"]), signals, observation, config,
                         tier=str(state.get("tier", "")),
                     )
+                    if decision.hard_risk_override and decision.should_execute:
+                        ctx["state"] = transition_state(
+                            RiskState(ctx["state"]), RiskState.EXITING,
+                            hard_veto=True,
+                        ).value
                 event = {
                     "block": s["block"],
                     "price": price,
@@ -580,9 +585,14 @@ def update_position(state, swaps, *, now_block):
                 state["last_block"] = int(now_block)
                 state["in_range_now"] = False
                 return state  # stop: position closed at the breach
-            if crossed and ctx["enabled"] and decision.should_execute:
+            if (
+                crossed
+                and decision.should_execute
+                and (ctx["enabled"] or decision.hard_risk_override)
+            ):
                 plan = _execute_policy_decision(state, decision, observation, inventory, s)
                 event["action_plan"] = asdict(plan)
+                event["exit_cost_basis"] = state["exited"]["exit_cost_basis"]
                 event["risk_state_after"] = ctx["state"]
                 state["last_block"] = int(now_block)
                 state["in_range_now"] = False

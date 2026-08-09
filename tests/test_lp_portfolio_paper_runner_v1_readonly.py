@@ -1,7 +1,14 @@
 """Pure tests for the multi-pool LP paper-shadow runner (no network)."""
 import inspect
+import json
+import sqlite3
+
+import pytest
 
 from scripts.lp_portfolio_paper_runner_v1_readonly import (
+    LEDGER_SCHEMA_VERSION,
+    _record_gate_observation,
+    attribution_ledger,
     init_state,
     update_position,
     mark_position,
@@ -9,6 +16,7 @@ from scripts.lp_portfolio_paper_runner_v1_readonly import (
     run,
 )
 from scripts.lp_exit_policy_v1_readonly import QuoteResult
+from scripts.lp_shadow_gate_v1_readonly import GateStore
 
 DEC = 18
 FEE = 0.003
@@ -229,6 +237,95 @@ def test_policy_context_is_saved_and_missing_policy_defaults_record_only():
     assert ctx["risky_token_side"] == "token0:ETH"
     assert ctx["stable_token_side"] == "token1:USDC"
     assert ctx["risky_inventory_target"] == 0.25
+
+
+@pytest.mark.parametrize(
+    "hard_signal",
+    [
+        "rug_risk",
+        "honeypot_risk",
+        "data_corruption",
+        "contract_risk",
+        "kill_switch",
+    ],
+)
+def test_disabled_policy_hard_risk_executes_paper_exit_and_records_gate(
+    hard_signal, tmp_path
+):
+    st = _policy_state(exit_policy_enabled=False)
+    swap = {
+        "block": 1,
+        "price": 0.80,
+        "liquidity": 10 ** 27,
+        "amount1": AMT1,
+        "risk_signals": {hard_signal: True},
+    }
+
+    update_position(st, [swap], now_block=1)
+
+    assert st["exit_policy_context"]["enabled"] is False
+    assert st["exit_policy_context"]["state"] == "COOLDOWN"
+    assert st["exited"] is not None
+    assert st["exited"]["exit_mode"] == "PANIC_EXIT"
+    assert st["exited"]["paper_only"] is True
+    event = st["breaches"][0]
+    for field in (
+        "breach_direction",
+        "post_remove_inventory_ratio",
+        "post_remove_delta_usd",
+        "recommended_exit_mode",
+        "expected_swap_cost",
+    ):
+        assert field in event
+    assert event["hard_risk_override"] is True
+    assert event["exit_cost_basis"] == "depth_model"
+
+    mark = mark_position(st, swap["price"])
+    ledger = attribution_ledger(st, mark)
+    assert ledger["exit_cost_basis"] == "depth_model"
+    heartbeat = {
+        "ledger_schema_version": LEDGER_SCHEMA_VERSION,
+        "ts_utc": "2026-08-09T00:00:00+00:00",
+        "rpc_health": "NORMAL",
+        "portfolio_nav_usd": ledger["entry_capital_usd"] + ledger["pnl_vs_usdc"],
+        "by_pool": [
+            {
+                "pool": f"fix-r1-{hard_signal}",
+                "fee_prediction_usd": 1.0,
+                **ledger,
+            }
+        ],
+    }
+    gate_db = tmp_path / "scanner.db"
+    _record_gate_observation(GateStore(gate_db), "fix-r1", 0, heartbeat)
+    with sqlite3.connect(gate_db) as connection:
+        row = connection.execute(
+            "SELECT current_position_count, evidence_json "
+            "FROM shadow_gate_observations WHERE source_run=? AND tick=?",
+            ("fix-r1", 0),
+        ).fetchone()
+    assert row is not None
+    assert row[0] == 1
+    assert json.loads(row[1])["position_identities"] == [f"fix-r1-{hard_signal}"]
+
+
+def test_disabled_policy_soft_combination_remains_record_only():
+    st = _policy_state(exit_policy_enabled=False)
+    swap = {
+        "block": 1,
+        "price": 0.80,
+        "liquidity": 10 ** 27,
+        "amount1": AMT1,
+        "risk_signals": {"trend_continuation": True, "netcover_forward": 0.8},
+    }
+
+    update_position(st, [swap], now_block=1)
+
+    assert st["exited"] is None
+    assert st["exit_policy_context"]["state"] == "HEALTHY"
+    event = st["breaches"][0]
+    assert event["hard_risk_override"] is False
+    assert "action_plan" not in event
 
 
 def test_strict_policy_single_lower_breach_records_five_fields_but_does_not_exit():
