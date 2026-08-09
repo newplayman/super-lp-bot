@@ -70,9 +70,15 @@ from scripts.lp_exit_policy_v1_readonly import (  # noqa: E402
     RiskState,
     RpcHealth,
     build_paper_action_plan,
+    can_reenter,
     classify_breach,
+    cooldown_requirement,
     evaluate_risk,
     transition_state,
+)
+from scripts.lp_netcover_engine_v1_readonly import (  # noqa: E402
+    NETCOVER_SHADOW,
+    absolute_profit_gate,
 )
 from scripts.lp_rpc_pool_v1_readonly import RpcPool  # noqa: E402
 from scripts.lp_tg_alerter_v1_readonly import (  # noqa: E402
@@ -95,6 +101,7 @@ ORCA_WHIRLPOOL_ADAPTER = "orca_whirlpool_account_v1"
 ORCA_WHIRLPOOL_PROTOCOL = "orca_whirlpool"
 
 LEDGER_SCHEMA_VERSION = 2
+REENTRY_EVIDENCE_MAX_AGE_SECONDS = 3600.0
 ATTRIBUTION_FIELDS = (
     "entry_capital_usd", "hodl_nav", "lp_nav_ex_fee",
     "il_vs_hodl_usd", "il_vs_hodl_pct", "swap_fee_income",
@@ -846,6 +853,8 @@ def attribution_ledger(state, mark):
     else:
         ledger["exit_cost_basis"] = None
         ledger["exit_cost_fallback_reason"] = None
+    if state.get("reentry_of"):
+        ledger["reentry_of"] = str(state["reentry_of"])
     return ledger
 
 
@@ -903,6 +912,46 @@ def _load_allocation(path):
     if not allocs:
         raise SystemExit(f"no allocations in {path}")
     return allocs
+
+
+def _refresh_reentry_evidence(book, allocation_path):
+    """Refresh externally recomputed evidence without risking the main loop.
+
+    The allocation JSON is the runner's existing read-only control input. An
+    operator/scanner can atomically replace it between ticks. Any unreadable,
+    malformed, missing, or duplicate pool record clears evidence fail-closed.
+    """
+    try:
+        with open(allocation_path, encoding="utf-8") as handle:
+            payload = json.load(handle)
+        if not isinstance(payload, dict):
+            raise ValueError("allocation payload must be an object")
+        allocations = payload.get("allocations")
+        if not isinstance(allocations, list):
+            raise ValueError("allocations must be a list")
+    except (OSError, TypeError, ValueError, json.JSONDecodeError):
+        for pool_record in book:
+            pool_record["reentry_evidence"] = None
+        return False
+
+    by_pool = {}
+    duplicates = set()
+    for allocation in allocations:
+        if not isinstance(allocation, dict) or not allocation.get("pool"):
+            continue
+        key = str(allocation["pool"]).lower()
+        if key in by_pool:
+            duplicates.add(key)
+        else:
+            by_pool[key] = allocation
+    for pool_record in book:
+        key = str(pool_record.get("pool") or "").lower()
+        allocation = None if key in duplicates else by_pool.get(key)
+        evidence = allocation.get("reentry_evidence") if allocation else None
+        pool_record["reentry_evidence"] = (
+            dict(evidence) if isinstance(evidence, dict) else None
+        )
+    return True
 
 
 def _decode_orca_whirlpool_account(account_result, *, decimals_a, decimals_b):
@@ -1081,6 +1130,13 @@ def _init_book(allocs, *, entry_window_blocks, latest, chain="base"):
             "reward_apr": float(a.get("reward_apr", 0.0)),
             "fee_apr_onchain": a.get("fee_apr_onchain"),
             "reward_price_usd": float(a.get("reward_token_price_usd", 1.0)),
+            "position_id": a.get("position_id"),
+            # A scanner/operator may replace this mapping between ticks.  It is
+            # deliberately consumed after one successful re-entry so stale
+            # economics can never authorize another automatic position.
+            "reentry_evidence": a.get("reentry_evidence"),
+            "run_entry_capital_usd": float(st["capital"]),
+            "realized_pnl_carry_usd": 0.0,
             "last_price": anchor, "last_observation": last_observation,
             "state": st,
         })
@@ -1206,6 +1262,260 @@ def _emit_runner_alerts(pool_record, alerter):
         cursor["rpc_health"] = rpc_health
 
 
+def _paper_position_identity(pool_record):
+    """Return the identity GateStore will use for the current paper position."""
+    explicit = pool_record.get("position_id")
+    if explicit:
+        return str(explicit)
+    pool = pool_record.get("pool")
+    if pool:
+        return str(pool).lower()
+    raise ValueError("paper position lacks position_id and pool")
+
+
+def _cooldown_reason(state):
+    """Classify cooldown conservatively; a hard veto always needs a human."""
+    breaches = state.get("breaches") or []
+    if breaches and breaches[-1].get("hard_risk_override") is True:
+        return "risk"
+    return "normal"
+
+
+def _ensure_position_cooldown(pool_record, *, now):
+    """Persist the policy cooldown clock once a paper exit is complete."""
+    if now.tzinfo is None or now.utcoffset() is None:
+        raise ValueError("cooldown start must be timezone-aware")
+    state = pool_record["state"]
+    ctx = state["exit_policy_context"]
+    if ctx.get("state") != RiskState.COOLDOWN.value or not state.get("exited"):
+        return None
+    if ctx.get("cooldown") is not None:
+        return ctx["cooldown"]
+
+    reason = _cooldown_reason(state)
+    requirement = cooldown_requirement(_policy_config(state), reason=reason)
+    # RWA's time gate is a full short window/session change rather than a
+    # duration. can_reenter still requires an aware boundary, so the start is
+    # its earliest possible boundary and the extra gate remains mandatory.
+    ends_at = now if requirement.duration is None else now + requirement.duration
+    ctx["cooldown"] = {
+        "started_at": now.astimezone(timezone.utc).isoformat(),
+        "ends_at": ends_at.astimezone(timezone.utc).isoformat(),
+        "reason": reason,
+        "manual_release_required": requirement.manual_release_required,
+        "requires_full_short_window_or_session_change": (
+            requirement.requires_full_short_window_or_session_change
+        ),
+        "position_identity": _paper_position_identity(pool_record),
+    }
+    return ctx["cooldown"]
+
+
+def _strict_bool(mapping, key):
+    value = mapping.get(key)
+    return value if isinstance(value, bool) else None
+
+
+def _finite_number(value):
+    if isinstance(value, bool):
+        return None
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return None
+    return parsed if math.isfinite(parsed) else None
+
+
+def _reentry_gate_results(evidence):
+    """Re-evaluate the WP-04 gates from explicit, current evidence.
+
+    Raw economic inputs are preferred. Explicit boolean results are accepted
+    for an upstream WP-04 adapter, but truthy strings and partial mappings are
+    never treated as proof.
+    """
+    if not isinstance(evidence, dict):
+        return False, False
+    wp04 = evidence.get("wp04")
+    values = wp04 if isinstance(wp04, dict) else evidence
+
+    cover_key = "netcover" if "netcover" in values else "netcover_ratio"
+    cover = _finite_number(values.get(cover_key))
+    if cover is not None:
+        netcover_passed = cover >= NETCOVER_SHADOW
+    else:
+        netcover_passed = _strict_bool(values, "netcover_gate_passed") is True
+
+    expected = _finite_number(values.get("expected_net_profit_h"))
+    round_trip = _finite_number(
+        values.get("round_trip_cost_usd", values.get("round_trip_cost"))
+    )
+    if expected is not None and round_trip is not None:
+        try:
+            absolute_passed = absolute_profit_gate(expected, round_trip).allowed
+        except ValueError:
+            absolute_passed = False
+    else:
+        absolute_result = values.get("absolute_profit_gate")
+        if isinstance(absolute_result, dict):
+            absolute_passed = _strict_bool(absolute_result, "allowed") is True
+        else:
+            absolute_passed = (
+                _strict_bool(values, "absolute_profit_gate_passed") is True
+            )
+    return netcover_passed, absolute_passed
+
+
+def _reentry_evidence_is_current(
+    evidence, *, cooldown, position_identity, now
+):
+    """Bind re-entry proof to this position and the completed cooldown."""
+    if not isinstance(evidence, dict):
+        return False
+    if str(evidence.get("position_identity") or "") != str(position_identity):
+        return False
+    try:
+        as_of = datetime.fromisoformat(
+            str(evidence["as_of"]).replace("Z", "+00:00")
+        )
+        ends_at = datetime.fromisoformat(
+            str(cooldown["ends_at"]).replace("Z", "+00:00")
+        )
+    except (KeyError, TypeError, ValueError):
+        return False
+    if (
+        as_of.tzinfo is None
+        or as_of.utcoffset() is None
+        or ends_at.tzinfo is None
+        or ends_at.utcoffset() is None
+        or now.tzinfo is None
+        or now.utcoffset() is None
+    ):
+        return False
+    age = (now - as_of).total_seconds()
+    return (
+        ends_at <= as_of <= now
+        and 0.0 <= age <= REENTRY_EVIDENCE_MAX_AGE_SECONDS
+    )
+
+
+def _maybe_reenter_position(pool_record, *, now, latest_block):
+    """Replace a completed cooldown position only when every gate is proven."""
+    state = pool_record["state"]
+    ctx = state["exit_policy_context"]
+    if ctx.get("state") != RiskState.COOLDOWN.value or not state.get("exited"):
+        return False
+    cooldown = _ensure_position_cooldown(pool_record, now=now)
+    if not isinstance(cooldown, dict):
+        return False
+
+    evidence = pool_record.get("reentry_evidence")
+    old_identity = _paper_position_identity(pool_record)
+    if not _reentry_evidence_is_current(
+        evidence,
+        cooldown=cooldown,
+        position_identity=old_identity,
+        now=now,
+    ):
+        return False
+    regime_changed = _strict_bool(evidence, "regime_changed")
+    if regime_changed is None:
+        return False
+    netcover_passed, absolute_passed = _reentry_gate_results(evidence)
+    requires_window = bool(
+        cooldown.get("requires_full_short_window_or_session_change")
+    )
+    if requires_window:
+        full_window = _strict_bool(
+            evidence, "full_short_window_elapsed_or_session_changed"
+        )
+        if full_window is None:
+            return False
+    else:
+        full_window = True
+
+    # Runner automation is intentionally stricter than can_reenter's generic
+    # API: any cooldown classified for manual release is never auto-released.
+    if cooldown.get("manual_release_required") is not False:
+        return False
+    try:
+        ends_at = datetime.fromisoformat(
+            str(cooldown["ends_at"]).replace("Z", "+00:00")
+        )
+    except (KeyError, TypeError, ValueError):
+        return False
+    if ends_at.tzinfo is None or ends_at.utcoffset() is None:
+        return False
+    if not can_reenter(
+        now=now,
+        cooldown_ends_at=ends_at,
+        regime_changed=regime_changed,
+        netcover_gate_passed=netcover_passed,
+        absolute_profit_gate_passed=absolute_passed,
+        full_short_window_elapsed_or_session_changed=full_window,
+        manual_release_required=False,
+        manual_released=False,
+    ):
+        return False
+
+    last_price = _finite_number(pool_record.get("last_price"))
+    if last_price is None or last_price <= 0.0:
+        return False
+    old_mark = mark_position(state, last_price)
+    old_attribution = attribution_ledger(state, old_mark)
+    capital = _finite_number(
+        float(state["capital"]) + float(old_attribution["pnl_vs_usdc"])
+    )
+    if capital is None or capital <= 0.0:
+        return False
+
+    root_identity = str(pool_record.setdefault("_position_root_id", old_identity))
+    sequence = int(pool_record.get("_reentry_sequence", 0)) + 1
+    new_identity = f"{root_identity}:reentry:{sequence}"
+    config = _policy_config(state)
+    costs = state.get("attribution_costs", {})
+    new_state = init_state(
+        capital=capital,
+        anchor=last_price,
+        range_pct=state["range_pct"],
+        fee_tier=state["fee_tier"],
+        dec0=state["dec0"],
+        dec1=state["dec1"],
+        last_block=latest_block,
+        exit_on_breach=ctx.get("legacy_operator_confirmed", False),
+        exit_cost_bps=state.get("exit_cost_bps"),
+        exit_policy_enabled=ctx.get("enabled", False),
+        profile=config.profile,
+        risky_token_side=config.risky_token_side,
+        stable_token_side=config.stable_token_side,
+        risky_inventory_target=config.risky_inventory_target,
+        max_exit_slippage_bps=config.max_slippage_bps,
+        rpc_health=ctx.get("rpc_health", "UNKNOWN"),
+        major_cooldown_minutes=config.major_cooldown_minutes,
+        risk_signals=ctx.get("risk_signals"),
+        reward_token_price_usd=pool_record.get("reward_price_usd", 1.0),
+        gas_cost=costs.get("gas_cost", 0.0),
+        priority_fee=costs.get("priority_fee", 0.0),
+        lvr_estimate=costs.get("lvr_estimate", 0.0),
+        exit_latency_loss=costs.get("exit_latency_loss", 0.0),
+        switching_cost=costs.get("switching_cost", 0.0),
+        entry_swap_cost=state["entry_baseline"].entry_swap_cost,
+    )
+    new_state["tier"] = state.get("tier", str(pool_record.get("tier", "")).upper())
+    new_state["reentry_of"] = old_identity
+    new_state["reentry_evidence"] = dict(evidence)
+    pool_record.setdefault("run_entry_capital_usd", float(state["capital"]))
+    pool_record["realized_pnl_carry_usd"] = float(
+        pool_record.get("realized_pnl_carry_usd", 0.0)
+    ) + float(old_attribution["pnl_vs_usdc"])
+    pool_record["state"] = new_state
+    pool_record["position_id"] = new_identity
+    pool_record["reentry_of"] = old_identity
+    pool_record["_reentry_sequence"] = sequence
+    pool_record["last_reentry_evidence"] = dict(evidence)
+    pool_record["reentry_evidence"] = None
+    return True
+
+
 def _tick(book, *, last_ts, alerter=None):
     latest = _latest_block()
     now = _now_utc()
@@ -1215,6 +1525,40 @@ def _tick(book, *, last_ts, alerter=None):
     portfolio_nav = 0.0
     for p in book:
         st = p["state"]
+        cooldown_n_swaps = 0
+        cooldown_observation_fetched = False
+        reentered_this_tick = False
+        if (
+            st.get("exited")
+            and st["exit_policy_context"].get("state") == RiskState.COOLDOWN.value
+        ):
+            cooldown = _ensure_position_cooldown(p, now=now)
+            if (
+                isinstance(cooldown, dict)
+                and cooldown.get("manual_release_required") is False
+                and isinstance(p.get("reentry_evidence"), dict)
+                and _reentry_evidence_is_current(
+                    p["reentry_evidence"],
+                    cooldown=cooldown,
+                    position_identity=_paper_position_identity(p),
+                    now=now,
+                )
+            ):
+                # Refresh only the read-only market cursor needed by an actual
+                # re-entry attempt. The exited state short-circuits accounting,
+                # so no LP fee/reward can accrue during cooldown.
+                observations, cooldown_n_swaps = _fetch_position_observations(
+                    p, latest
+                )
+                update_position(st, observations, now_block=latest)
+                if observations:
+                    p["last_price"] = observations[-1]["price"]
+                cooldown_observation_fetched = True
+                time.sleep(float(os.environ.get("CALL_PACE_SECS", "0.0")))
+            reentered_this_tick = _maybe_reenter_position(
+                p, now=now, latest_block=latest
+            )
+            st = p["state"]
         staged_inventory = bool(
             st.get("exited")
             and st["exited"].get("inventory_holdings") is not None
@@ -1225,13 +1569,14 @@ def _tick(book, *, last_ts, alerter=None):
             # closed position holds base cash: no RPC, no further accrual.
             mk = mark_position(st, p["last_price"])
             pool_net = mk["net_quote"]  # exited mark already includes reward
-            n_swaps, new_breach = 0, False
+            n_swaps, new_breach = cooldown_n_swaps, False
         elif staged_inventory:
             # LP liquidity is gone, but risky withdrawn inventory remains. Keep
             # a read-only market mark and block all LP fee/reward accrual until
             # a later execution path proves risk-off complete (INV-EXIT-01).
             observations, n_swaps = _fetch_position_observations(p, latest)
             update_position(st, observations, now_block=latest)
+            _ensure_position_cooldown(p, now=now)
             if observations:
                 p["last_price"] = observations[-1]["price"]
             mk = mark_position(st, p["last_price"])
@@ -1239,27 +1584,37 @@ def _tick(book, *, last_ts, alerter=None):
             new_breach = False
             time.sleep(float(os.environ.get("CALL_PACE_SECS", "0.0")))
         else:
-            observations, n_swaps = _fetch_position_observations(p, latest)
+            if reentered_this_tick:
+                observations, n_swaps = [], cooldown_n_swaps
+            else:
+                observations, n_swaps = _fetch_position_observations(p, latest)
             n_breach_before = len(st["breaches"])
             # book reward for elapsed BEFORE update, so a same-tick exit keeps it
-            accrue_capital_time(st, elapsed)
+            position_elapsed = 0.0 if reentered_this_tick else elapsed
+            accrue_capital_time(st, position_elapsed)
             accrue_reward_ledger(
                 st,
-                accrue_reward(st["capital"], p["reward_apr"], elapsed),
+                accrue_reward(st["capital"], p["reward_apr"], position_elapsed),
                 reward_token_price_usd=p.get("reward_price_usd", 1.0),
             )
             update_position(st, observations, now_block=latest)
+            _ensure_position_cooldown(p, now=now)
             if observations:
                 p["last_price"] = observations[-1]["price"]
             mk = mark_position(st, p["last_price"])
             # active mark excludes reward; exited mark includes it
             pool_net = mk["net_quote"] if st.get("exited") else mk["net_quote"] + st["reward_quote"]
             new_breach = len(st["breaches"]) > n_breach_before
-            time.sleep(float(os.environ.get("CALL_PACE_SECS", "0.0")))
-        portfolio_net += pool_net
+            if not cooldown_observation_fetched:
+                time.sleep(float(os.environ.get("CALL_PACE_SECS", "0.0")))
         _emit_runner_alerts(p, alerter)
         attribution = attribution_ledger(st, mk)
-        portfolio_nav += attribution["entry_capital_usd"] + attribution["pnl_vs_usdc"]
+        position_pnl = float(attribution["pnl_vs_usdc"])
+        pnl_carry = float(p.get("realized_pnl_carry_usd", 0.0))
+        run_pnl = pnl_carry + position_pnl
+        run_capital = float(p.get("run_entry_capital_usd", st["capital"]))
+        portfolio_net += run_pnl
+        portfolio_nav += run_capital + run_pnl
         pool_output = {
             "symbol": p["symbol"], "tier": p["tier"], "pool": p["pool"],
             "net_pct": round(mk["net_pct"], 4),
@@ -1285,6 +1640,22 @@ def _tick(book, *, last_ts, alerter=None):
             ),
             **attribution,
         }
+        # Keep the attribution ledger position-local while exposing run-level
+        # economics in the canonical fields consumed by GateStore §12.0.
+        pool_output.update({
+            "position_pnl_vs_usdc": position_pnl,
+            "run_entry_capital_usd": run_capital,
+            "realized_pnl_carry_usd": pnl_carry,
+            "pnl_vs_usdc": run_pnl,
+            "net_usd": round(run_pnl, 2),
+            "net_pct": round(run_pnl / run_capital * 100.0, 4)
+            if run_capital
+            else 0.0,
+        })
+        if p.get("position_id"):
+            pool_output["position_id"] = str(p["position_id"])
+        if p.get("reentry_of"):
+            pool_output["reentry_of"] = str(p["reentry_of"])
         if p.get("solana_adapter"):
             observation = p.get("last_observation") or {}
             pool_output.update({
@@ -1379,6 +1750,7 @@ def run(allocation_path, *, poll_secs=1800, max_ticks=None, out=None,
 
     try:
         while not stop["flag"]:
+            _refresh_reentry_evidence(book, allocation_path)
             rec, last_ts = _tick(book, last_ts=last_ts, alerter=selected_alerter)
             _append_heartbeat(run_dir, rec, tick)
             if gate_store is not None:
@@ -1413,8 +1785,13 @@ def _flush_state(run_dir, book, tick):
         mk = mark_position(st, p["last_price"])
         net_quote = mk["net_quote"] if st.get("exited") else mk["net_quote"] + st["reward_quote"]
         attribution = attribution_ledger(st, mk)
+        position_pnl = float(attribution["pnl_vs_usdc"])
+        pnl_carry = float(p.get("realized_pnl_carry_usd", 0.0))
+        run_pnl = pnl_carry + position_pnl
+        run_capital = float(p.get("run_entry_capital_usd", st["capital"]))
         pool_snapshot = {
             "symbol": p["symbol"], "tier": p["tier"], "pool": p["pool"],
+            "position_id": _paper_position_identity(p),
             "capital": st["capital"], "anchor": st["anchor"],
             "range_pct": st["range_pct"], "last_price": p["last_price"],
             "fees_quote": st["fees_quote"], "reward_quote": st["reward_quote"],
@@ -1434,6 +1811,15 @@ def _flush_state(run_dir, book, tick):
             "exited": st.get("exited"),
             **attribution,
         }
+        if p.get("reentry_of"):
+            pool_snapshot["reentry_of"] = str(p["reentry_of"])
+        pool_snapshot.update({
+            "position_pnl_vs_usdc": position_pnl,
+            "run_entry_capital_usd": run_capital,
+            "realized_pnl_carry_usd": pnl_carry,
+            "pnl_vs_usdc": run_pnl,
+            "run_portfolio_nav_usd": run_capital + run_pnl,
+        })
         if p.get("solana_adapter"):
             observation = p.get("last_observation") or {}
             pool_snapshot.update({

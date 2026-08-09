@@ -2,12 +2,18 @@
 import inspect
 import json
 import sqlite3
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
 from scripts.lp_portfolio_paper_runner_v1_readonly import (
     LEDGER_SCHEMA_VERSION,
+    _ensure_position_cooldown,
+    _flush_state,
+    _maybe_reenter_position,
     _record_gate_observation,
+    _refresh_reentry_evidence,
+    _tick,
     attribution_ledger,
     init_state,
     update_position,
@@ -15,6 +21,7 @@ from scripts.lp_portfolio_paper_runner_v1_readonly import (
     accrue_reward,
     run,
 )
+import scripts.lp_portfolio_paper_runner_v1_readonly as runner
 from scripts.lp_exit_policy_v1_readonly import QuoteResult
 from scripts.lp_shadow_gate_v1_readonly import GateStore
 
@@ -363,6 +370,294 @@ def test_strict_lower_combination_quotes_then_simulates_remove_to_stable():
     assert event["action_plan"]["paper_only"] is True
     assert st["exit_policy_context"]["state"] == "COOLDOWN"
     assert st["exited"]["exit_mode"] == "REMOVE_TO_STABLE"
+
+
+def _cooled_down_pool(*, evidence=None, hard_risk=False):
+    st = _policy_state(exit_policy_enabled=not hard_risk)
+    signals = (
+        {"rug_risk": True}
+        if hard_risk
+        else {"trend_continuation": True, "netcover_forward": 0.8}
+    )
+    update_position(
+        st,
+        [{
+            "block": 1,
+            "price": 0.80,
+            "liquidity": 10 ** 27,
+            "amount1": AMT1,
+            "risk_signals": signals,
+        }],
+        now_block=1,
+    )
+    assert st["exit_policy_context"]["state"] == "COOLDOWN"
+    started = datetime(2026, 8, 9, 0, 0, tzinfo=timezone.utc)
+    pool = {
+        "symbol": "ETH/USDC",
+        "project": "test",
+        "protocol": "test",
+        "solana_adapter": None,
+        "chain": "base",
+        "tier": "B",
+        "pool": "0xPool",
+        "position_id": "position-1",
+        "reward_apr": 0.0,
+        "fee_apr_onchain": 10.0,
+        "reward_price_usd": 1.0,
+        "last_price": 0.91,
+        "last_observation": None,
+        "reentry_evidence": evidence,
+        "state": st,
+    }
+    _ensure_position_cooldown(pool, now=started)
+    if isinstance(evidence, dict):
+        evidence.setdefault("as_of", (started + timedelta(minutes=31)).isoformat())
+        evidence.setdefault("position_identity", "position-1")
+    return pool, started
+
+
+def _passing_reentry_evidence(**overrides):
+    evidence = {
+        "regime_changed": True,
+        "netcover": 1.2,
+        "expected_net_profit_h": 2.0,
+        "round_trip_cost_usd": 0.2,
+    }
+    evidence.update(overrides)
+    return evidence
+
+
+def test_exit_tick_starts_cooldown_at_that_ticks_now(monkeypatch):
+    now = datetime(2026, 8, 9, 0, 0, tzinfo=timezone.utc)
+    pool = {
+        "symbol": "ETH/USDC",
+        "tier": "B",
+        "pool": "0xPool",
+        "position_id": "position-1",
+        "reward_apr": 0.0,
+        "fee_apr_onchain": 10.0,
+        "reward_price_usd": 1.0,
+        "last_price": 1.0,
+        "reentry_evidence": None,
+        "state": _policy_state(),
+    }
+    breach = {
+        "block": 1,
+        "price": 0.80,
+        "liquidity": 10 ** 27,
+        "amount1": AMT1,
+        "risk_signals": {"trend_continuation": True, "netcover_forward": 0.8},
+    }
+    monkeypatch.setattr(runner, "_latest_block", lambda: 1)
+    monkeypatch.setattr(runner, "_now_utc", lambda: now)
+    monkeypatch.setattr(
+        runner, "_fetch_position_observations", lambda pool_record, latest: ([breach], 1)
+    )
+
+    _tick([pool], last_ts=now - timedelta(minutes=1))
+
+    cooldown = pool["state"]["exit_policy_context"]["cooldown"]
+    assert cooldown["started_at"] == now.isoformat()
+    assert datetime.fromisoformat(cooldown["ends_at"]) == now + timedelta(minutes=30)
+
+
+def test_reentry_rejects_before_cooldown_ends():
+    pool, started = _cooled_down_pool(evidence=_passing_reentry_evidence())
+
+    assert _maybe_reenter_position(
+        pool, now=started + timedelta(minutes=29), latest_block=2
+    ) is False
+    assert pool["position_id"] == "position-1"
+    assert pool["state"]["exited"] is not None
+
+
+def test_reentry_rejects_when_regime_has_not_changed():
+    pool, started = _cooled_down_pool(
+        evidence=_passing_reentry_evidence(regime_changed=False)
+    )
+
+    assert _maybe_reenter_position(
+        pool, now=started + timedelta(minutes=31), latest_block=2
+    ) is False
+
+
+def test_reentry_rejects_when_wp04_netcover_fails():
+    pool, started = _cooled_down_pool(
+        evidence=_passing_reentry_evidence(netcover=0.99)
+    )
+
+    assert _maybe_reenter_position(
+        pool, now=started + timedelta(minutes=31), latest_block=2
+    ) is False
+
+
+def test_reentry_rejects_when_wp04_absolute_profit_fails():
+    pool, started = _cooled_down_pool(
+        evidence=_passing_reentry_evidence(expected_net_profit_h=0.99)
+    )
+
+    assert _maybe_reenter_position(
+        pool, now=started + timedelta(minutes=31), latest_block=2
+    ) is False
+
+
+def test_reentry_fails_closed_when_gate_evidence_is_missing():
+    pool, started = _cooled_down_pool(
+        evidence={"regime_changed": True, "netcover": 2.0}
+    )
+
+    assert _maybe_reenter_position(
+        pool, now=started + timedelta(minutes=31), latest_block=2
+    ) is False
+
+
+def test_reentry_rejects_stale_or_wrong_position_evidence():
+    stale, started = _cooled_down_pool(evidence=_passing_reentry_evidence())
+    assert _maybe_reenter_position(
+        stale, now=started + timedelta(hours=2), latest_block=2
+    ) is False
+
+    wrong, started = _cooled_down_pool(
+        evidence=_passing_reentry_evidence(position_identity="another-position")
+    )
+    assert _maybe_reenter_position(
+        wrong, now=started + timedelta(minutes=31), latest_block=2
+    ) is False
+
+
+def test_reentry_evidence_refreshes_each_tick_and_bad_json_clears_it(tmp_path):
+    pool, _ = _cooled_down_pool(evidence=None)
+    allocation = tmp_path / "allocation.json"
+    fresh = _passing_reentry_evidence(
+        as_of="2026-08-09T00:31:00+00:00",
+        position_identity="position-1",
+    )
+    allocation.write_text(json.dumps({
+        "allocations": [{"pool": "0xPool", "reentry_evidence": fresh}]
+    }))
+
+    assert _refresh_reentry_evidence([pool], allocation) is True
+    assert pool["reentry_evidence"] == fresh
+
+    allocation.write_text("{broken")
+    assert _refresh_reentry_evidence([pool], allocation) is False
+    assert pool["reentry_evidence"] is None
+
+
+def test_risk_manual_release_cooldown_never_auto_reenters():
+    pool, started = _cooled_down_pool(
+        evidence=_passing_reentry_evidence(manual_released=True), hard_risk=True
+    )
+
+    assert pool["state"]["exit_policy_context"]["cooldown"][
+        "manual_release_required"
+    ] is True
+    assert _maybe_reenter_position(
+        pool, now=started + timedelta(days=2), latest_block=2
+    ) is False
+
+
+def test_reentry_net_capital_deducts_position_external_costs():
+    pool, started = _cooled_down_pool(evidence=_passing_reentry_evidence())
+    old_state = pool["state"]
+    old_state["attribution_costs"]["gas_cost"] = 7.0
+    old_state["attribution_costs"]["switching_cost"] = 3.0
+    old_mark = mark_position(old_state, pool["last_price"])
+    old_ledger = attribution_ledger(old_state, old_mark)
+    expected_net_capital = old_state["capital"] + old_ledger["pnl_vs_usdc"]
+
+    assert _maybe_reenter_position(
+        pool, now=started + timedelta(minutes=31), latest_block=2
+    ) is True
+
+    assert pool["state"]["capital"] == pytest.approx(expected_net_capital)
+    assert pool["realized_pnl_carry_usd"] == pytest.approx(
+        old_ledger["pnl_vs_usdc"]
+    )
+
+
+def test_reentry_creates_new_identity_baseline_and_gate_store_position(
+    tmp_path, monkeypatch
+):
+    pool, started = _cooled_down_pool(evidence=_passing_reentry_evidence())
+    old_state = pool["state"]
+    old_baseline = old_state["entry_baseline"]
+    store = GateStore(tmp_path / "scanner.db")
+    old_ledger = attribution_ledger(old_state, mark_position(old_state, pool["last_price"]))
+    _record_gate_observation(
+        store,
+        "fix-r2",
+        0,
+        {
+            "ledger_schema_version": LEDGER_SCHEMA_VERSION,
+            "ts_utc": started.isoformat(),
+            "rpc_health": "NORMAL",
+            "portfolio_nav_usd": old_ledger["entry_capital_usd"]
+            + old_ledger["pnl_vs_usdc"],
+            "by_pool": [{
+                "pool": pool["pool"],
+                "position_id": pool["position_id"],
+                "fee_prediction_usd": 1.0,
+                **old_ledger,
+            }],
+        },
+    )
+
+    tick_now = started + timedelta(minutes=31)
+    monkeypatch.setattr(runner, "_latest_block", lambda: 2)
+    monkeypatch.setattr(runner, "_now_utc", lambda: tick_now)
+    monkeypatch.setattr(
+        runner,
+        "_fetch_position_observations",
+        lambda pool_record, latest: (
+            [{"block": 2, "price": 0.95, "liquidity": L, "amount1": AMT1}],
+            1,
+        ),
+    )
+    heartbeat, _ = _tick([pool], last_ts=tick_now - timedelta(minutes=1))
+
+    assert pool["position_id"] != "position-1"
+    assert pool["reentry_of"] == "position-1"
+    assert pool["state"] is not old_state
+    assert pool["state"]["entry_baseline"] is not old_baseline
+    assert pool["state"]["anchor"] == pytest.approx(0.95)
+    assert pool["state"]["capital_time"]["elapsed_seconds"] == 0.0
+    assert pool["state"]["reward_quote"] == 0.0
+    assert heartbeat["by_pool"][0]["position_id"] == pool["position_id"]
+    assert heartbeat["by_pool"][0]["reentry_of"] == "position-1"
+    position_ledger = attribution_ledger(
+        pool["state"], mark_position(pool["state"], pool["last_price"])
+    )
+    expected_run_pnl = old_ledger["pnl_vs_usdc"] + position_ledger["pnl_vs_usdc"]
+    assert heartbeat["by_pool"][0]["position_pnl_vs_usdc"] == pytest.approx(
+        position_ledger["pnl_vs_usdc"]
+    )
+    assert heartbeat["by_pool"][0]["pnl_vs_usdc"] == pytest.approx(expected_run_pnl)
+    assert heartbeat["by_pool"][0]["run_entry_capital_usd"] == old_state["capital"]
+    assert heartbeat["portfolio_nav_usd"] == pytest.approx(
+        old_state["capital"] + expected_run_pnl, abs=0.01
+    )
+
+    gate_row = _record_gate_observation(store, "fix-r2", 1, heartbeat)
+    assert gate_row["shadow_net_pnl_usd"] == pytest.approx(expected_run_pnl)
+    with sqlite3.connect(store.path) as connection:
+        identities = connection.execute(
+            "SELECT position_identity FROM shadow_positions "
+            "WHERE source_run=? ORDER BY position_identity",
+            ("fix-r2",),
+        ).fetchall()
+    assert [row[0] for row in identities] == sorted(
+        ["position-1", pool["position_id"]]
+    )
+
+    _flush_state(str(tmp_path), [pool], 2)
+    final_pool = json.loads((tmp_path / "final_state.json").read_text())["pools"][0]
+    assert final_pool["position_id"] == pool["position_id"]
+    assert final_pool["reentry_of"] == "position-1"
+    assert final_pool["position_pnl_vs_usdc"] == pytest.approx(
+        position_ledger["pnl_vs_usdc"]
+    )
+    assert final_pool["pnl_vs_usdc"] == pytest.approx(expected_run_pnl)
 
 
 def test_strict_upper_stable_inventory_remove_only_never_swaps():
