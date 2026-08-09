@@ -58,5 +58,9 @@ tmp_sync_placeholder/
 *.tmp
 logs/
 
+# python bytecode
+__pycache__/
+*.py[cod]
+
 # go
 vendor/
