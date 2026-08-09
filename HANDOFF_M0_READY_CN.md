@@ -2,7 +2,7 @@
 
 **分支：** `feat/prd-v2.1-m0-shadow`
 
-**状态：** WP-00～10、M0R、M0P 与 M0F 漏斗可用性轮已完成验收；M0F 裁决为 **PASS / READY FOR COMMANDER REVIEW**，FIX-DOC/E2E 已收口于本提交。最终 scanner 为 `733→30→30→30→0`：stdout 的 `resolved=30` 是 resolver 输出数（含 14 条 fail-closed placeholder），canonical `read_funnel().resolved=16` 是成功 resolve 数；30 条 operational score 中 16 条 NetCover 有限，可计算覆盖率 `53.3%`。正式 R2 证据 `20260809_135500` 为同批 30 条、16 个可计算对、Spearman `0.473529`、top-K `7/10`，采用 `PROXY_NETCOVER` 排序。**14 天 shadow 尚未启动；16/30 覆盖是否达到业务上可接受水平由指挥官判断，只有指挥官认可覆盖并显式决定起算后，14 天计时才开始。§12.0 gate 仍为 `INSUFFICIENT_EVIDENCE`，M1 未放行。**
+**状态：** WP-00～10、M0R、M0P 与 M0F 漏斗可用性轮已完成验收；M0F 裁决为 **PASS / READY FOR COMMANDER REVIEW**，FIX-DOC/E2E 已收口。最终 scanner 为 `733→30→30→30→0`：stdout 的 `resolved=30` 是 resolver 输出数（含 14 条 fail-closed placeholder），canonical `read_funnel().resolved=16` 是成功 resolve 数；30 条 operational score 中 16 条 NetCover 有限，可计算覆盖率 `53.3%`。该 `16/30` 包含 `top` 从 10 扩至 30 的取样窗口扩大效应；衡量工程修复质量须采用同分母口径，即 M0P 的 `1/10` 到 M0F R1b 的 `4/10`。正式 R2 证据 `20260809_135500` 为同批 30 条、16 个可计算对、Spearman `r=0.473529`、`n=16`、`t=2.011613`、`df=14`、双尾 `p=0.063919`，top-K `7/10`；其 `r>=0.3` 仅达到预设业务排序阈值，不是统计显著性检验。结论应读作“边缘相关，证据不足以强推”，历史生产排序采用 `PROXY_NETCOVER` 的事实不变。**14 天 shadow 尚未启动；覆盖是否达到业务上可接受水平由指挥官判断，只有指挥官认可覆盖并显式决定起算后，14 天计时才开始。§12.0 gate 仍为 `INSUFFICIENT_EVIDENCE`，M1 未放行。**
 
 **发布边界：** 未合并、未推送远端；等待指挥官 review。本文不构成 M1 放行。
 
@@ -183,6 +183,7 @@ Shadow 五问在 14d 数据前均为 **PENDING_EVIDENCE**，不得提前作答�
 - `PRIMARY_CLOSED` 永远 shadow-only，不与 REGULAR 平均后转正。
 - `tvl_worsening` / `liquidity_worsening` 的硬动作是 v1 §23 入场拒绝，不进入存量仓 hard-risk 直通；存量仓不会仅因 TVL/流动性衰减自动退出，相关风险由入场筛选承担。
 - Reward persistence 缺失/无效/负值 fail-closed；`<6h` 不 ENTER，6–24h haircut，≥24h 才 trusted。
+- 14 条 `ambiguous_multi_factory_pool` 的工程状态是 `blocked_pending_authoritative_pool_mapping`：当前继续 fail-closed，但它们是等待权威 pool/factory 映射后可修复的阻断项，不应描述为不可恢复的“永久关闭”。数据库和历史报告中的 `PERMANENT_FAIL_CLOSED:ambiguous_multi_factory_pool` 是当次运行留下的原始历史字段，本轮不篡改。
 - Telegram 未配置 `LPBOT_TG_TOKEN/LPBOT_TG_CHAT` 时降级 stdout、不崩溃；尚未发送真实测试消息。按 D3，测试阶段沿用现有 token，但进入真钱阶段前必须在外部强制轮换；任何 token/chat 值禁止回写源码、命令行、报告、日志或 commit。
 - Base public RPC 与 Solana public RPC 都有可变限流；没有付费 fallback。任何付费 RPC 只允许生成建议报告，必须指挥官人工批准。
 - 当前 Solana coverage 是经 registry 的真实 Orca account-state runner tick，并已进入 ledger-v2/gate；它不解码 swap event，也不产生 fee evidence。M0 不允许借机实现 M1 TS sidecar。
@@ -228,13 +229,18 @@ Shadow 五问在 14d 数据前均为 **PENDING_EVIDENCE**，不得提前作答�
 
 完整分项数据、目标表、无效试跑与最终验收见 `M0F_ACCEPTANCE_20260809.md`。本节只保留交接所需结论。
 
-- **R1a / R1b：** 逐池确认旧 factory registry、非稳定币 USD quote/AERO 换汇深度、`range>=100%` 数学域与 multi-factory 歧义根因。R1b live 为 `733→10→10→10→0`、4/10 完整可计算；其中 NetCover 数字全部是 **ADD-1 前口径**，仅用于覆盖率验收，不是最终经济性。
+- **R1a / R1b：** 逐池确认旧 factory registry、非稳定币 USD quote/AERO 换汇深度、`range>=100%` 数学域与 multi-factory 歧义根因。同分母工程覆盖由 M0P 的 `1/10` 提升到 R1b live `733→10→10→10→0` 的 `4/10` 完整可计算；其中 NetCover 数字全部是 **ADD-1 前口径**，仅用于覆盖率验收，不是最终经济性。
 - **ADD-1：** FeeEV 固定锚定 168h 七日证据，并按目标区间的 canonical liquidity share 比例调整；三池 H30/H7 为 `0.491069 / 0.488743 / 0.489191`，接近 `sqrt(7/30)`。USDC-VVV 的 pre-ADD-1 / Task A / Task A+B NetCover 分别为 `0.040912955 / 0.040912955 / 0.005780933`，最终下降被诚实保留。
-- **R2 / ADD-2：** 只有 `reports/lp_funnel_rerank/20260809_135500/` 是正式证据：同批 30、完整对 16、Spearman `0.473529`、top-K `7/10`，recommendation 为 `PROXY_NETCOVER`。八个审计目标按 exact chain/project/symbol 扩展到所有 live 匹配，只作研究验证，绝不 allowlist 或绕过 coarse/final gate；`111500`、`113000`、`114000` 三轮已显式作废。
+- **R2 / ADD-2：** 只有 `reports/lp_funnel_rerank/20260809_135500/` 是正式证据：同批 30、完整对 16、Spearman `r=0.473529`、`n=16`、`t=2.011613`、`df=14`、双尾 `p=0.063919`，top-K `7/10`。`r>=0.3` 是业务排序阈值而非显著性检验；因 `p>0.05`，结论降级为“边缘相关，证据不足以强推”。历史 recommendation/生产排序为 `PROXY_NETCOVER` 的事实不变。八个审计目标按 exact chain/project/symbol 扩展到所有 live 匹配，只作研究验证，绝不 allowlist 或绕过 coarse/final gate；`111500`、`113000`、`114000` 三轮已显式作废。
 - **P2：** panel 默认 queue/thread `16/16`，工作线程有界、过载 503、弱/重复 token 拒绝并提示 `openssl rand -hex 32`；真实 smoke 为 401/200/405/404、弱 token exit 1、无残留进程。
 - **R6：** PASSIVE 的 range-bound/neutral/trending 映射 `168/336/720h`；TACTICAL 映射 `6/24/72h`，12h 只可由固定拖累逻辑从 6h 向上选择。未知或跨 profile 证据 fail-closed。
 - **R7：** `.gitignore` 已覆盖 Python bytecode，90 个历史跟踪 `.pyc` 已移出 index，`git ls-files '*pyc'` 为 0。
-- **最终 E2E：** scanner as-of `2026-08-09T13:51:03.533470+00:00`，`733→30→30→30→0`；stdout 的 30 个 resolver 输出包含 14 个 fail-closed placeholder，canonical `read_funnel()` 成功 resolve 16。16/30 finite NetCover、14/30 `ambiguous_multi_factory_pool` 永久关闭、30/30 使用 `PROXY_NETCOVER`。MSUSD-USDC 虽 NetCover `1.010796` 数学 PASS，仍因 `REWARD_PERSISTENCE_MISSING` 与 stable gate false 保持 `vetted/accepted=false`；DB、`score_json`、panel 均显式给出 `ENTRY_INELIGIBLE:REWARD_PERSISTENCE_MISSING`，最终 menu 为空。正式最终证据为 `reports/lp_m0f_acceptance/20260809_reason_fixed/`。
+- **最终 E2E：** scanner as-of `2026-08-09T13:51:03.533470+00:00`，`733→30→30→30→0`；stdout 的 30 个 resolver 输出包含 14 个 fail-closed placeholder，canonical `read_funnel()` 成功 resolve 16。`16/30` finite NetCover 包含 `top=10→30` 的取样窗口扩大效应；工程修复质量仍以同分母 `1/10→4/10` 衡量。14/30 `ambiguous_multi_factory_pool` 当前为 `blocked_pending_authoritative_pool_mapping` 并继续 fail-closed，不代表不可修复的永久关闭；30/30 使用 `PROXY_NETCOVER`。MSUSD-USDC 虽 NetCover `1.010796` 数学 PASS，仍因 `REWARD_PERSISTENCE_MISSING` 与 stable gate false 保持 `vetted/accepted=false`；DB、`score_json`、panel 均显式给出 `ENTRY_INELIGIBLE:REWARD_PERSISTENCE_MISSING`，最终 menu 为空。正式最终证据为 `reports/lp_m0f_acceptance/20260809_reason_fixed/`。
 - **最终测试与安全：** collection `2843`、0 error；全量 `2829 passed, 14 skipped in 130.54s`。panel 真实 smoke 401/200/405/404、弱 token exit 1、强服务 Ctrl-C exit 0、无残留，503 专项 `1 passed, 31 deselected`。gate 为 `INSUFFICIENT_EVIDENCE`、0 identities / 0 roots、未关闭严重 RPC 0。四个阈值保护文件、Go、long_horizon 源码和 M1 源码均 0 diff；danger/dependency 0，frozen 今日 mtime 0，PID 1349731 存活且 cwd 正确。
 
 M0F 没有放宽 NetCover/风险阈值，没有启动 daemon 或 14 天计时，没有新增钱包、签名、广播、付费端点或 M1 执行路径。最终裁决为 **PASS / READY FOR COMMANDER REVIEW**；`accepted=0` 是诚实结果，不等于已获准起跑。16/30 覆盖是否可接受、是否起算 14 天 shadow、合并、推送与 M1 放行均由指挥官独立决定。
+
+## 10. M0N 提交流程纪律（FIX-N5）
+
+- 生产代码提交 `3d32989 m0n(fix-N1): correct horizon-scaled LP income` 与 `8a82002 m0n(fix-N2-N4): add reward evidence tracks and Solana fail-closed` 均使用 `FIX` 前缀，与其代码变更性质一致。
+- 后续 `DOC` 提交只允许包含文档与报告，不得夹带生产代码或测试变更。

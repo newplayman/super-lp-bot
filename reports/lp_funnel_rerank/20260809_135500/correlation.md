@@ -2,14 +2,17 @@
 
 ## Result
 
-Proxy evidence is **VALID**. Production recommendation: `PROXY_NETCOVER`.
+Proxy evidence met the predeclared business-validity rule, but the statistical evidence is **marginal and insufficient to strongly recommend rollout**（边缘相关，证据不足以强推）. The historical production recommendation recorded by this run was `PROXY_NETCOVER`; this wording correction does not change runtime logic or rewrite the run.
 
 - same research batch: `30` rows
 - fully calculable proxy/true pairs: `16` (only these participate in correlation)
-- Spearman: `0.473529`; validity requires `>= 0.3` and at least `8` calculable pairs
+- Spearman: `r=0.473529411765`, `n=16`, `t=2.011613379223`, `df=14`, two-sided `p=0.063919071827`
+- statistical interpretation: `p>0.05`, so this cohort does not meet the conventional 0.05 significance level; `r>=0.3` and at least `8` calculable pairs is a business ranking threshold, not a statistical significance test
 - top-K hit: `7/10` = `0.700000`
 - top-K definition: intersection(proxy descending top-K, true NetCover descending top-K) / min(K, fully calculable same-batch pairs)
 - correlation retains the full in-memory selected-lead cohort; SQLite's operational unique resolved-pool key is not allowed to collapse duplicate DefiLlama leads first
+
+The legacy terminal outcome string `PERMANENT_FAIL_CLOSED:ambiguous_multi_factory_pool` is preserved below as raw evidence from this historical run. Its engineering interpretation is `blocked_pending_authoritative_pool_mapping`: those 14 rows remain fail-closed until an authoritative pool/factory mapping is available, but they are not known to be irrecoverably closed.
 
 ## Proxy formula (zero RPC)
 

@@ -30,7 +30,13 @@
     "fully_calculable_pairs": 16,
     "excluded_missing_proxy_or_true_netcover": 14,
     "spearman": 0.47352941176470587,
+    "t_statistic": 2.0116133792234696,
+    "degrees_of_freedom": 14,
+    "two_sided_p_value": 0.063919071827,
+    "statistically_significant_at_0_05": false,
+    "statistical_interpretation": "marginal_correlation_insufficient_to_strongly_recommend",
     "validity_threshold": 0.3,
+    "validity_threshold_semantics": "business_ranking_threshold_not_statistical_significance_test",
     "minimum_correlation_pairs": 8,
     "proxy_valid": true,
     "production_ranking": "PROXY_NETCOVER",
@@ -187,6 +193,11 @@
     }
   ],
   "target_identity_limitation": "audit table has no pool ids; exact chain/project/symbol labels expand to all live matching rows; stale income APR is never used to guess identity",
+  "ambiguous_multi_factory_interpretation": {
+    "affected_same_batch_records": 14,
+    "engineering_status": "blocked_pending_authoritative_pool_mapping",
+    "note": "Historical PERMANENT_FAIL_CLOSED terminal outcome strings are preserved as raw run evidence; these rows remain fail-closed but are not known to be irrecoverably closed."
+  },
   "rpc_budget": {
     "top_n": 47,
     "n_windows": 6,
