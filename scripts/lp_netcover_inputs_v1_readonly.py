@@ -45,11 +45,11 @@ PROFILE_HORIZONS_HOURS = {
     "TACTICAL": frozenset({6.0, 12.0, 24.0, 72.0}),
 }
 
-# fee_apr_7d is an annualized observation over a seven-day evidence window.  We
-# therefore anchor the USD FeeEV to that fixed window, then adjust only the
-# position's raw-liquidity share for the vol-sized range selected at target H.
-# Target H is deliberately *not* multiplied into FeeEV: doing both H and
-# 1/range(H) would leave a free sqrt(H) score lever, contrary to ADD-1.
+# fee_apr_7d is an annualized observation over a seven-day evidence window.  The
+# reference horizon below anchors only the range/share comparison.  Both fees
+# and CL gauge emissions accrue over the actual holding horizon and are
+# allocated by the position's in-range liquidity weight, so both income terms
+# retain H/8760 and receive the same share(range(H))/share(range(H_ref)) factor.
 FEE_EVIDENCE_REFERENCE_HOURS = 7.0 * 24.0
 
 # ADD-1 task B: above this annualized fixed drag, move only upward through the
@@ -87,9 +87,9 @@ INPUT_SEMANTICS = {
 
 INPUT_SOURCES = {
     "fee_ev_usd": (
-        "model_estimate:7d_fee_evidence_anchor_vol_range_raw_liquidity_share"
+        "model_estimate:fee_apr_horizon_vol_range_raw_liquidity_share"
     ),
-    "reward_ev_usd": "model_estimate:reward_apr_horizon",
+    "reward_ev_usd": "model_estimate:reward_apr_horizon_vol_range_raw_liquidity_share",
     "il_ev_usd": "model_estimate:il_apr_horizon_with_sigma_evidence",
     "entry_cost_usd": "model_estimate:lp_swap_cost_model_v1_readonly._swap_components",
     "exit_cost_usd": "model_estimate:lp_swap_cost_model_v1_readonly._swap_components",
@@ -441,7 +441,7 @@ def _range_aware_fee_ev(
             * fee_apr_pct
             * fee_haircut
             / 100.0
-            * (FEE_EVIDENCE_REFERENCE_HOURS / HOURS_PER_YEAR)
+            * (horizon_hours / HOURS_PER_YEAR)
         )
         fee_ev = fee_anchor * share_ratio
     except (ArithmeticError, OverflowError, ValueError):
@@ -668,9 +668,16 @@ def assemble_netcover_inputs(
     reward_apr = _first_number(record, "reward_apr", "apyReward")
     category = reward_category(record) if reward_apr not in (None, 0.0) else None
     haircut = REWARD_HAIRCUTS.get(category) if category is not None else None
+    share_ratio = fee_capture_metadata["fee_capture_share_ratio"]
+    # Slipstream gauge emissions, like fees, are distributed by in-range CL
+    # liquidity weight.  Reward haircut remains an engine concern; this input
+    # assembler applies only actual elapsed time and the shared range penalty.
     reward_ev = (
-        size * reward_apr / 100.0 * fraction
-        if reward_apr is not None and fraction is not None and (reward_apr == 0.0 or haircut is not None)
+        size * reward_apr / 100.0 * fraction * share_ratio
+        if reward_apr is not None
+        and fraction is not None
+        and share_ratio is not None
+        and (reward_apr == 0.0 or haircut is not None)
         else None
     )
 

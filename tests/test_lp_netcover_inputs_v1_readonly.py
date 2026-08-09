@@ -88,6 +88,8 @@ def test_missing_sigma_or_depth_stays_none_and_gate_rejects_fail_closed():
             last_swap_price_token1_per_token0=None,
         )
     )
+    assert missing["fee_ev_usd"] is None
+    assert missing["reward_ev_usd"] is None
     assert missing["il_ev_usd"] is None
     assert missing["entry_cost_usd"] is None
     assert missing["exit_cost_usd"] is None
@@ -378,15 +380,15 @@ def test_horizon_follows_profile_discrete_set(profile, hours):
     assert out["holding_horizon_hours"] == hours
 
 
-def test_horizon_changes_range_aware_fee_density_and_invalid_cross_profile_h_is_missing():
+def test_horizon_changes_range_aware_income_and_invalid_cross_profile_h_is_missing():
     six = assemble_netcover_inputs(
         _complete(profile="TACTICAL", holding_horizon_days=None, holding_horizon_hours=6)
     )
     day = assemble_netcover_inputs(
         _complete(profile="TACTICAL", holding_horizon_days=None, holding_horizon_hours=24)
     )
-    assert 0.0 < day["fee_ev_usd"] < six["fee_ev_usd"]
-    assert day["fee_ev_usd"] != pytest.approx(six["fee_ev_usd"] * 4.0)
+    assert day["fee_ev_usd"] > six["fee_ev_usd"] > 0.0
+    assert day["fee_ev_usd"] < six["fee_ev_usd"] * 4.0
     assert day["il_ev_usd"] == pytest.approx(six["il_ev_usd"] * 4.0)
     invalid = assemble_netcover_inputs(
         _complete(profile="PASSIVE", holding_horizon_days=None, holding_horizon_hours=24)
@@ -395,16 +397,19 @@ def test_horizon_changes_range_aware_fee_density_and_invalid_cross_profile_h_is_
     assert invalid["fee_ev_usd"] is None
 
 
-def test_fee_ev_h7_h30_tracks_canonical_raw_liquidity_share_not_linear_time():
+def test_fee_ev_h7_h30_keeps_time_factor_and_canonical_share_ratio():
     h7 = assemble_netcover_inputs(_complete(holding_horizon_days=7))
     h30 = assemble_netcover_inputs(_complete(holding_horizon_days=30))
 
     observed = h30["fee_ev_usd"] / h7["fee_ev_usd"]
-    expected = h30["fee_capture_share_ratio"] / h7["fee_capture_share_ratio"]
-    inverse_sqrt = (30.0 / 7.0) ** -0.5
+    expected_share_ratio = (
+        h30["fee_capture_share_ratio"] / h7["fee_capture_share_ratio"]
+    )
+    expected = (30.0 / 7.0) * expected_share_ratio
+    square_root_growth = (30.0 / 7.0) ** 0.5
     assert observed == pytest.approx(expected)
-    assert observed == pytest.approx(inverse_sqrt, rel=0.25)
-    assert observed < 1.0
+    assert observed == pytest.approx(square_root_growth, rel=0.25)
+    assert 1.0 < observed < 30.0 / 7.0
     assert observed != pytest.approx(30.0 / 7.0)
     assert h7["fee_capture_reference_horizon_hours"] == 168.0
     assert h30["fee_capture_target_range_pct"] > h7["fee_capture_target_range_pct"]
@@ -413,15 +418,58 @@ def test_fee_ev_h7_h30_tracks_canonical_raw_liquidity_share_not_linear_time():
     assert h30["fee_capture_haircut"] == 0.65
 
 
-def test_doubling_h_does_not_double_fee_ev():
+def test_fee_ev_time_factor_and_share_ratio_have_independent_exact_assertions():
     h6 = assemble_netcover_inputs(
         _complete(profile="TACTICAL", holding_horizon_days=None, holding_horizon_hours=6)
     )
     h12 = assemble_netcover_inputs(
         _complete(profile="TACTICAL", holding_horizon_days=None, holding_horizon_hours=12)
     )
-    assert h12["fee_ev_usd"] < h6["fee_ev_usd"]
-    assert h12["fee_ev_usd"] != pytest.approx(2.0 * h6["fee_ev_usd"])
+    expected_without_share = 50.0 * 10.0 / 100.0 * 0.65 * (12.0 / 8760.0)
+    assert h12["fee_ev_usd"] == pytest.approx(
+        expected_without_share * h12["fee_capture_share_ratio"]
+    )
+    assert h12["fee_ev_usd"] / h6["fee_ev_usd"] == pytest.approx(
+        2.0
+        * h12["fee_capture_share_ratio"]
+        / h6["fee_capture_share_ratio"]
+    )
+    assert h6["fee_capture_share_ratio"] != pytest.approx(
+        h12["fee_capture_share_ratio"]
+    )
+
+
+def test_reward_ev_time_factor_and_share_ratio_have_independent_exact_assertions():
+    common = {
+        "profile": "TACTICAL",
+        "holding_horizon_days": None,
+        "reward_apr": 12.0,
+        "reward_category": "protocol",
+    }
+    h6 = assemble_netcover_inputs(_complete(**common, holding_horizon_hours=6))
+    h12 = assemble_netcover_inputs(_complete(**common, holding_horizon_hours=12))
+    expected_without_share = 50.0 * 12.0 / 100.0 * (12.0 / 8760.0)
+    assert h12["reward_ev_usd"] == pytest.approx(
+        expected_without_share * h12["fee_capture_share_ratio"]
+    )
+    assert h12["reward_ev_usd"] / h6["reward_ev_usd"] == pytest.approx(
+        2.0
+        * h12["fee_capture_share_ratio"]
+        / h6["fee_capture_share_ratio"]
+    )
+
+
+def test_missing_pair_sigma_fails_closed_for_both_income_terms():
+    out = assemble_netcover_inputs(
+        _complete(
+            sigma_pair=None,
+            sigma_daily=None,
+            reward_apr=12.0,
+            reward_category="protocol",
+        )
+    )
+    assert out["fee_ev_usd"] is None
+    assert out["reward_ev_usd"] is None
 
 
 @pytest.mark.parametrize(
