@@ -13,6 +13,7 @@ Properties asserted:
 from __future__ import annotations
 
 import json
+import ast
 import re
 import subprocess
 import sys
@@ -463,16 +464,20 @@ def test_rpc_registry_script_no_signer_call() -> None:
 
 
 def test_rpc_registry_script_url_redaction_policy() -> None:
-    """Script should write endpoint_id + host_hash (not full URL) to artifacts."""
-    src = RPC_REG.read_text()
-    # script uses endpoint_id + host_hash + source_type fields
-    assert "host_hash" in src
-    assert "endpoint_id" in src
-    assert "source_type" in src
-    # The script never writes the full URL to CSV/JSON outputs
-    # Check that the function that writes CSV/JSON only uses the structured fields
-    assert "_hash_host" in src
-    assert "endpoint_id" in src
+    """The retired thin shell must not retain one-off redaction behavior."""
+    tree = ast.parse(RPC_REG.read_text())
+    function_names = {
+        node.name for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)
+    }
+    assert "_hash_host" not in function_names
+    assert "probe_endpoint" not in function_names
+    assert "write_artifacts" not in function_names
+
+    from scripts import lp_rpc_pool_v1_readonly as canonical
+    from scripts import lp_solana_readonly_rpc_registry_v1 as legacy
+
+    assert legacy.CHAINS is canonical.CHAINS
+    assert legacy.RpcPool is canonical.RpcPool
 
 
 def test_rpc_registry_help() -> None:
