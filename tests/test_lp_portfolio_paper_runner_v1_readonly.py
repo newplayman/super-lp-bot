@@ -8,6 +8,7 @@ import pytest
 
 from scripts.lp_portfolio_paper_runner_v1_readonly import (
     LEDGER_SCHEMA_VERSION,
+    MAX_REENTRIES_PER_ROOT,
     _ensure_position_cooldown,
     _flush_state,
     _maybe_reenter_position,
@@ -736,6 +737,76 @@ def test_reentry_creates_new_identity_baseline_and_gate_store_position(
         position_ledger["pnl_vs_usdc"]
     )
     assert final_pool["pnl_vs_usdc"] == pytest.approx(expected_run_pnl)
+
+
+def test_reentry_limit_rejects_fourth_attempt_fail_closed_and_records_reason(
+    tmp_path,
+):
+    pool, started = _cooled_down_pool(evidence=_passing_reentry_evidence())
+    pool["_position_root_id"] = "position-1"
+    pool["_reentry_sequence"] = MAX_REENTRIES_PER_ROOT
+
+    assert _maybe_reenter_position(
+        pool, now=started + timedelta(minutes=31), latest_block=2
+    ) is False
+    assert pool["position_id"] == "position-1"
+    assert pool["state"]["exited"] is not None
+    assert pool["reentry_rejection"] == {
+        "reason": "MAX_REENTRIES_PER_ROOT_REACHED",
+        "root_identity": "position-1",
+        "observed_sequence": 3,
+        "limit": 3,
+    }
+
+    _flush_state(str(tmp_path), [pool], 1)
+    final_pool = json.loads((tmp_path / "final_state.json").read_text())["pools"][0]
+    assert final_pool["reentry_rejection"] == pool["reentry_rejection"]
+
+
+def test_third_reentry_remains_allowed_for_backward_compatibility():
+    pool, started = _cooled_down_pool(evidence=_passing_reentry_evidence())
+    pool["_position_root_id"] = "position-1"
+    pool["_reentry_sequence"] = MAX_REENTRIES_PER_ROOT - 1
+
+    assert _maybe_reenter_position(
+        pool, now=started + timedelta(minutes=31), latest_block=2
+    ) is True
+    assert pool["position_id"] == "position-1:reentry:3"
+    assert pool["_reentry_sequence"] == 3
+    assert "reentry_rejection" not in pool
+
+
+def test_reentry_limit_survives_restart_from_persisted_position_identity():
+    pool, started = _cooled_down_pool(evidence=_passing_reentry_evidence())
+    pool["position_id"] = "position-1:reentry:3"
+    pool["reentry_evidence"]["position_identity"] = pool["position_id"]
+    pool["state"]["exit_policy_context"]["cooldown"][
+        "position_identity"
+    ] = pool["position_id"]
+
+    assert "_reentry_sequence" not in pool
+    assert _maybe_reenter_position(
+        pool, now=started + timedelta(minutes=31), latest_block=2
+    ) is False
+    assert pool["reentry_rejection"] == {
+        "reason": "MAX_REENTRIES_PER_ROOT_REACHED",
+        "root_identity": "position-1",
+        "observed_sequence": 3,
+        "limit": 3,
+    }
+
+
+@pytest.mark.parametrize("bad_sequence", ["bad", -1])
+def test_invalid_reentry_sequence_fails_closed_with_reason(bad_sequence):
+    pool, started = _cooled_down_pool(evidence=_passing_reentry_evidence())
+    pool["_reentry_sequence"] = bad_sequence
+
+    assert _maybe_reenter_position(
+        pool, now=started + timedelta(minutes=31), latest_block=2
+    ) is False
+    assert pool["reentry_rejection"]["reason"] == (
+        "INVALID_REENTRY_SEQUENCE_FAIL_CLOSED"
+    )
 
 
 def test_strict_upper_stable_inventory_remove_only_never_swaps():

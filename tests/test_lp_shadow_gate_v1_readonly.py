@@ -9,8 +9,10 @@ import scripts.lp_portfolio_paper_runner_v1_readonly as runner
 
 from scripts.lp_shadow_gate_v1_readonly import (
     GateStore,
+    MIN_UNIQUE_ROOT_POOLS,
     build_gate_report_markdown,
     evaluate_shadow_gate,
+    root_position_identity,
 )
 
 
@@ -145,6 +147,7 @@ def test_gate_report_applies_exact_section_12_thresholds_and_keeps_evidence(tmp_
     assert report["thresholds"] == {
         "minimum_shadow_days": 14.0,
         "minimum_simulated_positions": 50,
+        "minimum_unique_root_pools": 5,
         "maximum_fee_prediction_error_pct": 20.0,
         "minimum_shadow_net_pnl_usd_exclusive": 0.0,
         "maximum_simulated_drawdown_pct": 8.0,
@@ -155,6 +158,67 @@ def test_gate_report_applies_exact_section_12_thresholds_and_keeps_evidence(tmp_
     assert "fee_prediction_error_pct = abs(actual - predicted) / predicted * 100" in markdown
     assert "不授权 M1" in markdown
     json.dumps(report, allow_nan=False)
+
+
+def test_sixty_reentries_of_one_pool_cannot_satisfy_position_coverage_gate(tmp_path):
+    store = GateStore(tmp_path / "scanner.db")
+    pools = []
+    for sequence in range(60):
+        pool = _pool(sequence)
+        pool["position_id"] = f"same-root:reentry:{sequence + 1}"
+        pools.append(pool)
+    for tick, as_of in enumerate(
+        ("2026-07-25T00:00:00+00:00", "2026-08-08T00:00:00+00:00")
+    ):
+        store.record_heartbeat(
+            "run-a", tick,
+            _heartbeat(as_of=as_of, pools=pools, net_pnl=100.0),
+        )
+
+    report = evaluate_shadow_gate(store.path)
+    positions = report["checks"]["simulated_positions"]
+
+    assert positions["value"] == 60
+    assert positions["unique_root_pools"] == 1
+    assert positions["status"] == "FAIL"
+    assert report["position_coverage"] == {
+        "unique_position_identities": 60,
+        "unique_root_pools": 1,
+        "root_pool_rule": "strip trailing :reentry:N suffixes",
+    }
+    assert report["overall_status"] == "FAIL"
+    markdown = build_gate_report_markdown(report)
+    assert "unique position identities = 60" in markdown
+    assert "unique root pools = 1" in markdown
+
+
+def test_root_pool_normalization_and_five_pool_coverage_remain_compatible(tmp_path):
+    assert root_position_identity("pool-a:reentry:2") == "pool-a"
+    assert root_position_identity("pool-a:reentry:2:reentry:3") == "pool-a"
+    assert root_position_identity("pool-a:reentry:not-a-number") == (
+        "pool-a:reentry:not-a-number"
+    )
+    assert MIN_UNIQUE_ROOT_POOLS == 5
+
+    store = GateStore(tmp_path / "scanner.db")
+    pools = []
+    for root in range(5):
+        for sequence in range(10):
+            pool = _pool(root * 10 + sequence)
+            pool["position_id"] = f"pool-{root}:reentry:{sequence + 1}"
+            pools.append(pool)
+    for tick, as_of in enumerate(
+        ("2026-07-25T00:00:00+00:00", "2026-08-08T00:00:00+00:00")
+    ):
+        store.record_heartbeat(
+            "run-a", tick,
+            _heartbeat(as_of=as_of, pools=pools, net_pnl=100.0),
+        )
+
+    check = evaluate_shadow_gate(store.path)["checks"]["simulated_positions"]
+    assert check["value"] == 50
+    assert check["unique_root_pools"] == 5
+    assert check["status"] == "PASS"
 
 
 def test_gate_evaluation_fails_closed_without_observations(tmp_path):

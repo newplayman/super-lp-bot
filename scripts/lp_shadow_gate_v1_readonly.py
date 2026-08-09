@@ -20,6 +20,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import re
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
@@ -33,10 +34,14 @@ SECONDS_PER_DAY = 86_400.0
 # binary floating-point cancellation in the paper ledger.  The gate preserves
 # the raw sum for audit, but normalizes it to zero before applying PnL > 0.
 USD_NEAR_ZERO_TOLERANCE = 1e-9
+MIN_UNIQUE_ROOT_POOLS = 5
+
+_REENTRY_SUFFIX = re.compile(r"(?::reentry:\d+)+$")
 
 GATE_THRESHOLDS = {
     "minimum_shadow_days": 14.0,
     "minimum_simulated_positions": 50,
+    "minimum_unique_root_pools": MIN_UNIQUE_ROOT_POOLS,
     "maximum_fee_prediction_error_pct": 20.0,
     "minimum_shadow_net_pnl_usd_exclusive": 0.0,
     "maximum_simulated_drawdown_pct": 8.0,
@@ -134,6 +139,12 @@ def _position_identity(pool: Mapping[str, Any], index: int) -> str:
     if symbol:
         return f"symbol:{symbol}:{index}"
     raise ValueError("paper position lacks position_id, pool, and symbol")
+
+
+def root_position_identity(position_identity: Any) -> str:
+    """Collapse runner re-entry identities to their original pool identity."""
+    identity = str(position_identity)
+    return _REENTRY_SUFFIX.sub("", identity)
 
 
 class GateStore:
@@ -320,7 +331,14 @@ def evaluate_shadow_gate(path: str | Path, *, as_of: Any = None) -> dict[str, An
         bounds = connection.execute(
             "SELECT min(as_of), max(as_of) FROM shadow_gate_observations"
         ).fetchone()
-        position_count = int(connection.execute("SELECT count(*) FROM shadow_positions").fetchone()[0])
+        position_rows = connection.execute(
+            "SELECT position_identity FROM shadow_positions"
+        ).fetchall()
+        position_count = len(position_rows)
+        unique_root_pools = len({
+            root_position_identity(row["position_identity"])
+            for row in position_rows
+        })
         latest = connection.execute(
             """
             SELECT observation.* FROM shadow_gate_observations observation
@@ -370,8 +388,18 @@ def evaluate_shadow_gate(path: str | Path, *, as_of: Any = None) -> dict[str, An
         },
         "simulated_positions": {
             "value": position_count,
-            "threshold": ">= 50 unique (source_run, position_identity)",
-            "status": _status(position_count if latest else None, lambda v: v >= 50),
+            "unique_root_pools": unique_root_pools,
+            "threshold": (
+                ">= 50 unique (source_run, position_identity) AND "
+                f">= {MIN_UNIQUE_ROOT_POOLS} unique root pools"
+            ),
+            "status": _status(
+                (position_count, unique_root_pools) if latest else None,
+                lambda values: (
+                    values[0] >= GATE_THRESHOLDS["minimum_simulated_positions"]
+                    and values[1] >= MIN_UNIQUE_ROOT_POOLS
+                ),
+            ),
         },
         "fee_prediction_error_pct": {
             "value": fee_error,
@@ -407,6 +435,11 @@ def evaluate_shadow_gate(path: str | Path, *, as_of: Any = None) -> dict[str, An
             "usd_near_zero_tolerance": USD_NEAR_ZERO_TOLERANCE,
             "rule": "abs(raw_shadow_net_pnl_usd) <= tolerance normalizes to 0 before >0 gate",
         },
+        "position_coverage": {
+            "unique_position_identities": position_count,
+            "unique_root_pools": unique_root_pools,
+            "root_pool_rule": "strip trailing :reentry:N suffixes",
+        },
         "checks": checks,
         "overall_status": overall,
         "authorization": "evidence_only_not_M1_authorization",
@@ -424,6 +457,16 @@ def build_gate_report_markdown(report: Mapping[str, Any]) -> str:
         "Fee formula: `fee_prediction_error_pct = abs(actual - predicted) / predicted * 100`。",
         "缺失、非有限、零或负预测值均记为 `UNKNOWN`，绝不记作 0% 误差。",
         "模拟仓按唯一 `(source_run, position_identity)` 计数，重复 tick 不增加仓数。",
+        (
+            "覆盖广度按去除尾部 `:reentry:N` 后缀的 root pool 计数；仓位闸同时要求 "
+            f"identity >= 50 与 root pool >= {MIN_UNIQUE_ROOT_POOLS}。"
+        ),
+        (
+            "当前覆盖：unique position identities = "
+            f"{report.get('position_coverage', {}).get('unique_position_identities', 0)}；"
+            "unique root pools = "
+            f"{report.get('position_coverage', {}).get('unique_root_pools', 0)}。"
+        ),
         (
             f"PnL gate 精度：`abs(raw shadow net PnL) <= "
             f"{USD_NEAR_ZERO_TOLERANCE:g} USD` 在判定前保守归零；原值保留在 `raw_value`。"

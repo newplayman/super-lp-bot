@@ -25,6 +25,7 @@ from dataclasses import asdict
 import json
 import math
 import os
+import re
 import signal
 import sys
 import time
@@ -88,6 +89,7 @@ from scripts.lp_tg_alerter_v1_readonly import (  # noqa: E402
 from scripts.lp_shadow_gate_v1_readonly import (  # noqa: E402
     DEFAULT_DB_PATH as DEFAULT_GATE_DB_PATH,
     GateStore,
+    root_position_identity,
 )
 
 # Rotating free-public-RPC pool, set up in run(). Until then, calls fall back to
@@ -102,6 +104,8 @@ ORCA_WHIRLPOOL_PROTOCOL = "orca_whirlpool"
 
 LEDGER_SCHEMA_VERSION = 2
 REENTRY_EVIDENCE_MAX_AGE_SECONDS = 3600.0
+MAX_REENTRIES_PER_ROOT = 3
+_REENTRY_IDENTITY_SUFFIX = re.compile(r":reentry:(\d+)$")
 ATTRIBUTION_FIELDS = (
     "entry_capital_usd", "hodl_nav", "lp_nav_ex_fee",
     "il_vs_hodl_usd", "il_vs_hodl_pct", "swap_fee_income",
@@ -1408,8 +1412,38 @@ def _maybe_reenter_position(pool_record, *, now, latest_block):
     if not isinstance(cooldown, dict):
         return False
 
-    evidence = pool_record.get("reentry_evidence")
     old_identity = _paper_position_identity(pool_record)
+    # Derive the root and at least the current sequence from the persisted
+    # identity.  This prevents a runner restart (which loses private in-memory
+    # keys) from resetting the anti-churn allowance back to zero.
+    root_identity = root_position_identity(old_identity)
+    suffix = _REENTRY_IDENTITY_SUFFIX.search(old_identity)
+    identity_sequence = int(suffix.group(1)) if suffix else 0
+    try:
+        private_sequence = int(
+            pool_record.get("_reentry_sequence", identity_sequence)
+        )
+    except (TypeError, ValueError):
+        private_sequence = -1
+    if private_sequence < 0:
+        pool_record["reentry_rejection"] = {
+            "reason": "INVALID_REENTRY_SEQUENCE_FAIL_CLOSED",
+            "root_identity": root_identity,
+            "observed_sequence": pool_record.get("_reentry_sequence"),
+            "limit": MAX_REENTRIES_PER_ROOT,
+        }
+        return False
+    prior_reentries = max(private_sequence, identity_sequence)
+    if prior_reentries >= MAX_REENTRIES_PER_ROOT:
+        pool_record["reentry_rejection"] = {
+            "reason": "MAX_REENTRIES_PER_ROOT_REACHED",
+            "root_identity": root_identity,
+            "observed_sequence": prior_reentries,
+            "limit": MAX_REENTRIES_PER_ROOT,
+        }
+        return False
+
+    evidence = pool_record.get("reentry_evidence")
     if not _reentry_evidence_is_current(
         evidence,
         cooldown=cooldown,
@@ -1468,8 +1502,8 @@ def _maybe_reenter_position(pool_record, *, now, latest_block):
     if capital is None or capital <= 0.0:
         return False
 
-    root_identity = str(pool_record.setdefault("_position_root_id", old_identity))
-    sequence = int(pool_record.get("_reentry_sequence", 0)) + 1
+    pool_record["_position_root_id"] = root_identity
+    sequence = prior_reentries + 1
     new_identity = f"{root_identity}:reentry:{sequence}"
     config = _policy_config(state)
     costs = state.get("attribution_costs", {})
@@ -1513,6 +1547,7 @@ def _maybe_reenter_position(pool_record, *, now, latest_block):
     pool_record["_reentry_sequence"] = sequence
     pool_record["last_reentry_evidence"] = dict(evidence)
     pool_record["reentry_evidence"] = None
+    pool_record.pop("reentry_rejection", None)
     return True
 
 
@@ -1656,6 +1691,8 @@ def _tick(book, *, last_ts, alerter=None):
             pool_output["position_id"] = str(p["position_id"])
         if p.get("reentry_of"):
             pool_output["reentry_of"] = str(p["reentry_of"])
+        if p.get("reentry_rejection"):
+            pool_output["reentry_rejection"] = dict(p["reentry_rejection"])
         if p.get("solana_adapter"):
             observation = p.get("last_observation") or {}
             pool_output.update({
@@ -1813,6 +1850,8 @@ def _flush_state(run_dir, book, tick):
         }
         if p.get("reentry_of"):
             pool_snapshot["reentry_of"] = str(p["reentry_of"])
+        if p.get("reentry_rejection"):
+            pool_snapshot["reentry_rejection"] = dict(p["reentry_rejection"])
         pool_snapshot.update({
             "position_pnl_vs_usdc": position_pnl,
             "run_entry_capital_usd": run_capital,
