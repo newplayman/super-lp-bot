@@ -353,7 +353,10 @@ def _score_row(rec: Mapping[str, Any]) -> Dict[str, Any]:
     netcover_pass = bool(
         _first(rec, "netcover_pass", "net_cover_pass", "netcover_ok", "accepted")
     )
-    accepted = vetted and netcover_pass
+    # Defense in depth: a malicious/stale adapter cannot persist acceptance by
+    # asserting both terminal booleans while carrying an explicit entry veto.
+    entry_allowed = rec.get("entry_eligible") is not False
+    accepted = vetted and netcover_pass and entry_allowed
     return {
         "pool": _pool_identity(rec),
         "symbol": rec.get("symbol"),
@@ -1114,7 +1117,20 @@ class DefaultStages:
             rec["netcover_gate_status"] = status
             prior_vetted = bool(source.get("vetted", False))
             rec["vetted_before_netcover"] = prior_vetted
-            rec["vetted"] = prior_vetted and passed
+            # Pre-NetCover entry eligibility is authoritative.  A terminal
+            # adapter may enrich the record but cannot erase/flip that veto.
+            entry_eligible = source.get(
+                "entry_eligible", rec.get("entry_eligible")
+            )
+            if "entry_eligible" in source:
+                rec["entry_eligible"] = source["entry_eligible"]
+            if "entry_block_reasons" in source:
+                rec["entry_block_reasons"] = list(
+                    source.get("entry_block_reasons") or ()
+                )
+            rec["vetted"] = (
+                prior_vetted and passed and entry_eligible is not False
+            )
             if not rec["vetted"]:
                 explanation_record = dict(source)
                 explanation_record.update(rec)

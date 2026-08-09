@@ -52,7 +52,7 @@ class FakeStages:
                 "tvlUsd": 2_000_000,
                 "volumeUsd1d": 400_000,
                 "apyBase": 18.0,
-                "apyReward": 2.0,
+                "apyReward": 0.0,
                 "price": 3_200.0,
                 "liquidity": 900_000.0,
                 "active_liquidity": 500_000.0,
@@ -281,6 +281,11 @@ def test_once_executes_every_funnel_stage_and_persists_all_three_tables(tmp_path
 
 def test_current_cycle_observation_cannot_certify_itself_but_next_cycle_can(tmp_path):
     class PersistenceStages(FakeStages):
+        def screen(self):
+            batch = super().screen()
+            records = [dict(record, apyReward=2.0) for record in batch.all_records]
+            return ScreenBatch(all_records=records, candidates=records)
+
         def funnel(self, resolved, stability):
             self.calls.append("funnel_vet")
             return [dict(
@@ -395,7 +400,7 @@ def test_netcover_unavailable_is_fail_closed_and_explained(tmp_path):
             "SELECT accepted, rejection_reason FROM opportunity_scores"
         ).fetchone()
     assert accepted == 0
-    assert reason == "ENTRY_INELIGIBLE:REWARD_PERSISTENCE_MISSING"
+    assert reason == "netcover unavailable"
 
 
 def test_entry_ineligible_reason_cannot_be_masked_by_explicit_ok(tmp_path):
@@ -430,6 +435,79 @@ def test_entry_ineligible_reason_cannot_be_masked_by_explicit_ok(tmp_path):
             "SELECT accepted,rejection_reason FROM opportunity_scores"
         ).fetchone()
     assert persisted == (0, "ENTRY_INELIGIBLE:REWARD_PERSISTENCE_MISSING")
+
+
+@pytest.mark.parametrize(
+    ("status", "entry_eligible", "blocks", "expected_accepted", "expected_reason"),
+    [
+        ("SURROGATE_STRONG", True, [], True, None),
+        (
+            "SURROGATE_WEAK",
+            False,
+            ["REWARD_PERSISTENCE_SURROGATE_WEAK"],
+            False,
+            "ENTRY_INELIGIBLE:REWARD_PERSISTENCE_SURROGATE_WEAK",
+        ),
+        (
+            "MISSING_FAIL_CLOSED",
+            False,
+            ["REWARD_PERSISTENCE_MISSING"],
+            False,
+            "ENTRY_INELIGIBLE:REWARD_PERSISTENCE_MISSING",
+        ),
+    ],
+)
+def test_terminal_acceptance_conjoins_four_gates_netcover_and_reward_entry(
+    status, entry_eligible, blocks, expected_accepted, expected_reason
+):
+    source = {
+        "pool": "0x1",
+        "symbol": "MSUSD-USDC",
+        "vetted": True,
+        "entry_eligible": entry_eligible,
+        "entry_block_reasons": blocks,
+        "reward_persistence_status": status,
+        "gates": {
+            "quality": True,
+            "yield_cover": True,
+            "stable": True,
+            "status_ok": True,
+        },
+    }
+    terminal = DefaultStages._enforce_fifth_gate(
+        [source],
+        [{
+            "pool": "0x1",
+            # A terminal adapter cannot flip the authoritative pre-NetCover bit.
+            "entry_eligible": not entry_eligible,
+            "entry_block_reasons": [],
+            "netcover_pass": True,
+            "netcover": 2.0,
+            "netcover_ratio": 2.0,
+            "rejection_reason": None,
+        }],
+    )[0]
+    row = _score_row(terminal)
+
+    assert terminal["netcover_pass"] is True
+    assert terminal["netcover_gate_status"] == "PASS"
+    assert terminal["vetted"] is expected_accepted
+    assert row["accepted"] is expected_accepted
+    assert row["rejection_reason"] == expected_reason
+
+
+def test_score_row_defense_in_depth_rejects_entry_veto_despite_true_terminal_flags():
+    row = _score_row({
+        "pool": "0x1",
+        "vetted": True,
+        "netcover_pass": True,
+        "entry_eligible": False,
+        "entry_block_reasons": ["REWARD_PERSISTENCE_SURROGATE_WEAK"],
+    })
+    assert row["accepted"] is False
+    assert row["rejection_reason"] == (
+        "ENTRY_INELIGIBLE:REWARD_PERSISTENCE_SURROGATE_WEAK"
+    )
 
 
 @pytest.mark.parametrize(
