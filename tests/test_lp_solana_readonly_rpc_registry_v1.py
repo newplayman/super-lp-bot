@@ -482,3 +482,36 @@ def test_rpc_registry_help() -> None:
     )
     assert proc.returncode == 0
     assert "Solana" in proc.stdout or "RPC" in proc.stdout
+
+
+# FIX-R3 retirement assertions are deliberately additive: the historical
+# artifact assertions above remain in place and continue protecting evidence.
+def test_rpc_registry_is_documented_as_superseded_thin_shell() -> None:
+    src = RPC_REG.read_text()
+    assert "superseded by lp_rpc_pool CHAINS['solana']" in src
+    assert "def probe_endpoint(" not in src
+    assert "def gpa_smoke(" not in src
+    assert "def verify_program(" not in src
+
+
+def test_rpc_registry_reexports_canonical_solana_pool() -> None:
+    from scripts import lp_rpc_pool_v1_readonly as canonical
+    from scripts import lp_solana_readonly_rpc_registry_v1 as legacy
+
+    assert legacy.CHAINS is canonical.CHAINS
+    assert legacy.SOLANA_CHAIN is canonical.CHAINS["solana"]
+    assert legacy.RpcPool is canonical.RpcPool
+    assert legacy.RpcPoolExhaustedError is canonical.RpcPoolExhaustedError
+    assert legacy.PUBLIC_FALLBACK_RPCS == tuple(
+        endpoint["url"] for endpoint in canonical.CHAINS["solana"]["endpoints"]
+    )
+
+
+def test_rpc_registry_legacy_cli_defaults_to_solana_pool() -> None:
+    proc = subprocess.run(
+        [sys.executable, str(RPC_REG), "--help"],
+        capture_output=True, text=True, timeout=15,
+    )
+    assert proc.returncode == 0
+    assert "--probe" in proc.stdout
+    assert "--chain" in proc.stdout

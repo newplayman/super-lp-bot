@@ -1,0 +1,7 @@
+# probing solana (cluster=mainnet-beta) — 6 endpoints
+  UP   slot=438138371 cheap=OK heavy=[getSignaturesForAddress=OK,getTransaction=OK,getProgramAccounts=OK]  https://api.mainnet-beta.solana.com
+  UP   slot=438138374 cheap=OK heavy=[getSignaturesForAddress=OK,getTransaction=OK,getProgramAccounts=OK]  https://api.mainnet.solana.com
+  UP   slot=438138409 cheap=OK heavy=[getSignaturesForAddress=OK,getTransaction=OK,getProgramAccounts=NO]  https://solana-rpc.publicnode.com
+  UP   slot=438138435 cheap=OK heavy=[getSignaturesForAddress=OK,getTransaction=OK,getProgramAccounts=NO]  https://solana.publicnode.com
+  UP   slot=438138430 cheap=OK heavy=[getSignaturesForAddress=OK,getTransaction=OK,getProgramAccounts=OK]  https://solana.lava.build
+  UP   slot=438138434 cheap=OK heavy=[getSignaturesForAddress=OK,getTransaction=OK,getProgramAccounts=NO]  https://rpc.solanatracker.io/public
