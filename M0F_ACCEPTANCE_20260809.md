@@ -17,7 +17,7 @@
 | FIX-R2 / ADD-2 | `0302a69` | 正式有效证据仅 `reports/lp_funnel_rerank/20260809_135500/` |
 | FIX-R7 | `1b4c1bf` | 停止跟踪 90 个 Python bytecode 文件并加入 ignore |
 | FIX-R6 | `7eee239` | 按 PASSIVE / TACTICAL profile 路由 ER horizon，跨 profile fail-closed |
-| FIX-DOC / E2E | 本提交 | 本文与 HANDOFF；最终验收见 §9 |
+| FIX-DOC / E2E | `c72c7e4 c8f8623` + 本提交 | 本文与 HANDOFF；拒绝原因三层一致性修复及最终验收见 §9 |
 
 所有改动维持 paper/read-only：无钱包、私钥、签名、approve、广播、写交易或付费数据端点；未放宽既有 NetCover/风险阈值。
 
@@ -138,23 +138,23 @@ TACTICAL 的 12h 不是 ER 基础候选，只能由 ADD-1 固定拖累逻辑从 
 
 ## 9. 最终 E2E / 全量验收
 
-最终代码 live scanner `--once` 的 as-of 为 `2026-08-09T12:55:47.359625+00:00`，stdout 为 **`733 → 30 → 30 → 30 → 0 accepted`**。operational 30 条 score 中：
+最终代码 live scanner `--once` 的 as-of 为 `2026-08-09T13:51:03.533470+00:00`，stdout 为 **`733 → 30 → 30 → 30 → 0 accepted`**。这里 scanner stdout 的 `resolved=30` 指 resolver 产生的 30 条输出，包含 14 条显式 fail-closed placeholder；panel 的 canonical `read_funnel().resolved=16` 指成功完成 canonical chain resolve 的记录数。两者统计语义不同，不应互相替代。operational 30 条 score 中：
 
-- **16/30** 有有限 NetCover，可计算覆盖率 **53.3%**；panel 与 canonical `_read_funnel` 均解析为 16，口径一致。
+- **16/30** 有有限 NetCover，可计算覆盖率 **53.3%**；canonical `read_funnel()` 成功解析数同为 16。
 - **14/30** 显式 `permanent_fail_closed_reason=ambiguous_multi_factory_pool`，没有默认值或猜池绕过。
 - 30 条 `stage1_ranking_method` 全部为 `PROXY_NETCOVER`；最终 `accepted=0`，`vetted_menu.json=[]`。
-- MSUSD-USDC 的 NetCover 为 `1.035762`，数学 gate 为 PASS，但 `entry_eligible=false`，原因为 `REWARD_PERSISTENCE_MISSING`；stable gate 亦为 false，因此 `vetted=false`、`accepted=false`。这证明 proxy 与第五闸不会绕过前置入场资格或稳定性闸。
+- MSUSD-USDC 的 NetCover 为 `1.010796`，数学 gate 为 PASS，但 `entry_eligible=false`，原因为 `REWARD_PERSISTENCE_MISSING`；stable gate 亦为 false，因此 `vetted=false`、`accepted=false`。DB 顶层列、`score_json.rejection_reason` 与 panel 聚合三处均显式记录 `ENTRY_INELIGIBLE:REWARD_PERSISTENCE_MISSING`，不再以 `ok` 掩盖 terminal rejection。这证明 proxy 与第五闸不会绕过前置入场资格或稳定性闸。
 
-正式证据目录为 `reports/lp_m0f_acceptance/20260809/`；其中 `scanner.db` 是按约定忽略的 runtime artifact，提交证据为 gate report 与空 `vetted_menu.json`。
+正式最终证据目录为 `reports/lp_m0f_acceptance/20260809_reason_fixed/`；其中 `scanner.db` 是按约定忽略的 runtime artifact，提交证据为 gate report 与空 `vetted_menu.json`。旧 `20260809/` 目录保留为拒绝原因修复前的历史证据，不参与最终裁决。
 
-panel 最终真实进程攻击 smoke：无 token 401、正确 token 200、POST 405、path traversal 404；弱 token 启动 exit 1 且含 `openssl rand -hex 32` 提示；强 token server 经 Ctrl-C exit 0，无 panel/scanner 残留进程。专门的连接耗尽用例为 `1 passed, 29 deselected`，验证占满唯一 worker 时返回 503 并在释放后恢复。
+panel 最终真实进程攻击 smoke：无 token 401、正确 token 200、POST 405、path traversal 404；弱 token 启动 exit 1 且含 `openssl rand -hex 32` 提示；强 token server 经 Ctrl-C exit 0，无 panel/scanner 残留进程。专门的连接耗尽用例为 `1 passed, 31 deselected`，验证占满唯一 worker 时返回 503 并在释放后恢复。
 
 §12.0 gate 最终仍为 **`INSUFFICIENT_EVIDENCE`**：0 unique identities、0 unique root pools；未关闭严重 RPC incident 为 0，该子闸 PASS。`accepted=0` 和空 live-vetted menu 下不启动 runner，不能用 fixture 代替。
 
 测试与 collection：
 
-- `pytest tests/ --collect-only -q`：**2836 collected，0 error**。
-- `pytest tests/ -q`：**2822 passed, 14 skipped in 96.70s**；14 个仍是 D1 精确历史环境 nodeid skip，不冒充 pass，0 failed。
+- `pytest --collect-only -q`：**2843 collected in 63.82s，0 error**。
+- `pytest -q`：**2829 passed, 14 skipped in 130.54s**；14 个仍是 D1 精确历史环境 nodeid skip，不冒充 pass，0 failed。
 
 红线与仓库卫生：
 

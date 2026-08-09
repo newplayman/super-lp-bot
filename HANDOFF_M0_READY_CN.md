@@ -2,7 +2,7 @@
 
 **分支：** `feat/prd-v2.1-m0-shadow`
 
-**状态：** WP-00～10、M0R、M0P 与 M0F 漏斗可用性轮已完成验收；M0F 裁决为 **PASS / READY FOR COMMANDER REVIEW**，FIX-DOC/E2E 已收口于本提交。最终 scanner 为 `733→30→30→30→0`，30 条 operational score 中 16 条 NetCover 有限，可计算覆盖率 `53.3%`；正式 R2 证据 `20260809_135500` 为同批 30 条、16 个可计算对、Spearman `0.473529`、top-K `7/10`，采用 `PROXY_NETCOVER` 排序。**14 天 shadow 尚未启动；16/30 覆盖是否达到业务上可接受水平由指挥官判断，只有指挥官认可覆盖并显式决定起算后，14 天计时才开始。§12.0 gate 仍为 `INSUFFICIENT_EVIDENCE`，M1 未放行。**
+**状态：** WP-00～10、M0R、M0P 与 M0F 漏斗可用性轮已完成验收；M0F 裁决为 **PASS / READY FOR COMMANDER REVIEW**，FIX-DOC/E2E 已收口于本提交。最终 scanner 为 `733→30→30→30→0`：stdout 的 `resolved=30` 是 resolver 输出数（含 14 条 fail-closed placeholder），canonical `read_funnel().resolved=16` 是成功 resolve 数；30 条 operational score 中 16 条 NetCover 有限，可计算覆盖率 `53.3%`。正式 R2 证据 `20260809_135500` 为同批 30 条、16 个可计算对、Spearman `0.473529`、top-K `7/10`，采用 `PROXY_NETCOVER` 排序。**14 天 shadow 尚未启动；16/30 覆盖是否达到业务上可接受水平由指挥官判断，只有指挥官认可覆盖并显式决定起算后，14 天计时才开始。§12.0 gate 仍为 `INSUFFICIENT_EVIDENCE`，M1 未放行。**
 
 **发布边界：** 未合并、未推送远端；等待指挥官 review。本文不构成 M1 放行。
 
@@ -234,7 +234,7 @@ Shadow 五问在 14d 数据前均为 **PENDING_EVIDENCE**，不得提前作答�
 - **P2：** panel 默认 queue/thread `16/16`，工作线程有界、过载 503、弱/重复 token 拒绝并提示 `openssl rand -hex 32`；真实 smoke 为 401/200/405/404、弱 token exit 1、无残留进程。
 - **R6：** PASSIVE 的 range-bound/neutral/trending 映射 `168/336/720h`；TACTICAL 映射 `6/24/72h`，12h 只可由固定拖累逻辑从 6h 向上选择。未知或跨 profile 证据 fail-closed。
 - **R7：** `.gitignore` 已覆盖 Python bytecode，90 个历史跟踪 `.pyc` 已移出 index，`git ls-files '*pyc'` 为 0。
-- **最终 E2E：** scanner as-of `2026-08-09T12:55:47.359625+00:00`，`733→30→30→30→0`；16/30 finite NetCover、14/30 `ambiguous_multi_factory_pool` 永久关闭、30/30 使用 `PROXY_NETCOVER`。MSUSD-USDC 虽 NetCover `1.035762` 数学 PASS，仍因 `REWARD_PERSISTENCE_MISSING` 与 stable gate false 保持 `vetted/accepted=false`；最终 menu 为空。
-- **最终测试与安全：** collection `2836`、0 error；全量 `2822 passed, 14 skipped in 96.70s`。panel 真实 smoke 401/200/405/404、弱 token exit 1、强服务 Ctrl-C exit 0、无残留，503 专项 `1 passed, 29 deselected`。gate 为 `INSUFFICIENT_EVIDENCE`、0 identities / 0 roots、未关闭严重 RPC 0。四个阈值保护文件、Go、long_horizon 源码和 M1 源码均 0 diff；danger/dependency 0，frozen 今日 mtime 0，PID 1349731 存活且 cwd 正确。
+- **最终 E2E：** scanner as-of `2026-08-09T13:51:03.533470+00:00`，`733→30→30→30→0`；stdout 的 30 个 resolver 输出包含 14 个 fail-closed placeholder，canonical `read_funnel()` 成功 resolve 16。16/30 finite NetCover、14/30 `ambiguous_multi_factory_pool` 永久关闭、30/30 使用 `PROXY_NETCOVER`。MSUSD-USDC 虽 NetCover `1.010796` 数学 PASS，仍因 `REWARD_PERSISTENCE_MISSING` 与 stable gate false 保持 `vetted/accepted=false`；DB、`score_json`、panel 均显式给出 `ENTRY_INELIGIBLE:REWARD_PERSISTENCE_MISSING`，最终 menu 为空。正式最终证据为 `reports/lp_m0f_acceptance/20260809_reason_fixed/`。
+- **最终测试与安全：** collection `2843`、0 error；全量 `2829 passed, 14 skipped in 130.54s`。panel 真实 smoke 401/200/405/404、弱 token exit 1、强服务 Ctrl-C exit 0、无残留，503 专项 `1 passed, 31 deselected`。gate 为 `INSUFFICIENT_EVIDENCE`、0 identities / 0 roots、未关闭严重 RPC 0。四个阈值保护文件、Go、long_horizon 源码和 M1 源码均 0 diff；danger/dependency 0，frozen 今日 mtime 0，PID 1349731 存活且 cwd 正确。
 
 M0F 没有放宽 NetCover/风险阈值，没有启动 daemon 或 14 天计时，没有新增钱包、签名、广播、付费端点或 M1 执行路径。最终裁决为 **PASS / READY FOR COMMANDER REVIEW**；`accepted=0` 是诚实结果，不等于已获准起跑。16/30 覆盖是否可接受、是否起算 14 天 shadow、合并、推送与 M1 放行均由指挥官独立决定。
