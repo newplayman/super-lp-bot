@@ -28,6 +28,11 @@ from pathlib import Path
 from typing import Any, Callable, Mapping, Optional, Sequence
 from urllib.parse import parse_qs, urlsplit
 
+if __package__:
+    from scripts.lp_shadow_gate_v1_readonly import MIN_UNIQUE_ROOT_POOLS, _REENTRY_SUFFIX
+else:  # Preserve direct ``python scripts/lp_panel_server_v1_readonly.py`` operation.
+    from lp_shadow_gate_v1_readonly import MIN_UNIQUE_ROOT_POOLS, _REENTRY_SUFFIX
+
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_DB = REPO_ROOT / "reports/lp_scanner/scanner.db"
@@ -41,6 +46,8 @@ MIN_TOKEN_LENGTH = 32
 MAX_REQUEST_BODY_BYTES = 8192
 DEFAULT_RATE_LIMIT = 60
 DEFAULT_REQUEST_TIMEOUT_SECS = 10.0
+DEFAULT_REQUEST_QUEUE_SIZE = 16
+DEFAULT_MAX_THREADS = 16
 ALLOWED_PATHS = frozenset({"/", "/api/state.json"})
 
 _SENSITIVE_KEY = re.compile(
@@ -54,9 +61,7 @@ _SENSITIVE_VALUE = re.compile(
     r"-----BEGIN\s+(?:RSA\s+)?PRIVATE\s+KEY-----)",
     re.IGNORECASE,
 )
-_REENTRY_SUFFIX = re.compile(r"(?::reentry:\d+)+$")
 USD_NEAR_ZERO_TOLERANCE = 1e-9
-MIN_UNIQUE_ROOT_POOLS = 5
 
 
 def utc_now() -> str:
@@ -552,7 +557,16 @@ class PanelHTTPServer(ThreadingHTTPServer):
     daemon_threads = True
     allow_reuse_address = True
 
-    def __init__(self, address: tuple[str, int], *, state_builder: StateBuilder, token_digest: Optional[bytes], access_logger: AccessLogger, rate_limiter: RateLimiter, request_timeout_secs: float, refresh_secs: int):
+    def __init__(self, address: tuple[str, int], *, state_builder: StateBuilder, token_digest: Optional[bytes], access_logger: AccessLogger, rate_limiter: RateLimiter, request_timeout_secs: float, refresh_secs: int, request_queue_size: int, max_threads: int):
+        if request_queue_size < 1 or max_threads < 1:
+            raise ValueError("request_queue_size and max_threads must be positive")
+        # TCPServer.server_activate reads this instance attribute when calling
+        # listen(), so it must be assigned before the superclass constructor.
+        self.request_queue_size = request_queue_size
+        self.max_threads = max_threads
+        self._worker_slots = threading.BoundedSemaphore(max_threads)
+        self._worker_count = 0
+        self._worker_count_lock = threading.Lock()
         super().__init__(address, PanelHandler)
         self.state_builder = state_builder
         self.token_digest = token_digest
@@ -560,6 +574,50 @@ class PanelHTTPServer(ThreadingHTTPServer):
         self.rate_limiter = rate_limiter
         self.request_timeout_secs = request_timeout_secs
         self.refresh_secs = refresh_secs
+
+    @property
+    def active_worker_count(self) -> int:
+        with self._worker_count_lock:
+            return self._worker_count
+
+    def process_request(self, request: Any, client_address: tuple[str, int]) -> None:
+        if not self._worker_slots.acquire(blocking=False):
+            self._reject_overloaded(request, client_address)
+            return
+        with self._worker_count_lock:
+            self._worker_count += 1
+        try:
+            super().process_request(request, client_address)
+        except BaseException:
+            self._release_worker_slot()
+            raise
+
+    def process_request_thread(self, request: Any, client_address: tuple[str, int]) -> None:
+        try:
+            super().process_request_thread(request, client_address)
+        finally:
+            self._release_worker_slot()
+
+    def _release_worker_slot(self) -> None:
+        with self._worker_count_lock:
+            self._worker_count -= 1
+        self._worker_slots.release()
+
+    def _reject_overloaded(self, request: Any, client_address: tuple[str, int]) -> None:
+        body = b'{"error":"server overloaded"}'
+        response = (
+            b"HTTP/1.1 503 Service Unavailable\r\n"
+            b"Content-Type: application/json; charset=utf-8\r\n"
+            + f"Content-Length: {len(body)}\r\n".encode("ascii")
+            + b"Cache-Control: no-store\r\nConnection: close\r\n\r\n"
+            + body
+        )
+        try:
+            request.sendall(response)
+        except OSError:
+            pass
+        self.access_logger.write(client_address[0], "/", HTTPStatus.SERVICE_UNAVAILABLE, "MAX_THREADS")
+        self.shutdown_request(request)
 
 
 class PanelHandler(BaseHTTPRequestHandler):
@@ -676,6 +734,29 @@ async function poll(){try{const token=new URLSearchParams(location.search).get('
 </script></body></html>'''
 
 
+def _token_strength_error(token: str) -> Optional[str]:
+    """Return a reason for obviously guessable tokens; never estimate provenance."""
+    if len(token) < MIN_TOKEN_LENGTH:
+        return f"must contain at least {MIN_TOKEN_LENGTH} characters"
+    if len(set(token)) < 10:
+        return "has too few distinct characters"
+    lowered = token.lower()
+    if any(word in lowered for word in ("password", "changeme", "paneltoken", "secretsecret")):
+        return "contains a common placeholder pattern"
+    # Reject exact repetition of a short seed (for example ``abcd`` * 8).
+    for period in range(1, min(16, len(token) // 2) + 1):
+        if len(token) % period == 0 and token == token[:period] * (len(token) // period):
+            return f"repeats a {period}-character pattern"
+    frequencies = collections.Counter(token)
+    entropy_bits_per_character = -sum(
+        (count / len(token)) * math.log2(count / len(token))
+        for count in frequencies.values()
+    )
+    if entropy_bits_per_character < 3.0:
+        return "has insufficient character diversity"
+    return None
+
+
 def build_server(args: argparse.Namespace) -> PanelHTTPServer:
     token_digest: Optional[bytes] = None
     logger = AccessLogger(Path(args.access_log))
@@ -685,8 +766,11 @@ def build_server(args: argparse.Namespace) -> PanelHTTPServer:
         logger.write("startup", "/", 0, "NO_AUTH_ENABLED")
     else:
         token = os.environ.get(TOKEN_ENV, "")
-        if len(token) < MIN_TOKEN_LENGTH:
-            raise SystemExit(f"{TOKEN_ENV} must contain at least {MIN_TOKEN_LENGTH} characters")
+        strength_error = _token_strength_error(token)
+        if strength_error:
+            raise SystemExit(
+                f"{TOKEN_ENV} {strength_error}; generate a strong token with: openssl rand -hex 32"
+            )
         token_digest = hashlib.sha256(token.encode("utf-8")).digest()
     builder = StateBuilder(
         db=Path(args.db), heartbeat=Path(args.heartbeat), portfolio_csv=Path(args.portfolio_csv),
@@ -696,6 +780,7 @@ def build_server(args: argparse.Namespace) -> PanelHTTPServer:
         (args.host, args.port), state_builder=builder, token_digest=token_digest,
         access_logger=logger, rate_limiter=RateLimiter(args.rate_limit),
         request_timeout_secs=args.request_timeout_secs, refresh_secs=args.refresh_secs,
+        request_queue_size=args.request_queue_size, max_threads=args.max_threads,
     )
 
 
@@ -712,6 +797,8 @@ def parser() -> argparse.ArgumentParser:
     ap.add_argument("--refresh-secs", type=int, default=10)
     ap.add_argument("--rate-limit", type=int, default=DEFAULT_RATE_LIMIT)
     ap.add_argument("--request-timeout-secs", type=float, default=DEFAULT_REQUEST_TIMEOUT_SECS)
+    ap.add_argument("--request-queue-size", type=int, default=DEFAULT_REQUEST_QUEUE_SIZE)
+    ap.add_argument("--max-threads", type=int, default=DEFAULT_MAX_THREADS)
     ap.add_argument("--no-auth", action="store_true")
     return ap
 
@@ -720,8 +807,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     args = parser().parse_args(argv)
     if not 1 <= args.port <= 65535:
         raise SystemExit("--port must be in 1..65535")
-    if args.refresh_secs < 1 or args.rate_limit < 1 or args.request_timeout_secs <= 0:
-        raise SystemExit("refresh/rate-limit/timeout values must be positive")
+    if (
+        args.refresh_secs < 1
+        or args.rate_limit < 1
+        or args.request_timeout_secs <= 0
+        or args.request_queue_size < 1
+        or args.max_threads < 1
+    ):
+        raise SystemExit("refresh/rate-limit/timeout/queue/thread values must be positive")
     server = build_server(args)
     print(f"LP panel PAPER/READ-ONLY listening on {args.host}:{server.server_address[1]}", flush=True)
     try:

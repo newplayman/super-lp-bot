@@ -5,15 +5,19 @@ import json
 import os
 import socket
 import sqlite3
+import subprocess
+import sys
 import threading
+import time
 from pathlib import Path
 
 import pytest
 
 from scripts import lp_panel_server_v1_readonly as panel
+from scripts import lp_shadow_gate_v1_readonly as gate
 
 
-TOKEN = "p" * 40
+TOKEN = "9f2c7a41b6e80d35c14f97a2e8530bd64a91c7ef528d03b7e61fa0843dc95b20"
 BOT_TOKEN_SHAPE = "1234567890:" + "A" * 35
 RPC_PATH_KEY = "K" * 40
 
@@ -129,7 +133,16 @@ def make_builder(tmp_path: Path, *, missing: bool = False) -> panel.StateBuilder
     return panel.StateBuilder(db=db, heartbeat=heartbeat, portfolio_csv=portfolio, rwa_dir=rwa, probe_dir=probe)
 
 
-def make_server(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, auth: bool = True, limit: int = 60, missing: bool = False):
+def make_server(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    auth: bool = True,
+    limit: int = 60,
+    missing: bool = False,
+    max_threads: int = panel.DEFAULT_MAX_THREADS,
+    request_queue_size: int = panel.DEFAULT_REQUEST_QUEUE_SIZE,
+):
     if auth:
         monkeypatch.setenv(panel.TOKEN_ENV, TOKEN)
     args = panel.parser().parse_args(
@@ -138,6 +151,7 @@ def make_server(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, auth: bool =
             "--heartbeat", str(tmp_path / "heartbeat.jsonl"), "--portfolio-csv", str(tmp_path / "portfolio.csv"),
             "--rwa-jsonl-dir", str(tmp_path / "rwa"), "--probe-dir", str(tmp_path / "probe"),
             "--access-log", str(tmp_path / "access.log"), "--rate-limit", str(limit),
+            "--max-threads", str(max_threads), "--request-queue-size", str(request_queue_size),
         ]
         + ([] if auth else ["--no-auth"])
     )
@@ -169,6 +183,8 @@ def test_default_bind_port_and_inline_frontend_have_complete_sections():
     args = panel.parser().parse_args([])
     assert args.host == "0.0.0.0"
     assert args.port == 8899
+    assert args.max_threads == 16
+    assert args.request_queue_size == 16
     assert "https://" not in panel.PANEL_HTML
     assert "Gate 六项" in panel.PANEL_HTML
     for text in ("净值与回撤", "23 字段归因", "漏斗健康", "RWA 三锚", "RPC 健康", "PAPER / READ-ONLY"):
@@ -184,6 +200,72 @@ def test_token_is_required_at_startup_and_minimum_32_chars(tmp_path, monkeypatch
     monkeypatch.setenv(panel.TOKEN_ENV, "x" * 31)
     with pytest.raises(SystemExit, match="at least 32"):
         panel.build_server(args)
+
+
+@pytest.mark.parametrize(
+    "weak_token",
+    [
+        "a" * 32,
+        "abcd" * 8,
+        "password-password-password-password",
+    ],
+)
+def test_low_entropy_or_repeating_token_is_rejected_with_generation_hint(
+    tmp_path, monkeypatch, weak_token
+):
+    monkeypatch.setenv(panel.TOKEN_ENV, weak_token)
+    args = panel.parser().parse_args(
+        ["--host", "127.0.0.1", "--port", "0", "--access-log", str(tmp_path / "a.log")]
+    )
+    with pytest.raises(SystemExit, match="openssl rand -hex 32"):
+        panel.build_server(args)
+
+
+@pytest.mark.parametrize(
+    "strong_token",
+    [
+        "9f2c7a41b6e80d35c14f97a2e8530bd64a91c7ef528d03b7e61fa0843dc95b20",
+        "nFrIT9O_LDHjndm0qOGhW_M7WmFr5z8cUYe1R51rfgI=",
+    ],
+)
+def test_high_entropy_hex_and_base64_tokens_are_accepted(tmp_path, monkeypatch, strong_token):
+    monkeypatch.setenv(panel.TOKEN_ENV, strong_token)
+    args = panel.parser().parse_args(
+        ["--host", "127.0.0.1", "--port", "0", "--access-log", str(tmp_path / "a.log")]
+    )
+    server = panel.build_server(args)
+    server.server_close()
+
+
+def test_panel_uses_gate_reentry_regex_and_minimum_pool_object_by_identity():
+    assert panel._REENTRY_SUFFIX is gate._REENTRY_SUFFIX
+    assert panel.MIN_UNIQUE_ROOT_POOLS is gate.MIN_UNIQUE_ROOT_POOLS
+
+
+def test_max_threads_rejects_excess_slow_connection_and_releases_slot(tmp_path, monkeypatch):
+    server, thread = make_server(tmp_path, monkeypatch, auth=False, max_threads=1)
+    slow = socket.create_connection(("127.0.0.1", server.server_address[1]), timeout=2)
+    try:
+        slow.sendall(b"GET /api/state.json HTTP/1.1\r\nHost: localhost\r\n")
+        deadline = time.monotonic() + 2
+        while server.active_worker_count != 1 and time.monotonic() < deadline:
+            time.sleep(0.01)
+        assert server.active_worker_count == 1
+
+        status, headers, body = request(server)
+        assert status == 503
+        assert headers["Connection"] == "close"
+        assert json.loads(body) == {"error": "server overloaded"}
+
+        slow.close()
+        deadline = time.monotonic() + 2
+        while server.active_worker_count and time.monotonic() < deadline:
+            time.sleep(0.01)
+        assert server.active_worker_count == 0
+        assert request(server)[0] == 200
+    finally:
+        slow.close()
+        stop(server, thread)
 
 
 def test_authentication_missing_wrong_query_and_header(tmp_path, monkeypatch):
@@ -282,6 +364,36 @@ def test_no_auth_prints_warning_and_records_it(tmp_path, monkeypatch, capsys):
     finally:
         stop(server, thread)
     assert "NO_AUTH_ENABLED" in (tmp_path / "access.log").read_text()
+
+
+def test_no_auth_warning_precedes_listening_line_in_real_merged_pipe(tmp_path):
+    with socket.socket() as reservation:
+        reservation.bind(("127.0.0.1", 0))
+        port = reservation.getsockname()[1]
+    command = [
+        sys.executable,
+        str(panel.REPO_ROOT / "scripts/lp_panel_server_v1_readonly.py"),
+        "--host", "127.0.0.1",
+        "--port", str(port),
+        "--no-auth",
+        "--access-log", str(tmp_path / "pipe-access.log"),
+    ]
+    process = subprocess.Popen(
+        command,
+        cwd=panel.REPO_ROOT,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+    )
+    try:
+        assert process.stdout is not None
+        first = process.stdout.readline()
+        second = process.stdout.readline()
+        assert "authentication DISABLED" in first
+        assert "listening on" in second
+    finally:
+        process.terminate()
+        process.wait(timeout=3)
 
 
 def test_missing_all_sources_degrades_without_exception(tmp_path):

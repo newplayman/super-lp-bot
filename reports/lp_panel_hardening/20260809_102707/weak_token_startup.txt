@@ -1,0 +1,2 @@
+LPBOT_PANEL_TOKEN has too few distinct characters; generate a strong token with: openssl rand -hex 32
+exit_code=1

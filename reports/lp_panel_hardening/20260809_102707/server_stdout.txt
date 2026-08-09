@@ -1,0 +1,9 @@
+LP panel PAPER/READ-ONLY listening on 127.0.0.1:18991
+
+missing_token=401
+correct_token=200
+post=405
+path_traversal=404
+
+server_exit_code=0
+leftover_panel_processes=0

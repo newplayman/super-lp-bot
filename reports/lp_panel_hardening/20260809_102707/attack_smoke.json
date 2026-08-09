@@ -1,0 +1,27 @@
+{
+  "as_of_utc": "2026-08-09T10:27:07Z",
+  "baseline": "a5c26b5",
+  "bind": "127.0.0.1:18991",
+  "mode": "PAPER / READ-ONLY",
+  "configuration": {
+    "request_queue_size": 16,
+    "max_threads": 16
+  },
+  "checks": {
+    "missing_token": {"expected": 401, "observed": 401, "pass": true},
+    "correct_token": {"expected": 200, "observed": 200, "pass": true},
+    "post": {"expected": 405, "observed": 405, "pass": true},
+    "path_traversal": {"expected": 404, "observed": 404, "pass": true},
+    "weak_token_startup": {
+      "input_shape": "single character repeated 32 times",
+      "expected_exit": "non-zero",
+      "observed_exit": 1,
+      "generation_hint_present": true,
+      "pass": true
+    }
+  },
+  "targeted_pytest": {"passed": 30, "failed": 0},
+  "server_exit_code": 0,
+  "leftover_panel_processes": 0,
+  "overall": "PASS"
+}
