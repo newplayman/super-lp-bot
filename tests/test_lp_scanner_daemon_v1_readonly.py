@@ -235,18 +235,33 @@ def test_wp04_adapter_is_the_strict_fifth_gate_not_only_a_diagnostic():
         "pool": "0x1",
         "vetted": True,
         "gates": {"quality": True, "yield_cover": True, "stable": True, "status_ok": True},
-        "capital_usd": 100.0,
-        "fee_ev_usd": 4.0,
-        "reward_ev_usd": 2.0,
-        "il_ev_usd": 1.0,
-        "entry_cost_usd": 0.1,
-        "exit_cost_usd": 0.1,
-        "gas_usd": 0.1,
-        "slippage_usd": 0.1,
-        "reward_conversion_cost_usd": 0.1,
-        "exit_latency_loss_usd": 0.1,
+        "chain": "Base",
+        "project": "uniswap-v3",
+        "profile": "PASSIVE_CL",
+        "holding_horizon_days": 14,
+        "is_new_pool": False,
+        "fee_apr_24h": 1_000.0,
+        "fee_apr_7d": 1_000.0,
+        "reward_apr": 0.0,
+        "il_apr": 1.0,
+        "sigma_pair": 0.01,
+        "l_active_raw": 10**30,
+        "price_usd": 1.0,
+        "fee_tier": 0.0001,
+        "dec0": 18,
+        "dec1": 6,
     }
-    missing = {"pool": "0x2", "vetted": True, "gates": {"quality": True}}
+    missing = {
+        "pool": "0x2",
+        "chain": "Base",
+        "vetted": True,
+        "gates": {"quality": True},
+        **{field: 0.0 for field in (
+            "fee_ev_usd", "reward_ev_usd", "il_ev_usd", "entry_cost_usd",
+            "exit_cost_usd", "gas_usd", "slippage_usd",
+            "reward_conversion_cost_usd", "exit_latency_loss_usd",
+        )},
+    }
 
     passed, rejected = DefaultStages().netcover([complete, missing])
 

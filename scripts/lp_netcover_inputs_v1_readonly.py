@@ -71,6 +71,20 @@ INPUT_SEMANTICS = {
     "exit_latency_loss_usd": "model_estimate",
 }
 
+INPUT_SOURCES = {
+    "fee_ev_usd": "model_estimate:conservative_fee_apr_horizon",
+    "reward_ev_usd": "model_estimate:reward_apr_horizon",
+    "il_ev_usd": "model_estimate:il_apr_horizon_with_sigma_evidence",
+    "entry_cost_usd": "model_estimate:lp_swap_cost_model_v1_readonly._swap_components",
+    "exit_cost_usd": "model_estimate:lp_swap_cost_model_v1_readonly._swap_components",
+    "gas_usd": None,  # chain-specific historical source is selected below
+    "slippage_usd": "model_estimate:lp_swap_cost_model_v1_readonly._swap_components",
+    "reward_conversion_cost_usd": (
+        "model_estimate:lp_swap_cost_model_v1_readonly.exit_conversion_cost_usd"
+    ),
+    "exit_latency_loss_usd": "model_estimate:free_rpc_exit_latency_apr_horizon",
+}
+
 _STABLE_REWARD_SYMBOLS = frozenset({"USDC", "USDT", "DAI", "PYUSD", "USDE", "EURC"})
 _MAJOR_REWARD_SYMBOLS = frozenset({"ETH", "WETH", "BTC", "WBTC", "CBBTC", "SOL"})
 _KNOWN_REWARD_TOKEN_CATEGORIES = {
@@ -344,12 +358,25 @@ def assemble_netcover_inputs(
         "reward_conversion_cost_usd": reward_conversion,
         "exit_latency_loss_usd": exit_latency,
     }
-    # Preserve explicit upstream values for compatibility with independently
-    # assembled records, while never replacing missing evidence with zero.
+    # This scanner assembly boundary accepts only values calculated above from
+    # raw evidence.  In particular, an upstream record carrying explicit USD
+    # values (including zero) cannot bypass missing sigma/depth/horizon evidence.
+    # Independently preassembled records can still be evaluated by WP-04's
+    # engine directly; they are deliberately not trusted by this live scanner
+    # adapter because their provenance cannot be verified here.
+    field_semantics: dict[str, str | None] = {}
     for field in NETCOVER_INPUT_FIELDS:
-        explicit = _number(record.get(field))
-        record[field] = explicit if explicit is not None else calculated[field]
-        record[f"{field}_semantics"] = INPUT_SEMANTICS[field]
+        value = calculated[field]
+        record[field] = value
+        semantics = INPUT_SEMANTICS[field] if value is not None else None
+        source_label = (
+            HISTORICAL_GAS_SOURCES.get(chain)
+            if field == "gas_usd"
+            else INPUT_SOURCES[field]
+        )
+        record[f"{field}_semantics"] = semantics
+        record[f"{field}_source"] = source_label if value is not None else None
+        field_semantics[field] = semantics
     record.update({
         "capital_usd": size,
         "holding_horizon_hours": horizon,
@@ -357,13 +384,15 @@ def assemble_netcover_inputs(
         "fee_apr_haircut": fee_haircut,
         "reward_category": category,
         "lvr_coefficient": LVR_COEFFICIENT_MODEL,
-        "netcover_input_semantics": dict(INPUT_SEMANTICS),
+        "netcover_input_semantics": field_semantics,
         "gas_usd_source": HISTORICAL_GAS_SOURCES.get(chain),
         "netcover_input_position_source": "M1_MIN_POSITION_USD",
+        "netcover_input_assembly_source": (
+            "lp_netcover_inputs_v1_readonly:raw_evidence_calculated_only"
+        ),
     })
-    # Do not shadow WP-04's established protocol default with a None value on
-    # independently preassembled legacy records.  Newly calculated reward EV
-    # still requires a classified category above.
+    # A positive calculated reward EV always requires a classified category;
+    # zero-reward records do not need to override WP-04's irrelevant default.
     if haircut is not None:
         record["reward_haircut"] = haircut
     if all(record[field] is not None for field in ("entry_cost_usd", "exit_cost_usd", "slippage_usd")):

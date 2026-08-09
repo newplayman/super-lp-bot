@@ -16,6 +16,7 @@ from scripts.lp_netcover_engine_v1_readonly import (
     apply_netcover_gate,
 )
 from scripts.lp_netcover_inputs_v1_readonly import (
+    HISTORICAL_GAS_USD,
     INPUT_SEMANTICS,
     NETCOVER_INPUT_FIELDS,
     assemble_netcover_inputs,
@@ -78,6 +79,45 @@ def test_missing_sigma_or_depth_stays_none_and_gate_rejects_fail_closed():
     assert gated["netcover_pass"] is False
     assert gated["netcover_ratio"] is None
     assert gated["rejection_reason"].startswith("NETCOVER_INPUT_MISSING:")
+
+
+def test_explicit_zero_nine_fields_cannot_replace_missing_raw_evidence():
+    source = {
+        "chain": "Base",
+        **{field: 0.0 for field in NETCOVER_INPUT_FIELDS},
+        **{f"{field}_semantics": "measured" for field in NETCOVER_INPUT_FIELDS},
+        **{f"{field}_source": "upstream:unverified" for field in NETCOVER_INPUT_FIELDS},
+    }
+
+    assembled = assemble_netcover_inputs(source)
+
+    # Historical Base gas is independently available.  Every field whose raw
+    # evidence is absent must remain missing despite explicit upstream zeros.
+    assert assembled["gas_usd"] == HISTORICAL_GAS_USD["base"]
+    missing = [field for field in NETCOVER_INPUT_FIELDS if field != "gas_usd"]
+    assert all(assembled[field] is None for field in missing)
+    assert all(assembled[f"{field}_semantics"] is None for field in missing)
+    assert all(assembled[f"{field}_source"] is None for field in missing)
+    gated = apply_netcover_gate([assembled])[0]
+    assert gated["netcover_pass"] is False
+    assert gated["netcover_ratio"] is None
+    assert gated["rejection_reason"].startswith("NETCOVER_INPUT_MISSING:")
+
+
+def test_raw_evidence_recalculation_wins_over_explicit_zero_values():
+    source = _complete(**{field: 0.0 for field in NETCOVER_INPUT_FIELDS})
+
+    assembled = assemble_netcover_inputs(source)
+
+    assert assembled["fee_ev_usd"] > 0.0
+    assert assembled["il_ev_usd"] > 0.0
+    assert assembled["entry_cost_usd"] > 0.0
+    assert assembled["exit_cost_usd"] > 0.0
+    assert assembled["slippage_usd"] > 0.0
+    assert assembled["exit_latency_loss_usd"] > 0.0
+    for field in NETCOVER_INPUT_FIELDS:
+        assert assembled[f"{field}_semantics"] == INPUT_SEMANTICS[field]
+        assert assembled[f"{field}_source"]
 
 
 @pytest.mark.parametrize(
