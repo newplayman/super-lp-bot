@@ -18,10 +18,12 @@ from scripts.lp_netcover_engine_v1_readonly import (
     apply_netcover_gate,
 )
 from scripts.lp_netcover_inputs_v1_readonly import (
+    DRAG_APR_MAX,
     HISTORICAL_GAS_USD,
     INPUT_SEMANTICS,
     NETCOVER_INPUT_FIELDS,
     assemble_netcover_inputs,
+    select_drag_adjusted_horizon,
 )
 from scripts.lp_portfolio_allocator_v1_readonly import M1_MIN_POSITION_USD
 
@@ -38,8 +40,14 @@ def _complete(**updates):
         "reward_apr": 0.0,
         "il_apr": 4.0,
         "sigma": 0.02,
+        "sigma_pair": 0.02,
         "l_active_raw": 2_641_450_665_466_979_248,
         "price_usd": 1_669.9252504577303,
+        "last_swap_price_token1_per_token0": 1_669.9252504577303,
+        "last_swap_liquidity_raw": 2_641_450_665_466_979_248,
+        "last_swap_cost_state_source": "measured:latest_decoded_swap_event",
+        "token0": "0x4200000000000000000000000000000000000006",
+        "token1": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
         "fee_tier": 0.000842,
         "dec0": 18,
         "dec1": 6,
@@ -71,7 +79,14 @@ def test_all_nine_fields_are_calculated_and_each_has_semantics():
 
 def test_missing_sigma_or_depth_stays_none_and_gate_rejects_fail_closed():
     missing = assemble_netcover_inputs(
-        _complete(sigma=None, l_active_raw=None, price_usd=None)
+        _complete(
+            sigma=None,
+            sigma_pair=None,
+            l_active_raw=None,
+            price_usd=None,
+            last_swap_liquidity_raw=None,
+            last_swap_price_token1_per_token0=None,
+        )
     )
     assert missing["il_ev_usd"] is None
     assert missing["entry_cost_usd"] is None
@@ -120,6 +135,26 @@ def test_raw_evidence_recalculation_wins_over_explicit_zero_values():
     for field in NETCOVER_INPUT_FIELDS:
         assert assembled[f"{field}_semantics"] == INPUT_SEMANTICS[field]
         assert assembled[f"{field}_source"]
+
+
+def test_forged_fee_value_and_capture_metadata_cannot_override_recalculation():
+    assembled = assemble_netcover_inputs(_complete(
+        fee_ev_usd=999_999.0,
+        fee_capture_reference_horizon_hours=1.0,
+        fee_capture_reference_range_pct=0.0001,
+        fee_capture_target_range_pct=0.0001,
+        fee_capture_reference_share=1.0,
+        fee_capture_target_share=1.0,
+        fee_capture_share_ratio=999_999.0,
+        fee_capture_evidence_apr_pct=999_999.0,
+        fee_capture_haircut=999_999.0,
+    ))
+
+    assert assembled["fee_ev_usd"] != 999_999.0
+    assert assembled["fee_capture_reference_horizon_hours"] == 168.0
+    assert assembled["fee_capture_share_ratio"] != 999_999.0
+    assert assembled["fee_capture_evidence_apr_pct"] == 10.0
+    assert assembled["fee_capture_haircut"] == 0.65
 
 
 @pytest.mark.parametrize(
@@ -343,20 +378,122 @@ def test_horizon_follows_profile_discrete_set(profile, hours):
     assert out["holding_horizon_hours"] == hours
 
 
-def test_horizon_changes_usd_inputs_and_invalid_cross_profile_h_is_missing():
+def test_horizon_changes_range_aware_fee_density_and_invalid_cross_profile_h_is_missing():
     six = assemble_netcover_inputs(
         _complete(profile="TACTICAL", holding_horizon_days=None, holding_horizon_hours=6)
     )
     day = assemble_netcover_inputs(
         _complete(profile="TACTICAL", holding_horizon_days=None, holding_horizon_hours=24)
     )
-    assert day["fee_ev_usd"] == pytest.approx(six["fee_ev_usd"] * 4.0)
+    assert 0.0 < day["fee_ev_usd"] < six["fee_ev_usd"]
+    assert day["fee_ev_usd"] != pytest.approx(six["fee_ev_usd"] * 4.0)
     assert day["il_ev_usd"] == pytest.approx(six["il_ev_usd"] * 4.0)
     invalid = assemble_netcover_inputs(
         _complete(profile="PASSIVE", holding_horizon_days=None, holding_horizon_hours=24)
     )
     assert invalid["holding_horizon_hours"] is None
     assert invalid["fee_ev_usd"] is None
+
+
+def test_fee_ev_h7_h30_tracks_canonical_raw_liquidity_share_not_linear_time():
+    h7 = assemble_netcover_inputs(_complete(holding_horizon_days=7))
+    h30 = assemble_netcover_inputs(_complete(holding_horizon_days=30))
+
+    observed = h30["fee_ev_usd"] / h7["fee_ev_usd"]
+    expected = h30["fee_capture_share_ratio"] / h7["fee_capture_share_ratio"]
+    inverse_sqrt = (30.0 / 7.0) ** -0.5
+    assert observed == pytest.approx(expected)
+    assert observed == pytest.approx(inverse_sqrt, rel=0.25)
+    assert observed < 1.0
+    assert observed != pytest.approx(30.0 / 7.0)
+    assert h7["fee_capture_reference_horizon_hours"] == 168.0
+    assert h30["fee_capture_target_range_pct"] > h7["fee_capture_target_range_pct"]
+    assert h30["fee_capture_target_share"] < h7["fee_capture_target_share"]
+    assert h30["fee_capture_evidence_apr_pct"] == 10.0
+    assert h30["fee_capture_haircut"] == 0.65
+
+
+def test_doubling_h_does_not_double_fee_ev():
+    h6 = assemble_netcover_inputs(
+        _complete(profile="TACTICAL", holding_horizon_days=None, holding_horizon_hours=6)
+    )
+    h12 = assemble_netcover_inputs(
+        _complete(profile="TACTICAL", holding_horizon_days=None, holding_horizon_hours=12)
+    )
+    assert h12["fee_ev_usd"] < h6["fee_ev_usd"]
+    assert h12["fee_ev_usd"] != pytest.approx(2.0 * h6["fee_ev_usd"])
+
+
+@pytest.mark.parametrize(
+    "updates",
+    [
+        {"sigma_pair": None},
+        {"l_active_raw": None, "last_swap_liquidity_raw": None},
+        {"price_usd": None, "last_swap_price_token1_per_token0": None},
+        {"dec0": None},
+        {"dec1": None},
+    ],
+)
+def test_fee_ev_missing_range_liquidity_price_or_decimals_fails_closed(updates):
+    out = assemble_netcover_inputs(_complete(**updates))
+    assert out["fee_ev_usd"] is None
+    assert out["fee_capture_share_ratio"] is None
+
+
+def test_fee_ev_range_at_or_above_100pct_fails_closed_without_clamp():
+    out = assemble_netcover_inputs(_complete(sigma_pair=1.0, holding_horizon_days=30))
+    assert out["fee_capture_target_range_pct"] > 100.0
+    assert out["fee_ev_usd"] is None
+
+
+def test_fee_ev_rejects_generic_sigma_and_unprovenanced_direct_price_depth():
+    generic_sigma = assemble_netcover_inputs(_complete(sigma_pair=None, sigma=0.02))
+    assert generic_sigma["fee_ev_usd"] is None
+
+    direct_prefill = assemble_netcover_inputs(_complete(
+        sigma_pair=None,
+        sigma_daily=0.02,
+        holding_horizon_hours=720.0,
+        holding_horizon_days=None,
+        last_swap_price_token1_per_token0=None,
+        last_swap_liquidity_raw=None,
+        last_swap_cost_state_source=None,
+        price_usd=1.0,
+        l_active_raw=10**30,
+    ))
+    assert direct_prefill["entry_cost_usd"] is not None
+    assert direct_prefill["fee_ev_usd"] is None
+    assert direct_prefill["fee_capture_share_ratio"] is None
+
+
+def test_drag_adjustment_uses_fee_fraction_and_smallest_legal_horizon():
+    adjusted = select_drag_adjusted_horizon(
+        profile="PASSIVE", er_horizon_hours=168.0, fee_tier=0.003,
+        gas_usd=HISTORICAL_GAS_USD["base"], position_usd=50.0,
+    )
+    assert adjusted["holding_horizon_hours"] == 720.0
+    assert adjusted["holding_horizon_source"] == "drag_adjusted(from=168)"
+    assert adjusted["drag_apr_pct"] <= DRAG_APR_MAX
+    assert adjusted["high_drag_flag"] is False
+
+
+def test_drag_adjustment_not_triggered_and_max_h_fail_opens_with_flag():
+    unchanged = select_drag_adjusted_horizon(
+        profile="PASSIVE", er_horizon_hours=168.0, fee_tier=0.0001,
+        gas_usd=HISTORICAL_GAS_USD["base"], position_usd=50.0,
+    )
+    assert unchanged["holding_horizon_hours"] == 168.0
+    assert unchanged["holding_horizon_source"] == "ER_policy"
+    assert unchanged["high_drag_flag"] is False
+
+    still_high = select_drag_adjusted_horizon(
+        profile="TACTICAL", er_horizon_hours=6.0, fee_tier=0.01,
+        gas_usd=HISTORICAL_GAS_USD["base"], position_usd=50.0,
+    )
+    assert still_high["holding_horizon_hours"] == 72.0
+    assert still_high["holding_horizon_source"] == "drag_adjusted(from=6)"
+    assert still_high["drag_apr_pct"] > DRAG_APR_MAX
+    assert still_high["high_drag_flag"] is True
 
 
 def test_new_or_unknown_pool_uses_stricter_fee_haircut_not_optimistic_default():
@@ -387,7 +524,7 @@ def test_same_pool_swap_components_match_cost_sensitivity_exactly():
     assert out["round_trip_cost_usd"] == pytest.approx(expected["round_trip_cost_usd"])
 
 
-def test_same_pool_same_parameters_recompute_netcover_and_profit_conclusion():
+def test_same_pool_same_parameters_recompute_netcover_after_add1_fee_density():
     pool = replace(
         default_base_vetted_pool(),
         reward_apr_pct=0.0,
@@ -407,17 +544,14 @@ def test_same_pool_same_parameters_recompute_netcover_and_profit_conclusion():
         dec1=pool.dec1,
     ))
     gated = apply_netcover_gate([assembled])[0]
-    assert gated["netcover"] == pytest.approx(expected["netcover_30d"])
-    assert gated["expected_net_yield_usd"] == pytest.approx(
-        expected["expected_net_profit_h_usd"]
-    )
+    # The old cost-sensitivity helper retains the superseded linear-H FeeEV;
+    # ADD-1 must therefore produce a lower, independently recomputed result.
+    assert gated["netcover"] < expected["netcover_30d"]
+    assert gated["expected_net_yield_usd"] < expected["expected_net_profit_h_usd"]
     recomputed_profit = absolute_profit_gate(
         gated["expected_net_yield_usd"], assembled["round_trip_cost_usd"]
     )
-    assert recomputed_profit.allowed == expected["absolute_profit_gate_pass"]
-    assert recomputed_profit.required_profit_usd == pytest.approx(
-        expected["absolute_profit_required_usd"]
-    )
+    assert recomputed_profit.allowed is False
 
 
 def test_measured_swap_with_stable_token0_is_normalized_without_tvl_proxy():

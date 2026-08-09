@@ -633,7 +633,25 @@ class DefaultStages:
             if item.get("pool") or item.get("resolved_pool")
         }
         policy_module = importlib.import_module("scripts.lp_tier_range_policy_v1_readonly")
+        inputs_module = importlib.import_module("scripts.lp_netcover_inputs_v1_readonly")
         for record in records:
+            # H/drag are scanner-internal policy outputs.  Clear every upstream
+            # alias before reading measured sigma/ER so missing evidence or a
+            # cross-profile policy cannot preserve a candidate-prefilled H.
+            for key in (
+                "holding_horizon_hours",
+                "holding_horizon_days",
+                "holding_horizon_source",
+                "holding_horizon_er_policy_hours",
+                "profile_horizon_hours",
+                "profile_horizon_days",
+                "er_horizon_hours",
+                "er_horizon_days",
+                "drag_apr_pct",
+                "drag_apr_max_pct",
+                "high_drag_flag",
+            ):
+                record.pop(key, None)
             evidence = stability_by_pool.get(_pool_identity(record), {})
             windows = evidence.get("windows") or ()
             latest = windows[0] if windows and isinstance(windows[0], Mapping) else {}
@@ -646,8 +664,29 @@ class DefaultStages:
             )
             record["sigma_pair"] = sigma
             record["er"] = er
-            record["holding_horizon_days"] = policy["H_days"]
-            record["holding_horizon_source"] = "measured:latest_multiwindow_ER_policy"
+            er_hours = float(policy["H_days"]) * 24.0
+            profile = inputs_module.profile_kind(record)
+            legal = inputs_module.PROFILE_HORIZONS_HOURS.get(profile, ())
+            # The existing range policy currently emits PASSIVE day horizons.
+            # Do not guess a cross-profile mapping here; R6 owns tactical ER
+            # candidates.  Once a legal candidate exists, ADD-1 may only move
+            # upward through that same frozen discrete set.
+            if er_hours not in legal:
+                continue
+            chain = str(record.get("chain") or record.get("network") or "").lower()
+            selection = inputs_module.select_drag_adjusted_horizon(
+                profile=profile,
+                er_horizon_hours=er_hours,
+                fee_tier=_finite_float(record.get("fee_tier")),
+                gas_usd=inputs_module.HISTORICAL_GAS_USD.get(chain),
+            )
+            record["holding_horizon_er_policy_hours"] = er_hours
+            record["holding_horizon_hours"] = selection["holding_horizon_hours"]
+            record["holding_horizon_days"] = selection["holding_horizon_hours"] / 24.0
+            record["holding_horizon_source"] = selection["holding_horizon_source"]
+            record["drag_apr_pct"] = selection["drag_apr_pct"]
+            record["drag_apr_max_pct"] = selection["drag_apr_max_pct"]
+            record["high_drag_flag"] = selection["high_drag_flag"]
         return records
 
     def _attach_live_pool_state(self, source: Mapping[str, Any]) -> Dict[str, Any]:

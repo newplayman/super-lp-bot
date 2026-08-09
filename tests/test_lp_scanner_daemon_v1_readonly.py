@@ -338,6 +338,11 @@ def test_wp04_adapter_is_the_strict_fifth_gate_not_only_a_diagnostic():
         "sigma_pair": 0.01,
         "l_active_raw": 10**30,
         "price_usd": 1.0,
+        "last_swap_price_token1_per_token0": 1.0,
+        "last_swap_liquidity_raw": 10**30,
+        "last_swap_cost_state_source": "measured:latest_decoded_swap_event",
+        "token0": "0x4200000000000000000000000000000000000006",
+        "token1": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
         "fee_tier": 0.0001,
         "dec0": 18,
         "dec1": 6,
@@ -408,8 +413,10 @@ def test_w6_scanner_carries_er_horizon_and_reads_depth_before_assembly(monkeypat
     stages = DefaultStages(rpc_pool=rpc_pool)
     resolved = [{
         "pool": "0x1111111111111111111111111111111111111111",
+        "chain": "Base",
         "project": "uniswap-v3",
         "tier": "A",
+        "fee_tier": 0.0001,
     }]
     stability = [{
         "pool": resolved[0]["pool"],
@@ -418,7 +425,8 @@ def test_w6_scanner_carries_er_horizon_and_reads_depth_before_assembly(monkeypat
     carried = stages.funnel(resolved, stability)[0]
     assert carried["holding_horizon_days"] == 14
     assert carried["sigma_pair"] == 0.02
-    assert carried["holding_horizon_source"].startswith("measured:")
+    assert carried["holding_horizon_source"] == "ER_policy"
+    assert carried["high_drag_flag"] is False
 
     enriched = stages._attach_live_pool_state(carried)
     assert enriched["sqrt_price_x96"] == 2**96
@@ -429,9 +437,75 @@ def test_w6_scanner_carries_er_horizon_and_reads_depth_before_assembly(monkeypat
         "pool": resolved[0]["pool"],
         "last_swap_price_token1_per_token0": 1.5,
         "last_swap_liquidity_raw": 999,
+        "last_swap_cost_state_source": "measured:latest_decoded_swap_event",
     })
     assert already_measured["last_swap_liquidity_raw"] == 999
     assert rpc_pool.calls == ["0x3850c7bd", "0x1a686502"]
+
+
+def test_add1_funnel_er_missing_clears_all_candidate_prefilled_horizon_and_drag(monkeypatch):
+    import scripts.lp_funnel_vet_v1_readonly as funnel
+
+    malicious = {
+        "pool": "0x1111111111111111111111111111111111111111",
+        "chain": "Base",
+        "project": "uniswap-v3",
+        "profile": "PASSIVE_CL",
+        "holding_horizon_hours": 720.0,
+        "holding_horizon_days": 30.0,
+        "holding_horizon_source": "drag_adjusted(from=168)",
+        "profile_horizon_hours": 720.0,
+        "profile_horizon_days": 30.0,
+        "er_horizon_hours": 720.0,
+        "er_horizon_days": 30.0,
+        "drag_apr_pct": 0.0,
+        "drag_apr_max_pct": 15.0,
+        "high_drag_flag": False,
+    }
+    monkeypatch.setattr(
+        funnel,
+        "funnel_vet",
+        lambda bridge, stability, **kwargs: [dict(malicious, vetted=True)],
+    )
+
+    carried = DefaultStages().funnel([malicious], stability=[])[0]
+
+    for key in (
+        "holding_horizon_hours", "holding_horizon_days", "holding_horizon_source",
+        "profile_horizon_hours", "profile_horizon_days", "er_horizon_hours",
+        "er_horizon_days", "drag_apr_pct", "drag_apr_max_pct", "high_drag_flag",
+    ):
+        assert carried.get(key) is None
+
+
+def test_add1_scanner_moves_to_smallest_legal_h_for_fixed_drag(monkeypatch):
+    import scripts.lp_funnel_vet_v1_readonly as funnel
+
+    monkeypatch.setattr(
+        funnel,
+        "funnel_vet",
+        lambda bridge, stability, **kwargs: [dict(bridge[0], vetted=True)],
+    )
+    resolved = [{
+        "pool": "0x1111111111111111111111111111111111111111",
+        "chain": "Base",
+        "project": "uniswap-v3",
+        "tier": "A",
+        "fee_tier": 0.003,
+    }]
+    stability = [{
+        "pool": resolved[0]["pool"],
+        "windows": [{"sigma_daily": 0.02, "er": 0.3}],
+    }]
+
+    carried = DefaultStages().funnel(resolved, stability)[0]
+
+    assert carried["holding_horizon_er_policy_hours"] == 336.0
+    assert carried["holding_horizon_hours"] == 720.0
+    assert carried["holding_horizon_days"] == 30.0
+    assert carried["holding_horizon_source"] == "drag_adjusted(from=336)"
+    assert carried["drag_apr_pct"] <= 15.0
+    assert carried["high_drag_flag"] is False
 
 
 def test_default_live_stages_inject_rotating_rpc_pool_into_calls_and_logs(monkeypatch):

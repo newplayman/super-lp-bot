@@ -1,5 +1,7 @@
 {
   "schema_version": "lp_funnel_depth_fix_r1b_v1",
+  "netcover_economics_basis": "口径=ADD-1前",
+  "netcover_economics_status": "superseded for final economics; retained only as historical R1b coverage evidence",
   "baseline": {
     "artifact": "reports/lp_netcover_inputs/20260809_final_default/scanner.db",
     "as_of": "2026-08-09T08:19:38.034782+00:00",

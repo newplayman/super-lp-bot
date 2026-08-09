@@ -1,5 +1,7 @@
 # M0F FIX-R1b — final depth evidence
 
+> **口径说明：本报告中的全部 NetCover 数字均为 `口径=ADD-1前`，仅用于 R1b 覆盖率验收；最终经济性已被 ADD-1 口径取代（superseded for final economics）。历史数值保留，不作为 M0F 最终 NetCover。**
+
 ## Result
 
 Final-code live scan: **733 → 10 → 10 → 10 → 0 accepted**. Fully calculable NetCover records improved from the R1a/M0P live baseline **1/10** to the current live cohort **4/10**. The free DefiLlama top-10 changed, so this is a live capability comparison, not a paired claim over identical ten rows.

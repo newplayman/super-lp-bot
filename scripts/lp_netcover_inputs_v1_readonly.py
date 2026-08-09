@@ -24,6 +24,8 @@ from scripts.lp_cost_sensitivity_v1_readonly import (  # exact WP-04 assembly ma
 from scripts.lp_netcover_engine_v1_readonly import REWARD_HAIRCUTS
 from scripts.lp_portfolio_allocator_v1_readonly import M1_MIN_POSITION_USD
 from scripts.lp_swap_cost_model_v1_readonly import exit_conversion_cost_usd
+from scripts.lp_v3_fee_share import position_liquidity_raw
+from scripts.lp_vol_range_sizer_v1_readonly import recommend_range_pct
 
 
 NETCOVER_INPUT_FIELDS = (
@@ -42,6 +44,18 @@ PROFILE_HORIZONS_HOURS = {
     "PASSIVE": frozenset({7.0 * 24.0, 14.0 * 24.0, 30.0 * 24.0}),
     "TACTICAL": frozenset({6.0, 12.0, 24.0, 72.0}),
 }
+
+# fee_apr_7d is an annualized observation over a seven-day evidence window.  We
+# therefore anchor the USD FeeEV to that fixed window, then adjust only the
+# position's raw-liquidity share for the vol-sized range selected at target H.
+# Target H is deliberately *not* multiplied into FeeEV: doing both H and
+# 1/range(H) would leave a free sqrt(H) score lever, contrary to ADD-1.
+FEE_EVIDENCE_REFERENCE_HOURS = 7.0 * 24.0
+
+# ADD-1 task B: above this annualized fixed drag, move only upward through the
+# profile's frozen discrete horizon set.  This is a modelling annotation and
+# horizon selection rule, not a NetCover acceptance threshold.
+DRAG_APR_MAX = 15.0
 
 # Same committed historical Base observation used by lp_cost_sensitivity.
 # Unknown chains stay unavailable; they are never assigned Base's value.
@@ -72,7 +86,9 @@ INPUT_SEMANTICS = {
 }
 
 INPUT_SOURCES = {
-    "fee_ev_usd": "model_estimate:conservative_fee_apr_horizon",
+    "fee_ev_usd": (
+        "model_estimate:7d_fee_evidence_anchor_vol_range_raw_liquidity_share"
+    ),
     "reward_ev_usd": "model_estimate:reward_apr_horizon",
     "il_ev_usd": "model_estimate:il_apr_horizon_with_sigma_evidence",
     "entry_cost_usd": "model_estimate:lp_swap_cost_model_v1_readonly._swap_components",
@@ -117,6 +133,83 @@ def _first_number(record: Mapping[str, Any], *keys: str, positive: bool = False)
         if value is not None:
             return value
     return None
+
+
+def _horizon_label(hours: float) -> str:
+    return str(int(hours)) if float(hours).is_integer() else str(hours)
+
+
+def _fixed_drag_apr_pct(
+    *, fee_tier: float, gas_usd: float, position_usd: float, horizon_hours: float
+) -> float:
+    """Annualized one-off round-trip fee + gas drag; fee_tier is a fraction."""
+    return (
+        (2.0 * fee_tier + gas_usd / position_usd)
+        / (horizon_hours / HOURS_PER_YEAR)
+        * 100.0
+    )
+
+
+def select_drag_adjusted_horizon(
+    *,
+    profile: str,
+    er_horizon_hours: float,
+    fee_tier: float | None,
+    gas_usd: float | None,
+    position_usd: float = M1_MIN_POSITION_USD,
+) -> dict[str, Any]:
+    """Apply ADD-1 task B without using H as a continuous score knob.
+
+    The ER candidate remains authoritative when its fixed-cost drag is already
+    tolerable or when drag evidence is unavailable.  Otherwise the smallest
+    *higher* legal profile H at/below ``DRAG_APR_MAX`` is selected.  If even the
+    maximum legal H remains high, evaluation continues with an explicit flag.
+    """
+    kind = str(profile).upper()
+    legal = sorted(PROFILE_HORIZONS_HOURS.get(kind, ()))
+    original = _number(er_horizon_hours, positive=True)
+    if original is None or original not in legal:
+        raise ValueError("ER horizon must belong to the profile discrete set")
+    tier = _number(fee_tier)
+    gas = _number(gas_usd)
+    size = _number(position_usd, positive=True)
+    base = {
+        "holding_horizon_hours": original,
+        "holding_horizon_source": "ER_policy",
+        "drag_apr_pct": None,
+        "drag_apr_max_pct": DRAG_APR_MAX,
+        "high_drag_flag": False,
+    }
+    if tier is None or gas is None or size is None:
+        return base
+
+    initial_drag = _fixed_drag_apr_pct(
+        fee_tier=tier, gas_usd=gas, position_usd=size, horizon_hours=original
+    )
+    if initial_drag <= DRAG_APR_MAX:
+        base["drag_apr_pct"] = initial_drag
+        return base
+
+    candidates = [hours for hours in legal if hours > original]
+    selected = original
+    selected_drag = initial_drag
+    for hours in candidates:
+        drag = _fixed_drag_apr_pct(
+            fee_tier=tier, gas_usd=gas, position_usd=size, horizon_hours=hours
+        )
+        selected, selected_drag = hours, drag
+        if drag <= DRAG_APR_MAX:
+            break
+    base.update({
+        "holding_horizon_hours": selected,
+        "holding_horizon_source": (
+            f"drag_adjusted(from={_horizon_label(original)})"
+            if selected != original else "ER_policy"
+        ),
+        "drag_apr_pct": selected_drag,
+        "high_drag_flag": selected_drag > DRAG_APR_MAX,
+    })
+    return base
 
 
 def profile_kind(record: Mapping[str, Any]) -> str | None:
@@ -230,6 +323,140 @@ def _pool_cost_state(record: Mapping[str, Any]) -> tuple[float, int, int] | None
     if token0 in _BASE_STABLE_TOKENS:
         return 1.0 / pair_price, int(dec1), int(dec0)
     return None
+
+
+def _range_aware_fee_ev(
+    record: Mapping[str, Any],
+    *,
+    size_usd: float,
+    horizon_hours: float | None,
+    fee_apr_pct: float | None,
+    fee_haircut: float,
+    scanner_measured_evidence: Mapping[str, Any] | None,
+) -> tuple[float | None, dict[str, float | None]]:
+    """Model FeeEV from a fixed 7d evidence anchor and raw-liquidity density.
+
+    ``fee_apr_pct * size`` is already a return-on-LP-capital quantity, so an
+    absolute pool share must not be multiplied into it a second time.  Instead
+    canonical position liquidity provides a *relative* share adjustment versus
+    the same 50U position at the seven-day evidence range.  This preserves the
+    observed APR anchor while making wider H ranges earn lower fee density.
+    """
+    metadata: dict[str, float | None] = {
+        "fee_capture_reference_horizon_hours": FEE_EVIDENCE_REFERENCE_HOURS,
+        "fee_capture_reference_range_pct": None,
+        "fee_capture_target_range_pct": None,
+        "fee_capture_reference_share": None,
+        "fee_capture_target_share": None,
+        "fee_capture_share_ratio": None,
+        "fee_capture_evidence_apr_pct": fee_apr_pct,
+        "fee_capture_haircut": fee_haircut,
+    }
+    # Generic DefiLlama ``sigma`` may be headline APR dispersion.  Fee density
+    # accepts only pair-price volatility measured by the multi-window path.
+    sigma = _first_number(record, "sigma_pair", "sigma_daily", positive=True)
+    if horizon_hours is None or fee_apr_pct is None or sigma is None:
+        return None, metadata
+
+    target_range = recommend_range_pct(sigma, horizon_hours / 24.0)
+    reference_range = recommend_range_pct(
+        sigma, FEE_EVIDENCE_REFERENCE_HOURS / 24.0
+    )
+    metadata["fee_capture_target_range_pct"] = target_range
+    metadata["fee_capture_reference_range_pct"] = reference_range
+    # Canonical liquidity math takes sqrt(p_lo); a >=100% half-range is not a
+    # valid two-sided CL position.  Do not clamp it into a more favorable band.
+    if not (
+        math.isfinite(target_range)
+        and math.isfinite(reference_range)
+        and 0.0 < target_range < 100.0
+        and 0.0 < reference_range < 100.0
+    ):
+        return None, metadata
+
+    # Main-pool price/L must come from the internal decoded-swap path or the
+    # scanner's own slot0/liquidity reads.  In particular, a candidate-supplied
+    # ``price_usd`` plus liquidity cannot make FeeEV calculable.
+    state_record = dict(record)
+    for key in ("price_usd", "pool_price_usd"):
+        state_record.pop(key, None)
+    swap_provenance = record.get("last_swap_cost_state_source") == (
+        "measured:latest_decoded_swap_event"
+    )
+    live_provenance = (
+        str(record.get("sqrt_price_x96_source") or "").startswith(
+            "measured:pool.slot0"
+        )
+        and str(record.get("l_active_raw_source") or "").startswith(
+            "measured:pool.liquidity"
+        )
+    )
+    if swap_provenance:
+        l_active = _first_number(record, "last_swap_liquidity_raw", positive=True)
+        for key in (
+            "l_active_raw", "active_liquidity_raw", "l_active_raw_historical",
+            "sqrtPriceX96", "sqrt_price_x96",
+        ):
+            state_record.pop(key, None)
+    elif live_provenance:
+        l_active = _first_number(record, "l_active_raw", positive=True)
+        for key in (
+            "last_swap_price_token1_per_token0", "last_swap_liquidity_raw",
+        ):
+            state_record.pop(key, None)
+    else:
+        return None, metadata
+    state = _pool_cost_state(state_record)
+    position_quote = size_usd
+    if state is None and scanner_measured_evidence:
+        quote_usd = _number(scanner_measured_evidence.get("token1_usd"), positive=True)
+        pair_price = _first_number(
+            state_record, "last_swap_price_token1_per_token0", positive=True
+        )
+        dec0 = _first_number(state_record, "dec0")
+        dec1 = _first_number(state_record, "dec1")
+        if None not in (quote_usd, pair_price, dec0, dec1):
+            state = (float(pair_price), int(dec0), int(dec1))
+            position_quote = size_usd / float(quote_usd)
+    if l_active is None or state is None:
+        return None, metadata
+    price, dec0, dec1 = state
+    try:
+        l_reference = position_liquidity_raw(
+            position_quote, price, reference_range, dec0, dec1
+        )
+        l_target = position_liquidity_raw(
+            position_quote, price, target_range, dec0, dec1
+        )
+        if not all(
+            math.isfinite(value) and value > 0.0
+            for value in (l_reference, l_target)
+        ):
+            return None, metadata
+        reference_share = l_reference / (l_active + l_reference)
+        target_share = l_target / (l_active + l_target)
+        share_ratio = target_share / reference_share
+        fee_anchor = (
+            size_usd
+            * fee_apr_pct
+            * fee_haircut
+            / 100.0
+            * (FEE_EVIDENCE_REFERENCE_HOURS / HOURS_PER_YEAR)
+        )
+        fee_ev = fee_anchor * share_ratio
+    except (ArithmeticError, OverflowError, ValueError):
+        return None, metadata
+    if not all(
+        math.isfinite(value) and value >= 0.0
+        for value in (reference_share, target_share, share_ratio, fee_ev)
+    ):
+        return None, metadata
+    metadata.update({
+        "fee_capture_reference_share": reference_share,
+        "fee_capture_target_share": target_share,
+        "fee_capture_share_ratio": share_ratio,
+    })
+    return fee_ev, metadata
 
 
 def _swap_costs(
@@ -426,10 +653,16 @@ def assemble_netcover_inputs(
     fee_7d = _first_number(record, "fee_apr_7d", "apyBase")
     age_is_established = record.get("is_new_pool") is False
     fee_haircut = ESTABLISHED_FEE_HAIRCUT if age_is_established else NEW_OR_AGE_UNKNOWN_FEE_HAIRCUT
-    fee_ev = (
-        size * min(fee_24h, fee_7d) * fee_haircut / 100.0 * fraction
-        if None not in (fee_24h, fee_7d, fraction)
-        else None
+    fee_evidence_apr = (
+        min(fee_24h, fee_7d) if None not in (fee_24h, fee_7d) else None
+    )
+    fee_ev, fee_capture_metadata = _range_aware_fee_ev(
+        record,
+        size_usd=size,
+        horizon_hours=horizon,
+        fee_apr_pct=fee_evidence_apr,
+        fee_haircut=fee_haircut,
+        scanner_measured_evidence=scanner_measured_evidence,
     )
 
     reward_apr = _first_number(record, "reward_apr", "apyReward")
@@ -505,6 +738,7 @@ def assemble_netcover_inputs(
             "lp_netcover_inputs_v1_readonly:raw_evidence_calculated_only"
         ),
     })
+    record.update(fee_capture_metadata)
     record.update(reward_route_metadata)
     if scanner_measured_evidence:
         record["scanner_measured_cross_pool_evidence"] = dict(scanner_measured_evidence)

@@ -1,0 +1,64 @@
+{
+  "schema_version": "lp_funnel_add1_v1",
+  "invalidated_pre_fix_run": "reports/lp_funnel_add1/20260809_103217",
+  "fee_model": {
+    "reference_horizon_hours": 168.0,
+    "target_h_linear_multiplier": false,
+    "range_source": "lp_vol_range_sizer_v1_readonly.recommend_range_pct",
+    "liquidity_source": "lp_v3_fee_share.position_liquidity_raw",
+    "decimal_scale": "10^((dec0+dec1)/2)",
+    "missing_evidence_behavior": "fee_ev_usd=None"
+  },
+  "h_selection_model": {
+    "drag_apr_max_pct": 15.0,
+    "constant_semantics": "H-selection model constant; not an entry gate",
+    "formula": "(2*fee_tier + gas_usd/position_usd)/(H/8760)*100",
+    "passive_hours": [168.0, 336.0, 720.0],
+    "tactical_hours": [6.0, 12.0, 24.0, 72.0],
+    "max_still_high_behavior": "high_drag_flag=true and continue evaluation"
+  },
+  "h7_h30_self_check": {
+    "source_artifact": "reports/lp_funnel_depth_fix/20260809_100700/scanner.db",
+    "source_as_of": "2026-08-09T10:06:43.620485+00:00",
+    "inverse_sqrt_reference": 0.48304589153964794,
+    "records": [
+      {"symbol": "USDC-CBMEGA", "h7_range_pct": 9.741626993856585, "h30_range_pct": 20.167083841260663, "h7_fee_ev_usd": 0.19180276164383564, "h30_fee_ev_usd": 0.09418840440861405, "h30_h7_ratio": 0.49106907325722116},
+      {"symbol": "O-USDC", "h7_range_pct": 5.634036411351112, "h30_range_pct": 11.663563462662585, "h7_fee_ev_usd": 0.1332348164383562, "h30_fee_ev_usd": 0.06511758742258011, "h30_h7_ratio": 0.48874302650995205},
+      {"symbol": "WETH-MORPHO", "h7_range_pct": 6.310429826207884, "h30_range_pct": 13.063830863138456, "h7_fee_ev_usd": 0.14173231780821918, "h30_fee_ev_usd": 0.06933411522649652, "h30_h7_ratio": 0.4891905833383314}
+    ]
+  },
+  "usdc_vvv_comparison": {
+    "source_artifact": "reports/lp_netcover_inputs/20260809_final_default/scanner.db",
+    "source_as_of": "2026-08-09T08:19:38.034782+00:00",
+    "pre_add1": {"horizon_hours": 168.0, "fee_ev_usd": 0.06129008219178084, "netcover": 0.040912955191278286, "expected_net_yield_usd": -1.4367704197991997},
+    "task_a_only": {"horizon_hours": 168.0, "holding_horizon_source": "ER_policy", "fee_ev_usd": 0.06129008219178084, "netcover": 0.040912955191278286, "expected_net_yield_usd": -1.4367704197991997},
+    "task_a_plus_b": {"horizon_hours": 720.0, "holding_horizon_source": "drag_adjusted(from=168)", "drag_apr_pct": 9.2345, "fee_ev_usd": 0.029880723203599042, "netcover": 0.005780932895762031, "expected_net_yield_usd": -5.138960317228548}
+  },
+  "final_live": {
+    "artifact": "reports/lp_funnel_add1/20260809_104335/scanner.db",
+    "as_of": "2026-08-09T10:43:36.180083+00:00",
+    "screened": 732,
+    "top": 10,
+    "resolved": 10,
+    "scored": 10,
+    "fully_calculable": 4,
+    "accepted": 0,
+    "records": [
+      {"symbol": "O-USDC", "horizon_hours": 720.0, "holding_horizon_source": "ER_policy", "drag_apr_pct": 9.2345, "high_drag_flag": false, "fee_ev_usd": 0.06795706297024545, "netcover": 0.2605637399342958, "accepted": false},
+      {"symbol": "USDC-CBMEGA", "horizon_hours": 720.0, "holding_horizon_source": "drag_adjusted(from=168)", "drag_apr_pct": 9.2345, "high_drag_flag": false, "fee_ev_usd": 0.0768428889654479, "netcover": 0.19224767376371743, "accepted": false},
+      {"symbol": "WETH-MORPHO", "horizon_hours": 720.0, "holding_horizon_source": "drag_adjusted(from=168)", "drag_apr_pct": 8.5921, "high_drag_flag": false, "fee_ev_usd": 0.07112088655641426, "netcover": 0.3349360455595569, "accepted": false},
+      {"symbol": "WETH-USOL", "horizon_hours": 720.0, "holding_horizon_source": "ER_policy", "drag_apr_pct": 5.5845, "high_drag_flag": false, "fee_ev_usd": 0.0385376084089964, "netcover": 0.02653788442788653, "accepted": false},
+      {"symbol": "RECALL-USDC", "netcover": null, "accepted": false, "reason": "ambiguous_multi_factory_pool"},
+      {"symbol": "WETH-VVV", "netcover": null, "accepted": false, "reason": "ambiguous_multi_factory_pool"},
+      {"symbol": "AERO-CBBTC", "netcover": null, "accepted": false, "reason": "ambiguous_multi_factory_pool"},
+      {"symbol": "WETH-AERO", "netcover": null, "accepted": false, "reason": "ambiguous_multi_factory_pool"},
+      {"symbol": "WETH-USDC", "netcover": null, "accepted": false, "reason": "ambiguous_multi_factory_pool"},
+      {"symbol": "MSUSD-MSETH", "netcover": null, "accepted": false, "reason": "ambiguous_multi_factory_pool"}
+    ]
+  },
+  "verification": {
+    "targeted_tests": "62 passed in 6.74s",
+    "protected_threshold_files_changed": false,
+    "daemon_started": false
+  }
+}
