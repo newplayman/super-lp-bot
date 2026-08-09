@@ -1,0 +1,118 @@
+{
+  "schema_version": "lp_m0n_base_acceptance_v1",
+  "verdict": "PASS_ZERO_ACCEPTED_TRUTHFUL",
+  "as_of": "2026-08-09T16:14:33.474230+00:00",
+  "command_profile": {
+    "chain": "Base",
+    "projects": [
+      "aerodrome-slipstream",
+      "uniswap-v3"
+    ],
+    "top": 30,
+    "window_blocks": 86400,
+    "window_days": 1,
+    "n_windows": 6,
+    "once": true
+  },
+  "stdout": [
+    "[scanner] as_of=2026-08-09T16:14:33.474230+00:00 screened=730 top=30 resolved=30 scored=30 accepted=0 sessions=0",
+    "[tg-fallback] event=rpc_degraded text=[LPBOT][WARNING][rpc_degraded] scanner RPC health changed UNKNOWN -> DEGRADED; new entries blocked",
+    "[scanner] vetted_menu exported=0 invalid=0 out=reports/lp_m0n_acceptance/20260809_base_once_postfix/vetted_menu.json"
+  ],
+  "evidence_sha256": {
+    "scanner_db": "1e546b7a61f5b104ddba6b20fa65c8b402ab3550981db6daf394b151db1be8ea",
+    "vetted_menu": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "gate_report_json": "b7a71eed7078118becea5950c8899b6374e44841999c2b8f3494f79787d54ad9",
+    "gate_report_md": "eb7dcae804cb07bd078bc26cbe7e04e1ceac9dfb34239ae949a666326cf4208e"
+  },
+  "counts": {
+    "pool_snapshots": 730,
+    "opportunity_scores": 30,
+    "reward_observations": 30,
+    "market_sessions": 0,
+    "finite_netcover": 16,
+    "netcover_pass": 0,
+    "entry_eligible": 14,
+    "vetted": 0,
+    "accepted": 0
+  },
+  "reward_persistence": {
+    "SURROGATE_STRONG": 12,
+    "SURROGATE_WEAK": 16,
+    "NOT_APPLICABLE": 2,
+    "evidence_source_surrogate_defillama": 28,
+    "evidence_source_absent": 2,
+    "evidence_source_measured_observation": 0,
+    "observation_source_defillama_pools": 30,
+    "same_cycle_observations_used_for_decision": false
+  },
+  "terminal_reasons": {
+    "PERMANENT_FAIL_CLOSED:ambiguous_multi_factory_pool": 14,
+    "NETCOVER_BELOW_SHADOW": 9,
+    "ENTRY_INELIGIBLE:REWARD_PERSISTENCE_SURROGATE_WEAK": 7
+  },
+  "targets": [
+    {
+      "symbol": "MSUSD-USDC",
+      "llama_pool_id": "aae6cc3a-783b-4a76-bea7-c3edccd28d62",
+      "resolved_pool": "0x7501bc8bb51616f79bfa524e464fb7b41f0b10fb",
+      "persistence_status": "SURROGATE_STRONG",
+      "evidence_source": "surrogate_defillama",
+      "factor": 0.25,
+      "entry_eligible": true,
+      "netcover_ratio": 0.4197443093523237,
+      "accepted": false,
+      "terminal_reason": "NETCOVER_BELOW_SHADOW",
+      "m0f_reason": "ENTRY_INELIGIBLE:REWARD_PERSISTENCE_MISSING"
+    },
+    {
+      "symbol": "USDC-CBBTC",
+      "llama_pool_id": "ff82c362-dea1-4946-b3b1-92ebd5100b1e",
+      "resolved_pool": "0x4e962bb3889bf030368f56810a9c96b83cb3e778",
+      "persistence_status": "SURROGATE_WEAK",
+      "evidence_source": "surrogate_defillama",
+      "factor": 0.0,
+      "entry_eligible": false,
+      "netcover_ratio": 0.10704379241883176,
+      "accepted": false,
+      "terminal_reason": "ENTRY_INELIGIBLE:REWARD_PERSISTENCE_SURROGATE_WEAK",
+      "m0f_reason": "ENTRY_INELIGIBLE:REWARD_PERSISTENCE_MISSING"
+    },
+    {
+      "symbol": "USDC-CBBTC",
+      "llama_pool_id": "6f1786fc-a22f-4c46-91cd-d3792479bdc2",
+      "resolved_pool": null,
+      "persistence_status": "SURROGATE_WEAK",
+      "factor": 0.0,
+      "entry_eligible": false,
+      "netcover_ratio": null,
+      "accepted": false,
+      "terminal_reason": "PERMANENT_FAIL_CLOSED:ambiguous_multi_factory_pool",
+      "engineering_status": "blocked_pending_authoritative_pool_mapping"
+    },
+    {
+      "symbol": "USDC-CBBTC",
+      "llama_pool_id": "c0675357-219a-42b5-b6cc-079cef869cf5",
+      "resolved_pool": null,
+      "persistence_status": "SURROGATE_WEAK",
+      "factor": 0.0,
+      "entry_eligible": false,
+      "netcover_ratio": null,
+      "accepted": false,
+      "terminal_reason": "PERMANENT_FAIL_CLOSED:ambiguous_multi_factory_pool",
+      "engineering_status": "blocked_pending_authoritative_pool_mapping"
+    }
+  ],
+  "gate": {
+    "overall": "INSUFFICIENT_EVIDENCE",
+    "unique_position_identities": 0,
+    "unique_root_pools": 0,
+    "unresolved_rpc_severe_incidents": 0
+  },
+  "invalidated_pre_fix_batch": {
+    "path": "reports/lp_m0n_acceptance/20260809_base_once",
+    "reason": "pre-a08b74f terminal entry-veto audit failure",
+    "opportunity_scores": 0,
+    "used_as_evidence": false
+  }
+}

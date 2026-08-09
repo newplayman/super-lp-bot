@@ -2,7 +2,7 @@
 
 **分支：** `feat/prd-v2.1-m0-shadow`
 
-**状态：** WP-00～10、M0R、M0P 与 M0F 漏斗可用性轮已完成验收；M0F 裁决为 **PASS / READY FOR COMMANDER REVIEW**，FIX-DOC/E2E 已收口。最终 scanner 为 `733→30→30→30→0`：stdout 的 `resolved=30` 是 resolver 输出数（含 14 条 fail-closed placeholder），canonical `read_funnel().resolved=16` 是成功 resolve 数；30 条 operational score 中 16 条 NetCover 有限，可计算覆盖率 `53.3%`。该 `16/30` 包含 `top` 从 10 扩至 30 的取样窗口扩大效应；衡量工程修复质量须采用同分母口径，即 M0P 的 `1/10` 到 M0F R1b 的 `4/10`。正式 R2 证据 `20260809_135500` 为同批 30 条、16 个可计算对、Spearman `r=0.473529`、`n=16`、`t=2.011613`、`df=14`、双尾 `p=0.063919`，top-K `7/10`；其 `r>=0.3` 仅达到预设业务排序阈值，不是统计显著性检验。结论应读作“边缘相关，证据不足以强推”，历史生产排序采用 `PROXY_NETCOVER` 的事实不变。**14 天 shadow 尚未启动；覆盖是否达到业务上可接受水平由指挥官判断，只有指挥官认可覆盖并显式决定起算后，14 天计时才开始。§12.0 gate 仍为 `INSUFFICIENT_EVIDENCE`，M1 未放行。**
+**状态：** WP-00～10、M0R、M0P、M0F 与 M0N 已完成验收；M0N 裁决为 **PASS / READY FOR COMMANDER REVIEW**。N1 已把 fee/reward 统一修正为 `H/8760 × share_ratio(H)`；N2 已接通 scanner 实测 A 轨与保守 DefiLlama B 轨，并在独立对抗验收发现终闸未合取 `entry_eligible` 后以 `a08b74f` 封死。修复后 Base 正式扫描为 `730→30→30→30→0`，16/30 NetCover 有限，12 条 `SURROGATE_STRONG`、16 条 `SURROGATE_WEAK`、2 条 fee-only，30 条 reward observation 当轮只采数不自证；RPC 为 `DEGRADED`，菜单为空。Solana top100 为 Raydium 94 + Orca 6，100/100 TACTICAL，但均因缺权威 pool-account 映射 fail-closed，H/source 保持空。M0F 的工程覆盖质量仍按同分母 `1/10→4/10` 衡量，`16/30` 含 top 10→30 的取样窗口效应；R2 为 `r=0.473529, n=16, p=0.063919`，只支持“边缘相关，证据不足以强推”。**N1+N2 验收已通过，但指挥官尚未显式下令，因此 14 天 shadow 尚未启动；§12.0 gate 仍为 `INSUFFICIENT_EVIDENCE`，M1 未放行。**
 
 **发布边界：** 未合并、未推送远端；等待指挥官 review。本文不构成 M1 放行。
 
@@ -45,6 +45,25 @@
 ## 2. 指挥官批准后才可执行的启动命令
 
 以下命令**只写在交接中，未执行**。先将 `APPROVED_ALLOCATION` 替换为 sol smoke 后人工批准、非空且确实来自 live-vetted 链路的 Base allocation。不得使用 fixture 启动 14d 观察。
+
+### 2.0 M0N A 轨“采数模式”（只启动 scanner，不启动 runner）
+
+N1+N2 已通过，但以下命令仍须指挥官显式批准后才可执行。它只让 scanner 常驻并把每轮候选写入 `reward_observations`；不启动 allocator、runner、RWA collector 或 14 天计时。当前正式 Base 批次 RPC 为 `DEGRADED`，启动前还应由指挥官确认免费 RPC 状态与运行窗口。
+
+```bash
+cd /opt/lpbot/lp-bot-v3-origin-check
+install -d -m 700 reports/lp_scanner reports/lp_shadow_launch
+nohup python3 -u scripts/lp_scanner_daemon_v1_readonly.py \
+  --chain Base --projects aerodrome-slipstream uniswap-v3 --top 30 \
+  --db reports/lp_scanner/scanner.db \
+  --pid-file reports/lp_scanner/scanner.pid \
+  --coarse-interval-secs 900 --top-interval-secs 60 \
+  --window-blocks 86400 --window-days 1 --n-windows 6 \
+  --vetted-menu-out reports/lp_scanner/vetted_menu.json \
+  > reports/lp_shadow_launch/scanner-collection.log 2>&1 &
+```
+
+只有 scanner 自有 SQLite 历史连续满 24 小时才可赋予 `TRUSTED_24H`；同一轮 observation 必须在判定后才写入，不能给自己作证。采数模式本身不等于 14 天 shadow 已开始。
 
 ### 2.1 nohup
 
@@ -182,7 +201,7 @@ Shadow 五问在 14d 数据前均为 **PENDING_EVIDENCE**，不得提前作答�
 - `lvr_estimate`、`exit_latency_loss` 是模型估计，不是 observed execution；退出记录 `depth_model` 或 `flat_placeholder` 成本 basis。
 - `PRIMARY_CLOSED` 永远 shadow-only，不与 REGULAR 平均后转正。
 - `tvl_worsening` / `liquidity_worsening` 的硬动作是 v1 §23 入场拒绝，不进入存量仓 hard-risk 直通；存量仓不会仅因 TVL/流动性衰减自动退出，相关风险由入场筛选承担。
-- Reward persistence 缺失/无效/负值 fail-closed；`<6h` 不 ENTER，6–24h haircut，≥24h 才 trusted。
+- Reward persistence A+B 双轨：scanner 自有、严格早于当轮且连续满 24h 的观测才是 `TRUSTED_24H`（factor 1.0）；未满 24h 回退 B 轨。DefiLlama `SURROGATE_STRONG` 只给 6h-equivalent、factor 0.25，永远不能升级 trusted；`SURROGATE_WEAK` 与 `ABSENT` 只做 shadow/fail-closed。外部预填 duration/source 会被剥离，最终 `vetted` 与 `accepted` 还会再次与 `entry_eligible` 合取。
 - 14 条 `ambiguous_multi_factory_pool` 的工程状态是 `blocked_pending_authoritative_pool_mapping`：当前继续 fail-closed，但它们是等待权威 pool/factory 映射后可修复的阻断项，不应描述为不可恢复的“永久关闭”。数据库和历史报告中的 `PERMANENT_FAIL_CLOSED:ambiguous_multi_factory_pool` 是当次运行留下的原始历史字段，本轮不篡改。
 - Telegram 未配置 `LPBOT_TG_TOKEN/LPBOT_TG_CHAT` 时降级 stdout、不崩溃；尚未发送真实测试消息。按 D3，测试阶段沿用现有 token，但进入真钱阶段前必须在外部强制轮换；任何 token/chat 值禁止回写源码、命令行、报告、日志或 commit。
 - Base public RPC 与 Solana public RPC 都有可变限流；没有付费 fallback。任何付费 RPC 只允许生成建议报告，必须指挥官人工批准。
@@ -242,5 +261,19 @@ M0F 没有放宽 NetCover/风险阈值，没有启动 daemon 或 14 天计时，
 
 ## 10. M0N 提交流程纪律（FIX-N5）
 
-- 生产代码提交 `3d32989 m0n(fix-N1): correct horizon-scaled LP income` 与 `8a82002 m0n(fix-N2-N4): add reward evidence tracks and Solana fail-closed` 均使用 `FIX` 前缀，与其代码变更性质一致。
+- 生产代码提交 `3d32989 m0n(fix-N1): correct horizon-scaled LP income`、`8a82002 m0n(fix-N2-N4): add reward evidence tracks and Solana fail-closed` 与对抗验收补丁 `a08b74f m0n(fix-N2): enforce reward entry veto at terminal gate` 均使用 `FIX` 前缀，与其代码变更性质一致。
 - 后续 `DOC` 提交只允许包含文档与报告，不得夹带生产代码或测试变更。
+
+## 11. M0N 收入建模与 reward 双轨（2026-08-09）
+
+完整验收见 `M0N_ACCEPTANCE_20260809.md`；本节只保留交接结论。
+
+- **N1 收入口径：** `fee_ev=size×feeAPR/100×fee_haircut×(H/8760)×share_ratio(H)`；`reward_ev=size×rewardAPR/100×(H/8760)×share_ratio(H)`，reward category/persistence haircut 仍只在 engine 侧乘一次。3 个 reward 与 3 个 no-reward 池的 FeeEV 720/168 为 `2.0763～2.1057`，3 个 reward 池的 RewardEV 比为 `2.0811～2.0879`，均在理论 `sqrt(720/168)=2.0702` 的 ±5% 内；reward=0 明记 N/A，不伪造 0/0。USDC-USDT 的 M0F/N1 H720 NetCover 为 `0.320462→0.167697`，USDC-VVV 为 `0.154035→0.660149`，变化来源已逐项拆分。
+- **N2 B 轨：** 正式 Base 30 条中 `SURROGATE_STRONG=12`（factor 0.25，可继续过 entry persistence 但不是 trusted）、`SURROGATE_WEAK=16`（factor 0、entry veto）、fee-only `NOT_APPLICABLE=2`。MSUSD-USDC 从 M0F 的 `REWARD_PERSISTENCE_MISSING` 变为 strong，最终因 NetCover `0.419744<1.0` 拒绝；canonical USDC-CBBTC 变为 weak，最终理由 `ENTRY_INELIGIBLE:REWARD_PERSISTENCE_SURROGATE_WEAK`，另两条同名记录仍等待权威 factory 映射。
+- **N2 A 轨：** `reward_observations` 在正式 Base 当轮落 30 行、Solana 当轮落 100 行；当轮判定先于写入。真实证据以 DefiLlama pool UUID + chain 隔离，连续正 reward suffix 的最大间隔为 0.5h，少于 24h 不覆盖 B 轨，重启后 SQLite 历史不丢失。
+- **对抗验收：** 独立探针发现前置 `entry_eligible=false` 可被旧终闸漏掉；`a08b74f` 修复后，终端适配器即使恶意翻转 entry 位/清空原因，WEAK/ABSENT 仍无法 `vetted/accepted`，STRONG 在其他闸全过时仍可正常接受。
+- **N3：** 同分母覆盖为 `1/10→4/10`；`16/30` 明确含采样窗口扩大。Spearman 补齐 `n=16, t=2.011613, df=14, p=0.063919`，业务阈值不是显著性检验，结论为“边缘相关，证据不足以强推”。14 条歧义池状态为 `blocked_pending_authoritative_pool_mapping`。
+- **N4：** 正式 Solana top100 扫描不再误入 EVM RPC；100 条候选均 TACTICAL 并逐池落库，但缺 DefiLlama UUID→权威 Solana pool account 映射，因此 H、H source、ER-policy H 均为空、accepted 0。这是 fail-closed 生产诊断，不是 TACTICAL 经济模型已走通。
+- **最终 E2E/gate：** Base stdout `730→30→30→30→0`，finite NetCover 16、菜单 `[]`、RPC `DEGRADED`；Solana stdout `1958→100→100→100→0`。§12.0 gate 为 `INSUFFICIENT_EVIDENCE`，0 identities / 0 roots，未关闭严重 RPC incident 为 0。测试为 `2858 passed, 14 skipped`；三阈值保护文件、Go、`lp_long_horizon`、M1、依赖与封存仓均无改动。
+
+M0N 没有放宽任何闸值，没有用 surrogate 冒充实测，没有启动 scanner 常驻、runner 或 14 天计时。N1+N2 技术验收通过只是必要条件；正式起算仍必须有指挥官显式命令，且 runner 必须消费非空、人工批准的 live-vetted allocation。

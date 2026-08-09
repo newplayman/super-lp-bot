@@ -1,0 +1,63 @@
+{
+  "gate_schema_version": 1,
+  "generated_at": "2026-08-09T16:41:40.063089+00:00",
+  "source_db": "reports/lp_m0n_acceptance/20260809_base_once_postfix/scanner.db",
+  "evidence_window": {
+    "first_as_of": null,
+    "last_as_of": null
+  },
+  "thresholds": {
+    "minimum_shadow_days": 14.0,
+    "minimum_simulated_positions": 50,
+    "minimum_unique_root_pools": 5,
+    "maximum_fee_prediction_error_pct": 20.0,
+    "minimum_shadow_net_pnl_usd_exclusive": 0.0,
+    "maximum_simulated_drawdown_pct": 8.0,
+    "maximum_unresolved_rpc_severe_incidents": 0
+  },
+  "measurement_precision": {
+    "usd_near_zero_tolerance": 1e-09,
+    "rule": "abs(raw_shadow_net_pnl_usd) <= tolerance normalizes to 0 before >0 gate"
+  },
+  "position_coverage": {
+    "unique_position_identities": 0,
+    "unique_root_pools": 0,
+    "root_pool_rule": "strip trailing :reentry:N suffixes"
+  },
+  "checks": {
+    "shadow_duration_days": {
+      "value": null,
+      "threshold": ">= 14",
+      "status": "UNKNOWN"
+    },
+    "simulated_positions": {
+      "value": 0,
+      "unique_root_pools": 0,
+      "threshold": ">= 50 unique (source_run, position_identity) AND >= 5 unique root pools",
+      "status": "UNKNOWN"
+    },
+    "fee_prediction_error_pct": {
+      "value": null,
+      "threshold": "< 20%",
+      "status": "UNKNOWN"
+    },
+    "shadow_net_pnl_usd": {
+      "value": null,
+      "raw_value": null,
+      "threshold": "> 0",
+      "status": "UNKNOWN"
+    },
+    "simulated_drawdown_pct": {
+      "value": null,
+      "threshold": "< 8%",
+      "status": "UNKNOWN"
+    },
+    "rpc_severe_unresolved": {
+      "value": 0,
+      "threshold": "= 0",
+      "status": "PASS"
+    }
+  },
+  "overall_status": "INSUFFICIENT_EVIDENCE",
+  "authorization": "evidence_only_not_M1_authorization"
+}
