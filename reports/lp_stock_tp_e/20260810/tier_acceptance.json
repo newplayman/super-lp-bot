@@ -1,0 +1,2723 @@
+{
+  "counts_are_real_chain_terminal_not_defillama_yield_claims": true,
+  "tier_counts": {
+    "A": {
+      "universe": 91,
+      "stage2_pass": 0,
+      "terminal_pass": 0
+    },
+    "B": {
+      "universe": 10,
+      "stage2_pass": 0,
+      "terminal_pass": 0
+    },
+    "C": {
+      "universe": 15,
+      "stage2_pass": 0,
+      "terminal_pass": 0
+    },
+    "STOCK_STOCK": {
+      "universe": 1,
+      "stage2_pass": 0,
+      "terminal_pass": 0
+    }
+  },
+  "terminal_pass_count": 0,
+  "signed": false,
+  "broadcast_count": 0,
+  "decisions": [
+    {
+      "llama_pool_id": "39a5812f-e1cf-56f4-aa1c-12098cc6ac1d",
+      "symbol": "USDT-SPYON",
+      "chain": "BSC",
+      "project": "uniswap-v3",
+      "issuer": "Ondo",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "557df763-5675-4e48-8d6c-65fe7589fca5",
+      "symbol": "TSLA-WETH",
+      "chain": "Base",
+      "project": "uniswap-v2",
+      "issuer": "unknown",
+      "tier": "B",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "B",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": false,
+          "absolute_profit": false,
+          "dual_volatility_tightened": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,instrument_normalized,absolute_profit,dual_volatility_tightened"
+      }
+    },
+    {
+      "llama_pool_id": "2e0ac94f-9f24-4a30-9b43-b14e6970dd38",
+      "symbol": "AAPL-DUSD",
+      "chain": "Defichain",
+      "project": "defichain-dex",
+      "issuer": "unknown",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": false,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,instrument_normalized,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "6a67e6ea-41ff-411d-8053-6ffbb17091b5",
+      "symbol": "AI-DUSD",
+      "chain": "Defichain",
+      "project": "defichain-dex",
+      "issuer": "unknown",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": false,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,instrument_normalized,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "8e275cad-b6e8-4d62-b507-a9f5de5fe6e9",
+      "symbol": "AMZN-DUSD",
+      "chain": "Defichain",
+      "project": "defichain-dex",
+      "issuer": "unknown",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": false,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,instrument_normalized,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "11e29be4-1bcc-4297-a721-d8f74b764790",
+      "symbol": "ARKK-DUSD",
+      "chain": "Defichain",
+      "project": "defichain-dex",
+      "issuer": "unknown",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": false,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,instrument_normalized,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "b2f87a84-a61d-4e11-96ab-585603555269",
+      "symbol": "BABA-DUSD",
+      "chain": "Defichain",
+      "project": "defichain-dex",
+      "issuer": "unknown",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": false,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,instrument_normalized,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "525102bf-838d-43e7-ba32-5e084ddfd3c5",
+      "symbol": "BITI-DUSD",
+      "chain": "Defichain",
+      "project": "defichain-dex",
+      "issuer": "unknown",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": false,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,instrument_normalized,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "8954d1ef-2f53-4ef7-bc29-9134c0d058a3",
+      "symbol": "COIN-DUSD",
+      "chain": "Defichain",
+      "project": "defichain-dex",
+      "issuer": "unknown",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": false,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,instrument_normalized,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "dacb5342-c23b-46a6-98e6-8b104f77542c",
+      "symbol": "EEM-DUSD",
+      "chain": "Defichain",
+      "project": "defichain-dex",
+      "issuer": "unknown",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": false,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,instrument_normalized,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "e94b372b-b29f-4be0-bc8f-674b5412519e",
+      "symbol": "FB-DUSD",
+      "chain": "Defichain",
+      "project": "defichain-dex",
+      "issuer": "unknown",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": false,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,instrument_normalized,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "3979f13c-92e0-42cb-aa69-476665a39d60",
+      "symbol": "GLD-DUSD",
+      "chain": "Defichain",
+      "project": "defichain-dex",
+      "issuer": "unknown",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": false,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,instrument_normalized,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "eb546c65-53ba-4e59-8f9a-2732800c6e60",
+      "symbol": "GME-DUSD",
+      "chain": "Defichain",
+      "project": "defichain-dex",
+      "issuer": "unknown",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": false,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,instrument_normalized,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "68e3b89c-1085-4f19-a116-23827ae06f49",
+      "symbol": "GOOGL-DUSD",
+      "chain": "Defichain",
+      "project": "defichain-dex",
+      "issuer": "unknown",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": false,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,instrument_normalized,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "679a033e-d8c1-48ed-be3f-9a3e6881b99b",
+      "symbol": "IBIT-DUSD",
+      "chain": "Defichain",
+      "project": "defichain-dex",
+      "issuer": "unknown",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": false,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,instrument_normalized,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "754c627d-1a61-4d35-b739-6e73a176e6d5",
+      "symbol": "MSFT-DUSD",
+      "chain": "Defichain",
+      "project": "defichain-dex",
+      "issuer": "unknown",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": false,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,instrument_normalized,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "4f4e18b0-ad83-4322-bd49-299f51092ea9",
+      "symbol": "MSTR-DUSD",
+      "chain": "Defichain",
+      "project": "defichain-dex",
+      "issuer": "unknown",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": false,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,instrument_normalized,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "611b5930-1546-47cc-bc53-c80427612b77",
+      "symbol": "NFLX-DUSD",
+      "chain": "Defichain",
+      "project": "defichain-dex",
+      "issuer": "unknown",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": false,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,instrument_normalized,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "a13e4841-8f66-4426-9ed1-472c9e159e93",
+      "symbol": "NVDA-DUSD",
+      "chain": "Defichain",
+      "project": "defichain-dex",
+      "issuer": "unknown",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": false,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,instrument_normalized,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "8fd58000-31cd-4c9b-9450-0cbbb200d09d",
+      "symbol": "PFE-DUSD",
+      "chain": "Defichain",
+      "project": "defichain-dex",
+      "issuer": "unknown",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": false,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,instrument_normalized,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "e5f8b3ee-3589-414c-8cfb-2801d7e2d922",
+      "symbol": "PLTR-DUSD",
+      "chain": "Defichain",
+      "project": "defichain-dex",
+      "issuer": "unknown",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": false,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,instrument_normalized,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "04a153c1-2be7-45b7-b0c5-8a7e23cd8b1b",
+      "symbol": "QQQ-DUSD",
+      "chain": "Defichain",
+      "project": "defichain-dex",
+      "issuer": "unknown",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": false,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,instrument_normalized,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "edca5153-ed95-4c03-9f2e-6a1e7d1f334c",
+      "symbol": "SLV-DUSD",
+      "chain": "Defichain",
+      "project": "defichain-dex",
+      "issuer": "unknown",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": false,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,instrument_normalized,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "d6f831a7-0079-4400-b2c5-a8436358d53a",
+      "symbol": "SPY-DUSD",
+      "chain": "Defichain",
+      "project": "defichain-dex",
+      "issuer": "unknown",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": false,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,instrument_normalized,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "17f41a00-4c7a-4712-91e4-41f9b8d9e38f",
+      "symbol": "TLT-DUSD",
+      "chain": "Defichain",
+      "project": "defichain-dex",
+      "issuer": "unknown",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": false,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,instrument_normalized,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "dc833f4f-eafc-4d50-ac5d-b0237641ba5a",
+      "symbol": "TSLA-DUSD",
+      "chain": "Defichain",
+      "project": "defichain-dex",
+      "issuer": "unknown",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": false,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,instrument_normalized,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "fee825e8-2605-4729-9f9e-480dcd13e703",
+      "symbol": "URTH-DUSD",
+      "chain": "Defichain",
+      "project": "defichain-dex",
+      "issuer": "unknown",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": false,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,instrument_normalized,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "57629bc6-da85-4eac-904e-d64a939102db",
+      "symbol": "USDC-TSLAON",
+      "chain": "Ethereum",
+      "project": "uniswap-v4",
+      "issuer": "Ondo",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "85731ac0-c354-4ddc-a796-9d3bafde7a1d",
+      "symbol": "USDC-WQQQX",
+      "chain": "Ethereum",
+      "project": "uniswap-v3",
+      "issuer": "Backed",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "247c4969-6eb4-4abd-b073-7c83d0920e82",
+      "symbol": "USDC-WSPYX",
+      "chain": "Ethereum",
+      "project": "uniswap-v3",
+      "issuer": "Backed",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "0a6a2caf-6c34-4452-893c-74d07c3348c0",
+      "symbol": "USDT-TSLAON",
+      "chain": "Ethereum",
+      "project": "uniswap-v4",
+      "issuer": "Ondo",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "754cdac3-7083-471f-a5be-14c0fd500d26",
+      "symbol": "WMSTRX-USDC",
+      "chain": "Ethereum",
+      "project": "uniswap-v3",
+      "issuer": "Backed",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "b3ca8d99-2013-4ecb-b26b-06480ea25a08",
+      "symbol": "WNVDAX-USDC",
+      "chain": "Ethereum",
+      "project": "uniswap-v3",
+      "issuer": "Backed",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "aaa7d96f-474d-4bc2-a093-4a0da6de9638",
+      "symbol": "WNVDAX-USDT",
+      "chain": "Ethereum",
+      "project": "everything",
+      "issuer": "Backed",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "b2dc3501-c0b2-4463-9d19-35dd1a8630b5",
+      "symbol": "WTSLAX-USDC",
+      "chain": "Ethereum",
+      "project": "uniswap-v3",
+      "issuer": "Backed",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "3b6b75cf-adb5-4fb4-bbcd-8f75c6879c9d",
+      "symbol": "USDC-WAAPLX",
+      "chain": "Mantle",
+      "project": "fluxion-network",
+      "issuer": "Backed",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "a7e2f58e-1c93-4592-acd6-8e40e6cb26ff",
+      "symbol": "USDC-WCRCLX",
+      "chain": "Mantle",
+      "project": "fluxion-network",
+      "issuer": "Backed",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "227e8492-33e9-4953-8beb-28973c9fdb8a",
+      "symbol": "USDC-WGOOGLX",
+      "chain": "Mantle",
+      "project": "fluxion-network",
+      "issuer": "Backed",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "30836422-c578-4f77-8f81-861c509c5d4c",
+      "symbol": "USDC-WHOODX",
+      "chain": "Mantle",
+      "project": "fluxion-network",
+      "issuer": "Backed",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "b8d50460-5237-4601-9250-4f2d3a6b569b",
+      "symbol": "USDC-WMETAX",
+      "chain": "Mantle",
+      "project": "fluxion-network",
+      "issuer": "Backed",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "ebec73de-fd1e-4f97-8287-d9cb01c7d352",
+      "symbol": "USDC-WMSTRX",
+      "chain": "Mantle",
+      "project": "fluxion-network",
+      "issuer": "Backed",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "2a510869-6356-4486-8bb5-d5a808634496",
+      "symbol": "USDC-WNVDAX",
+      "chain": "Mantle",
+      "project": "fluxion-network",
+      "issuer": "Backed",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "2364dd66-69d3-44ef-9e85-4d5217a57b57",
+      "symbol": "USDC-WQQQX",
+      "chain": "Mantle",
+      "project": "fluxion-network",
+      "issuer": "Backed",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "913ce101-55b1-4230-93c7-d523f0d9ca03",
+      "symbol": "USDC-WSPYX",
+      "chain": "Mantle",
+      "project": "fluxion-network",
+      "issuer": "Backed",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "a4ff3d7c-a117-4b24-a9f9-6af46cd276c0",
+      "symbol": "USDC-WTSLAX",
+      "chain": "Mantle",
+      "project": "fluxion-network",
+      "issuer": "Backed",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "55f14016-4a94-5066-a27a-c88ca8bed65c",
+      "symbol": "GME-USDG",
+      "chain": "Robinhood Chain",
+      "project": "ekubo",
+      "issuer": "Robinhood",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "5f7d700e-41d0-5d13-b328-9f85afe71266",
+      "symbol": "SPCX-USDG",
+      "chain": "Robinhood Chain",
+      "project": "ekubo",
+      "issuer": "Robinhood",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "52b8d993-fe7e-5ca8-88c9-00872c01f73e",
+      "symbol": "SPY-USDG",
+      "chain": "Robinhood Chain",
+      "project": "ekubo",
+      "issuer": "Robinhood",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "4f4f8680-0740-55fc-b0b5-dd49f530f9f5",
+      "symbol": "USDG-NVDA",
+      "chain": "Robinhood Chain",
+      "project": "ekubo",
+      "issuer": "Robinhood",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "7b56ac37-1249-4ae8-bd5d-2494f3ac7499",
+      "symbol": "AAPL-USDC",
+      "chain": "Solana",
+      "project": "gmtrade",
+      "issuer": "unknown",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": false,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,instrument_normalized,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "9462784c-c0e5-4539-914e-ac006e5b3097",
+      "symbol": "AAPLX-USDC",
+      "chain": "Solana",
+      "project": "raydium-amm",
+      "issuer": "Backed",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "3d99a2b1-ca5b-4fc5-9e4c-112382b7bcc9",
+      "symbol": "AMZN-USDC",
+      "chain": "Solana",
+      "project": "gmtrade",
+      "issuer": "unknown",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": false,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,instrument_normalized,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "688fdee4-325a-4e86-904c-7d9ca92d1f45",
+      "symbol": "AMZNX-USDC",
+      "chain": "Solana",
+      "project": "raydium-amm",
+      "issuer": "Backed",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "5877c8cd-f400-4dec-a998-2b54a6676c5c",
+      "symbol": "AVGOX-USDC",
+      "chain": "Solana",
+      "project": "raydium-amm",
+      "issuer": "Backed",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "b808f728-041d-4a95-aa63-9828625f1521",
+      "symbol": "BRK.BX-USDC",
+      "chain": "Solana",
+      "project": "raydium-amm",
+      "issuer": "Backed",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "8950fa38-8d84-4aa3-81c8-32f4dea48191",
+      "symbol": "COINX-USDC",
+      "chain": "Solana",
+      "project": "raydium-amm",
+      "issuer": "Backed",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "b561548e-daa8-4945-9d24-e04aafcf5fda",
+      "symbol": "COINX-USDC",
+      "chain": "Solana",
+      "project": "raydium-amm",
+      "issuer": "Backed",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "2619cf7a-535e-43a6-8163-a0d1265611a6",
+      "symbol": "CRCLX-USDC",
+      "chain": "Solana",
+      "project": "raydium-amm",
+      "issuer": "Backed",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "e480f2c3-9422-441c-8901-9c32ab359447",
+      "symbol": "CRCLX-USDC",
+      "chain": "Solana",
+      "project": "raydium-amm",
+      "issuer": "Backed",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "3719be8e-77f3-4239-b901-407f6b174fd0",
+      "symbol": "GLDX-USDC",
+      "chain": "Solana",
+      "project": "raydium-amm",
+      "issuer": "Backed",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "b7a1de8b-ae15-4365-9f30-b32463510965",
+      "symbol": "GLDX-USDC",
+      "chain": "Solana",
+      "project": "orca-dex",
+      "issuer": "Backed",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "84608e3f-5e2e-5665-8476-7456ad98e3cf",
+      "symbol": "GMEX-USDC",
+      "chain": "Solana",
+      "project": "orca-dex",
+      "issuer": "Backed",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "f37649e7-52ac-46ae-bf1c-7ff1921c3cf7",
+      "symbol": "GOOGLX-USDC",
+      "chain": "Solana",
+      "project": "raydium-amm",
+      "issuer": "Backed",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "c8a9a79e-6cc9-4360-b207-1a4ed437beac",
+      "symbol": "HOODX-USDC",
+      "chain": "Solana",
+      "project": "raydium-amm",
+      "issuer": "Backed",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "2461256c-64ad-40ec-8a64-f5b5da93ed93",
+      "symbol": "INTCX-USDC",
+      "chain": "Solana",
+      "project": "raydium-amm",
+      "issuer": "Backed",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "3fb4deda-77c0-473f-928f-6070df576405",
+      "symbol": "KOX-USDC",
+      "chain": "Solana",
+      "project": "raydium-amm",
+      "issuer": "Backed",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "e4f9a318-eb01-44dc-8f0f-60cb29c64128",
+      "symbol": "METAX-USDC",
+      "chain": "Solana",
+      "project": "raydium-amm",
+      "issuer": "Backed",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "7a2d3931-0c0a-4e99-9e4b-4c647f532363",
+      "symbol": "MSFTX-USDC",
+      "chain": "Solana",
+      "project": "raydium-amm",
+      "issuer": "Backed",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "e72ac43f-66a2-4f2b-a08c-6280cd5fe45b",
+      "symbol": "MSTRX-USDC",
+      "chain": "Solana",
+      "project": "raydium-amm",
+      "issuer": "Backed",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "8c67811c-fff6-46f7-a5ee-98e735ae28d7",
+      "symbol": "NVDA-USDC",
+      "chain": "Solana",
+      "project": "gmtrade",
+      "issuer": "unknown",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": false,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,instrument_normalized,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "6f7708a9-58d0-4941-a06a-b83e91b06903",
+      "symbol": "NVDAX-USDC",
+      "chain": "Solana",
+      "project": "raydium-amm",
+      "issuer": "Backed",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "a8e25ac4-f4d0-412a-a211-62a4e513eca0",
+      "symbol": "NVDAX-USDC",
+      "chain": "Solana",
+      "project": "raydium-amm",
+      "issuer": "Backed",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "d841f4d5-34a3-4671-809e-47ed34fd9bcf",
+      "symbol": "NVDAX-USDC",
+      "chain": "Solana",
+      "project": "orca-dex",
+      "issuer": "Backed",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "06244737-82e1-41f3-b178-80a17165219c",
+      "symbol": "PLTRX-USDC",
+      "chain": "Solana",
+      "project": "orca-dex",
+      "issuer": "Backed",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "d3d573d4-6dc6-48e2-8ec7-685e55e0f48d",
+      "symbol": "PLTRX-USDC",
+      "chain": "Solana",
+      "project": "raydium-amm",
+      "issuer": "Backed",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "954f95a5-2156-4e9d-b67d-9adce8159c68",
+      "symbol": "QQQ-USDC",
+      "chain": "Solana",
+      "project": "gmtrade",
+      "issuer": "unknown",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": false,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,instrument_normalized,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "318d20fb-417b-492f-aeb9-d0709b0d3d58",
+      "symbol": "QQQX-USDC",
+      "chain": "Solana",
+      "project": "raydium-amm",
+      "issuer": "Backed",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "a7c454bf-d9f7-43e7-aa65-2440a8e8188d",
+      "symbol": "QQQX-USDC",
+      "chain": "Solana",
+      "project": "raydium-amm",
+      "issuer": "Backed",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "b237d486-5778-4246-9eb0-afb8d68a6644",
+      "symbol": "SPCX-USDC",
+      "chain": "Solana",
+      "project": "gmtrade",
+      "issuer": "unknown",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": false,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,instrument_normalized,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "38c5f03a-b7c4-5040-ac0f-19445758a45d",
+      "symbol": "SPCXX-USDC",
+      "chain": "Solana",
+      "project": "orca-dex",
+      "issuer": "Backed",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "8feb7ee9-2530-4168-860a-ee444c809da7",
+      "symbol": "SPCXX-USDC",
+      "chain": "Solana",
+      "project": "raydium-amm",
+      "issuer": "Backed",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "2ad9f07b-7eda-40e2-bc56-3b2b6f6f4b5c",
+      "symbol": "SPY-USDC",
+      "chain": "Solana",
+      "project": "gmtrade",
+      "issuer": "unknown",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": false,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,instrument_normalized,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "119990a9-9784-4203-b72d-70fa7bcd6769",
+      "symbol": "SPYX-USDC",
+      "chain": "Solana",
+      "project": "orca-dex",
+      "issuer": "Backed",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "5ccd0074-df46-49d8-8f6d-de221b60672c",
+      "symbol": "SPYX-USDC",
+      "chain": "Solana",
+      "project": "raydium-amm",
+      "issuer": "Backed",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "bdfbf09f-6f0e-4129-8099-138a78b2ce50",
+      "symbol": "SPYX-USDC",
+      "chain": "Solana",
+      "project": "raydium-amm",
+      "issuer": "Backed",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "f5be6f43-4e18-4bc4-9e96-f64abc62b201",
+      "symbol": "SPYX-USDC",
+      "chain": "Solana",
+      "project": "raydium-amm",
+      "issuer": "Backed",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "6b38ef9b-ee9f-42a9-afdf-5b099b108001",
+      "symbol": "STRCX-USDC",
+      "chain": "Solana",
+      "project": "raydium-amm",
+      "issuer": "Backed",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "c55a300c-3ca8-4b8a-bdaf-ab0d7bb966f3",
+      "symbol": "STRCX-USDC",
+      "chain": "Solana",
+      "project": "raydium-amm",
+      "issuer": "Backed",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "e61dbb1b-24aa-4380-a001-644d2c68b2ce",
+      "symbol": "TSLA-USDC",
+      "chain": "Solana",
+      "project": "gmtrade",
+      "issuer": "unknown",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": false,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,instrument_normalized,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "314c6cb3-b2d1-4262-9b16-1c1db245b262",
+      "symbol": "TSLAX-USDC",
+      "chain": "Solana",
+      "project": "raydium-amm",
+      "issuer": "Backed",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "37cd8913-83bd-4d9d-a28b-b354ee1743b4",
+      "symbol": "TSLAX-USDC",
+      "chain": "Solana",
+      "project": "raydium-amm",
+      "issuer": "Backed",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "9707453e-63a2-4d7c-8311-ca71f5cad17c",
+      "symbol": "TSLAX-USDC",
+      "chain": "Solana",
+      "project": "orca-dex",
+      "issuer": "Backed",
+      "tier": "A",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "A",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit"
+      }
+    },
+    {
+      "llama_pool_id": "1f4b8cc8-f6db-5d1c-8cbd-de39247cc3ed",
+      "symbol": "SOL-CRCLX",
+      "chain": "Solana",
+      "project": "orca-dex",
+      "issuer": "Backed",
+      "tier": "B",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "B",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false,
+          "dual_volatility_tightened": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit,dual_volatility_tightened"
+      }
+    },
+    {
+      "llama_pool_id": "1aa2981e-1565-4471-879c-bcd0d2e8236a",
+      "symbol": "WSOL-COINX",
+      "chain": "Solana",
+      "project": "raydium-amm",
+      "issuer": "Backed",
+      "tier": "B",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "B",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false,
+          "dual_volatility_tightened": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit,dual_volatility_tightened"
+      }
+    },
+    {
+      "llama_pool_id": "62d12119-752e-4978-b96e-d5d6ecbc44ba",
+      "symbol": "WSOL-CRCLX",
+      "chain": "Solana",
+      "project": "raydium-amm",
+      "issuer": "Backed",
+      "tier": "B",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "B",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false,
+          "dual_volatility_tightened": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit,dual_volatility_tightened"
+      }
+    },
+    {
+      "llama_pool_id": "5009ebf5-ba92-400a-940f-cfda55c92a15",
+      "symbol": "WSOL-HOODX",
+      "chain": "Solana",
+      "project": "raydium-amm",
+      "issuer": "Backed",
+      "tier": "B",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "B",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false,
+          "dual_volatility_tightened": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit,dual_volatility_tightened"
+      }
+    },
+    {
+      "llama_pool_id": "340cf7b7-9654-4f2c-9d30-e519dbde849d",
+      "symbol": "WSOL-MSTRX",
+      "chain": "Solana",
+      "project": "raydium-amm",
+      "issuer": "Backed",
+      "tier": "B",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "B",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false,
+          "dual_volatility_tightened": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit,dual_volatility_tightened"
+      }
+    },
+    {
+      "llama_pool_id": "9347eff9-909c-435d-8fb2-1dced04f5831",
+      "symbol": "WSOL-NVDAX",
+      "chain": "Solana",
+      "project": "raydium-amm",
+      "issuer": "Backed",
+      "tier": "B",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "B",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false,
+          "dual_volatility_tightened": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit,dual_volatility_tightened"
+      }
+    },
+    {
+      "llama_pool_id": "0d7ffd2b-257e-4066-95be-35fb37bc748b",
+      "symbol": "WSOL-QQQX",
+      "chain": "Solana",
+      "project": "raydium-amm",
+      "issuer": "Backed",
+      "tier": "B",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "B",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false,
+          "dual_volatility_tightened": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit,dual_volatility_tightened"
+      }
+    },
+    {
+      "llama_pool_id": "c8947f06-3856-4c9c-88de-1fd1b9f4db0b",
+      "symbol": "WSOL-SPYX",
+      "chain": "Solana",
+      "project": "raydium-amm",
+      "issuer": "Backed",
+      "tier": "B",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "B",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false,
+          "dual_volatility_tightened": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit,dual_volatility_tightened"
+      }
+    },
+    {
+      "llama_pool_id": "53162d28-dfd0-46d4-b42e-9c761abf3272",
+      "symbol": "WSOL-TSLAX",
+      "chain": "Solana",
+      "project": "raydium-amm",
+      "issuer": "Backed",
+      "tier": "B",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "B",
+        "gates": {
+          "existing_terminal_conjunction": false,
+          "instrument_normalized": true,
+          "absolute_profit": false,
+          "dual_volatility_tightened": false
+        },
+        "passed": false,
+        "reason": "FAIL_CLOSED:existing_terminal_conjunction,absolute_profit,dual_volatility_tightened"
+      }
+    },
+    {
+      "llama_pool_id": "2eaf5f17-440b-46b6-ad9b-e7d747df17ab",
+      "symbol": "CRCLX-IDLE",
+      "chain": "Solana",
+      "project": "raydium-amm",
+      "issuer": "Backed",
+      "tier": "C",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "C",
+        "passed": false,
+        "terminal_conjunction_complete": true,
+        "gates": {
+          "1_exit_feasibility": false,
+          "2_holder_concentration": false,
+          "3_sell_simulation": false,
+          "4_yield_persistence": false,
+          "5_counter_token_age": false,
+          "6_position_vs_depth": false,
+          "7_budget_caps": true
+        },
+        "failures": [
+          "1_exit_feasibility",
+          "2_holder_concentration",
+          "3_sell_simulation",
+          "4_yield_persistence",
+          "5_counter_token_age",
+          "6_position_vs_depth"
+        ],
+        "reason": "FAIL_CLOSED:1_exit_feasibility,2_holder_concentration,3_sell_simulation,4_yield_persistence,5_counter_token_age,6_position_vs_depth",
+        "thresholds": {
+          "single_holder_max_pct": 10.0,
+          "yield_persistence_min_hours": 48.0,
+          "counter_token_min_age_days": 7.0,
+          "exit_slippage_max_bps": 200.0,
+          "position_depth_share_max": 0.02,
+          "single_position_max_usd": 5.0,
+          "total_exposure_max_usd": 20.0
+        },
+        "evidence": {
+          "largest_holder_pct": null,
+          "yield_persistence_hours": 0.0,
+          "counter_token_age_days": null,
+          "position_usd": 5.0,
+          "exit_depth_usd": null,
+          "exit_slippage_bps": null,
+          "current_c_exposure_usd": 0.0
+        }
+      }
+    },
+    {
+      "llama_pool_id": "d1226978-b13f-4723-be67-930560f2c775",
+      "symbol": "GLDX-IDLE",
+      "chain": "Solana",
+      "project": "raydium-amm",
+      "issuer": "Backed",
+      "tier": "C",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "C",
+        "passed": false,
+        "terminal_conjunction_complete": true,
+        "gates": {
+          "1_exit_feasibility": false,
+          "2_holder_concentration": false,
+          "3_sell_simulation": false,
+          "4_yield_persistence": false,
+          "5_counter_token_age": false,
+          "6_position_vs_depth": false,
+          "7_budget_caps": true
+        },
+        "failures": [
+          "1_exit_feasibility",
+          "2_holder_concentration",
+          "3_sell_simulation",
+          "4_yield_persistence",
+          "5_counter_token_age",
+          "6_position_vs_depth"
+        ],
+        "reason": "FAIL_CLOSED:1_exit_feasibility,2_holder_concentration,3_sell_simulation,4_yield_persistence,5_counter_token_age,6_position_vs_depth",
+        "thresholds": {
+          "single_holder_max_pct": 10.0,
+          "yield_persistence_min_hours": 48.0,
+          "counter_token_min_age_days": 7.0,
+          "exit_slippage_max_bps": 200.0,
+          "position_depth_share_max": 0.02,
+          "single_position_max_usd": 5.0,
+          "total_exposure_max_usd": 20.0
+        },
+        "evidence": {
+          "largest_holder_pct": null,
+          "yield_persistence_hours": 0.0,
+          "counter_token_age_days": null,
+          "position_usd": 5.0,
+          "exit_depth_usd": null,
+          "exit_slippage_bps": null,
+          "current_c_exposure_usd": 0.0
+        }
+      }
+    },
+    {
+      "llama_pool_id": "1f86297f-55bf-40e7-9485-68e843761c70",
+      "symbol": "GLDX-XAUT0",
+      "chain": "Solana",
+      "project": "raydium-amm",
+      "issuer": "Backed",
+      "tier": "C",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "C",
+        "passed": false,
+        "terminal_conjunction_complete": true,
+        "gates": {
+          "1_exit_feasibility": false,
+          "2_holder_concentration": false,
+          "3_sell_simulation": false,
+          "4_yield_persistence": false,
+          "5_counter_token_age": false,
+          "6_position_vs_depth": false,
+          "7_budget_caps": true
+        },
+        "failures": [
+          "1_exit_feasibility",
+          "2_holder_concentration",
+          "3_sell_simulation",
+          "4_yield_persistence",
+          "5_counter_token_age",
+          "6_position_vs_depth"
+        ],
+        "reason": "FAIL_CLOSED:1_exit_feasibility,2_holder_concentration,3_sell_simulation,4_yield_persistence,5_counter_token_age,6_position_vs_depth",
+        "thresholds": {
+          "single_holder_max_pct": 10.0,
+          "yield_persistence_min_hours": 48.0,
+          "counter_token_min_age_days": 7.0,
+          "exit_slippage_max_bps": 200.0,
+          "position_depth_share_max": 0.02,
+          "single_position_max_usd": 5.0,
+          "total_exposure_max_usd": 20.0
+        },
+        "evidence": {
+          "largest_holder_pct": null,
+          "yield_persistence_hours": 0.0,
+          "counter_token_age_days": null,
+          "position_usd": 5.0,
+          "exit_depth_usd": null,
+          "exit_slippage_bps": null,
+          "current_c_exposure_usd": 0.0
+        }
+      }
+    },
+    {
+      "llama_pool_id": "e6d897d8-681f-4e6d-94aa-a1893d28339d",
+      "symbol": "GLDX-XAUT0",
+      "chain": "Solana",
+      "project": "raydium-amm",
+      "issuer": "Backed",
+      "tier": "C",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "C",
+        "passed": false,
+        "terminal_conjunction_complete": true,
+        "gates": {
+          "1_exit_feasibility": false,
+          "2_holder_concentration": false,
+          "3_sell_simulation": false,
+          "4_yield_persistence": false,
+          "5_counter_token_age": false,
+          "6_position_vs_depth": false,
+          "7_budget_caps": true
+        },
+        "failures": [
+          "1_exit_feasibility",
+          "2_holder_concentration",
+          "3_sell_simulation",
+          "4_yield_persistence",
+          "5_counter_token_age",
+          "6_position_vs_depth"
+        ],
+        "reason": "FAIL_CLOSED:1_exit_feasibility,2_holder_concentration,3_sell_simulation,4_yield_persistence,5_counter_token_age,6_position_vs_depth",
+        "thresholds": {
+          "single_holder_max_pct": 10.0,
+          "yield_persistence_min_hours": 48.0,
+          "counter_token_min_age_days": 7.0,
+          "exit_slippage_max_bps": 200.0,
+          "position_depth_share_max": 0.02,
+          "single_position_max_usd": 5.0,
+          "total_exposure_max_usd": 20.0
+        },
+        "evidence": {
+          "largest_holder_pct": null,
+          "yield_persistence_hours": 0.0,
+          "counter_token_age_days": null,
+          "position_usd": 5.0,
+          "exit_depth_usd": null,
+          "exit_slippage_bps": null,
+          "current_c_exposure_usd": 0.0
+        }
+      }
+    },
+    {
+      "llama_pool_id": "c310b01e-a228-4330-91d5-66fe231bc4a7",
+      "symbol": "GOOGLX-IDLE",
+      "chain": "Solana",
+      "project": "raydium-amm",
+      "issuer": "Backed",
+      "tier": "C",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "C",
+        "passed": false,
+        "terminal_conjunction_complete": true,
+        "gates": {
+          "1_exit_feasibility": false,
+          "2_holder_concentration": false,
+          "3_sell_simulation": false,
+          "4_yield_persistence": false,
+          "5_counter_token_age": false,
+          "6_position_vs_depth": false,
+          "7_budget_caps": true
+        },
+        "failures": [
+          "1_exit_feasibility",
+          "2_holder_concentration",
+          "3_sell_simulation",
+          "4_yield_persistence",
+          "5_counter_token_age",
+          "6_position_vs_depth"
+        ],
+        "reason": "FAIL_CLOSED:1_exit_feasibility,2_holder_concentration,3_sell_simulation,4_yield_persistence,5_counter_token_age,6_position_vs_depth",
+        "thresholds": {
+          "single_holder_max_pct": 10.0,
+          "yield_persistence_min_hours": 48.0,
+          "counter_token_min_age_days": 7.0,
+          "exit_slippage_max_bps": 200.0,
+          "position_depth_share_max": 0.02,
+          "single_position_max_usd": 5.0,
+          "total_exposure_max_usd": 20.0
+        },
+        "evidence": {
+          "largest_holder_pct": null,
+          "yield_persistence_hours": 0.0,
+          "counter_token_age_days": null,
+          "position_usd": 5.0,
+          "exit_depth_usd": null,
+          "exit_slippage_bps": null,
+          "current_c_exposure_usd": 0.0
+        }
+      }
+    },
+    {
+      "llama_pool_id": "daa78790-e4ae-50d7-aab5-7283329470b9",
+      "symbol": "MCDX-FRIES",
+      "chain": "Solana",
+      "project": "raydium-amm",
+      "issuer": "Backed",
+      "tier": "C",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "C",
+        "passed": false,
+        "terminal_conjunction_complete": true,
+        "gates": {
+          "1_exit_feasibility": false,
+          "2_holder_concentration": false,
+          "3_sell_simulation": false,
+          "4_yield_persistence": false,
+          "5_counter_token_age": false,
+          "6_position_vs_depth": false,
+          "7_budget_caps": true
+        },
+        "failures": [
+          "1_exit_feasibility",
+          "2_holder_concentration",
+          "3_sell_simulation",
+          "4_yield_persistence",
+          "5_counter_token_age",
+          "6_position_vs_depth"
+        ],
+        "reason": "FAIL_CLOSED:1_exit_feasibility,2_holder_concentration,3_sell_simulation,4_yield_persistence,5_counter_token_age,6_position_vs_depth",
+        "thresholds": {
+          "single_holder_max_pct": 10.0,
+          "yield_persistence_min_hours": 48.0,
+          "counter_token_min_age_days": 7.0,
+          "exit_slippage_max_bps": 200.0,
+          "position_depth_share_max": 0.02,
+          "single_position_max_usd": 5.0,
+          "total_exposure_max_usd": 20.0
+        },
+        "evidence": {
+          "largest_holder_pct": null,
+          "yield_persistence_hours": 0.0,
+          "counter_token_age_days": null,
+          "position_usd": 5.0,
+          "exit_depth_usd": null,
+          "exit_slippage_bps": null,
+          "current_c_exposure_usd": 0.0
+        }
+      }
+    },
+    {
+      "llama_pool_id": "82252341-cfcc-5932-918a-48c732512239",
+      "symbol": "MSTRX-ABTC",
+      "chain": "Solana",
+      "project": "raydium-amm",
+      "issuer": "Backed",
+      "tier": "C",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "C",
+        "passed": false,
+        "terminal_conjunction_complete": true,
+        "gates": {
+          "1_exit_feasibility": false,
+          "2_holder_concentration": false,
+          "3_sell_simulation": false,
+          "4_yield_persistence": false,
+          "5_counter_token_age": false,
+          "6_position_vs_depth": false,
+          "7_budget_caps": true
+        },
+        "failures": [
+          "1_exit_feasibility",
+          "2_holder_concentration",
+          "3_sell_simulation",
+          "4_yield_persistence",
+          "5_counter_token_age",
+          "6_position_vs_depth"
+        ],
+        "reason": "FAIL_CLOSED:1_exit_feasibility,2_holder_concentration,3_sell_simulation,4_yield_persistence,5_counter_token_age,6_position_vs_depth",
+        "thresholds": {
+          "single_holder_max_pct": 10.0,
+          "yield_persistence_min_hours": 48.0,
+          "counter_token_min_age_days": 7.0,
+          "exit_slippage_max_bps": 200.0,
+          "position_depth_share_max": 0.02,
+          "single_position_max_usd": 5.0,
+          "total_exposure_max_usd": 20.0
+        },
+        "evidence": {
+          "largest_holder_pct": null,
+          "yield_persistence_hours": 0.0,
+          "counter_token_age_days": null,
+          "position_usd": 5.0,
+          "exit_depth_usd": null,
+          "exit_slippage_bps": null,
+          "current_c_exposure_usd": 0.0
+        }
+      }
+    },
+    {
+      "llama_pool_id": "e1d04ccc-1b7b-56d8-bbdf-4c1a4329f14d",
+      "symbol": "QQQX-ETHICS",
+      "chain": "Solana",
+      "project": "raydium-amm",
+      "issuer": "Backed",
+      "tier": "C",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "C",
+        "passed": false,
+        "terminal_conjunction_complete": true,
+        "gates": {
+          "1_exit_feasibility": false,
+          "2_holder_concentration": false,
+          "3_sell_simulation": false,
+          "4_yield_persistence": false,
+          "5_counter_token_age": false,
+          "6_position_vs_depth": false,
+          "7_budget_caps": true
+        },
+        "failures": [
+          "1_exit_feasibility",
+          "2_holder_concentration",
+          "3_sell_simulation",
+          "4_yield_persistence",
+          "5_counter_token_age",
+          "6_position_vs_depth"
+        ],
+        "reason": "FAIL_CLOSED:1_exit_feasibility,2_holder_concentration,3_sell_simulation,4_yield_persistence,5_counter_token_age,6_position_vs_depth",
+        "thresholds": {
+          "single_holder_max_pct": 10.0,
+          "yield_persistence_min_hours": 48.0,
+          "counter_token_min_age_days": 7.0,
+          "exit_slippage_max_bps": 200.0,
+          "position_depth_share_max": 0.02,
+          "single_position_max_usd": 5.0,
+          "total_exposure_max_usd": 20.0
+        },
+        "evidence": {
+          "largest_holder_pct": null,
+          "yield_persistence_hours": 0.0,
+          "counter_token_age_days": null,
+          "position_usd": 5.0,
+          "exit_depth_usd": null,
+          "exit_slippage_bps": null,
+          "current_c_exposure_usd": 0.0
+        }
+      }
+    },
+    {
+      "llama_pool_id": "d2a449ae-4990-467a-bfc3-83280da40aa6",
+      "symbol": "QQQX-IDLE",
+      "chain": "Solana",
+      "project": "raydium-amm",
+      "issuer": "Backed",
+      "tier": "C",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "C",
+        "passed": false,
+        "terminal_conjunction_complete": true,
+        "gates": {
+          "1_exit_feasibility": false,
+          "2_holder_concentration": false,
+          "3_sell_simulation": false,
+          "4_yield_persistence": false,
+          "5_counter_token_age": false,
+          "6_position_vs_depth": false,
+          "7_budget_caps": true
+        },
+        "failures": [
+          "1_exit_feasibility",
+          "2_holder_concentration",
+          "3_sell_simulation",
+          "4_yield_persistence",
+          "5_counter_token_age",
+          "6_position_vs_depth"
+        ],
+        "reason": "FAIL_CLOSED:1_exit_feasibility,2_holder_concentration,3_sell_simulation,4_yield_persistence,5_counter_token_age,6_position_vs_depth",
+        "thresholds": {
+          "single_holder_max_pct": 10.0,
+          "yield_persistence_min_hours": 48.0,
+          "counter_token_min_age_days": 7.0,
+          "exit_slippage_max_bps": 200.0,
+          "position_depth_share_max": 0.02,
+          "single_position_max_usd": 5.0,
+          "total_exposure_max_usd": 20.0
+        },
+        "evidence": {
+          "largest_holder_pct": null,
+          "yield_persistence_hours": 0.0,
+          "counter_token_age_days": null,
+          "position_usd": 5.0,
+          "exit_depth_usd": null,
+          "exit_slippage_bps": null,
+          "current_c_exposure_usd": 0.0
+        }
+      }
+    },
+    {
+      "llama_pool_id": "dd3a85f8-0963-40d1-bf6e-fa3a5c9f9507",
+      "symbol": "SPCX-SPCXX",
+      "chain": "Solana",
+      "project": "raydium-amm",
+      "issuer": "Backed",
+      "tier": "C",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "C",
+        "passed": false,
+        "terminal_conjunction_complete": true,
+        "gates": {
+          "1_exit_feasibility": false,
+          "2_holder_concentration": false,
+          "3_sell_simulation": false,
+          "4_yield_persistence": false,
+          "5_counter_token_age": false,
+          "6_position_vs_depth": false,
+          "7_budget_caps": true
+        },
+        "failures": [
+          "1_exit_feasibility",
+          "2_holder_concentration",
+          "3_sell_simulation",
+          "4_yield_persistence",
+          "5_counter_token_age",
+          "6_position_vs_depth"
+        ],
+        "reason": "FAIL_CLOSED:1_exit_feasibility,2_holder_concentration,3_sell_simulation,4_yield_persistence,5_counter_token_age,6_position_vs_depth",
+        "thresholds": {
+          "single_holder_max_pct": 10.0,
+          "yield_persistence_min_hours": 48.0,
+          "counter_token_min_age_days": 7.0,
+          "exit_slippage_max_bps": 200.0,
+          "position_depth_share_max": 0.02,
+          "single_position_max_usd": 5.0,
+          "total_exposure_max_usd": 20.0
+        },
+        "evidence": {
+          "largest_holder_pct": null,
+          "yield_persistence_hours": 0.0,
+          "counter_token_age_days": null,
+          "position_usd": 5.0,
+          "exit_depth_usd": null,
+          "exit_slippage_bps": null,
+          "current_c_exposure_usd": 0.0
+        }
+      }
+    },
+    {
+      "llama_pool_id": "2354cdbc-6f46-5ef6-9c58-7a5ffced55f5",
+      "symbol": "SPCXX-BOT",
+      "chain": "Solana",
+      "project": "raydium-amm",
+      "issuer": "Backed",
+      "tier": "C",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "C",
+        "passed": false,
+        "terminal_conjunction_complete": true,
+        "gates": {
+          "1_exit_feasibility": false,
+          "2_holder_concentration": false,
+          "3_sell_simulation": false,
+          "4_yield_persistence": false,
+          "5_counter_token_age": false,
+          "6_position_vs_depth": false,
+          "7_budget_caps": true
+        },
+        "failures": [
+          "1_exit_feasibility",
+          "2_holder_concentration",
+          "3_sell_simulation",
+          "4_yield_persistence",
+          "5_counter_token_age",
+          "6_position_vs_depth"
+        ],
+        "reason": "FAIL_CLOSED:1_exit_feasibility,2_holder_concentration,3_sell_simulation,4_yield_persistence,5_counter_token_age,6_position_vs_depth",
+        "thresholds": {
+          "single_holder_max_pct": 10.0,
+          "yield_persistence_min_hours": 48.0,
+          "counter_token_min_age_days": 7.0,
+          "exit_slippage_max_bps": 200.0,
+          "position_depth_share_max": 0.02,
+          "single_position_max_usd": 5.0,
+          "total_exposure_max_usd": 20.0
+        },
+        "evidence": {
+          "largest_holder_pct": null,
+          "yield_persistence_hours": 0.0,
+          "counter_token_age_days": null,
+          "position_usd": 5.0,
+          "exit_depth_usd": null,
+          "exit_slippage_bps": null,
+          "current_c_exposure_usd": 0.0
+        }
+      }
+    },
+    {
+      "llama_pool_id": "f97d1517-498c-5b57-87a2-8135eabf2130",
+      "symbol": "SPCXX-PROMETHEUS",
+      "chain": "Solana",
+      "project": "raydium-amm",
+      "issuer": "Backed",
+      "tier": "C",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "C",
+        "passed": false,
+        "terminal_conjunction_complete": true,
+        "gates": {
+          "1_exit_feasibility": false,
+          "2_holder_concentration": false,
+          "3_sell_simulation": false,
+          "4_yield_persistence": false,
+          "5_counter_token_age": false,
+          "6_position_vs_depth": false,
+          "7_budget_caps": true
+        },
+        "failures": [
+          "1_exit_feasibility",
+          "2_holder_concentration",
+          "3_sell_simulation",
+          "4_yield_persistence",
+          "5_counter_token_age",
+          "6_position_vs_depth"
+        ],
+        "reason": "FAIL_CLOSED:1_exit_feasibility,2_holder_concentration,3_sell_simulation,4_yield_persistence,5_counter_token_age,6_position_vs_depth",
+        "thresholds": {
+          "single_holder_max_pct": 10.0,
+          "yield_persistence_min_hours": 48.0,
+          "counter_token_min_age_days": 7.0,
+          "exit_slippage_max_bps": 200.0,
+          "position_depth_share_max": 0.02,
+          "single_position_max_usd": 5.0,
+          "total_exposure_max_usd": 20.0
+        },
+        "evidence": {
+          "largest_holder_pct": null,
+          "yield_persistence_hours": 0.0,
+          "counter_token_age_days": null,
+          "position_usd": 5.0,
+          "exit_depth_usd": null,
+          "exit_slippage_bps": null,
+          "current_c_exposure_usd": 0.0
+        }
+      }
+    },
+    {
+      "llama_pool_id": "86cc94a1-b387-5e72-8214-c4688ec6387b",
+      "symbol": "SPCXX-URANUS",
+      "chain": "Solana",
+      "project": "raydium-amm",
+      "issuer": "Backed",
+      "tier": "C",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "C",
+        "passed": false,
+        "terminal_conjunction_complete": true,
+        "gates": {
+          "1_exit_feasibility": false,
+          "2_holder_concentration": false,
+          "3_sell_simulation": false,
+          "4_yield_persistence": false,
+          "5_counter_token_age": false,
+          "6_position_vs_depth": false,
+          "7_budget_caps": true
+        },
+        "failures": [
+          "1_exit_feasibility",
+          "2_holder_concentration",
+          "3_sell_simulation",
+          "4_yield_persistence",
+          "5_counter_token_age",
+          "6_position_vs_depth"
+        ],
+        "reason": "FAIL_CLOSED:1_exit_feasibility,2_holder_concentration,3_sell_simulation,4_yield_persistence,5_counter_token_age,6_position_vs_depth",
+        "thresholds": {
+          "single_holder_max_pct": 10.0,
+          "yield_persistence_min_hours": 48.0,
+          "counter_token_min_age_days": 7.0,
+          "exit_slippage_max_bps": 200.0,
+          "position_depth_share_max": 0.02,
+          "single_position_max_usd": 5.0,
+          "total_exposure_max_usd": 20.0
+        },
+        "evidence": {
+          "largest_holder_pct": null,
+          "yield_persistence_hours": 0.0,
+          "counter_token_age_days": null,
+          "position_usd": 5.0,
+          "exit_depth_usd": null,
+          "exit_slippage_bps": null,
+          "current_c_exposure_usd": 0.0
+        }
+      }
+    },
+    {
+      "llama_pool_id": "0bdcd2a7-5ed5-5187-85e6-1c65c6fbd7c1",
+      "symbol": "SPYX-SSX",
+      "chain": "Solana",
+      "project": "raydium-amm",
+      "issuer": "Backed",
+      "tier": "C",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "C",
+        "passed": false,
+        "terminal_conjunction_complete": true,
+        "gates": {
+          "1_exit_feasibility": false,
+          "2_holder_concentration": false,
+          "3_sell_simulation": false,
+          "4_yield_persistence": false,
+          "5_counter_token_age": false,
+          "6_position_vs_depth": false,
+          "7_budget_caps": true
+        },
+        "failures": [
+          "1_exit_feasibility",
+          "2_holder_concentration",
+          "3_sell_simulation",
+          "4_yield_persistence",
+          "5_counter_token_age",
+          "6_position_vs_depth"
+        ],
+        "reason": "FAIL_CLOSED:1_exit_feasibility,2_holder_concentration,3_sell_simulation,4_yield_persistence,5_counter_token_age,6_position_vs_depth",
+        "thresholds": {
+          "single_holder_max_pct": 10.0,
+          "yield_persistence_min_hours": 48.0,
+          "counter_token_min_age_days": 7.0,
+          "exit_slippage_max_bps": 200.0,
+          "position_depth_share_max": 0.02,
+          "single_position_max_usd": 5.0,
+          "total_exposure_max_usd": 20.0
+        },
+        "evidence": {
+          "largest_holder_pct": null,
+          "yield_persistence_hours": 0.0,
+          "counter_token_age_days": null,
+          "position_usd": 5.0,
+          "exit_depth_usd": null,
+          "exit_slippage_bps": null,
+          "current_c_exposure_usd": 0.0
+        }
+      }
+    },
+    {
+      "llama_pool_id": "93f4aaea-5905-52ab-8e2b-926490246614",
+      "symbol": "SPYX-STONK",
+      "chain": "Solana",
+      "project": "raydium-amm",
+      "issuer": "Backed",
+      "tier": "C",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "C",
+        "passed": false,
+        "terminal_conjunction_complete": true,
+        "gates": {
+          "1_exit_feasibility": false,
+          "2_holder_concentration": false,
+          "3_sell_simulation": false,
+          "4_yield_persistence": false,
+          "5_counter_token_age": false,
+          "6_position_vs_depth": false,
+          "7_budget_caps": true
+        },
+        "failures": [
+          "1_exit_feasibility",
+          "2_holder_concentration",
+          "3_sell_simulation",
+          "4_yield_persistence",
+          "5_counter_token_age",
+          "6_position_vs_depth"
+        ],
+        "reason": "FAIL_CLOSED:1_exit_feasibility,2_holder_concentration,3_sell_simulation,4_yield_persistence,5_counter_token_age,6_position_vs_depth",
+        "thresholds": {
+          "single_holder_max_pct": 10.0,
+          "yield_persistence_min_hours": 48.0,
+          "counter_token_min_age_days": 7.0,
+          "exit_slippage_max_bps": 200.0,
+          "position_depth_share_max": 0.02,
+          "single_position_max_usd": 5.0,
+          "total_exposure_max_usd": 20.0
+        },
+        "evidence": {
+          "largest_holder_pct": null,
+          "yield_persistence_hours": 0.0,
+          "counter_token_age_days": null,
+          "position_usd": 5.0,
+          "exit_depth_usd": null,
+          "exit_slippage_bps": null,
+          "current_c_exposure_usd": 0.0
+        }
+      }
+    },
+    {
+      "llama_pool_id": "74c4b7e4-8202-4df6-ba8f-8dc0e0d36530",
+      "symbol": "TQQQX-SPYX",
+      "chain": "Solana",
+      "project": "orca-dex",
+      "issuer": "Backed",
+      "tier": "STOCK_STOCK",
+      "stage2_pass": false,
+      "decision": {
+        "tier": "STOCK_STOCK",
+        "passed": false,
+        "reason": "STOCK_STOCK_RESEARCH_ONLY_NO_TIER_POLICY"
+      }
+    }
+  ]
+}

@@ -105,6 +105,7 @@ def test_scanner_adapter_is_full_cost_and_missing_fields_fail_closed():
     assert apply_netcover_gate([{"pool": "0xmissing"}])[0]["netcover_pass"] is False
     rec = {
         "pool": "0xok", "capital_usd": 100,
+        "protocol_type": "clmm", "netcover_model_path": "clmm_vol_sized_range_v1",
         "fee_ev_usd": 4, "reward_ev_usd": 2, "il_ev_usd": 1,
         "entry_cost_usd": 0.1, "exit_cost_usd": 0.1, "gas_usd": 0.1,
         "slippage_usd": 0.1, "reward_conversion_cost_usd": 0.1,

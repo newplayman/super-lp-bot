@@ -1,0 +1,36 @@
+[Unit]
+Description=LP Bot Solana M1 execution sidecar (locked by default)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=lpbot-solana-executor
+Group=lpbot-solana-executor
+UMask=0077
+Environment=LIVE_TRADING=false
+EnvironmentFile=-/etc/lpbot-solana-executor/environment
+ExecStart=/usr/local/libexec/lpbot-solana-m1-sidecar --config /etc/lpbot-solana-executor/config.json
+WorkingDirectory=/opt/lpbot/lp-bot-v3-origin-check
+Restart=no
+
+# Only the executor user may traverse /etc/lpbot-solana-executor.  The strategy
+# process runs as a different Unix user and receives intents over an IPC/API
+# boundary; it is never added to lpbot-solana-executor's group.
+ReadOnlyPaths=/etc/lpbot-solana-executor
+ReadWritePaths=/var/lib/lpbot-solana-executor
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RestrictRealtime=yes
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target

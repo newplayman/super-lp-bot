@@ -29,7 +29,11 @@ from scripts.lp_capital_tiers_v1_readonly import (
 from scripts.lp_netcover_engine_v1_readonly import (
     ACTIVE_SHARE_LIMIT,
     HARD_POSITION_TVL_SHARE,
+    NETCOVER_MODEL_AMM_CONSTANT_PRODUCT,
+    NETCOVER_MODEL_CLMM,
     POSITION_TVL_SHARE,
+    PROTOCOL_TYPE_AMM_CONSTANT_PRODUCT,
+    PROTOCOL_TYPE_CLMM,
     REWARD_HAIRCUTS,
     position_cap_usd,
 )
@@ -84,6 +88,11 @@ ESTABLISHED_FEE_HAIRCUT = 0.65
 NEW_OR_AGE_UNKNOWN_FEE_HAIRCUT = 0.40
 EXIT_LATENCY_LOSS_APR_PCT_MODEL = 0.50
 LVR_COEFFICIENT_MODEL = 0.50
+
+# Full-range AMMs have no volatility-sized range to restrain the horizon.  H
+# therefore improves income against fixed costs monotonically; cap it so H
+# cannot become a free optimisation lever.
+AMM_HOLDING_HORIZON_MAX_HOURS = 720.0
 
 INPUT_SEMANTICS = {
     "fee_ev_usd": "model_estimate",
@@ -270,6 +279,58 @@ def holding_horizon_hours(record: Mapping[str, Any]) -> float | None:
     if hours is None or hours not in PROFILE_HORIZONS_HOURS[profile]:
         return None
     return hours
+
+
+def amm_holding_horizon_hours(record: Mapping[str, Any]) -> float | None:
+    """Read an AMM horizon, enforcing FIX-E2's non-negotiable 720h cap."""
+    hours = _first_number(
+        record,
+        "holding_horizon_hours",
+        "profile_horizon_hours",
+        "er_horizon_hours",
+        positive=True,
+    )
+    if hours is None:
+        days = _first_number(
+            record,
+            "holding_horizon_days",
+            "profile_horizon_days",
+            "er_horizon_days",
+            positive=True,
+        )
+        hours = days * 24.0 if days is not None else None
+    if hours is None or hours > AMM_HOLDING_HORIZON_MAX_HOURS:
+        return None
+    return hours
+
+
+def constant_product_il_fraction(price_ratio: Any) -> float:
+    """Return signed v2 IL relative to HODL for ``k=P_exit/P_entry``.
+
+    The analytic expression is ``2*sqrt(k)/(1+k)-1``.  It is zero at k=1
+    and non-positive elsewhere; callers convert its magnitude to a positive
+    NetCover risk cost.
+    """
+    k = _number(price_ratio, positive=True)
+    if k is None:
+        raise ValueError("price_ratio must be finite and positive")
+    value = 2.0 * math.sqrt(k) / (1.0 + k) - 1.0
+    if not math.isfinite(value) or value > 1e-15:
+        raise ValueError("constant-product IL result is invalid")
+    return min(value, 0.0)
+
+
+def _amm_price_ratio(record: Mapping[str, Any]) -> float | None:
+    """Accept only an explicitly measured horizon price ratio."""
+    source = str(record.get("amm_price_ratio_source") or "")
+    if not source.startswith("measured:"):
+        return None
+    ratio = _first_number(record, "amm_price_ratio", positive=True)
+    if ratio is not None:
+        return ratio
+    entry = _first_number(record, "amm_entry_price", positive=True)
+    exit_ = _first_number(record, "amm_exit_price", positive=True)
+    return exit_ / entry if entry is not None and exit_ is not None else None
 
 
 def reward_category(record: Mapping[str, Any]) -> str | None:
@@ -652,14 +713,16 @@ def _reward_conversion_cost(
         return None, metadata
 
 
-def assemble_netcover_inputs(
+def assemble_clmm_netcover_inputs(
     source: Mapping[str, Any],
     *,
     position_usd: float = M1_MIN_POSITION_USD,
     scanner_measured_evidence: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Return a copy with all nine USD keys and auditable semantics attached."""
+    """Assemble the CLMM vol-sized-range path; reject cross-model misuse."""
     record = dict(source)
+    if str(record.get("protocol_type") or "").strip().lower() != PROTOCOL_TYPE_CLMM:
+        raise ValueError("CLMM assembler requires protocol_type=clmm")
     # Caller-supplied route claims are untrusted and must not survive assembly.
     # Live evidence arrives only through the separate scanner-internal argument
     # after fixed-block RPC identity/state validation; a self-declared
@@ -768,6 +831,8 @@ def assemble_netcover_inputs(
     record.update({
         "capital_usd": size,
         "holding_horizon_hours": horizon,
+        "protocol_type": PROTOCOL_TYPE_CLMM,
+        "netcover_model_path": NETCOVER_MODEL_CLMM,
         "netcover_profile": profile_kind(record),
         "fee_apr_haircut": fee_haircut,
         "reward_category": category,
@@ -901,6 +966,312 @@ def assemble_netcover_inputs(
                     "MISSING_REWARD_CONVERSION_EVIDENCE"
                 )
     return record
+
+
+def _amm_swap_costs(
+    *, size_usd: float, pool_tvl_usd: float | None, fee_tier: float | None
+) -> dict[str, float | None]:
+    """Conservative balanced-reserve v2 round-trip cost model in USD."""
+    if pool_tvl_usd is None or fee_tier is None or not 0.0 <= fee_tier < 1.0:
+        return {key: None for key in ("entry_cost_usd", "exit_cost_usd", "slippage_usd")}
+    reserve_leg = pool_tvl_usd / 2.0
+    if reserve_leg <= 0.0:
+        return {key: None for key in ("entry_cost_usd", "exit_cost_usd", "slippage_usd")}
+    amount_after_fee = size_usd * (1.0 - fee_tier)
+    amount_out = reserve_leg * amount_after_fee / (reserve_leg + amount_after_fee)
+    one_way_slippage = max(amount_after_fee - amount_out, 0.0)
+    return {
+        "entry_cost_usd": size_usd * fee_tier,
+        "exit_cost_usd": size_usd * fee_tier,
+        "slippage_usd": 2.0 * one_way_slippage,
+    }
+
+
+def assemble_amm_netcover_inputs(
+    source: Mapping[str, Any],
+    *,
+    position_usd: float = M1_MIN_POSITION_USD,
+    scanner_measured_evidence: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Assemble FIX-E2's full-range constant-product AMM model path.
+
+    There is deliberately no range, out-of-range event, concentration uplift,
+    or CLMM share-ratio term.  Fee APR is diluted only by adding this position
+    to the whole-pool LP capital: ``pool_tvl / (pool_tvl + size)``.
+    """
+    record = dict(source)
+    if (
+        str(record.get("protocol_type") or "").strip().lower()
+        != PROTOCOL_TYPE_AMM_CONSTANT_PRODUCT
+    ):
+        raise ValueError(
+            "AMM assembler requires protocol_type=amm_constant_product"
+        )
+    for key in (
+        "reward_conversion_routes",
+        "reward_conversion_route_costs",
+        "reward_conversion_selected_route_id",
+        "reward_conversion_route_selection_rule",
+    ):
+        record.pop(key, None)
+
+    size = _number(position_usd, positive=True)
+    if size is None:
+        raise ValueError("position_usd must be finite and positive")
+    horizon = amm_holding_horizon_hours(record)
+    fraction = horizon / HOURS_PER_YEAR if horizon is not None else None
+    raw_horizon = _first_number(
+        record, "holding_horizon_hours", "profile_horizon_hours", "er_horizon_hours",
+        positive=True,
+    )
+    if raw_horizon is None:
+        raw_days = _first_number(
+            record, "holding_horizon_days", "profile_horizon_days", "er_horizon_days",
+            positive=True,
+        )
+        raw_horizon = raw_days * 24.0 if raw_days is not None else None
+
+    pool_tvl = _first_number(record, "tvlUsd", "tvl_usd", "tvl", positive=True)
+    pool_tvl_source = str(
+        record.get("tvl_usd_source")
+        or record.get("tvlUsd_source")
+        or "source_record:tvlUsd"
+    )
+    dilution = (
+        pool_tvl / (pool_tvl + size) if pool_tvl is not None else None
+    )
+    fee_24h = _first_number(record, "fee_apr_24h", "fee_apr_onchain")
+    fee_7d = _first_number(record, "fee_apr_7d", "apyBase")
+    fee_apr = min(fee_24h, fee_7d) if None not in (fee_24h, fee_7d) else None
+    fee_haircut = (
+        ESTABLISHED_FEE_HAIRCUT
+        if record.get("is_new_pool") is False
+        else NEW_OR_AGE_UNKNOWN_FEE_HAIRCUT
+    )
+    fee_ev = (
+        size * fee_apr / 100.0 * fee_haircut * fraction * dilution
+        if None not in (fee_apr, fraction, dilution)
+        else None
+    )
+
+    reward_apr = _first_number(record, "reward_apr", "apyReward")
+    category = reward_category(record) if reward_apr not in (None, 0.0) else None
+    category_haircut = REWARD_HAIRCUTS.get(category) if category is not None else None
+    persistence = reward_persistence_gate(record)
+    persistence_haircut = float(persistence["score_factor"])
+    haircut = (
+        float(category_haircut) * persistence_haircut
+        if category_haircut is not None else None
+    )
+    reward_ev = (
+        size * reward_apr / 100.0 * fraction * dilution
+        if reward_apr is not None
+        and fraction is not None
+        and dilution is not None
+        and (reward_apr == 0.0 or category_haircut is not None)
+        else None
+    )
+
+    ratio = _amm_price_ratio(record)
+    il_signed = None
+    il_ev = None
+    if ratio is not None and horizon is not None:
+        try:
+            il_signed = constant_product_il_fraction(ratio)
+            il_ev = size * -il_signed
+        except ValueError:
+            il_signed = None
+            il_ev = None
+
+    fee_tier = _first_number(record, "fee_tier")
+    costs = _amm_swap_costs(
+        size_usd=size, pool_tvl_usd=pool_tvl, fee_tier=fee_tier
+    )
+    chain = str(record.get("chain") or record.get("network") or "").strip().lower()
+    gas = HISTORICAL_GAS_USD.get(chain)
+    reward_conversion, reward_route_metadata = _reward_conversion_cost(
+        record, reward_ev, category, scanner_measured_evidence
+    )
+    exit_latency = (
+        size * EXIT_LATENCY_LOSS_APR_PCT_MODEL / 100.0 * fraction
+        if fraction is not None else None
+    )
+    calculated = {
+        "fee_ev_usd": fee_ev,
+        "reward_ev_usd": reward_ev,
+        "il_ev_usd": il_ev,
+        **costs,
+        "gas_usd": gas,
+        "reward_conversion_cost_usd": reward_conversion,
+        "exit_latency_loss_usd": exit_latency,
+    }
+    amm_sources = {
+        "fee_ev_usd": "model_estimate:amm_fee_apr_horizon_whole_pool_dilution",
+        "reward_ev_usd": "model_estimate:reward_apr_horizon_whole_pool_dilution",
+        "il_ev_usd": "model_estimate:constant_product_analytic_il_from_measured_price_ratio",
+        "entry_cost_usd": "model_estimate:constant_product_balanced_reserve_cost",
+        "exit_cost_usd": "model_estimate:constant_product_balanced_reserve_cost",
+        "slippage_usd": "model_estimate:constant_product_balanced_reserve_cost",
+        "gas_usd": HISTORICAL_GAS_SOURCES.get(chain),
+        "reward_conversion_cost_usd": INPUT_SOURCES["reward_conversion_cost_usd"],
+        "exit_latency_loss_usd": INPUT_SOURCES["exit_latency_loss_usd"],
+    }
+    field_semantics: dict[str, str | None] = {}
+    for field in NETCOVER_INPUT_FIELDS:
+        value = calculated[field]
+        record[field] = value
+        semantics = INPUT_SEMANTICS[field] if value is not None else None
+        record[f"{field}_semantics"] = semantics
+        record[f"{field}_source"] = amm_sources[field] if value is not None else None
+        field_semantics[field] = semantics
+
+    tier_raw = record.get("capital_tier") or DEFAULT_CAPITAL_TIER
+    try:
+        capital_tier = normalize_capital_tier(tier_raw)
+    except ValueError:
+        capital_tier = None
+    tier_max = (
+        CAPITAL_TIER_CONFIGURED_MAX_USD[capital_tier]
+        if capital_tier is not None else None
+    )
+    cap = None
+    hard_share = None
+    if None not in (tier_max, pool_tvl):
+        try:
+            cap = position_cap_usd(float(tier_max), float(pool_tvl), float(pool_tvl))
+            hard_share = cap / float(pool_tvl)
+        except ValueError:
+            cap = None
+    hard_ok = bool(hard_share is not None and hard_share <= HARD_POSITION_TVL_SHARE)
+    cap_pass = bool(cap is not None and cap >= size and hard_ok)
+    if cap is None:
+        cap_reason = "INV-TVLSHARE-01_INPUT_MISSING_OR_INVALID"
+    elif not hard_ok:
+        cap_reason = "INV-TVLSHARE-01_HARD_TVL_SHARE_EXCEEDED"
+    elif cap < size:
+        cap_reason = "INV-TVLSHARE-01_POSITION_CAP_BELOW_M1_MIN"
+    else:
+        cap_reason = "PASS"
+
+    record.update({
+        "capital_usd": size,
+        "holding_horizon_hours": horizon,
+        "amm_holding_horizon_max_hours": AMM_HOLDING_HORIZON_MAX_HOURS,
+        "amm_horizon_cap_reason": (
+            "PASS"
+            if horizon is not None
+            else (
+                "AMM_HORIZON_EXCEEDS_720H"
+                if raw_horizon is not None and raw_horizon > AMM_HOLDING_HORIZON_MAX_HOURS
+                else "AMM_HORIZON_MISSING_OR_INVALID"
+            )
+        ),
+        "protocol_type": PROTOCOL_TYPE_AMM_CONSTANT_PRODUCT,
+        "netcover_model_path": NETCOVER_MODEL_AMM_CONSTANT_PRODUCT,
+        "netcover_profile": "AMM_FULL_RANGE",
+        "amm_no_range_model": True,
+        "amm_price_ratio": ratio,
+        "amm_il_fraction_signed": il_signed,
+        "amm_position_dilution_factor": dilution,
+        "fee_apr_haircut": fee_haircut,
+        "fee_capture_reference_horizon_hours": None,
+        "fee_capture_reference_range_pct": None,
+        "fee_capture_target_range_pct": None,
+        "fee_capture_reference_share": None,
+        "fee_capture_target_share": None,
+        "fee_capture_share_ratio": None,
+        "active_liquidity_notional_usd": pool_tvl,
+        "active_liquidity_notional_usd_source": (
+            f"amm_whole_pool_tvl:{pool_tvl_source}" if pool_tvl is not None else None
+        ),
+        "reward_category": category,
+        "reward_category_haircut": category_haircut,
+        "reward_persistence_haircut": persistence_haircut,
+        "reward_persistence_evidence_source": persistence["evidence_source"],
+        "reward_persistence_status": persistence["status"],
+        "lvr_coefficient": LVR_COEFFICIENT_MODEL,
+        "netcover_input_semantics": field_semantics,
+        "gas_usd_source": HISTORICAL_GAS_SOURCES.get(chain),
+        "netcover_input_position_source": "M1_MIN_POSITION_USD",
+        "netcover_input_assembly_source": (
+            "lp_netcover_inputs_v1_readonly:amm_constant_product_explicit_evidence"
+        ),
+        "capital_tier": capital_tier,
+        "tier_configured_max_usd": tier_max,
+        "position_requested_usd": size,
+        "position_investable_usd": min(size, cap) if cap is not None else None,
+        "position_cap_usd": cap,
+        "position_cap_tvl_share": hard_share,
+        "position_cap_regular_tvl_share_limit": POSITION_TVL_SHARE,
+        "position_cap_active_share_limit": ACTIVE_SHARE_LIMIT,
+        "position_cap_hard_tvl_share_limit": HARD_POSITION_TVL_SHARE,
+        "position_cap_hard_tvl_share_ok": hard_ok,
+        "position_cap_pass": cap_pass,
+        "position_cap_reason": cap_reason,
+    })
+    record.update(reward_route_metadata)
+    if haircut is not None:
+        record["reward_haircut"] = haircut
+    if all(costs[field] is not None for field in ("entry_cost_usd", "exit_cost_usd", "slippage_usd")):
+        record["round_trip_cost_usd"] = sum(
+            float(costs[field])
+            for field in ("entry_cost_usd", "exit_cost_usd", "slippage_usd")
+        )
+    else:
+        record["round_trip_cost_usd"] = None
+
+    reasons = list(record.get("permanent_fail_closed_reasons") or ())
+    if horizon is None:
+        reasons.append(str(record["amm_horizon_cap_reason"]))
+    if ratio is None:
+        reasons.append("AMM_MEASURED_PRICE_RATIO_MISSING")
+    if pool_tvl is None:
+        reasons.append("AMM_POOL_TVL_MISSING")
+    if reward_ev not in (None, 0.0) and reward_conversion is None:
+        reasons.append("reward_conversion_route_unavailable")
+    reasons = list(dict.fromkeys(reasons))
+    if reasons:
+        record["permanent_fail_closed_reasons"] = reasons
+        record["permanent_fail_closed_reason"] = reasons[0]
+    return record
+
+
+def _invalid_protocol_record(source: Mapping[str, Any]) -> dict[str, Any]:
+    record = dict(source)
+    for field in NETCOVER_INPUT_FIELDS:
+        record[field] = None
+        record[f"{field}_semantics"] = None
+        record[f"{field}_source"] = None
+    record.update({
+        "netcover_model_path": None,
+        "netcover_input_semantics": {field: None for field in NETCOVER_INPUT_FIELDS},
+        "permanent_fail_closed_reason": "NETCOVER_PROTOCOL_TYPE_INVALID",
+        "permanent_fail_closed_reasons": ["NETCOVER_PROTOCOL_TYPE_INVALID"],
+    })
+    return record
+
+
+def assemble_netcover_inputs(
+    source: Mapping[str, Any],
+    *,
+    position_usd: float = M1_MIN_POSITION_USD,
+    scanner_measured_evidence: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Dispatch exclusively by explicit ``protocol_type``; unknown is closed."""
+    protocol_type = str(source.get("protocol_type") or "").strip().lower()
+    if protocol_type == PROTOCOL_TYPE_CLMM:
+        return assemble_clmm_netcover_inputs(
+            source,
+            position_usd=position_usd,
+            scanner_measured_evidence=scanner_measured_evidence,
+        )
+    if protocol_type == PROTOCOL_TYPE_AMM_CONSTANT_PRODUCT:
+        return assemble_amm_netcover_inputs(
+            source,
+            position_usd=position_usd,
+            scanner_measured_evidence=scanner_measured_evidence,
+        )
+    return _invalid_protocol_record(source)
 
 
 def assemble_records(records: list[Mapping[str, Any]]) -> list[dict[str, Any]]:

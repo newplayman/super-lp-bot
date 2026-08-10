@@ -33,6 +33,30 @@ REWARD_HAIRCUTS = {
     "points": 0.0,
 }
 
+# FIX-E2: protocol_type is an explicit dispatch contract, not a project-name
+# heuristic.  The assembler records the selected model path and this terminal
+# gate verifies the pair so preassembled/forged inputs cannot cross models.
+PROTOCOL_TYPE_CLMM = "clmm"
+PROTOCOL_TYPE_AMM_CONSTANT_PRODUCT = "amm_constant_product"
+NETCOVER_MODEL_CLMM = "clmm_vol_sized_range_v1"
+NETCOVER_MODEL_AMM_CONSTANT_PRODUCT = "amm_constant_product_v1"
+
+_PROTOCOL_MODEL_PATHS = {
+    PROTOCOL_TYPE_CLMM: NETCOVER_MODEL_CLMM,
+    PROTOCOL_TYPE_AMM_CONSTANT_PRODUCT: NETCOVER_MODEL_AMM_CONSTANT_PRODUCT,
+}
+
+
+def netcover_model_path(protocol_type: Any) -> str:
+    """Return the only legal model path for an explicit protocol type."""
+    normalized = str(protocol_type or "").strip().lower()
+    try:
+        return _PROTOCOL_MODEL_PATHS[normalized]
+    except KeyError as exc:
+        raise ValueError(
+            "protocol_type must be clmm or amm_constant_product"
+        ) from exc
+
 
 def _amount(name: str, value: Any, *, positive: bool = False) -> float:
     """Validate an economic amount, failing closed on invalid model inputs."""
@@ -271,6 +295,35 @@ def apply_netcover_gate(
     output: list[dict[str, Any]] = []
     for source in records:
         rec = dict(source)
+        try:
+            expected_model_path = netcover_model_path(rec.get("protocol_type"))
+        except ValueError as exc:
+            rec.update({
+                "risk_usd": None,
+                "expected_net_yield_usd": None,
+                "expected_net_yield_pct": None,
+                "netcover_ratio": None,
+                "netcover": None,
+                "netcover_pass": False,
+                "rejection_reason": f"NETCOVER_PROTOCOL_TYPE_INVALID:{exc}",
+            })
+            output.append(rec)
+            continue
+        if rec.get("netcover_model_path") != expected_model_path:
+            rec.update({
+                "risk_usd": None,
+                "expected_net_yield_usd": None,
+                "expected_net_yield_pct": None,
+                "netcover_ratio": None,
+                "netcover": None,
+                "netcover_pass": False,
+                "rejection_reason": (
+                    "NETCOVER_MODEL_PATH_MISMATCH:"
+                    f"expected={expected_model_path},got={rec.get('netcover_model_path')}"
+                ),
+            })
+            output.append(rec)
+            continue
         missing = [key for key in _GATE_INPUT_KEYS if rec.get(key) is None]
         if missing:
             rec.update({
@@ -337,8 +390,10 @@ def apply_netcover_gate(
 __all__ = [
     "ACTIVE_SHARE_LIMIT", "HARD_POSITION_TVL_SHARE", "MIN_PROFIT_USD",
     "NETCOVER_SHADOW", "NETCOVER_TINY_LIVE", "POSITION_TVL_SHARE",
-    "REWARD_HAIRCUTS", "SAFETY_MULTIPLE", "AbsoluteProfitDecision",
+    "REWARD_HAIRCUTS", "SAFETY_MULTIPLE", "PROTOCOL_TYPE_CLMM",
+    "PROTOCOL_TYPE_AMM_CONSTANT_PRODUCT", "NETCOVER_MODEL_CLMM",
+    "NETCOVER_MODEL_AMM_CONSTANT_PRODUCT", "AbsoluteProfitDecision",
     "NetCoverEstimate", "absolute_profit_gate", "adjusted_income_ev",
     "apply_netcover_gate", "evaluate_netcover", "expected_risk_cost",
-    "gross_fee_cover", "netcover", "position_cap_usd",
+    "gross_fee_cover", "netcover", "netcover_model_path", "position_cap_usd",
 ]

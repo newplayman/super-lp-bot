@@ -1,0 +1,120 @@
+{
+  "pool_count": 15,
+  "pass_count": 0,
+  "rpc_health": {
+    "state": "NORMAL",
+    "total_endpoints": 6,
+    "impaired_endpoints": 0,
+    "cooling_endpoints": 0,
+    "max_consecutive_failures": 0
+  },
+  "results": [
+    {
+      "llama_pool_id": "2eaf5f17-440b-46b6-ad9b-e7d747df17ab",
+      "symbol": "CRCLX-IDLE",
+      "passed": false,
+      "reason": "FAIL_CLOSED_RPC_UNAVAILABLE",
+      "rpc_blocker": "2026-08-10 free RPC probe: foundation 429; publicnode timeout; lava Program-Id index disabled"
+    },
+    {
+      "llama_pool_id": "d1226978-b13f-4723-be67-930560f2c775",
+      "symbol": "GLDX-IDLE",
+      "passed": false,
+      "reason": "FAIL_CLOSED_RPC_UNAVAILABLE",
+      "rpc_blocker": "2026-08-10 free RPC probe: foundation 429; publicnode timeout; lava Program-Id index disabled"
+    },
+    {
+      "llama_pool_id": "1f86297f-55bf-40e7-9485-68e843761c70",
+      "symbol": "GLDX-XAUT0",
+      "passed": false,
+      "reason": "FAIL_CLOSED_RPC_UNAVAILABLE",
+      "rpc_blocker": "2026-08-10 free RPC probe: foundation 429; publicnode timeout; lava Program-Id index disabled"
+    },
+    {
+      "llama_pool_id": "e6d897d8-681f-4e6d-94aa-a1893d28339d",
+      "symbol": "GLDX-XAUT0",
+      "passed": false,
+      "reason": "FAIL_CLOSED_RPC_UNAVAILABLE",
+      "rpc_blocker": "2026-08-10 free RPC probe: foundation 429; publicnode timeout; lava Program-Id index disabled"
+    },
+    {
+      "llama_pool_id": "c310b01e-a228-4330-91d5-66fe231bc4a7",
+      "symbol": "GOOGLX-IDLE",
+      "passed": false,
+      "reason": "FAIL_CLOSED_RPC_UNAVAILABLE",
+      "rpc_blocker": "2026-08-10 free RPC probe: foundation 429; publicnode timeout; lava Program-Id index disabled"
+    },
+    {
+      "llama_pool_id": "daa78790-e4ae-50d7-aab5-7283329470b9",
+      "symbol": "MCDX-FRIES",
+      "passed": false,
+      "reason": "FAIL_CLOSED_RPC_UNAVAILABLE",
+      "rpc_blocker": "2026-08-10 free RPC probe: foundation 429; publicnode timeout; lava Program-Id index disabled"
+    },
+    {
+      "llama_pool_id": "82252341-cfcc-5932-918a-48c732512239",
+      "symbol": "MSTRX-ABTC",
+      "passed": false,
+      "reason": "FAIL_CLOSED_RPC_UNAVAILABLE",
+      "rpc_blocker": "2026-08-10 free RPC probe: foundation 429; publicnode timeout; lava Program-Id index disabled"
+    },
+    {
+      "llama_pool_id": "e1d04ccc-1b7b-56d8-bbdf-4c1a4329f14d",
+      "symbol": "QQQX-ETHICS",
+      "passed": false,
+      "reason": "FAIL_CLOSED_RPC_UNAVAILABLE",
+      "rpc_blocker": "2026-08-10 free RPC probe: foundation 429; publicnode timeout; lava Program-Id index disabled"
+    },
+    {
+      "llama_pool_id": "d2a449ae-4990-467a-bfc3-83280da40aa6",
+      "symbol": "QQQX-IDLE",
+      "passed": false,
+      "reason": "FAIL_CLOSED_RPC_UNAVAILABLE",
+      "rpc_blocker": "2026-08-10 free RPC probe: foundation 429; publicnode timeout; lava Program-Id index disabled"
+    },
+    {
+      "llama_pool_id": "dd3a85f8-0963-40d1-bf6e-fa3a5c9f9507",
+      "symbol": "SPCX-SPCXX",
+      "passed": false,
+      "reason": "FAIL_CLOSED_RPC_UNAVAILABLE",
+      "rpc_blocker": "2026-08-10 free RPC probe: foundation 429; publicnode timeout; lava Program-Id index disabled"
+    },
+    {
+      "llama_pool_id": "2354cdbc-6f46-5ef6-9c58-7a5ffced55f5",
+      "symbol": "SPCXX-BOT",
+      "passed": false,
+      "reason": "FAIL_CLOSED_RPC_UNAVAILABLE",
+      "rpc_blocker": "2026-08-10 free RPC probe: foundation 429; publicnode timeout; lava Program-Id index disabled"
+    },
+    {
+      "llama_pool_id": "f97d1517-498c-5b57-87a2-8135eabf2130",
+      "symbol": "SPCXX-PROMETHEUS",
+      "passed": false,
+      "reason": "FAIL_CLOSED_RPC_UNAVAILABLE",
+      "rpc_blocker": "2026-08-10 free RPC probe: foundation 429; publicnode timeout; lava Program-Id index disabled"
+    },
+    {
+      "llama_pool_id": "86cc94a1-b387-5e72-8214-c4688ec6387b",
+      "symbol": "SPCXX-URANUS",
+      "passed": false,
+      "reason": "FAIL_CLOSED_RPC_UNAVAILABLE",
+      "rpc_blocker": "2026-08-10 free RPC probe: foundation 429; publicnode timeout; lava Program-Id index disabled"
+    },
+    {
+      "llama_pool_id": "0bdcd2a7-5ed5-5187-85e6-1c65c6fbd7c1",
+      "symbol": "SPYX-SSX",
+      "passed": false,
+      "reason": "FAIL_CLOSED_RPC_UNAVAILABLE",
+      "rpc_blocker": "2026-08-10 free RPC probe: foundation 429; publicnode timeout; lava Program-Id index disabled"
+    },
+    {
+      "llama_pool_id": "93f4aaea-5905-52ab-8e2b-926490246614",
+      "symbol": "SPYX-STONK",
+      "passed": false,
+      "reason": "FAIL_CLOSED_RPC_UNAVAILABLE",
+      "rpc_blocker": "2026-08-10 free RPC probe: foundation 429; publicnode timeout; lava Program-Id index disabled"
+    }
+  ],
+  "signed": false,
+  "broadcast_count": 0
+}

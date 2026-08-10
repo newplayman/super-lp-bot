@@ -1,0 +1,140 @@
+{
+  "universe_count": 1,
+  "stage2_pass_count": 0,
+  "tier_counts": {
+    "A": {
+      "total": 0,
+      "stage2_pass": 0
+    },
+    "B": {
+      "total": 0,
+      "stage2_pass": 0
+    },
+    "C": {
+      "total": 1,
+      "stage2_pass": 0
+    }
+  },
+  "rpc_health": {
+    "state": "NORMAL",
+    "total_endpoints": 6,
+    "impaired_endpoints": 0,
+    "cooling_endpoints": 0,
+    "max_consecutive_failures": 0
+  },
+  "results": [
+    {
+      "llama_pool_id": "0bdcd2a7-5ed5-5187-85e6-1c65c6fbd7c1",
+      "symbol": "SPYX-SSX",
+      "tier": "C",
+      "stage2_pass": false,
+      "resolved": {
+        "protocol": "raydium",
+        "pool_address": "CHcmc9LH59TjjxUaaWxJmaYxBCcGw7j3dKp7qKmQdreQ",
+        "program_id": "CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK",
+        "protocol_type": "clmm",
+        "mint_a": "XsoCS1TfEyfFhfvj8EtZ528L3CaKBDBRqRapnBbDF2W",
+        "mint_b": "GGDbhzambPp4WiNQK2aXena27DqszYtq5gPhG61PU6SH",
+        "mint_a_owner": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
+        "mint_b_owner": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+        "mint_a_tags": [
+          "hasFreeze"
+        ],
+        "mint_b_tags": [],
+        "tvl_usd": 31427.78,
+        "price": 11752256.541578501,
+        "fee_rate": 0.04,
+        "volume_24h_usd": 57345.05772826637,
+        "fees_24h_usd": 2339.557868745159,
+        "official_fee_apr_pct": 2717.15,
+        "price_min_24h": 5421723.104896361,
+        "price_max_24h": 44445823.67424865,
+        "reserve_a_ui": 17.02382129,
+        "reserve_b_ui": 276256911.4904378,
+        "snapshot_tvl_relative_error": 0.004031690698779945,
+        "vault_a": "7KAFXs1ZVNPVbdWZm2RweqzAWTdURN3aCpAnMxQ99EEz",
+        "vault_b": "H6TKvJpx5QctD81wPnKCwREDbP5RwgtnkagXApuSs1wZ",
+        "llama_pool_id": "0bdcd2a7-5ed5-5187-85e6-1c65c6fbd7c1",
+        "symbol": "SPYX-SSX",
+        "tier": "C",
+        "llama_tvl_usd": 31555.0,
+        "llama_apy_pct": 2828.71
+      },
+      "onchain": {
+        "passed": true,
+        "reason": "PASS",
+        "checks": {
+          "pool_owner_is_program": true,
+          "program_executable": true,
+          "program_loader_owner": true,
+          "vault_a_token_owned": true,
+          "vault_b_token_owned": true,
+          "mint_a_owner_matches_api": true,
+          "mint_b_owner_matches_api": true
+        },
+        "slot_context": {
+          "apiVersion": "4.2.0-rc.1",
+          "slot": 438429329
+        },
+        "account_owners": {
+          "CHcmc9LH59TjjxUaaWxJmaYxBCcGw7j3dKp7qKmQdreQ": "CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK",
+          "CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK": "BPFLoaderUpgradeab1e11111111111111111111111",
+          "7KAFXs1ZVNPVbdWZm2RweqzAWTdURN3aCpAnMxQ99EEz": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
+          "H6TKvJpx5QctD81wPnKCwREDbP5RwgtnkagXApuSs1wZ": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          "XsoCS1TfEyfFhfvj8EtZ528L3CaKBDBRqRapnBbDF2W": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
+          "GGDbhzambPp4WiNQK2aXena27DqszYtq5gPhG61PU6SH": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      },
+      "swap_replay": {
+        "status": "PASS",
+        "transactions_checked": 3,
+        "swap_count": 3,
+        "scaled_ui_multiplier_required": false,
+        "scaled_ui_multiplier_applied": null,
+        "economic_price_complete": true,
+        "swaps": [
+          {
+            "signature": "2WTUe4Hna2jFop4A7s1x8GG6FqoS3Q3Lo4po6ysXAJaZhmT5qMUBZgTf6dCUzqdRRxSD3JNKpHkx5W5khva2KeAJ",
+            "slot": 438428823,
+            "block_time": 1786376419,
+            "vault_delta_a_raw_ui": -0.02839976,
+            "vault_delta_b_raw_ui": 347025.0,
+            "raw_ui_price_b_per_a": 12219293.402479459
+          },
+          {
+            "signature": "2kjrdqQiTXKFaqUPkKNiCH6KiPTSRWLBzDxwrownECgBskkUgjLBh1insjdF4qV2DamgzDCBpSUVzeme9EDUkD1i",
+            "slot": 438428815,
+            "block_time": 1786376416,
+            "vault_delta_a_raw_ui": 0.03845197,
+            "vault_delta_b_raw_ui": -433151.894735898,
+            "raw_ui_price_b_per_a": 11264751.70806328
+          },
+          {
+            "signature": "4qj2Ah9rKPEi8j75ezT3gP6ntU1tupW5bQn4UJQ1a87VdcntMaUVMUYremiCD9XB4biiQuJXm25ENrrUejAvhgiL",
+            "slot": 438428685,
+            "block_time": 1786376360,
+            "vault_delta_a_raw_ui": 0.08026234,
+            "vault_delta_b_raw_ui": -908464.445240183,
+            "raw_ui_price_b_per_a": 11318688.755401138
+          }
+        ]
+      },
+      "economics": {
+        "real_tvl_usd": 31427.78,
+        "real_volume_24h_usd": 57345.05772826637,
+        "real_fees_24h_usd": 2339.557868745159,
+        "fee_rate": 0.04,
+        "recomputed_fee_apr_pct": 2717.1458566019714,
+        "volume_times_fee_recomputed_apr_pct": 2664.0056753378353,
+        "fee_recompute_relative_difference": 0.019557353218642656,
+        "source_semantics": "official_protocol_24h_swap_aggregates_cross_checked_on_chain",
+        "passed": false,
+        "reason": "CLMM_RANGE_AND_RAW_SWAP_REPLAY_REQUIRED",
+        "il_24h_worst": null
+      },
+      "reason": "FAIL_CLOSED"
+    }
+  ],
+  "signed": false,
+  "broadcast_count": 0
+}

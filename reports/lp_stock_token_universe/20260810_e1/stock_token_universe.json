@@ -1,0 +1,4691 @@
+{
+  "input_source": "https://yields.llama.fi/pools",
+  "min_tvl_usd": 20000.0,
+  "observed_at_utc": "2026-08-10T15:35:14.680746+00:00",
+  "rows": [
+    {
+      "apy_base": 120.58048,
+      "apy_reward": null,
+      "apy_total": 120.58048,
+      "chain": "BSC",
+      "issuer": "Ondo",
+      "pair_legs": [
+        "USDT",
+        "SPYON"
+      ],
+      "pool_id": "39a5812f-e1cf-56f4-aa1c-12098cc6ac1d",
+      "pool_meta": "1%",
+      "price_semantics": "token",
+      "project": "uniswap-v3",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "SPYON",
+          "instrument_id": "ondo:SPYON",
+          "issuer": "Ondo",
+          "pool_token_symbol": "SPYON",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_ondo_catalogue",
+          "underlying_ticker": "SPY",
+          "wrapped": false
+        }
+      ],
+      "symbol": "USDT-SPYON",
+      "tier": "A",
+      "tvl_usd": 27192.0,
+      "underlying_ticker": "SPY",
+      "underlying_tokens": [
+        "0x55d398326f99059ff775485246999027b3197955",
+        "0x6a708ead771238919d85930b5a0f10454e1c331a"
+      ],
+      "vol1d_tvl": 0.3303619891879965,
+      "volume_usd_1d": 8983.20321,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 0.0,
+      "apy_reward": null,
+      "apy_total": 0.0,
+      "chain": "Base",
+      "issuer": "unknown",
+      "pair_legs": [
+        "TSLA",
+        "WETH"
+      ],
+      "pool_id": "557df763-5675-4e48-8d6c-65fe7589fca5",
+      "pool_meta": null,
+      "price_semantics": "token",
+      "project": "uniswap-v2",
+      "protocol_type": "amm_constant_product",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "TSLA",
+          "instrument_id": "unknown:base:TSLA",
+          "issuer": "unknown",
+          "pool_token_symbol": "TSLA",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_generic_stock_or_index_ticker",
+          "underlying_ticker": "TSLA",
+          "wrapped": false
+        }
+      ],
+      "symbol": "TSLA-WETH",
+      "tier": "B",
+      "tvl_usd": 40190.0,
+      "underlying_ticker": "TSLA",
+      "underlying_tokens": [
+        "0x030b6c444b1074fce5112839b3613a6efb52f784",
+        "0x4200000000000000000000000000000000000006"
+      ],
+      "vol1d_tvl": 0.0,
+      "volume_usd_1d": 0.0,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 0.0,
+      "apy_reward": 0.0,
+      "apy_total": 0.0,
+      "chain": "Defichain",
+      "issuer": "unknown",
+      "pair_legs": [
+        "AAPL",
+        "DUSD"
+      ],
+      "pool_id": "2e0ac94f-9f24-4a30-9b43-b14e6970dd38",
+      "pool_meta": null,
+      "price_semantics": "token",
+      "project": "defichain-dex",
+      "protocol_type": "amm_constant_product",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "AAPL",
+          "instrument_id": "unknown:defichain:AAPL",
+          "issuer": "unknown",
+          "pool_token_symbol": "AAPL",
+          "price_semantics": "token",
+          "recognition_basis": "project_scoped_bare_ticker",
+          "underlying_ticker": "AAPL",
+          "wrapped": false
+        }
+      ],
+      "symbol": "AAPL-DUSD",
+      "tier": "A",
+      "tvl_usd": 72911.0,
+      "underlying_ticker": "AAPL",
+      "underlying_tokens": [
+        "293",
+        "coingecko:usd-coin"
+      ],
+      "vol1d_tvl": 0.0,
+      "volume_usd_1d": 0.0,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 0.0,
+      "apy_reward": 0.0,
+      "apy_total": 0.0,
+      "chain": "Defichain",
+      "issuer": "unknown",
+      "pair_legs": [
+        "AI",
+        "DUSD"
+      ],
+      "pool_id": "6a67e6ea-41ff-411d-8053-6ffbb17091b5",
+      "pool_meta": null,
+      "price_semantics": "token",
+      "project": "defichain-dex",
+      "protocol_type": "amm_constant_product",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "AI",
+          "instrument_id": "unknown:defichain:AI",
+          "issuer": "unknown",
+          "pool_token_symbol": "AI",
+          "price_semantics": "token",
+          "recognition_basis": "project_scoped_bare_ticker",
+          "underlying_ticker": "AI",
+          "wrapped": false
+        }
+      ],
+      "symbol": "AI-DUSD",
+      "tier": "A",
+      "tvl_usd": 22753.0,
+      "underlying_ticker": "AI",
+      "underlying_tokens": [
+        "349",
+        "coingecko:usd-coin"
+      ],
+      "vol1d_tvl": 0.0,
+      "volume_usd_1d": 0.0,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 0.0,
+      "apy_reward": 0.0,
+      "apy_total": 0.0,
+      "chain": "Defichain",
+      "issuer": "unknown",
+      "pair_legs": [
+        "AMZN",
+        "DUSD"
+      ],
+      "pool_id": "8e275cad-b6e8-4d62-b507-a9f5de5fe6e9",
+      "pool_meta": null,
+      "price_semantics": "token",
+      "project": "defichain-dex",
+      "protocol_type": "amm_constant_product",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "AMZN",
+          "instrument_id": "unknown:defichain:AMZN",
+          "issuer": "unknown",
+          "pool_token_symbol": "AMZN",
+          "price_semantics": "token",
+          "recognition_basis": "project_scoped_bare_ticker",
+          "underlying_ticker": "AMZN",
+          "wrapped": false
+        }
+      ],
+      "symbol": "AMZN-DUSD",
+      "tier": "A",
+      "tvl_usd": 61309.0,
+      "underlying_ticker": "AMZN",
+      "underlying_tokens": [
+        "320",
+        "coingecko:usd-coin"
+      ],
+      "vol1d_tvl": 0.0,
+      "volume_usd_1d": 0.0,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 0.0,
+      "apy_reward": 0.0,
+      "apy_total": 0.0,
+      "chain": "Defichain",
+      "issuer": "unknown",
+      "pair_legs": [
+        "ARKK",
+        "DUSD"
+      ],
+      "pool_id": "11e29be4-1bcc-4297-a721-d8f74b764790",
+      "pool_meta": null,
+      "price_semantics": "token",
+      "project": "defichain-dex",
+      "protocol_type": "amm_constant_product",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "ARKK",
+          "instrument_id": "unknown:defichain:ARKK",
+          "issuer": "unknown",
+          "pool_token_symbol": "ARKK",
+          "price_semantics": "token",
+          "recognition_basis": "project_scoped_bare_ticker",
+          "underlying_ticker": "ARKK",
+          "wrapped": false
+        }
+      ],
+      "symbol": "ARKK-DUSD",
+      "tier": "A",
+      "tvl_usd": 41934.0,
+      "underlying_ticker": "ARKK",
+      "underlying_tokens": [
+        "294",
+        "coingecko:usd-coin"
+      ],
+      "vol1d_tvl": 0.0,
+      "volume_usd_1d": 0.0,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 0.0,
+      "apy_reward": 0.0,
+      "apy_total": 0.0,
+      "chain": "Defichain",
+      "issuer": "unknown",
+      "pair_legs": [
+        "BABA",
+        "DUSD"
+      ],
+      "pool_id": "b2f87a84-a61d-4e11-96ab-585603555269",
+      "pool_meta": null,
+      "price_semantics": "token",
+      "project": "defichain-dex",
+      "protocol_type": "amm_constant_product",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "BABA",
+          "instrument_id": "unknown:defichain:BABA",
+          "issuer": "unknown",
+          "pool_token_symbol": "BABA",
+          "price_semantics": "token",
+          "recognition_basis": "project_scoped_bare_ticker",
+          "underlying_ticker": "BABA",
+          "wrapped": false
+        }
+      ],
+      "symbol": "BABA-DUSD",
+      "tier": "A",
+      "tvl_usd": 21304.0,
+      "underlying_ticker": "BABA",
+      "underlying_tokens": [
+        "291",
+        "coingecko:usd-coin"
+      ],
+      "vol1d_tvl": 0.0,
+      "volume_usd_1d": 0.0,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 0.0,
+      "apy_reward": 0.0,
+      "apy_total": 0.0,
+      "chain": "Defichain",
+      "issuer": "unknown",
+      "pair_legs": [
+        "BITI",
+        "DUSD"
+      ],
+      "pool_id": "525102bf-838d-43e7-ba32-5e084ddfd3c5",
+      "pool_meta": null,
+      "price_semantics": "token",
+      "project": "defichain-dex",
+      "protocol_type": "amm_constant_product",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "BITI",
+          "instrument_id": "unknown:defichain:BITI",
+          "issuer": "unknown",
+          "pool_token_symbol": "BITI",
+          "price_semantics": "token",
+          "recognition_basis": "project_scoped_bare_ticker",
+          "underlying_ticker": "BITI",
+          "wrapped": false
+        }
+      ],
+      "symbol": "BITI-DUSD",
+      "tier": "A",
+      "tvl_usd": 23001.0,
+      "underlying_ticker": "BITI",
+      "underlying_tokens": [
+        "366",
+        "coingecko:usd-coin"
+      ],
+      "vol1d_tvl": 0.0,
+      "volume_usd_1d": 0.0,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 0.0,
+      "apy_reward": 0.0,
+      "apy_total": 0.0,
+      "chain": "Defichain",
+      "issuer": "unknown",
+      "pair_legs": [
+        "COIN",
+        "DUSD"
+      ],
+      "pool_id": "8954d1ef-2f53-4ef7-bc29-9134c0d058a3",
+      "pool_meta": null,
+      "price_semantics": "token",
+      "project": "defichain-dex",
+      "protocol_type": "amm_constant_product",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "COIN",
+          "instrument_id": "unknown:defichain:COIN",
+          "issuer": "unknown",
+          "pool_token_symbol": "COIN",
+          "price_semantics": "token",
+          "recognition_basis": "project_scoped_bare_ticker",
+          "underlying_ticker": "COIN",
+          "wrapped": false
+        }
+      ],
+      "symbol": "COIN-DUSD",
+      "tier": "A",
+      "tvl_usd": 98027.0,
+      "underlying_ticker": "COIN",
+      "underlying_tokens": [
+        "303",
+        "coingecko:usd-coin"
+      ],
+      "vol1d_tvl": 0.0,
+      "volume_usd_1d": 0.0,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 0.0,
+      "apy_reward": 0.0,
+      "apy_total": 0.0,
+      "chain": "Defichain",
+      "issuer": "unknown",
+      "pair_legs": [
+        "EEM",
+        "DUSD"
+      ],
+      "pool_id": "dacb5342-c23b-46a6-98e6-8b104f77542c",
+      "pool_meta": null,
+      "price_semantics": "token",
+      "project": "defichain-dex",
+      "protocol_type": "amm_constant_product",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "EEM",
+          "instrument_id": "unknown:defichain:EEM",
+          "issuer": "unknown",
+          "pool_token_symbol": "EEM",
+          "price_semantics": "token",
+          "recognition_basis": "project_scoped_bare_ticker",
+          "underlying_ticker": "EEM",
+          "wrapped": false
+        }
+      ],
+      "symbol": "EEM-DUSD",
+      "tier": "A",
+      "tvl_usd": 27491.0,
+      "underlying_ticker": "EEM",
+      "underlying_tokens": [
+        "304",
+        "coingecko:usd-coin"
+      ],
+      "vol1d_tvl": 0.0,
+      "volume_usd_1d": 0.0,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 0.0,
+      "apy_reward": 0.0,
+      "apy_total": 0.0,
+      "chain": "Defichain",
+      "issuer": "unknown",
+      "pair_legs": [
+        "FB",
+        "DUSD"
+      ],
+      "pool_id": "e94b372b-b29f-4be0-bc8f-674b5412519e",
+      "pool_meta": null,
+      "price_semantics": "token",
+      "project": "defichain-dex",
+      "protocol_type": "amm_constant_product",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "FB",
+          "instrument_id": "unknown:defichain:FB",
+          "issuer": "unknown",
+          "pool_token_symbol": "FB",
+          "price_semantics": "token",
+          "recognition_basis": "project_scoped_bare_ticker",
+          "underlying_ticker": "FB",
+          "wrapped": false
+        }
+      ],
+      "symbol": "FB-DUSD",
+      "tier": "A",
+      "tvl_usd": 40269.0,
+      "underlying_ticker": "FB",
+      "underlying_tokens": [
+        "307",
+        "coingecko:usd-coin"
+      ],
+      "vol1d_tvl": 0.0,
+      "volume_usd_1d": 0.0,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 0.0,
+      "apy_reward": 0.0,
+      "apy_total": 0.0,
+      "chain": "Defichain",
+      "issuer": "unknown",
+      "pair_legs": [
+        "GLD",
+        "DUSD"
+      ],
+      "pool_id": "3979f13c-92e0-42cb-aa69-476665a39d60",
+      "pool_meta": null,
+      "price_semantics": "token",
+      "project": "defichain-dex",
+      "protocol_type": "amm_constant_product",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "GLD",
+          "instrument_id": "unknown:defichain:GLD",
+          "issuer": "unknown",
+          "pool_token_symbol": "GLD",
+          "price_semantics": "token",
+          "recognition_basis": "project_scoped_bare_ticker",
+          "underlying_ticker": "GLD",
+          "wrapped": false
+        }
+      ],
+      "symbol": "GLD-DUSD",
+      "tier": "A",
+      "tvl_usd": 46305.0,
+      "underlying_ticker": "GLD",
+      "underlying_tokens": [
+        "297",
+        "coingecko:usd-coin"
+      ],
+      "vol1d_tvl": 0.0,
+      "volume_usd_1d": 0.0,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 0.0,
+      "apy_reward": 0.0,
+      "apy_total": 0.0,
+      "chain": "Defichain",
+      "issuer": "unknown",
+      "pair_legs": [
+        "GME",
+        "DUSD"
+      ],
+      "pool_id": "eb546c65-53ba-4e59-8f9a-2732800c6e60",
+      "pool_meta": null,
+      "price_semantics": "token",
+      "project": "defichain-dex",
+      "protocol_type": "amm_constant_product",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "GME",
+          "instrument_id": "unknown:defichain:GME",
+          "issuer": "unknown",
+          "pool_token_symbol": "GME",
+          "price_semantics": "token",
+          "recognition_basis": "project_scoped_bare_ticker",
+          "underlying_ticker": "GME",
+          "wrapped": false
+        }
+      ],
+      "symbol": "GME-DUSD",
+      "tier": "A",
+      "tvl_usd": 38522.0,
+      "underlying_ticker": "GME",
+      "underlying_tokens": [
+        "326",
+        "coingecko:usd-coin"
+      ],
+      "vol1d_tvl": 0.0,
+      "volume_usd_1d": 0.0,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 0.0,
+      "apy_reward": 0.0,
+      "apy_total": 0.0,
+      "chain": "Defichain",
+      "issuer": "unknown",
+      "pair_legs": [
+        "GOOGL",
+        "DUSD"
+      ],
+      "pool_id": "68e3b89c-1085-4f19-a116-23827ae06f49",
+      "pool_meta": null,
+      "price_semantics": "token",
+      "project": "defichain-dex",
+      "protocol_type": "amm_constant_product",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "GOOGL",
+          "instrument_id": "unknown:defichain:GOOGL",
+          "issuer": "unknown",
+          "pool_token_symbol": "GOOGL",
+          "price_semantics": "token",
+          "recognition_basis": "project_scoped_bare_ticker",
+          "underlying_ticker": "GOOGL",
+          "wrapped": false
+        }
+      ],
+      "symbol": "GOOGL-DUSD",
+      "tier": "A",
+      "tvl_usd": 57963.0,
+      "underlying_ticker": "GOOGL",
+      "underlying_tokens": [
+        "325",
+        "coingecko:usd-coin"
+      ],
+      "vol1d_tvl": 0.0,
+      "volume_usd_1d": 0.0,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 0.0,
+      "apy_reward": 0.0,
+      "apy_total": 0.0,
+      "chain": "Defichain",
+      "issuer": "unknown",
+      "pair_legs": [
+        "IBIT",
+        "DUSD"
+      ],
+      "pool_id": "679a033e-d8c1-48ed-be3f-9a3e6881b99b",
+      "pool_meta": null,
+      "price_semantics": "token",
+      "project": "defichain-dex",
+      "protocol_type": "amm_constant_product",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "IBIT",
+          "instrument_id": "unknown:defichain:IBIT",
+          "issuer": "unknown",
+          "pool_token_symbol": "IBIT",
+          "price_semantics": "token",
+          "recognition_basis": "project_scoped_bare_ticker",
+          "underlying_ticker": "IBIT",
+          "wrapped": false
+        }
+      ],
+      "symbol": "IBIT-DUSD",
+      "tier": "A",
+      "tvl_usd": 25326.0,
+      "underlying_ticker": "IBIT",
+      "underlying_tokens": [
+        "357",
+        "coingecko:usd-coin"
+      ],
+      "vol1d_tvl": 0.0,
+      "volume_usd_1d": 0.0,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 0.0,
+      "apy_reward": 0.0,
+      "apy_total": 0.0,
+      "chain": "Defichain",
+      "issuer": "unknown",
+      "pair_legs": [
+        "MSFT",
+        "DUSD"
+      ],
+      "pool_id": "754c627d-1a61-4d35-b739-6e73a176e6d5",
+      "pool_meta": null,
+      "price_semantics": "token",
+      "project": "defichain-dex",
+      "protocol_type": "amm_constant_product",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "MSFT",
+          "instrument_id": "unknown:defichain:MSFT",
+          "issuer": "unknown",
+          "pool_token_symbol": "MSFT",
+          "price_semantics": "token",
+          "recognition_basis": "project_scoped_bare_ticker",
+          "underlying_ticker": "MSFT",
+          "wrapped": false
+        }
+      ],
+      "symbol": "MSFT-DUSD",
+      "tier": "A",
+      "tvl_usd": 49763.0,
+      "underlying_ticker": "MSFT",
+      "underlying_tokens": [
+        "305",
+        "coingecko:usd-coin"
+      ],
+      "vol1d_tvl": 0.0,
+      "volume_usd_1d": 0.0,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 0.0,
+      "apy_reward": 0.0,
+      "apy_total": 0.0,
+      "chain": "Defichain",
+      "issuer": "unknown",
+      "pair_legs": [
+        "MSTR",
+        "DUSD"
+      ],
+      "pool_id": "4f4e18b0-ad83-4322-bd49-299f51092ea9",
+      "pool_meta": null,
+      "price_semantics": "token",
+      "project": "defichain-dex",
+      "protocol_type": "amm_constant_product",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "MSTR",
+          "instrument_id": "unknown:defichain:MSTR",
+          "issuer": "unknown",
+          "pool_token_symbol": "MSTR",
+          "price_semantics": "token",
+          "recognition_basis": "project_scoped_bare_ticker",
+          "underlying_ticker": "MSTR",
+          "wrapped": false
+        }
+      ],
+      "symbol": "MSTR-DUSD",
+      "tier": "A",
+      "tvl_usd": 201103.0,
+      "underlying_ticker": "MSTR",
+      "underlying_tokens": [
+        "363",
+        "coingecko:usd-coin"
+      ],
+      "vol1d_tvl": 0.0,
+      "volume_usd_1d": 0.0,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 0.0,
+      "apy_reward": 0.0,
+      "apy_total": 0.0,
+      "chain": "Defichain",
+      "issuer": "unknown",
+      "pair_legs": [
+        "NFLX",
+        "DUSD"
+      ],
+      "pool_id": "611b5930-1546-47cc-bc53-c80427612b77",
+      "pool_meta": null,
+      "price_semantics": "token",
+      "project": "defichain-dex",
+      "protocol_type": "amm_constant_product",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "NFLX",
+          "instrument_id": "unknown:defichain:NFLX",
+          "issuer": "unknown",
+          "pool_token_symbol": "NFLX",
+          "price_semantics": "token",
+          "recognition_basis": "project_scoped_bare_ticker",
+          "underlying_ticker": "NFLX",
+          "wrapped": false
+        }
+      ],
+      "symbol": "NFLX-DUSD",
+      "tier": "A",
+      "tvl_usd": 21704.0,
+      "underlying_ticker": "NFLX",
+      "underlying_tokens": [
+        "308",
+        "coingecko:usd-coin"
+      ],
+      "vol1d_tvl": 0.0,
+      "volume_usd_1d": 0.0,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 0.0,
+      "apy_reward": 0.0,
+      "apy_total": 0.0,
+      "chain": "Defichain",
+      "issuer": "unknown",
+      "pair_legs": [
+        "NVDA",
+        "DUSD"
+      ],
+      "pool_id": "a13e4841-8f66-4426-9ed1-472c9e159e93",
+      "pool_meta": null,
+      "price_semantics": "token",
+      "project": "defichain-dex",
+      "protocol_type": "amm_constant_product",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "NVDA",
+          "instrument_id": "unknown:defichain:NVDA",
+          "issuer": "unknown",
+          "pool_token_symbol": "NVDA",
+          "price_semantics": "token",
+          "recognition_basis": "project_scoped_bare_ticker",
+          "underlying_ticker": "NVDA",
+          "wrapped": false
+        }
+      ],
+      "symbol": "NVDA-DUSD",
+      "tier": "A",
+      "tvl_usd": 149067.0,
+      "underlying_ticker": "NVDA",
+      "underlying_tokens": [
+        "358",
+        "coingecko:usd-coin"
+      ],
+      "vol1d_tvl": 0.0,
+      "volume_usd_1d": 0.0,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 0.0,
+      "apy_reward": 0.0,
+      "apy_total": 0.0,
+      "chain": "Defichain",
+      "issuer": "unknown",
+      "pair_legs": [
+        "PFE",
+        "DUSD"
+      ],
+      "pool_id": "8fd58000-31cd-4c9b-9450-0cbbb200d09d",
+      "pool_meta": null,
+      "price_semantics": "token",
+      "project": "defichain-dex",
+      "protocol_type": "amm_constant_product",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "PFE",
+          "instrument_id": "unknown:defichain:PFE",
+          "issuer": "unknown",
+          "pool_token_symbol": "PFE",
+          "price_semantics": "token",
+          "recognition_basis": "project_scoped_bare_ticker",
+          "underlying_ticker": "PFE",
+          "wrapped": false
+        }
+      ],
+      "symbol": "PFE-DUSD",
+      "tier": "A",
+      "tvl_usd": 22992.0,
+      "underlying_ticker": "PFE",
+      "underlying_tokens": [
+        "352",
+        "coingecko:usd-coin"
+      ],
+      "vol1d_tvl": 0.0,
+      "volume_usd_1d": 0.0,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 0.03416,
+      "apy_reward": 0.0,
+      "apy_total": 0.03416,
+      "chain": "Defichain",
+      "issuer": "unknown",
+      "pair_legs": [
+        "PLTR",
+        "DUSD"
+      ],
+      "pool_id": "e5f8b3ee-3589-414c-8cfb-2801d7e2d922",
+      "pool_meta": null,
+      "price_semantics": "token",
+      "project": "defichain-dex",
+      "protocol_type": "amm_constant_product",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "PLTR",
+          "instrument_id": "unknown:defichain:PLTR",
+          "issuer": "unknown",
+          "pool_token_symbol": "PLTR",
+          "price_semantics": "token",
+          "recognition_basis": "project_scoped_bare_ticker",
+          "underlying_ticker": "PLTR",
+          "wrapped": false
+        }
+      ],
+      "symbol": "PLTR-DUSD",
+      "tier": "A",
+      "tvl_usd": 86994.0,
+      "underlying_ticker": "PLTR",
+      "underlying_tokens": [
+        "292",
+        "coingecko:usd-coin"
+      ],
+      "vol1d_tvl": 0.0,
+      "volume_usd_1d": 0.0,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 0.0,
+      "apy_reward": 0.0,
+      "apy_total": 0.0,
+      "chain": "Defichain",
+      "issuer": "unknown",
+      "pair_legs": [
+        "QQQ",
+        "DUSD"
+      ],
+      "pool_id": "04a153c1-2be7-45b7-b0c5-8a7e23cd8b1b",
+      "pool_meta": null,
+      "price_semantics": "token",
+      "project": "defichain-dex",
+      "protocol_type": "amm_constant_product",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "QQQ",
+          "instrument_id": "unknown:defichain:QQQ",
+          "issuer": "unknown",
+          "pool_token_symbol": "QQQ",
+          "price_semantics": "token",
+          "recognition_basis": "project_scoped_bare_ticker",
+          "underlying_ticker": "QQQ",
+          "wrapped": false
+        }
+      ],
+      "symbol": "QQQ-DUSD",
+      "tier": "A",
+      "tvl_usd": 79305.0,
+      "underlying_ticker": "QQQ",
+      "underlying_tokens": [
+        "296",
+        "coingecko:usd-coin"
+      ],
+      "vol1d_tvl": 0.0,
+      "volume_usd_1d": 0.0,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 0.0,
+      "apy_reward": 0.0,
+      "apy_total": 0.0,
+      "chain": "Defichain",
+      "issuer": "unknown",
+      "pair_legs": [
+        "SLV",
+        "DUSD"
+      ],
+      "pool_id": "edca5153-ed95-4c03-9f2e-6a1e7d1f334c",
+      "pool_meta": null,
+      "price_semantics": "token",
+      "project": "defichain-dex",
+      "protocol_type": "amm_constant_product",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "SLV",
+          "instrument_id": "unknown:defichain:SLV",
+          "issuer": "unknown",
+          "pool_token_symbol": "SLV",
+          "price_semantics": "token",
+          "recognition_basis": "project_scoped_bare_ticker",
+          "underlying_ticker": "SLV",
+          "wrapped": false
+        }
+      ],
+      "symbol": "SLV-DUSD",
+      "tier": "A",
+      "tvl_usd": 33127.0,
+      "underlying_ticker": "SLV",
+      "underlying_tokens": [
+        "298",
+        "coingecko:usd-coin"
+      ],
+      "vol1d_tvl": 0.0,
+      "volume_usd_1d": 0.0,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 0.0,
+      "apy_reward": 0.0,
+      "apy_total": 0.0,
+      "chain": "Defichain",
+      "issuer": "unknown",
+      "pair_legs": [
+        "SPY",
+        "DUSD"
+      ],
+      "pool_id": "d6f831a7-0079-4400-b2c5-a8436358d53a",
+      "pool_meta": null,
+      "price_semantics": "token",
+      "project": "defichain-dex",
+      "protocol_type": "amm_constant_product",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "SPY",
+          "instrument_id": "unknown:defichain:SPY",
+          "issuer": "unknown",
+          "pool_token_symbol": "SPY",
+          "price_semantics": "token",
+          "recognition_basis": "project_scoped_bare_ticker",
+          "underlying_ticker": "SPY",
+          "wrapped": false
+        }
+      ],
+      "symbol": "SPY-DUSD",
+      "tier": "A",
+      "tvl_usd": 190593.0,
+      "underlying_ticker": "SPY",
+      "underlying_tokens": [
+        "295",
+        "coingecko:usd-coin"
+      ],
+      "vol1d_tvl": 0.0,
+      "volume_usd_1d": 0.0,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 0.0,
+      "apy_reward": 0.0,
+      "apy_total": 0.0,
+      "chain": "Defichain",
+      "issuer": "unknown",
+      "pair_legs": [
+        "TLT",
+        "DUSD"
+      ],
+      "pool_id": "17f41a00-4c7a-4712-91e4-41f9b8d9e38f",
+      "pool_meta": null,
+      "price_semantics": "token",
+      "project": "defichain-dex",
+      "protocol_type": "amm_constant_product",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "TLT",
+          "instrument_id": "unknown:defichain:TLT",
+          "issuer": "unknown",
+          "pool_token_symbol": "TLT",
+          "price_semantics": "token",
+          "recognition_basis": "project_scoped_bare_ticker",
+          "underlying_ticker": "TLT",
+          "wrapped": false
+        }
+      ],
+      "symbol": "TLT-DUSD",
+      "tier": "A",
+      "tvl_usd": 34571.0,
+      "underlying_ticker": "TLT",
+      "underlying_tokens": [
+        "302",
+        "coingecko:usd-coin"
+      ],
+      "vol1d_tvl": 0.0,
+      "volume_usd_1d": 0.0,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 0.0,
+      "apy_reward": 0.0,
+      "apy_total": 0.0,
+      "chain": "Defichain",
+      "issuer": "unknown",
+      "pair_legs": [
+        "TSLA",
+        "DUSD"
+      ],
+      "pool_id": "dc833f4f-eafc-4d50-ac5d-b0237641ba5a",
+      "pool_meta": null,
+      "price_semantics": "token",
+      "project": "defichain-dex",
+      "protocol_type": "amm_constant_product",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "TSLA",
+          "instrument_id": "unknown:defichain:TSLA",
+          "issuer": "unknown",
+          "pool_token_symbol": "TSLA",
+          "price_semantics": "token",
+          "recognition_basis": "project_scoped_bare_ticker",
+          "underlying_ticker": "TSLA",
+          "wrapped": false
+        }
+      ],
+      "symbol": "TSLA-DUSD",
+      "tier": "A",
+      "tvl_usd": 266096.0,
+      "underlying_ticker": "TSLA",
+      "underlying_tokens": [
+        "331",
+        "coingecko:usd-coin"
+      ],
+      "vol1d_tvl": 0.0,
+      "volume_usd_1d": 0.0,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 0.0,
+      "apy_reward": 0.0,
+      "apy_total": 0.0,
+      "chain": "Defichain",
+      "issuer": "unknown",
+      "pair_legs": [
+        "URTH",
+        "DUSD"
+      ],
+      "pool_id": "fee825e8-2605-4729-9f9e-480dcd13e703",
+      "pool_meta": null,
+      "price_semantics": "token",
+      "project": "defichain-dex",
+      "protocol_type": "amm_constant_product",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "URTH",
+          "instrument_id": "unknown:defichain:URTH",
+          "issuer": "unknown",
+          "pool_token_symbol": "URTH",
+          "price_semantics": "token",
+          "recognition_basis": "project_scoped_bare_ticker",
+          "underlying_ticker": "URTH",
+          "wrapped": false
+        }
+      ],
+      "symbol": "URTH-DUSD",
+      "tier": "A",
+      "tvl_usd": 24378.0,
+      "underlying_ticker": "URTH",
+      "underlying_tokens": [
+        "301",
+        "coingecko:usd-coin"
+      ],
+      "vol1d_tvl": 0.0,
+      "volume_usd_1d": 0.0,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 0.0,
+      "apy_reward": null,
+      "apy_total": 0.0,
+      "chain": "Ethereum",
+      "issuer": "Ondo",
+      "pair_legs": [
+        "USDC",
+        "TSLAON"
+      ],
+      "pool_id": "57629bc6-da85-4eac-904e-d64a939102db",
+      "pool_meta": "90.00%",
+      "price_semantics": "token",
+      "project": "uniswap-v4",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "TSLAON",
+          "instrument_id": "ondo:TSLAON",
+          "issuer": "Ondo",
+          "pool_token_symbol": "TSLAON",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_ondo_catalogue",
+          "underlying_ticker": "TSLA",
+          "wrapped": false
+        }
+      ],
+      "symbol": "USDC-TSLAON",
+      "tier": "A",
+      "tvl_usd": 258407.0,
+      "underlying_ticker": "TSLA",
+      "underlying_tokens": [
+        "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+        "0xf6b1117ec07684d3958cad8beb1b302bfd21103f"
+      ],
+      "vol1d_tvl": 0.0,
+      "volume_usd_1d": 0.0,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 0.07292,
+      "apy_reward": null,
+      "apy_total": 0.07292,
+      "chain": "Ethereum",
+      "issuer": "Backed",
+      "pair_legs": [
+        "USDC",
+        "WQQQX"
+      ],
+      "pool_id": "85731ac0-c354-4ddc-a796-9d3bafde7a1d",
+      "pool_meta": "0.05%",
+      "price_semantics": "token",
+      "project": "uniswap-v3",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "QQQX",
+          "instrument_id": "backed:QQQX",
+          "issuer": "Backed",
+          "pool_token_symbol": "WQQQX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "QQQ",
+          "wrapped": true
+        }
+      ],
+      "symbol": "USDC-WQQQX",
+      "tier": "A",
+      "tvl_usd": 327608.0,
+      "underlying_ticker": "QQQ",
+      "underlying_tokens": [
+        "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+        "0xdbd9232fee15351068fe02f0683146e16d9f2cea"
+      ],
+      "vol1d_tvl": 0.0039955342970867625,
+      "volume_usd_1d": 1308.969,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 0.0546,
+      "apy_reward": null,
+      "apy_total": 0.0546,
+      "chain": "Ethereum",
+      "issuer": "Backed",
+      "pair_legs": [
+        "USDC",
+        "WSPYX"
+      ],
+      "pool_id": "247c4969-6eb4-4abd-b073-7c83d0920e82",
+      "pool_meta": "0.05%",
+      "price_semantics": "token",
+      "project": "uniswap-v3",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "SPYX",
+          "instrument_id": "backed:SPYX",
+          "issuer": "Backed",
+          "pool_token_symbol": "WSPYX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "SPY",
+          "wrapped": true
+        }
+      ],
+      "symbol": "USDC-WSPYX",
+      "tier": "A",
+      "tvl_usd": 323124.0,
+      "underlying_ticker": "SPY",
+      "underlying_tokens": [
+        "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+        "0xc88fcd8b874fdb3256e8b55b3decb8c24eab4c02"
+      ],
+      "vol1d_tvl": 0.0029919762072764633,
+      "volume_usd_1d": 966.77932,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 0.0,
+      "apy_reward": null,
+      "apy_total": 0.0,
+      "chain": "Ethereum",
+      "issuer": "Ondo",
+      "pair_legs": [
+        "USDT",
+        "TSLAON"
+      ],
+      "pool_id": "0a6a2caf-6c34-4452-893c-74d07c3348c0",
+      "pool_meta": "80.00%",
+      "price_semantics": "token",
+      "project": "uniswap-v4",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "TSLAON",
+          "instrument_id": "ondo:TSLAON",
+          "issuer": "Ondo",
+          "pool_token_symbol": "TSLAON",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_ondo_catalogue",
+          "underlying_ticker": "TSLA",
+          "wrapped": false
+        }
+      ],
+      "symbol": "USDT-TSLAON",
+      "tier": "A",
+      "tvl_usd": 345308.0,
+      "underlying_ticker": "TSLA",
+      "underlying_tokens": [
+        "0xdac17f958d2ee523a2206206994597c13d831ec7",
+        "0xf6b1117ec07684d3958cad8beb1b302bfd21103f"
+      ],
+      "vol1d_tvl": 0.0,
+      "volume_usd_1d": 0.0,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 1.03124,
+      "apy_reward": null,
+      "apy_total": 1.03124,
+      "chain": "Ethereum",
+      "issuer": "Backed",
+      "pair_legs": [
+        "WMSTRX",
+        "USDC"
+      ],
+      "pool_id": "754cdac3-7083-471f-a5be-14c0fd500d26",
+      "pool_meta": "0.05%",
+      "price_semantics": "token",
+      "project": "uniswap-v3",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "MSTRX",
+          "instrument_id": "backed:MSTRX",
+          "issuer": "Backed",
+          "pool_token_symbol": "WMSTRX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "MSTR",
+          "wrapped": true
+        }
+      ],
+      "symbol": "WMSTRX-USDC",
+      "tier": "A",
+      "tvl_usd": 237890.0,
+      "underlying_ticker": "MSTR",
+      "underlying_tokens": [
+        "0x266e5923f6118f8b340ca5a23ae7f71897361476",
+        "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+      ],
+      "vol1d_tvl": 0.056506444659296315,
+      "volume_usd_1d": 13442.31812,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 0.21151,
+      "apy_reward": null,
+      "apy_total": 0.21151,
+      "chain": "Ethereum",
+      "issuer": "Backed",
+      "pair_legs": [
+        "WNVDAX",
+        "USDC"
+      ],
+      "pool_id": "b3ca8d99-2013-4ecb-b26b-06480ea25a08",
+      "pool_meta": "0.05%",
+      "price_semantics": "token",
+      "project": "uniswap-v3",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "NVDAX",
+          "instrument_id": "backed:NVDAX",
+          "issuer": "Backed",
+          "pool_token_symbol": "WNVDAX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "NVDA",
+          "wrapped": true
+        }
+      ],
+      "symbol": "WNVDAX-USDC",
+      "tier": "A",
+      "tvl_usd": 336705.0,
+      "underlying_ticker": "NVDA",
+      "underlying_tokens": [
+        "0x93e62845c1dd5822ebc807ab71a5fb750decd15a",
+        "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+      ],
+      "vol1d_tvl": 0.011589627181063543,
+      "volume_usd_1d": 3902.28542,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 0.0,
+      "apy_reward": 0.0,
+      "apy_total": 0.0,
+      "chain": "Ethereum",
+      "issuer": "Backed",
+      "pair_legs": [
+        "WNVDAX",
+        "USDT"
+      ],
+      "pool_id": "aaa7d96f-474d-4bc2-a093-4a0da6de9638",
+      "pool_meta": null,
+      "price_semantics": "token",
+      "project": "everything",
+      "protocol_type": "unknown",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "NVDAX",
+          "instrument_id": "backed:NVDAX",
+          "issuer": "Backed",
+          "pool_token_symbol": "WNVDAX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "NVDA",
+          "wrapped": true
+        }
+      ],
+      "symbol": "WNVDAX-USDT",
+      "tier": "A",
+      "tvl_usd": 36586.0,
+      "underlying_ticker": "NVDA",
+      "underlying_tokens": [
+        "0x93e62845c1dd5822ebc807ab71a5fb750decd15a",
+        "0xdac17f958d2ee523a2206206994597c13d831ec7"
+      ],
+      "vol1d_tvl": 0.0,
+      "volume_usd_1d": 0.0,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 0.21725,
+      "apy_reward": null,
+      "apy_total": 0.21725,
+      "chain": "Ethereum",
+      "issuer": "Backed",
+      "pair_legs": [
+        "WTSLAX",
+        "USDC"
+      ],
+      "pool_id": "b2dc3501-c0b2-4463-9d19-35dd1a8630b5",
+      "pool_meta": "0.05%",
+      "price_semantics": "token",
+      "project": "uniswap-v3",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "TSLAX",
+          "instrument_id": "backed:TSLAX",
+          "issuer": "Backed",
+          "pool_token_symbol": "WTSLAX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "TSLA",
+          "wrapped": true
+        }
+      ],
+      "symbol": "WTSLAX-USDC",
+      "tier": "A",
+      "tvl_usd": 247756.0,
+      "underlying_ticker": "TSLA",
+      "underlying_tokens": [
+        "0x43680abf18cf54898be84c6ef78237cfbd441883",
+        "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+      ],
+      "vol1d_tvl": 0.011904251440933822,
+      "volume_usd_1d": 2949.34972,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 0.5726,
+      "apy_reward": null,
+      "apy_total": 0.5726,
+      "chain": "Mantle",
+      "issuer": "Backed",
+      "pair_legs": [
+        "USDC",
+        "WAAPLX"
+      ],
+      "pool_id": "3b6b75cf-adb5-4fb4-bbcd-8f75c6879c9d",
+      "pool_meta": "0.3%",
+      "price_semantics": "token",
+      "project": "fluxion-network",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "AAPLX",
+          "instrument_id": "backed:AAPLX",
+          "issuer": "Backed",
+          "pool_token_symbol": "WAAPLX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "AAPL",
+          "wrapped": true
+        }
+      ],
+      "symbol": "USDC-WAAPLX",
+      "tier": "A",
+      "tvl_usd": 111033.0,
+      "underlying_ticker": "AAPL",
+      "underlying_tokens": [
+        "0x09bc4e0d864854c6afb6eb9a9cdf58ac190d0df9",
+        "0x5aa7649fdbda47de64a07ac81d64b682af9c0724"
+      ],
+      "vol1d_tvl": 0.005229183395927337,
+      "volume_usd_1d": 580.61192,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 0.00409,
+      "apy_reward": null,
+      "apy_total": 0.00409,
+      "chain": "Mantle",
+      "issuer": "Backed",
+      "pair_legs": [
+        "USDC",
+        "WCRCLX"
+      ],
+      "pool_id": "a7e2f58e-1c93-4592-acd6-8e40e6cb26ff",
+      "pool_meta": "0.3%",
+      "price_semantics": "token",
+      "project": "fluxion-network",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "CRCLX",
+          "instrument_id": "backed:CRCLX",
+          "issuer": "Backed",
+          "pool_token_symbol": "WCRCLX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "CRCL",
+          "wrapped": true
+        }
+      ],
+      "symbol": "USDC-WCRCLX",
+      "tier": "A",
+      "tvl_usd": 85478.0,
+      "underlying_ticker": "CRCL",
+      "underlying_tokens": [
+        "0x09bc4e0d864854c6afb6eb9a9cdf58ac190d0df9",
+        "0xa90872aca656ebe47bdebf3b19ec9dd9c5adc7f8"
+      ],
+      "vol1d_tvl": 3.7312290881864336e-05,
+      "volume_usd_1d": 3.18938,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 0.38456,
+      "apy_reward": null,
+      "apy_total": 0.38456,
+      "chain": "Mantle",
+      "issuer": "Backed",
+      "pair_legs": [
+        "USDC",
+        "WGOOGLX"
+      ],
+      "pool_id": "227e8492-33e9-4953-8beb-28973c9fdb8a",
+      "pool_meta": "0.3%",
+      "price_semantics": "token",
+      "project": "fluxion-network",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "GOOGLX",
+          "instrument_id": "backed:GOOGLX",
+          "issuer": "Backed",
+          "pool_token_symbol": "WGOOGLX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "GOOGL",
+          "wrapped": true
+        }
+      ],
+      "symbol": "USDC-WGOOGLX",
+      "tier": "A",
+      "tvl_usd": 111597.0,
+      "underlying_ticker": "GOOGL",
+      "underlying_tokens": [
+        "0x09bc4e0d864854c6afb6eb9a9cdf58ac190d0df9",
+        "0x1630f08370917e79df0b7572395a5e907508bbbc"
+      ],
+      "vol1d_tvl": 0.0035119439590670003,
+      "volume_usd_1d": 391.92241,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 0.00039,
+      "apy_reward": null,
+      "apy_total": 0.00039,
+      "chain": "Mantle",
+      "issuer": "Backed",
+      "pair_legs": [
+        "USDC",
+        "WHOODX"
+      ],
+      "pool_id": "30836422-c578-4f77-8f81-861c509c5d4c",
+      "pool_meta": "0.3%",
+      "price_semantics": "token",
+      "project": "fluxion-network",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "HOODX",
+          "instrument_id": "backed:HOODX",
+          "issuer": "Backed",
+          "pool_token_symbol": "WHOODX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "HOOD",
+          "wrapped": true
+        }
+      ],
+      "symbol": "USDC-WHOODX",
+      "tier": "A",
+      "tvl_usd": 115158.0,
+      "underlying_ticker": "HOOD",
+      "underlying_tokens": [
+        "0x09bc4e0d864854c6afb6eb9a9cdf58ac190d0df9",
+        "0x953707d7a1cb30cc5c636bda8eaebe410341eb14"
+      ],
+      "vol1d_tvl": 3.5502526962955243e-06,
+      "volume_usd_1d": 0.40884,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 0.36774,
+      "apy_reward": null,
+      "apy_total": 0.36774,
+      "chain": "Mantle",
+      "issuer": "Backed",
+      "pair_legs": [
+        "USDC",
+        "WMETAX"
+      ],
+      "pool_id": "b8d50460-5237-4601-9250-4f2d3a6b569b",
+      "pool_meta": "0.3%",
+      "price_semantics": "token",
+      "project": "fluxion-network",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "METAX",
+          "instrument_id": "backed:METAX",
+          "issuer": "Backed",
+          "pool_token_symbol": "WMETAX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "META",
+          "wrapped": true
+        }
+      ],
+      "symbol": "USDC-WMETAX",
+      "tier": "A",
+      "tvl_usd": 103638.0,
+      "underlying_ticker": "META",
+      "underlying_tokens": [
+        "0x09bc4e0d864854c6afb6eb9a9cdf58ac190d0df9",
+        "0x4e41a262caa93c6575d336e0a4eb79f3c67caa06"
+      ],
+      "vol1d_tvl": 0.003358370674848994,
+      "volume_usd_1d": 348.05482,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 0.84902,
+      "apy_reward": null,
+      "apy_total": 0.84902,
+      "chain": "Mantle",
+      "issuer": "Backed",
+      "pair_legs": [
+        "USDC",
+        "WMSTRX"
+      ],
+      "pool_id": "ebec73de-fd1e-4f97-8287-d9cb01c7d352",
+      "pool_meta": "0.3%",
+      "price_semantics": "token",
+      "project": "fluxion-network",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "MSTRX",
+          "instrument_id": "backed:MSTRX",
+          "issuer": "Backed",
+          "pool_token_symbol": "WMSTRX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "MSTR",
+          "wrapped": true
+        }
+      ],
+      "symbol": "USDC-WMSTRX",
+      "tier": "A",
+      "tvl_usd": 87052.0,
+      "underlying_ticker": "MSTR",
+      "underlying_tokens": [
+        "0x09bc4e0d864854c6afb6eb9a9cdf58ac190d0df9",
+        "0x266e5923f6118f8b340ca5a23ae7f71897361476"
+      ],
+      "vol1d_tvl": 0.007753613817028902,
+      "volume_usd_1d": 674.96759,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 0.17934,
+      "apy_reward": null,
+      "apy_total": 0.17934,
+      "chain": "Mantle",
+      "issuer": "Backed",
+      "pair_legs": [
+        "USDC",
+        "WNVDAX"
+      ],
+      "pool_id": "2a510869-6356-4486-8bb5-d5a808634496",
+      "pool_meta": "0.3%",
+      "price_semantics": "token",
+      "project": "fluxion-network",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "NVDAX",
+          "instrument_id": "backed:NVDAX",
+          "issuer": "Backed",
+          "pool_token_symbol": "WNVDAX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "NVDA",
+          "wrapped": true
+        }
+      ],
+      "symbol": "USDC-WNVDAX",
+      "tier": "A",
+      "tvl_usd": 112237.0,
+      "underlying_ticker": "NVDA",
+      "underlying_tokens": [
+        "0x09bc4e0d864854c6afb6eb9a9cdf58ac190d0df9",
+        "0x93e62845c1dd5822ebc807ab71a5fb750decd15a"
+      ],
+      "vol1d_tvl": 0.0016378439373825032,
+      "volume_usd_1d": 183.82669,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 0.01147,
+      "apy_reward": null,
+      "apy_total": 0.01147,
+      "chain": "Mantle",
+      "issuer": "Backed",
+      "pair_legs": [
+        "USDC",
+        "WQQQX"
+      ],
+      "pool_id": "2364dd66-69d3-44ef-9e85-4d5217a57b57",
+      "pool_meta": "0.3%",
+      "price_semantics": "token",
+      "project": "fluxion-network",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "QQQX",
+          "instrument_id": "backed:QQQX",
+          "issuer": "Backed",
+          "pool_token_symbol": "WQQQX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "QQQ",
+          "wrapped": true
+        }
+      ],
+      "symbol": "USDC-WQQQX",
+      "tier": "A",
+      "tvl_usd": 110095.0,
+      "underlying_ticker": "QQQ",
+      "underlying_tokens": [
+        "0x09bc4e0d864854c6afb6eb9a9cdf58ac190d0df9",
+        "0xdbd9232fee15351068fe02f0683146e16d9f2cea"
+      ],
+      "vol1d_tvl": 0.00010476452154957083,
+      "volume_usd_1d": 11.53405,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 0.14747,
+      "apy_reward": null,
+      "apy_total": 0.14747,
+      "chain": "Mantle",
+      "issuer": "Backed",
+      "pair_legs": [
+        "USDC",
+        "WSPYX"
+      ],
+      "pool_id": "913ce101-55b1-4230-93c7-d523f0d9ca03",
+      "pool_meta": "0.3%",
+      "price_semantics": "token",
+      "project": "fluxion-network",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "SPYX",
+          "instrument_id": "backed:SPYX",
+          "issuer": "Backed",
+          "pool_token_symbol": "WSPYX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "SPY",
+          "wrapped": true
+        }
+      ],
+      "symbol": "USDC-WSPYX",
+      "tier": "A",
+      "tvl_usd": 108813.0,
+      "underlying_ticker": "SPY",
+      "underlying_tokens": [
+        "0x09bc4e0d864854c6afb6eb9a9cdf58ac190d0df9",
+        "0xc88fcd8b874fdb3256e8b55b3decb8c24eab4c02"
+      ],
+      "vol1d_tvl": 0.0013467998309025576,
+      "volume_usd_1d": 146.54933,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 0.41307,
+      "apy_reward": null,
+      "apy_total": 0.41307,
+      "chain": "Mantle",
+      "issuer": "Backed",
+      "pair_legs": [
+        "USDC",
+        "WTSLAX"
+      ],
+      "pool_id": "a4ff3d7c-a117-4b24-a9f9-6af46cd276c0",
+      "pool_meta": "0.3%",
+      "price_semantics": "token",
+      "project": "fluxion-network",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "TSLAX",
+          "instrument_id": "backed:TSLAX",
+          "issuer": "Backed",
+          "pool_token_symbol": "WTSLAX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "TSLA",
+          "wrapped": true
+        }
+      ],
+      "symbol": "USDC-WTSLAX",
+      "tier": "A",
+      "tvl_usd": 95869.0,
+      "underlying_ticker": "TSLA",
+      "underlying_tokens": [
+        "0x09bc4e0d864854c6afb6eb9a9cdf58ac190d0df9",
+        "0x43680abf18cf54898be84c6ef78237cfbd441883"
+      ],
+      "vol1d_tvl": 0.0037723006394142005,
+      "volume_usd_1d": 361.64669,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 0.0,
+      "apy_reward": 520.80202,
+      "apy_total": 520.80202,
+      "chain": "Robinhood Chain",
+      "issuer": "Robinhood",
+      "pair_legs": [
+        "GME",
+        "USDG"
+      ],
+      "pool_id": "55f14016-4a94-5066-a27a-c88ca8bed65c",
+      "pool_meta": "0.00% fee | CL range 5.78%",
+      "price_semantics": "token",
+      "project": "ekubo",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "GME",
+          "instrument_id": "robinhood:GME",
+          "issuer": "Robinhood",
+          "pool_token_symbol": "GME",
+          "price_semantics": "token",
+          "recognition_basis": "robinhood_chain_bare_ticker_catalogue",
+          "underlying_ticker": "GME",
+          "wrapped": false
+        }
+      ],
+      "symbol": "GME-USDG",
+      "tier": "A",
+      "tvl_usd": 21321.0,
+      "underlying_ticker": "GME",
+      "underlying_tokens": [
+        "0x1b0e319c6a659f002271b69db8a7df2f911c153e",
+        "0x5fc5360d0400a0fd4f2af552add042d716f1d168"
+      ],
+      "vol1d_tvl": 0.0,
+      "volume_usd_1d": 0.0,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 0.0,
+      "apy_reward": 310.84704,
+      "apy_total": 310.84704,
+      "chain": "Robinhood Chain",
+      "issuer": "Robinhood",
+      "pair_legs": [
+        "SPCX",
+        "USDG"
+      ],
+      "pool_id": "5f7d700e-41d0-5d13-b328-9f85afe71266",
+      "pool_meta": "0.00% fee | CL range 10.24%",
+      "price_semantics": "token",
+      "project": "ekubo",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "SPCX",
+          "instrument_id": "robinhood:SPCX",
+          "issuer": "Robinhood",
+          "pool_token_symbol": "SPCX",
+          "price_semantics": "token",
+          "recognition_basis": "robinhood_chain_bare_ticker_catalogue",
+          "underlying_ticker": "SPCX",
+          "wrapped": false
+        }
+      ],
+      "symbol": "SPCX-USDG",
+      "tier": "A",
+      "tvl_usd": 56589.0,
+      "underlying_ticker": "SPCX",
+      "underlying_tokens": [
+        "0x4a0e65a3eccec6dbe60ae065f2e7bb85fae35eea",
+        "0x5fc5360d0400a0fd4f2af552add042d716f1d168"
+      ],
+      "vol1d_tvl": 0.0,
+      "volume_usd_1d": 0.0,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 0.0,
+      "apy_reward": 118.36013,
+      "apy_total": 118.36013,
+      "chain": "Robinhood Chain",
+      "issuer": "Robinhood",
+      "pair_legs": [
+        "SPY",
+        "USDG"
+      ],
+      "pool_id": "52b8d993-fe7e-5ca8-88c9-00872c01f73e",
+      "pool_meta": "0.00% fee | CL range 0.71%",
+      "price_semantics": "token",
+      "project": "ekubo",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "SPY",
+          "instrument_id": "robinhood:SPY",
+          "issuer": "Robinhood",
+          "pool_token_symbol": "SPY",
+          "price_semantics": "token",
+          "recognition_basis": "robinhood_chain_bare_ticker_catalogue",
+          "underlying_ticker": "SPY",
+          "wrapped": false
+        }
+      ],
+      "symbol": "SPY-USDG",
+      "tier": "A",
+      "tvl_usd": 21218.0,
+      "underlying_ticker": "SPY",
+      "underlying_tokens": [
+        "0x117cc2133c37b721f49de2a7a74833232b3b4c0c",
+        "0x5fc5360d0400a0fd4f2af552add042d716f1d168"
+      ],
+      "vol1d_tvl": 0.0,
+      "volume_usd_1d": 0.0,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 0.0,
+      "apy_reward": 108.89645,
+      "apy_total": 108.89645,
+      "chain": "Robinhood Chain",
+      "issuer": "Robinhood",
+      "pair_legs": [
+        "USDG",
+        "NVDA"
+      ],
+      "pool_id": "4f4f8680-0740-55fc-b0b5-dd49f530f9f5",
+      "pool_meta": "0.00% fee | CL range 3.26%",
+      "price_semantics": "token",
+      "project": "ekubo",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "NVDA",
+          "instrument_id": "robinhood:NVDA",
+          "issuer": "Robinhood",
+          "pool_token_symbol": "NVDA",
+          "price_semantics": "token",
+          "recognition_basis": "robinhood_chain_bare_ticker_catalogue",
+          "underlying_ticker": "NVDA",
+          "wrapped": false
+        }
+      ],
+      "symbol": "USDG-NVDA",
+      "tier": "A",
+      "tvl_usd": 122571.0,
+      "underlying_ticker": "NVDA",
+      "underlying_tokens": [
+        "0x5fc5360d0400a0fd4f2af552add042d716f1d168",
+        "0xd0601ce157db5bdc3162bbac2a2c8af5320d9eec"
+      ],
+      "vol1d_tvl": 0.0,
+      "volume_usd_1d": 0.0,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 24.76862,
+      "apy_reward": null,
+      "apy_total": 24.76862,
+      "chain": "Solana",
+      "issuer": "unknown",
+      "pair_legs": [
+        "AAPL",
+        "USDC"
+      ],
+      "pool_id": "7b56ac37-1249-4ae8-bd5d-2494f3ac7499",
+      "pool_meta": null,
+      "price_semantics": "token",
+      "project": "gmtrade",
+      "protocol_type": "unknown",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "AAPL",
+          "instrument_id": "unknown:solana:AAPL",
+          "issuer": "unknown",
+          "pool_token_symbol": "AAPL",
+          "price_semantics": "token",
+          "recognition_basis": "project_scoped_bare_ticker",
+          "underlying_ticker": "AAPL",
+          "wrapped": false
+        }
+      ],
+      "symbol": "AAPL-USDC",
+      "tier": "A",
+      "tvl_usd": 232051.0,
+      "underlying_ticker": "AAPL",
+      "underlying_tokens": [
+        "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+      ],
+      "vol1d_tvl": 0.0,
+      "volume_usd_1d": 0.0,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 23.94,
+      "apy_reward": 0.0,
+      "apy_total": 23.94,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "AAPLX",
+        "USDC"
+      ],
+      "pool_id": "9462784c-c0e5-4539-914e-ac006e5b3097",
+      "pool_meta": "Concentrated - 0.25%",
+      "price_semantics": "token",
+      "project": "raydium-amm",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "AAPLX",
+          "instrument_id": "backed:AAPLX",
+          "issuer": "Backed",
+          "pool_token_symbol": "AAPLX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "AAPL",
+          "wrapped": false
+        }
+      ],
+      "symbol": "AAPLX-USDC",
+      "tier": "A",
+      "tvl_usd": 62416.0,
+      "underlying_ticker": "AAPL",
+      "underlying_tokens": [
+        "XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp",
+        "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+      ],
+      "vol1d_tvl": 0.2623723457126378,
+      "volume_usd_1d": 16376.23233,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 25.45111,
+      "apy_reward": null,
+      "apy_total": 25.45111,
+      "chain": "Solana",
+      "issuer": "unknown",
+      "pair_legs": [
+        "AMZN",
+        "USDC"
+      ],
+      "pool_id": "3d99a2b1-ca5b-4fc5-9e4c-112382b7bcc9",
+      "pool_meta": null,
+      "price_semantics": "token",
+      "project": "gmtrade",
+      "protocol_type": "unknown",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "AMZN",
+          "instrument_id": "unknown:solana:AMZN",
+          "issuer": "unknown",
+          "pool_token_symbol": "AMZN",
+          "price_semantics": "token",
+          "recognition_basis": "project_scoped_bare_ticker",
+          "underlying_ticker": "AMZN",
+          "wrapped": false
+        }
+      ],
+      "symbol": "AMZN-USDC",
+      "tier": "A",
+      "tvl_usd": 34804.0,
+      "underlying_ticker": "AMZN",
+      "underlying_tokens": [
+        "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+      ],
+      "vol1d_tvl": 0.0,
+      "volume_usd_1d": 0.0,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 11.43,
+      "apy_reward": 0.0,
+      "apy_total": 11.43,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "AMZNX",
+        "USDC"
+      ],
+      "pool_id": "688fdee4-325a-4e86-904c-7d9ca92d1f45",
+      "pool_meta": "Concentrated - 0.25%",
+      "price_semantics": "token",
+      "project": "raydium-amm",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "AMZNX",
+          "instrument_id": "backed:AMZNX",
+          "issuer": "Backed",
+          "pool_token_symbol": "AMZNX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "AMZN",
+          "wrapped": false
+        }
+      ],
+      "symbol": "AMZNX-USDC",
+      "tier": "A",
+      "tvl_usd": 357897.0,
+      "underlying_ticker": "AMZN",
+      "underlying_tokens": [
+        "Xs3eBt7uRfJX8QUs4suhyU8p2M6DoUDrJyWBa8LLZsg",
+        "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+      ],
+      "vol1d_tvl": 0.12521622679150704,
+      "volume_usd_1d": 44814.51192,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 2.23,
+      "apy_reward": 0.0,
+      "apy_total": 2.23,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "AVGOX",
+        "USDC"
+      ],
+      "pool_id": "5877c8cd-f400-4dec-a998-2b54a6676c5c",
+      "pool_meta": "Concentrated - 1%",
+      "price_semantics": "token",
+      "project": "raydium-amm",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "AVGOX",
+          "instrument_id": "backed:AVGOX",
+          "issuer": "Backed",
+          "pool_token_symbol": "AVGOX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "AVGO",
+          "wrapped": false
+        }
+      ],
+      "symbol": "AVGOX-USDC",
+      "tier": "A",
+      "tvl_usd": 129219.0,
+      "underlying_ticker": "AVGO",
+      "underlying_tokens": [
+        "XsgSaSvNSqLTtFuyWPBhK9196Xb9Bbdyjj4fH3cPJGo",
+        "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+      ],
+      "vol1d_tvl": 0.0061072554345723154,
+      "volume_usd_1d": 789.17344,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 13.45,
+      "apy_reward": 0.0,
+      "apy_total": 13.45,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "BRK.BX",
+        "USDC"
+      ],
+      "pool_id": "b808f728-041d-4a95-aa63-9828625f1521",
+      "pool_meta": "Concentrated - 0.25%",
+      "price_semantics": "token",
+      "project": "raydium-amm",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "BRK.BX",
+          "instrument_id": "backed:BRK.BX",
+          "issuer": "Backed",
+          "pool_token_symbol": "BRK.BX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "BRK.B",
+          "wrapped": false
+        }
+      ],
+      "symbol": "BRK.BX-USDC",
+      "tier": "A",
+      "tvl_usd": 31554.0,
+      "underlying_ticker": "BRK.B",
+      "underlying_tokens": [
+        "Xs6B6zawENwAbWVi7w92rjazLuAr5Az59qgWKcNb45x",
+        "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+      ],
+      "vol1d_tvl": 0.14741217341699944,
+      "volume_usd_1d": 4651.44372,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 3.63,
+      "apy_reward": 0.0,
+      "apy_total": 3.63,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "COINX",
+        "USDC"
+      ],
+      "pool_id": "8950fa38-8d84-4aa3-81c8-32f4dea48191",
+      "pool_meta": "Concentrated - 1%",
+      "price_semantics": "token",
+      "project": "raydium-amm",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "COINX",
+          "instrument_id": "backed:COINX",
+          "issuer": "Backed",
+          "pool_token_symbol": "COINX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "COIN",
+          "wrapped": false
+        }
+      ],
+      "symbol": "COINX-USDC",
+      "tier": "A",
+      "tvl_usd": 122922.0,
+      "underlying_ticker": "COIN",
+      "underlying_tokens": [
+        "Xs7ZdzSHLU9ftNJsii5fCeJhoRWSC32SQGzGQtePxNu",
+        "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+      ],
+      "vol1d_tvl": 0.009943229120905941,
+      "volume_usd_1d": 1222.24161,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 5.87,
+      "apy_reward": 0.0,
+      "apy_total": 5.87,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "COINX",
+        "USDC"
+      ],
+      "pool_id": "b561548e-daa8-4945-9d24-e04aafcf5fda",
+      "pool_meta": "Concentrated - 0.8%",
+      "price_semantics": "token",
+      "project": "raydium-amm",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "COINX",
+          "instrument_id": "backed:COINX",
+          "issuer": "Backed",
+          "pool_token_symbol": "COINX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "COIN",
+          "wrapped": false
+        }
+      ],
+      "symbol": "COINX-USDC",
+      "tier": "A",
+      "tvl_usd": 714032.0,
+      "underlying_ticker": "COIN",
+      "underlying_tokens": [
+        "Xs7ZdzSHLU9ftNJsii5fCeJhoRWSC32SQGzGQtePxNu",
+        "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+      ],
+      "vol1d_tvl": 0.02009393709245524,
+      "volume_usd_1d": 14347.71409,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 53.44,
+      "apy_reward": 0.0,
+      "apy_total": 53.44,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "CRCLX",
+        "USDC"
+      ],
+      "pool_id": "2619cf7a-535e-43a6-8163-a0d1265611a6",
+      "pool_meta": "Concentrated - 0.25%",
+      "price_semantics": "token",
+      "project": "raydium-amm",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "CRCLX",
+          "instrument_id": "backed:CRCLX",
+          "issuer": "Backed",
+          "pool_token_symbol": "CRCLX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "CRCL",
+          "wrapped": false
+        }
+      ],
+      "symbol": "CRCLX-USDC",
+      "tier": "A",
+      "tvl_usd": 2543992.0,
+      "underlying_ticker": "CRCL",
+      "underlying_tokens": [
+        "XsueG8BtpquVJX9LVLLEGuViXUungE6WmK5YZ3p3bd1",
+        "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+      ],
+      "vol1d_tvl": 0.5856494902774851,
+      "volume_usd_1d": 1489887.61807,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 4.43,
+      "apy_reward": 0.0,
+      "apy_total": 4.43,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "CRCLX",
+        "USDC"
+      ],
+      "pool_id": "e480f2c3-9422-441c-8901-9c32ab359447",
+      "pool_meta": "Concentrated - 0.1%",
+      "price_semantics": "token",
+      "project": "raydium-amm",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "CRCLX",
+          "instrument_id": "backed:CRCLX",
+          "issuer": "Backed",
+          "pool_token_symbol": "CRCLX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "CRCL",
+          "wrapped": false
+        }
+      ],
+      "symbol": "CRCLX-USDC",
+      "tier": "A",
+      "tvl_usd": 1546970.0,
+      "underlying_ticker": "CRCL",
+      "underlying_tokens": [
+        "XsueG8BtpquVJX9LVLLEGuViXUungE6WmK5YZ3p3bd1",
+        "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+      ],
+      "vol1d_tvl": 0.12133309287187212,
+      "volume_usd_1d": 187698.65468,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 7.71,
+      "apy_reward": 0.0,
+      "apy_total": 7.71,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "GLDX",
+        "USDC"
+      ],
+      "pool_id": "3719be8e-77f3-4239-b901-407f6b174fd0",
+      "pool_meta": "Concentrated - 0.1%",
+      "price_semantics": "token",
+      "project": "raydium-amm",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "GLDX",
+          "instrument_id": "backed:GLDX",
+          "issuer": "Backed",
+          "pool_token_symbol": "GLDX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "GLD",
+          "wrapped": false
+        }
+      ],
+      "symbol": "GLDX-USDC",
+      "tier": "A",
+      "tvl_usd": 344268.0,
+      "underlying_ticker": "GLD",
+      "underlying_tokens": [
+        "Xsv9hRk1z5ystj9MhnA7Lq4vjSsLwzL2nxrwmwtD3re",
+        "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+      ],
+      "vol1d_tvl": 0.2111919386931112,
+      "volume_usd_1d": 72706.62635,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 5.89003,
+      "apy_reward": 0.0,
+      "apy_total": 5.89003,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "GLDX",
+        "USDC"
+      ],
+      "pool_id": "b7a1de8b-ae15-4365-9f30-b32463510965",
+      "pool_meta": null,
+      "price_semantics": "token",
+      "project": "orca-dex",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "GLDX",
+          "instrument_id": "backed:GLDX",
+          "issuer": "Backed",
+          "pool_token_symbol": "GLDX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "GLD",
+          "wrapped": false
+        }
+      ],
+      "symbol": "GLDX-USDC",
+      "tier": "A",
+      "tvl_usd": 132812.0,
+      "underlying_ticker": "GLD",
+      "underlying_tokens": [
+        "Xsv9hRk1z5ystj9MhnA7Lq4vjSsLwzL2nxrwmwtD3re",
+        "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+      ],
+      "vol1d_tvl": 0.053791460109026294,
+      "volume_usd_1d": 7144.1514,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 54.85898,
+      "apy_reward": 0.0,
+      "apy_total": 54.85898,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "GMEX",
+        "USDC"
+      ],
+      "pool_id": "84608e3f-5e2e-5665-8476-7456ad98e3cf",
+      "pool_meta": null,
+      "price_semantics": "token",
+      "project": "orca-dex",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "GMEX",
+          "instrument_id": "backed:GMEX",
+          "issuer": "Backed",
+          "pool_token_symbol": "GMEX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "GME",
+          "wrapped": false
+        }
+      ],
+      "symbol": "GMEX-USDC",
+      "tier": "A",
+      "tvl_usd": 28950.0,
+      "underlying_ticker": "GME",
+      "underlying_tokens": [
+        "Xsf9mBktVB9BSU5kf4nHxPq5hCBJ2j2ui3ecFGxPRGc",
+        "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+      ],
+      "vol1d_tvl": 0.07515503039723662,
+      "volume_usd_1d": 2175.73813,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 11.58,
+      "apy_reward": 0.0,
+      "apy_total": 11.58,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "GOOGLX",
+        "USDC"
+      ],
+      "pool_id": "f37649e7-52ac-46ae-bf1c-7ff1921c3cf7",
+      "pool_meta": "Concentrated - 0.25%",
+      "price_semantics": "token",
+      "project": "raydium-amm",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "GOOGLX",
+          "instrument_id": "backed:GOOGLX",
+          "issuer": "Backed",
+          "pool_token_symbol": "GOOGLX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "GOOGL",
+          "wrapped": false
+        }
+      ],
+      "symbol": "GOOGLX-USDC",
+      "tier": "A",
+      "tvl_usd": 275771.0,
+      "underlying_ticker": "GOOGL",
+      "underlying_tokens": [
+        "XsCPL9dNWBMvFtTmwcCA5v3xWPSMEBCszbQdiLLq6aN",
+        "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+      ],
+      "vol1d_tvl": 0.12693951510492402,
+      "volume_usd_1d": 35006.23702,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 13.6,
+      "apy_reward": 0.0,
+      "apy_total": 13.6,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "HOODX",
+        "USDC"
+      ],
+      "pool_id": "c8a9a79e-6cc9-4360-b207-1a4ed437beac",
+      "pool_meta": "Concentrated - 1%",
+      "price_semantics": "token",
+      "project": "raydium-amm",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "HOODX",
+          "instrument_id": "backed:HOODX",
+          "issuer": "Backed",
+          "pool_token_symbol": "HOODX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "HOOD",
+          "wrapped": false
+        }
+      ],
+      "symbol": "HOODX-USDC",
+      "tier": "A",
+      "tvl_usd": 384400.0,
+      "underlying_ticker": "HOOD",
+      "underlying_tokens": [
+        "XsvNBAYkrDRNhA7wPHQfX3ZUXZyZLdnCQDfHZ56bzpg",
+        "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+      ],
+      "vol1d_tvl": 0.03726093059313215,
+      "volume_usd_1d": 14323.10172,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 117.13,
+      "apy_reward": 0.0,
+      "apy_total": 117.13,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "INTCX",
+        "USDC"
+      ],
+      "pool_id": "2461256c-64ad-40ec-8a64-f5b5da93ed93",
+      "pool_meta": "Concentrated - 1%",
+      "price_semantics": "token",
+      "project": "raydium-amm",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "INTCX",
+          "instrument_id": "backed:INTCX",
+          "issuer": "Backed",
+          "pool_token_symbol": "INTCX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "INTC",
+          "wrapped": false
+        }
+      ],
+      "symbol": "INTCX-USDC",
+      "tier": "A",
+      "tvl_usd": 36229.0,
+      "underlying_ticker": "INTC",
+      "underlying_tokens": [
+        "XshPgPdXFRWB8tP1j82rebb2Q9rPgGX37RuqzohmArM",
+        "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+      ],
+      "vol1d_tvl": 0.32090877308233734,
+      "volume_usd_1d": 11626.20394,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 63.93,
+      "apy_reward": 0.0,
+      "apy_total": 63.93,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "KOX",
+        "USDC"
+      ],
+      "pool_id": "3fb4deda-77c0-473f-928f-6070df576405",
+      "pool_meta": "Concentrated - 1%",
+      "price_semantics": "token",
+      "project": "raydium-amm",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "KOX",
+          "instrument_id": "backed:KOX",
+          "issuer": "Backed",
+          "pool_token_symbol": "KOX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "KO",
+          "wrapped": false
+        }
+      ],
+      "symbol": "KOX-USDC",
+      "tier": "A",
+      "tvl_usd": 20294.0,
+      "underlying_ticker": "KO",
+      "underlying_tokens": [
+        "XsaBXg8dU5cPM6ehmVctMkVqoiRG2ZjMo1cyBJ3AykQ",
+        "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+      ],
+      "vol1d_tvl": 0.17514237557898887,
+      "volume_usd_1d": 3554.33937,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 30.65,
+      "apy_reward": 0.0,
+      "apy_total": 30.65,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "METAX",
+        "USDC"
+      ],
+      "pool_id": "e4f9a318-eb01-44dc-8f0f-60cb29c64128",
+      "pool_meta": "Concentrated - 0.25%",
+      "price_semantics": "token",
+      "project": "raydium-amm",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "METAX",
+          "instrument_id": "backed:METAX",
+          "issuer": "Backed",
+          "pool_token_symbol": "METAX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "META",
+          "wrapped": false
+        }
+      ],
+      "symbol": "METAX-USDC",
+      "tier": "A",
+      "tvl_usd": 102927.0,
+      "underlying_ticker": "META",
+      "underlying_tokens": [
+        "Xsa62P5mvPszXL1krVUnU5ar38bBSVcWAB6fmPCo5Zu",
+        "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+      ],
+      "vol1d_tvl": 0.3359051649227122,
+      "volume_usd_1d": 34573.71091,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 8.01,
+      "apy_reward": 0.0,
+      "apy_total": 8.01,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "MSFTX",
+        "USDC"
+      ],
+      "pool_id": "7a2d3931-0c0a-4e99-9e4b-4c647f532363",
+      "pool_meta": "Concentrated - 0.25%",
+      "price_semantics": "token",
+      "project": "raydium-amm",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "MSFTX",
+          "instrument_id": "backed:MSFTX",
+          "issuer": "Backed",
+          "pool_token_symbol": "MSFTX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "MSFT",
+          "wrapped": false
+        }
+      ],
+      "symbol": "MSFTX-USDC",
+      "tier": "A",
+      "tvl_usd": 275432.0,
+      "underlying_ticker": "MSFT",
+      "underlying_tokens": [
+        "XspzcW1PRtgf6Wj92HCiZdjzKCyFekVD8P5Ueh3dRMX",
+        "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+      ],
+      "vol1d_tvl": 0.08782964749920126,
+      "volume_usd_1d": 24191.09547,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 35.23,
+      "apy_reward": 0.0,
+      "apy_total": 35.23,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "MSTRX",
+        "USDC"
+      ],
+      "pool_id": "e72ac43f-66a2-4f2b-a08c-6280cd5fe45b",
+      "pool_meta": "Concentrated - 0.25%",
+      "price_semantics": "token",
+      "project": "raydium-amm",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "MSTRX",
+          "instrument_id": "backed:MSTRX",
+          "issuer": "Backed",
+          "pool_token_symbol": "MSTRX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "MSTR",
+          "wrapped": false
+        }
+      ],
+      "symbol": "MSTRX-USDC",
+      "tier": "A",
+      "tvl_usd": 357353.0,
+      "underlying_ticker": "MSTR",
+      "underlying_tokens": [
+        "XsP7xzNPvEHS1m6qfanPUGjNmdnmsLKEoNAnHjdxxyZ",
+        "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+      ],
+      "vol1d_tvl": 0.3860345355712698,
+      "volume_usd_1d": 137950.59939,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 17.18679,
+      "apy_reward": null,
+      "apy_total": 17.18679,
+      "chain": "Solana",
+      "issuer": "unknown",
+      "pair_legs": [
+        "NVDA",
+        "USDC"
+      ],
+      "pool_id": "8c67811c-fff6-46f7-a5ee-98e735ae28d7",
+      "pool_meta": null,
+      "price_semantics": "token",
+      "project": "gmtrade",
+      "protocol_type": "unknown",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "NVDA",
+          "instrument_id": "unknown:solana:NVDA",
+          "issuer": "unknown",
+          "pool_token_symbol": "NVDA",
+          "price_semantics": "token",
+          "recognition_basis": "project_scoped_bare_ticker",
+          "underlying_ticker": "NVDA",
+          "wrapped": false
+        }
+      ],
+      "symbol": "NVDA-USDC",
+      "tier": "A",
+      "tvl_usd": 588242.0,
+      "underlying_ticker": "NVDA",
+      "underlying_tokens": [
+        "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+      ],
+      "vol1d_tvl": 0.0,
+      "volume_usd_1d": 0.0,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 8.97,
+      "apy_reward": 0.0,
+      "apy_total": 8.97,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "NVDAX",
+        "USDC"
+      ],
+      "pool_id": "6f7708a9-58d0-4941-a06a-b83e91b06903",
+      "pool_meta": "Concentrated - 0.1%",
+      "price_semantics": "token",
+      "project": "raydium-amm",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "NVDAX",
+          "instrument_id": "backed:NVDAX",
+          "issuer": "Backed",
+          "pool_token_symbol": "NVDAX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "NVDA",
+          "wrapped": false
+        }
+      ],
+      "symbol": "NVDAX-USDC",
+      "tier": "A",
+      "tvl_usd": 2445766.0,
+      "underlying_ticker": "NVDA",
+      "underlying_tokens": [
+        "Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh",
+        "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+      ],
+      "vol1d_tvl": 0.24578588082833763,
+      "volume_usd_1d": 601134.75061,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 11.71,
+      "apy_reward": 0.0,
+      "apy_total": 11.71,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "NVDAX",
+        "USDC"
+      ],
+      "pool_id": "a8e25ac4-f4d0-412a-a211-62a4e513eca0",
+      "pool_meta": "Concentrated - 0.25%",
+      "price_semantics": "token",
+      "project": "raydium-amm",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "NVDAX",
+          "instrument_id": "backed:NVDAX",
+          "issuer": "Backed",
+          "pool_token_symbol": "NVDAX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "NVDA",
+          "wrapped": false
+        }
+      ],
+      "symbol": "NVDAX-USDC",
+      "tier": "A",
+      "tvl_usd": 153779.0,
+      "underlying_ticker": "NVDA",
+      "underlying_tokens": [
+        "Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh",
+        "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+      ],
+      "vol1d_tvl": 0.12833520714792007,
+      "volume_usd_1d": 19735.25982,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 1.91371,
+      "apy_reward": 0.0,
+      "apy_total": 1.91371,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "NVDAX",
+        "USDC"
+      ],
+      "pool_id": "d841f4d5-34a3-4671-809e-47ed34fd9bcf",
+      "pool_meta": null,
+      "price_semantics": "token",
+      "project": "orca-dex",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "NVDAX",
+          "instrument_id": "backed:NVDAX",
+          "issuer": "Backed",
+          "pool_token_symbol": "NVDAX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "NVDA",
+          "wrapped": false
+        }
+      ],
+      "symbol": "NVDAX-USDC",
+      "tier": "A",
+      "tvl_usd": 128055.0,
+      "underlying_ticker": "NVDA",
+      "underlying_tokens": [
+        "Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh",
+        "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+      ],
+      "vol1d_tvl": 0.17292178563898325,
+      "volume_usd_1d": 22143.49926,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 76.44836,
+      "apy_reward": 0.0,
+      "apy_total": 76.44836,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "PLTRX",
+        "USDC"
+      ],
+      "pool_id": "06244737-82e1-41f3-b178-80a17165219c",
+      "pool_meta": null,
+      "price_semantics": "token",
+      "project": "orca-dex",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "PLTRX",
+          "instrument_id": "backed:PLTRX",
+          "issuer": "Backed",
+          "pool_token_symbol": "PLTRX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "PLTR",
+          "wrapped": false
+        }
+      ],
+      "symbol": "PLTRX-USDC",
+      "tier": "A",
+      "tvl_usd": 64659.0,
+      "underlying_ticker": "PLTR",
+      "underlying_tokens": [
+        "XsoBhf2ufR8fTyNSjqfU71DYGaE6Z3SUGAidpzriAA4",
+        "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+      ],
+      "vol1d_tvl": 0.30959710867783297,
+      "volume_usd_1d": 20018.23945,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 38.9,
+      "apy_reward": 0.0,
+      "apy_total": 38.9,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "PLTRX",
+        "USDC"
+      ],
+      "pool_id": "d3d573d4-6dc6-48e2-8ec7-685e55e0f48d",
+      "pool_meta": "Concentrated - 1%",
+      "price_semantics": "token",
+      "project": "raydium-amm",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "PLTRX",
+          "instrument_id": "backed:PLTRX",
+          "issuer": "Backed",
+          "pool_token_symbol": "PLTRX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "PLTR",
+          "wrapped": false
+        }
+      ],
+      "symbol": "PLTRX-USDC",
+      "tier": "A",
+      "tvl_usd": 49900.0,
+      "underlying_ticker": "PLTR",
+      "underlying_tokens": [
+        "XsoBhf2ufR8fTyNSjqfU71DYGaE6Z3SUGAidpzriAA4",
+        "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+      ],
+      "vol1d_tvl": 0.10658854629258517,
+      "volume_usd_1d": 5318.76846,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 32.92735,
+      "apy_reward": null,
+      "apy_total": 32.92735,
+      "chain": "Solana",
+      "issuer": "unknown",
+      "pair_legs": [
+        "QQQ",
+        "USDC"
+      ],
+      "pool_id": "954f95a5-2156-4e9d-b67d-9adce8159c68",
+      "pool_meta": null,
+      "price_semantics": "token",
+      "project": "gmtrade",
+      "protocol_type": "unknown",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "QQQ",
+          "instrument_id": "unknown:solana:QQQ",
+          "issuer": "unknown",
+          "pool_token_symbol": "QQQ",
+          "price_semantics": "token",
+          "recognition_basis": "project_scoped_bare_ticker",
+          "underlying_ticker": "QQQ",
+          "wrapped": false
+        }
+      ],
+      "symbol": "QQQ-USDC",
+      "tier": "A",
+      "tvl_usd": 36480.0,
+      "underlying_ticker": "QQQ",
+      "underlying_tokens": [
+        "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+      ],
+      "vol1d_tvl": 0.0,
+      "volume_usd_1d": 0.0,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 8.34,
+      "apy_reward": 0.0,
+      "apy_total": 8.34,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "QQQX",
+        "USDC"
+      ],
+      "pool_id": "318d20fb-417b-492f-aeb9-d0709b0d3d58",
+      "pool_meta": "Concentrated - 0.1%",
+      "price_semantics": "token",
+      "project": "raydium-amm",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "QQQX",
+          "instrument_id": "backed:QQQX",
+          "issuer": "Backed",
+          "pool_token_symbol": "QQQX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "QQQ",
+          "wrapped": false
+        }
+      ],
+      "symbol": "QQQX-USDC",
+      "tier": "A",
+      "tvl_usd": 2670247.0,
+      "underlying_ticker": "QQQ",
+      "underlying_tokens": [
+        "Xs8S1uUs1zvS2p7iwtsG3b6fkhpvmwz4GYU3gWAmWHZ",
+        "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+      ],
+      "vol1d_tvl": 0.22835742194261427,
+      "volume_usd_1d": 609770.72087,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 3.93,
+      "apy_reward": 0.0,
+      "apy_total": 3.93,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "QQQX",
+        "USDC"
+      ],
+      "pool_id": "a7c454bf-d9f7-43e7-aa65-2440a8e8188d",
+      "pool_meta": "Concentrated - 0.25%",
+      "price_semantics": "token",
+      "project": "raydium-amm",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "QQQX",
+          "instrument_id": "backed:QQQX",
+          "issuer": "Backed",
+          "pool_token_symbol": "QQQX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "QQQ",
+          "wrapped": false
+        }
+      ],
+      "symbol": "QQQX-USDC",
+      "tier": "A",
+      "tvl_usd": 126709.0,
+      "underlying_ticker": "QQQ",
+      "underlying_tokens": [
+        "Xs8S1uUs1zvS2p7iwtsG3b6fkhpvmwz4GYU3gWAmWHZ",
+        "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+      ],
+      "vol1d_tvl": 0.04307730666329937,
+      "volume_usd_1d": 5458.28245,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 72.04428,
+      "apy_reward": null,
+      "apy_total": 72.04428,
+      "chain": "Solana",
+      "issuer": "unknown",
+      "pair_legs": [
+        "SPCX",
+        "USDC"
+      ],
+      "pool_id": "b237d486-5778-4246-9eb0-afb8d68a6644",
+      "pool_meta": null,
+      "price_semantics": "token",
+      "project": "gmtrade",
+      "protocol_type": "unknown",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "SPCX",
+          "instrument_id": "unknown:solana:SPCX",
+          "issuer": "unknown",
+          "pool_token_symbol": "SPCX",
+          "price_semantics": "token",
+          "recognition_basis": "project_scoped_bare_ticker",
+          "underlying_ticker": "SPCX",
+          "wrapped": false
+        }
+      ],
+      "symbol": "SPCX-USDC",
+      "tier": "A",
+      "tvl_usd": 99209.0,
+      "underlying_ticker": "SPCX",
+      "underlying_tokens": [
+        "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+      ],
+      "vol1d_tvl": 0.0,
+      "volume_usd_1d": 0.0,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 210.1531,
+      "apy_reward": 0.0,
+      "apy_total": 210.1531,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "SPCXX",
+        "USDC"
+      ],
+      "pool_id": "38c5f03a-b7c4-5040-ac0f-19445758a45d",
+      "pool_meta": null,
+      "price_semantics": "token",
+      "project": "orca-dex",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "SPCXX",
+          "instrument_id": "backed:SPCXX",
+          "issuer": "Backed",
+          "pool_token_symbol": "SPCXX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "SPCX",
+          "wrapped": false
+        }
+      ],
+      "symbol": "SPCXX-USDC",
+      "tier": "A",
+      "tvl_usd": 24531.0,
+      "underlying_ticker": "SPCX",
+      "underlying_tokens": [
+        "Xs3oZwbHvqis4NYcf4YKWmEia2eC84wSiVrcYcTqpH8",
+        "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+      ],
+      "vol1d_tvl": 0.27888971383147854,
+      "volume_usd_1d": 6841.44357,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 405.15,
+      "apy_reward": 0.0,
+      "apy_total": 405.15,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "SPCXX",
+        "USDC"
+      ],
+      "pool_id": "8feb7ee9-2530-4168-860a-ee444c809da7",
+      "pool_meta": "Concentrated - 0.8%",
+      "price_semantics": "token",
+      "project": "raydium-amm",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "SPCXX",
+          "instrument_id": "backed:SPCXX",
+          "issuer": "Backed",
+          "pool_token_symbol": "SPCXX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "SPCX",
+          "wrapped": false
+        }
+      ],
+      "symbol": "SPCXX-USDC",
+      "tier": "A",
+      "tvl_usd": 728249.0,
+      "underlying_ticker": "SPCX",
+      "underlying_tokens": [
+        "Xs3oZwbHvqis4NYcf4YKWmEia2eC84wSiVrcYcTqpH8",
+        "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+      ],
+      "vol1d_tvl": 1.3875095169646645,
+      "volume_usd_1d": 1010452.41822,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 37.85843,
+      "apy_reward": null,
+      "apy_total": 37.85843,
+      "chain": "Solana",
+      "issuer": "unknown",
+      "pair_legs": [
+        "SPY",
+        "USDC"
+      ],
+      "pool_id": "2ad9f07b-7eda-40e2-bc56-3b2b6f6f4b5c",
+      "pool_meta": null,
+      "price_semantics": "token",
+      "project": "gmtrade",
+      "protocol_type": "unknown",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "SPY",
+          "instrument_id": "unknown:solana:SPY",
+          "issuer": "unknown",
+          "pool_token_symbol": "SPY",
+          "price_semantics": "token",
+          "recognition_basis": "project_scoped_bare_ticker",
+          "underlying_ticker": "SPY",
+          "wrapped": false
+        }
+      ],
+      "symbol": "SPY-USDC",
+      "tier": "A",
+      "tvl_usd": 22813.0,
+      "underlying_ticker": "SPY",
+      "underlying_tokens": [
+        "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+      ],
+      "vol1d_tvl": 0.0,
+      "volume_usd_1d": 0.0,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 6.92254,
+      "apy_reward": 0.0,
+      "apy_total": 6.92254,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "SPYX",
+        "USDC"
+      ],
+      "pool_id": "119990a9-9784-4203-b72d-70fa7bcd6769",
+      "pool_meta": null,
+      "price_semantics": "token",
+      "project": "orca-dex",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "SPYX",
+          "instrument_id": "backed:SPYX",
+          "issuer": "Backed",
+          "pool_token_symbol": "SPYX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "SPY",
+          "wrapped": false
+        }
+      ],
+      "symbol": "SPYX-USDC",
+      "tier": "A",
+      "tvl_usd": 210065.0,
+      "underlying_ticker": "SPY",
+      "underlying_tokens": [
+        "XsoCS1TfEyfFhfvj8EtZ528L3CaKBDBRqRapnBbDF2W",
+        "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+      ],
+      "vol1d_tvl": 0.7101695014876348,
+      "volume_usd_1d": 149181.75633,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 4.43,
+      "apy_reward": 0.0,
+      "apy_total": 4.43,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "SPYX",
+        "USDC"
+      ],
+      "pool_id": "5ccd0074-df46-49d8-8f6d-de221b60672c",
+      "pool_meta": "Concentrated - 0.1%",
+      "price_semantics": "token",
+      "project": "raydium-amm",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "SPYX",
+          "instrument_id": "backed:SPYX",
+          "issuer": "Backed",
+          "pool_token_symbol": "SPYX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "SPY",
+          "wrapped": false
+        }
+      ],
+      "symbol": "SPYX-USDC",
+      "tier": "A",
+      "tvl_usd": 2617135.0,
+      "underlying_ticker": "SPY",
+      "underlying_tokens": [
+        "XsoCS1TfEyfFhfvj8EtZ528L3CaKBDBRqRapnBbDF2W",
+        "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+      ],
+      "vol1d_tvl": 0.12147087487653484,
+      "volume_usd_1d": 317905.67812,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 0.79,
+      "apy_reward": 0.0,
+      "apy_total": 0.79,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "SPYX",
+        "USDC"
+      ],
+      "pool_id": "bdfbf09f-6f0e-4129-8099-138a78b2ce50",
+      "pool_meta": "Concentrated - 0.25%",
+      "price_semantics": "token",
+      "project": "raydium-amm",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "SPYX",
+          "instrument_id": "backed:SPYX",
+          "issuer": "Backed",
+          "pool_token_symbol": "SPYX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "SPY",
+          "wrapped": false
+        }
+      ],
+      "symbol": "SPYX-USDC",
+      "tier": "A",
+      "tvl_usd": 137867.0,
+      "underlying_ticker": "SPY",
+      "underlying_tokens": [
+        "XsoCS1TfEyfFhfvj8EtZ528L3CaKBDBRqRapnBbDF2W",
+        "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+      ],
+      "vol1d_tvl": 0.008618028317146236,
+      "volume_usd_1d": 1188.14171,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 9.67,
+      "apy_reward": 0.0,
+      "apy_total": 9.67,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "SPYX",
+        "USDC"
+      ],
+      "pool_id": "f5be6f43-4e18-4bc4-9e96-f64abc62b201",
+      "pool_meta": "Concentrated - 0.01%",
+      "price_semantics": "token",
+      "project": "raydium-amm",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "SPYX",
+          "instrument_id": "backed:SPYX",
+          "issuer": "Backed",
+          "pool_token_symbol": "SPYX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "SPY",
+          "wrapped": false
+        }
+      ],
+      "symbol": "SPYX-USDC",
+      "tier": "A",
+      "tvl_usd": 445510.0,
+      "underlying_ticker": "SPY",
+      "underlying_tokens": [
+        "XsoCS1TfEyfFhfvj8EtZ528L3CaKBDBRqRapnBbDF2W",
+        "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+      ],
+      "vol1d_tvl": 2.648560376310296,
+      "volume_usd_1d": 1179960.13325,
+      "wash_suspect": true
+    },
+    {
+      "apy_base": 4.58,
+      "apy_reward": 0.0,
+      "apy_total": 4.58,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "STRCX",
+        "USDC"
+      ],
+      "pool_id": "6b38ef9b-ee9f-42a9-afdf-5b099b108001",
+      "pool_meta": "Concentrated - 0.2%",
+      "price_semantics": "token",
+      "project": "raydium-amm",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "STRCX",
+          "instrument_id": "backed:STRCX",
+          "issuer": "Backed",
+          "pool_token_symbol": "STRCX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "STRC",
+          "wrapped": false
+        }
+      ],
+      "symbol": "STRCX-USDC",
+      "tier": "A",
+      "tvl_usd": 87551.0,
+      "underlying_ticker": "STRC",
+      "underlying_tokens": [
+        "Xs78JED6PFZxWc2wCEPspZW9kL3Se5J7L5TChKgsidH",
+        "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+      ],
+      "vol1d_tvl": 0.06270041610033009,
+      "volume_usd_1d": 5489.48413,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 0.98,
+      "apy_reward": 0.0,
+      "apy_total": 0.98,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "STRCX",
+        "USDC"
+      ],
+      "pool_id": "c55a300c-3ca8-4b8a-bdaf-ab0d7bb966f3",
+      "pool_meta": "Concentrated - 0.1%",
+      "price_semantics": "token",
+      "project": "raydium-amm",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "STRCX",
+          "instrument_id": "backed:STRCX",
+          "issuer": "Backed",
+          "pool_token_symbol": "STRCX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "STRC",
+          "wrapped": false
+        }
+      ],
+      "symbol": "STRCX-USDC",
+      "tier": "A",
+      "tvl_usd": 577999.0,
+      "underlying_ticker": "STRC",
+      "underlying_tokens": [
+        "Xs78JED6PFZxWc2wCEPspZW9kL3Se5J7L5TChKgsidH",
+        "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+      ],
+      "vol1d_tvl": 0.026760171695798782,
+      "volume_usd_1d": 15467.35248,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 31.43979,
+      "apy_reward": null,
+      "apy_total": 31.43979,
+      "chain": "Solana",
+      "issuer": "unknown",
+      "pair_legs": [
+        "TSLA",
+        "USDC"
+      ],
+      "pool_id": "e61dbb1b-24aa-4380-a001-644d2c68b2ce",
+      "pool_meta": null,
+      "price_semantics": "token",
+      "project": "gmtrade",
+      "protocol_type": "unknown",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "TSLA",
+          "instrument_id": "unknown:solana:TSLA",
+          "issuer": "unknown",
+          "pool_token_symbol": "TSLA",
+          "price_semantics": "token",
+          "recognition_basis": "project_scoped_bare_ticker",
+          "underlying_ticker": "TSLA",
+          "wrapped": false
+        }
+      ],
+      "symbol": "TSLA-USDC",
+      "tier": "A",
+      "tvl_usd": 228658.0,
+      "underlying_ticker": "TSLA",
+      "underlying_tokens": [
+        "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+      ],
+      "vol1d_tvl": 0.0,
+      "volume_usd_1d": 0.0,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 10.3,
+      "apy_reward": 0.0,
+      "apy_total": 10.3,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "TSLAX",
+        "USDC"
+      ],
+      "pool_id": "314c6cb3-b2d1-4262-9b16-1c1db245b262",
+      "pool_meta": "Concentrated - 0.1%",
+      "price_semantics": "token",
+      "project": "raydium-amm",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "TSLAX",
+          "instrument_id": "backed:TSLAX",
+          "issuer": "Backed",
+          "pool_token_symbol": "TSLAX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "TSLA",
+          "wrapped": false
+        }
+      ],
+      "symbol": "TSLAX-USDC",
+      "tier": "A",
+      "tvl_usd": 1887686.0,
+      "underlying_ticker": "TSLA",
+      "underlying_tokens": [
+        "XsDoVfqeBukxuZHWhdvWHBhgEHjGNst4MLodqsJHzoB",
+        "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+      ],
+      "vol1d_tvl": 0.2821743155853251,
+      "volume_usd_1d": 532656.50509,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 5.76,
+      "apy_reward": 0.0,
+      "apy_total": 5.76,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "TSLAX",
+        "USDC"
+      ],
+      "pool_id": "37cd8913-83bd-4d9d-a28b-b354ee1743b4",
+      "pool_meta": "Concentrated - 0.25%",
+      "price_semantics": "token",
+      "project": "raydium-amm",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "TSLAX",
+          "instrument_id": "backed:TSLAX",
+          "issuer": "Backed",
+          "pool_token_symbol": "TSLAX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "TSLA",
+          "wrapped": false
+        }
+      ],
+      "symbol": "TSLAX-USDC",
+      "tier": "A",
+      "tvl_usd": 569833.0,
+      "underlying_ticker": "TSLA",
+      "underlying_tokens": [
+        "XsDoVfqeBukxuZHWhdvWHBhgEHjGNst4MLodqsJHzoB",
+        "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+      ],
+      "vol1d_tvl": 0.06308183948630564,
+      "volume_usd_1d": 35946.11384,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 0.39468,
+      "apy_reward": 0.0,
+      "apy_total": 0.39468,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "TSLAX",
+        "USDC"
+      ],
+      "pool_id": "9707453e-63a2-4d7c-8311-ca71f5cad17c",
+      "pool_meta": null,
+      "price_semantics": "token",
+      "project": "orca-dex",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "TSLAX",
+          "instrument_id": "backed:TSLAX",
+          "issuer": "Backed",
+          "pool_token_symbol": "TSLAX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "TSLA",
+          "wrapped": false
+        }
+      ],
+      "symbol": "TSLAX-USDC",
+      "tier": "A",
+      "tvl_usd": 106118.0,
+      "underlying_ticker": "TSLA",
+      "underlying_tokens": [
+        "XsDoVfqeBukxuZHWhdvWHBhgEHjGNst4MLodqsJHzoB",
+        "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+      ],
+      "vol1d_tvl": 0.03230864829717861,
+      "volume_usd_1d": 3428.52914,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 52.91987,
+      "apy_reward": 0.0,
+      "apy_total": 52.91987,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "SOL",
+        "CRCLX"
+      ],
+      "pool_id": "1f4b8cc8-f6db-5d1c-8cbd-de39247cc3ed",
+      "pool_meta": null,
+      "price_semantics": "token",
+      "project": "orca-dex",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "CRCLX",
+          "instrument_id": "backed:CRCLX",
+          "issuer": "Backed",
+          "pool_token_symbol": "CRCLX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "CRCL",
+          "wrapped": false
+        }
+      ],
+      "symbol": "SOL-CRCLX",
+      "tier": "B",
+      "tvl_usd": 28936.0,
+      "underlying_ticker": "CRCL",
+      "underlying_tokens": [
+        "So11111111111111111111111111111111111111112",
+        "XsueG8BtpquVJX9LVLLEGuViXUungE6WmK5YZ3p3bd1"
+      ],
+      "vol1d_tvl": 0.0719807613353608,
+      "volume_usd_1d": 2082.83531,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 3.94,
+      "apy_reward": 0.0,
+      "apy_total": 3.94,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "WSOL",
+        "COINX"
+      ],
+      "pool_id": "1aa2981e-1565-4471-879c-bcd0d2e8236a",
+      "pool_meta": "Concentrated - 0.8%",
+      "price_semantics": "token",
+      "project": "raydium-amm",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "COINX",
+          "instrument_id": "backed:COINX",
+          "issuer": "Backed",
+          "pool_token_symbol": "COINX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "COIN",
+          "wrapped": false
+        }
+      ],
+      "symbol": "WSOL-COINX",
+      "tier": "B",
+      "tvl_usd": 211988.0,
+      "underlying_ticker": "COIN",
+      "underlying_tokens": [
+        "So11111111111111111111111111111111111111112",
+        "Xs7ZdzSHLU9ftNJsii5fCeJhoRWSC32SQGzGQtePxNu"
+      ],
+      "vol1d_tvl": 0.013496008075928826,
+      "volume_usd_1d": 2860.99176,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 17.94,
+      "apy_reward": 0.0,
+      "apy_total": 17.94,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "WSOL",
+        "CRCLX"
+      ],
+      "pool_id": "62d12119-752e-4978-b96e-d5d6ecbc44ba",
+      "pool_meta": "Concentrated - 0.25%",
+      "price_semantics": "token",
+      "project": "raydium-amm",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "CRCLX",
+          "instrument_id": "backed:CRCLX",
+          "issuer": "Backed",
+          "pool_token_symbol": "CRCLX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "CRCL",
+          "wrapped": false
+        }
+      ],
+      "symbol": "WSOL-CRCLX",
+      "tier": "B",
+      "tvl_usd": 101819.0,
+      "underlying_ticker": "CRCL",
+      "underlying_tokens": [
+        "So11111111111111111111111111111111111111112",
+        "XsueG8BtpquVJX9LVLLEGuViXUungE6WmK5YZ3p3bd1"
+      ],
+      "vol1d_tvl": 0.1966551227177639,
+      "volume_usd_1d": 20023.22794,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 13.81,
+      "apy_reward": 0.0,
+      "apy_total": 13.81,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "WSOL",
+        "HOODX"
+      ],
+      "pool_id": "5009ebf5-ba92-400a-940f-cfda55c92a15",
+      "pool_meta": "Concentrated - 1%",
+      "price_semantics": "token",
+      "project": "raydium-amm",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "HOODX",
+          "instrument_id": "backed:HOODX",
+          "issuer": "Backed",
+          "pool_token_symbol": "HOODX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "HOOD",
+          "wrapped": false
+        }
+      ],
+      "symbol": "WSOL-HOODX",
+      "tier": "B",
+      "tvl_usd": 26251.0,
+      "underlying_ticker": "HOOD",
+      "underlying_tokens": [
+        "So11111111111111111111111111111111111111112",
+        "XsvNBAYkrDRNhA7wPHQfX3ZUXZyZLdnCQDfHZ56bzpg"
+      ],
+      "vol1d_tvl": 0.03783341282236868,
+      "volume_usd_1d": 993.16492,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 44.67,
+      "apy_reward": 0.0,
+      "apy_total": 44.67,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "WSOL",
+        "MSTRX"
+      ],
+      "pool_id": "340cf7b7-9654-4f2c-9d30-e519dbde849d",
+      "pool_meta": "Concentrated - 0.25%",
+      "price_semantics": "token",
+      "project": "raydium-amm",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "MSTRX",
+          "instrument_id": "backed:MSTRX",
+          "issuer": "Backed",
+          "pool_token_symbol": "MSTRX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "MSTR",
+          "wrapped": false
+        }
+      ],
+      "symbol": "WSOL-MSTRX",
+      "tier": "B",
+      "tvl_usd": 554032.0,
+      "underlying_ticker": "MSTR",
+      "underlying_tokens": [
+        "So11111111111111111111111111111111111111112",
+        "XsP7xzNPvEHS1m6qfanPUGjNmdnmsLKEoNAnHjdxxyZ"
+      ],
+      "vol1d_tvl": 0.48958861091056116,
+      "volume_usd_1d": 271247.75728,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 22.49,
+      "apy_reward": 0.0,
+      "apy_total": 22.49,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "WSOL",
+        "NVDAX"
+      ],
+      "pool_id": "9347eff9-909c-435d-8fb2-1dced04f5831",
+      "pool_meta": "Concentrated - 0.25%",
+      "price_semantics": "token",
+      "project": "raydium-amm",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "NVDAX",
+          "instrument_id": "backed:NVDAX",
+          "issuer": "Backed",
+          "pool_token_symbol": "NVDAX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "NVDA",
+          "wrapped": false
+        }
+      ],
+      "symbol": "WSOL-NVDAX",
+      "tier": "B",
+      "tvl_usd": 39251.0,
+      "underlying_ticker": "NVDA",
+      "underlying_tokens": [
+        "So11111111111111111111111111111111111111112",
+        "Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh"
+      ],
+      "vol1d_tvl": 0.24649405161651933,
+      "volume_usd_1d": 9675.13802,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 9.38,
+      "apy_reward": 0.0,
+      "apy_total": 9.38,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "WSOL",
+        "QQQX"
+      ],
+      "pool_id": "0d7ffd2b-257e-4066-95be-35fb37bc748b",
+      "pool_meta": "Concentrated - 0.25%",
+      "price_semantics": "token",
+      "project": "raydium-amm",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "QQQX",
+          "instrument_id": "backed:QQQX",
+          "issuer": "Backed",
+          "pool_token_symbol": "QQQX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "QQQ",
+          "wrapped": false
+        }
+      ],
+      "symbol": "WSOL-QQQX",
+      "tier": "B",
+      "tvl_usd": 122401.0,
+      "underlying_ticker": "QQQ",
+      "underlying_tokens": [
+        "So11111111111111111111111111111111111111112",
+        "Xs8S1uUs1zvS2p7iwtsG3b6fkhpvmwz4GYU3gWAmWHZ"
+      ],
+      "vol1d_tvl": 0.10274472863783793,
+      "volume_usd_1d": 12576.05753,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 128.14,
+      "apy_reward": 0.0,
+      "apy_total": 128.14,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "WSOL",
+        "SPYX"
+      ],
+      "pool_id": "c8947f06-3856-4c9c-88de-1fd1b9f4db0b",
+      "pool_meta": "Concentrated - 0.25%",
+      "price_semantics": "token",
+      "project": "raydium-amm",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "SPYX",
+          "instrument_id": "backed:SPYX",
+          "issuer": "Backed",
+          "pool_token_symbol": "SPYX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "SPY",
+          "wrapped": false
+        }
+      ],
+      "symbol": "WSOL-SPYX",
+      "tier": "B",
+      "tvl_usd": 118059.0,
+      "underlying_ticker": "SPY",
+      "underlying_tokens": [
+        "So11111111111111111111111111111111111111112",
+        "XsoCS1TfEyfFhfvj8EtZ528L3CaKBDBRqRapnBbDF2W"
+      ],
+      "vol1d_tvl": 1.4042598714202221,
+      "volume_usd_1d": 165785.51616,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 24.71,
+      "apy_reward": 0.0,
+      "apy_total": 24.71,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "WSOL",
+        "TSLAX"
+      ],
+      "pool_id": "53162d28-dfd0-46d4-b42e-9c761abf3272",
+      "pool_meta": "Concentrated - 0.25%",
+      "price_semantics": "token",
+      "project": "raydium-amm",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "TSLAX",
+          "instrument_id": "backed:TSLAX",
+          "issuer": "Backed",
+          "pool_token_symbol": "TSLAX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "TSLA",
+          "wrapped": false
+        }
+      ],
+      "symbol": "WSOL-TSLAX",
+      "tier": "B",
+      "tvl_usd": 76715.0,
+      "underlying_ticker": "TSLA",
+      "underlying_tokens": [
+        "So11111111111111111111111111111111111111112",
+        "XsDoVfqeBukxuZHWhdvWHBhgEHjGNst4MLodqsJHzoB"
+      ],
+      "vol1d_tvl": 0.27082701544678356,
+      "volume_usd_1d": 20776.49449,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 39.29,
+      "apy_reward": 0.0,
+      "apy_total": 39.29,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "CRCLX",
+        "IDLE"
+      ],
+      "pool_id": "2eaf5f17-440b-46b6-ad9b-e7d747df17ab",
+      "pool_meta": "Concentrated - 1%",
+      "price_semantics": "token",
+      "project": "raydium-amm",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "CRCLX",
+          "instrument_id": "backed:CRCLX",
+          "issuer": "Backed",
+          "pool_token_symbol": "CRCLX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "CRCL",
+          "wrapped": false
+        }
+      ],
+      "symbol": "CRCLX-IDLE",
+      "tier": "C",
+      "tvl_usd": 27304.0,
+      "underlying_ticker": "CRCL",
+      "underlying_tokens": [
+        "XsueG8BtpquVJX9LVLLEGuViXUungE6WmK5YZ3p3bd1",
+        "BjcRmwm8e25RgjkyaFE56fc7bxRgGPw96JUkXRJFEroT"
+      ],
+      "vol1d_tvl": 0.10763919755347202,
+      "volume_usd_1d": 2938.98065,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 35.04,
+      "apy_reward": 0.0,
+      "apy_total": 35.04,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "GLDX",
+        "IDLE"
+      ],
+      "pool_id": "d1226978-b13f-4723-be67-930560f2c775",
+      "pool_meta": "Concentrated - 1%",
+      "price_semantics": "token",
+      "project": "raydium-amm",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "GLDX",
+          "instrument_id": "backed:GLDX",
+          "issuer": "Backed",
+          "pool_token_symbol": "GLDX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "GLD",
+          "wrapped": false
+        }
+      ],
+      "symbol": "GLDX-IDLE",
+      "tier": "C",
+      "tvl_usd": 47191.0,
+      "underlying_ticker": "GLD",
+      "underlying_tokens": [
+        "Xsv9hRk1z5ystj9MhnA7Lq4vjSsLwzL2nxrwmwtD3re",
+        "BjcRmwm8e25RgjkyaFE56fc7bxRgGPw96JUkXRJFEroT"
+      ],
+      "vol1d_tvl": 0.0959964317348647,
+      "volume_usd_1d": 4530.16761,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 1.98,
+      "apy_reward": 0.0,
+      "apy_total": 1.98,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "GLDX",
+        "XAUT0"
+      ],
+      "pool_id": "1f86297f-55bf-40e7-9485-68e843761c70",
+      "pool_meta": "Concentrated - 0.05%",
+      "price_semantics": "token",
+      "project": "raydium-amm",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "GLDX",
+          "instrument_id": "backed:GLDX",
+          "issuer": "Backed",
+          "pool_token_symbol": "GLDX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "GLD",
+          "wrapped": false
+        }
+      ],
+      "symbol": "GLDX-XAUT0",
+      "tier": "C",
+      "tvl_usd": 440606.0,
+      "underlying_ticker": "GLD",
+      "underlying_tokens": [
+        "Xsv9hRk1z5ystj9MhnA7Lq4vjSsLwzL2nxrwmwtD3re",
+        "AymATz4TCL9sWNEEV9Kvyz45CHVhDZ6kUgjTJPzLpU9P"
+      ],
+      "vol1d_tvl": 0.10612088911635338,
+      "volume_usd_1d": 46757.50047,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 0.49,
+      "apy_reward": 0.0,
+      "apy_total": 0.49,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "GLDX",
+        "XAUT0"
+      ],
+      "pool_id": "e6d897d8-681f-4e6d-94aa-a1893d28339d",
+      "pool_meta": "Concentrated - 0.1%",
+      "price_semantics": "token",
+      "project": "raydium-amm",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "GLDX",
+          "instrument_id": "backed:GLDX",
+          "issuer": "Backed",
+          "pool_token_symbol": "GLDX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "GLD",
+          "wrapped": false
+        }
+      ],
+      "symbol": "GLDX-XAUT0",
+      "tier": "C",
+      "tvl_usd": 98155.0,
+      "underlying_ticker": "GLD",
+      "underlying_tokens": [
+        "Xsv9hRk1z5ystj9MhnA7Lq4vjSsLwzL2nxrwmwtD3re",
+        "AymATz4TCL9sWNEEV9Kvyz45CHVhDZ6kUgjTJPzLpU9P"
+      ],
+      "vol1d_tvl": 0.013252065304874943,
+      "volume_usd_1d": 1300.75647,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 27.67,
+      "apy_reward": 0.0,
+      "apy_total": 27.67,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "GOOGLX",
+        "IDLE"
+      ],
+      "pool_id": "c310b01e-a228-4330-91d5-66fe231bc4a7",
+      "pool_meta": "Concentrated - 1%",
+      "price_semantics": "token",
+      "project": "raydium-amm",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "GOOGLX",
+          "instrument_id": "backed:GOOGLX",
+          "issuer": "Backed",
+          "pool_token_symbol": "GOOGLX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "GOOGL",
+          "wrapped": false
+        }
+      ],
+      "symbol": "GOOGLX-IDLE",
+      "tier": "C",
+      "tvl_usd": 20151.0,
+      "underlying_ticker": "GOOGL",
+      "underlying_tokens": [
+        "XsCPL9dNWBMvFtTmwcCA5v3xWPSMEBCszbQdiLLq6aN",
+        "BjcRmwm8e25RgjkyaFE56fc7bxRgGPw96JUkXRJFEroT"
+      ],
+      "vol1d_tvl": 0.07578663986898913,
+      "volume_usd_1d": 1527.17658,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 1326.29,
+      "apy_reward": 0.0,
+      "apy_total": 1326.29,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "MCDX",
+        "FRIES"
+      ],
+      "pool_id": "daa78790-e4ae-50d7-aab5-7283329470b9",
+      "pool_meta": "Concentrated - 4%",
+      "price_semantics": "token",
+      "project": "raydium-amm",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "MCDX",
+          "instrument_id": "backed:MCDX",
+          "issuer": "Backed",
+          "pool_token_symbol": "MCDX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "MCD",
+          "wrapped": false
+        }
+      ],
+      "symbol": "MCDX-FRIES",
+      "tier": "C",
+      "tvl_usd": 34349.0,
+      "underlying_ticker": "MCD",
+      "underlying_tokens": [
+        "XsqE9cRRpzxcGKDXj1BJ7Xmg4GRhZoyY1KpmGSxAWT2",
+        "7hGgx1VtNTj193fFXXuMEkp1MRV6JbWYgMBhHRYxaxu2"
+      ],
+      "vol1d_tvl": 0.8866488302425107,
+      "volume_usd_1d": 30455.50067,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 1910.59,
+      "apy_reward": 0.0,
+      "apy_total": 1910.59,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "MSTRX",
+        "ABTC"
+      ],
+      "pool_id": "82252341-cfcc-5932-918a-48c732512239",
+      "pool_meta": "Concentrated - 4%",
+      "price_semantics": "token",
+      "project": "raydium-amm",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "MSTRX",
+          "instrument_id": "backed:MSTRX",
+          "issuer": "Backed",
+          "pool_token_symbol": "MSTRX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "MSTR",
+          "wrapped": false
+        }
+      ],
+      "symbol": "MSTRX-ABTC",
+      "tier": "C",
+      "tvl_usd": 23952.0,
+      "underlying_ticker": "MSTR",
+      "underlying_tokens": [
+        "XsP7xzNPvEHS1m6qfanPUGjNmdnmsLKEoNAnHjdxxyZ",
+        "7U8yGfxHLkpuU8Py9vGAbQhLBc5bCQ1UriWdSYyTFa5t"
+      ],
+      "vol1d_tvl": 1.278278992985972,
+      "volume_usd_1d": 30617.33844,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 524.85,
+      "apy_reward": 0.0,
+      "apy_total": 524.85,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "QQQX",
+        "ETHICS"
+      ],
+      "pool_id": "e1d04ccc-1b7b-56d8-bbdf-4c1a4329f14d",
+      "pool_meta": "Concentrated - 1%",
+      "price_semantics": "token",
+      "project": "raydium-amm",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "QQQX",
+          "instrument_id": "backed:QQQX",
+          "issuer": "Backed",
+          "pool_token_symbol": "QQQX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "QQQ",
+          "wrapped": false
+        }
+      ],
+      "symbol": "QQQX-ETHICS",
+      "tier": "C",
+      "tvl_usd": 28134.0,
+      "underlying_ticker": "QQQ",
+      "underlying_tokens": [
+        "Xs8S1uUs1zvS2p7iwtsG3b6fkhpvmwz4GYU3gWAmWHZ",
+        "3SXQSMVWTf6rZaJiXn3tHNpNEKLeTK1FShFR3s4fxSUR"
+      ],
+      "vol1d_tvl": 1.4379792464633538,
+      "volume_usd_1d": 40456.10812,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 41.96,
+      "apy_reward": 0.0,
+      "apy_total": 41.96,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "QQQX",
+        "IDLE"
+      ],
+      "pool_id": "d2a449ae-4990-467a-bfc3-83280da40aa6",
+      "pool_meta": "Concentrated - 2%",
+      "price_semantics": "token",
+      "project": "raydium-amm",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "QQQX",
+          "instrument_id": "backed:QQQX",
+          "issuer": "Backed",
+          "pool_token_symbol": "QQQX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "QQQ",
+          "wrapped": false
+        }
+      ],
+      "symbol": "QQQX-IDLE",
+      "tier": "C",
+      "tvl_usd": 21562.0,
+      "underlying_ticker": "QQQ",
+      "underlying_tokens": [
+        "Xs8S1uUs1zvS2p7iwtsG3b6fkhpvmwz4GYU3gWAmWHZ",
+        "BjcRmwm8e25RgjkyaFE56fc7bxRgGPw96JUkXRJFEroT"
+      ],
+      "vol1d_tvl": 0.05747791067618959,
+      "volume_usd_1d": 1239.33871,
+      "wash_suspect": false
+    },
+    {
+      "apy_base": 13.53,
+      "apy_reward": 0.0,
+      "apy_total": 13.53,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "SPCX",
+        "SPCXX"
+      ],
+      "pool_id": "dd3a85f8-0963-40d1-bf6e-fa3a5c9f9507",
+      "pool_meta": "Concentrated - 0.01%",
+      "price_semantics": "token",
+      "project": "raydium-amm",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "SPCXX",
+          "instrument_id": "backed:SPCXX",
+          "issuer": "Backed",
+          "pool_token_symbol": "SPCXX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "SPCX",
+          "wrapped": false
+        }
+      ],
+      "symbol": "SPCX-SPCXX",
+      "tier": "C",
+      "tvl_usd": 115827.0,
+      "underlying_ticker": "SPCX",
+      "underlying_tokens": [
+        "SPCXxcqXj6e5dJDVNovHN8744zkbhM2bYudU45BimGb",
+        "Xs3oZwbHvqis4NYcf4YKWmEia2eC84wSiVrcYcTqpH8"
+      ],
+      "vol1d_tvl": 3.699034839372512,
+      "volume_usd_1d": 428448.10834,
+      "wash_suspect": true
+    },
+    {
+      "apy_base": 28700.31,
+      "apy_reward": 0.0,
+      "apy_total": 28700.31,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "SPCXX",
+        "BOT"
+      ],
+      "pool_id": "2354cdbc-6f46-5ef6-9c58-7a5ffced55f5",
+      "pool_meta": "Concentrated - 4%",
+      "price_semantics": "token",
+      "project": "raydium-amm",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "SPCXX",
+          "instrument_id": "backed:SPCXX",
+          "issuer": "Backed",
+          "pool_token_symbol": "SPCXX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "SPCX",
+          "wrapped": false
+        }
+      ],
+      "symbol": "SPCXX-BOT",
+      "tier": "C",
+      "tvl_usd": 30954.0,
+      "underlying_ticker": "SPCX",
+      "underlying_tokens": [
+        "Xs3oZwbHvqis4NYcf4YKWmEia2eC84wSiVrcYcTqpH8",
+        "An5kwg9EJi3rcuKAGK8vFG1SgGQ2ceHqoz87jVi9xKs4"
+      ],
+      "vol1d_tvl": 19.26777043193125,
+      "volume_usd_1d": 596414.56595,
+      "wash_suspect": true
+    },
+    {
+      "apy_base": 2297.45,
+      "apy_reward": 0.0,
+      "apy_total": 2297.45,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "SPCXX",
+        "PROMETHEUS"
+      ],
+      "pool_id": "f97d1517-498c-5b57-87a2-8135eabf2130",
+      "pool_meta": "Concentrated - 4%",
+      "price_semantics": "token",
+      "project": "raydium-amm",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "SPCXX",
+          "instrument_id": "backed:SPCXX",
+          "issuer": "Backed",
+          "pool_token_symbol": "SPCXX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "SPCX",
+          "wrapped": false
+        }
+      ],
+      "symbol": "SPCXX-PROMETHEUS",
+      "tier": "C",
+      "tvl_usd": 22409.0,
+      "underlying_ticker": "SPCX",
+      "underlying_tokens": [
+        "Xs3oZwbHvqis4NYcf4YKWmEia2eC84wSiVrcYcTqpH8",
+        "ALEh9FaiDpVSGW6HNbH3WyHdLukhq7k54SnUX6kewCTa"
+      ],
+      "vol1d_tvl": 1.5443290816189923,
+      "volume_usd_1d": 34606.87039,
+      "wash_suspect": true
+    },
+    {
+      "apy_base": 6598.85,
+      "apy_reward": 0.0,
+      "apy_total": 6598.85,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "SPCXX",
+        "URANUS"
+      ],
+      "pool_id": "86cc94a1-b387-5e72-8214-c4688ec6387b",
+      "pool_meta": "Concentrated - 4%",
+      "price_semantics": "token",
+      "project": "raydium-amm",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "SPCXX",
+          "instrument_id": "backed:SPCXX",
+          "issuer": "Backed",
+          "pool_token_symbol": "SPCXX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "SPCX",
+          "wrapped": false
+        }
+      ],
+      "symbol": "SPCXX-URANUS",
+      "tier": "C",
+      "tvl_usd": 25323.0,
+      "underlying_ticker": "SPCX",
+      "underlying_tokens": [
+        "Xs3oZwbHvqis4NYcf4YKWmEia2eC84wSiVrcYcTqpH8",
+        "CTMV7yXV1mpucM7svPEtmVFBB8g6hqHGVPczmbYrj9Jb"
+      ],
+      "vol1d_tvl": 4.427881398728428,
+      "volume_usd_1d": 112127.24066,
+      "wash_suspect": true
+    },
+    {
+      "apy_base": 2828.71,
+      "apy_reward": 0.0,
+      "apy_total": 2828.71,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "SPYX",
+        "SSX"
+      ],
+      "pool_id": "0bdcd2a7-5ed5-5187-85e6-1c65c6fbd7c1",
+      "pool_meta": "Concentrated - 4%",
+      "price_semantics": "token",
+      "project": "raydium-amm",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "SPYX",
+          "instrument_id": "backed:SPYX",
+          "issuer": "Backed",
+          "pool_token_symbol": "SPYX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "SPY",
+          "wrapped": false
+        }
+      ],
+      "symbol": "SPYX-SSX",
+      "tier": "C",
+      "tvl_usd": 31555.0,
+      "underlying_ticker": "SPY",
+      "underlying_tokens": [
+        "XsoCS1TfEyfFhfvj8EtZ528L3CaKBDBRqRapnBbDF2W",
+        "GGDbhzambPp4WiNQK2aXena27DqszYtq5gPhG61PU6SH"
+      ],
+      "vol1d_tvl": 1.899741969893836,
+      "volume_usd_1d": 59946.35786,
+      "wash_suspect": true
+    },
+    {
+      "apy_base": 663.12,
+      "apy_reward": 0.0,
+      "apy_total": 663.12,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "SPYX",
+        "STONK"
+      ],
+      "pool_id": "93f4aaea-5905-52ab-8e2b-926490246614",
+      "pool_meta": "Concentrated - 1%",
+      "price_semantics": "token",
+      "project": "raydium-amm",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "SPYX",
+          "instrument_id": "backed:SPYX",
+          "issuer": "Backed",
+          "pool_token_symbol": "SPYX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "SPY",
+          "wrapped": false
+        }
+      ],
+      "symbol": "SPYX-STONK",
+      "tier": "C",
+      "tvl_usd": 399085.0,
+      "underlying_ticker": "SPY",
+      "underlying_tokens": [
+        "XsoCS1TfEyfFhfvj8EtZ528L3CaKBDBRqRapnBbDF2W",
+        "6GmAFSYs4gk3FDao5FzzySQpPZaWsa4rUJHacpMpUNgx"
+      ],
+      "vol1d_tvl": 1.8167545051304859,
+      "volume_usd_1d": 725039.47168,
+      "wash_suspect": true
+    },
+    {
+      "apy_base": 0.51335,
+      "apy_reward": 0.0,
+      "apy_total": 0.51335,
+      "chain": "Solana",
+      "issuer": "Backed",
+      "pair_legs": [
+        "TQQQX",
+        "SPYX"
+      ],
+      "pool_id": "74c4b7e4-8202-4df6-ba8f-8dc0e0d36530",
+      "pool_meta": null,
+      "price_semantics": "token",
+      "project": "orca-dex",
+      "protocol_type": "clmm",
+      "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+      "stock_instruments": [
+        {
+          "canonical_token_symbol": "TQQQX",
+          "instrument_id": "backed:TQQQX",
+          "issuer": "Backed",
+          "pool_token_symbol": "TQQQX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "TQQQ",
+          "wrapped": false
+        },
+        {
+          "canonical_token_symbol": "SPYX",
+          "instrument_id": "backed:SPYX",
+          "issuer": "Backed",
+          "pool_token_symbol": "SPYX",
+          "price_semantics": "token",
+          "recognition_basis": "reviewed_backed_xstocks_catalogue",
+          "underlying_ticker": "SPY",
+          "wrapped": false
+        }
+      ],
+      "symbol": "TQQQX-SPYX",
+      "tier": "stock_stock",
+      "tvl_usd": 82342.0,
+      "underlying_ticker": "TQQQ+SPY",
+      "underlying_tokens": [
+        "XsjQP3iMAaQ3kQScQKthQpx9ALRbjKAjQtHg6TFomoc",
+        "XsoCS1TfEyfFhfvj8EtZ528L3CaKBDBRqRapnBbDF2W"
+      ],
+      "vol1d_tvl": 0.0012971857618226423,
+      "volume_usd_1d": 106.81287,
+      "wash_suspect": false
+    }
+  ],
+  "schema_version": "lp_stock_token_universe_v1"
+}

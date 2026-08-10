@@ -36,6 +36,7 @@ def _complete(**updates):
     record = {
         "chain": "Base",
         "project": "uniswap-v3",
+        "protocol_type": "clmm",
         "profile": "PASSIVE_CL",
         "holding_horizon_days": 14,
         "is_new_pool": False,
@@ -143,6 +144,7 @@ def test_missing_sigma_or_depth_stays_none_and_gate_rejects_fail_closed():
 def test_explicit_zero_nine_fields_cannot_replace_missing_raw_evidence():
     source = {
         "chain": "Base",
+        "protocol_type": "clmm",
         **{field: 0.0 for field in NETCOVER_INPUT_FIELDS},
         **{f"{field}_semantics": "measured" for field in NETCOVER_INPUT_FIELDS},
         **{f"{field}_source": "upstream:unverified" for field in NETCOVER_INPUT_FIELDS},

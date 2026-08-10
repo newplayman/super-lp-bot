@@ -41,6 +41,7 @@ SOLANA_CHEAP_METHODS = (
     "getLatestBlockhash",
     "getAccountInfo",
     "getMultipleAccounts",
+    "getTokenLargestAccounts",
 )
 SOLANA_HEAVY_METHODS = (
     "getSignaturesForAddress",

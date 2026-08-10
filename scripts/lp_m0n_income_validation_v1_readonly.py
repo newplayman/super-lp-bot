@@ -296,6 +296,15 @@ def _evaluate_assembled(assembled: Mapping[str, Any]) -> dict[str, Any]:
 
 def evaluate_horizon(score: Mapping[str, Any], horizon_hours: float) -> dict[str, Any]:
     record = dict(score)
+    # This locked M0N corpus predates FIX-E2's explicit dispatch field, but its
+    # inventory is restricted to the two audited Base CLMM projects.  Migrate
+    # that historical schema here rather than letting the NetCover engine infer.
+    if record.get("protocol_type") is None:
+        if str(record.get("project") or "").lower() not in {
+            "aerodrome-slipstream", "uniswap-v3",
+        }:
+            raise ValueError("legacy M0N record is not an audited Base CLMM")
+        record["protocol_type"] = "clmm"
     record["holding_horizon_hours"] = float(horizon_hours)
     record["holding_horizon_days"] = float(horizon_hours) / 24.0
     record["holding_horizon_source"] = "m0n_n1_fixed_passive_grid"
@@ -487,6 +496,12 @@ def _old_reward_conversion(
     if share_ratio <= 0.0:
         raise ValueError("share ratio must be positive for old reward conversion replay")
     record = dict(score)
+    if record.get("protocol_type") is None:
+        if str(record.get("project") or "").lower() not in {
+            "aerodrome-slipstream", "uniswap-v3",
+        }:
+            raise ValueError("legacy M0N record is not an audited Base CLMM")
+        record["protocol_type"] = "clmm"
     record["holding_horizon_hours"] = float(corrected_point["horizon_hours"])
     record["holding_horizon_days"] = float(corrected_point["horizon_hours"]) / 24.0
     # The corrected assembler multiplies reward APR by share_ratio.  Dividing

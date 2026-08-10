@@ -1,0 +1,16 @@
+{
+  "observed_at": "2026-08-10T15:49:31Z",
+  "mode": "continuous_hourly_read_only",
+  "pid": 3783076,
+  "unix_user": "lpbot-strategy",
+  "state": "S",
+  "interval_seconds": 3600,
+  "runtime_db": "/var/lib/lpbot-strategy/stock-tier-c-shadow/observations.db",
+  "runtime_latest": "/var/lib/lpbot-strategy/stock-tier-c-shadow/latest.json",
+  "c_pool_count": 15,
+  "observed_pool_count": 15,
+  "eligible_48h_count": 0,
+  "wallet_loaded": false,
+  "signed": false,
+  "broadcast_count": 0
+}

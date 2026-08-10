@@ -1,0 +1,29 @@
+{
+  "generated_at": "2026-08-10T15:34:34Z",
+  "network": "solana_mainnet",
+  "rpc_class": "free_public_rpc",
+  "method": "getAccountInfo",
+  "programs": [
+    {
+      "executable": true,
+      "owner": "BPFLoaderUpgradeab1e11111111111111111111111",
+      "program_id": "675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8",
+      "slot": 438427989
+    },
+    {
+      "executable": true,
+      "owner": "BPFLoaderUpgradeab1e11111111111111111111111",
+      "program_id": "CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK",
+      "slot": 438427989
+    },
+    {
+      "executable": true,
+      "owner": "BPFLoaderUpgradeab1e11111111111111111111111",
+      "program_id": "whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc",
+      "slot": 438427989
+    }
+  ],
+  "all_allowlisted_programs_executable": true,
+  "signed": false,
+  "broadcast_count": 0
+}

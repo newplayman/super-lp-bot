@@ -1,0 +1,314 @@
+{
+  "generated_at": "2026-08-10T15:45:51.453821+00:00",
+  "policy": {
+    "min_span_hours": 48.0,
+    "min_samples": 3,
+    "min_retained_fraction": 0.5,
+    "defillama_rolling_fields_count_as_local_observations": false
+  },
+  "c_pool_count": 15,
+  "observed_pool_count": 15,
+  "eligible_48h_count": 0,
+  "pools": [
+    {
+      "pool_id": "0bdcd2a7-5ed5-5187-85e6-1c65c6fbd7c1",
+      "sample_count": 1,
+      "span_hours": 0.0,
+      "baseline_apy": 2828.71,
+      "retention_floor_apy": 1414.355,
+      "threshold_held": true,
+      "eligible_48h": false,
+      "decay_curve": [
+        {
+          "hours": 0.0,
+          "apy": 2828.71,
+          "retained_fraction": 1.0,
+          "tvl_usd": 31555.0,
+          "volume_usd_1d": 59946.35786,
+          "swap_count": 3
+        }
+      ],
+      "cause": "INSUFFICIENT_OBSERVATION_WINDOW"
+    },
+    {
+      "pool_id": "1f86297f-55bf-40e7-9485-68e843761c70",
+      "sample_count": 1,
+      "span_hours": 0.0,
+      "baseline_apy": 1.98,
+      "retention_floor_apy": 0.99,
+      "threshold_held": true,
+      "eligible_48h": false,
+      "decay_curve": [
+        {
+          "hours": 0.0,
+          "apy": 1.98,
+          "retained_fraction": 1.0,
+          "tvl_usd": 440606.0,
+          "volume_usd_1d": 46757.50047,
+          "swap_count": null
+        }
+      ],
+      "cause": "INSUFFICIENT_OBSERVATION_WINDOW"
+    },
+    {
+      "pool_id": "2354cdbc-6f46-5ef6-9c58-7a5ffced55f5",
+      "sample_count": 1,
+      "span_hours": 0.0,
+      "baseline_apy": 28700.31,
+      "retention_floor_apy": 14350.155,
+      "threshold_held": true,
+      "eligible_48h": false,
+      "decay_curve": [
+        {
+          "hours": 0.0,
+          "apy": 28700.31,
+          "retained_fraction": 1.0,
+          "tvl_usd": 30954.0,
+          "volume_usd_1d": 596414.56595,
+          "swap_count": null
+        }
+      ],
+      "cause": "INSUFFICIENT_OBSERVATION_WINDOW"
+    },
+    {
+      "pool_id": "2eaf5f17-440b-46b6-ad9b-e7d747df17ab",
+      "sample_count": 1,
+      "span_hours": 0.0,
+      "baseline_apy": 39.29,
+      "retention_floor_apy": 19.645,
+      "threshold_held": true,
+      "eligible_48h": false,
+      "decay_curve": [
+        {
+          "hours": 0.0,
+          "apy": 39.29,
+          "retained_fraction": 1.0,
+          "tvl_usd": 27304.0,
+          "volume_usd_1d": 2938.98065,
+          "swap_count": null
+        }
+      ],
+      "cause": "INSUFFICIENT_OBSERVATION_WINDOW"
+    },
+    {
+      "pool_id": "82252341-cfcc-5932-918a-48c732512239",
+      "sample_count": 1,
+      "span_hours": 0.0,
+      "baseline_apy": 1910.59,
+      "retention_floor_apy": 955.295,
+      "threshold_held": true,
+      "eligible_48h": false,
+      "decay_curve": [
+        {
+          "hours": 0.0,
+          "apy": 1910.59,
+          "retained_fraction": 1.0,
+          "tvl_usd": 23952.0,
+          "volume_usd_1d": 30617.33844,
+          "swap_count": null
+        }
+      ],
+      "cause": "INSUFFICIENT_OBSERVATION_WINDOW"
+    },
+    {
+      "pool_id": "86cc94a1-b387-5e72-8214-c4688ec6387b",
+      "sample_count": 1,
+      "span_hours": 0.0,
+      "baseline_apy": 6598.85,
+      "retention_floor_apy": 3299.425,
+      "threshold_held": true,
+      "eligible_48h": false,
+      "decay_curve": [
+        {
+          "hours": 0.0,
+          "apy": 6598.85,
+          "retained_fraction": 1.0,
+          "tvl_usd": 25323.0,
+          "volume_usd_1d": 112127.24066,
+          "swap_count": null
+        }
+      ],
+      "cause": "INSUFFICIENT_OBSERVATION_WINDOW"
+    },
+    {
+      "pool_id": "93f4aaea-5905-52ab-8e2b-926490246614",
+      "sample_count": 1,
+      "span_hours": 0.0,
+      "baseline_apy": 663.12,
+      "retention_floor_apy": 331.56,
+      "threshold_held": true,
+      "eligible_48h": false,
+      "decay_curve": [
+        {
+          "hours": 0.0,
+          "apy": 663.12,
+          "retained_fraction": 1.0,
+          "tvl_usd": 399085.0,
+          "volume_usd_1d": 725039.47168,
+          "swap_count": null
+        }
+      ],
+      "cause": "INSUFFICIENT_OBSERVATION_WINDOW"
+    },
+    {
+      "pool_id": "c310b01e-a228-4330-91d5-66fe231bc4a7",
+      "sample_count": 1,
+      "span_hours": 0.0,
+      "baseline_apy": 27.67,
+      "retention_floor_apy": 13.835,
+      "threshold_held": true,
+      "eligible_48h": false,
+      "decay_curve": [
+        {
+          "hours": 0.0,
+          "apy": 27.67,
+          "retained_fraction": 1.0,
+          "tvl_usd": 20151.0,
+          "volume_usd_1d": 1527.17658,
+          "swap_count": null
+        }
+      ],
+      "cause": "INSUFFICIENT_OBSERVATION_WINDOW"
+    },
+    {
+      "pool_id": "d1226978-b13f-4723-be67-930560f2c775",
+      "sample_count": 1,
+      "span_hours": 0.0,
+      "baseline_apy": 35.04,
+      "retention_floor_apy": 17.52,
+      "threshold_held": true,
+      "eligible_48h": false,
+      "decay_curve": [
+        {
+          "hours": 0.0,
+          "apy": 35.04,
+          "retained_fraction": 1.0,
+          "tvl_usd": 47191.0,
+          "volume_usd_1d": 4530.16761,
+          "swap_count": null
+        }
+      ],
+      "cause": "INSUFFICIENT_OBSERVATION_WINDOW"
+    },
+    {
+      "pool_id": "d2a449ae-4990-467a-bfc3-83280da40aa6",
+      "sample_count": 1,
+      "span_hours": 0.0,
+      "baseline_apy": 41.96,
+      "retention_floor_apy": 20.98,
+      "threshold_held": true,
+      "eligible_48h": false,
+      "decay_curve": [
+        {
+          "hours": 0.0,
+          "apy": 41.96,
+          "retained_fraction": 1.0,
+          "tvl_usd": 21562.0,
+          "volume_usd_1d": 1239.33871,
+          "swap_count": null
+        }
+      ],
+      "cause": "INSUFFICIENT_OBSERVATION_WINDOW"
+    },
+    {
+      "pool_id": "daa78790-e4ae-50d7-aab5-7283329470b9",
+      "sample_count": 1,
+      "span_hours": 0.0,
+      "baseline_apy": 1326.29,
+      "retention_floor_apy": 663.145,
+      "threshold_held": true,
+      "eligible_48h": false,
+      "decay_curve": [
+        {
+          "hours": 0.0,
+          "apy": 1326.29,
+          "retained_fraction": 1.0,
+          "tvl_usd": 34349.0,
+          "volume_usd_1d": 30455.50067,
+          "swap_count": null
+        }
+      ],
+      "cause": "INSUFFICIENT_OBSERVATION_WINDOW"
+    },
+    {
+      "pool_id": "dd3a85f8-0963-40d1-bf6e-fa3a5c9f9507",
+      "sample_count": 1,
+      "span_hours": 0.0,
+      "baseline_apy": 13.53,
+      "retention_floor_apy": 6.765,
+      "threshold_held": true,
+      "eligible_48h": false,
+      "decay_curve": [
+        {
+          "hours": 0.0,
+          "apy": 13.53,
+          "retained_fraction": 1.0,
+          "tvl_usd": 115827.0,
+          "volume_usd_1d": 428448.10834,
+          "swap_count": null
+        }
+      ],
+      "cause": "INSUFFICIENT_OBSERVATION_WINDOW"
+    },
+    {
+      "pool_id": "e1d04ccc-1b7b-56d8-bbdf-4c1a4329f14d",
+      "sample_count": 1,
+      "span_hours": 0.0,
+      "baseline_apy": 524.85,
+      "retention_floor_apy": 262.425,
+      "threshold_held": true,
+      "eligible_48h": false,
+      "decay_curve": [
+        {
+          "hours": 0.0,
+          "apy": 524.85,
+          "retained_fraction": 1.0,
+          "tvl_usd": 28134.0,
+          "volume_usd_1d": 40456.10812,
+          "swap_count": null
+        }
+      ],
+      "cause": "INSUFFICIENT_OBSERVATION_WINDOW"
+    },
+    {
+      "pool_id": "e6d897d8-681f-4e6d-94aa-a1893d28339d",
+      "sample_count": 1,
+      "span_hours": 0.0,
+      "baseline_apy": 0.49,
+      "retention_floor_apy": 0.245,
+      "threshold_held": true,
+      "eligible_48h": false,
+      "decay_curve": [
+        {
+          "hours": 0.0,
+          "apy": 0.49,
+          "retained_fraction": 1.0,
+          "tvl_usd": 98155.0,
+          "volume_usd_1d": 1300.75647,
+          "swap_count": null
+        }
+      ],
+      "cause": "INSUFFICIENT_OBSERVATION_WINDOW"
+    },
+    {
+      "pool_id": "f97d1517-498c-5b57-87a2-8135eabf2130",
+      "sample_count": 1,
+      "span_hours": 0.0,
+      "baseline_apy": 2297.45,
+      "retention_floor_apy": 1148.725,
+      "threshold_held": true,
+      "eligible_48h": false,
+      "decay_curve": [
+        {
+          "hours": 0.0,
+          "apy": 2297.45,
+          "retained_fraction": 1.0,
+          "tvl_usd": 22409.0,
+          "volume_usd_1d": 34606.87039,
+          "swap_count": null
+        }
+      ],
+      "cause": "INSUFFICIENT_OBSERVATION_WINDOW"
+    }
+  ]
+}

@@ -1,0 +1,1315 @@
+[
+  {
+    "apy_base": 0.0,
+    "apy_reward": null,
+    "apy_total": 0.0,
+    "chain": "Base",
+    "issuer": "unknown",
+    "pair_legs": [
+      "TSLA",
+      "WETH"
+    ],
+    "pool_id": "557df763-5675-4e48-8d6c-65fe7589fca5",
+    "pool_meta": null,
+    "price_semantics": "token",
+    "project": "uniswap-v2",
+    "protocol_type": "amm_constant_product",
+    "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+    "stock_instruments": [
+      {
+        "canonical_token_symbol": "TSLA",
+        "instrument_id": "unknown:base:TSLA",
+        "issuer": "unknown",
+        "pool_token_symbol": "TSLA",
+        "price_semantics": "token",
+        "recognition_basis": "reviewed_generic_stock_or_index_ticker",
+        "underlying_ticker": "TSLA",
+        "wrapped": false
+      }
+    ],
+    "symbol": "TSLA-WETH",
+    "tier": "B",
+    "tvl_usd": 40190.0,
+    "underlying_ticker": "TSLA",
+    "underlying_tokens": [
+      "0x030b6c444b1074fce5112839b3613a6efb52f784",
+      "0x4200000000000000000000000000000000000006"
+    ],
+    "vol1d_tvl": 0.0,
+    "volume_usd_1d": 0.0,
+    "wash_suspect": false
+  },
+  {
+    "apy_base": 0.0,
+    "apy_reward": 0.0,
+    "apy_total": 0.0,
+    "chain": "Defichain",
+    "issuer": "unknown",
+    "pair_legs": [
+      "AAPL",
+      "DUSD"
+    ],
+    "pool_id": "2e0ac94f-9f24-4a30-9b43-b14e6970dd38",
+    "pool_meta": null,
+    "price_semantics": "token",
+    "project": "defichain-dex",
+    "protocol_type": "amm_constant_product",
+    "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+    "stock_instruments": [
+      {
+        "canonical_token_symbol": "AAPL",
+        "instrument_id": "unknown:defichain:AAPL",
+        "issuer": "unknown",
+        "pool_token_symbol": "AAPL",
+        "price_semantics": "token",
+        "recognition_basis": "project_scoped_bare_ticker",
+        "underlying_ticker": "AAPL",
+        "wrapped": false
+      }
+    ],
+    "symbol": "AAPL-DUSD",
+    "tier": "A",
+    "tvl_usd": 72911.0,
+    "underlying_ticker": "AAPL",
+    "underlying_tokens": [
+      "293",
+      "coingecko:usd-coin"
+    ],
+    "vol1d_tvl": 0.0,
+    "volume_usd_1d": 0.0,
+    "wash_suspect": false
+  },
+  {
+    "apy_base": 0.0,
+    "apy_reward": 0.0,
+    "apy_total": 0.0,
+    "chain": "Defichain",
+    "issuer": "unknown",
+    "pair_legs": [
+      "AI",
+      "DUSD"
+    ],
+    "pool_id": "6a67e6ea-41ff-411d-8053-6ffbb17091b5",
+    "pool_meta": null,
+    "price_semantics": "token",
+    "project": "defichain-dex",
+    "protocol_type": "amm_constant_product",
+    "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+    "stock_instruments": [
+      {
+        "canonical_token_symbol": "AI",
+        "instrument_id": "unknown:defichain:AI",
+        "issuer": "unknown",
+        "pool_token_symbol": "AI",
+        "price_semantics": "token",
+        "recognition_basis": "project_scoped_bare_ticker",
+        "underlying_ticker": "AI",
+        "wrapped": false
+      }
+    ],
+    "symbol": "AI-DUSD",
+    "tier": "A",
+    "tvl_usd": 22753.0,
+    "underlying_ticker": "AI",
+    "underlying_tokens": [
+      "349",
+      "coingecko:usd-coin"
+    ],
+    "vol1d_tvl": 0.0,
+    "volume_usd_1d": 0.0,
+    "wash_suspect": false
+  },
+  {
+    "apy_base": 0.0,
+    "apy_reward": 0.0,
+    "apy_total": 0.0,
+    "chain": "Defichain",
+    "issuer": "unknown",
+    "pair_legs": [
+      "AMZN",
+      "DUSD"
+    ],
+    "pool_id": "8e275cad-b6e8-4d62-b507-a9f5de5fe6e9",
+    "pool_meta": null,
+    "price_semantics": "token",
+    "project": "defichain-dex",
+    "protocol_type": "amm_constant_product",
+    "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+    "stock_instruments": [
+      {
+        "canonical_token_symbol": "AMZN",
+        "instrument_id": "unknown:defichain:AMZN",
+        "issuer": "unknown",
+        "pool_token_symbol": "AMZN",
+        "price_semantics": "token",
+        "recognition_basis": "project_scoped_bare_ticker",
+        "underlying_ticker": "AMZN",
+        "wrapped": false
+      }
+    ],
+    "symbol": "AMZN-DUSD",
+    "tier": "A",
+    "tvl_usd": 61309.0,
+    "underlying_ticker": "AMZN",
+    "underlying_tokens": [
+      "320",
+      "coingecko:usd-coin"
+    ],
+    "vol1d_tvl": 0.0,
+    "volume_usd_1d": 0.0,
+    "wash_suspect": false
+  },
+  {
+    "apy_base": 0.0,
+    "apy_reward": 0.0,
+    "apy_total": 0.0,
+    "chain": "Defichain",
+    "issuer": "unknown",
+    "pair_legs": [
+      "ARKK",
+      "DUSD"
+    ],
+    "pool_id": "11e29be4-1bcc-4297-a721-d8f74b764790",
+    "pool_meta": null,
+    "price_semantics": "token",
+    "project": "defichain-dex",
+    "protocol_type": "amm_constant_product",
+    "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+    "stock_instruments": [
+      {
+        "canonical_token_symbol": "ARKK",
+        "instrument_id": "unknown:defichain:ARKK",
+        "issuer": "unknown",
+        "pool_token_symbol": "ARKK",
+        "price_semantics": "token",
+        "recognition_basis": "project_scoped_bare_ticker",
+        "underlying_ticker": "ARKK",
+        "wrapped": false
+      }
+    ],
+    "symbol": "ARKK-DUSD",
+    "tier": "A",
+    "tvl_usd": 41934.0,
+    "underlying_ticker": "ARKK",
+    "underlying_tokens": [
+      "294",
+      "coingecko:usd-coin"
+    ],
+    "vol1d_tvl": 0.0,
+    "volume_usd_1d": 0.0,
+    "wash_suspect": false
+  },
+  {
+    "apy_base": 0.0,
+    "apy_reward": 0.0,
+    "apy_total": 0.0,
+    "chain": "Defichain",
+    "issuer": "unknown",
+    "pair_legs": [
+      "BABA",
+      "DUSD"
+    ],
+    "pool_id": "b2f87a84-a61d-4e11-96ab-585603555269",
+    "pool_meta": null,
+    "price_semantics": "token",
+    "project": "defichain-dex",
+    "protocol_type": "amm_constant_product",
+    "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+    "stock_instruments": [
+      {
+        "canonical_token_symbol": "BABA",
+        "instrument_id": "unknown:defichain:BABA",
+        "issuer": "unknown",
+        "pool_token_symbol": "BABA",
+        "price_semantics": "token",
+        "recognition_basis": "project_scoped_bare_ticker",
+        "underlying_ticker": "BABA",
+        "wrapped": false
+      }
+    ],
+    "symbol": "BABA-DUSD",
+    "tier": "A",
+    "tvl_usd": 21304.0,
+    "underlying_ticker": "BABA",
+    "underlying_tokens": [
+      "291",
+      "coingecko:usd-coin"
+    ],
+    "vol1d_tvl": 0.0,
+    "volume_usd_1d": 0.0,
+    "wash_suspect": false
+  },
+  {
+    "apy_base": 0.0,
+    "apy_reward": 0.0,
+    "apy_total": 0.0,
+    "chain": "Defichain",
+    "issuer": "unknown",
+    "pair_legs": [
+      "BITI",
+      "DUSD"
+    ],
+    "pool_id": "525102bf-838d-43e7-ba32-5e084ddfd3c5",
+    "pool_meta": null,
+    "price_semantics": "token",
+    "project": "defichain-dex",
+    "protocol_type": "amm_constant_product",
+    "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+    "stock_instruments": [
+      {
+        "canonical_token_symbol": "BITI",
+        "instrument_id": "unknown:defichain:BITI",
+        "issuer": "unknown",
+        "pool_token_symbol": "BITI",
+        "price_semantics": "token",
+        "recognition_basis": "project_scoped_bare_ticker",
+        "underlying_ticker": "BITI",
+        "wrapped": false
+      }
+    ],
+    "symbol": "BITI-DUSD",
+    "tier": "A",
+    "tvl_usd": 23001.0,
+    "underlying_ticker": "BITI",
+    "underlying_tokens": [
+      "366",
+      "coingecko:usd-coin"
+    ],
+    "vol1d_tvl": 0.0,
+    "volume_usd_1d": 0.0,
+    "wash_suspect": false
+  },
+  {
+    "apy_base": 0.0,
+    "apy_reward": 0.0,
+    "apy_total": 0.0,
+    "chain": "Defichain",
+    "issuer": "unknown",
+    "pair_legs": [
+      "COIN",
+      "DUSD"
+    ],
+    "pool_id": "8954d1ef-2f53-4ef7-bc29-9134c0d058a3",
+    "pool_meta": null,
+    "price_semantics": "token",
+    "project": "defichain-dex",
+    "protocol_type": "amm_constant_product",
+    "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+    "stock_instruments": [
+      {
+        "canonical_token_symbol": "COIN",
+        "instrument_id": "unknown:defichain:COIN",
+        "issuer": "unknown",
+        "pool_token_symbol": "COIN",
+        "price_semantics": "token",
+        "recognition_basis": "project_scoped_bare_ticker",
+        "underlying_ticker": "COIN",
+        "wrapped": false
+      }
+    ],
+    "symbol": "COIN-DUSD",
+    "tier": "A",
+    "tvl_usd": 98027.0,
+    "underlying_ticker": "COIN",
+    "underlying_tokens": [
+      "303",
+      "coingecko:usd-coin"
+    ],
+    "vol1d_tvl": 0.0,
+    "volume_usd_1d": 0.0,
+    "wash_suspect": false
+  },
+  {
+    "apy_base": 0.0,
+    "apy_reward": 0.0,
+    "apy_total": 0.0,
+    "chain": "Defichain",
+    "issuer": "unknown",
+    "pair_legs": [
+      "EEM",
+      "DUSD"
+    ],
+    "pool_id": "dacb5342-c23b-46a6-98e6-8b104f77542c",
+    "pool_meta": null,
+    "price_semantics": "token",
+    "project": "defichain-dex",
+    "protocol_type": "amm_constant_product",
+    "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+    "stock_instruments": [
+      {
+        "canonical_token_symbol": "EEM",
+        "instrument_id": "unknown:defichain:EEM",
+        "issuer": "unknown",
+        "pool_token_symbol": "EEM",
+        "price_semantics": "token",
+        "recognition_basis": "project_scoped_bare_ticker",
+        "underlying_ticker": "EEM",
+        "wrapped": false
+      }
+    ],
+    "symbol": "EEM-DUSD",
+    "tier": "A",
+    "tvl_usd": 27491.0,
+    "underlying_ticker": "EEM",
+    "underlying_tokens": [
+      "304",
+      "coingecko:usd-coin"
+    ],
+    "vol1d_tvl": 0.0,
+    "volume_usd_1d": 0.0,
+    "wash_suspect": false
+  },
+  {
+    "apy_base": 0.0,
+    "apy_reward": 0.0,
+    "apy_total": 0.0,
+    "chain": "Defichain",
+    "issuer": "unknown",
+    "pair_legs": [
+      "FB",
+      "DUSD"
+    ],
+    "pool_id": "e94b372b-b29f-4be0-bc8f-674b5412519e",
+    "pool_meta": null,
+    "price_semantics": "token",
+    "project": "defichain-dex",
+    "protocol_type": "amm_constant_product",
+    "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+    "stock_instruments": [
+      {
+        "canonical_token_symbol": "FB",
+        "instrument_id": "unknown:defichain:FB",
+        "issuer": "unknown",
+        "pool_token_symbol": "FB",
+        "price_semantics": "token",
+        "recognition_basis": "project_scoped_bare_ticker",
+        "underlying_ticker": "FB",
+        "wrapped": false
+      }
+    ],
+    "symbol": "FB-DUSD",
+    "tier": "A",
+    "tvl_usd": 40269.0,
+    "underlying_ticker": "FB",
+    "underlying_tokens": [
+      "307",
+      "coingecko:usd-coin"
+    ],
+    "vol1d_tvl": 0.0,
+    "volume_usd_1d": 0.0,
+    "wash_suspect": false
+  },
+  {
+    "apy_base": 0.0,
+    "apy_reward": 0.0,
+    "apy_total": 0.0,
+    "chain": "Defichain",
+    "issuer": "unknown",
+    "pair_legs": [
+      "GLD",
+      "DUSD"
+    ],
+    "pool_id": "3979f13c-92e0-42cb-aa69-476665a39d60",
+    "pool_meta": null,
+    "price_semantics": "token",
+    "project": "defichain-dex",
+    "protocol_type": "amm_constant_product",
+    "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+    "stock_instruments": [
+      {
+        "canonical_token_symbol": "GLD",
+        "instrument_id": "unknown:defichain:GLD",
+        "issuer": "unknown",
+        "pool_token_symbol": "GLD",
+        "price_semantics": "token",
+        "recognition_basis": "project_scoped_bare_ticker",
+        "underlying_ticker": "GLD",
+        "wrapped": false
+      }
+    ],
+    "symbol": "GLD-DUSD",
+    "tier": "A",
+    "tvl_usd": 46305.0,
+    "underlying_ticker": "GLD",
+    "underlying_tokens": [
+      "297",
+      "coingecko:usd-coin"
+    ],
+    "vol1d_tvl": 0.0,
+    "volume_usd_1d": 0.0,
+    "wash_suspect": false
+  },
+  {
+    "apy_base": 0.0,
+    "apy_reward": 0.0,
+    "apy_total": 0.0,
+    "chain": "Defichain",
+    "issuer": "unknown",
+    "pair_legs": [
+      "GME",
+      "DUSD"
+    ],
+    "pool_id": "eb546c65-53ba-4e59-8f9a-2732800c6e60",
+    "pool_meta": null,
+    "price_semantics": "token",
+    "project": "defichain-dex",
+    "protocol_type": "amm_constant_product",
+    "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+    "stock_instruments": [
+      {
+        "canonical_token_symbol": "GME",
+        "instrument_id": "unknown:defichain:GME",
+        "issuer": "unknown",
+        "pool_token_symbol": "GME",
+        "price_semantics": "token",
+        "recognition_basis": "project_scoped_bare_ticker",
+        "underlying_ticker": "GME",
+        "wrapped": false
+      }
+    ],
+    "symbol": "GME-DUSD",
+    "tier": "A",
+    "tvl_usd": 38522.0,
+    "underlying_ticker": "GME",
+    "underlying_tokens": [
+      "326",
+      "coingecko:usd-coin"
+    ],
+    "vol1d_tvl": 0.0,
+    "volume_usd_1d": 0.0,
+    "wash_suspect": false
+  },
+  {
+    "apy_base": 0.0,
+    "apy_reward": 0.0,
+    "apy_total": 0.0,
+    "chain": "Defichain",
+    "issuer": "unknown",
+    "pair_legs": [
+      "GOOGL",
+      "DUSD"
+    ],
+    "pool_id": "68e3b89c-1085-4f19-a116-23827ae06f49",
+    "pool_meta": null,
+    "price_semantics": "token",
+    "project": "defichain-dex",
+    "protocol_type": "amm_constant_product",
+    "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+    "stock_instruments": [
+      {
+        "canonical_token_symbol": "GOOGL",
+        "instrument_id": "unknown:defichain:GOOGL",
+        "issuer": "unknown",
+        "pool_token_symbol": "GOOGL",
+        "price_semantics": "token",
+        "recognition_basis": "project_scoped_bare_ticker",
+        "underlying_ticker": "GOOGL",
+        "wrapped": false
+      }
+    ],
+    "symbol": "GOOGL-DUSD",
+    "tier": "A",
+    "tvl_usd": 57963.0,
+    "underlying_ticker": "GOOGL",
+    "underlying_tokens": [
+      "325",
+      "coingecko:usd-coin"
+    ],
+    "vol1d_tvl": 0.0,
+    "volume_usd_1d": 0.0,
+    "wash_suspect": false
+  },
+  {
+    "apy_base": 0.0,
+    "apy_reward": 0.0,
+    "apy_total": 0.0,
+    "chain": "Defichain",
+    "issuer": "unknown",
+    "pair_legs": [
+      "IBIT",
+      "DUSD"
+    ],
+    "pool_id": "679a033e-d8c1-48ed-be3f-9a3e6881b99b",
+    "pool_meta": null,
+    "price_semantics": "token",
+    "project": "defichain-dex",
+    "protocol_type": "amm_constant_product",
+    "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+    "stock_instruments": [
+      {
+        "canonical_token_symbol": "IBIT",
+        "instrument_id": "unknown:defichain:IBIT",
+        "issuer": "unknown",
+        "pool_token_symbol": "IBIT",
+        "price_semantics": "token",
+        "recognition_basis": "project_scoped_bare_ticker",
+        "underlying_ticker": "IBIT",
+        "wrapped": false
+      }
+    ],
+    "symbol": "IBIT-DUSD",
+    "tier": "A",
+    "tvl_usd": 25326.0,
+    "underlying_ticker": "IBIT",
+    "underlying_tokens": [
+      "357",
+      "coingecko:usd-coin"
+    ],
+    "vol1d_tvl": 0.0,
+    "volume_usd_1d": 0.0,
+    "wash_suspect": false
+  },
+  {
+    "apy_base": 0.0,
+    "apy_reward": 0.0,
+    "apy_total": 0.0,
+    "chain": "Defichain",
+    "issuer": "unknown",
+    "pair_legs": [
+      "MSFT",
+      "DUSD"
+    ],
+    "pool_id": "754c627d-1a61-4d35-b739-6e73a176e6d5",
+    "pool_meta": null,
+    "price_semantics": "token",
+    "project": "defichain-dex",
+    "protocol_type": "amm_constant_product",
+    "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+    "stock_instruments": [
+      {
+        "canonical_token_symbol": "MSFT",
+        "instrument_id": "unknown:defichain:MSFT",
+        "issuer": "unknown",
+        "pool_token_symbol": "MSFT",
+        "price_semantics": "token",
+        "recognition_basis": "project_scoped_bare_ticker",
+        "underlying_ticker": "MSFT",
+        "wrapped": false
+      }
+    ],
+    "symbol": "MSFT-DUSD",
+    "tier": "A",
+    "tvl_usd": 49763.0,
+    "underlying_ticker": "MSFT",
+    "underlying_tokens": [
+      "305",
+      "coingecko:usd-coin"
+    ],
+    "vol1d_tvl": 0.0,
+    "volume_usd_1d": 0.0,
+    "wash_suspect": false
+  },
+  {
+    "apy_base": 0.0,
+    "apy_reward": 0.0,
+    "apy_total": 0.0,
+    "chain": "Defichain",
+    "issuer": "unknown",
+    "pair_legs": [
+      "MSTR",
+      "DUSD"
+    ],
+    "pool_id": "4f4e18b0-ad83-4322-bd49-299f51092ea9",
+    "pool_meta": null,
+    "price_semantics": "token",
+    "project": "defichain-dex",
+    "protocol_type": "amm_constant_product",
+    "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+    "stock_instruments": [
+      {
+        "canonical_token_symbol": "MSTR",
+        "instrument_id": "unknown:defichain:MSTR",
+        "issuer": "unknown",
+        "pool_token_symbol": "MSTR",
+        "price_semantics": "token",
+        "recognition_basis": "project_scoped_bare_ticker",
+        "underlying_ticker": "MSTR",
+        "wrapped": false
+      }
+    ],
+    "symbol": "MSTR-DUSD",
+    "tier": "A",
+    "tvl_usd": 201103.0,
+    "underlying_ticker": "MSTR",
+    "underlying_tokens": [
+      "363",
+      "coingecko:usd-coin"
+    ],
+    "vol1d_tvl": 0.0,
+    "volume_usd_1d": 0.0,
+    "wash_suspect": false
+  },
+  {
+    "apy_base": 0.0,
+    "apy_reward": 0.0,
+    "apy_total": 0.0,
+    "chain": "Defichain",
+    "issuer": "unknown",
+    "pair_legs": [
+      "NFLX",
+      "DUSD"
+    ],
+    "pool_id": "611b5930-1546-47cc-bc53-c80427612b77",
+    "pool_meta": null,
+    "price_semantics": "token",
+    "project": "defichain-dex",
+    "protocol_type": "amm_constant_product",
+    "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+    "stock_instruments": [
+      {
+        "canonical_token_symbol": "NFLX",
+        "instrument_id": "unknown:defichain:NFLX",
+        "issuer": "unknown",
+        "pool_token_symbol": "NFLX",
+        "price_semantics": "token",
+        "recognition_basis": "project_scoped_bare_ticker",
+        "underlying_ticker": "NFLX",
+        "wrapped": false
+      }
+    ],
+    "symbol": "NFLX-DUSD",
+    "tier": "A",
+    "tvl_usd": 21704.0,
+    "underlying_ticker": "NFLX",
+    "underlying_tokens": [
+      "308",
+      "coingecko:usd-coin"
+    ],
+    "vol1d_tvl": 0.0,
+    "volume_usd_1d": 0.0,
+    "wash_suspect": false
+  },
+  {
+    "apy_base": 0.0,
+    "apy_reward": 0.0,
+    "apy_total": 0.0,
+    "chain": "Defichain",
+    "issuer": "unknown",
+    "pair_legs": [
+      "NVDA",
+      "DUSD"
+    ],
+    "pool_id": "a13e4841-8f66-4426-9ed1-472c9e159e93",
+    "pool_meta": null,
+    "price_semantics": "token",
+    "project": "defichain-dex",
+    "protocol_type": "amm_constant_product",
+    "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+    "stock_instruments": [
+      {
+        "canonical_token_symbol": "NVDA",
+        "instrument_id": "unknown:defichain:NVDA",
+        "issuer": "unknown",
+        "pool_token_symbol": "NVDA",
+        "price_semantics": "token",
+        "recognition_basis": "project_scoped_bare_ticker",
+        "underlying_ticker": "NVDA",
+        "wrapped": false
+      }
+    ],
+    "symbol": "NVDA-DUSD",
+    "tier": "A",
+    "tvl_usd": 149067.0,
+    "underlying_ticker": "NVDA",
+    "underlying_tokens": [
+      "358",
+      "coingecko:usd-coin"
+    ],
+    "vol1d_tvl": 0.0,
+    "volume_usd_1d": 0.0,
+    "wash_suspect": false
+  },
+  {
+    "apy_base": 0.0,
+    "apy_reward": 0.0,
+    "apy_total": 0.0,
+    "chain": "Defichain",
+    "issuer": "unknown",
+    "pair_legs": [
+      "PFE",
+      "DUSD"
+    ],
+    "pool_id": "8fd58000-31cd-4c9b-9450-0cbbb200d09d",
+    "pool_meta": null,
+    "price_semantics": "token",
+    "project": "defichain-dex",
+    "protocol_type": "amm_constant_product",
+    "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+    "stock_instruments": [
+      {
+        "canonical_token_symbol": "PFE",
+        "instrument_id": "unknown:defichain:PFE",
+        "issuer": "unknown",
+        "pool_token_symbol": "PFE",
+        "price_semantics": "token",
+        "recognition_basis": "project_scoped_bare_ticker",
+        "underlying_ticker": "PFE",
+        "wrapped": false
+      }
+    ],
+    "symbol": "PFE-DUSD",
+    "tier": "A",
+    "tvl_usd": 22992.0,
+    "underlying_ticker": "PFE",
+    "underlying_tokens": [
+      "352",
+      "coingecko:usd-coin"
+    ],
+    "vol1d_tvl": 0.0,
+    "volume_usd_1d": 0.0,
+    "wash_suspect": false
+  },
+  {
+    "apy_base": 0.03416,
+    "apy_reward": 0.0,
+    "apy_total": 0.03416,
+    "chain": "Defichain",
+    "issuer": "unknown",
+    "pair_legs": [
+      "PLTR",
+      "DUSD"
+    ],
+    "pool_id": "e5f8b3ee-3589-414c-8cfb-2801d7e2d922",
+    "pool_meta": null,
+    "price_semantics": "token",
+    "project": "defichain-dex",
+    "protocol_type": "amm_constant_product",
+    "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+    "stock_instruments": [
+      {
+        "canonical_token_symbol": "PLTR",
+        "instrument_id": "unknown:defichain:PLTR",
+        "issuer": "unknown",
+        "pool_token_symbol": "PLTR",
+        "price_semantics": "token",
+        "recognition_basis": "project_scoped_bare_ticker",
+        "underlying_ticker": "PLTR",
+        "wrapped": false
+      }
+    ],
+    "symbol": "PLTR-DUSD",
+    "tier": "A",
+    "tvl_usd": 86994.0,
+    "underlying_ticker": "PLTR",
+    "underlying_tokens": [
+      "292",
+      "coingecko:usd-coin"
+    ],
+    "vol1d_tvl": 0.0,
+    "volume_usd_1d": 0.0,
+    "wash_suspect": false
+  },
+  {
+    "apy_base": 0.0,
+    "apy_reward": 0.0,
+    "apy_total": 0.0,
+    "chain": "Defichain",
+    "issuer": "unknown",
+    "pair_legs": [
+      "QQQ",
+      "DUSD"
+    ],
+    "pool_id": "04a153c1-2be7-45b7-b0c5-8a7e23cd8b1b",
+    "pool_meta": null,
+    "price_semantics": "token",
+    "project": "defichain-dex",
+    "protocol_type": "amm_constant_product",
+    "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+    "stock_instruments": [
+      {
+        "canonical_token_symbol": "QQQ",
+        "instrument_id": "unknown:defichain:QQQ",
+        "issuer": "unknown",
+        "pool_token_symbol": "QQQ",
+        "price_semantics": "token",
+        "recognition_basis": "project_scoped_bare_ticker",
+        "underlying_ticker": "QQQ",
+        "wrapped": false
+      }
+    ],
+    "symbol": "QQQ-DUSD",
+    "tier": "A",
+    "tvl_usd": 79305.0,
+    "underlying_ticker": "QQQ",
+    "underlying_tokens": [
+      "296",
+      "coingecko:usd-coin"
+    ],
+    "vol1d_tvl": 0.0,
+    "volume_usd_1d": 0.0,
+    "wash_suspect": false
+  },
+  {
+    "apy_base": 0.0,
+    "apy_reward": 0.0,
+    "apy_total": 0.0,
+    "chain": "Defichain",
+    "issuer": "unknown",
+    "pair_legs": [
+      "SLV",
+      "DUSD"
+    ],
+    "pool_id": "edca5153-ed95-4c03-9f2e-6a1e7d1f334c",
+    "pool_meta": null,
+    "price_semantics": "token",
+    "project": "defichain-dex",
+    "protocol_type": "amm_constant_product",
+    "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+    "stock_instruments": [
+      {
+        "canonical_token_symbol": "SLV",
+        "instrument_id": "unknown:defichain:SLV",
+        "issuer": "unknown",
+        "pool_token_symbol": "SLV",
+        "price_semantics": "token",
+        "recognition_basis": "project_scoped_bare_ticker",
+        "underlying_ticker": "SLV",
+        "wrapped": false
+      }
+    ],
+    "symbol": "SLV-DUSD",
+    "tier": "A",
+    "tvl_usd": 33127.0,
+    "underlying_ticker": "SLV",
+    "underlying_tokens": [
+      "298",
+      "coingecko:usd-coin"
+    ],
+    "vol1d_tvl": 0.0,
+    "volume_usd_1d": 0.0,
+    "wash_suspect": false
+  },
+  {
+    "apy_base": 0.0,
+    "apy_reward": 0.0,
+    "apy_total": 0.0,
+    "chain": "Defichain",
+    "issuer": "unknown",
+    "pair_legs": [
+      "SPY",
+      "DUSD"
+    ],
+    "pool_id": "d6f831a7-0079-4400-b2c5-a8436358d53a",
+    "pool_meta": null,
+    "price_semantics": "token",
+    "project": "defichain-dex",
+    "protocol_type": "amm_constant_product",
+    "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+    "stock_instruments": [
+      {
+        "canonical_token_symbol": "SPY",
+        "instrument_id": "unknown:defichain:SPY",
+        "issuer": "unknown",
+        "pool_token_symbol": "SPY",
+        "price_semantics": "token",
+        "recognition_basis": "project_scoped_bare_ticker",
+        "underlying_ticker": "SPY",
+        "wrapped": false
+      }
+    ],
+    "symbol": "SPY-DUSD",
+    "tier": "A",
+    "tvl_usd": 190593.0,
+    "underlying_ticker": "SPY",
+    "underlying_tokens": [
+      "295",
+      "coingecko:usd-coin"
+    ],
+    "vol1d_tvl": 0.0,
+    "volume_usd_1d": 0.0,
+    "wash_suspect": false
+  },
+  {
+    "apy_base": 0.0,
+    "apy_reward": 0.0,
+    "apy_total": 0.0,
+    "chain": "Defichain",
+    "issuer": "unknown",
+    "pair_legs": [
+      "TLT",
+      "DUSD"
+    ],
+    "pool_id": "17f41a00-4c7a-4712-91e4-41f9b8d9e38f",
+    "pool_meta": null,
+    "price_semantics": "token",
+    "project": "defichain-dex",
+    "protocol_type": "amm_constant_product",
+    "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+    "stock_instruments": [
+      {
+        "canonical_token_symbol": "TLT",
+        "instrument_id": "unknown:defichain:TLT",
+        "issuer": "unknown",
+        "pool_token_symbol": "TLT",
+        "price_semantics": "token",
+        "recognition_basis": "project_scoped_bare_ticker",
+        "underlying_ticker": "TLT",
+        "wrapped": false
+      }
+    ],
+    "symbol": "TLT-DUSD",
+    "tier": "A",
+    "tvl_usd": 34571.0,
+    "underlying_ticker": "TLT",
+    "underlying_tokens": [
+      "302",
+      "coingecko:usd-coin"
+    ],
+    "vol1d_tvl": 0.0,
+    "volume_usd_1d": 0.0,
+    "wash_suspect": false
+  },
+  {
+    "apy_base": 0.0,
+    "apy_reward": 0.0,
+    "apy_total": 0.0,
+    "chain": "Defichain",
+    "issuer": "unknown",
+    "pair_legs": [
+      "TSLA",
+      "DUSD"
+    ],
+    "pool_id": "dc833f4f-eafc-4d50-ac5d-b0237641ba5a",
+    "pool_meta": null,
+    "price_semantics": "token",
+    "project": "defichain-dex",
+    "protocol_type": "amm_constant_product",
+    "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+    "stock_instruments": [
+      {
+        "canonical_token_symbol": "TSLA",
+        "instrument_id": "unknown:defichain:TSLA",
+        "issuer": "unknown",
+        "pool_token_symbol": "TSLA",
+        "price_semantics": "token",
+        "recognition_basis": "project_scoped_bare_ticker",
+        "underlying_ticker": "TSLA",
+        "wrapped": false
+      }
+    ],
+    "symbol": "TSLA-DUSD",
+    "tier": "A",
+    "tvl_usd": 266096.0,
+    "underlying_ticker": "TSLA",
+    "underlying_tokens": [
+      "331",
+      "coingecko:usd-coin"
+    ],
+    "vol1d_tvl": 0.0,
+    "volume_usd_1d": 0.0,
+    "wash_suspect": false
+  },
+  {
+    "apy_base": 0.0,
+    "apy_reward": 0.0,
+    "apy_total": 0.0,
+    "chain": "Defichain",
+    "issuer": "unknown",
+    "pair_legs": [
+      "URTH",
+      "DUSD"
+    ],
+    "pool_id": "fee825e8-2605-4729-9f9e-480dcd13e703",
+    "pool_meta": null,
+    "price_semantics": "token",
+    "project": "defichain-dex",
+    "protocol_type": "amm_constant_product",
+    "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+    "stock_instruments": [
+      {
+        "canonical_token_symbol": "URTH",
+        "instrument_id": "unknown:defichain:URTH",
+        "issuer": "unknown",
+        "pool_token_symbol": "URTH",
+        "price_semantics": "token",
+        "recognition_basis": "project_scoped_bare_ticker",
+        "underlying_ticker": "URTH",
+        "wrapped": false
+      }
+    ],
+    "symbol": "URTH-DUSD",
+    "tier": "A",
+    "tvl_usd": 24378.0,
+    "underlying_ticker": "URTH",
+    "underlying_tokens": [
+      "301",
+      "coingecko:usd-coin"
+    ],
+    "vol1d_tvl": 0.0,
+    "volume_usd_1d": 0.0,
+    "wash_suspect": false
+  },
+  {
+    "apy_base": 24.76862,
+    "apy_reward": null,
+    "apy_total": 24.76862,
+    "chain": "Solana",
+    "issuer": "unknown",
+    "pair_legs": [
+      "AAPL",
+      "USDC"
+    ],
+    "pool_id": "7b56ac37-1249-4ae8-bd5d-2494f3ac7499",
+    "pool_meta": null,
+    "price_semantics": "token",
+    "project": "gmtrade",
+    "protocol_type": "unknown",
+    "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+    "stock_instruments": [
+      {
+        "canonical_token_symbol": "AAPL",
+        "instrument_id": "unknown:solana:AAPL",
+        "issuer": "unknown",
+        "pool_token_symbol": "AAPL",
+        "price_semantics": "token",
+        "recognition_basis": "project_scoped_bare_ticker",
+        "underlying_ticker": "AAPL",
+        "wrapped": false
+      }
+    ],
+    "symbol": "AAPL-USDC",
+    "tier": "A",
+    "tvl_usd": 232051.0,
+    "underlying_ticker": "AAPL",
+    "underlying_tokens": [
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    ],
+    "vol1d_tvl": 0.0,
+    "volume_usd_1d": 0.0,
+    "wash_suspect": false
+  },
+  {
+    "apy_base": 25.45111,
+    "apy_reward": null,
+    "apy_total": 25.45111,
+    "chain": "Solana",
+    "issuer": "unknown",
+    "pair_legs": [
+      "AMZN",
+      "USDC"
+    ],
+    "pool_id": "3d99a2b1-ca5b-4fc5-9e4c-112382b7bcc9",
+    "pool_meta": null,
+    "price_semantics": "token",
+    "project": "gmtrade",
+    "protocol_type": "unknown",
+    "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+    "stock_instruments": [
+      {
+        "canonical_token_symbol": "AMZN",
+        "instrument_id": "unknown:solana:AMZN",
+        "issuer": "unknown",
+        "pool_token_symbol": "AMZN",
+        "price_semantics": "token",
+        "recognition_basis": "project_scoped_bare_ticker",
+        "underlying_ticker": "AMZN",
+        "wrapped": false
+      }
+    ],
+    "symbol": "AMZN-USDC",
+    "tier": "A",
+    "tvl_usd": 34804.0,
+    "underlying_ticker": "AMZN",
+    "underlying_tokens": [
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    ],
+    "vol1d_tvl": 0.0,
+    "volume_usd_1d": 0.0,
+    "wash_suspect": false
+  },
+  {
+    "apy_base": 17.18679,
+    "apy_reward": null,
+    "apy_total": 17.18679,
+    "chain": "Solana",
+    "issuer": "unknown",
+    "pair_legs": [
+      "NVDA",
+      "USDC"
+    ],
+    "pool_id": "8c67811c-fff6-46f7-a5ee-98e735ae28d7",
+    "pool_meta": null,
+    "price_semantics": "token",
+    "project": "gmtrade",
+    "protocol_type": "unknown",
+    "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+    "stock_instruments": [
+      {
+        "canonical_token_symbol": "NVDA",
+        "instrument_id": "unknown:solana:NVDA",
+        "issuer": "unknown",
+        "pool_token_symbol": "NVDA",
+        "price_semantics": "token",
+        "recognition_basis": "project_scoped_bare_ticker",
+        "underlying_ticker": "NVDA",
+        "wrapped": false
+      }
+    ],
+    "symbol": "NVDA-USDC",
+    "tier": "A",
+    "tvl_usd": 588242.0,
+    "underlying_ticker": "NVDA",
+    "underlying_tokens": [
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    ],
+    "vol1d_tvl": 0.0,
+    "volume_usd_1d": 0.0,
+    "wash_suspect": false
+  },
+  {
+    "apy_base": 32.92735,
+    "apy_reward": null,
+    "apy_total": 32.92735,
+    "chain": "Solana",
+    "issuer": "unknown",
+    "pair_legs": [
+      "QQQ",
+      "USDC"
+    ],
+    "pool_id": "954f95a5-2156-4e9d-b67d-9adce8159c68",
+    "pool_meta": null,
+    "price_semantics": "token",
+    "project": "gmtrade",
+    "protocol_type": "unknown",
+    "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+    "stock_instruments": [
+      {
+        "canonical_token_symbol": "QQQ",
+        "instrument_id": "unknown:solana:QQQ",
+        "issuer": "unknown",
+        "pool_token_symbol": "QQQ",
+        "price_semantics": "token",
+        "recognition_basis": "project_scoped_bare_ticker",
+        "underlying_ticker": "QQQ",
+        "wrapped": false
+      }
+    ],
+    "symbol": "QQQ-USDC",
+    "tier": "A",
+    "tvl_usd": 36480.0,
+    "underlying_ticker": "QQQ",
+    "underlying_tokens": [
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    ],
+    "vol1d_tvl": 0.0,
+    "volume_usd_1d": 0.0,
+    "wash_suspect": false
+  },
+  {
+    "apy_base": 72.04428,
+    "apy_reward": null,
+    "apy_total": 72.04428,
+    "chain": "Solana",
+    "issuer": "unknown",
+    "pair_legs": [
+      "SPCX",
+      "USDC"
+    ],
+    "pool_id": "b237d486-5778-4246-9eb0-afb8d68a6644",
+    "pool_meta": null,
+    "price_semantics": "token",
+    "project": "gmtrade",
+    "protocol_type": "unknown",
+    "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+    "stock_instruments": [
+      {
+        "canonical_token_symbol": "SPCX",
+        "instrument_id": "unknown:solana:SPCX",
+        "issuer": "unknown",
+        "pool_token_symbol": "SPCX",
+        "price_semantics": "token",
+        "recognition_basis": "project_scoped_bare_ticker",
+        "underlying_ticker": "SPCX",
+        "wrapped": false
+      }
+    ],
+    "symbol": "SPCX-USDC",
+    "tier": "A",
+    "tvl_usd": 99209.0,
+    "underlying_ticker": "SPCX",
+    "underlying_tokens": [
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    ],
+    "vol1d_tvl": 0.0,
+    "volume_usd_1d": 0.0,
+    "wash_suspect": false
+  },
+  {
+    "apy_base": 37.85843,
+    "apy_reward": null,
+    "apy_total": 37.85843,
+    "chain": "Solana",
+    "issuer": "unknown",
+    "pair_legs": [
+      "SPY",
+      "USDC"
+    ],
+    "pool_id": "2ad9f07b-7eda-40e2-bc56-3b2b6f6f4b5c",
+    "pool_meta": null,
+    "price_semantics": "token",
+    "project": "gmtrade",
+    "protocol_type": "unknown",
+    "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+    "stock_instruments": [
+      {
+        "canonical_token_symbol": "SPY",
+        "instrument_id": "unknown:solana:SPY",
+        "issuer": "unknown",
+        "pool_token_symbol": "SPY",
+        "price_semantics": "token",
+        "recognition_basis": "project_scoped_bare_ticker",
+        "underlying_ticker": "SPY",
+        "wrapped": false
+      }
+    ],
+    "symbol": "SPY-USDC",
+    "tier": "A",
+    "tvl_usd": 22813.0,
+    "underlying_ticker": "SPY",
+    "underlying_tokens": [
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    ],
+    "vol1d_tvl": 0.0,
+    "volume_usd_1d": 0.0,
+    "wash_suspect": false
+  },
+  {
+    "apy_base": 31.43979,
+    "apy_reward": null,
+    "apy_total": 31.43979,
+    "chain": "Solana",
+    "issuer": "unknown",
+    "pair_legs": [
+      "TSLA",
+      "USDC"
+    ],
+    "pool_id": "e61dbb1b-24aa-4380-a001-644d2c68b2ce",
+    "pool_meta": null,
+    "price_semantics": "token",
+    "project": "gmtrade",
+    "protocol_type": "unknown",
+    "source": "DefiLlama:/pools Stage-1 lead; not on-chain validated",
+    "stock_instruments": [
+      {
+        "canonical_token_symbol": "TSLA",
+        "instrument_id": "unknown:solana:TSLA",
+        "issuer": "unknown",
+        "pool_token_symbol": "TSLA",
+        "price_semantics": "token",
+        "recognition_basis": "project_scoped_bare_ticker",
+        "underlying_ticker": "TSLA",
+        "wrapped": false
+      }
+    ],
+    "symbol": "TSLA-USDC",
+    "tier": "A",
+    "tvl_usd": 228658.0,
+    "underlying_ticker": "TSLA",
+    "underlying_tokens": [
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    ],
+    "vol1d_tvl": 0.0,
+    "volume_usd_1d": 0.0,
+    "wash_suspect": false
+  }
+]

@@ -1,0 +1,31 @@
+{
+  "observed_at": "2026-08-10T15:40:41Z",
+  "executor_user": {
+    "name": "lpbot-solana-executor",
+    "uid": 994,
+    "gid": 984,
+    "home": "/var/lib/lpbot-solana-executor",
+    "shell": "/usr/sbin/nologin"
+  },
+  "strategy_user": {
+    "name": "lpbot-strategy",
+    "uid": 995,
+    "gid": 985,
+    "shell": "/usr/sbin/nologin",
+    "can_read_executor_keystore": false
+  },
+  "paths": [
+    {"path": "/etc/lpbot-solana-executor", "mode": "0700", "owner": "lpbot-solana-executor"},
+    {"path": "/var/lib/lpbot-solana-executor", "mode": "0700", "owner": "lpbot-solana-executor"},
+    {"path": "/etc/lpbot-solana-executor/keystore.json", "mode": "0600", "owner": "lpbot-solana-executor", "bytes": 0, "semantics": "empty placeholder; no key generated"},
+    {"path": "/etc/lpbot-solana-executor/password", "mode": "0600", "owner": "lpbot-solana-executor", "bytes": 0, "semantics": "empty placeholder; no password generated"}
+  ],
+  "systemd": {
+    "unit": "lpbot-solana-m1-sidecar.service",
+    "enabled": false,
+    "active": false,
+    "live_trading_default": false
+  },
+  "signed": false,
+  "broadcast_count": 0
+}

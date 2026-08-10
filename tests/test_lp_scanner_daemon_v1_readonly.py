@@ -657,6 +657,7 @@ def test_wp04_adapter_is_the_strict_fifth_gate_not_only_a_diagnostic():
         "gates": {"quality": True, "yield_cover": True, "stable": True, "status_ok": True},
         "chain": "Base",
         "project": "uniswap-v3",
+        "protocol_type": "clmm",
         "profile": "PASSIVE_CL",
         "holding_horizon_days": 14,
         "is_new_pool": False,
@@ -680,6 +681,7 @@ def test_wp04_adapter_is_the_strict_fifth_gate_not_only_a_diagnostic():
     missing = {
         "pool": "0x2",
         "chain": "Base",
+        "protocol_type": "clmm",
         "vetted": True,
         "gates": {"quality": True},
         **{field: 0.0 for field in (
@@ -713,6 +715,7 @@ def test_netcover_entry_veto_normalizes_db_and_score_json_reason(tmp_path):
         "gates": {"quality": True, "yield_cover": True, "stable": True},
         "chain": "Base",
         "project": "uniswap-v3",
+        "protocol_type": "clmm",
         "profile": "PASSIVE_CL",
         "holding_horizon_days": 14,
         "is_new_pool": False,

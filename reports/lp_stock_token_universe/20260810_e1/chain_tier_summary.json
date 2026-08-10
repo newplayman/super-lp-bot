@@ -1,0 +1,78 @@
+{
+  "chain_tier_counts": {
+    "BSC": {
+      "A": 1,
+      "B": 0,
+      "C": 0,
+      "stock_stock": 0
+    },
+    "Base": {
+      "A": 0,
+      "B": 1,
+      "C": 0,
+      "stock_stock": 0
+    },
+    "Defichain": {
+      "A": 25,
+      "B": 0,
+      "C": 0,
+      "stock_stock": 0
+    },
+    "Ethereum": {
+      "A": 8,
+      "B": 0,
+      "C": 0,
+      "stock_stock": 0
+    },
+    "Mantle": {
+      "A": 10,
+      "B": 0,
+      "C": 0,
+      "stock_stock": 0
+    },
+    "Robinhood Chain": {
+      "A": 4,
+      "B": 0,
+      "C": 0,
+      "stock_stock": 0
+    },
+    "Solana": {
+      "A": 43,
+      "B": 9,
+      "C": 15,
+      "stock_stock": 1
+    }
+  },
+  "issuer_pool_counts": {
+    "Backed": 77,
+    "Ondo": 3,
+    "Robinhood": 4,
+    "unknown": 33
+  },
+  "issuer_unknown_instrument_count": 33,
+  "issuer_unknown_pool_count": 33,
+  "pool_count": 117,
+  "protocol_counts": {
+    "amm_constant_product": 26,
+    "clmm": 83,
+    "unknown": 8
+  },
+  "protocol_unknown_pool_count": 8,
+  "raydium_protocol_counts": {
+    "clmm": 52
+  },
+  "semantics": {
+    "basis": "instrument_id includes issuer, so same underlying across issuers cannot be joined",
+    "issuer": "issuer is never inferred from a bare ticker; unresolved issuers remain unknown",
+    "raydium": "poolMeta overrides the legacy raydium-amm slug; current Concentrated rows are CLMM. Missing/ambiguous metadata fails closed as unknown",
+    "universe": "conservative reviewed identifiers; false-positive avoidance may miss new instruments",
+    "yield": "DefiLlama Stage-1 lead only; on-chain validation required"
+  },
+  "tier_counts": {
+    "A": 91,
+    "B": 10,
+    "C": 15,
+    "stock_stock": 1
+  },
+  "wash_suspect_pool_count": 7
+}
