@@ -64,6 +64,35 @@ def build_acceptance(
             }
             decision = evaluate_ab_gate(tier, evidence)
         elif tier == "C":
+            instrument_normalized = (
+                isinstance(row.get("issuer"), str)
+                and bool(row.get("issuer").strip())
+                and row.get("issuer") != "unknown"
+            )
+            if not instrument_normalized:
+                decision = {
+                    "tier": "C", "passed": False,
+                    "reason": "FAIL_CLOSED:0_instrument_normalization",
+                    "failures": ["0_instrument_normalization"],
+                    "gates": {}, "terminal_conjunction_complete": False,
+                }
+                decisions.append({
+                    "llama_pool_id": pool_id, "symbol": row.get("symbol"), "chain": row.get("chain"),
+                    "project": row.get("project"), "issuer": row.get("issuer"), "tier": tier,
+                    "stage2_pass": s2.get("stage2_pass") is True, "decision": decision,
+                })
+                continue
+            if row.get("wash_suspect") is True:
+                decision = {
+                    "tier": "C", "passed": False, "reason": "FAIL_CLOSED:WASH_SUSPECT_REJECTED",
+                    "failures": ["0_wash_suspect"], "gates": {}, "terminal_conjunction_complete": False,
+                }
+                decisions.append({
+                    "llama_pool_id": pool_id, "symbol": row.get("symbol"), "chain": row.get("chain"),
+                    "project": row.get("project"), "issuer": row.get("issuer"), "tier": tier,
+                    "stage2_pass": s2.get("stage2_pass") is True, "decision": decision,
+                })
+                continue
             persistence = shadow.get(pool_id, {})
             economics = s2.get("economics") or {}
             risk = c_risk.get(pool_id, {})

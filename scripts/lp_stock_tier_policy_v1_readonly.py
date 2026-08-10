@@ -18,12 +18,15 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from scripts.lp_netcover_engine_v1_readonly import absolute_profit_gate
+from scripts.lp_netcover_engine_v1_readonly import (
+    HARD_POSITION_TVL_SHARE,
+    POSITION_TVL_SHARE,
+    absolute_profit_gate,
+)
+from scripts.lp_stock_tier_c_shadow_v1_readonly import MIN_SAMPLES
 
 
 STOCK_COARSE_TVL_MIN_USD = 20_000.0
-REGULAR_TVL_SHARE = 0.0005
-HARD_TVL_SHARE = 0.001
 DEPTH_SHARE = 0.02
 C_MAX_EXIT_SLIPPAGE_BPS = 200.0
 C_MIN_TOKEN_AGE_DAYS = 7.0
@@ -104,10 +107,10 @@ def evaluate_position(
             required_profit_usd=None, reason=f"FAIL_CLOSED:{exc}",
         )
 
-    tvl_cap = tvl * REGULAR_TVL_SHARE
+    tvl_cap = tvl * POSITION_TVL_SHARE
     depth_cap = depth * DEPTH_SHARE
-    cap = min(tier_cap, tvl_cap, depth_cap, tvl * HARD_TVL_SHARE)
-    hard_ok = tvl > 0.0 and cap / tvl <= HARD_TVL_SHARE
+    cap = min(tier_cap, tvl_cap, depth_cap, tvl * HARD_POSITION_TVL_SHARE)
+    hard_ok = tvl > 0.0 and cap / tvl <= HARD_POSITION_TVL_SHARE
     profit_gate = absolute_profit_gate(profit, round_trip)
     coarse_ok = tvl >= STOCK_COARSE_TVL_MIN_USD
     candidate = coarse_ok and cap > 0.0 and hard_ok and profit_gate.allowed
@@ -191,7 +194,7 @@ def evaluate_c_gate(
         persistence_samples = int(evidence.get("yield_persistence_samples"))
         persistence_ok = (
             persistence_hours >= C_MIN_PERSISTENCE_HOURS
-            and persistence_samples >= 3
+            and persistence_samples >= MIN_SAMPLES
             and _strict_true(evidence, "yield_persistence_threshold_held")
         )
     except (ValueError, TypeError):

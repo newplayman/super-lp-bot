@@ -187,7 +187,10 @@ def identify_stock_token(token: object, *, chain: object, project: object) -> di
         }
 
     scoped_bare = project_name in BARE_STOCK_PROJECTS and raw in BARE_TICKERS
-    generic_bare = raw in GENERIC_UNAMBIGUOUS_TICKERS
+    # Generic text is not an issuer proof.  It gets the same reviewed project
+    # scope as every other bare ticker, so Base uniswap-v2 TSLA-WETH cannot
+    # enter the stock universe simply because its display symbol looks known.
+    generic_bare = project_name in BARE_STOCK_PROJECTS and raw in GENERIC_UNAMBIGUOUS_TICKERS
     if scoped_bare or generic_bare:
         return {
             "instrument_id": f"unknown:{chain_name.casefold()}:{raw}",

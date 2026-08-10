@@ -56,6 +56,11 @@ def test_ondo_robinhood_and_unknown_never_collapse_same_underlying():
     assert {ondo["underlying_ticker"], robinhood["underlying_ticker"], unknown["underlying_ticker"]} == {"TSLA"}
 
 
+def test_generic_bare_ticker_requires_the_same_project_scope_as_other_bare_tickers():
+    assert universe.identify_stock_token("TSLA", chain="Base", project="uniswap-v2") is None
+    assert universe.normalize_pool(pool("TSLA-WETH", chain="Base", project="uniswap-v2")) is None
+
+
 @pytest.mark.parametrize("token", ["FLUX", "GMX", "HDX", "RANDOMX", "MOONON", "STONK"])
 def test_suffixes_are_not_guessed(token):
     assert universe.identify_stock_token(token, chain="Base", project="uniswap-v3") is None

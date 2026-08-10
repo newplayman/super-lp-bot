@@ -1,3 +1,5 @@
+import pytest
+
 from scripts.lp_stock_tier_acceptance_v1_readonly import build_acceptance
 
 
@@ -67,3 +69,22 @@ def test_c_complete_evidence_has_a_real_positive_terminal_path():
 
     assert result["decisions"][0]["decision"]["passed"] is True
     assert result["counts_are_real_chain_terminal_not_defillama_yield_claims"] is True
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "reason"),
+    [
+        ("issuer", "unknown", "0_instrument_normalization"),
+        ("wash_suspect", True, "WASH_SUSPECT_REJECTED"),
+    ],
+)
+def test_c_preconditions_reject_before_the_seven_gate_conjunction(field, value, reason):
+    universe, stage2, shadow, c_risk = _complete_c_payload(["c-precondition"])
+    universe["rows"][0][field] = value
+
+    result = build_acceptance(universe, stage2, {"rows": []}, shadow, c_risk)
+
+    decision = result["decisions"][0]["decision"]
+    assert decision["passed"] is False
+    assert decision["terminal_conjunction_complete"] is False
+    assert reason in decision["reason"]

@@ -1,10 +1,28 @@
 import pytest
 
+from scripts import lp_stock_e5_position_report_v1_readonly as e5
+from scripts import lp_stock_tier_policy_v1_readonly as policy
+from scripts.lp_netcover_engine_v1_readonly import HARD_POSITION_TVL_SHARE, POSITION_TVL_SHARE
+from scripts.lp_stock_tier_c_shadow_v1_readonly import MIN_SAMPLES
 from scripts.lp_stock_tier_policy_v1_readonly import (
     evaluate_ab_gate,
     evaluate_c_gate,
     evaluate_position,
 )
+
+
+def test_tvl_share_constants_are_imported_from_netcover_engine_in_both_consumers():
+    assert policy.POSITION_TVL_SHARE == POSITION_TVL_SHARE
+    assert policy.HARD_POSITION_TVL_SHARE == HARD_POSITION_TVL_SHARE
+    assert e5.POSITION_TVL_SHARE == POSITION_TVL_SHARE
+    assert e5.HARD_POSITION_TVL_SHARE == HARD_POSITION_TVL_SHARE
+
+
+def test_c_persistence_uses_shadow_min_samples_constant():
+    assert MIN_SAMPLES == 3
+    evidence = _clean_c()
+    evidence["yield_persistence_samples"] = MIN_SAMPLES - 1
+    assert evaluate_c_gate(evidence)["gates"]["4_yield_persistence"] is False
 
 
 def _clean_c():

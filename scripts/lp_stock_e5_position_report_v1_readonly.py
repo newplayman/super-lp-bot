@@ -17,6 +17,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from scripts.lp_stock_tier_policy_v1_readonly import TIER_CONFIG, evaluate_position
+from scripts.lp_netcover_engine_v1_readonly import HARD_POSITION_TVL_SHARE, POSITION_TVL_SHARE
 
 
 AMM_HORIZON_HOURS = 720.0
@@ -36,7 +37,10 @@ def _records(payload: Any) -> list[dict[str, Any]]:
 
 def preliminary_cap(tier: str, tvl: float, depth: float) -> float:
     cfg = TIER_CONFIG[str(tier).upper()]
-    return max(0.0, min(cfg["position_max_usd"], tvl * 0.0005, depth * 0.02, tvl * 0.001))
+    return max(0.0, min(
+        cfg["position_max_usd"], tvl * POSITION_TVL_SHARE, depth * 0.02,
+        tvl * HARD_POSITION_TVL_SHARE,
+    ))
 
 
 def economics_for_cap(stage2: Mapping[str, Any], cap: float) -> tuple[float | None, float | None]:
@@ -102,7 +106,7 @@ def build_report(universe: list[Mapping[str, Any]], stage2_payload: Mapping[str,
         "pool_count": len(rows),
         "rules": {
             "stock_coarse_tvl_min_usd": 20_000,
-            "position_cap": "min(tier_max,TVL*0.0005,measured_exit_depth*0.02,TVL*0.001)",
+            "position_cap": "min(tier_max,TVL*POSITION_TVL_SHARE,measured_exit_depth*0.02,TVL*HARD_POSITION_TVL_SHARE)",
             "regular_and_hard_tvl_shares_changed": False,
             "absolute_profit": "ExpectedNetProfit >= max(1,5*RoundTripCost)",
             "unresolved_position_usd": 0,
