@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import hashlib
 import json
 import sys
 import time
@@ -27,6 +28,7 @@ from execution.solana_m1_sidecar_v1 import (
     Preflight,
     Protocol,
     SolanaRpc,
+    build_unsigned_legacy_transaction,
     dry_run,
     read_mint_semantics,
 )
@@ -71,6 +73,100 @@ def _instructions(rows: Any) -> list[Instruction]:
     return result
 
 
+def _successful_simulation(simulation: Any) -> Mapping[str, Any]:
+    value = simulation.get("value") if isinstance(simulation, Mapping) else None
+    if not isinstance(value, Mapping) or value.get("err") is not None:
+        raise PolicyRejected("simulateTransaction rejected the unsigned transaction")
+    return value
+
+
+def _quote_from_simulation(simulation: Any) -> tuple[bool, dict[str, Any]]:
+    """Accept a quote only when the unsigned transaction returned it on-chain."""
+    value = _successful_simulation(simulation)
+    returned = value.get("returnData")
+    data = returned.get("data") if isinstance(returned, Mapping) else None
+    if not isinstance(data, list) or len(data) != 2 or data[1] != "base64" or not isinstance(data[0], str):
+        return False, {"source": "simulateTransaction", "reason": "SIMULATION_RETURN_DATA_UNAVAILABLE"}
+    try:
+        raw = base64.b64decode(data[0], validate=True)
+    except Exception:
+        return False, {"source": "simulateTransaction", "reason": "SIMULATION_RETURN_DATA_MALFORMED"}
+    if len(raw) < 8:
+        return False, {"source": "simulateTransaction", "reason": "SIMULATION_RETURN_DATA_TOO_SHORT"}
+    amount_out_raw = int.from_bytes(raw[:8], "little")
+    if amount_out_raw <= 0:
+        return False, {"source": "simulateTransaction", "reason": "SIMULATION_QUOTE_ZERO"}
+    return True, {
+        "source": "simulateTransaction.returnData",
+        "amount_out_raw": amount_out_raw,
+        "units_consumed": value.get("unitsConsumed"),
+    }
+
+
+def _pool_basis_from_chain(rpc: Any, pool: str, protocol: Protocol) -> tuple[bool, dict[str, Any]]:
+    """Pin basis evidence to the current, non-executable on-chain pool state."""
+    response = rpc.account_info(pool)
+    value = response.get("value") if isinstance(response, Mapping) else None
+    if not isinstance(value, Mapping) or value.get("executable") is True:
+        return False, {"source": "getAccountInfo", "reason": "POOL_STATE_UNAVAILABLE"}
+    if value.get("owner") != {
+        Protocol.RAYDIUM_AMM: "675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8",
+        Protocol.RAYDIUM_CLMM: "CAMMCzo5YL8w4VFF8KVrK22GGUsp5VTaW7grrKgrWqK",
+        Protocol.ORCA_WHIRLPOOL: "whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc",
+    }[protocol]:
+        return False, {"source": "getAccountInfo", "reason": "POOL_OWNER_PROTOCOL_MISMATCH"}
+    if value.get("data") is None:
+        return False, {"source": "getAccountInfo", "reason": "POOL_STATE_DATA_UNAVAILABLE"}
+    encoded = json.dumps(value, sort_keys=True, separators=(",", ":"), default=str).encode("utf-8")
+    context = response.get("context") if isinstance(response.get("context"), Mapping) else {}
+    return True, {
+        "source": "getAccountInfo",
+        "pool_state_sha256": hashlib.sha256(encoded).hexdigest(),
+        "slot": context.get("slot"),
+        "owner": value.get("owner"),
+    }
+
+
+def _int_value(value: Any, label: str) -> int:
+    try:
+        result = int(value)
+    except (TypeError, ValueError) as exc:
+        raise PolicyRejected(f"{label} is malformed") from exc
+    if result < 0:
+        raise PolicyRejected(f"{label} is negative")
+    return result
+
+
+def _wallet_balance_from_chain(rpc: Any, wallet: str, supplied: Mapping[str, Any]) -> tuple[bool, dict[str, Any]]:
+    """Read native and requested SPL account balances directly from RPC."""
+    native_result = rpc.call("getBalance", [wallet, {"commitment": "confirmed"}])
+    native_lamports = _int_value(
+        native_result.get("value") if isinstance(native_result, Mapping) else None, "getBalance value"
+    )
+    requested = supplied.get("token_accounts", [])
+    if not isinstance(requested, list) or not requested or any(not isinstance(item, str) for item in requested):
+        return False, {
+            "source": "getBalance/getTokenAccountBalance",
+            "lamports": native_lamports,
+            "token_accounts": [],
+            "reason": "TOKEN_ACCOUNT_BALANCE_EVIDENCE_REQUIRED",
+        }
+    token_accounts = []
+    token_ok = True
+    for account in requested:
+        result = rpc.call("getTokenAccountBalance", [account, {"commitment": "confirmed"}])
+        value = result.get("value") if isinstance(result, Mapping) else None
+        amount = value.get("amount") if isinstance(value, Mapping) else None
+        raw = _int_value(amount, "getTokenAccountBalance amount")
+        token_accounts.append({"address": account, "amount_raw": raw})
+        token_ok = token_ok and raw > 0
+    return native_lamports > 0 and token_ok, {
+        "source": "getBalance/getTokenAccountBalance",
+        "lamports": native_lamports,
+        "token_accounts": token_accounts,
+    }
+
+
 def run(plan: Mapping[str, Any], out_path: Path, rpc: Any, now_unix: int | None = None) -> dict[str, Any]:
     """Run against a supplied RPC; production CLI supplies the read/simulate-only client."""
     now = int(time.time()) if now_unix is None else int(now_unix)
@@ -93,6 +189,9 @@ def run(plan: Mapping[str, Any], out_path: Path, rpc: Any, now_unix: int | None 
         slippage_bps=int(intent_value["slippage_bps"]),
         deadline_unix=int(intent_value.get("deadline_unix", now + 120)),
         reduces_risk=bool(intent_value.get("reduces_risk", False)),
+        position_mint=(
+            None if intent_value.get("position_mint") is None else str(intent_value["position_mint"])
+        ),
     )
     instructions = _instructions(plan.get("instructions"))
     supplied = _mapping(plan.get("preflight"), "preflight")
@@ -105,23 +204,57 @@ def run(plan: Mapping[str, Any], out_path: Path, rpc: Any, now_unix: int | None 
     recent_blockhash = str(blockhash_value["blockhash"])
     last_valid = int(blockhash_value["lastValidBlockHeight"])
     current_height = int(rpc.call("getBlockHeight", [{"commitment": "confirmed"}]))
+    # These three checks intentionally never consume plan-provided booleans.
+    # A first unsigned simulation provides the quote evidence; dry_run repeats
+    # it after all gates exactly as the final sidecar boundary does.
+    preview = build_unsigned_legacy_transaction(
+        fee_payer=intent.wallet, recent_blockhash=recent_blockhash,
+        last_valid_block_height=last_valid, instructions=instructions,
+    )
+    preview_simulation = rpc.simulate(preview)
+    simulate_ok = True
+    try:
+        _successful_simulation(preview_simulation)
+    except PolicyRejected:
+        simulate_ok = False
+    quote_ok, quote = _quote_from_simulation(preview_simulation) if simulate_ok else (
+        False, {"source": "simulateTransaction", "reason": "SIMULATION_FAILED"}
+    )
+    basis_ok, basis = _pool_basis_from_chain(rpc, intent.pool, intent.protocol)
+    wallet_balance_ok, wallet_balance = _wallet_balance_from_chain(rpc, intent.wallet, supplied)
     preflight = Preflight(
-        # The actual simulation is repeated and authoritatively checked inside dry_run.
-        simulate_ok=True,
-        quote_ok=supplied.get("quote_ok") is True,
-        basis_ok=supplied.get("basis_ok") is True,
+        simulate_ok=simulate_ok,
+        quote_ok=quote_ok,
+        basis_ok=basis_ok,
         rpc_health_ok=True,
-        wallet_balance_ok=supplied.get("wallet_balance_ok") is True,
-        simulation={"source": "same-run simulateTransaction"},
-        quote=_mapping(supplied.get("quote"), "quote evidence"),
-        basis=_mapping(supplied.get("basis"), "basis evidence"),
+        wallet_balance_ok=wallet_balance_ok,
+        simulation={"source": "simulateTransaction", "result": preview_simulation},
+        quote=quote,
+        basis=basis,
         rpc_health={"genesis_hash": genesis_hash, "block_height": current_height},
-        wallet_balance=_mapping(supplied.get("wallet_balance"), "wallet balance evidence"),
+        wallet_balance=wallet_balance,
     )
     mint_evidence = [asdict(read_mint_semantics(rpc, mint, now)) for mint in intent.token_mints]
     dry_ledger = Ledger(out_path.parent / ".dry-run-ledger-must-not-exist.jsonl")
-    report = dict(
-        dry_run(
+    if not all((simulate_ok, quote_ok, basis_ok, wallet_balance_ok)):
+        # A failed runner preflight is still an auditable read-only result, not
+        # an exception that can be mistaken for a skipped check.
+        report = {
+            "stage": "E3_SOLANA_DRY_RUN",
+            "network": "solana_mainnet",
+            "intent": {"action": intent.action.value, "protocol": intent.protocol.value},
+            "preflight": {
+                "simulate": simulate_ok, "quote": quote_ok, "basis": basis_ok,
+                "rpc_health": True, "wallet_balance": wallet_balance_ok,
+            },
+            "preflight_all_pass": False,
+            "simulation_result": preview_simulation,
+            "broadcast_count": 0, "signed": False, "raw_transaction": None,
+            "transaction_signatures": [], "keystore_loaded": False,
+        }
+    else:
+        report = dict(
+            dry_run(
             intent=intent,
             preflight=preflight,
             instructions=instructions,
@@ -134,8 +267,8 @@ def run(plan: Mapping[str, Any], out_path: Path, rpc: Any, now_unix: int | None 
             ),
             ledger=dry_ledger,
             now=lambda: now,
+            )
         )
-    )
     if dry_ledger.path.exists():
         raise RuntimeError("dry-run invariant violated: execution ledger was written")
     report["genesis_hash"] = genesis_hash

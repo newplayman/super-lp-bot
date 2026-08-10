@@ -178,12 +178,20 @@ class Intent:
     slippage_bps: int
     deadline_unix: int
     reduces_risk: bool = False
+    # The stock-token leg currently held by the strategy.  This is a risk
+    # verdict input, not a claim about the instruction: EXIT_ONLY verifies it
+    # against the mints actually read from the swap's token accounts.
+    position_mint: str | None = None
 
     def __post_init__(self) -> None:
         _b58decode(self.wallet)
         _b58decode(self.pool)
         for mint in self.token_mints:
             _b58decode(mint)
+        if self.position_mint is not None:
+            _b58decode(self.position_mint)
+            if self.position_mint not in self.token_mints:
+                raise PolicyRejected("position mint must be an allowlisted intent mint")
 
 
 @dataclass(frozen=True)
@@ -408,6 +416,51 @@ def verify_transaction_programs(
         raise PolicyRejected("DEX instruction action does not match the intent")
     programs = tuple(dict.fromkeys(item.program_id for item in instructions))
     return [verify_program_on_chain(rpc, program_id, policy.allowed_programs) for program_id in programs]
+
+
+def _token_account_mint(rpc: Any, address: str) -> str:
+    """Read a token-account mint from chain, never from plan metadata."""
+    response = rpc.account_info(address)
+    value = response.get("value") if isinstance(response, Mapping) else None
+    data = value.get("data") if isinstance(value, Mapping) else None
+    parsed = data.get("parsed") if isinstance(data, Mapping) else None
+    info = parsed.get("info") if isinstance(parsed, Mapping) else None
+    mint = info.get("mint") if isinstance(info, Mapping) and parsed.get("type") == "account" else None
+    if not isinstance(mint, str):
+        raise PolicyRejected("swap token account mint is unavailable from chain")
+    _b58decode(mint)
+    return mint
+
+
+def parse_swap_token_direction(
+    rpc: Any, intent: Intent, instructions: Sequence[Instruction]
+) -> tuple[str, str]:
+    """Parse the actual input/output mint direction for an EXIT_ONLY swap.
+
+    Raydium AMM v4's public swap layout places user source and destination
+    token accounts at indexes 15 and 16.  CLMM/Whirlpool layouts are not
+    accepted here until their instruction discriminators/layouts are decoded;
+    guessing a direction would weaken EXIT_ONLY, so those swaps fail closed.
+    """
+    swaps = [item for item in instructions if item.program_id in DEX_PROGRAMS and item.semantic_action is Action.SWAP]
+    if len(swaps) != 1:
+        raise PolicyRejected("EXIT_ONLY requires exactly one parsable swap instruction")
+    swap = swaps[0]
+    if swap.program_id != RAYDIUM_AMM_V4_PROGRAM or len(swap.accounts) < 17:
+        raise PolicyRejected("EXIT_ONLY swap direction is unsupported and fail-closed")
+    return _token_account_mint(rpc, swap.accounts[15].pubkey), _token_account_mint(rpc, swap.accounts[16].pubkey)
+
+
+def verify_exit_only_swap_direction(
+    rpc: Any, intent: Intent, instructions: Sequence[Instruction], state: ExecutionState
+) -> None:
+    if state is not ExecutionState.EXIT_ONLY or intent.action is not Action.SWAP:
+        return
+    if intent.position_mint is None:
+        raise PolicyRejected("EXIT_ONLY swap requires a position mint for direction verification")
+    token_in, token_out = parse_swap_token_direction(rpc, intent, instructions)
+    if token_in != intent.position_mint or token_out == intent.position_mint:
+        raise PolicyRejected("EXIT_ONLY swap direction increases or does not reduce position exposure")
 
 
 @dataclass(frozen=True)
@@ -757,6 +810,7 @@ def dry_run(
     validator.validate(intent, state, current_block_height, last_valid_block_height)
     preflight.require_all()
     program_evidence = verify_transaction_programs(rpc, intent, instructions, policy)
+    verify_exit_only_swap_direction(rpc, intent, instructions, state)
     built = build_unsigned_legacy_transaction(
         fee_payer=intent.wallet,
         recent_blockhash=recent_blockhash,
@@ -848,6 +902,7 @@ class SolanaM1Sidecar:
         validator.validate(intent, self.state, current_block_height, last_valid_block_height)
         preflight.require_all()
         verify_transaction_programs(self.rpc, intent, instructions, self.policy)
+        verify_exit_only_swap_direction(self.rpc, intent, instructions, self.state)
         built = build_unsigned_legacy_transaction(
             fee_payer=intent.wallet,
             recent_blockhash=recent_blockhash,

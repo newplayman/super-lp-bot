@@ -485,22 +485,42 @@ def test_cli_runner_produces_c5_shaped_report_with_only_read_and_simulate_rpc(tm
                 return {"context": {"slot": 1}, "value": {"blockhash": BLOCKHASH, "lastValidBlockHeight": 120}}
             if method == "getBlockHeight":
                 return 100
+            if method == "getBalance":
+                return {"value": 1}
+            if method == "getTokenAccountBalance":
+                return {"value": {"amount": "1"}}
             raise AssertionError(f"unexpected RPC method {method}")
 
         def account_info(self, address):
             self.methods.append("getAccountInfo")
             if address == MINT:
                 return _mint_response(TOKEN_PROGRAM)
+            if address == WALLET:
+                return {
+                    "context": {"slot": 2},
+                    "value": {
+                        "owner": RAYDIUM_AMM_V4_PROGRAM, "executable": False,
+                        "data": ["pool-state-fixture", "base64"],
+                    },
+                }
             return super().account_info(address)
 
         def simulate(self, tx):
             self.methods.append("simulateTransaction")
-            return super().simulate(tx)
+            self.simulate_calls += 1
+            return {
+                "context": {"slot": 457},
+                "value": {
+                    "err": None, "logs": ["ok"], "unitsConsumed": 1,
+                    "returnData": {"programId": RAYDIUM_AMM_V4_PROGRAM,
+                                   "data": [base64.b64encode((1).to_bytes(8, "little")).decode(), "base64"]},
+                },
+            }
 
     plan = {
         "intent": {
             "protocol": "raydium_amm", "action": "open", "wallet": WALLET,
-            "pool": POOL, "token_mints": [MINT], "strategy_decision_id": "decision-e3",
+            "pool": WALLET, "token_mints": [MINT], "strategy_decision_id": "decision-e3",
             "risk_verdict_id": "risk-e3", "idempotency_key": "report-e3",
             "notional_usd": 5, "slippage_bps": 75, "deadline_unix": NOW + 120,
         },
@@ -514,6 +534,7 @@ def test_cli_runner_produces_c5_shaped_report_with_only_read_and_simulate_rpc(tm
             "quote_ok": True, "quote": {"amount_out": 1},
             "basis_ok": True, "basis": {"bps": 1},
             "wallet_balance_ok": True, "wallet_balance": {"lamports": 1},
+            "token_accounts": [MINT],
         },
     }
     rpc = RunnerRpc()
@@ -521,4 +542,77 @@ def test_cli_runner_produces_c5_shaped_report_with_only_read_and_simulate_rpc(tm
     report = run_dry_run_report(plan, out, rpc, now_unix=NOW)
     assert out.exists() and report["signed"] is False and report["broadcast_count"] == 0
     assert report["preflight_all_pass"] is True and report["mint_semantics"][0]["decimals"] == 6
-    assert "simulateTransaction" in rpc.methods and "sendTransaction" not in rpc.methods
+    assert rpc.methods.count("simulateTransaction") == 2
+    assert {"getBalance", "getTokenAccountBalance"}.issubset(rpc.methods)
+    assert "sendTransaction" not in rpc.methods
+
+
+def test_cli_runner_rejects_plan_claimed_wallet_balance_when_rpc_reports_zero(tmp_path):
+    class ZeroBalanceRpc(FakeRpc):
+        def call(self, method, _params):
+            if method == "getGenesisHash":
+                return "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+            if method == "getLatestBlockhash":
+                return {"value": {"blockhash": BLOCKHASH, "lastValidBlockHeight": 120}}
+            if method == "getBlockHeight":
+                return 100
+            if method == "getBalance":
+                return {"value": 0}
+            raise AssertionError(method)
+
+        def account_info(self, address):
+            if address == MINT:
+                return _mint_response(TOKEN_PROGRAM)
+            if address == WALLET:
+                return {"context": {"slot": 1}, "value": {
+                    "owner": RAYDIUM_AMM_V4_PROGRAM, "executable": False, "data": ["state", "base64"],
+                }}
+            return super().account_info(address)
+
+        def simulate(self, _tx):
+            return {"value": {"err": None, "returnData": {
+                "data": [base64.b64encode((1).to_bytes(8, "little")).decode(), "base64"],
+            }}}
+
+    plan = {
+        "intent": {"protocol": "raydium_amm", "action": "open", "wallet": WALLET, "pool": WALLET,
+                   "token_mints": [MINT], "strategy_decision_id": "d", "risk_verdict_id": "r",
+                   "idempotency_key": "zero-balance", "notional_usd": 5, "slippage_bps": 1,
+                   "deadline_unix": NOW + 120},
+        "instructions": [{"program_id": RAYDIUM_AMM_V4_PROGRAM, "accounts": [],
+                          "data_base64": base64.b64encode(b"x").decode(), "semantic_action": "open"}],
+        # This assertion is intentionally ignored by the runner.
+        "preflight": {"wallet_balance_ok": True, "wallet_balance": {"lamports": 999}},
+    }
+    report = run_dry_run_report(plan, tmp_path / "zero.json", ZeroBalanceRpc(), now_unix=NOW)
+    assert report["preflight"]["wallet_balance"] is False
+    assert report["preflight_all_pass"] is False
+    assert report["signed"] is False and report["broadcast_count"] == 0
+
+
+def test_exit_only_rejects_self_reported_reducing_swap_when_actual_direction_adds_exposure(tmp_path):
+    source_account = "So11111111111111111111111111111111111111112"
+    destination_account = "SysvarRent111111111111111111111111111111111"
+    accounts = tuple([AccountMeta(WALLET)] * 15 + [
+        AccountMeta(source_account), AccountMeta(destination_account),
+    ])
+    swap = Instruction(RAYDIUM_AMM_V4_PROGRAM, accounts, b"\x09", Action.SWAP)
+    rpc = FakeRpc()
+    rpc.account_responses[source_account] = {"value": {"data": {"parsed": {
+        "type": "account", "info": {"mint": TOKEN_2022_PROGRAM},
+    }}}}
+    rpc.account_responses[destination_account] = {"value": {"data": {"parsed": {
+        "type": "account", "info": {"mint": MINT},
+    }}}}
+    increasing = intent(
+        Action.SWAP, reduces_risk=True, position_mint=MINT,
+        token_mints=(MINT, TOKEN_2022_PROGRAM), idempotency_key="direction-adds",
+    )
+    with pytest.raises(PolicyRejected, match="direction increases"):
+        dry_run(
+            intent=increasing, preflight=preflight(), instructions=[swap], recent_blockhash=BLOCKHASH,
+            last_valid_block_height=120, current_block_height=100, rpc=rpc,
+            policy=ExecutionPolicy(allowed_pools=frozenset({POOL}),
+                                   allowed_mints=frozenset({MINT, TOKEN_2022_PROGRAM})),
+            ledger=Ledger(tmp_path / "ledger.jsonl"), state=ExecutionState.EXIT_ONLY, now=lambda: NOW,
+        )
