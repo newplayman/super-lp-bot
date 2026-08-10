@@ -13,6 +13,7 @@ from scripts.lp_solana_stock_stage2_v1_readonly import (
     replay_recent_swaps,
     v2_il,
     verify_onchain,
+    solana_exit_and_sell_evidence,
 )
 
 
@@ -174,3 +175,17 @@ def test_raydium_clmm_state_decodes_published_pool_layout_offsets():
     assert state["active_liquidity_raw"] == 123_456_789
     assert state["sqrt_price_x64"] == 1 << 64
     assert state["tick_current"] == -120
+
+
+def test_solana_exit_and_sell_evidence_has_simulation_success_and_fail_closed_sides():
+    replay = {"swaps": [
+        {"raw_ui_price_b_per_a": 1.0}, {"raw_ui_price_b_per_a": 1.01},
+    ]}
+    economics = {"exit_slippage_bps": 10.0, "reason": "PASS"}
+    success = solana_exit_and_sell_evidence(replay, economics, {"value": {"err": None}})
+    assert success["exit_verdict"] == "EXITABLE_CLEAN"
+    assert success["sell_simulation_ok"] is True
+    assert success["known_honeypot"] is False and success["sell_tax_pct"] == 0
+    failed = solana_exit_and_sell_evidence(replay, economics)
+    assert failed["sell_simulation_ok"] is False
+    assert failed["sell_simulation_reason"] == "FAIL_CLOSED_UNSIGNED_SELL_SIMULATION_UNAVAILABLE"

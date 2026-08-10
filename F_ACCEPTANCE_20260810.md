@@ -73,3 +73,29 @@ SPYX-SSX 同窗口回放验收：
 ```text
 {"reference_fee_apr_pct": 2717.146, "relative_deviation_pct": 4.359088030887411, "spxy_ssx_fee_apr_pct": 2598.703213932264, "within_5pct": true}
 ```
+
+## F5 — C 档退出、卖出模拟与滑点证据
+
+配对单测：
+
+```text
+$ python3 -m pytest tests/test_lp_solana_stock_stage2_v1_readonly.py tests/test_lp_solana_tier_c_risk_evidence_v1_readonly.py -q
+.............                                                            [100%]
+13 passed in 0.13s
+```
+
+`tier_c_risk` 重跑（免费 RPC 索引不可用时保留原有 fail-closed）：
+
+```text
+$ python3 scripts/lp_solana_tier_c_risk_evidence_v1_readonly.py ... --fail-closed-rpc-reason 'F5 free RPC indexed holder data unavailable; no substitute used'
+{"pool_count": 15, "pass_count": 0}
+```
+
+逐池字段完整性校验：
+
+```text
+{'tier_c_count': 15, 'missing_fields': 0, 'bare_fail_closed': 0}
+```
+
+未能构造可由协议官方 quote builder 提供的无签名 sell 交易包时，卖出模拟保持
+`FAIL_CLOSED_UNSIGNED_SELL_SIMULATION_UNAVAILABLE`；没有签名、广播或生成私钥。
