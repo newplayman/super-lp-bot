@@ -48,6 +48,7 @@ def build_acceptance(
     shadow = _index(list(shadow_payload.get("pools") or []), "pool_id")
     c_risk = _index(list((c_risk_payload or {}).get("results") or []), "llama_pool_id")
     decisions = []
+    current_c_exposure_usd = 0.0
     for row in universe:
         pool_id = str(row.get("pool_id") or row.get("pool") or row.get("llama_pool_id") or "")
         tier = str(row.get("tier") or "").upper()
@@ -84,7 +85,13 @@ def build_acceptance(
                 "exit_depth_usd": economics.get("exit_depth_usd"),
                 "exit_slippage_bps": s2.get("exit_slippage_bps"),
             }
-            decision = evaluate_c_gate(c_evidence, current_c_exposure_usd=0.0)
+            decision = evaluate_c_gate(
+                c_evidence, current_c_exposure_usd=current_c_exposure_usd
+            )
+            # Exposure is a batch-level constraint.  Only a fully passed
+            # terminal C decision reserves capital for later candidates.
+            if decision.get("passed") is True:
+                current_c_exposure_usd += float(c_evidence["position_usd"])
         else:
             decision = {"tier": tier, "passed": False,
                         "reason": "STOCK_STOCK_RESEARCH_ONLY_NO_TIER_POLICY"}
@@ -94,8 +101,13 @@ def build_acceptance(
             "stage2_pass": s2.get("stage2_pass") is True,
             "decision": decision,
         })
+    terminal_decisions = [
+        row for row in decisions if row["decision"].get("passed") is True
+    ]
     return {
-        "counts_are_real_chain_terminal_not_defillama_yield_claims": True,
+        "counts_are_real_chain_terminal_not_defillama_yield_claims": all(
+            row["stage2_pass"] for row in terminal_decisions
+        ),
         "tier_counts": {
             tier: {
                 "universe": sum(row["tier"] == tier for row in decisions),

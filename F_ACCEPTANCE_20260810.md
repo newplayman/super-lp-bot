@@ -19,3 +19,17 @@ $ python3 -m pytest tests/test_lp_scanner_daemon_v1_readonly.py tests/test_lp_ne
 $ python3 - <<'PY' ... PY
 None
 ```
+
+## F2 — C 档总敞口累加
+
+机械验收命令：
+
+```text
+$ python3 -m pytest tests/test_lp_stock_tier_acceptance_v1_readonly.py -q
+...                                                                      [100%]
+3 passed in 0.04s
+```
+
+组合级回归用例 `test_c_batch_accumulates_passed_exposure_and_rejects_fifth_candidate`
+断言同批五个完整 C 候选的前四个通过，第五个 `passed is False`，且
+`failures` 包含 `7_budget_caps`。
