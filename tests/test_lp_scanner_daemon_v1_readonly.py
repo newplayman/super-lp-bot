@@ -284,6 +284,31 @@ def test_once_executes_every_funnel_stage_and_persists_all_three_tables(tmp_path
         assert session == "PRIMARY_CLOSED"
 
 
+def test_cycle_exports_empty_vetted_menu_with_valid_json_schema(tmp_path):
+    class NoAcceptedStages(FakeStages):
+        def netcover(self, vetted):
+            self.calls.append("netcover")
+            return [dict(
+                vetted[0], vetted=False, netcover_pass=False,
+                position_cap_pass=False, position_cap_usd=None,
+                rejection_reason="FAIL_CLOSED:TEST",
+            )]
+
+    db = tmp_path / "scanner.db"
+    menu = tmp_path / "vetted-menu.json"
+
+    rc = main(
+        ["--once", "--db", str(db), "--vetted-menu-out", str(menu)],
+        stages=NoAcceptedStages(), now=lambda: AS_OF,
+    )
+
+    assert rc == 0
+    assert menu.exists()
+    exported = json.loads(menu.read_text())
+    assert isinstance(exported, list)
+    assert exported == []
+
+
 def test_current_cycle_observation_cannot_certify_itself_but_next_cycle_can(tmp_path):
     class PersistenceStages(FakeStages):
         def screen(self):

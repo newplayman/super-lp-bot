@@ -1840,6 +1840,13 @@ def main(
                 + json.dumps(result.multicall3_evidence, sort_keys=True),
                 flush=True,
             )
+        if args.vetted_menu_out:
+            exported = export_latest_vetted_menu(args.db, args.vetted_menu_out)
+            print(
+                f"[scanner] vetted_menu exported={exported['exported_records']} "
+                f"invalid={exported['invalid_records']} out={exported['out']}",
+                flush=True,
+            )
         return result
 
     pid_file = args.pid_file or str(Path(args.db).with_name("scanner.pid"))
@@ -1854,15 +1861,7 @@ def main(
         ),
     )
     try:
-        rc = daemon.run(once=args.once)
-        if args.vetted_menu_out:
-            result = export_latest_vetted_menu(args.db, args.vetted_menu_out)
-            print(
-                f"[scanner] vetted_menu exported={result['exported_records']} "
-                f"invalid={result['invalid_records']} out={result['out']}",
-                flush=True,
-            )
-        return rc
+        return daemon.run(once=args.once)
     except Exception as exc:
         print(f"[scanner] fatal: {exc}", file=sys.stderr)
         return 1

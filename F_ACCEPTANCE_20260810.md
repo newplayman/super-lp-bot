@@ -33,3 +33,16 @@ $ python3 -m pytest tests/test_lp_stock_tier_acceptance_v1_readonly.py -q
 组合级回归用例 `test_c_batch_accumulates_passed_exposure_and_rejects_fifth_candidate`
 断言同批五个完整 C 候选的前四个通过，第五个 `passed is False`，且
 `failures` 包含 `7_budget_caps`。
+
+## F3 — vetted_menu 每轮 cycle 导出
+
+机械验收命令：
+
+```text
+$ python3 -m pytest tests/test_lp_scanner_daemon_v1_readonly.py -q
+...............................................                          [100%]
+47 passed in 2.39s
+```
+
+cycle 级回归用例 `test_cycle_exports_empty_vetted_menu_with_valid_json_schema`
+运行一轮 `--once`，断言输出文件存在、可解析为 JSON list，且零候选时内容为 `[]`。
