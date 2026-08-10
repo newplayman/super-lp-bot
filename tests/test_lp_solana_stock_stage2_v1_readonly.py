@@ -1,7 +1,14 @@
+import base64
+
 import pytest
 
 from scripts.lp_solana_stock_stage2_v1_readonly import (
     _select_unique,
+    _clmm_active_depth,
+    _decode_raydium_pool_state,
+    _replay_price_path,
+    assess,
+    recompute_clmm_economics,
     recompute_economics,
     replay_recent_swaps,
     v2_il,
@@ -97,3 +104,73 @@ def test_real_swap_replay_uses_vault_deltas_and_blocks_unscaled_token2022():
     pool["mint_a_tags"] = ["scaledUiAmountConfig"]
     result = replay_recent_swaps(pool, _ReplayRPC(), signature_limit=1)
     assert result["economic_price_complete"] is False
+
+
+def test_clmm_replay_economics_uses_active_stable_depth_and_raw_price_path():
+    pool = {
+        "mint_a": "stock", "mint_b": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "tvl_usd": 100_000, "fees_24h_usd": 100, "volume_24h_usd": 10_000,
+        "fee_rate": 0.01,
+    }
+    state = {
+        "active_liquidity_raw": 1_000_000_000_000,
+        "sqrt_price_x64": 1 << 64, "decimals_a": 6, "decimals_b": 6,
+    }
+    replay = {"swaps": [
+        {"raw_ui_price_b_per_a": 1.0},
+        {"raw_ui_price_b_per_a": 1.1},
+        {"raw_ui_price_b_per_a": 1.0},
+    ]}
+
+    result = recompute_clmm_economics(pool, state, replay)
+
+    assert result["passed"] is True
+    assert result["recomputed_fee_apr_pct"] == pytest.approx(36.5)
+    assert result["exit_depth_usd"] > 0
+    assert result["exit_slippage_bps"] > 0
+    assert result["sigma_pair"] > 0
+
+
+def test_clmm_depth_requires_an_onchain_stable_leg_anchor():
+    with pytest.raises(ValueError, match="USD_ANCHOR"):
+        _clmm_active_depth(
+            {"mint_a": "stock-a", "mint_b": "stock-b"},
+            {"active_liquidity_raw": 1_000_000, "sqrt_price_x64": 1 << 64,
+             "decimals_a": 6, "decimals_b": 6},
+        )
+
+
+def test_protocol_type_mismatch_is_an_explicit_stage2_fail_closed(monkeypatch):
+    import scripts.lp_solana_stock_stage2_v1_readonly as stage2
+
+    monkeypatch.setattr(stage2, "resolve_pool", lambda *_: {
+        "protocol_type": "clmm", "pool_address": "pool",
+    })
+
+    result = assess(
+        {"pool_id": "id", "protocol_type": "amm_constant_product"}, object(),
+        http=lambda _: {}, replay_limit=0,
+    )
+
+    assert result["stage2_pass"] is False
+    assert result["reason"] == "PROTOCOL_TYPE_MISMATCH"
+    assert result["protocol_type_mismatch_alert"] == "PROTOCOL_TYPE_MISMATCH"
+
+
+def test_raydium_clmm_state_decodes_published_pool_layout_offsets():
+    raw = bytearray(1544)
+    raw[235:237] = (120).to_bytes(2, "little")
+    raw[237:253] = (123_456_789).to_bytes(16, "little")
+    raw[253:269] = (1 << 64).to_bytes(16, "little")
+    raw[269:273] = (-120).to_bytes(4, "little", signed=True)
+    response = {"value": {
+        "owner": "CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK", "space": 1544,
+        "data": [base64.b64encode(raw).decode("ascii"), "base64"],
+    }}
+
+    state = _decode_raydium_pool_state(response, decimals_a=8, decimals_b=6)
+
+    assert state["tick_spacing"] == 120
+    assert state["active_liquidity_raw"] == 123_456_789
+    assert state["sqrt_price_x64"] == 1 << 64
+    assert state["tick_current"] == -120

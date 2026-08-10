@@ -1,0 +1,273 @@
+{
+  "universe_count": 1,
+  "stage2_pass_count": 0,
+  "tier_counts": {
+    "A": {
+      "total": 1,
+      "stage2_pass": 0
+    },
+    "B": {
+      "total": 0,
+      "stage2_pass": 0
+    },
+    "C": {
+      "total": 0,
+      "stage2_pass": 0
+    }
+  },
+  "rpc_health": {
+    "state": "DEGRADED",
+    "total_endpoints": 6,
+    "impaired_endpoints": 1,
+    "cooling_endpoints": 1,
+    "max_consecutive_failures": 1
+  },
+  "results": [
+    {
+      "llama_pool_id": "9462784c-c0e5-4539-914e-ac006e5b3097",
+      "symbol": "AAPLX-USDC",
+      "tier": "A",
+      "stage2_pass": false,
+      "protocol_type_reconciliation": {
+        "universe_protocol_type": "clmm",
+        "stage2_protocol_type": "clmm",
+        "matched": true
+      },
+      "resolved": {
+        "protocol": "raydium",
+        "pool_address": "CKwJZwm7oj3nu4653N1EpDrqXbXAYXoPFiPeEnLouF8y",
+        "program_id": "CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK",
+        "protocol_type": "clmm",
+        "mint_a": "XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp",
+        "mint_b": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "mint_a_owner": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
+        "mint_b_owner": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+        "mint_a_tags": [
+          "hasFreeze"
+        ],
+        "mint_b_tags": [
+          "hasFreeze"
+        ],
+        "tvl_usd": 62390.8,
+        "price": 307.0303607005603,
+        "fee_rate": 0.0025,
+        "volume_24h_usd": 16426.332136048382,
+        "fees_24h_usd": 41.06597346053254,
+        "official_fee_apr_pct": 24.02,
+        "price_min_24h": 306.1100726694186,
+        "price_max_24h": 315.9302488387603,
+        "reserve_a_ui": 41.23294449,
+        "reserve_b_ui": 49731.03084,
+        "snapshot_tvl_relative_error": 0.00040374263009480084,
+        "vault_a": "3DRUhhz5q1wsXZxYYpujPP4Fq5hYNfEGggSq93d99Tn7",
+        "vault_b": "yMw7pT6pqeSNDUvHkv7626eeGEHC7PrRhXa6mAAuiuw",
+        "llama_pool_id": "9462784c-c0e5-4539-914e-ac006e5b3097",
+        "symbol": "AAPLX-USDC",
+        "tier": "A",
+        "llama_tvl_usd": 62416.0,
+        "llama_apy_pct": 23.94
+      },
+      "onchain": {
+        "passed": true,
+        "reason": "PASS",
+        "checks": {
+          "pool_owner_is_program": true,
+          "program_executable": true,
+          "program_loader_owner": true,
+          "vault_a_token_owned": true,
+          "vault_b_token_owned": true,
+          "mint_a_owner_matches_api": true,
+          "mint_b_owner_matches_api": true
+        },
+        "slot_context": {
+          "apiVersion": "4.2.0-rc.1",
+          "slot": 438439450
+        },
+        "account_owners": {
+          "CKwJZwm7oj3nu4653N1EpDrqXbXAYXoPFiPeEnLouF8y": "CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK",
+          "CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK": "BPFLoaderUpgradeab1e11111111111111111111111",
+          "3DRUhhz5q1wsXZxYYpujPP4Fq5hYNfEGggSq93d99Tn7": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
+          "yMw7pT6pqeSNDUvHkv7626eeGEHC7PrRhXa6mAAuiuw": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          "XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
+          "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      },
+      "swap_replay": {
+        "status": "PASS",
+        "transactions_checked": 3,
+        "swap_count": 3,
+        "scaled_ui_multiplier_required": false,
+        "scaled_ui_multiplier_applied": null,
+        "economic_price_complete": true,
+        "swaps": [
+          {
+            "signature": "4yQyGaidGPyuAqAXAq12DCec4pg75aSq3KLS9BniA39QqRAmTj29LDdEXmexnjya2pEd6XSMSAHUcXAcnqC16o2s",
+            "slot": 438436856,
+            "block_time": 1786379821,
+            "vault_delta_a_raw_ui": 0.00473675,
+            "vault_delta_b_raw_ui": -1.450693,
+            "raw_ui_price_b_per_a": 306.2633662321212
+          },
+          {
+            "signature": "3s4Qb18dVPs2dho7pfcNLA4ecpV9xXyGHjnGhYusxRMUYpNiqxRTSTm3bFD3Y5TQFV5esokdQMu4vAWJ51GnZJR3",
+            "slot": 438436770,
+            "block_time": 1786379785,
+            "vault_delta_a_raw_ui": 0.00163428,
+            "vault_delta_b_raw_ui": -0.500522,
+            "raw_ui_price_b_per_a": 306.2645323934699
+          },
+          {
+            "signature": "2RtKJQJGgo2wknEmyYh6iNJtT75YBwbjZofbA5gNa6RSaVM7zsDyERG153FUYRfLtNzS3HxuZuHALcJoPDhMBnuS",
+            "slot": 438434079,
+            "block_time": 1786378644,
+            "vault_delta_a_raw_ui": 0.32204686,
+            "vault_delta_b_raw_ui": -98.659224,
+            "raw_ui_price_b_per_a": 306.3505230263695
+          }
+        ]
+      },
+      "clmm_state": {
+        "protocol_type": "clmm",
+        "state_protocol": "raydium_clmm",
+        "active_liquidity_raw": 210698941516,
+        "sqrt_price_x64": 32322904859522781548,
+        "tick_current": 11218,
+        "tick_spacing": 60,
+        "decimals_a": 8,
+        "decimals_b": 6,
+        "state_slot": 438439508,
+        "state_owner": "CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK"
+      },
+      "economics": {
+        "real_tvl_usd": 62390.8,
+        "real_volume_24h_usd": 16426.332136048382,
+        "real_fees_24h_usd": 41.06597346053254,
+        "fee_rate": 0.0025,
+        "recomputed_fee_apr_pct": 24.024504114539926,
+        "volume_times_fee_recomputed_apr_pct": 24.02442038592893,
+        "fee_recompute_relative_difference": 3.4851337865874617e-06,
+        "source_semantics": "official_protocol_24h_swap_aggregates_cross_checked_on_chain",
+        "active_liquidity_notional_usd": 738385.2471103626,
+        "exit_depth_usd": 184596.31177759066,
+        "price_b_per_a": 307.0303607005603,
+        "replay_price_min": 306.2633662321212,
+        "replay_price_max": 306.3505230263695,
+        "sigma_pair": 0.0001985264718677551,
+        "price_ratio_worst": 1.0002845811933714,
+        "latest_swap_price_b_per_a": 306.3505230263695,
+        "passed": true,
+        "reason": "PASS",
+        "il_24h_worst": -1.0120426607862498e-08,
+        "il_apr_pct": 0.0003693955711869812,
+        "exit_slippage_bps": 0.270861316342236,
+        "exit_depth_model": "active_stable_quote_liquidity_50pct_haircut",
+        "fee_attribution": "official_protocol_24h_fees_with_raw_swap_path_validation"
+      },
+      "netcover": {
+        "passed": false,
+        "reason": "NETCOVER_INPUT_MISSING:active_liquidity_notional_usd,fee_ev_usd,reward_ev_usd,gas_usd,reward_conversion_cost_usd,position_investable_usd,position_cap_usd",
+        "inputs": {
+          "chain": "Solana",
+          "protocol_type": "clmm",
+          "profile": "PASSIVE_CL",
+          "holding_horizon_hours": 168.0,
+          "is_new_pool": null,
+          "fee_apr_24h": 24.024504114539926,
+          "sigma_pair": 0.0001985264718677551,
+          "il_apr": 0.0003693955711869812,
+          "l_active_raw": 210698941516,
+          "last_swap_liquidity_raw": 210698941516,
+          "last_swap_price_token1_per_token0": 306.3505230263695,
+          "last_swap_cost_state_source": "measured:solana_raw_swap_replay_and_pool_state",
+          "price_usd": 307.0303607005603,
+          "token0": "XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp",
+          "token1": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "dec0": 8,
+          "dec1": 6,
+          "fee_tier": 0.0025,
+          "tvlUsd": 62390.8,
+          "active_liquidity_notional_usd": null,
+          "fee_ev_usd": null,
+          "fee_ev_usd_semantics": null,
+          "fee_ev_usd_source": null,
+          "reward_ev_usd": null,
+          "reward_ev_usd_semantics": null,
+          "reward_ev_usd_source": null,
+          "il_ev_usd": 3.5421493127518744e-07,
+          "il_ev_usd_semantics": "model_estimate",
+          "il_ev_usd_source": "model_estimate:il_apr_horizon_with_sigma_evidence",
+          "entry_cost_usd": 0.0125,
+          "entry_cost_usd_semantics": "model_estimate",
+          "entry_cost_usd_source": "model_estimate:lp_swap_cost_model_v1_readonly._swap_components",
+          "exit_cost_usd": 0.0125,
+          "exit_cost_usd_semantics": "model_estimate",
+          "exit_cost_usd_source": "model_estimate:lp_swap_cost_model_v1_readonly._swap_components",
+          "gas_usd": null,
+          "gas_usd_semantics": null,
+          "gas_usd_source": null,
+          "slippage_usd": 0.00013543070868202167,
+          "slippage_usd_semantics": "model_estimate",
+          "slippage_usd_source": "model_estimate:lp_swap_cost_model_v1_readonly._swap_components",
+          "reward_conversion_cost_usd": null,
+          "reward_conversion_cost_usd_semantics": null,
+          "reward_conversion_cost_usd_source": null,
+          "exit_latency_loss_usd": 0.0004794520547945206,
+          "exit_latency_loss_usd_semantics": "model_estimate",
+          "exit_latency_loss_usd_source": "model_estimate:free_rpc_exit_latency_apr_horizon",
+          "capital_usd": 5.0,
+          "netcover_model_path": "clmm_vol_sized_range_v1",
+          "netcover_profile": "PASSIVE",
+          "fee_apr_haircut": 0.4,
+          "reward_category": null,
+          "reward_category_haircut": null,
+          "reward_persistence_haircut": 1.0,
+          "reward_persistence_evidence_source": "absent",
+          "reward_persistence_status": "NOT_APPLICABLE",
+          "lvr_coefficient": 0.5,
+          "netcover_input_semantics": {
+            "fee_ev_usd": null,
+            "reward_ev_usd": null,
+            "il_ev_usd": "model_estimate",
+            "entry_cost_usd": "model_estimate",
+            "exit_cost_usd": "model_estimate",
+            "gas_usd": null,
+            "slippage_usd": "model_estimate",
+            "reward_conversion_cost_usd": null,
+            "exit_latency_loss_usd": "model_estimate"
+          },
+          "netcover_input_position_source": "M1_MIN_POSITION_USD",
+          "netcover_input_assembly_source": "lp_netcover_inputs_v1_readonly:raw_evidence_calculated_only",
+          "fee_capture_reference_horizon_hours": 168.0,
+          "fee_capture_reference_range_pct": null,
+          "fee_capture_target_range_pct": null,
+          "fee_capture_reference_share": null,
+          "fee_capture_target_share": null,
+          "fee_capture_share_ratio": null,
+          "fee_capture_evidence_apr_pct": null,
+          "fee_capture_haircut": 0.4,
+          "capital_tier": "M1",
+          "tier_configured_max_usd": 60.0,
+          "position_requested_usd": 5.0,
+          "position_investable_usd": null,
+          "position_cap_usd": null,
+          "position_cap_tvl_share": null,
+          "position_cap_regular_tvl_share_limit": 0.0005,
+          "position_cap_active_share_limit": 0.02,
+          "position_cap_hard_tvl_share_limit": 0.001,
+          "position_cap_hard_tvl_share_ok": false,
+          "position_cap_pass": false,
+          "position_cap_reason": "INV-TVLSHARE-01_INPUT_MISSING_OR_INVALID",
+          "active_liquidity_notional_usd_source": null,
+          "reward_conversion_route_costs": [],
+          "reward_conversion_selected_route_id": null,
+          "reward_conversion_route_selection_rule": null,
+          "round_trip_cost_usd": 0.025135430708682023
+        }
+      },
+      "exit_slippage_bps": 0.270861316342236,
+      "reason": "FAIL_CLOSED:PASS"
+    }
+  ],
+  "signed": false,
+  "broadcast_count": 0
+}

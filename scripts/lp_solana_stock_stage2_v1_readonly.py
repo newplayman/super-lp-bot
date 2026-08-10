@@ -10,6 +10,8 @@ fail-closed until a position range and raw swap replay are both available.
 from __future__ import annotations
 
 import argparse
+import base64
+import binascii
 import json
 import math
 import sys
@@ -24,12 +26,21 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from scripts.lp_rpc_pool_v1_readonly import RpcPool
+from scripts.lp_netcover_inputs_v1_readonly import assemble_clmm_netcover_inputs
 
 
 RAYDIUM_MINT_URL = "https://api-v3.raydium.io/pools/info/mint"
 RAYDIUM_KEYS_URL = "https://api-v3.raydium.io/pools/key/ids"
 ORCA_POOLS_URL = "https://api.orca.so/v2/solana/pools"
 ORCA_WHIRLPOOL_PROGRAM = "whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc"
+RAYDIUM_CLMM_PROGRAM = "CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK"
+RAYDIUM_CLMM_ACCOUNT_SIZE = 1544
+ORCA_WHIRLPOOL_ACCOUNT_SIZE = 653
+ORCA_WHIRLPOOL_DISCRIMINATOR = bytes.fromhex("3f95d10ce1806309")
+STABLE_MINTS = {
+    "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",  # USDC
+    "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",  # USDT
+}
 TOKEN_PROGRAMS = {
     "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
     "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
@@ -233,6 +244,107 @@ def _token_balance_map(rows: Any) -> dict[tuple[int, str], tuple[int, int]]:
     return output
 
 
+def _base64_account(response: Mapping[str, Any], *, owner: str, space: int) -> bytes:
+    """Validate a program-owned account and return its canonical bytes."""
+    value = response.get("value") if isinstance(response, Mapping) else None
+    if not isinstance(value, Mapping):
+        raise ValueError("POOL_ACCOUNT_UNAVAILABLE")
+    if value.get("owner") != owner:
+        raise ValueError("POOL_ACCOUNT_OWNER_MISMATCH")
+    if value.get("space") != space:
+        raise ValueError("POOL_ACCOUNT_LAYOUT_SIZE_MISMATCH")
+    encoded = value.get("data")
+    if (not isinstance(encoded, list) or len(encoded) != 2
+            or encoded[1] != "base64" or not isinstance(encoded[0], str)):
+        raise ValueError("POOL_ACCOUNT_BASE64_REQUIRED")
+    try:
+        raw = base64.b64decode(encoded[0], validate=True)
+    except (binascii.Error, ValueError) as exc:
+        raise ValueError("POOL_ACCOUNT_BASE64_MALFORMED") from exc
+    if len(raw) != space:
+        raise ValueError("POOL_ACCOUNT_DECODED_SIZE_MISMATCH")
+    return raw
+
+
+def _mint_decimals(rpc: RpcPool, mint: str) -> int:
+    response = rpc.call("getAccountInfo", [
+        mint, {"encoding": "jsonParsed", "commitment": "confirmed"},
+    ])
+    try:
+        decimals = int(response["value"]["data"]["parsed"]["info"]["decimals"])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ValueError("MINT_DECIMALS_UNAVAILABLE") from exc
+    if decimals < 0 or decimals > 30:
+        raise ValueError("MINT_DECIMALS_INVALID")
+    return decimals
+
+
+def _decode_orca_pool_state(response: Mapping[str, Any], *, decimals_a: int,
+                            decimals_b: int) -> dict[str, Any]:
+    raw = _base64_account(
+        response, owner=ORCA_WHIRLPOOL_PROGRAM, space=ORCA_WHIRLPOOL_ACCOUNT_SIZE
+    )
+    if raw[:8] != ORCA_WHIRLPOOL_DISCRIMINATOR:
+        raise ValueError("ORCA_WHIRLPOOL_DISCRIMINATOR_MISMATCH")
+    liquidity = int.from_bytes(raw[49:65], "little", signed=False)
+    sqrt_price_x64 = int.from_bytes(raw[65:81], "little", signed=False)
+    tick_current = int.from_bytes(raw[81:85], "little", signed=True)
+    if liquidity <= 0 or sqrt_price_x64 <= 0:
+        raise ValueError("ORCA_ACTIVE_LIQUIDITY_OR_PRICE_UNAVAILABLE")
+    return {
+        "protocol_type": "clmm", "state_protocol": "orca_whirlpool",
+        "active_liquidity_raw": liquidity, "sqrt_price_x64": sqrt_price_x64,
+        "tick_current": tick_current, "decimals_a": decimals_a,
+        "decimals_b": decimals_b,
+    }
+
+
+def _decode_raydium_pool_state(response: Mapping[str, Any], *, decimals_a: int,
+                               decimals_b: int) -> dict[str, Any]:
+    raw = _base64_account(
+        response, owner=RAYDIUM_CLMM_PROGRAM, space=RAYDIUM_CLMM_ACCOUNT_SIZE
+    )
+    # PoolInfoLayout has an 8-byte discriminator plus a one-byte bump.  The
+    # following offsets are pinned to Raydium's published SDK layout.
+    # mint decimals 233/234, tick spacing 235..237, liquidity 237..253,
+    # sqrtPriceX64 253..269, tickCurrent 269..273.
+    liquidity = int.from_bytes(raw[237:253], "little", signed=False)
+    sqrt_price_x64 = int.from_bytes(raw[253:269], "little", signed=False)
+    tick_current = int.from_bytes(raw[269:273], "little", signed=True)
+    if liquidity <= 0 or sqrt_price_x64 <= 0:
+        raise ValueError("RAYDIUM_ACTIVE_LIQUIDITY_OR_PRICE_UNAVAILABLE")
+    return {
+        "protocol_type": "clmm", "state_protocol": "raydium_clmm",
+        "active_liquidity_raw": liquidity, "sqrt_price_x64": sqrt_price_x64,
+        "tick_current": tick_current, "tick_spacing": int.from_bytes(raw[235:237], "little"),
+        "decimals_a": decimals_a, "decimals_b": decimals_b,
+    }
+
+
+def read_clmm_state(pool: Mapping[str, Any], rpc: RpcPool) -> dict[str, Any]:
+    """Read the current active CLMM state from the protocol-owned account."""
+    protocol = str(pool.get("protocol") or "").lower()
+    if protocol == "orca":
+        owner, decoder = ORCA_WHIRLPOOL_PROGRAM, _decode_orca_pool_state
+    elif protocol == "raydium":
+        owner, decoder = RAYDIUM_CLMM_PROGRAM, _decode_raydium_pool_state
+    else:
+        raise ValueError("CLMM_PROTOCOL_STATE_DECODER_UNAVAILABLE")
+    if str(pool.get("program_id") or "") != owner:
+        raise ValueError("CLMM_PROGRAM_ID_MISMATCH")
+    decimals_a = _mint_decimals(rpc, str(pool["mint_a"]))
+    decimals_b = _mint_decimals(rpc, str(pool["mint_b"]))
+    response = rpc.call("getAccountInfo", [
+        pool["pool_address"], {"encoding": "base64", "commitment": "confirmed"},
+    ])
+    state = decoder(response, decimals_a=decimals_a, decimals_b=decimals_b)
+    context = response.get("context") if isinstance(response, Mapping) else None
+    slot = context.get("slot") if isinstance(context, Mapping) else None
+    if isinstance(slot, bool) or not isinstance(slot, int) or slot <= 0:
+        raise ValueError("CLMM_STATE_SLOT_UNAVAILABLE")
+    return {**state, "state_slot": slot, "state_owner": owner}
+
+
 def replay_recent_swaps(pool: Mapping[str, Any], rpc: RpcPool, *, signature_limit: int = 3) -> dict[str, Any]:
     """Replay a bounded set of real transactions touching the pool vaults.
 
@@ -303,6 +415,161 @@ def replay_recent_swaps(pool: Mapping[str, Any], rpc: RpcPool, *, signature_limi
     }
 
 
+def _finite_positive(value: Any, reason: str) -> float:
+    try:
+        number = float(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(reason) from exc
+    if not math.isfinite(number) or number <= 0:
+        raise ValueError(reason)
+    return number
+
+
+def _clmm_active_depth(pool: Mapping[str, Any], state: Mapping[str, Any]) -> dict[str, float]:
+    """Value current active liquidity only when one leg has an on-chain stable anchor.
+
+    This is deliberately a lower-bound depth: only the immediately active
+    liquidity is counted and only the stable quote-leg reserve is used for an
+    exit.  TVL and protocol API volume are never substituted for depth.
+    """
+    liquidity = _finite_positive(state.get("active_liquidity_raw"), "ACTIVE_LIQUIDITY_UNAVAILABLE")
+    sqrt_price = _finite_positive(state.get("sqrt_price_x64"), "CLMM_SQRT_PRICE_UNAVAILABLE")
+    try:
+        dec_a, dec_b = int(state["decimals_a"]), int(state["decimals_b"])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ValueError("MINT_DECIMALS_UNAVAILABLE") from exc
+    if not 0 <= dec_a <= 30 or not 0 <= dec_b <= 30:
+        raise ValueError("MINT_DECIMALS_INVALID")
+    root = sqrt_price / float(1 << 64)
+    amount_a = liquidity / root / (10 ** dec_a)
+    amount_b = liquidity * root / (10 ** dec_b)
+    price_b_per_a = root * root * (10 ** (dec_a - dec_b))
+    mint_a, mint_b = str(pool.get("mint_a")), str(pool.get("mint_b"))
+    if mint_b in STABLE_MINTS:
+        stable_reserve_usd = amount_b
+        active_notional_usd = amount_b + amount_a * price_b_per_a
+    elif mint_a in STABLE_MINTS:
+        stable_reserve_usd = amount_a
+        active_notional_usd = amount_a + amount_b / price_b_per_a
+    else:
+        raise ValueError("ACTIVE_LIQUIDITY_USD_ANCHOR_UNAVAILABLE")
+    if not math.isfinite(stable_reserve_usd) or stable_reserve_usd <= 0:
+        raise ValueError("ACTIVE_STABLE_LIQUIDITY_UNAVAILABLE")
+    # A one-sided exit consumes only quote-side depth; retain a 50% reserve
+    # haircut before it becomes an advertised executable depth.
+    return {
+        "active_liquidity_notional_usd": active_notional_usd,
+        "exit_depth_usd": stable_reserve_usd * 0.5,
+        "price_b_per_a": price_b_per_a,
+    }
+
+
+def _replay_price_path(replay: Mapping[str, Any]) -> dict[str, float]:
+    prices = []
+    for swap in replay.get("swaps") or []:
+        try:
+            price = float(swap.get("raw_ui_price_b_per_a"))
+        except (TypeError, ValueError):
+            continue
+        if math.isfinite(price) and price > 0:
+            prices.append(price)
+    if len(prices) < 2:
+        raise ValueError("RAW_SWAP_PRICE_PATH_INSUFFICIENT")
+    log_returns = [math.log(current / prior) for prior, current in zip(prices, prices[1:])]
+    variance = sum(value * value for value in log_returns) / len(log_returns)
+    return {
+        "replay_price_min": min(prices), "replay_price_max": max(prices),
+        "sigma_pair": math.sqrt(variance),
+        "price_ratio_worst": max(prices) / min(prices),
+        "latest_swap_price_b_per_a": prices[-1],
+    }
+
+
+def recompute_clmm_economics(
+    pool: Mapping[str, Any], state: Mapping[str, Any], replay: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Produce CLMM replay economics without replacing the shared NetCover model."""
+    try:
+        tvl = _finite_positive(pool.get("tvl_usd"), "MISSING_REAL_FEE_INPUTS")
+        fees = float(pool["fees_24h_usd"])
+        volume = float(pool["volume_24h_usd"])
+        fee_rate = float(pool["fee_rate"])
+        if not all(math.isfinite(value) and value >= 0 for value in (fees, volume)):
+            raise ValueError("INVALID_REAL_FEE_INPUTS")
+        if not math.isfinite(fee_rate) or not 0 <= fee_rate <= 1:
+            raise ValueError("INVALID_REAL_FEE_INPUTS")
+        fee_apr_pct = fees / tvl * 365.0 * 100.0
+        base = {
+            "real_tvl_usd": tvl, "real_volume_24h_usd": volume,
+            "real_fees_24h_usd": fees, "fee_rate": fee_rate,
+            "recomputed_fee_apr_pct": fee_apr_pct,
+            "volume_times_fee_recomputed_apr_pct": volume * fee_rate / tvl * 365.0 * 100.0,
+            "fee_recompute_relative_difference": (
+                abs(fee_apr_pct - volume * fee_rate / tvl * 365.0 * 100.0) / fee_apr_pct
+                if fee_apr_pct else 0.0
+            ),
+            "source_semantics": "official_protocol_24h_swap_aggregates_cross_checked_on_chain",
+        }
+    except ValueError as exc:
+        return {"passed": False, "reason": str(exc)}
+    try:
+        depth = _clmm_active_depth(pool, state)
+        path = _replay_price_path(replay)
+        il_fraction = v2_il(path["price_ratio_worst"])
+        # This is a conservative path-loss input.  The range-sized fee share
+        # itself remains exclusively calculated by assemble_clmm_netcover_inputs.
+        il_apr_pct = abs(il_fraction) * 365.0 * 100.0
+        position_usd = 5.0
+        slippage_bps = position_usd / depth["exit_depth_usd"] * 10_000.0
+    except ValueError as exc:
+        return {**base, "passed": False, "reason": str(exc)}
+    return {
+        **base,
+        **depth,
+        **path,
+        "passed": True,
+        "reason": "PASS",
+        "il_24h_worst": il_fraction,
+        "il_apr_pct": il_apr_pct,
+        "exit_slippage_bps": slippage_bps,
+        "exit_depth_model": "active_stable_quote_liquidity_50pct_haircut",
+        "fee_attribution": "official_protocol_24h_fees_with_raw_swap_path_validation",
+    }
+
+
+def assemble_clmm_stage2_netcover(
+    pool: Mapping[str, Any], state: Mapping[str, Any], economics: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Use the common CLMM assembler; unavailable inputs stay explicit and closed."""
+    if economics.get("passed") is not True:
+        return {"passed": False, "reason": str(economics.get("reason") or "CLMM_ECONOMICS_UNAVAILABLE")}
+    record = {
+        "chain": "Solana", "protocol_type": "clmm", "profile": "PASSIVE_CL",
+        "holding_horizon_hours": 168.0, "is_new_pool": None,
+        "fee_apr_24h": economics.get("recomputed_fee_apr_pct"),
+        "sigma_pair": economics.get("sigma_pair"), "il_apr": economics.get("il_apr_pct"),
+        "l_active_raw": state.get("active_liquidity_raw"),
+        "last_swap_liquidity_raw": state.get("active_liquidity_raw"),
+        "last_swap_price_token1_per_token0": economics.get("latest_swap_price_b_per_a"),
+        "last_swap_cost_state_source": "measured:solana_raw_swap_replay_and_pool_state",
+        "price_usd": economics.get("price_b_per_a"), "token0": pool.get("mint_a"),
+        "token1": pool.get("mint_b"), "dec0": state.get("decimals_a"),
+        "dec1": state.get("decimals_b"), "fee_tier": pool.get("fee_rate"),
+        "tvlUsd": pool.get("tvl_usd"),
+        "active_liquidity_notional_usd": economics.get("active_liquidity_notional_usd"),
+    }
+    try:
+        assembled = assemble_clmm_netcover_inputs(record, position_usd=5.0)
+    except (ArithmeticError, TypeError, ValueError) as exc:
+        return {"passed": False, "reason": f"NETCOVER_ASSEMBLY_FAILED:{exc}"}
+    missing = [name for name, value in assembled.items()
+               if name.endswith("_usd") and value is None]
+    return {
+        "passed": not missing, "reason": "PASS" if not missing else "NETCOVER_INPUT_MISSING:" + ",".join(missing),
+        "inputs": assembled,
+    }
+
+
 def recompute_economics(pool: Mapping[str, Any]) -> dict[str, Any]:
     try:
         tvl = float(pool["tvl_usd"])
@@ -326,7 +593,7 @@ def recompute_economics(pool: Mapping[str, Any]) -> dict[str, Any]:
     }
     if pool.get("protocol_type") != "amm_constant_product":
         result.update({
-            "passed": False, "reason": "CLMM_RANGE_AND_RAW_SWAP_REPLAY_REQUIRED",
+            "passed": False, "reason": "CLMM_ACTIVE_STATE_AND_RAW_SWAP_REPLAY_REQUIRED",
             "il_24h_worst": None,
         })
         return result
@@ -356,18 +623,58 @@ def assess(record: Mapping[str, Any], rpc: RpcPool,
     }
     try:
         resolved = resolve_pool(record, http)
+        universe_protocol = str(record.get("protocol_type") or "").strip().lower()
+        stage2_protocol = str(resolved.get("protocol_type") or "").strip().lower()
+        reconciliation = {
+            "universe_protocol_type": universe_protocol or None,
+            "stage2_protocol_type": stage2_protocol or None,
+            "matched": universe_protocol == stage2_protocol and bool(stage2_protocol),
+        }
+        base["protocol_type_reconciliation"] = reconciliation
+        if not reconciliation["matched"]:
+            base.update({
+                "protocol_type_mismatch_alert": "PROTOCOL_TYPE_MISMATCH",
+                "resolved": resolved,
+                "reason": "PROTOCOL_TYPE_MISMATCH",
+            })
+            return base
         onchain = verify_onchain(resolved, rpc)
         replay = replay_recent_swaps(resolved, rpc, signature_limit=replay_limit)
-        economics = recompute_economics(resolved)
-        base.update({"resolved": resolved, "onchain": onchain, "swap_replay": replay,
-                     "economics": economics})
+        state: dict[str, Any] | None = None
+        netcover: dict[str, Any] | None = None
+        if stage2_protocol == "clmm":
+            try:
+                state = read_clmm_state(resolved, rpc)
+                economics = recompute_clmm_economics(resolved, state, replay)
+                netcover = assemble_clmm_stage2_netcover(resolved, state, economics)
+            except Exception as exc:  # a per-pool acquisition failure is evidence
+                economics = {
+                    "passed": False,
+                    "reason": f"CLMM_STATE_OR_REPLAY_UNAVAILABLE:{type(exc).__name__}:{exc}",
+                }
+                netcover = {"passed": False, "reason": str(economics["reason"])}
+        else:
+            economics = recompute_economics(resolved)
+        base.update({
+            "resolved": resolved, "onchain": onchain, "swap_replay": replay,
+            "clmm_state": state, "economics": economics, "netcover": netcover,
+            "exit_slippage_bps": economics.get("exit_slippage_bps"),
+        })
         base["stage2_pass"] = (
             onchain.get("passed") is True
             and economics.get("passed") is True
             and replay.get("swap_count", 0) > 0
             and replay.get("economic_price_complete") is True
+            and (netcover is None or netcover.get("passed") is True)
         )
-        base["reason"] = "PASS" if base["stage2_pass"] else "FAIL_CLOSED"
+        if base["stage2_pass"]:
+            base["reason"] = "PASS"
+        else:
+            missing_reason = (
+                economics.get("reason") or (netcover or {}).get("reason")
+                or replay.get("reason") or onchain.get("reason") or "STAGE2_CONJUNCTION_FAILED"
+            )
+            base["reason"] = f"FAIL_CLOSED:{missing_reason}"
     except Exception as exc:
         base["reason"] = f"FAIL_CLOSED:{type(exc).__name__}:{exc}"
     return base
@@ -378,15 +685,27 @@ def main() -> int:
     parser.add_argument("--universe", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--limit", type=int, default=0)
+    parser.add_argument("--offset", type=int, default=0,
+                        help="skip this many filtered records before --limit; supports paced checkpoint runs")
     parser.add_argument("--pool-id", default="", help="optional exact DefiLlama UUID for bounded replay evidence")
+    parser.add_argument("--protocol-type", default="",
+                        help="optional universe-declared protocol type filter (for a CLMM-only replay)")
     parser.add_argument("--replay-limit", type=int, default=3,
                         help="recent pool transactions checked for real swaps; 0 disables")
     args = parser.parse_args()
     records = [row for row in _rows(json.loads(args.universe.read_text()))
                if str(row.get("chain")).lower() == "solana"]
+    if args.protocol_type:
+        requested_protocol = args.protocol_type.strip().lower()
+        records = [row for row in records
+                   if str(row.get("protocol_type") or "").strip().lower() == requested_protocol]
     if args.pool_id:
         records = [row for row in records
                    if str(row.get("pool") or row.get("pool_id") or row.get("llama_pool_id")) == args.pool_id]
+    if args.offset < 0:
+        parser.error("--offset must be non-negative")
+    if args.offset:
+        records = records[args.offset:]
     if args.limit > 0:
         records = records[:args.limit]
     rpc = RpcPool("solana")

@@ -1,0 +1,188 @@
+{
+  "universe_count": 1,
+  "stage2_pass_count": 0,
+  "tier_counts": {
+    "A": {
+      "total": 0,
+      "stage2_pass": 0
+    },
+    "B": {
+      "total": 0,
+      "stage2_pass": 0
+    },
+    "C": {
+      "total": 0,
+      "stage2_pass": 0
+    }
+  },
+  "rpc_health": {
+    "state": "NORMAL",
+    "total_endpoints": 6,
+    "impaired_endpoints": 0,
+    "cooling_endpoints": 0,
+    "max_consecutive_failures": 0
+  },
+  "results": [
+    {
+      "llama_pool_id": "74c4b7e4-8202-4df6-ba8f-8dc0e0d36530",
+      "symbol": "TQQQX-SPYX",
+      "tier": "stock_stock",
+      "stage2_pass": false,
+      "protocol_type_reconciliation": {
+        "universe_protocol_type": "clmm",
+        "stage2_protocol_type": "clmm",
+        "matched": true
+      },
+      "resolved": {
+        "protocol": "orca",
+        "pool_address": "Bztq1RwZmU4L7cCnkh5pVz4LnRZ2YUMBzQ5VC2ETg789",
+        "program_id": "whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc",
+        "protocol_type": "clmm",
+        "mint_a": "XsjQP3iMAaQ3kQScQKthQpx9ALRbjKAjQtHg6TFomoc",
+        "mint_b": "XsoCS1TfEyfFhfvj8EtZ528L3CaKBDBRqRapnBbDF2W",
+        "mint_a_owner": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
+        "mint_b_owner": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
+        "mint_a_tags": [
+          "confidentialTransferMint",
+          "defaultAccountState",
+          "metadataPointer",
+          "pausableConfig",
+          "permanentDelegate",
+          "scaledUiAmountConfig",
+          "tokenMetadata",
+          "transferHook"
+        ],
+        "mint_b_tags": [
+          "confidentialTransferMint",
+          "defaultAccountState",
+          "metadataPointer",
+          "pausableConfig",
+          "permanentDelegate",
+          "scaledUiAmountConfig",
+          "tokenMetadata",
+          "transferHook"
+        ],
+        "vault_a": "tqo5rTC2iLSQMs6pdYVeXx7QoGepa2ryV3hqxt5zK3b",
+        "vault_b": "FzNAkDjbgQUdV91Ej8Ttfvmzx8fgr1zqduyjPJkRoUNn",
+        "tvl_usd": "82251.1749639591082781651862943800",
+        "price": "0.19343913764376851134",
+        "fee_rate": 0.01,
+        "volume_24h_usd": "106.306580084110",
+        "fees_24h_usd": "1.1530275649167899",
+        "price_change_24h": "-0.004894291207108171574648754015791259",
+        "price_history_7d": [
+          "0.17674678547296622763",
+          "0.18535563642272631704",
+          "0.19525145209849290026",
+          "0.19459106775758009742",
+          "0.19081487893197595306",
+          "0.18709371705576956039",
+          "0.18639559740513849337",
+          "0.18876222419595436310",
+          "0.19494325128463434043",
+          "0.19494325128463434043",
+          "0.19494325128463434043",
+          "0.19439054156208079897",
+          "0.19385343269080555624",
+          "0.19343913764376851134"
+        ],
+        "snapshot_tvl_relative_error": 0.0011030219819883609,
+        "llama_pool_id": "74c4b7e4-8202-4df6-ba8f-8dc0e0d36530",
+        "symbol": "TQQQX-SPYX",
+        "tier": "stock_stock",
+        "llama_tvl_usd": 82342.0,
+        "llama_apy_pct": 0.51335
+      },
+      "onchain": {
+        "passed": true,
+        "reason": "PASS",
+        "checks": {
+          "pool_owner_is_program": true,
+          "program_executable": true,
+          "program_loader_owner": true,
+          "vault_a_token_owned": true,
+          "vault_b_token_owned": true,
+          "mint_a_owner_matches_api": true,
+          "mint_b_owner_matches_api": true
+        },
+        "slot_context": {
+          "apiVersion": "4.2.0-rc.1",
+          "slot": 438441497
+        },
+        "account_owners": {
+          "Bztq1RwZmU4L7cCnkh5pVz4LnRZ2YUMBzQ5VC2ETg789": "whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc",
+          "whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc": "BPFLoaderUpgradeab1e11111111111111111111111",
+          "tqo5rTC2iLSQMs6pdYVeXx7QoGepa2ryV3hqxt5zK3b": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
+          "FzNAkDjbgQUdV91Ej8Ttfvmzx8fgr1zqduyjPJkRoUNn": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
+          "XsjQP3iMAaQ3kQScQKthQpx9ALRbjKAjQtHg6TFomoc": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
+          "XsoCS1TfEyfFhfvj8EtZ528L3CaKBDBRqRapnBbDF2W": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+        }
+      },
+      "swap_replay": {
+        "status": "PASS",
+        "transactions_checked": 3,
+        "swap_count": 3,
+        "scaled_ui_multiplier_required": true,
+        "scaled_ui_multiplier_applied": false,
+        "economic_price_complete": false,
+        "swaps": [
+          {
+            "signature": "62AZ51QLYgNQzBASbyQ16ccFskr9JYJKMagJpt9uBKcpBBYdKVLbvBmfXhNRhJGwuRGxz9eeYwQ5owhaFTwNUm1D",
+            "slot": 438407422,
+            "block_time": 1786367375,
+            "vault_delta_a_raw_ui": 0.29520761,
+            "vault_delta_b_raw_ui": -0.05659416,
+            "raw_ui_price_b_per_a": 0.19170969203673305
+          },
+          {
+            "signature": "JwLKLECwXtgRkbVkMfb8D2dvrMuNLQck3ooi7rNNgm8MwmHP4XDCjEMpD8ej2yDeB8rFULo3pMpaSE3RMgqgEHc",
+            "slot": 438280372,
+            "block_time": 1786313675,
+            "vault_delta_a_raw_ui": -0.00714192,
+            "vault_delta_b_raw_ui": 0.00139846,
+            "raw_ui_price_b_per_a": 0.19581009028384525
+          },
+          {
+            "signature": "2RSdokbPwSkoWLqek8Svf7ewPrKRW3CJaoMzqo3BHUK5ucwjVhs4BAnEnZmjKmFPshFHnQf7XGve7g5GrjT9jMuX",
+            "slot": 438279922,
+            "block_time": 1786313485,
+            "vault_delta_a_raw_ui": -0.00169044,
+            "vault_delta_b_raw_ui": 0.00033101,
+            "raw_ui_price_b_per_a": 0.19581292444570644
+          }
+        ]
+      },
+      "clmm_state": {
+        "protocol_type": "clmm",
+        "state_protocol": "orca_whirlpool",
+        "active_liquidity_raw": 12022545696,
+        "sqrt_price_x64": 8113194661325879736,
+        "tick_current": -16429,
+        "decimals_a": 8,
+        "decimals_b": 8,
+        "state_slot": 438441512,
+        "state_owner": "whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc"
+      },
+      "economics": {
+        "real_tvl_usd": 82251.17496395911,
+        "real_volume_24h_usd": 106.30658008411,
+        "real_fees_24h_usd": 1.1530275649167898,
+        "fee_rate": 0.01,
+        "recomputed_fee_apr_pct": 0.5116705765954577,
+        "volume_times_fee_recomputed_apr_pct": 0.4717489050788928,
+        "fee_recompute_relative_difference": 0.07802221457054424,
+        "source_semantics": "official_protocol_24h_swap_aggregates_cross_checked_on_chain",
+        "passed": false,
+        "reason": "ACTIVE_LIQUIDITY_USD_ANCHOR_UNAVAILABLE"
+      },
+      "netcover": {
+        "passed": false,
+        "reason": "ACTIVE_LIQUIDITY_USD_ANCHOR_UNAVAILABLE"
+      },
+      "exit_slippage_bps": null,
+      "reason": "FAIL_CLOSED:ACTIVE_LIQUIDITY_USD_ANCHOR_UNAVAILABLE"
+    }
+  ],
+  "signed": false,
+  "broadcast_count": 0
+}
