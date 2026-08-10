@@ -1,0 +1,49 @@
+{
+  "schema": "base_sepolia_smoke_dry_run_v1",
+  "generated_at": "2026-08-10T04:52:00.771741+00:00",
+  "network": "base_sepolia",
+  "chain_id": 84532,
+  "rpc_url": "https://sepolia.base.org",
+  "stages": [
+    {
+      "stage": "chain_id_assert",
+      "status": "PASS",
+      "expected": 84532,
+      "observed": 84532
+    },
+    {
+      "stage": "rpc_read_health",
+      "status": "PASS",
+      "block_number": 45284616,
+      "weth_code_bytes": 2041
+    },
+    {
+      "stage": "approve_exact_eth_call",
+      "status": "PASS",
+      "result": "0x0000000000000000000000000000000000000000000000000000000000000001",
+      "amount_raw": 1
+    },
+    {
+      "stage": "mint_decrease_collect_revoke_eth_call",
+      "status": "BLOCKED_CONTRACTS_NOT_CONFIGURED"
+    },
+    {
+      "stage": "sign_broadcast_receipt_ledger",
+      "status": "NOT_EXECUTED_REQUIRES_COMMANDER_APPROVAL"
+    }
+  ],
+  "full_contract_simulation_ready": false,
+  "safety": {
+    "allowed_rpc_methods": [
+      "eth_blockNumber",
+      "eth_call",
+      "eth_chainId",
+      "eth_getCode"
+    ],
+    "signed": false,
+    "broadcast_count": 0,
+    "wallet_access": 0,
+    "keystore_reads": 0,
+    "eth_send_raw_transaction_calls": 0
+  }
+}

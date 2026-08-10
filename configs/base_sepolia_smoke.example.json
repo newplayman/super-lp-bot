@@ -1,0 +1,28 @@
+{
+  "schema": "base_sepolia_smoke_v1",
+  "network": "base_sepolia",
+  "expected_chain_id": 84532,
+  "rpc_url": "https://sepolia.base.org",
+  "explorer_url": "https://sepolia-explorer.base.org",
+  "dry_run_only": true,
+  "signing_enabled": false,
+  "broadcast_enabled": false,
+  "live_trading": false,
+  "wallet_address": null,
+  "keystore_path": null,
+  "password_file": null,
+  "contracts": {
+    "weth9": "0x4200000000000000000000000000000000000006",
+    "position_manager": null,
+    "token0": null,
+    "token1": null,
+    "pool": null
+  },
+  "smoke_limits": {
+    "notional_test_eth": "0.0001",
+    "max_transactions": 6,
+    "confirmations": 3,
+    "deadline_seconds": 600
+  },
+  "approval_required_before_execution": true
+}

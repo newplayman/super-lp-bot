@@ -27,6 +27,7 @@ from typing import Any, Callable, Mapping, Sequence
 
 
 BASE_CHAIN_ID = 8453
+BASE_SEPOLIA_CHAIN_ID = 84532
 UINT128_MAX = (1 << 128) - 1
 UINT256_MAX = (1 << 256) - 1
 LIVE_CONFIRMATION = "CONFIRM_BASE_M1_LIVE_BROADCAST"
@@ -89,6 +90,37 @@ class Action(str, Enum):
 class ExecutionState(str, Enum):
     NORMAL = "NORMAL"
     EXIT_ONLY = "EXIT_ONLY"
+
+
+class ExecutionNetwork(str, Enum):
+    BASE_MAINNET = "base_mainnet"
+    BASE_SEPOLIA = "base_sepolia"
+
+
+EXECUTION_NETWORK_CHAIN_IDS = {
+    ExecutionNetwork.BASE_MAINNET: BASE_CHAIN_ID,
+    ExecutionNetwork.BASE_SEPOLIA: BASE_SEPOLIA_CHAIN_ID,
+}
+
+
+def assert_executor_chain_id(network: ExecutionNetwork | str, observed_chain_id: int) -> int:
+    """Hard-stop startup when the RPC chain differs from the selected mode."""
+    try:
+        selected = network if isinstance(network, ExecutionNetwork) else ExecutionNetwork(network)
+    except ValueError as exc:
+        raise PolicyRejected(f"unsupported execution network: {network!r}") from exc
+    if isinstance(observed_chain_id, bool):
+        raise PolicyRejected("observed chain id must be an integer")
+    try:
+        observed = int(observed_chain_id)
+    except (TypeError, ValueError) as exc:
+        raise PolicyRejected("observed chain id must be an integer") from exc
+    expected = EXECUTION_NETWORK_CHAIN_IDS[selected]
+    if observed != expected:
+        raise PolicyRejected(
+            f"refusing {selected.value}: expected chain id {expected}, observed {observed}"
+        )
+    return observed
 
 
 RISK_REDUCING_ACTIONS = frozenset(
@@ -564,12 +596,16 @@ class CastKeystoreSigner:
         rpc_url: str,
         expected_uid: int | None = None,
         run: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
+        chain_id: int = BASE_CHAIN_ID,
     ):
         verify_keystore_permissions(keystore, expected_uid)
         verify_keystore_permissions(password_file, expected_uid)
         self.keystore = keystore
         self.password_file = password_file
         self.rpc_url = rpc_url
+        if chain_id not in {BASE_CHAIN_ID, BASE_SEPOLIA_CHAIN_ID}:
+            raise PolicyRejected(f"unsupported signer chain id {chain_id}")
+        self.chain_id = chain_id
         self.run = run
 
     def sign(
@@ -579,7 +615,7 @@ class CastKeystoreSigner:
             "cast", "mktx", tx.to, tx.data, "--value", str(tx.value_wei),
             "--nonce", str(nonce), "--gas-limit", str(gas_limit), "--gas-price",
             str(max_fee_per_gas), "--priority-gas-price", str(priority_fee), "--chain",
-            str(BASE_CHAIN_ID), "--rpc-url", self.rpc_url, "--keystore", str(self.keystore),
+            str(self.chain_id), "--rpc-url", self.rpc_url, "--keystore", str(self.keystore),
             "--password-file", str(self.password_file),
         ]
         result = self.run(command, text=True, capture_output=True, check=True, env={"PATH": os.environ["PATH"]})
@@ -665,6 +701,8 @@ class BaseM1Executor:
         policy: ExecutionPolicy,
         ledger: Ledger,
         wallet: str,
+        network: ExecutionNetwork = ExecutionNetwork.BASE_MAINNET,
+        observed_chain_id: int | None = None,
     ):
         self.rpc = rpc
         self.signer = signer
@@ -672,6 +710,21 @@ class BaseM1Executor:
         self.policy = policy
         self.ledger = ledger
         self.wallet = _norm_address(wallet)
+        try:
+            self.network = network if isinstance(network, ExecutionNetwork) else ExecutionNetwork(network)
+        except ValueError as exc:
+            raise PolicyRejected(f"unsupported execution network: {network!r}") from exc
+        # Testnet mode may never start on an implicit/default chain.  The
+        # caller must first read eth_chainId from its configured RPC and pass
+        # the observation here.  Mainnet keeps the legacy constructor shape,
+        # but validates too whenever an observation is supplied.
+        if self.network is ExecutionNetwork.BASE_SEPOLIA and observed_chain_id is None:
+            raise PolicyRejected("Base Sepolia startup requires an observed chain id")
+        self.chain_id = assert_executor_chain_id(
+            self.network, BASE_CHAIN_ID if observed_chain_id is None else observed_chain_id
+        )
+        if self.network is ExecutionNetwork.BASE_SEPOLIA and getattr(signer, "chain_id", None) != self.chain_id:
+            raise PolicyRejected("Base Sepolia signer chain id does not match verified RPC chain")
         self.validator = IntentValidator(policy, ledger)
         self.nonces = NonceManager(rpc, wallet)
         self.state = ExecutionState.NORMAL
