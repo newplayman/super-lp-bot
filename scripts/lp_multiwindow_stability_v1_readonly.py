@@ -5,8 +5,9 @@ lp_multiwindow_stability_v1_readonly.py  (READ-ONLY research)
 Tier-B long-test readiness gap #1: a single window's sigma / fee_cover is ONE
 realization. Before trusting a pool's edge for an allocation, measure it over
 several ROLLING windows and report stability (mean, dispersion, fraction of
-windows that would ENTER). A pool whose fee_cover is >=1 in 1 of 6 windows is a
-fluke; >=1 in 6 of 6 is a durable edge.
+windows that would ENTER). Ten windows are intentional: with six windows the
+possible fractions made the unchanged 0.70 threshold behave like 5/6=83.3%; ten
+windows restore the literal 7/10=70% decision boundary.
 
 For each pool x window: fetch real swaps -> sigma_daily -> H=14 vol-sized range
 -> passive replay -> fees_quote, il_quote -> fee_cover. Aggregate per pool.
@@ -32,7 +33,7 @@ if _ROOT not in sys.path:
 
 BASE_BLOCKS_PER_DAY = 43200
 DEFAULT_WINDOW_DAYS = 1.0
-DEFAULT_N_WINDOWS = 6
+DEFAULT_N_WINDOWS = 10
 STABLE_MIN_FRAC = 0.7        # >=70% of windows must ENTER to call it stable
 H_NEUTRAL = 14
 
@@ -131,10 +132,23 @@ def assess_pool(live, cfg, window_days, n_windows, tip):
         windows.append(m)
     covers = [w["fee_cover"] for w in windows]
     sigmas = [w["sigma_daily"] for w in windows]
+    decision = classify_stability(covers)
+    # D2 audit control: when the calibrated ten-window default is used, retain
+    # the exact decision the former six-window default would have made from the
+    # same tip and the same observations.  This makes flips attributable to
+    # discretisation precision instead of comparing two different market times.
+    if len(covers) >= 10:
+        former = classify_stability(covers[:6])
+        decision.update({
+            "same_batch_former_n_windows": 6,
+            "same_batch_former_n_enter": former["n_enter"],
+            "same_batch_former_enter_frac": former["enter_frac"],
+            "same_batch_former_stable": former["stable"],
+        })
     return {
         "label": label, "pool": pool, "tier_hint": cfg.get("tier_hint"),
         "n_windows": len(windows),
-        "fee_cover_stability": classify_stability(covers),
+        "fee_cover_stability": decision,
         "fee_cover_summary": stability_summary([_as_cover(c) for c in covers]),
         "sigma_summary": stability_summary(sigmas),
         "windows": windows,

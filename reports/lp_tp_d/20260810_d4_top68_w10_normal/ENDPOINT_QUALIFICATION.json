@@ -1,0 +1,46 @@
+{
+  "schema": "lp_tp_d_endpoint_qualification_v1",
+  "observed_at": "2026-08-10",
+  "chain": "Base",
+  "read_only": true,
+  "signed": false,
+  "broadcast_count": 0,
+  "probe": {
+    "pool": "0x4e829f8a5213c42535ab84aa40bd4adcce9cba02",
+    "block_span": 2000,
+    "topic": "V3_SWAP_TOPIC",
+    "methods": ["eth_blockNumber", "eth_getLogs"]
+  },
+  "results": [
+    {
+      "url": "https://mainnet.base.org",
+      "block_seconds": 0.820,
+      "logs_seconds": 0.201,
+      "logs_count": 51,
+      "pass": true
+    },
+    {
+      "url": "https://developer-access-mainnet.base.org",
+      "block_seconds": 0.176,
+      "logs_seconds": 0.192,
+      "logs_count": 51,
+      "pass": true
+    },
+    {
+      "url": "https://base.drpc.org",
+      "block_seconds": 0.053,
+      "logs_seconds": 0.120,
+      "logs_count": 51,
+      "pass": true
+    },
+    {
+      "url": "https://base.lava.build",
+      "block_seconds": 0.204,
+      "logs_seconds": 0.419,
+      "logs_count": 51,
+      "pass": true
+    }
+  ],
+  "selection_rule": "all configured free Base endpoints that passed both the tip and representative 2000-block address-filtered getLogs probe",
+  "selected_count": 4
+}

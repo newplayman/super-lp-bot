@@ -1,0 +1,127 @@
+{
+  "schema": "lp_c6_preflight_v1",
+  "generated_at": "2026-08-10T11:42:51.566700+00:00",
+  "overall": "FAIL",
+  "passed": 6,
+  "failed": 2,
+  "checks": [
+    {
+      "check_id": "candidate",
+      "label": "存在 ≥1 个全闸通过候选",
+      "passed": false,
+      "detail": "latest=2026-08-10T11:07:11.047908+00:00; accepted=0",
+      "evidence": {
+        "scanner_db": "/opt/lpbot/lp-bot-v3-origin-check/reports/lp_scanner/scanner.db",
+        "as_of": "2026-08-10T11:07:11.047908+00:00",
+        "accepted": 0
+      }
+    },
+    {
+      "check_id": "broadcast_lock",
+      "label": "C4 广播锁 false 且未解锁",
+      "passed": true,
+      "detail": "runtime_locked=True; LIVE_TRADING_true=False; startup_confirmed=False; unit_default_false=True; send_calls=0",
+      "evidence": {
+        "runtime_locked": true,
+        "live_trading_true": false,
+        "startup_confirmed": false,
+        "systemd_default_false": true,
+        "transport_send_calls": 0
+      }
+    },
+    {
+      "check_id": "keystore_isolation",
+      "label": "keystore 权限与进程隔离",
+      "passed": true,
+      "detail": "keystore=True; password=True; distinct_users=True; contents_read=false",
+      "evidence": {
+        "configured": true,
+        "keystore": {
+          "path": "/etc/lpbot-executor/keystore.json",
+          "regular": true,
+          "mode": "0o600",
+          "uid": 997,
+          "expected_uid": 997,
+          "owner_ok": true,
+          "contents_read": false
+        },
+        "password": {
+          "path": "/etc/lpbot-executor/password",
+          "regular": true,
+          "mode": "0o600",
+          "uid": 997,
+          "expected_uid": 997,
+          "owner_ok": true,
+          "contents_read": false
+        },
+        "distinct_users": true
+      }
+    },
+    {
+      "check_id": "kill_exit_only",
+      "label": "kill switch 与 EXIT_ONLY 通路",
+      "passed": true,
+      "detail": "mint_blocked=True; revoke_allowed=True",
+      "evidence": {
+        "mint_blocked": true,
+        "revoke_allowed": true,
+        "network_calls": 0
+      }
+    },
+    {
+      "check_id": "c3_lower_exit",
+      "label": "下破退出演练 C3",
+      "passed": true,
+      "detail": "verdict=derived; scenarios=3; all_pass=True",
+      "evidence": {
+        "artifact": "/opt/lpbot/lp-bot-v3-origin-check/reports/lp_defensive_exit_lower_replay/20260809_c3_acceptance/results.json",
+        "verdict": "",
+        "scenarios": 3,
+        "all_pass": true
+      }
+    },
+    {
+      "check_id": "ledger_reconciliation",
+      "label": "账本对账工具可用",
+      "passed": true,
+      "detail": "base_live_impl=True; operator_cli_stub=False",
+      "evidence": {
+        "live_implementation": "/opt/lpbot/lp-bot-v3-origin-check/cmd/lpbot/base_tx_reconcile_live.go",
+        "operator_cli": "/opt/lpbot/lp-bot-v3-origin-check/cmd/lpbot-recon/main.go",
+        "operator_cli_stub": false
+      }
+    },
+    {
+      "check_id": "free_rpc",
+      "label": "免费 RPC 健康且无 EXIT_ONLY/KILLED",
+      "passed": true,
+      "detail": "chain_id=8453; block=49786412; state=NORMAL; unresolved=0",
+      "evidence": {
+        "chain_id": 8453,
+        "block_number": 49786412,
+        "state": "NORMAL",
+        "total_endpoints": 11,
+        "impaired_endpoints": 0,
+        "cooling_endpoints": 0,
+        "max_consecutive_failures": 0,
+        "unresolved_severe_incidents": 0
+      }
+    },
+    {
+      "check_id": "wallet_gas",
+      "label": "钱包余额与 gas 储备（若配置）",
+      "passed": false,
+      "detail": "未配置钱包/余额探针；未访问钱包、未读取 keystore",
+      "evidence": {
+        "configured": false,
+        "wallet_access": 0,
+        "keystore_reads": 0
+      }
+    }
+  ],
+  "safety": {
+    "signed": false,
+    "broadcast_count": 0,
+    "wallet_access": 0
+  }
+}

@@ -1,0 +1,287 @@
+{
+  "schema": "lp_tp_d_compare_v1",
+  "thresholds_unchanged": {
+    "stable_min_frac": 0.7,
+    "netcover_min": 1.0
+  },
+  "old_count": 92,
+  "new_count": 68,
+  "same_batch_d2": {
+    "controlled_count": 47,
+    "former_6_enter_frac_distribution": {
+      "0.167": 2,
+      "0.333": 1,
+      "0.500": 6,
+      "0.667": 9,
+      "0.833": 18,
+      "1.000": 11
+    },
+    "current_10_enter_frac_distribution": {
+      "0.300": 1,
+      "0.400": 2,
+      "0.500": 4,
+      "0.600": 2,
+      "0.700": 8,
+      "0.800": 14,
+      "0.900": 11,
+      "1.000": 5
+    },
+    "former_6_stable_count": 29,
+    "current_10_stable_count": 38,
+    "pass_to_fail": [
+      {
+        "llama_pool_id": "2641aaa3-d441-4718-b638-029d09ca1d14",
+        "symbol": "WETH-AAVE",
+        "former_6_enter_frac": 0.833,
+        "current_10_enter_frac": 0.6,
+        "former_6_n_enter": 5
+      },
+      {
+        "llama_pool_id": "06a7ca71-dc68-495c-b1d8-5c708339f0ab",
+        "symbol": "USDC-AERO",
+        "former_6_enter_frac": 0.833,
+        "current_10_enter_frac": 0.6,
+        "former_6_n_enter": 5
+      }
+    ],
+    "fail_to_pass": [
+      {
+        "llama_pool_id": "7944b313-e6ee-42b2-a5c8-a26446e37621",
+        "symbol": "USDC-DIEM",
+        "former_6_enter_frac": 0.667,
+        "current_10_enter_frac": 0.8,
+        "former_6_n_enter": 4
+      },
+      {
+        "llama_pool_id": "b99bcdf5-1350-4269-981e-0e9b5cccb007",
+        "symbol": "WETH-USDC",
+        "former_6_enter_frac": 0.667,
+        "current_10_enter_frac": 0.8,
+        "former_6_n_enter": 4
+      },
+      {
+        "llama_pool_id": "577caee3-254c-405d-a642-17e6b47a52b6",
+        "symbol": "WETH-USDT",
+        "former_6_enter_frac": 0.667,
+        "current_10_enter_frac": 0.8,
+        "former_6_n_enter": 4
+      },
+      {
+        "llama_pool_id": "c7d461f8-4ad8-42d8-a6b8-378fd8045660",
+        "symbol": "USDC-VVV",
+        "former_6_enter_frac": 0.667,
+        "current_10_enter_frac": 0.8,
+        "former_6_n_enter": 4
+      },
+      {
+        "llama_pool_id": "eb27d0be-9de4-4ed9-8d36-a754e18d3358",
+        "symbol": "AVNT-USDC",
+        "former_6_enter_frac": 0.667,
+        "current_10_enter_frac": 0.8,
+        "former_6_n_enter": 4
+      },
+      {
+        "llama_pool_id": "847c874f-d4e7-47ed-8870-97d2f24a8767",
+        "symbol": "EURC-USDC",
+        "former_6_enter_frac": 0.667,
+        "current_10_enter_frac": 0.7,
+        "former_6_n_enter": 4
+      },
+      {
+        "llama_pool_id": "a09feb82-76db-4291-aea9-dc6e88343e09",
+        "symbol": "WETH-USOL",
+        "former_6_enter_frac": 0.5,
+        "current_10_enter_frac": 0.7,
+        "former_6_n_enter": 3
+      },
+      {
+        "llama_pool_id": "d1a265ef-1c32-4d98-b2d6-a473447286a2",
+        "symbol": "SOSO-USDC",
+        "former_6_enter_frac": 0.667,
+        "current_10_enter_frac": 0.7,
+        "former_6_n_enter": 4
+      },
+      {
+        "llama_pool_id": "f3ab8cab-927e-4aed-9cbf-00d95c5350d7",
+        "symbol": "TOWNS-WETH",
+        "former_6_enter_frac": 0.667,
+        "current_10_enter_frac": 0.7,
+        "former_6_n_enter": 4
+      },
+      {
+        "llama_pool_id": "7cb47e02-170a-4f9e-bdd4-9d1a9a65e65a",
+        "symbol": "WETH-REI",
+        "former_6_enter_frac": 0.5,
+        "current_10_enter_frac": 0.7,
+        "former_6_n_enter": 3
+      },
+      {
+        "llama_pool_id": "3709f4bb-2114-4742-907a-7bb5d58de274",
+        "symbol": "BIO-WETH",
+        "former_6_enter_frac": 0.5,
+        "current_10_enter_frac": 0.7,
+        "former_6_n_enter": 3
+      }
+    ]
+  },
+  "cross_run_d4": {
+    "intersection_count": 65,
+    "old_terminal_distribution": {
+      "asset_quality": 1,
+      "entry_eligible": 14,
+      "multiwindow_stable": 20,
+      "netcover": 23,
+      "resolution_status": 25,
+      "yield_cover": 9
+    },
+    "new_terminal_distribution": {
+      "entry_eligible": 8,
+      "multiwindow_stable": 6,
+      "netcover": 25,
+      "resolution_status": 21,
+      "yield_cover": 8
+    },
+    "terminal_gate_changes_on_intersection": [
+      {
+        "llama_pool_id": "10137e20-efbc-4e15-a733-17ecb52c48e8",
+        "symbol": "WETH-USDC",
+        "old_first_failed_gate": "netcover",
+        "new_first_failed_gate": "entry_eligible"
+      },
+      {
+        "llama_pool_id": "18674a4f-57ea-4c91-99ce-ea1a2b37aa3d",
+        "symbol": "FUN-USDC",
+        "old_first_failed_gate": "multiwindow_stable",
+        "new_first_failed_gate": "entry_eligible"
+      },
+      {
+        "llama_pool_id": "2d73e593-f529-4373-aca7-58b4c552517b",
+        "symbol": "HYPE-WETH",
+        "old_first_failed_gate": "entry_eligible",
+        "new_first_failed_gate": "multiwindow_stable"
+      },
+      {
+        "llama_pool_id": "34185ab1-edf5-413a-b5bb-6d0fb2b4ef5f",
+        "symbol": "USDC-AERO",
+        "old_first_failed_gate": "yield_cover",
+        "new_first_failed_gate": "netcover"
+      },
+      {
+        "llama_pool_id": "34987574-6e85-4046-ae9f-2b2b881008c6",
+        "symbol": "ICP-WETH",
+        "old_first_failed_gate": "entry_eligible",
+        "new_first_failed_gate": "yield_cover"
+      },
+      {
+        "llama_pool_id": "3709f4bb-2114-4742-907a-7bb5d58de274",
+        "symbol": "BIO-WETH",
+        "old_first_failed_gate": "multiwindow_stable",
+        "new_first_failed_gate": "yield_cover"
+      },
+      {
+        "llama_pool_id": "7944b313-e6ee-42b2-a5c8-a26446e37621",
+        "symbol": "USDC-DIEM",
+        "old_first_failed_gate": "multiwindow_stable",
+        "new_first_failed_gate": "entry_eligible"
+      },
+      {
+        "llama_pool_id": "847c874f-d4e7-47ed-8870-97d2f24a8767",
+        "symbol": "EURC-USDC",
+        "old_first_failed_gate": "multiwindow_stable",
+        "new_first_failed_gate": "netcover"
+      },
+      {
+        "llama_pool_id": "aae6cc3a-783b-4a76-bea7-c3edccd28d62",
+        "symbol": "MSUSD-USDC",
+        "old_first_failed_gate": "multiwindow_stable",
+        "new_first_failed_gate": "netcover"
+      },
+      {
+        "llama_pool_id": "adcae740-c286-43a4-b71d-8c301a4ac526",
+        "symbol": "USDC-ACU",
+        "old_first_failed_gate": "multiwindow_stable",
+        "new_first_failed_gate": "netcover"
+      },
+      {
+        "llama_pool_id": "af5670be-df7d-4d34-934f-5b5cc7dcef0b",
+        "symbol": "RAVE-USDC",
+        "old_first_failed_gate": "multiwindow_stable",
+        "new_first_failed_gate": "netcover"
+      },
+      {
+        "llama_pool_id": "bf599ba2-97ae-48bb-9fd0-4f647ad7a832",
+        "symbol": "USDC-CBBTC",
+        "old_first_failed_gate": "entry_eligible",
+        "new_first_failed_gate": "netcover"
+      },
+      {
+        "llama_pool_id": "c3bf7641-16f2-458e-8aad-c02d230c3817",
+        "symbol": "FLOWER-USDC",
+        "old_first_failed_gate": "netcover",
+        "new_first_failed_gate": "yield_cover"
+      },
+      {
+        "llama_pool_id": "c7d461f8-4ad8-42d8-a6b8-378fd8045660",
+        "symbol": "USDC-VVV",
+        "old_first_failed_gate": "multiwindow_stable",
+        "new_first_failed_gate": "netcover"
+      },
+      {
+        "llama_pool_id": "e351f2a6-2bcd-4a74-9d44-fc9795fce9c8",
+        "symbol": "TRUST-USDC",
+        "old_first_failed_gate": "multiwindow_stable",
+        "new_first_failed_gate": "netcover"
+      },
+      {
+        "llama_pool_id": "f3ab8cab-927e-4aed-9cbf-00d95c5350d7",
+        "symbol": "TOWNS-WETH",
+        "old_first_failed_gate": "entry_eligible",
+        "new_first_failed_gate": "yield_cover"
+      },
+      {
+        "llama_pool_id": "f884e3f7-f6e1-4b9e-b041-8624411ccddf",
+        "symbol": "WETH-MORPHO",
+        "old_first_failed_gate": "multiwindow_stable",
+        "new_first_failed_gate": "netcover"
+      },
+      {
+        "llama_pool_id": "f9fbb53c-9584-498d-9a17-a67376550b5d",
+        "symbol": "USDC-CBMEGA",
+        "old_first_failed_gate": "netcover",
+        "new_first_failed_gate": "entry_eligible"
+      }
+    ],
+    "old_accepted": 0,
+    "new_accepted": 0,
+    "old_best_reached_netcover": {
+      "llama_pool_id": "3ea03bb2-0fda-4280-9389-f76c5b75ff2b",
+      "symbol": "WETH-USDC",
+      "netcover_ratio": 0.8209981338933144,
+      "first_failed_gate": "netcover"
+    },
+    "new_best_reached_netcover": {
+      "llama_pool_id": "bf599ba2-97ae-48bb-9fd0-4f647ad7a832",
+      "symbol": "USDC-CBBTC",
+      "netcover_ratio": 0.8545946970820348,
+      "first_failed_gate": "netcover"
+    },
+    "old_best_any_calculable": {
+      "llama_pool_id": "c7d461f8-4ad8-42d8-a6b8-378fd8045660",
+      "symbol": "USDC-VVV",
+      "netcover_ratio": 0.8508625005466695,
+      "first_failed_gate": "multiwindow_stable"
+    },
+    "new_best_any_calculable": {
+      "llama_pool_id": "bf599ba2-97ae-48bb-9fd0-4f647ad7a832",
+      "symbol": "USDC-CBBTC",
+      "netcover_ratio": 0.8545946970820348,
+      "first_failed_gate": "netcover"
+    }
+  },
+  "sources": {
+    "old_db": "reports/lp_funnel_autopsy/20260810_043427/scanner.db",
+    "old_as_of": "2026-08-10T04:34:39.491608+00:00",
+    "new_db": "reports/lp_tp_d/20260810_d4_top68_w10_normal/scanner.db",
+    "new_as_of": "2026-08-10T13:24:29.678852+00:00"
+  }
+}

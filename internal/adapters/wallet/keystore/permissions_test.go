@@ -29,6 +29,11 @@ func TestKeystore_Permissions_0644_Reject(t *testing.T) {
 	tmpFile := filepath.Join(tmpDir, "test_key")
 	err := os.WriteFile(tmpFile, []byte("test"), 0644)
 	assert.NoError(t, err)
+	// The TP-D executor host intentionally uses umask 0077.  Force the unsafe
+	// mode under test instead of letting the secure process umask turn it into
+	// 0600 before CheckFilePermissions sees it.
+	err = os.Chmod(tmpFile, 0644)
+	assert.NoError(t, err)
 
 	err = CheckFilePermissions(tmpFile)
 	assert.Error(t, err, "0644 permissions should be rejected")
@@ -41,6 +46,8 @@ func TestKeystore_Permissions_0640_Reject(t *testing.T) {
 	tmpDir := t.TempDir()
 	tmpFile := filepath.Join(tmpDir, "test_key")
 	err := os.WriteFile(tmpFile, []byte("test"), 0640)
+	assert.NoError(t, err)
+	err = os.Chmod(tmpFile, 0640)
 	assert.NoError(t, err)
 
 	err = CheckFilePermissions(tmpFile)

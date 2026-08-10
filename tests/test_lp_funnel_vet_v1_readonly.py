@@ -43,6 +43,24 @@ def test_vet_record_all_gates_pass():
     assert r["stable"] is True and r["enter_frac"] == 0.83
 
 
+def test_vet_record_preserves_same_batch_discretization_audit_fields():
+    r = vet_record(
+        _b("D2", "B", 8.2, "0xAAA"),
+        {
+            "stable": True,
+            "enter_frac": 0.7,
+            "same_batch_former_n_windows": 6,
+            "same_batch_former_n_enter": 4,
+            "same_batch_former_enter_frac": 0.667,
+            "same_batch_former_stable": False,
+        },
+        require_netcover=False,
+    )
+    assert r["same_batch_former_enter_frac"] == 0.667
+    assert r["same_batch_former_stable"] is False
+    assert r["stable"] is True
+
+
 def test_vet_record_each_gate_can_fail():
     # unstable
     assert vet_record(_b("U", "B", 14, "0xB"), {"stable": False}, require_netcover=False)["vetted"] is False

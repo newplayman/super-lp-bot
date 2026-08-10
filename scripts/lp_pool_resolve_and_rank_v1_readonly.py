@@ -569,6 +569,110 @@ def _read_pool_token_order_and_decimals(
     return token0, token1, dec0, dec1
 
 
+def prime_resolution_reads(
+    candidates: Sequence[Mapping[str, Any]],
+    batched_rpc: Any,
+) -> Dict[str, int]:
+    """Prime resolver contract reads through Multicall3 in dependency waves.
+
+    Factory results must be known before pool identity calls can be built, and
+    token addresses must be known before decimals calls can be built.  Three
+    small waves preserve that dependency order while reducing roughly six
+    logical ``eth_call`` reads per resolved pool to a handful of RpcPool
+    requests.  ``eth_getLogs`` is intentionally outside this optimization.
+    Invalid candidate rows are left for ``process_candidate`` to fail closed.
+    """
+    from scripts.lp_multicall3_v1_readonly import Call3
+
+    if not callable(getattr(batched_rpc, "prime", None)):
+        raise TypeError("batched_rpc must expose BatchedRpcReader.prime")
+
+    def unique(calls: Iterable[Call3]) -> List[Call3]:
+        seen = set()
+        result = []
+        for call in calls:
+            key = (normalize_address(call.target), call.call_data.lower())
+            if key not in seen:
+                seen.add(key)
+                result.append(call)
+        return result
+
+    factory_calls: List[Call3] = []
+    for candidate in candidates:
+        try:
+            project = _project_key(str(candidate.get("project") or ""))
+            tokens = _coerce_list(candidate.get("underlyingTokens"))
+            if len(tokens) != 2:
+                continue
+            token_a, token_b = normalize_address(tokens[0]), normalize_address(tokens[1])
+            if project == "uniswap-v3":
+                fee = _safe_float(candidate.get("fee_tier"), None)
+                if fee is None:
+                    continue
+                fee_or_spacing = int(round(fee * 1_000_000))
+                factories = (normalize_address(UNISWAP_V3_FACTORY),)
+                builder = build_uniswap_get_pool_calldata
+            else:
+                spacing = _safe_int(candidate.get("tick_spacing"), None)
+                if spacing is None:
+                    continue
+                fee_or_spacing = spacing
+                factories = tuple(
+                    normalize_address(str(item["factory"]))
+                    for item in AERODROME_SLIPSTREAM_FACTORIES
+                )
+                builder = build_aerodrome_get_pool_calldata
+            for factory in factories:
+                for left, right in ((token_a, token_b), (token_b, token_a)):
+                    factory_calls.append(Call3(
+                        factory, builder(left, right, fee_or_spacing), True
+                    ))
+        except (TypeError, ValueError):
+            continue
+
+    factory_calls = unique(factory_calls)
+    batched_rpc.prime(factory_calls)
+
+    pools = set()
+    for call in factory_calls:
+        raw = batched_rpc.cached(call.target, call.call_data)
+        if raw is None:
+            continue
+        try:
+            pool = decode_address_word(raw)
+        except (TypeError, ValueError):
+            continue
+        if pool != ZERO_ADDRESS:
+            pools.add(pool)
+
+    pool_calls = unique(
+        Call3(pool, selector, True)
+        for pool in sorted(pools)
+        for selector in (SELECTOR_TOKEN0, SELECTOR_TOKEN1, SELECTOR_TICK_SPACING)
+    )
+    batched_rpc.prime(pool_calls)
+
+    tokens = set()
+    for call in pool_calls:
+        if call.call_data not in (SELECTOR_TOKEN0, SELECTOR_TOKEN1):
+            continue
+        raw = batched_rpc.cached(call.target, call.call_data)
+        if raw is None:
+            continue
+        try:
+            tokens.add(decode_address_word(raw))
+        except (TypeError, ValueError):
+            continue
+    decimal_calls = unique(Call3(token, SELECTOR_DECIMALS, True) for token in sorted(tokens))
+    batched_rpc.prime(decimal_calls)
+    return {
+        "factory_calls": len(factory_calls),
+        "pool_identity_calls": len(pool_calls),
+        "token_decimals_calls": len(decimal_calls),
+        "logical_calls": len(factory_calls) + len(pool_calls) + len(decimal_calls),
+    }
+
+
 def _call_helper(func: Any, kwargs: Mapping[str, Any], positional_fallbacks: Sequence[Tuple[Any, ...]] = ()) -> Any:
     last_error: Optional[Exception] = None
     try:
@@ -1048,7 +1152,31 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         parser.error("--candidates is required unless --self-test is set")
 
     live = _load_live_helpers()
+    # The standalone resolver follows the same shared RpcPool discipline as
+    # the daemon; no Multicall3 path owns or bypasses a raw endpoint URL.
+    from scripts.lp_multicall3_v1_readonly import BatchedRpcReader, Multicall3Reader
+    from scripts.lp_rpc_pool_v1_readonly import RpcPool
+
+    rpc_pool = RpcPool("base")
+    batched_rpc = BatchedRpcReader(rpc_pool, Multicall3Reader(rpc_pool))
+    raw_fetch = live["fetch_pool_swaps"]
+
+    def fetch_with_pool(
+        address: str, from_block: int, to_block: int, dec0: int, dec1: int
+    ) -> Any:
+        return raw_fetch(
+            address,
+            from_block,
+            to_block,
+            dec0,
+            dec1,
+            rpc_call=rpc_pool.call,
+        )
+
+    live["_rpc_with_retry"] = batched_rpc.call
+    live["fetch_pool_swaps"] = fetch_with_pool
     candidates = _read_candidates(args.candidates)
+    prime_resolution_reads(candidates, batched_rpc)
     current_block = _eth_block_number(live["_rpc_with_retry"])
     caches: Dict[str, MutableMapping[Any, Any]] = {
         "pool": {},

@@ -1,0 +1,148 @@
+{
+  "schema": "lp_tp_d_full_once_v1",
+  "generated_at": "2026-08-10T14:43:11.459838+00:00",
+  "read_only": true,
+  "signed": false,
+  "broadcast_count": 0,
+  "config": {
+    "top": 68,
+    "n_windows": 10,
+    "stable_min_frac": 0.7,
+    "rpc_pace_secs": 0.2,
+    "fetch_pace_secs": 0.0,
+    "qualified_endpoint_urls": [
+      "https://mainnet.base.org",
+      "https://developer-access-mainnet.base.org",
+      "https://base.drpc.org",
+      "https://base.lava.build"
+    ]
+  },
+  "conservative_rpc_budget": {
+    "semantics": "logical requests before provider retries; conservative upper bound",
+    "old": {
+      "top_n": 92,
+      "n_windows": 6,
+      "components": {
+        "batch_tip_calls": 2,
+        "resolve_factory_lookup_calls": 552,
+        "resolve_candidate_validation_calls": 1656,
+        "resolve_window_log_calls": 4048,
+        "stability_window_log_calls": 12144,
+        "terminal_live_state_calls": 184,
+        "cross_route_fixed_batch_calls": 89
+      },
+      "total": 18675
+    },
+    "new": {
+      "top_n": 68,
+      "n_windows": 10,
+      "components": {
+        "batch_tip_calls": 2,
+        "multicall3_runtime_validation_calls": 1,
+        "resolve_factory_aggregate_calls": 7,
+        "resolve_pool_identity_aggregate_calls": 21,
+        "resolve_token_decimals_aggregate_calls": 14,
+        "resolve_pool_code_calls": 408,
+        "resolve_window_log_calls": 2992,
+        "stability_window_log_calls": 14960,
+        "terminal_live_state_aggregate_calls": 3,
+        "cross_route_fixed_batch_calls": 89
+      },
+      "total": 18497
+    },
+    "delta": -178,
+    "within_old_budget": true
+  },
+  "cycle": {
+    "as_of": "2026-08-10T13:24:29.678852+00:00",
+    "screened": 730,
+    "candidates": 68,
+    "resolved": 68,
+    "scored": 68,
+    "accepted": 0,
+    "market_sessions": 0,
+    "rpc_health": "DEGRADED",
+    "multicall3_evidence": {
+      "address": "0xca11bde05977b3631167028862be2a173976ca11",
+      "validation_status": "VALIDATED",
+      "bytecode_bytes": 3808,
+      "bytecode_keccak256": "0xd5c15df687b16f2ff992fc8d767b4216323184a2bbc6ee2f9c398c318e770891",
+      "validation_error": null,
+      "request_counts": {
+        "logical_calls": 665,
+        "eth_getCode_requests": 1,
+        "aggregate3_requests": 12,
+        "serial_fallback_requests": 0,
+        "per_call_failures": 0
+      },
+      "cache_hits": 865,
+      "failed_primes": 0
+    }
+  },
+  "cycle_seconds": 4721.5823478112,
+  "stage_seconds": {
+    "screen": 0.9755021333694458,
+    "resolve": 897.3838525721803,
+    "multiwindow": 3800.218002842739,
+    "funnel": 0.059905231930315495,
+    "netcover": 22.75843510404229
+  },
+  "rpc": {
+    "physical_attempts_by_method": {
+      "eth_blockNumber": 3,
+      "eth_call": 104,
+      "eth_getCode": 91,
+      "eth_getLogs": 12645
+    },
+    "physical_attempts_total": 12843,
+    "successes_by_method": {
+      "eth_blockNumber": 3,
+      "eth_call": 92,
+      "eth_getCode": 89,
+      "eth_getLogs": 12408
+    },
+    "failures_by_method": {
+      "eth_call": 12,
+      "eth_getCode": 2,
+      "eth_getLogs": 237
+    },
+    "attempts_by_endpoint": {
+      "https://base.drpc.org": 2696,
+      "https://base.lava.build": 3501,
+      "https://developer-access-mainnet.base.org": 3363,
+      "https://mainnet.base.org": 3283
+    }
+  },
+  "rpc_health": {
+    "state": "DEGRADED",
+    "total_endpoints": 4,
+    "impaired_endpoints": 2,
+    "cooling_endpoints": 2,
+    "max_consecutive_failures": 2
+  },
+  "multicall3": {
+    "evidence": {
+      "address": "0xca11bde05977b3631167028862be2a173976ca11",
+      "validation_status": "VALIDATED",
+      "bytecode_bytes": 3808,
+      "bytecode_keccak256": "0xd5c15df687b16f2ff992fc8d767b4216323184a2bbc6ee2f9c398c318e770891",
+      "validation_error": null
+    },
+    "request_counts": {
+      "logical_calls": 665,
+      "eth_getCode_requests": 1,
+      "aggregate3_requests": 12,
+      "serial_fallback_requests": 0,
+      "per_call_failures": 0
+    },
+    "cache_hits": 865,
+    "failed_primes": 0
+  },
+  "vetted_menu_export": {
+    "as_of": "2026-08-10T13:24:29.678852+00:00",
+    "accepted_rows": 0,
+    "exported_records": 0,
+    "invalid_records": 0,
+    "out": "reports/lp_tp_d/20260810_d4_top68_w10_normal/vetted_menu.json"
+  }
+}

@@ -90,6 +90,17 @@ def vet_record(bridge_rec, stab_summary, *, yc_min=1.0,
     sub = stab_summary or {}
     rec["stable"] = bool(sub.get("stable", False))
     rec["enter_frac"] = sub.get("enter_frac")
+    # Preserve D2's same-batch six-window control in the durable score record.
+    # These are evidence fields only; the gate continues to use ``stable`` from
+    # the configured ten-window assessment above.
+    for key in (
+        "same_batch_former_n_windows",
+        "same_batch_former_n_enter",
+        "same_batch_former_enter_frac",
+        "same_batch_former_stable",
+    ):
+        if key in sub:
+            rec[key] = sub[key]
 
     q = rec.get("tier_quality")
     yc = _yc_value(rec.get("yield_cover"))

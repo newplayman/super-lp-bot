@@ -1,0 +1,38 @@
+{
+  "broadcast_count": 0,
+  "chain_id": 8453,
+  "deployments": [
+    {
+      "address": "0x827922686190790b37229fd06084350e74485b72",
+      "code_bytes": 24542,
+      "code_sha256": "e09412ee02e4f79b89361deabe1ab0e02c8cf2fb0db6f1cb27336fa15e8ee575",
+      "factory": "0x5e7bb104d84c7cb9b682aac2f3d509f5f406809a",
+      "official_deployment": "initial",
+      "weth9": "0x4200000000000000000000000000000000000006"
+    },
+    {
+      "address": "0xa990c6a764b73bf43cee5bb40339c3322fb9d55f",
+      "code_bytes": 24542,
+      "code_sha256": "fac3c73a57e633acde2a69cc33755f93ca4534faa31359bdc65e22bcb51c1562",
+      "factory": "0xade65c38cd4849adba595a4323a8c7ddfe89716a",
+      "official_deployment": "gauge_caps",
+      "weth9": "0x4200000000000000000000000000000000000006"
+    },
+    {
+      "address": "0xe1f8cd9ac4e4a65f54f38a5cdafca44f6dd68b53",
+      "code_bytes": 24542,
+      "code_sha256": "22efa538a3d6637271f081f1c2e7410a01a5c027ea6062feef0ab71005a4f783",
+      "factory": "0xf8f2eb4940cfe7d13603dddd87f123820fc061ef",
+      "official_deployment": "gauges_v3",
+      "weth9": "0x4200000000000000000000000000000000000006"
+    }
+  ],
+  "generated_at": "2026-08-10T11:41:04.803835+00:00",
+  "hash_algorithm": "sha256",
+  "official_source": "https://github.com/aerodrome-finance/slipstream#deployments",
+  "read_only": true,
+  "rpc_url": "https://base-rpc.publicnode.com",
+  "signed": false,
+  "verdict": "PASS",
+  "wallet_access": false
+}

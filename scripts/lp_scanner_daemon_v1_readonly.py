@@ -56,6 +56,9 @@ from scripts.lp_capital_tiers_v1_readonly import (  # noqa: E402
     coarse_tvl_min_usd,
     normalize_capital_tier,
 )
+from scripts.lp_multiwindow_stability_v1_readonly import (  # noqa: E402
+    DEFAULT_N_WINDOWS as DEFAULT_STABILITY_N_WINDOWS,
+)
 
 DEFAULT_DB_PATH = REPO_ROOT / "reports/lp_scanner/scanner.db"
 DEFAULT_COARSE_INTERVAL_SECS = 15 * 60
@@ -565,6 +568,7 @@ class CycleResult:
     accepted: int
     market_sessions: int
     rpc_health: str = "NORMAL"
+    multicall3_evidence: Dict[str, Any] = dataclasses.field(default_factory=dict)
 
 
 class DefaultStages:
@@ -585,7 +589,7 @@ class DefaultStages:
         min_vol1d: float = 50_000.0,
         window_blocks: int = 86_400,
         window_days: float = 1.0,
-        n_windows: int = 6,
+        n_windows: int = DEFAULT_STABILITY_N_WINDOWS,
         yc_min: float = 1.0,
         rpc_pool: Any = None,
     ):
@@ -606,7 +610,32 @@ class DefaultStages:
             rpc_module = importlib.import_module("scripts.lp_rpc_pool_v1_readonly")
             rpc_pool = rpc_module.RpcPool(self.chain.strip().lower())
         self._rpc_pool = rpc_pool
+        # Lazily initialized because screen-only operation never needs an EVM
+        # RPC reader (and some pure tests intentionally inject a sentinel).
+        self._multicall3: Any = None
+        self._batched_rpc: Any = None
         self._base_cross_pool_measurements: Optional[Dict[str, Any]] = None
+
+    def _ensure_batched_rpc(self) -> Any:
+        if self._batched_rpc is None:
+            multicall_module = importlib.import_module("scripts.lp_multicall3_v1_readonly")
+            self._multicall3 = multicall_module.Multicall3Reader(self._rpc_pool)
+            self._batched_rpc = multicall_module.BatchedRpcReader(
+                self._rpc_pool, self._multicall3
+            )
+        return self._batched_rpc
+
+    @property
+    def multicall3_evidence(self) -> Dict[str, Any]:
+        """Export startup validation and measured request counters."""
+        if self._multicall3 is None:
+            return {"validation_status": "NOT_RUN", "request_counts": {}}
+        return {
+            **dict(self._multicall3.evidence),
+            "request_counts": self._multicall3.request_counts(),
+            "cache_hits": int(self._batched_rpc.cache_hits),
+            "failed_primes": int(self._batched_rpc.failed_primes),
+        }
 
     def _is_solana(self) -> bool:
         return self.chain.strip().lower() == "solana"
@@ -727,6 +756,11 @@ class DefaultStages:
             ]
         bridge = importlib.import_module("scripts.lp_pool_resolve_and_rank_v1_readonly")
         live = self._live_with_rotating_rpc(bridge._load_live_helpers())
+        # Prime only contract reads; swap logs continue through the underlying
+        # RpcPool because Multicall3 cannot batch eth_getLogs.
+        batched_rpc = self._ensure_batched_rpc()
+        bridge.prime_resolution_reads(candidates, batched_rpc)
+        live["_rpc_with_retry"] = batched_rpc.call
         current_block = bridge._eth_block_number(live["_rpc_with_retry"])
         caches: Dict[str, Dict[Any, Any]] = {"pool": {}, "decimals": {}}
         records = [
@@ -889,24 +923,109 @@ class DefaultStages:
         pool = _first(record, "resolved_pool", "pool")
         if not pool:
             return record
+        batched_rpc = self._ensure_batched_rpc()
+        errors = []
         try:
-            slot0 = self._rpc_pool.call(
+            slot0 = batched_rpc.call(
                 "eth_call", [{"to": str(pool), "data": "0x3850c7bd"}, "latest"]
             )
-            liquidity = self._rpc_pool.call(
-                "eth_call", [{"to": str(pool), "data": "0x1a686502"}, "latest"]
-            )
             slot0_text = str(slot0 or "")
-            liquidity_text = str(liquidity or "")
             if slot0_text.startswith("0x") and len(slot0_text) >= 66:
                 record["sqrt_price_x96"] = int(slot0_text[2:66], 16)
                 record["sqrt_price_x96_source"] = "measured:pool.slot0_latest"
+        except Exception as exc:  # one failed subcall must not swallow liquidity
+            errors.append(f"slot0:{type(exc).__name__}: {exc}")
+        try:
+            liquidity = batched_rpc.call(
+                "eth_call", [{"to": str(pool), "data": "0x1a686502"}, "latest"]
+            )
+            liquidity_text = str(liquidity or "")
             if liquidity_text.startswith("0x") and len(liquidity_text) >= 66:
                 record["l_active_raw"] = int(liquidity_text[2:66], 16)
                 record["l_active_raw_source"] = "measured:pool.liquidity_latest"
         except Exception as exc:  # missing depth evidence must remain fail-closed
-            record["netcover_depth_error"] = f"{type(exc).__name__}: {exc}"
+            errors.append(f"liquidity:{type(exc).__name__}: {exc}")
+        if errors:
+            record["netcover_depth_error"] = "; ".join(errors)
         return record
+
+    def _attach_live_pool_states(
+        self, sources: Sequence[Mapping[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """Batch missing slot0/liquidity reads, preserving scalar semantics."""
+        multicall_module = importlib.import_module("scripts.lp_multicall3_v1_readonly")
+        calls = []
+        seen = set()
+        for source in sources:
+            has_liquidity = _first(
+                source,
+                "l_active_raw",
+                "active_liquidity_raw",
+                "l_active_raw_historical",
+                "last_swap_liquidity_raw",
+            ) is not None
+            has_price = _first(
+                source,
+                "sqrtPriceX96",
+                "sqrt_price_x96",
+                "price_usd",
+                "last_swap_price_token1_per_token0",
+            ) is not None
+            pool = _first(source, "resolved_pool", "pool")
+            if not pool or (has_liquidity and has_price):
+                continue
+            pool_text = str(pool)
+            valid_pool = (
+                len(pool_text) == 42
+                and pool_text.startswith("0x")
+                and all(char in "0123456789abcdefABCDEF" for char in pool_text[2:])
+            )
+            if not valid_pool:
+                # One malformed candidate identity must not invalidate the
+                # aggregate3 calldata for every otherwise valid pool.
+                continue
+            for selector in ("0x3850c7bd", "0x1a686502"):
+                key = (pool_text.lower(), selector)
+                if key not in seen:
+                    seen.add(key)
+                    calls.append(multicall_module.Call3(pool_text, selector, True))
+        self._ensure_batched_rpc().prime(calls)
+
+        # Reuse the scalar parser/fail-closed behavior; valid eth_call reads now
+        # hit the primed cache, while malformed identities stay record-local.
+        output = []
+        for source in sources:
+            pool = _first(source, "resolved_pool", "pool")
+            pool_text = str(pool or "")
+            valid_pool = (
+                len(pool_text) == 42
+                and pool_text.startswith("0x")
+                and all(char in "0123456789abcdefABCDEF" for char in pool_text[2:])
+            )
+            has_state = (
+                _first(
+                    source,
+                    "l_active_raw",
+                    "active_liquidity_raw",
+                    "l_active_raw_historical",
+                    "last_swap_liquidity_raw",
+                ) is not None
+                and _first(
+                    source,
+                    "sqrtPriceX96",
+                    "sqrt_price_x96",
+                    "price_usd",
+                    "last_swap_price_token1_per_token0",
+                ) is not None
+            )
+            if pool and not has_state and not valid_pool:
+                output.append(dict(
+                    source,
+                    netcover_depth_error="ValueError: invalid pool address",
+                ))
+            else:
+                output.append(self._attach_live_pool_state(source))
+        return output
 
     def _measure_preregistered_slipstream_route(
         self, spec: Mapping[str, Any], *, observed_block: int
@@ -1204,7 +1323,8 @@ class DefaultStages:
             inputs_module = importlib.import_module("scripts.lp_netcover_inputs_v1_readonly")
             assembler = getattr(inputs_module, "assemble_netcover_inputs")
             assembled = []
-            for source in records:
+            live_state_records = self._attach_live_pool_states(records)
+            for source in live_state_records:
                 # Route claims from the upstream screen are not raw chain
                 # evidence.  M0F keeps conversion fail-closed until the scanner
                 # can construct every preregistered route from validated calls.
@@ -1231,7 +1351,7 @@ class DefaultStages:
                 )
                 assembled.append(
                     assembler(
-                        self._attach_live_pool_state(record),
+                        record,
                         scanner_measured_evidence=measured_evidence,
                     )
                 )
@@ -1454,6 +1574,9 @@ class FunnelOrchestrator:
             accepted=sum(1 for row in score_rows if row["accepted"]),
             market_sessions=len(sessions),
             rpc_health=str(getattr(self.stages, "rpc_health", "NORMAL")).upper(),
+            multicall3_evidence=dict(
+                getattr(self.stages, "multicall3_evidence", {}) or {}
+            ),
         )
 
 
@@ -1616,7 +1739,12 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--min-vol1d", type=float, default=50_000.0)
     parser.add_argument("--window-blocks", type=int, default=86_400)
     parser.add_argument("--window-days", type=float, default=1.0)
-    parser.add_argument("--n-windows", type=int, default=6)
+    parser.add_argument(
+        "--n-windows",
+        type=int,
+        default=DEFAULT_STABILITY_N_WINDOWS,
+        help="stability windows; default 10 makes unchanged 0.70 mean literal 7/10",
+    )
     parser.add_argument("--yc-min", type=float, default=1.0)
     parser.add_argument(
         "--vetted-menu-out", default=None,
@@ -1683,6 +1811,12 @@ def main(
             f"accepted={result.accepted} sessions={result.market_sessions}",
             flush=True,
         )
+        if result.multicall3_evidence:
+            print(
+                "[scanner] multicall3="
+                + json.dumps(result.multicall3_evidence, sort_keys=True),
+                flush=True,
+            )
         return result
 
     pid_file = args.pid_file or str(Path(args.db).with_name("scanner.pid"))

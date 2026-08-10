@@ -10,8 +10,9 @@ No private key or mnemonic environment variable is supported.
 """
 from __future__ import annotations
 
-import json
+import hashlib
 import http.client
+import json
 import os
 import stat
 import subprocess
@@ -42,6 +43,39 @@ AERODROME_SLIPSTREAM_NPMS = frozenset(
         "0xe1f8cd9AC4e4A65F54f38a5CdAfCA44f6dD68b53",
     }
 )
+
+# Base mainnet deployment fingerprints observed on 2026-08-10 and tied to the
+# three NonfungiblePositionManager addresses published by the official
+# aerodrome-finance/slipstream repository.  Startup verifies code, SHA-256,
+# factory(), and WETH9(); an address allowlist by itself is not sufficient.
+# The three runtimes have identical length but different immutable factories,
+# hence different bytecode hashes.
+AERODROME_SLIPSTREAM_DEPLOYMENTS = {
+    "0x827922686190790b37229fd06084350e74485b72": {
+        "code_bytes": 24542,
+        "code_sha256": "e09412ee02e4f79b89361deabe1ab0e02c8cf2fb0db6f1cb27336fa15e8ee575",
+        "factory": "0x5e7bb104d84c7cb9b682aac2f3d509f5f406809a",
+        "weth9": "0x4200000000000000000000000000000000000006",
+        "official_deployment": "initial",
+    },
+    "0xa990c6a764b73bf43cee5bb40339c3322fb9d55f": {
+        "code_bytes": 24542,
+        "code_sha256": "fac3c73a57e633acde2a69cc33755f93ca4534faa31359bdc65e22bcb51c1562",
+        "factory": "0xade65c38cd4849adba595a4323a8c7ddfe89716a",
+        "weth9": "0x4200000000000000000000000000000000000006",
+        "official_deployment": "gauge_caps",
+    },
+    "0xe1f8cd9ac4e4a65f54f38a5cdafca44f6dd68b53": {
+        "code_bytes": 24542,
+        "code_sha256": "22efa538a3d6637271f081f1c2e7410a01a5c027ea6062feef0ab71005a4f783",
+        "factory": "0xf8f2eb4940cfe7d13603dddd87f123820fc061ef",
+        "weth9": "0x4200000000000000000000000000000000000006",
+        "official_deployment": "gauges_v3",
+    },
+}
+
+_FACTORY_SELECTOR = "0xc45a0155"
+_WETH9_SELECTOR = "0x4aa4a4fc"
 
 
 class LiveTradingLocked(RuntimeError):
@@ -552,6 +586,60 @@ class JsonRpc:
         return int(self.call("eth_blockNumber", []), 16)
 
 
+def _decode_address_result(value: Any, label: str) -> str:
+    if not isinstance(value, str) or not value.startswith("0x") or len(value) != 66:
+        raise PolicyRejected(f"{label} probe returned malformed ABI address")
+    if value[2:26] != "0" * 24:
+        raise PolicyRejected(f"{label} probe returned non-address ABI word")
+    return _norm_address("0x" + value[-40:])
+
+
+def verify_aerodrome_npm_deployments(rpc: JsonRpc) -> list[dict[str, Any]]:
+    """Fail closed unless all official Base Slipstream NPMs match fingerprints.
+
+    This read-only startup check deliberately performs independent probes per
+    deployment.  A non-empty contract at an allowlisted address is insufficient:
+    the runtime hash and its immutable factory()/WETH9() values must also match.
+    """
+    evidence: list[dict[str, Any]] = []
+    for address, expected in AERODROME_SLIPSTREAM_DEPLOYMENTS.items():
+        code = rpc.call("eth_getCode", [address, "latest"])
+        if not isinstance(code, str) or not code.startswith("0x") or code == "0x":
+            raise PolicyRejected(f"Aerodrome NPM has no runtime code: {address}")
+        try:
+            runtime = bytes.fromhex(code[2:])
+        except ValueError as exc:
+            raise PolicyRejected(f"Aerodrome NPM returned malformed runtime code: {address}") from exc
+        code_sha256 = hashlib.sha256(runtime).hexdigest()
+        factory = _decode_address_result(
+            rpc.call("eth_call", [{"to": address, "data": _FACTORY_SELECTOR}, "latest"]),
+            f"{address}.factory()",
+        )
+        weth9 = _decode_address_result(
+            rpc.call("eth_call", [{"to": address, "data": _WETH9_SELECTOR}, "latest"]),
+            f"{address}.WETH9()",
+        )
+        observed = {
+            "address": address,
+            "code_bytes": len(runtime),
+            "code_sha256": code_sha256,
+            "factory": factory,
+            "weth9": weth9,
+            "official_deployment": expected["official_deployment"],
+        }
+        mismatches = [
+            field
+            for field in ("code_bytes", "code_sha256", "factory", "weth9")
+            if observed[field] != expected[field]
+        ]
+        if mismatches:
+            raise PolicyRejected(
+                f"Aerodrome NPM deployment mismatch at {address}: {','.join(mismatches)}"
+            )
+        evidence.append(observed)
+    return evidence
+
+
 def _rpc_tx(tx: Transaction) -> dict[str, str]:
     return {"from": tx.from_address, "to": tx.to, "data": tx.data, "value": hex(tx.value_wei)}
 
@@ -725,6 +813,11 @@ class BaseM1Executor:
         )
         if self.network is ExecutionNetwork.BASE_SEPOLIA and getattr(signer, "chain_id", None) != self.chain_id:
             raise PolicyRejected("Base Sepolia signer chain id does not match verified RPC chain")
+        self.deployment_evidence: list[dict[str, Any]] = []
+        if self.network is ExecutionNetwork.BASE_MAINNET:
+            # Mainnet startup is fail-closed on all three official Slipstream
+            # deployments; signing/broadcast cannot be reached first.
+            self.deployment_evidence = verify_aerodrome_npm_deployments(rpc)
         self.validator = IntentValidator(policy, ledger)
         self.nonces = NonceManager(rpc, wallet)
         self.state = ExecutionState.NORMAL

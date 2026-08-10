@@ -1,0 +1,113 @@
+{
+  "schema": "lp_tp_d_full_once_v1",
+  "generated_at": "2026-08-10T13:17:20.184206+00:00",
+  "read_only": true,
+  "signed": false,
+  "broadcast_count": 0,
+  "config": {
+    "top": 68,
+    "n_windows": 10,
+    "stable_min_frac": 0.7,
+    "rpc_pace_secs": 0.2,
+    "fetch_pace_secs": 0.0
+  },
+  "cycle": {
+    "as_of": "2026-08-10T11:58:05.591688+00:00",
+    "screened": 730,
+    "candidates": 68,
+    "resolved": 68,
+    "scored": 68,
+    "accepted": 0,
+    "market_sessions": 0,
+    "rpc_health": "DEGRADED",
+    "multicall3_evidence": {
+      "address": "0xca11bde05977b3631167028862be2a173976ca11",
+      "validation_status": "VALIDATED",
+      "bytecode_bytes": 3808,
+      "bytecode_keccak256": "0xd5c15df687b16f2ff992fc8d767b4216323184a2bbc6ee2f9c398c318e770891",
+      "validation_error": null,
+      "request_counts": {
+        "logical_calls": 661,
+        "eth_getCode_requests": 1,
+        "aggregate3_requests": 12,
+        "serial_fallback_requests": 0,
+        "per_call_failures": 0
+      },
+      "cache_hits": 862,
+      "failed_primes": 0
+    }
+  },
+  "cycle_seconds": 4754.5903244279325,
+  "stage_seconds": {
+    "screen": 0.8673575259745121,
+    "resolve": 908.7347286278382,
+    "multiwindow": 3818.68607516028,
+    "funnel": 0.01433352380990982,
+    "netcover": 26.096346805803478
+  },
+  "rpc": {
+    "physical_attempts_by_method": {
+      "eth_blockNumber": 3,
+      "eth_call": 112,
+      "eth_getCode": 104,
+      "eth_getLogs": 12891
+    },
+    "physical_attempts_total": 13110,
+    "successes_by_method": {
+      "eth_blockNumber": 3,
+      "eth_call": 92,
+      "eth_getCode": 88,
+      "eth_getLogs": 12672
+    },
+    "failures_by_method": {
+      "eth_call": 20,
+      "eth_getCode": 16,
+      "eth_getLogs": 219
+    },
+    "attempts_by_endpoint": {
+      "https://1rpc.io/base": 9,
+      "https://api.zan.top/base-mainnet": 18,
+      "https://base-mainnet.public.blastapi.io": 28,
+      "https://base-pokt.nodies.app": 23,
+      "https://base-rpc.publicnode.com": 25,
+      "https://base.drpc.org": 2755,
+      "https://base.lava.build": 3499,
+      "https://base.meowrpc.com": 18,
+      "https://developer-access-mainnet.base.org": 3386,
+      "https://mainnet.base.org": 3339,
+      "https://public.1rpc.io/base": 10
+    }
+  },
+  "rpc_health": {
+    "state": "DEGRADED",
+    "total_endpoints": 11,
+    "impaired_endpoints": 6,
+    "cooling_endpoints": 6,
+    "max_consecutive_failures": 10
+  },
+  "multicall3": {
+    "evidence": {
+      "address": "0xca11bde05977b3631167028862be2a173976ca11",
+      "validation_status": "VALIDATED",
+      "bytecode_bytes": 3808,
+      "bytecode_keccak256": "0xd5c15df687b16f2ff992fc8d767b4216323184a2bbc6ee2f9c398c318e770891",
+      "validation_error": null
+    },
+    "request_counts": {
+      "logical_calls": 661,
+      "eth_getCode_requests": 1,
+      "aggregate3_requests": 12,
+      "serial_fallback_requests": 0,
+      "per_call_failures": 0
+    },
+    "cache_hits": 862,
+    "failed_primes": 0
+  },
+  "vetted_menu_export": {
+    "as_of": "2026-08-10T11:58:05.591688+00:00",
+    "accepted_rows": 0,
+    "exported_records": 0,
+    "invalid_records": 0,
+    "out": "reports/lp_tp_d/20260810_d4_top68_w10/vetted_menu.json"
+  }
+}

@@ -33,8 +33,19 @@ sudo -u lpbot-strategy test ! -r /etc/lpbot-executor/keystore.json
 systemctl show lpbot-base-m1-executor -p User -p Group -p UMask -p ProtectSystem -p ProtectHome
 ```
 
+TP-D/D5 于 2026-08-10 已实际创建两个不可登录系统用户与隔离目录。当前
+`keystore.json`、`password` 均为 **0 字节占位文件**（owner
+`lpbot-executor:lpbot-executor`、mode `0600`），不包含、也不代表任何钱包或
+密钥。目录 mode 为 `0700`。service unit 已加载但保持 `disabled/inactive`，
+`LIVE_TRADING=false`；在指挥官亲自生成密钥并另行放行前不得启动。
+
 签名器仅调用 `cast mktx --keystore ... --password-file ...`，子进程环境只保留
 `PATH`；没有私钥、助记词或 seed 的环境变量入口。
+
+Base mainnet 启动还会对三个官方 Aerodrome Slipstream NPM 执行只读
+`eth_getCode`、SHA-256、`factory()` 与 `WETH9()` 核验；任一观测不匹配即在
+签名路径之前 fail-closed。链上核验报告位于
+`reports/lp_d5_c6_preflight/20260810_acceptance/`。
 
 ## 双重解锁
 

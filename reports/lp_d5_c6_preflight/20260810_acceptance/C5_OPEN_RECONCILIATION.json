@@ -1,0 +1,18 @@
+{
+  "generated_at": "2026-08-10T11:41:05.820556368Z",
+  "verdict": "PASS",
+  "artifact": "reports/lp_base_m1_c5_dry_run/20260809_c_acceptance/C5_OPEN_DRY_RUN.json",
+  "stage": "C5_OPEN_DRY_RUN",
+  "expected_chain_id": 8453,
+  "observed_chain_id": 8453,
+  "ledger_hash_count": 0,
+  "broadcast_count": 0,
+  "signed": false,
+  "read_only": true,
+  "rpc_methods": [
+    "eth_chainId",
+    "eth_getTransactionReceipt"
+  ],
+  "receipts": [],
+  "errors": []
+}
