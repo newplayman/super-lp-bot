@@ -703,6 +703,69 @@ def test_wp04_adapter_is_the_strict_fifth_gate_not_only_a_diagnostic():
     assert rejected["rejection_reason"].startswith("NETCOVER_INPUT_MISSING:")
 
 
+def test_base_scanner_resolve_marks_untagged_clmm_before_netcover(monkeypatch):
+    """The production scanner, not a fixture, owns the Base CLMM dispatch tag."""
+    import types
+
+    import scripts.lp_pool_resolve_and_rank_v1_readonly as bridge
+
+    source = {
+        "pool": "0x1111111111111111111111111111111111111111",
+        "chain": "Base",
+        "project": "uniswap-v3",
+        "vetted": True,
+        "gates": {"quality": True, "yield_cover": True, "stable": True, "status_ok": True},
+        "profile": "PASSIVE_CL",
+        "holding_horizon_days": 14,
+        "is_new_pool": False,
+        "fee_apr_24h": 1_000.0,
+        "fee_apr_7d": 1_000.0,
+        "reward_apr": 0.0,
+        "il_apr": 1.0,
+        "sigma_pair": 0.01,
+        "l_active_raw": 10**30,
+        "price_usd": 1.0,
+        "last_swap_price_token1_per_token0": 1.0,
+        "last_swap_liquidity_raw": 10**30,
+        "last_swap_cost_state_source": "measured:latest_decoded_swap_event",
+        "token0": "0x4200000000000000000000000000000000000006",
+        "token1": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+        "fee_tier": 0.0001,
+        "dec0": 18,
+        "dec1": 6,
+        "tvlUsd": 150_000.0,
+    }
+    assert "protocol_type" not in source
+
+    monkeypatch.setattr(
+        bridge,
+        "_load_live_helpers",
+        lambda: {"fetch_pool_swaps": lambda *_args, **_kwargs: []},
+    )
+    monkeypatch.setattr(bridge, "prime_resolution_reads", lambda *_: None)
+    monkeypatch.setattr(bridge, "_eth_block_number", lambda _: 100)
+    monkeypatch.setattr(
+        bridge,
+        "process_candidate",
+        lambda candidate, *_: dict(candidate, status="OK"),
+    )
+    stages = DefaultStages(rpc_pool=types.SimpleNamespace(call=lambda *_: "0x64"))
+    monkeypatch.setattr(
+        stages, "_ensure_batched_rpc", lambda: types.SimpleNamespace(call=lambda *_: "0x64")
+    )
+    resolved = stages.resolve([source])
+    assert resolved[0]["protocol_type"] == "clmm"
+    monkeypatch.setattr(
+        stages, "_attach_live_pool_states", lambda records: [dict(record) for record in records]
+    )
+
+    result = stages.netcover(resolved)[0]
+
+    assert result.get("permanent_fail_closed_reason") != "NETCOVER_PROTOCOL_TYPE_INVALID"
+    assert result["netcover_model_path"] == "clmm_vol_sized_range_v1"
+    assert result["fee_ev_usd"] is not None
+
+
 def test_netcover_entry_veto_normalizes_db_and_score_json_reason(tmp_path):
     source = {
         "pool": "0x1",

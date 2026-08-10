@@ -641,6 +641,24 @@ class DefaultStages:
         return self.chain.strip().lower() == "solana"
 
     @staticmethod
+    def _mark_base_clmm_protocol(record: Mapping[str, Any]) -> Dict[str, Any]:
+        """Attach the explicit NetCover dispatch type at the scanner boundary.
+
+        The Base production universe is intentionally limited to the two
+        audited concentrated-liquidity deployments below.  NetCover dispatch
+        must consume this scanner-owned fact rather than infer a model from a
+        project name downstream.
+        """
+        marked = dict(record)
+        if (
+            str(marked.get("chain") or "").strip().lower() == "base"
+            and str(marked.get("project") or "").strip().lower()
+            in {"aerodrome-slipstream", "uniswap-v3"}
+        ):
+            marked["protocol_type"] = "clmm"
+        return marked
+
+    @staticmethod
     def _solana_mapping_blocked_record(source: Mapping[str, Any]) -> Dict[str, Any]:
         """Preserve a Solana lead without guessing a DefiLlama UUID's account.
 
@@ -767,7 +785,12 @@ class DefaultStages:
             bridge.process_candidate(candidate, self.window_blocks, current_block, caches, live)
             for candidate in candidates
         ]
-        return sorted(records, key=lambda record: record.get("composite_score", 0.0), reverse=True)
+        marked_records = [self._mark_base_clmm_protocol(record) for record in records]
+        return sorted(
+            marked_records,
+            key=lambda record: record.get("composite_score", 0.0),
+            reverse=True,
+        )
 
     def multiwindow(self, resolved: Sequence[Mapping[str, Any]]) -> List[Dict[str, Any]]:
         if self._is_solana():
@@ -816,14 +839,14 @@ class DefaultStages:
         # public funnel API itself remains fail-closed by default; only this
         # orchestrated path opts into the intermediate state, and
         # ``_enforce_fifth_gate`` below produces the final vetted value.
-        records = list(
+        records = [self._mark_base_clmm_protocol(record) for record in (
             funnel.funnel_vet(
                 resolved,
                 stability,
                 yc_min=self.yc_min,
                 allow_legacy_without_netcover=True,
             )
-        )
+        )]
         # W6/R6: carry the already-measured latest pair sigma/ER into the input
         # assembler and translate its regime through the record's own profile.
         # Missing measurements/profile remain absent; no horizon is guessed.
