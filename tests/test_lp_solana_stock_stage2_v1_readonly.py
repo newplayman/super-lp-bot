@@ -8,6 +8,7 @@ from scripts.lp_solana_stock_stage2_v1_readonly import (
     _clmm_active_depth,
     _decode_raydium_pool_state,
     _replay_price_path,
+    _stage2_failure_reason,
     assemble_clmm_stage2_netcover,
     assess,
     recompute_clmm_economics,
@@ -159,6 +160,17 @@ def test_clmm_sigma_sample_insufficiency_cannot_produce_a_range():
     netcover = assemble_clmm_stage2_netcover(pool, state, result)
     assert netcover["passed"] is False
     assert "inputs" not in netcover
+
+
+def test_stage2_failure_reason_reports_failed_netcover_not_economics_pass():
+    reason = _stage2_failure_reason(
+        {"passed": True, "reason": "PASS"},
+        {"passed": True, "reason": "PASS"},
+        {"swap_count": 50, "economic_price_complete": True, "reason": "PASS"},
+        {"passed": False, "reason": "NETCOVER_INPUT_MISSING:gas_usd"},
+    )
+    assert reason == "NETCOVER_INPUT_MISSING:gas_usd"
+    assert "FAIL_CLOSED:PASS" not in reason
 
 
 def test_clmm_depth_requires_an_onchain_stable_leg_anchor():

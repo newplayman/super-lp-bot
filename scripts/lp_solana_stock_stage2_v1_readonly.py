@@ -696,6 +696,24 @@ def recompute_economics(pool: Mapping[str, Any]) -> dict[str, Any]:
     return result
 
 
+def _stage2_failure_reason(
+    onchain: Mapping[str, Any], economics: Mapping[str, Any],
+    replay: Mapping[str, Any], netcover: Mapping[str, Any] | None,
+) -> str:
+    """Return the reason belonging to the first failed conjunct only."""
+    if onchain.get("passed") is not True:
+        return str(onchain.get("reason") or "ONCHAIN_VERIFICATION_FAILED")
+    if economics.get("passed") is not True:
+        return str(economics.get("reason") or "ECONOMICS_UNAVAILABLE")
+    if replay.get("swap_count", 0) <= 0:
+        return str(replay.get("reason") or "RAW_SWAP_SAMPLE_EMPTY")
+    if replay.get("economic_price_complete") is not True:
+        return str(replay.get("reason") or "ECONOMIC_PRICE_INCOMPLETE")
+    if netcover is not None and netcover.get("passed") is not True:
+        return str(netcover.get("reason") or "NETCOVER_UNAVAILABLE")
+    return "STAGE2_CONJUNCTION_FAILED"
+
+
 def assess(record: Mapping[str, Any], rpc: RpcPool,
            http: Callable[[str], Any] = _http_json, *, replay_limit: int = 0) -> dict[str, Any]:
     base = {
@@ -753,11 +771,9 @@ def assess(record: Mapping[str, Any], rpc: RpcPool,
         if base["stage2_pass"]:
             base["reason"] = "PASS"
         else:
-            missing_reason = (
-                economics.get("reason") or (netcover or {}).get("reason")
-                or replay.get("reason") or onchain.get("reason") or "STAGE2_CONJUNCTION_FAILED"
+            base["reason"] = "FAIL_CLOSED:" + _stage2_failure_reason(
+                onchain, economics, replay, netcover,
             )
-            base["reason"] = f"FAIL_CLOSED:{missing_reason}"
     except Exception as exc:
         base["reason"] = f"FAIL_CLOSED:{type(exc).__name__}:{exc}"
     return base

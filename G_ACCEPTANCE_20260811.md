@@ -53,3 +53,18 @@ swap、且首尾至少相隔 1 小时；不足时返回例如
 
 这里 `netcover=null` 是原始结果：Solana 尚没有历史 gas / reward 转换成本证据，
 所以终闸保持 fail-closed；未用任何替代或付费服务填补。
+
+## G3 — 失败原因归因顺序
+
+机械验收原始输出：
+
+```text
+$ python3 -m pytest tests/test_lp_solana_stock_stage2_v1_readonly.py -q
+............                                                             [100%]
+12 passed in 0.11s
+```
+
+stage2 现在逐一检查真正的合取失败项：链上身份、经济、swap 数、经济价格完整性、
+最后才是 NetCover。回归用例中 economics/replay 都是 `PASS` 而 NetCover 是
+`NETCOVER_INPUT_MISSING:gas_usd`，最终 reason 恰为该 NetCover 原因，且不含
+`FAIL_CLOSED:PASS`。
