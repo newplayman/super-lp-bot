@@ -112,6 +112,43 @@ def test_real_swap_replay_uses_vault_deltas_and_blocks_unscaled_token2022():
     assert result["economic_price_complete"] is False
 
 
+def test_replay_paginates_until_the_configured_three_hour_span():
+    class PagedRPC:
+        def __init__(self):
+            self.pages = 0
+
+        def call(self, method, params):
+            if method == "getSignaturesForAddress":
+                page = self.pages
+                self.pages += 1
+                if page >= 2:
+                    return []
+                return [{"signature": f"s{index}"} for index in range(page * 10, page * 10 + 10)]
+            assert method == "getTransaction"
+            index = int(params[0][1:])
+            return {
+                "slot": index, "blockTime": 1_700_000_000 + index * 600,
+                "transaction": {"message": {"accountKeys": ["va", "vb"]}},
+                "meta": {"fee": 5_000, "logMessages": ["swap"],
+                         "preTokenBalances": [
+                             {"accountIndex": 0, "mint": "ma", "uiTokenAmount": {"amount": "1000", "decimals": 2}},
+                             {"accountIndex": 1, "mint": "mb", "uiTokenAmount": {"amount": "2000", "decimals": 2}},
+                         ], "postTokenBalances": [
+                             {"accountIndex": 0, "mint": "ma", "uiTokenAmount": {"amount": "1100", "decimals": 2}},
+                             {"accountIndex": 1, "mint": "mb", "uiTokenAmount": {"amount": "1800", "decimals": 2}},
+                         ]},
+            }
+
+    result = replay_recent_swaps(
+        {"pool_address": "pool", "vault_a": "va", "vault_b": "vb", "mint_a": "ma", "mint_b": "mb"},
+        PagedRPC(), signature_limit=10, target_span_hours=3.0, max_pages=3,
+    )
+    assert result["pages_fetched"] == 2
+    assert result["swap_count"] == 20
+    assert result["actual_span_hours"] > 3.0
+    assert result["replay_stop_reason"] == "TARGET_REACHED"
+
+
 def test_clmm_replay_economics_uses_active_stable_depth_and_raw_price_path():
     pool = {
         "mint_a": "stock", "mint_b": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
@@ -134,10 +171,34 @@ def test_clmm_replay_economics_uses_active_stable_depth_and_raw_price_path():
     assert result["recomputed_fee_apr_pct"] == pytest.approx(36.5)
     assert result["exit_depth_usd"] > 0
     assert result["exit_slippage_bps"] > 0
-    assert result["sigma_pair"] == pytest.approx(0.0324)
+    # sigma_per_swap remains the raw audit number.  The range and NetCover use
+    # fixed five-minute-bar daily volatility instead, so hourly moves are
+    # spread across their twelve elapsed five-minute intervals.
+    assert result["sigma_per_swap"] == pytest.approx(0.0324)
+    assert result["sigma_pair"] == pytest.approx(result["sigma_daily"])
+    assert result["sigma_daily"] > result["sigma_per_swap"]
+    assert result["sigma_daily_sample_count"] == 288
     assert result["sigma_swap_count"] == 21
     assert result["sigma_sample_span_hours"] == pytest.approx(20.0)
-    assert 1.0 < result["recommend_range_pct"] < 20.0
+    assert 20.0 < result["recommend_range_pct"] < 100.0
+
+
+def test_fixed_five_minute_bar_sigma_daily_matches_analytic_value():
+    """r per five-minute bar annualizes to r * sqrt(288) per day."""
+    r = 0.01
+    replay = {"swaps": [
+        {"raw_ui_price_b_per_a": math.exp(r * index),
+         "block_time": 1_700_000_000 + index * 300}
+        for index in range(37)  # 36 returns == exactly three hours
+    ]}
+
+    path = _replay_price_path(replay, require_sigma_sample=True)
+
+    assert path["sigma_per_swap"] == pytest.approx(r)
+    assert path["sigma_daily"] == pytest.approx(r * math.sqrt(288))
+    assert path["sigma_pair"] == pytest.approx(path["sigma_daily"])
+    assert path["sigma_daily_sample_count"] == 288
+    assert path["sigma_sample_span_hours"] == pytest.approx(3.0)
 
 
 def test_clmm_sigma_sample_insufficiency_cannot_produce_a_range():

@@ -52,8 +52,15 @@ USER_AGENT = "lpbot-solana-stock-stage2/1"
 MAX_TVL_RELATIVE_ERROR = 0.15
 DEFAULT_REPLAY_LIMIT = 60
 MIN_SIGMA_SWAP_COUNT = 20
-MIN_SIGMA_SPAN_SECONDS = 60 * 60
+MIN_SIGMA_SPAN_SECONDS = 3 * 60 * 60
+# Volatility is measured from five-minute fixed wall-clock bars.  This avoids
+# treating a burst of swaps as if each observation were a day apart.  There
+# are exactly 288 such bars in 24 hours.
+SIGMA_BAR_SECONDS = 5 * 60
+SIGMA_BARS_PER_DAY = 24 * 60 * 60 // SIGMA_BAR_SECONDS
 MIN_RECOMMENDED_RANGE_PCT = 0.1
+DEFAULT_REPLAY_TARGET_SPAN_HOURS = 3.0
+DEFAULT_REPLAY_MAX_PAGES = 10
 SOL_MINT = "So11111111111111111111111111111111111111112"
 USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
 JUPITER_QUOTE_URL = "https://quote-api.jup.ag/v6/quote"
@@ -428,7 +435,17 @@ def read_solana_reward_evidence(
             "read_source": "measured:protocol_pool_reward_infos+token_vault_balances"}
 
 
-def replay_recent_swaps(pool: Mapping[str, Any], rpc: RpcPool, *, signature_limit: int = DEFAULT_REPLAY_LIMIT) -> dict[str, Any]:
+def _replay_span_hours(swaps: list[Mapping[str, Any]]) -> float:
+    times = sorted(int(swap["block_time"]) for swap in swaps
+                   if isinstance(swap.get("block_time"), int) and swap["block_time"] > 0)
+    return (times[-1] - times[0]) / 3600.0 if len(times) >= 2 else 0.0
+
+
+def replay_recent_swaps(
+    pool: Mapping[str, Any], rpc: RpcPool, *, signature_limit: int = DEFAULT_REPLAY_LIMIT,
+    target_span_hours: float = DEFAULT_REPLAY_TARGET_SPAN_HOURS,
+    max_pages: int = DEFAULT_REPLAY_MAX_PAGES,
+) -> dict[str, Any]:
     """Replay a bounded set of real transactions touching the pool vaults.
 
     This is deliberately not a transaction-count extrapolator.  It proves that
@@ -438,61 +455,76 @@ def replay_recent_swaps(pool: Mapping[str, Any], rpc: RpcPool, *, signature_limi
     """
     if signature_limit <= 0:
         return {"status": "NOT_REQUESTED", "swap_count": 0, "transactions_checked": 0}
-    signatures = rpc.call("getSignaturesForAddress", [
-        pool["pool_address"], {"limit": signature_limit, "commitment": "confirmed"},
-    ])
-    if not isinstance(signatures, list):
-        return {"status": "FAIL_CLOSED", "reason": "MALFORMED_SIGNATURES", "swap_count": 0}
+    if target_span_hours < 3.0 or max_pages <= 0:
+        raise ValueError("REPLAY_TARGET_SPAN_MUST_BE_AT_LEAST_3H_AND_MAX_PAGES_POSITIVE")
     swaps = []
-    for item in signatures:
-        signature = item.get("signature") if isinstance(item, Mapping) else None
-        if not signature:
-            continue
-        tx = rpc.call("getTransaction", [
-            signature, {"encoding": "jsonParsed", "commitment": "confirmed",
-                        "maxSupportedTransactionVersion": 0},
-        ])
-        if not isinstance(tx, Mapping):
-            continue
-        meta = tx.get("meta") or {}
-        logs = [str(log).lower() for log in meta.get("logMessages") or []]
-        if not any("swap" in log for log in logs):
-            continue
-        keys = _account_keys(tx)
-        vault_indexes = {
-            index for index, key in enumerate(keys)
-            if key in {pool.get("vault_a"), pool.get("vault_b")}
-        }
-        pre = _token_balance_map(meta.get("preTokenBalances"))
-        post = _token_balance_map(meta.get("postTokenBalances"))
-        deltas = {}
-        for key in set(pre) | set(post):
-            index, mint = key
-            if index not in vault_indexes:
+    signatures_checked = 0
+    pages_fetched = 0
+    before = None
+    stop_reason = "PAGINATION_LIMIT_REACHED"
+    seen_signatures = set()
+    for _page in range(max_pages):
+        options = {"limit": signature_limit, "commitment": "confirmed"}
+        if before:
+            options["before"] = before
+        signatures = rpc.call("getSignaturesForAddress", [pool["pool_address"], options])
+        pages_fetched += 1
+        if not isinstance(signatures, list):
+            return {"status": "FAIL_CLOSED", "reason": "MALFORMED_SIGNATURES", "swap_count": 0,
+                    "pages_fetched": pages_fetched}
+        if not signatures:
+            stop_reason = "HISTORY_EXHAUSTED"
+            break
+        signatures_checked += len(signatures)
+        for item in signatures:
+            signature = item.get("signature") if isinstance(item, Mapping) else None
+            if signature:
+                before = signature
+        for item in signatures:
+            signature = item.get("signature") if isinstance(item, Mapping) else None
+            if not signature or signature in seen_signatures:
                 continue
-            before, decimals = pre.get(key, (0, post.get(key, (0, 0))[1]))
-            after, decimals_after = post.get(key, (0, decimals))
-            decimals = max(decimals, decimals_after)
-            deltas[mint] = (after - before) / (10 ** decimals)
-        delta_a = deltas.get(pool.get("mint_a"))
-        delta_b = deltas.get(pool.get("mint_b"))
-        price = None
-        if delta_a not in (None, 0) and delta_b not in (None, 0):
-            price = abs(delta_b / delta_a)
-        swaps.append({
-            "signature": signature, "slot": tx.get("slot"), "block_time": tx.get("blockTime"),
-            "vault_delta_a_raw_ui": delta_a, "vault_delta_b_raw_ui": delta_b,
-            "raw_ui_price_b_per_a": price,
-            "transaction_fee_lamports": meta.get("fee"),
-            "compute_units_consumed": meta.get("computeUnitsConsumed"),
-        })
+            seen_signatures.add(signature)
+            tx = rpc.call("getTransaction", [
+                signature, {"encoding": "jsonParsed", "commitment": "confirmed",
+                            "maxSupportedTransactionVersion": 0},
+            ])
+            if not isinstance(tx, Mapping):
+                continue
+            meta = tx.get("meta") or {}
+            logs = [str(log).lower() for log in meta.get("logMessages") or []]
+            if not any("swap" in log for log in logs):
+                continue
+            keys = _account_keys(tx)
+            vault_indexes = {index for index, key in enumerate(keys)
+                             if key in {pool.get("vault_a"), pool.get("vault_b")}}
+            pre, post = _token_balance_map(meta.get("preTokenBalances")), _token_balance_map(meta.get("postTokenBalances"))
+            deltas = {}
+            for key in set(pre) | set(post):
+                index, mint = key
+                if index not in vault_indexes:
+                    continue
+                before_amount, decimals = pre.get(key, (0, post.get(key, (0, 0))[1]))
+                after, decimals_after = post.get(key, (0, decimals))
+                deltas[mint] = (after - before_amount) / (10 ** max(decimals, decimals_after))
+            delta_a, delta_b = deltas.get(pool.get("mint_a")), deltas.get(pool.get("mint_b"))
+            price = abs(delta_b / delta_a) if delta_a not in (None, 0) and delta_b not in (None, 0) else None
+            swaps.append({"signature": signature, "slot": tx.get("slot"), "block_time": tx.get("blockTime"),
+                          "vault_delta_a_raw_ui": delta_a, "vault_delta_b_raw_ui": delta_b,
+                          "raw_ui_price_b_per_a": price, "transaction_fee_lamports": meta.get("fee"),
+                          "compute_units_consumed": meta.get("computeUnitsConsumed")})
+        if len(swaps) >= MIN_SIGMA_SWAP_COUNT and _replay_span_hours(swaps) >= target_span_hours:
+            stop_reason = "TARGET_REACHED"
+            break
     scaled_ui = (
         "scaledUiAmountConfig" in (pool.get("mint_a_tags") or [])
         or "scaledUiAmountConfig" in (pool.get("mint_b_tags") or [])
     )
     return {
         "status": "PASS" if swaps else "NO_SWAP_IN_BOUNDED_SAMPLE",
-        "transactions_checked": len(signatures), "swap_count": len(swaps),
+        "transactions_checked": signatures_checked, "swap_count": len(swaps),
+        "pages_fetched": pages_fetched, "replay_target_span_hours": target_span_hours,
+        "actual_span_hours": _replay_span_hours(swaps), "replay_stop_reason": stop_reason,
         "scaled_ui_multiplier_required": scaled_ui,
         "scaled_ui_multiplier_applied": False if scaled_ui else None,
         "economic_price_complete": bool(swaps) and not scaled_ui,
@@ -653,6 +685,17 @@ def _clmm_active_depth(pool: Mapping[str, Any], state: Mapping[str, Any]) -> dic
 def _replay_price_path(
     replay: Mapping[str, Any], *, require_sigma_sample: bool = False,
 ) -> dict[str, float]:
+    """Return auditable swap and time-normalized price-path volatility.
+
+    ``sigma_per_swap`` is the unscaled RMS log return between adjacent decoded
+    swaps.  It is retained only for audit: its magnitude varies mechanically
+    with swap density and must never size an LP range.  ``sigma_daily`` uses
+    last-trade closes in fixed five-minute UTC bars (forward-filled inside the
+    observed window).  If ``r_i`` are those per-bar log returns, then
+    ``sigma_daily = sqrt(mean(r_i**2)) * sqrt(288)`` because there are 288
+    five-minute bars per day.  This is the daily pair-price volatility expected
+    by ``recommend_range_pct`` and the shared NetCover assembler.
+    """
     samples: list[tuple[int | None, float]] = []
     for swap in replay.get("swaps") or []:
         try:
@@ -681,11 +724,57 @@ def _replay_price_path(
         raise ValueError(f"SIGMA_SAMPLE_INSUFFICIENT:n={count},span={span_hours:.1f}h")
     if count < 2:
         raise ValueError("RAW_SWAP_PRICE_PATH_INSUFFICIENT")
-    log_returns = [math.log(current / prior) for prior, current in zip(prices, prices[1:])]
-    variance = sum(value * value for value in log_returns) / len(log_returns)
+    swap_log_returns = [math.log(current / prior) for prior, current in zip(prices, prices[1:])]
+    sigma_per_swap = math.sqrt(
+        sum(value * value for value in swap_log_returns) / len(swap_log_returns)
+    )
+    if require_sigma_sample:
+        # The samples have timestamps and are sorted above.  Each bucket takes
+        # its final decoded swap price.  Carrying the last close through empty
+        # buckets contributes a zero return, which correctly represents the
+        # fixed five-minute time interval rather than making sparse trading
+        # look more volatile simply because it has fewer observations.
+        bar_closes: dict[int, float] = {}
+        for block_time, price in samples:
+            assert block_time is not None  # filtered immediately before sorting
+            bar_closes[block_time // SIGMA_BAR_SECONDS] = price
+        first_bar, last_bar = min(bar_closes), max(bar_closes)
+        fixed_bar_prices: list[float] = []
+        last_close: float | None = None
+        for bar in range(first_bar, last_bar + 1):
+            if bar in bar_closes:
+                last_close = bar_closes[bar]
+            if last_close is not None:
+                fixed_bar_prices.append(last_close)
+        if len(fixed_bar_prices) < 2:
+            raise ValueError("SIGMA_FIXED_BAR_PATH_INSUFFICIENT")
+        bar_log_returns = [
+            math.log(current / prior)
+            for prior, current in zip(fixed_bar_prices, fixed_bar_prices[1:])
+        ]
+        sigma_per_bar = math.sqrt(
+            sum(value * value for value in bar_log_returns) / len(bar_log_returns)
+        )
+        sigma_daily = sigma_per_bar * math.sqrt(float(SIGMA_BARS_PER_DAY))
+    else:
+        # This branch is used only by exit evidence, whose price-path checks do
+        # not have the sample-depth precondition needed for a daily estimate.
+        sigma_daily = sigma_per_swap
+        fixed_bar_prices = prices
+        bar_log_returns = swap_log_returns
     return {
         "replay_price_min": min(prices), "replay_price_max": max(prices),
-        "sigma_pair": math.sqrt(variance),
+        # Backward-compatible field name, but its unit is now explicitly daily
+        # pair-price volatility.  NetCover must not consume sigma_per_swap.
+        "sigma_pair": sigma_daily,
+        "sigma_pair_unit": "daily_log_volatility",
+        "sigma_per_swap": sigma_per_swap,
+        "sigma_daily": sigma_daily,
+        "sigma_daily_sample_count": SIGMA_BARS_PER_DAY,
+        "sigma_bar_seconds": SIGMA_BAR_SECONDS,
+        "sigma_bar_return_count": len(bar_log_returns),
+        "sigma_bar_close_count": len(fixed_bar_prices),
+        "sigma_observed_swaps_per_day": count / (span_hours / 24.0) if span_hours > 0 else None,
         "price_ratio_worst": max(prices) / min(prices),
         "latest_swap_price_b_per_a": prices[-1],
         "sigma_swap_count": count,
@@ -723,7 +812,10 @@ def recompute_clmm_economics(
     try:
         depth = _clmm_active_depth(pool, state)
         path = _replay_price_path(replay, require_sigma_sample=True)
-        range_pct = recommend_range_pct(path["sigma_pair"], 168.0 / 24.0)
+        # recommend_range_pct expects sigma_daily.  Passing per-swap sigma here
+        # used to understate volatility by an observation-density-dependent
+        # factor and could make NetCover falsely optimistic.
+        range_pct = recommend_range_pct(path["sigma_daily"], 168.0 / 24.0)
         if not math.isfinite(range_pct) or range_pct < MIN_RECOMMENDED_RANGE_PCT:
             raise ValueError(f"RECOMMENDED_RANGE_DEGENERATE:range={range_pct:.4f}%")
         il_fraction = v2_il(path["price_ratio_worst"])
@@ -765,7 +857,10 @@ def assemble_clmm_stage2_netcover(
         # The supplied DefiLlama base-APR window remains a second, independent
         # conservative anchor; the common assembler takes min(24h, base APR).
         "fee_apr_7d": pool.get("llama_apy_base_pct"),
-        "sigma_pair": economics.get("sigma_pair"), "il_apr": economics.get("il_apr_pct"),
+        # The shared assembler's historical name is sigma_pair; its required
+        # unit is daily pair-price volatility, never per-swap volatility.
+        "sigma_pair": economics.get("sigma_daily"), "sigma_daily": economics.get("sigma_daily"),
+        "il_apr": economics.get("il_apr_pct"),
         "l_active_raw": state.get("active_liquidity_raw"),
         "l_active_raw_source": state.get("active_liquidity_raw_source"),
         "sqrt_price_x64": state.get("sqrt_price_x64"),
@@ -893,7 +988,9 @@ def _stage2_failure_reason(
 
 
 def assess(record: Mapping[str, Any], rpc: RpcPool,
-           http: Callable[[str], Any] = _http_json, *, replay_limit: int = 0) -> dict[str, Any]:
+           http: Callable[[str], Any] = _http_json, *, replay_limit: int = 0,
+           replay_target_span_hours: float = DEFAULT_REPLAY_TARGET_SPAN_HOURS,
+           replay_max_pages: int = DEFAULT_REPLAY_MAX_PAGES) -> dict[str, Any]:
     base = {
         "llama_pool_id": record.get("pool") or record.get("pool_id") or record.get("llama_pool_id"),
         "symbol": record.get("symbol"), "tier": record.get("tier") or record.get("stock_tier"),
@@ -917,7 +1014,9 @@ def assess(record: Mapping[str, Any], rpc: RpcPool,
             })
             return base
         onchain = verify_onchain(resolved, rpc)
-        replay = replay_recent_swaps(resolved, rpc, signature_limit=replay_limit)
+        replay = replay_recent_swaps(resolved, rpc, signature_limit=replay_limit,
+                                    target_span_hours=replay_target_span_hours,
+                                    max_pages=replay_max_pages)
         state: dict[str, Any] | None = None
         netcover: dict[str, Any] | None = None
         transaction_cost: dict[str, Any] | None = None
@@ -976,7 +1075,11 @@ def main() -> int:
     parser.add_argument("--protocol-type", default="",
                         help="optional universe-declared protocol type filter (for a CLMM-only replay)")
     parser.add_argument("--replay-limit", type=int, default=DEFAULT_REPLAY_LIMIT,
-                        help="recent pool transactions checked for real swaps (default: 60); 0 disables")
+                        help="transactions checked per history page (default: 60); 0 disables")
+    parser.add_argument("--replay-target-span-hours", type=float, default=DEFAULT_REPLAY_TARGET_SPAN_HOURS,
+                        help="minimum actual swap span before stopping pagination (default: 3h)")
+    parser.add_argument("--replay-max-pages", type=int, default=DEFAULT_REPLAY_MAX_PAGES,
+                        help="maximum free-RPC history pages per pool (default: 10)")
     args = parser.parse_args()
     records = [row for row in _rows(json.loads(args.universe.read_text()))
                if str(row.get("chain")).lower() == "solana"]
@@ -994,7 +1097,9 @@ def main() -> int:
     if args.limit > 0:
         records = records[:args.limit]
     rpc = RpcPool("solana")
-    results = [assess(record, rpc, replay_limit=args.replay_limit) for record in records]
+    results = [assess(record, rpc, replay_limit=args.replay_limit,
+                      replay_target_span_hours=args.replay_target_span_hours,
+                      replay_max_pages=args.replay_max_pages) for record in records]
     payload = {
         "universe_count": len(records), "stage2_pass_count": sum(row["stage2_pass"] for row in results),
         "tier_counts": {
@@ -1003,7 +1108,9 @@ def main() -> int:
                 "stage2_pass": sum(str(row.get("tier")).upper() == tier and row["stage2_pass"] for row in results),
             } for tier in ("A", "B", "C")
         },
-        "rpc_health": rpc.health_snapshot(), "results": results,
+        "rpc_health": rpc.health_snapshot(),
+        "replay_config": {"page_size": args.replay_limit, "target_span_hours": args.replay_target_span_hours,
+                          "max_pages": args.replay_max_pages}, "results": results,
         "signed": False, "broadcast_count": 0,
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
