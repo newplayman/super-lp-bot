@@ -119,3 +119,23 @@ def test_build_report_reads_sqlite_in_readonly_mode_and_splits_netcover(tmp_path
     assert all(not gate_bits(record)["netcover"] for record in records)
     markdown = render_markdown(report)
     assert "没有到达本闸后失败的池" in markdown
+
+
+def test_build_report_can_pin_an_exact_scanner_snapshot(tmp_path):
+    db = tmp_path / "scan.db"
+    connection = sqlite3.connect(db)
+    connection.execute("CREATE TABLE opportunity_scores (id INTEGER, as_of TEXT, score_json TEXT, accepted INTEGER)")
+    connection.execute(
+        "INSERT INTO opportunity_scores VALUES (?, ?, ?, ?)",
+        (1, "earlier", json.dumps(_row("earlier")), 1),
+    )
+    connection.execute(
+        "INSERT INTO opportunity_scores VALUES (?, ?, ?, ?)",
+        (2, "later", json.dumps(_row("later", netcover_pass=False)), 0),
+    )
+    connection.commit()
+    connection.close()
+
+    report = build_report(db_path=db, stage1_records=[], scanner_as_of="earlier")
+    assert report["source"]["scanner_as_of"] == "earlier"
+    assert report["accepted_recomputed"] == 1

@@ -84,6 +84,35 @@ def test_all_nine_fields_are_calculated_and_each_has_semantics():
     assert out["netcover_input_semantics"] == INPUT_SEMANTICS
 
 
+def test_solana_measured_clmm_state_is_accepted_but_forged_provenance_is_closed():
+    solana = _complete(
+        chain="Solana",
+        holding_horizon_hours=168.0,
+        fee_apr_24h=36.5,
+        fee_apr_7d=36.5,
+        sigma_pair=0.0324,
+        il_apr=1.0,
+        token0="AAPLxMint",
+        token1="EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        dec0=6,
+        dec1=6,
+        sqrt_price_x64=1 << 64,
+        sqrt_price_x64_source="measured:pool.sqrt_price_x64",
+        l_active_raw=1_000_000_000_000,
+        l_active_raw_source="measured:pool.liquidity",
+        last_swap_cost_state_source="measured:latest_decoded_solana_swap_event",
+        tvlUsd=100_000.0,
+    )
+    trusted = assemble_netcover_inputs(solana, position_usd=5.0)
+    assert trusted["fee_ev_usd"] is not None
+    assert trusted["position_cap_usd"] is not None
+
+    forged = assemble_netcover_inputs(solana | {
+        "sqrt_price_x64_source": "caller:claimed_pool_state",
+    }, position_usd=5.0)
+    assert forged["fee_ev_usd"] is None
+
+
 def test_m1_runtime_position_cap_is_persisted_and_hard_share_verified():
     out = assemble_netcover_inputs(_complete(tvlUsd=150_000.0))
 

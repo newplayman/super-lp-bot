@@ -277,11 +277,16 @@ def cross_validate(
     return rows
 
 
-def load_latest_scores(db_path: Path) -> tuple[str | None, list[dict[str, Any]]]:
+def load_latest_scores(
+    db_path: Path, *, as_of: str | None = None,
+) -> tuple[str | None, list[dict[str, Any]]]:
     uri = f"file:{db_path.resolve()}?mode=ro"
     with sqlite3.connect(uri, uri=True, timeout=5.0) as connection:
-        latest_row = connection.execute("SELECT max(as_of) FROM opportunity_scores").fetchone()
-        latest = latest_row[0] if latest_row else None
+        if as_of is None:
+            latest_row = connection.execute("SELECT max(as_of) FROM opportunity_scores").fetchone()
+            latest = latest_row[0] if latest_row else None
+        else:
+            latest = as_of
         raw_rows = [] if latest is None else connection.execute(
             "SELECT score_json, accepted FROM opportunity_scores WHERE as_of=? ORDER BY id", (latest,)
         ).fetchall()
@@ -299,8 +304,9 @@ def build_report(
     stage1_records: Sequence[Mapping[str, Any]],
     raw_pools: Sequence[Mapping[str, Any]] | None = None,
     scanner_rpc_health: str = "UNKNOWN",
+    scanner_as_of: str | None = None,
 ) -> dict[str, Any]:
-    latest, terminal = load_latest_scores(db_path)
+    latest, terminal = load_latest_scores(db_path, as_of=scanner_as_of)
     decay = decay_table(terminal)
     closest = {gate: closest_failures(terminal, gate) for gate in GATE_ORDER}
     cohort = independent_feasibility_cohort(raw_pools or ())
@@ -496,6 +502,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument(
         "--scanner-rpc-health", choices=("NORMAL", "DEGRADED", "UNKNOWN"), default="UNKNOWN"
     )
+    parser.add_argument(
+        "--scanner-as-of",
+        help="exact scanner opportunity_scores.as_of snapshot; defaults to latest",
+    )
     parser.add_argument("--out", required=True, type=Path)
     args = parser.parse_args(argv)
     stage1 = _as_list(json.loads(args.stage1_screen.read_text(encoding="utf-8")))
@@ -507,6 +517,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         stage1_records=stage1,
         raw_pools=raw,
         scanner_rpc_health=args.scanner_rpc_health,
+        scanner_as_of=args.scanner_as_of,
     )
     args.out.mkdir(parents=True, exist_ok=True)
     (args.out / "AUTOPSY.json").write_text(

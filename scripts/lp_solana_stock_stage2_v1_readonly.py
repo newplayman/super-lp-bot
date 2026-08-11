@@ -27,6 +27,7 @@ if str(ROOT) not in sys.path:
 
 from scripts.lp_rpc_pool_v1_readonly import RpcPool
 from scripts.lp_netcover_inputs_v1_readonly import assemble_clmm_netcover_inputs
+from scripts.lp_solana_token_constants_v1_readonly import STABLE_MINTS
 
 
 RAYDIUM_MINT_URL = "https://api-v3.raydium.io/pools/info/mint"
@@ -37,10 +38,6 @@ RAYDIUM_CLMM_PROGRAM = "CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK"
 RAYDIUM_CLMM_ACCOUNT_SIZE = 1544
 ORCA_WHIRLPOOL_ACCOUNT_SIZE = 653
 ORCA_WHIRLPOOL_DISCRIMINATOR = bytes.fromhex("3f95d10ce1806309")
-STABLE_MINTS = {
-    "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",  # USDC
-    "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",  # USDT
-}
 TOKEN_PROGRAMS = {
     "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
     "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
@@ -189,6 +186,7 @@ def resolve_pool(record: Mapping[str, Any], http: Callable[[str], Any] = _http_j
     selected["tier"] = record.get("tier") or record.get("stock_tier")
     selected["llama_tvl_usd"] = record.get("tvlUsd", record.get("tvl_usd"))
     selected["llama_apy_pct"] = record.get("apy", record.get("apy_total"))
+    selected["llama_apy_base_pct"] = record.get("apyBase", record.get("apy_base"))
     return selected
 
 
@@ -342,7 +340,16 @@ def read_clmm_state(pool: Mapping[str, Any], rpc: RpcPool) -> dict[str, Any]:
     slot = context.get("slot") if isinstance(context, Mapping) else None
     if isinstance(slot, bool) or not isinstance(slot, int) or slot <= 0:
         raise ValueError("CLMM_STATE_SLOT_UNAVAILABLE")
-    return {**state, "state_slot": slot, "state_owner": owner}
+    # These labels are attached only after both the protocol account owner and
+    # the confirmed RPC account payload have been verified above.  Swap replay
+    # evidence is intentionally labelled separately by the stage-2 assembler.
+    return {
+        **state,
+        "state_slot": slot,
+        "state_owner": owner,
+        "sqrt_price_x64_source": "measured:pool.sqrt_price_x64",
+        "active_liquidity_raw_source": "measured:pool.liquidity",
+    }
 
 
 def replay_recent_swaps(pool: Mapping[str, Any], rpc: RpcPool, *, signature_limit: int = 3) -> dict[str, Any]:
@@ -547,12 +554,18 @@ def assemble_clmm_stage2_netcover(
         "chain": "Solana", "protocol_type": "clmm", "profile": "PASSIVE_CL",
         "holding_horizon_hours": 168.0, "is_new_pool": None,
         "fee_apr_24h": economics.get("recomputed_fee_apr_pct"),
+        # The supplied DefiLlama base-APR window remains a second, independent
+        # conservative anchor; the common assembler takes min(24h, base APR).
+        "fee_apr_7d": pool.get("llama_apy_base_pct"),
         "sigma_pair": economics.get("sigma_pair"), "il_apr": economics.get("il_apr_pct"),
         "l_active_raw": state.get("active_liquidity_raw"),
+        "l_active_raw_source": state.get("active_liquidity_raw_source"),
+        "sqrt_price_x64": state.get("sqrt_price_x64"),
+        "sqrt_price_x64_source": state.get("sqrt_price_x64_source"),
         "last_swap_liquidity_raw": state.get("active_liquidity_raw"),
         "last_swap_price_token1_per_token0": economics.get("latest_swap_price_b_per_a"),
-        "last_swap_cost_state_source": "measured:solana_raw_swap_replay_and_pool_state",
-        "price_usd": economics.get("price_b_per_a"), "token0": pool.get("mint_a"),
+        "last_swap_cost_state_source": "measured:latest_decoded_solana_swap_event",
+        "token0": pool.get("mint_a"),
         "token1": pool.get("mint_b"), "dec0": state.get("decimals_a"),
         "dec1": state.get("decimals_b"), "fee_tier": pool.get("fee_rate"),
         "tvlUsd": pool.get("tvl_usd"),

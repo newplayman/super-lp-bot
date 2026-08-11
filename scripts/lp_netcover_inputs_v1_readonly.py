@@ -40,6 +40,7 @@ from scripts.lp_netcover_engine_v1_readonly import (
 from scripts.lp_portfolio_allocator_v1_readonly import M1_MIN_POSITION_USD
 from scripts.lp_universe_screener_v1_readonly import reward_persistence_gate
 from scripts.lp_swap_cost_model_v1_readonly import exit_conversion_cost_usd
+from scripts.lp_solana_token_constants_v1_readonly import STABLE_MINTS as SOLANA_STABLE_MINTS
 from scripts.lp_v3_fee_share import position_liquidity_raw
 from scripts.lp_vol_range_sizer_v1_readonly import recommend_range_pct
 
@@ -134,6 +135,18 @@ _BASE_STABLE_TOKENS = frozenset({
     "0xfde4c96c8593536e31f229ea8f37b2ada2699bb2",  # USDT
     "0x50c5725949a6f0c72e6c4a641f24049a917db0cb",  # DAI
 })
+
+# Stable quote evidence is chain-specific.  An omitted or unknown chain must
+# never inherit Base token semantics.
+_STABLE_TOKENS_BY_CHAIN = {
+    "base": _BASE_STABLE_TOKENS,
+    "solana": frozenset(mint.lower() for mint in SOLANA_STABLE_MINTS),
+}
+
+
+def _stable_tokens(record: Mapping[str, Any]) -> frozenset[str]:
+    chain = str(record.get("chain") or "").strip().lower()
+    return _STABLE_TOKENS_BY_CHAIN.get(chain, frozenset())
 
 
 def _number(value: Any, *, positive: bool = False) -> float | None:
@@ -370,12 +383,19 @@ def _pool_price(record: Mapping[str, Any]) -> float | None:
     sqrt_price = _first_number(record, "sqrtPriceX96", "sqrt_price_x96", positive=True)
     dec0 = _first_number(record, "dec0")
     dec1 = _first_number(record, "dec1")
-    if sqrt_price is None or dec0 is None or dec1 is None:
+    if dec0 is None or dec1 is None:
         return None
-    try:
-        price = price_from_sqrt_x96(int(sqrt_price), dec0=int(dec0), dec1=int(dec1))
-    except (OverflowError, ValueError):
-        return None
+    if sqrt_price is not None:
+        try:
+            price = price_from_sqrt_x96(int(sqrt_price), dec0=int(dec0), dec1=int(dec1))
+        except (OverflowError, ValueError):
+            return None
+    else:
+        sqrt_price_x64 = _first_number(record, "sqrt_price_x64", positive=True)
+        if sqrt_price_x64 is None:
+            return None
+        ratio = sqrt_price_x64 / float(1 << 64)
+        price = ratio * ratio * (10.0 ** (int(dec0) - int(dec1)))
     return price if math.isfinite(price) and price > 0.0 else None
 
 
@@ -398,9 +418,10 @@ def _pool_cost_state(record: Mapping[str, Any]) -> tuple[float, int, int] | None
         return None
     token0 = str(record.get("token0") or "").lower()
     token1 = str(record.get("token1") or "").lower()
-    if token1 in _BASE_STABLE_TOKENS:
+    stable_tokens = _stable_tokens(record)
+    if token1 in stable_tokens:
         return pair_price, int(dec0), int(dec1)
-    if token0 in _BASE_STABLE_TOKENS:
+    if token0 in stable_tokens:
         return 1.0 / pair_price, int(dec1), int(dec0)
     return None
 
@@ -472,6 +493,12 @@ def _range_aware_fee_ev(
             "measured:pool.liquidity"
         )
     )
+    solana_live_provenance = (
+        str(record.get("sqrt_price_x64_source") or "")
+        == "measured:pool.sqrt_price_x64"
+        and str(record.get("l_active_raw_source") or "")
+        == "measured:pool.liquidity"
+    )
     if swap_provenance:
         l_active = _first_number(record, "last_swap_liquidity_raw", positive=True)
         for key in (
@@ -479,7 +506,7 @@ def _range_aware_fee_ev(
             "sqrtPriceX96", "sqrt_price_x96",
         ):
             state_record.pop(key, None)
-    elif live_provenance:
+    elif live_provenance or solana_live_provenance:
         l_active = _first_number(record, "l_active_raw", positive=True)
         for key in (
             "last_swap_price_token1_per_token0", "last_swap_liquidity_raw",
@@ -940,8 +967,8 @@ def assemble_clmm_netcover_inputs(
         if (
             token0
             and token1
-            and token0 not in _BASE_STABLE_TOKENS
-            and token1 not in _BASE_STABLE_TOKENS
+            and token0 not in _stable_tokens(record)
+            and token1 not in _stable_tokens(record)
             and _first_number(
                 record, "last_swap_price_token1_per_token0", positive=True
             ) is not None
