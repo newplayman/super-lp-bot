@@ -27,3 +27,29 @@ autopsy terminal=30 accepted=0 independent=200
 ```
 
 完整 `python3 -m pytest tests/ -q` 和 `go test ./...` 会在最后一次编辑后重新执行并粘贴完整原始输出；不引用此处以前的回归结果。
+
+## G2 — 采样深度与退化区间防护
+
+机械验收原始输出：
+
+```text
+$ python3 -m pytest tests/test_lp_solana_stock_stage2_v1_readonly.py tests/test_lp_netcover_inputs_v1_readonly.py -q
+........................................................                 [100%]
+56 passed in 0.27s
+```
+
+`--replay-limit` 的默认值现为 60。sigma 仅接受至少 20 笔具有时间戳的真实
+swap、且首尾至少相隔 1 小时；不足时返回例如
+`SIGMA_SAMPLE_INSUFFICIENT:n=3,span=0.3h`，不产生 range 或 FeeEV 输入。另有
+`recommend_range_pct < 0.1%` 的 fail-closed 检查，原因带计算出的区间值。
+
+对 AAPLX-USDC (`9462784c-c0e5-4539-914e-ac006e5b3097`) 的免费 RPC 只读
+60 条签名轮巡原始输出：
+
+```text
+{"universe_count": 1, "stage2_pass_count": 0, "tier_counts": {"A": {"total": 1, "stage2_pass": 0}, "B": {"total": 0, "stage2_pass": 0}, "C": {"total": 0, "stage2_pass": 0}}}
+{"swap_count": 50, "sigma_pair": 0.024013010166132644, "range_pct": 7.623894375558334, "fee_ev_usd": 0.009182465753424658, "netcover": null, "economics_reason": "PASS", "netcover_reason": "NETCOVER_INPUT_MISSING:reward_ev_usd,gas_usd,reward_conversion_cost_usd", "rpc_health": {"state": "NORMAL", "total_endpoints": 6, "impaired_endpoints": 0, "cooling_endpoints": 0, "max_consecutive_failures": 0}}
+```
+
+这里 `netcover=null` 是原始结果：Solana 尚没有历史 gas / reward 转换成本证据，
+所以终闸保持 fail-closed；未用任何替代或付费服务填补。

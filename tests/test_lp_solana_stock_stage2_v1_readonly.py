@@ -1,4 +1,5 @@
 import base64
+import math
 
 import pytest
 
@@ -7,6 +8,7 @@ from scripts.lp_solana_stock_stage2_v1_readonly import (
     _clmm_active_depth,
     _decode_raydium_pool_state,
     _replay_price_path,
+    assemble_clmm_stage2_netcover,
     assess,
     recompute_clmm_economics,
     recompute_economics,
@@ -118,9 +120,9 @@ def test_clmm_replay_economics_uses_active_stable_depth_and_raw_price_path():
         "sqrt_price_x64": 1 << 64, "decimals_a": 6, "decimals_b": 6,
     }
     replay = {"swaps": [
-        {"raw_ui_price_b_per_a": 1.0},
-        {"raw_ui_price_b_per_a": 1.1},
-        {"raw_ui_price_b_per_a": 1.0},
+        {"raw_ui_price_b_per_a": math.exp(0.0324 * index),
+         "block_time": 1_700_000_000 + index * 3600}
+        for index in range(21)
     ]}
 
     result = recompute_clmm_economics(pool, state, replay)
@@ -129,7 +131,34 @@ def test_clmm_replay_economics_uses_active_stable_depth_and_raw_price_path():
     assert result["recomputed_fee_apr_pct"] == pytest.approx(36.5)
     assert result["exit_depth_usd"] > 0
     assert result["exit_slippage_bps"] > 0
-    assert result["sigma_pair"] > 0
+    assert result["sigma_pair"] == pytest.approx(0.0324)
+    assert result["sigma_swap_count"] == 21
+    assert result["sigma_sample_span_hours"] == pytest.approx(20.0)
+    assert 1.0 < result["recommend_range_pct"] < 20.0
+
+
+def test_clmm_sigma_sample_insufficiency_cannot_produce_a_range():
+    pool = {
+        "mint_a": "stock", "mint_b": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "tvl_usd": 100_000, "fees_24h_usd": 100, "volume_24h_usd": 10_000,
+        "fee_rate": 0.01,
+    }
+    state = {
+        "active_liquidity_raw": 1_000_000_000_000,
+        "sqrt_price_x64": 1 << 64, "decimals_a": 6, "decimals_b": 6,
+    }
+    replay = {"swaps": [
+        {"raw_ui_price_b_per_a": 1.0 + index * 0.01,
+         "block_time": 1_700_000_000 + index * 600}
+        for index in range(3)
+    ]}
+    result = recompute_clmm_economics(pool, state, replay)
+    assert result["passed"] is False
+    assert result["reason"] == "SIGMA_SAMPLE_INSUFFICIENT:n=3,span=0.3h"
+    assert "recommend_range_pct" not in result
+    netcover = assemble_clmm_stage2_netcover(pool, state, result)
+    assert netcover["passed"] is False
+    assert "inputs" not in netcover
 
 
 def test_clmm_depth_requires_an_onchain_stable_leg_anchor():

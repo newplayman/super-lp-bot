@@ -28,6 +28,7 @@ if str(ROOT) not in sys.path:
 from scripts.lp_rpc_pool_v1_readonly import RpcPool
 from scripts.lp_netcover_inputs_v1_readonly import assemble_clmm_netcover_inputs
 from scripts.lp_solana_token_constants_v1_readonly import STABLE_MINTS
+from scripts.lp_vol_range_sizer_v1_readonly import recommend_range_pct
 
 
 RAYDIUM_MINT_URL = "https://api-v3.raydium.io/pools/info/mint"
@@ -48,6 +49,10 @@ LOADER_OWNERS = {
 }
 USER_AGENT = "lpbot-solana-stock-stage2/1"
 MAX_TVL_RELATIVE_ERROR = 0.15
+DEFAULT_REPLAY_LIMIT = 60
+MIN_SIGMA_SWAP_COUNT = 20
+MIN_SIGMA_SPAN_SECONDS = 60 * 60
+MIN_RECOMMENDED_RANGE_PCT = 0.1
 
 
 def _rows(payload: Any) -> list[dict[str, Any]]:
@@ -352,7 +357,7 @@ def read_clmm_state(pool: Mapping[str, Any], rpc: RpcPool) -> dict[str, Any]:
     }
 
 
-def replay_recent_swaps(pool: Mapping[str, Any], rpc: RpcPool, *, signature_limit: int = 3) -> dict[str, Any]:
+def replay_recent_swaps(pool: Mapping[str, Any], rpc: RpcPool, *, signature_limit: int = DEFAULT_REPLAY_LIMIT) -> dict[str, Any]:
     """Replay a bounded set of real transactions touching the pool vaults.
 
     This is deliberately not a transaction-count extrapolator.  It proves that
@@ -471,16 +476,36 @@ def _clmm_active_depth(pool: Mapping[str, Any], state: Mapping[str, Any]) -> dic
     }
 
 
-def _replay_price_path(replay: Mapping[str, Any]) -> dict[str, float]:
-    prices = []
+def _replay_price_path(
+    replay: Mapping[str, Any], *, require_sigma_sample: bool = False,
+) -> dict[str, float]:
+    samples: list[tuple[int | None, float]] = []
     for swap in replay.get("swaps") or []:
         try:
             price = float(swap.get("raw_ui_price_b_per_a"))
         except (TypeError, ValueError):
             continue
-        if math.isfinite(price) and price > 0:
-            prices.append(price)
-    if len(prices) < 2:
+        if not math.isfinite(price) or price <= 0:
+            continue
+        try:
+            block_time = int(swap.get("block_time"))
+        except (TypeError, ValueError):
+            block_time = None
+        samples.append((block_time if block_time and block_time > 0 else None, price))
+    if require_sigma_sample:
+        samples = sorted((time, price) for time, price in samples if time is not None)
+    prices = [price for _block_time, price in samples]
+    count = len(prices)
+    span_seconds = (
+        int(samples[-1][0]) - int(samples[0][0])
+        if require_sigma_sample and count >= 2 else 0
+    )
+    span_hours = span_seconds / 3600.0
+    if require_sigma_sample and (
+        count < MIN_SIGMA_SWAP_COUNT or span_seconds < MIN_SIGMA_SPAN_SECONDS
+    ):
+        raise ValueError(f"SIGMA_SAMPLE_INSUFFICIENT:n={count},span={span_hours:.1f}h")
+    if count < 2:
         raise ValueError("RAW_SWAP_PRICE_PATH_INSUFFICIENT")
     log_returns = [math.log(current / prior) for prior, current in zip(prices, prices[1:])]
     variance = sum(value * value for value in log_returns) / len(log_returns)
@@ -489,6 +514,8 @@ def _replay_price_path(replay: Mapping[str, Any]) -> dict[str, float]:
         "sigma_pair": math.sqrt(variance),
         "price_ratio_worst": max(prices) / min(prices),
         "latest_swap_price_b_per_a": prices[-1],
+        "sigma_swap_count": count,
+        "sigma_sample_span_hours": span_hours,
     }
 
 
@@ -521,7 +548,10 @@ def recompute_clmm_economics(
         return {"passed": False, "reason": str(exc)}
     try:
         depth = _clmm_active_depth(pool, state)
-        path = _replay_price_path(replay)
+        path = _replay_price_path(replay, require_sigma_sample=True)
+        range_pct = recommend_range_pct(path["sigma_pair"], 168.0 / 24.0)
+        if not math.isfinite(range_pct) or range_pct < MIN_RECOMMENDED_RANGE_PCT:
+            raise ValueError(f"RECOMMENDED_RANGE_DEGENERATE:range={range_pct:.4f}%")
         il_fraction = v2_il(path["price_ratio_worst"])
         # This is a conservative path-loss input.  The range-sized fee share
         # itself remains exclusively calculated by assemble_clmm_netcover_inputs.
@@ -538,6 +568,8 @@ def recompute_clmm_economics(
         "reason": "PASS",
         "il_24h_worst": il_fraction,
         "il_apr_pct": il_apr_pct,
+        "recommend_range_pct": range_pct,
+        "recommend_range_min_pct": MIN_RECOMMENDED_RANGE_PCT,
         "exit_slippage_bps": slippage_bps,
         "exit_depth_model": "active_stable_quote_liquidity_50pct_haircut",
         "fee_attribution": "official_protocol_24h_fees_with_raw_swap_path_validation",
@@ -741,8 +773,8 @@ def main() -> int:
     parser.add_argument("--pool-id", default="", help="optional exact DefiLlama UUID for bounded replay evidence")
     parser.add_argument("--protocol-type", default="",
                         help="optional universe-declared protocol type filter (for a CLMM-only replay)")
-    parser.add_argument("--replay-limit", type=int, default=3,
-                        help="recent pool transactions checked for real swaps; 0 disables")
+    parser.add_argument("--replay-limit", type=int, default=DEFAULT_REPLAY_LIMIT,
+                        help="recent pool transactions checked for real swaps (default: 60); 0 disables")
     args = parser.parse_args()
     records = [row for row in _rows(json.loads(args.universe.read_text()))
                if str(row.get("chain")).lower() == "solana"]
