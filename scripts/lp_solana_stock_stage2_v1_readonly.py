@@ -27,6 +27,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from scripts.lp_rpc_pool_v1_readonly import RpcPool
+from scripts.lp_netcover_engine_v1_readonly import apply_netcover_gate
 from scripts.lp_netcover_inputs_v1_readonly import assemble_clmm_netcover_inputs
 from scripts.lp_solana_token_constants_v1_readonly import STABLE_MINTS
 from scripts.lp_vol_range_sizer_v1_readonly import recommend_range_pct
@@ -847,9 +848,22 @@ def assemble_clmm_stage2_netcover(
     transaction_cost_evidence: Mapping[str, Any] | None = None,
     reward_evidence: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Use the common CLMM assembler; unavailable inputs stay explicit and closed."""
+    """Assemble and evaluate the shared CLMM NetCover Shadow gate.
+
+    ``inputs_complete`` is deliberately only an observability field.  It must
+    never be confused with ``netcover_pass``, which is the shared full-cost
+    economic decision at ``NETCOVER_SHADOW``.
+    """
     if economics.get("passed") is not True:
-        return {"passed": False, "reason": str(economics.get("reason") or "CLMM_ECONOMICS_UNAVAILABLE")}
+        reason = str(economics.get("reason") or "CLMM_ECONOMICS_UNAVAILABLE")
+        return {
+            "inputs_complete": False,
+            "inputs_reason": "NETCOVER_INPUTS_UNAVAILABLE:" + reason,
+            "netcover_pass": False,
+            "netcover_ratio": None,
+            "netcover_reason": "NETCOVER_NOT_EVALUATED",
+            "reason": "NETCOVER_INPUTS_UNAVAILABLE:" + reason,
+        }
     record = {
         "chain": "Solana", "protocol_type": "clmm", "profile": "PASSIVE_CL",
         "holding_horizon_hours": 168.0, "is_new_pool": None,
@@ -879,11 +893,32 @@ def assemble_clmm_stage2_netcover(
     try:
         assembled = assemble_clmm_netcover_inputs(record, position_usd=5.0)
     except (ArithmeticError, TypeError, ValueError) as exc:
-        return {"passed": False, "reason": f"NETCOVER_ASSEMBLY_FAILED:{exc}"}
+        reason = f"NETCOVER_ASSEMBLY_FAILED:{exc}"
+        return {
+            "inputs_complete": False, "inputs_reason": reason,
+            "netcover_pass": False, "netcover_ratio": None,
+            "netcover_reason": "NETCOVER_NOT_EVALUATED", "reason": reason,
+        }
     missing = [name for name, value in assembled.items()
                if name.endswith("_usd") and value is None]
+    inputs_complete = not missing
+    inputs_reason = "PASS" if inputs_complete else "NETCOVER_INPUT_MISSING:" + ",".join(missing)
+    if not inputs_complete:
+        return {
+            "inputs_complete": False, "inputs_reason": inputs_reason,
+            "netcover_pass": False, "netcover_ratio": None,
+            "netcover_reason": "NETCOVER_NOT_EVALUATED", "reason": inputs_reason,
+            "inputs": assembled,
+        }
+    gated = apply_netcover_gate([assembled])[0]
+    netcover_pass = gated.get("netcover_pass") is True
+    netcover_reason = str(gated.get("rejection_reason") or "PASS")
     return {
-        "passed": not missing, "reason": "PASS" if not missing else "NETCOVER_INPUT_MISSING:" + ",".join(missing),
+        "inputs_complete": True, "inputs_reason": inputs_reason,
+        "netcover_pass": netcover_pass,
+        "netcover_ratio": gated.get("netcover_ratio"),
+        "netcover_reason": netcover_reason,
+        "reason": "PASS" if netcover_pass else netcover_reason,
         "inputs": assembled,
     }
 
@@ -982,7 +1017,7 @@ def _stage2_failure_reason(
         return str(replay.get("reason") or "RAW_SWAP_SAMPLE_EMPTY")
     if replay.get("economic_price_complete") is not True:
         return str(replay.get("reason") or "ECONOMIC_PRICE_INCOMPLETE")
-    if netcover is not None and netcover.get("passed") is not True:
+    if netcover is not None and netcover.get("netcover_pass") is not True:
         return str(netcover.get("reason") or "NETCOVER_UNAVAILABLE")
     return "STAGE2_CONJUNCTION_FAILED"
 
@@ -1051,7 +1086,7 @@ def assess(record: Mapping[str, Any], rpc: RpcPool,
             and economics.get("passed") is True
             and replay.get("swap_count", 0) > 0
             and replay.get("economic_price_complete") is True
-            and (netcover is None or netcover.get("passed") is True)
+            and (netcover is None or netcover.get("netcover_pass") is True)
         )
         if base["stage2_pass"]:
             base["reason"] = "PASS"

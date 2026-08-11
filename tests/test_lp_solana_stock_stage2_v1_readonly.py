@@ -221,7 +221,8 @@ def test_clmm_sigma_sample_insufficiency_cannot_produce_a_range():
     assert result["reason"] == "SIGMA_SAMPLE_INSUFFICIENT:n=3,span=0.3h"
     assert "recommend_range_pct" not in result
     netcover = assemble_clmm_stage2_netcover(pool, state, result)
-    assert netcover["passed"] is False
+    assert netcover["inputs_complete"] is False
+    assert netcover["netcover_pass"] is False
     assert "inputs" not in netcover
 
 
@@ -230,10 +231,40 @@ def test_stage2_failure_reason_reports_failed_netcover_not_economics_pass():
         {"passed": True, "reason": "PASS"},
         {"passed": True, "reason": "PASS"},
         {"swap_count": 50, "economic_price_complete": True, "reason": "PASS"},
-        {"passed": False, "reason": "NETCOVER_INPUT_MISSING:gas_usd"},
+        {"netcover_pass": False, "reason": "NETCOVER_INPUT_MISSING:gas_usd"},
     )
     assert reason == "NETCOVER_INPUT_MISSING:gas_usd"
     assert "FAIL_CLOSED:PASS" not in reason
+
+
+def test_stage2_netcover_separates_complete_inputs_from_economic_gate(monkeypatch):
+    import scripts.lp_solana_stock_stage2_v1_readonly as stage2
+
+    # The shared gate receives every required input, but income is far below
+    # the measured transaction cost.  Completeness must not become a pass.
+    monkeypatch.setattr(stage2, "assemble_clmm_netcover_inputs", lambda *_args, **_kwargs: {
+        "protocol_type": "clmm",
+        "netcover_model_path": "clmm_vol_sized_range_v1",
+        "fee_ev_usd": 0.009,
+        "reward_ev_usd": 0.0,
+        "il_ev_usd": 0.0,
+        "entry_cost_usd": 0.0,
+        "exit_cost_usd": 0.0,
+        "gas_usd": 0.314,
+        "slippage_usd": 0.0,
+        "reward_conversion_cost_usd": 0.0,
+        "exit_latency_loss_usd": 0.0,
+    })
+
+    result = assemble_clmm_stage2_netcover(
+        {}, {}, {"passed": True, "recomputed_fee_apr_pct": 1.0},
+    )
+
+    assert result["inputs_complete"] is True
+    assert result["inputs_reason"] == "PASS"
+    assert result["netcover_ratio"] == pytest.approx(0.009 / 0.314)
+    assert result["netcover_pass"] is False
+    assert result["netcover_reason"] == "NETCOVER_BELOW_SHADOW"
 
 
 def test_clmm_depth_requires_an_onchain_stable_leg_anchor():
