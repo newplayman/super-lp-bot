@@ -62,3 +62,36 @@ AAPLX-USDC 当次链上读取的原始 reward 字段：
 此 117 池固定股票宇宙中没有 `apyReward > 0` 的 Solana 行，因而没有可诚实列为“有 reward 的 Solana 股票池”的样本；
 不会伪造或以非股票池替代。对于有 reward info 但免费无签名报价不可得的情形，读取结论保持
 `FAIL_CLOSED`，不会把未估价的 emission 当收入。
+
+## H3 — 采样深度加固（未完成，未提交）
+
+首轮免费 RPC 原始输出（每页 60、目标 3h、验收临时上限 3 页）：
+
+```json
+{"swap_count": 169, "actual_span_hours": 1.2205555555555556, "pages_fetched": 3, "replay_stop_reason": "PAGINATION_LIMIT_REACHED", "transactions_checked": 180}
+```
+
+对应结论为 `FAIL_CLOSED:SIGMA_SAMPLE_INSUFFICIENT:n=100,span=1.2h`。这证明旧的 60 笔边界采样并不稳定；
+新代码会继续翻页到默认最多 10 页，但本轮尚未完成三次都达到 3h 的验收；H3 与 H5 仍不宣称完成。
+
+## H4 — Base 不变性固定快照对照
+
+使用 Python `sqlite3.Connection.backup()` 于 `2026-08-11T09:55:05.586558+00:00` 从
+`reports/lp_scanner/scanner.db` 制作 `reports/lp_tp_h/20260811/h4_base_invariance/scanner.snapshot.db`。
+两次 AUTOPSY 都只读该副本和同一份 Stage-1 输入：基线为 `29ac336`，当前为包含 H1–H3a 的代码。
+
+| 字段/闸 | 29ac336 | 当前 | 一致 |
+|---|---:|---:|---|
+| `netcover_failures.missing_input` | 0 | 0 | 是 |
+| `netcover_failures.calculated_below_1` | 4 | 4 | 是 |
+| `accepted_recomputed` | 0 | 0 | 是 |
+| `resolution_status` survived/eliminated | 15 / 15 | 15 / 15 | 是 |
+| `asset_quality` survived/eliminated | 15 / 0 | 15 / 0 | 是 |
+| `yield_cover` survived/eliminated | 14 / 1 | 14 / 1 | 是 |
+| `multiwindow_stable` survived/eliminated | 5 / 9 | 5 / 9 | 是 |
+| `entry_eligible` survived/eliminated | 4 / 1 | 4 / 1 | 是 |
+| `netcover` survived/eliminated | 0 / 4 | 0 / 4 | 是 |
+| `position_cap` survived/eliminated | 0 / 0 | 0 / 0 | 是 |
+
+原始 AUTOPSY 输出分别在 `reports/lp_tp_h/20260811/h4_base_invariance/baseline_29ac336/`
+及 `.../current/`。结论：Base 的既有数值行为在该固定快照上逐闸不变。
