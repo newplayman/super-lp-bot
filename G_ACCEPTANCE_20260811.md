@@ -1,5 +1,9 @@
 # TP-G-v1 验收记录（进行中）
 
+A 档：修复后完成的 AAPLX-USDC 单池 60 条签名回放没有算出 NetCover（0 个 `>=1.0`）；36 个 A 池的完整 60 笔逐池重跑尚未完成，因此不能诚实报告全量分布。
+B/C 档仍然对无稳定腿、无法以链上稳定资产锚定深度的池标为不可达；这是一项保留的 fail-closed 设计，而不是放宽目标。
+三档的全量 `terminal_pass` 及“算出来没过/没算成”拆分将在完整 60 笔全宇宙轮巡后产出；本次完成的 AAPLX 样本是 `terminal_pass=0`、没算成（`SIGMA_SAMPLE_INSUFFICIENT`）。
+
 ## G1 — 跨链 CLMM 组装器可达性
 
 机械验收原始输出：
@@ -84,3 +88,33 @@ $ python3 -m pytest tests/test_lp_stock_tier_acceptance_v1_readonly.py -q
 报告的 A/B/C `tier_counts` 现在额外列出
 `0_because_computed_and_failed` 与 `0_because_inputs_unavailable`；每档
 `terminal_pass + 两类零原因 = universe`，因此零通过不再与“根本没算成”同值。
+
+## G5 — 修复后真实结论（部分完成，未宣称全宇宙完成）
+
+修复 G3 后重跑 AAPLX-USDC 的原始输出：
+
+```text
+{"universe_count": 1, "stage2_pass_count": 0, "tier_counts": {"A": {"total": 1, "stage2_pass": 0}, "B": {"total": 0, "stage2_pass": 0}, "C": {"total": 0, "stage2_pass": 0}}}
+{"reason": "FAIL_CLOSED:SIGMA_SAMPLE_INSUFFICIENT:n=30,span=0.0h", "swap_count": 59, "sigma_pair": null, "range_pct": null, "fee_ev_usd": null, "netcover_reason": "SIGMA_SAMPLE_INSUFFICIENT:n=30,span=0.0h"}
+```
+
+虽然轮巡获得 59 个可识别 swap，其中只有 30 个带可用时间戳且 span=0.0h；因此新闸拒绝
+产出 sigma/range/FeeEV，而非使用退化样本。此前 G2 的同池免费 RPC 轮巡曾得到 50 个可用
+时间样本和 sigma=0.024013010166132644、range=7.623894375558334，说明该路径已可达；本次
+结论仍严格按当前原始证据 fail-closed。
+
+未完成项：对 A/B/C 全宇宙逐池以 `--replay-limit 60` 重跑、合成新的 tier acceptance，及最后
+全量 pytest/go test 原始输出。它们不能用 TP-F 的 3 笔旧采样代替，故留作明确未完成项。
+
+## 最后一次代码编辑后的全量回归
+
+```text
+$ python3 -m pytest tests/ -q
+3090 passed, 14 skipped in 57.82s
+
+$ go test ./...
+ok   github.com/lpbot/lpbot/adapters/broadcast/disabled (cached)
+...（其余包均为 ok 或 [no test files]）
+ok   github.com/lpbot/lpbot/tests/property (cached)
+ok   github.com/lpbot/lpbot/tests/property/mocks (cached)
+```
