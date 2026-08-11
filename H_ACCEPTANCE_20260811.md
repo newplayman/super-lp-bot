@@ -120,3 +120,31 @@ AAPLX-USDC（`9462784c-c0e5-4539-914e-ac006e5b3097`）连续三次免费 RPC 原
 
 原始 AUTOPSY 输出分别在 `reports/lp_tp_h/20260811/h4_base_invariance/baseline_29ac336/`
 及 `.../current/`。结论：Base 的既有数值行为在该固定快照上逐闸不变。
+
+## H5 — A 档 36 池分段 checkpoint（未完成）
+
+H5 的确定性输入是固定股票宇宙中 `chain=Solana && tier=A && protocol_type=clmm` 的 **36** 池，已保存为
+`reports/lp_tp_h/20260811/h5_solana_a_clmm_36_universe.json`。首次 checkpoint（offset 0、limit 6、每页 60、
+目标 3h、最多 10 页）在单池的免费 `getTransaction` 历史分页节流中运行超过十分钟而未落盘完整段；中断时栈位于
+`RpcPool._pace_request(... getTransaction ...)`。只中断了本次 H5 子进程，未影响任何受保护观测进程。
+
+因此没有完整 checkpoint，H5 的真实完成度为 **0/36**；没有 NetCover 分布、`>=1.0` 数量、三档 terminal 拆分或
+“算出来没过/没算成”可报告。不会把未完成的 36 池归类成失败，也不会以更宽经济阈值、付费 RPC 或跳过采样来凑出数。
+B/C 无稳定腿的不可达标注没有被修改。
+
+## 最后一次编辑后的全量回归
+
+```text
+$ python3 -m pytest tests/ -q
+3096 passed, 14 skipped in 64.48s (0:01:04)
+
+$ go test ./...
+ok  github.com/lpbot/lpbot/adapters/broadcast/disabled (cached)
+...（各包均为 ok 或 [no test files]，命令退出码 0）
+ok  github.com/lpbot/lpbot/pkg/tickmath (cached)
+?   github.com/lpbot/lpbot/scripts/aggregate-verdict [no test files]
+ok  github.com/lpbot/lpbot/tests/chaos (cached)
+?   github.com/lpbot/lpbot/tests/fork [no test files]
+ok  github.com/lpbot/lpbot/tests/property (cached)
+ok  github.com/lpbot/lpbot/tests/property/mocks (cached)
+```
