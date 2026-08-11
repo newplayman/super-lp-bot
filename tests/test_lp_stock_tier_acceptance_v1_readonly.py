@@ -19,6 +19,11 @@ def test_no_stage2_or_48h_evidence_means_zero_terminal_passes():
     assert len(c["decision"]["gates"]) == 7
     assert c["decision"]["terminal_conjunction_complete"] is True
     assert result["broadcast_count"] == 0
+    for tier in ("A", "B", "C"):
+        counts = result["tier_counts"][tier]
+        assert counts["terminal_pass"] + counts["0_because_computed_and_failed"] + counts["0_because_inputs_unavailable"] == counts["universe"]
+    assert result["tier_counts"]["A"]["0_because_inputs_unavailable"] == 1
+    assert result["tier_counts"]["C"]["0_because_inputs_unavailable"] == 1
 
 
 def _complete_c_payload(pool_ids):
@@ -69,6 +74,28 @@ def test_c_complete_evidence_has_a_real_positive_terminal_path():
 
     assert result["decisions"][0]["decision"]["passed"] is True
     assert result["counts_are_real_chain_terminal_not_defillama_yield_claims"] is True
+
+
+def test_terminal_evidence_producers_cover_every_tier_c_consumed_gate():
+    """Controlled end-to-end evidence reaches all seven real policy gates."""
+    universe, stage2, shadow, c_risk = _complete_c_payload(["c-producer-meta"])
+    result = build_acceptance(universe, stage2, {"rows": []}, shadow, c_risk)
+    decision = result["decisions"][0]["decision"]
+    assert set(decision["gates"]) == {
+        "1_exit_feasibility", "2_holder_concentration", "3_sell_simulation",
+        "4_yield_persistence", "5_counter_token_age", "6_position_vs_depth",
+        "7_budget_caps",
+    }
+    assert all(decision["gates"].values())
+    assert all(value is not None for value in decision["evidence"].values())
+
+
+def test_terminal_zero_diagnostic_identifies_computed_failures():
+    universe, stage2, shadow, c_risk = _complete_c_payload(["c-failed-computed"])
+    stage2["results"][0]["exit_slippage_bps"] = 201
+    result = build_acceptance(universe, stage2, {"rows": []}, shadow, c_risk)
+    row = result["decisions"][0]
+    assert row["terminal_zero_cause"] == "0_because_computed_and_failed"
 
 
 @pytest.mark.parametrize(

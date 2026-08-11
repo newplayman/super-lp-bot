@@ -13,6 +13,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from scripts.lp_stock_tier_policy_v1_readonly import evaluate_ab_gate, evaluate_c_gate
+from scripts.lp_netcover_inputs_v1_readonly import NETCOVER_INPUT_FIELDS
 
 
 def _rows(payload: Any) -> list[dict[str, Any]]:
@@ -33,6 +34,24 @@ def _index(rows: list[Mapping[str, Any]], *keys: str) -> dict[str, Mapping[str, 
                 output[str(row[key])] = row
                 break
     return output
+
+
+def _terminal_zero_cause(stage2: Mapping[str, Any], decision: Mapping[str, Any]) -> str | None:
+    """Separate genuine failed economics from a terminal gate with no inputs."""
+    if decision.get("passed") is True:
+        return None
+    economics = stage2.get("economics") if isinstance(stage2.get("economics"), Mapping) else {}
+    netcover = stage2.get("netcover") if isinstance(stage2.get("netcover"), Mapping) else {}
+    inputs = netcover.get("inputs") if isinstance(netcover.get("inputs"), Mapping) else {}
+    if not stage2:
+        return "0_because_inputs_unavailable"
+    if stage2.get("stage2_pass") is True:
+        return "0_because_computed_and_failed"
+    if economics.get("passed") is not True:
+        return "0_because_inputs_unavailable"
+    if netcover and any(inputs.get(field) is None for field in NETCOVER_INPUT_FIELDS):
+        return "0_because_inputs_unavailable"
+    return "0_because_computed_and_failed"
 
 
 def build_acceptance(
@@ -130,6 +149,10 @@ def build_acceptance(
             "stage2_pass": s2.get("stage2_pass") is True,
             "decision": decision,
         })
+    for row in decisions:
+        row["terminal_zero_cause"] = _terminal_zero_cause(
+            stage2.get(str(row["llama_pool_id"]), {}), row["decision"],
+        )
     terminal_decisions = [
         row for row in decisions if row["decision"].get("passed") is True
     ]
@@ -142,6 +165,14 @@ def build_acceptance(
                 "universe": sum(row["tier"] == tier for row in decisions),
                 "stage2_pass": sum(row["tier"] == tier and row["stage2_pass"] for row in decisions),
                 "terminal_pass": sum(row["tier"] == tier and row["decision"].get("passed") is True for row in decisions),
+                "0_because_computed_and_failed": sum(
+                    row["tier"] == tier and row.get("terminal_zero_cause") == "0_because_computed_and_failed"
+                    for row in decisions
+                ),
+                "0_because_inputs_unavailable": sum(
+                    row["tier"] == tier and row.get("terminal_zero_cause") == "0_because_inputs_unavailable"
+                    for row in decisions
+                ),
             } for tier in ("A", "B", "C", "STOCK_STOCK")
         },
         "terminal_pass_count": sum(row["decision"].get("passed") is True for row in decisions),

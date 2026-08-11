@@ -68,3 +68,19 @@ stage2 现在逐一检查真正的合取失败项：链上身份、经济、swap
 最后才是 NetCover。回归用例中 economics/replay 都是 `PASS` 而 NetCover 是
 `NETCOVER_INPUT_MISSING:gas_usd`，最终 reason 恰为该 NetCover 原因，且不含
 `FAIL_CLOSED:PASS`。
+
+## G4 — 假阴性自检与证据生产者覆盖
+
+机械验收原始输出：
+
+```text
+$ python3 -m pytest tests/test_lp_stock_tier_acceptance_v1_readonly.py -q
+.......                                                                  [100%]
+7 passed in 0.12s
+```
+
+受控端到端元测试通过真实 `build_acceptance → evaluate_c_gate` 路径，把 C 档终闸
+消费的七个 gate 全部产出为 true，并断言全部数值证据非空；没有 mock 被测 policy。
+报告的 A/B/C `tier_counts` 现在额外列出
+`0_because_computed_and_failed` 与 `0_because_inputs_unavailable`；每档
+`terminal_pass + 两类零原因 = universe`，因此零通过不再与“根本没算成”同值。
