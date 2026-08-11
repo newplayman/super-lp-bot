@@ -42,6 +42,8 @@ SOLANA_CHEAP_METHODS = (
     "getAccountInfo",
     "getMultipleAccounts",
     "getTokenLargestAccounts",
+    "getRecentPrioritizationFees",
+    "getMinimumBalanceForRentExemption",
 )
 SOLANA_HEAVY_METHODS = (
     "getSignaturesForAddress",

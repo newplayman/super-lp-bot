@@ -11,6 +11,7 @@ from scripts.lp_solana_stock_stage2_v1_readonly import (
     _stage2_failure_reason,
     assemble_clmm_stage2_netcover,
     assess,
+    measure_solana_transaction_cost,
     recompute_clmm_economics,
     recompute_economics,
     replay_recent_swaps,
@@ -230,3 +231,27 @@ def test_solana_exit_and_sell_evidence_has_simulation_success_and_fail_closed_si
     failed = solana_exit_and_sell_evidence(replay, economics)
     assert failed["sell_simulation_ok"] is False
     assert failed["sell_simulation_reason"] == "FAIL_CLOSED_UNSIGNED_SELL_SIMULATION_UNAVAILABLE"
+
+
+def test_solana_cost_measurement_uses_public_rpc_components_and_unsigned_quote():
+    class CostRPC:
+        def call(self, method, _params):
+            if method == "getRecentPrioritizationFees":
+                return [{"prioritizationFee": 100}, {"prioritizationFee": 300}]
+            if method == "getMinimumBalanceForRentExemption":
+                return 2_000_000
+            raise AssertionError(method)
+
+    result = measure_solana_transaction_cost(
+        {"pool_address": "pool"},
+        {"swaps": [{"transaction_fee_lamports": 5_200},
+                   {"transaction_fee_lamports": 5_400}]},
+        CostRPC(),
+        http=lambda _url: {"outAmount": "150000000"},
+    )
+    assert result["status"] == "PASS"
+    assert result["signature_fee_lamports"] == 5_100
+    assert result["priority_fee_lamports"] == 200
+    assert result["rent_components"]["ata_count"] == 2
+    assert result["operation_count"] == 2
+    assert result["sol_usd"] == 150.0

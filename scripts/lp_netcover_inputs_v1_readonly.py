@@ -123,6 +123,49 @@ INPUT_SOURCES = {
     "exit_latency_loss_usd": "model_estimate:free_rpc_exit_latency_apr_horizon",
 }
 
+
+def _solana_gas_cost(record: Mapping[str, Any]) -> tuple[float | None, str | None, str | None]:
+    """Turn a stage-2 measured Solana transaction-cost observation into USD.
+
+    The generic assembler remains network-free.  It accepts only the separate
+    stage-2 evidence envelope, which is populated from public RPC plus an
+    unsigned SOL/USDC quote.  In particular, no historical Base fee is ever
+    inherited by Solana when that envelope is absent or incomplete.
+    """
+    evidence = record.get("solana_transaction_cost_evidence")
+    if not isinstance(evidence, Mapping):
+        return None, None, "SOLANA_GAS_EVIDENCE_UNAVAILABLE"
+    if evidence.get("status") != "PASS":
+        return None, None, "SOLANA_GAS_EVIDENCE_" + str(
+            evidence.get("reason") or "UNAVAILABLE"
+        )
+    required = (
+        "signature_fee_lamports", "priority_fee_lamports", "rent_lamports",
+        "operation_count", "sol_usd", "sol_usd_source", "quoted_at",
+    )
+    if any(key not in evidence for key in required):
+        return None, None, "SOLANA_GAS_EVIDENCE_FIELDS_MISSING"
+    signature_fee = _number(evidence.get("signature_fee_lamports"))
+    priority_fee = _number(evidence.get("priority_fee_lamports"))
+    rent = _number(evidence.get("rent_lamports"))
+    operations = _number(evidence.get("operation_count"), positive=True)
+    sol_usd = _number(evidence.get("sol_usd"), positive=True)
+    if None in (signature_fee, priority_fee, rent, operations, sol_usd):
+        return None, None, "SOLANA_GAS_EVIDENCE_VALUES_INVALID"
+    # A position's fixed lifecycle is explicit: open plus close.  Rent is paid
+    # only on creation, while the observed signature/priority fee occurs for
+    # each lifecycle transaction.  An optional quote-leg swap is represented
+    # by a larger measured operation_count, never silently assumed.
+    lamports = (signature_fee + priority_fee) * operations + rent
+    gas_usd = lamports / 1_000_000_000.0 * sol_usd
+    if not math.isfinite(gas_usd) or gas_usd <= 0.0:
+        return None, None, "SOLANA_GAS_COST_NONPOSITIVE"
+    source = (
+        "measured:solana_public_rpc(transaction_fee,prioritization_fee,rent)"
+        "+free_unsigned_sol_usdc_quote"
+    )
+    return gas_usd, source, None
+
 _STABLE_REWARD_SYMBOLS = frozenset({"USDC", "USDT", "DAI", "PYUSD", "USDE", "EURC"})
 _MAJOR_REWARD_SYMBOLS = frozenset({"ETH", "WETH", "BTC", "WBTC", "CBBTC", "SOL"})
 _KNOWN_REWARD_TOKEN_CATEGORIES = {
@@ -817,7 +860,13 @@ def assemble_clmm_netcover_inputs(
 
     costs = _swap_costs(record, size, scanner_measured_evidence)
     chain = str(record.get("chain") or record.get("network") or "").strip().lower()
-    gas = HISTORICAL_GAS_USD.get(chain)
+    gas_source = HISTORICAL_GAS_SOURCES.get(chain)
+    gas_reason = None
+    if chain == "solana":
+        gas, gas_source, gas_reason = _solana_gas_cost(record)
+    else:
+        # Keep the established EVM/Base route byte-for-byte equivalent.
+        gas = HISTORICAL_GAS_USD.get(chain)
     reward_conversion, reward_route_metadata = _reward_conversion_cost(
         record, reward_ev, category, scanner_measured_evidence
     )
@@ -848,7 +897,7 @@ def assemble_clmm_netcover_inputs(
         record[field] = value
         semantics = INPUT_SEMANTICS[field] if value is not None else None
         source_label = (
-            HISTORICAL_GAS_SOURCES.get(chain)
+            gas_source
             if field == "gas_usd"
             else INPUT_SOURCES[field]
         )
@@ -869,7 +918,8 @@ def assemble_clmm_netcover_inputs(
         "reward_persistence_status": persistence["status"],
         "lvr_coefficient": LVR_COEFFICIENT_MODEL,
         "netcover_input_semantics": field_semantics,
-        "gas_usd_source": HISTORICAL_GAS_SOURCES.get(chain),
+        "gas_usd_source": gas_source,
+        "solana_gas_cost_reason": gas_reason,
         "netcover_input_position_source": "M1_MIN_POSITION_USD",
         "netcover_input_assembly_source": (
             "lp_netcover_inputs_v1_readonly:raw_evidence_calculated_only"
@@ -979,6 +1029,8 @@ def assemble_clmm_netcover_inputs(
             reasons.append("no_measured_usd_quote_route")
     if reward_ev not in (None, 0.0) and reward_conversion is None:
         reasons.append("reward_conversion_route_unavailable")
+    if gas_reason is not None:
+        reasons.append(gas_reason)
     reasons = list(dict.fromkeys(reasons))
     if reasons:
         record["permanent_fail_closed_reasons"] = reasons
@@ -1115,7 +1167,12 @@ def assemble_amm_netcover_inputs(
         size_usd=size, pool_tvl_usd=pool_tvl, fee_tier=fee_tier
     )
     chain = str(record.get("chain") or record.get("network") or "").strip().lower()
-    gas = HISTORICAL_GAS_USD.get(chain)
+    gas_source = HISTORICAL_GAS_SOURCES.get(chain)
+    gas_reason = None
+    if chain == "solana":
+        gas, gas_source, gas_reason = _solana_gas_cost(record)
+    else:
+        gas = HISTORICAL_GAS_USD.get(chain)
     reward_conversion, reward_route_metadata = _reward_conversion_cost(
         record, reward_ev, category, scanner_measured_evidence
     )
@@ -1139,7 +1196,7 @@ def assemble_amm_netcover_inputs(
         "entry_cost_usd": "model_estimate:constant_product_balanced_reserve_cost",
         "exit_cost_usd": "model_estimate:constant_product_balanced_reserve_cost",
         "slippage_usd": "model_estimate:constant_product_balanced_reserve_cost",
-        "gas_usd": HISTORICAL_GAS_SOURCES.get(chain),
+        "gas_usd": gas_source,
         "reward_conversion_cost_usd": INPUT_SOURCES["reward_conversion_cost_usd"],
         "exit_latency_loss_usd": INPUT_SOURCES["exit_latency_loss_usd"],
     }
@@ -1218,7 +1275,8 @@ def assemble_amm_netcover_inputs(
         "reward_persistence_status": persistence["status"],
         "lvr_coefficient": LVR_COEFFICIENT_MODEL,
         "netcover_input_semantics": field_semantics,
-        "gas_usd_source": HISTORICAL_GAS_SOURCES.get(chain),
+        "gas_usd_source": gas_source,
+        "solana_gas_cost_reason": gas_reason,
         "netcover_input_position_source": "M1_MIN_POSITION_USD",
         "netcover_input_assembly_source": (
             "lp_netcover_inputs_v1_readonly:amm_constant_product_explicit_evidence"

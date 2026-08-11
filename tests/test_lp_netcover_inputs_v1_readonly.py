@@ -113,6 +113,33 @@ def test_solana_measured_clmm_state_is_accepted_but_forged_provenance_is_closed(
     assert forged["fee_ev_usd"] is None
 
 
+def test_solana_measured_gas_is_positive_and_incomplete_evidence_is_closed():
+    solana = _complete(
+        chain="Solana", holding_horizon_hours=168.0,
+        token0="AAPLxMint", token1="EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        dec0=6, dec1=6, sqrt_price_x64=1 << 64,
+        sqrt_price_x64_source="measured:pool.sqrt_price_x64",
+        l_active_raw=1_000_000_000_000,
+        l_active_raw_source="measured:pool.liquidity", tvlUsd=100_000.0,
+        solana_transaction_cost_evidence={
+            "status": "PASS", "signature_fee_lamports": 5_000,
+            "priority_fee_lamports": 100, "rent_lamports": 4_078_560,
+            "operation_count": 2, "sol_usd": 150.0,
+            "sol_usd_source": "free_quote", "quoted_at": 1,
+        },
+    )
+    measured = assemble_netcover_inputs(solana, position_usd=5.0)
+    assert measured["gas_usd"] > 0.0
+    assert measured["gas_usd_source"].startswith("measured:solana_public_rpc")
+
+    incomplete = assemble_netcover_inputs(solana | {
+        "solana_transaction_cost_evidence": {"status": "PASS"},
+    }, position_usd=5.0)
+    assert incomplete["gas_usd"] is None
+    assert incomplete["solana_gas_cost_reason"] == "SOLANA_GAS_EVIDENCE_FIELDS_MISSING"
+    assert "SOLANA_GAS_EVIDENCE_FIELDS_MISSING" in incomplete["permanent_fail_closed_reasons"]
+
+
 def test_m1_runtime_position_cap_is_persisted_and_hard_share_verified():
     out = assemble_netcover_inputs(_complete(tvlUsd=150_000.0))
 

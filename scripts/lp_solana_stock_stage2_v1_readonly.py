@@ -14,6 +14,7 @@ import base64
 import binascii
 import json
 import math
+import statistics
 import sys
 import time
 import urllib.parse
@@ -53,6 +54,11 @@ DEFAULT_REPLAY_LIMIT = 60
 MIN_SIGMA_SWAP_COUNT = 20
 MIN_SIGMA_SPAN_SECONDS = 60 * 60
 MIN_RECOMMENDED_RANGE_PCT = 0.1
+SOL_MINT = "So11111111111111111111111111111111111111112"
+USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+JUPITER_QUOTE_URL = "https://quote-api.jup.ag/v6/quote"
+COINGECKO_SOL_PRICE_URL = "https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd"
+ATA_ACCOUNT_SIZE = 165
 
 
 def _rows(payload: Any) -> list[dict[str, Any]]:
@@ -412,6 +418,8 @@ def replay_recent_swaps(pool: Mapping[str, Any], rpc: RpcPool, *, signature_limi
             "signature": signature, "slot": tx.get("slot"), "block_time": tx.get("blockTime"),
             "vault_delta_a_raw_ui": delta_a, "vault_delta_b_raw_ui": delta_b,
             "raw_ui_price_b_per_a": price,
+            "transaction_fee_lamports": meta.get("fee"),
+            "compute_units_consumed": meta.get("computeUnitsConsumed"),
         })
     scaled_ui = (
         "scaledUiAmountConfig" in (pool.get("mint_a_tags") or [])
@@ -424,6 +432,107 @@ def replay_recent_swaps(pool: Mapping[str, Any], rpc: RpcPool, *, signature_limi
         "scaled_ui_multiplier_applied": False if scaled_ui else None,
         "economic_price_complete": bool(swaps) and not scaled_ui,
         "swaps": swaps,
+    }
+
+
+def _unsigned_sol_usdc_price(http: Callable[[str], Any] = _http_json) -> dict[str, Any]:
+    """Quote exactly one SOL to USDC; no transaction is built, signed or sent."""
+    query = urllib.parse.urlencode({
+        "inputMint": SOL_MINT, "outputMint": USDC_MINT,
+        "amount": 1_000_000_000, "slippageBps": 1,
+    })
+    try:
+        payload = http(f"{JUPITER_QUOTE_URL}?{query}")
+        raw = int((payload or {})["outAmount"])
+        price = raw / 1_000_000.0
+        if not math.isfinite(price) or price <= 0.0:
+            raise ValueError("SOL_USDC_QUOTE_NONPOSITIVE")
+        return {
+            "passed": True, "sol_usd": price,
+            "source": "free_unsigned_jupiter_quote:SOL/USDC",
+            "quoted_at": int(time.time()),
+        }
+    except Exception as jupiter_exc:
+        # Jupiter's public hostname is not universally resolvable.  The free
+        # CoinGecko endpoint is an independently verifiable fallback; it is
+        # fresh per run and its source is retained with the quote timestamp.
+        try:
+            payload = http(COINGECKO_SOL_PRICE_URL)
+            price = float((payload or {})["solana"]["usd"])
+            if not math.isfinite(price) or price <= 0.0:
+                raise ValueError("COINGECKO_SOL_USD_NONPOSITIVE")
+        except Exception as coingecko_exc:
+            return {"passed": False, "reason": (
+                "SOL_USD_QUOTE_UNAVAILABLE:"
+                f"jupiter={type(jupiter_exc).__name__};coingecko={type(coingecko_exc).__name__}:{coingecko_exc}"
+            )}
+        return {
+            "passed": True, "sol_usd": price,
+            "source": "free_coingecko_simple_price:solana/usd",
+            "quoted_at": int(time.time()),
+            "jupiter_fallback_reason": f"{type(jupiter_exc).__name__}:{jupiter_exc}",
+        }
+
+
+def measure_solana_transaction_cost(
+    pool: Mapping[str, Any], replay: Mapping[str, Any], rpc: RpcPool,
+    http: Callable[[str], Any] = _http_json,
+) -> dict[str, Any]:
+    """Measure the Solana open/close cost inputs with public, free reads.
+
+    The baseline fee is taken from a decoded real pool swap.  A current public
+    RPC prioritization-fee sample is separated from it conservatively, then
+    rent-exemption is queried for the two fresh associated token accounts a
+    new two-legged LP position needs.  All monetary constants come from RPC or
+    an unsigned public quote; account sizes are protocol layout sizes only.
+    """
+    fees = []
+    for swap in replay.get("swaps") or []:
+        try:
+            value = int(swap.get("transaction_fee_lamports"))
+        except (TypeError, ValueError):
+            continue
+        if value > 0:
+            fees.append(value)
+    if not fees:
+        return {"status": "FAIL_CLOSED", "reason": "ACTUAL_TRANSACTION_FEE_UNAVAILABLE"}
+    try:
+        priority_rows = rpc.call(
+            "getRecentPrioritizationFees", [[str(pool["pool_address"])]],
+        )
+        priorities = [int(row.get("prioritizationFee")) for row in priority_rows
+                      if isinstance(row, Mapping) and int(row.get("prioritizationFee", -1)) >= 0]
+        if not priorities:
+            raise ValueError("PRIORITIZATION_FEE_SAMPLE_EMPTY")
+        priority = int(statistics.median(priorities))
+        observed_total_fee = int(statistics.median(fees))
+        signature_fee = observed_total_fee - priority
+        if signature_fee <= 0:
+            raise ValueError("SIGNATURE_FEE_NOT_SEPARABLE")
+        ata_rent = rpc.call("getMinimumBalanceForRentExemption", [ATA_ACCOUNT_SIZE])
+        ata_rent = int(ata_rent)
+        if ata_rent <= 0:
+            raise ValueError("ATA_RENT_UNAVAILABLE")
+    except Exception as exc:
+        return {"status": "FAIL_CLOSED", "reason": f"SOLANA_RPC_COST_INPUT_UNAVAILABLE:{type(exc).__name__}:{exc}"}
+    quote = _unsigned_sol_usdc_price(http)
+    if quote.get("passed") is not True:
+        return {"status": "FAIL_CLOSED", "reason": str(quote.get("reason"))}
+    return {
+        "status": "PASS", "reason": "PASS",
+        "signature_fee_lamports": signature_fee,
+        "priority_fee_lamports": priority,
+        # This fresh-position model creates two ATAs at open.  Existing owner
+        # accounts may make the realised number lower; that is not assumed.
+        "rent_lamports": ata_rent * 2,
+        "rent_components": {"ata_count": 2, "ata_rent_lamports_each": ata_rent,
+                            "tick_array_rent_lamports": 0},
+        "operation_count": 2,
+        "operation_model": "open_plus_close;swap_legs_not_required_for_stable_pair",
+        "fee_sample_count": len(fees), "fee_sample_statistic": "median",
+        "priority_sample_count": len(priorities), "priority_sample_statistic": "median",
+        "sol_usd": quote["sol_usd"], "sol_usd_source": quote["source"],
+        "quoted_at": quote["quoted_at"],
     }
 
 
@@ -578,6 +687,7 @@ def recompute_clmm_economics(
 
 def assemble_clmm_stage2_netcover(
     pool: Mapping[str, Any], state: Mapping[str, Any], economics: Mapping[str, Any],
+    transaction_cost_evidence: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Use the common CLMM assembler; unavailable inputs stay explicit and closed."""
     if economics.get("passed") is not True:
@@ -602,6 +712,7 @@ def assemble_clmm_stage2_netcover(
         "dec1": state.get("decimals_b"), "fee_tier": pool.get("fee_rate"),
         "tvlUsd": pool.get("tvl_usd"),
         "active_liquidity_notional_usd": economics.get("active_liquidity_notional_usd"),
+        "solana_transaction_cost_evidence": dict(transaction_cost_evidence or {}),
     }
     try:
         assembled = assemble_clmm_netcover_inputs(record, position_usd=5.0)
@@ -742,11 +853,15 @@ def assess(record: Mapping[str, Any], rpc: RpcPool,
         replay = replay_recent_swaps(resolved, rpc, signature_limit=replay_limit)
         state: dict[str, Any] | None = None
         netcover: dict[str, Any] | None = None
+        transaction_cost: dict[str, Any] | None = None
         if stage2_protocol == "clmm":
             try:
                 state = read_clmm_state(resolved, rpc)
                 economics = recompute_clmm_economics(resolved, state, replay)
-                netcover = assemble_clmm_stage2_netcover(resolved, state, economics)
+                transaction_cost = measure_solana_transaction_cost(resolved, replay, rpc, http)
+                netcover = assemble_clmm_stage2_netcover(
+                    resolved, state, economics, transaction_cost,
+                )
             except Exception as exc:  # a per-pool acquisition failure is evidence
                 economics = {
                     "passed": False,
@@ -758,6 +873,7 @@ def assess(record: Mapping[str, Any], rpc: RpcPool,
         base.update({
             "resolved": resolved, "onchain": onchain, "swap_replay": replay,
             "clmm_state": state, "economics": economics, "netcover": netcover,
+            "solana_transaction_cost": transaction_cost,
             "exit_slippage_bps": economics.get("exit_slippage_bps"),
         })
         base.update(solana_exit_and_sell_evidence(replay, economics))

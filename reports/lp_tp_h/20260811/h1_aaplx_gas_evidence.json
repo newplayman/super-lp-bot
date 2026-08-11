@@ -1,0 +1,21 @@
+{
+  "status": "PASS",
+  "reason": "PASS",
+  "signature_fee_lamports": 24474,
+  "priority_fee_lamports": 0,
+  "rent_lamports": 4078560,
+  "rent_components": {
+    "ata_count": 2,
+    "ata_rent_lamports_each": 2039280,
+    "tick_array_rent_lamports": 0
+  },
+  "operation_count": 2,
+  "operation_model": "open_plus_close;swap_legs_not_required_for_stable_pair",
+  "fee_sample_count": 53,
+  "fee_sample_statistic": "median",
+  "priority_sample_count": 150,
+  "priority_sample_statistic": "median",
+  "sol_usd": 75.95,
+  "sol_usd_source": "free_coingecko_simple_price:solana/usd",
+  "quoted_at": 1786429027
+}
