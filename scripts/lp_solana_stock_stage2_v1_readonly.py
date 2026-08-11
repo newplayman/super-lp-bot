@@ -62,6 +62,17 @@ SIGMA_BARS_PER_DAY = 24 * 60 * 60 // SIGMA_BAR_SECONDS
 MIN_RECOMMENDED_RANGE_PCT = 0.1
 DEFAULT_REPLAY_TARGET_SPAN_HOURS = 3.0
 DEFAULT_REPLAY_MAX_PAGES = 10
+# Vault deltas have already been converted from integer token amounts to UI
+# units.  A one-millionth UI unit is the smallest economically meaningful
+# decoded leg absent a larger reserve-relative floor; do not divide tiny dust
+# by a large counter-leg to manufacture an implied price.
+MIN_ECONOMIC_SWAP_UI_AMOUNT = 1e-6
+MIN_ECONOMIC_SWAP_RESERVE_FRACTION = 1e-9
+# A price more than this factor from the sample median is not allowed to set a
+# five-minute close, price range, or IL path.  Excessive removal is evidence
+# that the replay itself cannot support a price claim.
+MAX_PRICE_MEDIAN_DEVIATION_MULTIPLE = 10.0
+MAX_PRICE_OUTLIER_DROP_FRACTION = 0.20
 SOL_MINT = "So11111111111111111111111111111111111111112"
 USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
 JUPITER_QUOTE_URL = "https://quote-api.jup.ag/v6/quote"
@@ -442,6 +453,50 @@ def _replay_span_hours(swaps: list[Mapping[str, Any]]) -> float:
     return (times[-1] - times[0]) / 3600.0 if len(times) >= 2 else 0.0
 
 
+def _economic_swap_floor(pool: Mapping[str, Any], reserve_key: str) -> float:
+    """Return a UI-unit dust floor, strengthened by known pool reserves."""
+    floor = MIN_ECONOMIC_SWAP_UI_AMOUNT
+    try:
+        reserve = float(pool.get(reserve_key))
+    except (TypeError, ValueError):
+        reserve = 0.0
+    if math.isfinite(reserve) and reserve > 0.0:
+        floor = max(floor, abs(reserve) * MIN_ECONOMIC_SWAP_RESERVE_FRACTION)
+    return floor
+
+
+def _is_economic_swap_delta(
+    pool: Mapping[str, Any], delta_a: Any, delta_b: Any,
+) -> bool:
+    """Require both UI-normalized vault legs to clear their dust floors."""
+    try:
+        amount_a, amount_b = abs(float(delta_a)), abs(float(delta_b))
+    except (TypeError, ValueError):
+        return False
+    return (
+        math.isfinite(amount_a)
+        and math.isfinite(amount_b)
+        and amount_a > _economic_swap_floor(pool, "reserve_a_ui")
+        and amount_b > _economic_swap_floor(pool, "reserve_b_ui")
+    )
+
+
+def _drop_median_price_outliers(
+    swaps: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], int]:
+    """Drop price observations beyond a symmetric multiple of their median."""
+    prices = [float(swap["raw_ui_price_b_per_a"]) for swap in swaps]
+    if not prices:
+        return [], 0
+    median_price = statistics.median(prices)
+    if not math.isfinite(median_price) or median_price <= 0:
+        return [], len(swaps)
+    low = median_price / MAX_PRICE_MEDIAN_DEVIATION_MULTIPLE
+    high = median_price * MAX_PRICE_MEDIAN_DEVIATION_MULTIPLE
+    kept = [swap for swap in swaps if low <= float(swap["raw_ui_price_b_per_a"]) <= high]
+    return kept, len(swaps) - len(kept)
+
+
 def replay_recent_swaps(
     pool: Mapping[str, Any], rpc: RpcPool, *, signature_limit: int = DEFAULT_REPLAY_LIMIT,
     target_span_hours: float = DEFAULT_REPLAY_TARGET_SPAN_HOURS,
@@ -458,7 +513,8 @@ def replay_recent_swaps(
         return {"status": "NOT_REQUESTED", "swap_count": 0, "transactions_checked": 0}
     if target_span_hours < 3.0 or max_pages <= 0:
         raise ValueError("REPLAY_TARGET_SPAN_MUST_BE_AT_LEAST_3H_AND_MAX_PAGES_POSITIVE")
-    swaps = []
+    swaps: list[dict[str, Any]] = []
+    dropped_dust_swaps = 0
     signatures_checked = 0
     pages_fetched = 0
     before = None
@@ -509,26 +565,50 @@ def replay_recent_swaps(
                 after, decimals_after = post.get(key, (0, decimals))
                 deltas[mint] = (after - before_amount) / (10 ** max(decimals, decimals_after))
             delta_a, delta_b = deltas.get(pool.get("mint_a")), deltas.get(pool.get("mint_b"))
-            price = abs(delta_b / delta_a) if delta_a not in (None, 0) and delta_b not in (None, 0) else None
+            if not _is_economic_swap_delta(pool, delta_a, delta_b):
+                dropped_dust_swaps += 1
+                continue
+            price = abs(delta_b / delta_a)
             swaps.append({"signature": signature, "slot": tx.get("slot"), "block_time": tx.get("blockTime"),
                           "vault_delta_a_raw_ui": delta_a, "vault_delta_b_raw_ui": delta_b,
                           "raw_ui_price_b_per_a": price, "transaction_fee_lamports": meta.get("fee"),
                           "compute_units_consumed": meta.get("computeUnitsConsumed")})
-        if len(swaps) >= MIN_SIGMA_SWAP_COUNT and _replay_span_hours(swaps) >= target_span_hours:
+        cleaned_swaps, _dropped_outliers = _drop_median_price_outliers(swaps)
+        if (len(cleaned_swaps) >= MIN_SIGMA_SWAP_COUNT
+                and _replay_span_hours(cleaned_swaps) >= target_span_hours):
             stop_reason = "TARGET_REACHED"
             break
+    swaps_before_outlier_filter = len(swaps)
+    swaps, dropped_price_outlier_swaps = _drop_median_price_outliers(swaps)
+    price_outlier_drop_fraction = (
+        dropped_price_outlier_swaps / swaps_before_outlier_filter
+        if swaps_before_outlier_filter else 0.0
+    )
+    price_cleaning_passed = price_outlier_drop_fraction <= MAX_PRICE_OUTLIER_DROP_FRACTION
     scaled_ui = (
         "scaledUiAmountConfig" in (pool.get("mint_a_tags") or [])
         or "scaledUiAmountConfig" in (pool.get("mint_b_tags") or [])
     )
     return {
-        "status": "PASS" if swaps else "NO_SWAP_IN_BOUNDED_SAMPLE",
+        "status": (
+            "FAIL_CLOSED" if not price_cleaning_passed
+            else "PASS" if swaps else "NO_SWAP_IN_BOUNDED_SAMPLE"
+        ),
+        "reason": (
+            "PRICE_OUTLIER_DROP_RATE_EXCEEDED"
+            if not price_cleaning_passed else "PASS" if swaps else "NO_SWAP_IN_BOUNDED_SAMPLE"
+        ),
         "transactions_checked": signatures_checked, "swap_count": len(swaps),
+        "dropped_dust_swaps": dropped_dust_swaps,
+        "dropped_price_outlier_swaps": dropped_price_outlier_swaps,
+        "price_outlier_drop_fraction": price_outlier_drop_fraction,
+        "price_cleaning_passed": price_cleaning_passed,
+        "price_median_deviation_multiple": MAX_PRICE_MEDIAN_DEVIATION_MULTIPLE,
         "pages_fetched": pages_fetched, "replay_target_span_hours": target_span_hours,
         "actual_span_hours": _replay_span_hours(swaps), "replay_stop_reason": stop_reason,
         "scaled_ui_multiplier_required": scaled_ui,
         "scaled_ui_multiplier_applied": False if scaled_ui else None,
-        "economic_price_complete": bool(swaps) and not scaled_ui,
+        "economic_price_complete": bool(swaps) and not scaled_ui and price_cleaning_passed,
         "swaps": swaps,
     }
 
@@ -712,6 +792,20 @@ def _replay_price_path(
         samples.append((block_time if block_time and block_time > 0 else None, price))
     if require_sigma_sample:
         samples = sorted((time, price) for time, price in samples if time is not None)
+    samples_before_median_filter = len(samples)
+    if samples:
+        median_price = statistics.median(price for _time, price in samples)
+        median_low = median_price / MAX_PRICE_MEDIAN_DEVIATION_MULTIPLE
+        median_high = median_price * MAX_PRICE_MEDIAN_DEVIATION_MULTIPLE
+        samples = [
+            (block_time, price) for block_time, price in samples
+            if median_low <= price <= median_high
+        ]
+    dropped_median_price_samples = samples_before_median_filter - len(samples)
+    if (samples_before_median_filter
+            and dropped_median_price_samples / samples_before_median_filter
+            > MAX_PRICE_OUTLIER_DROP_FRACTION):
+        raise ValueError("PRICE_OUTLIER_DROP_RATE_EXCEEDED")
     prices = [price for _block_time, price in samples]
     count = len(prices)
     span_seconds = (
@@ -780,6 +874,7 @@ def _replay_price_path(
         "latest_swap_price_b_per_a": prices[-1],
         "sigma_swap_count": count,
         "sigma_sample_span_hours": span_hours,
+        "dropped_median_price_samples": dropped_median_price_samples,
     }
 
 
@@ -1070,7 +1165,7 @@ def assess(record: Mapping[str, Any], rpc: RpcPool,
                     "passed": False,
                     "reason": f"CLMM_STATE_OR_REPLAY_UNAVAILABLE:{type(exc).__name__}:{exc}",
                 }
-                netcover = {"passed": False, "reason": str(economics["reason"])}
+                netcover = {"netcover_pass": False, "reason": str(economics["reason"])}
         else:
             economics = recompute_economics(resolved)
         base.update({

@@ -112,6 +112,61 @@ def test_real_swap_replay_uses_vault_deltas_and_blocks_unscaled_token2022():
     assert result["economic_price_complete"] is False
 
 
+def test_replay_drops_dust_before_price_path_and_il_calculation():
+    class DustRPC:
+        def call(self, method, params):
+            if method == "getSignaturesForAddress":
+                return [{"signature": f"s{index}"} for index in range(43)]
+            assert method == "getTransaction"
+            index = int(params[0][1:])
+            stock_delta, usdc_delta = (
+                (1e-8, 5_000.0) if index == 0
+                else (10.0, 3_090.0 + index)
+            )
+            return {
+                "slot": index, "blockTime": 1_700_000_000 + index * 600,
+                "transaction": {"message": {"accountKeys": ["va", "vb"]}},
+                "meta": {"fee": 5_000, "logMessages": ["swap"],
+                         "preTokenBalances": [
+                             {"accountIndex": 0, "mint": "ma", "uiTokenAmount": {"amount": "0", "decimals": 8}},
+                             {"accountIndex": 1, "mint": "mb", "uiTokenAmount": {"amount": "0", "decimals": 6}},
+                         ], "postTokenBalances": [
+                             {"accountIndex": 0, "mint": "ma", "uiTokenAmount": {"amount": str(round(stock_delta * 1e8)), "decimals": 8}},
+                             {"accountIndex": 1, "mint": "mb", "uiTokenAmount": {"amount": str(round(usdc_delta * 1e6)), "decimals": 6}},
+                         ]},
+            }
+
+    replay = replay_recent_swaps(
+        {"pool_address": "pool", "vault_a": "va", "vault_b": "vb", "mint_a": "ma", "mint_b": "mb"},
+        DustRPC(), signature_limit=60,
+    )
+    path = _replay_price_path(replay, require_sigma_sample=True)
+
+    assert replay["dropped_dust_swaps"] == 1
+    assert replay["dropped_price_outlier_swaps"] == 0
+    assert replay["price_cleaning_passed"] is True
+    assert replay["swap_count"] == 42
+    assert path["price_ratio_worst"] < 2.0
+
+
+def test_price_path_drops_median_outlier_and_fails_closed_when_prevalent():
+    replay = {"swaps": [
+        {"raw_ui_price_b_per_a": 309.0 + index, "block_time": 1_700_000_000 + index * 600}
+        for index in range(42)
+    ] + [{"raw_ui_price_b_per_a": 5e11, "block_time": 1_700_100_000}]}
+
+    path = _replay_price_path(replay, require_sigma_sample=True)
+
+    assert path["dropped_median_price_samples"] == 1
+    assert path["price_ratio_worst"] < 2.0
+    with pytest.raises(ValueError, match="PRICE_OUTLIER_DROP_RATE_EXCEEDED"):
+        _replay_price_path({"swaps": [
+            {"raw_ui_price_b_per_a": 309.0, "block_time": 1_700_000_000},
+            {"raw_ui_price_b_per_a": 5e11, "block_time": 1_700_000_600},
+            {"raw_ui_price_b_per_a": 5e11, "block_time": 1_700_001_200},
+        ]})
+
+
 def test_replay_paginates_until_the_configured_three_hour_span():
     class PagedRPC:
         def __init__(self):
