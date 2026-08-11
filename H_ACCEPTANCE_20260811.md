@@ -35,3 +35,30 @@ RPC `getMinimumBalanceForRentExemption(165)` 查询的两个 ATA 租金；无签
 
 由同一证据包计算的 `gas_usd` 原始值为 `0.3134842326`：`2 × (24474 + 0) + 4078560` lamports，按当次免费
 SOL/USD 报价换算。Jupiter 的公共 hostname 在本机不可解析，代码记录该失败并使用可验证的免费 CoinGecko 当次报价；两者都不可得时专属 reason 为 `SOL_USD_QUOTE_UNAVAILABLE`，严格 fail-closed。
+
+## H2 — Solana reward 模型与兑换成本
+
+机械验收原始输出：
+
+```text
+$ python3 -m pytest tests/test_lp_netcover_inputs_v1_readonly.py tests/test_lp_solana_stock_stage2_v1_readonly.py -q
+61 passed in 0.33s
+```
+
+共享组装器现将 `NO_REWARDS` 映射为 `reward_ev_usd=0.0` 与
+`reward_conversion_cost_usd=0.0`；`FAIL_CLOSED` 的账户读取错误仍保留为
+`SOLANA_REWARD_READ_<具体原因>`，二者不可混同。Raydium/Orca 已按各自池账户
+布局解码 reward infos，并且对每一个有 emission 的 vault 用免费 RPC 读取剩余额度。
+
+AAPLX-USDC 当次链上读取的原始 reward 字段：
+
+```json
+{
+  "reward_infos": [],
+  "evidence": {"status": "NO_REWARDS", "reason": "ONCHAIN_REWARD_INFOS_EMPTY", "rewards": []}
+}
+```
+
+此 117 池固定股票宇宙中没有 `apyReward > 0` 的 Solana 行，因而没有可诚实列为“有 reward 的 Solana 股票池”的样本；
+不会伪造或以非股票池替代。对于有 reward info 但免费无签名报价不可得的情形，读取结论保持
+`FAIL_CLOSED`，不会把未估价的 emission 当收入。

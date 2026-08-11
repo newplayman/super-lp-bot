@@ -1,0 +1,8 @@
+{
+  "reward_infos": [],
+  "evidence": {
+    "status": "NO_REWARDS",
+    "reason": "ONCHAIN_REWARD_INFOS_EMPTY",
+    "rewards": []
+  }
+}

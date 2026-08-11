@@ -140,6 +140,34 @@ def test_solana_measured_gas_is_positive_and_incomplete_evidence_is_closed():
     assert "SOLANA_GAS_EVIDENCE_FIELDS_MISSING" in incomplete["permanent_fail_closed_reasons"]
 
 
+def test_solana_no_rewards_is_a_real_zero_but_read_failure_is_distinct():
+    solana = _complete(
+        chain="Solana", holding_horizon_hours=168.0,
+        token0="AAPLxMint", token1="EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        dec0=6, dec1=6, sqrt_price_x64=1 << 64,
+        sqrt_price_x64_source="measured:pool.sqrt_price_x64",
+        l_active_raw=1_000_000_000_000,
+        l_active_raw_source="measured:pool.liquidity", tvlUsd=100_000.0,
+        solana_transaction_cost_evidence={
+            "status": "PASS", "signature_fee_lamports": 5_000,
+            "priority_fee_lamports": 0, "rent_lamports": 1,
+            "operation_count": 2, "sol_usd": 100.0,
+            "sol_usd_source": "free_quote", "quoted_at": 1,
+        },
+    )
+    no_rewards = assemble_netcover_inputs(solana | {
+        "solana_reward_evidence": {"status": "NO_REWARDS", "reason": "ONCHAIN_REWARD_INFOS_EMPTY"},
+    }, position_usd=5.0)
+    assert no_rewards["reward_ev_usd"] == 0.0
+    assert no_rewards["reward_conversion_cost_usd"] == 0.0
+
+    failed_read = assemble_netcover_inputs(solana | {
+        "solana_reward_evidence": {"status": "FAIL_CLOSED", "reason": "POOL_ACCOUNT_UNAVAILABLE"},
+    }, position_usd=5.0)
+    assert failed_read["reward_ev_usd"] is None
+    assert failed_read["solana_reward_reason"] == "SOLANA_REWARD_READ_POOL_ACCOUNT_UNAVAILABLE"
+
+
 def test_m1_runtime_position_cap_is_persisted_and_hard_share_verified():
     out = assemble_netcover_inputs(_complete(tvlUsd=150_000.0))
 

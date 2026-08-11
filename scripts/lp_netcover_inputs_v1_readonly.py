@@ -166,6 +166,31 @@ def _solana_gas_cost(record: Mapping[str, Any]) -> tuple[float | None, str | Non
     )
     return gas_usd, source, None
 
+
+def _solana_reward_values(
+    record: Mapping[str, Any], *, horizon_hours: float | None, share_ratio: float | None,
+) -> tuple[float | None, float | None, str | None, str | None]:
+    """Accept Solana reward evidence without confusing no rewards with a read failure."""
+    evidence = record.get("solana_reward_evidence")
+    if not isinstance(evidence, Mapping):
+        return None, None, None, "SOLANA_REWARD_EVIDENCE_UNAVAILABLE"
+    status = str(evidence.get("status") or "")
+    if status == "NO_REWARDS":
+        # This is a computed economic zero, not an unavailable observation.
+        return 0.0, 0.0, None, None
+    if status != "PASS":
+        return None, None, None, "SOLANA_REWARD_READ_" + str(
+            evidence.get("reason") or "UNAVAILABLE"
+        )
+    gross = _number(evidence.get("reward_ev_usd"))
+    conversion = _number(evidence.get("reward_conversion_cost_usd"))
+    category = reward_category(evidence)
+    if None in (gross, conversion) or category is None:
+        return None, None, category, "SOLANA_REWARD_EVIDENCE_FIELDS_INVALID"
+    if conversion > gross:
+        return None, None, category, "SOLANA_REWARD_CONVERSION_COST_INVALID"
+    return gross, conversion, category, None
+
 _STABLE_REWARD_SYMBOLS = frozenset({"USDC", "USDT", "DAI", "PYUSD", "USDE", "EURC"})
 _MAJOR_REWARD_SYMBOLS = frozenset({"ETH", "WETH", "BTC", "WBTC", "CBBTC", "SOL"})
 _KNOWN_REWARD_TOKEN_CATEGORIES = {
@@ -826,6 +851,7 @@ def assemble_clmm_netcover_inputs(
         scanner_measured_evidence=scanner_measured_evidence,
     )
 
+    chain = str(record.get("chain") or record.get("network") or "").strip().lower()
     reward_apr = _first_number(record, "reward_apr", "apyReward")
     category = reward_category(record) if reward_apr not in (None, 0.0) else None
     category_haircut = REWARD_HAIRCUTS.get(category) if category is not None else None
@@ -847,6 +873,19 @@ def assemble_clmm_netcover_inputs(
         and (reward_apr == 0.0 or category_haircut is not None)
         else None
     )
+    solana_reward_conversion = None
+    solana_reward_reason = None
+    if chain == "solana":
+        reward_ev, solana_reward_conversion, solana_category, solana_reward_reason = (
+            _solana_reward_values(record, horizon_hours=horizon, share_ratio=share_ratio)
+        )
+        if solana_category is not None:
+            category = solana_category
+            category_haircut = REWARD_HAIRCUTS.get(category)
+            haircut = (
+                float(category_haircut) * persistence_haircut
+                if category_haircut is not None else None
+            )
 
     # Prefer the pair-price volatility carried from multi-window replay.  The
     # generic screener ``sigma`` can describe headline APR dispersion instead.
@@ -859,7 +898,6 @@ def assemble_clmm_netcover_inputs(
     )
 
     costs = _swap_costs(record, size, scanner_measured_evidence)
-    chain = str(record.get("chain") or record.get("network") or "").strip().lower()
     gas_source = HISTORICAL_GAS_SOURCES.get(chain)
     gas_reason = None
     if chain == "solana":
@@ -867,9 +905,20 @@ def assemble_clmm_netcover_inputs(
     else:
         # Keep the established EVM/Base route byte-for-byte equivalent.
         gas = HISTORICAL_GAS_USD.get(chain)
-    reward_conversion, reward_route_metadata = _reward_conversion_cost(
-        record, reward_ev, category, scanner_measured_evidence
-    )
+    if chain == "solana":
+        reward_conversion, reward_route_metadata = solana_reward_conversion, {
+            "reward_conversion_route_costs": list(
+                (record.get("solana_reward_evidence") or {}).get("conversion_routes") or []
+            ),
+            "reward_conversion_selected_route_id": (
+                (record.get("solana_reward_evidence") or {}).get("selected_route_id")
+            ),
+            "reward_conversion_route_selection_rule": "unsigned_solana_quote",
+        }
+    else:
+        reward_conversion, reward_route_metadata = _reward_conversion_cost(
+            record, reward_ev, category, scanner_measured_evidence
+        )
     exit_latency = (
         size * EXIT_LATENCY_LOSS_APR_PCT_MODEL / 100.0 * fraction
         if fraction is not None
@@ -920,6 +969,7 @@ def assemble_clmm_netcover_inputs(
         "netcover_input_semantics": field_semantics,
         "gas_usd_source": gas_source,
         "solana_gas_cost_reason": gas_reason,
+        "solana_reward_reason": solana_reward_reason,
         "netcover_input_position_source": "M1_MIN_POSITION_USD",
         "netcover_input_assembly_source": (
             "lp_netcover_inputs_v1_readonly:raw_evidence_calculated_only"
@@ -1031,6 +1081,8 @@ def assemble_clmm_netcover_inputs(
         reasons.append("reward_conversion_route_unavailable")
     if gas_reason is not None:
         reasons.append(gas_reason)
+    if solana_reward_reason is not None:
+        reasons.append(solana_reward_reason)
     reasons = list(dict.fromkeys(reasons))
     if reasons:
         record["permanent_fail_closed_reasons"] = reasons

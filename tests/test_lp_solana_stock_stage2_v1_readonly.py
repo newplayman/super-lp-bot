@@ -12,6 +12,7 @@ from scripts.lp_solana_stock_stage2_v1_readonly import (
     assemble_clmm_stage2_netcover,
     assess,
     measure_solana_transaction_cost,
+    read_solana_reward_evidence,
     recompute_clmm_economics,
     recompute_economics,
     replay_recent_swaps,
@@ -255,3 +256,14 @@ def test_solana_cost_measurement_uses_public_rpc_components_and_unsigned_quote()
     assert result["rent_components"]["ata_count"] == 2
     assert result["operation_count"] == 2
     assert result["sol_usd"] == 150.0
+
+
+def test_reward_reader_distinguishes_empty_infos_from_vault_read_failure():
+    assert read_solana_reward_evidence({"reward_infos": []}, object()) == {
+        "status": "NO_REWARDS", "reason": "ONCHAIN_REWARD_INFOS_EMPTY", "rewards": [],
+    }
+    failed = read_solana_reward_evidence({"reward_infos": [{
+        "reward_mint": "mint", "reward_vault": "vault", "emissions_per_second_x64": 1,
+    }]}, object())
+    assert failed["status"] == "FAIL_CLOSED"
+    assert failed["reason"].startswith("REWARD_VAULT_READ_FAILED:")

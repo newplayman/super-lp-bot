@@ -59,6 +59,7 @@ USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
 JUPITER_QUOTE_URL = "https://quote-api.jup.ag/v6/quote"
 COINGECKO_SOL_PRICE_URL = "https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd"
 ATA_ACCOUNT_SIZE = 165
+_B58_ALPHABET = b"123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
 
 
 def _rows(payload: Any) -> list[dict[str, Any]]:
@@ -275,6 +276,35 @@ def _base64_account(response: Mapping[str, Any], *, owner: str, space: int) -> b
     return raw
 
 
+def _b58encode(raw: bytes) -> str:
+    """Encode a verified 32-byte Solana pubkey without a wallet dependency."""
+    number = int.from_bytes(raw, "big")
+    encoded = bytearray()
+    while number:
+        number, remainder = divmod(number, 58)
+        encoded.append(_B58_ALPHABET[remainder])
+    zeros = len(raw) - len(raw.lstrip(b"\0"))
+    return (b"1" * zeros + bytes(reversed(encoded or b""))).decode("ascii")
+
+
+def _reward_info(raw: bytes, *, offset: int, width: int, protocol: str) -> dict[str, Any] | None:
+    """Decode the documented per-protocol reward layout, retaining raw evidence."""
+    if offset + width > len(raw):
+        raise ValueError("REWARD_INFO_LAYOUT_OUT_OF_RANGE")
+    if protocol == "orca_whirlpool":
+        mint, vault = raw[offset:offset + 32], raw[offset + 32:offset + 64]
+        emission = int.from_bytes(raw[offset + 96:offset + 112], "little")
+    else:  # Raydium RewardInfo: state + timestamps + emissions + totals + keys.
+        if raw[offset] == 0:
+            return None
+        emission = int.from_bytes(raw[offset + 25:offset + 41], "little")
+        mint, vault = raw[offset + 57:offset + 89], raw[offset + 89:offset + 121]
+    if emission <= 0 or not any(mint) or not any(vault):
+        return None
+    return {"reward_mint": _b58encode(mint), "reward_vault": _b58encode(vault),
+            "emissions_per_second_x64": emission, "layout": protocol}
+
+
 def _mint_decimals(rpc: RpcPool, mint: str) -> int:
     response = rpc.call("getAccountInfo", [
         mint, {"encoding": "jsonParsed", "commitment": "confirmed"},
@@ -300,11 +330,14 @@ def _decode_orca_pool_state(response: Mapping[str, Any], *, decimals_a: int,
     tick_current = int.from_bytes(raw[81:85], "little", signed=True)
     if liquidity <= 0 or sqrt_price_x64 <= 0:
         raise ValueError("ORCA_ACTIVE_LIQUIDITY_OR_PRICE_UNAVAILABLE")
+    rewards = [info for index in range(3)
+               if (info := _reward_info(raw, offset=269 + index * 128, width=128,
+                                        protocol="orca_whirlpool")) is not None]
     return {
         "protocol_type": "clmm", "state_protocol": "orca_whirlpool",
         "active_liquidity_raw": liquidity, "sqrt_price_x64": sqrt_price_x64,
         "tick_current": tick_current, "decimals_a": decimals_a,
-        "decimals_b": decimals_b,
+        "decimals_b": decimals_b, "reward_infos": rewards,
     }
 
 
@@ -322,11 +355,14 @@ def _decode_raydium_pool_state(response: Mapping[str, Any], *, decimals_a: int,
     tick_current = int.from_bytes(raw[269:273], "little", signed=True)
     if liquidity <= 0 or sqrt_price_x64 <= 0:
         raise ValueError("RAYDIUM_ACTIVE_LIQUIDITY_OR_PRICE_UNAVAILABLE")
+    rewards = [info for index in range(3)
+               if (info := _reward_info(raw, offset=301 + index * 169, width=169,
+                                        protocol="raydium_clmm")) is not None]
     return {
         "protocol_type": "clmm", "state_protocol": "raydium_clmm",
         "active_liquidity_raw": liquidity, "sqrt_price_x64": sqrt_price_x64,
         "tick_current": tick_current, "tick_spacing": int.from_bytes(raw[235:237], "little"),
-        "decimals_a": decimals_a, "decimals_b": decimals_b,
+        "decimals_a": decimals_a, "decimals_b": decimals_b, "reward_infos": rewards,
     }
 
 
@@ -361,6 +397,35 @@ def read_clmm_state(pool: Mapping[str, Any], rpc: RpcPool) -> dict[str, Any]:
         "sqrt_price_x64_source": "measured:pool.sqrt_price_x64",
         "active_liquidity_raw_source": "measured:pool.liquidity",
     }
+
+
+def read_solana_reward_evidence(
+    state: Mapping[str, Any], rpc: RpcPool,
+) -> dict[str, Any]:
+    """Read reward infos and remaining vault balances; absence is a real zero."""
+    infos = state.get("reward_infos")
+    if not isinstance(infos, list):
+        return {"status": "FAIL_CLOSED", "reason": "REWARD_INFOS_UNAVAILABLE"}
+    if not infos:
+        return {"status": "NO_REWARDS", "reason": "ONCHAIN_REWARD_INFOS_EMPTY", "rewards": []}
+    rewards = []
+    try:
+        for info in infos:
+            if not isinstance(info, Mapping):
+                raise ValueError("REWARD_INFO_MALFORMED")
+            vault_response = rpc.call("getAccountInfo", [
+                str(info["reward_vault"]), {"encoding": "jsonParsed", "commitment": "confirmed"},
+            ])
+            parsed = vault_response["value"]["data"]["parsed"]["info"]["tokenAmount"]
+            remaining_raw, decimals = int(parsed["amount"]), int(parsed["decimals"])
+            if remaining_raw < 0 or not 0 <= decimals <= 30:
+                raise ValueError("REWARD_VAULT_BALANCE_INVALID")
+            rewards.append({**dict(info), "remaining_raw": remaining_raw,
+                            "reward_decimals": decimals})
+    except Exception as exc:
+        return {"status": "FAIL_CLOSED", "reason": f"REWARD_VAULT_READ_FAILED:{type(exc).__name__}:{exc}"}
+    return {"status": "PASS", "reason": "PASS", "rewards": rewards,
+            "read_source": "measured:protocol_pool_reward_infos+token_vault_balances"}
 
 
 def replay_recent_swaps(pool: Mapping[str, Any], rpc: RpcPool, *, signature_limit: int = DEFAULT_REPLAY_LIMIT) -> dict[str, Any]:
@@ -688,6 +753,7 @@ def recompute_clmm_economics(
 def assemble_clmm_stage2_netcover(
     pool: Mapping[str, Any], state: Mapping[str, Any], economics: Mapping[str, Any],
     transaction_cost_evidence: Mapping[str, Any] | None = None,
+    reward_evidence: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Use the common CLMM assembler; unavailable inputs stay explicit and closed."""
     if economics.get("passed") is not True:
@@ -713,6 +779,7 @@ def assemble_clmm_stage2_netcover(
         "tvlUsd": pool.get("tvl_usd"),
         "active_liquidity_notional_usd": economics.get("active_liquidity_notional_usd"),
         "solana_transaction_cost_evidence": dict(transaction_cost_evidence or {}),
+        "solana_reward_evidence": dict(reward_evidence or {}),
     }
     try:
         assembled = assemble_clmm_netcover_inputs(record, position_usd=5.0)
@@ -854,13 +921,15 @@ def assess(record: Mapping[str, Any], rpc: RpcPool,
         state: dict[str, Any] | None = None
         netcover: dict[str, Any] | None = None
         transaction_cost: dict[str, Any] | None = None
+        reward_evidence: dict[str, Any] | None = None
         if stage2_protocol == "clmm":
             try:
                 state = read_clmm_state(resolved, rpc)
                 economics = recompute_clmm_economics(resolved, state, replay)
                 transaction_cost = measure_solana_transaction_cost(resolved, replay, rpc, http)
+                reward_evidence = read_solana_reward_evidence(state, rpc)
                 netcover = assemble_clmm_stage2_netcover(
-                    resolved, state, economics, transaction_cost,
+                    resolved, state, economics, transaction_cost, reward_evidence,
                 )
             except Exception as exc:  # a per-pool acquisition failure is evidence
                 economics = {
@@ -874,6 +943,7 @@ def assess(record: Mapping[str, Any], rpc: RpcPool,
             "resolved": resolved, "onchain": onchain, "swap_replay": replay,
             "clmm_state": state, "economics": economics, "netcover": netcover,
             "solana_transaction_cost": transaction_cost,
+            "solana_reward_evidence": reward_evidence,
             "exit_slippage_bps": economics.get("exit_slippage_bps"),
         })
         base.update(solana_exit_and_sell_evidence(replay, economics))
