@@ -56,3 +56,15 @@ def test_full_position_baseline_uses_quote_usd_normalisation():
     assert costs["entry_cost_usd"] == pytest.approx(3.0)
     assert costs["exit_cost_usd"] == pytest.approx(3.0)
     assert costs["slippage_usd"] >= 0.0
+
+
+def test_backsolve_reports_no_finite_solution_when_variable_risk_exceeds_income(tmp_path, monkeypatch):
+    pool = "0xnegative"
+    _snapshot_db(tmp_path, pool)
+    monkeypatch.setattr(calibration, "SNAPSHOT_SOURCES", {pool: ("snapshot.db", "2026-01-02T00:00:00+00:00")})
+    report = calibration.backsolve_minimum_capital(
+        book=[{"pool": pool, "symbol": "X-Y", "project": "test", "capital": 1000, "fee_tier": 0.003, "range_pct": 20.0}],
+        heartbeat={"ts_utc": "2026-01-03T00:00:00+00:00", "started_at": "2026-01-01T00:00:00+00:00", "by_pool": [{"pool": pool, "fees": 1, "reward": 0, "il": -100}]},
+        repo_root=tmp_path,
+    )
+    assert report["rows"][0]["minimum_capital_usd_for_netcover_1"] is None

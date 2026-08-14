@@ -273,6 +273,107 @@ def calibrate(
     }
 
 
+def _netcover_at_capital(
+    *, allocation: Mapping[str, Any], runner: Mapping[str, Any], snapshot: Mapping[str, Any],
+    holding_hours: float, capital_usd: float,
+) -> float:
+    """Scale observed per-dollar outcome terms, then price actual CLMM legs."""
+    original_capital = _finite(allocation["capital"], "original capital", positive=True)
+    target = _finite(capital_usd, "capital_usd", positive=True)
+    scale = target / original_capital
+    swaps = _position_leg_swap_components(
+        capital_usd=target, fee_tier=_finite(allocation["fee_tier"], "fee_tier"),
+        range_pct=float(allocation["range_pct"]), snapshot=snapshot,
+        legacy_full_position_legs=False,
+    )
+    reward = _finite(runner.get("reward"), "paper reward") * scale
+    estimate = evaluate_netcover(
+        fee_ev=_finite(runner.get("fees"), "paper fee") * scale,
+        reward_ev=reward,
+        reward_haircut=REWARD_HAIRCUTS["protocol"],
+        expected_il=abs(float(runner.get("il", 0.0))) * scale,
+        lvr_coefficient=0.5,
+        entry_cost=swaps["entry_cost_usd"], exit_cost=swaps["exit_cost_usd"],
+        gas=HISTORICAL_BASE_GAS_USD, slippage=swaps["slippage_usd"],
+        reward_conversion_cost=_scaled_reward_conversion_cost(
+            reward_ev_usd=reward, snapshot=snapshot,
+        ),
+        exit_latency_loss=(
+            target * EXIT_LATENCY_LOSS_APR_PCT_MODEL / 100.0
+            * holding_hours / HOURS_PER_YEAR
+        ),
+    )
+    return estimate.netcover
+
+
+def backsolve_minimum_capital(
+    *, book: Sequence[Mapping[str, Any]], heartbeat: Mapping[str, Any], repo_root: Path,
+) -> dict[str, Any]:
+    """Find the smallest capital at which each realised-input curve reaches 1.0.
+
+    This is a scale diagnostic, not an allocator instruction: it holds each
+    position's observed fee/reward/IL per dollar and its recorded horizon fixed.
+    A curve with no finite solution has variable risk larger than its adjusted
+    income, so no amount can amortise the one-off gas cost into viability.
+    """
+    observed_at = _parse_timestamp(str(heartbeat["ts_utc"]))
+    started_at = _parse_timestamp(str(heartbeat.get("started_at") or "2026-06-24T11:54:26.450337+00:00"))
+    holding_hours = (observed_at - started_at).total_seconds() / 3600.0
+    by_pool = {str(item.get("pool", "")).lower(): item for item in heartbeat.get("by_pool", [])}
+    rows = []
+    for allocation in book:
+        pool = str(allocation["pool"]).lower()
+        runner = by_pool[pool]
+        snapshot, source = _snapshot_record(repo_root, pool)
+        original = _finite(allocation["capital"], "capital", positive=True)
+        evaluate = lambda capital: _netcover_at_capital(
+            allocation=allocation, runner=runner, snapshot=snapshot,
+            holding_hours=holding_hours, capital_usd=capital,
+        )
+        low, high = 1e-9, original
+        while evaluate(high) < 1.0 and high < 1e9:
+            high *= 2.0
+        minimum = None
+        if evaluate(high) >= 1.0:
+            for _ in range(100):
+                midpoint = (low + high) / 2.0
+                if evaluate(midpoint) >= 1.0:
+                    high = midpoint
+                else:
+                    low = midpoint
+            minimum = high
+        rows.append({
+            "symbol": allocation["symbol"], "pool": pool,
+            "netcover_at_original_capital": evaluate(original),
+            "netcover_at_50_usd": evaluate(50.0),
+            "netcover_at_60_usd": evaluate(60.0),
+            "original_capital_usd": original,
+            "minimum_capital_usd_for_netcover_1": minimum,
+            "no_finite_solution": minimum is None,
+            "snapshot_source": source,
+        })
+    return {
+        "method": "observed per-dollar paper outcome + corrected CLMM leg costs; fixed holding horizon",
+        "holding_hours": holding_hours, "rows": rows,
+    }
+
+
+def render_backsolve_markdown(report: Mapping[str, Any]) -> str:
+    lines = [
+        "# TP-J FIX-J4 — M1 尺度反解", "",
+        "该反解固定每池的 J1 真实持有期与观测到的每美元 fee/reward/IL，使用 J3 的真实 CLMM 两腿成本；它不改任何阈值，也不是交易建议。", "",
+        "|池|NetCover（50/60U）|原仓位($)|NetCover（原仓位）|达到 ≥1.0 的最小仓位($)|结论|", "|---|---:|---:|---:|---:|---|",
+    ]
+    for row in report["rows"]:
+        minimum = row["minimum_capital_usd_for_netcover_1"]
+        lines.append(
+            f"|{row['symbol']}|{row['netcover_at_50_usd']:.6f}/{row['netcover_at_60_usd']:.6f}|{row['original_capital_usd']:.2f}|{row['netcover_at_original_capital']:.6f}|"
+            f"{'无有限解' if minimum is None else f'{minimum:.2f}'}|"
+            f"{'变量风险超过调整后收入' if minimum is None else '可由规模摊薄固定成本'}|"
+        )
+    return "\n".join(lines) + "\n"
+
+
 def _money(value: Any) -> str:
     return value if isinstance(value, str) else f"${float(value):,.4f}"
 
@@ -339,6 +440,8 @@ def main() -> None:
         "--corrected-position-legs", action="store_true",
         help="Use V3 range inventory leg value instead of the J1 full-leg baseline",
     )
+    parser.add_argument("--backsolve-json-out")
+    parser.add_argument("--backsolve-markdown-out")
     args = parser.parse_args()
     root = Path(args.repo_root).resolve()
     report = calibrate(
@@ -352,6 +455,19 @@ def main() -> None:
     markdown_path.parent.mkdir(parents=True, exist_ok=True)
     json_path.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
     markdown_path.write_text(render_markdown(report))
+    if bool(args.backsolve_json_out) != bool(args.backsolve_markdown_out):
+        raise SystemExit("backsolve JSON and Markdown outputs must be supplied together")
+    if args.backsolve_json_out:
+        backsolve = backsolve_minimum_capital(
+            book=json.loads((root / args.book).read_text()),
+            heartbeat=_last_jsonl(root / args.heartbeat), repo_root=root,
+        )
+        backsolve_json = root / args.backsolve_json_out
+        backsolve_markdown = root / args.backsolve_markdown_out
+        backsolve_json.parent.mkdir(parents=True, exist_ok=True)
+        backsolve_markdown.parent.mkdir(parents=True, exist_ok=True)
+        backsolve_json.write_text(json.dumps(backsolve, indent=2, sort_keys=True) + "\n")
+        backsolve_markdown.write_text(render_backsolve_markdown(backsolve))
 
 
 if __name__ == "__main__":

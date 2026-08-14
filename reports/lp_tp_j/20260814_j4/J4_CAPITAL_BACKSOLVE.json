@@ -1,0 +1,90 @@
+{
+  "holding_hours": 1220.404796321111,
+  "method": "observed per-dollar paper outcome + corrected CLMM leg costs; fixed holding horizon",
+  "rows": [
+    {
+      "minimum_capital_usd_for_netcover_1": null,
+      "netcover_at_50_usd": 0.5929707980388198,
+      "netcover_at_60_usd": 0.5958925522634873,
+      "netcover_at_original_capital": 0.6106353745696851,
+      "no_finite_solution": true,
+      "original_capital_usd": 3207.66,
+      "pool": "0x70acdf2ad0bf2402c957154f944c19ef4e1cbae1",
+      "snapshot_source": {
+        "as_of": "2026-08-10T04:34:39.491608+00:00",
+        "path": "reports/lp_funnel_autopsy/20260810_043427/scanner.db"
+      },
+      "symbol": "WETH-CBBTC"
+    },
+    {
+      "minimum_capital_usd_for_netcover_1": 0.2681279719198303,
+      "netcover_at_50_usd": 7.947086121038236,
+      "netcover_at_60_usd": 7.997003639956011,
+      "netcover_at_original_capital": 8.249658311008309,
+      "no_finite_solution": false,
+      "original_capital_usd": 2912.46,
+      "pool": "0xb2cc224c1c9fee385f8ad6a55b4d94e92359dc59",
+      "snapshot_source": {
+        "as_of": "2026-08-10T13:24:29.678852+00:00",
+        "path": "reports/lp_tp_d/20260810_d4_top68_w10_normal/scanner.db"
+      },
+      "symbol": "WETH-USDC"
+    },
+    {
+      "minimum_capital_usd_for_netcover_1": 2.194556937185701,
+      "netcover_at_50_usd": 1.532933637238298,
+      "netcover_at_60_usd": 1.539195600133713,
+      "netcover_at_original_capital": 1.5678804122765637,
+      "no_finite_solution": false,
+      "original_capital_usd": 879.89,
+      "pool": "0x0b1c2dcbbfa744ebd3fc17ff1a96a1e1eb4b2d69",
+      "snapshot_source": {
+        "as_of": "2026-08-13T08:52:53.521676+00:00",
+        "path": "reports/lp_scanner/scanner.db"
+      },
+      "symbol": "WETH-USDC"
+    },
+    {
+      "minimum_capital_usd_for_netcover_1": 3.707570208215014,
+      "netcover_at_50_usd": 1.2901885618861904,
+      "netcover_at_60_usd": 1.295185731508138,
+      "netcover_at_original_capital": 1.31724190451077,
+      "no_finite_solution": false,
+      "original_capital_usd": 1000.0,
+      "pool": "0x4e829f8a5213c42535ab84aa40bd4adcce9cba02",
+      "snapshot_source": {
+        "as_of": "2026-08-10T13:24:29.678852+00:00",
+        "path": "reports/lp_tp_d/20260810_d4_top68_w10_normal/scanner.db"
+      },
+      "symbol": "WETH-BRETT"
+    },
+    {
+      "minimum_capital_usd_for_netcover_1": null,
+      "netcover_at_50_usd": 0.6858209597870984,
+      "netcover_at_60_usd": 0.688019557098941,
+      "netcover_at_original_capital": 0.698287480594336,
+      "no_finite_solution": true,
+      "original_capital_usd": 1000.0,
+      "pool": "0x80cc08712aa61ce9dc7604f9ce7560a25094b862",
+      "snapshot_source": {
+        "as_of": "2026-08-10T04:34:39.491608+00:00",
+        "path": "reports/lp_funnel_autopsy/20260810_043427/scanner.db"
+      },
+      "symbol": "USDC-SAPIEN"
+    },
+    {
+      "minimum_capital_usd_for_netcover_1": null,
+      "netcover_at_50_usd": 0.0616791411559088,
+      "netcover_at_60_usd": 0.06183648612032608,
+      "netcover_at_original_capital": 0.06250801003722761,
+      "no_finite_solution": true,
+      "original_capital_usd": 1000.0,
+      "pool": "0x529d2863a1521d0b57db028168fde2e97120017c",
+      "snapshot_source": {
+        "as_of": "2026-08-13T18:06:05.743131+00:00",
+        "path": "reports/lp_scanner/scanner.db"
+      },
+      "symbol": "VIRTUAL-USDC"
+    }
+  ]
+}
