@@ -30,6 +30,7 @@ if str(_REPO_ROOT) not in sys.path:
 
 from scripts.lp_cost_sensitivity_v1_readonly import _swap_components
 from scripts.lp_netcover_engine_v1_readonly import REWARD_HAIRCUTS, evaluate_netcover
+from scripts.lp_swap_cost_model_v1_readonly import clmm_token0_value_fraction
 
 
 HISTORICAL_BASE_GAS_USD = 0.0795
@@ -115,10 +116,11 @@ def _snapshot_record(repo_root: Path, pool: str) -> tuple[dict[str, Any], dict[s
     return json.loads(row[0]), {"path": relative_path, "as_of": as_of}
 
 
-def _full_position_swap_components(
-    *, capital_usd: float, fee_tier: float, snapshot: Mapping[str, Any]
+def _position_leg_swap_components(
+    *, capital_usd: float, fee_tier: float, range_pct: float, snapshot: Mapping[str, Any],
+    legacy_full_position_legs: bool,
 ) -> dict[str, float]:
-    """Reproduce the pre-J3 full-notional leg convention for the J1 baseline."""
+    """Price two CLMM conversion legs under an explicit J1/J3 convention."""
     quote_usd = _finite(snapshot.get("measured_token1_usd", 1.0), "measured_token1_usd", positive=True)
     pool = SimpleNamespace(
         l_active_raw_historical=_finite(snapshot.get("last_swap_liquidity_raw"), "last_swap_liquidity_raw", positive=True),
@@ -127,7 +129,12 @@ def _full_position_swap_components(
         dec0=int(_finite(snapshot.get("dec0"), "dec0")),
         dec1=int(_finite(snapshot.get("dec1"), "dec1")),
     )
-    quote_components = _swap_components(capital_usd / quote_usd, pool)
+    fraction = 1.0 if legacy_full_position_legs else clmm_token0_value_fraction(
+        pool.price_usd, _finite(range_pct, "range_pct", positive=True)
+    )
+    quote_components = _swap_components(
+        capital_usd / quote_usd, pool, conversion_fraction=fraction,
+    )
     return {key: float(value) * quote_usd for key, value in quote_components.items()}
 
 
@@ -170,8 +177,10 @@ def calibrate(
         holding_hours = (observed_at - started_at).total_seconds() / 3600.0
         if holding_hours <= 0:
             raise ValueError("paper holding duration must be positive")
-        swaps = _full_position_swap_components(
-            capital_usd=capital, fee_tier=fee_tier, snapshot=snapshot
+        swaps = _position_leg_swap_components(
+            capital_usd=capital, fee_tier=fee_tier,
+            range_pct=float(allocation["range_pct"]), snapshot=snapshot,
+            legacy_full_position_legs=legacy_full_position_legs,
         )
         fee_ev = _finite(runner.get("fees"), "paper fee", positive=False)
         reward_ev = _finite(runner.get("reward"), "paper reward", positive=False)
@@ -274,8 +283,10 @@ def _factor(value: Any) -> str:
 
 def render_markdown(report: Mapping[str, Any]) -> str:
     rows = report["rows"]
+    corrected = report["cost_leg_convention"] == "corrected_position_leg_notional"
     lines = [
-        "# TP-J FIX-J1 — paper runner 与 NetCover 逐项对账",
+        "# TP-J FIX-J3 — 更正 CLMM 换腿成本后的逐项对账" if corrected
+        else "# TP-J FIX-J1 — paper runner 与 NetCover 逐项对账",
         "",
         "本报告只读 paper runner 输出和已存 scanner SQLite 快照；不调用 RPC、不触碰 runner 或保护进程。",
         "NetCover 收益/IL输入使用 runner 的真实累计观测；未被 runner 记账的成本明确标为 `UNMODELED`，绝不按 $0 处理。",
@@ -324,12 +335,17 @@ def main() -> None:
     parser.add_argument("--heartbeat", default="reports/lp_portfolio_paper_runner/launch_20260624_115413_freerpc/heartbeat.jsonl")
     parser.add_argument("--json-out", required=True)
     parser.add_argument("--markdown-out", required=True)
+    parser.add_argument(
+        "--corrected-position-legs", action="store_true",
+        help="Use V3 range inventory leg value instead of the J1 full-leg baseline",
+    )
     args = parser.parse_args()
     root = Path(args.repo_root).resolve()
     report = calibrate(
         book=json.loads((root / args.book).read_text()),
         heartbeat=_last_jsonl(root / args.heartbeat),
         repo_root=root,
+        legacy_full_position_legs=not args.corrected_position_legs,
     )
     json_path, markdown_path = root / args.json_out, root / args.markdown_out
     json_path.parent.mkdir(parents=True, exist_ok=True)

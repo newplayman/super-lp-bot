@@ -181,6 +181,38 @@ def effective_fee_share(
     return l_pos_raw / (l_active_raw + l_pos_raw)
 
 
+def clmm_token0_value_fraction(entry_price: float, range_pct: float) -> float:
+    """Return the token0 share of a freshly-minted in-range CL position.
+
+    A position is valued at the entry price ``P`` in token1/quote units.  With
+    range ``[P(1-r), P(1+r)]`` its V3 inventory is::
+
+        x = L (1/sqrt(P) - 1/sqrt(P(1+r)))
+        y = L (sqrt(P) - sqrt(P(1-r)))
+
+    Thus the amount which a token1-only depositor must swap to token0 is
+    ``x*P / (x*P+y)`` of the *position*, not its entire value.  The same token0
+    fraction is the amount to sell when immediately unwinding back to token1.
+    This uses the canonical inventory engine rather than assuming 50/50: an
+    arithmetically symmetric range is slightly asymmetric in sqrt-price space.
+    """
+    if entry_price <= 0 or range_pct <= 0 or range_pct >= 100:
+        raise ValueError("entry_price must be > 0 and range_pct must be in (0, 100)")
+    from scripts.lp_il_inventory_engine_v1_readonly import (
+        current_inventory,
+        position_state_from_capital,
+    )
+    state = position_state_from_capital(entry_price, 1.0, range_pct)
+    inventory = current_inventory(state, entry_price)
+    token0_value = inventory.q0 * entry_price
+    if inventory.nav_quote <= 0:
+        raise ValueError("CLMM entry inventory must have positive value")
+    fraction = token0_value / inventory.nav_quote
+    if not 0.0 < fraction < 1.0 or not math.isfinite(fraction):
+        raise ValueError("CLMM token0 value fraction must be in (0, 1)")
+    return fraction
+
+
 # ---------------------------------------------------------------------------
 # Exit conversion cost
 # ---------------------------------------------------------------------------

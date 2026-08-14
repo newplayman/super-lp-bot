@@ -1,0 +1,737 @@
+{
+  "cost_leg_convention": "corrected_position_leg_notional",
+  "largest_difference": {
+    "component": "reward_haircut_deduction_usd",
+    "difference_usd": 137.31315,
+    "netcover": 137.31315,
+    "netcover_over_paper_factor": "N/A (paper zero)",
+    "paper_runner": 0.0
+  },
+  "method": "TP-J J1 realised-paper-income/full-cost-NetCover reconciliation",
+  "paper_observed_at": "2026-08-14T08:18:43.717093+00:00",
+  "paper_started_at": "2026-06-24T11:54:26.450337+00:00",
+  "rows": [
+    {
+      "capital_usd": 3207.66,
+      "differences_descending": [
+        {
+          "component": "lvr_ev_usd",
+          "difference_usd": 52.60755,
+          "netcover": 52.60755,
+          "netcover_over_paper_factor": "N/A (paper UNMODELED)",
+          "paper_runner": "UNMODELED"
+        },
+        {
+          "component": "reward_haircut_deduction_usd",
+          "difference_usd": 27.30745,
+          "netcover": 27.30745,
+          "netcover_over_paper_factor": "N/A (paper zero)",
+          "paper_runner": 0.0
+        },
+        {
+          "component": "entry_cost_usd",
+          "difference_usd": 3.8076169488937217,
+          "netcover": 3.8076169488937217,
+          "netcover_over_paper_factor": "N/A (paper UNMODELED)",
+          "paper_runner": "UNMODELED"
+        },
+        {
+          "component": "exit_cost_usd",
+          "difference_usd": 3.8076169488937217,
+          "netcover": 3.8076169488937217,
+          "netcover_over_paper_factor": "N/A (paper UNMODELED)",
+          "paper_runner": "UNMODELED"
+        },
+        {
+          "component": "exit_latency_loss_usd",
+          "difference_usd": 2.2343856443877708,
+          "netcover": 2.2343856443877708,
+          "netcover_over_paper_factor": "N/A (paper UNMODELED)",
+          "paper_runner": "UNMODELED"
+        },
+        {
+          "component": "reward_conversion_cost_usd",
+          "difference_usd": 0.5865001513473302,
+          "netcover": 0.5865001513473302,
+          "netcover_over_paper_factor": "N/A (paper UNMODELED)",
+          "paper_runner": "UNMODELED"
+        },
+        {
+          "component": "gas_usd",
+          "difference_usd": 0.0795,
+          "netcover": 0.0795,
+          "netcover_over_paper_factor": "N/A (paper UNMODELED)",
+          "paper_runner": "UNMODELED"
+        },
+        {
+          "component": "slippage_usd",
+          "difference_usd": 0.005809737579805207,
+          "netcover": 0.005809737579805207,
+          "netcover_over_paper_factor": "N/A (paper UNMODELED)",
+          "paper_runner": "UNMODELED"
+        },
+        {
+          "component": "fee_ev_usd",
+          "difference_usd": 0.0,
+          "netcover": 75.4894,
+          "netcover_over_paper_factor": 1.0,
+          "paper_runner": 75.4894
+        },
+        {
+          "component": "reward_ev_usd",
+          "difference_usd": 0.0,
+          "netcover": 54.6149,
+          "netcover_over_paper_factor": 1.0,
+          "paper_runner": 54.6149
+        },
+        {
+          "component": "il_ev_usd",
+          "difference_usd": 0.0,
+          "netcover": 105.2151,
+          "netcover_over_paper_factor": 1.0,
+          "paper_runner": 105.2151
+        }
+      ],
+      "holding_hours": 1220.404796321111,
+      "legacy_full_position_legs": false,
+      "netcover": {
+        "entry_cost_usd": 3.8076169488937217,
+        "exit_cost_usd": 3.8076169488937217,
+        "exit_latency_loss_usd": 2.2343856443877708,
+        "fee_ev_usd": 75.4894,
+        "gas_usd": 0.0795,
+        "il_ev_usd": 105.2151,
+        "lvr_ev_usd": 52.60755,
+        "reward_conversion_cost_usd": 0.5865001513473302,
+        "reward_ev_usd": 54.6149,
+        "reward_haircut_deduction_usd": 27.30745,
+        "slippage_usd": 0.005809737579805207
+      },
+      "netcover_adjusted_income_usd": 102.79685,
+      "netcover_pass": false,
+      "netcover_ratio": 0.6106353745696851,
+      "netcover_risk_usd": 168.34407943110236,
+      "paper_runner": {
+        "entry_cost_usd": "UNMODELED",
+        "exit_cost_usd": "UNMODELED",
+        "exit_latency_loss_usd": "UNMODELED",
+        "fee_ev_usd": 75.4894,
+        "gas_usd": "UNMODELED",
+        "il_ev_usd": 105.2151,
+        "net_pnl_usd": 206.76,
+        "reward_conversion_cost_usd": "UNMODELED",
+        "reward_ev_usd": 54.6149,
+        "slippage_usd": "UNMODELED"
+      },
+      "pool": "0x70acdf2ad0bf2402c957154f944c19ef4e1cbae1",
+      "project": "aerodrome-slipstream",
+      "snapshot_source": {
+        "as_of": "2026-08-10T04:34:39.491608+00:00",
+        "path": "reports/lp_funnel_autopsy/20260810_043427/scanner.db"
+      },
+      "symbol": "WETH-CBBTC"
+    },
+    {
+      "capital_usd": 2912.46,
+      "differences_descending": [
+        {
+          "component": "reward_haircut_deduction_usd",
+          "difference_usd": 137.31315,
+          "netcover": 137.31315,
+          "netcover_over_paper_factor": "N/A (paper zero)",
+          "paper_runner": 0.0
+        },
+        {
+          "component": "lvr_ev_usd",
+          "difference_usd": 36.12535,
+          "netcover": 36.12535,
+          "netcover_over_paper_factor": "N/A (paper UNMODELED)",
+          "paper_runner": "UNMODELED"
+        },
+        {
+          "component": "reward_conversion_cost_usd",
+          "difference_usd": 6.3407337460141555,
+          "netcover": 6.3407337460141555,
+          "netcover_over_paper_factor": "N/A (paper UNMODELED)",
+          "paper_runner": "UNMODELED"
+        },
+        {
+          "component": "exit_latency_loss_usd",
+          "difference_usd": 2.028755795144625,
+          "netcover": 2.028755795144625,
+          "netcover_over_paper_factor": "N/A (paper UNMODELED)",
+          "paper_runner": "UNMODELED"
+        },
+        {
+          "component": "entry_cost_usd",
+          "difference_usd": 1.1299686683576176,
+          "netcover": 1.1299686683576176,
+          "netcover_over_paper_factor": "N/A (paper UNMODELED)",
+          "paper_runner": "UNMODELED"
+        },
+        {
+          "component": "exit_cost_usd",
+          "difference_usd": 1.1299686683576176,
+          "netcover": 1.1299686683576176,
+          "netcover_over_paper_factor": "N/A (paper UNMODELED)",
+          "paper_runner": "UNMODELED"
+        },
+        {
+          "component": "gas_usd",
+          "difference_usd": 0.0795,
+          "netcover": 0.0795,
+          "netcover_over_paper_factor": "N/A (paper UNMODELED)",
+          "paper_runner": "UNMODELED"
+        },
+        {
+          "component": "slippage_usd",
+          "difference_usd": 0.01699231385466584,
+          "netcover": 0.01699231385466584,
+          "netcover_over_paper_factor": "N/A (paper UNMODELED)",
+          "paper_runner": "UNMODELED"
+        },
+        {
+          "component": "fee_ev_usd",
+          "difference_usd": 0.0,
+          "netcover": 845.2374,
+          "netcover_over_paper_factor": 1.0,
+          "paper_runner": 845.2374
+        },
+        {
+          "component": "reward_ev_usd",
+          "difference_usd": 0.0,
+          "netcover": 274.6263,
+          "netcover_over_paper_factor": 1.0,
+          "paper_runner": 274.6263
+        },
+        {
+          "component": "il_ev_usd",
+          "difference_usd": 0.0,
+          "netcover": 72.2507,
+          "netcover_over_paper_factor": 1.0,
+          "paper_runner": 72.2507
+        }
+      ],
+      "holding_hours": 1220.404796321111,
+      "legacy_full_position_legs": false,
+      "netcover": {
+        "entry_cost_usd": 1.1299686683576176,
+        "exit_cost_usd": 1.1299686683576176,
+        "exit_latency_loss_usd": 2.028755795144625,
+        "fee_ev_usd": 845.2374,
+        "gas_usd": 0.0795,
+        "il_ev_usd": 72.2507,
+        "lvr_ev_usd": 36.12535,
+        "reward_conversion_cost_usd": 6.3407337460141555,
+        "reward_ev_usd": 274.6263,
+        "reward_haircut_deduction_usd": 137.31315,
+        "slippage_usd": 0.01699231385466584
+      },
+      "netcover_adjusted_income_usd": 982.5505499999999,
+      "netcover_pass": true,
+      "netcover_ratio": 8.249658311008309,
+      "netcover_risk_usd": 119.10196919172867,
+      "paper_runner": {
+        "entry_cost_usd": "UNMODELED",
+        "exit_cost_usd": "UNMODELED",
+        "exit_latency_loss_usd": "UNMODELED",
+        "fee_ev_usd": 845.2374,
+        "gas_usd": "UNMODELED",
+        "il_ev_usd": 72.2507,
+        "net_pnl_usd": 1216.79,
+        "reward_conversion_cost_usd": "UNMODELED",
+        "reward_ev_usd": 274.6263,
+        "slippage_usd": "UNMODELED"
+      },
+      "pool": "0xb2cc224c1c9fee385f8ad6a55b4d94e92359dc59",
+      "project": "aerodrome-slipstream",
+      "snapshot_source": {
+        "as_of": "2026-08-10T13:24:29.678852+00:00",
+        "path": "reports/lp_tp_d/20260810_d4_top68_w10_normal/scanner.db"
+      },
+      "symbol": "WETH-USDC"
+    },
+    {
+      "capital_usd": 879.89,
+      "differences_descending": [
+        {
+          "component": "lvr_ev_usd",
+          "difference_usd": 15.6208,
+          "netcover": 15.6208,
+          "netcover_over_paper_factor": "N/A (paper UNMODELED)",
+          "paper_runner": "UNMODELED"
+        },
+        {
+          "component": "entry_cost_usd",
+          "difference_usd": 4.151590735766014,
+          "netcover": 4.151590735766014,
+          "netcover_over_paper_factor": "N/A (paper UNMODELED)",
+          "paper_runner": "UNMODELED"
+        },
+        {
+          "component": "exit_cost_usd",
+          "difference_usd": 4.151590735766014,
+          "netcover": 4.151590735766014,
+          "netcover_over_paper_factor": "N/A (paper UNMODELED)",
+          "paper_runner": "UNMODELED"
+        },
+        {
+          "component": "exit_latency_loss_usd",
+          "difference_usd": 0.6129120868921132,
+          "netcover": 0.6129120868921132,
+          "netcover_over_paper_factor": "N/A (paper UNMODELED)",
+          "paper_runner": "UNMODELED"
+        },
+        {
+          "component": "gas_usd",
+          "difference_usd": 0.0795,
+          "netcover": 0.0795,
+          "netcover_over_paper_factor": "N/A (paper UNMODELED)",
+          "paper_runner": "UNMODELED"
+        },
+        {
+          "component": "slippage_usd",
+          "difference_usd": 0.047737078727605464,
+          "netcover": 0.047737078727605464,
+          "netcover_over_paper_factor": "N/A (paper UNMODELED)",
+          "paper_runner": "UNMODELED"
+        },
+        {
+          "component": "fee_ev_usd",
+          "difference_usd": 0.0,
+          "netcover": 87.6535,
+          "netcover_over_paper_factor": 1.0,
+          "paper_runner": 87.6535
+        },
+        {
+          "component": "reward_ev_usd",
+          "difference_usd": 0.0,
+          "netcover": 0.0,
+          "netcover_over_paper_factor": "N/A (paper zero)",
+          "paper_runner": 0.0
+        },
+        {
+          "component": "reward_haircut_deduction_usd",
+          "difference_usd": 0.0,
+          "netcover": 0.0,
+          "netcover_over_paper_factor": "N/A (paper zero)",
+          "paper_runner": 0.0
+        },
+        {
+          "component": "il_ev_usd",
+          "difference_usd": 0.0,
+          "netcover": 31.2416,
+          "netcover_over_paper_factor": 1.0,
+          "paper_runner": 31.2416
+        },
+        {
+          "component": "reward_conversion_cost_usd",
+          "difference_usd": 0.0,
+          "netcover": 0.0,
+          "netcover_over_paper_factor": "N/A (paper UNMODELED)",
+          "paper_runner": "UNMODELED"
+        }
+      ],
+      "holding_hours": 1220.404796321111,
+      "legacy_full_position_legs": false,
+      "netcover": {
+        "entry_cost_usd": 4.151590735766014,
+        "exit_cost_usd": 4.151590735766014,
+        "exit_latency_loss_usd": 0.6129120868921132,
+        "fee_ev_usd": 87.6535,
+        "gas_usd": 0.0795,
+        "il_ev_usd": 31.2416,
+        "lvr_ev_usd": 15.6208,
+        "reward_conversion_cost_usd": 0.0,
+        "reward_ev_usd": 0.0,
+        "reward_haircut_deduction_usd": 0.0,
+        "slippage_usd": 0.047737078727605464
+      },
+      "netcover_adjusted_income_usd": 87.6535,
+      "netcover_pass": true,
+      "netcover_ratio": 1.5678804122765637,
+      "netcover_risk_usd": 55.90573063715174,
+      "paper_runner": {
+        "entry_cost_usd": "UNMODELED",
+        "exit_cost_usd": "UNMODELED",
+        "exit_latency_loss_usd": "UNMODELED",
+        "fee_ev_usd": 87.6535,
+        "gas_usd": "UNMODELED",
+        "il_ev_usd": 31.2416,
+        "net_pnl_usd": 111.02,
+        "reward_conversion_cost_usd": "UNMODELED",
+        "reward_ev_usd": 0.0,
+        "slippage_usd": "UNMODELED"
+      },
+      "pool": "0x0b1c2dcbbfa744ebd3fc17ff1a96a1e1eb4b2d69",
+      "project": "uniswap-v3",
+      "snapshot_source": {
+        "as_of": "2026-08-13T08:52:53.521676+00:00",
+        "path": "reports/lp_scanner/scanner.db"
+      },
+      "symbol": "WETH-USDC"
+    },
+    {
+      "capital_usd": 1000.0,
+      "differences_descending": [
+        {
+          "component": "lvr_ev_usd",
+          "difference_usd": 18.93225,
+          "netcover": 18.93225,
+          "netcover_over_paper_factor": "N/A (paper UNMODELED)",
+          "paper_runner": "UNMODELED"
+        },
+        {
+          "component": "reward_haircut_deduction_usd",
+          "difference_usd": 17.7989,
+          "netcover": 17.7989,
+          "netcover_over_paper_factor": "N/A (paper zero)",
+          "paper_runner": 0.0
+        },
+        {
+          "component": "reward_conversion_cost_usd",
+          "difference_usd": 7.352882803270433,
+          "netcover": 7.352882803270433,
+          "netcover_over_paper_factor": "N/A (paper UNMODELED)",
+          "paper_runner": "UNMODELED"
+        },
+        {
+          "component": "entry_cost_usd",
+          "difference_usd": 0.9766307123300665,
+          "netcover": 0.9766307123300665,
+          "netcover_over_paper_factor": "N/A (paper UNMODELED)",
+          "paper_runner": "UNMODELED"
+        },
+        {
+          "component": "exit_cost_usd",
+          "difference_usd": 0.9766307123300665,
+          "netcover": 0.9766307123300665,
+          "netcover_over_paper_factor": "N/A (paper UNMODELED)",
+          "paper_runner": "UNMODELED"
+        },
+        {
+          "component": "exit_latency_loss_usd",
+          "difference_usd": 0.6965780800919583,
+          "netcover": 0.6965780800919583,
+          "netcover_over_paper_factor": "N/A (paper UNMODELED)",
+          "paper_runner": "UNMODELED"
+        },
+        {
+          "component": "slippage_usd",
+          "difference_usd": 0.11138056324731285,
+          "netcover": 0.11138056324731285,
+          "netcover_over_paper_factor": "N/A (paper UNMODELED)",
+          "paper_runner": "UNMODELED"
+        },
+        {
+          "component": "gas_usd",
+          "difference_usd": 0.0795,
+          "netcover": 0.0795,
+          "netcover_over_paper_factor": "N/A (paper UNMODELED)",
+          "paper_runner": "UNMODELED"
+        },
+        {
+          "component": "fee_ev_usd",
+          "difference_usd": 0.0,
+          "netcover": 70.4436,
+          "netcover_over_paper_factor": 1.0,
+          "paper_runner": 70.4436
+        },
+        {
+          "component": "reward_ev_usd",
+          "difference_usd": 0.0,
+          "netcover": 35.5978,
+          "netcover_over_paper_factor": 1.0,
+          "paper_runner": 35.5978
+        },
+        {
+          "component": "il_ev_usd",
+          "difference_usd": 0.0,
+          "netcover": 37.8645,
+          "netcover_over_paper_factor": 1.0,
+          "paper_runner": 37.8645
+        }
+      ],
+      "holding_hours": 1220.404796321111,
+      "legacy_full_position_legs": false,
+      "netcover": {
+        "entry_cost_usd": 0.9766307123300665,
+        "exit_cost_usd": 0.9766307123300665,
+        "exit_latency_loss_usd": 0.6965780800919583,
+        "fee_ev_usd": 70.4436,
+        "gas_usd": 0.0795,
+        "il_ev_usd": 37.8645,
+        "lvr_ev_usd": 18.93225,
+        "reward_conversion_cost_usd": 7.352882803270433,
+        "reward_ev_usd": 35.5978,
+        "reward_haircut_deduction_usd": 17.7989,
+        "slippage_usd": 0.11138056324731285
+      },
+      "netcover_adjusted_income_usd": 88.2425,
+      "netcover_pass": true,
+      "netcover_ratio": 1.31724190451077,
+      "netcover_risk_usd": 66.99035287126983,
+      "paper_runner": {
+        "entry_cost_usd": "UNMODELED",
+        "exit_cost_usd": "UNMODELED",
+        "exit_latency_loss_usd": "UNMODELED",
+        "fee_ev_usd": 70.4436,
+        "gas_usd": "UNMODELED",
+        "il_ev_usd": 37.8645,
+        "net_pnl_usd": 134.41,
+        "reward_conversion_cost_usd": "UNMODELED",
+        "reward_ev_usd": 35.5978,
+        "slippage_usd": "UNMODELED"
+      },
+      "pool": "0x4e829f8a5213c42535ab84aa40bd4adcce9cba02",
+      "project": "aerodrome-slipstream",
+      "snapshot_source": {
+        "as_of": "2026-08-10T13:24:29.678852+00:00",
+        "path": "reports/lp_tp_d/20260810_d4_top68_w10_normal/scanner.db"
+      },
+      "symbol": "WETH-BRETT"
+    },
+    {
+      "capital_usd": 1000.0,
+      "differences_descending": [
+        {
+          "component": "lvr_ev_usd",
+          "difference_usd": 24.94235,
+          "netcover": 24.94235,
+          "netcover_over_paper_factor": "N/A (paper UNMODELED)",
+          "paper_runner": "UNMODELED"
+        },
+        {
+          "component": "reward_haircut_deduction_usd",
+          "difference_usd": 12.73285,
+          "netcover": 12.73285,
+          "netcover_over_paper_factor": "N/A (paper zero)",
+          "paper_runner": 0.0
+        },
+        {
+          "component": "entry_cost_usd",
+          "difference_usd": 2.067146779344033,
+          "netcover": 2.067146779344033,
+          "netcover_over_paper_factor": "N/A (paper UNMODELED)",
+          "paper_runner": "UNMODELED"
+        },
+        {
+          "component": "exit_cost_usd",
+          "difference_usd": 2.067146779344033,
+          "netcover": 2.067146779344033,
+          "netcover_over_paper_factor": "N/A (paper UNMODELED)",
+          "paper_runner": "UNMODELED"
+        },
+        {
+          "component": "reward_conversion_cost_usd",
+          "difference_usd": 1.5734023919677202,
+          "netcover": 1.5734023919677202,
+          "netcover_over_paper_factor": "N/A (paper UNMODELED)",
+          "paper_runner": "UNMODELED"
+        },
+        {
+          "component": "exit_latency_loss_usd",
+          "difference_usd": 0.6965780800919583,
+          "netcover": 0.6965780800919583,
+          "netcover_over_paper_factor": "N/A (paper UNMODELED)",
+          "paper_runner": "UNMODELED"
+        },
+        {
+          "component": "gas_usd",
+          "difference_usd": 0.0795,
+          "netcover": 0.0795,
+          "netcover_over_paper_factor": "N/A (paper UNMODELED)",
+          "paper_runner": "UNMODELED"
+        },
+        {
+          "component": "slippage_usd",
+          "difference_usd": 0.03353853988593247,
+          "netcover": 0.03353853988593247,
+          "netcover_over_paper_factor": "N/A (paper UNMODELED)",
+          "paper_runner": "UNMODELED"
+        },
+        {
+          "component": "fee_ev_usd",
+          "difference_usd": 0.0,
+          "netcover": 44.0689,
+          "netcover_over_paper_factor": 1.0,
+          "paper_runner": 44.0689
+        },
+        {
+          "component": "reward_ev_usd",
+          "difference_usd": 0.0,
+          "netcover": 25.4657,
+          "netcover_over_paper_factor": 1.0,
+          "paper_runner": 25.4657
+        },
+        {
+          "component": "il_ev_usd",
+          "difference_usd": 0.0,
+          "netcover": 49.8847,
+          "netcover_over_paper_factor": 1.0,
+          "paper_runner": 49.8847
+        }
+      ],
+      "holding_hours": 1220.404796321111,
+      "legacy_full_position_legs": false,
+      "netcover": {
+        "entry_cost_usd": 2.067146779344033,
+        "exit_cost_usd": 2.067146779344033,
+        "exit_latency_loss_usd": 0.6965780800919583,
+        "fee_ev_usd": 44.0689,
+        "gas_usd": 0.0795,
+        "il_ev_usd": 49.8847,
+        "lvr_ev_usd": 24.94235,
+        "reward_conversion_cost_usd": 1.5734023919677202,
+        "reward_ev_usd": 25.4657,
+        "reward_haircut_deduction_usd": 12.73285,
+        "slippage_usd": 0.03353853988593247
+      },
+      "netcover_adjusted_income_usd": 56.80175,
+      "netcover_pass": false,
+      "netcover_ratio": 0.698287480594336,
+      "netcover_risk_usd": 81.34436257063368,
+      "paper_runner": {
+        "entry_cost_usd": "UNMODELED",
+        "exit_cost_usd": "UNMODELED",
+        "exit_latency_loss_usd": "UNMODELED",
+        "fee_ev_usd": 44.0689,
+        "gas_usd": "UNMODELED",
+        "il_ev_usd": 49.8847,
+        "net_pnl_usd": 103.71,
+        "reward_conversion_cost_usd": "UNMODELED",
+        "reward_ev_usd": 25.4657,
+        "slippage_usd": "UNMODELED"
+      },
+      "pool": "0x80cc08712aa61ce9dc7604f9ce7560a25094b862",
+      "project": "aerodrome-slipstream",
+      "snapshot_source": {
+        "as_of": "2026-08-10T04:34:39.491608+00:00",
+        "path": "reports/lp_funnel_autopsy/20260810_043427/scanner.db"
+      },
+      "symbol": "USDC-SAPIEN"
+    },
+    {
+      "capital_usd": 1000.0,
+      "differences_descending": [
+        {
+          "component": "lvr_ev_usd",
+          "difference_usd": 32.8481,
+          "netcover": 32.8481,
+          "netcover_over_paper_factor": "N/A (paper UNMODELED)",
+          "paper_runner": "UNMODELED"
+        },
+        {
+          "component": "entry_cost_usd",
+          "difference_usd": 1.369937889344445,
+          "netcover": 1.369937889344445,
+          "netcover_over_paper_factor": "N/A (paper UNMODELED)",
+          "paper_runner": "UNMODELED"
+        },
+        {
+          "component": "exit_cost_usd",
+          "difference_usd": 1.369937889344445,
+          "netcover": 1.369937889344445,
+          "netcover_over_paper_factor": "N/A (paper UNMODELED)",
+          "paper_runner": "UNMODELED"
+        },
+        {
+          "component": "exit_latency_loss_usd",
+          "difference_usd": 0.6965780800919583,
+          "netcover": 0.6965780800919583,
+          "netcover_over_paper_factor": "N/A (paper UNMODELED)",
+          "paper_runner": "UNMODELED"
+        },
+        {
+          "component": "slippage_usd",
+          "difference_usd": 0.14424755144115675,
+          "netcover": 0.14424755144115675,
+          "netcover_over_paper_factor": "N/A (paper UNMODELED)",
+          "paper_runner": "UNMODELED"
+        },
+        {
+          "component": "gas_usd",
+          "difference_usd": 0.0795,
+          "netcover": 0.0795,
+          "netcover_over_paper_factor": "N/A (paper UNMODELED)",
+          "paper_runner": "UNMODELED"
+        },
+        {
+          "component": "fee_ev_usd",
+          "difference_usd": 0.0,
+          "netcover": 6.3886,
+          "netcover_over_paper_factor": 1.0,
+          "paper_runner": 6.3886
+        },
+        {
+          "component": "reward_ev_usd",
+          "difference_usd": 0.0,
+          "netcover": 0.0,
+          "netcover_over_paper_factor": "N/A (paper zero)",
+          "paper_runner": 0.0
+        },
+        {
+          "component": "reward_haircut_deduction_usd",
+          "difference_usd": 0.0,
+          "netcover": 0.0,
+          "netcover_over_paper_factor": "N/A (paper zero)",
+          "paper_runner": 0.0
+        },
+        {
+          "component": "il_ev_usd",
+          "difference_usd": 0.0,
+          "netcover": 65.6962,
+          "netcover_over_paper_factor": 1.0,
+          "paper_runner": 65.6962
+        },
+        {
+          "component": "reward_conversion_cost_usd",
+          "difference_usd": 0.0,
+          "netcover": 0.0,
+          "netcover_over_paper_factor": "N/A (paper UNMODELED)",
+          "paper_runner": "UNMODELED"
+        }
+      ],
+      "holding_hours": 1220.404796321111,
+      "legacy_full_position_legs": false,
+      "netcover": {
+        "entry_cost_usd": 1.369937889344445,
+        "exit_cost_usd": 1.369937889344445,
+        "exit_latency_loss_usd": 0.6965780800919583,
+        "fee_ev_usd": 6.3886,
+        "gas_usd": 0.0795,
+        "il_ev_usd": 65.6962,
+        "lvr_ev_usd": 32.8481,
+        "reward_conversion_cost_usd": 0.0,
+        "reward_ev_usd": 0.0,
+        "reward_haircut_deduction_usd": 0.0,
+        "slippage_usd": 0.14424755144115675
+      },
+      "netcover_adjusted_income_usd": 6.3886,
+      "netcover_pass": false,
+      "netcover_ratio": 0.06250801003722761,
+      "netcover_risk_usd": 102.20450141022201,
+      "paper_runner": {
+        "entry_cost_usd": "UNMODELED",
+        "exit_cost_usd": "UNMODELED",
+        "exit_latency_loss_usd": "UNMODELED",
+        "fee_ev_usd": 6.3886,
+        "gas_usd": "UNMODELED",
+        "il_ev_usd": 65.6962,
+        "net_pnl_usd": -175.75,
+        "reward_conversion_cost_usd": "UNMODELED",
+        "reward_ev_usd": 0.0,
+        "slippage_usd": "UNMODELED"
+      },
+      "pool": "0x529d2863a1521d0b57db028168fde2e97120017c",
+      "project": "uniswap-v3",
+      "snapshot_source": {
+        "as_of": "2026-08-13T18:06:05.743131+00:00",
+        "path": "reports/lp_scanner/scanner.db"
+      },
+      "symbol": "VIRTUAL-USDC"
+    }
+  ],
+  "runner_book_source": "reports/lp_portfolio_paper_runner/launch_20260624_115413_freerpc/book_init.json",
+  "runner_heartbeat_source": "reports/lp_portfolio_paper_runner/launch_20260624_115413_freerpc/heartbeat.jsonl"
+}

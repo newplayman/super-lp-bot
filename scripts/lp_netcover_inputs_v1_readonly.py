@@ -39,7 +39,10 @@ from scripts.lp_netcover_engine_v1_readonly import (
 )
 from scripts.lp_portfolio_allocator_v1_readonly import M1_MIN_POSITION_USD
 from scripts.lp_universe_screener_v1_readonly import reward_persistence_gate
-from scripts.lp_swap_cost_model_v1_readonly import exit_conversion_cost_usd
+from scripts.lp_swap_cost_model_v1_readonly import (
+    clmm_token0_value_fraction,
+    exit_conversion_cost_usd,
+)
 from scripts.lp_solana_token_constants_v1_readonly import STABLE_MINTS as SOLANA_STABLE_MINTS
 from scripts.lp_v3_fee_share import position_liquidity_raw
 from scripts.lp_vol_range_sizer_v1_readonly import recommend_range_pct
@@ -671,7 +674,16 @@ def _swap_costs(
     if l_raw is None or state is None or fee_tier is None:
         return {key: None for key in ("entry_cost_usd", "exit_cost_usd", "slippage_usd")}
     price, dec0, dec1 = state
+    range_pct = _first_number(record, "range_pct", positive=True)
     try:
+        # A CLMM mint held inside its range needs only the token0 inventory
+        # share bought from a token1-only starting balance.  If a legacy record
+        # lacks its range, retain the full-position upper bound and label it in
+        # the caller rather than inventing a 50/50 split.
+        conversion_fraction = (
+            clmm_token0_value_fraction(float(state[0]), range_pct)
+            if range_pct is not None else 1.0
+        )
         notional_quote = size_usd / quote_usd if quote_usd is not None else size_usd
         # Reuse the exact component split exercised by cost sensitivity.
         components = _swap_components(
@@ -683,6 +695,7 @@ def _swap_costs(
                 dec0=int(dec0),
                 dec1=int(dec1),
             ),
+            conversion_fraction=conversion_fraction,
         )
     except (ArithmeticError, ValueError):
         return {key: None for key in ("entry_cost_usd", "exit_cost_usd", "slippage_usd")}

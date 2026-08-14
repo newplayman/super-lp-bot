@@ -30,7 +30,7 @@ def test_calibration_preserves_observed_income_and_labels_absent_paper_costs(tmp
     _snapshot_db(tmp_path, pool)
     monkeypatch.setattr(calibration, "SNAPSHOT_SOURCES", {pool: ("snapshot.db", "2026-01-02T00:00:00+00:00")})
     report = calibration.calibrate(
-        book=[{"pool": pool, "symbol": "X-Y", "project": "test", "capital": 1000, "fee_tier": 0.003}],
+        book=[{"pool": pool, "symbol": "X-Y", "project": "test", "capital": 1000, "fee_tier": 0.003, "range_pct": 20.0}],
         heartbeat={"ts_utc": "2026-01-03T00:00:00+00:00", "started_at": "2026-01-01T00:00:00+00:00", "by_pool": [{"pool": pool, "fees": 100, "reward": 20, "il": -5}]},
         repo_root=tmp_path,
     )
@@ -49,8 +49,9 @@ def test_full_position_baseline_uses_quote_usd_normalisation():
         "measured_token1_usd": 20.0, "last_swap_liquidity_raw": 1e23,
         "last_swap_price_token1_per_token0": 0.05, "dec0": 18, "dec1": 8,
     }
-    costs = calibration._full_position_swap_components(
-        capital_usd=1000.0, fee_tier=0.003, snapshot=snapshot
+    costs = calibration._position_leg_swap_components(
+        capital_usd=1000.0, fee_tier=0.003, range_pct=20.0, snapshot=snapshot,
+        legacy_full_position_legs=True,
     )
     assert costs["entry_cost_usd"] == pytest.approx(3.0)
     assert costs["exit_cost_usd"] == pytest.approx(3.0)

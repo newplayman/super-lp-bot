@@ -139,23 +139,37 @@ def default_base_vetted_pool(repo_root: Path | str = _ROOT) -> BasePoolParameter
     )
 
 
-def _swap_components(size_usd: float, pool: BasePoolParameters) -> dict[str, float]:
+def _swap_components(
+    size_usd: float, pool: BasePoolParameters, *, conversion_fraction: float = 1.0,
+) -> dict[str, float]:
+    """Split two lifecycle leg costs for one position.
+
+    ``conversion_fraction`` is the actual value share of the leg to swap.
+    Callers with a known CLMM range must supply the V3 inventory fraction.  The
+    default is retained solely for historical sensitivity artifacts that do
+    not carry a position range; it is an explicit conservative full-position
+    upper bound, not an assumption about a real two-sided mint.
+    """
+    if not 0.0 < float(conversion_fraction) <= 1.0:
+        raise ValueError("conversion_fraction must be in (0, 1]")
+    conversion_notional = size_usd * float(conversion_fraction)
     entry_total = exit_conversion_cost_usd(
-        size_usd, pool.l_active_raw_historical, pool.price_usd, pool.fee_tier,
+        conversion_notional, pool.l_active_raw_historical, pool.price_usd, pool.fee_tier,
         pool.dec0, pool.dec1, "buy_base",
     )
     exit_total = exit_conversion_cost_usd(
-        size_usd, pool.l_active_raw_historical, pool.price_usd, pool.fee_tier,
+        conversion_notional, pool.l_active_raw_historical, pool.price_usd, pool.fee_tier,
         pool.dec0, pool.dec1, "sell_base",
     )
-    entry_fee = size_usd * pool.fee_tier
-    exit_fee = size_usd * pool.fee_tier
+    entry_fee = conversion_notional * pool.fee_tier
+    exit_fee = conversion_notional * pool.fee_tier
     slippage = max(entry_total + exit_total - entry_fee - exit_fee, 0.0)
     return {
         "entry_cost_usd": entry_fee,
         "exit_cost_usd": exit_fee,
         "slippage_usd": slippage,
         "round_trip_cost_usd": entry_total + exit_total,
+        "conversion_fraction": float(conversion_fraction),
     }
 
 
