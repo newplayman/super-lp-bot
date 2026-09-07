@@ -308,6 +308,11 @@ class RpcPool:
             "max_consecutive_failures": max(
                 (self._fails.get(url, 0) for url in urls), default=0
             ),
+            "endpoints": [
+                {"url": endpoint["url"], "consecutive_failures": self._fails.get(endpoint["url"], 0),
+                 "cooling": self._cooldown_until.get(endpoint["url"], 0.0) > now}
+                for endpoint in self._endpoints
+            ],
         }
 
     # --- pacing ------------------------------------------------------------
