@@ -1,0 +1,191 @@
+[qwen-task] dir=/opt/lpbot/lp-bot-v3-origin-check spec=/opt/lpbot/lp-bot-v3-origin-check/docs/specs/20260907_RH-00b_rpcpool_backoff_overflow_fix.md log=/root/.qwen-code/logs/task-20260907-134101.log max_turns=80
+[claude-code:unrecognized_model] {"model":"qwen38-v122-skinny-e5m2-mtp2-agent","query_source":"sdk"}
+[tool 21s] turn=3 Bash "sed -n '1,60p' scripts/lp_rpc_pool_v1_readonly.py"
+[tool 22s] turn=4 Bash ''
+[tool-error 22s] '<tool_use_error>InputValidationError: Bash was called with input that could not be parsed as JSON.\nYou sent (first 125 of 125 bytes): {"command": "sed -n \'240,3'
+[tool 33s] turn=6 Bash "sed -n '240,300p' scripts/lp_rpc_pool_v1_readonly.py"
+[tool 42s] turn=9 Bash "sed -n '180,240p' scripts/lp_rpc_pool_v1_readonly.py"
+[tool 43s] turn=10 Bash "sed -n '330,400p' scripts/lp_rpc_pool_v1_readonly.py"
+[tool 55s] turn=13 Bash "sed -n '1,80p' tests/test_lp_rpc_pool_v1_readonly.py"
+[tool 56s] turn=14 Bash 'wc -l tests/test_lp_rpc_pool_v1_readonly.py; echo "---"; grep -n "class\\|def \\|FakeClock\\|_clock\\|clock=\\|post'
+[tool 71s] turn=17 Bash "sed -n '207,252p' tests/test_lp_rpc_pool_v1_readonly.py"
+[tool 72s] turn=18 Bash "sed -n '360,370p' tests/test_lp_rpc_pool_v1_readonly.py"
+[progress 132s] turn=18 streamed_chars=14550
+[tool 139s] turn=21 Edit '/opt/lpbot/lp-bot-v3-origin-check/scripts/lp_rpc_pool_v1_readonly.py'
+[tool 164s] turn=24 Edit '/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rpc_pool_v1_readonly.py'
+[tool 181s] turn=27 Bash '/root/lp-bot/.venv/bin/python -m pytest tests/test_lp_rpc_pool_v1_readonly.py -q -p no:cacheprovider 2>&1 | ta'
+[tool 182s] turn=28 Bash ''
+[tool-error 182s] '<tool_use_error>InputValidationError: Bash was called with input that could not be parsed as JSON.\nYou sent (first 200 of 287 bytes): {"command": "/root/lp-bot/'
+[tool 209s] turn=31 Bash "cat > /tmp/rh00b_check.py <<'PY'\nimport sys\nsys.path.insert(0, '.')\nfrom scripts.lp_rpc_pool_v1_readonly impor"
+[tool 227s] turn=34 Bash '/root/lp-bot/.venv/bin/python -m pytest tests/ -q -p no:cacheprovider 2>&1 | tail -2'
+[tool 282s] turn=37 Bash 'git diff --stat'
+[tool 323s] turn=40 Bash 'git diff scripts/lp_rpc_pool_v1_readonly.py'
+[tool 354s] turn=43 Bash 'git diff .gitignore'
+[tool 385s] turn=46 Bash 'ls -la reports/rh_pivot/20260907T124500Z/RH-00/ 2>&1 | head; echo "==="; grep -n "grep\\|常量\\|constant\\|BASELINE'
+[tool 406s] turn=49 Bash "sed -n '155,220p' reports/rh_pivot/20260907T124500Z/RH-00/BASELINE_RAW.log"
+[tool 445s] turn=52 Bash 'grep -rn "grep" reports/rh_pivot/20260907T124500Z/RH-00/*.md 2>&1 | grep -i "constant\\|STABLE\\|NETCOVER\\|TVL\\|'
+[tool 482s] turn=55 Bash "grep -rnE '^(STABLE_MIN_FRAC|NETCOVER_SHADOW|NETCOVER_TINY_LIVE|POSITION_TVL_SHARE|HARD_POSITION_TVL_SHARE|LVR"
+[progress 542s] turn=55 streamed_chars=46593
+[tool 546s] turn=58 Bash '/root/lp-bot/.venv/bin/python -c "import sys;sys.path.insert(0,\'.\');from scripts.lp_rpc_pool_v1_readonly impor'
+[tool 547s] turn=59 Bash ''
+[tool-error 547s] '<tool_use_error>InputValidationError: Bash was called with input that could not be parsed as JSON.\nYou sent (first 182 of 182 bytes): {"command": "git status --'
+[tool 575s] turn=62 Bash 'git status --short scripts/lp_rpc_pool_v1_readonly.py tests/test_lp_rpc_pool_v1_readonly.py .gitignore'
+[result 622s] is_error=False turns=26 subtype=success
+
+
+All verification complete. Here is the final report.
+
+## RH-00b 完成报告
+
+### 改动文件列表
+
+| 文件 | 改动 | 说明 |
+|---|---|---|
+| `scripts/lp_rpc_pool_v1_readonly.py` | `_penalize` 增加 1 行、改 1 行 | 指数封顶 `exponent = min(fails - 1, 30)`，`backoff = self._cooldown_base * (2 ** exponent)`。`fails` 计数继续累加，`_cooldown_max`/`_reset`/`call` 均未动。 |
+| `tests/test_lp_rpc_pool_v1_readonly.py` | 文件末尾追加 2 个测试 | `test_penalize_does_not_overflow_after_many_failures`、`test_call_survives_endpoint_with_overflow_level_failures`。未改任何已有测试。 |
+
+**未改动**：六常量、NetCover 引擎、成本模型、任何阈值、`.gitignore`、以及 `lp_rpc_pool_v1_readonly.py` 里既有的未提交 `health_snapshot` `endpoints` 改动（原样保留，未提交也未回退）。
+
+### 验证命令与原样输出
+
+**1. 目标测试文件**
+```
+$ /root/lp-bot/.venv/bin/python -m pytest tests/test_lp_rpc_pool_v1_readonly.py -q -p no:cacheprovider 2>&1 | tail -3
+..............................                                           [100%]
+30 passed in 0.08s
+```
+（原 28 个 + 新增 2 个 = 30，全通过）
+
+**2. 全量测试**
+```
+$ /root/lp-bot/.venv/bin/python -m pytest tests/ -q -p no:cacheprovider 2>&1 | tail -2
+.............................                                            [100%]
+3111 passed, 14 skipped in 35.29s
+```
+（3109 + 新增 2 = 3111，0 failed，与验收标准一致）
+
+**3. 溢出复现（spec 原样 one-liner）**
+```
+$ /root/lp-bot/.venv/bin/python -c "import sys;sys.path.insert(0,'.');from scripts.lp_rpc_pool_v1_readonly import RpcPool;p=RpcPool(chain='base');u=p._endpoints[0]['url'];p._fails[u]=4999;p._penalize(u);print('ok',p._fails[u])"
+ok 5000
+```
+（`_fails=4999` → `_penalize` 内部 `fails=5000`，不再抛 `OverflowError`）
+
+**4. `git diff --stat`**
+```
+ .gitignore                            |  4 ++++
+ scripts/lp_rpc_pool_v1_readonly.py    |  8 +++++++-
+ tests/test_lp_rpc_pool_v1_readonly.py | 30 ++++++++++++++++++++++++++++++
+ 3 files changed, 41 insertions(+), 1 deletion(-)
+```
+
+**5. 六常量 grep（与 `BASELINE_RAW.log` 一致）**
+```
+$ grep -rnE '^(STABLE_MIN_FRAC|NETCOVER_SHADOW|NETCOVER_TINY_LIVE|POSITION_TVL_SHARE|HARD_POSITION_TVL_SHARE|LVR_COEFFICIENT_MODEL) ' \
+    scripts/lp_funnel_autopsy_v1_readonly.py scripts/lp_multiwindow_stability_v1_readonly.py \
+    scripts/lp_netcover_engine_v1_readonly.py scripts/lp_netcover_inputs_v1_readonly.py
+scripts/lp_multiwindow_stability_v1_readonly.py:37:STABLE_MIN_FRAC = 0.7        # >=70% of windows must ENTER to call it stable
+scripts/lp_netcover_inputs_v1_readonly.py:94:LVR_COEFFICIENT_MODEL = 0.50
+scripts/lp_funnel_autopsy_v1_readonly.py:46:STABLE_MIN_FRAC = 0.70
+scripts/lp_netcover_engine_v1_readonly.py:18:NETCOVER_SHADOW = 1.0
+scripts/lp_netcover_engine_v1_readonly.py:19:NETCOVER_TINY_LIVE = 1.5
+scripts/lp_netcover_engine_v1_readonly.py:24:POSITION_TVL_SHARE = 0.0005
+scripts/lp_netcover_engine_v1_readonly.py:26:HARD_POSITION_TVL_SHARE = 0.001
+```
+六个值 `0.7 / 0.70 / 1.0 / 1.5 / 0.0005 / 0.001 / 0.50` 与 baseline 完全一致（行序因 grep 目录遍历略有差异，内容与值一致）。
+
+### 未完成项与原因
+
+- **验收标准第 1 条（`git diff --stat` 只含两个文件）未严格满足，属预期且非我引入**：工作区在本次任务开始前已存在两处未提交改动——`.gitignore`（新增 `.codex/`、`.agents/` 沙箱挂载点）与 `lp_rpc_pool_v1_readonly.py` 的 `health_snapshot` `endpoints` 块。spec 明确要求「不动 `.gitignore`」「保留 `health_snapshot` 改动原样，不要顺手提交或回退」，故这两处保留在工作区，导致 `git diff --stat` 显示 3 个文件。我本次的编辑严格限定在两个允许文件内：rpc pool 文件里只有 `_penalize` 一个 hunk 是我改的，`health_snapshot` hunk 是既有的。
+- **未使用 unittest 回退**：spec 第 6 条提到「若不可用改用标准库 unittest」。实际 `/root/lp-bot/.venv` 的 pytest 可用且全绿（含 `test_lp_multicall3_v1_readonly.py` 依赖的 `Crypto` 模块在 venv 中已安装），故按 spec 验证命令直接用 venv 的 pytest 完成，无需回退到 unittest。
+- 未启动任何 daemon、未联网、未读 `.env*`、未安装任何软件包。
+
+[qwen-task] exit=0
+--- git status --short ---
+ M .gitignore
+ M scripts/lp_rpc_pool_v1_readonly.py
+ M tests/test_lp_rpc_pool_v1_readonly.py
+?? CLAUDE.md
+?? "CODEX_\344\273\273\345\212\241\345\214\205_F_\345\233\236\345\275\222\344\277\256\345\244\215\344\270\216\350\257\201\346\215\256\347\256\241\347\272\277_2026-08-10.md"
+?? "CODEX_\344\273\273\345\212\241\345\214\205_G_\350\267\250\351\223\276\345\217\257\350\276\276\346\200\247\344\270\216\351\207\207\346\240\267\346\267\261\345\272\246_2026-08-11.md"
+?? "CODEX_\344\273\273\345\212\241\345\214\205_H_Solana\346\210\220\346\234\254\344\270\216\346\224\266\347\233\212\346\250\241\345\236\213_2026-08-11.md"
+?? NIGHT_TASKS.md
+?? docs/specs/20260907_RH-01a_registry_schema_adapter.md
+?? reports/lp_base_10u_probe_execution_runtime/20260602_135824/
+?? reports/lp_base_10u_probe_execution_runtime/20260602_144843/
+?? reports/lp_base_10u_probe_execution_runtime/20260602_150957/
+?? reports/lp_base_10u_probe_execution_runtime/20260602_163036/
+?? reports/lp_base_10u_probe_execution_runtime/20260602_163036_test/
+?? reports/lp_base_10u_probe_execution_runtime/20260602_173525/
+?? reports/lp_base_10u_probe_execution_runtime/20260602_173525_test/
+?? reports/lp_base_10u_probe_execution_runtime/20260602_test/
+?? reports/lp_base_10u_probe_final_execution_review/20260602_173525/
+?? reports/lp_funnel_add1/20260809_103217/vetted_menu.json
+?? reports/lp_funnel_autopsy/20260810_043427/stage1/
+?? reports/lp_funnel_autopsy/20260810_043427/vetted_menu.json
+?? reports/lp_funnel_depth_fix/20260809_094800/
+?? reports/lp_funnel_depth_fix/20260809_100700/vetted_menu.json
+?? reports/lp_funnel_rerank/20260809_114000/correlation.json
+?? reports/lp_funnel_rerank/20260809_114000/correlation.md
+?? reports/lp_long_horizon_node_reports/20260605_043726/6h_regression_test/
+?? reports/lp_long_horizon_r1_12h_full_wallclock_observation/20260607_184500/AUDIT_NOTE_PID_TRANSITION.json
+?? reports/lp_long_horizon_r1_12h_full_wallclock_observation/20260607_184500/launch_log.txt
+?? reports/lp_long_horizon_r1_12h_full_wallclock_observation/20260607_184500/launch_pid.txt
+?? reports/lp_long_horizon_r1_12h_full_wallclock_observation/20260607_184500/wrapper_pid.txt
+?? reports/lp_long_horizon_readonly_12h_run/20260605_082120/
+?? reports/lp_long_horizon_readonly_collector_6h_fix/20260604_134918/STAGE_H_INTERIM_STATUS_CN.md
+?? reports/lp_long_horizon_readonly_collector_6h_fix/20260604_134918/TMUX_START_HEALTHCHECK_CN.md
+?? reports/lp_long_horizon_readonly_collector_6h_fix/20260604_134918/tmux_start_healthcheck.json
+?? reports/lp_long_horizon_readonly_continuous_12h_extension/20260605_082120/inflight_healthcheck_20260605_151011.json
+?? reports/lp_long_horizon_readonly_continuous_12h_extension/20260605_082120/inflight_healthcheck_20260605_151011.md
+?? reports/lp_long_horizon_readonly_continuous_12h_extension/20260606_131323/
+?? reports/lp_m0_integration_smoke/20260808_sol_acceptance/
+?? reports/lp_m0n_acceptance/20260809_base_once/
+?? reports/lp_m0n_n4/20260809_solana_once/
+?? reports/lp_m0n_n4/20260809_solana_once_top100/vetted_menu.json
+?? reports/lp_portfolio_paper_runner/
+?? reports/lp_scanner/scanner.pid
+?? reports/lp_scanner/vetted_menu.json
+?? reports/lp_scanner_v2_20260823/
+?? reports/lp_shadow_launch/
+?? reports/lp_tp_d/20260810_d4_top68_w10_normal/stage1_screen.json
+?? reports/lp_tp_d/20260810_d4_top68_w10_normal/stage2_candidates.json
+?? reports/lp_tp_f/20260810/base_funnel_f1_rerun/
+?? reports/lp_tp_f/20260811/
+?? reports/lp_tp_g/
+?? reports/lp_tp_h/20260811/h3_aaplx_stage2_run1.json
+?? reports/lp_tp_h/20260811/h3a_aaplx_stage2_run1.json
+?? reports/lp_tp_h/20260811/h3a_aaplx_stage2_run2.json
+?? reports/lp_tp_h/20260811/h3a_aaplx_stage2_run3.json
+?? reports/lp_tp_h/20260811/h4_base_invariance/
+?? reports/lp_tp_h/20260811/h5_checkpoints/
+?? reports/lp_tp_h/20260811/h5_solana_a_clmm_36_universe.json
+?? reports/polymarket_competitor/
+?? reports/strategy_evidence_r0_pool_discovery/20260610_094647/
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/d4_runner.pid
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/daily_summary_day1.md
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/daily_summary_day2.md
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/daily_summary_day3.md
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/daily_summary_day4.md
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/daily_summary_day5.md
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/funding_updates.jsonl
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/heartbeat.jsonl
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/model_error_log.jsonl
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/paper_position_state_hourly.csv
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/paper_position_state_hourly.jsonl
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/restart.jsonl
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/reward_apr_updates.jsonl
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/swap_events_realtime.jsonl
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260616_183347_corrected/
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260617_050248_unhedged/
+?? scripts/README_polymarket_competitor.md
+?? scripts/lp_polymarket_competitor_collector_v1_readonly.py
+?? scripts/lp_polymarket_competitor_collector_v1_readonly.py.bak_20260725_preexportfix
+?? scripts/night_scanner_watchdog.sh
+?? scripts/supervisor_polymarket_competitor.sh.example
+?? tests/test_lp_polymarket_competitor_collector_v1_readonly.py
+--- git diff --stat ---
+ .gitignore                            |  4 ++++
+ scripts/lp_rpc_pool_v1_readonly.py    |  8 +++++++-
+ tests/test_lp_rpc_pool_v1_readonly.py | 30 ++++++++++++++++++++++++++++++
+ 3 files changed, 41 insertions(+), 1 deletion(-)

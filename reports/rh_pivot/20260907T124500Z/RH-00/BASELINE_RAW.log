@@ -1,0 +1,166 @@
+### RH-00 BASELINE_RAW.log — HEAD 279b047e5f831a0cba926bf55769a4cc334a6a0b — 2026-09-07T13:37:28Z
+
+### pytest full run (after /opt/lpbot layout, before docs commit) — /root/lp-bot/reports/migration/20260907T110206Z/BASELINE_PYTEST_RAW_run4.log
+cmd: cd /opt/lpbot/lp-bot-v3-origin-check && /root/lp-bot/.venv/bin/python -m pytest tests/ -q -rs -p no:cacheprovider  (repo real path now /opt/lpbot, symlink in /root/lp-bot)
+start 2026-09-07T11:59:11Z
+HEAD 0e2b6e6d478a6418ab51da4964fcb9a377010edc
+........................................................................ [  2%]
+........................................................................ [  4%]
+........................................................................ [  6%]
+........................................................................ [  9%]
+........................................................................ [ 11%]
+........................................................................ [ 13%]
+........................................................................ [ 16%]
+........................................................................ [ 18%]
+.........s...........................s.....s.ss....s.................... [ 20%]
+........................................................................ [ 23%]
+........................................................................ [ 25%]
+........................................................................ [ 27%]
+........................................................................ [ 29%]
+........................................................................ [ 32%]
+..........................s............................................. [ 34%]
+........................................................................ [ 36%]
+........s........................s...................................... [ 39%]
+................s....................................................... [ 41%]
+............s...................................s....................... [ 43%]
+................s......................................................s [ 46%]
+........................................................................ [ 48%]
+........................................................................ [ 50%]
+........................................................................ [ 53%]
+........................................................................ [ 55%]
+........................................................................ [ 57%]
+........................................................................ [ 59%]
+........................................................................ [ 62%]
+........................................................................ [ 64%]
+........................................................................ [ 66%]
+........................................................................ [ 69%]
+........................................................................ [ 71%]
+........................................................................ [ 73%]
+........................................................................ [ 76%]
+........................................................................ [ 78%]
+........................................................................ [ 80%]
+........................................................................ [ 82%]
+........................................................................ [ 85%]
+........................................................................ [ 87%]
+........................................................................ [ 89%]
+........................................................................ [ 92%]
+........................................................................ [ 94%]
+........................................................................ [ 96%]
+........................................................................ [ 99%]
+...........................                                              [100%]
+=========================== short test summary info ============================
+SKIPPED [1] ../../../root/lp-bot/lp-bot-v3-origin-check/tests/test_lp_continuous_staged_observation_and_coverage_report_v1.py: legacy environment-bound: retired PID 3872268 was an in-flight supervisor snapshot
+SKIPPED [1] ../../../root/lp-bot/lp-bot-v3-origin-check/tests/test_lp_continuous_staged_observation_and_coverage_report_v1.py: legacy environment-bound: artifact completed 6/6 and is no longer the fixed 4/6 partial sample
+SKIPPED [1] ../../../root/lp-bot/lp-bot-v3-origin-check/tests/test_lp_continuous_staged_observation_and_coverage_report_v1.py: legacy environment-bound: retired PID 3872268 cannot remain alive after observation completion
+SKIPPED [1] ../../../root/lp-bot/lp-bot-v3-origin-check/tests/test_lp_continuous_staged_observation_and_coverage_report_v1.py: legacy environment-bound: artifact completed 6/6 so the fixed 28-file in-flight count is obsolete
+SKIPPED [1] ../../../root/lp-bot/lp-bot-v3-origin-check/tests/test_lp_continuous_staged_observation_and_coverage_report_v1.py: legacy environment-bound: artifact completed 6/6 so the fixed 7-file pre-finalize count is obsolete
+SKIPPED [1] ../../../root/lp-bot/lp-bot-v3-origin-check/tests/test_lp_continuous_staged_observation_and_coverage_report_v1.py: legacy environment-bound: artifact completed 6/6 and generator correctly reports a final sample
+SKIPPED [1] ../../../root/lp-bot/lp-bot-v3-origin-check/tests/test_lp_long_horizon_r1_12h_real_data_observation_v1.py: legacy environment-bound: frozen completed verdict legitimately records COMPRESSED_PASS, not PASS
+SKIPPED [1] ../../../root/lp-bot/lp-bot-v3-origin-check/tests/test_lp_long_horizon_readonly_collector_6h_real_wallclock_v1.py: legacy environment-bound: protected read-only paper PID 1349731 is commander-owned and must not be stopped
+SKIPPED [1] ../../../root/lp-bot/lp-bot-v3-origin-check/tests/test_lp_long_horizon_readonly_collector_6h_real_wallclock_v2.py: legacy environment-bound: protected read-only paper PID 1349731 is commander-owned and must not be stopped
+SKIPPED [1] ../../../root/lp-bot/lp-bot-v3-origin-check/tests/test_lp_long_horizon_readonly_collector_6h_run_approval_v1.py: legacy environment-bound: protected read-only paper PID 1349731 is commander-owned and must not be stopped
+SKIPPED [1] ../../../root/lp-bot/lp-bot-v3-origin-check/tests/test_lp_long_horizon_readonly_collector_fix_repeat_v1.py: legacy environment-bound: protected read-only paper PID 1349731 is commander-owned and must not be stopped
+SKIPPED [1] ../../../root/lp-bot/lp-bot-v3-origin-check/tests/test_lp_long_horizon_readonly_collector_smoke_v1.py: legacy environment-bound: protected read-only paper PID 1349731 is commander-owned and must not be stopped
+SKIPPED [1] ../../../root/lp-bot/lp-bot-v3-origin-check/tests/test_lp_long_horizon_readonly_collector_staged_request_v1.py: legacy environment-bound: protected read-only paper PID 1349731 is commander-owned and must not be stopped
+SKIPPED [1] ../../../root/lp-bot/lp-bot-v3-origin-check/tests/test_lp_long_horizon_readonly_data_pipeline_v1.py: legacy environment-bound: protected read-only paper PID 1349731 is commander-owned and must not be stopped
+3109 passed, 14 skipped in 33.99s
+exit=0 end 2026-09-07T11:59:45Z
+
+### pytest full run after last edit — run5
+cmd: final full pytest after last edit
+start 2026-09-07T12:39:53Z
+SKIPPED [1] ../../../root/lp-bot/lp-bot-v3-origin-check/tests/test_lp_long_horizon_readonly_collector_staged_request_v1.py: legacy environment-bound: protected read-only paper PID 1349731 is commander-owned and must not be stopped
+SKIPPED [1] ../../../root/lp-bot/lp-bot-v3-origin-check/tests/test_lp_long_horizon_readonly_data_pipeline_v1.py: legacy environment-bound: protected read-only paper PID 1349731 is commander-owned and must not be stopped
+3109 passed, 14 skipped in 34.03s
+exit=0 end 2026-09-07T12:40:28Z
+
+### go test -p 1 ./... — /root/lp-bot/reports/migration/20260907T110206Z/BASELINE_GOTEST_RAW.log
+cmd: go test -p 1 ./... (cwd /opt/lpbot/lp-bot-v3-origin-check)
+start 2026-09-07T11:54:00Z
+go version go1.25.7 linux/amd64
+ok  	github.com/lpbot/lpbot/adapters/broadcast/disabled	0.007s
+?   	github.com/lpbot/lpbot/adapters/bus/inproc	[no test files]
+?   	github.com/lpbot/lpbot/adapters/bus/nats	[no test files]
+?   	github.com/lpbot/lpbot/adapters/store/postgres	[no test files]
+?   	github.com/lpbot/lpbot/adapters/store/sqlite	[no test files]
+ok  	github.com/lpbot/lpbot/cmd/lpbot	0.493s
+ok  	github.com/lpbot/lpbot/cmd/lpbot-backtest	0.006s
+?   	github.com/lpbot/lpbot/cmd/lpbot-cli	[no test files]
+?   	github.com/lpbot/lpbot/cmd/lpbot-migrate-postgres	[no test files]
+ok  	github.com/lpbot/lpbot/cmd/lpbot-recon	0.008s
+ok  	github.com/lpbot/lpbot/internal/adapters/alerter/log	0.007s
+?   	github.com/lpbot/lpbot/internal/adapters/alerter/telegram	[no test files]
+ok  	github.com/lpbot/lpbot/internal/adapters/bus/inproc	10.962s
+ok  	github.com/lpbot/lpbot/internal/adapters/chain/base	0.005s
+?   	github.com/lpbot/lpbot/internal/adapters/chain/base/abi	[no test files]
+ok  	github.com/lpbot/lpbot/internal/adapters/chain/solana	0.004s
+ok  	github.com/lpbot/lpbot/internal/adapters/datasource/birdeye	0.004s
+ok  	github.com/lpbot/lpbot/internal/adapters/datasource/defillama	0.004s
+ok  	github.com/lpbot/lpbot/internal/adapters/datasource/dexscreener	0.004s
+ok  	github.com/lpbot/lpbot/internal/adapters/datasource/geckoterminal	0.008s
+ok  	github.com/lpbot/lpbot/internal/adapters/datasource/solana	0.004s
+ok  	github.com/lpbot/lpbot/internal/adapters/datasource/subgraph	0.004s
+?   	github.com/lpbot/lpbot/internal/adapters/holderconcentration/basescan	[no test files]
+?   	github.com/lpbot/lpbot/internal/adapters/mev/flashbots	[no test files]
+ok  	github.com/lpbot/lpbot/internal/adapters/mev/flashbots-protect	0.013s
+ok  	github.com/lpbot/lpbot/internal/adapters/mev/jito	0.011s
+ok  	github.com/lpbot/lpbot/internal/adapters/pool/aerodrome	0.006s
+ok  	github.com/lpbot/lpbot/internal/adapters/pool/pancakeswap_v3_solana	0.004s
+ok  	github.com/lpbot/lpbot/internal/adapters/pool/raydium_clmm	0.004s
+ok  	github.com/lpbot/lpbot/internal/adapters/pool/uniswap_v3	0.004s
+ok  	github.com/lpbot/lpbot/internal/adapters/pool/whirlpool	0.007s
+ok  	github.com/lpbot/lpbot/internal/adapters/rpc	2.228s
+ok  	github.com/lpbot/lpbot/internal/adapters/simulator/anvil	0.007s
+ok  	github.com/lpbot/lpbot/internal/adapters/simulator/sol_rpc	0.011s
+ok  	github.com/lpbot/lpbot/internal/adapters/store/postgres	0.026s
+ok  	github.com/lpbot/lpbot/internal/adapters/store/postgres/migrator	0.005s
+ok  	github.com/lpbot/lpbot/internal/adapters/store/sqlite	0.620s
+?   	github.com/lpbot/lpbot/internal/adapters/store/sqlite/sqlcgen	[no test files]
+ok  	github.com/lpbot/lpbot/internal/adapters/wallet/keystore	60.428s
+ok  	github.com/lpbot/lpbot/internal/adapters/wallet/kms	0.005s
+?   	github.com/lpbot/lpbot/internal/adapters/wallet/none	[no test files]
+ok  	github.com/lpbot/lpbot/internal/core/audit	0.004s
+ok  	github.com/lpbot/lpbot/internal/core/execution	0.133s
+ok  	github.com/lpbot/lpbot/internal/core/loop	0.085s
+ok  	github.com/lpbot/lpbot/internal/core/pnl	0.540s
+ok  	github.com/lpbot/lpbot/internal/core/reconcile	0.004s
+ok  	github.com/lpbot/lpbot/internal/core/reporting	0.004s
+ok  	github.com/lpbot/lpbot/internal/core/risk	0.006s
+ok  	github.com/lpbot/lpbot/internal/core/scanner	0.306s
+ok  	github.com/lpbot/lpbot/internal/core/simulation	0.004s
+ok  	github.com/lpbot/lpbot/internal/core/strategy	0.005s
+ok  	github.com/lpbot/lpbot/internal/core/tierc	0.005s
+ok  	github.com/lpbot/lpbot/internal/core/watchdog	0.156s
+ok  	github.com/lpbot/lpbot/internal/domain	0.004s
+ok  	github.com/lpbot/lpbot/internal/platform/config	0.008s
+ok  	github.com/lpbot/lpbot/internal/platform/decimal_db	0.004s
+ok  	github.com/lpbot/lpbot/internal/platform/health	0.004s
+ok  	github.com/lpbot/lpbot/internal/platform/idgen	0.298s
+ok  	github.com/lpbot/lpbot/internal/platform/log	0.007s
+ok  	github.com/lpbot/lpbot/internal/platform/metrics	0.007s
+?   	github.com/lpbot/lpbot/internal/platform/redis	[no test files]
+ok  	github.com/lpbot/lpbot/internal/platform/timex	0.005s
+ok  	github.com/lpbot/lpbot/internal/platform/trace	0.002s
+ok  	github.com/lpbot/lpbot/internal/ports	0.005s
+ok  	github.com/lpbot/lpbot/pkg/decimal	0.006s
+ok  	github.com/lpbot/lpbot/pkg/il	2.685s
+ok  	github.com/lpbot/lpbot/pkg/tickmath	19.335s
+?   	github.com/lpbot/lpbot/scripts/aggregate-verdict	[no test files]
+ok  	github.com/lpbot/lpbot/tests/chaos	10.009s
+?   	github.com/lpbot/lpbot/tests/fork	[no test files]
+ok  	github.com/lpbot/lpbot/tests/property	0.011s
+ok  	github.com/lpbot/lpbot/tests/property/mocks	0.004s
+exit=0 end 2026-09-07T11:58:51Z
+
+### six constants grep
+scripts/lp_funnel_autopsy_v1_readonly.py:46:STABLE_MIN_FRAC = 0.70
+scripts/lp_multiwindow_stability_v1_readonly.py:37:STABLE_MIN_FRAC = 0.7        # >=70% of windows must ENTER to call it stable
+scripts/lp_netcover_engine_v1_readonly.py:18:NETCOVER_SHADOW = 1.0
+scripts/lp_netcover_engine_v1_readonly.py:19:NETCOVER_TINY_LIVE = 1.5
+scripts/lp_netcover_engine_v1_readonly.py:24:POSITION_TVL_SHARE = 0.0005
+scripts/lp_netcover_engine_v1_readonly.py:26:HARD_POSITION_TVL_SHARE = 0.001
+scripts/lp_netcover_inputs_v1_readonly.py:94:LVR_COEFFICIENT_MODEL = 0.50
+
+### OverflowError deterministic repro
+fails=1024: ok
+fails=1025: OverflowError: int too large to convert to float

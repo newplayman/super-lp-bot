@@ -1,0 +1,55 @@
+[qwen-review] dir=/opt/lpbot/lp-bot-v3-origin-check spec=/opt/lpbot/lp-bot-v3-origin-check/docs/specs/20260907_RH-00b_rpcpool_backoff_overflow_fix.md effort=medium diff_chars=3156 log=/root/.qwen-code/logs/review-20260907-135916.log
+Permission deny rule "MultiEdit" matches no known tool — check for typos.
+[claude-code:unrecognized_model] {"model":"qwen38-v122-skinny-e5m2-mtp2-agent","query_source":"sdk"}
+
+
+# RH-00b 代码审查报告
+
+## 1. 验收标准逐条核对
+
+| 条目 | 结论 | 证据 file:line |
+|---|---|---|
+| ① `git diff --stat` 只含 2 个任务文件 | **PASS**（附注） | 任务实际改动仅 `scripts/lp_rpc_pool_v1_readonly.py`（+7/-1）与 `tests/test_lp_rpc_pool_v1_readonly.py`（+30）。diff 中另有 `.gitignore`（+4），但 mtime 证明其为 2026-08-10 的既有未提交改动（见 §2），非本任务引入 |
+| ② `_penalize` 在 fails=1025/5000 不抛异常，cooldown 等于 `_cooldown_max` 上限 | **PASS** | `scripts/lp_rpc_pool_v1_readonly.py:280-282`：`exponent = min(fails - 1, 30)`，`min(backoff, self._cooldown_max)` 保留；默认 base=2.0/max=300.0（:232-237），2.0×2³⁰≫300 → 恒取上限。one-liner（fails 内部=5000）输出 `ok 5000`，无 OverflowError |
+| ③ 两个新测试通过；该测试文件全部通过 | **PASS** | `tests/test_lp_rpc_pool_v1_readonly.py:373-381`（`test_penalize_does_not_overflow_after_many_failures`，固定 `Clock`，preset 1024/5000，断言 `_cooldown_until == clock.now() + _cooldown_max`）与 `:384-399`（`test_call_survives_endpoint_with_overflow_level_failures`，复用既有 `fail_for` fake post，预置 `_fails=2000`，容忍 `RpcPoolExhaustedError` 或回退 `"0xabc"`，OverflowError 即 `pytest.fail`）。`30 passed in 0.04s`（28 旧 + 2 新） |
+| ④ 全量 pytest = `3111 passed, 14 skipped`，0 failed | **PASS** | 实测 `3111 passed, 14 skipped in 33.95s`（基线 3109 + 新增 2，与 `BASELINE_RAW.log:74` 的 3109/14 衔接） |
+| ⑤ 六常量 grep 与 `BASELINE_RAW.log` 一致 | **PASS** | 7 条定义行 file:line:value 与 `BASELINE_RAW.log:156-162` 逐条相同（`NETCOVER_SHADOW=1.0`:18、`NETCOVER_TINY_LIVE=1.5`:19、`POSITION_TVL_SHARE=0.0005`:24、`HARD_POSITION_TVL_SHARE=0.001`:26、`STABLE_MIN_FRAC=0.70`:46、`LVR_COEFFICIENT_MODEL=0.50`:94、`STABLE_MIN_FRAC=0.7`:37）；仅 grep 遍历行序不同，内容零差异 |
+
+**spec 其他约束核对**：
+
+| 约束 | 结论 | 证据 |
+|---|---|---|
+| 只改 `_penalize`（脚本内） | PASS | diff 中脚本改动 = `_penalize` +2/-1（:280-281）+ 既有 `endpoints` 块 +5（:311-315，spec 明令保留原样，未动）；全文件唯一 `2 **` 在 :281（已封顶），`_penalize` 调用点 :369/:372 均被覆盖 |
+| 测试追加在文件末尾、不改已有测试 | PASS | diff hunk `@@ -368,3 +368,33 @@` 为纯追加（原文件 370 行末之后） |
+| 不新增文件 | PASS | 无新文件（untracked 均为既有报告/脚本，与本任务无关） |
+| 不动六常量/NetCover/阈值/`.gitignore` | PASS | 六常量 grep 一致；`.gitignore` mtime=2026-08-10 04:30，任务两文件 mtime=2026-09-07 13:43/13:44，任务未触碰 |
+
+## 2. 未授权改动清单
+
+1. **`.gitignore`（+4：`.codex/`、`.agents/`，注释 "codex/agent sandbox mount points"）** — 超出 spec 范围，且 spec 明令"不动 `.gitignore`"。**但非本任务引入**：mtime 2026-08-10 04:30:33，早于任务编辑（2026-09-07 13:43）近一个月，属既有未提交的环境卫生改动；spec 本身也承认工作区存在既有未提交改动（`health_snapshot` endpoints 块）并要求保留。→ 不构成任务违规，但**提交时必须只 `git add` 两个任务文件，勿将 `.gitignore` 顺手带入**。
+2. **`health_snapshot` 的 `endpoints` 块**（`scripts/lp_rpc_pool_v1_readonly.py:311-315`）— 既有未提交改动，spec 明令"保留原样"，diff 中原样存在，**非违规**，仅说明它会计入本次 diff。
+
+## 3. 验证命令原样输出
+
+```
+$ /root/lp-bot/.venv/bin/python -m pytest tests/test_lp_rpc_pool_v1_readonly.py -q -p no:cacheprovider 2>&1 | tail -3
+..............................                                           [100%]
+30 passed in 0.04s
+
+$ /root/lp-bot/.venv/bin/python -m pytest tests/ -q -p no:cacheprovider 2>&1 | tail -2
+.............................                                            [100%]
+3111 passed, 14 skipped in 33.95s
+
+$ /root/lp-bot/.venv/bin/python -c "import sys;sys.path.insert(0,'.');from scripts.lp_rpc_pool_v1_readonly import RpcPool;p=RpcPool(chain='base');u=p._endpoints[0]['url'];p._fails[u]=4999;p._penalize(u);print('ok',p._fails[u])"
+ok 5000
+
+$ git diff --stat
+ .gitignore                            |  4 ++++
+ scripts/lp_rpc_pool_v1_readonly.py    |  8 +++++++-
+ tests/test_lp_rpc_pool_v1_readonly.py | 30 ++++++++++++++++++++++++++++++
+ 3 files changed, 41 insertions(+), 1 deletion(-)
+```
+
+## 4. 总结论
+
+**ACCEPT** — 修复最小且正确（指数封顶 30，`_penalize` 单点改动覆盖全部调用路径），配对测试与 spec 逐字吻合，四条实质性验收标准全部按预期输出通过（`3111 passed, 14 skipped` / `ok 5000` / 六常量零漂移）；diff 中唯一的范围外条目 `.gitignore` 经 mtime 证实为 2026-08-10 的既有改动，非本任务引入（提交时注意隔离即可）。
