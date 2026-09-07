@@ -76,3 +76,48 @@ env -u PYTHONPATH /root/lp-bot/.venv/bin/python scripts/lp_rh_bucket_ledger_v1_r
 wc -l scripts/lp_rh_bucket_ledger_v1_readonly.py scripts/lp_rh_market_session_v1_readonly.py tests/test_lp_rh_bucket_ledger_v1_readonly.py tests/test_lp_rh_market_session_v1_readonly.py
 git diff --stat; git status --short | grep -E 'lp_rh_(bucket|market)'
 ```
+
+---
+
+# 上轮退回原因（主脑验收 2026-09-07 18:50，REJECT）
+
+第一轮的资金桶部分（T25/T27/T51）与时段分类（T15/T16）主脑独立复核**全部通过**，保留不动。仅 `evaluate_health` 一处退回，必须修：
+
+## FAIL-1：`evaluate_health` 时间参数类型与存储层不一致，且传字符串直接崩
+
+`scripts/lp_rh_market_session_v1_readonly.py:121` 与其上一分支写的是 `(now - api_generated_at).total_seconds()`，隐含要求**datetime 对象**。但 RH-02a 存储层（`rh_market_states.sample_time`、`rh_source_snapshots.fetch_time` 等）**统一用 UTC RFC3339 字符串**，`assert_utc_rfc3339` 也只接受字符串。实际调用会崩：
+
+```
+TypeError: unsupported operand type(s) for -: 'str' and 'str'
+```
+
+复现（主脑实测）：
+
+```python
+ms.evaluate_health(oracle_paused=False, oracle_updated_at=None,
+                   api_generated_at="2026-09-09T14:00:00Z", now="2026-09-09T14:01:00Z",
+                   halt=False, corp_action_pending=False, sources_disagree=False, chain_degraded=False)
+```
+
+**要求**：`evaluate_health` 的 `oracle_updated_at` / `api_generated_at` / `now` 三个参数**同时接受** RFC3339 字符串与 aware datetime。新增内部辅助 `_to_dt(value, field)`：`None` 返回 `None`；`datetime` 要求 tzinfo 非空否则抛 `ValueError("NAIVE_DATETIME: <field>")`；字符串走 `datetime.fromisoformat`（先把结尾的 `Z` 换成 `+00:00`），解析失败或无时区抛 `ValueError("NON_UTC_TIMESTAMP: <field>")`。三个参数都过这个辅助后再做减法。**不要去改 `lp_rh_store_v1_readonly.py`。**
+
+## FAIL-2：陈旧判定主路径无测试覆盖
+
+现有测试只覆盖 `None` 分支（`tests/test_lp_rh_market_session_v1_readonly.py:76,80`）与全正常分支（:84），`(now - t).total_seconds() > 阈值` 这条**核心计算路径一次都没被断言**。补测试（追加到文件末尾，不改已有测试）：
+
+- `test_evaluate_health_oracle_stale_by_age_string`：`now="2026-09-09T15:00:00Z"`、`oracle_updated_at="2026-09-09T13:00:00Z"`（差 7200s > 默认 3600s）→ flags 含 `ORACLE_STALE`；把 `oracle_heartbeat_secs=10800` 则**不含**。
+- `test_evaluate_health_api_stale_by_age_string`：差 600s > 默认 300s → 含 `API_STALE`；`api_stale_secs=900` 则不含。
+- `test_evaluate_health_accepts_datetime_and_string_equivalently`：同一时刻分别用 `datetime(...,tzinfo=timezone.utc)` 与 `"...Z"` 字符串调用，两次结果**完全相等**。
+- `test_evaluate_health_naive_datetime_rejected`：传 naive datetime 抛 `ValueError` 且消息含 `NAIVE_DATETIME`。
+- `test_evaluate_health_bad_timestamp_rejected`：传 `"2026-09-09 15:00:00"`（无 T、无时区）抛 `ValueError` 且消息含 `NON_UTC_TIMESTAMP`。
+
+## 本轮只许改这两个文件
+
+`scripts/lp_rh_market_session_v1_readonly.py`（只动 `evaluate_health` 与新增的 `_to_dt`，其余函数一行不改）与 `tests/test_lp_rh_market_session_v1_readonly.py`（只追加测试）。**`lp_rh_bucket_ledger_v1_readonly.py` 及其测试一行都不许动**，它们已通过验收。
+
+## 本轮验收
+
+- [ ] 上面 5 个新测试全绿；`tests/test_lp_rh_market_session_v1_readonly.py` 全部通过。
+- [ ] 全量 `pytest tests/ -q -p no:cacheprovider` = 3203 + 5，0 failed，14 skipped。
+- [ ] `git diff --stat` 仍为空（两个文件都还是 untracked 新文件）；`git status --short` 新增文件数不变（仍是 4 个）。
+- [ ] 脚本仍 ≤250 行。
