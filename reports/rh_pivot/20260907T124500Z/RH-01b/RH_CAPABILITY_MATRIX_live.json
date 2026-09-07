@@ -1,0 +1,242 @@
+{
+ "generated_by": "main-brain live probe (authorized 2026-09-07)",
+ "chain_id": 4663,
+ "data_kind": "LIVE_ONCHAIN_OBSERVATION",
+ "fetched_at": "2026-09-07T19:13:32Z",
+ "probes": [
+  {
+   "url": "https://rpc.mainnet.chain.robinhood.com",
+   "fetched_at": "2026-09-07T19:13:32Z",
+   "chain_id_hex": "0x1237",
+   "chain_id_latency_ms": 298,
+   "chain_id_gate": "CHAIN_ID_OK",
+   "client_version": "nitro/v3.11.4-rc.3-7d5ac27/linux-amd64/go1.25.14",
+   "block_number": 57075037,
+   "block_hash": "0xaebc36d13dcd23a7fb917836d3cbd7d094e76c890d616d217a3553f977e9bd4d",
+   "method_capabilities": {
+    "state_read": {
+     "ok": true,
+     "latency_ms": 266,
+     "error": null
+    },
+    "history_read": {
+     "ok": true,
+     "latency_ms": 260,
+     "error": null
+    },
+    "gas_estimate": {
+     "ok": true,
+     "latency_ms": 276,
+     "error": null
+    }
+   }
+  },
+  {
+   "url": "https://robinhood.drpc.org",
+   "fetched_at": "2026-09-07T19:13:32Z",
+   "chain_id_hex": "0x1237",
+   "chain_id_latency_ms": 26,
+   "chain_id_gate": "CHAIN_ID_OK",
+   "client_version": "Geth/v10.0.0/drpc",
+   "block_number": null,
+   "block_hash": null,
+   "method_capabilities": {
+    "state_read": {
+     "ok": false,
+     "latency_ms": 28,
+     "error": "HTTPError"
+    },
+    "history_read": {
+     "ok": false,
+     "latency_ms": 22,
+     "error": "HTTPError"
+    },
+    "gas_estimate": {
+     "ok": false,
+     "latency_ms": 20,
+     "error": "HTTPError"
+    }
+   }
+  }
+ ],
+ "venues": {
+  "uniswap_v3@4663": {
+   "discovery": {
+    "status": "VERIFIED",
+    "evidence": {
+     "provider": "https://rpc.mainnet.chain.robinhood.com",
+     "block_number": 57075037,
+     "fetched_at": "2026-09-07T19:13:32Z"
+    },
+    "expires_at": "2026-09-08T19:13:34Z"
+   },
+   "state_read": {
+    "status": "VERIFIED",
+    "evidence": {
+     "provider": "https://rpc.mainnet.chain.robinhood.com",
+     "block_number": 57075037,
+     "fetched_at": "2026-09-07T19:13:32Z"
+    },
+    "expires_at": "2026-09-08T19:13:34Z"
+   },
+   "history_read": {
+    "status": "VERIFIED",
+    "evidence": {
+     "provider": "https://rpc.mainnet.chain.robinhood.com",
+     "block_number": 57075037,
+     "fetched_at": "2026-09-07T19:13:32Z"
+    },
+    "expires_at": "2026-09-08T19:13:34Z"
+   },
+   "fee_attribution": {
+    "status": "UNVERIFIED",
+    "note": "not exercised in READONLY stage",
+    "evidence": {
+     "provider": "https://rpc.mainnet.chain.robinhood.com",
+     "block_number": 57075037,
+     "fetched_at": "2026-09-07T19:13:32Z"
+    },
+    "expires_at": "2026-09-08T19:13:34Z"
+   },
+   "add_quote": {
+    "status": "UNVERIFIED",
+    "note": "not exercised in READONLY stage",
+    "evidence": {
+     "provider": "https://rpc.mainnet.chain.robinhood.com",
+     "block_number": 57075037,
+     "fetched_at": "2026-09-07T19:13:32Z"
+    },
+    "expires_at": "2026-09-08T19:13:34Z"
+   },
+   "remove_quote": {
+    "status": "UNVERIFIED",
+    "note": "not exercised in READONLY stage",
+    "evidence": {
+     "provider": "https://rpc.mainnet.chain.robinhood.com",
+     "block_number": 57075037,
+     "fetched_at": "2026-09-07T19:13:32Z"
+    },
+    "expires_at": "2026-09-08T19:13:34Z"
+   },
+   "swap_quote": {
+    "status": "UNVERIFIED",
+    "note": "not exercised in READONLY stage",
+    "evidence": {
+     "provider": "https://rpc.mainnet.chain.robinhood.com",
+     "block_number": 57075037,
+     "fetched_at": "2026-09-07T19:13:32Z"
+    },
+    "expires_at": "2026-09-08T19:13:34Z"
+   },
+   "simulate": {
+    "status": "UNVERIFIED",
+    "note": "not exercised in READONLY stage",
+    "evidence": {
+     "provider": "https://rpc.mainnet.chain.robinhood.com",
+     "block_number": 57075037,
+     "fetched_at": "2026-09-07T19:13:32Z"
+    },
+    "expires_at": "2026-09-08T19:13:34Z"
+   },
+   "unsigned_build": {
+    "status": "UNVERIFIED",
+    "note": "not exercised in READONLY stage",
+    "evidence": {
+     "provider": "https://rpc.mainnet.chain.robinhood.com",
+     "block_number": 57075037,
+     "fetched_at": "2026-09-07T19:13:32Z"
+    },
+    "expires_at": "2026-09-08T19:13:34Z"
+   },
+   "broadcast": {
+    "status": "UNVERIFIED",
+    "note": "not exercised in READONLY stage",
+    "evidence": {
+     "provider": "https://rpc.mainnet.chain.robinhood.com",
+     "block_number": 57075037,
+     "fetched_at": "2026-09-07T19:13:32Z"
+    },
+    "expires_at": "2026-09-08T19:13:34Z"
+   },
+   "reconcile": {
+    "status": "UNVERIFIED",
+    "note": "not exercised in READONLY stage",
+    "evidence": {
+     "provider": "https://rpc.mainnet.chain.robinhood.com",
+     "block_number": 57075037,
+     "fetched_at": "2026-09-07T19:13:32Z"
+    },
+    "expires_at": "2026-09-08T19:13:34Z"
+   }
+  },
+  "uniswap_v4@4663": {
+   "discovery": {
+    "status": "UNSUPPORTED",
+    "note": "no verified StateView address; V4 not probed"
+   },
+   "state_read": {
+    "status": "UNSUPPORTED",
+    "note": "no verified StateView address; V4 not probed"
+   },
+   "history_read": {
+    "status": "UNSUPPORTED",
+    "note": "no verified StateView address; V4 not probed"
+   },
+   "fee_attribution": {
+    "status": "UNSUPPORTED",
+    "note": "no verified StateView address; V4 not probed"
+   },
+   "add_quote": {
+    "status": "UNSUPPORTED",
+    "note": "no verified StateView address; V4 not probed"
+   },
+   "remove_quote": {
+    "status": "UNSUPPORTED",
+    "note": "no verified StateView address; V4 not probed"
+   },
+   "swap_quote": {
+    "status": "UNSUPPORTED",
+    "note": "no verified StateView address; V4 not probed"
+   },
+   "simulate": {
+    "status": "UNSUPPORTED",
+    "note": "no verified StateView address; V4 not probed"
+   },
+   "unsigned_build": {
+    "status": "UNSUPPORTED",
+    "note": "no verified StateView address; V4 not probed"
+   },
+   "broadcast": {
+    "status": "UNSUPPORTED",
+    "note": "no verified StateView address; V4 not probed"
+   },
+   "reconcile": {
+    "status": "UNSUPPORTED",
+    "note": "no verified StateView address; V4 not probed"
+   }
+  }
+ },
+ "provider_independence": {
+  "usable_provider_count": 1,
+  "independent": false,
+  "reason": "ONLY_ONE_USABLE_PROVIDER",
+  "rejected": [
+   {
+    "url": "https://robinhood.drpc.org",
+    "why": "answers eth_chainId correctly but returns -32601 for eth_call/eth_getLogs/eth_blockNumber; a chainId-only health check would count it as redundancy"
+   }
+  ],
+  "live_gate": "BLOCKED: PRD 8.3 forbids a single public endpoint as the sole LIVE data source"
+ },
+ "history_limits": {
+  "archive": "HISTORY_UNAVAILABLE",
+  "state_lookback_blocks": "~1000-10000",
+  "eth_getLogs_result_cap": 10000,
+  "safe_log_span_blocks": 7000
+ },
+ "token_decimals_observed": {
+  "WETH": 18,
+  "USDG": 6,
+  "note": "USDG is 6 decimals; assuming 18 yields a 1e12 price error"
+ }
+}
