@@ -1,0 +1,35 @@
+{
+ "generated_utc": "2026-09-07T12:01:02Z",
+ "source_host": "157.173.123.24",
+ "source_paths": {
+  "repo": "/opt/lpbot/lp-bot-v3-origin-check",
+  "snapshot": "/opt/lpbot/_migration_20260907T110206Z",
+  "toplevel": "/opt/lpbot (tar)"
+ },
+ "local_paths": {
+  "repo_real": "/opt/lpbot/lp-bot-v3-origin-check",
+  "repo_symlink": "/root/lp-bot/lp-bot-v3-origin-check",
+  "snapshot": "/root/lp-bot/_migration/20260907T110206Z",
+  "toplevel": "/opt/lpbot"
+ },
+ "repo_head": "0e2b6e6d478a6418ab51da4964fcb9a377010edc",
+ "branch": "feat/prd-v2.1-m0-shadow",
+ "dirty_patch_sha256": "77aa4c3477ae599f40dae78a2d1bac4e4461bfffbbf1a488859674a231a516df",
+ "excluded_from_repo_rsync": [
+  "__pycache__/",
+  ".pytest_cache/",
+  "*.pyc",
+  "*.db-wal",
+  "*.db-shm",
+  "reports/lp_scanner/scanner.db (replaced by VACUUM INTO compact backup)",
+  "reports/lp_scanner_v2_20260823/scanner.db (same)"
+ ],
+ "counts": {
+  "repo_files": 126755,
+  "repo_bytes": 4399911680,
+  "snapshot_files": 20,
+  "snapshot_bytes": 3648516200,
+  "toplevel_files": 898,
+  "toplevel_bytes": 52018747
+ }
+}

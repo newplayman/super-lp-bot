@@ -1,0 +1,176 @@
+# 设计契约样例：旧程序未必支持。不得覆盖现有live/canary配置。
+# 仅用于实现与测试新的RH READONLY / SHADOW_SCENARIO配置解析。
+format_version = "rh-shadow-proposal/v1.1"
+mode = "READONLY"
+live_enabled = false
+wallet_access_enabled = false
+signing_enabled = false
+broadcast_enabled = false
+paid_services_allowed = false
+production_key_generation_allowed = false
+
+[provenance]
+source_state_document = "PROJECT_STATE_AND_ARCHITECTURE_20260907_CN.md"
+source_target_document = "Robinhood_Chain_LP_Bot_50_30_20_全面转向设计文档_v1.0.md"
+prd_version = "1.1"
+research_as_of = "2026-09-07"
+expected_repo_head_hint = "1e1d9bd" # 只提示，不是reset指令
+
+[chain]
+chain_id = 4663
+native_gas_symbol = "ETH"
+public_rpc_discovery_only = "https://rpc.mainnet.chain.robinhood.com"
+primary_rpc_env = "RH_RPC_PRIMARY"
+secondary_rpc_env = "RH_RPC_SECONDARY"
+independent_providers_required_for_live = 2
+sequencer_direct_enabled = false
+sequencer_feed_required = false
+contract_attestation_required = true
+unknown_capability_is_pass = false
+
+[data]
+watchlist_max_pools = 12
+max_concurrent_external_tasks = 4
+deep_probe_top_k = 4
+assets_poll_seconds = 300
+stock_quote_poll_min_seconds = 15
+corporate_actions_poll_seconds = 3600
+pool_state_poll_seconds = 15
+rpc_health_poll_seconds = 5
+discovery_poll_seconds = 600
+budget_exhausted_action = "PAUSE_DISCOVERY_KEEP_RISK_PRIORITY"
+archive_missing_action = "FORWARD_COLLECT_ONLY"
+provider_quotas_verified = false
+
+[storage]
+database_path = "reports/lp_rh/scanner.db"
+mode = "SQLITE_WAL_SINGLE_WRITER"
+raw_amount_encoding = "DECIMAL_INTEGER_TEXT"
+money_encoding = "DECIMAL_TEXT"
+soft_budget_gib = 2
+warn_fraction = "0.80"
+legacy_db_migration_allowed = false
+legacy_process_restart_allowed = false
+
+[legacy_policy]
+# 来自B1，不修改原代码／配置。所有金额是精确十进制字符串。
+capital_usd = "100"
+position_min_usd = "50"
+position_max_usd = "60"
+reserve_usd = "40"
+daily_loss_freeze_usd = "5"
+total_drawdown_kill_usd = "10"
+c_tier_total_usd = "20"
+c_tier_single_usd = "5"
+
+[protected_constants]
+stable_min_frac = "0.7"
+netcover_shadow = "1.0"
+netcover_tiny_live = "1.5"
+position_tvl_share = "0.0005"
+hard_position_tvl_share = "0.001"
+lvr_coefficient_model = "0.50"
+
+[proposed_policy]
+policy_id = "rh_50_30_20_proposed_v1"
+approved_for_live = false
+compare_in_shadow_scenario = true
+scenario_capital_usd = ["100", "300", "1000", "3000"]
+live_conflict_action = "POLICY_BLOCKED"
+capital_basis_rule = "MIN_AUTHORIZED_BASE_AND_CONSERVATIVE_NAV"
+auto_raise_capital_on_profit = false
+cross_bucket_borrowing = false
+
+[proposed_policy.core]
+weight = "0.50"
+max_active_fraction_of_bucket = "0.85"
+
+[proposed_policy.stock]
+weight = "0.30"
+max_active_fraction_of_bucket = "0.70"
+
+[proposed_policy.meme]
+weight = "0.20"
+max_active_fraction_of_bucket = "0.40"
+
+[proposed_policy.assets]
+max_high_vol_stock_fraction_total = "0.06"
+max_normal_stock_fraction_total = "0.08"
+max_meme_fraction_total = "0.02"
+include_wallet_and_exit_inventory = true
+native_eth_exit_reserve_required = true
+
+[protocols]
+v3_readonly_enabled = true
+v3_execution_enabled = false
+v4_discovery_enabled = true
+v4_execution_enabled = false
+unknown_hook_action = "UNSUPPORTED"
+v2_execution_enabled = false
+rfq_execution_enabled = false
+custom_exit_contract_enabled = false
+
+[stock]
+registry_required = true
+supported_asset_schemas = ["LEGACY_FIELDS", "SESSION_NESTED"]
+unknown_schema_action = "NO_NEW"
+unknown_tradability_action = "NO_NEW"
+oracle_pause_function_owner = "TOKEN_CONTRACT_VERIFY_ABI"
+reference_is_guaranteed_executable = false
+calendar_timezone = "America/New_York"
+calendar_verified = false
+storage_timezone = "UTC"
+display_timezone = "Asia/Tokyo"
+live_session_candidate_allowlist = ["RTH"]
+closed_session_narrow_range_enabled = false
+amc_live_enabled = false
+stock_stock_live_enabled = false
+
+[meme]
+live_enabled = false
+max_live_positions = 0
+no_downtrend_recenter = true
+transfer_tax_supported = false
+unknown_transfer_behavior_action = "UNSUPPORTED"
+no_qualified_pool_action = "IDLE"
+
+[shadow]
+max_active_positions = 4
+max_core_positions_initial = 2
+use_actual_initial_inventory_benchmark = true
+read_only_min_observation_hours = 72
+minimum_days_for_graduation_review = 14
+minimum_weekends_for_review = 1
+required_evaluation_window_data_coverage = "0.99"
+zero_candidates_split_reasons_required = true
+include_delay_and_roundtrip_costs = true
+synthetic_data_can_prove_live_edge = false
+
+[accounting]
+primary_pnl = "NAV_MINUS_EXTERNAL_NET_CAPITAL_FLOW"
+markout_is_attribution_only = true
+collect_is_internal_transfer = true
+rebalance_resets_cumulative_pnl = false
+use_liquidation_nav_for_exit_risk = true
+unknown_price_action = "UNVALUED_RISK_NO_NEW"
+
+[execution_design]
+# 即使已实现这些要求，上方所有真实执行开关仍保持false。
+simulation_required = true
+independent_calldata_decode_required = true
+native_gas_exit_reserve_required = true
+atomic_exit_enabled = false
+staged_remove_then_convert_required = true
+unlimited_erc20_approval_allowed = false
+unknown_broadcast_action = "RECONCILE_BEFORE_RETRY"
+default_deadline_seconds_for_testing = 60
+slippage_bps_for_testing = 50
+
+[approval]
+operator_approval_id = ""
+capital_policy_approval_id = ""
+execution_build_approval_id = ""
+live_trial_approval_id = ""
+approved_wallet = ""
+approved_capital_usd = "0"
+approval_expiry_utc = ""

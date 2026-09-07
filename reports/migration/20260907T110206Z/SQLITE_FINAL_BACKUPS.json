@@ -1,0 +1,40 @@
+{
+ "reports/lp_scanner/scanner.db": {
+  "final_compact": "/opt/lpbot/_migration_20260907T110206Z/reports__lp_scanner__scanner_final_compact.db",
+  "bytes": 2058158080,
+  "integrity": "ok",
+  "sha256": "faff2557cd70adbb1a7d98267b39692204f5061bc7f69b22edde327a830d8b6c",
+  "tables": {
+   "pool_snapshots": 2971610,
+   "sqlite_sequence": 3,
+   "opportunity_scores": 114422,
+   "market_sessions": 0,
+   "reward_observations": 114420,
+   "shadow_gate_observations": 0,
+   "shadow_positions": 0,
+   "rpc_severe_incidents": 0
+  },
+  "source_bytes": 2311094272,
+  "source_mtime": "2026-09-07T12:02:13Z",
+  "secs": 464.9
+ },
+ "reports/lp_scanner_v2_20260823/scanner.db": {
+  "final_compact": "/opt/lpbot/_migration_20260907T110206Z/reports__lp_scanner_v2_20260823__scanner_final_compact.db",
+  "bytes": 1444950016,
+  "integrity": "ok",
+  "sha256": "3fc74747a2b4ab33c44b174c414e2a8a856f9a9d21af26864ae0b80496e12a0d",
+  "tables": {
+   "pool_snapshots": 2119085,
+   "sqlite_sequence": 3,
+   "opportunity_scores": 80880,
+   "market_sessions": 0,
+   "reward_observations": 80880,
+   "shadow_gate_observations": 0,
+   "shadow_positions": 0,
+   "rpc_severe_incidents": 0
+  },
+  "source_bytes": 1624760320,
+  "source_mtime": "2026-09-07T12:01:54Z",
+  "secs": 144.0
+ }
+}

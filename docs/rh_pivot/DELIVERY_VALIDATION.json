@@ -1,0 +1,17 @@
+{
+  "verdict": "PASS",
+  "scope": "DOCUMENT_PACKAGE_AND_SYNTHETIC_ARITHMETIC_ONLY",
+  "config_toml_valid": true,
+  "unsafe_defaults_enabled": false,
+  "protected_constants_preserved_in_example": true,
+  "proposed_active_cap_fraction": "0.7150",
+  "proposed_100_usd_core_cap": "42.5000",
+  "legacy_capital_policy_conflict_detected": true,
+  "acceptance_matrix_cases": 60,
+  "prd_sections": 29,
+  "source_registry_entries": 25,
+  "input_checksums_verified": true,
+  "existing_repository_tested": false,
+  "blockchain_rpc_verified": false,
+  "live_authorized": false
+}

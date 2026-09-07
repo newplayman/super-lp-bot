@@ -1,0 +1,4 @@
+*/5 * * * * /opt/lpbot/d4_watchdog.sh
+7 * * * * bash /home/gcpadmin/polymarket-lp-bot/research/smartmoney/weather_heartbeat_watchdog.sh >> /tmp/weather_heartbeat_watchdog_cron.log 2>&1
+7 * * * * bash /home/gcpadmin/polymarket-lp-bot/research/smartmoney/weather_heartbeat_watchdog.sh >> /tmp/weather_heartbeat_watchdog_cron.log 2>&1
+*/20 * * * * /root/home_watch.sh

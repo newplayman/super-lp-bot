@@ -1,0 +1,17 @@
+{
+  "as_of": "2026-09-07",
+  "inputs": [
+    {
+      "relative_path": "inputs/PROJECT_STATE_AND_ARCHITECTURE_20260907_CN.md",
+      "bytes": 28202,
+      "sha256": "dfd47144bb527707117eb4c47cc023b8c6271972902c59a23143c95898242375",
+      "evidence_type": "USER_UPLOADED_DOCUMENT_NOT_INDEPENDENT_REPO_AUDIT"
+    },
+    {
+      "relative_path": "inputs/Robinhood_Chain_LP_Bot_50_30_20_全面转向设计文档_v1.0.md",
+      "bytes": 45948,
+      "sha256": "1afc496f0a4a465a611cad6052882c14fdd0aeb92d06635fcbd4a6cea05dfd37",
+      "evidence_type": "USER_UPLOADED_DOCUMENT_NOT_INDEPENDENT_REPO_AUDIT"
+    }
+  ]
+}

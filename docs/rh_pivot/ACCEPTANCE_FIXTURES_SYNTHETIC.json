@@ -1,0 +1,80 @@
+{
+  "data_kind": "SYNTHETIC_NOT_CHAIN_DATA",
+  "purpose": "预期算术与分类用例；非回测结果、非现有项目测试通过证据。",
+  "stock_units": {
+    "case_ids": [
+      "T17",
+      "T18",
+      "T19"
+    ],
+    "raw_balance": "2000000000000000000",
+    "token_decimals": 18,
+    "multiplier_raw": "1250000000000000000",
+    "underlying_usd": "100",
+    "expected_tokens": "2",
+    "expected_share_equivalent": "2.5",
+    "expected_token_usd": "125",
+    "expected_nav_usd": "250",
+    "usdg_usd": "0.98",
+    "expected_token_usdg_approx": "127.5510204081632653"
+  },
+  "split": {
+    "case_id": "T20",
+    "before_underlying": "200",
+    "before_multiplier": "1",
+    "after_underlying": "20",
+    "after_multiplier": "10",
+    "expected_per_token_usd": "200"
+  },
+  "collect": {
+    "case_ids": [
+      "T38",
+      "T39"
+    ],
+    "wallet_before": "10",
+    "lp_principal": "90",
+    "uncollected_fee": "2",
+    "gas": "0.10",
+    "expected_nav_before": "102",
+    "expected_nav_after": "101.90",
+    "expected_pnl": "-0.10"
+  },
+  "external_flow": {
+    "case_id": "T40",
+    "nav_before": "100",
+    "nav_after": "110",
+    "external_net_injection": "10",
+    "expected_pnl": "0"
+  },
+  "capital_conflict": {
+    "case_id": "T25",
+    "capital": "100",
+    "legacy_min_position": "50",
+    "proposed_core_active_cap": "42.5",
+    "expected_live_readiness": "POLICY_BLOCKED: CAPITAL_POLICY_CONFLICT"
+  },
+  "synthetic_scenarios": [
+    {
+      "case_id": "T15",
+      "date": "2026-09-07",
+      "timezone": "America/New_York",
+      "expected_cash_equity_session": "HOLIDAY",
+      "calendar_evidence": "PRD R10; scenario date selection is a test fixture"
+    },
+    {
+      "case_id": "T44",
+      "remove_success": true,
+      "sell_success": false,
+      "expected_state": "REMOVED_RISKY_INVENTORY",
+      "asset_cap_released": false
+    },
+    {
+      "case_id": "T51",
+      "broadcast_http_timeout": true,
+      "receipt_status": "UNKNOWN",
+      "expected_state": "BROADCAST_UNKNOWN",
+      "fund_reservation_released": false,
+      "new_nonce_retry_permitted": false
+    }
+  ]
+}
