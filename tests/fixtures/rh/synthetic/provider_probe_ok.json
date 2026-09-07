@@ -1,0 +1,43 @@
+{
+  "data_kind": "SYNTHETIC_NOT_CHAIN_DATA",
+  "responses": {
+    "eth_chainId": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": "0x1237"
+    },
+    "eth_blockNumber": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": "0x1234"
+    },
+    "eth_getBlockByNumber": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "hash": "0xblockhashaaaa",
+        "number": "0x1234"
+      }
+    },
+    "web3_clientVersion": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": "Geth/v1.13.0"
+    },
+    "eth_call:0x313ce567": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": "0x12"
+    },
+    "eth_getLogs": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": []
+    },
+    "eth_estimateGas": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": "0x5208"
+    }
+  }
+}

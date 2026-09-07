@@ -1,0 +1,10 @@
+{
+  "data_kind": "SYNTHETIC_NOT_CHAIN_DATA",
+  "responses": {
+    "eth_getCode": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": "0x"
+    }
+  }
+}

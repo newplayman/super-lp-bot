@@ -1,0 +1,228 @@
+[qwen-task] dir=/opt/lpbot/lp-bot-v3-origin-check spec=/opt/lpbot/lp-bot-v3-origin-check/docs/specs/20260907_RH-01c_capabilities_pool_probe_tests.md log=/root/.qwen-code/logs/task-20260907-161204.log max_turns=80
+[claude-code:unrecognized_model] {"model":"qwen38-v122-skinny-e5m2-mtp2-agent","query_source":"sdk"}
+[tool 11s] turn=2 Bash "sed -n '30,50p' /opt/lpbot/lp-bot-v3-origin-check/scripts/lp_scanner_daemon_v1_readonly.py"
+[tool 12s] turn=3 Bash ''
+[tool-error 12s] '<tool_use_error>InputValidationError: Bash was called with input that could not be parsed as JSON.\nYou sent (first 200 of 213 bytes): {"command": "grep -n \'def '
+[tool 13s] turn=4 Bash "grep -n 'def \\|import \\|REPO_ROOT\\|sys.path' /opt/lpbot/lp-bot-v3-origin-check/scripts/lp_rh_pool_probe_v1_rea"
+[tool 20s] turn=6 Bash "grep -n 'def \\|import \\|REPO_ROOT\\|sys\\.path' /opt/lpbot/lp-bot-v3-origin-check/scripts/lp_rh_capabilities_v1_"
+[tool 21s] turn=7 Bash ''
+[tool-error 21s] '<tool_use_error>InputValidationError: Bash was called with input that could not be parsed as JSON.\nYou sent (first 153 of 153 bytes): {"command": "sed -n \'1,30p'
+[tool 30s] turn=9 Bash "sed -n '1,30p' /opt/lpbot/lp-bot-v3-origin-check/scripts/lp_rh_pool_probe_v1_readonly.py"
+[tool 31s] turn=10 Bash ''
+[tool-error 31s] '<tool_use_error>InputValidationError: Bash was called with input that could not be parsed as JSON.\nYou sent (first 157 of 157 bytes): {"command": "sed -n \'1,30p'
+[tool 41s] turn=12 Bash "sed -n '1,30p' /opt/lpbot/lp-bot-v3-origin-check/scripts/lp_rh_capabilities_v1_readonly.py"
+[tool 70s] turn=15 Bash "sed -n '30,60p' /opt/lpbot/lp-bot-v3-origin-check/scripts/lp_rh_capabilities_v1_readonly.py"
+[tool 71s] turn=16 Bash ''
+[tool-error 71s] '<tool_use_error>InputValidationError: Bash was called with input that could not be parsed as JSON.\nYou sent (first 187 of 187 bytes): {"command": "sed -n \'69,20'
+[tool 85s] turn=18 Bash "sed -n '69,140p' /opt/lpbot/lp-bot-v3-origin-check/scripts/lp_rh_capabilities_v1_readonly.py"
+[tool 99s] turn=20 Bash "sed -n '140,260p' /opt/lpbot/lp-bot-v3-origin-check/scripts/lp_rh_capabilities_v1_readonly.py"
+[tool 113s] turn=22 Bash "sed -n '260,350p' /opt/lpbot/lp-bot-v3-origin-check/scripts/lp_rh_capabilities_v1_readonly.py"
+[tool 134s] turn=25 Bash "sed -n '30,160p' /opt/lpbot/lp-bot-v3-origin-check/scripts/lp_rh_pool_probe_v1_readonly.py"
+[tool 149s] turn=27 Bash "sed -n '160,290p' /opt/lpbot/lp-bot-v3-origin-check/scripts/lp_rh_pool_probe_v1_readonly.py"
+[tool 168s] turn=29 Bash "sed -n '290,355p' /opt/lpbot/lp-bot-v3-origin-check/scripts/lp_rh_pool_probe_v1_readonly.py"
+[tool 169s] turn=30 Bash "grep -n 'RH_CHAIN_ID\\|SEED_ADDRESSES\\|V3_FACTORY\\|POOL_USDG_WETH\\|WETH' /opt/lpbot/lp-bot-v3-origin-check/scri"
+[tool 191s] turn=32 Bash 'ls /opt/lpbot/lp-bot-v3-origin-check/tests/fixtures/rh/synthetic/ && head -50 /opt/lpbot/lp-bot-v3-origin-chec'
+[tool 211s] turn=34 Bash 'for f in provider_probe_error provider_probe_mismatch v3_pool_probe_ok v3_pool_identity_fail v3_pool_code_empt'
+[tool 236s] turn=37 Bash "ls /opt/lpbot/lp-bot-v3-origin-check/tests/ | grep -i 'rh\\|scanner_daemon' ; echo ---; sed -n '1,40p' /opt/lpb"
+[progress 296s] turn=37 streamed_chars=25567
+[progress 356s] turn=37 streamed_chars=39408
+[tool 363s] turn=40 Bash 'ls /opt/lpbot/lp-bot-v3-origin-check/reports/rh_pivot/ 2>/dev/null; find /opt/lpbot/lp-bot-v3-origin-check/rep'
+[tool 364s] turn=41 Bash "sed -n '60,68p' /opt/lpbot/lp-bot-v3-origin-check/scripts/lp_rh_capabilities_v1_readonly.py"
+[tool 392s] turn=43 Bash 'find /opt/lpbot/lp-bot-v3-origin-check/reports/rh_pivot/20260907T124500Z -type f | head -20; echo ---; ls /opt'
+[tool 438s] turn=46 Bash '/root/lp-bot/.venv/bin/python -m pytest tests/ -q -p no:cacheprovider 2>&1 | tail -5'
+[tool 472s] turn=49 Edit '/opt/lpbot/lp-bot-v3-origin-check/scripts/lp_rh_capabilities_v1_readonly.py'
+[tool 503s] turn=51 Read '/tmp/claude-0/-opt-lpbot-lp-bot-v3-origin-check/317cd609-58fe-447a-aa4b-b15f73c95e4c/tasks/b521n36u8.output'
+[tool 549s] turn=54 Edit '/opt/lpbot/lp-bot-v3-origin-check/scripts/lp_rh_pool_probe_v1_readonly.py'
+[tool 585s] turn=57 Bash 'env -u PYTHONPATH /root/lp-bot/.venv/bin/python scripts/lp_rh_capabilities_v1_readonly.py --offline-fixture te'
+[tool 618s] turn=59 Bash 'head -30 /tmp/cap.json; echo ...; head -40 /tmp/att.json'
+[progress 678s] turn=59 streamed_chars=60169
+[tool 724s] turn=62 Write '/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_capabilities_v1_readonly.py'
+[tool 780s] turn=65 Write '/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_pool_probe_v1_readonly.py'
+[tool 818s] turn=68 Bash '/root/lp-bot/.venv/bin/python -m pytest tests/test_lp_rh_capabilities_v1_readonly.py tests/test_lp_rh_pool_pro'
+[tool 860s] turn=71 Bash 'mkdir -p reports/rh_pivot/20260907T124500Z/RH-01b && /root/lp-bot/.venv/bin/python scripts/lp_rh_capabilities_'
+[tool 905s] turn=74 Bash '/root/lp-bot/.venv/bin/python - <<\'EOF\'\nimport json, collections\nfor path in ("reports/rh_pivot/20260907T12450'
+[tool 952s] turn=77 Bash '/root/lp-bot/.venv/bin/python - <<\'EOF\'\nimport json, collections\nfor path in ("reports/rh_pivot/20260907T12450'
+[tool 996s] turn=80 Bash 'env -u PYTHONPATH /root/lp-bot/.venv/bin/python scripts/lp_rh_capabilities_v1_readonly.py --offline-fixture te'
+[tool 997s] turn=81 Bash 'env -u PYTHONPATH /root/lp-bot/.venv/bin/python scripts/lp_rh_pool_probe_v1_readonly.py --offline-fixture test'
+[progress 1128s] turn=81 streamed_chars=86277
+[tool 1144s] turn=83 Bash '/root/lp-bot/.venv/bin/python -m pytest tests/test_lp_rh_capabilities_v1_readonly.py tests/test_lp_rh_pool_pro'
+[tool 1152s] turn=85 Bash '/root/lp-bot/.venv/bin/python -m pytest tests/ -q -p no:cacheprovider 2>&1 | tail -2'
+[tool 1196s] turn=87 Bash "git diff --stat; echo ---; git status --short | grep -E 'lp_rh|fixtures/rh|RH-01b'"
+[tool 1215s] turn=90 Bash 'echo "=== capabilities bootstrap ==="; grep -n "REPO_ROOT\\|sys.path\\|import sys\\|from pathlib\\|noqa: E402" scr'
+[tool 1230s] turn=93 Bash 'ls -la reports/rh_pivot/20260907T124500Z/RH-01b/; echo ---; grep -o \'"data_kind": "[^"]*"\' reports/rh_pivot/20'
+[tool 1251s] turn=96 Bash '/root/lp-bot/.venv/bin/python -m pytest tests/test_lp_rh_capabilities_v1_readonly.py -q -p no:cacheprovider 2>'
+
+
+RH-01c 完成。以下为最终报告。
+
+## 改动文件列表
+
+**修改（仅 sys.path 引导，各 ≤6 行，未改任何逻辑）：**
+- `scripts/lp_rh_capabilities_v1_readonly.py` — 加 `import sys`、`from pathlib import Path`、3 行 `REPO_ROOT` 引导块；`from scripts.…` 行加 `# noqa: E402`
+- `scripts/lp_rh_pool_probe_v1_readonly.py` — 同上
+
+**新建（配对测试，19 个用例）：**
+- `tests/test_lp_rh_capabilities_v1_readonly.py` — 11 个测试（T01/T11/T12/T13 + capability matrix + main）
+- `tests/test_lp_rh_pool_probe_v1_readonly.py` — 8 个测试（T06/T07/T08/T09/T10/T12 + 成功路径）
+
+**新建（报告，`--offline-fixture` 生成，均带 `data_kind: SYNTHETIC_NOT_CHAIN_DATA`）：**
+- `reports/rh_pivot/20260907T124500Z/RH-01b/RH_CAPABILITY_MATRIX.json`
+- `reports/rh_pivot/20260907T124500Z/RH-01b/ASSET_ATTESTATIONS.json`
+
+**未改动：** `lp_rh_registry_v1_readonly.py`、所有旧脚本/旧测试/配置/六常量、`.gitignore`。
+
+> 说明：`git status` 里两个脚本与 7 个 `tests/fixtures/rh/synthetic/*.json` 均显示为未跟踪（`??`）——它们是 RH-01b 创建但从未提交，非本次改动。本次仅在其上叠加引导与测试。
+
+## 验证命令与原样输出
+
+**1. 无 PYTHONPATH 下 `--offline-fixture` 退出码 0：**
+```
+$ env -u PYTHONPATH /root/lp-bot/.venv/bin/python scripts/lp_rh_capabilities_v1_readonly.py --offline-fixture tests/fixtures/rh/synthetic/provider_probe_ok.json --out /tmp/cap.json && echo CAP_OK
+CAP_OK
+$ env -u PYTHONPATH /root/lp-bot/.venv/bin/python scripts/lp_rh_pool_probe_v1_readonly.py --offline-fixture tests/fixtures/rh/synthetic/v3_pool_probe_ok.json --out /tmp/att.json && echo PROBE_OK
+PROBE_OK
+```
+
+**2. 两个新测试文件：**
+```
+$ /root/lp-bot/.venv/bin/python -m pytest tests/test_lp_rh_capabilities_v1_readonly.py tests/test_lp_rh_pool_probe_v1_readonly.py -q -p no:cacheprovider 2>&1 | tail -3
+...................                                                      [100%]
+19 passed in 0.06s
+```
+（分文件：capabilities 11 passed / pool_probe 8 passed）
+
+**3. 全量测试：**
+```
+$ /root/lp-bot/.venv/bin/python -m pytest tests/ -q -p no:cacheprovider 2>&1 | tail -2
+....................................................................     [100%]
+3150 passed, 14 skipped in 34.15s
+```
+（3150 = 基线 3131 + 新增 19；0 failed，14 skipped，符合预期）
+
+**4. diff 与新增文件：**
+```
+$ git diff --stat
+.gitignore                         | 4 ++++
+ scripts/lp_rpc_pool_v1_readonly.py | 5 +++++
+ 2 files changed, 9 insertions(+)
+$ git status --short | grep -E 'lp_rh|fixtures/rh|RH-01b'
+?? reports/rh_pivot/20260907T124500Z/RH-01b/
+?? scripts/lp_rh_capabilities_v1_readonly.py
+?? scripts/lp_rh_pool_probe_v1_readonly.py
+?? tests/fixtures/rh/synthetic/provider_probe_error.json
+?? tests/fixtures/rh/synthetic/provider_probe_mismatch.json
+?? tests/fixtures/rh/synthetic/provider_probe_ok.json
+?? tests/fixtures/rh/synthetic/v3_pool_code_empty.json
+?? tests/fixtures/rh/synthetic/v3_pool_identity_fail.json
+?? tests/fixtures/rh/synthetic/v3_pool_probe_ok.json
+?? tests/fixtures/rh/synthetic/v3_pool_rpc_error.json
+?? tests/test_lp_rh_capabilities_v1_readonly.py
+?? tests/test_lp_rh_pool_probe_v1_readonly.py
+```
+
+`git diff --stat` 里的 `.gitignore` 与 `lp_rpc_pool_v1_readonly.py` 是任务开始前工作区已存在的改动（初始快照即有 `M`），非本次引入。两个目标脚本因未跟踪，其引导改动不体现在 `git diff`；已用 `grep -n` 逐行核对，引导块与 `lp_scanner_daemon_v1_readonly.py:38-40` 完全一致，且各脚本除引导外无其他改动。
+
+## 未完成项与原因
+
+无。所有 spec 验收项均已达成：引导 ≤6 行且仅引导、两脚本无 PYTHONPATH 下 `--offline-fixture` 退出 0、两测试文件 19 用例全绿（≥16）、全量 3150 passed / 0 failed / 14 skipped、两份报告已生成并标记 synthetic。全程未联网、未读 `.env*`、未 import web3/eth_account/solders/solana、未安装任何包。
+[result 1278s] is_error=False turns=45 subtype=success
+
+[qwen-task] exit=0
+--- git status --short ---
+ M .gitignore
+ M scripts/lp_rpc_pool_v1_readonly.py
+?? CLAUDE.md
+?? "CODEX_\344\273\273\345\212\241\345\214\205_F_\345\233\236\345\275\222\344\277\256\345\244\215\344\270\216\350\257\201\346\215\256\347\256\241\347\272\277_2026-08-10.md"
+?? "CODEX_\344\273\273\345\212\241\345\214\205_G_\350\267\250\351\223\276\345\217\257\350\276\276\346\200\247\344\270\216\351\207\207\346\240\267\346\267\261\345\272\246_2026-08-11.md"
+?? "CODEX_\344\273\273\345\212\241\345\214\205_H_Solana\346\210\220\346\234\254\344\270\216\346\224\266\347\233\212\346\250\241\345\236\213_2026-08-11.md"
+?? NIGHT_TASKS.md
+?? docs/specs/20260907_RH-01c_capabilities_pool_probe_tests.md
+?? reports/lp_base_10u_probe_execution_runtime/20260602_135824/
+?? reports/lp_base_10u_probe_execution_runtime/20260602_144843/
+?? reports/lp_base_10u_probe_execution_runtime/20260602_150957/
+?? reports/lp_base_10u_probe_execution_runtime/20260602_163036/
+?? reports/lp_base_10u_probe_execution_runtime/20260602_163036_test/
+?? reports/lp_base_10u_probe_execution_runtime/20260602_173525/
+?? reports/lp_base_10u_probe_execution_runtime/20260602_173525_test/
+?? reports/lp_base_10u_probe_execution_runtime/20260602_test/
+?? reports/lp_base_10u_probe_final_execution_review/20260602_173525/
+?? reports/lp_funnel_add1/20260809_103217/vetted_menu.json
+?? reports/lp_funnel_autopsy/20260810_043427/stage1/
+?? reports/lp_funnel_autopsy/20260810_043427/vetted_menu.json
+?? reports/lp_funnel_depth_fix/20260809_094800/
+?? reports/lp_funnel_depth_fix/20260809_100700/vetted_menu.json
+?? reports/lp_funnel_rerank/20260809_114000/correlation.json
+?? reports/lp_funnel_rerank/20260809_114000/correlation.md
+?? reports/lp_long_horizon_node_reports/20260605_043726/6h_regression_test/
+?? reports/lp_long_horizon_r1_12h_full_wallclock_observation/20260607_184500/AUDIT_NOTE_PID_TRANSITION.json
+?? reports/lp_long_horizon_r1_12h_full_wallclock_observation/20260607_184500/launch_log.txt
+?? reports/lp_long_horizon_r1_12h_full_wallclock_observation/20260607_184500/launch_pid.txt
+?? reports/lp_long_horizon_r1_12h_full_wallclock_observation/20260607_184500/wrapper_pid.txt
+?? reports/lp_long_horizon_readonly_12h_run/20260605_082120/
+?? reports/lp_long_horizon_readonly_collector_6h_fix/20260604_134918/STAGE_H_INTERIM_STATUS_CN.md
+?? reports/lp_long_horizon_readonly_collector_6h_fix/20260604_134918/TMUX_START_HEALTHCHECK_CN.md
+?? reports/lp_long_horizon_readonly_collector_6h_fix/20260604_134918/tmux_start_healthcheck.json
+?? reports/lp_long_horizon_readonly_continuous_12h_extension/20260605_082120/inflight_healthcheck_20260605_151011.json
+?? reports/lp_long_horizon_readonly_continuous_12h_extension/20260605_082120/inflight_healthcheck_20260605_151011.md
+?? reports/lp_long_horizon_readonly_continuous_12h_extension/20260606_131323/
+?? reports/lp_m0_integration_smoke/20260808_sol_acceptance/
+?? reports/lp_m0n_acceptance/20260809_base_once/
+?? reports/lp_m0n_n4/20260809_solana_once/
+?? reports/lp_m0n_n4/20260809_solana_once_top100/vetted_menu.json
+?? reports/lp_portfolio_paper_runner/
+?? reports/lp_scanner/scanner.pid
+?? reports/lp_scanner/vetted_menu.json
+?? reports/lp_scanner_v2_20260823/
+?? reports/lp_shadow_launch/
+?? reports/lp_tp_d/20260810_d4_top68_w10_normal/stage1_screen.json
+?? reports/lp_tp_d/20260810_d4_top68_w10_normal/stage2_candidates.json
+?? reports/lp_tp_f/20260810/base_funnel_f1_rerun/
+?? reports/lp_tp_f/20260811/
+?? reports/lp_tp_g/
+?? reports/lp_tp_h/20260811/h3_aaplx_stage2_run1.json
+?? reports/lp_tp_h/20260811/h3a_aaplx_stage2_run1.json
+?? reports/lp_tp_h/20260811/h3a_aaplx_stage2_run2.json
+?? reports/lp_tp_h/20260811/h3a_aaplx_stage2_run3.json
+?? reports/lp_tp_h/20260811/h4_base_invariance/
+?? reports/lp_tp_h/20260811/h5_checkpoints/
+?? reports/lp_tp_h/20260811/h5_solana_a_clmm_36_universe.json
+?? reports/polymarket_competitor/
+?? reports/rh_pivot/20260907T124500Z/RH-01b/
+?? reports/strategy_evidence_r0_pool_discovery/20260610_094647/
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/d4_runner.pid
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/daily_summary_day1.md
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/daily_summary_day2.md
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/daily_summary_day3.md
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/daily_summary_day4.md
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/daily_summary_day5.md
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/funding_updates.jsonl
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/heartbeat.jsonl
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/model_error_log.jsonl
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/paper_position_state_hourly.csv
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/paper_position_state_hourly.jsonl
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/restart.jsonl
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/reward_apr_updates.jsonl
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/swap_events_realtime.jsonl
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260616_183347_corrected/
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260617_050248_unhedged/
+?? scripts/README_polymarket_competitor.md
+?? scripts/lp_polymarket_competitor_collector_v1_readonly.py
+?? scripts/lp_polymarket_competitor_collector_v1_readonly.py.bak_20260725_preexportfix
+?? scripts/lp_rh_capabilities_v1_readonly.py
+?? scripts/lp_rh_pool_probe_v1_readonly.py
+?? scripts/night_scanner_watchdog.sh
+?? scripts/supervisor_polymarket_competitor.sh.example
+?? tests/fixtures/rh/synthetic/provider_probe_error.json
+?? tests/fixtures/rh/synthetic/provider_probe_mismatch.json
+?? tests/fixtures/rh/synthetic/provider_probe_ok.json
+?? tests/fixtures/rh/synthetic/v3_pool_code_empty.json
+?? tests/fixtures/rh/synthetic/v3_pool_identity_fail.json
+?? tests/fixtures/rh/synthetic/v3_pool_probe_ok.json
+?? tests/fixtures/rh/synthetic/v3_pool_rpc_error.json
+?? tests/test_lp_polymarket_competitor_collector_v1_readonly.py
+?? tests/test_lp_rh_capabilities_v1_readonly.py
+?? tests/test_lp_rh_pool_probe_v1_readonly.py
+--- git diff --stat ---
+ .gitignore                         | 4 ++++
+ scripts/lp_rpc_pool_v1_readonly.py | 5 +++++
+ 2 files changed, 9 insertions(+)

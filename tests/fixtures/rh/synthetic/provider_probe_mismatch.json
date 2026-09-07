@@ -1,0 +1,23 @@
+{
+  "data_kind": "SYNTHETIC_NOT_CHAIN_DATA",
+  "responses": {
+    "eth_chainId": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": "0xb626"
+    },
+    "eth_blockNumber": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": "0x1234"
+    },
+    "eth_getBlockByNumber": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "hash": "0xblockhashbbbb",
+        "number": "0x1234"
+      }
+    }
+  }
+}

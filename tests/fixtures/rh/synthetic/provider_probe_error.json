@@ -1,0 +1,13 @@
+{
+  "data_kind": "SYNTHETIC_NOT_CHAIN_DATA",
+  "responses": {
+    "eth_chainId": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "error": {
+        "code": -32603,
+        "message": "boom chainId read failed"
+      }
+    }
+  }
+}

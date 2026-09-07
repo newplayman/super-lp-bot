@@ -1,0 +1,48 @@
+{
+  "data_kind": "SYNTHETIC_NOT_CHAIN_DATA",
+  "responses": {
+    "eth_getCode": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": "0x60806040523480"
+    },
+    "eth_call:0x0dfe1681": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": "0x0000000000005fc5360d0400a0fd4f2af552add042d716f1d168"
+    },
+    "eth_call:0xd21220a7": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": "0x0000000000000bd7d308f8e1639fab988df18a8011f41eacad73"
+    },
+    "eth_call:0xddca3f43": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": "0x00000000000000000000000000000000000000000000000000000000000001f4"
+    },
+    "eth_call:0xd0c93a7c": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": "0x000000000000000000000000000000000000000000000000000000000000003c"
+    },
+    "eth_call:0x1698ee820000000000005fc5360d0400a0fd4f2af552add042d716f1d1680000000000000bd7d308f8e1639fab988df18a8011f41eacad7300000000000000000000000000000001f4": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": "0x00000000000052e65b17fb6e5ba00ed806f37afcd2daa50271ca"
+    },
+    "eth_blockNumber": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": "0x1234"
+    },
+    "eth_getBlockByNumber": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "hash": "0xpoolblockhash",
+        "number": "0x1234"
+      }
+    }
+  }
+}

@@ -1,0 +1,73 @@
+[qwen-review] dir=/opt/lpbot/lp-bot-v3-origin-check spec=/opt/lpbot/lp-bot-v3-origin-check/docs/specs/20260907_RH-01c_capabilities_pool_probe_tests.md effort=medium diff_chars=941 log=/root/.qwen-code/logs/review-20260907-163515.log
+Permission deny rule "MultiEdit" matches no known tool — check for typos.
+[claude-code:unrecognized_model] {"model":"qwen38-v122-skinny-e5m2-mtp2-agent","query_source":"sdk"}
+
+
+I have all the evidence needed. Here is my review.
+
+---
+
+## RH-01c 代码审查
+
+### 1. 验收标准逐条核对
+
+| 条目 | 结论 | 证据 file:line |
+|---|---|---|
+| **AC1** 新增仅 2 测试文件+新 fixture+reports JSON；两脚本 diff 仅 sys.path 引导(≤6 行) | **需关注** | 新增文件均 RH 相关（2 测试+7 fixture+2 JSON+2 脚本）；bootstrap 各 3 行且与参考逐字一致 `scripts/lp_rh_capabilities_v1_readonly.py:27-29`、`scripts/lp_rh_pool_probe_v1_readonly.py:26-28`（参考 `scripts/lp_scanner_daemon_v1_readonly.py:38-40`），import 行带 `# noqa: E402`，复用已有 `sys`/`Path` 未重复定义。**但** diff 混入 2 处越界改动（见清单 §2），diff 不干净 |
+| **AC2** capabilities `--offline-fixture` 不带 PYTHONPATH 退出 0 | **PASS** | 输出 `CAP_OK`（exit 0） |
+| **AC3** pool_probe `--offline-fixture` 退出 0 | **PASS** | 输出 `PROBE_OK`（exit 0） |
+| **AC4** 两新测试全绿，合计 ≥16 | **PASS** | `19 passed`（capabilities 11 + pool_probe 8） |
+| **AC5** 全量 pytest = 3131+新增，0 failed，14 skipped | **PASS** | `3150 passed, 14 skipped`，0 failed；3131+19=3150 精确吻合 |
+
+**spec「改哪些文件」补充核对（均 PASS）：**
+- capabilities 测试覆盖 T01/T12/T13/T11/不同host/matrix/main：`tests/test_lp_rh_capabilities_v1_readonly.py:35,43,78,88,98,113,145`（11 个）
+- pool_probe 测试覆盖 T08/T07/空code/RPC error/T09/T10/T06/成功路径：`tests/test_lp_rh_pool_probe_v1_readonly.py:37,46,62,72,81,91,105,119`（8 个）
+- 断言为具体值（如 `fee == 500`、`block_hash == "0xpoolblockhash"`、`reason == "SAME_BACKEND_SUSPECTED"`），非 `is not None`
+- 测试文件 ≤250 行：153 / 131
+- 7 fixture 复用且带 `SYNTHETIC_NOT_CHAIN_DATA` 标记；2 report JSON 带 synthetic 标记、结构完整（`generated_by/chain_id/matrix/data_kind` 等）
+- 未 import web3/eth_account/solders/solana（capabilities 用 stdlib `urllib.request` 作 RPC 传输，属探针脚本正常能力，不在禁用清单）
+
+### 2. 未授权改动清单（diff 超出 spec 范围）
+
+| 文件 | 改动 | 违反的 spec 约束 |
+|---|---|---|
+| `.gitignore` | +4 行（`.codex/`、`.agents/`） | 「**不动 `.gitignore`**」 |
+| `scripts/lp_rpc_pool_v1_readonly.py` | +5 行（status dict 新增 `endpoints` 字段，`scripts/lp_rpc_pool_v1_readonly.py:311`） | 「**不改任何旧脚本**」 |
+
+> 说明：这两处是 diff 中**仅有的**已跟踪文件改动，均与 RH-01c 无关（RH-01c 的交付物全部是未跟踪新文件 + 两脚本的 bootstrap）。二者在会话初始 git status 快照中已存在，疑为先前工作遗留，但既然落在本次被审 diff 内且直接触犯 spec 明令禁止项，须先 `git checkout -- .gitignore scripts/lp_rpc_pool_v1_readonly.py` 还原后方可接受。
+
+### 3. 验证命令原样输出（末段）
+
+```
+$ python scripts/lp_rh_capabilities_v1_readonly.py --offline-fixture .../provider_probe_ok.json --out /tmp/cap.json && echo CAP_OK
+CAP_OK
+$ python scripts/lp_rh_pool_probe_v1_readonly.py --offline-fixture .../v3_pool_probe_ok.json --out /tmp/att.json && echo PROBE_OK
+PROBE_OK
+$ python -m pytest tests/test_lp_rh_capabilities_v1_readonly.py tests/test_lp_rh_pool_probe_v1_readonly.py -q -p no:cacheprovider 2>&1 | tail -3
+...................                                                      [100%]
+19 passed in 0.06s
+$ python -m pytest tests/ -q -p no:cacheprovider 2>&1 | tail -2
+....................................................................     [100%]
+3150 passed, 14 skipped in 33.69s
+$ git diff --stat
+ .gitignore                         | 4 ++++
+ scripts/lp_rpc_pool_v1_readonly.py | 5 +++++
+ 2 files changed, 9 insertions(+)
+$ git status --short | grep -E 'lp_rh|fixtures/rh|RH-01b'
+?? reports/rh_pivot/20260907T124500Z/RH-01b/
+?? scripts/lp_rh_capabilities_v1_readonly.py
+?? scripts/lp_rh_pool_probe_v1_readonly.py
+?? tests/fixtures/rh/synthetic/provider_probe_error.json
+?? tests/fixtures/rh/synthetic/provider_probe_mismatch.json
+?? tests/fixtures/rh/synthetic/provider_probe_ok.json
+?? tests/fixtures/rh/synthetic/v3_pool_code_empty.json
+?? tests/fixtures/rh/synthetic/v3_pool_identity_fail.json
+?? tests/fixtures/rh/synthetic/v3_pool_probe_ok.json
+?? tests/fixtures/rh/synthetic/v3_pool_rpc_error.json
+?? tests/test_lp_rh_capabilities_v1_readonly.py
+?? tests/test_lp_rh_pool_probe_v1_readonly.py
+```
+
+### 4. 总结论
+
+**REJECT** — 范围内 RH-01c 工作本身正确且 5 项验收全过（bootstrap 逐字一致、19 测试全绿、全量 3150=3131+19 零失败、两脚本无 PYTHONPATH 可跑、report 带 synthetic 标记），但 diff 含 2 处 spec 明令禁止的越界改动（`.gitignore`、`scripts/lp_rpc_pool_v1_readonly.py`），diff 不干净，须还原后再接受。

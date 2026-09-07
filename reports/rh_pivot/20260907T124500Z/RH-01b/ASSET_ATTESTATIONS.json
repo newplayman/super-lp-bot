@@ -1,0 +1,28 @@
+{
+  "generated_by": "lp_rh_pool_probe_v1_readonly",
+  "chain_id": 4663,
+  "count": 1,
+  "results": [
+    {
+      "protocol": "v3",
+      "chain_id": 4663,
+      "factory": "0x1f7d7550b1b028f7571e69a784071f0205fd2efa",
+      "pool": "0x52e65b17fb6e5ba00ed806f37afcd2daa50271ca",
+      "token0": "0x5fc5360d0400a0fd4f2af552add042d716f1d168",
+      "token1": "0x0bd7d308f8e1639fab988df18a8011f41eacad73",
+      "fee": 500,
+      "tick_spacing": 60,
+      "code_nonempty": true,
+      "factory_get_pool_matches": true,
+      "attestation_status": "ATTESTED_SAME_BLOCK",
+      "block_number": 4660,
+      "block_hash": "0xpoolblockhash",
+      "code_hash": "685bbf974f7cc69fb69aba51e961e7407decef9f69f00280269e7ea50363ae46",
+      "error": null
+    }
+  ],
+  "notes": [
+    "OFFLINE_FIXTURE"
+  ],
+  "data_kind": "SYNTHETIC_NOT_CHAIN_DATA"
+}

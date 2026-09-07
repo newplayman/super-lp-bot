@@ -1,0 +1,209 @@
+{
+  "generated_by": "lp_rh_capabilities_v1_readonly",
+  "chain_id": 4663,
+  "probes": [
+    {
+      "url": "offline-fixture",
+      "chain_id_hex": "0x1237",
+      "block_number": 4660,
+      "block_hash": "0xblockhashaaaa",
+      "client_version": "Geth/v1.13.0",
+      "supports_eth_call": true,
+      "supports_get_logs": true,
+      "supports_estimate_gas": true,
+      "error": null,
+      "fetched_at": "2026-09-07T16:27:00Z",
+      "chain_id_gate": "CHAIN_ID_OK"
+    }
+  ],
+  "independence": {
+    "independent": null,
+    "reason": "INSUFFICIENT_PROVIDERS"
+  },
+  "matrix": {
+    "uniswap_v3@4663": {
+      "discovery": {
+        "status": "VERIFIED",
+        "evidence": {
+          "url": "offline-fixture",
+          "block_number": 4660
+        },
+        "expires_at": "2026-09-08T16:27:00Z"
+      },
+      "state_read": {
+        "status": "VERIFIED",
+        "evidence": {
+          "url": "offline-fixture",
+          "block_number": 4660
+        },
+        "expires_at": "2026-09-08T16:27:00Z"
+      },
+      "history_read": {
+        "status": "VERIFIED",
+        "evidence": {
+          "url": "offline-fixture",
+          "block_number": 4660
+        },
+        "expires_at": "2026-09-08T16:27:00Z"
+      },
+      "fee_attribution": {
+        "status": "UNVERIFIED",
+        "evidence": {
+          "url": "offline-fixture",
+          "block_number": 4660
+        },
+        "expires_at": "2026-09-08T16:27:00Z"
+      },
+      "add_quote": {
+        "status": "UNVERIFIED",
+        "evidence": {
+          "url": "offline-fixture",
+          "block_number": 4660
+        },
+        "expires_at": "2026-09-08T16:27:00Z"
+      },
+      "remove_quote": {
+        "status": "UNVERIFIED",
+        "evidence": {
+          "url": "offline-fixture",
+          "block_number": 4660
+        },
+        "expires_at": "2026-09-08T16:27:00Z"
+      },
+      "swap_quote": {
+        "status": "UNVERIFIED",
+        "evidence": {
+          "url": "offline-fixture",
+          "block_number": 4660
+        },
+        "expires_at": "2026-09-08T16:27:00Z"
+      },
+      "simulate": {
+        "status": "UNVERIFIED",
+        "evidence": {
+          "url": "offline-fixture",
+          "block_number": 4660
+        },
+        "expires_at": "2026-09-08T16:27:00Z"
+      },
+      "unsigned_build": {
+        "status": "UNVERIFIED",
+        "evidence": {
+          "url": "offline-fixture",
+          "block_number": 4660
+        },
+        "expires_at": "2026-09-08T16:27:00Z"
+      },
+      "broadcast": {
+        "status": "UNVERIFIED",
+        "evidence": {
+          "url": "offline-fixture",
+          "block_number": 4660
+        },
+        "expires_at": "2026-09-08T16:27:00Z"
+      },
+      "reconcile": {
+        "status": "UNVERIFIED",
+        "evidence": {
+          "url": "offline-fixture",
+          "block_number": 4660
+        },
+        "expires_at": "2026-09-08T16:27:00Z"
+      }
+    },
+    "uniswap_v4@4663": {
+      "discovery": {
+        "status": "UNSUPPORTED",
+        "evidence": {
+          "url": "offline-fixture",
+          "block_number": 4660
+        },
+        "expires_at": "2026-09-08T16:27:00Z"
+      },
+      "state_read": {
+        "status": "UNSUPPORTED",
+        "evidence": {
+          "url": "offline-fixture",
+          "block_number": 4660
+        },
+        "expires_at": "2026-09-08T16:27:00Z"
+      },
+      "history_read": {
+        "status": "UNSUPPORTED",
+        "evidence": {
+          "url": "offline-fixture",
+          "block_number": 4660
+        },
+        "expires_at": "2026-09-08T16:27:00Z"
+      },
+      "fee_attribution": {
+        "status": "UNSUPPORTED",
+        "evidence": {
+          "url": "offline-fixture",
+          "block_number": 4660
+        },
+        "expires_at": "2026-09-08T16:27:00Z"
+      },
+      "add_quote": {
+        "status": "UNSUPPORTED",
+        "evidence": {
+          "url": "offline-fixture",
+          "block_number": 4660
+        },
+        "expires_at": "2026-09-08T16:27:00Z"
+      },
+      "remove_quote": {
+        "status": "UNSUPPORTED",
+        "evidence": {
+          "url": "offline-fixture",
+          "block_number": 4660
+        },
+        "expires_at": "2026-09-08T16:27:00Z"
+      },
+      "swap_quote": {
+        "status": "UNSUPPORTED",
+        "evidence": {
+          "url": "offline-fixture",
+          "block_number": 4660
+        },
+        "expires_at": "2026-09-08T16:27:00Z"
+      },
+      "simulate": {
+        "status": "UNSUPPORTED",
+        "evidence": {
+          "url": "offline-fixture",
+          "block_number": 4660
+        },
+        "expires_at": "2026-09-08T16:27:00Z"
+      },
+      "unsigned_build": {
+        "status": "UNSUPPORTED",
+        "evidence": {
+          "url": "offline-fixture",
+          "block_number": 4660
+        },
+        "expires_at": "2026-09-08T16:27:00Z"
+      },
+      "broadcast": {
+        "status": "UNSUPPORTED",
+        "evidence": {
+          "url": "offline-fixture",
+          "block_number": 4660
+        },
+        "expires_at": "2026-09-08T16:27:00Z"
+      },
+      "reconcile": {
+        "status": "UNSUPPORTED",
+        "evidence": {
+          "url": "offline-fixture",
+          "block_number": 4660
+        },
+        "expires_at": "2026-09-08T16:27:00Z"
+      }
+    }
+  },
+  "notes": [
+    "OFFLINE_FIXTURE"
+  ],
+  "data_kind": "SYNTHETIC_NOT_CHAIN_DATA"
+}
