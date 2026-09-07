@@ -1,0 +1,217 @@
+[qwen-task] dir=/opt/lpbot/lp-bot-v3-origin-check spec=/opt/lpbot/lp-bot-v3-origin-check/docs/specs/20260907_RH-02a_rh_store_schema.md log=/root/.qwen-code/logs/task-20260907-165030.log max_turns=80
+[claude-code:unrecognized_model] {"model":"qwen38-v122-skinny-e5m2-mtp2-agent","query_source":"sdk"}
+[tool 24s] turn=3 Bash "sed -n '1,60p' scripts/lp_scanner_daemon_v1_readonly.py"
+[tool 25s] turn=4 Bash ''
+[tool-error 25s] '<tool_use_error>InputValidationError: Bash was called with input that could not be parsed as JSON.\nYou sent (first 133 of 133 bytes): {"command": "sed -n \'190,2'
+[tool 32s] turn=6 Bash "sed -n '190,270p' scripts/lp_scanner_daemon_v1_readonly.py"
+[tool 33s] turn=7 Bash ''
+[tool-error 33s] '<tool_use_error>InputValidationError: Bash was called with input that could not be parsed as JSON.\nYou sent (first 129 of 129 bytes): {"command": "sed -n \'400,4'
+[tool 42s] turn=9 Bash "sed -n '400,470p' scripts/lp_scanner_daemon_v1_readonly.py"
+[tool 53s] turn=11 Bash "sed -n '140,230p' scripts/lp_shadow_gate_v1_readonly.py"
+[tool 70s] turn=13 Bash "sed -n '1,60p' scripts/lp_shadow_gate_v1_readonly.py"
+[tool 71s] turn=14 Bash ''
+[tool-error 71s] '<tool_use_error>InputValidationError: Bash was called with input that could not be parsed as JSON.\nYou sent (first 200 of 217 bytes): {"command": "grep -n \'DEFA'
+[tool 89s] turn=16 Bash "grep -nE 'def main|add_argument|argparse|user_version|journal_mode|def _as_of|def _finite' scripts/lp_shadow_g"
+[tool 104s] turn=18 Bash 'sed -n \'100,135p\' scripts/lp_shadow_gate_v1_readonly.py; echo "=== MAIN ==="; sed -n \'498,560p\' scripts/lp_sha'
+[tool 118s] turn=20 Bash 'ls tests/ | grep -E \'lp_scanner_daemon|lp_shadow_gate|lp_rh\' ; echo "=== count ==="; ls tests/test_*.py | wc -'
+[tool 119s] turn=21 Bash "sed -n '1,40p' tests/test_lp_shadow_gate_v1_readonly.py"
+[tool 135s] turn=23 Bash 'ls -la reports/lp_rh/ 2>/dev/null || echo "NO lp_rh dir"; echo "=== rh scripts ==="; ls scripts/ | grep -E \'lp'
+[tool 136s] turn=24 Bash "sed -n '1,25p' tests/test_lp_rh_registry_v1_readonly.py"
+[progress 196s] turn=24 streamed_chars=18234
+[progress 256s] turn=24 streamed_chars=33200
+[progress 316s] turn=24 streamed_chars=48321
+[progress 376s] turn=24 streamed_chars=62437
+[progress 436s] turn=24 streamed_chars=80369
+[tool 490s] turn=27 Bash 'git status --short | grep -E \'lp_rh_store\' || echo "NO lp_rh_store files yet"; echo "=== tracked diff ==="; gi'
+[tool 538s] turn=30 Write '/opt/lpbot/lp-bot-v3-origin-check/scripts/lp_rh_store_v1_readonly.py'
+[tool 593s] turn=33 Edit '/opt/lpbot/lp-bot-v3-origin-check/scripts/lp_rh_store_v1_readonly.py'
+[tool 653s] turn=36 Edit '/opt/lpbot/lp-bot-v3-origin-check/scripts/lp_rh_store_v1_readonly.py'
+[tool 691s] turn=39 Bash 'wc -l scripts/lp_rh_store_v1_readonly.py && /root/lp-bot/.venv/bin/python -c "import ast; ast.parse(open(\'scri'
+[tool 731s] turn=42 Read '/opt/lpbot/lp-bot-v3-origin-check/scripts/lp_rh_store_v1_readonly.py'
+[tool 784s] turn=45 Read '/opt/lpbot/lp-bot-v3-origin-check/scripts/lp_rh_store_v1_readonly.py'
+[progress 1084s] turn=45 streamed_chars=116576
+[tool 1138s] turn=48 Bash 'ls -a | grep -iE \'flake8|ruff|pyproject|setup.cfg|tox.ini|pre-commit\' ; echo "---pyproject---"; grep -nE \'ruff'
+[tool 1157s] turn=51 Read '/opt/lpbot/lp-bot-v3-origin-check/scripts/lp_rh_store_v1_readonly.py'
+[tool 1188s] turn=54 Read '/opt/lpbot/lp-bot-v3-origin-check/scripts/lp_rh_store_v1_readonly.py'
+[tool 1209s] turn=56 Read '/opt/lpbot/lp-bot-v3-origin-check/scripts/lp_rh_store_v1_readonly.py'
+[progress 1269s] turn=56 streamed_chars=144432
+[progress 1329s] turn=56 streamed_chars=162186
+[tool 1345s] turn=59 Edit '/opt/lpbot/lp-bot-v3-origin-check/scripts/lp_rh_store_v1_readonly.py'
+[tool 1403s] turn=61 Edit '/opt/lpbot/lp-bot-v3-origin-check/scripts/lp_rh_store_v1_readonly.py'
+[tool 1435s] turn=64 Edit '/opt/lpbot/lp-bot-v3-origin-check/scripts/lp_rh_store_v1_readonly.py'
+[tool 1469s] turn=66 Edit '/opt/lpbot/lp-bot-v3-origin-check/scripts/lp_rh_store_v1_readonly.py'
+[tool 1501s] turn=68 Edit '/opt/lpbot/lp-bot-v3-origin-check/scripts/lp_rh_store_v1_readonly.py'
+[tool 1532s] turn=70 Edit '/opt/lpbot/lp-bot-v3-origin-check/scripts/lp_rh_store_v1_readonly.py'
+[tool 1570s] turn=72 Edit '/opt/lpbot/lp-bot-v3-origin-check/scripts/lp_rh_store_v1_readonly.py'
+[tool 1603s] turn=74 Edit '/opt/lpbot/lp-bot-v3-origin-check/scripts/lp_rh_store_v1_readonly.py'
+[tool 1635s] turn=77 Bash 'wc -l scripts/lp_rh_store_v1_readonly.py && /root/lp-bot/.venv/bin/python -c "import ast; ast.parse(open(\'scri'
+[tool 1668s] turn=80 Bash 'rm -f /tmp/rh_smoke.db* && env -u PYTHONPATH /root/lp-bot/.venv/bin/python scripts/lp_rh_store_v1_readonly.py '
+[tool 1723s] turn=83 Bash '/root/lp-bot/.venv/bin/python -c "\nimport sys; sys.path.insert(0, \'.\')\nimport importlib.util\nspec = importlib.'
+[tool 1770s] turn=86 Edit '/opt/lpbot/lp-bot-v3-origin-check/scripts/lp_rh_store_v1_readonly.py'
+[tool 1805s] turn=88 Bash 'rm -f /tmp/rh_smoke.db* && env -u PYTHONPATH /root/lp-bot/.venv/bin/python scripts/lp_rh_store_v1_readonly.py '
+[tool 1843s] turn=91 Bash '/root/lp-bot/.venv/bin/python -c "\nimport sqlite3\nc = sqlite3.connect(\'/tmp/rh_smoke.db\')\nprint(\'journal_mode:'
+[tool 1889s] turn=94 Bash '/root/lp-bot/.venv/bin/python -c "\nimport importlib.util\nspec = importlib.util.spec_from_file_location(\'rh\', \''
+[progress 2062s] turn=94 streamed_chars=198251
+[tool 2078s] turn=97 Bash "grep -nE 'import|from scripts' tests/test_lp_rh_registry_v1_readonly.py | head -20"
+[tool 2132s] turn=100 Write '/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_store_v1_readonly.py'
+[tool 2155s] turn=102 Edit '/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_store_v1_readonly.py'
+[tool 2172s] turn=105 Bash 'cd /opt/lpbot/lp-bot-v3-origin-check\necho "=== 1. --init smoke ==="\nenv -u PYTHONPATH /root/lp-bot/.venv/bin/p'
+[tool 2197s] turn=108 Edit '/opt/lpbot/lp-bot-v3-origin-check/scripts/lp_rh_store_v1_readonly.py'
+[tool 2214s] turn=110 Bash 'cd /opt/lpbot/lp-bot-v3-origin-check\necho "=== forbidden types grep ==="\ngrep -nE \'\\bREAL\\b|NUMERIC|TIMESTAMPT'
+[tool 2231s] turn=113 Bash 'cd /opt/lpbot/lp-bot-v3-origin-check\n/root/lp-bot/.venv/bin/python -m pytest tests/ -q -p no:cacheprovider 2>&'
+[tool 2292s] turn=116 Bash 'cd /opt/lpbot/lp-bot-v3-origin-check\necho "=== test file references to reports/lp_rh (should be none) ==="\ngre'
+[result 2323s] is_error=False turns=51 subtype=success
+
+
+All acceptance criteria met. Final report:
+
+## 改动文件列表
+
+两个新文件（均为 untracked，未改动任何已跟踪文件）：
+
+| 文件 | 行数 | 说明 |
+|------|------|------|
+| `scripts/lp_rh_store_v1_readonly.py` | 343（≤350） | RH 独立 SQLite 存储骨架：16 张 `rh_*` 表 DDL、`open_store`/`migrate`、decimal/UTC 类型守卫、软预算检查、`--init`/`--status` CLI |
+| `tests/test_lp_rh_store_v1_readonly.py` | 223（≤250） | 21 个测试函数（24 个用例，≥14），全部用 `tmp_path`，绝不碰 `reports/lp_rh/` |
+
+## 验证命令与原样输出
+
+**1. `--init` 冒烟（exit 0，列出 16 表，schema_version=1，budget OK）**
+```
+{
+  "budget": { "bytes": 176128, "fraction": 8.20159912109375e-05,
+    "soft_budget_bytes": 2147483648, "state": "OK" },
+  "schema_version": 1,
+  "tables": [ "rh_assets", "rh_bucket_reservations", "rh_contract_attestations",
+    "rh_economic_evaluations", "rh_gate_decisions", "rh_journal", "rh_market_states",
+    "rh_pool_events", "rh_pool_registry", "rh_position_marks", "rh_reconciliation_runs",
+    "rh_rpc_health", "rh_shadow_positions", "rh_source_snapshots", "rh_tx_intents",
+    "rh_tx_receipts" ]
+}
+INIT_OK
+```
+
+**2. 目标测试文件**
+```
+24 passed in 0.16s
+```
+
+**3. 全量测试套件**
+```
+3174 passed, 14 skipped in 35.09s
+```
+（本次运行无 collection error；此前记录的 `Crypto` 缺失错误未复现。）
+
+**4. 禁用类型 grep**
+```
+NO_FORBIDDEN_TYPES
+```
+
+**5. git diff / status**
+```
+$ git diff --stat
+（空 — 无已跟踪文件改动）
+$ git status --short | grep -E 'lp_rh_store'
+?? scripts/lp_rh_store_v1_readonly.py
+?? tests/test_lp_rh_store_v1_readonly.py
+```
+
+**6. 附加确认**
+```
+测试文件引用 reports/lp_rh：NONE
+测试函数数：21
+reports/lp_rh 目录：不存在（测试未创建它）
+```
+
+## 未完成项与原因
+
+无。全部验收标准达成：
+- 仅 2 个新文件，`git diff --stat` 为空（未动任何现有脚本/测试/配置/`.gitignore`）。
+- DDL 无 `REAL`/`NUMERIC`/`TIMESTAMPTZ`/`UUID`/`SERIAL`；所有金额/raw/价格/倍率为 decimal TEXT，时间戳为 UTC RFC3339。
+- `--init` exit 0，16 表，`user_version=1`，WAL + `foreign_keys=ON` + `busy_timeout=30000`（经 `open_store` 连接验证），`migrate` 幂等。
+- 未实现采集/gate/reservation 原子扣减（属 RH-02b 范围，本任务明确排除）。
+
+[qwen-task] exit=0
+--- git status --short ---
+?? CLAUDE.md
+?? "CODEX_\344\273\273\345\212\241\345\214\205_F_\345\233\236\345\275\222\344\277\256\345\244\215\344\270\216\350\257\201\346\215\256\347\256\241\347\272\277_2026-08-10.md"
+?? "CODEX_\344\273\273\345\212\241\345\214\205_G_\350\267\250\351\223\276\345\217\257\350\276\276\346\200\247\344\270\216\351\207\207\346\240\267\346\267\261\345\272\246_2026-08-11.md"
+?? "CODEX_\344\273\273\345\212\241\345\214\205_H_Solana\346\210\220\346\234\254\344\270\216\346\224\266\347\233\212\346\250\241\345\236\213_2026-08-11.md"
+?? NIGHT_TASKS.md
+?? docs/specs/20260907_RH-01c_capabilities_pool_probe_tests.md
+?? reports/lp_base_10u_probe_execution_runtime/20260602_135824/
+?? reports/lp_base_10u_probe_execution_runtime/20260602_144843/
+?? reports/lp_base_10u_probe_execution_runtime/20260602_150957/
+?? reports/lp_base_10u_probe_execution_runtime/20260602_163036/
+?? reports/lp_base_10u_probe_execution_runtime/20260602_163036_test/
+?? reports/lp_base_10u_probe_execution_runtime/20260602_173525/
+?? reports/lp_base_10u_probe_execution_runtime/20260602_173525_test/
+?? reports/lp_base_10u_probe_execution_runtime/20260602_test/
+?? reports/lp_base_10u_probe_final_execution_review/20260602_173525/
+?? reports/lp_funnel_add1/20260809_103217/vetted_menu.json
+?? reports/lp_funnel_autopsy/20260810_043427/stage1/
+?? reports/lp_funnel_autopsy/20260810_043427/vetted_menu.json
+?? reports/lp_funnel_depth_fix/20260809_094800/
+?? reports/lp_funnel_depth_fix/20260809_100700/vetted_menu.json
+?? reports/lp_funnel_rerank/20260809_114000/correlation.json
+?? reports/lp_funnel_rerank/20260809_114000/correlation.md
+?? reports/lp_long_horizon_node_reports/20260605_043726/6h_regression_test/
+?? reports/lp_long_horizon_r1_12h_full_wallclock_observation/20260607_184500/AUDIT_NOTE_PID_TRANSITION.json
+?? reports/lp_long_horizon_r1_12h_full_wallclock_observation/20260607_184500/launch_log.txt
+?? reports/lp_long_horizon_r1_12h_full_wallclock_observation/20260607_184500/launch_pid.txt
+?? reports/lp_long_horizon_r1_12h_full_wallclock_observation/20260607_184500/wrapper_pid.txt
+?? reports/lp_long_horizon_readonly_12h_run/20260605_082120/
+?? reports/lp_long_horizon_readonly_collector_6h_fix/20260604_134918/STAGE_H_INTERIM_STATUS_CN.md
+?? reports/lp_long_horizon_readonly_collector_6h_fix/20260604_134918/TMUX_START_HEALTHCHECK_CN.md
+?? reports/lp_long_horizon_readonly_collector_6h_fix/20260604_134918/tmux_start_healthcheck.json
+?? reports/lp_long_horizon_readonly_continuous_12h_extension/20260605_082120/inflight_healthcheck_20260605_151011.json
+?? reports/lp_long_horizon_readonly_continuous_12h_extension/20260605_082120/inflight_healthcheck_20260605_151011.md
+?? reports/lp_long_horizon_readonly_continuous_12h_extension/20260606_131323/
+?? reports/lp_m0_integration_smoke/20260808_sol_acceptance/
+?? reports/lp_m0n_acceptance/20260809_base_once/
+?? reports/lp_m0n_n4/20260809_solana_once/
+?? reports/lp_m0n_n4/20260809_solana_once_top100/vetted_menu.json
+?? reports/lp_portfolio_paper_runner/
+?? reports/lp_scanner/scanner.pid
+?? reports/lp_scanner/vetted_menu.json
+?? reports/lp_scanner_v2_20260823/
+?? reports/lp_shadow_launch/
+?? reports/lp_tp_d/20260810_d4_top68_w10_normal/stage1_screen.json
+?? reports/lp_tp_d/20260810_d4_top68_w10_normal/stage2_candidates.json
+?? reports/lp_tp_f/20260810/base_funnel_f1_rerun/
+?? reports/lp_tp_f/20260811/
+?? reports/lp_tp_g/
+?? reports/lp_tp_h/20260811/h3_aaplx_stage2_run1.json
+?? reports/lp_tp_h/20260811/h3a_aaplx_stage2_run1.json
+?? reports/lp_tp_h/20260811/h3a_aaplx_stage2_run2.json
+?? reports/lp_tp_h/20260811/h3a_aaplx_stage2_run3.json
+?? reports/lp_tp_h/20260811/h4_base_invariance/
+?? reports/lp_tp_h/20260811/h5_checkpoints/
+?? reports/lp_tp_h/20260811/h5_solana_a_clmm_36_universe.json
+?? reports/polymarket_competitor/
+?? reports/strategy_evidence_r0_pool_discovery/20260610_094647/
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/d4_runner.pid
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/daily_summary_day1.md
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/daily_summary_day2.md
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/daily_summary_day3.md
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/daily_summary_day4.md
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/daily_summary_day5.md
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/funding_updates.jsonl
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/heartbeat.jsonl
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/model_error_log.jsonl
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/paper_position_state_hourly.csv
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/paper_position_state_hourly.jsonl
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/restart.jsonl
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/reward_apr_updates.jsonl
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/swap_events_realtime.jsonl
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260616_183347_corrected/
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260617_050248_unhedged/
+?? scripts/README_polymarket_competitor.md
+?? scripts/lp_polymarket_competitor_collector_v1_readonly.py
+?? scripts/lp_polymarket_competitor_collector_v1_readonly.py.bak_20260725_preexportfix
+?? scripts/lp_rh_store_v1_readonly.py
+?? scripts/night_scanner_watchdog.sh
+?? scripts/supervisor_polymarket_competitor.sh.example
+?? tests/test_lp_polymarket_competitor_collector_v1_readonly.py
+?? tests/test_lp_rh_store_v1_readonly.py
+--- git diff --stat ---

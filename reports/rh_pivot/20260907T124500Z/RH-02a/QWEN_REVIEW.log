@@ -1,0 +1,90 @@
+[qwen-review] dir=/opt/lpbot/lp-bot-v3-origin-check spec=/opt/lpbot/lp-bot-v3-origin-check/docs/specs/20260907_RH-02a_rh_store_schema.md effort=medium diff_chars=0 log=/root/.qwen-code/logs/review-20260907-173102.log
+Permission deny rule "MultiEdit" matches no known tool — check for typos.
+[claude-code:unrecognized_model] {"model":"qwen38-v122-skinny-e5m2-mtp2-agent","query_source":"sdk"}
+
+
+# RH-02a 代码审查报告
+
+## 1. 验收标准逐条核对
+
+| 条目 | 结论 | 证据 file:line |
+|---|---|---|
+| 新增文件仅 2 个，`git diff --stat` 为空 | PASS | `git diff --stat` 输出为空；`git status --short` 仅 `?? scripts/lp_rh_store_v1_readonly.py`、`?? tests/test_lp_rh_store_v1_readonly.py`（其余未跟踪文件均为任务前已存在，见初始快照） |
+| 脚本 ≤350 行 | PASS | `wc -l` = 343 |
+| 测试 ≤250 行、≥14 个且全绿 | PASS | `wc -l` = 223；收集 24 个测试（22 函数 + 4 参数化），`24 passed in 0.19s` |
+| 顶部 sys.path 引导 | PASS | `scripts/lp_rh_store_v1_readonly.py:22-24` |
+| 常量 `SCHEMA_VERSION=1` / `DEFAULT_DB_PATH` / `SOFT_BUDGET_BYTES=2GiB` / `WARN_FRACTION=0.80` | PASS | `scripts/lp_rh_store_v1_readonly.py:27-30` |
+| `open_store`：建父目录、WAL、busy_timeout=30000、foreign_keys=ON、只读 `mode=ro` URI | PASS | `scripts/lp_rh_store_v1_readonly.py:184-196`；测试 `tests/test_lp_rh_store_v1_readonly.py:57-64` 断言 `wal`/`1`/`30000` |
+| `migrate`：DDL 单事务、写 `user_version`、幂等 | PASS | `scripts/lp_rh_store_v1_readonly.py:199-213`（`BEGIN;…COMMIT;` + `PRAGMA user_version`，版本匹配即早退）；测试 `:37-54` |
+| 16 张表、列名照抄、类型仅 TEXT/INTEGER、金额一律 TEXT | PASS | `scripts/lp_rh_store_v1_readonly.py:39-127`（逐表比对 spec 表：PK、列名、NOT NULL 均一致；`position_usd`/`gas_used` 等金额列为 TEXT）；测试 `:67-75` 断言 declared type ∈ {TEXT, INTEGER} |
+| 5 个必需索引 | PASS | `scripts/lp_rh_store_v1_readonly.py:129-135`（pool_events(pool_key,block_number)、market_states(asset_address,sample_time DESC)、rpc_health(provider,sample_time DESC)、gate_decisions(candidate_key,decided_at DESC)、journal(booked_at)） |
+| `assert_decimal_text`：float→`TypeError(REAL_NOT_ALLOWED_FOR_MONEY)`、int→str、None 放行、正则校验 | PASS | `scripts/lp_rh_store_v1_readonly.py:216-231`（额外拒绝 bool，因 bool 是 int 子类，属合理加固）；测试 `:79-102` 覆盖 1.5、uint256 大串、None、`"1.2.3"` |
+| `assert_utc_rfc3339`：仅 `Z`/`+00:00`，否则 `ValueError(NON_UTC_TIMESTAMP)` | PASS | `scripts/lp_rh_store_v1_readonly.py:234-240`（正则 `:33-35`）；测试 `:105-117` 覆盖空格分隔、`+02:00`、整数秒 1757246400 |
+| `insert_row`：表白名单、金额/时间列逐列校验、参数化占位符 | PASS | `scripts/lp_rh_store_v1_readonly.py:243-272`（`MONEY_COLUMNS`/`TIME_COLUMNS` 白名单 `:138-170`；`?` 占位符，表名经白名单校验后拼接，无值拼接） |
+| `budget_status`：OK/WARN(≥0.80)/OVER(≥1.0)，含 wal/shm 体积 | PASS | `scripts/lp_rh_store_v1_readonly.py:275-293`；测试 `:187-199`（monkeypatch `SOFT_BUDGET_BYTES=1` → WARN/OVER） |
+| `main()`：`--db`/`--init`/`--status`，无常驻进程 | PASS | `scripts/lp_rh_store_v1_readonly.py:305-343`；测试 `:203-222` |
+| 测试全用 `tmp_path`，不碰 `reports/lp_rh/` | PASS | `tests/test_lp_rh_store_v1_readonly.py` 全文无 `reports` 字样，所有建库均 `tmp_path / "rh.db"` |
+| 全量 pytest = 3150+新增、0 failed、14 skipped | PASS | `3174 passed, 14 skipped in 34.66s`（3174 = 3150 + 24） |
+| 禁用类型 grep 仅出现在报错消息 | PASS | 仅 3 处命中，均为 `REAL_NOT_ALLOWED_FOR_MONEY` 报错串（`:222,224,231`）；DDL 零命中，无 NUMERIC/TIMESTAMPTZ/UUID/SERIAL |
+| `--init` 不带 PYTHONPATH 退出 0、列出 16 表 | PASS | `env -u PYTHONPATH … --db /tmp/rh_test.db --init` → 完整 JSON（`schema_version: 1`，16 个 `rh_*` 表名）+ `INIT_OK` |
+| 不 import web3/psycopg2 等、不联网、不改现有文件 | PASS | 导入仅 `argparse/json/re/sqlite3/sys/pathlib/typing`（`:13-19`）；`git diff --stat` 为空 |
+
+## 2. 未授权改动清单
+
+**无。** diff 仅新增 spec 指定的 2 个文件；未触碰任何现有脚本、测试、配置、`.gitignore`、`reports/lp_scanner*/`。git status 中其余未跟踪文件（CODEX_*.md、reports/*、polymarket 脚本等）均为任务开始前已存在，不属于本次改动。
+
+## 3. 验证命令原样输出（最后 60 行内）
+
+```
+$ env -u PYTHONPATH /root/lp-bot/.venv/bin/python scripts/lp_rh_store_v1_readonly.py --db /tmp/rh_test.db --init && echo INIT_OK
+{
+  "budget": {
+    "bytes": 176128,
+    "fraction": 8.20159912109375e-05,
+    "soft_budget_bytes": 2147483648,
+    "state": "OK"
+  },
+  "schema_version": 1,
+  "tables": [
+    "rh_assets",
+    "rh_bucket_reservations",
+    "rh_contract_attestations",
+    "rh_economic_evaluations",
+    "rh_gate_decisions",
+    "rh_journal",
+    "rh_market_states",
+    "rh_pool_events",
+    "rh_pool_registry",
+    "rh_position_marks",
+    "rh_reconciliation_runs",
+    "rh_rpc_health",
+    "rh_shadow_positions",
+    "rh_source_snapshots",
+    "rh_tx_intents",
+    "rh_tx_receipts"
+  ]
+}
+INIT_OK
+
+$ /root/lp-bot/.venv/bin/python -m pytest tests/test_lp_rh_store_v1_readonly.py -q -p no:cacheprovider 2>&1 | tail -3
+........................                                                 [100%]
+24 passed in 0.19s
+
+$ /root/lp-bot/.venv/bin/python -m pytest tests/ -q -p no:cacheprovider 2>&1 | tail -2
+3174 passed, 14 skipped in 34.66s
+
+$ grep -nE '\bREAL\b|NUMERIC|TIMESTAMPTZ|UUID|SERIAL' scripts/lp_rh_store_v1_readonly.py || echo NO_FORBIDDEN_TYPES
+222:        raise TypeError(f"REAL_NOT_ALLOWED_FOR_MONEY: {field}")
+224:        raise TypeError(f"REAL_NOT_ALLOWED_FOR_MONEY: {field}")
+231:    raise TypeError(f"REAL_NOT_ALLOWED_FOR_MONEY: {field}")
+
+$ git diff --stat; git status --short | grep -E 'lp_rh_store'
+?? scripts/lp_rh_store_v1_readonly.py
+?? tests/test_lp_rh_store_v1_readonly.py
+```
+
+## 4. 总结论
+
+**ACCEPT** — 全部 5 条验收标准实测通过（24 个新测试全绿、全量 3174 passed/0 failed/14 skipped、DDL 零禁用类型、`--init` 无 PYTHONPATH 退出 0 且列出 16 张表），且无任何超出 spec 的改动。
+
+次要观察（不阻塞）：`migrate` 用 `executescript` 会隐式提交调用方未决事务（`scripts/lp_rh_store_v1_readonly.py:211`）；只读 URI `file:{path}?mode=ro` 对含 `?`/空格的路径不健壮（`:188`）。两者均非 spec 要求，留待后续任务处理即可。
