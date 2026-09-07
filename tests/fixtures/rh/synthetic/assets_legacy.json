@@ -1,0 +1,26 @@
+{
+  "data_kind": "SYNTHETIC_NOT_CHAIN_DATA",
+  "metadata_version": "rh-assets-v1",
+  "assets": [
+    {
+      "tokenAddress": "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73",
+      "symbol": "WETH",
+      "tokenDecimals": 18,
+      "tradingCapabilities": {
+        "fractionalTradability": true,
+        "extendedHoursFractionalTradability": false,
+        "allDayTradability": true
+      }
+    },
+    {
+      "tokenAddress": "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168",
+      "symbol": "USDG",
+      "tokenDecimals": 2,
+      "tradingCapabilities": {
+        "fractionalTradability": null,
+        "extendedHoursFractionalTradability": "",
+        "allDayTradability": false
+      }
+    }
+  ]
+}

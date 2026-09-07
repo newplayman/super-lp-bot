@@ -1,0 +1,290 @@
+[qwen-task] dir=/opt/lpbot/lp-bot-v3-origin-check spec=/opt/lpbot/lp-bot-v3-origin-check/docs/specs/20260907_RH-01a_registry_schema_adapter.md log=/root/.qwen-code/logs/task-20260907-141831.log max_turns=80
+[claude-code:unrecognized_model] {"model":"qwen38-v122-skinny-e5m2-mtp2-agent","query_source":"sdk"}
+[tool 26s] turn=3 Bash 'sed -n \'1,80p\' scripts/lp_stock_token_universe_v1_readonly.py 2>/dev/null || echo "FILE_NOT_FOUND"'
+[tool 27s] turn=4 Bash 'ls -la /root/lp-bot/.venv/bin/python 2>/dev/null; echo "---"; /root/lp-bot/.venv/bin/python --version 2>&1; ec'
+[tool 28s] turn=5 Bash 'ls -la tests/fixtures/ 2>/dev/null | head -20; echo "---rh fixtures---"; ls -la tests/fixtures/rh/ 2>/dev/null'
+[tool 29s] turn=6 Bash ''
+[tool-error 29s] '<tool_use_error>InputValidationError: Bash was called with input that could not be parsed as JSON.\nYou sent (first 179 of 179 bytes): {"command": "ls docs/rh_pi'
+[tool 40s] turn=9 Bash 'ls docs/rh_pivot/ 2>/dev/null; echo "---reports---"; ls reports/rh_pivot/ 2>/dev/null || echo "no reports/rh_p'
+[tool 41s] turn=10 Bash ''
+[tool-error 41s] '<tool_use_error>InputValidationError: Bash was called with input that could not be parsed as JSON.\nYou sent (first 158 of 158 bytes): {"command": "sed -n \'1,60p'
+[tool 42s] turn=11 Bash 'grep -n "RH-01\\|LEGACY_FIELDS\\|SESSION_NESTED\\|SCHEMA_SEMANTIC_CONFLICT\\|tradingCapabilities\\|fractionalTradab'
+[tool 55s] turn=14 Bash "sed -n '385,430p' docs/rh_pivot/PRD_RH_LP_Bot_v1.1_CN.md"
+[tool 56s] turn=15 Bash "sed -n '913,975p' docs/rh_pivot/PRD_RH_LP_Bot_v1.1_CN.md"
+[tool 71s] turn=18 Bash 'sed -n \'1,55p\' tests/test_lp_stock_token_universe_v1_readonly.py 2>/dev/null || echo "NOT_FOUND"'
+[tool 72s] turn=19 Bash '/root/lp-bot/.venv/bin/python -m pytest tests/ -q -p no:cacheprovider --co 2>&1 | tail -3'
+[tool 95s] turn=22 Bash '/root/lp-bot/.venv/bin/python -m pytest tests/ -q -p no:cacheprovider 2>&1 | tail -5'
+[progress 175s] turn=22 streamed_chars=5564
+[tool 220s] turn=25 Bash 'grep -n "address\\|Address\\|tokenDecimals\\|symbol\\|uid\\|issuer\\|underlying\\|tradingCapabilities\\|assetAddress\\|'
+[tool 221s] turn=26 Bash ''
+[tool-error 221s] '<tool_use_error>InputValidationError: Bash was called with input that could not be parsed as JSON.\nYou sent (first 200 of 245 bytes): {"command": "grep -n \\"add'
+[tool 244s] turn=29 Bash 'grep -nE "assetAddress|tokenAddress|address|Address|tokenDecimals|/rhj/assets|uid|issuer" docs/rh_pivot/PRD_RH'
+[tool 245s] turn=30 Bash 'grep -nE "assetAddress|tokenAddress|address|Address|tokenDecimals|/rhj/assets|uid|issuer|symbol" docs/rh_pivot'
+[progress 305s] turn=30 streamed_chars=19544
+[progress 365s] turn=30 streamed_chars=34123
+[progress 425s] turn=30 streamed_chars=48972
+[tool 458s] turn=33 TaskCreate 'Registry + schema adapter, ≤350 lines, stdlib only, no sign/broadcast substrings'
+[tool 459s] turn=34 TaskCreate ''
+[tool-error 459s] '<tool_use_error>InputValidationError: TaskCreate was called with input that could not be parsed as JSON.\nYou sent (first 200 of 224 bytes): {"subject": "Write 4'
+[tool 459s] turn=35 TaskCreate '≥10 tests covering T01-T05, ≤250 lines'
+[tool 460s] turn=36 TaskCreate 'reports/rh_pivot/20260907T124500Z/RH-01a/SCHEMA_COMPATIBILITY.md, ≤80 lines'
+[tool 461s] turn=37 TaskCreate ''
+[tool-error 461s] '<tool_use_error>InputValidationError: TaskCreate was called with input that could not be parsed as JSON.\nYou sent (first 154 of 154 bytes): {"subject": "Run all'
+[tool 491s] turn=40 TaskCreate 'assets_legacy, assets_session_nested, assets_conflict, assets_unknown_enum under tests/fixtures/rh/synthetic'
+[tool 492s] turn=41 TaskCreate ''
+[tool-error 492s] '<tool_use_error>InputValidationError: TaskCreate was called with input that could not be parsed as JSON.\nYou sent (first 153 of 153 bytes): {"subject": "Run all'
+[tool 523s] turn=43 TaskCreate 'Run pytest new and full, main, grep, git diff stat'
+[tool 551s] turn=46 TaskUpdate ''
+[tool 592s] turn=48 Write '/opt/lpbot/lp-bot-v3-origin-check/scripts/lp_rh_registry_v1_readonly.py'
+[tool 637s] turn=51 Edit '/opt/lpbot/lp-bot-v3-origin-check/scripts/lp_rh_registry_v1_readonly.py'
+[tool 694s] turn=54 Edit '/opt/lpbot/lp-bot-v3-origin-check/scripts/lp_rh_registry_v1_readonly.py'
+[tool 733s] turn=57 Bash 'wc -l scripts/lp_rh_registry_v1_readonly.py; echo "---compile---"; /root/lp-bot/.venv/bin/python -c "import as'
+[tool 734s] turn=58 Bash ''
+[tool-error 734s] '<tool_use_error>InputValidationError: Bash was called with input that could not be parsed as JSON.\nYou sent (first 200 of 234 bytes): {"command": "grep -nE \'imp'
+[tool 777s] turn=61 Bash "grep -nE 'import (web3|eth_account|solders|solana|requests)|sign|broadcast|private_key|keystore' scripts/lp_rh"
+[tool 822s] turn=64 Bash "grep -nE '^\\s*$' scripts/lp_rh_registry_v1_readonly.py | head -40"
+[tool 862s] turn=67 Read '/opt/lpbot/lp-bot-v3-origin-check/scripts/lp_rh_registry_v1_readonly.py'
+[progress 931s] turn=67 streamed_chars=81052
+[tool 951s] turn=70 Read '/opt/lpbot/lp-bot-v3-origin-check/scripts/lp_rh_registry_v1_readonly.py'
+[progress 1040s] turn=70 streamed_chars=89934
+[tool 1061s] turn=73 Edit '/opt/lpbot/lp-bot-v3-origin-check/scripts/lp_rh_registry_v1_readonly.py'
+[tool 1110s] turn=75 Bash 'wc -l scripts/lp_rh_registry_v1_readonly.py; echo "---smoke---"; /root/lp-bot/.venv/bin/python -c "\nimport sys'
+[progress 1170s] turn=75 streamed_chars=96725
+[tool 1171s] turn=78 TaskUpdate ''
+[tool 1172s] turn=79 TaskUpdate ''
+[tool-error 1172s] '<tool_use_error>InputValidationError: TaskUpdate was called with input that could not be parsed as JSON.\nYou sent (first 41 of 41 bytes): {"status": "in_progres'
+[tool 1212s] turn=81 TaskUpdate ''
+[tool 1258s] turn=84 Write '/opt/lpbot/lp-bot-v3-origin-check/tests/fixtures/rh/synthetic/assets_legacy.json'
+[tool 1261s] turn=85 Write '/opt/lpbot/lp-bot-v3-origin-check/tests/fixtures/rh/synthetic/assets_session_nested.json'
+[tool 1265s] turn=86 Write ''
+[tool-error 1265s] '<tool_use_error>InputValidationError: Write was called with input that could not be parsed as JSON.\nYou sent (first 200 of 910 bytes): {"file_path": "/opt/lpbot'
+[tool 1268s] turn=87 Write ''
+[tool-error 1268s] '<tool_use_error>InputValidationError: Write was called with input that could not be parsed as JSON.\nYou sent (first 200 of 683 bytes): {"file_path": "/opt/lpbot'
+[tool 1319s] turn=90 Write '/opt/lpbot/lp-bot-v3-origin-check/tests/fixtures/rh/synthetic/assets_conflict.json'
+[tool 1366s] turn=92 Write '/opt/lpbot/lp-bot-v3-origin-check/tests/fixtures/rh/synthetic/assets_unknown_enum.json'
+[tool 1414s] turn=95 Bash 'for f in tests/fixtures/rh/synthetic/*.json; do /root/lp-bot/.venv/bin/python -c "import json,sys; d=json.load'
+[progress 1474s] turn=95 streamed_chars=106062
+[progress 1534s] turn=95 streamed_chars=115606
+[tool 1564s] turn=98 TaskUpdate ''
+[tool 1564s] turn=99 TaskUpdate ''
+[progress 1778s] turn=99 streamed_chars=123459
+[tool 1804s] turn=101 Write '/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_registry_v1_readonly.py'
+[tool 1831s] turn=103 Edit '/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_registry_v1_readonly.py'
+[tool 1850s] turn=106 Bash '/root/lp-bot/.venv/bin/python -m pytest tests/test_lp_rh_registry_v1_readonly.py -q -p no:cacheprovider 2>&1 |'
+[tool 1867s] turn=109 Bash 'wc -l tests/test_lp_rh_registry_v1_readonly.py'
+[tool 1867s] turn=110 TaskUpdate ''
+[tool 1867s] turn=111 TaskUpdate ''
+[tool 1926s] turn=114 Write '/opt/lpbot/lp-bot-v3-origin-check/reports/rh_pivot/20260907T124500Z/RH-01a/SCHEMA_COMPATIBILITY.md'
+[tool 1949s] turn=116 Bash 'wc -l reports/rh_pivot/20260907T124500Z/RH-01a/SCHEMA_COMPATIBILITY.md'
+[tool 1950s] turn=117 TaskUpdate ''
+[tool 1950s] turn=118 TaskUpdate ''
+[tool-error 1950s] '<tool_use_error>InputValidationError: TaskUpdate was called with input that could not be parsed as JSON.\nYou sent (first 41 of 41 bytes): {"status": "in_progres'
+[tool 1972s] turn=121 TaskUpdate ''
+[tool 1996s] turn=123 Bash '/root/lp-bot/.venv/bin/python -m pytest tests/test_lp_rh_registry_v1_readonly.py -q -p no:cacheprovider 2>&1 |'
+[tool 1996s] turn=124 Bash "grep -nE 'import (web3|eth_account|solders|solana|requests)' scripts/lp_rh_registry_v1_readonly.py || echo NO_"
+[tool 1997s] turn=125 Bash ''
+[tool-error 1997s] '<tool_use_error>InputValidationError: Bash was called with input that could not be parsed as JSON.\nYou sent (first 200 of 272 bytes): {"command": "/root/lp-bot/'
+[tool 1998s] turn=126 Bash "git diff --stat; echo '--- status ---'; git status --short | grep -E 'lp_rh|fixtures/rh|RH-01a'"
+[tool 2020s] turn=129 Bash '/root/lp-bot/.venv/bin/python scripts/lp_rh_registry_v1_readonly.py --assets-json tests/fixtures/rh/synthetic/'
+[tool 2042s] turn=131 Bash 'head -c 600 /tmp/rh_reg.json'
+[tool 2066s] turn=134 Bash '/root/lp-bot/.venv/bin/python -m pytest tests/ -q -p no:cacheprovider 2>&1 | tail -4'
+[tool 2128s] turn=137 Bash 'echo "=== line counts ==="; wc -l scripts/lp_rh_registry_v1_readonly.py tests/test_lp_rh_registry_v1_readonly.'
+[tool 2153s] turn=140 Bash 'ls -1 tests/fixtures/rh/synthetic/'
+[tool 2153s] turn=141 TaskUpdate ''
+[tool-error 2153s] '<tool_use_error>InputValidationError: TaskUpdate was called with input that could not be parsed as JSON.\nYou sent (first 39 of 39 bytes): {"status": "completed"'
+[tool 2177s] turn=143 TaskUpdate ''
+[result 2229s] is_error=False turns=72 subtype=success
+
+
+All tasks complete. Final report below.
+
+## 改动文件列表
+
+全部为**新增**（untracked），未改动任何现有文件：
+
+| 文件 | 行数 | 说明 |
+|------|------|------|
+| `scripts/lp_rh_registry_v1_readonly.py` | 349 | 注册表 + 双 schema 适配器（只读、离线、无网络/钱包 import） |
+| `tests/test_lp_rh_registry_v1_readonly.py` | 189 | 20 个测试，覆盖 T01–T05 |
+| `reports/rh_pivot/20260907T124500Z/RH-01a/SCHEMA_COMPATIBILITY.md` | 70 | 字段对照表 / 映射规则 / CONFLICT 定义 / closing-only / 未覆盖项 |
+| `tests/fixtures/rh/synthetic/assets_legacy.json` | — | 2 assets（WETH/USDG），`SYNTHETIC_NOT_CHAIN_DATA` |
+| `tests/fixtures/rh/synthetic/assets_session_nested.json` | — | 1 asset（含 CLOSING_ONLY） |
+| `tests/fixtures/rh/synthetic/assets_conflict.json` | — | legacy+nested 语义冲突 |
+| `tests/fixtures/rh/synthetic/assets_unknown_enum.json` | — | 未知枚举值 |
+
+**未触碰**（会话开始时即为 modified，spec 明令不动）：`.gitignore`、`scripts/lp_rpc_pool_v1_readonly.py`。
+
+## 验证命令与原样输出
+
+**1. 新测试文件**
+```
+$ /root/lp-bot/.venv/bin/python -m pytest tests/test_lp_rh_registry_v1_readonly.py -q -p no:cacheprovider
+....................                                                     [100%]
+20 passed in 0.02s
+```
+
+**2. 全量测试（无回归）**
+```
+$ /root/lp-bot/.venv/bin/python -m pytest tests/ -q -p no:cacheprovider
+........................................................................ [ 96%]
+........................................................................ [ 98%]
+.................................................                        [100%]
+3131 passed, 14 skipped in 33.80s
+```
+（基线 3111 + 新增 20 = 3131，0 failed）
+
+**3. CLI 生成 attestation 原型**
+```
+$ /root/lp-bot/.venv/bin/python scripts/lp_rh_registry_v1_readonly.py \
+    --assets-json tests/fixtures/rh/synthetic/assets_session_nested.json \
+    --registry-out /tmp/rh_reg.json
+$ head -c 600 /tmp/rh_reg.json
+{
+  "generated_by": "lp_rh_registry_v1_readonly",
+  "default_chain_id": 4663,
+  "count": 1,
+  "attestations": [
+    {
+      "chain_id": 4663,
+      "address": "0x0bd7d308f8e1639fab988df18a8011f41eacad73",
+      "symbol_display": "WETH",
+      "attested": false,
+      "attestation_status": "DISCOVERED_NOT_ATTESTED",
+      "decimals": 18,
+      "schema_kind": "SESSION_NESTED",
+      "capability": {
+        "market": "TRADABLE",
+        "extended": "NOT_TRADABLE",
+        "overnight": "NOT_TRADABLE"
+      },
+      "metadata_version": "rh-assets-v1",
+      "source": "local-json:assets_session_nest
+```
+（overnight 原始为 `CLOSING_ONLY`/`TRADABLE` → 保守取 `NOT_TRADABLE`，符合 T03/T05）
+
+**4. 无网络/钱包 import**
+```
+$ grep -nE 'import (web3|eth_account|solders|solana|requests)' scripts/lp_rh_registry_v1_readonly.py || echo NO_NETWORK_OR_WALLET_IMPORTS
+NO_NETWORK_OR_WALLET_IMPORTS
+```
+
+**5. 无敏感子串**
+```
+$ grep -nEi 'private_key|keystore|broadcast|sign_tx|\.sign\(' scripts/lp_rh_registry_v1_readonly.py || echo NO_FORBIDDEN_SUBSTRINGS
+NO_FORBIDDEN_SUBSTRINGS
+```
+
+**6. 行数与 git 状态**
+```
+$ wc -l scripts/lp_rh_registry_v1_readonly.py tests/test_lp_rh_registry_v1_readonly.py reports/rh_pivot/20260907T124500Z/RH-01a/SCHEMA_COMPATIBILITY.md
+  349 scripts/lp_rh_registry_v1_readonly.py
+  189 tests/test_lp_rh_registry_v1_readonly.py
+   70 reports/rh_pivot/20260907T124500Z/RH-01a/SCHEMA_COMPATIBILITY.md
+
+$ git diff --stat
+ .gitignore                         | 4 ++++
+ scripts/lp_rpc_pool_v1_readonly.py | 5 +++++
+ 2 files changed, 9 insertions(+)
+$ git status --short | grep -E 'lp_rh|fixtures/rh|RH-01a'
+?? reports/rh_pivot/20260907T124500Z/RH-01a/
+?? scripts/lp_rh_registry_v1_readonly.py
+?? tests/test_lp_rh_registry_v1_readonly.py
+```
+（`git diff` 里的 `.gitignore` / `lp_rpc_pool_v1_readonly.py` 是会话开始前就存在的改动，非本次产生。）
+
+## 未完成项与原因
+
+无。spec 全部交付物已完成并通过验证。
+
+一处 spec 未钉死、我做了明确决策并已写入报告「Known uncovered cases」：**地址字段名**未由 PRD 固定，脚本按 `tokenAddress` → `assetAddress` → `address`（首个非 null 优先）取值。若后续 RH-01b 真实抓取确认了唯一字段名，可收紧为单一字段。
+
+[qwen-task] exit=0
+--- git status --short ---
+ M .gitignore
+ M scripts/lp_rpc_pool_v1_readonly.py
+?? CLAUDE.md
+?? "CODEX_\344\273\273\345\212\241\345\214\205_F_\345\233\236\345\275\222\344\277\256\345\244\215\344\270\216\350\257\201\346\215\256\347\256\241\347\272\277_2026-08-10.md"
+?? "CODEX_\344\273\273\345\212\241\345\214\205_G_\350\267\250\351\223\276\345\217\257\350\276\276\346\200\247\344\270\216\351\207\207\346\240\267\346\267\261\345\272\246_2026-08-11.md"
+?? "CODEX_\344\273\273\345\212\241\345\214\205_H_Solana\346\210\220\346\234\254\344\270\216\346\224\266\347\233\212\346\250\241\345\236\213_2026-08-11.md"
+?? NIGHT_TASKS.md
+?? reports/lp_base_10u_probe_execution_runtime/20260602_135824/
+?? reports/lp_base_10u_probe_execution_runtime/20260602_144843/
+?? reports/lp_base_10u_probe_execution_runtime/20260602_150957/
+?? reports/lp_base_10u_probe_execution_runtime/20260602_163036/
+?? reports/lp_base_10u_probe_execution_runtime/20260602_163036_test/
+?? reports/lp_base_10u_probe_execution_runtime/20260602_173525/
+?? reports/lp_base_10u_probe_execution_runtime/20260602_173525_test/
+?? reports/lp_base_10u_probe_execution_runtime/20260602_test/
+?? reports/lp_base_10u_probe_final_execution_review/20260602_173525/
+?? reports/lp_funnel_add1/20260809_103217/vetted_menu.json
+?? reports/lp_funnel_autopsy/20260810_043427/stage1/
+?? reports/lp_funnel_autopsy/20260810_043427/vetted_menu.json
+?? reports/lp_funnel_depth_fix/20260809_094800/
+?? reports/lp_funnel_depth_fix/20260809_100700/vetted_menu.json
+?? reports/lp_funnel_rerank/20260809_114000/correlation.json
+?? reports/lp_funnel_rerank/20260809_114000/correlation.md
+?? reports/lp_long_horizon_node_reports/20260605_043726/6h_regression_test/
+?? reports/lp_long_horizon_r1_12h_full_wallclock_observation/20260607_184500/AUDIT_NOTE_PID_TRANSITION.json
+?? reports/lp_long_horizon_r1_12h_full_wallclock_observation/20260607_184500/launch_log.txt
+?? reports/lp_long_horizon_r1_12h_full_wallclock_observation/20260607_184500/launch_pid.txt
+?? reports/lp_long_horizon_r1_12h_full_wallclock_observation/20260607_184500/wrapper_pid.txt
+?? reports/lp_long_horizon_readonly_12h_run/20260605_082120/
+?? reports/lp_long_horizon_readonly_collector_6h_fix/20260604_134918/STAGE_H_INTERIM_STATUS_CN.md
+?? reports/lp_long_horizon_readonly_collector_6h_fix/20260604_134918/TMUX_START_HEALTHCHECK_CN.md
+?? reports/lp_long_horizon_readonly_collector_6h_fix/20260604_134918/tmux_start_healthcheck.json
+?? reports/lp_long_horizon_readonly_continuous_12h_extension/20260605_082120/inflight_healthcheck_20260605_151011.json
+?? reports/lp_long_horizon_readonly_continuous_12h_extension/20260605_082120/inflight_healthcheck_20260605_151011.md
+?? reports/lp_long_horizon_readonly_continuous_12h_extension/20260606_131323/
+?? reports/lp_m0_integration_smoke/20260808_sol_acceptance/
+?? reports/lp_m0n_acceptance/20260809_base_once/
+?? reports/lp_m0n_n4/20260809_solana_once/
+?? reports/lp_m0n_n4/20260809_solana_once_top100/vetted_menu.json
+?? reports/lp_portfolio_paper_runner/
+?? reports/lp_scanner/scanner.pid
+?? reports/lp_scanner/vetted_menu.json
+?? reports/lp_scanner_v2_20260823/
+?? reports/lp_shadow_launch/
+?? reports/lp_tp_d/20260810_d4_top68_w10_normal/stage1_screen.json
+?? reports/lp_tp_d/20260810_d4_top68_w10_normal/stage2_candidates.json
+?? reports/lp_tp_f/20260810/base_funnel_f1_rerun/
+?? reports/lp_tp_f/20260811/
+?? reports/lp_tp_g/
+?? reports/lp_tp_h/20260811/h3_aaplx_stage2_run1.json
+?? reports/lp_tp_h/20260811/h3a_aaplx_stage2_run1.json
+?? reports/lp_tp_h/20260811/h3a_aaplx_stage2_run2.json
+?? reports/lp_tp_h/20260811/h3a_aaplx_stage2_run3.json
+?? reports/lp_tp_h/20260811/h4_base_invariance/
+?? reports/lp_tp_h/20260811/h5_checkpoints/
+?? reports/lp_tp_h/20260811/h5_solana_a_clmm_36_universe.json
+?? reports/polymarket_competitor/
+?? reports/rh_pivot/20260907T124500Z/RH-01a/
+?? reports/strategy_evidence_r0_pool_discovery/20260610_094647/
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/d4_runner.pid
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/daily_summary_day1.md
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/daily_summary_day2.md
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/daily_summary_day3.md
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/daily_summary_day4.md
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/daily_summary_day5.md
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/funding_updates.jsonl
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/heartbeat.jsonl
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/model_error_log.jsonl
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/paper_position_state_hourly.csv
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/paper_position_state_hourly.jsonl
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/restart.jsonl
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/reward_apr_updates.jsonl
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/swap_events_realtime.jsonl
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260616_183347_corrected/
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260617_050248_unhedged/
+?? scripts/README_polymarket_competitor.md
+?? scripts/lp_polymarket_competitor_collector_v1_readonly.py
+?? scripts/lp_polymarket_competitor_collector_v1_readonly.py.bak_20260725_preexportfix
+?? scripts/lp_rh_registry_v1_readonly.py
+?? scripts/night_scanner_watchdog.sh
+?? scripts/supervisor_polymarket_competitor.sh.example
+?? tests/fixtures/
+?? tests/test_lp_polymarket_competitor_collector_v1_readonly.py
+?? tests/test_lp_rh_registry_v1_readonly.py
+--- git diff --stat ---
+ .gitignore                         | 4 ++++
+ scripts/lp_rpc_pool_v1_readonly.py | 5 +++++
+ 2 files changed, 9 insertions(+)

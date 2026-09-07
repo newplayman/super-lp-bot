@@ -1,0 +1,16 @@
+{
+  "data_kind": "SYNTHETIC_NOT_CHAIN_DATA",
+  "metadata_version": "rh-assets-v1",
+  "assets": [
+    {
+      "tokenAddress": "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73",
+      "symbol": "WETH",
+      "tokenDecimals": 18,
+      "tradingCapabilities": {
+        "market": {"whole": "TRADING_STATUS_MAYBE", "fractional": "TRADING_STATUS_TRADABLE"},
+        "extended": {"whole": null, "fractional": "TRADING_STATUS_TRADABLE"},
+        "overnight": {"whole": "", "fractional": ""}
+      }
+    }
+  ]
+}

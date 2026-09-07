@@ -1,0 +1,92 @@
+[qwen-review] dir=/opt/lpbot/lp-bot-v3-origin-check spec=/opt/lpbot/lp-bot-v3-origin-check/docs/specs/20260907_RH-01a_registry_schema_adapter.md effort=medium diff_chars=941 log=/root/.qwen-code/logs/review-20260907-145914.log
+Permission deny rule "MultiEdit" matches no known tool — check for typos.
+[claude-code:unrecognized_model] {"model":"qwen38-v122-skinny-e5m2-mtp2-agent","query_source":"sdk"}
+
+
+# RH-01a 代码审查报告
+
+## 1. 验收标准逐条核对
+
+| 条目 | 结论 | 证据 file:line |
+|---|---|---|
+| 新增 1 脚本 `scripts/lp_rh_registry_v1_readonly.py`，≤350 行 | PASS | 349 行（`wc -l`）；`scripts/lp_rh_registry_v1_readonly.py:1` |
+| 常量 `RH_CHAIN_ID=4663`、`RH_TESTNET_CHAIN_ID=46630` | PASS | `scripts/lp_rh_registry_v1_readonly.py:31-32` |
+| `SEED_ADDRESSES` 5 条种子、`attested=False`、地址与 spec 逐一相符 | PASS | `scripts/lp_rh_registry_v1_readonly.py:36-42`（WETH/USDG/V3 factory/V3 PM/池地址逐字核对一致） |
+| `AssetIdentity` 字段齐全（含 `attested:bool=False`） | PASS | `scripts/lp_rh_registry_v1_readonly.py:62-73` |
+| `SessionCapability`（market/extended/overnight + `schema_kind` + `raw_flags`） | PASS | `scripts/lp_rh_registry_v1_readonly.py:76-82` |
+| `detect_schema` 四路分类（legacy-only/nested-only/both→比较/none→UNKNOWN） | PASS | `scripts/lp_rh_registry_v1_readonly.py:145-163`；both 一致→`SESSION_NESTED` 且 `raw_flags["both_present"]=True`（`:170-173`） |
+| LEGACY 映射：True→TRADABLE / False→NOT_TRADABLE / 其它→UNKNOWN；三键→market/extended/overnight | PASS | `scripts/lp_rh_registry_v1_readonly.py:99-112` |
+| NESTED 映射：严格枚举匹配；`CLOSING_ONLY`→NOT_TRADABLE 且原串保留在 `raw_flags` | PASS | `scripts/lp_rh_registry_v1_readonly.py:115-120,170-173`（`raw_trading_capabilities` 原样保留） |
+| `whole`/`fractional` 不一致取保守（NOT_TRADABLE > UNKNOWN > TRADABLE） | PASS | `scripts/lp_rh_registry_v1_readonly.py:50,123-133` |
+| CONFLICT/UNKNOWN schema → 三项全 UNKNOWN | PASS | `scripts/lp_rh_registry_v1_readonly.py:178-179` |
+| `asset_from_json`：地址缺失/非 40 hex → `ValueError("ASSET_ADDRESS_INVALID")`；`tokenDecimals` 缺失→None；地址统一 lower | PASS | `scripts/lp_rh_registry_v1_readonly.py:203-208,222-228` |
+| `verify_identity`：lower 键；缺失/symbol/uid/decimals 不一致→MISMATCH；symbol 同地址不同永远 MISMATCH（T02） | PASS | `scripts/lp_rh_registry_v1_readonly.py:240-258`（不同地址查不到键→MISMATCH） |
+| `is_new_position_allowed`：仅 TRADABLE→True，UNKNOWN/CONFLICT/未知 session→False（T05） | PASS | `scripts/lp_rh_registry_v1_readonly.py:261-269` |
+| `load_assets` 本地读 JSON + `main()` 支持 `--assets-json/--registry-out`，输出 `attested=False`、`attestation_status="DISCOVERED_NOT_ATTESTED"` | PASS | `scripts/lp_rh_registry_v1_readonly.py:289-345` |
+| 顶部 docstring 写明只读/不 import 签名广播库/不联网 | PASS | `scripts/lp_rh_registry_v1_readonly.py:2-20` |
+| 测试文件 ≤250 行，覆盖 T02/T03/T04/T05/非法地址/保守合并/decimals 缺失/46630 资产对 4663 registry，且断言具体值 | PASS | 189 行；`tests/test_lp_rh_registry_v1_readonly.py:142-145`(T02)、`72-80`(T03)、`84-88`(T04)、`92-97`+`64-68`(T05)、`118-122`、`109-114`、`125-128`、`154-158`；全部为等值断言，无 `is not None` |
+| 4 个 fixture 均带 `"data_kind": "SYNTHETIC_NOT_CHAIN_DATA"` | PASS | 4 个 JSON 第 2 行均有该标记 |
+| `SCHEMA_COMPATIBILITY.md` ≤80 行，含字段对照表/映射规则/CONFLICT 定义/closing-only/已知未覆盖 | PASS | 70 行，五个小节齐全 |
+| 验收① `git diff --stat` 只含 3 类新文件 | 需关注 | 见下文第 2 节：任务自身足迹干净，但工作区含 2 个**会话开始前已存在**的已跟踪改动 |
+| 验收② 目标测试全绿且 ≥10 个 | PASS | `20 passed in 0.02s` |
+| 验收③ 全量 = 3111 + 新增，0 failed，14 skipped | PASS | `3131 passed, 14 skipped`（3111+20=3131，0 failed） |
+| 验收④ 禁网/钱包 import 及 sign/broadcast/private_key/keystore 零命中 | PASS | `NO_NETWORK_OR_WALLET_IMPORTS`；第二组 grep 无命中（rc=1，docstring 连提及都没有） |
+| 验收⑤ 脚本运行退出码 0 且每项 `DISCOVERED_NOT_ATTESTED` | PASS | `exit=0`；输出含 `"attested": false, "attestation_status": "DISCOVERED_NOT_ATTESTED"` |
+
+## 2. 未授权改动清单
+
+**任务自身无越界改动。** 新文件足迹恰好为 spec 规定的 4 类：1 脚本 + 1 测试 + 4 fixtures（`tests/fixtures/` 下仅 `rh/synthetic/` 4 个 JSON，无杂物）+ 1 md。未改任何现有 `scripts/*.py`、`tests/*.py`、配置；未写 `reports/lp_rh/scanner.db`；脚本只写 `--registry-out` 指定路径。
+
+需说明的一点：`git diff --stat` 显示 2 个已跟踪改动——`.gitignore`（+4，codex sandbox mount 忽略项）和 `scripts/lp_rpc_pool_v1_readonly.py`（+5，status 增加 `endpoints` 字段）。**两者在本次会话开始前的 git status 快照中已是 `M` 状态**，属于先前遗留的未提交工作；spec 的"不许动什么"一节明确承认它们存在并要求"不动"，本任务确实未再触碰。故不计为 RH-01a 的未授权改动，但按验收①的字面标准（diff 只含新文件）无法通过，特此标注。
+
+## 3. 验证命令原样输出（各命令均不足 60 行，全贴）
+
+```
+$ /root/lp-bot/.venv/bin/python -m pytest tests/test_lp_rh_registry_v1_readonly.py -q -p no:cacheprovider 2>&1 | tail -3
+....................                                                     [100%]
+20 passed in 0.02s
+
+$ /root/lp-bot/.venv/bin/python -m pytest tests/ -q -p no:cacheprovider 2>&1 | tail -2
+.................................................                        [100%]
+3131 passed, 14 skipped in 33.71s
+
+$ /root/lp-bot/.venv/bin/python scripts/lp_rh_registry_v1_readonly.py --assets-json tests/fixtures/rh/synthetic/assets_session_nested.json --registry-out /tmp/rh_reg.json && head -c 600 /tmp/rh_reg.json
+exit=0
+{
+  "generated_by": "lp_rh_registry_v1_readonly",
+  "default_chain_id": 4663,
+  "count": 1,
+  "attestations": [
+    {
+      "chain_id": 4663,
+      "address": "0x0bd7d308f8e1639fab988df18a8011f41eacad73",
+      "symbol_display": "WETH",
+      "attested": false,
+      "attestation_status": "DISCOVERED_NOT_ATTESTED",
+      "decimals": 18,
+      "schema_kind": "SESSION_NESTED",
+      "capability": {
+        "market": "TRADABLE",
+        "extended": "NOT_TRADABLE",
+        "overnight": "NOT_TRADABLE"
+      },
+      "metadata_version": "rh-assets-v1",
+      "source": "local-json:assets_session_nest
+
+$ grep -nE 'import (web3|eth_account|solders|solana|requests)' scripts/lp_rh_registry_v1_readonly.py || echo NO_NETWORK_OR_WALLET_IMPORTS
+NO_NETWORK_OR_WALLET_IMPORTS
+
+$ git diff --stat; git status --short | grep -E 'lp_rh|fixtures/rh|RH-01a'
+ .gitignore                         | 4 ++++
+ scripts/lp_rpc_pool_v1_readonly.py | 5 +++++
+ 2 files changed, 9 insertions(+)
+?? reports/rh_pivot/20260907T124500Z/RH-01a/
+?? scripts/lp_rh_registry_v1_readonly.py
+?? tests/test_lp_rh_registry_v1_readonly.py
+```
+
+（另：`grep -nE 'sign|broadcast|private_key|keystore'` 对该脚本零命中，grep rc=1。）
+
+## 4. 总结论
+
+**ACCEPT** — 全部功能验收标准（测试 20/20 全绿、全量 3131=3111+20 且 0 failed/14 skipped、禁 import 零命中、CLI 运行 exit 0 且状态正确）均通过，实现与 spec 逐条吻合且 fail-closed 语义正确；唯一瑕疵是工作区残留 2 个会话前已存在的已跟踪改动（`.gitignore`、`lp_rpc_pool_v1_readonly.py`），使验收①的字面 `git diff --stat` 检查不干净，但 spec 本身要求"不动"它们，任务未越界。
