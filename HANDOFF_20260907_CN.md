@@ -88,3 +88,9 @@ A/B 档 `existing_terminal_conjunction` 无生产者（确认 NO_WRITER），RH 
 ### 进行中
 
 RH-01b（`docs/specs/20260907_RH-01b_capabilities_pool_probe.md`）：链能力矩阵与 V3/V4 池探针，已派给 `qwen-task`。
+
+### B2 设计稿已补齐（2026-09-07 16:23 UTC）
+
+用户找到 `Robinhood_Chain_LP_Bot_50_30_20_全面转向设计文档_v1.0.md`，SHA-256 `1afc496f0a4a465a611cad6052882c14fdd0aeb92d06635fcbd4a6cea05dfd37`、45948 字节，与 `INPUT_MANIFEST.json` 逐字节吻合。已归档 `docs/rh_pivot/inputs/`，`validate_delivery.py` 现返回 **PASS**（`input_checksums_verified: true`，结果存 `docs/rh_pivot/DELIVERY_VALIDATION_LOCAL.json`）。
+
+B2 内容与 PRD v1.1 的 D01–D14 修订一致，不改变推进路线。要点对照：B2 §55 假设 Go/Rust/PostgreSQL/NATS 技术栈（实际为 Python+SQLite，由 D01 修正）；B2 §48 的 RH-P0–P11 任务拆分被 PRD §19 的 RH-00–RH-09 取代；B2 §12 的 1%/3%/7% premium、§23 的 30/75/150 bps USDG、§26 的 2/3/5/8% 回撤门限均保留为 Shadow 初值；B2 §45 的 I-01–I-15 不变量已被 PRD §18.3 的 RH-INV-01–18 覆盖并加严；B2 §16 允许的 5% transfer tax 被 PRD §10.3 首版拒绝；B2 §21 的原子退出被 PRD §15.2 降为可选、分步退出为必须。
