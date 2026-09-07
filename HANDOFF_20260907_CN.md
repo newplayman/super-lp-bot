@@ -58,3 +58,33 @@ VPS 上**未删除**任何东西：`/opt/lpbot` 原样保留（含 6.7G `_migrat
 按 `docs/rh_pivot/AGENT_START_AND_TASKS_CN.md` 执行 RH-00。调研问题包已写在 `docs/specs/20260907_RH-00_baseline_audit_readonly.md`（Q1–Q7），用 `qwen-code -p … --disallowedTools Edit,Write` 逐题派发，产物落 `reports/rh_pivot/<UTC_RUN_ID>/RH-00/`。本机 Qwen 通道 2026-09-07 12:20 UTC 冒烟通过。
 
 本机资源：2 核 / 3G 内存 / 22G 可用磁盘。**不要在本机同时复活两个 scanner**；RH 支线用独立 `reports/lp_rh/scanner.db`。
+
+---
+
+## 6. 搬迁后当日进展（2026-09-07 下午）
+
+| commit | 内容 |
+|---|---|
+| `279b047` | 搬迁交接、RH 交付包入库、搬迁证据 |
+| `3c0ee20` | **RH-00** 只读基线与证据链审计（`reports/rh_pivot/20260907T124500Z/RH-00/`） |
+| `9b7d9bb` | **RH-00b** 修复 `RpcPool._penalize` 指数退避 float 溢出（+ 配对测试） |
+| `eefcadd` | 补入被 `*.log` 规则忽略的原始测试/审查日志 |
+| `0543e84` | **RH-01a** RH 资产注册表 + assets 新旧 schema 适配器（20 个配对测试） |
+
+### RH-00 的核心结论
+
+B1 §10.2 的 P0-1（scanner 73–80% 池永久 fail-closed，原因 `factory_registry_probe_incomplete`）**根因已定位并修复**：不是 RPC 退化、不是市场变化，而是 `scripts/lp_rpc_pool_v1_readonly.py:280` 的 `backoff = base * 2**(fails-1)` 在某端点连续失败数 ≥1025 时 float 溢出（`_fails` 只在成功时清零，28 天不重启的 daemon 必然累积到该量级）；`OverflowError` 从 `RpcPool.call` 的 except 分支穿透，被 `lp_pool_resolve_and_rank_v1_readonly.py` 记成探针错误。迁移库证据：首次出现 2026-08-31T22:02:28Z，此后**每一条**该原因的记录都带 `OverflowError`，此前一条都没有。已确定性复现（fails=1024 正常、1025 抛错）。
+
+**因此近一周 live 漏斗的 "accepted=0" 不含任何经济信息**：最新批次 30 个候选全部是 `INPUTS_UNAVAILABLE`（24 个 OverflowError + 6 个 `NETCOVER_INPUT_MISSING`），`COMPUTED_FAIL` 为 0。阳性对照取自 2026-08-31T19:34Z（溢出前）批次：WETH-USDC NetCover 0.743、SOSO-USDC 0.300，均为真正的 `COMPUTED_FAIL: NETCOVER_BELOW_SHADOW`。
+
+### 对 B1 的三处修正
+
+1. B1 §6.1 列四个保护进程，实测**五个**（多一个写 `reports/lp_scanner_v2_20260823/scanner.db` 的 scanner）。
+2. B1 §10.3 "两张死表 0 写入者"过时：`market_sessions` 的 writer 在 `lp_rwa_collector_daemon_v1_readonly.py:592`，`rpc_severe_incidents` 的 writer 在 `lp_shadow_gate_v1_readonly.py:293` 且已接入 daemon 主循环（:1826/:1859）；两者都是**有 writer、触发条件从未满足**，行数 0。
+3. B1 §10.6 "backup 副本仅 50–140M" 不成立：`VACUUM INTO` 后仍为 2.06G / 1.44G。
+
+A/B 档 `existing_terminal_conjunction` 无生产者（确认 NO_WRITER），RH 支线的股票终闸不得复制该模式。
+
+### 进行中
+
+RH-01b（`docs/specs/20260907_RH-01b_capabilities_pool_probe.md`）：链能力矩阵与 V3/V4 池探针，已派给 `qwen-task`。
