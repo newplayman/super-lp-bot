@@ -1,0 +1,85 @@
+{
+  "task_id": "RH-00",
+  "run_id": "20260907T124500Z",
+  "subject": "factory_registry_probe_incomplete (B1 §10.2 P0-1) root cause on migrated reports/lp_scanner/scanner.db",
+  "db": {
+    "path": "reports/lp_scanner/scanner.db",
+    "provenance": "VACUUM INTO copy of 157.173.123.24 live db taken 2026-09-07 12:03 UTC after scanner PID 2077656 was stopped; integrity_check=ok; opportunity_scores=114422 rows",
+    "sha256": "faff2557cd70adbb1a7d98267b39692204f5061bc7f69b22edde327a830d8b6c"
+  },
+  "latest_batch": {
+    "as_of": "2026-09-07T11:59:14.196035+00:00",
+    "rows": 30,
+    "factory_registry_probe_incomplete": 24,
+    "share": 0.8,
+    "all_affected_are": {"chain": "Base", "project": "aerodrome-slipstream"},
+    "remaining_6": "uniswap-v3, status=ERROR, rejection_reason=NETCOVER_INPUT_MISSING:*, netcover_ratio=NULL"
+  },
+  "timeline_daily_from_db": {
+    "note": "rows per day / rows with factory_registry_probe_incomplete (frpi) / rows whose score_json.factory_probe_errors contains OverflowError",
+    "2026-08-30": {"rows": 1530, "frpi": 0, "overflow": 0, "no_measured_usd_quote_route": 362},
+    "2026-08-31": {"rows": 1650, "frpi": 585, "overflow": 585, "no_measured_usd_quote_route": 164},
+    "2026-09-01": {"rows": 11940, "frpi": 9408, "overflow": 9408},
+    "2026-09-02": {"rows": 11760, "frpi": 9913, "overflow": 9913},
+    "2026-09-03": {"rows": 14400, "frpi": 11980, "overflow": 11980},
+    "2026-09-04": {"rows": 14520, "frpi": 12215, "overflow": 12215},
+    "2026-09-05": {"rows": 14460, "frpi": 11385, "overflow": 11385},
+    "2026-09-06": {"rows": 15810, "frpi": 12691, "overflow": 12691},
+    "2026-09-07": {"rows": 7920, "frpi": 6087, "overflow": 6087},
+    "first_overflow_as_of": "2026-08-31T22:02:28.021210+00:00",
+    "frpi_rows_without_overflow": 0,
+    "side_effect": "daily row volume rose ~8x from 2026-09-01 because probes fail instantly instead of waiting on RPC"
+  },
+  "root_cause": {
+    "classification": "CODE_DEFECT_IN_RPC_POOL (not RPC transport error, not chain outage, not economic failure)",
+    "file": "scripts/lp_rpc_pool_v1_readonly.py",
+    "function": "RpcPool._penalize",
+    "line": 280,
+    "code": "backoff = self._cooldown_base * (2 ** (fails - 1))",
+    "mechanism": "_fails[url] only resets on success (_reset :283). A persistently failing endpoint accumulates fails monotonically inside a long-lived daemon (PID 2077656 ran 28 days). At fails >= 1025, 2**1024 exceeds float max and float*int raises OverflowError. In RpcPool.call (:343-372) the second _penalize inside the except-branch (:371) is outside any try, so the OverflowError escapes call() to the caller.",
+    "propagation": [
+      "scripts/lp_scanner_daemon_v1_readonly.py:726,781 inject pool.call as _rpc_with_retry",
+      "scripts/lp_pool_resolve_and_rank_v1_readonly.py:346 _resolve_pool_at_factory (eth_call getPool) and :378 _validate_aerodrome_candidate (eth_getCode/eth_call) catch Exception and append to probe_errors (:467-472, :495-500)",
+      "scripts/lp_pool_resolve_and_rank_v1_readonly.py:506-511 probe_errors non-empty -> PoolResolutionIncompleteError(reason=factory_registry_probe_incomplete)",
+      "scripts/lp_pool_resolve_and_rank_v1_readonly.py:984-992 process_candidate -> permanent_fail_closed_reason, resolve_status=UNKNOWN, status=FAIL_CLOSED",
+      "scripts/lp_scanner_daemon_v1_readonly.py:1250-1258 _enforce_fifth_gate -> netcover_pass=False, rejection_reason=PERMANENT_FAIL_CLOSED:factory_registry_probe_incomplete"
+    ],
+    "why_only_aerodrome": "uniswap-v3 uses single-factory resolve_pool_address (:536) whose exceptions fall to status=ERROR instead of this reason",
+    "deterministic_reproduction": {
+      "command": "venv python: from scripts.lp_rpc_pool_v1_readonly import RpcPool; p=RpcPool(chain='base'); u=p._endpoints[0]['url']; p._fails[u]=1023; p._penalize(u) -> ok; p._fails[u]=1024; p._penalize(u) -> OverflowError",
+      "observed": {"fails=1024": "ok (cooldown computed)", "fails=1025": "OverflowError: int too large to convert to float"},
+      "run_at": "2026-09-07T13:3xZ on local host, no network needed"
+    },
+    "db_evidence_sample": [
+      {"factory_label": "gauge_caps", "error": "OverflowError: int too large to convert to float"},
+      {"factory_label": "initial", "error": "candidate_validation:OverflowError: int too large to convert to float"},
+      {"factory_label": "gauges_v3", "error": "candidate_validation:OverflowError: int too large to convert to float"}
+    ]
+  },
+  "zero_candidate_split_latest_batch": {
+    "COMPUTED_FAIL": 0,
+    "INPUTS_UNAVAILABLE": 30,
+    "INPUTS_UNAVAILABLE_breakdown": {"factory_registry_probe_incomplete(OverflowError)": 24, "NETCOVER_INPUT_MISSING": 6},
+    "UNSUPPORTED": 0,
+    "POLICY_BLOCKED": 0,
+    "conclusion": "The recent live-funnel 'accepted=0' carries no economic information; it is 100% inputs-unavailable caused by a code defect. B1 §10.2's warning stands and is now explained."
+  },
+  "positive_control": {
+    "source": "same db, last batch with computed netcover: as_of=2026-08-31T19:34:18.411489+00:00 (before first OverflowError)",
+    "pools": [
+      {"pool": "0xb4cb800910b228ed3d0834cf79d697127bbb00e5", "symbol": "WETH-USDC", "project": "uniswap-v3", "fee_tier": 0.0001, "active_liquidity_notional_usd": 312228.91, "netcover_ratio": 0.7430498716815961, "status": "OK", "resolve_status": "OK", "rejection_reason": "NETCOVER_BELOW_SHADOW", "classification": "COMPUTED_FAIL"},
+      {"pool": "0x29183f918920a2aef0115a9c7374945589968aea", "symbol": "SOSO-USDC", "project": "uniswap-v3", "fee_tier": 0.0001, "active_liquidity_notional_usd": 515246.33, "netcover_ratio": 0.29990874770482756, "status": "OK", "resolve_status": "OK", "rejection_reason": "NETCOVER_BELOW_SHADOW", "classification": "COMPUTED_FAIL"}
+    ],
+    "meaning": "These rows prove the engine computes a numeric NetCover when probes succeed; contrast rows have resolve_status=UNKNOWN and netcover=NULL."
+  },
+  "not_run": [
+    "live RPC re-probe of an affected aerodrome pool (needs network; deferred to RH-01 capability probe)",
+    "lp_funnel_autopsy_v1_readonly.py replay (needs matching --stage1-screen artifact; see BASELINE_RAW.log for attempt)"
+  ],
+  "minimal_fix_plan_for_next_package": {
+    "file": "scripts/lp_rpc_pool_v1_readonly.py:280",
+    "change": "cap the exponent, e.g. backoff = self._cooldown_base * (2 ** min(fails - 1, 30)); keep min(backoff, cooldown_max) semantics; add paired test in tests/test_lp_rpc_pool_v1_readonly.py asserting _penalize at fails=2000 does not raise and cooldown == cooldown_max",
+    "does_not_touch": "six protected constants, NetCover engine, cost model, thresholds; Base fixed-snapshot invariance unaffected (RPC layer only)",
+    "authorization": "bug fix inside read-only pipeline with paired test = allowed by B1 §11 '允许直接做'; the migrated daemon is stopped so no live process is affected"
+  }
+}

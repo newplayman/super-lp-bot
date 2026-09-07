@@ -1,0 +1,57 @@
+{
+  "task_id": "RH-00",
+  "run_id": "20260907T124500Z",
+  "mode": "READONLY",
+  "verdict": "PASS",
+  "scope_note": "PASS = baseline reproduced on the migrated host and evidence chain audited; NOT an economic or live-readiness pass",
+  "repo_head": "279b0473 (code identical to 0e2b6e6; only docs added)",
+  "branch": "feat/prd-v2.1-m0-shadow",
+  "dirty_diff_hash": "77aa4c3477ae599f40dae78a2d1bac4e4461bfffbbf1a488859674a231a516df",
+  "dirty_tracked": [".gitignore (+4)", "scripts/lp_rpc_pool_v1_readonly.py (+5 health_snapshot endpoints)"],
+  "source_snapshot_hashes": {
+    "reports/lp_scanner/scanner.db": "faff2557cd70adbb1a7d98267b39692204f5061bc7f69b22edde327a830d8b6c",
+    "reports/lp_scanner_v2_20260823/scanner.db": "3fc74747a2b4ab33c44b174c414e2a8a856f9a9d21af26864ae0b80496e12a0d",
+    "B1 PROJECT_STATE_AND_ARCHITECTURE_20260907_CN.md": "dfd47144bb527707117eb4c47cc023b8c6271972902c59a23143c95898242375",
+    "B2": "ABSENT (user confirmed no such file)"
+  },
+  "policy_version": "legacy M1=100U + rh_50_30_20_proposed_v1 (approved_for_live=false, not implemented yet)",
+  "model_version": "lp_netcover_engine_v1 (NETCOVER_SHADOW=1.0, NETCOVER_TINY_LIVE=1.5), lp_netcover_inputs_v1 (LVR_COEFFICIENT_MODEL=0.50)",
+  "schema_version": "scanner.db legacy (opportunity_scores/pool_snapshots/reward_observations); rh_* tables not created",
+  "protected_constants_unchanged": true,
+  "protected_processes": "stopped on VPS 2026-09-07T12:02Z by user decision (migration); none started locally",
+  "keys_created": 0, "signatures": 0, "broadcasts": 0, "paid_services": 0, "git_push": 0,
+  "tests": {
+    "pytest": {"passed": 3109, "failed": 0, "skipped": 14, "log": "BASELINE_RAW.log", "note": "matches B1 baseline; first local run had 287 path-layout failures fixed by placing repo at /opt/lpbot (no test edited)"},
+    "go": {"ok_packages": 57, "fail": 0, "log": "BASELINE_RAW.log"}
+  },
+  "not_run": [
+    "lp_funnel_autopsy_v1_readonly.py replay on migrated db (requires --stage1-screen artifact of the same batch; none persisted by daemon)",
+    "live RPC re-probe of affected aerodrome pools (network; deferred to RH-01)",
+    "go test wallet/keystore package timing comparison"
+  ],
+  "unapproved_actions_taken": [],
+  "candidate_reason_split_latest_batch_2026-09-07T11:59Z": {
+    "discovered": 30, "COMPUTED_PASS": 0, "COMPUTED_FAIL": 0, "INPUTS_UNAVAILABLE": 30, "UNSUPPORTED": 0, "POLICY_BLOCKED": 0,
+    "dominant_blocker": "factory_registry_probe_incomplete caused by OverflowError in RpcPool._penalize (24/30); NETCOVER_INPUT_MISSING (6/30)"
+  },
+  "positive_control": "2026-08-31T19:34:18Z batch: WETH-USDC uniswap-v3 netcover 0.743, SOSO-USDC 0.300 (COMPUTED_FAIL: NETCOVER_BELOW_SHADOW) — see LEGACY_FAILURE_AUTOPSY.json",
+  "prd_section_24_answers": {
+    "1_head_branch_dirty_processes_vs_docs": "HEAD 0e2b6e6 (docs said 1e1d9bd; +1 docs commit). Dirty = 2 tracked (known). Processes: 5 not 4 (extra scanner v2). All now stopped on VPS.",
+    "2_which_modules_really_called_by_python_layer": "See P0_EXISTING_CODE_MAP §1 import counts: rpc_pool(10), universe_screener(7), netcover_inputs(7), netcover_engine(12), swap_cost_model(5), scanner_daemon(3), shadow_gate(3), funnel_autopsy(1), stock_universe(0), stock_tier_policy(2), stock_tier_acceptance(0), panel(0), base_m1_executor(4 readonly preflight/smoke scripts).",
+    "3_factory_registry_probe_incomplete_root_causes": "Single root cause: scripts/lp_rpc_pool_v1_readonly.py:280 backoff=2**(fails-1) overflows float at fails>=1025 inside 28-day daemon; OverflowError escapes RpcPool.call and is recorded as probe error -> PoolResolutionIncompleteError. First seen 2026-08-31T22:02Z; 100% of frpi rows since carry it. Deterministically reproduced.",
+    "4_terminal_field_producers": "All 5 fifth-gate fields have live producers (FIELD_PRODUCER_MAP). NO_WRITER confirmed only for A/B stock existing_terminal_conjunction. Two 'dead tables' have writers but never triggered (0 rows).",
+    "5_rh_free_data_capabilities": "NOT_RUN in RH-00 (no network probe). RH-01 to establish via RH_CAPABILITY_MATRIX.json.",
+    "6_provable_v3_v4_asset_identity": "None yet; PRD §3.3 seeds are DISCOVERED_NOT_ATTESTED until RH-01.",
+    "7_why_can_or_cannot_order_under_100U_and_50_30_20": "Cannot: LIVE not authorized; 50/30/20 CORE cap 42.5U < legacy 50U min -> CAPITAL_POLICY_CONFLICT (fixture T25); and the legacy funnel currently yields 0 computed candidates for a code-defect reason, so there is no economic evidence either way.",
+    "8_min_files_for_first_core_shadow_loop": "P0_EXISTING_CODE_MAP §3: RH-00b 1-line fix + paired test; then RH-01..RH-04 new lp_rh_* modules importing lp_netcover_engine unchanged.",
+    "9_base_fixed_snapshot_unchanged": "Yes: no shared model/cost file edited; dirty diff hash identical to VPS; pytest 3109/14 identical.",
+    "10_still_not_authorized": "signing/broadcast/key generation; enabling lpbot-* executor units; capital policy replacement; paid RPC; git push; restarting legacy daemons on local host."
+  },
+  "known_blockers": [
+    "B2 design document absent (validate_delivery.py FAIL); PRD D01-D14 used as the sole authority",
+    "RpcPool overflow defect must be fixed before any RH probe reuses RpcPool (else RH copies the same failure mode)",
+    "local host has 2 cores / 3GB RAM: do not run legacy scanners here"
+  ],
+  "next_allowed_task": "RH-00b hotfix (RpcPool._penalize exponent cap + paired test, via qwen-task/qwen-review), then RH-01",
+  "explicitly_not_authorized": ["LIVE", "signing", "broadcast", "keys", "capital policy change", "paid services", "git push"]
+}
