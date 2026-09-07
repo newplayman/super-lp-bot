@@ -1,0 +1,187 @@
+[qwen-task] dir=/opt/lpbot/lp-bot-v3-origin-check spec=/opt/lpbot/lp-bot-v3-origin-check/docs/specs/20260907_RH-02b_reservations_and_sessions.md log=/root/.qwen-code/logs/task-20260907-184534.log max_turns=80
+[claude-code:unrecognized_model] {"model":"qwen38-v122-skinny-e5m2-mtp2-agent","query_source":"sdk"}
+[tool 39s] turn=3 Read '/opt/lpbot/lp-bot-v3-origin-check/scripts/lp_rh_market_session_v1_readonly.py'
+[tool 40s] turn=4 Read ''
+[tool-error 40s] '<tool_use_error>InputValidationError: Read was called with input that could not be parsed as JSON.\nYou sent (first 98 of 98 bytes): {"file_path": "/opt/lpbot/lp'
+[tool 69s] turn=7 Read '/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_market_session_v1_readonly.py'
+[progress 130s] turn=7 streamed_chars=4775
+[progress 190s] turn=7 streamed_chars=7768
+[progress 250s] turn=7 streamed_chars=17143
+[progress 310s] turn=7 streamed_chars=20674
+[tool 347s] turn=10 Edit '/opt/lpbot/lp-bot-v3-origin-check/scripts/lp_rh_market_session_v1_readonly.py'
+[tool 392s] turn=13 Edit '/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_market_session_v1_readonly.py'
+[tool 421s] turn=16 Bash 'env -u PYTHONPATH /root/lp-bot/.venv/bin/python scripts/lp_rh_market_session_v1_readonly.py --self-test && ech'
+[tool 422s] turn=17 Bash ''
+[tool-error 422s] '<tool_use_error>InputValidationError: Bash was called with input that could not be parsed as JSON.\nYou sent (first 182 of 182 bytes): {"command": "env -u PYTHON'
+[tool 423s] turn=18 Bash ''
+[tool-error 423s] '<tool_use_error>InputValidationError: Bash was called with input that could not be parsed as JSON.\nYou sent (first 200 of 230 bytes): {"command": "/root/lp-bot/'
+[tool 450s] turn=21 Bash 'env -u PYTHONPATH /root/lp-bot/.venv/bin/python scripts/lp_rh_bucket_ledger_v1_readonly.py --self-test && echo'
+[tool 476s] turn=24 Bash '/root/lp-bot/.venv/bin/python -m pytest tests/test_lp_rh_bucket_ledger_v1_readonly.py tests/test_lp_rh_market_'
+[tool 532s] turn=27 Bash '/root/lp-bot/.venv/bin/python -m pytest tests/ -q -p no:cacheprovider 2>&1 | tail -15'
+[progress 592s] turn=27 streamed_chars=44456
+[tool 599s] turn=30 Bash 'wc -l scripts/lp_rh_bucket_ledger_v1_readonly.py scripts/lp_rh_market_session_v1_readonly.py tests/test_lp_rh_'
+[tool 600s] turn=31 Bash 'git diff --stat; echo "---STATUS---"; git status --short | grep -E \'lp_rh_(bucket|market)\''
+[tool 601s] turn=32 Bash ''
+[tool-error 601s] '<tool_use_error>InputValidationError: Bash was called with input that could not be parsed as JSON.\nYou sent (first 200 of 263 bytes): {"command": "grep -nE \'flo'
+[tool 629s] turn=35 Bash "grep -nE 'float\\(|import pytz|timedelta\\(hours=-[45]\\)' scripts/lp_rh_bucket_ledger_v1_readonly.py scripts/lp_"
+[tool 663s] turn=38 Bash 'env -u PYTHONPATH /root/lp-bot/.venv/bin/python -c "\nfrom scripts import lp_rh_market_session_v1_readonly as m'
+[result 701s] is_error=False turns=17 subtype=success
+
+
+All verification passes. The exact FAIL-1 case that previously crashed with `TypeError` now returns `['ORACLE_STALE']` correctly.
+
+## 改动文件列表
+
+本轮只改了 spec 允许的两个文件：
+
+1. **`scripts/lp_rh_market_session_v1_readonly.py`**（227 行，≤250）
+   - 新增内部辅助 `_to_dt(value, field)`：`None`→`None`；`datetime` 要求 tzinfo 非空否则抛 `ValueError("NAIVE_DATETIME: <field>")`；字符串先替换结尾 `Z`→`+00:00` 再走 `datetime.fromisoformat`，解析失败或无时区抛 `ValueError("NON_UTC_TIMESTAMP: <field>")`。
+   - `evaluate_health` 的 `oracle_updated_at` / `api_generated_at` / `now` 三个参数先经 `_to_dt` 归一化再做减法。**其余函数（`classify_session`/`stale_reason`/`allows_new_position`/`_self_test`/`main`）一行未改。**
+
+2. **`tests/test_lp_rh_market_session_v1_readonly.py`**（201 行，≤250）
+   - 仅在文件末尾**追加** 5 个测试（FAIL-2 要求），已有测试一行未改。
+
+**未动**（按要求）：`scripts/lp_rh_bucket_ledger_v1_readonly.py` 及其测试。
+
+## 验证命令与原样输出
+
+**两个 self-test：**
+```
+SESSION_SELF_TEST_OK
+SESSION_OK
+LEDGER_SELF_TEST_OK
+LEDGER_OK
+```
+
+**两个新测试文件：**
+```
+..................................                                       [100%]
+34 passed in 0.17s
+```
+
+**全量 pytest：**
+```
+3208 passed, 14 skipped in 34.63s
+```
+（= 3203 + 5，0 failed，14 skipped，符合验收）
+
+**行数 / git 状态 / 禁用模式：**
+```
+214 scripts/lp_rh_bucket_ledger_v1_readonly.py
+227 scripts/lp_rh_market_session_v1_readonly.py
+155 tests/test_lp_rh_bucket_ledger_v1_readonly.py
+201 tests/test_lp_rh_market_session_v1_readonly.py
+797 total
+```
+```
+---STATUS---
+?? scripts/lp_rh_bucket_ledger_v1_readonly.py
+?? scripts/lp_rh_market_session_v1_readonly.py
+?? tests/test_lp_rh_bucket_ledger_v1_readonly.py
+?? tests/test_lp_rh_market_session_v1_readonly.py
+```
+（`git diff --stat` 为空；新增文件仍为 4 个）
+```
+grep_exit=1
+```
+（`float(`/`import pytz`/`timedelta(hours=-[45])` 零命中）
+
+**FAIL-1 主脑复现用例：**
+```
+FAIL-1 repro -> ['ORACLE_STALE']
+OK: no TypeError, ORACLE_STALE raised for None oracle, API fresh (60s<300s)
+```
+
+## 未完成项与原因
+
+无。
+
+- 关于环境纪律第 6 点（"若全量 pytest 不可用则改用 unittest"）：spec 里那段 `No module named 'Crypto'` 的收集报错是**示例输出**，本环境中全量 `pytest tests/` 实际可正常收集并全绿（3208 passed），故无需退回 unittest，直接用 pytest 验证即可。
+- 5 个新测试全绿；`test_lp_rh_market_session_v1_readonly.py` 全部通过（20 个）；bucket 侧 14 个测试未受影响。
+
+[qwen-task] exit=0
+--- git status --short ---
+?? CLAUDE.md
+?? "CODEX_\344\273\273\345\212\241\345\214\205_F_\345\233\236\345\275\222\344\277\256\345\244\215\344\270\216\350\257\201\346\215\256\347\256\241\347\272\277_2026-08-10.md"
+?? "CODEX_\344\273\273\345\212\241\345\214\205_G_\350\267\250\351\223\276\345\217\257\350\276\276\346\200\247\344\270\216\351\207\207\346\240\267\346\267\261\345\272\246_2026-08-11.md"
+?? "CODEX_\344\273\273\345\212\241\345\214\205_H_Solana\346\210\220\346\234\254\344\270\216\346\224\266\347\233\212\346\250\241\345\236\213_2026-08-11.md"
+?? NIGHT_TASKS.md
+?? docs/specs/20260907_RH-01c_capabilities_pool_probe_tests.md
+?? reports/lp_base_10u_probe_execution_runtime/20260602_135824/
+?? reports/lp_base_10u_probe_execution_runtime/20260602_144843/
+?? reports/lp_base_10u_probe_execution_runtime/20260602_150957/
+?? reports/lp_base_10u_probe_execution_runtime/20260602_163036/
+?? reports/lp_base_10u_probe_execution_runtime/20260602_163036_test/
+?? reports/lp_base_10u_probe_execution_runtime/20260602_173525/
+?? reports/lp_base_10u_probe_execution_runtime/20260602_173525_test/
+?? reports/lp_base_10u_probe_execution_runtime/20260602_test/
+?? reports/lp_base_10u_probe_final_execution_review/20260602_173525/
+?? reports/lp_funnel_add1/20260809_103217/vetted_menu.json
+?? reports/lp_funnel_autopsy/20260810_043427/stage1/
+?? reports/lp_funnel_autopsy/20260810_043427/vetted_menu.json
+?? reports/lp_funnel_depth_fix/20260809_094800/
+?? reports/lp_funnel_depth_fix/20260809_100700/vetted_menu.json
+?? reports/lp_funnel_rerank/20260809_114000/correlation.json
+?? reports/lp_funnel_rerank/20260809_114000/correlation.md
+?? reports/lp_long_horizon_node_reports/20260605_043726/6h_regression_test/
+?? reports/lp_long_horizon_r1_12h_full_wallclock_observation/20260607_184500/AUDIT_NOTE_PID_TRANSITION.json
+?? reports/lp_long_horizon_r1_12h_full_wallclock_observation/20260607_184500/launch_log.txt
+?? reports/lp_long_horizon_r1_12h_full_wallclock_observation/20260607_184500/launch_pid.txt
+?? reports/lp_long_horizon_r1_12h_full_wallclock_observation/20260607_184500/wrapper_pid.txt
+?? reports/lp_long_horizon_readonly_12h_run/20260605_082120/
+?? reports/lp_long_horizon_readonly_collector_6h_fix/20260604_134918/STAGE_H_INTERIM_STATUS_CN.md
+?? reports/lp_long_horizon_readonly_collector_6h_fix/20260604_134918/TMUX_START_HEALTHCHECK_CN.md
+?? reports/lp_long_horizon_readonly_collector_6h_fix/20260604_134918/tmux_start_healthcheck.json
+?? reports/lp_long_horizon_readonly_continuous_12h_extension/20260605_082120/inflight_healthcheck_20260605_151011.json
+?? reports/lp_long_horizon_readonly_continuous_12h_extension/20260605_082120/inflight_healthcheck_20260605_151011.md
+?? reports/lp_long_horizon_readonly_continuous_12h_extension/20260606_131323/
+?? reports/lp_m0_integration_smoke/20260808_sol_acceptance/
+?? reports/lp_m0n_acceptance/20260809_base_once/
+?? reports/lp_m0n_n4/20260809_solana_once/
+?? reports/lp_m0n_n4/20260809_solana_once_top100/vetted_menu.json
+?? reports/lp_portfolio_paper_runner/
+?? reports/lp_scanner/scanner.pid
+?? reports/lp_scanner/vetted_menu.json
+?? reports/lp_scanner_v2_20260823/
+?? reports/lp_shadow_launch/
+?? reports/lp_tp_d/20260810_d4_top68_w10_normal/stage1_screen.json
+?? reports/lp_tp_d/20260810_d4_top68_w10_normal/stage2_candidates.json
+?? reports/lp_tp_f/20260810/base_funnel_f1_rerun/
+?? reports/lp_tp_f/20260811/
+?? reports/lp_tp_g/
+?? reports/lp_tp_h/20260811/h3_aaplx_stage2_run1.json
+?? reports/lp_tp_h/20260811/h3a_aaplx_stage2_run1.json
+?? reports/lp_tp_h/20260811/h3a_aaplx_stage2_run2.json
+?? reports/lp_tp_h/20260811/h3a_aaplx_stage2_run3.json
+?? reports/lp_tp_h/20260811/h4_base_invariance/
+?? reports/lp_tp_h/20260811/h5_checkpoints/
+?? reports/lp_tp_h/20260811/h5_solana_a_clmm_36_universe.json
+?? reports/polymarket_competitor/
+?? reports/strategy_evidence_r0_pool_discovery/20260610_094647/
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/d4_runner.pid
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/daily_summary_day1.md
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/daily_summary_day2.md
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/daily_summary_day3.md
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/daily_summary_day4.md
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/daily_summary_day5.md
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/funding_updates.jsonl
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/heartbeat.jsonl
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/model_error_log.jsonl
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/paper_position_state_hourly.csv
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/paper_position_state_hourly.jsonl
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/restart.jsonl
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/reward_apr_updates.jsonl
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260612_114441/swap_events_realtime.jsonl
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260616_183347_corrected/
+?? reports/strategy_pivot_d4_realtime_paper_shadow_validation/20260617_050248_unhedged/
+?? scripts/README_polymarket_competitor.md
+?? scripts/lp_polymarket_competitor_collector_v1_readonly.py
+?? scripts/lp_polymarket_competitor_collector_v1_readonly.py.bak_20260725_preexportfix
+?? scripts/lp_rh_bucket_ledger_v1_readonly.py
+?? scripts/lp_rh_market_session_v1_readonly.py
+?? scripts/night_scanner_watchdog.sh
+?? scripts/supervisor_polymarket_competitor.sh.example
+?? tests/test_lp_polymarket_competitor_collector_v1_readonly.py
+?? tests/test_lp_rh_bucket_ledger_v1_readonly.py
+?? tests/test_lp_rh_market_session_v1_readonly.py
+--- git diff --stat ---
