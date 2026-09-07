@@ -277,7 +277,8 @@ class RpcPool:
     def _penalize(self, url):
         fails = self._fails.get(url, 0) + 1
         self._fails[url] = fails
-        backoff = self._cooldown_base * (2 ** (fails - 1))
+        exponent = min(fails - 1, 30)
+        backoff = self._cooldown_base * (2 ** exponent)
         self._cooldown_until[url] = self._clock.now() + min(backoff, self._cooldown_max)
 
     def _reset(self, url):

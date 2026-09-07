@@ -368,3 +368,33 @@ def test_default_request_sets_non_urllib_user_agent():
     ua = req.get_header("User-agent")     # urllib title-cases header keys
     assert ua and "urllib" not in ua.lower()
     assert req.get_header("Content-type") == "application/json"
+
+
+def test_penalize_does_not_overflow_after_many_failures():
+    # a long-running daemon accumulates consecutive failures; the backoff
+    # exponent must be capped so 2**(fails-1) never overflows the float.
+    url = CHAINS["base"]["endpoints"][0]["url"]
+    clock = Clock()
+    pool = RpcPool("base", post=lambda *a, **k: {"result": "x"}, clock=clock)
+    for preset in (1024, 5000):
+        pool._fails[url] = preset
+        pool._penalize(url)
+        assert pool._cooldown_until[url] == clock.now() + pool._cooldown_max
+
+
+def test_call_survives_endpoint_with_overflow_level_failures():
+    # a pre-seeded overflow-level fail count must not leak an OverflowError
+    # out of call(); the endpoint is penalised and the call falls back.
+    all_eps = [e["url"] for e in CHAINS["base"]["endpoints"]]
+    bad = {all_eps[0]}
+    post, calls = fail_for(bad)
+    clock = Clock()
+    pool = RpcPool("base", post=post, clock=clock)
+    pool._fails[all_eps[0]] = 2000
+    try:
+        result = pool.call(CHEAP, [])
+    except OverflowError:
+        pytest.fail("OverflowError leaked out of call() at overflow-level fails")
+    except RpcPoolExhaustedError:
+        return  # acceptable per contract: every capable endpoint exhausted
+    assert result == "0xabc"   # fell back to a healthy endpoint
