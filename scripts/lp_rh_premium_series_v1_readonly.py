@@ -89,6 +89,10 @@ def _empty_statistics(n_total: int, n_usable: int, n_skipped: int,
         "sign_stability": None,
         "persistence_frac": None,
         "half_life_secs": None,
+        "n_distinct_reference": None,
+        "reference_quantum_bps": None,
+        "reference_spread_bps": None,
+        "resolution_floor_bps": None,
     }
 
 
@@ -112,6 +116,47 @@ def _half_life(usable: list[tuple[datetime, Decimal]]) -> Optional[Decimal]:
     return -Decimal(2).ln() / rho.ln() * median_interval
 
 
+def _resolution_fields(samples: list[dict[str, Any]]) -> dict[str, Any]:
+    """Compute reference-resolution fields from the usable samples.
+
+    The resolution floor is the data source's noise floor: the smallest
+    reference-price step (quantum) plus the median bid/ask spread. A premium
+    signal that does not rise above this floor cannot be classified.
+    """
+    reference_prices: list[Decimal] = []
+    spreads: list[Decimal] = []
+    for sample in samples:
+        reference = _as_decimal(sample.get("reference_price"))
+        if reference is not None and reference > ZERO:
+            reference_prices.append(reference)
+        bid = _as_decimal(sample.get("reference_bid"))
+        ask = _as_decimal(sample.get("reference_ask"))
+        if bid is not None and ask is not None and bid > ZERO and ask > ZERO:
+            mid = (bid + ask) / Decimal(2)
+            if mid > ZERO:
+                spreads.append((ask - bid) / mid * TEN_THOUSAND)
+    distinct = sorted(set(reference_prices))
+    n_distinct = len(distinct)
+    quantum: Optional[Decimal] = None
+    if n_distinct >= 2:
+        steps = [distinct[i + 1] - distinct[i] for i in range(n_distinct - 1)]
+        min_step = min(steps)
+        median_reference = _median(distinct)
+        if median_reference > ZERO:
+            quantum = min_step / median_reference * TEN_THOUSAND
+    spread: Optional[Decimal] = _median(spreads) if spreads else None
+    if quantum is None and spread is None:
+        floor: Optional[Decimal] = None
+    else:
+        floor = (quantum or ZERO) + (spread or ZERO)
+    return {
+        "n_distinct_reference": n_distinct,
+        "reference_quantum_bps": quantum,
+        "reference_spread_bps": spread,
+        "resolution_floor_bps": floor,
+    }
+
+
 def series_stats(
     samples: Any,
     *,
@@ -121,7 +166,7 @@ def series_stats(
     """Compute descriptive and persistence statistics from price samples."""
     sample_list = list(samples or [])
     n_total = len(sample_list)
-    usable: list[tuple[datetime, Decimal]] = []
+    usable: list[tuple[datetime, Decimal, dict[str, Any]]] = []
     n_skipped = 0
     for sample in sample_list:
         if not isinstance(sample, dict):
@@ -136,7 +181,7 @@ def series_stats(
         except (TypeError, ValueError, OverflowError):
             n_skipped += 1
             continue
-        usable.append((sample_time, premium))
+        usable.append((sample_time, premium, sample))
 
     usable.sort(key=lambda item: item[0])
     n_usable = len(usable)
@@ -176,6 +221,7 @@ def series_stats(
         "sign_stability": sign_stability,
         "persistence_frac": Decimal(persistent_count) / Decimal(n_usable),
         "half_life_secs": _half_life(usable),
+        **_resolution_fields([item[2] for item in usable]),
     }
 
 
@@ -184,6 +230,17 @@ def premium_regime(stats: dict[str, Any]) -> str:
     status = stats.get("status")
     if status != "COMPUTED":
         return status
+    # A constant reference is NOT on its own a reason to refuse: if the chain
+    # price swings 100 bps against a still reference, the premium swings 100 bps
+    # and that is real, measurable LVR exposure.  Verified on live data that the
+    # resolution check below catches both real cases (SGOV stdev 0.107 vs floor
+    # 0.995, AMC 39.19 vs 79.29) while leaving SPY/QQQ/NVDA/GLD classified.
+    resolution_floor_bps = stats.get("resolution_floor_bps")
+    stdev_bps = stats.get("stdev_bps")
+    if resolution_floor_bps is None:
+        return "INSUFFICIENT_RESOLUTION"
+    if stdev_bps is not None and stdev_bps <= resolution_floor_bps:
+        return "INSUFFICIENT_RESOLUTION"
     n_usable = stats["n_usable"]
     if (
         stats["sign_stability"] >= Decimal("0.9")
@@ -200,6 +257,8 @@ def premium_regime(stats: dict[str, Any]) -> str:
 
 def lvr_haircut_frac(stats: dict[str, Any], regime: str) -> Optional[Decimal]:
     """Return the modelled fee haircut for the classified premium regime."""
+    if regime == "INSUFFICIENT_RESOLUTION":
+        return None
     if regime == "MEAN_REVERTING":
         stdev = stats.get("stdev_bps")
         if stdev is None:
