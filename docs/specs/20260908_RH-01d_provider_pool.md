@@ -63,3 +63,61 @@ cd /tmp/codex_out/RH-01d && PYTHONPATH=/opt/lpbot/lp-bot-v3-origin-check:/tmp/co
   /root/lp-bot/.venv/bin/python -m pytest tests/ -q -p no:cacheprovider
 ```
 必须真跑通、全绿、≥20 passed，贴尾部 15 行。
+
+---
+
+# 第 1 轮 REJECT（2026-09-08 15:2x UTC，主脑裁决）
+
+第一轮交付 27 测试全绿，且**退避封顶、逐方法可用性、分歧检测、`live_readiness` 默认门槛
+四项核心复核全部通过**。模块整体是好的，只有一处必须修。
+
+## FAIL-1：`report_failure` 与 `pick` 用了两个不同的时钟
+
+```python
+def pick(self):
+    now = time.monotonic()                 # <- 单调时钟（自开机计秒）
+    ...
+def report_failure(self, name, now):
+    self._cooling_until[name] = now + cooldown   # <- 调用方传什么就是什么
+```
+
+冷却截止由**调用方的时钟**写入，却由**模块内部的 `time.monotonic()`** 比较。
+本机实测 `time.monotonic()=14,720,358`、`time.time()=1,788,879,931`，相差约 1.77e9。
+两个方向都会坏，且**都不抛异常**：
+
+| 调用方传入 | 后果 | 实测 |
+|---|---|---|
+| `time.time()`（墙钟，一个完全自然的选择） | 冷却截止落在单调时钟的极远未来 → **全部提供方永久不可用，整池断供** | 各失败 1 次后 `pick()` 立即返回 `None` |
+| 小数字（如测试里的 `100.0`） | 冷却截止落在过去 → **冷却完全不生效，持续锤一个死端点** | 连续失败 10 次后 `pick()` 仍返回该提供方 |
+| `time.monotonic()` | 正确 | 符合预期 |
+
+**唯一正确的用法在签名、docstring、测试里都没有任何地方说明。** 现有测试之所以全绿，
+是因为它们恰好传了 `time.monotonic()`。这属于本仓反复出现的同一族缺陷：
+**不抛异常、只在部分输入上给错答案**，而这次的错误后果是整池断供或永不退避。
+
+## 本轮必须做的修改
+
+1. **`report_failure(self, name, now=None)`**：`now` 缺省时取 `time.monotonic()`。
+2. **`pick(self, now=None)`**：同样缺省 `time.monotonic()`，允许注入以便测试。
+3. **`report_success` 的 `last_ok`** 同样走这条路径，保持同一时钟。
+4. 在类 docstring 里**明确写出**：所有时间参数必须来自 `time.monotonic()`，
+   不得传 `time.time()`；并说明混用的后果。
+5. **新增 3 条测试**：
+   - 不传 `now`，连续失败 1 次后 `pick()` 返回 `None`（默认时钟自洽）。
+   - `pick(now=...)` 与 `report_failure(name, now=...)` 传同一注入时钟时，
+     冷却按预期在 `cooldown` 秒后解除（构造 `now` 前后两次调用验证）。
+   - 传 `time.time()` 这类远大于 `monotonic()` 的值时，**测试断言实现不再产生
+     「永久冷却」**——即要么内部归一化，要么在文档约定下由注入的同一时钟比较。
+
+## 不得改动
+
+第一轮已通过的四项（退避 `min(fails-1, 30)` 封顶、`usable_providers` 要求全方法、
+`detect_disagreement` 不取多数不选第一个、`live_readiness` 默认 `min_required=2`）
+**逐条保持不变**，现有 27 条测试一条不许删改。
+
+## 验收
+```
+cd /tmp/codex_out/RH-01d && PYTHONPATH=/opt/lpbot/lp-bot-v3-origin-check:/tmp/codex_out/RH-01d \
+  /root/lp-bot/.venv/bin/python -m pytest tests/ -q -p no:cacheprovider
+```
+≥30 passed 全绿，贴尾部输出。
