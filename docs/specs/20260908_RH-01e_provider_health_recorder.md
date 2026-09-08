@@ -88,3 +88,87 @@ gas estimate、错误结构**。CORE 种子池 `0x52e65b17fb6e5ba00ed806f37afcd2
 ls -la reports/lp_rh/
 ```
 定向 ≥16 全绿；全量 0 failed / 14 skipped；`ls` 确认**未新建任何库文件**。三条命令尾部原样贴出。
+
+---
+
+# 第 1 轮 REJECT（2026-09-08 16:4x UTC，主脑裁决）
+
+第一轮交付 25 测试全绿，**八项能力齐全、`CONSENSUS_METHODS` 正确排除了 `eth_blockNumber`
+（本包最核心的那条陷阱躲过了）、未误建任何库文件**。模块主体是好的，但有三处必须修。
+
+## FAIL-1（严重）：`chain_id` 只探测「调用成不成功」，**返回值从不与 4663 比对**
+
+主脑构造对照实证（三方其余能力完全相同，只有 `chain_id` 返回值不同）：
+
+```
+chain_id 逐提供方:
+  honest       ok=1  digest=f809017050144eef   (0x1237 = 4663)
+  third        ok=1  digest=f809017050144eef   (0x1237 = 4663)
+  wrongchain   ok=1  digest=21ff847f6d761043   (0x2105 = 8453, Base)
+
+rollup:
+  usable_count  = 3
+  usable        = ["honest", "wrongchain", "third"]
+  disagreements = []
+  gate          = PASS / None
+```
+
+**一个服务 Base 链的端点被完整计入 `usable`，分歧清单为空，LIVE 闸返回 PASS。**
+PRD 的 chainId 4663 身份闸（T01–T13）在这里完全失效。
+
+**修法**：新增模块常量 `EXPECTED_CHAIN_ID = 4663`。`chain_id` 能力的 `ok` 判定
+不仅要求调用成功，还必须 `int(result, 16) == EXPECTED_CHAIN_ID`；不等时
+`ok = 0` 且 `error` 写明实际读到的链 ID（例如 `"chain_id 8453 != expected 4663"`）。
+**不得只记录不判定。**
+
+## FAIL-2：`chain_id` 被排除出 `CONSENSUS_METHODS`，且理由写错了
+
+源码第 69 行注释：
+
+> `# chain_id are deliberately excluded (each provider reports its own head).`
+
+「各家报自己的链头」对 `eth_blockNumber` 成立，**对 `chain_id` 不成立**——chainId 是常数，
+所有提供方必须报同一个值。排除它意味着即使没有 FAIL-1 的取值校验，
+跨提供方比对也抓不到错链。上面的实证里 digest 明明不同（`f809…` vs `21ff…`），
+却因为不在 consensus 集合里而没有产生任何分歧记录。
+
+**修法**：`CONSENSUS_METHODS` 改为 `["chain_id", "block_hash_consistency", "eth_call"]`，
+并把注释改成只针对 `eth_blockNumber`：它才是各家各异的那个。
+**`eth_blockNumber` 仍然绝对不许进这个集合。**
+
+## FAIL-3：spec 要求三个文件，只交了两个
+
+`scripts/lp_rh_provider_health_watchdog.sh` **未创建**。按 spec 第 3 节补齐：
+照抄 `scripts/lp_rh_premium_watchdog.sh` 的结构（**按行增长判活，不是按进程存在**），
+改成 `provider_health.db` / `rh_provider_rollup` / `provider_health_recorder.pid`，
+`STALL_SECS=2400`，`MAX_RESTARTS=50`。不要装 cron。
+
+## 顺带（不阻塞，但请一并收敛）
+
+脚本 360 行、测试 350 行，均超出 spec 写的 ≤300 / ≤280。本轮不因此退回，
+但新增内容请尽量不再扩大，必要时把探针表驱动化以缩短。
+
+## 本轮必须新增的测试（**≥4 条**）
+
+- 某提供方 `chain_id` 返回 `0x2105`（8453）→ 该能力 `ok == 0`，
+  `error` 文本含实际链 ID，且该提供方**不在** `usable_providers` 里。
+  **这条直接复现主脑的对照实验。**
+- 三方 `chain_id` 全为 `0x1237` → 该能力全 `ok`，`disagreements` 为空。
+- 三方 `chain_id` 不一致 → `disagreements_json` **非空**且含三方 digest
+  （证明它已进入 consensus 集合）。
+- 三方 `eth_blockNumber` 各不相同但 `chain_id` / `eth_call` 全一致 →
+  `disagreements` 仍为空（**证明 `eth_blockNumber` 没有被顺手加进 consensus**）。
+
+## 不得改动
+
+第一轮已通过的部分逐条保持：八项能力清单、`eth_blockNumber` 排除在 consensus 之外、
+`error_structure` 只认结构化 JSON-RPC error、失败行 `latency_ms` 为 `None`、
+测试不联网不建库。现有 25 条测试一条不许删改。
+
+## 验收
+```
+/root/lp-bot/.venv/bin/python -m pytest tests/test_lp_rh_provider_health_recorder_v1_readonly.py -q -p no:cacheprovider
+/root/lp-bot/.venv/bin/python -m pytest tests/ -q -p no:cacheprovider
+ls -la scripts/lp_rh_provider_health_watchdog.sh reports/lp_rh/
+```
+定向 ≥29 全绿；全量 0 failed / 14 skipped；看门狗文件存在且可执行；未新建库文件。
