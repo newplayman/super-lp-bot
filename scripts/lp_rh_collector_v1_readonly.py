@@ -273,6 +273,7 @@ def run(db_path: str, *, interval_secs: int, max_rounds: int,
     last_good = None
     sleep_for = interval_secs
     while not _STOP["flag"]:
+        round_started = time.monotonic()
         try:
             out = collect_round(conn, dec0=dec0, dec1=dec1,
                                 last_good_block=last_good, rpc_fn=rpc_fn)
@@ -294,11 +295,16 @@ def run(db_path: str, *, interval_secs: int, max_rounds: int,
                       flush=True)
                 break
             sleep_for = interval_secs * 2 if budget["state"] == "WARN" else interval_secs
+        # Sleep to a deadline measured from the round's START, not from its end.
+        # A round costs ~1.5s of serial RPC; sleeping a fixed interval afterwards
+        # stretched the real period to 16.5s and cost ~10% of Stage A coverage.
         delay = sleep_for + (backoff_seconds(fails) if fails else 0)
-        slept = 0.0
-        while slept < delay and not _STOP["flag"]:
-            time.sleep(min(1.0, delay - slept))
-            slept += 1.0
+        deadline = round_started + delay
+        while not _STOP["flag"]:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                break
+            time.sleep(min(1.0, remaining))
     conn.commit()
     conn.close()
     if pid_file:
