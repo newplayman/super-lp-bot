@@ -156,3 +156,41 @@ def test_main_cli_synthetic_fixture(tmp_path):
     assert rc == 0
     payload = json.loads(out.read_text())
     assert payload["count"] == 3
+
+
+def test_status_policy_blocked_in_live():
+    rec = _all_true_record(capital_policy_pass=False)
+    d = tg.evaluate_terminal_gate(rec, target_mode="LIVE_READINESS", now=NOW)
+    assert d.primary_status == "POLICY_BLOCKED"
+
+
+def test_status_inputs_unavailable_when_no_producer():
+    rec = _all_true_record()
+    del rec["legacy_required_conjunction"]
+    d = tg.evaluate_terminal_gate(rec, target_mode="LIVE_READINESS", now=NOW)
+    assert d.primary_status == "INPUTS_UNAVAILABLE"
+
+
+@pytest.mark.parametrize("gate", tg.CONJUNCT_ORDER)
+def test_status_never_computed_pass_when_ineligible(gate):
+    """Core regression: any single false gate must not read as COMPUTED_PASS."""
+    rec = _all_true_record()
+    rec[gate] = False
+    d = tg.evaluate_terminal_gate(rec, target_mode="LIVE_READINESS", now=NOW)
+    assert d.terminal_eligible is False
+    assert d.primary_status != "COMPUTED_PASS"
+
+
+def test_shadow_scenario_marks_simulated_only():
+    rec = _all_true_record()
+    shadow = tg.evaluate_terminal_gate(rec, target_mode="SHADOW_SCENARIO", now=NOW)
+    live = tg.evaluate_terminal_gate(rec, target_mode="LIVE_READINESS", now=NOW)
+    assert shadow.simulated_policy_only is True
+    assert live.simulated_policy_only is False
+
+
+def test_same_record_differs_by_target_mode():
+    rec = _all_true_record(capital_policy_conflict={"conflict": True})
+    live = tg.evaluate_terminal_gate(rec, target_mode="LIVE_READINESS", now=NOW)
+    shadow = tg.evaluate_terminal_gate(rec, target_mode="SHADOW_SCENARIO", now=NOW)
+    assert live.primary_status != shadow.primary_status

@@ -142,10 +142,23 @@ def evaluate_terminal_gate(record, *, target_mode, now) -> GateDecision:
             dominant_blocker = name
             break
 
-    if target_mode == "LIVE_READINESS" and conflict_present:
+    # PRD §8.4/§10.1: fixed priority for primary_status.  A candidate the
+    # terminal gate rejected must never read as COMPUTED_PASS to consumers
+    # that only read the status.
+    missing_conjuncts = [n for n in CONJUNCT_ORDER if record.get(n) is None]
+    rejection = str(record.get("rejection_reason") or "")
+    if target_mode == "LIVE_READINESS" and capital_policy_pass is False:
         primary_status = "POLICY_BLOCKED"
+    elif "LEGACY_CONJUNCTION_NO_PRODUCER" in reasons or missing_conjuncts:
+        primary_status = "INPUTS_UNAVAILABLE"
+    elif protocol_capabilities_sufficient is False or rejection.startswith(
+        "NETCOVER_MODEL_PATH_MISMATCH:"
+    ) or rejection.startswith("NETCOVER_PROTOCOL_TYPE_INVALID:"):
+        primary_status = "UNSUPPORTED"
     else:
         primary_status = classify_zero_candidate(record)
+    if terminal_eligible is False and primary_status == "COMPUTED_PASS":
+        primary_status = "COMPUTED_FAIL"
 
     simulated_policy_only = target_mode == "SHADOW_SCENARIO"
     if simulated_policy_only:
