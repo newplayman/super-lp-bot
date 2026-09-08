@@ -34,3 +34,39 @@ PRD §10.2 与 §12 的溢价分档，B2 §12 给出 Shadow 初值。主脑 2026
 
 ## 验收
 `pytest tests/test_lp_rh_premium_guard_v1_readonly.py -q` 全绿；全量 0 failed / 14 skipped；`git diff --stat` 为空。
+
+---
+
+# 上轮退回原因（主脑验收 2026-09-08 09:3x，REJECT）
+
+15 个测试全绿，六组实测溢价回归正确（SGOV 36.6 / GLD 64.6 / SPY 24.5 / QQQ 19.8 / NVDA 29.5 / AMC −97.7 bps，全部 NORMAL），`range_center` 的 DEX 排除规则正确。退回两条：
+
+## FAIL-1：`quote_freshness` 传 RFC3339 字符串直接崩
+
+`scripts/lp_rh_premium_guard_v1_readonly.py:123` 做 `now - generated_at` 却未做类型归一。主脑实测：
+
+```
+TypeError: unsupported operand type(s) for -: 'datetime.datetime' and 'str'
+```
+
+**这是 RH-02b 第一轮同款缺陷的复发**。真实数据源 `GET /rhj/prices` 返回的 `generatedAt` 就是字符串（`"2026-09-08T08:53:41.707033470Z"`，注意**纳秒 9 位小数**），所以这条路径在真实数据上必然崩。
+
+**要求**：`generated_at` 与 `now` 同时接受 RFC3339 字符串与 aware datetime。复用 `lp_rh_market_session_v1_readonly` 里已有的时间归一辅助（**import 不重写**）；若该辅助不支持 9 位小数秒，则在本模块内写 `_to_dt` 处理：截断到 6 位微秒再 `fromisoformat`，naive datetime 抛 `NAIVE_DATETIME`，无法解析抛 `NON_UTC_TIMESTAMP`。**必须有一个用真实 9 位纳秒串 `"2026-09-08T08:53:41.707033470Z"` 的测试。**
+
+## FAIL-2：`NO_NEW_WIDEN_REMOVE_EVAL` 档仍允许重新居中
+
+主脑实测 400bps → `("NO_NEW_WIDEN_REMOVE_EVAL", allows_recenter=True)`。
+
+档位名字里写着 `NO_NEW`，语义是禁止新开与重新居中、只允许放宽或评估撤出。返回 `allows_recenter=True` 与档位语义**直接矛盾**，且违反 PRD §10.2「stale／pause／halt 不重新居中」与 §12 的分层意图。
+
+**要求**：`allows_recenter` 仅在 `NORMAL` 档为 `True`。`REDUCE_SIZE` / `NO_NEW_WIDEN_REMOVE_EVAL` / `DISLOCATION` / `UNKNOWN` 全部为 `False`。新增参数化测试遍历五个档位断言该规则。
+
+（`REDUCE_SIZE` 是否允许居中在 PRD 里未明写，本项目取**更严格**解释：PRD §13.2「新旧政策同时有效时取更严格限制」。）
+
+## 本轮只许改这两个文件
+`scripts/lp_rh_premium_guard_v1_readonly.py` 与 `tests/test_lp_rh_premium_guard_v1_readonly.py`。已通过的溢价计算与 `range_center` 逻辑不许动。
+
+## 本轮验收
+- [ ] `quote_freshness("2026-09-08T08:53:41.707033470Z", now=<aware dt>)` 返回 `("FRESH"|"STALE", age)` 不抛异常；字符串与 datetime 两种入参结果相同。
+- [ ] 五个档位中只有 `NORMAL` 的 `allows_recenter` 为 True，有参数化测试。
+- [ ] 六组实测溢价回归仍全绿；全量 pytest 0 failed / 14 skipped。
