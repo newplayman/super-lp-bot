@@ -112,9 +112,13 @@ def assemble_rh_clmm_inputs(evidence, *, position_usd, horizon_hours):
             if _to_float(evidence.get(field)) is None:
                 missing.append((field, "CHAIN_DATA_UNAVAILABLE"))
     else:
-        price = (sqrt_price_x96 / 2.0 ** 96) ** 2
-        fee_tier = fee / 1e6
         d0, d1 = int(dec0), int(dec1)
+        # sqrtPriceX96^2 is the RAW token1/token0 ratio. The cost model expects a
+        # decimals-normalised price. Passing the raw ratio for a 18/6 pair understates
+        # price by 1e12 and inflates conversion cost by ~940x, which wrongly produced a
+        # "not economically viable" verdict. See COST_MODEL_PRICE_SCALE_BUG.md.
+        price = ((sqrt_price_x96 / 2.0 ** 96) ** 2) * (10 ** d0) / (10 ** d1)
+        fee_tier = fee / 1e6
         entry_cost_usd = exit_conversion_cost_usd(pos, liquidity_raw, price, fee_tier, d0, d1, side="buy_base")
         exit_cost_usd = exit_conversion_cost_usd(pos, liquidity_raw, price, fee_tier, d0, d1, side="sell_base")
         # roundtrip is entry+exit by construction; clamp float noise so the
