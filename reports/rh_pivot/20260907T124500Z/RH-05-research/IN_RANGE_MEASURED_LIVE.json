@@ -1,0 +1,53 @@
+{
+ "window_start": "2026-09-08T05:15:14.435446Z",
+ "window_end": "2026-09-08T15:04:01.369290Z",
+ "hours": 8.995833333333334,
+ "n_samples": 2159,
+ "n_missing": 4,
+ "center_tick": -198174,
+ "open_price": "2476.507705",
+ "scan": [
+  {
+   "width_ticks": 50,
+   "band_pct": 0.5012269623050569,
+   "fraction": "0.8584686774941995359628770302",
+   "excursions": 9
+  },
+  {
+   "width_ticks": 100,
+   "band_pct": 1.0049662092875389,
+   "fraction": "0.9744779582366589327146171694",
+   "excursions": 3
+  },
+  {
+   "width_ticks": 200,
+   "band_pct": 2.0200319893931784,
+   "fraction": "1",
+   "excursions": 0
+  },
+  {
+   "width_ticks": 500,
+   "band_pct": 5.12684683767608,
+   "fraction": "1",
+   "excursions": 0
+  },
+  {
+   "width_ticks": 1000,
+   "band_pct": 10.516539260322055,
+   "fraction": "1",
+   "excursions": 0
+  },
+  {
+   "width_ticks": 2000,
+   "band_pct": 22.13905450078306,
+   "fraction": "1",
+   "excursions": 0
+  },
+  {
+   "width_ticks": 5000,
+   "band_pct": 64.8680055931085,
+   "fraction": "1",
+   "excursions": 0
+  }
+ ]
+}

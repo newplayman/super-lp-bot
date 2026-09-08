@@ -1,0 +1,51 @@
+{
+ "model": "GBM no drift",
+ "sigma_daily": 0.02038,
+ "steps_per_day": 96,
+ "paths": 4000,
+ "recenter": false,
+ "results": [
+  {
+   "days": 7,
+   "band_pct": 5,
+   "mean": 0.8187667410714285,
+   "median": 0.9330357142857143,
+   "never_exit": 0.31725
+  },
+  {
+   "days": 7,
+   "band_pct": 10,
+   "mean": 0.9827793898809524,
+   "median": 1.0,
+   "never_exit": 0.87975
+  },
+  {
+   "days": 7,
+   "band_pct": 20,
+   "mean": 0.9998850446428571,
+   "median": 1.0,
+   "never_exit": 0.999
+  },
+  {
+   "days": 30,
+   "band_pct": 5,
+   "mean": 0.5377776909722222,
+   "median": 0.5506944444444444,
+   "never_exit": 0.00425
+  },
+  {
+   "days": 30,
+   "band_pct": 10,
+   "mean": 0.8133421875,
+   "median": 0.9215277777777777,
+   "never_exit": 0.28925
+  },
+  {
+   "days": 30,
+   "band_pct": 20,
+   "mean": 0.9783997395833334,
+   "median": 1.0,
+   "never_exit": 0.85875
+  }
+ ]
+}
