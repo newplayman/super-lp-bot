@@ -94,3 +94,94 @@ RH-01b（`docs/specs/20260907_RH-01b_capabilities_pool_probe.md`）：链能力�
 用户找到 `Robinhood_Chain_LP_Bot_50_30_20_全面转向设计文档_v1.0.md`，SHA-256 `1afc496f0a4a465a611cad6052882c14fdd0aeb92d06635fcbd4a6cea05dfd37`、45948 字节，与 `INPUT_MANIFEST.json` 逐字节吻合。已归档 `docs/rh_pivot/inputs/`，`validate_delivery.py` 现返回 **PASS**（`input_checksums_verified: true`，结果存 `docs/rh_pivot/DELIVERY_VALIDATION_LOCAL.json`）。
 
 B2 内容与 PRD v1.1 的 D01–D14 修订一致，不改变推进路线。要点对照：B2 §55 假设 Go/Rust/PostgreSQL/NATS 技术栈（实际为 Python+SQLite，由 D01 修正）；B2 §48 的 RH-P0–P11 任务拆分被 PRD §19 的 RH-00–RH-09 取代；B2 §12 的 1%/3%/7% premium、§23 的 30/75/150 bps USDG、§26 的 2/3/5/8% 回撤门限均保留为 Shadow 初值；B2 §45 的 I-01–I-15 不变量已被 PRD §18.3 的 RH-INV-01–18 覆盖并加严；B2 §16 允许的 5% transfer tax 被 PRD §10.3 首版拒绝；B2 §21 的原子退出被 PRD §15.2 降为可选、分步退出为必须。
+
+---
+
+# 2026-09-08 全天进展
+
+## 1. 一句话状态
+
+搬迁已完成并稳定运行；**RH 支线从零建到 21 个模块**，测试基线 3109 → **3527**（+418 全部为 RH 配对测试）；**72 小时正向观测已跑 7 小时**，采集器由 cron 看门狗守护，与本会话无关。**签名 0 / 广播 0 / 私钥 0 / LIVE 仍 BLOCKED。**
+
+## 2. 已交付的 21 个 RH 模块
+
+| 层 | 模块 | 覆盖用例 |
+|---|---|---|
+| 存储 | `store`（16 张 `rh_*` 表） | T57 |
+| 采集 | `collector`（生产运行中）、`market_session` | T14–T16 |
+| 身份 | `registry`、`capabilities`、`pool_probe`、`multiplier_reader` | T01–T13 |
+| 经济 | `netcover_inputs`、`exit_depth`、`markout` | T24、T32–T37、T42 |
+| 终闸 | `terminal_gate`（十项合取 + AST 形状 + 变异见证）、`funnel_autopsy` | T55、T59、T60 |
+| 资金 | `bucket_ledger`（原子预占） | T25、T27、T51 |
+| 账本 | `pnl`（NAV 唯一总账）、`shadow_runner` | T38–T41 |
+| 股票 | `stock_reference`、`premium_guard` | T17–T24 |
+| MEME | `meme_audit` | T43–T46 |
+| 执行 | `calldata_decoder`（纯离线，零签名） | T48、T50 |
+| 运营 | `daily_report`、`readiness` | §17 |
+
+## 3. 链上实测发现（本项目首次拿到真实证据）
+
+用户本轮授权后接入 Robinhood 公开 RPC，**全部只读**。关键发现：
+
+| 发现 | 影响 |
+|---|---|
+| 链活跃，chainId 4663，Nitro v3.11.4 | 五个种子地址全部有代码；候选池 `factory.getPool` 回指自身 → **ATTESTED_SAME_BLOCK** |
+| **USDG 是 6 位小数**（非 18） | 按 18 位算池价得 0.000000 而非 2480，差 10¹² |
+| **`robinhood.drpc.org` 是假绿端点** | `eth_chainId` 正确但所有真实方法 `-32601`；只探 chainId 的健康检查会把它当第二个独立 provider，从而错误满足 LIVE 冗余门槛 |
+| 官方端点**无 archive** | 历史状态仅约 1000–10000 区块；`eth_getLogs` 单次上限 10000 条 |
+| **194 个股票代币全部 SESSION_NESTED** | PRD D08 的 legacy schema 分支从未被真实数据触发，须标 `SYNTHETIC_ONLY` |
+| **367 个 V3 池，192 个有流动性** | 73 个池 TVL ≥ $100k，可容纳 50U 单仓——**规模瓶颈在 RH 链上不存在**（对比 B1 §9.3 旧链结论） |
+| PRD 假设的四个乘数/暂停方法**全部 revert** | 真实入口：`0xa60bf13d` 乘数（15/15 与 API 一致）、`0x97a4064f` 生效时间戳（12/12 集合重合）、`0x5c975abb` `paused()` |
+| 股票代币是 **beacon 代理**，194 个共用一份实现 | beacon 升级一次全部 attestation 同时过期 → **P0 监控点** |
+| 参考价源 `GET /rhj/prices` | 带服务端 `generatedAt`（报价龄 3–4s）与 `isTradingHalt`、一级申赎流量 |
+| 首次真实溢价 | SGOV +37 / GLD +65 / SPY +24 / QQQ +20 / NVDA +30 / AMC −90 bps，**全部 NORMAL 档** |
+| 头寸级 fee-growth | 按 `L × Δfee_growth / 2^128`，年化 27.34% 且**对仓位规模恒定**；与全池法 24.68% 交叉验证 |
+| 退出深度（661 个真实 tick） | $500k 退出仅 10.4 bps 冲击 → **退出深度在 100U 规模不构成约束** |
+
+## 4. 四个「静默假绿」陷阱（全部不抛异常、只在部分输入上给错答案）
+
+1. **USDG 6 位小数**：292 个 USDG 池全错，75 个 WETH 池正常。
+2. **`liquidityNet` 是 int128 但 ABI 按 256 位符号扩展存**：错误解码得 1.157e77，会让退出深度算成「可无限退出」。
+3. **池 token 顺序不固定**：AMC 池 STOCK 在前，其余 USDG 在前。精度也不同时给出荒谬值（易发现）；两边同精度时**只返回倒数**（量级正常、方向错误，极难察觉）。
+4. **`_state_factors` 默认 decimals=0 / price=1**：$50,000 被当成 50,000 wei，退出深度算成 0——而 0 的语义是「不可退出」，与真相相反。
+
+**共同点：都不抛异常。** 这是本项目最该防的失败形态，已全部写入报告。
+
+## 5. 产能编排
+
+- **qwen 2 路**（写入任务，同一仓库串行原则由 spec 的文件隔离保证）
+- **codex gpt-5.6-luna xhigh 多路**：因其 bubblewrap 沙箱把 root 映射为 nobody，无法直接写 root 拥有的仓库；解法是让它写 `/tmp/codex_out/<包>/`，主脑验收后搬入——沙箱与验收闸都保住。
+- **主脑**：所有联网调研（qwen/codex 的 curl 均被 deny）、spec 编写、验收裁决、commit。
+- **Monitor ×2**：worker 完成事件 + **槽位空闲告警**（后者为修复一次 47 分钟空转而加）。
+- **cron 看门狗**：每 5 分钟按「数据行是否增长」判活采集器，故障注入验证 12 秒内拉起。
+
+## 6. 退回记录（不达标一律退回，共 5 次）
+
+| 包 | 退回原因 |
+|---|---|
+| RH-02b | `evaluate_health` 传字符串崩溃；陈旧判定主路径零测试覆盖 |
+| RH-03a | spec 写错模型路径名，装配结果 100% 被引擎拒于经济计算之前；分类器把非经济性拒绝标成 `COMPUTED_FAIL` |
+| RH-03b | `primary_status` 在终闸已判否时仍返回 `COMPUTED_PASS`（假绿） |
+| RH-04b | 脚本残缺（花括号未闭合，`ast.parse` 失败）→ 删除重写，spec 加强制语法自检 |
+| RH-05d | 9 位纳秒时间戳崩溃；`NO_NEW` 档竟允许重新居中 |
+
+## 7. 仍未完成
+
+- **Stage A**：7/72 小时（9.7%）。
+- **Stage B/C/D**：未开始。
+- **RH-07 执行适配**：仅完成离线 calldata 解码器；签名/广播/密钥相关部分**需用户单独授权**，未触碰。
+- **RH-09 Tiny Live 申请包**：未开始。
+- **`usable_provider_count = 1`** → LIVE 闸按 PRD §8.3 保持 BLOCKED，需再找一个逐方法验证通过的独立后端。
+- 头寸级 fee-growth 的**区间内折算**（`feeGrowthOutside`）未采，当前为全区间上界。
+
+## 8. 对账速查
+
+```bash
+cd /opt/lpbot/lp-bot-v3-origin-check
+git log --oneline -5
+/root/lp-bot/.venv/bin/python -m pytest tests/ -q -p no:cacheprovider | tail -1   # 3527 passed / 14 skipped
+./scripts/lp_rh_status.sh                                                          # Stage A 进度
+crontab -l | grep lp_rh_collector_watchdog                                         # 看门狗仍在册
+```
+
+**全量回归必须在无 worker 并发的窗口跑**，否则宿主敏感测试会误报（见 `reports/rh_pivot/20260907T124500Z/HOST_SENSITIVE_TEST_FLAKINESS.md`）。
