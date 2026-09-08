@@ -36,9 +36,26 @@ Stage A 每小时里程碑 / 槽位空闲）。**每次醒来先读本文件**�
 
 ## 进度
 
-- [x] RH-04f spec 已写（`docs/specs/20260908_RH-04f_shadow_conjuncts.md`）
-- [ ] RH-04f 落地
-- [ ] RH-04g
-- [ ] RH-08c/d/e 审计
-- [ ] RH-06b
-- [ ] RH-09b
+- [x] RH-01e 提供方可用性录制器（`33bb1bd` + `10dab00` 修方法名）已上线，cron 已装
+- [x] RH-04f spec 已写并派出
+- [x] RH-05i 卡死已终止并拆包为 RH-05i-b，已派出
+- [x] PRD 60 条验收用例已抽取为 `PRD_ACCEPTANCE_CASES.json`
+- [x] 三个审计取证 spec 已写（RH-08c1/c2/c3，只取证不判定）
+- [ ] RH-04f 落地 ← **在跑**
+- [ ] RH-05i-b 落地 ← **在跑**
+- [ ] RH-08c1/c2/c3 取证（排队）
+- [ ] 主脑裁决审计结论，出 PASS/FAIL/需关注 表
+- [ ] RH-04g 常驻 shadow 守护（依赖 RH-04f）
+- [ ] RH-06b MEME NO-GO 审计
+- [ ] RH-09b 毕业就绪报告
+
+## 已上线的活进程（截至 19:1x）
+
+| 进程 | 库 | 周期 | 看门狗 |
+|---|---|---|---|
+| Stage A 采集器 | `scanner.db` | 15 s | cron ✓ |
+| 溢价录制器 | `premium.db` | 180 s | cron ✓ |
+| 提供方可用性录制器 | `provider_health.db` | 900 s | cron ✓ |
+| 有机成交量录制器 | `organic.db` | 900 s | 待 RH-05i-b 交看门狗 |
+
+妖币雷达的两条 cron 与死日志已按用户 19:0x 指示清理，crontab 备份在 scratchpad。
