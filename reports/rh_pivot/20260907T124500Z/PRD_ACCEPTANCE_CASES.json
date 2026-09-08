@@ -1,0 +1,302 @@
+[
+ {
+  "id": "T01",
+  "scenario": "chainId46630／1／错误4663响应混入",
+  "expected": "mainnet身份闸FAIL，禁止候选升级"
+ },
+ {
+  "id": "T02",
+  "scenario": "symbol正确但地址不是registry部署",
+  "expected": "`ASSET_IDENTITY_MISMATCH`"
+ },
+ {
+  "id": "T03",
+  "scenario": "assets为旧schema",
+  "expected": "明确映射；null／空／closing-only不变成普通可交易"
+ },
+ {
+  "id": "T04",
+  "scenario": "assets为实际观察的新嵌套schema",
+  "expected": "正确区分market／extended／overnight能力"
+ },
+ {
+  "id": "T05",
+  "scenario": "未知enum／新旧语义矛盾",
+  "expected": "UNKNOWN／CONFLICT，禁止新仓，不静默回退"
+ },
+ {
+  "id": "T06",
+  "scenario": "已审核proxy implementation变化",
+  "expected": "attestation过期，no-new，生成安全事件"
+ },
+ {
+  "id": "T07",
+  "scenario": "V3候选factory getPool不匹配",
+  "expected": "身份FAIL，不调用经济成功终闸"
+ },
+ {
+  "id": "T08",
+  "scenario": "V4 PoolId送入V3探针",
+  "expected": "明确协议分派，不报告factory缺失的经济失败"
+ },
+ {
+  "id": "T09",
+  "scenario": "v4存在白名单LP／自定义fee但未支持",
+  "expected": "UNSUPPORTED，网页APR不影响结果"
+ },
+ {
+  "id": "T10",
+  "scenario": "用PoolManager总余额当V4单池TVL",
+  "expected": "数据契约拒绝／测试断言失败"
+ },
+ {
+  "id": "T11",
+  "scenario": "block number相同、hash不一致",
+  "expected": "标记分歧／重组；回滚受影响派生值"
+ },
+ {
+  "id": "T12",
+  "scenario": "RPC请求成功但JSON-RPC error字段存在",
+  "expected": "失败分类，不能当0余额／0费用"
+ },
+ {
+  "id": "T13",
+  "scenario": "两URL属于同一provider后端",
+  "expected": "冗余不足，不能满足live多源门槛"
+ },
+ {
+  "id": "T14",
+  "scenario": "HTTP200但价格generatedAt未推进",
+  "expected": "source stale，不能由fetch_time刷新健康"
+ },
+ {
+  "id": "T15",
+  "scenario": "2026-09-07纽约时间盘中时钟",
+  "expected": "HOLIDAY，不是RTH"
+ },
+ {
+  "id": "T16",
+  "scenario": "夏令时切换／提前收市／周末",
+  "expected": "日历映射正确，UTC转换不偏移一个小时"
+ },
+ {
+  "id": "T17",
+  "scenario": "raw2e18，multiplier1.25e18，underlying100",
+  "expected": "token2／等价股数2.5／总值250"
+ },
+ {
+  "id": "T18",
+  "scenario": "Chainlink已是125，再遇multiplier1.25",
+  "expected": "仍125，不是156.25"
+ },
+ {
+  "id": "T19",
+  "scenario": "USDG=$0.98，股币参考$125",
+  "expected": "参考比价≈127.5510204 USDG/token"
+ },
+ {
+  "id": "T20",
+  "scenario": "拆股200→20、multiplier1→10",
+  "expected": "单token参考值仍200；raw余额不变"
+ },
+ {
+  "id": "T21",
+  "scenario": "token oraclePaused=true但feed可调用",
+  "expected": "禁止新增／recenter；保留旧价的陈旧标记"
+ },
+ {
+  "id": "T22",
+  "scenario": "newMultiplier等于current且无未来有效事件",
+  "expected": "不虚构公司行动；仍核对pause状态"
+ },
+ {
+  "id": "T23",
+  "scenario": "闭市feed不更新 vs盘中异常不更新",
+  "expected": "原因分开，但两者不让新窄区间通过"
+ },
+ {
+  "id": "T24",
+  "scenario": "参考报价可读但无足额DEX退出quote",
+  "expected": "`INPUTS_UNAVAILABLE: EXIT_QUOTE`，不是无风险折价"
+ },
+ {
+  "id": "T25",
+  "scenario": "100U旧单仓50下限＋CORE42.5上限",
+  "expected": "`CAPITAL_POLICY_CONFLICT`，不自动改金额"
+ },
+ {
+  "id": "T26",
+  "scenario": "MEME单资产跨多个池／钱包累计超2%",
+  "expected": "资产聚合闸阻挡，不能拆单绕过"
+ },
+ {
+  "id": "T27",
+  "scenario": "两意图并发读到同一剩余额度",
+  "expected": "原子reservation只允许可容纳的意图"
+ },
+ {
+  "id": "T28",
+  "scenario": "价格上升导致存量超cap",
+  "expected": "NO_NEW／REDUCE_EVAL；不错误声称 admission bug"
+ },
+ {
+  "id": "T29",
+  "scenario": "有很多WETH但native ETH不足",
+  "expected": "native gas reserve闸失败"
+ },
+ {
+  "id": "T30",
+  "scenario": "单位资本净边际收益≤0",
+  "expected": "报告无有限经济仓位，不推荐加资解决"
+ },
+ {
+  "id": "T31",
+  "scenario": "q_min大于q_max",
+  "expected": "经济可行区间为空，合法0配置"
+ },
+ {
+  "id": "T32",
+  "scenario": "未知fee输入 vs合法计算fee=0",
+  "expected": "前者缺输入；后者可以经济FAIL；报告区分"
+ },
+ {
+  "id": "T33",
+  "scenario": "reward仅来自广告APR",
+  "expected": "未验证reward收入不计，保留证据等级"
+ },
+ {
+  "id": "T34",
+  "scenario": "总gas估计已含L1 data",
+  "expected": "总成本不再次追加同一L1费用"
+ },
+ {
+  "id": "T35",
+  "scenario": "两腿实际只换30%本金",
+  "expected": "换腿成本使用真实30%，不按100%重复计算"
+ },
+ {
+  "id": "T36",
+  "scenario": "未来数据在当时不可获得",
+  "expected": "回放不允许前视；决策使用当时可见快照"
+ },
+ {
+  "id": "T37",
+  "scenario": "极高volume但头寸全程out-of-range",
+  "expected": "应计费为0／符合实际跨tick路径，不分摊全池APR"
+ },
+ {
+  "id": "T38",
+  "scenario": "collect，价不变，gas=0",
+  "expected": "钱包增量与未领fee减少相抵，NAV不变"
+ },
+ {
+  "id": "T39",
+  "scenario": "collect，gas=0.10USD",
+  "expected": "NAV只下降0.10，不再扣一遍费用归因"
+ },
+ {
+  "id": "T40",
+  "scenario": "外部入金10USD、无交易",
+  "expected": "NAV增10，PnL为0"
+ },
+ {
+  "id": "T41",
+  "scenario": "下跌后recenter",
+  "expected": "累计亏损与HODL初始lot不被重置"
+ },
+ {
+  "id": "T42",
+  "scenario": "同笔markout在30s／5m／30m",
+  "expected": "分列，不三次累计同一亏损"
+ },
+ {
+  "id": "T43",
+  "scenario": "MEME下跌跌穿下界",
+  "expected": "不自动下移／补仓，进入受限退出流程"
+ },
+ {
+  "id": "T44",
+  "scenario": "下跌池卖出失败但remove成功",
+  "expected": "`REMOVED_RISKY_INVENTORY`，不显示cash closed"
+ },
+ {
+  "id": "T45",
+  "scenario": "原子exit中swap回滚",
+  "expected": "remove亦视为未完成；独立重检后才可remove-only"
+ },
+ {
+  "id": "T46",
+  "scenario": "退出USDG导致加大USDG风险",
+  "expected": "不因action=exit绕过资产风险方向检查"
+ },
+ {
+  "id": "T47",
+  "scenario": "LIVE_TRADING=false／授权串错误",
+  "expected": "拦截在签名前；无签名副作用"
+ },
+ {
+  "id": "T48",
+  "scenario": "calldata含非白名单target／recipient",
+  "expected": "decoder拒绝，simulation成功也不能放行"
+ },
+ {
+  "id": "T49",
+  "scenario": "quote之后calldata／size／policy变化",
+  "expected": "原模拟失效；重新检查"
+ },
+ {
+  "id": "T50",
+  "scenario": "单边LP的零数量腿 vs swap最小到账无约束",
+  "expected": "区分合法0与缺保护，不靠简单`!=0`判断全部安全"
+ },
+ {
+  "id": "T51",
+  "scenario": "广播HTTP超时、链上已有同nonce",
+  "expected": "UNKNOWN→对账，禁止重复开仓和释放reservation"
+ },
+ {
+  "id": "T52",
+  "scenario": "crash在持久化nonce／提交／回执任一阶段",
+  "expected": "恢复不重签重复意图，最终账本一致"
+ },
+ {
+  "id": "T53",
+  "scenario": "仅L1posting滞后，L2多源继续推进",
+  "expected": "分层告警，不伪造execution停机结论"
+ },
+ {
+  "id": "T54",
+  "scenario": "只有等待时长无L1证据",
+  "expected": "不自动进入L1_FINALIZED"
+ },
+ {
+  "id": "T55",
+  "scenario": "每道新增硬闸单独被摘除",
+  "expected": "对应危险样本出现错误放行，证明测试能抓漏接"
+ },
+ {
+  "id": "T56",
+  "scenario": "旧Base模型同一SQLite快照新旧计算",
+  "expected": "未批准的逐闸结果差异=0"
+ },
+ {
+  "id": "T57",
+  "scenario": "RH数据库／日志达预算",
+  "expected": "停非必要采集，风险证据优先；不删除旧项目资料"
+ },
+ {
+  "id": "T58",
+  "scenario": "策略用户尝试读keystore或导入signer",
+  "expected": "权限／依赖测试拒绝，默认包保持只读"
+ },
+ {
+  "id": "T59",
+  "scenario": "旧terminal字段无writer",
+  "expected": "producer-map验收FAIL，不把候选当经济证伪"
+ },
+ {
+  "id": "T60",
+  "scenario": "策略0合格池／MEME全闲置",
+  "expected": "正常可解释结果，不强制下单完成配比"
+ }
+]
