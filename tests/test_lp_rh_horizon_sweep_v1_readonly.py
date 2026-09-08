@@ -96,8 +96,10 @@ def test_required_fee_apr_monotonic_decreasing():
 def test_regression_netcover_at_fee_apr_900():
     row = sweep_horizons(_evidence(fee_apr_pct=900.0), position_usd=POS,
                          horizons=(168,))[0]
-    assert 0.90 <= row["netcover"] <= 0.92, (
-        f"netcover at fee_apr=900 should be ~0.909, got {row['netcover']}")
+    # Baseline updated 2026-09-08 after the 940x conversion-cost overstatement was
+    # fixed (COST_MODEL_PRICE_SCALE_BUG.md). The old 0.909 encoded the bug's output.
+    assert 85.0 <= row["netcover"] <= 100.0, (
+        f"netcover at fee_apr=900 should be ~91.9 post-fix, got {row['netcover']}")
 
 
 def test_regression_netcover_pass_at_fee_apr_5000():
@@ -115,19 +117,25 @@ def test_netcover_pass_consistent_with_netcover():
 
 
 def test_fixed_cost_share_constancy():
-    rows = fixed_cost_share(_evidence())
-    costs = [r["fixed_cost_usd"] for r in rows]
-    assert all(isinstance(c, Decimal) for c in costs)
-    max_diff = Decimal(0)
-    for i in range(len(costs)):
-        for j in range(i + 1, len(costs)):
-            base = min(costs[i], costs[j])
-            diff = abs(costs[i] - costs[j]) / base
-            if diff > max_diff:
-                max_diff = diff
-    assert max_diff < Decimal("0.05"), (
-        "成本模型可能把全额本金当换腿额 (PRD §11.3): fixed cost grows with position "
-        f"size (max pairwise relative diff = {float(max_diff):.2f})")
+    """Fixed cost must scale with position, not super-linearly (PRD 11.3, B1 9.5).
+
+    Absolute USD cost necessarily grows with size because larger swaps move price;
+    the commander measured 0.001/0.102/1.029 bps of impact at 50/5k/50k USD on 661
+    live ticks. What must stay bounded is cost AS A SHARE of position. A model that
+    treated the full principal as the swap notional would show that share exploding,
+    which is exactly what the 940x price-scale bug did (18.85% -> 1039.70%).
+    """
+    rows = fixed_cost_share(_evidence(), position_usds=(50, 500, 5000, 50000))
+    shares = [Decimal(str(r["fixed_cost_pct_of_position"])) for r in rows]
+    assert all(isinstance(Decimal(str(r["fixed_cost_usd"])), Decimal) for r in rows)
+    # every share stays well under 1% of position
+    assert max(shares) < Decimal("1.0"), f"fixed cost share too high: {shares}"
+    # and the spread across two orders of magnitude stays within a factor of 5,
+    # which admits real price impact but not principal-as-notional
+    assert max(shares) / min(shares) < Decimal("5"), (
+        "fixed cost share grows too fast with position size; the cost model may be "
+        f"treating the full principal as the swap notional (PRD 11.3): {shares}")
+
 
 
 def test_fixed_cost_share_returns_expected_keys():
