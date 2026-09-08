@@ -1,0 +1,294 @@
+[
+ {
+  "id": "T21",
+  "scenario": "token oraclePaused=true但feed可调用",
+  "expected": "禁止新增／recenter；保留旧价的陈旧标记",
+  "impl_sites": [
+   {"file": "scripts/lp_rh_stock_reference_v1_readonly.py", "line": 103, "snippet": "        return \"ORACLE_PAUSED\", [\"oracle feed paused\"]"},
+   {"file": "scripts/lp_rh_stock_reference_v1_readonly.py", "line": 117, "snippet": "def allows_new_or_recenter(state: str) -> bool:"},
+   {"file": "scripts/lp_rh_market_session_v1_readonly.py", "line": 152, "snippet": "        flags.add(\"ORACLE_PAUSED\")"},
+   {"file": "scripts/lp_rh_market_session_v1_readonly.py", "line": 157, "snippet": "        flags.add(\"ORACLE_STALE\")"}
+  ],
+  "covering_tests": [
+   {"file": "tests/test_lp_rh_stock_reference_v1_readonly.py", "name": "test_t21_oracle_paused_blocks", "line": 75, "pytest_output": "1 passed in 0.01s"},
+   {"file": "tests/test_lp_rh_stock_reference_v1_readonly.py", "name": "test_t21_oracle_paused_none_unknown", "line": 83, "pytest_output": "1 passed in 0.01s"},
+   {"file": "tests/test_lp_rh_market_session_v1_readonly.py", "name": "test_evaluate_health_oracle_paused", "line": 72, "pytest_output": "1 passed in 0.01s"}
+  ],
+  "coverage": "PARTIAL",
+  "notes": "corp_action_guard returns state ORACLE_PAUSED when oracle_paused=True and UNKNOWN when oracle_paused=None; allows_new_or_recenter returns True only for NORMAL. test_t21_oracle_paused_blocks asserts state==ORACLE_PAUSED and allows_new_or_recenter is False; test_t21_oracle_paused_none_unknown asserts state==UNKNOWN. evaluate_health adds ORACLE_PAUSED (line 152) and ORACLE_STALE (line 157) as independent flags, so a paused oracle with an old timestamp retains the stale mark; test_evaluate_health_oracle_paused asserts only the ORACLE_PAUSED flag with a fresh timestamp, and no test asserts ORACLE_STALE coexisting with ORACLE_PAUSED."
+ },
+ {
+  "id": "T22",
+  "scenario": "newMultiplier等于current且无未来有效事件",
+  "expected": "不虚构公司行动；仍核对pause状态",
+  "impl_sites": [
+   {"file": "scripts/lp_rh_multiplier_reader_v1_readonly.py", "line": 146, "snippet": "def detect_multiplier_change(previous, current):"},
+   {"file": "scripts/lp_rh_multiplier_reader_v1_readonly.py", "line": 155, "snippet": "    return False, \"STABLE\""},
+   {"file": "scripts/lp_rh_stock_reference_v1_readonly.py", "line": 103, "snippet": "        return \"ORACLE_PAUSED\", [\"oracle feed paused\"]"}
+  ],
+  "covering_tests": [
+   {"file": "tests/test_lp_rh_stock_reference_v1_readonly.py", "name": "test_t22_pending_equals_current_normal", "line": 92, "pytest_output": "1 passed in 0.01s"},
+   {"file": "tests/test_lp_rh_multiplier_reader_v1_readonly.py", "name": "test_detect_change_stable", "line": 122, "pytest_output": "1 passed in 0.01s"},
+   {"file": "tests/test_lp_rh_multiplier_reader_v1_readonly.py", "name": "test_detect_change_unknown_cannot_compare", "line": 129, "pytest_output": "1 passed in 0.01s"}
+  ],
+  "coverage": "COVERED",
+  "notes": "test_t22_pending_equals_current_normal asserts that when pending equals current and effective_at=None, state==NORMAL, reasons==[], and allows_new_or_recenter is True; the pause check is the oracle_paused parameter of corp_action_guard (asserted in the T21 tests). detect_multiplier_change returns (False, STABLE) when previous==current (test_detect_change_stable) and (True, UNKNOWN_CANNOT_COMPARE) when either side is unknown (test_detect_change_unknown_cannot_compare)."
+ },
+ {
+  "id": "T23",
+  "scenario": "闭市feed不更新 vs盘中异常不更新",
+  "expected": "原因分开，但两者不让新窄区间通过",
+  "impl_sites": [
+   {"file": "scripts/lp_rh_market_session_v1_readonly.py", "line": 184, "snippet": "        return \"EXPECTED_SESSION_CLOSED\""},
+   {"file": "scripts/lp_rh_market_session_v1_readonly.py", "line": 186, "snippet": "        return \"STALE_WHILE_EXPECTED_LIVE\""},
+   {"file": "scripts/lp_rh_market_session_v1_readonly.py", "line": 192, "snippet": "    return session == \"RTH\" and not flags"}
+  ],
+  "covering_tests": [
+   {"file": "tests/test_lp_rh_stock_reference_v1_readonly.py", "name": "test_t23_stale_session_closed", "line": 103, "pytest_output": "1 passed in 0.01s"},
+   {"file": "tests/test_lp_rh_stock_reference_v1_readonly.py", "name": "test_t23_stale_while_expected_live", "line": 109, "pytest_output": "1 passed in 0.01s"},
+   {"file": "tests/test_lp_rh_stock_reference_v1_readonly.py", "name": "test_t23_fresh", "line": 115, "pytest_output": "1 passed in 0.01s"},
+   {"file": "tests/test_lp_rh_market_session_v1_readonly.py", "name": "test_stale_reason_all_three_values", "line": 106, "pytest_output": "1 passed in 0.01s"},
+   {"file": "tests/test_lp_rh_market_session_v1_readonly.py", "name": "test_allows_new_position_rth_with_flag_false", "line": 113, "pytest_output": "1 passed in 0.01s"}
+  ],
+  "coverage": "COVERED",
+  "notes": "stale_reason returns EXPECTED_SESSION_CLOSED when session != RTH, STALE_WHILE_EXPECTED_LIVE when RTH and age > heartbeat, FRESH otherwise; the two stale reasons are distinct strings, asserted by the four reason tests. allows_new_position returns True only when session==RTH and flags is empty (line 192); test_allows_new_position_rth_with_flag_false asserts allows_new_position(RTH, [ORACLE_STALE]) is False and allows_new_position(PREMARKET, []) is False, i.e. both stale cases block a new position."
+ },
+ {
+  "id": "T24",
+  "scenario": "参考报价可读但无足额DEX退出quote",
+  "expected": "`INPUTS_UNAVAILABLE: EXIT_QUOTE`，不是无风险折价",
+  "impl_sites": [
+   {"file": "scripts/lp_rh_stock_reference_v1_readonly.py", "line": 128, "snippet": "def exit_quote_required(reference: ReferenceValue) -> tuple[bool, str]:"},
+   {"file": "scripts/lp_rh_stock_reference_v1_readonly.py", "line": 131, "snippet": "        return False, \"INPUTS_UNAVAILABLE: EXIT_QUOTE\""},
+   {"file": "scripts/lp_rh_exit_depth_v1_readonly.py", "line": 247, "snippet": "            \"sufficient\": False, \"reason\": \"INPUTS_UNAVAILABLE: EXIT_QUOTE\"}"},
+   {"file": "scripts/lp_rh_premium_guard_v1_readonly.py", "line": 109, "snippet": "        reasons.append(why)  # \"INPUTS_UNAVAILABLE: EXIT_QUOTE\""}
+  ],
+  "covering_tests": [
+   {"file": "tests/test_lp_rh_stock_reference_v1_readonly.py", "name": "test_t24_exit_quote_unavailable", "line": 122, "pytest_output": "1 passed in 0.01s"},
+   {"file": "tests/test_lp_rh_premium_guard_v1_readonly.py", "name": "test_gate_reject_no_exit_quote", "line": 216, "pytest_output": "1 passed in 0.01s"}
+  ],
+  "coverage": "COVERED",
+  "notes": "exit_quote_required returns (False, INPUTS_UNAVAILABLE: EXIT_QUOTE) when executable_exit_bid_for_position_size is None even if reference bid/ask/mid are present; test_t24_exit_quote_unavailable constructs such a ReferenceValue and asserts ok is False and reason equals that string. premium_guard's stock gate appends the same reason and rejects (test_gate_reject_no_exit_quote asserts allowed is False and a reason containing EXIT_QUOTE). exit_depth returns the same reason string when the quote is insufficient (line 247)."
+ },
+ {
+  "id": "T25",
+  "scenario": "100U旧单仓50下限＋CORE42.5上限",
+  "expected": "`CAPITAL_POLICY_CONFLICT`，不自动改金额",
+  "impl_sites": [
+   {"file": "scripts/lp_rh_bucket_ledger_v1_readonly.py", "line": 173, "snippet": "def capital_policy_conflict(capital_usd: Decimal, *,"},
+   {"file": "scripts/lp_rh_bucket_ledger_v1_readonly.py", "line": 182, "snippet": "        \"code\": \"CAPITAL_POLICY_CONFLICT\" if conflict else None,"},
+   {"file": "scripts/lp_rh_shadow_runner_v1_readonly.py", "line": 256, "snippet": "    # capital_policy_pass -- D02.  Reported, never auto-adjusted, never unlocked."}
+  ],
+  "covering_tests": [
+   {"file": "tests/test_lp_rh_bucket_ledger_v1_readonly.py", "name": "test_t25_capital_policy_conflict", "line": 123, "pytest_output": "1 passed in 0.01s"},
+   {"file": "tests/test_lp_rh_bucket_ledger_v1_readonly.py", "name": "test_capital_policy_conflict_none_when_cap_sufficient", "line": 136, "pytest_output": "1 passed in 0.01s"},
+   {"file": "tests/test_lp_rh_shadow_runner_v1_readonly.py", "name": "test_live_readiness_capital_conflict_policy_blocked_t25", "line": 143, "pytest_output": "1 passed in 0.06s"},
+   {"file": "tests/test_lp_rh_shadow_runner_v1_readonly.py", "name": "test_conjunct_capital_policy_fails_on_the_d02_conflict", "line": 360, "pytest_output": "1 passed in 0.06s"}
+  ],
+  "coverage": "COVERED",
+  "notes": "capital_policy_conflict(100, legacy_min=50) returns conflict=True, code=CAPITAL_POLICY_CONFLICT, core_cap=42.5, legacy_min=50; test_t25_capital_policy_conflict asserts these values and that the input dict is not mutated. The shadow runner's capital_policy_pass conjunct fails with that code (line 256 comment: Reported, never auto-adjusted, never unlocked); test_live_readiness... asserts all steps POLICY_BLOCKED with zero rows in rh_bucket_reservations; test_conjunct... asserts capital_policy_pass is False and the reason contains CAPITAL_POLICY_CONFLICT."
+ }, {
+  "id": "T26",
+  "scenario": "MEME单资产跨多个池／钱包累计超2%",
+  "expected": "资产聚合闸阻挡，不能拆单绕过",
+  "impl_sites": [],
+  "covering_tests": [],
+  "coverage": "NOT_COVERED",
+  "notes": "grep for 2% / cross-pool / wallet aggregation across scripts/lp_rh_*.py found no asset aggregation gate. The closest existing logic is lp_rh_meme_audit_v1_readonly.py's per-asset exposure cap check (lines 213-224: exposure >= cap against a caps mapping), which is a per-asset cap, not a 2% cross-pool/wallet cumulative aggregation. No test asserts a 2% cross-pool/wallet aggregation block."
+ },
+ {
+  "id": "T27",
+  "scenario": "两意图并发读到同一剩余额度",
+  "expected": "原子reservation只允许可容纳的意图",
+  "impl_sites": [
+   {"file": "scripts/lp_rh_bucket_ledger_v1_readonly.py", "line": 94, "snippet": "def try_reserve(conn: sqlite3.Connection, *, intent_id: str, bucket: str,"},
+   {"file": "scripts/lp_rh_bucket_ledger_v1_readonly.py", "line": 112, "snippet": "    conn.execute(\"BEGIN IMMEDIATE\")"},
+   {"file": "scripts/lp_rh_bucket_ledger_v1_readonly.py", "line": 118, "snippet": "            return {\"granted\": False, \"reason\": \"BUCKET_ACTIVE_CAP_EXCEEDED\","}
+  ],
+  "covering_tests": [
+   {"file": "tests/test_lp_rh_bucket_ledger_v1_readonly.py", "name": "test_t27_competing_reservations", "line": 45, "pytest_output": "1 passed in 0.02s"},
+   {"file": "tests/test_lp_rh_shadow_runner_v1_readonly.py", "name": "test_reservation_only_first_eligible", "line": 160, "pytest_output": "1 passed in 0.06s"}
+  ],
+  "coverage": "COVERED",
+  "notes": "try_reserve wraps check-and-insert in BEGIN IMMEDIATE (line 112); test_t27_competing_reservations reserves 40U of the 42.5U CORE cap (room_after 2.5), then a second 10U intent gets granted=False with reason BUCKET_ACTIVE_CAP_EXCEEDED and the pending count stays 1. test_reservation_only_first_eligible runs three eligible samples through run_episode and asserts reservation_granted == [True, False, False] with exactly 1 row in rh_bucket_reservations."
+ },
+ {
+  "id": "T28",
+  "scenario": "价格上升导致存量超cap",
+  "expected": "NO_NEW／REDUCE_EVAL；不错误声称 admission bug",
+  "impl_sites": [
+   {"file": "scripts/lp_rh_premium_guard_v1_readonly.py", "line": 31, "snippet": "PREMIUM_BANDS = ((100, \"NORMAL\"), (300, \"REDUCE_SIZE\"),"},
+   {"file": "scripts/lp_rh_premium_guard_v1_readonly.py", "line": 32, "snippet": "                 (700, \"NO_NEW_WIDEN_REMOVE_EVAL\"))"},
+   {"file": "scripts/lp_rh_premium_guard_v1_readonly.py", "line": 51, "snippet": "def classify_premium(bps: Optional[Decimal]) -> tuple[str, bool]:"}
+  ],
+  "covering_tests": [
+   {"file": "tests/test_lp_rh_premium_guard_v1_readonly.py", "name": "test_classify_400bps_no_new_widen_remove_eval", "line": 85, "pytest_output": "1 passed in 0.01s"},
+   {"file": "tests/test_lp_rh_premium_guard_v1_readonly.py", "name": "test_classify_800bps_dislocation_no_recenter", "line": 91, "pytest_output": "1 passed in 0.01s"}
+  ],
+  "coverage": "COVERED",
+  "notes": "classify_premium maps premium bps through PREMIUM_BANDS to a policy band and an allows flag; test_classify_400bps_no_new_widen_remove_eval asserts band NO_NEW_WIDEN_REMOVE_EVAL with allows False, and test_classify_800bps_dislocation_no_recenter asserts band DISLOCATION with allows False. The band names encode the policy response (reduce / no-new / remove-eval) rather than an admission error."
+ },
+ {
+  "id": "T29",
+  "scenario": "有很多WETH但native ETH不足",
+  "expected": "native gas reserve闸失败",
+  "impl_sites": [],
+  "covering_tests": [],
+  "coverage": "NOT_COVERED",
+  "notes": "grep for gas_reserve / native reserve across scripts/lp_rh_*.py and scripts/lp_netcover_engine_v1_readonly.py found no gate comparing a native ETH balance against a gas reserve requirement. gas_usd in the netcover inputs is a pass-through of evidence's gas_usd_estimate (scripts/lp_rh_netcover_inputs_v1_readonly.py:128-133). No test asserts a native-gas-reserve failure."
+ },
+ {
+  "id": "T30",
+  "scenario": "单位资本净边际收益≤0",
+  "expected": "报告无有限经济仓位，不推荐加资解决",
+  "impl_sites": [
+   {"file": "scripts/lp_netcover_engine_v1_readonly.py", "line": 233, "snippet": "def absolute_profit_gate("},
+   {"file": "scripts/lp_netcover_engine_v1_readonly.py", "line": 240, "snippet": "    \"\"\"INV-COST-01: enforce absolute economics regardless of displayed APR.\"\"\""},
+   {"file": "scripts/lp_rh_shadow_runner_v1_readonly.py", "line": 265, "snippet": "    # absolute_profit_pass -- fee EV must clear the horizon-invariant costs."},
+   {"file": "scripts/lp_rh_shadow_runner_v1_readonly.py", "line": 277, "snippet": "            fail(\"absolute_profit_pass\", f\"net EV {net} <= 0\")"}
+  ],
+  "covering_tests": [
+   {"file": "tests/test_lp_rh_shadow_runner_v1_readonly.py", "name": "test_conjunct_absolute_profit_fails_when_costs_exceed_fees", "line": 379, "pytest_output": "1 passed in 0.04s"},
+   {"file": "tests/test_lp_netcover_engine_v1_readonly.py", "name": "test_inv_cost_01_high_apr_but_tiny_absolute_profit_is_skip", "line": 80, "pytest_output": "1 passed in 0.01s"}
+  ],
+  "coverage": "COVERED",
+  "notes": "absolute_profit_gate computes required = max(min_profit_usd, safety_multiple * round_trip_cost) and allows only when expected net profit >= required; test_inv_cost_01... asserts allowed is False with reason INV-COST-01_EXPECTED_NET_PROFIT_TOO_LOW for net 0.08 vs cost 0.10. The shadow runner's absolute_profit_pass conjunct computes net = fee_ev - entry - exit - gas and fails when net <= 0 (line 277); the test asserts False with a net EV reason. The gate takes expected net profit as input and returns a boolean; no code path scales position size to reach the threshold."
+ },
+ {
+  "id": "T31",
+  "scenario": "q_min大于q_max",
+  "expected": "经济可行区间为空，合法0配置",
+  "impl_sites": [],
+  "covering_tests": [],
+  "coverage": "NOT_COVERED",
+  "notes": "q_min/q_max appear only as SQLite schema columns in scripts/lp_rh_store_v1_readonly.py (line 85 in the CREATE TABLE column list, line 143 in the rh_economic_evaluations field frozenset). No module computes an economic feasible interval from them or handles q_min > q_max as an empty interval with a legal 0 config. No test."
+ },
+ {
+  "id": "T32",
+  "scenario": "未知fee输入 vs合法计算fee=0",
+  "expected": "前者缺输入；后者可以经济FAIL；报告区分",
+  "impl_sites": [
+   {"file": "scripts/lp_rh_netcover_inputs_v1_readonly.py", "line": 83, "snippet": "    fee_apr_pct = _to_float(evidence.get(\"fee_apr_pct\"))"},
+   {"file": "scripts/lp_rh_netcover_inputs_v1_readonly.py", "line": 84, "snippet": "    if fee_apr_pct is None:"},
+   {"file": "scripts/lp_rh_netcover_inputs_v1_readonly.py", "line": 86, "snippet": "        missing.append((\"fee_apr_pct\", \"EXTERNAL_DATA_UNAVAILABLE\"))"},
+   {"file": "scripts/lp_rh_netcover_inputs_v1_readonly.py", "line": 88, "snippet": "        fee_ev_usd = pos * fee_apr_pct / 100.0 * horizon_hours / 8760.0"}
+  ],
+  "covering_tests": [
+   {"file": "tests/test_lp_rh_netcover_inputs_v1_readonly.py", "name": "test_missing_fee_apr_marks_input_unavailable", "line": 110, "pytest_output": "1 passed in 0.03s"},
+   {"file": "tests/test_lp_rh_shadow_runner_v1_readonly.py", "name": "test_missing_fee_apr_inputs_unavailable_t32", "line": 126, "pytest_output": "1 passed in 0.08s"}
+  ],
+  "coverage": "PARTIAL",
+  "notes": "the assembler maps fee_apr_pct=None to fee_ev_usd=None plus a missing input EXTERNAL_DATA_UNAVAILABLE (lines 84-86); test_missing_fee_apr_marks_input_unavailable asserts fee_ev_usd is None and the missing entry, and test_missing_fee_apr_inputs_unavailable_t32 asserts status INPUTS_UNAVAILABLE. fee_apr_pct=0.0 is not None, so line 88 yields fee_ev_usd=0.0 with no missing entry, a legal 0 that can flow to an economic rejection; no test exercises fee_apr_pct=0."
+ },
+ {
+  "id": "T33",
+  "scenario": "reward仅来自广告APR",
+  "expected": "未验证reward收入不计，保留证据等级",
+  "impl_sites": [
+   {"file": "scripts/lp_rh_netcover_inputs_v1_readonly.py", "line": 90, "snippet": "    reward_verified = bool(evidence.get(\"reward_verified\", False))"},
+   {"file": "scripts/lp_rh_netcover_inputs_v1_readonly.py", "line": 91, "snippet": "    if reward_apr_pct is None or not reward_verified:"},
+   {"file": "scripts/lp_rh_netcover_inputs_v1_readonly.py", "line": 93, "snippet": "        reward_unverified_reason = \"reward_unverified_or_missing\""}
+  ],
+  "covering_tests": [
+   {"file": "tests/test_lp_rh_netcover_inputs_v1_readonly.py", "name": "test_reward_unverified_zeroes_reward_ev", "line": 72, "pytest_output": "1 passed in 0.03s"},
+   {"file": "tests/test_lp_rh_netcover_inputs_v1_readonly.py", "name": "test_reward_missing_zeroes_reward_ev", "line": 78, "pytest_output": "1 passed in 0.03s"}
+  ],
+  "coverage": "COVERED",
+  "notes": "when reward_verified is False or reward_apr_pct is None, reward_ev_usd is set to 0.0 (line 92) and reward_unverified_reason=reward_unverified_or_missing is recorded on the record (line 93); both tests assert reward_ev_usd == 0.0 and the reason string. The unverified reason is retained on the record."
+ },
+ {
+  "id": "T34",
+  "scenario": "总gas估计已含L1 data",
+  "expected": "总成本不再次追加同一L1费用",
+  "impl_sites": [],
+  "covering_tests": [],
+  "coverage": "NOT_COVERED",
+  "notes": "gas_usd in the netcover inputs is a direct pass-through of evidence's gas_usd_estimate (scripts/lp_rh_netcover_inputs_v1_readonly.py:128-133); no code detects whether the estimate already includes L1 data fees or prevents double-counting, and no L1 data fee term exists in the 9-key engine contract. No test."
+ },
+ {
+  "id": "T35",
+  "scenario": "两腿实际只换30%本金",
+  "expected": "换腿成本使用真实30%，不按100%重复计算",
+  "impl_sites": [
+   {"file": "scripts/lp_swap_cost_model_v1_readonly.py", "line": 184, "snippet": "def clmm_token0_value_fraction(entry_price: float, range_pct: float) -> float:"}
+  ],
+  "covering_tests": [
+   {"file": "tests/test_lp_clmm_leg_cost_v1_readonly.py", "name": "test_leg_cost_uses_exact_inventory_fraction_and_is_below_full_notional", "line": 31, "pytest_output": "1 passed in 0.01s"},
+   {"file": "tests/test_lp_clmm_leg_cost_v1_readonly.py", "name": "test_centered_clmm_leg_fraction_is_the_v3_inventory_value_not_full_position", "line": 20, "pytest_output": "1 passed in 0.01s"}
+  ],
+  "coverage": "COVERED",
+  "notes": "clmm_token0_value_fraction computes the fraction of position value that must be swapped for a leg rather than the full notional; test_leg_cost_uses_exact_inventory_fraction... asserts entry_cost_usd equals approx(position * fraction * fee) and is strictly below the cost computed on the full notional; test_centered_clmm_leg_fraction... asserts the fraction is the V3 inventory value, not the full position."
+ },
+ {
+  "id": "T36",
+  "scenario": "未来数据在当时不可获得",
+  "expected": "回放不允许前视；决策使用当时可见快照",
+  "impl_sites": [
+   {"file": "scripts/lp_rh_shadow_runner_v1_readonly.py", "line": 124, "snippet": "def _evidence_for(sample, pool_meta):"},
+   {"file": "scripts/lp_rh_shadow_runner_v1_readonly.py", "line": 306, "snippet": "def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,"},
+   {"file": "scripts/lp_rh_shadow_runner_v1_readonly.py", "line": 320, "snippet": "    for i, sample in enumerate(samples):"}
+  ],
+  "covering_tests": [
+   {"file": "tests/test_lp_rh_shadow_runner_v1_readonly.py", "name": "test_end_to_end_five_samples", "line": 102, "pytest_output": "1 passed in 0.06s"}
+  ],
+  "coverage": "PARTIAL",
+  "notes": "run_episode iterates samples sequentially (line 320); at step i, _evidence_for builds evidence only from sample i and the static pool_meta, so later samples are not referenced at step i. test_end_to_end_five_samples runs a 5-sample replay and asserts per-step structure, but no test asserts that step i's decision is unchanged when samples after i are modified or removed."
+ },
+ {
+  "id": "T37",
+  "scenario": "极高volume但头寸全程out-of-range",
+  "expected": "应计费为0／符合实际跨tick路径，不分摊全池APR",
+  "impl_sites": [
+   {"file": "scripts/lp_rh_in_range_v1_readonly.py", "line": 63, "snippet": "def in_range_fraction(samples: Sequence[Dict[str, Any]], *,"},
+   {"file": "scripts/lp_rh_in_range_v1_readonly.py", "line": 138, "snippet": "def effective_fee_ev(*, full_range_fee_ev: Optional[Decimal],"}
+  ],
+  "covering_tests": [
+   {"file": "tests/test_lp_rh_in_range_v1_readonly.py", "name": "test_all_out_range", "line": 75, "pytest_output": "1 passed in 0.01s"},
+   {"file": "tests/test_lp_rh_in_range_v1_readonly.py", "name": "test_effective_fee_ev_basic", "line": 161, "pytest_output": "1 passed in 0.01s"}
+  ],
+  "coverage": "COVERED",
+  "notes": "in_range_fraction counts samples whose tick is inside [tick_lower, tick_upper); when all samples are out of range, fraction == 0 (asserted by test_all_out_range). effective_fee_ev = full_range_fee_ev * in_range_fraction * concentration_multiplier (line 138), so an all-out-of-range position yields effective fee EV 0 rather than the full-range APR; test_effective_fee_ev_basic asserts 100 * 0.5 * 4 == 200."
+ },
+ {
+  "id": "T38",
+  "scenario": "collect，价不变，gas=0",
+  "expected": "钱包增量与未领fee减少相抵，NAV不变",
+  "impl_sites": [
+   {"file": "scripts/lp_rh_pnl_v1_readonly.py", "line": 36, "snippet": "def classify_flow(kind: str) -> bool:"},
+   {"file": "scripts/lp_rh_pnl_v1_readonly.py", "line": 98, "snippet": "def compute_nav(*, wallet, lp_principal, accrued_fees, verified_rewards,"}
+  ],
+  "covering_tests": [
+   {"file": "tests/test_lp_rh_pnl_v1_readonly.py", "name": "test_t38_collect_no_price_move_nav_unchanged", "line": 28, "pytest_output": "1 passed in 0.01s"}
+  ],
+  "coverage": "COVERED",
+  "notes": "classify_flow classifies collect as an internal flow (not external); compute_nav = wallet + lp_principal + accrued_fees + verified_rewards - liabilities. The test moves the collected fee from accrued_fees to wallet with no price change and gas 0, and asserts before == after as exact Decimals."
+ },
+ {
+  "id": "T39",
+  "scenario": "collect，gas=0.10USD",
+  "expected": "NAV只下降0.10，不再扣一遍费用归因",
+  "impl_sites": [
+   {"file": "scripts/lp_rh_pnl_v1_readonly.py", "line": 98, "snippet": "def compute_nav(*, wallet, lp_principal, accrued_fees, verified_rewards,"},
+   {"file": "scripts/lp_rh_pnl_v1_readonly.py", "line": 156, "snippet": "def attribution(*, nav_delta, fee_income, gas_paid, price_move_effect,"}
+  ],
+  "covering_tests": [
+   {"file": "tests/test_lp_rh_pnl_v1_readonly.py", "name": "test_t39_collect_gas_nav_down_exactly_gas", "line": 41, "pytest_output": "1 passed in 0.01s"}
+  ],
+  "coverage": "COVERED",
+  "notes": "the test collects with gas 0.10 and asserts before - after == Decimal('0.10') exactly, and that attribution reports gas_paid == Decimal('-0.10') with fee_income == Decimal('100'); the fee is attributed once as income and the NAV delta is gas only."
+ },
+ {
+  "id": "T40",
+  "scenario": "外部入金10USD、无交易",
+  "expected": "NAV增10，PnL为0",
+  "impl_sites": [
+   {"file": "scripts/lp_rh_pnl_v1_readonly.py", "line": 36, "snippet": "def classify_flow(kind: str) -> bool:"},
+   {"file": "scripts/lp_rh_pnl_v1_readonly.py", "line": 111, "snippet": "def net_pnl(nav_t1: Decimal, nav_t0: Decimal,"}
+  ],
+  "covering_tests": [
+   {"file": "tests/test_lp_rh_pnl_v1_readonly.py", "name": "test_t40_external_deposit_nav_up_pnl_zero", "line": 60, "pytest_output": "1 passed in 0.01s"}
+  ],
+  "coverage": "COVERED",
+  "notes": "deposit is classified as an external flow; net_pnl = nav_t1 - nav_t0 - external net flow. The test deposits 10 with no trade and asserts nav_t1 - nav_t0 == Decimal('10') and net_pnl == Decimal('0')."
+ }
+]
