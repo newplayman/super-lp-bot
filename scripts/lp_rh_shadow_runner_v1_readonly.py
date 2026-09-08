@@ -25,7 +25,19 @@ from scripts.lp_rh_terminal_gate_v1_readonly import (
     CONJUNCT_ORDER,
     evaluate_terminal_gate,
 )
-from scripts.lp_rh_bucket_ledger_v1_readonly import POLICY_ID, try_reserve
+from scripts.lp_rh_bucket_ledger_v1_readonly import (
+    POLICY_ID,
+    bucket_active_cap,
+    capital_policy_conflict,
+    try_reserve,
+)
+from scripts.lp_rh_registry_v1_readonly import RH_CHAIN_ID
+from scripts.lp_rh_market_session_v1_readonly import (
+    allows_new_position,
+    classify_session,
+    evaluate_health,
+)
+from scripts.lp_rh_exit_depth_v1_readonly import exit_depth_for_size
 from scripts.lp_rh_pnl_v1_readonly import compute_nav, hodl_benchmark, net_pnl
 from scripts.lp_rh_store_v1_readonly import insert_row, migrate, open_store
 
@@ -53,6 +65,7 @@ class ShadowStep:
     hodl_value: Optional[Decimal]
     reservation_granted: bool
     simulated_policy_only: bool
+    conjunct_reasons: tuple = ()
 
 
 def _candidate_key(sample: Mapping[str, Any], step_index: int) -> str:
@@ -63,9 +76,23 @@ def _candidate_key(sample: Mapping[str, Any], step_index: int) -> str:
     return f"{base}@{st}" if st else f"{base}#{step_index}"
 
 
-def _terminal_record(sample, gated, step_index) -> dict:
-    """Merge the gated record with the sample's 9 non-netcover conjuncts + capital_policy_conflict."""
+def _terminal_record(sample, gated, step_index, *, pool_meta=None,
+                    capital_usd=None, position_usd=None, now=None,
+                    conjunct_reasons=None) -> dict:
+    """Merge the gated record with the nine non-netcover conjuncts.
+
+    The conjuncts are computed from the modules that own them.  A sample may
+    still override any of them explicitly, which is the injection channel the
+    tests use; production samples carry none of these keys.
+    """
     rec = dict(gated)
+    if capital_usd is not None and position_usd is not None and now is not None:
+        bits, reasons = compute_conjuncts(
+            sample, gated, pool_meta=pool_meta, capital_usd=capital_usd,
+            position_usd=position_usd, now=now)
+        rec.update(bits)
+        if conjunct_reasons is not None:
+            conjunct_reasons.extend(reasons)
     for key in CONJUNCT_ORDER:
         if key != "netcover_pass" and key in sample:
             rec[key] = bool(sample[key])
@@ -75,8 +102,209 @@ def _terminal_record(sample, gated, step_index) -> dict:
     return rec
 
 
+# Freshness ceiling for the reference quote, in seconds.  Measured live at
+# 7-20s across all six symbols on 2026-09-08, so 120s is generous but still
+# catches a genuinely dead feed.
+REFERENCE_MAX_AGE_SECS = 120.0
+
+# Legacy 100U policy floor (PRD D02).  Reported against, never rewritten here.
+LEGACY_MIN_POSITION_USD = Decimal("50")
+
+
+# Evidence keys assemble_rh_clmm_inputs needs that a market-state sample does
+# not carry.  They describe the pool, so they ride in with pool_meta rather than
+# being invented per sample.
+_POOL_EVIDENCE_KEYS = (
+    "attestation_status", "protocol", "sqrt_price_x96", "fee", "dec0", "dec1",
+    "liquidity_raw", "fee_apr_pct", "sigma_daily", "gas_usd_estimate",
+    "range_pct", "tvl_usd", "active_liquidity_notional_usd",
+)
+
+
+def _evidence_for(sample, pool_meta):
+    """Sample plus the pool evidence, without mutating either.
+
+    Only keys the sample does not already define are taken from pool_meta, so a
+    sample can always override.  Missing keys stay missing: the assembler fails
+    closed on them rather than being handed a default.
+    """
+    evidence = dict(sample)
+    if not pool_meta:
+        return evidence
+    for key in _POOL_EVIDENCE_KEYS:
+        if evidence.get(key) is None and pool_meta.get(key) is not None:
+            evidence[key] = pool_meta[key]
+    return evidence
+
+
+def _as_datetime(value):
+    """Accept the ISO string the runner passes around, or a datetime.
+
+    ``now_fn()`` yields a string because the gate and the ledger both take one;
+    ``classify_session`` and ``evaluate_health`` need a real datetime.  Returns
+    None when the value cannot be parsed, so callers fail closed rather than
+    raising mid-episode.
+    """
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+    try:
+        text = str(value).replace("Z", "+00:00")
+        parsed = datetime.fromisoformat(text)
+        return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+    except (TypeError, ValueError):
+        return None
+
+
+def compute_conjuncts(sample, gated, *, pool_meta=None, capital_usd,
+                      position_usd, now):
+    """Compute the nine non-netcover conjuncts from the modules that own them.
+
+    Returns ``(bits, reasons)``.  Every conjunct that cannot be computed is
+    False with a named reason: nothing defaults to True to make the loop run.
+    ``netcover_pass`` is not produced here -- the gate computes it itself.
+    """
+    bits: dict = {}
+    reasons: list = []
+
+    def fail(name, why):
+        bits[name] = False
+        reasons.append(f"{name}: {why}")
+
+    # identity_verified -- chain identity gate (PRD 7.1, T01).
+    chain_id = sample.get("chain_id")
+    if chain_id is None:
+        fail("identity_verified", "chain_id missing from sample")
+    elif int(chain_id) != RH_CHAIN_ID:
+        fail("identity_verified", f"chain_id {chain_id} != {RH_CHAIN_ID}")
+    else:
+        bits["identity_verified"] = True
+
+    # protocol_capabilities_sufficient -- attested V3 pool, same block.
+    if not pool_meta:
+        fail("protocol_capabilities_sufficient", "pool_meta not supplied")
+    elif pool_meta.get("attestation_status") != "ATTESTED_SAME_BLOCK":
+        fail("protocol_capabilities_sufficient",
+             f"attestation {pool_meta.get('attestation_status')!r}")
+    elif pool_meta.get("protocol") != "v3":
+        fail("protocol_capabilities_sufficient",
+             f"protocol {pool_meta.get('protocol')!r} unsupported")
+    else:
+        bits["protocol_capabilities_sufficient"] = True
+
+    # data_complete_and_fresh -- price present, quote young, payload identified.
+    age = sample.get("reference_age_secs")
+    if sample.get("reference_mid") is None:
+        fail("data_complete_and_fresh", "reference_mid is None")
+    elif age is None:
+        fail("data_complete_and_fresh", "reference_age_secs unknown")
+    elif float(age) > REFERENCE_MAX_AGE_SECS:
+        fail("data_complete_and_fresh",
+             f"reference {float(age):.0f}s old > {REFERENCE_MAX_AGE_SECS:.0f}s")
+    elif not sample.get("source_payload_hash"):
+        fail("data_complete_and_fresh", "source_payload_hash missing")
+    else:
+        bits["data_complete_and_fresh"] = True
+
+    # market_and_chain_risk_pass -- session plus health, via the owning module.
+    # Resolve the clock first: evaluate_health needs a real datetime too, and
+    # handing it None raises rather than failing closed.
+    now_dt = _as_datetime(now)
+    if now_dt is None:
+        fail("market_and_chain_risk_pass", f"unparseable timestamp {now!r}")
+        return _finish_conjuncts(bits, reasons, gated, pool_meta,
+                                 capital_usd, position_usd, fail)
+    flags = evaluate_health(
+        oracle_paused=bool(sample.get("oracle_paused")),
+        oracle_updated_at=sample.get("oracle_updated_at"),
+        api_generated_at=sample.get("source_event_time"),
+        now=now_dt,
+        halt=bool(sample.get("halt")),
+        corp_action_pending=bool(sample.get("corp_action_pending")),
+        sources_disagree=bool(sample.get("sources_disagree")),
+        chain_degraded=bool(sample.get("chain_degraded")),
+        oracle_heartbeat_secs=sample.get("oracle_heartbeat_secs"),
+        api_stale_secs=age,
+    )
+    session, _ = classify_session(now_dt, calendar=None)
+    if allows_new_position(session, flags):
+        bits["market_and_chain_risk_pass"] = True
+    else:
+        fail("market_and_chain_risk_pass", f"session={session} flags={flags}")
+
+    return _finish_conjuncts(bits, reasons, gated, pool_meta,
+                             capital_usd, position_usd, fail)
+
+
+def _finish_conjuncts(bits, reasons, gated, pool_meta, capital_usd,
+                      position_usd, fail):
+    """The five conjuncts that do not depend on the clock, plus the roll-up."""
+    # profile_policy_pass -- the bucket's active cap must hold the position.
+    try:
+        cap = bucket_active_cap(capital_usd, "CORE")
+    except Exception as exc:                       # noqa: BLE001
+        cap = None
+        fail("profile_policy_pass", f"bucket_active_cap raised {type(exc).__name__}")
+    if cap is not None:
+        if Decimal(str(cap)) >= Decimal(str(position_usd)):
+            bits["profile_policy_pass"] = True
+        else:
+            fail("profile_policy_pass",
+                 f"CORE active cap {cap} < position {position_usd}")
+
+    # capital_policy_pass -- D02.  Reported, never auto-adjusted, never unlocked.
+    conflict = capital_policy_conflict(capital_usd, legacy_min_position=LEGACY_MIN_POSITION_USD)
+    if conflict and conflict.get("conflict"):
+        fail("capital_policy_pass",
+             f"{conflict.get('code')} core_cap={conflict.get('core_cap')} "
+             f"legacy_min={conflict.get('legacy_min')}")
+    else:
+        bits["capital_policy_pass"] = True
+
+    # absolute_profit_pass -- fee EV must clear the horizon-invariant costs.
+    fee_ev = gated.get("fee_ev_usd")
+    entry, exit_, gas = (gated.get("entry_cost_usd"), gated.get("exit_cost_usd"),
+                         gated.get("gas_usd"))
+    if fee_ev is None or entry is None or exit_ is None or gas is None:
+        fail("absolute_profit_pass", "fee EV or a cost leg is unavailable")
+    else:
+        net = (Decimal(str(fee_ev)) - Decimal(str(entry))
+               - Decimal(str(exit_)) - Decimal(str(gas)))
+        if net > 0:
+            bits["absolute_profit_pass"] = True
+        else:
+            fail("absolute_profit_pass", f"net EV {net} <= 0")
+
+    # position_and_exit_depth_pass -- the pool must absorb an exit at this size.
+    if not pool_meta or not pool_meta.get("tick_data"):
+        fail("position_and_exit_depth_pass", "pool_meta lacks tick_data")
+    else:
+        depth = exit_depth_for_size(
+            position_value_usd=Decimal(str(position_usd)),
+            max_impact_bps=Decimal(str(pool_meta.get("max_impact_bps", 50))),
+            **{k: v for k, v in pool_meta.items()
+               if k not in ("attestation_status", "protocol", "max_impact_bps")})
+        if depth.get("sufficient"):
+            bits["position_and_exit_depth_pass"] = True
+        else:
+            fail("position_and_exit_depth_pass", str(depth.get("reason")))
+
+    # legacy_required_conjunction -- the roll-up of the other eight.  Listed
+    # first in CONJUNCT_ORDER, so it must be computed last.
+    others = [k for k in CONJUNCT_ORDER
+              if k not in ("legacy_required_conjunction", "netcover_pass")]
+    missing = [k for k in others if not bits.get(k)]
+    if missing:
+        fail("legacy_required_conjunction", f"depends on {missing}")
+    else:
+        bits["legacy_required_conjunction"] = True
+
+    return bits, reasons
+
+
 def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
-                capital_usd, target_mode, now_fn):
+                capital_usd, target_mode, now_fn, pool_meta=None):
     """Replay one Shadow episode over `samples`, writing gate decisions and position marks to `conn`."""
     steps: list[ShadowStep] = []
     position_open = False
@@ -90,11 +318,16 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
     quote = DEFAULT_QUOTE_USD_PER_TOKEN1
 
     for i, sample in enumerate(samples):
-        record = assemble_rh_clmm_inputs(sample, position_usd=position_usd,
+        record = assemble_rh_clmm_inputs(_evidence_for(sample, pool_meta),
+                                         position_usd=position_usd,
                                          horizon_hours=horizon_hours)
         gated = apply_netcover_gate([record])[0]
-        decision = evaluate_terminal_gate(_terminal_record(sample, gated, i),
-                                          target_mode=target_mode, now=now_fn())
+        step_reasons: list = []
+        decision = evaluate_terminal_gate(
+            _terminal_record(sample, gated, i, pool_meta=pool_meta,
+                             capital_usd=capital_usd, position_usd=position_usd,
+                             now=now_fn(), conjunct_reasons=step_reasons),
+            target_mode=target_mode, now=now_fn())
         eligible = bool(decision.terminal_eligible)
         simulated = bool(decision.simulated_policy_only)
 
@@ -160,27 +393,51 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
         steps.append(ShadowStep(
             i, sample_time, price, eligible, decision.primary_status,
             decision.dominant_blocker, nav, step_net_pnl, hodl_value,
-            granted, simulated))
+            granted, simulated, tuple(step_reasons)))
     return steps
 
 
 def load_samples_from_db(conn, *, pool: str, limit: int) -> tuple[list[dict], int]:
     """Read real samples for `pool` from rh_market_states in sample_time order; reference_mid IS NULL is skipped and counted (never 0)."""
     cur = conn.execute(
-        "SELECT asset_address, sample_time, chain_id, reference_mid, multiplier_human "
+        "SELECT asset_address, sample_time, chain_id, reference_mid, "
+        "multiplier_human, session, health_flags_json, reference_age_secs, "
+        "oracle_paused, source_payload_hash, reference_bid, reference_ask "
         "FROM rh_market_states WHERE asset_address = ? ORDER BY sample_time LIMIT ?",
         (pool, limit))
     samples: list[dict] = []
     skipped = 0
-    for asset, st, chain_id, mid, mult in cur.fetchall():
+    for row in cur.fetchall():
+        (asset, st, chain_id, mid, mult, session, flags_json, age,
+         oracle_paused, payload_hash, bid, ask) = row
         if mid is None:
             skipped += 1
             continue
         samples.append({
             "asset_address": asset, "sample_time": st, "chain_id": chain_id,
             "reference_mid": Decimal(str(mid)), "multiplier_human": mult,
+            # Columns the conjuncts need.  A missing column stays None so the
+            # conjunct that needs it fails closed and names itself.
+            "session": session,
+            "health_flags_json": flags_json,
+            "reference_age_secs": age,
+            "oracle_paused": oracle_paused,
+            "source_payload_hash": payload_hash,
+            "source_event_time": st,
+            "reference_bid": bid,
+            "reference_ask": ask,
         })
     return samples, skipped
+
+
+def _conjunct_failure_counts(steps) -> dict:
+    """Count how often each conjunct named itself as a failure reason."""
+    counts: dict = {}
+    for step in steps:
+        for reason in getattr(step, "conjunct_reasons", ()) or ():
+            name = str(reason).split(":", 1)[0].strip()
+            counts[name] = counts.get(name, 0) + 1
+    return dict(sorted(counts.items(), key=lambda kv: (-kv[1], kv[0])))
 
 
 def episode_summary(steps: Sequence[ShadowStep], *, load_skipped: int = 0) -> dict:
@@ -205,7 +462,14 @@ def episode_summary(steps: Sequence[ShadowStep], *, load_skipped: int = 0) -> di
         "first_eligible_at": next((s.sample_time for s in steps if s.terminal_eligible), None),
         "nav_start": nav_start, "nav_end": nav_end, "net_pnl": net_pnl_val,
         "hodl_delta": hodl_delta,
-        "skipped_samples": sum(1 for s in steps if s.nav is None) + load_skipped,
+        # Was one "skipped_samples" field adding these together, which reported
+        # 40 when the database held 7 null prices.  They are different facts.
+        "skipped_at_load": load_skipped,
+        "steps_without_nav": sum(1 for s in steps if s.nav is None),
+        # Which conjunct actually failed, not just the roll-up that masks them.
+        # legacy_required_conjunction sits first in CONJUNCT_ORDER so it always
+        # takes the blame; these counts say what it was waiting on.
+        "conjunct_failure_counts": _conjunct_failure_counts(steps),
     }
 
 
@@ -217,11 +481,21 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                    choices=["SHADOW_SCENARIO", "LIVE_READINESS"])
     p.add_argument("--pool", default=DEFAULT_POOL)
     p.add_argument("--out", default=None)
+    p.add_argument("--pool-meta-json", default=None,
+                   help="JSON file with pool evidence: attestation_status, protocol, "
+                        "sqrt_price_x96, current_tick, tick_spacing, fee_pips, "
+                        "liquidity, tick_data, token0_decimals, token1_decimals, "
+                        "input_price_usd.  Without it the conjuncts that need pool "
+                        "state fail closed and say so.")
     a = p.parse_args(argv)
 
     live_conn = open_store(Path(a.db), read_only=True)
     try:
         samples, load_skipped = load_samples_from_db(live_conn, pool=a.pool, limit=a.samples)
+        pool_meta = None
+        if a.pool_meta_json:
+            with open(a.pool_meta_json, "r", encoding="utf-8") as fh:
+                pool_meta = json.load(fh)
     finally:
         live_conn.close()
 
@@ -232,7 +506,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         ep = "rh-shadow-" + datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
         steps = run_episode(sc, strategy_episode=ep, samples=samples,
                             position_usd=Decimal("1000"), horizon_hours=24.0,
-                            capital_usd=Decimal("10000"), target_mode=a.target_mode, now_fn=now)
+                            capital_usd=Decimal("10000"), target_mode=a.target_mode,
+                            now_fn=now, pool_meta=pool_meta)
         sc.close()
 
     payload = {"target_mode": a.target_mode, "pool": a.pool, "strategy_episode": ep,

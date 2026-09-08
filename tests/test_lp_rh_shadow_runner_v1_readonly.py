@@ -210,7 +210,13 @@ def test_load_samples_skips_null_mid(tmp_path):
     assert all(s["reference_mid"] != 0 for s in samples)  # NULL never filled with 0
     dummy = [ShadowStep(i, f"t{i}", None, False, "COMPUTED_FAIL", "b",
                         None, None, None, False, False) for i in range(2)]
-    assert episode_summary(dummy, load_skipped=1)["skipped_samples"] == 3
+    # RH-04f split this: "skipped_samples" summed samples dropped at load with
+    # steps that produced no NAV, so it reported 40 when the live database held
+    # 7 null prices.  Asserting both separately is tighter than asserting a sum.
+    summary = episode_summary(dummy, load_skipped=1)
+    assert "skipped_samples" not in summary
+    assert summary["skipped_at_load"] == 1
+    assert summary["steps_without_nav"] == 2
     conn.close()
 
 
@@ -248,3 +254,177 @@ def test_live_db_row_count_unchanged():
     current = _live_counts()
     assert current is not None
     assert current == _LIVE_SNAPSHOT, "test suite wrote to the live store"
+
+
+# --- RH-04f: the nine non-netcover conjuncts ---------------------------------
+
+def _conj_sample(**over):
+    s = {
+        "chain_id": 4663,
+        "reference_mid": Decimal("2480"),
+        "reference_age_secs": 10,
+        "source_payload_hash": "abc123",
+        "source_event_time": "2026-09-08T17:59:55Z",
+        "oracle_updated_at": "2026-09-08T17:59:50Z",
+        "oracle_heartbeat_secs": 3600,
+    }
+    s.update(over)
+    return s
+
+
+def _conj_meta(**over):
+    m = {
+        "attestation_status": "ATTESTED_SAME_BLOCK", "protocol": "v3",
+        "sqrt_price_x96": 3950376364833515856698135, "current_tick": -198160,
+        "tick_spacing": 1, "fee_pips": 100, "liquidity": 10 ** 19,
+        "tick_data": [{"tick_lower": -198200, "tick_upper": -198200,
+                       "liquidity_net": 10 ** 18}],
+        "token0_decimals": 18, "token1_decimals": 6,
+        "input_price_usd": "2484", "max_impact_bps": 50,
+    }
+    m.update(over)
+    return m
+
+
+def _conj(sample=None, meta=None, gated=None, capital="10000", position="1000",
+          now="2026-09-08T18:00:00Z"):
+    from scripts.lp_rh_shadow_runner_v1_readonly import compute_conjuncts
+    g = {"fee_ev_usd": "40", "entry_cost_usd": "1",
+         "exit_cost_usd": "1", "gas_usd": "0.02"}
+    if gated is not None:
+        g.update(gated)
+    return compute_conjuncts(sample if sample is not None else _conj_sample(), g,
+                             pool_meta=meta if meta is not None else _conj_meta(),
+                             capital_usd=Decimal(capital),
+                             position_usd=Decimal(position), now=now)
+
+
+def test_conjuncts_all_pass_on_a_complete_input():
+    bits, reasons = _conj()
+    assert reasons == [], reasons
+    assert bits["legacy_required_conjunction"] is True
+
+
+def test_conjunct_identity_fails_on_wrong_chain():
+    bits, reasons = _conj(sample=_conj_sample(chain_id=8453))
+    assert bits["identity_verified"] is False
+    assert any("identity_verified" in r and "8453" in r for r in reasons)
+    assert bits["legacy_required_conjunction"] is False
+
+
+def test_conjunct_identity_fails_when_chain_id_missing():
+    s = _conj_sample()
+    del s["chain_id"]
+    bits, _ = _conj(sample=s)
+    assert bits["identity_verified"] is False
+
+
+def test_conjunct_protocol_fails_without_pool_meta():
+    bits, reasons = _conj(meta={})
+    assert bits["protocol_capabilities_sufficient"] is False
+    assert any("pool_meta not supplied" in r for r in reasons)
+
+
+def test_conjunct_protocol_fails_on_unattested_pool():
+    bits, _ = _conj(meta=_conj_meta(attestation_status="DISCOVERED_NOT_ATTESTED"))
+    assert bits["protocol_capabilities_sufficient"] is False
+
+
+def test_conjunct_protocol_fails_on_v4():
+    bits, _ = _conj(meta=_conj_meta(protocol="v4"))
+    assert bits["protocol_capabilities_sufficient"] is False
+
+
+def test_conjunct_freshness_fails_on_missing_price():
+    bits, _ = _conj(sample=_conj_sample(reference_mid=None))
+    assert bits["data_complete_and_fresh"] is False
+
+
+def test_conjunct_freshness_fails_on_stale_quote():
+    bits, reasons = _conj(sample=_conj_sample(reference_age_secs=9999))
+    assert bits["data_complete_and_fresh"] is False
+    assert any("9999s old" in r for r in reasons)
+
+
+def test_conjunct_freshness_fails_without_payload_hash():
+    bits, _ = _conj(sample=_conj_sample(source_payload_hash=None))
+    assert bits["data_complete_and_fresh"] is False
+
+
+def test_conjunct_profile_policy_fails_when_position_exceeds_cap():
+    bits, reasons = _conj(capital="100", position="50")
+    assert bits["profile_policy_pass"] is False
+    assert any("42.5" in r for r in reasons)
+
+
+def test_conjunct_capital_policy_fails_on_the_d02_conflict():
+    """At 100U the CORE active cap is 42.5, below the legacy 50U floor."""
+    bits, reasons = _conj(capital="100", position="10")
+    assert bits["capital_policy_pass"] is False
+    assert any("CAPITAL_POLICY_CONFLICT" in r for r in reasons)
+
+
+def test_conjunct_capital_policy_cannot_be_forced_true():
+    """Self-incrimination: no argument combination unlocks the conflict."""
+    from scripts.lp_rh_shadow_runner_v1_readonly import compute_conjuncts
+    for position in ("1", "10", "42", "50", "60"):
+        bits, _ = compute_conjuncts(
+            _conj_sample(), {"fee_ev_usd": "40", "entry_cost_usd": "1",
+                             "exit_cost_usd": "1", "gas_usd": "0.02"},
+            pool_meta=_conj_meta(), capital_usd=Decimal("100"),
+            position_usd=Decimal(position), now="2026-09-08T18:00:00Z")
+        assert bits["capital_policy_pass"] is False, position
+
+
+def test_conjunct_absolute_profit_fails_when_costs_exceed_fees():
+    bits, reasons = _conj(gated={"fee_ev_usd": "0.5"})
+    assert bits["absolute_profit_pass"] is False
+    assert any("net EV" in r for r in reasons)
+
+
+def test_conjunct_absolute_profit_fails_when_a_leg_is_none():
+    bits, _ = _conj(gated={"gas_usd": None})
+    assert bits["absolute_profit_pass"] is False
+
+
+def test_conjunct_exit_depth_fails_without_tick_data():
+    bits, reasons = _conj(meta=_conj_meta(tick_data=[]))
+    assert bits["position_and_exit_depth_pass"] is False
+    assert any("tick_data" in r for r in reasons)
+
+
+def test_conjunct_market_risk_fails_outside_rth():
+    bits, reasons = _conj(now="2026-09-08T02:00:00Z")
+    assert bits["market_and_chain_risk_pass"] is False
+    assert any("session=" in r for r in reasons)
+
+
+def test_conjunct_market_risk_fails_without_an_oracle():
+    """This chain has no on-chain price source, so this is the live case."""
+    bits, reasons = _conj(sample=_conj_sample(oracle_updated_at=None))
+    assert bits["market_and_chain_risk_pass"] is False
+    assert any("ORACLE_UNAVAILABLE" in r for r in reasons)
+
+
+def test_conjunct_market_risk_fails_on_unparseable_timestamp():
+    bits, reasons = _conj(now="not-a-timestamp")
+    assert bits["market_and_chain_risk_pass"] is False
+    assert any("unparseable" in r for r in reasons)
+
+
+def test_legacy_conjunction_names_every_dependency_that_failed():
+    bits, reasons = _conj(sample=_conj_sample(chain_id=8453),
+                          meta=_conj_meta(protocol="v4"))
+    assert bits["legacy_required_conjunction"] is False
+    rollup = [r for r in reasons if r.startswith("legacy_required_conjunction")][0]
+    assert "identity_verified" in rollup
+    assert "protocol_capabilities_sufficient" in rollup
+
+
+def test_nothing_defaults_to_true_when_everything_is_missing():
+    from scripts.lp_rh_shadow_runner_v1_readonly import compute_conjuncts
+    bits, reasons = compute_conjuncts({}, {}, pool_meta=None,
+                                      capital_usd=Decimal("100"),
+                                      position_usd=Decimal("50"), now=None)
+    assert not any(bits.values()), bits
+    assert len(reasons) >= 6
