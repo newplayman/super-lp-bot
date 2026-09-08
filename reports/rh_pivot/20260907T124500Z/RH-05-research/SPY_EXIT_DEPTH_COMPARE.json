@@ -1,0 +1,78 @@
+{
+ "SPY_USDG_fee500": {
+  "config": {
+   "z4o": true,
+   "note": "token0=SPY(18) token1=USDG(6) -> \u5356 token0"
+  },
+  "rows": [
+   {
+    "pos": 500,
+    "max_exit_usd": "500",
+    "impact_bps": "0.16080218573091371947553395238780979370490613018909110026144345442215165097489925",
+    "sufficient": true,
+    "reason": "EXIT_DEPTH_OK"
+   },
+   {
+    "pos": 5000,
+    "max_exit_usd": "5000",
+    "impact_bps": "1.6076096299084170128281567447257047162894038573912160301666111348620247197062385",
+    "sufficient": true,
+    "reason": "EXIT_DEPTH_OK"
+   },
+   {
+    "pos": 50000,
+    "max_exit_usd": "50000",
+    "impact_bps": "16.291481784735853568256935196290884454970438219398991876096774645615330638518784",
+    "sufficient": true,
+    "reason": "EXIT_DEPTH_OK"
+   },
+   {
+    "pos": 200000,
+    "max_exit_usd": "None",
+    "impact_bps": "None",
+    "sufficient": false,
+    "reason": "INPUTS_UNAVAILABLE: EXIT_QUOTE"
+   }
+  ],
+  "activeLiquidity": "1121835846603503210",
+  "n_ticks": 76
+ },
+ "SPY_WETH_fee500": {
+  "config": {
+   "z4o": false,
+   "note": "token0=WETH(18) token1=SPY(18) -> \u5356 token1"
+  },
+  "rows": [
+   {
+    "pos": 500,
+    "max_exit_usd": "500",
+    "impact_bps": "0.16052401126753872013538367874656348816535360008041190964451583680327021899181009",
+    "sufficient": true,
+    "reason": "EXIT_DEPTH_OK"
+   },
+   {
+    "pos": 5000,
+    "max_exit_usd": "5000",
+    "impact_bps": "1.6050082345511966976196917115961330767025034024870068468261170017476284718553840",
+    "sufficient": true,
+    "reason": "EXIT_DEPTH_OK"
+   },
+   {
+    "pos": 50000,
+    "max_exit_usd": "50000",
+    "impact_bps": "16.222685568391308732169984237369701441952017406684063353247323154787502076921122",
+    "sufficient": true,
+    "reason": "EXIT_DEPTH_OK"
+   },
+   {
+    "pos": 200000,
+    "max_exit_usd": "144702.72058891099041057068",
+    "impact_bps": "49.999999999999999985688439488026567272728450081161463662606524665166387917017010",
+    "sufficient": false,
+    "reason": "EXIT_DEPTH_INSUFFICIENT"
+   }
+  ],
+  "activeLiquidity": "22550906453673166930069",
+  "n_ticks": 104
+ }
+}
