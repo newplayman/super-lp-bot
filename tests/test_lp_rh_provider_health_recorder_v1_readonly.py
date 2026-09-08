@@ -535,6 +535,108 @@ def test_log_range_max_span_stops_on_first_failure():
     assert rec["max_span"] is None
 
 
+# --- RH-01g: transient retry + limit_kind -----------------------------------
+
+def test_log_range_max_span_transient_retries_then_succeeds():
+    # A transient error on the 2000 span: back off 4s, retry, succeed, then
+    # keep walking the ladder. The transient blip is not a hard limit.
+    calls = []
+    sleeps = []
+
+    def call_fn(url, probe, params):
+        span = _span_of(params)
+        calls.append(span)
+        if span == 2000 and len(calls) == 2:
+            raise RuntimeError("network is busy")  # transient, 1st attempt
+        return {"span": span}
+
+    rec = _probe_log_range_max_span("http://p1", call_fn, 0x100000,
+                                    sleep_fn=sleeps.append)
+    assert rec["ok"] is True
+    assert rec["max_span"] == 10000
+    assert rec["max_span_limit_kind"] == "NONE"
+    # 2000 was attempted twice (1st transient-failed, 2nd succeeded).
+    assert calls == [500, 2000, 2000, 5000, 10000]
+    assert sleeps == [4]  # one backoff, after the single transient failure
+
+
+def test_log_range_max_span_transient_exhausts_retries():
+    # A transient error on the 500 span that never recovers: 3 attempts,
+    # back off 4s then 12s, then give up -> TRANSIENT, no span succeeded.
+    calls = []
+    sleeps = []
+
+    def call_fn(url, probe, params):
+        calls.append(_span_of(params))
+        raise RuntimeError("network is busy")  # always transient
+
+    rec = _probe_log_range_max_span("http://p1", call_fn, 0x100000,
+                                    sleep_fn=sleeps.append)
+    assert rec["ok"] is False
+    assert rec["max_span"] is None
+    assert rec["max_span_limit_kind"] == "TRANSIENT"
+    assert calls == [500, 500, 500]  # 3 attempts on the first span
+    assert sleeps == [4, 12]  # back off after the 1st and 2nd failures
+
+
+def test_log_range_max_span_structural_stops_no_retry():
+    # A structural error (exceeds limit) on the 500 span: no retry, no sleep,
+    # stop immediately -> STRUCTURAL.
+    calls = []
+    sleeps = []
+
+    def call_fn(url, probe, params):
+        calls.append(_span_of(params))
+        raise RuntimeError("exceeds limit")  # structural
+
+    rec = _probe_log_range_max_span("http://p1", call_fn, 0x100000,
+                                    sleep_fn=sleeps.append)
+    assert rec["ok"] is False
+    assert rec["max_span"] is None
+    assert rec["max_span_limit_kind"] == "STRUCTURAL"
+    assert calls == [500]  # exactly one attempt, no retry
+    assert sleeps == []  # no backoff for a structural error
+
+
+def test_log_range_max_span_structural_mid_ladder():
+    # 500 and 2000 succeed, 5000 hits a hard limit -> STRUCTURAL, max_span=2000.
+    def call_fn(url, probe, params):
+        span = _span_of(params)
+        if span >= 5000:
+            raise RuntimeError("exceeds limit")
+        return {"span": span}
+
+    rec = _probe_log_range_max_span("http://p1", call_fn, 0x100000,
+                                    sleep_fn=lambda s: None)
+    assert rec["ok"] is True
+    assert rec["max_span"] == 2000
+    assert rec["max_span_limit_kind"] == "STRUCTURAL"
+
+
+def test_run_round_max_span_limit_kind_written():
+    # The default fake call_fn succeeds every span -> the whole ladder walks,
+    # so the recorded limit_kind is NONE (not a hard limit, not a blip).
+    conn = make_db()
+    run_round(conn, PROVIDERS, make_call_fn(), "t1")
+    for prov in PROVIDERS:
+        assert _cap(conn, "t1", prov["name"], "log_range_max_span",
+                    "max_span_limit_kind") == "NONE"
+
+
+def test_max_span_limit_kind_null_for_other_capabilities():
+    # Only log_range_max_span writes max_span_limit_kind; every other
+    # capability leaves it NULL (unmeasured, not a default string).
+    conn = make_db()
+    run_round(conn, PROVIDERS, make_call_fn(), "t1")
+    for prov in PROVIDERS:
+        for cap in CAPABILITIES:
+            val = _cap(conn, "t1", prov["name"], cap, "max_span_limit_kind")
+            if cap == "log_range_max_span":
+                assert val == "NONE"
+            else:
+                assert val is None
+
+
 def test_max_span_null_for_other_capabilities():
     # Only log_range_max_span writes the max_span column; every other
     # capability leaves it NULL (unmeasured, not 0).

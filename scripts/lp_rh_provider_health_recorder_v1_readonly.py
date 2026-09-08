@@ -47,6 +47,12 @@ from scripts.lp_rh_provider_pool_v1_readonly import (  # noqa: E402
     usable_providers,
     verify_provider_methods,
 )
+# RH-01g: reuse the shared transient-error classifier (do NOT rewrite it).
+# -32005 / network is busy / HTTP 429 / 5xx -> transient (backoff + retry);
+# exceeds limit / -32000 / HTTP 403 / bad params -> structural (stop, no retry).
+from scripts.lp_rh_organic_recorder_v1_readonly import (  # noqa: E402
+    _is_transient,
+)
 
 __all__ = [
     "CAPABILITIES",
@@ -98,6 +104,12 @@ DEFAULT_TIMEOUT = 10
 # provider's measured max_span.
 LOG_RANGE_LADDER = (500, 2000, 5000, 10000)
 
+# RH-01g: per-span retry backoff (seconds) for TRANSIENT errors only. Each
+# span is attempted up to 3 times; after the 1st and 2nd transient failure we
+# sleep 4s then 12s. Structural errors stop the ladder immediately (no retry,
+# no sleep). The sleep is injected (sleep_fn) so tests never actually sleep.
+_SPAN_RETRY_BACKOFF_SECS = (4, 12)
+
 # chainId 4663 endpoints from the ethereum-lists registry.
 PROVIDERS = [
     {"name": "robinhood", "url": "https://rpc.mainnet.chain.robinhood.com"},
@@ -137,6 +149,7 @@ CREATE TABLE IF NOT EXISTS rh_provider_capability (
     error TEXT,
     result_digest TEXT,
     max_span INTEGER,
+    max_span_limit_kind TEXT,
     PRIMARY KEY (sample_time, provider, capability));
 CREATE TABLE IF NOT EXISTS rh_provider_rollup (
     sample_time TEXT NOT NULL,
@@ -163,6 +176,10 @@ def _ensure_columns(conn) -> None:
     if "max_span" not in cols:
         conn.execute(
             "ALTER TABLE rh_provider_capability ADD COLUMN max_span INTEGER")
+    if "max_span_limit_kind" not in cols:
+        conn.execute(
+            "ALTER TABLE rh_provider_capability "
+            "ADD COLUMN max_span_limit_kind TEXT")
 
 
 class JsonRpcError(Exception):
@@ -289,9 +306,18 @@ def _probe_chain_id(url, call_fn) -> dict:
             "result_digest": digest}
 
 
-def _probe_log_range_max_span(url, call_fn, pinned_block) -> dict:
+def _probe_log_range_max_span(url, call_fn, pinned_block,
+                              sleep_fn=time.sleep) -> dict:
     """log_range_max_span: walk LOG_RANGE_LADDER small->large, record the last
     successful span, stop at the first failing span.
+
+    Each span is attempted up to 3 times. A TRANSIENT provider error (per the
+    shared ``_is_transient``: -32005 / network is busy / 429 / 5xx) backs off
+    4s then 12s (via the injected ``sleep_fn``) and retries; a STRUCTURAL
+    error (exceeds limit / -32000 / 403 / bad params) stops the ladder
+    immediately with no retry. ``max_span_limit_kind`` records WHY the ladder
+    stopped: STRUCTURAL (a span hit a hard limit), TRANSIENT (a span failed 3x
+    on transient errors), or NONE (the whole ladder succeeded).
 
     ok iff at least the smallest span (500) succeeds. max_span is the largest
     successful span, or None when no span succeeded.
@@ -300,6 +326,7 @@ def _probe_log_range_max_span(url, call_fn, pinned_block) -> dict:
     max_span = None
     last_digest = None
     first_error = None
+    limit_kind = None
     t0 = time.perf_counter()
     for span in LOG_RANGE_LADDER:
         params = [{
@@ -308,22 +335,43 @@ def _probe_log_range_max_span(url, call_fn, pinned_block) -> dict:
             "address": CORE_POOL,
             "topics": [SWAP_TOPIC0],
         }]
-        try:
-            result = call_fn(url, "log_range_max_span", params)
-        except Exception as exc:  # noqa: BLE001 - stop at the first failure
-            if first_error is None:
-                first_error = "%s: %s" % (type(exc).__name__, exc)
-            break
-        max_span = span
-        last_digest = _digest(result)
+        result = None
+        level_failed = False
+        for attempt in range(3):
+            try:
+                result = call_fn(url, "log_range_max_span", params)
+                break
+            except Exception as exc:  # noqa: BLE001
+                if first_error is None:
+                    first_error = "%s: %s" % (type(exc).__name__, exc)
+                if not _is_transient(exc):
+                    # Structural: a hard limit; retrying cannot help.
+                    limit_kind = "STRUCTURAL"
+                    level_failed = True
+                    break
+                # Transient: back off and retry while attempts remain.
+                if attempt < 2:
+                    sleep_fn(_SPAN_RETRY_BACKOFF_SECS[attempt])
+                else:
+                    limit_kind = "TRANSIENT"
+                    level_failed = True
+                    break
+        if not level_failed:
+            max_span = span
+            last_digest = _digest(result)
+            continue
+        break  # this span failed (structural or 3x transient): stop
     if max_span is None:
         return {"ok": False, "latency_ms": None, "max_span": None,
+                "max_span_limit_kind": limit_kind,
                 "error": first_error or "no span succeeded",
                 "result_digest": None}
+    if limit_kind is None:
+        limit_kind = "NONE"  # walked the whole ladder successfully
     return {"ok": True,
             "latency_ms": (time.perf_counter() - t0) * 1000.0,
-            "max_span": max_span, "error": None,
-            "result_digest": last_digest}
+            "max_span": max_span, "max_span_limit_kind": limit_kind,
+            "error": None, "result_digest": last_digest}
 
 
 def run_round(conn, providers, call_fn, sample_time) -> dict:
@@ -399,12 +447,15 @@ def _write_capability_rows(conn, sample_time, providers, matrix) -> None:
             if ok == 0:
                 latency = None  # failure rows: NULL, never 0
             max_span = rec.get("max_span")
+            max_span_limit_kind = rec.get("max_span_limit_kind")
             conn.execute(
                 "INSERT OR REPLACE INTO rh_provider_capability "
                 "(sample_time, provider, capability, ok, latency_ms, error, "
-                "result_digest, max_span) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                "result_digest, max_span, max_span_limit_kind) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (sample_time, name, cap, ok, latency,
-                 rec.get("error"), rec.get("result_digest"), max_span),
+                 rec.get("error"), rec.get("result_digest"), max_span,
+                 max_span_limit_kind),
             )
 
 
