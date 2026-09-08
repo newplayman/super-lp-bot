@@ -97,7 +97,7 @@ EXPECTED_CHAIN_ID = 4663
 PROBE_TO_RPC = {
     "head": "eth_blockNumber",
     "chain_id": "eth_chainId",
-    "block_hash_consistency": "eth_getBlock",
+    "block_hash_consistency": "eth_getBlockByNumber",
     "historical_read": "eth_call",
     "log_range_1k": "eth_getLogs",
     "log_range_10k": "eth_getLogs",

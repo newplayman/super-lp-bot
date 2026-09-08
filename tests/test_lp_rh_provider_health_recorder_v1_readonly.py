@@ -7,6 +7,7 @@ import sqlite3
 
 from scripts.lp_rh_provider_health_recorder_v1_readonly import (
     CAPABILITIES,
+    PROBE_TO_RPC,
     CONSENSUS_METHODS,
     JsonRpcError,
     SCHEMA,
@@ -430,3 +431,35 @@ def test_main_once_returns_zero(tmp_path, monkeypatch):
     db = tmp_path / "provider_health.db"
     assert rec.main(["--db", str(db), "--once"]) == 0
     assert db.exists()
+
+
+# Real JSON-RPC method names, per the Ethereum JSON-RPC spec.  The one exception
+# is the deliberately nonexistent probe used to test error structure.
+REAL_RPC_METHODS = {
+    "eth_chainId", "eth_blockNumber", "eth_getBlockByNumber", "eth_getBlockByHash",
+    "eth_call", "eth_getLogs", "eth_estimateGas", "eth_gasPrice", "eth_getBalance",
+    "eth_getCode", "eth_getStorageAt", "eth_getTransactionByHash",
+    "eth_getTransactionReceipt", "net_version", "web3_clientVersion",
+}
+
+
+def test_every_probe_uses_a_real_rpc_method_name():
+    """A wrong method name passes every mocked test and fails every real call.
+
+    Shipped as "eth_getBlock", which is not a JSON-RPC method.  Live, that made
+    block_hash_consistency fail for all four providers at once and drove
+    usable_count to 0 -- an entirely self-inflicted "no provider is usable"
+    verdict.  Nothing in the suite could catch it because the fake call_fn never
+    looks at the method name, so the name itself is asserted here.
+    """
+    for capability, method in PROBE_TO_RPC.items():
+        if capability == "error_structure":
+            assert method not in REAL_RPC_METHODS, (
+                "error_structure must call a method that does not exist")
+            continue
+        assert method in REAL_RPC_METHODS, (
+            f"{capability} maps to {method!r}, which is not a JSON-RPC method")
+
+
+def test_block_hash_consistency_is_get_block_by_number():
+    assert PROBE_TO_RPC["block_hash_consistency"] == "eth_getBlockByNumber"
