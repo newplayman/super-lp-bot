@@ -73,8 +73,19 @@ def test_evaluate_health_oracle_paused():
     assert "ORACLE_PAUSED" in _health(oracle_paused=True)
 
 
-def test_evaluate_health_oracle_stale_when_none():
-    assert "ORACLE_STALE" in _health(oracle_updated_at=None)
+def test_evaluate_health_oracle_unavailable_when_none():
+    """RH-02e split absent from stale; this test used to assert ORACLE_STALE.
+
+    An absent oracle and a stale one are different facts: absent is structural
+    and needs a policy decision, stale is temporary.  This chain's stock tokens
+    reference no on-chain price source at all, so collapsing them made the flag
+    permanent and hid the reason.  The gate it protects is unchanged and is
+    asserted here too, so this tightens the test rather than loosening it.
+    """
+    flags = _health(oracle_updated_at=None)
+    assert "ORACLE_UNAVAILABLE" in flags
+    assert "ORACLE_STALE" not in flags
+    assert ms.allows_new_position("RTH", flags) is False
 
 
 def test_evaluate_health_api_stale_when_none():
@@ -199,3 +210,86 @@ def test_evaluate_health_bad_timestamp_rejected():
         assert "NON_UTC_TIMESTAMP" in str(exc)
     else:
         raise AssertionError("expected ValueError for bad timestamp")
+
+
+# --- RH-02e: ORACLE_UNAVAILABLE vs ORACLE_STALE -----------------------------
+def test_evaluate_health_oracle_unavailable_when_none():
+    flags = _health(oracle_updated_at=None)
+    assert "ORACLE_UNAVAILABLE" in flags
+    assert "ORACLE_STALE" not in flags
+
+
+def test_evaluate_health_oracle_stale_when_present_but_old():
+    # oracle 2h old, default heartbeat 3600s -> stale, not unavailable
+    old_oracle = datetime(2026, 9, 8, 13, 0, tzinfo=timezone.utc)
+    flags = _health(oracle_updated_at=old_oracle)
+    assert "ORACLE_STALE" in flags
+    assert "ORACLE_UNAVAILABLE" not in flags
+
+
+def test_oracle_unavailable_and_stale_mutually_exclusive():
+    old_oracle = datetime(2026, 9, 8, 13, 0, tzinfo=timezone.utc)
+    combos = [
+        # (kwargs, expect_unavailable, expect_stale)
+        (dict(oracle_updated_at=None), True, False),
+        (dict(oracle_updated_at=_NOW), False, False),
+        (dict(oracle_updated_at=old_oracle), False, True),
+        (dict(oracle_updated_at=None, halt=True), True, False),
+    ]
+    for kwargs, exp_unavail, exp_stale in combos:
+        flags = _health(**kwargs)
+        assert ("ORACLE_UNAVAILABLE" in flags) is exp_unavail
+        assert ("ORACLE_STALE" in flags) is exp_stale
+        # the two oracle flags never appear together
+        assert not ("ORACLE_UNAVAILABLE" in flags and "ORACLE_STALE" in flags)
+
+
+def test_allows_new_position_rth_no_oracle_still_false():
+    # regression guard: this package does NOT loosen the gate
+    flags = _health(oracle_updated_at=None)
+    assert ms.allows_new_position("RTH", flags) is False
+
+
+def test_allows_new_position_rth_fresh_oracle_true():
+    # prove the gate is not constantly False
+    flags = _health()  # all fresh, no flags
+    assert flags == []
+    assert ms.allows_new_position("RTH", flags) is True
+
+
+def test_stale_reason_rth_none_oracle_age_no_crash():
+    assert ms.stale_reason("RTH", None, 3600) == "ORACLE_UNAVAILABLE"
+
+
+def test_stale_reason_rth_none_heartbeat_no_crash():
+    assert ms.stale_reason("RTH", 100, None) == "ORACLE_UNAVAILABLE"
+
+
+def test_stale_reason_postmarket_none_oracle_age():
+    # no oracle is independent of session
+    assert ms.stale_reason("POSTMARKET", None, 3600) == "ORACLE_UNAVAILABLE"
+
+
+def test_stale_reason_original_three_values_regression():
+    assert ms.stale_reason("RTH", 7200, 3600) == "STALE_WHILE_EXPECTED_LIVE"
+    assert ms.stale_reason("PREMARKET", 7200, 3600) == "EXPECTED_SESSION_CLOSED"
+    assert ms.stale_reason("RTH", 100, 3600) == "FRESH"
+
+
+def test_health_flags_contains_oracle_unavailable_and_whitelist():
+    assert "ORACLE_UNAVAILABLE" in ms.HEALTH_FLAGS
+    # every flag evaluate_health can return is a member of HEALTH_FLAGS
+    for oracle_val in (None, _NOW,
+                       datetime(2026, 9, 8, 13, 0, tzinfo=timezone.utc)):
+        flags = _health(oracle_updated_at=oracle_val, halt=True,
+                        oracle_paused=True, chain_degraded=True,
+                        sources_disagree=True, corp_action_pending=True,
+                        api_generated_at=None)
+        assert all(f in ms.HEALTH_FLAGS for f in flags)
+
+
+def test_stock_reference_stale_classification_none_no_crash():
+    from scripts import lp_rh_stock_reference_v1_readonly as sr
+    # T23 call path: passing None must not raise
+    assert sr.stale_classification(session="RTH", oracle_age_secs=None,
+                                   heartbeat_secs=3600) == "ORACLE_UNAVAILABLE"

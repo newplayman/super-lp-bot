@@ -4,7 +4,8 @@
 Pure, offline logic.  ``classify_session`` returns a Session
 (RTH/PREMARKET/POSTMARKET/OVERNIGHT/CLOSED_WEEKDAY/WEEKEND/HOLIDAY/UNKNOWN);
 ``evaluate_health`` returns a sorted list of HealthFlags (HALT, CORP_ACTION,
-ORACLE_PAUSED, ORACLE_STALE, API_STALE, SOURCE_DISAGREEMENT, CHAIN_DEGRADED).
+ORACLE_PAUSED, ORACLE_UNAVAILABLE, ORACLE_STALE, API_STALE,
+SOURCE_DISAGREEMENT, CHAIN_DEGRADED).
 Session and HealthFlags are two independent return values, never merged into
 one enum (PRD §9.4).  Timezone conversion uses stdlib ``zoneinfo`` (no
 hand-rolled UTC offsets).  No network, no collection, no writes to
@@ -45,8 +46,9 @@ EARLY_CLOSE_DAYS = {"2026-07-03", "2026-11-27", "2026-12-24"}
 
 SESSIONS = ("RTH", "PREMARKET", "POSTMARKET", "OVERNIGHT",
             "CLOSED_WEEKDAY", "WEEKEND", "HOLIDAY", "UNKNOWN")
-HEALTH_FLAGS = ("HALT", "CORP_ACTION", "ORACLE_PAUSED", "ORACLE_STALE",
-                "API_STALE", "SOURCE_DISAGREEMENT", "CHAIN_DEGRADED")
+HEALTH_FLAGS = ("HALT", "CORP_ACTION", "ORACLE_PAUSED", "ORACLE_UNAVAILABLE",
+                "ORACLE_STALE", "API_STALE", "SOURCE_DISAGREEMENT",
+                "CHAIN_DEGRADED")
 
 _PREMARKET_START = time(4, 0)
 _RTH_START = time(9, 30)
@@ -132,9 +134,11 @@ def evaluate_health(*, oracle_paused, oracle_updated_at, api_generated_at,
     """Return a sorted list of active health flags (independent of session).
 
     ``oracle_updated_at`` / ``api_generated_at`` / ``now`` each accept an
-    RFC3339 string or an aware datetime (see ``_to_dt``).  ``None``
-    timestamps are treated as unknown and raise the corresponding stale flag
-    rather than silently passing.
+    RFC3339 string or an aware datetime (see ``_to_dt``).  A ``None``
+    ``oracle_updated_at`` means the chain has no oracle to read (structural,
+    not transient) and raises ``ORACLE_UNAVAILABLE``; a present-but-old
+    oracle raises ``ORACLE_STALE``.  The two are mutually exclusive.  A
+    ``None`` ``api_generated_at`` still raises ``API_STALE``.
     """
     now_dt = _to_dt(now, "now")
     oracle_dt = _to_dt(oracle_updated_at, "oracle_updated_at")
@@ -147,7 +151,8 @@ def evaluate_health(*, oracle_paused, oracle_updated_at, api_generated_at,
     if oracle_paused:
         flags.add("ORACLE_PAUSED")
     if oracle_dt is None:
-        flags.add("ORACLE_STALE")
+        # No oracle on this chain (structural) -> UNAVAILABLE, not STALE.
+        flags.add("ORACLE_UNAVAILABLE")
     elif (now_dt - oracle_dt).total_seconds() > oracle_heartbeat_secs:
         flags.add("ORACLE_STALE")
     if api_dt is None:
@@ -161,13 +166,20 @@ def evaluate_health(*, oracle_paused, oracle_updated_at, api_generated_at,
     return sorted(flags)
 
 
-def stale_reason(session: str, oracle_age_secs: float,
-                 heartbeat_secs: int) -> str:
-    """Why the oracle is stale: closed session vs. live-but-stale vs. fresh.
+def stale_reason(session: str, oracle_age_secs: Optional[float],
+                 heartbeat_secs: Optional[int]) -> str:
+    """Why the oracle is stale: unavailable vs. closed vs. live-but-stale vs. fresh.
 
     Both the closed and live-but-stale cases block new narrow ranges, but the
-    reason must be reported separately (PRD §9.4).
+    reason must be reported separately (PRD §9.4).  A missing oracle age
+    (``oracle_age_secs is None``) or missing heartbeat threshold
+    (``heartbeat_secs is None``) is reported as ``ORACLE_UNAVAILABLE``.  That
+    check runs first, before the session check, because "no oracle" is
+    independent of which session it is (a chain with no oracle is unavailable
+    in RTH just as in POSTMARKET).
     """
+    if oracle_age_secs is None or heartbeat_secs is None:
+        return "ORACLE_UNAVAILABLE"
     if session != "RTH":
         return "EXPECTED_SESSION_CLOSED"
     if oracle_age_secs > heartbeat_secs:
