@@ -46,7 +46,7 @@ def _dec(value: Any) -> Optional[Decimal]:
 def _pool_params(evidence: Mapping[str, Any]):
     """Extract (price, fee_tier, dec0, dec1, liquidity_raw) or None if incomplete.
 
-    price = (sqrt_price_x96 / 2**96) ** 2; fee_tier = fee / 1e6.  Returns None
+    price = decimals-normalised (sqrt_price_x96/2**96)**2 * 10**dec0/10**dec1.  Returns None
     when any field is missing/invalid so callers can emit None (not 0).
     """
     vals = (evidence.get("sqrt_price_x96"), evidence.get("fee"),
@@ -54,9 +54,12 @@ def _pool_params(evidence: Mapping[str, Any]):
     if any(v is None for v in vals):
         return None
     try:
-        price = (float(vals[0]) / 2.0 ** 96) ** 2
-        fee_tier = float(vals[1]) / 1e6
         dec0, dec1 = int(vals[2]), int(vals[3])
+        # sqrtPriceX96^2 is the RAW token1/token0 ratio; the cost model needs the
+        # decimals-normalised price. Same 1e12 trap fixed in the assembler on
+        # 2026-09-08 (COST_MODEL_PRICE_SCALE_BUG.md).
+        price = ((float(vals[0]) / 2.0 ** 96) ** 2) * (10 ** dec0) / (10 ** dec1)
+        fee_tier = float(vals[1]) / 1e6
         liq = float(vals[4])
     except (TypeError, ValueError):
         return None
