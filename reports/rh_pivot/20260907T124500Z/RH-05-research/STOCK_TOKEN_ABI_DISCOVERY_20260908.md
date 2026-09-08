@@ -53,3 +53,52 @@ PRD §9.5 要求「由 token 合约实际 ABI 读取 `uiMultiplier()`、`newUIMu
 - `0xdc767007` 与 `0xa60bf13d` 返回同值，需在 `pendingMultiplier` 非空的代币上区分（当前全链无此样本，**无法验证**，记 `UNVERIFIED`）。
 - `0x97a4064f` 返回 `1782999000`，量级像 Unix 时间戳（2026-07-01 前后）也像定点价格，**未确认，不得使用**。
 - Chainlink 股票 feed 地址尚未定位，token-equivalent 参考价仍缺（RH-05 证据 ②）。
+
+---
+
+## 6. 追加发现：`0x97a4064f` 是**乘数生效时间戳**（2026-09-08 08:2x UTC）
+
+对全部 194 个代币逐个调用后统计：
+
+| 集合 | 数量 | 成员 |
+|---|---|---|
+| `currentMultiplier ≠ 1` | 12 | AAPL, ASML, CCL, COST, CRWD, DELL, F, MU, ORCL, SGOV, UPS, WDC |
+| `0x97a4064f ≠ 0` | 12 | **完全相同的 12 个** |
+
+**两集合精确重合，零例外。** 乘数为 1 的 182 个代币该值全为 0。
+
+按 Unix 时间戳解读并与公司行动对照：
+
+| 代币 | `0x97a4064f` | 解读为 UTC | 该代币公司行动 |
+|---|---|---|---|
+| CRWD | 1782999000 | 2026-07-02 13:30:00 | 无记录（拆股不在 corporate-actions 里） |
+| AAPL | 1786720366 | 2026-08-14 15:12:46 | 2026-08-13 现金分红 COMPLETED |
+| SGOV | 1788220826 | 2026-09-01 00:00:26 | 2026-09-04 现金分红 IN_PROGRESS |
+
+AAPL 的乘数生效时间紧跟其分红处理日一天，语义自洽。全部 12 个时间戳落在 2026-07-02 至 2026-09-08 区间内，与「分红导致乘数微调」的模式吻合。
+
+**结论**：`0x97a4064f` 即 PRD §9.5 要的 `effectiveAt()` 等价物，**只是最后一次生效时间，不是未来事件的前瞻时间**。
+
+### 修正 §4 第 4 条
+
+原文说「链上无前瞻乘数信号」，需精确化：
+
+- **链上有**「乘数最后变更时间」（`0x97a4064f`），可用于检测乘数是否刚刚变过、attestation 是否需要刷新。
+- **链上仍无**「未来待生效乘数」——`newUIMultiplier()` 不存在，`pendingMultiplier` 只在 REST 里且当前全空。
+
+因此 `CORP_ACTION_GUARD` 的实现应当是：
+
+1. 每轮读 `0x97a4064f`，**与上一轮比对**；变化即触发 `SUPPLY_EVENT_REVIEW` 与 attestation 过期（这是纯链上信号，无外部依赖）。
+2. 前瞻事件仍只能靠 REST `/rhj/corporate-actions` 的 `processDate` 与 `pendingMultiplier`，该路径记为**单点数据源风险**。
+3. 两者不一致（链上时间戳已变但 REST 未反映，或反之）→ `SOURCE_DISAGREEMENT`，禁止新仓。
+
+### selector 识别汇总（更新）
+
+| selector | 语义 | 证据强度 |
+|---|---|---|
+| `0xa60bf13d` | 乘数（1e18 定点） | **强**：15/15 与 API 精确一致 |
+| `0x97a4064f` | 乘数最后生效时间戳 | **强**：12/12 集合重合，时间与分红日自洽 |
+| `0x5c975abb` | `paused()` | 中：OZ 标准 selector，当前全为 0 未被证伪 |
+| `0x313ce567` / `0x18160ddd` | `decimals()` / `totalSupply()` | 强：标准 ERC-20 |
+| `0xdc767007` | 与 `0xa60bf13d` 同值 | 弱：无 pending 样本可区分，记 `UNVERIFIED` |
+| `0x9bea6429` | 疑为乘数调整后供应量 | 弱：QQQ 精确等于 totalSupply，GLD/SPY 不等，**未确认** |
