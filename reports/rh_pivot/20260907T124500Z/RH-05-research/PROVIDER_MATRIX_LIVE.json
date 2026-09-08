@@ -1,0 +1,113 @@
+{
+ "pinned_block": 57774374,
+ "matrix": {
+  "primary": {
+   "eth_chainId": {
+    "ok": true,
+    "ms": 284,
+    "digest": "f809017050"
+   },
+   "eth_blockNumber": {
+    "ok": true,
+    "ms": 265,
+    "digest": "5d49151425"
+   },
+   "eth_call": {
+    "ok": true,
+    "ms": 291,
+    "digest": "0b52d81e00"
+   },
+   "eth_getBlockByNumber": {
+    "ok": true,
+    "ms": 291,
+    "digest": "636c1667a4"
+   },
+   "eth_getLogs": {
+    "ok": true,
+    "ms": 515,
+    "digest": "4f53cda18c"
+   }
+  },
+  "publicnode": {
+   "eth_chainId": {
+    "ok": true,
+    "ms": 100,
+    "digest": "f809017050"
+   },
+   "eth_blockNumber": {
+    "ok": true,
+    "ms": 88,
+    "digest": "6d70c818c8"
+   },
+   "eth_call": {
+    "ok": true,
+    "ms": 113,
+    "digest": "0b52d81e00"
+   },
+   "eth_getBlockByNumber": {
+    "ok": true,
+    "ms": 105,
+    "digest": "636c1667a4"
+   },
+   "eth_getLogs": {
+    "ok": true,
+    "ms": 91,
+    "digest": "4f53cda18c"
+   }
+  },
+  "arrowrpc": {
+   "eth_chainId": {
+    "ok": false,
+    "err": "HTTP Error 530: <none>"
+   },
+   "eth_blockNumber": {
+    "ok": false,
+    "err": "HTTP Error 530: <none>"
+   },
+   "eth_call": {
+    "ok": false,
+    "err": "HTTP Error 530: <none>"
+   },
+   "eth_getBlockByNumber": {
+    "ok": false,
+    "err": "HTTP Error 530: <none>"
+   },
+   "eth_getLogs": {
+    "ok": false,
+    "err": "HTTP Error 530: <none>"
+   }
+  },
+  "ordofi": {
+   "eth_chainId": {
+    "ok": true,
+    "ms": 232,
+    "digest": "f809017050"
+   },
+   "eth_blockNumber": {
+    "ok": true,
+    "ms": 207,
+    "digest": "2ab51a193b"
+   },
+   "eth_call": {
+    "ok": true,
+    "ms": 259,
+    "digest": "0b52d81e00"
+   },
+   "eth_getBlockByNumber": {
+    "ok": true,
+    "ms": 474,
+    "digest": "636c1667a4"
+   },
+   "eth_getLogs": {
+    "ok": true,
+    "ms": 239,
+    "digest": "4f53cda18c"
+   }
+  }
+ },
+ "usable": [
+  "primary",
+  "publicnode",
+  "ordofi"
+ ]
+}
