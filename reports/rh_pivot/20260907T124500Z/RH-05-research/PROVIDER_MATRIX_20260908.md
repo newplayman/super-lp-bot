@@ -27,14 +27,38 @@ PRD §8.3 要求 `usable_provider_count >= 2` 才允许 LIVE。此前实测只�
 
 `eth_call` 用的是 SGOV/USDG fee-3000 池的 `slot0()`，即本项目真实会打的调用，不是空探针。
 
-## 一致性：无 SOURCE_DISAGREEMENT
+## 一致性：固定区块上无 SOURCE_DISAGREEMENT
 
-同一固定区块上，三个可用提供方对 `eth_chainId` / `eth_call` / `eth_getBlockByNumber` /
-`eth_getLogs` / `eth_blockNumber` 的返回 **sha256 摘要逐字节一致**。按 PRD §9.3，
+同一固定区块 57774374 上，三个可用提供方对 `eth_chainId` / `eth_call` /
+`eth_getBlockByNumber` / `eth_getLogs` 的返回 **sha256 摘要逐字节一致**。按 PRD §9.3，
 不一致本应触发 `SOURCE_DISAGREEMENT` 并禁止新仓；本次未触发。
+
+### 更正：`eth_blockNumber` 三家不一致，但那不是分歧
+
+初稿把 `eth_blockNumber` 也算进「五个方法逐字节一致」，**这是错的**。该方法返回各家
+自己的链头，本来就该不同。实测三轮并列取样：
+
+| 轮次 | primary | publicnode | ordofi | 极差 |
+|---|---|---|---|---|
+| 1 | 57775042 | 57775048 | 57775050 | 8 块 |
+| 2 | 57775087 | 57775094 | 57775097 | 10 块 |
+| 3 | 57775132 | 57775185 | 57775186 | 54 块 |
+
+**由此得到一条本来不在预期内的发现：我们正在用的主端点
+`rpc.mainnet.chain.robinhood.com` 每一轮都是三家里最落后的**，落后 6 到 54 块；
+而 `publicnode` 既最快（88–113ms，主端点是 265–291ms）又最接近链头。
+
+两条实现要求：
+
+1. **一致性比对只能在固定区块上做。** 拿 `eth_blockNumber` 去比对会把正常的同步延迟
+   误报成 `SOURCE_DISAGREEMENT`，从而无谓地禁掉新仓。RH-01d 的 `detect_disagreement`
+   只对显式传入的 `consensus_methods` 生效，正是为此。
+2. **链头落后会系统性影响时效性判定。** 采集器当前只用主端点，其读到的「最新」状态
+   可能已落后 54 块。这对 `reference_age` 类判定的影响尚未量化，须在 Stage B 前评估。
 
 ## 这条证据的边界（不得夸大）
 
+0. **链头落后的影响未量化。** 见上节更正。
 1. **这是一次时点快照，不是可用性序列。** 三个提供方此刻全通，不等于观测窗口内持续可用。
    `arrowrpc` 恰好证明注册表里的端点会挂。持续可用性需要把它们接进轮循池后按周期记录，
    这正是 RH-01d（`lp_rh_provider_pool_v1_readonly`）在建的东西。
