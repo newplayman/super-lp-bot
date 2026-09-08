@@ -29,6 +29,13 @@ from datetime import datetime, timezone
 from decimal import Decimal, getcontext
 from pathlib import Path
 
+# Every module here that imports `scripts.*` needs this: pytest inserts the repo
+# root itself, so a module without it passes the whole suite and then fails the
+# moment it is run as a script.
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
 from scripts.lp_rh_swap_logs_v1_readonly import (
     fetch_swaps,
     make_urllib_call_fn,

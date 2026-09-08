@@ -11,6 +11,7 @@ import argparse
 import inspect
 import json
 import sys
+from pathlib import Path
 from collections.abc import Mapping
 from decimal import Decimal
 from typing import Any, Optional, Sequence
@@ -20,6 +21,10 @@ if REPO_ROOT not in sys.path:
     sys.path.insert(0, REPO_ROOT)
 
 # Reuse the repository's money-input guard used by the RH NAV ledger.
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
 from scripts.lp_rh_pnl_v1_readonly import _as_decimal as _repo_as_decimal  # noqa: E402
 
 

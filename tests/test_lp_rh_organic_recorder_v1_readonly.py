@@ -271,10 +271,24 @@ def test_main_once_returns_zero_and_writes_one_row(tmp_path):
     assert rows == [(200000 - 8800, 200000)]  # exactly one new row
 
 
-def test_main_once_does_not_create_reports_db(tmp_path):
+def test_main_once_writes_only_the_db_it_was_given(tmp_path):
+    """--once must write the given path and leave the live store alone.
+
+    Was `assert not (ROOT/"reports"/"lp_rh"/"organic.db").exists()`, which
+    asserted the absence of production state and went red the moment the real
+    recorder was started.  What the test is actually for is that this invocation
+    does not touch the live store, so compare before and after instead.
+    """
+    live = ROOT / "reports" / "lp_rh" / "organic.db"
+    existed = live.exists()
+    before = live.stat().st_mtime_ns if existed else None
+
     db = tmp_path / "organic.db"
     rc = mod.main(["--db", str(db), "--pool", POOL, "--once"],
                   call_fn=make_call_fn([]), head_fn=lambda: 200000)
     assert rc == 0
     assert db.exists()
-    assert not (ROOT / "reports" / "lp_rh" / "organic.db").exists()
+
+    assert live.exists() == existed, "the live store was created or removed"
+    if existed:
+        assert live.stat().st_mtime_ns == before, "the live store was written to"
