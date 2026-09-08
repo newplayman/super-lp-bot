@@ -64,3 +64,52 @@ PRD v1.1 §11.5 规定 RH 的终闸是一个**十项合取**，§18.3 的 RH-INV
 env -u PYTHONPATH /root/lp-bot/.venv/bin/python scripts/lp_rh_terminal_gate_v1_readonly.py --record-json tests/fixtures/rh/synthetic/terminal_records.json --target-mode LIVE_READINESS --out /tmp/tg.json && head -c 500 /tmp/tg.json
 git diff --stat; git status --short | grep -E 'lp_rh_terminal'
 ```
+
+---
+
+# 上轮退回原因（主脑验收 2026-09-08 06:45，REJECT）
+
+十项合取式本身**完全正确**，主脑逐闸复核：十项各自置 False 都能拒绝，`dominant_blocker` 精确指向该闸，`all([` 零命中，非法 mode 抛 `UNKNOWN_TARGET_MODE`，28 个测试全绿。**合取逻辑保留不动**。退回只针对 `primary_status`。
+
+## FAIL-1：`primary_status` 在终闸已判否时仍返回 `COMPUTED_PASS`（假绿）
+
+主脑实测两个反例：
+
+| 场景 | `terminal_eligible` | `dominant_blocker` | `primary_status` | 应为 |
+|---|---|---|---|---|
+| `LIVE_READINESS` + `capital_policy_pass=False` | False | `capital_policy_pass` ✓ | **`COMPUTED_PASS`** ✗ | `POLICY_BLOCKED` |
+| 缺 `legacy_required_conjunction` | False | `legacy_required_conjunction` ✓ | **`COMPUTED_PASS`** ✗ | `INPUTS_UNAVAILABLE` |
+
+`COMPUTED_PASS` 的语义是"该候选的经济评估通过"。对一条被政策阻挡、或关键字段根本没有生产者的记录报这个值，等于告诉面板和下游"它算过且通过了"。这是 PRD §8.4 与 §10.1 明令禁止的形态，危险性高于合取本身出错——`dominant_blocker` 对了但 `primary_status` 错了，只读 status 的消费者会被误导。
+
+**要求**：`primary_status` 按以下**固定优先级**决定，第一个命中即返回：
+
+1. `target_mode == "LIVE_READINESS"` 且 `capital_policy_pass is False` → `"POLICY_BLOCKED"`
+2. `reasons` 含 `"LEGACY_CONJUNCTION_NO_PRODUCER"`，或十项中任一为 `None`/缺失 → `"INPUTS_UNAVAILABLE"`
+3. `protocol_capabilities_sufficient is False` 或记录的 `rejection_reason` 以 `NETCOVER_MODEL_PATH_MISMATCH:` / `NETCOVER_PROTOCOL_TYPE_INVALID:` 开头 → `"UNSUPPORTED"`
+4. 否则调用 `classify_zero_candidate`（已 import）取值
+5. **仅当 `terminal_eligible is True` 时才允许返回 `"COMPUTED_PASS"`**；若 `terminal_eligible is False` 而上面算出 `COMPUTED_PASS`，则降级为 `"COMPUTED_FAIL"`
+
+## FAIL-2：`simulated_policy_only` 未产出
+
+spec 要求 `SHADOW_SCENARIO` 下通过的结果必须带 `simulated_policy_only=True`（PRD §6.1：情景模拟通过不得被写成生产终闸通过）。主脑实测该字段**不存在**（`terminal_bits` 里查不到）。
+
+**要求**：`GateDecision` 增加字段 `simulated_policy_only: bool`，`target_mode == "SHADOW_SCENARIO"` 时恒为 `True`，`LIVE_READINESS` 时恒为 `False`。`main()` 的输出 JSON 必须包含该字段。
+
+## 必须新增的测试（追加，不改已有测试）
+
+- `test_status_policy_blocked_in_live`：`LIVE_READINESS` + `capital_policy_pass=False` → `primary_status == "POLICY_BLOCKED"`。
+- `test_status_inputs_unavailable_when_no_producer`：缺 `legacy_required_conjunction` → `primary_status == "INPUTS_UNAVAILABLE"`。
+- `test_status_never_computed_pass_when_ineligible`：**参数化遍历十项**，任一置 False → `primary_status != "COMPUTED_PASS"`。这条是本轮的核心防回归。
+- `test_shadow_scenario_marks_simulated_only`：`SHADOW_SCENARIO` → `simulated_policy_only is True`；`LIVE_READINESS` → `False`。
+- `test_same_record_differs_by_target_mode`：同一条冲突记录在两种 mode 下 `primary_status` 必须不同。
+
+## 本轮只许改这两个文件
+
+`scripts/lp_rh_terminal_gate_v1_readonly.py` 与 `tests/test_lp_rh_terminal_gate_v1_readonly.py`。**十项合取式与 `TERMINAL_CONJUNCTS` 一个字都不许动**，AST 形状测试必须继续通过。
+
+## 本轮验收
+
+- [ ] 上面 5 个新测试全绿；原有 28 个测试仍全绿。
+- [ ] 全量 `pytest tests/ -q -p no:cacheprovider` 0 failed、14 skipped。
+- [ ] 主脑复现脚本：十项逐一置 False 时 `primary_status` 无一为 `COMPUTED_PASS`。
