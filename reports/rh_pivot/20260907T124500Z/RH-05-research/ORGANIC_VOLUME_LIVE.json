@@ -1,0 +1,34 @@
+{
+ "pool": "0x52e65b17fb6e5ba00ed806f37afcd2daa50271ca",
+ "from_block": 57776277,
+ "to_block": 57786277,
+ "n_events": 8598,
+ "concentration": {
+  "n_events": "8598",
+  "n_unique_senders": "108",
+  "top1_share": "0.2076886165691899287071918237",
+  "top5_share": "0.6717911277814157727684440183",
+  "hhi": "0.1208477377613043654954831433",
+  "status": "COMPUTED"
+ },
+ "round_trip": {
+  "pair_count": "2475",
+  "round_trip_volume": "585682652202",
+  "total_volume": "7119526825691",
+  "round_trip_share": "0.08226426650835119114011194514",
+  "status": "COMPUTED",
+  "n_events": "8598",
+  "n_unique_senders": "108"
+ },
+ "organic": {
+  "total_volume": "7119526825691",
+  "round_trip_volume": "585682652202",
+  "concentration_excess_volume": "0",
+  "organic_volume": "6533844173489",
+  "organic_fraction": "0.9177357334916488088598880549",
+  "n_events": "8598",
+  "n_unique_senders": "108",
+  "status": "COMPUTED",
+  "notes": "Round-trip volume is removed before sender concentration excess is calculated."
+ }
+}

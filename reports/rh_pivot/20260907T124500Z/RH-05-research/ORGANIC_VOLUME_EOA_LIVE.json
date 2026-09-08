@@ -1,0 +1,32 @@
+{
+ "n_txs_sampled": 300,
+ "n_swaps": 309,
+ "concentration": {
+  "n_events": "309",
+  "n_unique_senders": "267",
+  "top1_share": "0.1906862642286738515596357591",
+  "top5_share": "0.5224052333403800551928321339",
+  "hhi": "0.07877020550834483068752371358",
+  "status": "COMPUTED"
+ },
+ "round_trip": {
+  "pair_count": "2",
+  "round_trip_volume": "19948724",
+  "total_volume": "323200670999",
+  "round_trip_share": "0.00006172240898615498978647279785",
+  "status": "COMPUTED",
+  "n_events": "309",
+  "n_unique_senders": "267"
+ },
+ "organic": {
+  "total_volume": "323200670999",
+  "round_trip_volume": "19948724",
+  "concentration_excess_volume": "0",
+  "organic_volume": "323180722275",
+  "organic_fraction": "0.9999382775910138450102135272",
+  "n_events": "309",
+  "n_unique_senders": "267",
+  "status": "COMPUTED",
+  "notes": "Round-trip volume is removed before sender concentration excess is calculated."
+ }
+}
