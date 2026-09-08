@@ -1,0 +1,345 @@
+[
+ {
+  "id": "T01",
+  "scenario": "chainId46630／1／错误4663响应混入",
+  "expected": "mainnet身份闸FAIL，禁止候选升级",
+  "impl_sites": [
+   {"file": "scripts/lp_rh_capabilities_v1_readonly.py", "line": 211, "snippet": "    return \"CHAIN_ID_OK\""},
+   {"file": "scripts/lp_rh_capabilities_v1_readonly.py", "line": 212, "snippet": "    return \"CHAIN_ID_MISMATCH\""},
+   {"file": "scripts/lp_rh_shadow_runner_v1_readonly.py", "line": 179, "snippet": "    elif int(chain_id) != RH_CHAIN_ID:"},
+   {"file": "scripts/lp_rh_shadow_runner_v1_readonly.py", "line": 180, "snippet": "        fail(\"identity_verified\", f\"chain_id {chain_id} != {RH_CHAIN_ID}\")"}
+  ],
+  "covering_tests": [
+   {"file": "tests/test_lp_rh_capabilities_v1_readonly.py", "name": "test_chain_identity_gate_ok_mismatch_unknown", "line": 35, "pytest_output": "1 passed in 0.02s"},
+   {"file": "tests/test_lp_rh_shadow_runner_v1_readonly.py", "name": "test_conjunct_identity_fails_on_wrong_chain", "line": 308, "pytest_output": "1 passed in 0.04s"},
+   {"file": "tests/test_lp_rh_shadow_runner_v1_readonly.py", "name": "test_conjunct_identity_fails_when_chain_id_missing", "line": 315, "pytest_output": "1 passed in 0.04s"},
+   {"file": "tests/test_lp_rh_registry_v1_readonly.py", "name": "test_verify_identity_testnet_asset_not_in_mainnet_registry", "line": 154, "pytest_output": "1 passed in 0.01s"}
+  ],
+  "coverage": "COVERED",
+  "notes": "chain_identity_gate returns CHAIN_ID_MISMATCH when the actual chain id differs from RH_CHAIN_ID (4663) and CHAIN_ID_UNKNOWN when absent; the shadow_runner identity_verified conjunct fails on mismatch or a missing chain_id; the capabilities test asserts 46630 and 1 both yield MISMATCH."
+ },
+ {
+  "id": "T02",
+  "scenario": "symbol正确但地址不是registry部署",
+  "expected": "`ASSET_IDENTITY_MISMATCH`",
+  "impl_sites": [
+   {"file": "scripts/lp_rh_registry_v1_readonly.py", "line": 249, "snippet": "    known = registry.get(candidate.address.lower())"},
+   {"file": "scripts/lp_rh_registry_v1_readonly.py", "line": 250, "snippet": "    if known is None:"},
+   {"file": "scripts/lp_rh_registry_v1_readonly.py", "line": 251, "snippet": "        return \"ASSET_IDENTITY_MISMATCH\""}
+  ],
+  "covering_tests": [
+   {"file": "tests/test_lp_rh_registry_v1_readonly.py", "name": "test_verify_identity_same_symbol_different_address", "line": 142, "pytest_output": "1 passed in 0.01s"},
+   {"file": "tests/test_lp_rh_registry_v1_readonly.py", "name": "test_verify_identity_symbol_mismatch", "line": 137, "pytest_output": "1 passed in 0.01s"},
+   {"file": "tests/test_lp_rh_registry_v1_readonly.py", "name": "test_verify_identity_uid_or_decimals_mismatch", "line": 148, "pytest_output": "1 passed in 0.01s"},
+   {"file": "tests/test_lp_rh_registry_v1_readonly.py", "name": "test_verify_identity_ok", "line": 132, "pytest_output": "1 passed in 0.01s"}
+  ],
+  "coverage": "COVERED",
+  "notes": "verify_identity returns ASSET_IDENTITY_MISMATCH when the candidate address is not present in the registry (known is None), and also on symbol/uid/decimals mismatch; test_verify_identity_same_symbol_different_address is the exact scenario (correct symbol, address not a registry deployment)."
+ },
+ {
+  "id": "T03",
+  "scenario": "assets为旧schema",
+  "expected": "明确映射；null／空／closing-only不变成普通可交易",
+  "impl_sites": [
+   {"file": "scripts/lp_rh_registry_v1_readonly.py", "line": 99, "snippet": "def _bool_to_status(value: object) -> str:"},
+   {"file": "scripts/lp_rh_registry_v1_readonly.py", "line": 101, "snippet": "        return TRADABLE"},
+   {"file": "scripts/lp_rh_registry_v1_readonly.py", "line": 103, "snippet": "        return NOT_TRADABLE"},
+   {"file": "scripts/lp_rh_registry_v1_readonly.py", "line": 104, "snippet": "    return UNKNOWN"}
+  ],
+  "covering_tests": [
+   {"file": "tests/test_lp_rh_registry_v1_readonly.py", "name": "test_legacy_mapping_true_false_null_empty", "line": 72, "pytest_output": "1 passed in 0.01s"},
+   {"file": "tests/test_lp_rh_registry_v1_readonly.py", "name": "test_closing_only_maps_not_tradable_and_preserves_raw", "line": 101, "pytest_output": "1 passed in 0.01s"}
+  ],
+  "coverage": "COVERED",
+  "notes": "_bool_to_status maps True to TRADABLE, False to NOT_TRADABLE, and any other value (null/empty) to UNKNOWN; the closing-only enum maps to NOT_TRADABLE via _enum_to_status; the two tests cover true/false/null/empty and closing-only."
+ },
+ {
+  "id": "T04",
+  "scenario": "assets为实际观察的新嵌套schema",
+  "expected": "正确区分market／extended／overnight能力",
+  "impl_sites": [
+   {"file": "scripts/lp_rh_registry_v1_readonly.py", "line": 136, "snippet": "def _nested_session(tc: Mapping[str, object]) -> tuple:"},
+   {"file": "scripts/lp_rh_registry_v1_readonly.py", "line": 138, "snippet": "        _nested_session_value(tc, \"market\"),"},
+   {"file": "scripts/lp_rh_registry_v1_readonly.py", "line": 139, "snippet": "        _nested_session_value(tc, \"extended\"),"},
+   {"file": "scripts/lp_rh_registry_v1_readonly.py", "line": 140, "snippet": "        _nested_session_value(tc, \"overnight\"),"}
+  ],
+  "covering_tests": [
+   {"file": "tests/test_lp_rh_registry_v1_readonly.py", "name": "test_nested_market_extended_overnight_distinguished", "line": 84, "pytest_output": "1 passed in 0.01s"}
+  ],
+  "coverage": "COVERED",
+  "notes": "_nested_session reads the market, extended and overnight keys separately via _nested_session_value, which merges the whole and fractional enums conservatively; the test asserts the three sessions are distinguished from one another."
+ },
+ {
+  "id": "T05",
+  "scenario": "未知enum／新旧语义矛盾",
+  "expected": "UNKNOWN／CONFLICT，禁止新仓，不静默回退",
+  "impl_sites": [
+   {"file": "scripts/lp_rh_registry_v1_readonly.py", "line": 115, "snippet": "def _enum_to_status(value: object) -> str:"},
+   {"file": "scripts/lp_rh_registry_v1_readonly.py", "line": 120, "snippet": "    return UNKNOWN"},
+   {"file": "scripts/lp_rh_registry_v1_readonly.py", "line": 145, "snippet": "def detect_schema(asset_json: Mapping[str, object]) -> str:"},
+   {"file": "scripts/lp_rh_registry_v1_readonly.py", "line": 162, "snippet": "        return SCHEMA_CONFLICT"},
+   {"file": "scripts/lp_rh_registry_v1_readonly.py", "line": 163, "snippet": "    return SCHEMA_UNKNOWN"},
+   {"file": "scripts/lp_rh_registry_v1_readonly.py", "line": 178, "snippet": "    else:  # SCHEMA_UNKNOWN or SCHEMA_CONFLICT: never assume tradable."},
+   {"file": "scripts/lp_rh_registry_v1_readonly.py", "line": 179, "snippet": "        market = extended = overnight = UNKNOWN"}
+  ],
+  "covering_tests": [
+   {"file": "tests/test_lp_rh_registry_v1_readonly.py", "name": "test_nested_unknown_enum_is_unknown_and_blocked", "line": 92, "pytest_output": "1 passed in 0.01s"},
+   {"file": "tests/test_lp_rh_registry_v1_readonly.py", "name": "test_detect_schema_both_conflict", "line": 64, "pytest_output": "1 passed in 0.01s"},
+   {"file": "tests/test_lp_rh_registry_v1_readonly.py", "name": "test_is_new_position_allowed_only_tradable", "line": 162, "pytest_output": "1 passed in 0.01s"}
+  ],
+  "coverage": "COVERED",
+  "notes": "_enum_to_status returns UNKNOWN for unrecognized enums; detect_schema returns SCHEMA_CONFLICT when both legacy and nested fields are present and SCHEMA_UNKNOWN otherwise; for UNKNOWN/CONFLICT the sessions are forced to UNKNOWN (never assumed tradable); is_new_position_allowed returns False unless the session is TRADABLE."
+ },
+ {
+  "id": "T06",
+  "scenario": "已审核proxy implementation变化",
+  "expected": "attestation过期，no-new，生成安全事件",
+  "impl_sites": [
+   {"file": "scripts/lp_rh_pool_probe_v1_readonly.py", "line": 143, "snippet": "    \"\"\"Stable sha256 fingerprint of the bytecode for change detection (T06).\"\"\""},
+   {"file": "scripts/lp_rh_pool_probe_v1_readonly.py", "line": 279, "snippet": "    \"\"\"T06: expired when code_hash differs; security_event=IMPLEMENTATION_CHANGED.\"\"\""},
+   {"file": "scripts/lp_rh_shadow_runner_v1_readonly.py", "line": 187, "snippet": "    elif pool_meta.get(\"attestation_status\") != \"ATTESTED_SAME_BLOCK\":"},
+   {"file": "scripts/lp_rh_shadow_runner_v1_readonly.py", "line": 188, "snippet": "        fail(\"protocol_capabilities_sufficient\","},
+   {"file": "scripts/lp_rh_shadow_runner_v1_readonly.py", "line": 189, "snippet": "             f\"attestation {pool_meta.get('attestation_status')!r}\")"}
+  ],
+  "covering_tests": [
+   {"file": "tests/test_lp_rh_pool_probe_v1_readonly.py", "name": "test_attestation_expired_on_code_hash_change", "line": 105, "pytest_output": "1 passed in 0.02s"},
+   {"file": "tests/test_lp_rh_shadow_runner_v1_readonly.py", "name": "test_conjunct_protocol_fails_on_unattested_pool", "line": 328, "pytest_output": "1 passed in 0.04s"}
+  ],
+  "coverage": "COVERED",
+  "notes": "pool_probe fingerprints the proxy bytecode (sha256) and marks the attestation expired with security_event=IMPLEMENTATION_CHANGED when the code_hash differs; the shadow_runner protocol conjunct fails (no-new) when attestation_status is not ATTESTED_SAME_BLOCK."
+ },
+ {
+  "id": "T07",
+  "scenario": "V3候选factory getPool不匹配",
+  "expected": "身份FAIL，不调用经济成功终闸",
+  "impl_sites": [
+   {"file": "scripts/lp_rh_pool_probe_v1_readonly.py", "line": 211, "snippet": "    out[\"factory_get_pool_matches\"] = (_decode_address(value) == str(pool).lower())"},
+   {"file": "scripts/lp_rh_pool_probe_v1_readonly.py", "line": 212, "snippet": "    if not out[\"factory_get_pool_matches\"]:"},
+   {"file": "scripts/lp_rh_pool_probe_v1_readonly.py", "line": 213, "snippet": "        out[\"attestation_status\"] = \"IDENTITY_FAIL\""},
+   {"file": "scripts/lp_rh_pool_probe_v1_readonly.py", "line": 214, "snippet": "        out[\"token0\"] = out[\"token1\"] = None"},
+   {"file": "scripts/lp_rh_pool_probe_v1_readonly.py", "line": 215, "snippet": "        out[\"fee\"] = out[\"tick_spacing\"] = None"}
+  ],
+  "covering_tests": [
+   {"file": "tests/test_lp_rh_pool_probe_v1_readonly.py", "name": "test_v3_identity_fail_withholds_economic_fields", "line": 46, "pytest_output": "1 passed in 0.02s"}
+  ],
+  "coverage": "COVERED",
+  "notes": "when the factory getPool result does not match the candidate pool address, attestation_status is set to IDENTITY_FAIL and the economic fields (token0/token1/fee/tick_spacing) are withheld (set to None); the test asserts the economic fields are withheld on identity mismatch."
+ },
+ {
+  "id": "T08",
+  "scenario": "V4 PoolId送入V3探针",
+  "expected": "明确协议分派，不报告factory缺失的经济失败",
+  "impl_sites": [
+   {"file": "scripts/lp_rh_pool_probe_v1_readonly.py", "line": 160, "snippet": "        return \"v4\""},
+   {"file": "scripts/lp_rh_pool_probe_v1_readonly.py", "line": 162, "snippet": "        return \"v3\""},
+   {"file": "scripts/lp_rh_pool_probe_v1_readonly.py", "line": 163, "snippet": "    return \"UNSUPPORTED_PROTOCOL\""}
+  ],
+  "covering_tests": [
+   {"file": "tests/test_lp_rh_pool_probe_v1_readonly.py", "name": "test_dispatch_protocol_v4_v3_and_unsupported", "line": 37, "pytest_output": "1 passed in 0.02s"}
+  ],
+  "coverage": "COVERED",
+  "notes": "the dispatch logic inspects the pool/pool_id shape and returns v4, v3 or UNSUPPORTED_PROTOCOL so a V4 pool id is routed to the V4 probe rather than reported as a V3 factory-missing economic failure; the test asserts the three-way dispatch."
+ },
+ {
+  "id": "T09",
+  "scenario": "v4存在白名单LP／自定义fee但未支持",
+  "expected": "UNSUPPORTED，网页APR不影响结果",
+  "impl_sites": [
+   {"file": "scripts/lp_rh_pool_probe_v1_readonly.py", "line": 256, "snippet": "    hooks = candidate.get(\"hooks\")"},
+   {"file": "scripts/lp_rh_pool_probe_v1_readonly.py", "line": 257, "snippet": "    if hooks is not None and str(hooks).lower() != _ZERO32:"},
+   {"file": "scripts/lp_rh_pool_probe_v1_readonly.py", "line": 258, "snippet": "        out[\"attestation_status\"] = \"UNSUPPORTED_HOOK_POLICY\""}
+  ],
+  "covering_tests": [
+   {"file": "tests/test_lp_rh_pool_probe_v1_readonly.py", "name": "test_v4_nonzero_hooks_unsupported_policy", "line": 81, "pytest_output": "1 passed in 0.02s"}
+  ],
+  "coverage": "PARTIAL",
+  "notes": "nonzero hooks set attestation_status to UNSUPPORTED_HOOK_POLICY; the test asserts that. A grep for APR in pool_probe and capabilities returned no matches, so the probe never reads a web APR value; the 网页APR不影响结果 clause is not asserted by any test."
+ },
+ {
+  "id": "T10",
+  "scenario": "用PoolManager总余额当V4单池TVL",
+  "expected": "数据契约拒绝／测试断言失败",
+  "impl_sites": [
+   {"file": "scripts/lp_rh_pool_probe_v1_readonly.py", "line": 252, "snippet": "                and state_view.lower() == str(pool_manager).lower():"},
+   {"file": "scripts/lp_rh_pool_probe_v1_readonly.py", "line": 253, "snippet": "            raise ValueError(\"T10: tvl_source cannot be POOL_MANAGER_BALANCE\")"}
+  ],
+  "covering_tests": [
+   {"file": "tests/test_lp_rh_pool_probe_v1_readonly.py", "name": "test_v4_state_view_equal_to_pool_manager_rejected", "line": 91, "pytest_output": "1 passed in 0.04s"}
+  ],
+  "coverage": "COVERED",
+  "notes": "when the V4 state_view equals the pool_manager address, the probe raises ValueError(\"T10: tvl_source cannot be POOL_MANAGER_BALANCE\"), rejecting the PoolManager aggregate balance as a single-pool TVL source; the test asserts the rejection."
+ },
+ {
+  "id": "T11",
+  "scenario": "block number相同、hash不一致",
+  "expected": "标记分歧／重组；回滚受影响派生值",
+  "impl_sites": [
+   {"file": "scripts/lp_rh_capabilities_v1_readonly.py", "line": 247, "snippet": "    if same_height and a.block_hash is not None and b.block_hash is not None \\"},
+   {"file": "scripts/lp_rh_capabilities_v1_readonly.py", "line": 248, "snippet": "            and a.block_hash != b.block_hash:"},
+   {"file": "scripts/lp_rh_capabilities_v1_readonly.py", "line": 249, "snippet": "        return {\"independent\": None, \"reason\": \"BLOCK_HASH_DIVERGENCE\"}"},
+   {"file": "scripts/lp_rh_store_v1_readonly.py", "line": 123, "snippet": "        \"reorg_detected INTEGER NOT NULL DEFAULT 0\", \"observed_at TEXT NOT NULL\"]),"}
+  ],
+  "covering_tests": [
+   {"file": "tests/test_lp_rh_capabilities_v1_readonly.py", "name": "test_provider_independence_block_hash_divergence", "line": 88, "pytest_output": "1 passed in 0.02s"}
+  ],
+  "coverage": "PARTIAL",
+  "notes": "provider_independence marks BLOCK_HASH_DIVERGENCE when two providers report the same block height with different block hashes; the test asserts that. The 回滚受影响派生值 (rollback of affected derived values) part has no implementation: the store schema has a reorg_detected column (store L123) but no writer or rollback logic was found anywhere."
+ },
+ {
+  "id": "T12",
+  "scenario": "RPC请求成功但JSON-RPC error字段存在",
+  "expected": "失败分类，不能当0余额／0费用",
+  "impl_sites": [
+   {"file": "scripts/lp_rh_capabilities_v1_readonly.py", "line": 99, "snippet": "    if isinstance(resp, dict) and resp.get(\"error\") is not None:"},
+   {"file": "scripts/lp_rh_capabilities_v1_readonly.py", "line": 104, "snippet": "        return None, \"JSONRPC_ERROR: %s\" % err_text"},
+   {"file": "scripts/lp_rh_provider_pool_v1_readonly.py", "line": 246, "snippet": "    if isinstance(data, dict) and data.get(\"error\"):"},
+   {"file": "scripts/lp_rh_provider_pool_v1_readonly.py", "line": 247, "snippet": "        raise RuntimeError(str(data[\"error\"]))"}
+  ],
+  "covering_tests": [
+   {"file": "tests/test_lp_rh_capabilities_v1_readonly.py", "name": "test_probe_provider_jsonrpc_error_kept_and_block_number_none", "line": 43, "pytest_output": "1 passed in 0.02s"},
+   {"file": "tests/test_lp_rh_pool_probe_v1_readonly.py", "name": "test_v3_rpc_error_kept_original_text", "line": 72, "pytest_output": "1 passed in 0.02s"}
+  ],
+  "coverage": "COVERED",
+  "notes": "capabilities probe_provider returns (None, \"JSONRPC_ERROR: ...\") when the JSON-RPC response carries an error field, so a successful HTTP transport with an error field is classified as a failure rather than a 0 balance/fee; provider_pool _default_call_fn raises RuntimeError on the error field; the two tests assert the error is kept and block_number is None."
+ },
+ {
+  "id": "T13",
+  "scenario": "两URL属于同一provider后端",
+  "expected": "冗余不足，不能满足live多源门槛",
+  "impl_sites": [
+   {"file": "scripts/lp_rh_capabilities_v1_readonly.py", "line": 250, "snippet": "    if same_backend_host and same_version and same_hash:"},
+   {"file": "scripts/lp_rh_capabilities_v1_readonly.py", "line": 251, "snippet": "        return {\"independent\": False, \"reason\": \"SAME_BACKEND_SUSPECTED\"}"},
+   {"file": "scripts/lp_rh_provider_pool_v1_readonly.py", "line": 222, "snippet": "def live_readiness(usable_count, *, min_required=2):"},
+   {"file": "scripts/lp_rh_provider_pool_v1_readonly.py", "line": 230, "snippet": "        return {\"status\": \"BLOCKED\", \"reason\": \"SINGLE_PROVIDER\", \"usable_count\": usable_count}"},
+   {"file": "scripts/lp_rh_provider_pool_v1_readonly.py", "line": 231, "snippet": "    return {\"status\": \"PASS\", \"reason\": None, \"usable_count\": usable_count}"}
+  ],
+  "covering_tests": [
+   {"file": "tests/test_lp_rh_capabilities_v1_readonly.py", "name": "test_provider_independence_same_backend_suspected", "line": 78, "pytest_output": "1 passed in 0.02s"},
+   {"file": "tests/test_lp_rh_provider_pool_v1_readonly.py", "name": "test_live_readiness_1_blocked_single", "line": 247, "pytest_output": "1 passed in 0.02s"},
+   {"file": "tests/test_lp_rh_provider_pool_v1_readonly.py", "name": "test_live_readiness_0_blocked_no", "line": 253, "pytest_output": "1 passed in 0.02s"},
+   {"file": "tests/test_lp_rh_provider_pool_v1_readonly.py", "name": "test_live_readiness_2_pass", "line": 259, "pytest_output": "1 passed in 0.02s"},
+   {"file": "tests/test_lp_rh_provider_pool_v1_readonly.py", "name": "test_live_readiness_min_required_explicit", "line": 263, "pytest_output": "1 passed in 0.02s"}
+  ],
+  "coverage": "COVERED",
+  "notes": "provider_independence marks SAME_BACKEND_SUSPECTED when two URLs share the same/alias host, version and hash; live_readiness requires usable_count >= min_required (default 2) to PASS, returning SINGLE_PROVIDER when only one is usable; the tests assert both the same-backend marking and the multi-source gate."
+ },
+ {
+  "id": "T14",
+  "scenario": "HTTP200但价格generatedAt未推进",
+  "expected": "source stale，不能由fetch_time刷新健康",
+  "impl_sites": [
+   {"file": "scripts/lp_rh_market_session_v1_readonly.py", "line": 158, "snippet": "    if api_dt is None:"},
+   {"file": "scripts/lp_rh_market_session_v1_readonly.py", "line": 159, "snippet": "        flags.add(\"API_STALE\")"},
+   {"file": "scripts/lp_rh_market_session_v1_readonly.py", "line": 160, "snippet": "    elif (now_dt - api_dt).total_seconds() > api_stale_secs:"},
+   {"file": "scripts/lp_rh_market_session_v1_readonly.py", "line": 161, "snippet": "        flags.add(\"API_STALE\")"}
+  ],
+  "covering_tests": [
+   {"file": "tests/test_lp_rh_market_session_v1_readonly.py", "name": "test_evaluate_health_api_stale_by_age_string", "line": 151, "pytest_output": "1 passed in 0.01s"},
+   {"file": "tests/test_lp_rh_market_session_v1_readonly.py", "name": "test_evaluate_health_api_stale_when_none", "line": 91, "pytest_output": "1 passed in 0.01s"}
+  ],
+  "coverage": "COVERED",
+  "notes": "evaluate_health raises API_STALE based on api_generated_at (the source's own generatedAt), not on the fetch time; a None api_generated_at or an age exceeding api_stale_secs both raise the flag; the two tests assert API_STALE by age and when the field is absent."
+ },
+ {
+  "id": "T15",
+  "scenario": "2026-09-07纽约时间盘中时钟",
+  "expected": "HOLIDAY，不是RTH",
+  "impl_sites": [
+   {"file": "scripts/lp_rh_market_session_v1_readonly.py", "line": 39, "snippet": "    \"2026-09-07\": \"LABOR_DAY\","},
+   {"file": "scripts/lp_rh_market_session_v1_readonly.py", "line": 92, "snippet": "    elif date_str in calendar:"},
+   {"file": "scripts/lp_rh_market_session_v1_readonly.py", "line": 93, "snippet": "        session = \"HOLIDAY\""}
+  ],
+  "covering_tests": [
+   {"file": "tests/test_lp_rh_market_session_v1_readonly.py", "name": "test_t15_labor_day_holiday_not_rth", "line": 20, "pytest_output": "1 passed in 0.01s"}
+  ],
+  "coverage": "COVERED",
+  "notes": "the 2026 NYSE calendar maps 2026-09-07 to LABOR_DAY; classify_session returns HOLIDAY for any date present in the calendar, taking precedence over the weekday session; the test asserts 2026-09-07 in-session yields HOLIDAY, not RTH."
+ },
+ {
+  "id": "T16",
+  "scenario": "夏令时切换／提前收市／周末",
+  "expected": "日历映射正确，UTC转换不偏移一个小时",
+  "impl_sites": [
+   {"file": "scripts/lp_rh_market_session_v1_readonly.py", "line": 45, "snippet": "EARLY_CLOSE_DAYS = {\"2026-07-03\", \"2026-11-27\", \"2026-12-24\"}"},
+   {"file": "scripts/lp_rh_market_session_v1_readonly.py", "line": 60, "snippet": "def _weekday_session(t: time, is_early_close: bool) -> str:"},
+   {"file": "scripts/lp_rh_market_session_v1_readonly.py", "line": 61, "snippet": "    rth_end = _RTH_END_EARLY if is_early_close else _RTH_END_NORMAL"},
+   {"file": "scripts/lp_rh_market_session_v1_readonly.py", "line": 87, "snippet": "    et_local = dt_utc.astimezone(_ET)"},
+   {"file": "scripts/lp_rh_market_session_v1_readonly.py", "line": 90, "snippet": "    if et_local.weekday() >= 5:  # Sat=5, Sun=6"}
+  ],
+  "covering_tests": [
+   {"file": "tests/test_lp_rh_market_session_v1_readonly.py", "name": "test_t16_dst_start_et_conversion", "line": 29, "pytest_output": "1 passed in 0.01s"},
+   {"file": "tests/test_lp_rh_market_session_v1_readonly.py", "name": "test_t16_dst_end_et_conversion", "line": 36, "pytest_output": "1 passed in 0.01s"},
+   {"file": "tests/test_lp_rh_market_session_v1_readonly.py", "name": "test_early_close_postmarket_not_rth", "line": 43, "pytest_output": "1 passed in 0.01s"},
+   {"file": "tests/test_lp_rh_market_session_v1_readonly.py", "name": "test_saturday_weekend", "line": 50, "pytest_output": "1 passed in 0.01s"}
+  ],
+  "coverage": "COVERED",
+  "notes": "classify_session converts UTC to America/New_York via zoneinfo (astimezone), so DST transitions are handled by the tz database rather than a fixed offset; early-close days use a 13:00 RTH end; weekend days (weekday >= 5) map to WEEKEND; the four tests cover DST start, DST end, early close, and Saturday."
+ },
+ {
+  "id": "T17",
+  "scenario": "raw2e18，multiplier1.25e18，underlying100",
+  "expected": "token2／等价股数2.5／总值250",
+  "impl_sites": [
+   {"file": "scripts/lp_rh_stock_reference_v1_readonly.py", "line": 31, "snippet": "def token_quantity(raw_balance: int, token_decimals: int) -> Decimal:"},
+   {"file": "scripts/lp_rh_stock_reference_v1_readonly.py", "line": 33, "snippet": "    return Decimal(raw_balance) / Decimal(10) ** token_decimals"},
+   {"file": "scripts/lp_rh_stock_reference_v1_readonly.py", "line": 36, "snippet": "def multiplier_from_raw(onchain_ui_multiplier_raw: int) -> Decimal:"},
+   {"file": "scripts/lp_rh_stock_reference_v1_readonly.py", "line": 38, "snippet": "    return Decimal(onchain_ui_multiplier_raw) / Decimal(10) ** 18"},
+   {"file": "scripts/lp_rh_stock_reference_v1_readonly.py", "line": 46, "snippet": "def underlying_share_equivalent(token_quantity: Decimal,"},
+   {"file": "scripts/lp_rh_stock_reference_v1_readonly.py", "line": 49, "snippet": "    return token_quantity * multiplier_human"}
+  ],
+  "covering_tests": [
+   {"file": "tests/test_lp_rh_stock_reference_v1_readonly.py", "name": "test_t17_token_quantity_and_shares", "line": 18, "pytest_output": "1 passed in 0.01s"},
+   {"file": "tests/test_lp_rh_stock_reference_v1_readonly.py", "name": "test_t17_reference_price_and_total", "line": 27, "pytest_output": "1 passed in 0.01s"}
+  ],
+  "coverage": "COVERED",
+  "notes": "token_quantity divides the raw balance by 10**token_decimals (2e18/1e18 = 2); multiplier_from_raw divides the raw multiplier by 1e18 (1.25e18/1e18 = 1.25); underlying_share_equivalent multiplies token quantity by the human multiplier (2 * 1.25 = 2.5); the two tests assert the token quantity, share equivalent and total value."
+ },
+ {
+  "id": "T18",
+  "scenario": "Chainlink已是125，再遇multiplier1.25",
+  "expected": "仍125，不是156.25",
+  "impl_sites": [
+   {"file": "scripts/lp_rh_stock_reference_v1_readonly.py", "line": 52, "snippet": "def token_equivalent_price(*, underlying_price_usd: Decimal,"},
+   {"file": "scripts/lp_rh_stock_reference_v1_readonly.py", "line": 60, "snippet": "    if source_is_already_token_equivalent:"},
+   {"file": "scripts/lp_rh_stock_reference_v1_readonly.py", "line": 61, "snippet": "        return underlying_price_usd"},
+   {"file": "scripts/lp_rh_stock_reference_v1_readonly.py", "line": 62, "snippet": "    return underlying_price_usd * multiplier_human"}
+  ],
+  "covering_tests": [
+   {"file": "tests/test_lp_rh_stock_reference_v1_readonly.py", "name": "test_t18_already_token_equivalent_no_double_apply", "line": 38, "pytest_output": "1 passed in 0.01s"}
+  ],
+  "coverage": "COVERED",
+  "notes": "token_equivalent_price returns the underlying price unchanged when source_is_already_token_equivalent is True (the Chainlink feed already reports the token-equivalent price), otherwise multiplies by the human multiplier; the test asserts a 125 input with multiplier 1.25 stays 125 when the source is already token-equivalent."
+ },
+ {
+  "id": "T19",
+  "scenario": "USDG=$0.98，股币参考$125",
+  "expected": "参考比价≈127.5510204 USDG/token",
+  "impl_sites": [
+   {"file": "scripts/lp_rh_stock_reference_v1_readonly.py", "line": 65, "snippet": "def usdg_normalized_price(token_price_usd: Decimal,"},
+   {"file": "scripts/lp_rh_stock_reference_v1_readonly.py", "line": 68, "snippet": "    if usdg_price_usd <= 0:"},
+   {"file": "scripts/lp_rh_stock_reference_v1_readonly.py", "line": 69, "snippet": "        raise ValueError(\"USDG_PRICE_INVALID\")"},
+   {"file": "scripts/lp_rh_stock_reference_v1_readonly.py", "line": 70, "snippet": "    return token_price_usd / usdg_price_usd"}
+  ],
+  "covering_tests": [
+   {"file": "tests/test_lp_rh_stock_reference_v1_readonly.py", "name": "test_t19_usdg_normalized_price", "line": 47, "pytest_output": "1 passed in 0.01s"}
+  ],
+  "coverage": "COVERED",
+  "notes": "usdg_normalized_price divides the token price in USD by the USDG price in USD to express the reference in USDG per token (125 / 0.98 = 127.5510204...); a non-positive USDG price raises ValueError; the test asserts the normalized ratio."
+ },
+ {
+  "id": "T20",
+  "scenario": "拆股200→20、multiplier1→10",
+  "expected": "单token参考值仍200；raw余额不变",
+  "impl_sites": [
+   {"file": "scripts/lp_rh_stock_reference_v1_readonly.py", "line": 73, "snippet": "def split_preserves_reference(*, before_underlying: Decimal,"},
+   {"file": "scripts/lp_rh_stock_reference_v1_readonly.py", "line": 78, "snippet": "    return (before_underlying * before_multiplier"},
+   {"file": "scripts/lp_rh_stock_reference_v1_readonly.py", "line": 79, "snippet": "            == after_underlying * after_multiplier)"}
+  ],
+  "covering_tests": [
+   {"file": "tests/test_lp_rh_stock_reference_v1_readonly.py", "name": "test_t20_split_preserves_reference_true", "line": 62, "pytest_output": "1 passed in 0.01s"},
+   {"file": "tests/test_lp_rh_stock_reference_v1_readonly.py", "name": "test_t20_split_preserves_reference_false", "line": 68, "pytest_output": "1 passed in 0.01s"}
+  ],
+  "coverage": "COVERED",
+  "notes": "split_preserves_reference checks that before_underlying * before_multiplier equals after_underlying * after_multiplier (200*1 == 20*10), i.e. the per-token reference value is invariant across a split; the two tests assert the invariant holds for a valid split and fails for a non-conserving one. No function in the module mutates the raw balance (token_quantity is a pure function of raw_balance), so raw余额不变 holds trivially."
+ }
+]
