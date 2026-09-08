@@ -195,8 +195,17 @@ def test_range_scan_keys():
     assert set(rows[0]) == {"width_ticks", "tick_lower", "tick_upper",
                             "fraction", "excursion_count"}
 
-
 def test_real_data_regression():
+    """Exercise range_scan on the live price series, deterministically.
+
+    The original form asserted that a +/-2000 tick band strictly beats a +/-100
+    one.  That is not a property of the code, it is a property of the market: in
+    a calm window both bands hold 100% of the samples and the strict inequality
+    can never hold, so the test failed the moment the market went quiet.  Derive
+    the widths from the observed tick spread instead, so the narrow band is
+    guaranteed to be breached and the wide one guaranteed to contain, whatever
+    the market did.
+    """
     db = REPO_ROOT / "reports" / "lp_rh" / "scanner.db"
     if not db.exists():
         pytest.skip("live scanner.db not present")
@@ -209,10 +218,21 @@ def test_real_data_regression():
         con.close()
     samples = [{"sample_time": r[0], "reference_mid": r[1]} for r in rows][::-1]
     assert len(samples) >= 100
-    out = range_scan(samples, center_tick=CENTER,
-                     widths_ticks=[100, 500, 2000], dec0=DEC0, dec1=DEC1)
+    ticks = [tick_from_price(Decimal(str(s["reference_mid"])), dec0=DEC0, dec1=DEC1)
+             for s in samples if s["reference_mid"] is not None]
+    assert ticks, "live rows carried no usable reference_mid"
+    spread = max(ticks) - min(ticks)
+    if spread < 8:
+        pytest.skip(f"price moved only {spread} ticks in this window")
+    center = (max(ticks) + min(ticks)) // 2
+    out = range_scan(samples, center_tick=center,
+                     widths_ticks=[spread // 4, spread, spread * 4],
+                     dec0=DEC0, dec1=DEC1)
     fracs = [row["fraction"] for row in out]
-    # Monotonic non-decreasing in width ...
+    # Monotonic non-decreasing in width is an invariant of the function itself.
     assert fracs[0] <= fracs[1] <= fracs[2]
-    # ... and the wide range strictly beats the narrow one on this data.
+    # A band a quarter of the observed spread must miss samples; a band four
+    # times the spread, centred on it, must contain every one.
+    assert fracs[0] < Decimal(1)
+    assert fracs[2] == Decimal(1)
     assert fracs[2] > fracs[0]
