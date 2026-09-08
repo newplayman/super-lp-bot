@@ -100,3 +100,76 @@ dominant_blocker   : {"legacy_required_conjunction": 40}
 ```
 定向全绿且 ≥14 新增；全量 0 failed / 14 skipped；
 第三条命令的 `summary` 原样贴出（重点看 `dominant_blocker_counts` 是否已分散）。
+
+---
+
+# 附录（第 2 轮追加）：八个模块的**真实接口**，照抄不要自己去找
+
+第 1 轮 worker 花了 45 分钟、71 轮在逐个 `sed`/`grep` 这些模块，仍未开始写代码，
+流出 12 万字符逼近自动压缩阈值，已被主脑终止。**下面是主脑用 AST 抽出来的真实签名，
+直接用，不要再去翻源码找接口。**（行为细节仍需读对应模块，但入口不必再找。）
+
+```
+lp_rh_registry_v1_readonly
+  RH_CHAIN_ID                                   # 常量
+  verify_identity(candidate, registry)
+  normalize_capability(asset_json)
+  is_new_position_allowed(cap, session)         # T05：仅该 session 为 TRADABLE 才 True
+
+lp_rh_capabilities_v1_readonly
+  chain_identity_gate(probe, expected_chain_id) # -> CHAIN_ID_OK / CHAIN_ID_MISMATCH
+  build_capability_matrix(probes, protocol_flags)
+  provider_independence(probes)
+
+lp_rh_market_session_v1_readonly
+  classify_session(dt_utc, *, calendar)
+  evaluate_health(*, oracle_paused, oracle_updated_at, api_generated_at, now,
+                  halt, corp_action_pending, sources_disagree, chain_degraded,
+                  oracle_heartbeat_secs, api_stale_secs)   # -> 已排序的 flags 列表
+  allows_new_position(session, flags)           # PRD §10.2：仅 RTH 且无 flag
+  stale_reason(session, oracle_age_secs, heartbeat_secs)
+
+lp_rh_premium_guard_v1_readonly
+  premium_bps(*, dex_price, reference_price)
+  classify_premium(bps)                         # -> (band, allows_recenter)
+  stock_entry_gate(*, session, health_flags, premium_band, corp_action_state,
+                   reference, multiplier_agreement)
+
+lp_rh_bucket_ledger_v1_readonly
+  BUCKETS / BUCKET_WEIGHTS / ACTIVE_FRACTION / POLICY_ID     # 常量
+  bucket_active_cap(capital_usd, bucket)
+  try_reserve(conn, *, intent_id, bucket, amount_usd, capital_usd,
+              policy_version, now)
+  capital_policy_conflict(capital_usd, *, legacy_min_position)
+      # 只报告不自动调整；CORE 活跃上限低于旧最小仓位时返回冲突
+
+lp_rh_exit_depth_v1_readonly
+  REQUIRED_POOL_KEYS                            # 常量
+  exit_depth_for_size(*, position_value_usd, max_impact_bps, **pool_state)
+      # pool_state 必需键：sqrt_price_x96, current_tick, tick_spacing,
+      #                   fee_pips, liquidity, tick_data
+      # 另需 token0_decimals/token1_decimals 与 input_price_usd，否则
+      # 返回 INPUTS_UNAVAILABLE: PRICE_OR_DECIMALS
+  measured_exit_depth_cap(position_value_usd, max_impact_bps, **pool_state)
+
+lp_rh_terminal_gate_v1_readonly
+  TERMINAL_CONJUNCTS / CONJUNCT_ORDER           # 常量
+  evaluate_terminal_gate(record, *, target_mode, now)
+  mutation_witness_removed_gate(record, *, removed, target_mode, now)
+
+lp_rh_netcover_inputs_v1_readonly
+  assemble_rh_clmm_inputs(evidence, *, position_usd, horizon_hours)
+      # evidence 必需键：chain_id, attestation_status(="ATTESTED_SAME_BLOCK"),
+      #   protocol(="v3"), sqrt_price_x96, fee, dec0, dec1, liquidity_raw,
+      #   fee_apr_pct, sigma_daily, gas_usd_estimate, range_pct,
+      #   tvl_usd, active_liquidity_notional_usd
+```
+
+## 第 2 轮的额外要求
+
+1. **先写代码，后读文档。** 上面已给出所有入口，不要再花轮次通读 PRD 与模块源码。
+   确需确认某个函数的返回字段时，只 `grep -n "return {" <单个文件>` 局部看。
+2. **先落盘再完善**：写完 `compute_conjuncts` 骨架就立刻落盘一次，
+   再逐项填充。**不要攒到最后一次性写。**
+3. 单次 Bash 命令不要超过 800 字符——第 1 轮出现 4 次
+   `InputValidationError`（工具调用 JSON 被输出上限截断）。
