@@ -73,3 +73,45 @@ grep -nE '0\.0005|0\.001|0\.0795|\b0\.50\b' scripts/lp_rh_netcover_inputs_v1_rea
 wc -l scripts/lp_rh_netcover_inputs_v1_readonly.py
 git diff --stat; git status --short | grep -E 'lp_rh_netcover'
 ```
+
+---
+
+# 上轮退回原因（主脑验收 2026-09-08 05:20，REJECT）
+
+测试 21 个全绿、无写死常量、行数合规，但主脑把装配结果**真的喂进引擎**后发现两条硬缺陷。**这是 spec 的错，不是 worker 的错**：上一版 spec 让你用自创的 `RH_NETCOVER_MODEL_PATH = "rh_clmm_v3_range_v1"`，而引擎不接受该值。
+
+## FAIL-1：`netcover_model_path` 取值错误，装配结果 100% 进不了引擎
+
+`scripts/lp_netcover_engine_v1_readonly.py:41` 定义 `NETCOVER_MODEL_CLMM = "clmm_vol_sized_range_v1"`，`:44-46` 把它绑定到 `protocol_type="clmm"`，`:312` 逐条校验 `rec.get("netcover_model_path") != expected_model_path` 即拒。主脑实测：**每一条**（正常、缺输入、未 attested、v4）都得到
+
+```
+NETCOVER_MODEL_PATH_MISMATCH:expected=clmm_vol_sized_range_v1,got=rh_clmm_v3_range_v1
+```
+
+即经济计算**一次都没被执行过**，21 个测试全绿是因为它们没把结果喂给真实引擎做端到端断言。
+
+**要求**：
+1. 删除自创常量 `RH_NETCOVER_MODEL_PATH`。改为 `from scripts.lp_netcover_engine_v1_readonly import netcover_model_path`，输出 `netcover_model_path = netcover_model_path(protocol_type)`（对 `"clmm"` 即得 `"clmm_vol_sized_range_v1"`）。**不得写死字符串。**
+2. 新增端到端测试 `test_assembled_record_passes_engine_model_path_check`：正常路径装配后喂 `apply_netcover_gate`，断言 `rejection_reason` **不含** `NETCOVER_MODEL_PATH_MISMATCH` 且不含 `NETCOVER_INPUT_MISSING`，并断言 `netcover` 是有限数字（不是 None）。
+3. 既有测试凡断言 `netcover_model_path` 的，改为与 `netcover_model_path("clmm")` 比较，不写字面量。
+
+## FAIL-2：`classify_zero_candidate` 把非经济性拒绝错标为 `COMPUTED_FAIL`
+
+主脑实测："正常"记录被引擎以 `NETCOVER_MODEL_PATH_MISMATCH` 拒绝，`classify_zero_candidate` 却返回 **`COMPUTED_FAIL`**。这正是 PRD §10.1 与 §8.4 严禁的假阴性：**闸没算出数被当成"经济上不过"**。
+
+**要求**：`classify_zero_candidate` 在判 `COMPUTED_FAIL` 之前，先检查 `rejection_reason`：
+- 以 `NETCOVER_MODEL_PATH_MISMATCH:` 或 `NETCOVER_PROTOCOL_TYPE_INVALID:` 开头 → 返回 `"UNSUPPORTED"`；
+- 以 `NETCOVER_INPUT_MISSING:` 或 `NETCOVER_INPUT_INVALID:` 开头 → 返回 `"INPUTS_UNAVAILABLE"`；
+- 只有在 9 键齐全、`netcover` 为有限数字、`netcover_pass is False` 时才返回 `COMPUTED_FAIL`。
+新增测试逐一覆盖这四种 `rejection_reason` 前缀 → 状态映射。
+
+## 本轮只许改这两个文件
+
+`scripts/lp_rh_netcover_inputs_v1_readonly.py` 与 `tests/test_lp_rh_netcover_inputs_v1_readonly.py`。**绝不修改引擎**。
+
+## 本轮验收
+
+- [ ] 正常路径装配结果喂真实 `apply_netcover_gate` 后，`netcover` 为有限数字，`rejection_reason` 不含 `MODEL_PATH_MISMATCH` 也不含 `INPUT_MISSING`。
+- [ ] 四种 `rejection_reason` 前缀映射到正确的 `primary_status`，各有测试。
+- [ ] 源码 `grep -c 'rh_clmm_v3_range_v1'` 为 0。
+- [ ] 全量 `pytest tests/ -q -p no:cacheprovider` 0 failed、14 skipped。
