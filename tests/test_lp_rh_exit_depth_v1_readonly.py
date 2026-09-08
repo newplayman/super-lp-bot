@@ -134,11 +134,19 @@ def test_t24_empty_tick_data_is_unavailable_not_zero():
 
 
 def test_missing_required_pool_state_is_fail_closed():
+    # RH-05h narrowed the sub-reason from EXIT_QUOTE to MISSING_KEYS so a caller
+    # can tell a typo from genuinely absent chain data. The contract this test
+    # guards -- absent pool state fails closed with no number -- is unchanged,
+    # and the assertion is tightened to name the keys rather than loosened.
     result = mod.exit_depth_for_size(position_value_usd=Decimal("100"),
                                      max_impact_bps=Decimal("100"),
                                      tick_data=[mod.TickRange(-10, 10, 10**18)])
     assert result["max_exit_usd"] is None
-    assert result["reason"] == "INPUTS_UNAVAILABLE: EXIT_QUOTE"
+    assert result["impact_at_size_bps"] is None
+    assert result["sufficient"] is False
+    assert result["reason"] == "INPUTS_UNAVAILABLE: MISSING_KEYS"
+    assert result["missing_keys"] == ["current_tick", "fee_pips", "liquidity",
+                                      "sqrt_price_x96", "tick_spacing"]
 
 
 def test_exit_depth_insufficient_when_impact_limit_is_tight():
@@ -233,3 +241,136 @@ def test_source_has_no_float_money_math_or_network_imports():
     assert "urllib" not in source
     assert "requests" not in source
     assert "web3" not in source
+
+
+# --- RH-05h: state-semantics fixes (MISSING_KEYS / PRICE_OR_DECIMALS / COMPUTED_FAIL) ---
+
+def test_missing_current_tick_reports_missing_keys():
+    state = _pool()
+    del state["current_tick"]
+    result = mod.exit_depth_for_size(position_value_usd=Decimal("100"),
+                                     max_impact_bps=Decimal("100"),
+                                     **state)
+    assert "MISSING_KEYS" in result["reason"]
+    assert result["missing_keys"] == ["current_tick"]
+    assert result["max_exit_usd"] is None
+
+
+def test_missing_fee_pips_and_liquidity_listed_in_order():
+    state = _pool()
+    del state["fee_pips"]
+    del state["liquidity"]
+    result = mod.exit_depth_for_size(position_value_usd=Decimal("100"),
+                                     max_impact_bps=Decimal("100"),
+                                     **state)
+    assert "MISSING_KEYS" in result["reason"]
+    assert result["missing_keys"] == ["fee_pips", "liquidity"]
+
+
+def test_misspelled_tick_key_still_reports_missing_current_tick():
+    # Reproduces the main-brain's three wasted runs: `tick` instead of `current_tick`.
+    state = _pool()
+    del state["current_tick"]
+    state["tick"] = 0
+    result = mod.exit_depth_for_size(position_value_usd=Decimal("100"),
+                                     max_impact_bps=Decimal("100"),
+                                     **state)
+    assert "MISSING_KEYS" in result["reason"]
+    assert "current_tick" in result["missing_keys"]
+
+
+def test_missing_token0_decimals_is_price_or_decimals():
+    state = _pool(token0_price_usd=1)  # side price present, decimals absent
+    result = mod.exit_depth_for_size(position_value_usd=Decimal("100"),
+                                     max_impact_bps=Decimal("100"),
+                                     **state)
+    assert "PRICE_OR_DECIMALS" in result["reason"]
+    assert result["max_exit_usd"] is None
+
+
+def test_missing_all_price_sources_is_price_or_decimals():
+    state = _pool(token0_decimals=0)  # decimals present, no price at all
+    result = mod.exit_depth_for_size(position_value_usd=Decimal("100"),
+                                     max_impact_bps=Decimal("100"),
+                                     **state)
+    assert "PRICE_OR_DECIMALS" in result["reason"]
+    assert result["max_exit_usd"] is None
+
+
+def test_explicit_price_cannot_substitute_for_decimals():
+    state = _pool(input_price_usd=1)  # explicit price, but no decimals
+    result = mod.exit_depth_for_size(position_value_usd=Decimal("100"),
+                                     max_impact_bps=Decimal("100"),
+                                     **state)
+    assert "PRICE_OR_DECIMALS" in result["reason"]
+    assert result["max_exit_usd"] is None
+
+
+def _exhausted_pool():
+    liquidity = 10**18
+    ticks = [mod.TickRange(-10, 10, liquidity)]
+    # One wei past the range's full capacity: guarantees exhaustion at this size.
+    exhaust_amount = (mod.amount0_delta(mod.sqrt_price_x96_at_tick(-10),
+                                        mod.Q96, liquidity, True) + 1)
+    state = _pool(liquidity=liquidity, tick_data=ticks,
+                  token0_decimals=0, input_price_usd=1)
+    return state, Decimal(exhaust_amount)
+
+
+def test_liquidity_exhausted_is_computed_fail():
+    state, position = _exhausted_pool()
+    result = mod.exit_depth_for_size(position_value_usd=position,
+                                     max_impact_bps=Decimal("10000"),
+                                     **state)
+    assert result["reason"] == "COMPUTED_FAIL: LIQUIDITY_EXHAUSTED"
+    assert result["max_exit_usd"] is not None
+
+
+def test_liquidity_exhausted_is_not_sufficient():
+    state, position = _exhausted_pool()
+    result = mod.exit_depth_for_size(position_value_usd=position,
+                                     max_impact_bps=Decimal("10000"),
+                                     **state)
+    assert result["sufficient"] is False
+
+
+def test_sufficient_pool_still_returns_exit_depth_ok():
+    state = _pool(token0_decimals=0, input_price_usd=1)
+    result = mod.exit_depth_for_size(position_value_usd=Decimal("1000"),
+                                     max_impact_bps=Decimal("100"),
+                                     **state)
+    assert result["reason"] == "EXIT_DEPTH_OK"
+    assert result["max_exit_usd"] == Decimal("1000")
+
+
+def test_insufficient_not_exhausted_still_returns_insufficient():
+    state = _pool(token0_decimals=0, input_price_usd=1)
+    result = mod.exit_depth_for_size(position_value_usd=Decimal("100000000000000000"),
+                                     max_impact_bps=Decimal("10"),
+                                     **state)
+    assert result["reason"] == "EXIT_DEPTH_INSUFFICIENT"
+    assert result["sufficient"] is False
+
+
+def test_empty_tick_data_still_unavailable():
+    result = mod.exit_depth_for_size(position_value_usd=Decimal("100"),
+                                     max_impact_bps=Decimal("100"),
+                                     **_pool(tick_data=[]))
+    assert result["reason"] == "INPUTS_UNAVAILABLE: EXIT_QUOTE"
+    assert result["max_exit_usd"] is None
+
+
+def test_three_new_reasons_are_pairwise_distinct():
+    s_missing = _pool()
+    del s_missing["current_tick"]
+    r_missing = mod.exit_depth_for_size(position_value_usd=Decimal("100"),
+                                        max_impact_bps=Decimal("100"), **s_missing)
+    r_price = mod.exit_depth_for_size(position_value_usd=Decimal("100"),
+                                      max_impact_bps=Decimal("100"),
+                                      **_pool(input_price_usd=1))
+    state, position = _exhausted_pool()
+    r_exhausted = mod.exit_depth_for_size(position_value_usd=position,
+                                          max_impact_bps=Decimal("10000"),
+                                          **state)
+    reasons = {r_missing["reason"], r_price["reason"], r_exhausted["reason"]}
+    assert len(reasons) == 3

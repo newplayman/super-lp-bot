@@ -18,6 +18,8 @@ MIN_TICK = -887272
 MAX_TICK = 887272
 MIN_SQRT_RATIO = 4295128739
 MAX_SQRT_RATIO = 1461446703485210103287273052203988822378723970342
+REQUIRED_POOL_KEYS = ("sqrt_price_x96", "current_tick", "tick_spacing",
+                      "fee_pips", "liquidity")
 @dataclass(frozen=True)
 class TickRange:
     tick_lower: int
@@ -200,38 +202,75 @@ def _decimal(value: Any, default: Decimal | None = None) -> Decimal | None:
         return default
     return value if isinstance(value, Decimal) else Decimal(str(value))
 def _state_factors(pool_state: Mapping[str, Any], zero_for_one: bool):
+    """Return (input_price, input_decimals), or None when either is not
+    explicitly provided. No lenient defaults: a missing price or decimals
+    must surface as PRICE_OR_DECIMALS, never as Decimal(1) / 0."""
     sqrt_price = int(pool_state["sqrt_price_x96"])
-    dec0 = int(pool_state.get("token0_decimals", pool_state.get("decimals0", 0)))
-    dec1 = int(pool_state.get("token1_decimals", pool_state.get("decimals1", 0)))
-    raw01 = (Decimal(sqrt_price) / Decimal(Q96)) ** 2
-    human01 = raw01 * (Decimal(10) ** dec0) / (Decimal(10) ** dec1)
+    dec0 = pool_state.get("token0_decimals", pool_state.get("decimals0"))
+    dec1 = pool_state.get("token1_decimals", pool_state.get("decimals1"))
     p0 = _decimal(pool_state.get("token0_price_usd"))
     p1 = _decimal(pool_state.get("token1_price_usd"))
-    if p0 is None and p1 is not None:
-        p0 = p1 * human01
-    if p1 is None and p0 is not None:
-        p1 = p0 / human01
     explicit = _decimal(pool_state.get("input_price_usd"))
-    input_price = explicit or (p0 if zero_for_one else p1) or Decimal(1)
-    input_decimals = dec0 if zero_for_one else dec1
-    return input_price, input_decimals
+    if explicit is None and p0 is None and p1 is None:
+        return None
+    if zero_for_one:
+        if dec0 is None:
+            return None
+        input_decimals = int(dec0)
+    else:
+        if dec1 is None:
+            return None
+        input_decimals = int(dec1)
+    if explicit is not None:
+        return explicit, input_decimals
+    if zero_for_one:
+        if p0 is not None:
+            return p0, input_decimals
+        if dec1 is None:
+            return None
+        raw01 = (Decimal(sqrt_price) / Decimal(Q96)) ** 2
+        human01 = raw01 * (Decimal(10) ** int(dec0)) / (Decimal(10) ** int(dec1))
+        return p1 * human01, input_decimals
+    if p1 is not None:
+        return p1, input_decimals
+    if dec0 is None:
+        return None
+    raw01 = (Decimal(sqrt_price) / Decimal(Q96)) ** 2
+    human01 = raw01 * (Decimal(10) ** int(dec0)) / (Decimal(10) ** int(dec1))
+    return p0 / human01, input_decimals
 def _unavailable() -> dict:
     return {"max_exit_usd": None, "impact_at_size_bps": None,
             "sufficient": False, "reason": "INPUTS_UNAVAILABLE: EXIT_QUOTE"}
+def _missing_keys(pool_state: Mapping[str, Any]) -> list[str]:
+    return sorted(k for k in REQUIRED_POOL_KEYS if k not in pool_state)
+def _missing_keys_result(missing: list[str]) -> dict:
+    return {"max_exit_usd": None, "impact_at_size_bps": None,
+            "sufficient": False, "reason": "INPUTS_UNAVAILABLE: MISSING_KEYS",
+            "missing_keys": missing}
+def _price_or_decimals_unavailable() -> dict:
+    return {"max_exit_usd": None, "impact_at_size_bps": None,
+            "sufficient": False,
+            "reason": "INPUTS_UNAVAILABLE: PRICE_OR_DECIMALS"}
 def exit_depth_for_size(*, position_value_usd: Decimal,
                         max_impact_bps: Decimal, **pool_state) -> dict:
     ticks = pool_state.get("tick_data")
     if not ticks:
         return _unavailable()
+    missing = _missing_keys(pool_state)
+    if missing:
+        return _missing_keys_result(missing)
     try:
         position = _decimal(position_value_usd)
         impact_limit = _decimal(max_impact_bps)
         if position is None or impact_limit is None or position <= 0 or impact_limit < 0:
             return _unavailable()
         zero_for_one = bool(pool_state.get("zero_for_one", True))
-        input_price, input_decimals = _state_factors(pool_state, zero_for_one)
+        factors = _state_factors(pool_state, zero_for_one)
+        if factors is None:
+            return _price_or_decimals_unavailable()
+        input_price, input_decimals = factors
         if input_price <= 0:
-            return _unavailable()
+            return _price_or_decimals_unavailable()
         scale = Decimal(10) ** input_decimals
         target_raw = int((position * scale / input_price).to_integral_value(rounding="ROUND_FLOOR"))
         if target_raw <= 0:
@@ -247,7 +286,27 @@ def exit_depth_for_size(*, position_value_usd: Decimal,
                 zero_for_one=zero_for_one)
         full = quote(target_raw)
         if full["liquidity_exhausted"]:
-            return _unavailable()
+            # The pool cannot absorb the full size: a computed answer, not a
+            # missing input. Binary-search the largest exitable amount.
+            lo, hi = 0, target_raw
+            while lo + 1 < hi:
+                mid = (lo + hi) // 2
+                if quote(mid)["liquidity_exhausted"]:
+                    hi = mid
+                else:
+                    lo = mid
+            max_exitable = lo
+            if max_exitable > 0:
+                chosen = quote(max_exitable)
+                max_usd = Decimal(max_exitable) * input_price / scale
+                impact = chosen["price_impact_bps"]
+            else:
+                max_usd = Decimal(0)
+                impact = None
+            return {"max_exit_usd": max_usd,
+                    "impact_at_size_bps": impact,
+                    "sufficient": False,
+                    "reason": "COMPUTED_FAIL: LIQUIDITY_EXHAUSTED"}
         if full["price_impact_bps"] <= impact_limit:
             return {"max_exit_usd": position,
                     "impact_at_size_bps": full["price_impact_bps"],
@@ -275,6 +334,8 @@ def measured_exit_depth_cap(position_value_usd: Decimal | None = None,
                             **pool_state) -> Decimal | None:
     """Return a measured cap, or None whenever a quote cannot be proven."""
     if not pool_state.get("tick_data"):
+        return None
+    if _missing_keys(pool_state):
         return None
     amount = position_value_usd or pool_state.pop("position_value_usd", None)
     if amount is None:
