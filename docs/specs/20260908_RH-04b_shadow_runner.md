@@ -53,3 +53,32 @@ PRD v1.1 §19 RH-04 要求「先一个 V3 CORE 池，从输入到结果跑通，
 env -u PYTHONPATH /root/lp-bot/.venv/bin/python scripts/lp_rh_shadow_runner_v1_readonly.py --db reports/lp_rh/scanner.db --samples 20 --target-mode SHADOW_SCENARIO --out /tmp/ep.json && head -c 600 /tmp/ep.json
 git diff --stat; git status --short | grep -E 'lp_rh_shadow'
 ```
+
+---
+
+# 第一轮作废（主脑 2026-09-08 10:0x）
+
+第一轮 worker 在写 `run_episode` 时被工具错误（`Edit` 参数名不合法）打断，产出的 `scripts/lp_rh_shadow_runner_v1_readonly.py` **150 行且语法错误**——第 147 行 `insert_row(conn, "rh_gate_decisions", {` 的括号从未闭合，`ast.parse` 直接失败。该文件已被主脑删除，**不要试图修复它，从零重写**。
+
+第二轮（补测试）也因把回合耗在调研接口上而未产出。
+
+## 本轮重写要求（在原 spec 基础上补充）
+
+1. **先写脚本再写测试**，脚本写完立刻 `ast.parse` 自检：
+   ```bash
+   /root/lp-bot/.venv/bin/python -c "import ast;ast.parse(open('scripts/lp_rh_shadow_runner_v1_readonly.py').read());print('OK')"
+   ```
+   自检不过就不要往下走。
+2. **每次 Write 不超过 120 行**，写完立刻自检语法。宁可分四次写，不要一次写完导致被截断。
+3. 上游模块的真实签名（**已由主脑核实，直接用，不要再花回合调研**）：
+   - `lp_rh_netcover_inputs_v1_readonly.assemble_rh_clmm_inputs(evidence, *, position_usd: Decimal, horizon_hours: float) -> dict`
+   - `lp_rh_netcover_inputs_v1_readonly.classify_zero_candidate(record) -> str`
+   - `lp_netcover_engine_v1_readonly.apply_netcover_gate(records, *, reward_haircut=..., lvr_coefficient=...) -> list[dict]`
+   - `lp_rh_terminal_gate_v1_readonly.evaluate_terminal_gate(record, *, target_mode, now) -> GateDecision`（字段 `terminal_eligible / primary_status / dominant_blocker / terminal_bits / simulated_policy_only / decision_id`）
+   - `lp_rh_bucket_ledger_v1_readonly.try_reserve(conn, *, intent_id, bucket, amount_usd: Decimal, capital_usd: Decimal, policy_version=POLICY_ID, now: str) -> dict`（返回含 `granted`）
+   - `lp_rh_pnl_v1_readonly.compute_nav(*, wallet, lp_principal, accrued_fees, verified_rewards, liabilities) -> Decimal`
+   - `lp_rh_pnl_v1_readonly.net_pnl(nav_t1, nav_t0, external_net_flow) -> Decimal`
+   - `lp_rh_pnl_v1_readonly.hodl_benchmark(*, initial_token0_raw, initial_token1_raw, dec0, dec1, price_t1_token1_per_token0, quote_usd_per_token1) -> Decimal`
+   - `lp_rh_store_v1_readonly.open_store(path, *, read_only=False)` / `migrate(conn)` / `insert_row(conn, table, row)`
+4. **应计费用的正确来源**（主脑 09:1x 实测，见 `reports/rh_pivot/20260907T124500Z/RH-05-research/POSITION_FEE_GROWTH_20260908.md`）：Shadow 账本的 `accrued_fees` 应按
+   `L_position × Δ(feeGrowthGlobal_token) / 2**128` 累加，**不得**按 TVL 占比分摊全池费用。样本里若带 `fee_growth_global_0` / `fee_growth_global_1` 就用增量法；没有则 `accrued_fees` 记 `None` 并计入 `skipped_samples`，**不填 0**。
