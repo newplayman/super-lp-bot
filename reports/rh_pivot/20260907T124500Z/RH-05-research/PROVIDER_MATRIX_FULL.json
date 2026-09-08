@@ -1,0 +1,37 @@
+{
+ "head": 57788895,
+ "deep_block": 55788895,
+ "matrix": {
+  "primary": {
+   "chainId": true,
+   "eth_call(\u8fd1)": true,
+   "\u5386\u53f2\u8bfb\u53d6(-2M\u5757)": false,
+   "\u65e5\u5fd7\u8303\u56f4(1k\u5757)": true,
+   "\u65e5\u5fd7\u8303\u56f4(10k\u5757)": false,
+   "gas estimate": true,
+   "block/hash \u4e00\u81f4": true,
+   "\u9519\u8bef\u7ed3\u6784": true
+  },
+  "publicnode": {
+   "chainId": true,
+   "eth_call(\u8fd1)": false,
+   "\u5386\u53f2\u8bfb\u53d6(-2M\u5757)": false,
+   "\u65e5\u5fd7\u8303\u56f4(1k\u5757)": false,
+   "\u65e5\u5fd7\u8303\u56f4(10k\u5757)": false,
+   "gas estimate": true,
+   "block/hash \u4e00\u81f4": true,
+   "\u9519\u8bef\u7ed3\u6784": true
+  },
+  "ordofi": {
+   "chainId": true,
+   "eth_call(\u8fd1)": true,
+   "\u5386\u53f2\u8bfb\u53d6(-2M\u5757)": false,
+   "\u65e5\u5fd7\u8303\u56f4(1k\u5757)": true,
+   "\u65e5\u5fd7\u8303\u56f4(10k\u5757)": true,
+   "gas estimate": true,
+   "block/hash \u4e00\u81f4": true,
+   "\u9519\u8bef\u7ed3\u6784": true
+  }
+ },
+ "usable_full": []
+}
