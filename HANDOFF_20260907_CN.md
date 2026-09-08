@@ -217,15 +217,32 @@ SPY 首选池计价币是 WETH 却被字段名谎报成 USD、REST 限流、载�
 USDG 池只有 5.9e17，差五个数量级。今早 `EXIT_DEPTH_LIVE` 里 SPY 的退出深度是在
 **WETH 池**上测的，若实盘按 USDG 计价，那个深度数字不适用，须重测。
 
-## 11. LIVE 闸的单点提供方阻塞已解除
+## 11. LIVE 闸的单点提供方阻塞——**先宣布解除，随后撤回**
 
-从 ethereum-lists 官方注册表取 chainId 4663 的 4 个端点，逐方法核验：
-**3 个全方法可用**（primary / publicnode / ordofi），固定区块上返回逐字节一致，
-无 `SOURCE_DISAGREEMENT`；第 4 个 `arrowrpc` 全方法 HTTP 530。
-`usable_provider_count = 3 >= 2`，PRD §8.3 该项 PASS。
+从 ethereum-lists 注册表取 chainId 4663 的 4 个端点，我先测了 5 个方法，得到
+「3 个全方法可用、`usable_provider_count = 3`、PRD §8.3 PASS」，并据此宣布阻塞解除。
 
-**这只挪开一个与经济无关的工程阻塞。** `CAPITAL_POLICY_CONFLICT` 仍在（属用户资金授权
-决定），Stage A/B/C 观测门槛全部未达。
+**这个结论已全面撤回。** 去读 PRD §8.3 原文才发现两件事：
+
+1. `usable_provider_count >= 2` **不是 PRD 的要求**，是本仓
+   `scripts/lp_rh_readiness_v1_readonly.py:118` 自定的阈值。PRD 的原话是
+   「READONLY 可暂用公开单点；LIVE 不允许该单点成为唯一可用数据源」。
+2. PRD §8.3 要实测的是 **chainId、block/hash 一致性、历史读取、日志范围、eth_call、
+   gas estimate、错误结构**七项。我漏测了「历史读取」与「日志范围」——**恰恰这两项
+   把三家全部拦下**。按完整清单复测，`usable_provider_count = 0`。
+
+复测还量出一个方向相反的事实：
+
+| 提供方 | 状态保留深度 | 10k 块日志 |
+|---|---:|---|
+| **primary（采集器在用）** | **6,137 块 = 10.4 分钟** | 不稳定（20 分钟内由成功变失败） |
+| **ordofi** | **1,800,100 块 = 51 小时** | 稳定 |
+| publicnode | 不支持历史查询 | 全部 403 |
+
+**我们跑在保留期只有 10 分钟的端点上。** 采集器每 15 秒读 `latest` 所以现在没暴露，
+但 Stage B 的日对账、费率累加器差分、任何回补都会撞上。**ordofi 才该是主端点。**
+
+详见 `reports/rh_pivot/20260907T124500Z/RH-05-research/PROVIDER_MATRIX_20260908.md` 更正 3。
 
 ## 12. 本轮我自己写错又自己更正的两处（都已写进报告）
 
