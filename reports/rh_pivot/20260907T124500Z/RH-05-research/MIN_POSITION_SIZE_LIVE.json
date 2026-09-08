@@ -1,0 +1,95 @@
+{
+ "pool": "0x52e65b17fb6e5ba00ed806f37afcd2daa50271ca",
+ "evidence": {
+  "sqrt_price_x96": "3950376364833515856698135",
+  "fee": "100",
+  "dec0": "18",
+  "dec1": "6",
+  "liquidity_raw": "10119016611279687928",
+  "fee_apr_pct": "27.34",
+  "gas_usd": "0.02",
+  "range_pct": "10.0"
+ },
+ "rows": [
+  {
+   "pos": 5,
+   "fee_ev": "None",
+   "fixed_cost": "None",
+   "netcover": null
+  },
+  {
+   "pos": 10,
+   "fee_ev": "None",
+   "fixed_cost": "None",
+   "netcover": null
+  },
+  {
+   "pos": 15,
+   "fee_ev": "None",
+   "fixed_cost": "None",
+   "netcover": null
+  },
+  {
+   "pos": 20,
+   "fee_ev": "None",
+   "fixed_cost": "None",
+   "netcover": null
+  },
+  {
+   "pos": 25,
+   "fee_ev": "None",
+   "fixed_cost": "None",
+   "netcover": null
+  },
+  {
+   "pos": 30,
+   "fee_ev": "None",
+   "fixed_cost": "None",
+   "netcover": null
+  },
+  {
+   "pos": 40,
+   "fee_ev": "None",
+   "fixed_cost": "None",
+   "netcover": null
+  },
+  {
+   "pos": 42.5,
+   "fee_ev": "None",
+   "fixed_cost": "None",
+   "netcover": null
+  },
+  {
+   "pos": 50,
+   "fee_ev": "None",
+   "fixed_cost": "None",
+   "netcover": null
+  },
+  {
+   "pos": 60,
+   "fee_ev": "None",
+   "fixed_cost": "None",
+   "netcover": null
+  },
+  {
+   "pos": 80,
+   "fee_ev": "None",
+   "fixed_cost": "None",
+   "netcover": null
+  },
+  {
+   "pos": 100,
+   "fee_ev": "None",
+   "fixed_cost": "None",
+   "netcover": null
+  },
+  {
+   "pos": 200,
+   "fee_ev": "None",
+   "fixed_cost": "None",
+   "netcover": null
+  }
+ ],
+ "min_shadow_usd": null,
+ "min_tiny_live_usd": null
+}
