@@ -9,11 +9,16 @@ from scripts.lp_rh_provider_health_recorder_v1_readonly import (
     CAPABILITIES,
     PROBE_TO_RPC,
     CONSENSUS_METHODS,
+    TIMEOUT_BY_PROBE,
+    DEFAULT_TIMEOUT,
+    LOG_RANGE_LADDER,
     JsonRpcError,
     SCHEMA,
     _build_probes,
+    _ensure_columns,
     _fetch_head,
     _probe_error_structure,
+    _probe_log_range_max_span,
     run_round,
 )
 
@@ -79,7 +84,7 @@ def _cap(conn, sample_time, provider, capability, col="ok"):
 def test_capabilities_eight_fixed_order():
     assert CAPABILITIES == [
         "chain_id", "block_hash_consistency", "historical_read",
-        "log_range_1k", "log_range_10k", "eth_call", "gas_estimate",
+        "log_range_1k", "log_range_max_span", "eth_call", "gas_estimate",
         "error_structure",
     ]
 
@@ -101,7 +106,7 @@ def test_build_probes_seven_in_order():
     probes = _build_probes(head=0x100, pinned_block=0x100 - 60)
     assert [p["method"] for p in probes] == [
         "chain_id", "block_hash_consistency", "historical_read",
-        "log_range_1k", "log_range_10k", "eth_call", "gas_estimate",
+        "log_range_1k", "log_range_max_span", "eth_call", "gas_estimate",
     ]
 
 
@@ -332,7 +337,7 @@ def test_no_head_still_writes_8_rows_per_provider():
     # every pinned-block capability fails when there is no head
     for prov in PROVIDERS:
         for cap in ("block_hash_consistency", "historical_read",
-                    "log_range_1k", "log_range_10k", "eth_call",
+                    "log_range_1k", "log_range_max_span", "eth_call",
                     "gas_estimate"):
             assert _cap(conn, "t1", prov["name"], cap) == 0
     # no usable provider -> gate BLOCKED
@@ -463,3 +468,181 @@ def test_every_probe_uses_a_real_rpc_method_name():
 
 def test_block_hash_consistency_is_get_block_by_number():
     assert PROBE_TO_RPC["block_hash_consistency"] == "eth_getBlockByNumber"
+
+
+# --- RH-01f: timeout tiers + log_range_max_span ----------------------------
+
+def _span_of(params):
+    """Block span of a getLogs param set: toBlock - fromBlock."""
+    return int(params[0]["toBlock"], 16) - int(params[0]["fromBlock"], 16)
+
+
+def test_timeout_by_probe_values():
+    # log_range_max_span walks up to 4 getLogs calls and the heaviest query
+    # can take tens of seconds, so it must get a budget well above the 10s
+    # default. The simple point-in-time probes stay at 10s.
+    assert TIMEOUT_BY_PROBE["log_range_max_span"] >= 60
+    assert TIMEOUT_BY_PROBE["log_range_max_span"] == 90
+    for probe in ("head", "chain_id", "block_hash_consistency",
+                  "eth_call", "gas_estimate", "error_structure"):
+        assert TIMEOUT_BY_PROBE[probe] == 10
+    assert TIMEOUT_BY_PROBE["historical_read"] == 20
+    assert TIMEOUT_BY_PROBE["log_range_1k"] == 30
+    assert DEFAULT_TIMEOUT == 10
+
+
+def test_log_range_max_span_stops_at_5000():
+    # Spans up to 5000 succeed, 10000 fails -> last successful span is 5000.
+    def call_fn(url, probe, params):
+        assert probe == "log_range_max_span"
+        if _span_of(params) > 5000:
+            raise RuntimeError("exceeds limit")
+        return {"span": _span_of(params)}
+    rec = _probe_log_range_max_span("http://p1", call_fn, 0x100000)
+    assert rec["ok"] is True
+    assert rec["max_span"] == 5000
+    assert rec["result_digest"] is not None
+
+
+def test_log_range_max_span_all_fail():
+    def call_fn(url, probe, params):
+        raise RuntimeError("down")
+    rec = _probe_log_range_max_span("http://p1", call_fn, 0x100000)
+    assert rec["ok"] is False
+    assert rec["max_span"] is None  # None, not 0
+    assert rec["result_digest"] is None
+    assert rec["latency_ms"] is None
+
+
+def test_log_range_max_span_all_succeed():
+    def call_fn(url, probe, params):
+        return {"span": _span_of(params)}
+    rec = _probe_log_range_max_span("http://p1", call_fn, 0x100000)
+    assert rec["ok"] is True
+    assert rec["max_span"] == 10000
+
+
+def test_log_range_max_span_stops_on_first_failure():
+    calls = []
+
+    def call_fn(url, probe, params):
+        calls.append(_span_of(params))
+        raise RuntimeError("down")
+    rec = _probe_log_range_max_span("http://p1", call_fn, 0x100000)
+    # 500 is the first (smallest) span and it fails -> exactly one call.
+    assert calls == [500]
+    assert rec["ok"] is False
+    assert rec["max_span"] is None
+
+
+def test_max_span_null_for_other_capabilities():
+    # Only log_range_max_span writes the max_span column; every other
+    # capability leaves it NULL (unmeasured, not 0).
+    conn = make_db()
+    run_round(conn, PROVIDERS, make_call_fn(), "t1")
+    for prov in PROVIDERS:
+        for cap in CAPABILITIES:
+            val = _cap(conn, "t1", prov["name"], cap, "max_span")
+            if cap == "log_range_max_span":
+                assert val == 10000
+            else:
+                assert val is None
+
+
+def test_capabilities_replaced_10k_with_max_span():
+    assert "log_range_10k" not in CAPABILITIES
+    assert "log_range_max_span" in CAPABILITIES
+
+
+def test_consensus_methods_unchanged_regression():
+    # log_range_max_span must NOT be a consensus method (its value is
+    # activity-dependent, not a chain constant), and eth_blockNumber stays
+    # excluded.
+    assert CONSENSUS_METHODS == ["chain_id", "block_hash_consistency",
+                                 "eth_call"]
+    assert "log_range_max_span" not in CONSENSUS_METHODS
+    assert "eth_blockNumber" not in CONSENSUS_METHODS
+
+
+def test_regression_wrong_chain_provider_excluded():
+    # A Base (8453) endpoint answering everything else correctly must still
+    # be excluded from the usable set.
+    conn = make_db()
+    overrides = {("p3", "chain_id"): "0x2105"}  # 8453
+    summary = run_round(conn, PROVIDERS, make_call_fn(overrides=overrides),
+                        "t1")
+    usable = json.loads(conn.execute(
+        "select usable_providers_json from rh_provider_rollup "
+        "where sample_time='t1'").fetchone()[0])
+    assert "p3" not in usable
+    assert summary["usable_count"] == 3
+
+
+def test_regression_head_differences_not_disagreement():
+    # Per-provider head values differ, but eth_blockNumber is not a consensus
+    # method, so no disagreement may be recorded.
+    conn = make_db()
+    overrides = {
+        ("p1", "head"): "0x100",
+        ("p2", "head"): "0x200",
+        ("p3", "head"): "0x300",
+        ("p4", "head"): "0x400",
+    }
+    run_round(conn, PROVIDERS, make_call_fn(overrides=overrides), "t1")
+    dis = json.loads(conn.execute(
+        "select disagreements_json from rh_provider_rollup "
+        "where sample_time='t1'").fetchone()[0])
+    assert dis == []
+
+
+def test_ensure_columns_upgrades_old_schema():
+    # A DB created before the max_span column existed must be upgraded in
+    # place (ALTER TABLE ADD COLUMN), never dropped/rebuilt.
+    conn = sqlite3.connect(":memory:")
+    conn.execute(
+        "CREATE TABLE rh_provider_capability ("
+        "sample_time TEXT NOT NULL, provider TEXT NOT NULL, "
+        "capability TEXT NOT NULL, ok INTEGER NOT NULL, latency_ms REAL, "
+        "error TEXT, result_digest TEXT, "
+        "PRIMARY KEY (sample_time, provider, capability))")
+    conn.execute(
+        "INSERT INTO rh_provider_capability "
+        "(sample_time, provider, capability, ok) VALUES ('t0', 'p1', "
+        "'chain_id', 1)")
+    _ensure_columns(conn)
+    cols = {row[1] for row in conn.execute(
+        "PRAGMA table_info(rh_provider_capability)")}
+    assert "max_span" in cols
+    # Pre-existing data survives the in-place upgrade.
+    assert conn.execute(
+        "select ok from rh_provider_capability where sample_time='t0'"
+    ).fetchone()[0] == 1
+
+
+def test_ensure_columns_idempotent():
+    conn = make_db()  # already has max_span
+    _ensure_columns(conn)
+    _ensure_columns(conn)  # second call must be a no-op, not an error
+    cols = [row[1] for row in conn.execute(
+        "PRAGMA table_info(rh_provider_capability)")]
+    assert cols.count("max_span") == 1
+
+
+def test_run_round_max_span_written_on_success():
+    conn = make_db()
+    run_round(conn, PROVIDERS, make_call_fn(), "t1")
+    for prov in PROVIDERS:
+        assert _cap(conn, "t1", prov["name"], "log_range_max_span") == 1
+        assert _cap(conn, "t1", prov["name"], "log_range_max_span",
+                    "max_span") == 10000
+
+
+def test_run_round_max_span_null_when_all_spans_fail():
+    conn = make_db()
+    errors = {(p["name"], "log_range_max_span"): RuntimeError("down")
+              for p in PROVIDERS}
+    run_round(conn, PROVIDERS, make_call_fn(errors=errors), "t1")
+    for prov in PROVIDERS:
+        assert _cap(conn, "t1", prov["name"], "log_range_max_span") == 0
+        assert _cap(conn, "t1", prov["name"], "log_range_max_span",
+                    "max_span") is None

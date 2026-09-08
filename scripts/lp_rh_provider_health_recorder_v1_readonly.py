@@ -51,8 +51,11 @@ from scripts.lp_rh_provider_pool_v1_readonly import (  # noqa: E402
 __all__ = [
     "CAPABILITIES",
     "CONSENSUS_METHODS",
+    "DEFAULT_TIMEOUT",
     "EXPECTED_CHAIN_ID",
+    "LOG_RANGE_LADDER",
     "PROVIDERS",
+    "TIMEOUT_BY_PROBE",
     "JsonRpcError",
     "run_round",
     "main",
@@ -64,7 +67,7 @@ CAPABILITIES = [
     "block_hash_consistency",
     "historical_read",
     "log_range_1k",
-    "log_range_10k",
+    "log_range_max_span",
     "eth_call",
     "gas_estimate",
     "error_structure",
@@ -76,6 +79,24 @@ CAPABILITIES = [
 # as SOURCE_DISAGREEMENT. chain_id is a constant (EXPECTED_CHAIN_ID) and MUST
 # be compared: a wrong-chain endpoint must show up in disagreements.
 CONSENSUS_METHODS = ["chain_id", "block_hash_consistency", "eth_call"]
+
+# Per-probe timeout in seconds, keyed by probe (capability) name. Any probe
+# not listed here falls back to DEFAULT_TIMEOUT. log_range_max_span walks a
+# span ladder (up to 4 eth_getLogs calls) and the heaviest single query can
+# take tens of seconds, so it gets the largest budget; the simple
+# point-in-time probes stay at 10s.
+TIMEOUT_BY_PROBE = {
+    "head": 10, "chain_id": 10, "block_hash_consistency": 10,
+    "eth_call": 10, "gas_estimate": 10, "error_structure": 10,
+    "historical_read": 20,
+    "log_range_1k": 30, "log_range_max_span": 90,
+}
+DEFAULT_TIMEOUT = 10
+
+# log_range_max_span span ladder, small -> large. The probe walks this in
+# order and stops at the first failing span; the last successful span is the
+# provider's measured max_span.
+LOG_RANGE_LADDER = (500, 2000, 5000, 10000)
 
 # chainId 4663 endpoints from the ethereum-lists registry.
 PROVIDERS = [
@@ -100,7 +121,7 @@ PROBE_TO_RPC = {
     "block_hash_consistency": "eth_getBlockByNumber",
     "historical_read": "eth_call",
     "log_range_1k": "eth_getLogs",
-    "log_range_10k": "eth_getLogs",
+    "log_range_max_span": "eth_getLogs",
     "eth_call": "eth_call",
     "gas_estimate": "eth_estimateGas",
     "error_structure": "lp_nonexistent_method",
@@ -115,6 +136,7 @@ CREATE TABLE IF NOT EXISTS rh_provider_capability (
     latency_ms REAL,
     error TEXT,
     result_digest TEXT,
+    max_span INTEGER,
     PRIMARY KEY (sample_time, provider, capability));
 CREATE TABLE IF NOT EXISTS rh_provider_rollup (
     sample_time TEXT NOT NULL,
@@ -127,6 +149,20 @@ CREATE TABLE IF NOT EXISTS rh_provider_rollup (
     pinned_block INTEGER,
     PRIMARY KEY (sample_time));
 """
+
+
+def _ensure_columns(conn) -> None:
+    """Idempotently add columns that SCHEMA defines but an older DB may lack.
+
+    Uses PRAGMA table_info to check, then ALTER TABLE ADD COLUMN. Never drops
+    or rebuilds the table (that would lose already-collected data). Safe to
+    call on every start: a no-op when the column already exists.
+    """
+    cols = {row[1] for row in conn.execute(
+        "PRAGMA table_info(rh_provider_capability)")}
+    if "max_span" not in cols:
+        conn.execute(
+            "ALTER TABLE rh_provider_capability ADD COLUMN max_span INTEGER")
 
 
 class JsonRpcError(Exception):
@@ -163,7 +199,12 @@ def _build_probes(head: int, pinned_block: int) -> List[dict]:
         {"method": "block_hash_consistency", "params": [pinned_hex, False]},
         {"method": "historical_read", "params": [slot0, hist_hex]},
         {"method": "log_range_1k", "params": logs(hex(pinned_block - 1000))},
-        {"method": "log_range_10k", "params": logs(hex(pinned_block - 10000))},
+        # log_range_max_span is listed for completeness but probed separately
+        # (it walks a span ladder, which verify_provider_methods cannot
+        # express); these params are a placeholder and are not used by the
+        # probe.
+        {"method": "log_range_max_span",
+         "params": logs(hex(pinned_block - LOG_RANGE_LADDER[0]))},
         {"method": "eth_call", "params": [slot0, pinned_hex]},
         {"method": "gas_estimate", "params": [slot0]},
     ]
@@ -248,6 +289,43 @@ def _probe_chain_id(url, call_fn) -> dict:
             "result_digest": digest}
 
 
+def _probe_log_range_max_span(url, call_fn, pinned_block) -> dict:
+    """log_range_max_span: walk LOG_RANGE_LADDER small->large, record the last
+    successful span, stop at the first failing span.
+
+    ok iff at least the smallest span (500) succeeds. max_span is the largest
+    successful span, or None when no span succeeded.
+    """
+    pinned_hex = hex(pinned_block)
+    max_span = None
+    last_digest = None
+    first_error = None
+    t0 = time.perf_counter()
+    for span in LOG_RANGE_LADDER:
+        params = [{
+            "fromBlock": hex(pinned_block - span),
+            "toBlock": pinned_hex,
+            "address": CORE_POOL,
+            "topics": [SWAP_TOPIC0],
+        }]
+        try:
+            result = call_fn(url, "log_range_max_span", params)
+        except Exception as exc:  # noqa: BLE001 - stop at the first failure
+            if first_error is None:
+                first_error = "%s: %s" % (type(exc).__name__, exc)
+            break
+        max_span = span
+        last_digest = _digest(result)
+    if max_span is None:
+        return {"ok": False, "latency_ms": None, "max_span": None,
+                "error": first_error or "no span succeeded",
+                "result_digest": None}
+    return {"ok": True,
+            "latency_ms": (time.perf_counter() - t0) * 1000.0,
+            "max_span": max_span, "error": None,
+            "result_digest": last_digest}
+
+
 def run_round(conn, providers, call_fn, sample_time) -> dict:
     """Run one sampling round; write capability + rollup rows. Returns a summary.
 
@@ -263,10 +341,14 @@ def run_round(conn, providers, call_fn, sample_time) -> dict:
         # against EXPECTED_CHAIN_ID, which verify_provider_methods cannot do.
         matrix = verify_provider_methods(
             providers,
-            [p for p in probes if p["method"] != "chain_id"], call_fn)
+            [p for p in probes
+             if p["method"] not in ("chain_id", "log_range_max_span")],
+            call_fn)
         for prov in providers:
             matrix[prov["name"]]["chain_id"] = _probe_chain_id(
                 prov["url"], call_fn)
+            matrix[prov["name"]]["log_range_max_span"] = \
+                _probe_log_range_max_span(prov["url"], call_fn, pinned_block)
     else:
         # No head available: every pinned-block capability fails, but we still
         # write all 8 rows per provider (never fewer).
@@ -316,12 +398,13 @@ def _write_capability_rows(conn, sample_time, providers, matrix) -> None:
             latency = rec.get("latency_ms")
             if ok == 0:
                 latency = None  # failure rows: NULL, never 0
+            max_span = rec.get("max_span")
             conn.execute(
                 "INSERT OR REPLACE INTO rh_provider_capability "
                 "(sample_time, provider, capability, ok, latency_ms, error, "
-                "result_digest) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                "result_digest, max_span) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 (sample_time, name, cap, ok, latency,
-                 rec.get("error"), rec.get("result_digest")),
+                 rec.get("error"), rec.get("result_digest"), max_span),
             )
 
 
@@ -352,7 +435,8 @@ def _default_call_fn(url, probe, params):
         url, data=payload,
         headers={"Content-Type": "application/json", "User-Agent": _USER_AGENT},
     )
-    with urllib.request.urlopen(req, timeout=10) as resp:
+    timeout = TIMEOUT_BY_PROBE.get(probe, DEFAULT_TIMEOUT)
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
         data = json.loads(resp.read().decode("utf-8"))
     if isinstance(data, dict) and data.get("error"):
         err = data["error"]
@@ -384,6 +468,7 @@ def main(argv=None) -> int:
     conn = sqlite3.connect(args.db, timeout=30)
     conn.execute("PRAGMA journal_mode=WAL")
     conn.executescript(SCHEMA)
+    _ensure_columns(conn)
 
     while not _STOP["flag"]:
         started = time.monotonic()  # deadline from round START, not end
