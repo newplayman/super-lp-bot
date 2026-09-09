@@ -243,27 +243,37 @@ def test_exit_requirement_rejects_nonfinite_inputs():
     ) is None
 
 
-def test_wrapped_invalid_amounts_fail_closed():
-    result = mod.wrapped_does_not_count(
-        weth_balance_wei=Decimal("Infinity"),
-        native_balance_wei=0,
-    )
-    assert result["pass"] is False
-    assert result["reason"] == "INPUTS_UNAVAILABLE: weth_balance_wei"
+def test_wrapped_validates_native_only():
+    """The whole point of this function is that WETH does not count, so a
+    WETH balance it refuses to look at cannot make it fail.  RH-02an
+    validated both legs and broke that: weth_balance_wei=None started
+    returning pass=False.  Only native_balance_wei is validated here.
+    """
+    baseline = mod.wrapped_does_not_count(weth_balance_wei=0, native_balance_wei=0)
 
-    result = mod.wrapped_does_not_count(
+    for junk in (Decimal("Infinity"), Decimal("-1"), None):
+        result = mod.wrapped_does_not_count(
+            weth_balance_wei=junk,
+            native_balance_wei=0,
+        )
+        assert result == baseline, f"WETH {junk!r} changed a WETH-agnostic result"
+        assert result["wrapped_usable"] is False
+
+    # The schema is now the stable three keys, so an unusable native balance
+    # shows up as native_usable=False rather than a pass/reason pair.  That
+    # keeps the shape uniform but drops the reason: a caller can tell that
+    # something was wrong, not what.  Distinguishability itself is what the
+    # next two assertions pin down.
+    invalid = mod.wrapped_does_not_count(
         weth_balance_wei=0,
         native_balance_wei=Decimal("NaN"),
     )
-    assert result["pass"] is False
-    assert result["reason"] == "INPUTS_UNAVAILABLE: native_balance_wei"
+    assert invalid["native_usable"] is False
+    assert set(invalid) == {"native_usable", "wrapped_usable", "note"}
 
-    result = mod.wrapped_does_not_count(
-        weth_balance_wei=Decimal("-1"),
-        native_balance_wei=0,
-    )
-    assert result["pass"] is False
-    assert result["reason"] == "INPUTS_UNAVAILABLE: weth_balance_wei"
+    zero = mod.wrapped_does_not_count(weth_balance_wei=0, native_balance_wei=0)
+    assert zero["native_usable"] is True
+    assert invalid != zero, "a malformed balance must not look like a zero one"
 
 
 # --- normal-input regression snapshots -------------------------------------
@@ -296,6 +306,35 @@ def test_normal_wrapped_result_is_unchanged():
         native_balance_wei=0,
     ) == {
         "native_usable": True,
+        "wrapped_usable": False,
+        "note": (
+            "WETH is an ERC-20 and cannot pay gas; only native ETH counts "
+            "toward the gas reserve (T29). weth_balance_wei is ignored on "
+            "purpose."
+        ),
+    }
+
+
+def test_wrapped_ignores_missing_or_nonfinite_weth_balance():
+    expected = mod.wrapped_does_not_count(
+        weth_balance_wei=0,
+        native_balance_wei=0,
+    )
+    for weth_balance in (None, Decimal("Infinity"), Decimal("NaN"), "bad"):
+        assert mod.wrapped_does_not_count(
+            weth_balance_wei=weth_balance,
+            native_balance_wei=0,
+        ) == expected
+    assert mod.wrapped_does_not_count(native_balance_wei=0) == expected
+
+
+def test_wrapped_invalid_native_balance_keeps_stable_schema():
+    result = mod.wrapped_does_not_count(
+        weth_balance_wei=10 * 10 ** 18,
+        native_balance_wei=Decimal("NaN"),
+    )
+    assert result == {
+        "native_usable": False,
         "wrapped_usable": False,
         "note": (
             "WETH is an ERC-20 and cannot pay gas; only native ETH counts "

@@ -316,3 +316,38 @@ def test_replay_continues_after_missing_external_flow_step():
     ]))
     assert result["steps"][1]["net_pnl"] is None
     assert result["steps"][2]["net_pnl"] == "10"
+
+
+def test_replay_null_external_flow_is_unavailable_not_zero():
+    result = pnl._process_events(_replay_payload([
+        _replay_step("t0", "1000", external_net_flow="0",
+                     fee_income="0", gas_paid="0", price_move_effect="0"),
+        _replay_step("t1", "1100", external_net_flow=None,
+                     fee_income="0", gas_paid="0", price_move_effect="0"),
+    ]))
+    step = result["steps"][1]
+    assert step["net_pnl"] is None
+    assert "external_net_flow" in step["net_pnl_reason"]
+
+
+@pytest.mark.parametrize("field", [
+    "fee_income", "gas_paid", "price_move_effect",
+])
+def test_replay_null_attribution_input_keeps_pnl_and_marks_unreconciled(field):
+    values = {
+        "external_net_flow": "0",
+        "fee_income": "0",
+        "gas_paid": "0",
+        "price_move_effect": "0",
+    }
+    values[field] = None
+    result = pnl._process_events(_replay_payload([
+        _replay_step("t0", "1000", external_net_flow="0",
+                     fee_income="0", gas_paid="0", price_move_effect="0"),
+        _replay_step("t1", "1010", **values),
+    ]))
+    step = result["steps"][1]
+    assert step["net_pnl"] == "10"
+    assert step["attribution"]["reconciled"] is False
+    assert field in step["attribution"]["missing_inputs"]
+    assert field in step["attribution"]["reason"]

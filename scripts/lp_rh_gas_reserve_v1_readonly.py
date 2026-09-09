@@ -58,14 +58,12 @@ def _input_unavailable_result(parameter: str) -> dict:
     }
 
 
-def _wrapped_input_unavailable_result(parameter: str) -> dict:
-    """Return the wrapped/native invariant result for invalid input."""
+def _wrapped_input_unavailable_result() -> dict:
+    """Return the stable wrapped/native invariant result for invalid input."""
     return {
-        "pass": False,
         "native_usable": False,
         "wrapped_usable": False,
         "note": _WETH_GAS_NOTE,
-        "reason": f"INPUTS_UNAVAILABLE: {parameter}",
     }
 
 
@@ -242,7 +240,8 @@ def native_reserve_gate(
     }
 
 
-def wrapped_does_not_count(*, weth_balance_wei: Any, native_balance_wei: Any) -> dict:
+def wrapped_does_not_count(*, weth_balance_wei: Any = None,
+                             native_balance_wei: Any) -> dict:
     """WETH cannot pay gas -- the core T29 semantic, made checkable.
 
     Gas on EVM chains is paid in the native coin only.  WETH is an ERC-20
@@ -251,22 +250,19 @@ def wrapped_does_not_count(*, weth_balance_wei: Any, native_balance_wei: Any) ->
     NEVER folds WETH into any usable balance: ``wrapped_usable`` is always
     False, and ``native_usable`` records that the native coin is the only
     gas-paying asset class.
-    """
-    weth_balance = _to_decimal(weth_balance_wei)
-    if (
-        weth_balance is None
-        or not weth_balance.is_finite()
-        or weth_balance < 0
-    ):
-        return _wrapped_input_unavailable_result("weth_balance_wei")
 
+    The return schema is always ``{"native_usable", "wrapped_usable",
+    "note"}``.  ``weth_balance_wei`` is intentionally ignored, including
+    when it is missing, ``None``, non-finite, or otherwise malformed; only
+    ``native_balance_wei`` is validated.
+    """
     native_balance = _to_decimal(native_balance_wei)
     if (
         native_balance is None
         or not native_balance.is_finite()
         or native_balance < 0
     ):
-        return _wrapped_input_unavailable_result("native_balance_wei")
+        return _wrapped_input_unavailable_result()
 
     return {
         "native_usable": True,

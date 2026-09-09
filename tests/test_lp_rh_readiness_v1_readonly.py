@@ -306,3 +306,21 @@ def test_verdict_missing_live_gate_is_not_pass(live_gate):
     v = graduation_verdict(passing_stage_a(), passing_stage_b(), live_gate)
     assert v["verdict"] != "PASS"
     assert "LIVE_EXECUTION" in v["explicitly_not_authorized"]
+
+
+def test_verdict_non_boolean_live_allowed_is_not_authorized():
+    v = graduation_verdict(
+        passing_stage_a(), passing_stage_b(),
+        {"blockers": [], "live_allowed": "yes"},
+    )
+    assert v["verdict"] == "FAIL"
+    assert v["explicitly_not_authorized"]
+
+
+def test_verdict_true_live_allowed_without_blockers_passes():
+    v = graduation_verdict(
+        passing_stage_a(), passing_stage_b(),
+        {"blockers": [], "live_allowed": True},
+    )
+    assert v["verdict"] == "PASS"
+    assert v["explicitly_not_authorized"] == []

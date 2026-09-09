@@ -218,23 +218,25 @@ def _process_events(payload: Mapping[str, Any]) -> dict:
             price_t1_token1_per_token0=Decimal(step["price_t1_token1_per_token0"]),
             quote_usd_per_token1=Decimal(step["quote_usd_per_token1"]),
         )
-        external_missing = "external_net_flow" not in step
+        external_value = step.get("external_net_flow")
+        external_missing = external_value is None
         external = (Decimal(0) if external_missing
-                    else Decimal(step["external_net_flow"]))
+                    else Decimal(external_value))
         nav_delta = Decimal(0) if prev_nav is None else nav - prev_nav - external
         pnl_delta = (None if prev_nav is None or external_missing
                      else net_pnl(nav, prev_nav, external))
         attribution_fields = ("fee_income", "gas_paid", "price_move_effect")
-        missing_inputs = [name for name in attribution_fields if name not in step]
+        missing_inputs = [name for name in attribution_fields
+                          if step.get(name) is None]
         if external_missing:
             missing_inputs.insert(0, "external_net_flow")
         attr = attribution(
             nav_delta=nav_delta,
-            fee_income=(Decimal(0) if "fee_income" not in step
+            fee_income=(Decimal(0) if step.get("fee_income") is None
                         else Decimal(step["fee_income"])),
-            gas_paid=(Decimal(0) if "gas_paid" not in step
+            gas_paid=(Decimal(0) if step.get("gas_paid") is None
                       else Decimal(step["gas_paid"])),
-            price_move_effect=(Decimal(0) if "price_move_effect" not in step
+            price_move_effect=(Decimal(0) if step.get("price_move_effect") is None
                                else Decimal(step["price_move_effect"])),
             missing_inputs=missing_inputs,
         )

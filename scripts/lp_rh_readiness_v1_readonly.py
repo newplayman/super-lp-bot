@@ -165,7 +165,7 @@ def graduation_verdict(stage_a, stage_b, live_gate) -> dict:
     else:
         next_task = "graduation criteria met; follow PRD §21 promotion procedure"
     not_authorized = []
-    if not live_gate.get("live_allowed"):
+    if live_gate.get("live_allowed") is not True:
         not_authorized.append("LIVE_EXECUTION")
     return {"verdict": verdict, "next_allowed_task": next_task,
             "explicitly_not_authorized": not_authorized}
