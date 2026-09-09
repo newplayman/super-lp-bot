@@ -4,7 +4,7 @@ import argparse
 import json
 import sys
 from dataclasses import dataclass
-from decimal import Decimal, getcontext
+from decimal import Decimal, localcontext
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 REPO_ROOT = "/opt/lpbot/lp-bot-v3-origin-check"
@@ -15,7 +15,6 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from scripts.lp_rh_registry_v1_readonly import RH_CHAIN_ID  # noqa: E402
-getcontext().prec = 80
 Q96 = 1 << 96
 FEE_SCALE = 1_000_000
 MIN_TICK = -887272
@@ -113,10 +112,12 @@ def _price_impact(sqrt_price: int, amount_in: int, amount_out: int,
     net_in = amount_in - fee_paid
     if net_in <= 0 or amount_out <= 0:
         return Decimal(0), Decimal("10000")
-    effective = Decimal(amount_out) / Decimal(net_in)
-    raw_price = (Decimal(sqrt_price) / Decimal(Q96)) ** 2
-    spot = raw_price if zero_for_one else Decimal(1) / raw_price
-    impact = (spot - effective) / spot * Decimal(10000)
+    with localcontext() as ctx:
+        ctx.prec = 80
+        effective = Decimal(amount_out) / Decimal(net_in)
+        raw_price = (Decimal(sqrt_price) / Decimal(Q96)) ** 2
+        spot = raw_price if zero_for_one else Decimal(1) / raw_price
+        impact = (spot - effective) / spot * Decimal(10000)
     return effective, max(Decimal(0), impact)
 def simulate_exit_swap(*, sqrt_price_x96: int, current_tick: int,
                        tick_spacing: int, fee_pips: int, liquidity: int,
@@ -232,16 +233,20 @@ def _state_factors(pool_state: Mapping[str, Any], zero_for_one: bool):
             return p0, input_decimals
         if dec1 is None:
             return None
-        raw01 = (Decimal(sqrt_price) / Decimal(Q96)) ** 2
-        human01 = raw01 * (Decimal(10) ** int(dec0)) / (Decimal(10) ** int(dec1))
-        return p1 * human01, input_decimals
+        with localcontext() as ctx:
+            ctx.prec = 80
+            raw01 = (Decimal(sqrt_price) / Decimal(Q96)) ** 2
+            human01 = raw01 * (Decimal(10) ** int(dec0)) / (Decimal(10) ** int(dec1))
+            return p1 * human01, input_decimals
     if p1 is not None:
         return p1, input_decimals
     if dec0 is None:
         return None
-    raw01 = (Decimal(sqrt_price) / Decimal(Q96)) ** 2
-    human01 = raw01 * (Decimal(10) ** int(dec0)) / (Decimal(10) ** int(dec1))
-    return p0 / human01, input_decimals
+    with localcontext() as ctx:
+        ctx.prec = 80
+        raw01 = (Decimal(sqrt_price) / Decimal(Q96)) ** 2
+        human01 = raw01 * (Decimal(10) ** int(dec0)) / (Decimal(10) ** int(dec1))
+        return p0 / human01, input_decimals
 def _unavailable() -> dict:
     return {"max_exit_usd": None, "impact_at_size_bps": None,
             "sufficient": False, "reason": "INPUTS_UNAVAILABLE: EXIT_QUOTE"}
@@ -275,8 +280,10 @@ def exit_depth_for_size(*, position_value_usd: Decimal,
         input_price, input_decimals = factors
         if input_price <= 0:
             return _price_or_decimals_unavailable()
-        scale = Decimal(10) ** input_decimals
-        target_raw = int((position * scale / input_price).to_integral_value(rounding="ROUND_FLOOR"))
+        with localcontext() as ctx:
+            ctx.prec = 80
+            scale = Decimal(10) ** input_decimals
+            target_raw = int((position * scale / input_price).to_integral_value(rounding="ROUND_FLOOR"))
         if target_raw <= 0:
             return _unavailable()
         def quote(raw_amount: int) -> dict:
@@ -302,7 +309,9 @@ def exit_depth_for_size(*, position_value_usd: Decimal,
             max_exitable = lo
             if max_exitable > 0:
                 chosen = quote(max_exitable)
-                max_usd = Decimal(max_exitable) * input_price / scale
+                with localcontext() as ctx:
+                    ctx.prec = 80
+                    max_usd = Decimal(max_exitable) * input_price / scale
                 impact = chosen["price_impact_bps"]
             else:
                 max_usd = Decimal(0)
@@ -325,7 +334,9 @@ def exit_depth_for_size(*, position_value_usd: Decimal,
             else:
                 hi = mid
         chosen = quote(lo) if lo else {"price_impact_bps": Decimal(0)}
-        max_usd = Decimal(lo) * input_price / scale
+        with localcontext() as ctx:
+            ctx.prec = 80
+            max_usd = Decimal(lo) * input_price / scale
         return {"max_exit_usd": max_usd,
                 "impact_at_size_bps": chosen["price_impact_bps"],
                 "sufficient": max_usd >= position,

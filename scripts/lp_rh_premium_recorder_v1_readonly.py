@@ -29,10 +29,8 @@ import time
 import urllib.error
 import urllib.request
 from datetime import datetime, timezone
-from decimal import Decimal, getcontext
+from decimal import Decimal, localcontext
 from pathlib import Path
-
-getcontext().prec = 60
 
 RPC = os.environ.get("RH_RPC_PRIMARY", "https://rpc.mainnet.chain.robinhood.com")
 PRICES_URL = "https://api.robinhood.com/rhj/prices"
@@ -144,11 +142,13 @@ def chain_price_usd(sqrt_price_x96: int, meta: dict):
     """
     if not sqrt_price_x96:
         return None
-    q = Decimal(sqrt_price_x96) / (Decimal(2) ** 96)
-    p = (q * q) * (Decimal(10) ** meta["d0"]) / (Decimal(10) ** meta["d1"])
-    if p <= 0:
-        return None
-    return (Decimal(1) / p) if meta["token0_is_quote"] else p
+    with localcontext() as ctx:
+        ctx.prec = 60
+        q = Decimal(sqrt_price_x96) / (Decimal(2) ** 96)
+        p = (q * q) * (Decimal(10) ** meta["d0"]) / (Decimal(10) ** meta["d1"])
+        if p <= 0:
+            return None
+        return (Decimal(1) / p) if meta["token0_is_quote"] else p
 
 
 def fetch_prices(attempts: int = 4) -> dict:
@@ -245,14 +245,21 @@ def sample_one(symbol: str, pool: str, meta: dict, ref: dict | None) -> dict:
     else:
         bid, ask = _dec(ref.get("bid")), _dec(ref.get("ask"))
         row["reference_bid"], row["reference_ask"] = bid, ask
-        row["reference_mid"] = ((bid + ask) / 2) if (bid and ask) else None
+        if bid and ask:
+            with localcontext() as ctx:
+                ctx.prec = 60
+                row["reference_mid"] = (bid + ask) / 2
+        else:
+            row["reference_mid"] = None
         row["reference_generated_at"] = ref.get("generatedAt")
         row["reference_age_secs"] = _age_secs(ref.get("generatedAt"))
         halt = ref.get("isTradingHalt")
         row["is_trading_halt"] = None if halt is None else int(bool(halt))
     try:
-        row["multiplier"] = _dec(_u(_call(meta["stock_token"],
-                                         SEL["multiplier"]))) / (Decimal(10) ** 18)
+        _raw_mult = _dec(_u(_call(meta["stock_token"], SEL["multiplier"])))
+        with localcontext() as ctx:
+            ctx.prec = 60
+            row["multiplier"] = _raw_mult / (Decimal(10) ** 18)
     except Exception as exc:
         row["multiplier"] = None
         row["error"] = ((row.get("error") or "") + f"|mult:{exc}")[:200]
@@ -263,7 +270,9 @@ def sample_one(symbol: str, pool: str, meta: dict, ref: dict | None) -> dict:
         row["reference_token_price"] = None
     rtp = row["reference_token_price"]
     if cp is not None and rtp is not None and rtp > 0:
-        row["premium_bps"] = (cp / rtp - 1) * Decimal(10000)
+        with localcontext() as ctx:
+            ctx.prec = 60
+            row["premium_bps"] = (cp / rtp - 1) * Decimal(10000)
     else:
         row["premium_bps"] = None
         if row["status"] == "COMPUTED":

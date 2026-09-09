@@ -32,7 +32,7 @@ import time
 import urllib.error
 import urllib.request
 from datetime import datetime, timezone
-from decimal import Decimal, getcontext
+from decimal import Decimal, localcontext
 from pathlib import Path
 
 # Every module here that imports `scripts.*` needs this: pytest inserts the repo
@@ -52,8 +52,6 @@ from scripts.lp_rh_organic_volume_v1_readonly import (
     participant_concentration,
     round_trip_volume,
 )
-
-getcontext().prec = 60
 
 UA = "lpbot-rh05i/1.0 (read-only research)"
 _STOP = {"flag": False}
@@ -216,11 +214,13 @@ def record_window(
         error = (f"skipped {lo - 1 - prev_end} blocks between {prev_end + 1} "
                  f"and {lo - 1} (gap beyond provider retention; jumped to head-span)")
 
-    fetch = fetch_swaps(pool, lo, hi, call_fn)
-    events = to_organic_events(fetch["events"])
-    conc = participant_concentration(events)
-    rt = round_trip_volume(events)
-    est = organic_volume_estimate(events)
+    with localcontext() as ctx:
+        ctx.prec = 60
+        fetch = fetch_swaps(pool, lo, hi, call_fn)
+        events = to_organic_events(fetch["events"])
+        conc = participant_concentration(events)
+        rt = round_trip_volume(events)
+        est = organic_volume_estimate(events)
 
     if fetch["status"] != "COMPLETE":
         fetch_error = _fetch_error_summary(fetch)
