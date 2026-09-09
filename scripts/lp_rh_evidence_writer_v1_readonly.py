@@ -129,7 +129,8 @@ def write_assets(conn: sqlite3.Connection, assets_json: Any, *,
     RH chain (4663) is skipped wholesale, so the gate cannot be bypassed at the
     write layer.
     """
-    result: Dict[str, Any] = {"written": 0, "skipped": 0, "missing_fields": {}}
+    result: Dict[str, Any] = {"written": 0, "skipped": 0, "missing_fields": {},
+                              "skip_reasons": {}}
     assets = _as_list(assets_json, "assets")
     if chain_id != RH_CHAIN_ID:
         result["skipped"] = len(assets)
@@ -139,8 +140,10 @@ def write_assets(conn: sqlite3.Connection, assets_json: Any, *,
         try:
             identity = asset_from_json(chain_id, asset_json,
                                        str(metadata_version), source)
-        except ValueError:
+        except ValueError as exc:
             result["skipped"] += 1
+            reason = str(exc)
+            result["skip_reasons"][reason] = result["skip_reasons"].get(reason, 0) + 1
             continue
         capability = normalize_capability(asset_json)
         row = {

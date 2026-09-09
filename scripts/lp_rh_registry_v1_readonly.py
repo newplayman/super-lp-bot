@@ -192,11 +192,27 @@ def _opt_str(value: object) -> Optional[str]:
     return str(value)
 
 
-def _extract_address(asset_json: Mapping[str, object]) -> Optional[str]:
+def _extract_address(asset_json: Mapping[str, object],
+                     chain_id: Optional[int] = None) -> Optional[str]:
     for key in _ADDRESS_KEYS:
         value = asset_json.get(key)
         if value is not None:
             return value
+    # Top-level keys all empty: fall back to deployments[], taking the first
+    # entry whose chainId equals chain_id. Never guess: deployments not a
+    # list, an element that is not a dict, or no matching chainId -> None
+    # (do not fall back to the first entry).
+    deployments = asset_json.get("deployments")
+    if not isinstance(deployments, list) or chain_id is None:
+        return None
+    for deployment in deployments:
+        if not isinstance(deployment, dict):
+            continue
+        if deployment.get("chainId") != chain_id:
+            continue
+        address = deployment.get("contractAddress")
+        if address is not None:
+            return address
     return None
 
 
@@ -219,7 +235,7 @@ def asset_from_json(
     Raises ValueError("ASSET_ADDRESS_INVALID") when the address is missing or
     not a 40-hex address. Missing tokenDecimals -> decimals=None.
     """
-    address = _extract_address(asset_json)
+    address = _extract_address(asset_json, chain_id=chain_id)
     _validate_address(address)
     decimals_raw = asset_json.get("tokenDecimals")
     decimals = int(decimals_raw) if decimals_raw is not None else None

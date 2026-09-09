@@ -157,18 +157,41 @@ def collect_attestations(rpc_fn, addresses, *, beacon) -> List[dict]:
     return records
 
 
-def _asset_addresses(asset_records) -> List[str]:
-    """Token addresses from asset records, deduplicated, order-preserving."""
+def _record_address(record, chain_id=None):
+    """One address from a record: top-level keys first, then deployments[]
+    filtered by chainId. None when nothing usable (never guess: no matching
+    chainId -> nothing for that record)."""
+    for key in ("tokenAddress", "assetAddress", "address"):
+        value = record.get(key)
+        if isinstance(value, str) and value:
+            return value
+    deployments = record.get("deployments")
+    if not isinstance(deployments, list) or chain_id is None:
+        return None
+    for deployment in deployments:
+        if not isinstance(deployment, dict):
+            continue
+        if deployment.get("chainId") != chain_id:
+            continue
+        address = deployment.get("contractAddress")
+        if isinstance(address, str) and address:
+            return address
+    return None
+
+
+def _asset_addresses(asset_records, chain_id: Optional[int] = None) -> List[str]:
+    """Token addresses from asset records, deduplicated, order-preserving.
+    Top-level keys first; when empty, fall back to deployments[] filtered by
+    chainId (never guess: no matching chainId -> nothing for that record)."""
     seen, out = set(), []
     for record in asset_records:
-        for key in ("tokenAddress", "assetAddress", "address"):
-            value = record.get(key)
-            if isinstance(value, str) and value:
-                low = value.lower()
-                if low not in seen:
-                    seen.add(low)
-                    out.append(low)
-                break
+        value = _record_address(record, chain_id)
+        if value is None:
+            continue
+        low = value.lower()
+        if low not in seen:
+            seen.add(low)
+            out.append(low)
     return out
 
 
@@ -198,7 +221,7 @@ def run_once(conn, *, fetch_fn, rpc_fn, chain_id, policy_version,
     except Exception as exc:
         report["errors"].append(f"pool_registry: {exc}")
     try:
-        addresses = _asset_addresses(asset_records)
+        addresses = _asset_addresses(asset_records, chain_id=chain_id)
         records = collect_attestations(rpc_fn, addresses, beacon=BEACON)
         report["attestations"] = write_attestations(conn, records,
                                                     chain_id=chain_id,
