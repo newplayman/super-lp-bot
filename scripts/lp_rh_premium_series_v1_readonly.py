@@ -93,6 +93,7 @@ def _empty_statistics(n_total: int, n_usable: int, n_skipped: int,
         "reference_quantum_bps": None,
         "reference_spread_bps": None,
         "resolution_floor_bps": None,
+        "signal_to_floor": None,
     }
 
 
@@ -205,6 +206,14 @@ def series_stats(
     if threshold is None:
         threshold = Decimal("10")
     persistent_count = sum(abs(value) > threshold for value in values)
+    resolution = _resolution_fields([item[2] for item in usable])
+    floor = resolution["resolution_floor_bps"]
+    # A floor of None or 0 means the signal-to-floor ratio is undefined; report
+    # None rather than 0 (which would read as "no signal") or inf.
+    if floor is None or floor == ZERO:
+        signal_to_floor = None
+    else:
+        signal_to_floor = stdev / floor
 
     return {
         "n_total": n_total,
@@ -221,7 +230,8 @@ def series_stats(
         "sign_stability": sign_stability,
         "persistence_frac": Decimal(persistent_count) / Decimal(n_usable),
         "half_life_secs": _half_life(usable),
-        **_resolution_fields([item[2] for item in usable]),
+        **resolution,
+        "signal_to_floor": signal_to_floor,
     }
 
 
@@ -253,6 +263,27 @@ def premium_regime(stats: dict[str, Any]) -> str:
     ):
         return "MEAN_REVERTING"
     return "UNSTABLE"
+
+
+def regime_confidence(stats: dict[str, Any]) -> str:
+    """Grade how far the premium signal rises above the resolution floor.
+
+    A regime label alone is ambiguous: two UNSTABLE series can sit at wildly
+    different distances from the floor (NVDA after-hours at ~1.09x is a
+    borderline resolution pass, QQQ after-hours at ~3.0x is a clean one).  This
+    is a visibility aid only -- it does not feed back into premium_regime or
+    lvr_haircut_frac, so no gate behaviour changes.
+    """
+    signal_to_floor = stats.get("signal_to_floor")
+    if signal_to_floor is None:
+        return "UNKNOWN"
+    if signal_to_floor < Decimal(1):
+        return "BELOW_FLOOR"
+    if signal_to_floor < Decimal(2):
+        return "MARGINAL"
+    if signal_to_floor < Decimal(5):
+        return "ADEQUATE"
+    return "STRONG"
 
 
 def lvr_haircut_frac(stats: dict[str, Any], regime: str) -> Optional[Decimal]:

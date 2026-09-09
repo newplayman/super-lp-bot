@@ -13,6 +13,7 @@ from scripts.lp_rh_premium_series_v1_readonly import (
     main,
     premium_bps,
     premium_regime,
+    regime_confidence,
     series_stats,
 )
 
@@ -416,3 +417,138 @@ def test_zero_variation_is_vetoed_and_that_is_deliberate():
     regime = premium_regime(stats)
     assert regime == "INSUFFICIENT_RESOLUTION"
     assert lvr_haircut_frac(stats, regime) is None
+
+
+# ---------------------------------------------------------------------------
+# RH-05k: regime labels must carry a signal-to-floor ratio, because two
+# UNSTABLE series can sit at wildly different distances from the floor.
+# ---------------------------------------------------------------------------
+
+def _confidence_stats(signal_to_floor):
+    return {"status": "COMPUTED", "n_usable": 30, "signal_to_floor": signal_to_floor}
+
+
+def test_signal_to_floor_none_when_floor_none():
+    # Constant reference (no quantum) and no bid/ask (no spread) => floor None.
+    references = [Decimal("100")] * 30
+    stats = series_stats(make_samples_ref([Decimal(50)] * 30, references))
+    assert stats["status"] == "COMPUTED"
+    assert stats["resolution_floor_bps"] is None
+    assert stats["signal_to_floor"] is None
+
+
+def test_signal_to_floor_none_when_floor_zero():
+    # Constant reference plus zero-width bid/ask gives a floor of exactly 0.
+    # Division by zero must yield None, not inf and not a crash.
+    references = [Decimal("100")] * 30
+    bids = [Decimal("100")] * 30
+    asks = [Decimal("100")] * 30
+    stats = series_stats(make_samples_ref([Decimal(50)] * 30, references, bids, asks))
+    assert stats["status"] == "COMPUTED"
+    assert stats["resolution_floor_bps"] == Decimal(0)
+    assert stats["signal_to_floor"] is None
+
+
+def test_signal_to_floor_key_present_under_insufficient_samples():
+    stats = series_stats(make_samples([Decimal(10)] * 29))
+    assert stats["status"] == "INSUFFICIENT_SAMPLES"
+    assert "signal_to_floor" in stats
+    assert stats["signal_to_floor"] is None
+
+
+def test_signal_to_floor_key_present_under_unavailable():
+    stats = series_stats([])
+    assert stats["status"] == "INPUTS_UNAVAILABLE"
+    assert "signal_to_floor" in stats
+    assert stats["signal_to_floor"] is None
+
+
+def test_confidence_unknown_when_signal_to_floor_none():
+    assert regime_confidence(_confidence_stats(None)) == "UNKNOWN"
+
+
+def test_confidence_below_floor_at_099():
+    assert regime_confidence(_confidence_stats(Decimal("0.99"))) == "BELOW_FLOOR"
+
+
+def test_confidence_marginal_at_10():
+    assert regime_confidence(_confidence_stats(Decimal("1.0"))) == "MARGINAL"
+
+
+def test_confidence_marginal_at_199():
+    assert regime_confidence(_confidence_stats(Decimal("1.99"))) == "MARGINAL"
+
+
+def test_confidence_adequate_at_20():
+    assert regime_confidence(_confidence_stats(Decimal("2.0"))) == "ADEQUATE"
+
+
+def test_confidence_strong_at_50():
+    assert regime_confidence(_confidence_stats(Decimal("5.0"))) == "STRONG"
+
+
+def _measured_stats(stdev_bps, floor_bps):
+    return {
+        "status": "COMPUTED",
+        "n_usable": 30,
+        "stdev_bps": stdev_bps,
+        "resolution_floor_bps": floor_bps,
+        "signal_to_floor": stdev_bps / floor_bps,
+        "sign_stability": Decimal("0.5"),
+        "zero_crossings": 0,
+        "half_life_secs": None,
+    }
+
+
+def test_nvda_afterhours_is_marginal():
+    # Live measurement: stdev 2.67 bps against a 2.44 bps floor (ratio ~1.09).
+    stats = _measured_stats(Decimal("2.67"), Decimal("2.44"))
+    assert premium_regime(stats) == "UNSTABLE"
+    assert regime_confidence(stats) == "MARGINAL"
+
+
+def test_qqq_afterhours_is_adequate():
+    # Live measurement: stdev 2.28 bps against a 0.77 bps floor (ratio ~2.96).
+    stats = _measured_stats(Decimal("2.28"), Decimal("0.77"))
+    assert premium_regime(stats) == "UNSTABLE"
+    assert regime_confidence(stats) == "ADEQUATE"
+
+
+def test_same_regime_different_confidence():
+    # The point of RH-05k: two series share a regime label while sitting at
+    # very different distances from the floor.
+    nvda = _measured_stats(Decimal("2.67"), Decimal("2.44"))
+    qqq = _measured_stats(Decimal("2.28"), Decimal("0.77"))
+    assert premium_regime(nvda) == premium_regime(qqq)
+    assert regime_confidence(nvda) != regime_confidence(qqq)
+
+
+def test_premium_regime_return_set_unchanged():
+    assert premium_regime({"status": "INPUTS_UNAVAILABLE"}) == "INPUTS_UNAVAILABLE"
+    assert premium_regime({"status": "INSUFFICIENT_SAMPLES"}) == "INSUFFICIENT_SAMPLES"
+    base = {
+        "status": "COMPUTED",
+        "n_usable": 30,
+        "stdev_bps": Decimal("100"),
+        "resolution_floor_bps": Decimal("10"),
+        "half_life_secs": None,
+    }
+    insufficient = dict(base, stdev_bps=Decimal("5"))
+    assert premium_regime(insufficient) == "INSUFFICIENT_RESOLUTION"
+    persistent = dict(base, sign_stability=Decimal("1"), zero_crossings=0)
+    assert premium_regime(persistent) == "PERSISTENT_OFFSET"
+    mean_reverting = dict(
+        base, sign_stability=Decimal("0.5"), zero_crossings=10, half_life_secs=Decimal("60")
+    )
+    assert premium_regime(mean_reverting) == "MEAN_REVERTING"
+    unstable = dict(base, sign_stability=Decimal("0.5"), zero_crossings=0)
+    assert premium_regime(unstable) == "UNSTABLE"
+
+
+def test_lvr_haircut_frac_behavior_unchanged():
+    stats = {"status": "COMPUTED", "stdev_bps": Decimal("100")}
+    assert lvr_haircut_frac(stats, "MEAN_REVERTING") == min(
+        Decimal(1), Decimal("100") / Decimal("10000") * Decimal("0.50")
+    )
+    assert lvr_haircut_frac(stats, "PERSISTENT_OFFSET") == Decimal(0)
+    assert lvr_haircut_frac(stats, "INSUFFICIENT_RESOLUTION") is None
