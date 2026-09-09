@@ -46,6 +46,10 @@ ASSETS_URL = "https://api.robinhood.com/rhj/assets"
 RPC_URL = "https://rpc.mainnet.chain.robinhood.com"
 BEACON = "0xe10b6f6b275de231345c20d14ab812db62151b00"
 SEL_IMPLEMENTATION = "0x5c60da1b"   # EIP-1967 implementation()
+SEL_TOKEN0 = "0x0dfe1681"           # IUniswapV3Pool.token0()
+SEL_TOKEN1 = "0xd21220a7"           # IUniswapV3Pool.token1()
+SEL_FEE = "0xddca3f43"              # IUniswapV3Pool.fee()
+SEL_TICK_SPACING = "0xd0c93a7c"     # IUniswapV3Pool.tickSpacing()
 _BACKOFF_SECS = (5, 15, 45, 90)
 _STOP = {"flag": False}
 
@@ -175,6 +179,59 @@ def collect_attestations(rpc_fn, addresses, *, beacon, skip_out=None) -> List[di
     return records
 
 
+def _decode_word_address(value: object) -> Optional[str]:
+    """Last 20 bytes of a hex word, lowercased; None when the value is not a
+    0x-prefixed string with at least 40 hex chars (RH-02v)."""
+    if not isinstance(value, str) or not value.lower().startswith("0x"):
+        return None
+    body = value[2:]
+    if len(body) < 40:
+        return None
+    return "0x" + body[-40:].lower()
+
+
+def _decode_word_uint(value: object) -> Optional[int]:
+    """A 0x-prefixed hex word as int; None when not a 0x-prefixed string with
+    a non-empty hex body (RH-02v). 0 is a legitimate value and is returned as
+    0, never dropped."""
+    if not isinstance(value, str) or not value.lower().startswith("0x"):
+        return None
+    body = value[2:]
+    if not body:
+        return None
+    try:
+        return int(body, 16)
+    except ValueError:
+        return None
+
+
+def collect_pool_properties(rpc_fn, pool) -> Dict[str, Any]:
+    """Fetch token0 / token1 / fee / tick_spacing for a v3 pool via eth_call.
+
+    RH-02v: the registry row's four economic columns were NULL because the
+    collector never asked the chain. This asks, per selector, and returns ONLY
+    the keys that decoded successfully. A failed or undecodable item is
+    OMITTED (never 0 / empty / a guess) so the writer stores NULL for it --
+    fee = 0 is a legitimate fee and must stay distinguishable from "not
+    asked". pool_id and hooks are v4 concepts and are never included for a
+    v3 pool (NULL is the correct value for them)."""
+    out: Dict[str, Any] = {}
+    for key, selector, decode in (
+            ("token0", SEL_TOKEN0, _decode_word_address),
+            ("token1", SEL_TOKEN1, _decode_word_address),
+            ("fee", SEL_FEE, _decode_word_uint),
+            ("tick_spacing", SEL_TICK_SPACING, _decode_word_uint)):
+        value, err = _call(rpc_fn, "eth_call",
+                           [{"to": pool, "data": selector}, "latest"])
+        if err:
+            continue
+        decoded = decode(value)
+        if decoded is None:
+            continue
+        out[key] = decoded
+    return out
+
+
 def _record_address(record, chain_id=None):
     """One address from a record: top-level keys first, then deployments[]
     filtered by chainId. None when nothing usable (never guess: no matching
@@ -233,7 +290,13 @@ def run_once(conn, *, fetch_fn, rpc_fn, chain_id, policy_version,
     except Exception as exc:
         report["errors"].append(f"assets: {exc}")
     try:
-        candidates = [{"pool": SEED_ADDRESSES["POOL_USDG_WETH"]["address"]}]
+        pool = SEED_ADDRESSES["POOL_USDG_WETH"]["address"]
+        try:
+            props = collect_pool_properties(rpc_fn, pool)
+        except Exception as exc:
+            props = {}
+            report["errors"].append(f"collect_pool_properties: {exc}")
+        candidates = [{"pool": pool, **props}]
         report["pool_registry"] = write_pool_registry(conn, candidates,
                                                       chain_id=chain_id)
     except Exception as exc:
