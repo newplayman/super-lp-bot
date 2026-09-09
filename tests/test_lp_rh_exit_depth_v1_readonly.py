@@ -374,3 +374,104 @@ def test_three_new_reasons_are_pairwise_distinct():
                                           **state)
     reasons = {r_missing["reason"], r_price["reason"], r_exhausted["reason"]}
     assert len(reasons) == 3
+
+
+# --- RH-02av: direction_source marker + misspelled direction key detection ---
+
+def _pool_no_direction(**changes):
+    state = _pool(**changes)
+    del state["zero_for_one"]
+    return state
+
+
+def test_defaulted_direction_is_marked():
+    result = mod.exit_depth_for_size(position_value_usd=Decimal("1000"),
+                                     max_impact_bps=Decimal("100"),
+                                     **_pool_no_direction(token0_decimals=0,
+                                                          input_price_usd=1))
+    assert result["direction_source"] == "defaulted"
+    assert result["reason"] == "EXIT_DEPTH_OK"
+    assert result["max_exit_usd"] == Decimal("1000")
+
+
+def test_explicit_direction_is_marked():
+    result = mod.exit_depth_for_size(position_value_usd=Decimal("1000"),
+                                     max_impact_bps=Decimal("100"),
+                                     **_pool(token0_decimals=0,
+                                             input_price_usd=1))
+    assert result["direction_source"] == "explicit"
+
+
+def test_explicit_false_is_marked_explicit():
+    # zero_for_one=False means the input token is token1, so its decimals
+    # are the ones _state_factors requires.
+    state = _pool_no_direction(token1_decimals=0, input_price_usd=1)
+    result = mod.exit_depth_for_size(position_value_usd=Decimal("1000"),
+                                     max_impact_bps=Decimal("100"),
+                                     **{**state, "zero_for_one": False})
+    assert result["direction_source"] == "explicit"
+    assert result["reason"] == "EXIT_DEPTH_OK"
+
+
+def test_explicit_true_matches_defaulted_key_by_key():
+    # The default is True, so explicit True must reproduce the defaulted
+    # result exactly, apart from the marker itself.
+    state = _pool_no_direction(token0_decimals=0, input_price_usd=1)
+    defaulted = mod.exit_depth_for_size(position_value_usd=Decimal("1000"),
+                                        max_impact_bps=Decimal("100"),
+                                        **state)
+    explicit = mod.exit_depth_for_size(position_value_usd=Decimal("1000"),
+                                       max_impact_bps=Decimal("100"),
+                                       **{**state, "zero_for_one": True})
+    assert explicit["direction_source"] == "explicit"
+    assert defaulted["direction_source"] == "defaulted"
+    for key in defaulted:
+        if key == "direction_source":
+            continue
+        assert explicit[key] == defaulted[key], key
+
+
+@pytest.mark.parametrize("bad_key", ["zeroForOne", "ZERO_FOR_ONE",
+                                     "zero_for_1", "zeroforone"])
+def test_misspelled_direction_key_is_unavailable_and_named(bad_key):
+    state = _pool_no_direction(token0_decimals=0, input_price_usd=1)
+    result = mod.exit_depth_for_size(position_value_usd=Decimal("1000"),
+                                     max_impact_bps=Decimal("100"),
+                                     **{**state, bad_key: True})
+    assert result["sufficient"] is False
+    assert result["max_exit_usd"] is None
+    assert result["impact_at_size_bps"] is None
+    assert "INPUTS_UNAVAILABLE" in result["reason"]
+    assert "MISPELLED_DIRECTION_KEY" in result["reason"]
+    assert bad_key in result["reason"]
+
+
+def test_misspelled_direction_key_wins_over_missing_tick_data():
+    # A misspelled direction key is a caller bug and must surface even when
+    # other inputs are also missing.
+    result = mod.exit_depth_for_size(position_value_usd=Decimal("1000"),
+                                     max_impact_bps=Decimal("100"),
+                                     tick_data=[], zeroForOne=True)
+    assert "MISPELLED_DIRECTION_KEY" in result["reason"]
+    assert "zeroForOne" in result["reason"]
+
+
+def test_misspelled_detection_ignores_correct_key_and_pool_meta_keys():
+    assert mod._misspelled_direction_key({"zero_for_one": True}) is None
+    meta_keys = ["active_liquidity_notional_usd", "attestation_status",
+                 "current_tick", "dec0", "dec1", "fee", "fee_apr_pct",
+                 "fee_pips", "gas_provenance", "gas_usd_estimate",
+                 "input_price_usd", "liquidity", "liquidity_raw",
+                 "max_impact_bps", "protocol", "range_pct", "sigma_daily",
+                 "sqrt_price_x96", "tick_data", "tick_spacing",
+                 "token0_decimals", "token1_decimals", "tvl_usd"]
+    assert mod._misspelled_direction_key(dict.fromkeys(meta_keys)) is None
+
+
+def test_real_pool_meta_does_not_trigger_misspelled_detection():
+    # Regression guard for the shadow runner: its pool_meta.json expansion
+    # must never be read as a misspelled direction key.
+    meta_path = Path("/opt/lpbot/lp-bot-v3-origin-check/reports/lp_rh/pool_meta.json")
+    raw = json.loads(meta_path.read_text())
+    state = raw.get("pool_state", raw)
+    assert mod._misspelled_direction_key(state) is None

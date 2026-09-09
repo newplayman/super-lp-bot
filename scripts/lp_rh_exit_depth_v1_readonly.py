@@ -260,8 +260,28 @@ def _price_or_decimals_unavailable() -> dict:
     return {"max_exit_usd": None, "impact_at_size_bps": None,
             "sufficient": False,
             "reason": "INPUTS_UNAVAILABLE: PRICE_OR_DECIMALS"}
+def _misspelled_direction_key(pool_state: Mapping[str, Any]) -> str | None:
+    """Return a pool_state key that looks like a misspelled `zero_for_one`.
+
+    RH-02av: a misspelled direction key must surface as
+    INPUTS_UNAVAILABLE, never be silently swallowed into **pool_state and
+    read back as the default direction.
+    """
+    for key in pool_state:
+        if key == "zero_for_one":
+            continue
+        normalized = str(key).lower().replace("_", "").replace("-", "")
+        if normalized in ("zeroforone", "zerofor1"):
+            return key
+    return None
 def exit_depth_for_size(*, position_value_usd: Decimal,
                         max_impact_bps: Decimal, **pool_state) -> dict:
+    misspelled = _misspelled_direction_key(pool_state)
+    if misspelled is not None:
+        return {"max_exit_usd": None, "impact_at_size_bps": None,
+                "sufficient": False,
+                "reason": (f"INPUTS_UNAVAILABLE: MISPELLED_DIRECTION_KEY: "
+                           f"{misspelled} (expected zero_for_one)")}
     ticks = pool_state.get("tick_data")
     if not ticks:
         return _unavailable()
@@ -274,6 +294,10 @@ def exit_depth_for_size(*, position_value_usd: Decimal,
         if position is None or impact_limit is None or position <= 0 or impact_limit < 0:
             return _unavailable()
         zero_for_one = bool(pool_state.get("zero_for_one", True))
+        # RH-02av: mark whether the direction came from the caller or from
+        # the default, so a defaulted direction is visible, not silent.
+        direction_source = ("explicit" if "zero_for_one" in pool_state
+                            else "defaulted")
         factors = _state_factors(pool_state, zero_for_one)
         if factors is None:
             return _price_or_decimals_unavailable()
@@ -319,11 +343,13 @@ def exit_depth_for_size(*, position_value_usd: Decimal,
             return {"max_exit_usd": max_usd,
                     "impact_at_size_bps": impact,
                     "sufficient": False,
-                    "reason": "COMPUTED_FAIL: LIQUIDITY_EXHAUSTED"}
+                    "reason": "COMPUTED_FAIL: LIQUIDITY_EXHAUSTED",
+                    "direction_source": direction_source}
         if full["price_impact_bps"] <= impact_limit:
             return {"max_exit_usd": position,
                     "impact_at_size_bps": full["price_impact_bps"],
-                    "sufficient": True, "reason": "EXIT_DEPTH_OK"}
+                    "sufficient": True, "reason": "EXIT_DEPTH_OK",
+                    "direction_source": direction_source}
         lo, hi = 0, target_raw
         while lo + 1 < hi:
             mid = (lo + hi) // 2
@@ -341,7 +367,8 @@ def exit_depth_for_size(*, position_value_usd: Decimal,
                 "impact_at_size_bps": chosen["price_impact_bps"],
                 "sufficient": max_usd >= position,
                 "reason": "EXIT_DEPTH_OK" if max_usd >= position
-                else "EXIT_DEPTH_INSUFFICIENT"}
+                else "EXIT_DEPTH_INSUFFICIENT",
+                "direction_source": direction_source}
     except (KeyError, TypeError, ValueError, ArithmeticError):
         return _unavailable()
 def measured_exit_depth_cap(position_value_usd: Decimal | None = None,
