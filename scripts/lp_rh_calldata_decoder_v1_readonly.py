@@ -246,8 +246,10 @@ def verify_intent(decoded, *, intent: Mapping) -> tuple[bool, list[str]]:
     if missing:
         return False, ["INTENT_FIELD_MISSING:" + x for x in missing]
     claims = _claims(decoded)
-    reasons = ["INTENT_MISMATCH:" + x for x in _INTENT_FIELDS
-               if x in claims and not _same(claims[x], intent[x])]
+    missing_claims = [x for x in _INTENT_FIELDS if x not in claims]
+    reasons = (["INTENT_CLAIM_MISSING:" + x for x in missing_claims] +
+               ["INTENT_MISMATCH:" + x for x in _INTENT_FIELDS
+                if x in claims and not _same(claims[x], intent[x])])
     return not reasons, reasons
 def _read_json(path):
     with open(path, "r", encoding="utf-8") as handle:

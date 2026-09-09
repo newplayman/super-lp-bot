@@ -201,6 +201,19 @@ def test_verify_intent_rejects_each_missing_required_field(field):
     ok, reasons = verify_intent(decode_calldata(mint()), intent=intent)
     assert not ok
     assert "INTENT_FIELD_MISSING:" + field in reasons
+def test_verify_intent_rejects_missing_claims():
+    decoded = decode_calldata("0x42966c68" + "00" * 32)
+    ok, reasons = verify_intent(decoded, intent=FULL_INTENT)
+    assert not ok
+    assert reasons == ["INTENT_CLAIM_MISSING:" + field for field in FULL_INTENT]
+
+def test_verify_intent_rejects_single_missing_claim():
+    decoded = decode_calldata(mint())
+    decoded.update(FULL_INTENT)
+    decoded.pop("expires_at")
+    ok, reasons = verify_intent(decoded, intent=FULL_INTENT)
+    assert not ok
+    assert reasons == ["INTENT_CLAIM_MISSING:expires_at"]
 def test_verify_intent_rejects_mismatch():
     decoded = decode_calldata(mint())
     decoded.update(FULL_INTENT)
