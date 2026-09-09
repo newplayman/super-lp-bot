@@ -221,3 +221,196 @@ def test_main_status_read_only(tmp_path, capsys):
 def test_main_no_flag_returns_2(capsys):
     assert store.main([]) == 2
 
+
+# --- RH-02f: block provenance on the six derived tables ----------------------
+def _old_table_ddl(table_name):
+    """DDL for a derived table as it existed before RH-02f (no provenance cols)."""
+    for name, pk, columns in store._TABLES:
+        if name == table_name:
+            old_cols = [c for c in columns if "derived_block" not in c]
+            defs = old_cols + ["PRIMARY KEY (" + ", ".join(pk) + ")"]
+            return "CREATE TABLE " + name + " (\n    " + ",\n    ".join(defs) + "\n);"
+    raise AssertionError(table_name)
+
+
+@pytest.mark.parametrize("table", list(store.DERIVED_TABLES))
+def test_six_derived_tables_have_provenance_columns(tmp_path, table):
+    conn = store.open_store(tmp_path / "rh.db")
+    try:
+        store.migrate(conn)
+        cols = {r[1]: r[2] for r in conn.execute(f"PRAGMA table_info({table})")}
+        assert cols.get("derived_block_hash") == "TEXT"
+        assert cols.get("derived_block_number") == "INTEGER"
+    finally:
+        conn.close()
+
+
+def test_ensure_columns_idempotent(tmp_path):
+    conn = store.open_store(tmp_path / "rh.db")
+    try:
+        store.migrate(conn)
+        store._ensure_columns(conn)
+        store._ensure_columns(conn)  # second call must not raise
+    finally:
+        conn.close()
+
+
+def test_ensure_columns_upgrades_old_db_in_place_keeps_rows(tmp_path):
+    conn = sqlite3.connect(str(tmp_path / "old.db"))
+    try:
+        for table in store.DERIVED_TABLES:
+            conn.execute(_old_table_ddl(table))
+        conn.execute("PRAGMA user_version = 1")
+        conn.execute(
+            "INSERT INTO rh_gate_decisions (decision_id, candidate_key, target_mode,"
+            " primary_status, terminal_bits_json, decided_at)"
+            " VALUES ('d1','c1','shadow','ok','{}','2026-09-07T12:00:00Z')"
+        )
+        conn.commit()
+        store.migrate(conn)  # real upgrade path: _ensure_columns + version check
+        assert conn.execute(
+            "SELECT count(*) FROM rh_gate_decisions"
+        ).fetchone()[0] == 1
+        cols = {r[1] for r in conn.execute("PRAGMA table_info(rh_gate_decisions)")}
+        assert "derived_block_hash" in cols
+        assert "derived_block_number" in cols
+    finally:
+        conn.close()
+
+
+@pytest.mark.parametrize("table", list(store.DERIVED_TABLES))
+def test_ensure_columns_preserves_primary_keys(tmp_path, table):
+    conn = sqlite3.connect(str(tmp_path / "old.db"))
+    try:
+        conn.execute(_old_table_ddl(table))
+        conn.execute("PRAGMA user_version = 1")
+        conn.commit()
+        pk_before = [r[1] for r in conn.execute(f"PRAGMA table_info({table})") if r[5] > 0]
+        store._ensure_columns(conn)
+        pk_after = [r[1] for r in conn.execute(f"PRAGMA table_info({table})") if r[5] > 0]
+        assert pk_before == pk_after
+    finally:
+        conn.close()
+
+
+def _gate_row(decision_id, *, block_hash=None, block_number=None):
+    row = {
+        "decision_id": decision_id, "candidate_key": "c", "target_mode": "shadow",
+        "primary_status": "ok", "terminal_bits_json": "{}",
+        "decided_at": "2026-09-07T12:00:00Z",
+    }
+    if block_hash is not None:
+        row["derived_block_hash"] = block_hash
+    if block_number is not None:
+        row["derived_block_number"] = block_number
+    return row
+
+
+def test_rows_derived_from_block_null_provenance_not_matched(tmp_path):
+    conn = store.open_store(tmp_path / "rh.db")
+    try:
+        store.migrate(conn)
+        store.insert_row(conn, "rh_gate_decisions", _gate_row("d1"))
+        result = store.rows_derived_from_block(conn, block_hash="0xaaa")
+        assert result["rh_gate_decisions"] == []
+    finally:
+        conn.close()
+
+
+def test_rows_derived_from_block_returns_matching_pks_only(tmp_path):
+    conn = store.open_store(tmp_path / "rh.db")
+    try:
+        store.migrate(conn)
+        for i in range(3):
+            store.insert_row(
+                conn, "rh_gate_decisions",
+                _gate_row(f"a{i}", block_hash="0xaaa", block_number=100))
+        for i in range(2):
+            store.insert_row(
+                conn, "rh_gate_decisions",
+                _gate_row(f"b{i}", block_hash="0xbbb", block_number=101))
+        result = store.rows_derived_from_block(conn, block_hash="0xaaa")
+        assert result["rh_gate_decisions"] == [("a0",), ("a1",), ("a2",)]
+    finally:
+        conn.close()
+
+
+def test_rows_derived_from_block_unknown_hash_returns_empty_lists(tmp_path):
+    conn = store.open_store(tmp_path / "rh.db")
+    try:
+        store.migrate(conn)
+        store.insert_row(
+            conn, "rh_gate_decisions",
+            _gate_row("d1", block_hash="0xknown", block_number=1))
+        result = store.rows_derived_from_block(conn, block_hash="0xdoes_not_exist")
+        for table in store.DERIVED_TABLES:
+            assert result[table] == []
+    finally:
+        conn.close()
+
+
+def test_rows_derived_from_block_tables_without_provenance(tmp_path):
+    conn = store.open_store(tmp_path / "rh.db")
+    try:
+        store.migrate(conn)
+        # rh_gate_decisions: a row with NULL provenance (table is all-NULL).
+        store.insert_row(conn, "rh_gate_decisions", _gate_row("d1"))
+        # rh_market_states: a row WITH provenance (must not be flagged).
+        store.insert_row(conn, "rh_market_states", {
+            "asset_address": "0xW", "sample_time": "2026-09-07T12:00:00Z",
+            "chain_id": 1, "session": "s", "health_flags_json": "{}",
+            "derived_block_hash": "0xknown", "derived_block_number": 5,
+        })
+        result = store.rows_derived_from_block(conn, block_hash="0xknown")
+        # Both fields present: the [] and the without-provenance flag.
+        assert result["rh_gate_decisions"] == []
+        assert "rh_gate_decisions" in result["tables_without_provenance"]
+        assert "rh_market_states" not in result["tables_without_provenance"]
+    finally:
+        conn.close()
+
+
+def test_pool_events_pk_still_contains_block_hash(tmp_path):
+    conn = store.open_store(tmp_path / "rh.db")
+    try:
+        store.migrate(conn)
+        pk_cols = [r[1] for r in conn.execute("PRAGMA table_info(rh_pool_events)")
+                   if r[5] > 0]
+        assert "block_hash" in pk_cols
+        assert "block_number" not in pk_cols
+    finally:
+        conn.close()
+
+
+def test_rows_derived_from_block_read_only_connection(tmp_path):
+    db = tmp_path / "rh.db"
+    conn = store.open_store(db)
+    store.migrate(conn)
+    store.insert_row(
+        conn, "rh_gate_decisions",
+        _gate_row("d1", block_hash="0xaaa", block_number=1))
+    conn.commit()
+    conn.close()
+    ro = store.open_store(db, read_only=True)
+    try:
+        result = store.rows_derived_from_block(ro, block_hash="0xaaa")
+        assert result["rh_gate_decisions"] == [("d1",)]
+    finally:
+        ro.close()
+
+
+def test_provenance_columns_are_nullable(tmp_path):
+    conn = store.open_store(tmp_path / "rh.db")
+    try:
+        store.migrate(conn)
+        store.insert_row(conn, "rh_reconciliation_runs", {
+            "run_id": "r1", "started_at": "2026-09-07T12:00:00Z", "verdict": "ok",
+        })
+        row = conn.execute(
+            "SELECT derived_block_hash, derived_block_number"
+            " FROM rh_reconciliation_runs"
+        ).fetchone()
+        assert row == (None, None)
+    finally:
+        conn.close()
+

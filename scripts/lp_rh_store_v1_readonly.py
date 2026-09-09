@@ -70,7 +70,8 @@ _TABLES = [
         "session TEXT NOT NULL", "health_flags_json TEXT NOT NULL",
         "reference_bid TEXT", "reference_ask TEXT", "reference_mid TEXT",
         "reference_age_secs INTEGER", "multiplier_human TEXT",
-        "oracle_paused INTEGER"]),
+        "oracle_paused INTEGER",
+        "derived_block_hash TEXT", "derived_block_number INTEGER"]),
     ("rh_rpc_health", ("provider", "method", "sample_time"), [
         "provider TEXT NOT NULL", "method TEXT NOT NULL",
         "sample_time TEXT NOT NULL", "latency_ms INTEGER",
@@ -83,12 +84,14 @@ _TABLES = [
         "horizon_hours INTEGER NOT NULL", "position_usd TEXT NOT NULL",
         "fee_ev TEXT", "reward_ev TEXT", "cost_components_json TEXT",
         "netcover TEXT", "abs_profit TEXT", "q_min TEXT", "q_max TEXT",
-        "missing_inputs_json TEXT", "evaluated_at TEXT NOT NULL"]),
+        "missing_inputs_json TEXT", "evaluated_at TEXT NOT NULL",
+        "derived_block_hash TEXT", "derived_block_number INTEGER"]),
     ("rh_gate_decisions", ("decision_id",), [
         "decision_id TEXT NOT NULL", "candidate_key TEXT NOT NULL",
         "target_mode TEXT NOT NULL", "primary_status TEXT NOT NULL",
         "terminal_bits_json TEXT NOT NULL", "dominant_blocker TEXT",
-        "reasons_json TEXT", "snapshot_ids_json TEXT", "decided_at TEXT NOT NULL"]),
+        "reasons_json TEXT", "snapshot_ids_json TEXT", "decided_at TEXT NOT NULL",
+        "derived_block_hash TEXT", "derived_block_number INTEGER"]),
     ("rh_shadow_positions", ("strategy_episode", "position_id"), [
         "strategy_episode TEXT NOT NULL", "position_id TEXT NOT NULL",
         "pool_key TEXT NOT NULL", "profile TEXT NOT NULL",
@@ -105,11 +108,13 @@ _TABLES = [
     ("rh_position_marks", ("position_id", "mark_time"), [
         "position_id TEXT NOT NULL", "mark_time TEXT NOT NULL",
         "price_snapshot_id TEXT", "reference_nav TEXT",
-        "liquidation_nav TEXT", "accrued_fee TEXT", "unvalued_risk_json TEXT"]),
+        "liquidation_nav TEXT", "accrued_fee TEXT", "unvalued_risk_json TEXT",
+        "derived_block_hash TEXT", "derived_block_number INTEGER"]),
     ("rh_bucket_reservations", ("intent_id",), [
         "intent_id TEXT NOT NULL", "policy_version TEXT NOT NULL",
         "bucket TEXT NOT NULL", "amount_usd TEXT NOT NULL",
-        "status TEXT NOT NULL", "created_at TEXT NOT NULL", "released_at TEXT"]),
+        "status TEXT NOT NULL", "created_at TEXT NOT NULL", "released_at TEXT",
+        "derived_block_hash TEXT", "derived_block_number INTEGER"]),
     ("rh_tx_intents", ("request_id",), [
         "request_id TEXT NOT NULL", "idempotency_key TEXT UNIQUE",
         "chain_id INTEGER NOT NULL", "wallet_id TEXT",
@@ -124,7 +129,8 @@ _TABLES = [
     ("rh_reconciliation_runs", ("run_id",), [
         "run_id TEXT NOT NULL", "started_at TEXT NOT NULL",
         "finished_at TEXT", "evidence_json TEXT",
-        "delta_json TEXT", "verdict TEXT NOT NULL"]),
+        "delta_json TEXT", "verdict TEXT NOT NULL",
+        "derived_block_hash TEXT", "derived_block_number INTEGER"]),
 ]
 
 _INDEXES = [
@@ -170,6 +176,20 @@ TIME_COLUMNS = {
 
 TABLES = frozenset(name for name, _, _ in _TABLES)
 
+# RH-02f: the six derived-value tables that must carry block provenance so a
+# reorg can locate (and later roll back) the rows derived from an orphaned
+# block.  Both provenance columns are nullable: a NULL means "provenance not
+# recorded for this row", NOT "derived from block 0".
+DERIVED_TABLES = (
+    "rh_gate_decisions",
+    "rh_economic_evaluations",
+    "rh_position_marks",
+    "rh_market_states",
+    "rh_bucket_reservations",
+    "rh_reconciliation_runs",
+)
+PROVENANCE_COLUMNS = ("derived_block_hash", "derived_block_number")
+
 
 def _build_schema() -> str:
     parts = []
@@ -198,8 +218,31 @@ def open_store(path: Any = DEFAULT_DB_PATH, *, read_only: bool = False) -> sqlit
     return conn
 
 
+def _ensure_columns(conn: sqlite3.Connection) -> None:
+    """Idempotently add the RH-02f provenance columns to the six derived tables.
+
+    Checks ``PRAGMA table_info`` first and only ``ALTER TABLE ... ADD COLUMN``
+    the missing ones.  Never drops or rebuilds a table, so existing rows and
+    primary keys are left untouched.  A NULL provenance value means "not
+    recorded", not "block 0".  Tables that do not exist yet are skipped; the
+    DDL creates them with the columns already in place.
+    """
+    for table in DERIVED_TABLES:
+        records = conn.execute(f"PRAGMA table_info({table})").fetchall()
+        if not records:
+            continue
+        existing = {record[1] for record in records}
+        for column in PROVENANCE_COLUMNS:
+            if column not in existing:
+                col_type = "TEXT" if column == "derived_block_hash" else "INTEGER"
+                conn.execute(
+                    f"ALTER TABLE {table} ADD COLUMN {column} {col_type}"
+                )
+
+
 def migrate(conn: sqlite3.Connection) -> int:
     """Create all tables/indexes in one transaction; idempotent per version."""
+    _ensure_columns(conn)
     current = conn.execute("PRAGMA user_version").fetchone()[0]
     if current == SCHEMA_VERSION:
         return SCHEMA_VERSION
@@ -212,6 +255,51 @@ def migrate(conn: sqlite3.Connection) -> int:
     )
     conn.executescript(script)
     return SCHEMA_VERSION
+
+
+def rows_derived_from_block(conn: sqlite3.Connection, *, block_hash: str) -> dict:
+    """Which derived rows came from this block.  Read-only: locates, never deletes.
+
+    Returns {table_name: [primary key tuples]} for the six derived tables.
+    A table whose derived_block_hash is NULL for every row contributes an empty
+    list, which means 'no provenance recorded', not 'nothing was affected'.
+
+    The result also carries ``tables_without_provenance``: the names of tables
+    that hold at least one row but record no provenance at all (every row's
+    derived_block_hash is NULL, or the column is missing on a pre-RH-02f schema).
+    An empty list for such a table must not be read as "no impact" -- it is
+    listed there precisely so a caller can tell "no affected rows" apart from
+    "provenance unknown".
+    """
+    result: dict = {}
+    without_provenance: list = []
+    for table in DERIVED_TABLES:
+        records = conn.execute(f"PRAGMA table_info({table})").fetchall()
+        columns = {record[1] for record in records}
+        if "derived_block_hash" not in columns:
+            # Pre-RH-02f schema: no provenance column at all -> unknown.
+            total = conn.execute("SELECT COUNT(*) FROM " + table).fetchone()[0]
+            result[table] = []
+            if total > 0:
+                without_provenance.append(table)
+            continue
+        pk_entries = sorted(
+            (record[5], record[1]) for record in records if record[5] > 0
+        )
+        pk_cols = [name for _, name in pk_entries]
+        pks = conn.execute(
+            "SELECT " + ", ".join(pk_cols)
+            + " FROM " + table + " WHERE derived_block_hash = ?",
+            (block_hash,),
+        ).fetchall()
+        result[table] = [tuple(row) for row in pks]
+        total, with_prov = conn.execute(
+            "SELECT COUNT(*), COUNT(derived_block_hash) FROM " + table
+        ).fetchone()
+        if total > 0 and with_prov == 0:
+            without_provenance.append(table)
+    result["tables_without_provenance"] = without_provenance
+    return result
 
 
 def assert_decimal_text(value: Any, field: str) -> Optional[str]:
