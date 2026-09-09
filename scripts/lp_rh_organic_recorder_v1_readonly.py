@@ -13,6 +13,12 @@ and, if the gap exceeds provider retention, jumps to head-span and records the
 skip in error (never request pruned blocks); sleep to a deadline from the
 round's START; on a transient provider error (-32005/429/5xx) back off
 8/24/72s and retry, else record that window INPUTS_UNAVAILABLE and continue.
+
+A non-COMPLETE window is queued in rh_organic_pending and retried (fewest
+attempts first, up to --max-attempts) before the recorder advances, so a gap is
+never silently skipped; a COMPLETE window clears it. An explicitly-passed
+--span-blocks that is below the span required to cover --period-secs is raised
+to that span with a warning (the built-in default is left as-is).
 """
 from __future__ import annotations
 
@@ -65,6 +71,17 @@ CREATE TABLE IF NOT EXISTS rh_organic_windows (
   fetch_status TEXT, estimate_status TEXT, error TEXT,
   PRIMARY KEY (window_start_block, window_end_block)
 );
+-- Failed windows that must be retried. A row is inserted when a window lands
+-- INPUTS_UNAVAILABLE/PARTIAL and deleted when a retry lands COMPLETE. Rows that
+-- reach the attempt cap are kept (not retried) so a permanent gap leaves a trace.
+CREATE TABLE IF NOT EXISTS rh_organic_pending (
+  window_start_block INTEGER NOT NULL,
+  window_end_block   INTEGER NOT NULL,
+  first_failed_at TEXT,
+  attempts INTEGER NOT NULL DEFAULT 1,
+  last_error TEXT,
+  PRIMARY KEY (window_start_block, window_end_block)
+);
 """
 
 
@@ -100,17 +117,75 @@ def _last_end_block(conn: sqlite3.Connection) -> int | None:
     return row[0] if row and row[0] is not None else None
 
 
+def required_span_blocks(period_secs: float, block_time_secs: float = 0.102,
+                         margin: float = 1.15) -> int:
+    """Minimum window span so one period of real time is fully covered.
+
+    At ``block_time_secs`` per block, ``period_secs`` of wall-clock elapses
+    ``period_secs / block_time_secs`` blocks; the ``margin`` guards against
+    block-time variance so the next window never starts behind the head.
+    """
+    return int(period_secs / block_time_secs * margin)
+
+
+def _fetch_error_summary(fetch: dict) -> str:
+    """Non-empty human summary of a non-COMPLETE fetch, from failed_ranges."""
+    fr = fetch["failed_ranges"]
+    failed_blocks = sum(b - a + 1 for a, b in fr)
+    return (f"fetch_status={fetch['status']}: {len(fr)} failed range(s), "
+            f"{failed_blocks} of {fetch['requested_blocks']} blocks uncovered")
+
+
+def _upsert_pending(conn: sqlite3.Connection, lo: int, hi: int, error: str) -> None:
+    """Record a failed window for retry: insert with attempts=1, or bump the
+    existing row's attempts and refresh last_error (first_failed_at is kept)."""
+    row = conn.execute(
+        "SELECT attempts FROM rh_organic_pending "
+        "WHERE window_start_block=? AND window_end_block=?", (lo, hi),
+    ).fetchone()
+    if row:
+        conn.execute(
+            "UPDATE rh_organic_pending SET attempts=attempts+1, last_error=? "
+            "WHERE window_start_block=? AND window_end_block=?", (error, lo, hi),
+        )
+    else:
+        conn.execute(
+            "INSERT INTO rh_organic_pending "
+            "(window_start_block, window_end_block, first_failed_at, attempts, last_error) "
+            "VALUES (?,?,?,?,?)", (lo, hi, _now(), 1, error),
+        )
+
+
+def _clear_pending(conn: sqlite3.Connection, lo: int, hi: int) -> None:
+    """Drop a window from the retry queue once it lands COMPLETE."""
+    conn.execute(
+        "DELETE FROM rh_organic_pending WHERE window_start_block=? AND window_end_block=?",
+        (lo, hi),
+    )
+
+
 def next_window(
     conn: sqlite3.Connection,
     head: int,
     *,
     span_blocks: int,
     max_lookback_blocks: int,
+    max_attempts: int = 5,
 ) -> tuple[int, int] | None:
-    """Next (lo, hi) window. Empty table -> (head-span, head); else continue
-    from the last window_end_block. If the gap exceeds provider retention the
-    old blocks may be pruned, so jump to (head-span, head); record_window notes
-    the skip in the row's error field."""
+    """Next (lo, hi) window. A failed window still in rh_organic_pending is
+    retried first (fewest attempts, below the cap) so a gap is never skipped;
+    only when nothing is pending does it advance to a new window. Empty table
+    -> (head-span, head); else continue from the last window_end_block. If the
+    gap exceeds provider retention the old blocks may be pruned, so jump to
+    (head-span, head); record_window notes the skip in the row's error field.
+    Rows at/above max_attempts are left in the table (a trace) but not retried."""
+    row = conn.execute(
+        "SELECT window_start_block, window_end_block FROM rh_organic_pending "
+        "WHERE attempts < ? ORDER BY attempts ASC, window_start_block ASC LIMIT 1",
+        (max_attempts,),
+    ).fetchone()
+    if row:
+        return (row[0], row[1])
     prev_end = _last_end_block(conn)
     if prev_end is None:
         return (head - span_blocks, head)
@@ -131,8 +206,10 @@ def record_window(
 ) -> dict:
     """Fetch one window, run the three metrics, and write one row. When
     fetch_status is not COMPLETE the metrics are still computed from the events
-    that arrived and labelled honestly, and coverage_frac is carried through
-    as-is. A forward jump that skips blocks is noted in the error column."""
+    that arrived and labelled honestly, coverage_frac is carried through as-is,
+    and the error column records why (a failed_ranges summary). A non-COMPLETE
+    window is queued in rh_organic_pending for retry; a COMPLETE one clears it.
+    A forward jump that skips blocks is noted in the error column."""
     prev_end = _last_end_block(conn)
     error = None
     if prev_end is not None and lo > prev_end + 1:
@@ -144,6 +221,10 @@ def record_window(
     conc = participant_concentration(events)
     rt = round_trip_volume(events)
     est = organic_volume_estimate(events)
+
+    if fetch["status"] != "COMPLETE":
+        fetch_error = _fetch_error_summary(fetch)
+        error = f"{error}; {fetch_error}" if error else fetch_error
 
     row = {
         "window_start_block": lo,
@@ -177,6 +258,10 @@ def record_window(
         % (",".join(cols), ",".join("?" * len(cols))),
         tuple(row[c] for c in cols),
     )
+    if fetch["status"] == "COMPLETE":
+        _clear_pending(conn, lo, hi)
+    else:
+        _upsert_pending(conn, lo, hi, error)
     conn.commit()
     return row
 
@@ -242,12 +327,30 @@ def main(argv=None, *, call_fn=None, head_fn=None) -> int:
     ap.add_argument("--db", default="reports/lp_rh/organic.db")
     ap.add_argument("--pool", required=True, help="Pool address (0x...)")
     ap.add_argument("--provider-url", default="https://rpc.ordofi.network")
-    ap.add_argument("--span-blocks", type=int, default=8800)
+    ap.add_argument("--span-blocks", type=int, default=None,
+                    help="Window size in blocks (default 8800; when explicitly set "
+                         "below the span required to cover --period-secs it is raised)")
     ap.add_argument("--period-secs", type=float, default=900.0)
     ap.add_argument("--max-lookback-blocks", type=int, default=1700000)
+    ap.add_argument("--max-attempts", type=int, default=5,
+                    help="Retry cap for a failed window before it is left as a trace")
     ap.add_argument("--pid-file", default=None)
     ap.add_argument("--once", action="store_true")
     args = ap.parse_args(argv)
+
+    # A span explicitly passed on the command line that is too small to cover
+    # one period is raised to the required span (with a warning); the built-in
+    # default is left as-is so a bare invocation keeps its historical window.
+    span_explicit = args.span_blocks is not None
+    if args.span_blocks is None:
+        args.span_blocks = 8800
+    if span_explicit:
+        required = required_span_blocks(args.period_secs)
+        if args.span_blocks < required:
+            print(f"{_now()} warning: --span-blocks {args.span_blocks} < required "
+                  f"{required} for --period-secs {args.period_secs}; using {required}",
+                  file=sys.stderr, flush=True)
+            args.span_blocks = required
 
     if head_fn is None:
         head_fn = make_head_fn(args.provider_url)
@@ -279,6 +382,7 @@ def main(argv=None, *, call_fn=None, head_fn=None) -> int:
                 conn, head,
                 span_blocks=args.span_blocks,
                 max_lookback_blocks=args.max_lookback_blocks,
+                max_attempts=args.max_attempts,
             )
             lo, hi = window
             try:

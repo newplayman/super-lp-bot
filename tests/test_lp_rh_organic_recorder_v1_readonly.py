@@ -292,3 +292,166 @@ def test_main_once_writes_only_the_db_it_was_given(tmp_path):
     assert live.exists() == existed, "the live store was created or removed"
     if existed:
         assert live.stat().st_mtime_ns == before, "the live store was written to"
+
+
+# --- required_span_blocks -------------------------------------------------
+
+def test_required_span_blocks_900s():
+    # 900s / 0.102s per block * 1.15 margin -> 10147 blocks.
+    assert mod.required_span_blocks(900.0) == 10147
+    # The historical default span is below what one 900s period needs.
+    assert 8800 < mod.required_span_blocks(900.0)
+
+
+def test_required_span_blocks_monotonic_in_period():
+    assert mod.required_span_blocks(1800.0) > mod.required_span_blocks(900.0)
+
+
+def test_required_span_blocks_custom_block_time():
+    # 60s at 1s/block with a 1.15 margin -> int(60 * 1.15) = 69.
+    assert mod.required_span_blocks(60.0, block_time_secs=1.0, margin=1.15) == 69
+
+
+# --- next_window: pending retry takes priority ----------------------------
+
+def test_next_window_prefers_pending_over_advance():
+    conn = make_conn()
+    mod.record_window(conn, POOL, 100, 199, make_call_fn([]), "test")  # COMPLETE, last_end=199
+    # A failed window [200,299] lands in rh_organic_pending.
+    mod.record_window(conn, POOL, 200, 299,
+                      make_call_fn([], fail_from_blocks=(200,)), "test")
+    lo, hi = mod.next_window(conn, 500, span_blocks=100, max_lookback_blocks=1000)
+    assert (lo, hi) == (200, 299)  # retry the gap, not advance to (300,399)
+
+
+def test_next_window_pending_wins_even_beyond_lookback():
+    conn = make_conn()
+    mod.record_window(conn, POOL, 100, 199, make_call_fn([]), "test")
+    mod.record_window(conn, POOL, 200, 299,
+                      make_call_fn([], fail_from_blocks=(200,)), "test")
+    # head far beyond lookback would normally jump to head-span, but pending wins.
+    lo, hi = mod.next_window(conn, 90000, span_blocks=100, max_lookback_blocks=5000)
+    assert (lo, hi) == (200, 299)
+
+
+def test_next_window_retries_fewest_attempts_first():
+    conn = make_conn()
+    conn.execute(
+        "INSERT INTO rh_organic_pending "
+        "(window_start_block, window_end_block, first_failed_at, attempts, last_error) "
+        "VALUES (?,?,?,?,?)", (200, 299, "t", 3, "e"))
+    conn.execute(
+        "INSERT INTO rh_organic_pending "
+        "(window_start_block, window_end_block, first_failed_at, attempts, last_error) "
+        "VALUES (?,?,?,?,?)", (100, 199, "t", 1, "e"))
+    conn.commit()
+    lo, hi = mod.next_window(conn, 500, span_blocks=100, max_lookback_blocks=1000)
+    assert (lo, hi) == (100, 199)  # fewest attempts first
+
+
+def test_next_window_respects_max_attempts_cap():
+    conn = make_conn()
+    mod.record_window(conn, POOL, 100, 199, make_call_fn([]), "test")  # last_end=199
+    # A pending window sitting exactly at the cap is not retried.
+    conn.execute(
+        "INSERT INTO rh_organic_pending "
+        "(window_start_block, window_end_block, first_failed_at, attempts, last_error) "
+        "VALUES (?,?,?,?,?)", (100, 199, "t", 5, "e"))
+    conn.commit()
+    # cap=5 excludes attempts=5 -> advance past it.
+    assert mod.next_window(conn, 500, span_blocks=100,
+                           max_lookback_blocks=1000, max_attempts=5) == (200, 300)
+    # cap=6 includes attempts=5 -> retry it.
+    assert mod.next_window(conn, 500, span_blocks=100,
+                           max_lookback_blocks=1000, max_attempts=6) == (100, 199)
+
+
+# --- record_window: pending upsert / clear --------------------------------
+
+def test_record_window_upserts_pending_on_failure():
+    conn = make_conn()
+    failing = make_call_fn([], fail_from_blocks=(200,))
+    mod.record_window(conn, POOL, 200, 299, failing, "test")
+    row = conn.execute(
+        "SELECT attempts FROM rh_organic_pending WHERE window_start_block=200").fetchone()
+    assert row[0] == 1
+    mod.record_window(conn, POOL, 200, 299, failing, "test")
+    row = conn.execute(
+        "SELECT attempts FROM rh_organic_pending WHERE window_start_block=200").fetchone()
+    assert row[0] == 2  # upserted, not a second row
+    assert conn.execute("SELECT COUNT(*) FROM rh_organic_pending").fetchone()[0] == 1
+
+
+def test_record_window_clears_pending_on_complete():
+    conn = make_conn()
+    failing = make_call_fn([], fail_from_blocks=(200,))
+    mod.record_window(conn, POOL, 200, 299, failing, "test")
+    assert conn.execute("SELECT COUNT(*) FROM rh_organic_pending").fetchone()[0] == 1
+    mod.record_window(conn, POOL, 200, 299, make_call_fn([]), "test")  # COMPLETE
+    assert conn.execute("SELECT COUNT(*) FROM rh_organic_pending").fetchone()[0] == 0
+
+
+def test_upsert_pending_keeps_first_failed_at():
+    conn = make_conn()
+    conn.execute(
+        "INSERT INTO rh_organic_pending "
+        "(window_start_block, window_end_block, first_failed_at, attempts, last_error) "
+        "VALUES (?,?,?,?,?)", (200, 299, "first", 1, "e1"))
+    conn.commit()
+    mod._upsert_pending(conn, 200, 299, "e2")
+    row = conn.execute(
+        "SELECT first_failed_at, attempts, last_error "
+        "FROM rh_organic_pending WHERE window_start_block=200").fetchone()
+    assert row == ("first", 2, "e2")  # first_failed_at kept, attempts bumped, error refreshed
+
+
+# --- main: span bump and --max-attempts -----------------------------------
+
+def test_main_span_bumped_when_explicit_and_small(tmp_path):
+    db = tmp_path / "organic.db"
+    rc = mod.main(["--db", str(db), "--pool", POOL, "--once",
+                   "--span-blocks", "8800", "--period-secs", "900"],
+                  call_fn=make_call_fn([]), head_fn=lambda: 200000)
+    assert rc == 0
+    conn = sqlite3.connect(db)
+    lo, hi = conn.execute(
+        "SELECT window_start_block, window_end_block FROM rh_organic_windows").fetchone()
+    conn.close()
+    required = mod.required_span_blocks(900.0)
+    assert required > 8800
+    assert (lo, hi) == (200000 - required, 200000)  # span raised above 8800
+
+
+def test_main_span_not_bumped_when_default(tmp_path):
+    db = tmp_path / "organic.db"
+    rc = mod.main(["--db", str(db), "--pool", POOL, "--once"],
+                  call_fn=make_call_fn([]), head_fn=lambda: 200000)
+    assert rc == 0
+    conn = sqlite3.connect(db)
+    lo, hi = conn.execute(
+        "SELECT window_start_block, window_end_block FROM rh_organic_windows").fetchone()
+    conn.close()
+    assert (lo, hi) == (200000 - 8800, 200000)  # built-in default left as-is
+
+
+def test_main_span_not_bumped_when_explicit_and_large(tmp_path):
+    db = tmp_path / "organic.db"
+    rc = mod.main(["--db", str(db), "--pool", POOL, "--once",
+                   "--span-blocks", "20000", "--period-secs", "900"],
+                  call_fn=make_call_fn([]), head_fn=lambda: 200000)
+    assert rc == 0
+    conn = sqlite3.connect(db)
+    lo, hi = conn.execute(
+        "SELECT window_start_block, window_end_block FROM rh_organic_windows").fetchone()
+    conn.close()
+    assert (lo, hi) == (200000 - 20000, 200000)  # 20000 > required, left as-is
+
+
+def test_main_max_attempts_arg_accepted(tmp_path):
+    db = tmp_path / "organic.db"
+    rc = mod.main(["--db", str(db), "--pool", POOL, "--once", "--max-attempts", "3"],
+                  call_fn=make_call_fn([]), head_fn=lambda: 200000)
+    assert rc == 0
+    conn = sqlite3.connect(db)
+    assert conn.execute("SELECT COUNT(*) FROM rh_organic_windows").fetchone()[0] == 1
+    conn.close()
