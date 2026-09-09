@@ -78,13 +78,15 @@ def evaluate_pool(pool: dict, base_hist: dict) -> list[dict]:
     chain = pool["chain"]
     sd_hr = TICK_STDDEV_PER_HR.get(chain, 60.0)
 
-    # use base hist for the Base WETH/USDC pool specifically if available
+    # use base hist for the Base WETH/USDC pool specifically if available with real observation
     is_base_candidate = (
         chain == "Base" and pool.get("token_a_symbol") == "WETH"
         and pool.get("token_b_symbol") == "USDC"
     )
-    if is_base_candidate and base_hist:
-        sd_hr = base_hist.get("p95_abs_drift", 700) / math.sqrt(8.0)
+    if is_base_candidate and base_hist and base_hist.get("p95_abs_drift") is not None:
+        sd_hr = float(base_hist["p95_abs_drift"]) / math.sqrt(8.0)
+    else:
+        sd_hr = TICK_STDDEV_PER_HR.get(chain, 60.0)
 
     range_width = DEFAULT_RANGE_WIDTH_TICKS
     rows = []

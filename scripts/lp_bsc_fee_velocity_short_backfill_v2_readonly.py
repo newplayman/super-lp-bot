@@ -149,15 +149,36 @@ def decode_swap(log: dict) -> dict:
     fields = [data[i * 64:(i + 1) * 64] for i in range(7)]
 
     def to_int(h: str, signed: bool, bits: int) -> int:
-        # Each ABI slot is 32 bytes; for sub-256-bit fields the value is
-        # sign-extended (int) or zero-padded (uint). Mask to the declared
-        # width first, then apply two's complement on the low `bits` only.
-        full = int(h, 16)
-        mask = (1 << bits) - 1
-        v = full & mask
-        if signed and v >= (1 << (bits - 1)):
-            v -= 1 << bits
-        return v
+        # Each ABI slot is 32 bytes (64 hex characters).
+        # Sub-256-bit fields must have valid ABI padding:
+        # - unsigned values must have the upper (32 - byte_len) bytes all 0x00.
+        # - signed values must have the upper (32 - byte_len) bytes correctly sign-extended:
+        #   all 0x00 if the value is non-negative, and all 0xff if negative.
+        # Masking away bad high-order bits can silently conceal data corruption or misaligned decoding.
+        if len(h) != 64:
+            raise ValueError(f"ABI slot must be 64 hex characters (32 bytes), got {len(h)}")
+        raw = bytes.fromhex(h)
+        byte_len = bits // 8
+        pad_len = 32 - byte_len
+
+        if signed:
+            v = int.from_bytes(raw[pad_len:], "big", signed=True)
+            expected_pad = b"\xff" * pad_len if v < 0 else b"\x00" * pad_len
+            if pad_len > 0 and raw[:pad_len] != expected_pad:
+                raise ValueError(
+                    f"Invalid ABI sign-extension for int{bits}: high {pad_len} bytes "
+                    f"expected {expected_pad.hex()} but got {raw[:pad_len].hex()}"
+                )
+            return v
+        else:
+            v = int.from_bytes(raw[pad_len:], "big", signed=False)
+            expected_pad = b"\x00" * pad_len
+            if pad_len > 0 and raw[:pad_len] != expected_pad:
+                raise ValueError(
+                    f"Invalid ABI zero-padding for uint{bits}: high {pad_len} bytes "
+                    f"expected {expected_pad.hex()} but got {raw[:pad_len].hex()}"
+                )
+            return v
 
     return {
         "sender":      "0x" + log["topics"][1][26:],
@@ -256,8 +277,8 @@ def main(argv: Optional[list] = None) -> int:
 
     for addr in POOLS:
         meta = pool_meta[addr]
-        p0_usd = PRICES_USD.get(meta["token0_symbol"], Decimal("0"))
-        p1_usd = PRICES_USD.get(meta["token1_symbol"], Decimal("0"))
+        p0_usd = PRICES_USD.get(meta["token0_symbol"])
+        p1_usd = PRICES_USD.get(meta["token1_symbol"])
         for window in selected_windows:
             wb = WINDOW_BLOCKS[window]
             from_blk = max(1, latest_block - wb)
@@ -293,39 +314,56 @@ def main(argv: Optional[list] = None) -> int:
             decoded_swap_log_count += len(decoded)
             total_swap_log_count += len(pool_window_logs)
 
-            # Volume + fee proxy
-            with localcontext() as ctx:
-                ctx.prec = 60
-                fee_fraction = Decimal(meta["fee_tier_raw"]) / Decimal("1000000")
-                volume_usd_proxy = Decimal("0")
-                pool_fee_usd_proxy = Decimal("0")
-                unique_traders: set[str] = set()
-                for d in decoded:
-                    vol0 = (Decimal(abs(d["amount0"])) / (Decimal(10) ** meta["token0_decimals"])) * p0_usd
-                    vol1 = (Decimal(abs(d["amount1"])) / (Decimal(10) ** meta["token1_decimals"])) * p1_usd
-                    v = max(vol0, vol1)
-                    volume_usd_proxy += v
-                    pool_fee_usd_proxy += v * fee_fraction
-                    unique_traders.add(d["sender"])
-                    unique_traders.add(d["recipient"])
-                volume_usd_proxy_str = str(volume_usd_proxy.quantize(Decimal("0.01")))
-                pool_fee_usd_proxy_str = str(pool_fee_usd_proxy.quantize(Decimal("0.0001")))
+            # Volume + fee proxy: fail-close if asset price is not available
+            pricing_unavailable = (p0_usd is None or p1_usd is None)
+            missing_tokens = []
+            if p0_usd is None:
+                missing_tokens.append(meta["token0_symbol"])
+            if p1_usd is None:
+                missing_tokens.append(meta["token1_symbol"])
 
-            partial = bool(pool_window_errors) or decode_errs > 0
-            root_cause = None
-            if pool_window_errors:
-                root_cause = "rpc_error_after_retries"
-            elif decode_errs > 0:
-                root_cause = "decode_error"
+            unique_traders: set[str] = set()
+            for d in decoded:
+                unique_traders.add(d["sender"])
+                unique_traders.add(d["recipient"])
+
+            if pricing_unavailable:
+                volume_usd_proxy_str = None
+                pool_fee_usd_proxy_str = None
+                partial = True
+                root_cause = f"INPUTS_UNAVAILABLE: unknown token price for {','.join(missing_tokens)}"
+                fee_ready = False
+            else:
+                with localcontext() as ctx:
+                    ctx.prec = 60
+                    fee_fraction = Decimal(meta["fee_tier_raw"]) / Decimal("1000000")
+                    volume_usd_proxy = Decimal("0")
+                    pool_fee_usd_proxy = Decimal("0")
+                    for d in decoded:
+                        vol0 = (Decimal(abs(d["amount0"])) / (Decimal(10) ** meta["token0_decimals"])) * p0_usd
+                        vol1 = (Decimal(abs(d["amount1"])) / (Decimal(10) ** meta["token1_decimals"])) * p1_usd
+                        v = max(vol0, vol1)
+                        volume_usd_proxy += v
+                        pool_fee_usd_proxy += v * fee_fraction
+                    volume_usd_proxy_str = str(volume_usd_proxy.quantize(Decimal("0.01")))
+                    pool_fee_usd_proxy_str = str(pool_fee_usd_proxy.quantize(Decimal("0.0001")))
+
+                partial = bool(pool_window_errors) or decode_errs > 0
+                root_cause = None
+                if pool_window_errors:
+                    root_cause = "rpc_error_after_retries"
+                elif decode_errs > 0:
+                    root_cause = "decode_error"
+
+                fee_ready = (
+                    len(decoded) > 0
+                    and not partial
+                    and volume_usd_proxy > 0
+                    and pool_fee_usd_proxy > 0
+                )
+
             if root_cause:
                 root_cause_distribution[root_cause] = root_cause_distribution.get(root_cause, 0) + 1
-
-            fee_ready = (
-                len(decoded) > 0
-                and not partial
-                and volume_usd_proxy > 0
-                and pool_fee_usd_proxy > 0
-            )
             if fee_ready:
                 fee_ready_pool_set.add(addr)
                 fee_ready_by_pool[addr] += 1
@@ -374,8 +412,10 @@ def main(argv: Optional[list] = None) -> int:
     swap_log_pool_count = len({r["pool_id"] for r in rows if r["raw_log_count"] > 0})
     with localcontext() as ctx:
         ctx.prec = 60
-        total_volume_usd = sum((Decimal(r["volume_usd_proxy"]) for r in rows), Decimal(0))
-        total_fee_usd = sum((Decimal(r["pool_fee_usd_proxy"]) for r in rows), Decimal(0))
+        valid_vols = [Decimal(r["volume_usd_proxy"]) for r in rows if r["volume_usd_proxy"] is not None]
+        valid_fees = [Decimal(r["pool_fee_usd_proxy"]) for r in rows if r["pool_fee_usd_proxy"] is not None]
+        total_volume_usd = sum(valid_vols, Decimal(0))
+        total_fee_usd = sum(valid_fees, Decimal(0))
         volume_usd_total_str = str(total_volume_usd.quantize(Decimal("0.01")))
         pool_fee_usd_proxy_total_str = str(total_fee_usd.quantize(Decimal("0.0001")))
 

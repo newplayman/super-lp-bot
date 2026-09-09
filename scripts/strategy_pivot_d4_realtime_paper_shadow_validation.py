@@ -281,10 +281,22 @@ def sqrt_price_x96_to_price(sqrt_px96, dec0=DEC0, dec1=DEC1):
 
 
 def tick_lower_upper(current_tick, range_pct):
-    """Return (lower_tick, upper_tick) for ±range_pct% around current tick."""
-    # 1% price move ≈ 100 ticks (since 1.0001^100 ≈ 1.01005)
-    delta = int(round(range_pct * 100))
-    return current_tick - delta, current_tick + delta
+    """Return (lower_tick, upper_tick) for ±range_pct% around current tick.
+
+    Uniswap V3 price relation is P = 1.0001^tick.
+    Linear approximation (delta = range_pct * 100) causes asymmetric distortion
+    that widens or narrows ranges by dozens of ticks for non-infinitesimal moves.
+    We compute exact log boundaries.
+    """
+    if current_tick is None or range_pct is None:
+        return None, None
+    pct = float(range_pct)
+    if pct <= 0.0 or pct >= 100.0:
+        raise ValueError(f"range_pct must be in (0, 100), got {range_pct}")
+    log_tick_base = math.log(1.0001)
+    lower_tick = int(math.floor(current_tick + math.log(1.0 - pct / 100.0) / log_tick_base))
+    upper_tick = int(math.ceil(current_tick + math.log(1.0 + pct / 100.0) / log_tick_base))
+    return lower_tick, upper_tick
 
 
 # ---------------------------------------------------------------------------

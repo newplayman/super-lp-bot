@@ -70,9 +70,14 @@ IL_LVR_RATIO = {
 # failed txs (reverts, slippage, etc). Proxy.
 FAILURE_BUFFER_RATIO = 0.10  # 10% of gas+slippage budget
 
-# Slippage proxy: depends on notional / liquidity. We pass capacity_N
-# from Stage E; if not available, default.
-SLIPPAGE_BPS_AT_FULL_CAPACITY = 50  # 0.5%
+# Slippage proxy: depends on notional / liquidity.
+# At full capacity (capacity_proxy == 1.0), real trades in V3 pools still incur
+# tick crossing, rounding, and spread frictions, so slippage is never 0 bps.
+# We set a conservative floor of 5 bps at full capacity.
+# At zero or negative capacity, slippage rises to 100 bps (1%).
+SLIPPAGE_BPS_FLOOR = 5.0  # 5 bps floor at full capacity
+SLIPPAGE_BPS_MAX = 100.0  # 100 bps ceiling when capacity is exhausted
+SLIPPAGE_BPS_AT_FULL_CAPACITY = SLIPPAGE_BPS_FLOOR  # preserved for backwards compatibility
 
 
 def expected_fee_usd(notional: float, fee_apr: float, hold_hours: float) -> float:
@@ -93,12 +98,26 @@ def exit_cost_usd(gas_cost_proxy: float, slippage_bps: int, notional: float) -> 
     return entry_cost_usd(gas_cost_proxy, slippage_bps, notional)
 
 
-def slippage_cost_usd(notional: float, capacity_proxy: float) -> float:
-    # bigger notional / smaller capacity = more slippage
-    if capacity_proxy <= 0:
-        return notional * 0.01  # worst case 1%
-    # scale slippage inversely with capacity
-    return notional * (SLIPPAGE_BPS_AT_FULL_CAPACITY / 10000.0) * max(0.0, 1.0 - capacity_proxy)
+def slippage_cost_usd(notional: float, capacity_proxy: float | None) -> float | None:
+    """Compute slippage cost in USD.
+
+    Fails close (returns None) if capacity_proxy is None or missing.
+    Full capacity (1.0) retains a 5 bps floor because zero slippage is physically
+    impossible in automated market maker pools.
+    """
+    if capacity_proxy is None:
+        return None
+    try:
+        cap = float(capacity_proxy)
+    except (ValueError, TypeError):
+        return None
+    if notional <= 0:
+        return 0.0
+    # Bound capacity in [0.0, 1.0]
+    cap = max(0.0, min(1.0, cap))
+    # Interpolate smoothly from SLIPPAGE_BPS_FLOOR (at cap=1.0) to SLIPPAGE_BPS_MAX (at cap=0.0)
+    effective_bps = SLIPPAGE_BPS_FLOOR + (SLIPPAGE_BPS_MAX - SLIPPAGE_BPS_FLOOR) * (1.0 - cap)
+    return notional * (effective_bps / 10000.0)
 
 
 def failure_buffer_usd(gas_cost_proxy: float, slippage_cost: float) -> float:
@@ -107,7 +126,7 @@ def failure_buffer_usd(gas_cost_proxy: float, slippage_cost: float) -> float:
 
 # ---------------------------------------------------------------------------
 
-def evaluate(pool: dict, scenario: str, notional: float, hold_window: str) -> dict:
+def evaluate(pool: dict, scenario: str, notional: float, hold_window: str) -> dict | None:
     chain = pool["chain"]
     protocol = pool["protocol"]
     fee_apr = BASE_FEE_YIELD_APR.get((chain, protocol), DEFAULT_FEE_YIELD_APR)
@@ -118,12 +137,20 @@ def evaluate(pool: dict, scenario: str, notional: float, hold_window: str) -> di
 
     # use the smallest capacity from {capacity_N} that's >= notional
     cap_field = f"capacity_{notional}"
-    cap = pool.get(cap_field, 0.0) or 0.0
+    if cap_field not in pool or pool[cap_field] is None:
+        # Missing capacity input -> fail-close
+        return None
+    try:
+        cap = float(pool[cap_field])
+    except (ValueError, TypeError):
+        return None
 
     gas_proxy = pool.get("gas_cost_proxy", 0.0) or 0.0
     entry = entry_cost_usd(gas_proxy, 30, notional)  # 30 bps entry
     exit_c = exit_cost_usd(gas_proxy, 30, notional)
     slip = slippage_cost_usd(notional, cap)
+    if slip is None:
+        return None
     fail_buf = failure_buffer_usd(gas_proxy, slip)
 
     net = fee - il - entry - exit_c - slip - fail_buf
@@ -176,7 +203,9 @@ def main() -> int:
         for n in NOTIONALS_USD:
             for hw in HOLD_WINDOWS:
                 for scen in IL_LVR_RATIO.keys():
-                    rows.append(evaluate(pool, scen, n, hw))
+                    row = evaluate(pool, scen, n, hw)
+                    if row is not None:
+                        rows.append(row)
 
     out = {
         "stage": "LP_MULTICHAIN_DEX_LP_DISCOVERY_AND_SURVIVAL_EV_V1",
