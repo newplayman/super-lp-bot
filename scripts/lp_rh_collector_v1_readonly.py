@@ -254,10 +254,18 @@ def collect_round(conn, *, dec0: int, dec1: int, last_good_block: Optional[int],
 
     payload_hash = hashlib.sha256(
         json.dumps(raw, sort_keys=True).encode()).hexdigest()
+    # RH-02u: source_event_time = the sampled block's own timestamp in UTC
+    # RFC3339 -- the true basis for data freshness. None when the block
+    # timestamp is unavailable: never fetch_time (would disguise stale data
+    # as fresh) and never 0.
+    source_event_time = None
+    if block_timestamp is not None:
+        source_event_time = datetime.fromtimestamp(
+            block_timestamp, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     try:
         insert_row(conn, "rh_source_snapshots", {
             "source": "rh_rpc:pool_state", "payload_hash": payload_hash,
-            "source_event_time": None, "fetch_time": now,
+            "source_event_time": source_event_time, "fetch_time": now,
             "schema_kind": "JSON_RPC_V1", "raw_ref": None,
             "quality": "OK" if not errors else "PARTIAL",
         })
