@@ -215,16 +215,20 @@ def compute_conjuncts(sample, gated, *, pool_meta=None, capital_usd,
         fail("market_and_chain_risk_pass", f"unparseable timestamp {now!r}")
         return _finish_conjuncts(bits, reasons, gated, pool_meta,
                                  capital_usd, position_usd, fail)
+    # CORE bucket: the on-chain pool price has no independent oracle, so the
+    # block timestamp (source_event_time) IS the price's generation time and
+    # serves as both oracle_updated_at and api_generated_at.  STOCK buckets
+    # must instead go through resolve_freshness (RH-02L); never reuse this.
     flags = evaluate_health(
         oracle_paused=bool(sample.get("oracle_paused")),
-        oracle_updated_at=sample.get("oracle_updated_at"),
+        oracle_updated_at=sample.get("source_event_time"),
         api_generated_at=sample.get("source_event_time"),
         now=now_dt,
         halt=bool(sample.get("halt")),
         corp_action_pending=bool(sample.get("corp_action_pending")),
         sources_disagree=bool(sample.get("sources_disagree")),
         chain_degraded=bool(sample.get("chain_degraded")),
-        oracle_heartbeat_secs=sample.get("oracle_heartbeat_secs"),
+        oracle_heartbeat_secs=sample.get("oracle_heartbeat_secs") or 3600,
         api_stale_secs=age,
     )
     session, _ = classify_session(now_dt, calendar=None)
@@ -402,14 +406,15 @@ def load_samples_from_db(conn, *, pool: str, limit: int) -> tuple[list[dict], in
     cur = conn.execute(
         "SELECT asset_address, sample_time, chain_id, reference_mid, "
         "multiplier_human, session, health_flags_json, reference_age_secs, "
-        "oracle_paused, source_payload_hash, reference_bid, reference_ask "
+        "oracle_paused, source_payload_hash, reference_bid, reference_ask, "
+        "source_event_time "
         "FROM rh_market_states WHERE asset_address = ? ORDER BY sample_time LIMIT ?",
         (pool, limit))
     samples: list[dict] = []
     skipped = 0
     for row in cur.fetchall():
         (asset, st, chain_id, mid, mult, session, flags_json, age,
-         oracle_paused, payload_hash, bid, ask) = row
+         oracle_paused, payload_hash, bid, ask, source_event_time) = row
         if mid is None:
             skipped += 1
             continue
@@ -423,7 +428,7 @@ def load_samples_from_db(conn, *, pool: str, limit: int) -> tuple[list[dict], in
             "reference_age_secs": age,
             "oracle_paused": oracle_paused,
             "source_payload_hash": payload_hash,
-            "source_event_time": st,
+            "source_event_time": source_event_time,
             "reference_bid": bid,
             "reference_ask": ask,
         })

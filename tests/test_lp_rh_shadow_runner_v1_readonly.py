@@ -400,8 +400,13 @@ def test_conjunct_market_risk_fails_outside_rth():
 
 
 def test_conjunct_market_risk_fails_without_an_oracle():
-    """This chain has no on-chain price source, so this is the live case."""
-    bits, reasons = _conj(sample=_conj_sample(oracle_updated_at=None))
+    """This chain has no on-chain price source, so this is the live case.
+
+    RH-02x: the gate now reads source_event_time (the block timestamp) as the
+    oracle time for the CORE bucket, so "no oracle" means source_event_time is
+    None, not oracle_updated_at.
+    """
+    bits, reasons = _conj(sample=_conj_sample(source_event_time=None))
     assert bits["market_and_chain_risk_pass"] is False
     assert any("ORACLE_UNAVAILABLE" in r for r in reasons)
 
