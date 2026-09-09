@@ -248,8 +248,16 @@
  "liquidity_raw": 10748670127530107182,
  "fee_apr_pct": 27.34,
  "sigma_daily": 0.02038,
- "gas_usd_estimate": 0.02,
+ "gas_usd_estimate": 0.4005191780352,
  "range_pct": 10.0,
  "tvl_usd": 32037565.0,
- "active_liquidity_notional_usd": 32037565.0
+ "active_liquidity_notional_usd": 32037565.0,
+ "gas_provenance": {
+  "gas_price_wei": 198912000,
+  "native_price_usd": "2516.937000",
+  "block_number": 58416552,
+  "receipt_n": 5,
+  "gas_units_total": 800000,
+  "computed_at": "2026-09-09T08:49:23.769717+00:00"
+ }
 }
