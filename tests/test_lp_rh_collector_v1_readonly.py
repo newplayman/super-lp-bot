@@ -240,3 +240,170 @@ def test_source_guard_no_untrusted_endpoint_or_heavy_deps():
     assert "import web3" not in src
     assert "from web3" not in src
     assert "curl/8.5.0" in src
+
+
+# --- 13. RH-02i: reference_age_secs is the true data age ---------------------
+def _fake_rpc_ts(timestamp_hex, fail_calls=frozenset()):
+    """Fake rpc_fn with a controllable block timestamp (hex int) plus call
+    counters. No network. fail_calls is a subset of {"slot0", "liquidity",
+    "balance"} (same convention as _fake_rpc)."""
+    calls = {"n": 0, "block_fetches": 0}
+
+    def rpc_fn(method, params=None, **_kw):
+        calls["n"] += 1
+        if method == "eth_getBlockByNumber":
+            calls["block_fetches"] += 1
+            return {"number": BLOCK_HEX, "hash": "0xh",
+                    "timestamp": timestamp_hex,
+                    "baseFeePerGas": "0x3b9aca00"}, None, 5
+        assert method == "eth_call"
+        data = params[0]["data"]
+        if data == collector.SEL_DECIMALS:
+            dec = "0x12" if params[0]["to"] == collector.TOKEN0 else "0x6"
+            return dec, None, 4
+        kind = ("slot0" if data == collector.SEL_SLOT0
+                else "liquidity" if data == collector.SEL_LIQUIDITY
+                else "balance")
+        if kind in fail_calls:
+            return None, {"code": -32603, "message": f"{kind} failed"}, 9
+        return SLOT0_HEX if kind == "slot0" else "0x1", None, 4
+    rpc_fn.calls = calls
+    return rpc_fn
+
+
+def test_reference_age_differs_across_block_timestamps(tmp_path, monkeypatch):
+    # Two rounds whose blocks carry different timestamps must yield
+    # different reference_age_secs (guards against the column regressing to
+    # a constant). A fixed clock isolates the timestamp as the variable.
+    monkeypatch.setattr(collector, "_utc_now", _unique_stamps())
+    conn = _open(tmp_path)
+    try:
+        fixed_now = lambda: 1_000_000.0
+        collector.collect_round(conn, dec0=18, dec1=6, last_good_block=None,
+                                rpc_fn=_fake_rpc_ts("0x64"), now_fn=fixed_now)
+        collector.collect_round(conn, dec0=18, dec1=6, last_good_block=None,
+                                rpc_fn=_fake_rpc_ts("0x65"), now_fn=fixed_now)
+        ages = [r[0] for r in conn.execute(
+            "SELECT reference_age_secs FROM rh_market_states ORDER BY rowid")]
+        assert ages[0] != ages[1]
+        assert ages == [1_000_000 - 0x64, 1_000_000 - 0x65]
+    finally:
+        conn.close()
+
+
+def test_reference_age_none_when_block_timestamp_unavailable(tmp_path):
+    # The good_block re-fetch fails -> no timestamp -> age is None (not 0).
+    conn = _open(tmp_path)
+    try:
+        def rpc_fn(method, params=None, **_kw):
+            if method == "eth_getBlockByNumber":
+                if params[0] == "latest":
+                    return {"number": BLOCK_HEX, "hash": "0xh",
+                            "timestamp": "0x65",
+                            "baseFeePerGas": "0x3b9aca00"}, None, 5
+                return None, {"code": -32603, "message": "no such block"}, 12
+            data = params[0]["data"]
+            if data == collector.SEL_DECIMALS:
+                return ("0x12" if params[0]["to"] == collector.TOKEN0
+                        else "0x6"), None, 4
+            kind = ("slot0" if data == collector.SEL_SLOT0
+                    else "liquidity" if data == collector.SEL_LIQUIDITY
+                    else "balance")
+            return SLOT0_HEX if kind == "slot0" else "0x1", None, 4
+        collector.collect_round(conn, dec0=18, dec1=6, last_good_block=None,
+                                rpc_fn=rpc_fn)
+        mid, age = conn.execute(
+            "SELECT reference_mid, reference_age_secs FROM rh_market_states"
+        ).fetchone()
+        assert mid is not None  # the price was computed
+        assert age is None      # not 0, not a fabricated value
+    finally:
+        conn.close()
+
+
+def test_reference_age_exact_from_fixed_clock_and_timestamp(tmp_path):
+    # Age is exactly now - block_timestamp under a fixed clock + timestamp.
+    conn = _open(tmp_path)
+    try:
+        now_epoch = 2_000_500.75
+        ts = 0x100  # 256
+        collector.collect_round(conn, dec0=18, dec1=6, last_good_block=None,
+                                rpc_fn=_fake_rpc_ts(hex(ts)),
+                                now_fn=lambda: now_epoch)
+        age = conn.execute(
+            "SELECT reference_age_secs FROM rh_market_states").fetchone()[0]
+        assert age == int(now_epoch - ts)
+        assert age == 2_000_500 - 256
+    finally:
+        conn.close()
+
+
+def test_clock_skew_clamps_to_zero_and_flags(tmp_path):
+    # A block timestamp in the future (clock skew) clamps age to 0 and adds
+    # a CLOCK_SKEW health flag instead of silently hiding the negative age.
+    conn = _open(tmp_path)
+    try:
+        now_epoch = 1_000.0
+        ts = 0x500  # 1280 > 1000 -> future
+        collector.collect_round(conn, dec0=18, dec1=6, last_good_block=None,
+                                rpc_fn=_fake_rpc_ts(hex(ts)),
+                                now_fn=lambda: now_epoch)
+        age, flags_json = conn.execute(
+            "SELECT reference_age_secs, health_flags_json FROM rh_market_states"
+        ).fetchone()
+        assert age == 0
+        assert "CLOCK_SKEW" in flags_json
+    finally:
+        conn.close()
+
+
+def test_reference_age_none_when_price_missing(tmp_path):
+    # slot0 fails -> no price. Even though the block timestamp is available,
+    # the age stays None (no price, no age), preserving the prior behavior.
+    conn = _open(tmp_path)
+    try:
+        collector.collect_round(conn, dec0=18, dec1=6, last_good_block=None,
+                                rpc_fn=_fake_rpc_ts("0x65", fail_calls={"slot0"}),
+                                now_fn=lambda: 1_000_000.0)
+        mid, age = conn.execute(
+            "SELECT reference_mid, reference_age_secs FROM rh_market_states"
+        ).fetchone()
+        assert mid is None
+        assert age is None
+    finally:
+        conn.close()
+
+
+def test_module_docstring_documents_reference_mid_semantics():
+    # Guard against the column-semantics note being deleted from the doc.
+    doc = collector.__doc__ or ""
+    assert "DEX pool price" in doc
+    assert "not an external reference" in doc
+
+
+def test_session_still_unknown(tmp_path):
+    # RH-02i must not change the session="UNKNOWN" behavior (regression).
+    conn = _open(tmp_path)
+    try:
+        collector.collect_round(conn, dec0=18, dec1=6, last_good_block=None,
+                                rpc_fn=_fake_rpc_ts("0x65"))
+        session = conn.execute(
+            "SELECT session FROM rh_market_states").fetchone()[0]
+        assert session == "UNKNOWN"
+    finally:
+        conn.close()
+
+
+def test_round_makes_at_most_one_extra_rpc_call(tmp_path):
+    # Baseline round: 1 block + slot0 + liquidity + 2 balances = 5 calls.
+    # RH-02i adds exactly 1 (the good_block timestamp fetch) -> 6 total,
+    # i.e. 2 eth_getBlockByNumber calls ("latest" + good_block).
+    conn = _open(tmp_path)
+    try:
+        rpc = _fake_rpc_ts("0x65")
+        collector.collect_round(conn, dec0=18, dec1=6, last_good_block=None,
+                                rpc_fn=rpc)
+        assert rpc.calls["n"] == 6
+        assert rpc.calls["block_fetches"] == 2
+    finally:
+        conn.close()

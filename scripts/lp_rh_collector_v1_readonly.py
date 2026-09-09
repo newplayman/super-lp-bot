@@ -6,6 +6,13 @@ pool; per round persists rh_market_states + rh_rpc_health + rh_source_
 snapshots. Stdlib urllib only (User-Agent curl/8.5.0); no requests/web3/
 solana; never signs/broadcasts/touches wallets; never contacts the untrusted
 endpoint (T12); money/price are decimal text (the store rejects floats).
+
+Column semantics (RH-02i): `reference_mid` holds the DEX pool price derived
+from sqrtPriceX96, not an external reference price. This collector makes no
+REST calls. For chain-price-vs-reference premium analysis use
+reports/lp_rh/premium.db (lp_rh_premium_recorder), where the two are
+separate columns. `reference_age_secs` is the true age of the sampled block
+(now - block timestamp), None when the timestamp is unavailable.
 """
 
 from __future__ import annotations
@@ -148,7 +155,8 @@ def read_decimals(token: str, rpc_fn: Callable = rpc) -> Optional[int]:
 
 # --- one round --------------------------------------------------------------
 def collect_round(conn, *, dec0: int, dec1: int, last_good_block: Optional[int],
-                  rpc_fn: Callable = rpc) -> Dict[str, Any]:
+                  rpc_fn: Callable = rpc,
+                  now_fn: Callable[[], float] = time.time) -> Dict[str, Any]:
     """Collect one sample; write rh_rpc_health + rh_market_states + snapshot."""
     now = _utc_now()
     raw: Dict[str, Any] = {}
@@ -196,6 +204,18 @@ def collect_round(conn, *, dec0: int, dec1: int, last_good_block: Optional[int],
     state = "NORMAL" if not errors else ("DEGRADED" if len(errors) < 3 else "EXIT_ONLY")
     good_block = block_number if block_number is not None else last_good_block
 
+    # RH-02i: fetch good_block's timestamp to compute the true data age.
+    # good_block may be last_good_block from a prior round when the current
+    # fetch failed, so re-fetch that specific block rather than reusing the
+    # timestamp from the "latest" call above. One extra RPC call per round.
+    block_timestamp = None
+    if good_block is not None:
+        blk_age, err_age, ms_age = rpc_fn(
+            "eth_getBlockByNumber", [hex(good_block), False])
+        latencies.append(ms_age)
+        if err_age is None and isinstance(blk_age, dict):
+            block_timestamp = _hex_to_int(blk_age.get("timestamp"))
+
     insert_row(conn, "rh_rpc_health", {
         "provider": RH_RPC_PRIMARY, "method": "pool_state_round",
         "sample_time": now,
@@ -222,15 +242,33 @@ def collect_round(conn, *, dec0: int, dec1: int, last_good_block: Optional[int],
     except sqlite3.IntegrityError:
         pass  # identical payload already recorded; idempotent, keep going
 
+    # RH-02i: true data age = now - good_block's timestamp. None when there
+    # is no price or the block timestamp is unavailable (never a fake 0).
+    # A future timestamp (clock skew) clamps to 0 but is flagged, not hidden.
+    now_epoch = now_fn()
+    reference_age_secs = None
+    clock_skew = False
+    if price_text is not None and block_timestamp is not None:
+        reference_age_secs = int(now_epoch - block_timestamp)
+        if reference_age_secs < 0:
+            reference_age_secs = 0
+            clock_skew = True
+    flags = set()
+    if state != "NORMAL":
+        flags.add("CHAIN_DEGRADED")
+    if clock_skew:
+        flags.add("CLOCK_SKEW")
+
     insert_row(conn, "rh_market_states", {
         "asset_address": POOL, "sample_time": now,
         "chain_id": CHAIN_ID, "source_payload_hash": payload_hash,
         "session": "UNKNOWN",
-        "health_flags_json": json.dumps(sorted(set(
-            ["CHAIN_DEGRADED"] if state != "NORMAL" else []))),
+        "health_flags_json": json.dumps(sorted(flags)),
         "reference_bid": None, "reference_ask": None,
+        # reference_mid is the DEX pool price from sqrtPriceX96, not an
+        # external reference (no REST here); see the module docstring.
         "reference_mid": price_text,
-        "reference_age_secs": 0 if price_text else None,
+        "reference_age_secs": reference_age_secs,
         "multiplier_human": None, "oracle_paused": None,
     })
     conn.commit()
