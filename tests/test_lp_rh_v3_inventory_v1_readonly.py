@@ -1,8 +1,10 @@
 from decimal import Decimal, getcontext
+from decimal import localcontext
 
 import pytest
 
 from scripts.lp_rh_v3_inventory_v1_readonly import inventory_for_position
+from scripts.lp_rh_v3_inventory_v1_readonly import position_value_at
 from scripts.lp_v3_fee_share import position_liquidity_raw
 
 
@@ -137,3 +139,176 @@ def test_quote_must_be_explicit_and_positive():
         inventory_for_position(
             **kwargs, quote_usd_per_token1=Decimal("0")
         )
+
+
+def _standard_liquidity_human():
+    with localcontext() as ctx:
+        ctx.prec = 80
+        return _standard_position().liquidity_raw / (Decimal(10) ** 12)
+
+
+def _standard_mark(price):
+    return position_value_at(
+        price=price,
+        liquidity_human=_standard_liquidity_human(),
+        entry_price=Decimal("2484"),
+        range_pct=Decimal("10"),
+        quote_usd_per_token1=Decimal("1"),
+    )
+
+
+def _assert_mark_close(actual, expected):
+    if expected == 0:
+        assert actual == expected
+    else:
+        assert _relative_error(actual, expected) < Decimal("1e-25")
+
+
+@pytest.mark.parametrize(
+    (
+        "price",
+        "expected_value_usd",
+        "expected_amount0_human",
+        "expected_amount1_human",
+    ),
+    [
+        (
+            Decimal("2484"),
+            Decimal("1000"),
+            Decimal(
+                "0.19145712873772488253936834449842371736793257180588"
+            ),
+            Decimal(
+                "524.42049221549139177220903226591548605805549163421"
+            ),
+        ),
+        (
+            Decimal("2474.055679"),
+            Decimal(
+                "998.05506101569517744962307444767141901132021256836"
+            ),
+            Decimal(
+                "0.19971692330763781371243527892716317242894531930221"
+            ),
+            Decimal(
+                "503.94427271402638035922849969797434490383182136826"
+            ),
+        ),
+        (
+            Decimal("2235.6"),
+            Decimal(
+                "925.53051912632391929181381822363713956594958075681"
+            ),
+            Decimal(
+                "0.41399647482837892256746010834837946840487993413706"
+            ),
+            Decimal("0"),
+        ),
+        (
+            Decimal("2732.4"),
+            Decimal(
+                "1023.2124879882894863806499472872990837981715472935"
+            ),
+            Decimal("0"),
+            Decimal(
+                "1023.2124879882894863806499472872990837981715472935"
+            ),
+        ),
+        (
+            Decimal("1000"),
+            Decimal(
+                "413.99647482837892256746010834837946840487993413706"
+            ),
+            Decimal(
+                "0.41399647482837892256746010834837946840487993413706"
+            ),
+            Decimal("0"),
+        ),
+        (
+            Decimal("5000"),
+            Decimal(
+                "1023.2124879882894863806499472872990837981715472935"
+            ),
+            Decimal("0"),
+            Decimal(
+                "1023.2124879882894863806499472872990837981715472935"
+            ),
+        ),
+    ],
+)
+def test_position_value_matches_v3_anchors(
+    price,
+    expected_value_usd,
+    expected_amount0_human,
+    expected_amount1_human,
+):
+    result = _standard_mark(price)
+
+    value_tolerance = (
+        Decimal("1e-40")
+        if price == Decimal("2484")
+        else Decimal("1e-25")
+    )
+    assert _relative_error(
+        result.value_usd, expected_value_usd
+    ) < value_tolerance
+    _assert_mark_close(result.amount0_human, expected_amount0_human)
+    _assert_mark_close(result.amount1_human, expected_amount1_human)
+
+
+def test_position_value_freezes_amounts_outside_range():
+    at_lower = _standard_mark(Decimal("2235.6"))
+    below_lower = _standard_mark(Decimal("1000"))
+    at_upper = _standard_mark(Decimal("2732.4"))
+    above_upper = _standard_mark(Decimal("5000"))
+
+    assert below_lower.amount0_human == at_lower.amount0_human
+    assert above_upper.amount1_human == at_upper.amount1_human
+
+
+def test_position_value_has_negative_exposure_gap_vs_hodl():
+    p0 = _standard_mark(Decimal("2484"))
+    p1 = _standard_mark(Decimal("2474.055679"))
+
+    lp_delta = p1.value_usd - p0.value_usd
+    hodl_delta = (
+        p0.amount0_human * Decimal("2474.055679")
+        + p0.amount1_human
+        - p0.amount0_human * Decimal("2484")
+        - p0.amount1_human
+    )
+
+    assert lp_delta < hodl_delta
+    assert lp_delta - hodl_delta < Decimal("-1e-15")
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("quote_usd_per_token1", None),
+        ("price", Decimal("0")),
+        ("liquidity_human", Decimal("0")),
+        ("range_pct", Decimal("0")),
+    ],
+)
+def test_position_value_rejects_invalid_inputs(field, value):
+    kwargs = {
+        "price": Decimal("2484"),
+        "liquidity_human": _standard_liquidity_human(),
+        "entry_price": Decimal("2484"),
+        "range_pct": Decimal("10"),
+        "quote_usd_per_token1": Decimal("1"),
+    }
+    kwargs[field] = value
+
+    with pytest.raises(ValueError, match=field):
+        position_value_at(**kwargs)
+
+
+def test_position_value_does_not_modify_decimal_context():
+    before = getcontext().prec
+    assert before == 28
+
+    _standard_mark(Decimal("2474.055679"))
+
+    assert getcontext().prec == before

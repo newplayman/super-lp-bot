@@ -102,3 +102,80 @@ def inventory_for_position(
             amount0_human=amount0_human,
             amount1_human=amount1_human,
         )
+
+
+@dataclass(frozen=True)
+class V3PositionValue:
+    value_usd: Decimal
+    amount0_human: Decimal
+    amount1_human: Decimal
+
+
+def position_value_at(
+    *,
+    price,
+    liquidity_human,
+    entry_price,
+    range_pct,
+    quote_usd_per_token1,
+):
+    """Mark a v3 range position to market at ``price``."""
+
+    if quote_usd_per_token1 is None:
+        raise ValueError("quote_usd_per_token1 must be provided")
+
+    current_price = _decimal(price, "price")
+    liquidity = _decimal(liquidity_human, "liquidity_human")
+    entry = _decimal(entry_price, "entry_price")
+    width = _decimal(range_pct, "range_pct")
+    quote = _decimal(quote_usd_per_token1, "quote_usd_per_token1")
+
+    if current_price <= 0:
+        raise ValueError("price must be > 0")
+    if liquidity <= 0:
+        raise ValueError("liquidity_human must be > 0")
+    if entry <= 0:
+        raise ValueError("entry_price must be > 0")
+    if width <= 0:
+        raise ValueError("range_pct must be > 0")
+    if width >= 100:
+        raise ValueError("range_pct must be < 100")
+    if quote <= 0:
+        raise ValueError("quote_usd_per_token1 must be > 0")
+
+    with localcontext() as ctx:
+        ctx.prec = 80
+        one = Decimal(1)
+        hundred = Decimal(100)
+
+        lower = entry * (one - width / hundred)
+        upper = entry * (one + width / hundred)
+        sqrt_pa = lower.sqrt()
+        sqrt_pb = upper.sqrt()
+        sqrt_p = current_price.sqrt()
+
+        if current_price <= lower:
+            amount0_human = (
+                liquidity * (sqrt_pb - sqrt_pa)
+                / (sqrt_pa * sqrt_pb)
+            )
+            amount1_human = Decimal(0)
+        elif current_price >= upper:
+            amount0_human = Decimal(0)
+            amount1_human = liquidity * (sqrt_pb - sqrt_pa)
+        else:
+            amount0_human = (
+                liquidity * (sqrt_pb - sqrt_p)
+                / (sqrt_p * sqrt_pb)
+            )
+            amount1_human = liquidity * (sqrt_p - sqrt_pa)
+
+        value_usd = (
+            amount0_human * current_price + amount1_human
+        ) * quote
+
+        return V3PositionValue(
+            value_usd=value_usd,
+            amount0_human=amount0_human,
+            amount1_human=amount1_human,
+        )
