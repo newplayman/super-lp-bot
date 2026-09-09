@@ -21,6 +21,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import signal
 import sqlite3
 import sys
@@ -58,6 +59,10 @@ SEL_SLOT0 = "0x3850c7bd"
 SEL_LIQUIDITY = "0x1a686502"
 SEL_BALANCE_OF = "0x70a08231"
 SEL_DECIMALS = "0x313ce567"
+# RH-02ac: feeGrowthGlobal0X128() / feeGrowthGlobal1X128() -- uint256 fee
+# growth, the NAV inputs run_episode needs.  Measured selectors for the pool.
+SEL_FEE_GROWTH_0 = "0xf3058399"
+SEL_FEE_GROWTH_1 = "0x46141319"
 
 BACKOFF_BASE_SECS = 1.0
 BACKOFF_MAX_EXP = 10
@@ -91,6 +96,30 @@ def _hex_to_int(value: Any) -> Optional[int]:
         return int(text, 16) if text.lower().startswith("0x") else int(text, 10)
     except (ValueError, TypeError):
         return None
+
+
+_HEX_DIGITS_RE = re.compile(r"^[0-9a-fA-F]+$")
+
+
+def _uint256_hex_to_decimal_text(value: Any) -> Optional[str]:
+    """ABI uint256 hex word -> decimal TEXT (RH-02ac).
+
+    Returns the decimal string of the word, or None when the value is not a
+    usable hex word (not a str, no 0x prefix, no digits, or non-hex chars).
+    Never returns "0" for a failed/absent call: 0 is a legal feeGrowth value
+    and must stay distinguishable from "not asked" (None).  The result is a
+    plain decimal string so the store's decimal-TEXT guard accepts it and no
+    int/float conversion can distort a value beyond SQLite INTEGER range.
+    """
+    if not isinstance(value, str):
+        return None
+    text = value.strip()
+    if not text.lower().startswith("0x"):
+        return None
+    digits = text[2:].strip()
+    if not digits or not _HEX_DIGITS_RE.match(digits):
+        return None
+    return format(int(digits, 16), "d")
 
 def _err_text(error: Any) -> str:
     if error is None:
@@ -206,6 +235,21 @@ def collect_round(conn, *, dec0: int, dec1: int, last_good_block: Optional[int],
     else:
         errors.append(f"liquidity:{_err_text(err)}")
 
+    # RH-02ac: feeGrowthGlobal0/1X128 as uint256 decimal TEXT.  None when the
+    # call fails or the word is not usable hex -- never 0, which is a legal
+    # feeGrowth value and must stay distinct from "not asked".  These are NAV
+    # inputs, not pool state, so a failure here does not count toward the
+    # chain-health error tally (state/flags are driven by the pool reads above).
+    fg0, err, ms = rpc_fn("eth_call",
+                          [{"to": POOL, "data": SEL_FEE_GROWTH_0}, "latest"])
+    latencies.append(ms)
+    fee_growth_0 = _uint256_hex_to_decimal_text(fg0) if err is None else None
+
+    fg1, err, ms = rpc_fn("eth_call",
+                          [{"to": POOL, "data": SEL_FEE_GROWTH_1}, "latest"])
+    latencies.append(ms)
+    fee_growth_1 = _uint256_hex_to_decimal_text(fg1) if err is None else None
+
     balances = {}
     for label, token in (("token0", TOKEN0), ("token1", TOKEN1)):
         bal, err, ms = rpc_fn("eth_call",
@@ -309,6 +353,11 @@ def collect_round(conn, *, dec0: int, dec1: int, last_good_block: Optional[int],
         # round (one variable, not recomputed). None when the block
         # timestamp is unavailable -- never now/sample_time.
         "source_event_time": source_event_time,
+        # RH-02ac: feeGrowthGlobal0/1X128 as uint256 decimal TEXT.  None when
+        # not asked (call failed / unusable word); never 0.  NAV inputs for
+        # run_episode -- the columns it reads via sample.get(...).
+        "fee_growth_global_0": fee_growth_0,
+        "fee_growth_global_1": fee_growth_1,
     })
     conn.commit()
     return {"block_number": good_block, "price": price_text, "state": state,

@@ -14,6 +14,7 @@ import json
 import re
 import sqlite3
 import sys
+from decimal import Decimal
 from pathlib import Path
 from typing import Any, Mapping, Optional, Sequence
 
@@ -72,7 +73,8 @@ _TABLES = [
         "reference_age_secs INTEGER", "multiplier_human TEXT",
         "oracle_paused INTEGER",
         "derived_block_hash TEXT", "derived_block_number INTEGER",
-        "source_event_time TEXT"]),
+        "source_event_time TEXT",
+        "fee_growth_global_0 TEXT", "fee_growth_global_1 TEXT"]),
     ("rh_rpc_health", ("provider", "method", "sample_time"), [
         "provider TEXT NOT NULL", "method TEXT NOT NULL",
         "sample_time TEXT NOT NULL", "latency_ms INTEGER",
@@ -146,7 +148,7 @@ _INDEXES = [
 MONEY_COLUMNS = {
     "rh_assets": frozenset({"multiplier_raw"}),
     "rh_pool_events": frozenset({"amount0_raw", "amount1_raw", "liquidity_raw"}),
-    "rh_market_states": frozenset({"reference_bid", "reference_ask", "reference_mid", "multiplier_human"}),
+    "rh_market_states": frozenset({"reference_bid", "reference_ask", "reference_mid", "multiplier_human", "fee_growth_global_0", "fee_growth_global_1"}),
     "rh_economic_evaluations": frozenset({"position_usd", "fee_ev", "reward_ev", "netcover", "abs_profit", "q_min", "q_max"}),
     "rh_shadow_positions": frozenset({"initial_token0_raw", "initial_token1_raw", "virtual_liquidity_raw"}),
     "rh_journal": frozenset({"amount_raw"}),
@@ -196,7 +198,9 @@ PROVENANCE_COLUMNS = ("derived_block_hash", "derived_block_number")
 # ALTER TABLE ADD COLUMN them idempotently on pre-existing databases.  A NULL
 # value means "not recorded at the time", not a fabricated timestamp.
 EXTRA_COLUMNS = {
-    "rh_market_states": (("source_event_time", "TEXT"),),
+    "rh_market_states": (("source_event_time", "TEXT"),
+                         ("fee_growth_global_0", "TEXT"),
+                         ("fee_growth_global_1", "TEXT")),
 }
 
 
@@ -326,6 +330,11 @@ def assert_decimal_text(value: Any, field: str) -> Optional[str]:
         raise TypeError(f"REAL_NOT_ALLOWED_FOR_MONEY: {field}")
     if isinstance(value, int):
         return str(value)
+    if isinstance(value, Decimal):
+        text = format(value, "f")
+        if not _DECIMAL_RE.match(text):
+            raise ValueError(f"INVALID_DECIMAL_TEXT: {field}")
+        return text
     if isinstance(value, str):
         if not _DECIMAL_RE.match(value):
             raise ValueError(f"INVALID_DECIMAL_TEXT: {field}")

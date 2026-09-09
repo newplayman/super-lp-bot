@@ -405,12 +405,13 @@ def test_round_makes_at_most_one_extra_rpc_call(tmp_path):
     # Baseline round: 1 block + slot0 + liquidity + 2 balances = 5 calls.
     # RH-02i adds exactly 1 (the good_block timestamp fetch) -> 6 total,
     # i.e. 2 eth_getBlockByNumber calls ("latest" + good_block).
+    # RH-02ac adds 2 more eth_call reads (feeGrowthGlobal0/1) -> 8 total.
     conn = _open(tmp_path)
     try:
         rpc = _fake_rpc_ts("0x65")
         collector.collect_round(conn, dec0=18, dec1=6, last_good_block=None,
                                 rpc_fn=rpc)
-        assert rpc.calls["n"] == 6
+        assert rpc.calls["n"] == 8
         assert rpc.calls["block_fetches"] == 2
     finally:
         conn.close()
