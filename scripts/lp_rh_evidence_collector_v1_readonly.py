@@ -133,19 +133,37 @@ def _beacon_implementation(rpc_fn, beacon) -> Optional[str]:
     return "0x" + body[-40:].lower()
 
 
-def collect_attestations(rpc_fn, addresses, *, beacon) -> List[dict]:
+def collect_attestations(rpc_fn, addresses, *, beacon, skip_out=None) -> List[dict]:
     """For each address: eth_getCode -> code_hash (required), block_hash
     (required), beacon implementation() (optional -> None). Assemble the shape
     write_attestations wants. A missing required field skips the address; it
-    is never written as an empty string (the writer would raise)."""
-    block_hash, _ = _block_hash(rpc_fn)
+    is never written as an empty string (the writer would raise).
+
+    RH-02t: when ``skip_out`` (a dict) is given, every skipped address gets a
+    machine-readable reason written into it (additive only, existing keys are
+    never cleared). This separates "the chain has no contract" from "the
+    network blipped": "RPC_ERROR:<text[:80]>" (transient RPC failure),
+    "NO_CODE" (chain really has no contract), "CODE_NOT_STRING" (bad type),
+    or "BLOCK_HASH_UNAVAILABLE:<text[:80]>" for every address when the block
+    hash itself is unobtainable. Skip decisions are unchanged."""
+    block_hash, bh_err = _block_hash(rpc_fn)
     if not block_hash:
+        if skip_out is not None:
+            for address in addresses:
+                skip_out[address] = "BLOCK_HASH_UNAVAILABLE:" + str(bh_err)[:80]
         return []  # no block_hash -> all addresses skipped
     implementation = _beacon_implementation(rpc_fn, beacon)
     records = []
     for address in addresses:
         code, err = _call(rpc_fn, "eth_getCode", [address, "latest"])
         if err or not isinstance(code, str) or code in ("0x", ""):
+            if skip_out is not None:
+                if err:
+                    skip_out[address] = "RPC_ERROR:" + str(err)[:80]
+                elif not isinstance(code, str):
+                    skip_out[address] = "CODE_NOT_STRING"
+                else:
+                    skip_out[address] = "NO_CODE"
             continue  # no code_hash -> skip this address
         records.append({
             "address": address,
@@ -222,11 +240,14 @@ def run_once(conn, *, fetch_fn, rpc_fn, chain_id, policy_version,
         report["errors"].append(f"pool_registry: {exc}")
     try:
         addresses = _asset_addresses(asset_records, chain_id=chain_id)
-        records = collect_attestations(rpc_fn, addresses, beacon=BEACON)
+        skip_reasons: Dict[str, str] = {}
+        records = collect_attestations(rpc_fn, addresses, beacon=BEACON,
+                                       skip_out=skip_reasons)
         report["attestations"] = write_attestations(conn, records,
                                                     chain_id=chain_id,
                                                     policy_version=policy_version)
         report["attestations"]["collect_skipped"] = len(addresses) - len(records)
+        report["attestations"]["skip_reasons"] = skip_reasons
     except Exception as exc:
         report["errors"].append(f"attestations: {exc}")
     return report
