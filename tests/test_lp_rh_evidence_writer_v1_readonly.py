@@ -91,10 +91,12 @@ def test_assets_missing_fields_nonempty():
     res = writer.write_assets(conn, [_asset(WETH)], chain_id=CHAIN,
                               metadata_version=1, source="s")
     assert res["missing_fields"], "expected gaps to be surfaced"
-    # multiplier_raw / status / source_payload_hash are not produced by the
-    # registry module, so each must be counted.
-    for col in ("multiplier_raw", "status", "source_payload_hash"):
+    # multiplier_raw / status are not produced by the registry module, so each
+    # must be counted. source_payload_hash is now always computed (never a gap),
+    # so it must NOT be counted.
+    for col in ("multiplier_raw", "status"):
         assert res["missing_fields"].get(col, 0) >= 1, col
+    assert res["missing_fields"].get("source_payload_hash", 0) == 0
 
 
 def test_assets_null_fields_in_db():
@@ -104,7 +106,10 @@ def test_assets_null_fields_in_db():
     row = conn.execute(
         "SELECT multiplier_raw, status, source_payload_hash FROM rh_assets"
     ).fetchone()
-    assert row == (None, None, None)
+    # multiplier_raw / status are absent from _asset(WETH) -> None; the
+    # payload hash is now always computed (never None).
+    assert row[0] is None and row[1] is None
+    assert isinstance(row[2], str) and len(row[2]) == 64
 
 
 def test_assets_capability_json_valid():

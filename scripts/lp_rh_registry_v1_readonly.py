@@ -192,6 +192,18 @@ def _opt_str(value: object) -> Optional[str]:
     return str(value)
 
 
+def _first_present(mapping: Mapping[str, object], *keys: str) -> Optional[str]:
+    """First non-None value among ``keys`` as str, else None.
+
+    Top-level original key first, then the measured feed key, so an old record
+    carrying the original key still wins (backward compatible)."""
+    for key in keys:
+        value = mapping.get(key)
+        if value is not None:
+            return str(value)
+    return None
+
+
 def _extract_address(asset_json: Mapping[str, object],
                      chain_id: Optional[int] = None) -> Optional[str]:
     for key in _ADDRESS_KEYS:
@@ -242,10 +254,10 @@ def asset_from_json(
     return AssetIdentity(
         chain_id=int(chain_id),
         address=str(address).lower(),
-        symbol_display=str(asset_json.get("symbol", "")),
+        symbol_display=_first_present(asset_json, "symbol", "tokenSymbol") or "",
         issuer=_opt_str(asset_json.get("issuer")),
-        uid=_opt_str(asset_json.get("uid")),
-        underlying=_opt_str(asset_json.get("underlying")),
+        uid=_first_present(asset_json, "uid", "id"),
+        underlying=_first_present(asset_json, "underlying", "isin"),
         decimals=decimals,
         metadata_version=metadata_version,
         source=source,

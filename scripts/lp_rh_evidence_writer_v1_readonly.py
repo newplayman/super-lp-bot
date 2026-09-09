@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import argparse
 import dataclasses
+import hashlib
 import json
 import sqlite3
 import sys
@@ -87,6 +88,18 @@ def _raw(value: Any) -> Optional[Any]:
     return value
 
 
+def _text_or_none(value: Any) -> Optional[str]:
+    """A field as a string, or None when missing/empty.
+
+    The value is passed through as a string verbatim -- it never goes through
+    float, so a decimal string such as '1.002210914971013375' keeps every
+    digit. An empty string is 'no value' and maps to None (never stored)."""
+    if value is None:
+        return None
+    text = str(value)
+    return text if text else None
+
+
 def _json_field(value: Any) -> Optional[str]:
     """Serialize a structured field to JSON text; pass strings through."""
     if value is None:
@@ -146,6 +159,8 @@ def write_assets(conn: sqlite3.Connection, assets_json: Any, *,
             result["skip_reasons"][reason] = result["skip_reasons"].get(reason, 0) + 1
             continue
         capability = normalize_capability(asset_json)
+        payload = json.dumps(asset_json, sort_keys=True,
+                             separators=(",", ":"), ensure_ascii=False)
         row = {
             "chain_id": chain_id,
             "address": identity.address,
@@ -154,11 +169,12 @@ def write_assets(conn: sqlite3.Connection, assets_json: Any, *,
             "uid": identity.uid,
             "underlying": identity.underlying,
             "decimals": identity.decimals,
-            "multiplier_raw": None,
-            "status": None,
+            "multiplier_raw": _text_or_none(asset_json.get("currentMultiplier")),
+            "status": _text_or_none(asset_json.get("status")),
             "capability_json": json.dumps(dataclasses.asdict(capability),
                                           sort_keys=True),
-            "source_payload_hash": None,
+            "source_payload_hash": hashlib.sha256(
+                payload.encode("utf-8")).hexdigest(),
             "updated_at": now,
         }
         _insert_or_replace(conn, "rh_assets", row, _ASSET_NULLABLE, result)
