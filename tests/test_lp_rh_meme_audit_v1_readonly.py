@@ -108,6 +108,48 @@ def test_holder_evidence_missing_is_rejected():
     assert "HOLDER_CONCENTRATION_EVIDENCE_MISSING" in reasons
 
 
+def test_empty_holder_evidence_is_unknown():
+    allowed, reasons = admission_check(_facts(holder_concentration_evidence={}))
+    assert not allowed
+    assert "UNKNOWN_HOLDER_CONCENTRATION_EVIDENCE" in reasons
+
+
+def test_holder_evidence_available_true_passes():
+    assert admission_check(
+        _facts(holder_concentration_evidence={"available": True})
+    ) == (True, [])
+
+
+def test_holder_evidence_available_false_is_rejected():
+    allowed, reasons = admission_check(
+        _facts(holder_concentration_evidence={"available": False})
+    )
+    assert not allowed
+    assert "HOLDER_CONCENTRATION_EVIDENCE_MISSING" in reasons
+
+
+def test_holder_evidence_verified_true_passes():
+    assert admission_check(
+        _facts(holder_concentration_evidence={"verified": True})
+    ) == (True, [])
+
+
+def test_holder_evidence_non_boolean_is_unknown():
+    allowed, reasons = admission_check(
+        _facts(holder_concentration_evidence={"available": "true"})
+    )
+    assert not allowed
+    assert "UNKNOWN_HOLDER_CONCENTRATION_EVIDENCE" in reasons
+
+
+def test_holder_evidence_without_supported_key_is_unknown():
+    allowed, reasons = admission_check(
+        _facts(holder_concentration_evidence={"other_key": 1})
+    )
+    assert not allowed
+    assert "UNKNOWN_HOLDER_CONCENTRATION_EVIDENCE" in reasons
+
+
 def test_t43_downtrend_cannot_recenter_lower():
     status, reason = downtrend_recenter_guard(
         price_now=Decimal("9"), range_lower=Decimal("10"),

@@ -119,8 +119,15 @@ def _holder_evidence_result(facts: Mapping[str, Any]) -> tuple[bool | None, str 
         if isinstance(value, bool):
             return value, None
         if isinstance(value, Mapping):
-            available = value.get("available", value.get("verified", True))
-            return (available is True), None
+            if "available" in value:
+                available = value["available"]
+            elif "verified" in value:
+                available = value["verified"]
+            else:
+                return None, "UNKNOWN_HOLDER_CONCENTRATION_EVIDENCE"
+            if not isinstance(available, bool):
+                return None, "UNKNOWN_HOLDER_CONCENTRATION_EVIDENCE"
+            return available, None
         return None, "UNKNOWN_HOLDER_CONCENTRATION_EVIDENCE"
     found, value = _lookup(facts, ("holder_concentration_pct", "top_holder_pct"))
     if not found or value is None:
