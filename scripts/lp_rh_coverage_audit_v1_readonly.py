@@ -219,10 +219,11 @@ def fetch_asset_sample_times(conn: Any, *, asset_address: str) -> List[str]:
 
     ``asset_address`` is intentionally keyword-only and has no default: a
     caller must identify the asset instead of silently auditing all rows.
+    Uses case-insensitive comparison to handle EIP-55 checksum or lowercase addresses.
     """
     rows = conn.execute(
         "SELECT sample_time FROM rh_market_states "
-        "WHERE asset_address = ? ORDER BY sample_time",
+        "WHERE LOWER(asset_address) = LOWER(?) ORDER BY sample_time",
         (asset_address,),
     ).fetchall()
     return [row[0] for row in rows]

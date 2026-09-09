@@ -77,6 +77,7 @@ def _run(conn, samples, *, episode="ep"):
         capital_usd=CAPITAL_USD, target_mode="SHADOW_SCENARIO",
         now_fn=lambda: "2026-01-01T01:00:00Z",
         pool_meta={"input_price_usd": 2484.0, "range_pct": 10.0,
+                   "quote_usd_per_token1": 1.0,
                    "dec0": 18, "dec1": 6},
     )
 

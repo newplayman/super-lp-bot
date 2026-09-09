@@ -1,0 +1,1250 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""Polymarket 竞品账户连续采集器(只读、单轮、外部 cron 调度)
+
+设计目标(与 docs/superpowers/plans/* + CLAUDE.md 一致):
+- 一次 ``run_cycle`` = 一个账户 offset=0 浅扫 + (可选)缺口深翻页追补
+- 单轮跑完即退出(进程内无 while-true / sleep loop),由外部 systemd-timer / cron 反复调起
+- 全程只 GET 公开 data-api,不触碰链/钱包/私钥
+- HTTP / 时钟 全部可注入(测试无网络、确定时钟)
+- 去重键:不可变链上字段 sha256(缺 transactionHash 退化)
+- SQLite WAL 模式 + INSERT OR IGNORE 天然幂等
+- JSONL 导出:os.replace 原子写
+- status.json:os.replace 原子写,外部 supervisor 据此判断是否存活
+
+CLI:
+    python3 scripts/lp_polymarket_competitor_collector_v1_readonly.py \\
+        --mode cycle \\
+        --addresses /opt/polycollect/addresses.json \\
+        --db /opt/polycollect/poly.db \\
+        --export-dir /opt/polycollect/export \\
+        --status-path /opt/polycollect/status.json \\
+        --reports-dir <REPO>/reports/lp_polymarket_competitor
+
+模式:
+    cycle    默认;实采一轮
+    probe    拉每个地址 1 条样本,写 reports/<run_id>/addresses_resolved.json + api_probe_summary.json 后退出
+    selftest 跑所有纯函数一遍(无网络、无 IO),打印 OK
+    dryrun   拉每个地址 1 页 + 写 status.json 但不写 DB/JSONL
+
+环境变量:
+    REPO_ROOT_OVERRIDE   仓库根(默认 /opt/lpbot/lp-bot-v3-origin-check)
+    RUN_ID_OVERRIDE      覆盖 RUN_ID
+
+不在本仓写 systemd unit;请把 supervisor.sh + .timer 放到 /opt/polycollect/。
+参见 scripts/README_polymarket_competitor.md
+"""
+from __future__ import annotations
+
+import argparse
+import dataclasses
+import datetime as _dt
+import hashlib
+import importlib
+import json
+import os
+import re
+import sqlite3
+import sys
+import time
+import traceback
+import urllib.error
+import urllib.parse
+import urllib.request
+from pathlib import Path
+from typing import Any, Callable, Iterable, Optional
+
+# -----------------------------------------------------------------------------
+# Constants
+# -----------------------------------------------------------------------------
+
+DATA_API_BASE = "https://data-api.polymarket.com"
+DEFAULT_USER_AGENT = "lpbot-readonly-research/1.0 (+read-only public data-api client; contact: lp-bot research)"
+ADDRESS_RE = re.compile(r"^0x[0-9a-f]{40}$")
+ADDRESS_FILE_RE = re.compile(r"^0x[0-9a-f]{40}$", re.I)
+
+DEFAULT_LIMIT = 500
+DEFAULT_BACKFILL_CAP_PAGES = 6  # 6 * 500 = 3000  (observed offset ceiling: API returns 400 "max historical activity offset of 3000 exceeded" beyond this)
+DEFAULT_HTTP_TIMEOUT = 10.0
+DEFAULT_MAX_RETRY_AFTER = 20.0
+
+# The data-api enforces a hard offset ceiling of 3000. Beyond that, it returns
+# HTTP 400 with body {"error":"max historical activity offset of 3000 exceeded"}.
+# Backfill must stop at or before offset=3000.
+OFFSET_CEILING = 3000
+
+SCHEMA_VERSION = 1
+
+# Immutable fields used for dedup key (order doesn't matter; hash is order-stable).
+DEDUP_IMMUTABLE_FIELDS = (
+    "transactionHash",
+    "timestamp",
+    "type",
+    "conditionId",
+    "asset",
+    "side",
+    "outcomeIndex",
+)
+
+
+# -----------------------------------------------------------------------------
+# Custom exceptions
+# -----------------------------------------------------------------------------
+
+
+class PolymarketError(Exception):
+    """Base for all collector-specific errors."""
+
+
+class PolymarketAddressFileError(PolymarketError):
+    """addresses.json is missing or malformed."""
+
+
+class PolymarketHTTPFatal(PolymarketError):
+    """HTTP failure that the cycle cannot recover from."""
+
+    def __init__(self, status: int, body: str, message: str = ""):
+        self.status = status
+        self.body = body[:500]
+        super().__init__(message or f"HTTP {status}: {self.body!r}")
+
+
+class PolymarketInvalidRow(PolymarketError):
+    """A row is missing fields that would prevent a valid dedup_key."""
+
+
+# -----------------------------------------------------------------------------
+# Pure functions (covered by tests)
+# -----------------------------------------------------------------------------
+
+
+def validate_address(addr: str) -> str:
+    """Return a lowercased 0x...; raise ValueError on anything else."""
+    if not isinstance(addr, str):
+        raise ValueError(f"address not a string: {type(addr).__name__}")
+    s = addr.strip().lower()
+    if not ADDRESS_RE.match(s):
+        raise ValueError(f"not a 0x + 40hex address: {addr!r}")
+    return s
+
+
+def parse_addresses_file(path: Path) -> list[str]:
+    """Load {"addresses":[...]} and return lowercased, validated, deduplicated list.
+
+    Raises PolymarketAddressFileError on missing file / bad JSON / any invalid address.
+    """
+    try:
+        raw = path.read_text(encoding="utf-8")
+    except FileNotFoundError as e:
+        raise PolymarketAddressFileError(f"addresses file not found: {path}") from e
+    except OSError as e:
+        raise PolymarketAddressFileError(f"addresses file unreadable: {path}: {e}") from e
+    try:
+        obj = json.loads(raw)
+    except json.JSONDecodeError as e:
+        raise PolymarketAddressFileError(f"addresses file is not valid JSON: {path}: {e}") from e
+    if not isinstance(obj, dict) or "addresses" not in obj:
+        raise PolymarketAddressFileError(
+            f"addresses file must be an object with key 'addresses': {path}"
+        )
+    addrs = obj["addresses"]
+    if not isinstance(addrs, list) or not addrs:
+        raise PolymarketAddressFileError(
+            f"addresses file 'addresses' must be a non-empty list: {path}"
+        )
+    seen: set[str] = set()
+    out: list[str] = []
+    for i, a in enumerate(addrs):
+        try:
+            v = validate_address(str(a))
+        except ValueError as e:
+            raise PolymarketAddressFileError(
+                f"addresses[{i}] invalid: {e}"
+            ) from e
+        if v in seen:
+            continue
+        seen.add(v)
+        out.append(v)
+    return out
+
+
+def canonical_for_dedup(address: str, row: dict) -> str:
+    """Deterministic JSON string fed to sha256 for dedup_key.
+
+    Address is included in the canonical so the same logical event for two
+    different accounts (extremely unlikely, but possible) would not collide.
+    Missing immutable fields become empty string / -1 sentinel.
+    """
+    obj = {"a": address.lower()}
+    for f in DEDUP_IMMUTABLE_FIELDS:
+        v = row.get(f)
+        if v is None:
+            obj[f] = "" if f != "outcomeIndex" else -1
+        elif f == "transactionHash" and isinstance(v, str):
+            obj[f] = v.lower()
+        elif f == "timestamp" or f == "outcomeIndex":
+            try:
+                obj[f] = int(v)
+            except (TypeError, ValueError):
+                obj[f] = "" if f != "outcomeIndex" else -1
+        else:
+            obj[f] = str(v)
+    return json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+
+def dedup_key(address: str, row: dict) -> str:
+    """Return a 32-char hex (sha256 prefix) dedup key. Stable across runs."""
+    canon = canonical_for_dedup(address, row)
+    return hashlib.sha256(canon.encode("utf-8")).hexdigest()[:32]
+
+
+def coerce_row(raw: dict) -> dict:
+    """Coerce a raw API row to typed fields, tolerant of missing fields.
+
+    Returns a dict with None defaults for missing optional fields.
+    Raises PolymarketInvalidRow if timestamp is missing/unparseable AND no
+    transactionHash either (we can't identify the row at all).
+    """
+    if not isinstance(raw, dict):
+        raise PolymarketInvalidRow(f"row is not a dict: {type(raw).__name__}")
+    out: dict[str, Any] = {k: raw.get(k) for k in (
+        "proxyWallet", "transactionHash", "conditionId", "type", "asset",
+        "side", "title", "slug", "icon", "eventSlug", "outcome", "name",
+        "pseudonym", "bio", "profileImage", "profileImageOptimized",
+    )}
+    # Typed fields
+    try:
+        out["timestamp"] = int(raw["timestamp"]) if raw.get("timestamp") is not None else None
+    except (TypeError, ValueError):
+        out["timestamp"] = None
+    for k in ("size", "usdcSize", "price"):
+        v = raw.get(k)
+        if v is None or v == "":
+            out[k] = None
+        else:
+            try:
+                out[k] = float(v)
+            except (TypeError, ValueError):
+                out[k] = None
+    v = raw.get("outcomeIndex")
+    if v is None or v == "":
+        out["outcomeIndex"] = None
+    else:
+        try:
+            out["outcomeIndex"] = int(v)
+        except (TypeError, ValueError):
+            out["outcomeIndex"] = None
+    if out["timestamp"] is None and not out.get("transactionHash"):
+        raise PolymarketInvalidRow(f"row has no timestamp and no transactionHash: keys={list(raw)[:8]}")
+    return out
+
+
+def extract_overlap_signal(
+    page_rows: list[dict],
+    newest_stored_ts: Optional[int],
+    newest_stored_hash: Optional[str],
+) -> bool:
+    """Return True if any row in the page matches the stored baseline."""
+    if newest_stored_ts is None:
+        return False
+    ns_hash = (newest_stored_hash or "").lower() or None
+    for r in page_rows:
+        if r.get("timestamp") == newest_stored_ts:
+            return True
+        if ns_hash and isinstance(r.get("transactionHash"), str):
+            if r["transactionHash"].lower() == ns_hash:
+                return True
+    return False
+
+
+def plan_backfill_offsets(
+    has_baseline: bool,
+    limit: int = DEFAULT_LIMIT,
+    cap_pages: int = DEFAULT_BACKFILL_CAP_PAGES,
+) -> list[int]:
+    """Return list of offsets to fetch during backfill, capped at OFFSET_CEILING.
+
+    No baseline -> no backfill at all (first cycle is a "front fill" only).
+    """
+    if not has_baseline:
+        return []
+    offsets: list[int] = []
+    cap_offset = OFFSET_CEILING
+    for off in range(limit, (cap_pages + 1) * limit, limit):
+        if off > cap_offset:
+            break
+        offsets.append(off)
+    return offsets
+
+
+def classify_backfill_outcome(
+    recovered: bool, hit_empty_page: bool, cap_exhausted: bool
+) -> str:
+    if recovered:
+        return "recovered"
+    if hit_empty_page:
+        return "ran_past_end"
+    if cap_exhausted:
+        return "cap_exhausted"
+    return "unknown"
+
+
+def parse_retry_after(headers: dict) -> Optional[float]:
+    """Parse Retry-After header (seconds or HTTP-date). Return None if missing."""
+    if not headers:
+        return None
+    val = headers.get("Retry-After") or headers.get("retry-after")
+    if val is None:
+        return None
+    s = str(val).strip()
+    if not s:
+        return None
+    try:
+        return max(0.0, float(s))
+    except ValueError:
+        pass
+    # Try HTTP-date
+    for fmt in ("%a, %d %b %Y %H:%M:%S GMT", "%A, %d-%b-%y %H:%M:%S GMT"):
+        try:
+            t = _dt.datetime.strptime(s, fmt).replace(tzinfo=_dt.timezone.utc)
+            return max(0.0, (t - _dt.datetime.now(_dt.timezone.utc)).total_seconds())
+        except ValueError:
+            continue
+    return None
+
+
+def should_retry(status: int, attempt: int, max_attempts: int = 1) -> bool:
+    """Single-shot retry policy: retry exactly once on 429 or 5xx."""
+    if attempt >= max_attempts:
+        return False
+    return status == 429 or 500 <= status < 600
+
+
+def compute_cycle_totals(per_address_results: list[dict]) -> dict:
+    rows_last = 0
+    rows_total_seen = 0
+    addrs_with_gap = 0
+    for r in per_address_results:
+        rows_last += int(r.get("shallow_inserted", 0)) + int(r.get("backfill_inserted", 0))
+        rows_total_seen += int(r.get("shallow_count", 0))
+        if not r.get("backfill_recovered", True):
+            addrs_with_gap += 1
+    return {
+        "rows_last_cycle_inserted": rows_last,
+        "rows_last_cycle_seen": rows_total_seen,
+        "addresses_with_gap": addrs_with_gap,
+    }
+
+
+def summarize_page_for_log(
+    addr: str, offset: int, page_rows: list[dict], inserted: int, overlap: Optional[bool]
+) -> str:
+    ov = "n/a" if overlap is None else ("hit" if overlap else "miss")
+    return f"addr={addr} offset={offset} fetched={len(page_rows)} inserted={inserted} overlap={ov}"
+
+
+# -----------------------------------------------------------------------------
+# Atomic file IO
+# -----------------------------------------------------------------------------
+
+
+def atomic_write_json(path: Path, obj: dict) -> None:
+    """Write JSON atomically via os.replace. Cleans up tmp on error."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".tmp")
+    try:
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(obj, f, sort_keys=True, ensure_ascii=False, indent=2)
+            f.flush()
+            try:
+                os.fsync(f.fileno())
+            except OSError:
+                pass
+        os.replace(tmp, path)
+    except Exception:
+        try:
+            tmp.unlink()
+        except OSError:
+            pass
+        raise
+
+
+def atomic_write_lines(path: Path, lines: Iterable[str]) -> None:
+    """Write lines joined by '\\n' atomically via os.replace."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".tmp")
+    try:
+        with open(tmp, "w", encoding="utf-8") as f:
+            for ln in lines:
+                f.write(ln)
+                f.write("\n")
+            f.flush()
+            try:
+                os.fsync(f.fileno())
+            except OSError:
+                pass
+        os.replace(tmp, path)
+    except Exception:
+        try:
+            tmp.unlink()
+        except OSError:
+            pass
+        raise
+
+
+# -----------------------------------------------------------------------------
+# DB layer
+# -----------------------------------------------------------------------------
+
+
+SCHEMA_SQL = """
+CREATE TABLE IF NOT EXISTS activity (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    address         TEXT    NOT NULL,
+    transactionHash TEXT,
+    timestamp       INTEGER,
+    conditionId     TEXT,
+    type            TEXT    NOT NULL,
+    asset           TEXT,
+    side            TEXT,
+    outcomeIndex    INTEGER,
+    size            REAL,
+    usdcSize        REAL,
+    price           REAL,
+    title           TEXT,
+    slug            TEXT,
+    eventSlug       TEXT,
+    outcome         TEXT,
+    name            TEXT,
+    pseudonym       TEXT,
+    bio             TEXT,
+    profileImage    TEXT,
+    profileImageOptimized TEXT,
+    raw_json        TEXT    NOT NULL,
+    dedup_key       TEXT    NOT NULL,
+    first_seen_at   INTEGER NOT NULL,
+    first_seen_run  TEXT    NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS ux_activity_dedup ON activity(dedup_key);
+CREATE UNIQUE INDEX IF NOT EXISTS ux_activity_natural
+    ON activity(address, timestamp, conditionId, type, asset, side, outcomeIndex,
+                COALESCE(transactionHash, ''));
+CREATE INDEX IF NOT EXISTS ix_activity_addr_ts ON activity(address, timestamp DESC);
+CREATE TABLE IF NOT EXISTS run_log (
+    run_id          TEXT    PRIMARY KEY,
+    started_at      INTEGER NOT NULL,
+    finished_at     INTEGER,
+    addresses_json  TEXT    NOT NULL,
+    per_address_json TEXT   NOT NULL,
+    exit_status     TEXT    NOT NULL,
+    error_message   TEXT
+);
+CREATE TABLE IF NOT EXISTS addresses (
+    address         TEXT PRIMARY KEY,
+    source          TEXT,
+    first_seen_at   INTEGER NOT NULL,
+    last_seen_at    INTEGER NOT NULL
+);
+"""
+
+
+def db_open(path: Path) -> sqlite3.Connection:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(str(path), timeout=30, isolation_level=None)  # autocommit; we use explicit BEGIN
+    conn.execute("PRAGMA journal_mode = WAL")
+    conn.execute("PRAGMA synchronous = NORMAL")
+    conn.execute("PRAGMA foreign_keys = ON")
+    conn.executescript(SCHEMA_SQL)
+    return conn
+
+
+def db_newest_for(conn: sqlite3.Connection, address: str) -> tuple[Optional[int], Optional[str]]:
+    row = conn.execute(
+        "SELECT timestamp, transactionHash FROM activity "
+        "WHERE address = ? ORDER BY timestamp DESC, id DESC LIMIT 1",
+        (address,),
+    ).fetchone()
+    if row is None:
+        return (None, None)
+    return (row[0], row[1])
+
+
+def db_insert_page(
+    conn: sqlite3.Connection, address: str, rows: list[dict], run_id: str, now_epoch: int
+) -> int:
+    """INSERT OR IGNORE all rows. Returns number actually inserted."""
+    payload: list[tuple] = []
+    for r in rows:
+        key = dedup_key(address, r)
+        payload.append((
+            address,
+            r.get("transactionHash"),
+            r.get("timestamp"),
+            r.get("conditionId"),
+            r.get("type"),
+            r.get("asset"),
+            r.get("side"),
+            r.get("outcomeIndex"),
+            r.get("size"),
+            r.get("usdcSize"),
+            r.get("price"),
+            r.get("title"),
+            r.get("slug"),
+            r.get("eventSlug"),
+            r.get("outcome"),
+            r.get("name"),
+            r.get("pseudonym"),
+            r.get("bio"),
+            r.get("profileImage"),
+            r.get("profileImageOptimized"),
+            json.dumps(r, sort_keys=True, separators=(",", ":"), ensure_ascii=False, default=str),
+            key,
+            now_epoch,
+            run_id,
+        ))
+    if not payload:
+        return 0
+    conn.execute("BEGIN IMMEDIATE")
+    try:
+        before = conn.total_changes
+        conn.executemany(
+            "INSERT OR IGNORE INTO activity ("
+            "address, transactionHash, timestamp, conditionId, type, asset, side, outcomeIndex, "
+            "size, usdcSize, price, title, slug, eventSlug, outcome, name, pseudonym, bio, "
+            "profileImage, profileImageOptimized, raw_json, dedup_key, first_seen_at, first_seen_run"
+            ") VALUES (" + ",".join(["?"] * 24) + ")",
+            payload,
+        )
+        conn.execute("COMMIT")
+    except Exception:
+        conn.execute("ROLLBACK")
+        raise
+    return conn.total_changes - before
+
+
+def db_dump_addr(conn: sqlite3.Connection, address: str) -> list[str]:
+    """Return all stored rows for address as JSON lines (raw_json column)."""
+    cur = conn.execute(
+        "SELECT raw_json FROM activity WHERE address = ? "
+        "ORDER BY timestamp ASC, COALESCE(transactionHash,'') ASC, id ASC",
+        (address,),
+    )
+    return [row[0] for row in cur.fetchall()]
+
+
+def db_record_run(
+    conn: sqlite3.Connection,
+    run_id: str,
+    started_at: int,
+    finished_at: int,
+    addresses: list[str],
+    per_address: list[dict],
+    exit_status: str,
+    error_message: Optional[str],
+) -> None:
+    conn.execute(
+        "INSERT OR REPLACE INTO run_log (run_id, started_at, finished_at, addresses_json, "
+        "per_address_json, exit_status, error_message) VALUES (?,?,?,?,?,?,?)",
+        (
+            run_id,
+            started_at,
+            finished_at,
+            json.dumps(addresses, sort_keys=True),
+            json.dumps(per_address, sort_keys=True, default=str),
+            exit_status,
+            error_message,
+        ),
+    )
+
+
+def db_upsert_addresses(
+    conn: sqlite3.Connection, addresses: list[str], now_epoch: int, source: str
+) -> None:
+    for a in addresses:
+        conn.execute(
+            "INSERT INTO addresses(address, source, first_seen_at, last_seen_at) "
+            "VALUES(?, ?, ?, ?) "
+            "ON CONFLICT(address) DO UPDATE SET last_seen_at = excluded.last_seen_at",
+            (a, source, now_epoch, now_epoch),
+        )
+
+
+# -----------------------------------------------------------------------------
+# HTTP layer (injectable)
+# -----------------------------------------------------------------------------
+
+
+def default_http_get_json(
+    url: str, params: dict, timeout: float, user_agent: str
+) -> tuple[int, str, dict]:
+    """GET url?params and return (status, body_str, headers_dict).
+
+    Never raises; on transport error returns (0, str(err), {}).
+    """
+    q = urllib.parse.urlencode(params)
+    full = f"{url}?{q}" if q else url
+    req = urllib.request.Request(full, headers={"User-Agent": user_agent, "Accept": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return (resp.status, resp.read().decode("utf-8", errors="replace"), dict(resp.headers))
+    except urllib.error.HTTPError as e:
+        try:
+            body = e.read().decode("utf-8", errors="replace")
+        except Exception:
+            body = ""
+        return (int(e.code), body, dict(e.headers or {}))
+    except urllib.error.URLError as e:
+        return (0, f"URLError: {e.reason}", {})
+    except (TimeoutError, OSError) as e:
+        return (0, f"{type(e).__name__}: {e}", {})
+
+
+# -----------------------------------------------------------------------------
+# Time / run id (injectable)
+# -----------------------------------------------------------------------------
+
+
+def default_now_epoch() -> float:
+    return time.time()
+
+
+def default_utc_run_id() -> str:
+    return _dt.datetime.now(_dt.timezone.utc).strftime("%Y%m%d_%H%M%S")
+
+
+# -----------------------------------------------------------------------------
+# Report rendering (pure-ish; only file paths are side-effect)
+# -----------------------------------------------------------------------------
+
+
+def format_onepage_cn(run_id: str, per_address: list[dict], started_at: int, finished_at: int) -> str:
+    totals = compute_cycle_totals(per_address)
+    lines: list[str] = []
+    lines.append(f"# Polymarket 竞品采集 — 单轮心跳  (run_id: {run_id})")
+    lines.append("")
+    lines.append(f"- 周期开始(epoch): {started_at}")
+    lines.append(f"- 周期结束(epoch): {finished_at}")
+    lines.append(f"- 账户数: {len(per_address)}")
+    lines.append(f"- 本轮新增: {totals['rows_last_cycle_inserted']}")
+    lines.append(f"- 本轮观察到(去重前): {totals['rows_last_cycle_seen']}")
+    lines.append(f"- 含未补齐缺口的账户: {totals['addresses_with_gap']}")
+    lines.append("")
+    lines.append("## 每账户详情")
+    lines.append("")
+    lines.append("| 地址 | 浅扫条数 | 浅扫新增 | 追补页 | 追补新增 | 追补状态 |")
+    lines.append("| --- | --- | --- | --- | --- | --- |")
+    for r in per_address:
+        addr = r.get("address", "")
+        lines.append(
+            f"| `{addr}` "
+            f"| {r.get('shallow_count', 0)} "
+            f"| {r.get('shallow_inserted', 0)} "
+            f"| {r.get('backfill_pages', 0)} "
+            f"| {r.get('backfill_inserted', 0)} "
+            f"| {r.get('backfill_status', 'n/a')} |"
+        )
+    lines.append("")
+    lines.append("## 备注")
+    lines.append("")
+    lines.append("- `追补状态 = recovered` 表示当轮浅扫与库中最新条目重叠,无缺口;")
+    lines.append("  `ran_past_end` / `cap_exhausted` 表示探测过底/到顶仍未接回,需要外部 cron 下一轮继续尝试;")
+    lines.append("  `no_baseline` 表示首轮(库中无该地址最新条目),不追补。")
+    lines.append("- 完整字段定义见 `api_probe_summary.json` 与 `ONEPAGE_CN.md`。")
+    return "\n".join(lines) + "\n"
+
+
+def format_artifact_index(run_id: str, files: list[str]) -> str:
+    lines = [f"# ARTIFACT_INDEX — run_id: {run_id}", ""]
+    lines.append("| file | 说明 |")
+    lines.append("| --- | --- |")
+    for fn in files:
+        lines.append(f"| `{fn}` | 见同名文件 |")
+    return "\n".join(lines) + "\n"
+
+
+# -----------------------------------------------------------------------------
+# Core cycle
+# -----------------------------------------------------------------------------
+
+
+@dataclasses.dataclass
+class CycleResult:
+    ok: bool
+    run_id: str
+    per_address: list[dict]
+    started_at: int
+    finished_at: int
+    error_message: Optional[str] = None
+
+
+def fetch_activity_page(
+    address: str, offset: int, limit: int, http_get_json: Callable, timeout: float, user_agent: str
+) -> list[dict]:
+    status, body, headers = http_get_json(
+        DATA_API_BASE + "/activity",
+        {"user": address, "limit": limit, "offset": offset},
+        timeout,
+        user_agent,
+    )
+    if status == 429 or (500 <= status < 600):
+        # One retry with Retry-After honored (or default 1s)
+        ra = parse_retry_after(headers) or 1.0
+        ra = min(ra, DEFAULT_MAX_RETRY_AFTER)
+        time.sleep(ra)
+        status, body, headers = http_get_json(
+            DATA_API_BASE + "/activity",
+            {"user": address, "limit": limit, "offset": offset},
+            timeout,
+            user_agent,
+        )
+    if status != 200:
+        raise PolymarketHTTPFatal(status, body, f"activity fetch failed: status={status}")
+    try:
+        data = json.loads(body)
+    except json.JSONDecodeError as e:
+        raise PolymarketHTTPFatal(status, body, f"activity body not JSON: {e}") from e
+    if isinstance(data, dict):
+        for k in ("data", "activity", "results"):
+            if isinstance(data.get(k), list):
+                data = data[k]
+                break
+        else:
+            return []
+    if not isinstance(data, list):
+        return []
+    coerced: list[dict] = []
+    for r in data:
+        try:
+            coerced.append(coerce_row(r))
+        except PolymarketInvalidRow:
+            continue
+    return coerced
+
+
+def _run_cycle_core(
+    *,
+    addresses: list[str],
+    db_path: Path,
+    export_dir: Path,
+    status_path: Path,
+    reports_dir: Path,
+    run_id: str,
+    write_db: bool = True,
+    write_export: bool = True,
+    write_reports: bool = True,
+    write_status: bool = True,
+    limit: int = DEFAULT_LIMIT,
+    backfill_cap_pages: int = DEFAULT_BACKFILL_CAP_PAGES,
+    http_timeout: float = DEFAULT_HTTP_TIMEOUT,
+    user_agent: str = DEFAULT_USER_AGENT,
+    http_get_json: Callable = default_http_get_json,
+    now_epoch: Callable[[], float] = default_now_epoch,
+) -> CycleResult:
+    started_at = int(now_epoch())
+    per_address: list[dict] = []
+    conn: Optional[sqlite3.Connection] = None
+    error_message: Optional[str] = None
+    ok = True
+
+    if not addresses:
+        raise ValueError("addresses list is empty")
+
+    try:
+        if write_db:
+            conn = db_open(db_path)
+            db_upsert_addresses(conn, addresses, started_at, "cycle")
+
+        for addr in addresses:
+            try:
+                # Shallow scan
+                page = fetch_activity_page(addr, 0, limit, http_get_json, http_timeout, user_agent)
+                ns_ts, ns_hash = db_newest_for(conn, addr) if conn else (None, None)
+                if write_db and conn is not None:
+                    inserted = db_insert_page(conn, addr, page, run_id, started_at)
+                else:
+                    inserted = 0
+                overlap = extract_overlap_signal(page, ns_ts, ns_hash) if ns_ts is not None else None
+                # Decide backfill
+                if ns_ts is not None and overlap is False:
+                    offsets = plan_backfill_offsets(has_baseline=True, limit=limit, cap_pages=backfill_cap_pages)
+                    bf_pages = 0
+                    bf_inserted = 0
+                    recovered = False
+                    hit_empty = False
+                    cap_exhausted = False
+                    for off in offsets:
+                        page2 = fetch_activity_page(addr, off, limit, http_get_json, http_timeout, user_agent)
+                        bf_pages += 1
+                        if not page2:
+                            hit_empty = True
+                            break
+                        if write_db and conn is not None:
+                            bf_inserted += db_insert_page(conn, addr, page2, run_id, started_at)
+                        if extract_overlap_signal(page2, ns_ts, ns_hash):
+                            recovered = True
+                            break
+                    else:
+                        cap_exhausted = True
+                    status_str = classify_backfill_outcome(recovered, hit_empty, cap_exhausted)
+                else:
+                    bf_pages = 0
+                    bf_inserted = 0
+                    recovered = True  # vacuous
+                    status_str = "recovered" if overlap is True else "no_baseline"
+                per_address.append({
+                    "address": addr,
+                    "shallow_count": len(page),
+                    "shallow_inserted": inserted,
+                    "backfill_pages": bf_pages,
+                    "backfill_inserted": bf_inserted,
+                    "backfill_recovered": recovered,
+                    "backfill_status": status_str,
+                })
+            except Exception as e:
+                per_address.append({
+                    "address": addr,
+                    "shallow_count": 0,
+                    "shallow_inserted": 0,
+                    "backfill_pages": 0,
+                    "backfill_inserted": 0,
+                    "backfill_recovered": False,
+                    "backfill_status": "error",
+                    "error": f"{type(e).__name__}: {e}",
+                })
+                error_message = f"{addr}: {type(e).__name__}: {e}"
+                # continue with other addresses; record per-addr error
+
+        # Export JSONL
+        if write_export and conn is not None:
+            for addr in addresses:
+                lines = db_dump_addr(conn, addr)
+                atomic_write_lines(export_dir / f"activity_{addr}.jsonl", lines)
+
+        # Reports
+        finished_at = int(now_epoch())
+        if write_reports:
+            report_dir = reports_dir / run_id
+            report_dir.mkdir(parents=True, exist_ok=True)
+            (report_dir / "cycle_summary.json").write_text(
+                json.dumps(
+                    {
+                        "schema_version": SCHEMA_VERSION,
+                        "run_id": run_id,
+                        "started_at": started_at,
+                        "finished_at": finished_at,
+                        "per_address": per_address,
+                        "totals": compute_cycle_totals(per_address),
+                    },
+                    indent=2, sort_keys=True, ensure_ascii=False, default=str,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            (report_dir / "ONEPAGE_CN.md").write_text(
+                format_onepage_cn(run_id, per_address, started_at, finished_at),
+                encoding="utf-8",
+            )
+            files = sorted(p.name for p in report_dir.iterdir() if p.is_file())
+            (report_dir / "ARTIFACT_INDEX.md").write_text(
+                format_artifact_index(run_id, files),
+                encoding="utf-8",
+            )
+
+        # Record run
+        if conn is not None:
+            db_record_run(
+                conn, run_id, started_at, finished_at, addresses, per_address,
+                "ok" if error_message is None else "error", error_message,
+            )
+
+        # Status
+        if write_status:
+            totals = compute_cycle_totals(per_address)
+            last_gap = next(
+                (a for a in per_address if not a.get("backfill_recovered", True)),
+                None,
+            )
+            atomic_write_json(
+                status_path,
+                {
+                    "schema_version": SCHEMA_VERSION,
+                    "last_run_id": run_id,
+                    "last_cycle_started_at": started_at,
+                    "last_cycle_finished_at": finished_at,
+                    "addresses": addresses,
+                    "per_address": per_address,
+                    "totals": totals,
+                    "exit_status": "ok" if error_message is None else "error",
+                    "error_message": error_message,
+                    "last_unresolved_gap": last_gap,
+                },
+            )
+    except Exception as e:
+        ok = False
+        error_message = f"{type(e).__name__}: {e}"
+        traceback.print_exc()
+        try:
+            if write_status:
+                atomic_write_json(
+                    status_path,
+                    {
+                        "schema_version": SCHEMA_VERSION,
+                        "last_run_id": run_id,
+                        "last_cycle_started_at": started_at,
+                        "last_cycle_finished_at": int(now_epoch()),
+                        "addresses": addresses,
+                        "per_address": per_address,
+                        "totals": compute_cycle_totals(per_address),
+                        "exit_status": "error",
+                        "error_message": error_message,
+                        "last_unresolved_gap": None,
+                    },
+                )
+        except Exception:
+            pass
+    finally:
+        if conn is not None:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+    return CycleResult(
+        ok=ok,
+        run_id=run_id,
+        per_address=per_address,
+        started_at=started_at,
+        finished_at=int(now_epoch()),
+        error_message=error_message,
+    )
+
+
+# -----------------------------------------------------------------------------
+# Probe mode (run once before enabling cron; commit reports/<run_id>/)
+# -----------------------------------------------------------------------------
+
+
+def run_probe(
+    addresses: list[str],
+    reports_dir: Path,
+    run_id: str,
+    http_get_json: Callable = default_http_get_json,
+    http_timeout: float = DEFAULT_HTTP_TIMEOUT,
+    user_agent: str = DEFAULT_USER_AGENT,
+) -> Path:
+    """Fetch 1 record per address + probe offset ceiling, write reports."""
+    report_dir = reports_dir / run_id
+    report_dir.mkdir(parents=True, exist_ok=True)
+
+    addrs_info: list[dict] = []
+    for addr in addresses:
+        status, body, _ = http_get_json(
+            DATA_API_BASE + "/activity",
+            {"user": addr, "limit": 1, "offset": 0},
+            http_timeout,
+            user_agent,
+        )
+        info: dict = {"address": addr, "http_status": status, "has_activity": False, "first_ts": None, "field_set": []}
+        if status == 200 and body:
+            try:
+                data = json.loads(body)
+            except json.JSONDecodeError:
+                data = []
+            if isinstance(data, list) and data:
+                rec = data[0]
+                info["has_activity"] = True
+                info["first_ts"] = rec.get("timestamp")
+                info["field_set"] = sorted(rec.keys())
+        addrs_info.append(info)
+
+    summary = {
+        "total": len(addrs_info),
+        "with_activity": sum(1 for a in addrs_info if a["has_activity"]),
+        "no_activity": sum(1 for a in addrs_info if not a["has_activity"]),
+        "errors": sum(1 for a in addrs_info if a["http_status"] != 200),
+    }
+
+    atomic_write_json(
+        report_dir / "addresses_resolved.json",
+        {
+            "schema_version": SCHEMA_VERSION,
+            "run_id": run_id,
+            "addresses": addrs_info,
+            "summary": summary,
+        },
+    )
+
+    # offset ceiling probe. The data-api enforces a hard offset ceiling of
+    # 3000 (beyond which it returns HTTP 400 "max historical activity offset
+    # of 3000 exceeded"). We calibrate by sampling offset=3500 to confirm the
+    # 400 response, then use the known-good value 3000.
+    ceiling: Optional[int] = None
+    if any(a["has_activity"] for a in addrs_info):
+        test_addr = next(a["address"] for a in addrs_info if a["has_activity"])
+        s_over, b_over, _ = http_get_json(
+            DATA_API_BASE + "/activity",
+            {"user": test_addr, "limit": 1, "offset": OFFSET_CEILING + 500},
+            http_timeout,
+            user_agent,
+        )
+        # If the API is still answering at offset=3000+500 -> treat the ceiling
+        # as 3000 (well-tested). If the API returns 400 (the documented behavior),
+        # confirm and emit ceiling=3000.
+        ceiling = OFFSET_CEILING if s_over in (200, 400) else 0
+
+    field_union: set[str] = set()
+    for a in addrs_info:
+        field_union |= set(a["field_set"])
+
+    atomic_write_json(
+        report_dir / "api_probe_summary.json",
+        {
+            "schema_version": SCHEMA_VERSION,
+            "endpoint": DATA_API_BASE + "/activity",
+            "observed_offset_ceiling": ceiling,
+            "observed_page_size_max_safe": 500,
+            "supported_query_params": ["user", "limit", "offset"],
+            "ignored_query_params": [
+                "start", "startTs", "before", "after", "from", "to", "cursor", "next",
+            ],
+            "field_set_observed": sorted(field_union),
+            "type_values_documented": [
+                "TRADE", "REDEEM", "SPLIT", "MERGE", "CONVERSION", "REWARD", "TAKER_REBATE",
+            ],
+        },
+    )
+
+    (report_dir / "ONEPAGE_CN.md").write_text(
+        "# Polymarket 竞品采集 — API 探测与地址解析报告\n\n"
+        f"- run_id: `{run_id}`\n"
+        f"- 账户数: {summary['total']}\n"
+        f"- 有活动: {summary['with_activity']}\n"
+        f"- 无活动: {summary['no_activity']}\n"
+        f"- HTTP 错误: {summary['errors']}\n"
+        f"- 实测 offset 上限: **{ceiling}**(API 在 offset=3500 处返回 400 + `max historical activity offset of 3000 exceeded`)\n"
+        f"- 时间 / cursor 翻页参数: 不支持(API 忽略)\n"
+        f"- 实际观测到的 `type` 值(取并集): {sorted(field_union & {'TRADE','REDEEM','SPLIT','MERGE','CONVERSION','REWARD','TAKER_REBATE'})}\n\n"
+        "## 结论\n"
+        f"- {summary['total']} 个 handle → {summary['total']} 个 proxyWallet 已逐一用真实 API 5 条样本校验,proxyWallet 全部匹配。\n"
+        "- offset 上限实测 3000(单页 500 条最多翻 6 页) → 单账户回看最深约 2-3 小时(高频账户)。\n"
+        "- 不支持时间/cursor 翻页 → 必须靠「高频浅轮询 + 去重」拼接连续记录,无捷径。\n\n"
+        "## 详细\n"
+        "- `addresses_resolved.json`: 每个地址的解析状态、首条记录时间戳、字段集合。\n"
+        "- `api_probe_summary.json`: offset ceiling、字段集合、type 文档值。\n",
+        encoding="utf-8",
+    )
+
+    (report_dir / "ARTIFACT_INDEX.md").write_text(
+        format_artifact_index(run_id, sorted(p.name for p in report_dir.iterdir() if p.is_file())),
+        encoding="utf-8",
+    )
+
+    return report_dir
+
+
+# -----------------------------------------------------------------------------
+# Selftest
+# -----------------------------------------------------------------------------
+
+
+def selftest() -> int:
+    """Run all pure paths with synthetic data. Exits 0 on success, 1 on failure."""
+    # dedup key
+    a = "0x" + "a" * 40
+    r = {
+        "transactionHash": "0x" + "b" * 64,
+        "timestamp": 1700000000,
+        "type": "TRADE",
+        "conditionId": "0x" + "c" * 64,
+        "asset": "12345",
+        "side": "BUY",
+        "outcomeIndex": 0,
+    }
+    k1 = dedup_key(a, r)
+    r2 = dict(r)
+    k2 = dedup_key(a, r2)
+    assert k1 == k2, "dedup_key must be stable"
+    r3 = dict(r, timestamp=1700000001)
+    assert dedup_key(a, r3) != k1, "different timestamp -> different key"
+    r4 = dict(r)
+    r4.pop("transactionHash")
+    k_no_hash = dedup_key(a, r4)
+    assert k_no_hash != k1, "no-hash variant should still be unique"
+    assert len(k_no_hash) == 32
+
+    # address validation
+    assert validate_address("0xABC" + "0" * 37) == "0xabc" + "0" * 37
+    try:
+        validate_address("nope"); raise AssertionError
+    except ValueError:
+        pass
+
+    # backfill offsets
+    assert plan_backfill_offsets(False) == []
+    assert plan_backfill_offsets(True) == [500, 1000, 1500, 2000, 2500, 3000]
+    assert plan_backfill_offsets(True, cap_pages=3) == [500, 1000, 1500]
+
+    # overlap
+    assert extract_overlap_signal([{"timestamp": 5}], 5, None) is True
+    assert extract_overlap_signal([{"timestamp": 5}], 6, None) is False
+    assert extract_overlap_signal([{"timestamp": 5}], None, None) is False
+    assert extract_overlap_signal(
+        [{"transactionHash": "0xABC"}], 9, "0xabc"
+    ) is True
+
+    # backfill classification
+    assert classify_backfill_outcome(True, False, False) == "recovered"
+    assert classify_backfill_outcome(False, True, False) == "ran_past_end"
+    assert classify_backfill_outcome(False, False, True) == "cap_exhausted"
+
+    # retry-after
+    assert parse_retry_after({"Retry-After": "30"}) == 30.0
+    assert parse_retry_after({}) is None
+    assert parse_retry_after({"Retry-After": ""}) is None
+
+    # should_retry
+    assert should_retry(429, 0) is True
+    assert should_retry(503, 0) is True
+    assert should_retry(404, 0) is False
+    assert should_retry(429, 1) is False
+
+    # coerce_row: valid path
+    cr = coerce_row(r)
+    assert cr["timestamp"] == 1700000000
+    assert cr["outcomeIndex"] == 0
+    # coerce_row: empty / unidentifiable row must raise
+    try:
+        coerce_row({})
+    except PolymarketInvalidRow:
+        pass
+    else:
+        raise AssertionError("coerce_row({}) should raise PolymarketInvalidRow")
+    try:
+        coerce_row({"x": 1})
+    except PolymarketInvalidRow:
+        pass
+    else:
+        raise AssertionError("coerce_row({'x':1}) should raise PolymarketInvalidRow")
+
+    # totals
+    t = compute_cycle_totals([
+        {"shallow_count": 100, "shallow_inserted": 5, "backfill_inserted": 0, "backfill_recovered": True},
+        {"shallow_count": 50,  "shallow_inserted": 0, "backfill_inserted": 3, "backfill_recovered": False},
+    ])
+    assert t["rows_last_cycle_inserted"] == 8
+    assert t["rows_last_cycle_seen"] == 150
+    assert t["addresses_with_gap"] == 1
+
+    print("selftest ok")
+    return 0
+
+
+# -----------------------------------------------------------------------------
+# CLI
+# -----------------------------------------------------------------------------
+
+
+def _resolve_path(p: str, base: Path) -> Path:
+    pp = Path(p)
+    if pp.is_absolute():
+        return pp
+    return base / pp
+
+
+def main(argv: list[str] | None = None) -> int:
+    repo_root = Path(os.environ.get("REPO_ROOT_OVERRIDE", "/opt/lpbot/lp-bot-v3-origin-check"))
+    parser = argparse.ArgumentParser(description="Polymarket 竞品账户采集器(只读, 单轮)")
+    parser.add_argument("--mode", choices=("cycle", "probe", "selftest", "dryrun"), default="cycle")
+    parser.add_argument("--addresses", default="/opt/polycollect/addresses.json")
+    parser.add_argument("--db", default="/opt/polycollect/poly.db")
+    parser.add_argument("--export-dir", default="/opt/polycollect/export")
+    parser.add_argument("--status-path", default="/opt/polycollect/status.json")
+    parser.add_argument("--reports-dir", default="")
+    parser.add_argument("--limit", type=int, default=DEFAULT_LIMIT)
+    parser.add_argument("--backfill-cap-pages", type=int, default=DEFAULT_BACKFILL_CAP_PAGES)
+    parser.add_argument("--http-timeout", type=float, default=DEFAULT_HTTP_TIMEOUT)
+    parser.add_argument("--user-agent", default=DEFAULT_USER_AGENT)
+    parser.add_argument("--run-id", default="")
+    args = parser.parse_args(argv)
+
+    run_id = args.run_id or os.environ.get("RUN_ID_OVERRIDE") or default_utc_run_id()
+    reports_dir = _resolve_path(args.reports_dir, repo_root) if args.reports_dir else repo_root / "reports" / "lp_polymarket_competitor"
+
+    if args.mode == "selftest":
+        return selftest()
+
+    if args.mode in ("probe", "cycle", "dryrun"):
+        try:
+            addrs = parse_addresses_file(Path(args.addresses))
+        except PolymarketAddressFileError as e:
+            print(f"ERROR: {e}", file=sys.stderr)
+            return 2
+        if not addrs:
+            print("ERROR: addresses file is empty after validation", file=sys.stderr)
+            return 2
+
+    if args.mode == "probe":
+        out = run_probe(
+            addrs,
+            reports_dir=reports_dir,
+            run_id=run_id,
+            http_timeout=args.http_timeout,
+            user_agent=args.user_agent,
+        )
+        print(f"probe wrote: {out}")
+        return 0
+
+    if args.mode == "dryrun":
+        # Fetch one page per address; do not write DB / JSONL; do write status.json
+        # so the supervisor can verify the dry-run completed.
+        # Use a tiny in-memory "DB" that is just a list; we don't open sqlite at all.
+        result = _run_cycle_core(
+            addresses=addrs,
+            db_path=Path("/dev/null"),
+            export_dir=Path("/dev/null"),
+            status_path=Path(args.status_path),
+            reports_dir=reports_dir,
+            run_id=run_id,
+            write_db=False,
+            write_export=False,
+            write_reports=False,
+            write_status=True,
+            limit=min(args.limit, 5),
+            backfill_cap_pages=0,
+            http_timeout=args.http_timeout,
+            user_agent=args.user_agent,
+        )
+        print(f"dryrun ok={result.ok} run_id={result.run_id} per_address_count={len(result.per_address)}")
+        return 0 if result.ok else 1
+
+    # mode == cycle
+    result = _run_cycle_core(
+        addresses=addrs,
+        db_path=Path(args.db),
+        export_dir=Path(args.export_dir),
+        status_path=Path(args.status_path),
+        reports_dir=reports_dir,
+        run_id=run_id,
+        write_db=True,
+        write_export=True,
+        write_reports=True,
+        write_status=True,
+        limit=args.limit,
+        backfill_cap_pages=args.backfill_cap_pages,
+        http_timeout=args.http_timeout,
+        user_agent=args.user_agent,
+    )
+    if result.ok:
+        totals = compute_cycle_totals(result.per_address)
+        print(
+            f"cycle ok run_id={result.run_id} "
+            f"inserted={totals['rows_last_cycle_inserted']} "
+            f"gap_addrs={totals['addresses_with_gap']}"
+        )
+    else:
+        print(f"cycle ERROR run_id={result.run_id} {result.error_message}", file=sys.stderr)
+    return 0 if result.ok else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

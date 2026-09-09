@@ -18,12 +18,20 @@ from scripts.lp_rh_readiness_v1_readonly import (  # noqa: E402
     stage_a_status,
     stage_b_status,
 )
+from scripts.lp_rh_store_v1_readonly import (  # noqa: E402
+    DEFAULT_DB_PATH,
+    insert_row,
+    migrate,
+    open_store,
+)
 
 # The real shape returned by lp_rh_store.budget_status -- there is no
 # "over_budget" key.  Fixtures that invent one test a contract the code
 # does not have, which is how a store at 0.7% of budget came out blocked.
 BUDGET_OK = {"bytes": 15077192, "soft_budget_bytes": 2147483648,
              "fraction": 0.007, "state": "OK"}
+BUDGET_WARN = {"bytes": 1900000000, "soft_budget_bytes": 2147483648,
+               "fraction": 0.88, "state": "WARN"}
 BUDGET_OVER = {"bytes": 2147483649, "soft_budget_bytes": 2147483648,
                "fraction": 1.0, "state": "OVER"}
 
@@ -220,6 +228,32 @@ def test_stage_a_budget_clean_passes():
     a = passing_stage_a()
     assert "STAGE_A_BUDGET_EXCEEDED" not in a["blockers"]
     assert a["passed"] is True
+
+
+def test_stage_a_budget_warn_passes():
+    """RH-02bd: Budget WARN (soft threshold reached, but still <= 100%) does NOT block."""
+    a_warn = stage_a_status(
+        first_sample="2026-09-08T00:00:00Z", last_sample="2026-09-11T00:00:00Z",
+        expected_interval_secs=15, actual_samples=72 * 3600 // 15,
+        synthetic_tests_passed=True, key_field_health={"passed": True},
+        pool_attestation_status={"passed": True}, budget=BUDGET_WARN,
+        invariant_violations=0, unknown_state_positions=0,
+    )
+    assert a_warn["passed"] is True
+    assert "STAGE_A_BUDGET_EXCEEDED" not in a_warn["blockers"]
+
+
+def test_stage_a_budget_over_blocks():
+    """RH-02bd: Budget OVER (exceeding soft budget) strictly blocks."""
+    a_over = stage_a_status(
+        first_sample="2026-09-08T00:00:00Z", last_sample="2026-09-11T00:00:00Z",
+        expected_interval_secs=15, actual_samples=72 * 3600 // 15,
+        synthetic_tests_passed=True, key_field_health={"passed": True},
+        pool_attestation_status={"passed": True}, budget=BUDGET_OVER,
+        invariant_violations=0, unknown_state_positions=0,
+    )
+    assert a_over["passed"] is False
+    assert "STAGE_A_BUDGET_EXCEEDED" in a_over["blockers"]
 
 
 def test_stage_a_invariant_violations_blocks():
@@ -632,3 +666,160 @@ def test_stage_a_regression_preserves_duration_and_coverage_logic():
     )
     assert a3["passed"] is True
     assert a3["blockers"] == []
+
+
+def test_address_case_insensitivity_coverage_and_build_state(tmp_path):
+    """RH-02bd Acceptance 1: lowercase, uppercase, and EIP-55 checksum addresses
+    yield identical results in coverage_for_asset, audit_key_field_health, and _build_state."""
+    from scripts.lp_rh_readiness_v1_readonly import (
+        _build_state,
+        audit_key_field_health,
+        audit_pool_attestation,
+        coverage_for_asset,
+    )
+    from scripts.lp_rh_coverage_audit_v1_readonly import fetch_asset_sample_times
+
+    db_file = tmp_path / "test_case.db"
+    conn = open_store(str(db_file))
+    migrate(conn)
+
+    # Insert sample data with lowercase address
+    addr_lower = "0x52e65b17fb6e5ba00ed806f37afcd2daa50271ca"
+    addr_upper = "0X52E65B17FB6E5BA00ED806F37AFCD2DAA50271CA"
+    addr_checksum = "0x52E65b17fb6E5bA00ed806f37AfCD2Daa50271Ca"
+
+    # Seed contract attestation
+    # Columns below are the store's actual NOT NULL set, read from
+    # PRAGMA table_info rather than assumed:
+    #   attestations: chain_id, address, block_hash, policy_version,
+    #                 attestation_status, created_at
+    #   pool_registry: chain_id, protocol, pool_key, attestation_status,
+    #                  discovered_at
+    insert_row(conn, "rh_contract_attestations", {
+        "chain_id": 4663,
+        "address": addr_lower,
+        "block_hash": "0x" + "ab" * 32,
+        "policy_version": "v1",
+        "attestation_status": "ATTESTED_SAME_BLOCK",
+        "created_at": "2026-09-08T00:00:00Z",
+    })
+    insert_row(conn, "rh_pool_registry", {
+        "chain_id": 4663,
+        "protocol": "v3",
+        "pool_key": addr_lower,
+        "attestation_status": "ATTESTED_SAME_BLOCK",
+        "discovered_at": "2026-09-08T00:00:00Z",
+    })
+
+    # Seed market states
+    for i in range(5):
+        insert_row(conn, "rh_market_states", {
+            "asset_address": addr_lower,
+            "sample_time": f"2026-09-08T00:0{i}:00Z",
+            "chain_id": 4663,
+            "health_flags_json": "[]",
+            "reference_mid": "2484.5",
+            "multiplier_human": "1.0",
+            "session": "REGULAR",
+            "fee_growth_global_0": "1000",
+            "fee_growth_global_1": "2000",
+        })
+
+    # 1. fetch_asset_sample_times
+    res_lower = fetch_asset_sample_times(conn, asset_address=addr_lower)
+    res_upper = fetch_asset_sample_times(conn, asset_address=addr_upper)
+    res_check = fetch_asset_sample_times(conn, asset_address=addr_checksum)
+    assert len(res_lower) == 5
+    assert res_lower == res_upper == res_check
+
+    # 2. coverage_for_asset
+    cov_lower = coverage_for_asset(conn, asset_address=addr_lower, expected_interval_secs=60)
+    cov_upper = coverage_for_asset(conn, asset_address=addr_upper, expected_interval_secs=60)
+    cov_check = coverage_for_asset(conn, asset_address=addr_checksum, expected_interval_secs=60)
+    assert cov_lower["has_data"] is True
+    # coverage_for_asset returns analysis/coverage_ratio/status/verdict; there
+    # is no sample_count key.  Assert on what it actually returns.
+    assert cov_lower["status"] == "OK"
+    assert cov_lower["coverage_ratio"] is not None
+    # asset_address echoes the caller's spelling; compare the query results.
+    def _no_echo(d):
+        return {k: v for k, v in d.items() if k != "asset_address"}
+    assert _no_echo(cov_lower) == _no_echo(cov_upper) == _no_echo(cov_check)
+
+    # 3. audit_key_field_health
+    kf_lower = audit_key_field_health(conn, asset_address=addr_lower)
+    kf_upper = audit_key_field_health(conn, asset_address=addr_upper)
+    kf_check = audit_key_field_health(conn, asset_address=addr_checksum)
+    assert kf_lower["passed"] is True
+    assert _no_echo(kf_lower) == _no_echo(kf_upper) == _no_echo(kf_check)
+
+    # 4. _build_state
+    st_lower = _build_state(conn, str(db_file), 60.0, asset_address=addr_lower, synthetic_tests_passed=True)
+    st_upper = _build_state(conn, str(db_file), 60.0, asset_address=addr_upper, synthetic_tests_passed=True)
+    st_check = _build_state(conn, str(db_file), 60.0, asset_address=addr_checksum, synthetic_tests_passed=True)
+    assert st_lower["stage_a"]["actual_samples"] == 5
+    assert st_lower["stage_a"]["actual_samples"] == st_upper["stage_a"]["actual_samples"] == st_check["stage_a"]["actual_samples"]
+    assert st_lower["stage_a"]["blockers"] == st_upper["stage_a"]["blockers"] == st_check["stage_a"]["blockers"]
+    conn.close()
+
+
+def test_audit_invariant_violations_clean_and_detected(tmp_path):
+    """RH-02bd Acceptance 2: audit_invariant_violations and automatic _build_state pipeline."""
+    from scripts.lp_rh_readiness_v1_readonly import (
+        _build_state,
+        audit_invariant_violations,
+    )
+
+    db_file = tmp_path / "test_inv.db"
+    conn = open_store(str(db_file))
+    migrate(conn)
+
+    # 1. Clean DB
+    clean_audit = audit_invariant_violations(conn)
+    assert clean_audit["passed"] is True
+    assert clean_audit["violations_count"] == 0
+
+    # 2. Insert invalid state: negative reference_mid in rh_market_states
+    insert_row(conn, "rh_market_states", {
+        "asset_address": "0x111",
+        "chain_id": 4663,
+            "health_flags_json": "[]",
+            "sample_time": "2026-09-08T00:00:00Z",
+        "reference_mid": "-10.0",
+        "multiplier_human": "1.0",
+        "session": "REGULAR",
+    })
+    bad_audit = audit_invariant_violations(conn)
+    assert bad_audit["passed"] is False
+    assert bad_audit["violations_count"] == 1
+    assert any("non_positive_reference_mid" in d for d in bad_audit["details"])
+
+    # 3. Clean DB _build_state does NOT add STAGE_A_INVARIANT_VIOLATIONS
+    # Insert valid row for 0x222
+    for i in range(10):
+        insert_row(conn, "rh_market_states", {
+            "asset_address": "0x222",
+            "chain_id": 4663,
+            "health_flags_json": "[]",
+            "sample_time": f"2026-09-08T0{i}:00:00Z",
+            "reference_mid": "100.0",
+            "multiplier_human": "1.0",
+            "session": "REGULAR",
+            "fee_growth_global_0": "10",
+            "fee_growth_global_1": "20",
+        })
+    insert_row(conn, "rh_contract_attestations", {
+        "chain_id": 4663, "address": "0x222", "block_hash": "0x" + "cd" * 32,
+        "policy_version": "v1", "attestation_status": "ATTESTED_SAME_BLOCK",
+        "created_at": "2026-09-08T00:00:00Z",
+    })
+    insert_row(conn, "rh_pool_registry", {
+        "chain_id": 4663, "protocol": "v3", "pool_key": "0x222",
+        "attestation_status": "ATTESTED_SAME_BLOCK",
+        "discovered_at": "2026-09-08T00:00:00Z",
+    })
+    st = _build_state(conn, str(db_file), 3600.0, asset_address="0x222", synthetic_tests_passed=True)
+    # The negative mid on 0x111 was caught:
+    assert "STAGE_A_INVARIANT_VIOLATIONS" in st["stage_a"]["blockers"]
+    conn.close()
+

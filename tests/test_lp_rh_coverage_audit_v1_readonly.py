@@ -279,3 +279,25 @@ def test_asset_address_is_required():
             coverage_for_asset(conn, expected_interval_secs=15)
     finally:
         conn.close()
+
+
+def test_asset_address_case_insensitivity():
+    """RH-02bd Acceptance 1: lowercase, uppercase, and mixed-case/checksum addresses
+    return identical sample times and coverage results."""
+    conn = _asset_coverage_db()
+    try:
+        # _asset_coverage_db inserts "asset-a" and "asset-b" (116 rows each).
+        res_lower = coverage_for_asset(conn, asset_address="asset-a", expected_interval_secs=15)
+        res_upper = coverage_for_asset(conn, asset_address="ASSET-A", expected_interval_secs=15)
+        res_mixed = coverage_for_asset(conn, asset_address="Asset-A", expected_interval_secs=15)
+        assert res_lower["has_data"] is True
+        # An EVM address in EIP-55 checksum form names the same asset as its
+        # lowercase spelling, so the query results must agree.  The echoed
+        # asset_address reflects the caller's own spelling and is excluded:
+        # normalising the echo would be a separate decision.
+        def _without_echo(d):
+            return {k: v for k, v in d.items() if k != "asset_address"}
+        assert _without_echo(res_lower) == _without_echo(res_upper) == _without_echo(res_mixed)
+    finally:
+        conn.close()
+

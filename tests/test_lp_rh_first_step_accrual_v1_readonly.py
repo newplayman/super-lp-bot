@@ -9,12 +9,13 @@ import sys
 from datetime import datetime
 from decimal import Decimal
 
-# RH-02al: NAV is wallet + marked position value + accrued fees, so a fee
-# increment of ~0.03 rides on a NAV of ~10000.  At the default 28-digit
-# context the difference of two NAVs can only resolve that increment to
-# about 1e-15 relative -- a 1e-20 tolerance is not reachable arithmetic,
-# it is not a tighter test.  Measured error on these fixtures is ~1e-15.
-NAV_DIFF_REL_TOL = Decimal("1e-12")
+# RH-02bd: The previous relaxing of NAV_DIFF_REL_TOL from 1e-20 to 1e-12 was based
+# on a misdiagnosis ("Decimal 28-digit precision unreachable").
+# The true root cause of the ~1.11e-15 error was using float-based position_liquidity_raw
+# in the test oracle while the runner uses Decimal-based inventory_for_position.
+# When the test oracle uses inventory_for_position directly (matching Decimal arithmetic),
+# the relative difference is ~1.83e-22, making the original 1e-20 tolerance fully reachable.
+NAV_DIFF_REL_TOL = Decimal("1e-20")
 
 # At the default 28-digit Decimal context the smallest representable relative
 # error is around 1e-28, so a 1e-40 tolerance cannot be met by any arithmetic
@@ -59,6 +60,7 @@ POOL_META = {
     "range_pct": 10.0,
     "dec0": 18,
     "dec1": 6,
+    "quote_usd_per_token1": 1.0,
     "attestation_status": "ATTESTED_SAME_BLOCK",
     "protocol": "v3",
 }
@@ -121,14 +123,21 @@ def _fresh_store(tmp_path, name="s.db"):
 def _expected_fee(d0, d1, price, *, pool_meta=None, position_usd=None):
     """Hand-computed dimensional fee for a single increment (the oracle).
 
-    RH-02ai: multiply the position's raw liquidity L_pos by the feeGrowth
+    RH-02ai / RH-02bd: multiply the position's raw liquidity L_pos by the feeGrowth
     increment, scale each leg to human units by its own decimals, then to USD
-    by its own price.  Independent of the runner's code path."""
+    by its own price. Independent of the runner's code path.
+    Uses Decimal inventory_for_position to avoid float precision loss."""
     pm = pool_meta if pool_meta is not None else POOL_META
     pos = position_usd if position_usd is not None else POSITION_USD
-    l_pos = Decimal(str(position_liquidity_raw(
-        float(pos), pm["input_price_usd"], pm["range_pct"],
-        pm["dec0"], pm["dec1"])))
+    inv = inventory_for_position(
+        position_usd=Decimal(str(pos)),
+        entry_price=Decimal(str(pm.get("input_price_usd", price))),
+        range_pct=Decimal(str(pm["range_pct"])),
+        dec0=int(pm["dec0"]),
+        dec1=int(pm["dec1"]),
+        quote_usd_per_token1=Decimal(str(pm.get("quote_usd_per_token1", 1))),
+    )
+    l_pos = inv.liquidity_raw
     tok0 = l_pos * Decimal(d0) / FEE_GROWTH_SCALE / (Decimal(10) ** pm["dec0"])
     tok1 = l_pos * Decimal(d1) / FEE_GROWTH_SCALE / (Decimal(10) ** pm["dec1"])
     return (tok0 * price + tok1) * Decimal("1")
@@ -393,9 +402,37 @@ def test_rh02al_fail_closed_missing_inputs(tmp_path):
     assert steps3[0].nav is None and steps3[0].hodl_value is None
     conn3.close()
 
+    # RH-02bd: Missing quote (not in pool_meta and not in sample) -> fails closed (no silent 1.0 default)
+    meta_no_quote = dict(POOL_META)
+    del meta_no_quote["quote_usd_per_token1"]
+    conn4 = _fresh_store(tmp_path, "no_quote.db")
+    steps4 = _run(conn4, [_passing_sample(0, price=PRICE, fee_growth=(X0, X1))], pool_meta=meta_no_quote)
+    assert steps4[0].nav is None and steps4[0].hodl_value is None
+    conn4.close()
+
+    # RH-02bd: Missing dec0 / dec1 -> fails closed (no silent 18/6 default).
+    # The lookup falls back pool_meta -> sample, and _passing_sample carries
+    # dec0/dec1 of its own, so removing it from pool_meta alone still resolves
+    # and the case never reaches the fail-close branch.  Both sources have to
+    # be empty for this to test what it claims to.
+    meta_no_dec = dict(POOL_META)
+    del meta_no_dec["dec0"]
+    sample_no_dec = dict(_passing_sample(0, price=PRICE, fee_growth=(X0, X1)))
+    sample_no_dec.pop("dec0", None)
+    conn5 = _fresh_store(tmp_path, "no_dec0.db")
+    steps5 = _run(conn5, [sample_no_dec], pool_meta=meta_no_dec)
+    assert steps5[0].nav is None and steps5[0].hodl_value is None
+    conn5.close()
+
+
 
 def test_rh02al_real_pool_meta_and_db_sanity(tmp_path):
-    """Criterion 4: Real database sanity check with actual pool_meta.json fixture."""
+    """Criterion 4: Real database sanity check with actual pool_meta.json fixture.
+
+    RH-02bd: Under fail-close rules, if the production pool_meta.json has not yet been
+    backfilled with quote_usd_per_token1 and samples do not carry it, open_valid is False
+    and nav is None (no silent 1.0 fallback). When quote_usd_per_token1 is present,
+    it computes properly."""
     real_meta_path = Path("/opt/lpbot/lp-bot-v3-origin-check/reports/lp_rh/pool_meta.json")
     real_db_path = Path("/opt/lpbot/lp-bot-v3-origin-check/reports/lp_rh/scanner.db")
     if not real_meta_path.exists() or not real_db_path.exists():
@@ -412,19 +449,34 @@ def test_rh02al_real_pool_meta_and_db_sanity(tmp_path):
     if len(samples) < 2:
         return
 
-    conn = _fresh_store(tmp_path)
+    # Case A: Real pool_meta without quote_usd_per_token1 -> fail-closed (nav is None)
+    conn_raw = _fresh_store(tmp_path, "real_raw.db")
+    steps_raw = run_episode(
+        conn_raw, strategy_episode="sanity_raw", samples=samples,
+        position_usd=POSITION_USD, horizon_hours=720.0, capital_usd=CAPITAL_USD,
+        target_mode="SHADOW_SCENARIO", now_fn=lambda: NOW, pool_meta=real_meta,
+    )
+    # Since reports/lp_rh/pool_meta.json currently lacks quote_usd_per_token1, open_valid fails closed:
+    if "quote_usd_per_token1" not in real_meta and not any("quote_usd_per_token1" in s for s in samples):
+        assert all(s.nav is None for s in steps_raw)
+    conn_raw.close()
+
+    # Case B: When quote_usd_per_token1 is provided (as will be once production config is updated)
+    meta_with_quote = dict(real_meta)
+    meta_with_quote["quote_usd_per_token1"] = 1.0
+    conn = _fresh_store(tmp_path, "real_quote.db")
     steps = run_episode(
         conn, strategy_episode="sanity", samples=samples,
         position_usd=POSITION_USD, horizon_hours=720.0, capital_usd=CAPITAL_USD,
-        target_mode="SHADOW_SCENARIO", now_fn=lambda: NOW, pool_meta=real_meta,
+        target_mode="SHADOW_SCENARIO", now_fn=lambda: NOW, pool_meta=meta_with_quote,
     )
     s = episode_summary(steps)
     assert s["nav_start"] == CAPITAL_USD
 
-    # Do NOT annualise net_pnl.  Since RH-02al it carries the position's mark
+    # Do NOT annualise net_pnl. Since RH-02al it carries the position's mark
     # to market, so annualising it extrapolates one price move over a year:
     # a 1% move across a 50-minute window reads as several thousand percent.
-    # That is arithmetic, not a defect.  The quantity that is meaningful
+    # That is arithmetic, not a defect. The quantity that is meaningful
     # annualised is the fee accrual alone, which is what this pins.
     if steps and s["window_start_time"] and s["window_end_time"]:
         t0 = datetime.fromisoformat(s["window_start_time"].replace("Z", "+00:00"))

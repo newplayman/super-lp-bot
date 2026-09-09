@@ -154,15 +154,16 @@ def stage_a_status(*, first_sample, last_sample, expected_interval_secs,
         pool_attested_ok = False
         blockers.append(STAGE_A_POOL_NOT_ATTESTED)
 
-    # 6. RPC budget.  budget_status returns
-    # {bytes, soft_budget_bytes, fraction, state} -- there is no
-    # "over_budget" key, so reading one returns None and blocks a store
-    # using 0.7% of its budget.  That is the same defect this function was
-    # written to close (reading a key that does not exist), so key off the
-    # field that is actually there and treat an unrecognised state as
-    # unknown, which blocks.
+    # 6. RPC budget. budget_status returns
+    # {bytes, soft_budget_bytes, fraction, state} where state is OK, WARN, or OVER.
+    # Policy decision (RH-02bd): PRD §21.1 requires RPC budget sustainability
+    # (not exceeding soft budget limit).
+    # WARN means usage is elevated but still strictly within soft budget (< 100%),
+    # so WARN is recorded in dashboard telemetry but does NOT block Stage A.
+    # OVER (fraction >= 1.0) or an unrecognized/missing budget state blocks fail-close.
     budget_ok = True
-    if budget is None or budget.get("state") != "OK":
+    b_state = budget.get("state") if budget is not None else None
+    if b_state not in ("OK", "WARN"):
         budget_ok = False
         blockers.append(STAGE_A_BUDGET_EXCEEDED)
 
@@ -342,7 +343,7 @@ def audit_key_field_health(conn, *, asset_address: str) -> dict:
             return {"passed": False, "reason": "TABLE_NOT_FOUND", "columns": {}}
 
         total_row = conn.execute(
-            "SELECT COUNT(*) FROM rh_market_states WHERE asset_address = ?",
+            "SELECT COUNT(*) FROM rh_market_states WHERE LOWER(asset_address) = LOWER(?)",
             (asset_address,)
         ).fetchone()
         total_rows = total_row[0] if total_row else 0
@@ -361,7 +362,7 @@ def audit_key_field_health(conn, *, asset_address: str) -> dict:
                 continue
             # Query specific non-null count for this asset_address
             q_null = conn.execute(
-                f'SELECT COUNT(*) FROM rh_market_states WHERE asset_address = ? AND "{col}" IS NOT NULL',
+                f'SELECT COUNT(*) FROM rh_market_states WHERE LOWER(asset_address) = LOWER(?) AND "{col}" IS NOT NULL',
                 (asset_address,)
             ).fetchone()
             non_null_count = q_null[0] if q_null else 0
@@ -430,6 +431,107 @@ def audit_pool_attestation(conn, *, asset_address: str) -> dict:
         }
     except Exception as exc:
         return {"passed": False, "error": str(exc), "missing": ["query_exception"]}
+
+
+def audit_invariant_violations(conn) -> dict:
+    """Read-only audit of detectable system invariants on current SQLite store.
+
+    Checks:
+      1. INV-GATE-02 / gate consistency: in rh_gate_decisions, COMPUTED_PASS must
+         not have a dominant blocker or any False terminal bit.
+      2. Market sanity: in rh_market_states, reference_mid > 0 when non-null;
+         reference_bid <= reference_ask when both non-null (no crossed market).
+      3. Position mark non-negativity: in rh_position_marks, reference_nav >= 0.
+      4. Journal balance integrity: in rh_journal, debit and credit accounts must
+         be non-empty, and amount_raw must be non-negative.
+    Returns:
+      dict with passed, violations_count, details, checks_performed, unsupported.
+    """
+    try:
+        tbls = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
+        violations = 0
+        details = []
+        checks_performed = []
+        unsupported = [
+            "INV-IL-01 (fee/reward ex-nav separation requiring full replay)",
+            "INV-V4-01 (v4 snapshot collector dynamic mutation)",
+            "INV-TVLSHARE-01 (active liquidity allocator live boundary)",
+        ]
+
+        if "rh_gate_decisions" in tbls:
+            checks_performed.append("rh_gate_decisions:conjunction_consistency")
+            rows = conn.execute(
+                "SELECT decision_id, primary_status, terminal_bits_json, dominant_blocker "
+                "FROM rh_gate_decisions WHERE primary_status = 'COMPUTED_PASS'"
+            ).fetchall()
+            for dec_id, p_status, bits_raw, dom_blocker in rows:
+                if dom_blocker is not None and dom_blocker != "":
+                    violations += 1
+                    details.append(f"rh_gate_decisions:{dec_id}:COMPUTED_PASS_has_dominant_blocker:{dom_blocker}")
+                if bits_raw:
+                    try:
+                        bits = json.loads(bits_raw)
+                        if isinstance(bits, dict):
+                            for bit_name, val in bits.items():
+                                if val is False:
+                                    violations += 1
+                                    details.append(f"rh_gate_decisions:{dec_id}:COMPUTED_PASS_with_false_bit:{bit_name}")
+                    except Exception:
+                        pass
+
+        if "rh_market_states" in tbls:
+            checks_performed.append("rh_market_states:price_positivity_and_spread")
+            # mid > 0 check
+            bad_mids = conn.execute(
+                "SELECT COUNT(*) FROM rh_market_states WHERE reference_mid IS NOT NULL AND CAST(reference_mid AS REAL) <= 0"
+            ).fetchone()[0]
+            if bad_mids > 0:
+                violations += bad_mids
+                details.append(f"rh_market_states:non_positive_reference_mid_count:{bad_mids}")
+            # crossed market check (bid > ask)
+            crossed = conn.execute(
+                "SELECT COUNT(*) FROM rh_market_states WHERE reference_bid IS NOT NULL AND reference_ask IS NOT NULL "
+                "AND CAST(reference_bid AS REAL) > CAST(reference_ask AS REAL)"
+            ).fetchone()[0]
+            if crossed > 0:
+                violations += crossed
+                details.append(f"rh_market_states:crossed_market_count:{crossed}")
+
+        if "rh_position_marks" in tbls:
+            checks_performed.append("rh_position_marks:nav_non_negative")
+            bad_navs = conn.execute(
+                "SELECT COUNT(*) FROM rh_position_marks WHERE reference_nav IS NOT NULL AND CAST(reference_nav AS REAL) < 0"
+            ).fetchone()[0]
+            if bad_navs > 0:
+                violations += bad_navs
+                details.append(f"rh_position_marks:negative_reference_nav_count:{bad_navs}")
+
+        if "rh_journal" in tbls:
+            checks_performed.append("rh_journal:accounts_and_amounts")
+            bad_journal = conn.execute(
+                "SELECT COUNT(*) FROM rh_journal WHERE (account_debit = '' OR account_credit = '') "
+                "OR (CAST(amount_raw AS REAL) < 0)"
+            ).fetchone()[0]
+            if bad_journal > 0:
+                violations += bad_journal
+                details.append(f"rh_journal:invalid_journal_rows:{bad_journal}")
+
+        return {
+            "passed": violations == 0,
+            "violations_count": violations,
+            "details": details,
+            "checks_performed": checks_performed,
+            "unsupported": unsupported,
+        }
+    except Exception as exc:
+        return {
+            "passed": False,
+            "violations_count": None,
+            "error": str(exc),
+            "checks_performed": [],
+            "unsupported": [],
+            "details": [f"audit_exception:{exc}"],
+        }
 
 
 def audit_unknown_state_positions(conn) -> dict:
@@ -511,6 +613,10 @@ def _build_state(conn, db_path: str, interval_secs: float, asset_address: str,
     pool_att_status = audit_pool_attestation(conn, asset_address=asset_address)
     unk_state = audit_unknown_state_positions(conn)
     unk_positions_count = unk_state.get("violations_count")
+    inv_audit = audit_invariant_violations(conn)
+    state["invariant_violations_audit"] = inv_audit
+    if invariant_violations is None:
+        invariant_violations = inv_audit.get("violations_count")
 
     if cov.get("status") == NO_ASSET_DATA or not cov.get("has_data"):
         state["as_of"] = None
@@ -530,7 +636,7 @@ def _build_state(conn, db_path: str, interval_secs: float, asset_address: str,
         cov_ratio = cov.get("coverage_ratio")
         row = conn.execute(
             "SELECT MIN(sample_time), MAX(sample_time), COUNT(*) "
-            "FROM rh_market_states WHERE asset_address = ?",
+            "FROM rh_market_states WHERE LOWER(asset_address) = LOWER(?)",
             (asset_address,)
         ).fetchone()
         first_sample, last_sample, actual_samples = row if row else (None, None, 0)
@@ -576,6 +682,8 @@ def main(argv: Optional[list] = None) -> int:
     parser.add_argument("--asset-address", required=True, help="asset address to audit Stage A coverage for")
     parser.add_argument("--synthetic-tests-passed", action="store_true", default=None,
                         help="evidence input indicating synthetic calendar/exception tests passed")
+    parser.add_argument("--invariant-violations", type=int, default=None,
+                        help="override detected invariant violations count (defaults to read-only DB audit)")
     args = parser.parse_args(argv)
     conn = open_store(args.db, read_only=True)
     try:
@@ -583,6 +691,7 @@ def main(argv: Optional[list] = None) -> int:
             conn, args.db, args.interval_secs,
             asset_address=args.asset_address,
             synthetic_tests_passed=args.synthetic_tests_passed,
+            invariant_violations=args.invariant_violations,
         )
     finally:
         conn.close()

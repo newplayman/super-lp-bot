@@ -11,7 +11,7 @@ import sys
 import tempfile
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any, Callable, Mapping, Optional, Sequence
 
@@ -367,22 +367,31 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
         raw_price = sample.get("reference_mid")
         price = Decimal(str(raw_price)) if raw_price is not None else None
 
-        # RH-02al: On the first step with a valid reference_mid (the open step),
+        # RH-02al / RH-02bd: On the first step with a valid reference_mid (the open step),
         # resolve and cache the position inventory and liquidity. Fail-closed:
         # if pool_meta lacks range_pct, or entry_price missing, or quote missing/<=0,
-        # open_valid stays False and nav/hodl remain None for the episode.
+        # or dec0/dec1 missing, open_valid stays False and nav/hodl remain None for the episode.
+        # No silent defaults for quote (PRD:651 forbids forcing $1) or decimals.
         if not open_resolved and price is not None and price > 0:
             open_resolved = True
             if pool_meta is not None and "range_pct" in pool_meta:
                 try:
                     r_pct = Decimal(str(pool_meta["range_pct"]))
-                    d0 = int(pool_meta.get("dec0", pool_meta.get("token0_decimals", sample.get("dec0", DEFAULT_DEC0))))
-                    d1 = int(pool_meta.get("dec1", pool_meta.get("token1_decimals", sample.get("dec1", DEFAULT_DEC1))))
+
+                    # Decimals must be explicitly present in pool_meta or sample
+                    d0_raw = pool_meta.get("dec0", pool_meta.get("token0_decimals", sample.get("dec0")))
+                    d1_raw = pool_meta.get("dec1", pool_meta.get("token1_decimals", sample.get("dec1")))
+                    if d0_raw is None or d1_raw is None:
+                        raise ValueError("dec0/dec1 missing")
+                    d0 = int(d0_raw)
+                    d1 = int(d1_raw)
+
+                    # Quote must be explicitly present in sample or pool_meta (no silent $1 default)
                     raw_quote = sample.get("quote_usd_per_token1")
                     if raw_quote is None and pool_meta is not None:
                         raw_quote = pool_meta.get("quote_usd_per_token1")
                     if raw_quote is None:
-                        raw_quote = DEFAULT_QUOTE_USD_PER_TOKEN1
+                        raise ValueError("quote_usd_per_token1 missing")
                     q = Decimal(str(raw_quote))
                     p_usd = Decimal(str(position_usd))
 
@@ -485,7 +494,7 @@ def load_samples_from_db(conn, *, pool: str, limit: int) -> tuple[list[dict], in
         "multiplier_human, session, health_flags_json, reference_age_secs, "
         "oracle_paused, source_payload_hash, reference_bid, reference_ask, "
         "source_event_time, fee_growth_global_0, fee_growth_global_1 "
-        "FROM rh_market_states WHERE asset_address = ? "
+        "FROM rh_market_states WHERE LOWER(asset_address) = LOWER(?) "
         "ORDER BY sample_time DESC LIMIT ?"
         ") ORDER BY sample_time",
         (pool, limit))

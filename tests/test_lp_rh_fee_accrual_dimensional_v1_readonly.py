@@ -12,18 +12,19 @@ sys.path.insert(0, '/opt/lpbot/lp-bot-v3-origin-check')
 
 from decimal import Decimal
 
-# RH-02al: NAV is wallet + marked position value + accrued fees, so a fee
-# increment of ~0.03 rides on a NAV of ~10000.  At the default 28-digit
-# context the difference of two NAVs can only resolve that increment to
-# about 1e-15 relative -- a 1e-20 tolerance is not reachable arithmetic,
-# it is not a tighter test.  Measured error on these fixtures is ~1e-15.
-NAV_DIFF_REL_TOL = Decimal("1e-12")
+# RH-02bd: The previous relaxing of NAV_DIFF_REL_TOL from 1e-20 to 1e-12 was based
+# on a misdiagnosis ("Decimal 28-digit precision unreachable").
+# The true root cause of the ~1.11e-15 error was using float-based position_liquidity_raw
+# in the test oracle while the runner uses Decimal-based inventory_for_position.
+# When the test oracle uses inventory_for_position directly (matching Decimal arithmetic),
+# the relative difference is ~1.83e-22, making the original 1e-20 tolerance fully reachable.
+NAV_DIFF_REL_TOL = Decimal("1e-20")
 
 from scripts.lp_rh_shadow_runner_v1_readonly import (
     FEE_GROWTH_SCALE,
     run_episode,
 )
-from scripts.lp_v3_fee_share import position_liquidity_raw
+from scripts.lp_rh_v3_inventory_v1_readonly import inventory_for_position
 from scripts.lp_rh_store_v1_readonly import migrate, open_store
 
 POSITION_USD = Decimal("1000")
@@ -41,6 +42,7 @@ POOL_META = {
     "range_pct": 10.0,
     "dec0": 18,
     "dec1": 6,
+    "quote_usd_per_token1": 1.0,
     "attestation_status": "ATTESTED_SAME_BLOCK",
     "protocol": "v3",
 }
@@ -104,12 +106,20 @@ def _fresh_store(tmp_path):
 
 def _expected_fee(d0, d1, price, *, pool_meta=None, position_usd=None):
     """Hand-computed dimensional fee for a single increment, independent of
-    the runner's code path (the regression-lock oracle)."""
+    the runner's code path (the regression-lock oracle).
+
+    Uses Decimal-based inventory_for_position to obtain l_pos."""
     pm = pool_meta if pool_meta is not None else POOL_META
     pos = position_usd if position_usd is not None else POSITION_USD
-    l_pos = Decimal(str(position_liquidity_raw(
-        float(pos), pm["input_price_usd"], pm["range_pct"],
-        pm["dec0"], pm["dec1"])))
+    inv = inventory_for_position(
+        position_usd=Decimal(str(pos)),
+        entry_price=Decimal(str(pm.get("input_price_usd", price))),
+        range_pct=Decimal(str(pm["range_pct"])),
+        dec0=int(pm["dec0"]),
+        dec1=int(pm["dec1"]),
+        quote_usd_per_token1=Decimal(str(pm.get("quote_usd_per_token1", 1))),
+    )
+    l_pos = inv.liquidity_raw
     tok0 = l_pos * Decimal(d0) / FEE_GROWTH_SCALE / (Decimal(10) ** pm["dec0"])
     tok1 = l_pos * Decimal(d1) / FEE_GROWTH_SCALE / (Decimal(10) ** pm["dec1"])
     return (tok0 * price + tok1) * Decimal("1")

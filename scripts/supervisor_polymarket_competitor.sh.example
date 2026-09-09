@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# /opt/polycollect/supervisor.sh.template
+# Polymarket 竞品采集器 supervisor — 复制到 /opt/polycollect/supervisor.sh 然后 chmod +x
+#
+# 设计意图:本脚本反复调起"单轮"Python 采集器(进程内无 while-true / sleep loop),
+# 配合 cron / systemd timer 形成 7×24 守护。这样:
+#   - Python 进程崩溃 = 下一分钟自动重启
+#   - supervisor 进程崩溃 = systemd 重启 supervisor
+#   - flock 防止重叠(虽然单轮 < 30s,理论不会重叠)
+#
+# 约束:此文件**不要**直接复制到 /etc/systemd/system/ — 那两个 LP 服务的
+# (lpbot-canary.service / lpbot-shadow.service) 显式 LOCKED,与本仓解耦。
+# supervisor.sh + .timer 只放仓外 /opt/polycollect/ 与 /etc/systemd/system/。
+
+set -uo pipefail
+
+LOCK="/var/lock/polycollect.lock"
+exec 9>"$LOCK" || { echo "$(date -u +%FT%TZ) cannot open $LOCK" >&2; exit 0; }
+flock -n 9 || { echo "$(date -u +%FT%TZ) previous cycle still running, skipping" >&2; exit 0; }
+
+RUN_ID="cycle_$(date -u +%Y%m%d_%H%M%S)"
+
+/usr/bin/python3 /opt/lpbot/lp-bot-v3-origin-check/scripts/lp_polymarket_competitor_collector_v1_readonly.py \
+    --mode cycle \
+    --addresses /opt/polycollect/addresses.json \
+    --db /opt/polycollect/poly.db \
+    --export-dir /opt/polycollect/export \
+    --status-path /opt/polycollect/status.json \
+    --reports-dir /opt/lpbot/lp-bot-v3-origin-check/reports/polymarket_competitor \
+    --run-id "$RUN_ID" \
+    >> /opt/polycollect/supervisor.log 2>&1
