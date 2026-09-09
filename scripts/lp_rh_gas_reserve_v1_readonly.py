@@ -40,6 +40,34 @@ RESERVE_MULTIPLIER = Decimal("3")
 
 _E18 = Decimal(10) ** 18
 
+_WETH_GAS_NOTE = (
+    "WETH is an ERC-20 and cannot pay gas; only native ETH counts "
+    "toward the gas reserve (T29). weth_balance_wei is ignored on "
+    "purpose."
+)
+
+
+def _input_unavailable_result(parameter: str) -> dict:
+    """Return the standard fail-closed result for an invalid numeric input."""
+    return {
+        "pass": False,
+        "required_usd": None,
+        "available_usd": None,
+        "shortfall_usd": None,
+        "reason": f"INPUTS_UNAVAILABLE: {parameter}",
+    }
+
+
+def _wrapped_input_unavailable_result(parameter: str) -> dict:
+    """Return the wrapped/native invariant result for invalid input."""
+    return {
+        "pass": False,
+        "native_usable": False,
+        "wrapped_usable": False,
+        "note": _WETH_GAS_NOTE,
+        "reason": f"INPUTS_UNAVAILABLE: {parameter}",
+    }
+
 
 def _to_decimal(value: Any) -> Optional[Decimal]:
     """Coerce int/float/str/Decimal to Decimal; None/bool/bad input -> None."""
@@ -67,19 +95,37 @@ def exit_gas_requirement_usd(
 
     Only the close is counted -- at open time the funds are still in hand, so
     the open (v3_mint) cost is deliberately excluded.  Returns None (never 0)
-    when any input is missing or non-positive.
+    when any input is missing, non-finite, or non-positive.
     """
-    single = estimate_gas_usd(
-        gas_price_wei=gas_price_wei,
-        native_price_usd=native_price_usd,
-        gas_units=GAS_UNITS["v3_burn_collect"],
-    )
-    if single is None:
-        return None
+    gas_price = _to_decimal(gas_price_wei)
+    native_price = _to_decimal(native_price_usd)
     mult = _to_decimal(multiplier)
-    if mult is None or mult <= 0:
+    if (
+        gas_price is None
+        or not gas_price.is_finite()
+        or gas_price <= 0
+        or native_price is None
+        or not native_price.is_finite()
+        or native_price <= 0
+        or mult is None
+        or not mult.is_finite()
+        or mult <= 0
+    ):
         return None
-    return single * mult
+
+    try:
+        single = estimate_gas_usd(
+            gas_price_wei=gas_price,
+            native_price_usd=native_price,
+            gas_units=GAS_UNITS["v3_burn_collect"],
+        )
+        if single is None or not single.is_finite():
+            return None
+        result = single * mult
+    except Exception:
+        return None
+
+    return result if result.is_finite() else None
 
 
 def native_reserve_gate(
@@ -93,7 +139,8 @@ def native_reserve_gate(
 
     Returns {"pass", "required_usd", "available_usd", "shortfall_usd",
     "reason"}.  An unknown balance fails (never treated as sufficient);
-    unknown gas inputs fail; ``shortfall_usd`` is a positive Decimal when
+    unknown gas inputs fail; non-finite and sign-invalid numeric inputs fail
+    with INPUTS_UNAVAILABLE.  ``shortfall_usd`` is a positive Decimal when
     insufficient and ``Decimal(0)`` when sufficient (0 is distinct from
     None/unknown).
     """
@@ -106,10 +153,49 @@ def native_reserve_gate(
             "shortfall_usd": None,
             "reason": "NATIVE_BALANCE_UNKNOWN",
         }
+    if not balance.is_finite() or balance < 0:
+        return _input_unavailable_result("native_balance_wei")
+
+    gas_price = _to_decimal(gas_price_wei)
+    if gas_price is None:
+        return {
+            "pass": False,
+            "required_usd": None,
+            "available_usd": None,
+            "shortfall_usd": None,
+            "reason": "GAS_ESTIMATE_UNAVAILABLE",
+        }
+    if not gas_price.is_finite() or gas_price <= 0:
+        return _input_unavailable_result("gas_price_wei")
+
+    price = _to_decimal(native_price_usd)
+    if price is None:
+        return {
+            "pass": False,
+            "required_usd": None,
+            "available_usd": None,
+            "shortfall_usd": None,
+            "reason": "GAS_ESTIMATE_UNAVAILABLE",
+        }
+    if not price.is_finite() or price <= 0:
+        return _input_unavailable_result("native_price_usd")
+
+    mult = _to_decimal(multiplier)
+    if mult is None:
+        return {
+            "pass": False,
+            "required_usd": None,
+            "available_usd": None,
+            "shortfall_usd": None,
+            "reason": "GAS_ESTIMATE_UNAVAILABLE",
+        }
+    if not mult.is_finite() or mult <= 0:
+        return _input_unavailable_result("multiplier")
+
     required = exit_gas_requirement_usd(
-        gas_price_wei=gas_price_wei,
-        native_price_usd=native_price_usd,
-        multiplier=multiplier,
+        gas_price_wei=gas_price,
+        native_price_usd=price,
+        multiplier=mult,
     )
     if required is None:
         return {
@@ -119,16 +205,34 @@ def native_reserve_gate(
             "shortfall_usd": None,
             "reason": "GAS_ESTIMATE_UNAVAILABLE",
         }
-    price = _to_decimal(native_price_usd)
-    available = balance / _E18 * price
+    if not required.is_finite():
+        return _input_unavailable_result("gas_price_wei")
+
+    try:
+        available = balance / _E18 * price
+    except Exception:
+        return _input_unavailable_result("native_balance_wei")
+
+    if not available.is_finite():
+        return _input_unavailable_result("native_balance_wei")
+
     if available < required:
+        try:
+            shortfall = required - available
+        except Exception:
+            return _input_unavailable_result("native_balance_wei")
+
+        if not shortfall.is_finite():
+            return _input_unavailable_result("native_balance_wei")
+
         return {
             "pass": False,
             "required_usd": required,
             "available_usd": available,
-            "shortfall_usd": required - available,
+            "shortfall_usd": shortfall,
             "reason": "NATIVE_GAS_RESERVE_INSUFFICIENT",
         }
+
     return {
         "pass": True,
         "required_usd": required,
@@ -148,14 +252,26 @@ def wrapped_does_not_count(*, weth_balance_wei: Any, native_balance_wei: Any) ->
     False, and ``native_usable`` records that the native coin is the only
     gas-paying asset class.
     """
+    weth_balance = _to_decimal(weth_balance_wei)
+    if (
+        weth_balance is None
+        or not weth_balance.is_finite()
+        or weth_balance < 0
+    ):
+        return _wrapped_input_unavailable_result("weth_balance_wei")
+
+    native_balance = _to_decimal(native_balance_wei)
+    if (
+        native_balance is None
+        or not native_balance.is_finite()
+        or native_balance < 0
+    ):
+        return _wrapped_input_unavailable_result("native_balance_wei")
+
     return {
         "native_usable": True,
         "wrapped_usable": False,
-        "note": (
-            "WETH is an ERC-20 and cannot pay gas; only native ETH counts "
-            "toward the gas reserve (T29). weth_balance_wei is ignored on "
-            "purpose."
-        ),
+        "note": _WETH_GAS_NOTE,
     }
 
 
@@ -194,3 +310,4 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

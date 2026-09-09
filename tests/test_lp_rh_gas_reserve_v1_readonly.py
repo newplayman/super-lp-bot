@@ -153,3 +153,154 @@ def test_available_usd_is_balance_times_price():
     )
     expected = Decimal(balance) / (Decimal(10) ** 18) * Decimal(str(PRICE))
     assert result["available_usd"] == expected
+
+
+# --- finite and sign validation --------------------------------------------
+
+def _assert_input_unavailable(result, parameter):
+    assert result["pass"] is False
+    assert result["reason"] == f"INPUTS_UNAVAILABLE: {parameter}"
+    assert result["required_usd"] is None
+    assert result["available_usd"] is None
+    assert result["shortfall_usd"] is None
+
+
+def test_infinite_balance_fails_closed():
+    result = mod.native_reserve_gate(
+        native_balance_wei=Decimal("Infinity"),
+        gas_price_wei=GP,
+        native_price_usd=PRICE,
+    )
+    _assert_input_unavailable(result, "native_balance_wei")
+
+
+def test_nan_balance_fails_closed():
+    result = mod.native_reserve_gate(
+        native_balance_wei=Decimal("NaN"),
+        gas_price_wei=GP,
+        native_price_usd=PRICE,
+    )
+    _assert_input_unavailable(result, "native_balance_wei")
+
+
+def test_negative_balance_fails_closed():
+    result = mod.native_reserve_gate(
+        native_balance_wei=Decimal("-1"),
+        gas_price_wei=GP,
+        native_price_usd=PRICE,
+    )
+    _assert_input_unavailable(result, "native_balance_wei")
+
+
+def test_invalid_native_prices_fail_closed():
+    for bad_price in (Decimal("Infinity"), Decimal("NaN"), Decimal("0"), Decimal("-1")):
+        result = mod.native_reserve_gate(
+            native_balance_wei=REQUIRED_WEI,
+            gas_price_wei=GP,
+            native_price_usd=bad_price,
+        )
+        _assert_input_unavailable(result, "native_price_usd")
+
+
+def test_invalid_gas_prices_fail_closed():
+    for bad_price in (Decimal("Infinity"), Decimal("NaN"), Decimal("0"), Decimal("-1")):
+        result = mod.native_reserve_gate(
+            native_balance_wei=REQUIRED_WEI,
+            gas_price_wei=bad_price,
+            native_price_usd=PRICE,
+        )
+        _assert_input_unavailable(result, "gas_price_wei")
+
+
+def test_invalid_multiplier_fails_closed():
+    for bad_multiplier in (Decimal("Infinity"), Decimal("NaN"), Decimal("0"), Decimal("-1")):
+        result = mod.native_reserve_gate(
+            native_balance_wei=REQUIRED_WEI,
+            gas_price_wei=GP,
+            native_price_usd=PRICE,
+            multiplier=bad_multiplier,
+        )
+        _assert_input_unavailable(result, "multiplier")
+        assert mod.exit_gas_requirement_usd(
+            gas_price_wei=GP,
+            native_price_usd=PRICE,
+            multiplier=bad_multiplier,
+        ) is None
+
+
+def test_exit_requirement_rejects_nonfinite_inputs():
+    assert mod.exit_gas_requirement_usd(
+        gas_price_wei=Decimal("Infinity"),
+        native_price_usd=PRICE,
+    ) is None
+    assert mod.exit_gas_requirement_usd(
+        gas_price_wei=GP,
+        native_price_usd=Decimal("NaN"),
+    ) is None
+    assert mod.exit_gas_requirement_usd(
+        gas_price_wei=GP,
+        native_price_usd=Decimal("0"),
+    ) is None
+
+
+def test_wrapped_invalid_amounts_fail_closed():
+    result = mod.wrapped_does_not_count(
+        weth_balance_wei=Decimal("Infinity"),
+        native_balance_wei=0,
+    )
+    assert result["pass"] is False
+    assert result["reason"] == "INPUTS_UNAVAILABLE: weth_balance_wei"
+
+    result = mod.wrapped_does_not_count(
+        weth_balance_wei=0,
+        native_balance_wei=Decimal("NaN"),
+    )
+    assert result["pass"] is False
+    assert result["reason"] == "INPUTS_UNAVAILABLE: native_balance_wei"
+
+    result = mod.wrapped_does_not_count(
+        weth_balance_wei=Decimal("-1"),
+        native_balance_wei=0,
+    )
+    assert result["pass"] is False
+    assert result["reason"] == "INPUTS_UNAVAILABLE: weth_balance_wei"
+
+
+# --- normal-input regression snapshots -------------------------------------
+
+def test_normal_native_gate_result_is_unchanged():
+    result = mod.native_reserve_gate(
+        native_balance_wei=REQUIRED_WEI,
+        gas_price_wei=GP,
+        native_price_usd=PRICE,
+    )
+    assert result == {
+        "pass": True,
+        "required_usd": Decimal("0.5956398504"),
+        "available_usd": Decimal("0.5956398504"),
+        "shortfall_usd": Decimal("0"),
+        "reason": "OK",
+    }
+
+
+def test_normal_exit_requirement_is_unchanged():
+    assert mod.exit_gas_requirement_usd(
+        gas_price_wei=GP,
+        native_price_usd=PRICE,
+    ) == Decimal("0.5956398504")
+
+
+def test_normal_wrapped_result_is_unchanged():
+    assert mod.wrapped_does_not_count(
+        weth_balance_wei=10 * 10 ** 18,
+        native_balance_wei=0,
+    ) == {
+        "native_usable": True,
+        "wrapped_usable": False,
+        "note": (
+            "WETH is an ERC-20 and cannot pay gas; only native ETH counts "
+            "toward the gas reserve (T29). weth_balance_wei is ignored on "
+            "purpose."
+        ),
+    }
+
