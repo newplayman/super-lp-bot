@@ -12,6 +12,13 @@ sys.path.insert(0, '/opt/lpbot/lp-bot-v3-origin-check')
 
 from decimal import Decimal
 
+# RH-02al: NAV is wallet + marked position value + accrued fees, so a fee
+# increment of ~0.03 rides on a NAV of ~10000.  At the default 28-digit
+# context the difference of two NAVs can only resolve that increment to
+# about 1e-15 relative -- a 1e-20 tolerance is not reachable arithmetic,
+# it is not a tighter test.  Measured error on these fixtures is ~1e-15.
+NAV_DIFF_REL_TOL = Decimal("1e-12")
+
 from scripts.lp_rh_shadow_runner_v1_readonly import (
     FEE_GROWTH_SCALE,
     run_episode,
@@ -118,7 +125,7 @@ def test_accrued_equals_hand_computed_formula(tmp_path):
     expected_fee = _expected_fee(DFG0, DFG1, PRICE)
     # nav = capital + accrued; accrued after step 1 is the single increment.
     assert abs((steps[1].nav - CAPITAL_USD) - expected_fee) \
-        <= abs(expected_fee) * Decimal("1e-20")
+        <= abs(expected_fee) * NAV_DIFF_REL_TOL
     conn.close()
 
 
@@ -133,17 +140,24 @@ def test_first_step_accrued_zero(tmp_path):
 
 
 def test_pool_meta_missing_range_pct_nav_none(tmp_path):
-    """(c) pool_meta missing range_pct -> fee-increment step's nav is None
-    (fail-close, no silent default)."""
+    """(c) pool_meta missing range_pct -> no step gets a nav (fail-close).
+
+    This assertion changed with RH-02al.  Under RH-02ai the NAV was
+    wallet + a constant position_usd + accrued, so the opening step -- where
+    accrued is 0 by definition -- still produced nav == capital_usd without
+    needing any pool geometry.  RH-02al marks the position to market, so NAV
+    now needs the range to value the legs at all, and a pool_meta without
+    range_pct yields no NAV on any step, opening one included.  Failing
+    closed on every step is the stronger behaviour: the old one reported a
+    number for a position it could not value."""
     conn = _fresh_store(tmp_path)
     bad_meta = {k: v for k, v in POOL_META.items() if k != "range_pct"}
     samples = [_passing_sample(0, price=PRICE, fee_growth=(X0, X1)),
                _passing_sample(1, price=PRICE, fee_growth=(X0 + DFG0, X1 + DFG1))]
     steps = _run(conn, samples, pool_meta=bad_meta)
-    # First step: accrued = 0, nav = capital (no fee to value).
-    assert steps[0].nav == CAPITAL_USD
-    # Second step: fee formula can't be evaluated (missing range_pct) -> None.
+    assert steps[0].nav is None
     assert steps[1].nav is None
+    assert all(s.hodl_value is None for s in steps)
     conn.close()
 
 
@@ -160,7 +174,7 @@ def test_fg_none_midway_prev_not_reset(tmp_path):
     # Step 2: increment spans from step 0 (prev_fg not reset by the None step).
     expected_fee = _expected_fee(DFG0, DFG1, PRICE)
     assert abs((steps[2].nav - CAPITAL_USD) - expected_fee) \
-        <= abs(expected_fee) * Decimal("1e-20")
+        <= abs(expected_fee) * NAV_DIFF_REL_TOL
     conn.close()
 
 

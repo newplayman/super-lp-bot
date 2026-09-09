@@ -148,6 +148,9 @@ def test_single_fg_sample_step_still_without_nav(tmp_path):
     s1 = _passing_sample(1, sample_time="2026-01-01T00:01:00Z")
     s1["fee_growth_global_0"] = "1000"
     s1["fee_growth_global_1"] = "2000"
+    # RH-02al: valuing the position needs a price, so the step that opens it
+    # carries one.  s0 deliberately keeps neither fg nor price.
+    s1["reference_mid"] = "2484"
     conn = _fresh_store(tmp_path)
     steps = _run(conn, [s0, s1], episode="ep-onefg")
     assert steps[0].nav is None  # the step without fg still has no NAV

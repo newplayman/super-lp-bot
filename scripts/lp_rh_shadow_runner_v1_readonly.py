@@ -40,6 +40,10 @@ from scripts.lp_rh_market_session_v1_readonly import (
 from scripts.lp_rh_exit_depth_v1_readonly import exit_depth_for_size
 from scripts.lp_rh_pnl_v1_readonly import compute_nav, hodl_benchmark, net_pnl
 from scripts.lp_rh_store_v1_readonly import insert_row, migrate, open_store
+from scripts.lp_rh_v3_inventory_v1_readonly import (
+    inventory_for_position,
+    position_value_at,
+)
 from scripts.lp_v3_fee_share import position_liquidity_raw
 
 # Uniswap V3 fee-growth scaling: fees = L * delta(feeGrowthGlobal) / 2**128.
@@ -317,16 +321,17 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
     prev_fg0: Optional[Decimal] = None
     prev_fg1: Optional[Decimal] = None
     accrued = Decimal(0)
-    init0: Optional[Decimal] = None
-    init1: Optional[Decimal] = None
-    dec0, dec1 = DEFAULT_DEC0, DEFAULT_DEC1
-    quote = DEFAULT_QUOTE_USD_PER_TOKEN1
-    # RH-02ai: the position's raw liquidity L_pos is fixed at open (it does not
-    # change with price), so it is resolved once and cached.  l_pos_resolved
-    # guards the lazy resolution; l_pos stays None when it cannot be computed
-    # (missing pool_meta key or position_liquidity_raw returned 0) -> fail-close.
+    open_resolved = False
+    open_valid = False
+    entry_price: Optional[Decimal] = None
+    range_pct_val: Optional[Decimal] = None
+    dec0_val: int = DEFAULT_DEC0
+    dec1_val: int = DEFAULT_DEC1
+    quote_val: Optional[Decimal] = None
+    amount0_human: Optional[Decimal] = None
+    amount1_human: Optional[Decimal] = None
+    liquidity_human: Optional[Decimal] = None
     l_pos: Optional[Decimal] = None
-    l_pos_resolved = False
 
     for i, sample in enumerate(samples):
         record = assemble_rh_clmm_inputs(_evidence_for(sample, pool_meta),
@@ -362,90 +367,88 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
 
         raw_price = sample.get("reference_mid")
         price = Decimal(str(raw_price)) if raw_price is not None else None
+
+        # RH-02al: On the first step with a valid reference_mid (the open step),
+        # resolve and cache the position inventory and liquidity. Fail-closed:
+        # if pool_meta lacks range_pct, or entry_price missing, or quote missing/<=0,
+        # open_valid stays False and nav/hodl remain None for the episode.
+        if not open_resolved and price is not None and price > 0:
+            open_resolved = True
+            if pool_meta is not None and "range_pct" in pool_meta:
+                try:
+                    r_pct = Decimal(str(pool_meta["range_pct"]))
+                    d0 = int(pool_meta.get("dec0", pool_meta.get("token0_decimals", sample.get("dec0", DEFAULT_DEC0))))
+                    d1 = int(pool_meta.get("dec1", pool_meta.get("token1_decimals", sample.get("dec1", DEFAULT_DEC1))))
+                    raw_quote = sample.get("quote_usd_per_token1")
+                    if raw_quote is None and pool_meta is not None:
+                        raw_quote = pool_meta.get("quote_usd_per_token1")
+                    if raw_quote is None:
+                        raw_quote = DEFAULT_QUOTE_USD_PER_TOKEN1
+                    q = Decimal(str(raw_quote))
+                    p_usd = Decimal(str(position_usd))
+
+                    if r_pct > 0 and r_pct < 100 and q > 0 and d0 >= 0 and d1 >= 0 and p_usd > 0:
+                        inv = inventory_for_position(
+                            position_usd=p_usd,
+                            entry_price=price,
+                            range_pct=r_pct,
+                            dec0=d0,
+                            dec1=d1,
+                            quote_usd_per_token1=q,
+                        )
+                        scale = (Decimal(10) ** d0 * Decimal(10) ** d1).sqrt()
+                        entry_price = price
+                        range_pct_val = r_pct
+                        dec0_val = d0
+                        dec1_val = d1
+                        quote_val = q
+                        amount0_human = inv.amount0_human
+                        amount1_human = inv.amount1_human
+                        liquidity_human = inv.liquidity_raw / scale
+                        l_pos = inv.liquidity_raw
+                        open_valid = True
+                except (TypeError, ValueError, InvalidOperation):
+                    open_valid = False
+
         fg0, fg1 = sample.get("fee_growth_global_0"), sample.get("fee_growth_global_1")
         nav: Optional[Decimal] = None
-        if fg0 is not None and fg1 is not None:
-            cur0, cur1 = Decimal(str(fg0)), Decimal(str(fg1))
-            # feeGrowthGlobal is a monotonic cumulative: only the difference
-            # between two adjacent readings is the increment.  With no previous
-            # reading the increment is "unknown", not "the whole pool's fees":
-            # record the reading but leave accrued unchanged (first step adds 0).
-            # Explicit `is None` check, not `or Decimal(0)`: Decimal(0) is a
-            # legitimate feeGrowth reading (a fresh pool) and `or` would treat
-            # it as "no previous value".
-            if prev_fg0 is not None and prev_fg1 is not None:
-                d0 = cur0 - prev_fg0
-                d1 = cur1 - prev_fg1
-                # RH-02ai: dimensional fee accrual.  feeGrowthGlobal is in
-                # "tokens per unit of liquidity" (Q128), so it multiplies the
-                # position's raw liquidity L_pos, not its USD notional.  Each
-                # leg is scaled to human units by its own decimals, then to
-                # USD by its own price, before the two legs are summed.
-                fee_usd: Optional[Decimal] = None
-                if price is not None:
-                    if not l_pos_resolved:
-                        l_pos_resolved = True
-                        if pool_meta is not None and all(
-                                k in pool_meta for k in
-                                ("input_price_usd", "range_pct", "dec0", "dec1")):
-                            # pool_meta.json stores input_price_usd as a STRING
-                            # ("2484.0"), while the fixtures that exercise this
-                            # path use floats.  position_liquidity_raw compares
-                            # against 0, so the real file raises TypeError where
-                            # every test passes.  Coerce here rather than trust
-                            # the on-disk type.
-                            try:
-                                l_pos = Decimal(str(position_liquidity_raw(
-                                    float(position_usd),
-                                    float(pool_meta["input_price_usd"]),
-                                    float(pool_meta["range_pct"]),
-                                    int(pool_meta["dec0"]),
-                                    int(pool_meta["dec1"]))))
-                            except (TypeError, ValueError):
-                                l_pos = None
-                    if l_pos is not None and l_pos > 0:
-                        tok0 = (l_pos * d0 / FEE_GROWTH_SCALE
-                                / (Decimal(10) ** pool_meta["dec0"]))
-                        tok1 = (l_pos * d1 / FEE_GROWTH_SCALE
-                                / (Decimal(10) ** pool_meta["dec1"]))
-                        fee_usd = (tok0 * price + tok1) * quote
-                if fee_usd is not None:
+        if open_valid and price is not None and fg0 is not None and fg1 is not None:
+            try:
+                cur0, cur1 = Decimal(str(fg0)), Decimal(str(fg1))
+                if prev_fg0 is not None and prev_fg1 is not None:
+                    d0 = cur0 - prev_fg0
+                    d1 = cur1 - prev_fg1
+                    tok0 = (l_pos * d0 / FEE_GROWTH_SCALE / (Decimal(10) ** dec0_val))
+                    tok1 = (l_pos * d1 / FEE_GROWTH_SCALE / (Decimal(10) ** dec1_val))
+                    fee_usd = (tok0 * price + tok1) * quote_val
                     accrued += fee_usd
-                    nav = compute_nav(wallet=capital_usd - position_usd,
-                                      lp_principal=position_usd,
-                                      accrued_fees=accrued,
-                                      verified_rewards=Decimal(0),
-                                      liabilities=Decimal(0))
-                # else: fail-close (missing pool_meta key, L_pos==0, or
-                # price is None) -> nav stays None; no silent default.
-            else:
-                # First step: no previous reading, increment is "unknown"
-                # (RH-02af).  accrued stays 0; NAV is still computed.
-                nav = compute_nav(wallet=capital_usd - position_usd,
-                                  lp_principal=position_usd,
-                                  accrued_fees=accrued,
-                                  verified_rewards=Decimal(0),
-                                  liabilities=Decimal(0))
-            prev_fg0, prev_fg1 = cur0, cur1
+                prev_fg0, prev_fg1 = cur0, cur1
+
+                lp_val = position_value_at(
+                    price=price,
+                    liquidity_human=liquidity_human,
+                    entry_price=entry_price,
+                    range_pct=range_pct_val,
+                    quote_usd_per_token1=quote_val,
+                )
+                nav = compute_nav(
+                    wallet=Decimal(str(capital_usd)) - Decimal(str(position_usd)),
+                    lp_principal=lp_val.value_usd,
+                    accrued_fees=accrued,
+                    verified_rewards=Decimal(0),
+                    liabilities=Decimal(0),
+                )
+            except (TypeError, ValueError, InvalidOperation):
+                nav = None
+
         step_net_pnl = (net_pnl(nav, prev_nav, Decimal(0))
                         if nav is not None and prev_nav is not None else None)
         if nav is not None:
             prev_nav = nav
 
-        if init0 is None:
-            def _dec(v, d):
-                return Decimal(str(v)) if v is not None else d
-            init0 = _dec(sample.get("initial_token0_raw"), VIRTUAL_INITIAL_TOKEN0_RAW)
-            init1 = _dec(sample.get("initial_token1_raw"), VIRTUAL_INITIAL_TOKEN1_RAW)
-            dec0 = int(sample.get("dec0", DEFAULT_DEC0))
-            dec1 = int(sample.get("dec1", DEFAULT_DEC1))
-            quote = _dec(sample.get("quote_usd_per_token1"), DEFAULT_QUOTE_USD_PER_TOKEN1)
         hodl_value: Optional[Decimal] = None
-        if price is not None:
-            hodl_value = hodl_benchmark(initial_token0_raw=init0,
-                                        initial_token1_raw=init1, dec0=dec0,
-                                        dec1=dec1, price_t1_token1_per_token0=price,
-                                        quote_usd_per_token1=quote)
+        if open_valid and price is not None:
+            hodl_value = amount0_human * price * quote_val + amount1_human * quote_val
 
         insert_row(conn, "rh_gate_decisions", {
             "decision_id": decision.decision_id, "candidate_key": decision.candidate_key,
@@ -536,13 +539,43 @@ def episode_summary(steps: Sequence[ShadowStep], *, load_skipped: int = 0) -> di
         status_counts[s.primary_status] = status_counts.get(s.primary_status, 0) + 1
         if s.dominant_blocker is not None:
             blocker_counts[s.dominant_blocker] = blocker_counts.get(s.dominant_blocker, 0) + 1
-    navs = [s.nav for s in steps if s.nav is not None]
-    nav_start = navs[0] if navs else None
-    nav_end = navs[-1] if navs else None
-    net_pnl_val = (net_pnl(nav_end, nav_start, Decimal(0))
-                   if nav_start is not None and nav_end is not None else None)
-    hodls = [s.hodl_value for s in steps if s.hodl_value is not None]
-    hodl_delta = (hodls[-1] - hodls[0]) if len(hodls) >= 2 else None
+
+    # RH-02al: Window alignment over the intersection of steps where both NAV
+    # and HODL are available. If HODL is not tracked in the input steps (e.g.
+    # isolated NAV tests), fall back to steps where NAV is not None.
+    has_hodl = any(s.hodl_value is not None for s in steps)
+    if has_hodl:
+        valid_steps = [s for s in steps if s.nav is not None and s.hodl_value is not None]
+    else:
+        valid_steps = [s for s in steps if s.nav is not None]
+
+    window_reason: Optional[str] = None
+    if len(valid_steps) >= 2:
+        start_step = valid_steps[0]
+        end_step = valid_steps[-1]
+        nav_start = start_step.nav
+        nav_end = end_step.nav
+        net_pnl_val = net_pnl(nav_end, nav_start, Decimal(0))
+        hodl_delta = (end_step.hodl_value - start_step.hodl_value) if has_hodl else None
+        window_start_time = start_step.sample_time
+        window_end_time = end_step.sample_time
+    elif len(valid_steps) == 1:
+        nav_start = valid_steps[0].nav
+        nav_end = valid_steps[0].nav
+        net_pnl_val = None
+        hodl_delta = None
+        window_start_time = valid_steps[0].sample_time
+        window_end_time = valid_steps[0].sample_time
+        window_reason = "INSUFFICIENT_OVERLAPPING_STEPS"
+    else:
+        nav_start = None
+        nav_end = None
+        net_pnl_val = None
+        hodl_delta = None
+        window_start_time = None
+        window_end_time = None
+        window_reason = "NO_OVERLAPPING_STEPS"
+
     return {
         "total_steps": len(steps),
         "eligible_steps": sum(1 for s in steps if s.terminal_eligible),
@@ -550,6 +583,9 @@ def episode_summary(steps: Sequence[ShadowStep], *, load_skipped: int = 0) -> di
         "first_eligible_at": next((s.sample_time for s in steps if s.terminal_eligible), None),
         "nav_start": nav_start, "nav_end": nav_end, "net_pnl": net_pnl_val,
         "hodl_delta": hodl_delta,
+        "window_start_time": window_start_time,
+        "window_end_time": window_end_time,
+        "window_alignment_reason": window_reason,
         # Was one "skipped_samples" field adding these together, which reported
         # 40 when the database held 7 null prices.  They are different facts.
         "skipped_at_load": load_skipped,

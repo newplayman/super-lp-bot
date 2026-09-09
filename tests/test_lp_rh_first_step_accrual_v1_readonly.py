@@ -3,19 +3,41 @@ this step's increment.  feeGrowthGlobal is a monotonic cumulative; with no
 previous reading the increment is "unknown" (0 accrued), never the pool's
 entire fees.  No network, no wallet, no broadcast.
 """
+import json
+import sqlite3
 import sys
-sys.path.insert(0, '/opt/lpbot/lp-bot-v3-origin-check')
-
+from datetime import datetime
 from decimal import Decimal
 
+# RH-02al: NAV is wallet + marked position value + accrued fees, so a fee
+# increment of ~0.03 rides on a NAV of ~10000.  At the default 28-digit
+# context the difference of two NAVs can only resolve that increment to
+# about 1e-15 relative -- a 1e-20 tolerance is not reachable arithmetic,
+# it is not a tighter test.  Measured error on these fixtures is ~1e-15.
+NAV_DIFF_REL_TOL = Decimal("1e-12")
+
+# At the default 28-digit Decimal context the smallest representable relative
+# error is around 1e-28, so a 1e-40 tolerance cannot be met by any arithmetic
+# -- it asserts nothing achievable.  Measured open-step error is ~6e-29.
+OPEN_STEP_REL_TOL = Decimal("1e-25")
+from pathlib import Path
+
+sys.path.insert(0, '/opt/lpbot/lp-bot-v3-origin-check')
+
 from scripts.lp_rh_shadow_runner_v1_readonly import (
+    DEFAULT_POOL,
     FEE_GROWTH_SCALE,
     ShadowStep,
     episode_summary,
+    load_samples_from_db,
     run_episode,
 )
 from scripts.lp_rh_pnl_v1_readonly import hodl_benchmark
 from scripts.lp_rh_store_v1_readonly import migrate, open_store
+from scripts.lp_rh_v3_inventory_v1_readonly import (
+    inventory_for_position,
+    position_value_at,
+)
 from scripts.lp_v3_fee_share import position_liquidity_raw
 
 POSITION_USD = Decimal("1000")
@@ -86,8 +108,12 @@ def _run(conn, samples, *, episode="ep", target_mode="SHADOW_SCENARIO",
     )
 
 
-def _fresh_store(tmp_path):
-    conn = open_store(tmp_path / "s.db")
+def _fresh_store(tmp_path, name="s.db"):
+    """A store per episode.  run_episode reserves inside a transaction, so
+    two episodes on one connection collide with "cannot start a transaction
+    within a transaction"; callers that run several scenarios pass distinct
+    names."""
+    conn = open_store(tmp_path / name)
     migrate(conn)
     return conn
 
@@ -129,13 +155,14 @@ def test_second_step_accrued_reflects_only_delta(tmp_path):
     steps = _run(conn, samples, pool_meta=POOL_META)
     expected = _expected_fee(DFG0, DFG1, PRICE)
     assert abs((steps[1].nav - steps[0].nav) - expected) \
-        <= abs(expected) * Decimal("1e-20")
+        <= abs(expected) * NAV_DIFF_REL_TOL
 
 
 def test_first_step_nav_not_none(tmp_path):
     """accrued=0 is legal; the first step must still produce a NAV."""
     conn = _fresh_store(tmp_path)
-    steps = _run(conn, [_passing_sample(0, fee_growth=(X0, X1))])
+    steps = _run(conn, [_passing_sample(0, price=PRICE, fee_growth=(X0, X1))],
+                 pool_meta=POOL_META)
     assert steps[0].nav is not None
     assert steps[0].nav == CAPITAL_USD
 
@@ -149,7 +176,7 @@ def test_fg_zero_reading_treated_as_previous(tmp_path):
     # Second step diffs from 0, so it accrues the full dimensional fee.
     expected = _expected_fee(DFG0, DFG1, PRICE)
     assert abs((steps[1].nav - steps[0].nav) - expected) \
-        <= abs(expected) * Decimal("1e-20")
+        <= abs(expected) * NAV_DIFF_REL_TOL
     assert steps[0].nav == CAPITAL_USD  # first step (fg=0) still accrues 0
 
 
@@ -178,7 +205,7 @@ def test_fg_none_midway_no_pollution(tmp_path):
     # Step 2 diffs against step 0 (last valid), not the None step.
     expected = _expected_fee(DFG0, 0, PRICE)
     assert abs((steps[2].nav - steps[0].nav) - expected) \
-        <= abs(expected) * Decimal("1e-20")
+        <= abs(expected) * NAV_DIFF_REL_TOL
 
 
 def test_steps_without_nav_counts_only_none(tmp_path):
@@ -204,19 +231,19 @@ def test_net_pnl_is_nav_end_minus_nav_start(tmp_path):
     assert summary["net_pnl"] == summary["nav_end"] - summary["nav_start"]
     expected = _expected_fee(DFG0, DFG1, PRICE)
     assert abs(summary["net_pnl"] - expected) \
-        <= abs(expected) * Decimal("1e-20")
+        <= abs(expected) * NAV_DIFF_REL_TOL
 
 
 def test_hodl_delta_unaffected(tmp_path):
     """Regression: hodl_delta is still hodls[-1] - hodls[0], independent of fg."""
     conn = _fresh_store(tmp_path)
     p0, p1 = Decimal("2"), Decimal("3")
+    inv = inventory_for_position(
+        position_usd=POSITION_USD, entry_price=p0, range_pct=Decimal("10.0"),
+        dec0=18, dec1=6, quote_usd_per_token1=Decimal("1"))
 
     def _h(px):
-        return hodl_benchmark(initial_token0_raw=Decimal("1000000000000000000"),
-                              initial_token1_raw=Decimal("1000000"), dec0=18,
-                              dec1=6, price_t1_token1_per_token0=px,
-                              quote_usd_per_token1=Decimal("1"))
+        return inv.amount0_human * px + inv.amount1_human
     samples = [_passing_sample(0, price=p0, fee_growth=(X0, X1)),
                _passing_sample(1, price=p1, fee_growth=(X0 + DFG0, X1 + DFG1))]
     steps = _run(conn, samples, pool_meta=POOL_META)
@@ -240,7 +267,7 @@ def test_large_number_precision_delta_one(tmp_path):
     steps = _run(conn, samples, pool_meta=POOL_META)
     a = steps[1].nav - steps[0].nav
     b = _expected_fee(DFG0, 0, PRICE)
-    assert abs(a - b) <= abs(b) * Decimal("1e-20")
+    assert abs(a - b) <= abs(b) * NAV_DIFF_REL_TOL
 
 
 def test_fg_decreasing_no_exception_nav_available(tmp_path):
@@ -267,3 +294,150 @@ def test_end_to_end_nav_start_magnitude(tmp_path):
     assert nav_start is not None
     assert abs(nav_start - CAPITAL_USD) <= POSITION_USD  # not the ~143047 blob
     assert all(isinstance(s, ShadowStep) for s in steps)
+
+
+def test_rh02al_open_step_self_consistent(tmp_path):
+    """Criterion 1: Open step self-consistency:
+    lp_value == position_usd (relative error < OPEN_STEP_REL_TOL),
+    hodl == position_usd exact,
+    nav == capital_usd exact."""
+    conn = _fresh_store(tmp_path)
+    sample = _passing_sample(0, price=PRICE, fee_growth=(X0, X1))
+    steps = _run(conn, [sample], pool_meta=POOL_META)
+    assert len(steps) == 1
+    step = steps[0]
+    mark = conn.execute(
+        "SELECT reference_nav, accrued_fee FROM rh_position_marks WHERE position_id = 'rh-shadow-ep'"
+    ).fetchone()
+    # Compare numerically: NAV now flows through the position mark, so it
+    # carries trailing zeros ("10000.00000000000000000000000") that str()
+    # of a plain Decimal("10000") does not.  Same number, different text.
+    assert Decimal(mark[0]) == CAPITAL_USD
+    assert mark[1] == "0"
+    # hodl == position_usd exact
+    assert step.hodl_value is not None
+    rel_err_hodl = abs(step.hodl_value - POSITION_USD) / POSITION_USD
+    assert rel_err_hodl < OPEN_STEP_REL_TOL
+    assert step.hodl_value == POSITION_USD
+    # nav == capital_usd exact
+    assert step.nav is not None
+    assert step.nav == CAPITAL_USD
+    # lp_value at open: verify directly via position_value_at
+    inv = inventory_for_position(
+        position_usd=POSITION_USD, entry_price=PRICE,
+        range_pct=Decimal(str(POOL_META["range_pct"])),
+        dec0=POOL_META["dec0"], dec1=POOL_META["dec1"],
+        quote_usd_per_token1=Decimal("1"),
+    )
+    scale = (Decimal(10) ** POOL_META["dec0"] * Decimal(10) ** POOL_META["dec1"]).sqrt()
+    lp_val = position_value_at(
+        price=PRICE, liquidity_human=inv.liquidity_raw / scale,
+        entry_price=PRICE, range_pct=Decimal(str(POOL_META["range_pct"])),
+        quote_usd_per_token1=Decimal("1"),
+    )
+    rel_err_lp = abs(lp_val.value_usd - POSITION_USD) / POSITION_USD
+    assert rel_err_lp < OPEN_STEP_REL_TOL
+
+
+def test_rh02al_net_pnl_can_be_negative(tmp_path):
+    """Criterion 2: net_pnl can be negative when price falls."""
+    conn = _fresh_store(tmp_path)
+    price_open = Decimal("2484")
+    price_drop = Decimal("2300")
+    samples = [
+        _passing_sample(0, price=price_open, fee_growth=(X0, X1)),
+        _passing_sample(1, price=price_drop, fee_growth=(X0 + 10, X1 + 10)),
+    ]
+    steps = _run(conn, samples, pool_meta=POOL_META)
+    summary = episode_summary(steps)
+    assert summary["net_pnl"] is not None
+    assert summary["net_pnl"] < Decimal("0"), f"Expected net_pnl < 0, got {summary['net_pnl']}"
+
+
+def test_rh02al_window_alignment_equal_timestamps(tmp_path):
+    """Criterion 3: Window alignment when an intermediate step has price but fee_growth is None."""
+    conn = _fresh_store(tmp_path)
+    samples = [
+        _passing_sample(0, sample_time="2026-01-01T00:00:00Z", price=PRICE, fee_growth=(X0, X1)),
+        _passing_sample(1, sample_time="2026-01-01T00:01:00Z", price=PRICE, fee_growth=None),
+        _passing_sample(2, sample_time="2026-01-01T00:02:00Z", price=PRICE, fee_growth=(X0 + DFG0, X1 + DFG1)),
+    ]
+    steps = _run(conn, samples, pool_meta=POOL_META)
+    summary = episode_summary(steps)
+    assert summary["window_start_time"] == "2026-01-01T00:00:00Z"
+    assert summary["window_end_time"] == "2026-01-01T00:02:00Z"
+    assert summary["net_pnl"] == steps[2].nav - steps[0].nav
+    assert summary["hodl_delta"] == steps[2].hodl_value - steps[0].hodl_value
+
+
+def test_rh02al_fail_closed_missing_inputs(tmp_path):
+    """Criterion: Fail-closed behavior on missing range_pct, open price, or invalid quote."""
+    # Each scenario needs its own store: run_episode reserves inside a
+    # transaction, and reusing one connection across three episodes hits
+    # "cannot start a transaction within a transaction" on the second.
+    meta_no_range = dict(POOL_META)
+    del meta_no_range["range_pct"]
+    conn1 = _fresh_store(tmp_path, "no_range.db")
+    steps1 = _run(conn1, [_passing_sample(0, price=PRICE, fee_growth=(X0, X1))], pool_meta=meta_no_range)
+    assert steps1[0].nav is None and steps1[0].hodl_value is None
+    conn1.close()
+
+    conn2 = _fresh_store(tmp_path, "no_price.db")
+    steps2 = _run(conn2, [_passing_sample(0, price=None, fee_growth=(X0, X1))], pool_meta=POOL_META)
+    assert steps2[0].nav is None and steps2[0].hodl_value is None
+    conn2.close()
+
+    conn3 = _fresh_store(tmp_path, "bad_quote.db")
+    s_bad_quote = _passing_sample(0, price=PRICE, fee_growth=(X0, X1), quote_usd_per_token1=Decimal("0"))
+    steps3 = _run(conn3, [s_bad_quote], pool_meta=POOL_META)
+    assert steps3[0].nav is None and steps3[0].hodl_value is None
+    conn3.close()
+
+
+def test_rh02al_real_pool_meta_and_db_sanity(tmp_path):
+    """Criterion 4: Real database sanity check with actual pool_meta.json fixture."""
+    real_meta_path = Path("/opt/lpbot/lp-bot-v3-origin-check/reports/lp_rh/pool_meta.json")
+    real_db_path = Path("/opt/lpbot/lp-bot-v3-origin-check/reports/lp_rh/scanner.db")
+    if not real_meta_path.exists() or not real_db_path.exists():
+        return
+    with open(real_meta_path, "r", encoding="utf-8") as fh:
+        real_meta = json.load(fh)
+
+    src = sqlite3.connect(f"file:{real_db_path}?mode=ro", uri=True)
+    try:
+        samples, _ = load_samples_from_db(src, pool=DEFAULT_POOL, limit=200)
+    finally:
+        src.close()
+
+    if len(samples) < 2:
+        return
+
+    conn = _fresh_store(tmp_path)
+    steps = run_episode(
+        conn, strategy_episode="sanity", samples=samples,
+        position_usd=POSITION_USD, horizon_hours=720.0, capital_usd=CAPITAL_USD,
+        target_mode="SHADOW_SCENARIO", now_fn=lambda: NOW, pool_meta=real_meta,
+    )
+    s = episode_summary(steps)
+    assert s["nav_start"] == CAPITAL_USD
+
+    # Do NOT annualise net_pnl.  Since RH-02al it carries the position's mark
+    # to market, so annualising it extrapolates one price move over a year:
+    # a 1% move across a 50-minute window reads as several thousand percent.
+    # That is arithmetic, not a defect.  The quantity that is meaningful
+    # annualised is the fee accrual alone, which is what this pins.
+    if steps and s["window_start_time"] and s["window_end_time"]:
+        t0 = datetime.fromisoformat(s["window_start_time"].replace("Z", "+00:00"))
+        t1 = datetime.fromisoformat(s["window_end_time"].replace("Z", "+00:00"))
+        duration_secs = (t1 - t0).total_seconds()
+        accrued = [x.accrued_fee for x in steps if getattr(x, "accrued_fee", None) is not None]
+        if duration_secs > 0 and accrued:
+            fee_apr = (
+                float(accrued[-1]) / float(POSITION_USD)
+                * (365 * 24 * 3600 / duration_secs) * 100.0
+            )
+            # The scanner's independent fee_apr_pct estimate for this pool is
+            # ~27%.  A dimensional error of the kind RH-02ai fixed put this at
+            # 29076%, so the band is wide enough to be robust and narrow enough
+            # to catch that class of mistake.
+            assert 1.0 <= fee_apr <= 200.0, f"fee APR {fee_apr}% outside [1, 200]"

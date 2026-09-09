@@ -18,6 +18,7 @@ from scripts.lp_rh_shadow_runner_v1_readonly import (
 )
 from scripts.lp_rh_pnl_v1_readonly import hodl_benchmark
 from scripts.lp_rh_store_v1_readonly import insert_row, migrate, open_store
+from scripts.lp_rh_v3_inventory_v1_readonly import inventory_for_position
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 LIVE_DB = REPO_ROOT / "reports" / "lp_rh" / "scanner.db"
@@ -66,11 +67,12 @@ def _passing_sample(idx, *, price=None, fee_growth=None, **overrides):
     return s
 
 
-def _run(conn, samples, *, episode="ep", target_mode="SHADOW_SCENARIO"):
+def _run(conn, samples, *, episode="ep", target_mode="SHADOW_SCENARIO", pool_meta=None):
     return run_episode(
         conn, strategy_episode=episode, samples=samples,
         position_usd=POSITION_USD, horizon_hours=HORIZON_HOURS,
         capital_usd=CAPITAL_USD, target_mode=target_mode, now_fn=lambda: NOW,
+        pool_meta=pool_meta,
     )
 
 
@@ -181,15 +183,16 @@ def test_nav_continuity():
 
 def test_hodl_initial_legs_constant_t41(tmp_path):
     conn = _fresh_store(tmp_path)
-    s0 = _passing_sample(0, price=Decimal("1.0"),
-                         initial_token0_raw=500, initial_token1_raw=700,
-                         quote_usd_per_token1=Decimal("2.0"))
-    s1 = _passing_sample(1, price=Decimal("2.0"))  # no legs -> reuses s0's
-    steps = _run(conn, [s0, s1])
-    kw = dict(initial_token0_raw=Decimal(500), initial_token1_raw=Decimal(700),
-              dec0=18, dec1=6, quote_usd_per_token1=Decimal("2.0"))
-    exp0 = hodl_benchmark(price_t1_token1_per_token0=Decimal("1.0"), **kw)
-    exp1 = hodl_benchmark(price_t1_token1_per_token0=Decimal("2.0"), **kw)
+    meta = {"range_pct": 10.0, "dec0": 18, "dec1": 6}
+    s0 = _passing_sample(0, price=Decimal("1.0"), quote_usd_per_token1=Decimal("2.0"))
+    s1 = _passing_sample(1, price=Decimal("2.0"))  # no quote -> reuses s0's quote and cached legs
+    steps = _run(conn, [s0, s1], pool_meta=meta)
+    inv = inventory_for_position(
+        position_usd=POSITION_USD, entry_price=Decimal("1.0"),
+        range_pct=Decimal("10.0"), dec0=18, dec1=6,
+        quote_usd_per_token1=Decimal("2.0"))
+    exp0 = (inv.amount0_human * Decimal("1.0") + inv.amount1_human) * Decimal("2.0")
+    exp1 = (inv.amount0_human * Decimal("2.0") + inv.amount1_human) * Decimal("2.0")
     assert steps[0].hodl_value == exp0
     assert steps[1].hodl_value == exp1
     conn.close()
