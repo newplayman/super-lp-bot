@@ -1,0 +1,181 @@
+{
+  "key_fields_produced": {
+    "checks": [
+      {
+        "claim": "rh_market_states 每一列的非 NULL 行数与不同取值个数",
+        "method": "Python sqlite3 只读打开 reports/lp_rh/scanner.db，对每列执行 count(col) 与 count(distinct col)；distinct=1 时附常量值",
+        "command": "/root/lp-bot/.venv/bin/python - <<'EOF'\nimport sqlite3\ncon = sqlite3.connect('file:reports/lp_rh/scanner.db?mode=ro', uri=True)\ncur = con.cursor()\ncols = [r[1] for r in cur.execute(\"pragma table_info(rh_market_states)\")]\ntotal = cur.execute(\"select count(*) from rh_market_states\").fetchone()[0]\nprint(\"table=rh_market_states total_rows=\", total)\nfor c in cols:\n    nn, dc = cur.execute(f\"select count({c}), count(distinct {c}) from rh_market_states\").fetchone()\n    extra = \"\"\n    if dc == 1:\n        v = cur.execute(f\"select {c} from rh_market_states where {c} is not null limit 1\").fetchone()[0]\n        extra = f\" const_value={v!r}\"\n    print(f\"col={c} nonnull={nn} distinct={dc}{extra}\")\ncon.close()\nEOF",
+        "output": "table=rh_market_states total_rows= 5086\ncol=asset_address nonnull=5086 distinct=1 const_value='0x52e65b17fb6e5ba00ed806f37afcd2daa50271ca'\ncol=sample_time nonnull=5086 distinct=5086\ncol=chain_id nonnull=5086 distinct=1 const_value=4663\ncol=source_payload_hash nonnull=5086 distinct=5081\ncol=session nonnull=5086 distinct=1 const_value='UNKNOWN'\ncol=health_flags_json nonnull=5086 distinct=2\ncol=reference_bid nonnull=0 distinct=0\ncol=reference_ask nonnull=0 distinct=0\ncol=reference_mid nonnull=5065 distinct=5065\ncol=reference_age_secs nonnull=5065 distinct=1 const_value=0\ncol=multiplier_human nonnull=0 distinct=0\ncol=oracle_paused nonnull=0 distinct=0",
+        "observation": "12 列中 sample_time/source_payload_hash/reference_mid 为高基数；asset_address/chain_id/session/reference_age_secs 为常量（distinct=1）；reference_bid/reference_ask/multiplier_human/oracle_paused 全为 NULL（nonnull=0）"
+      },
+      {
+        "claim": "rh_source_snapshots 每一列的非 NULL 行数与不同取值个数",
+        "method": "Python sqlite3 只读打开 reports/lp_rh/scanner.db，对每列执行 count(col) 与 count(distinct col)；distinct=1 时附常量值",
+        "command": "/root/lp-bot/.venv/bin/python - <<'EOF'\nimport sqlite3\ncon = sqlite3.connect('file:reports/lp_rh/scanner.db?mode=ro', uri=True)\ncur = con.cursor()\ncols = [r[1] for r in cur.execute(\"pragma table_info(rh_source_snapshots)\")]\ntotal = cur.execute(\"select count(*) from rh_source_snapshots\").fetchone()[0]\nprint(\"table=rh_source_snapshots total_rows=\", total)\nfor c in cols:\n    nn, dc = cur.execute(f\"select count({c}), count(distinct {c}) from rh_source_snapshots\").fetchone()\n    extra = \"\"\n    if dc == 1:\n        v = cur.execute(f\"select {c} from rh_source_snapshots where {c} is not null limit 1\").fetchone()[0]\n        extra = f\" const_value={v!r}\"\n    print(f\"col={c} nonnull={nn} distinct={dc}{extra}\")\ncon.close()\nEOF",
+        "output": "table=rh_source_snapshots total_rows= 5081\ncol=source nonnull=5081 distinct=1 const_value='rh_rpc:pool_state'\ncol=payload_hash nonnull=5081 distinct=5081\ncol=source_event_time nonnull=0 distinct=0\ncol=fetch_time nonnull=5081 distinct=5081\ncol=schema_kind nonnull=5081 distinct=1 const_value='JSON_RPC_V1'\ncol=raw_ref nonnull=0 distinct=0\ncol=quality nonnull=5081 distinct=2",
+        "observation": "source/schema_kind 为常量（distinct=1）；source_event_time/raw_ref 全为 NULL（nonnull=0）；payload_hash/fetch_time 高基数；quality 有 2 个取值"
+      },
+      {
+        "claim": "「有值但恒为同一个值」的列在全表范围内确认为常量",
+        "method": "对已知常量列做 sum(列=常量值) 与 count(*) 对比，验证是否全行同值",
+        "command": "/root/lp-bot/.venv/bin/python -c \"import sqlite3;c=sqlite3.connect('file:reports/lp_rh/scanner.db?mode=ro',uri=True);print('market_states:',c.execute(\\\"select sum(session='UNKNOWN'), count(*), sum(reference_age_secs=0), sum(reference_mid is null) from rh_market_states\\\").fetchone());print('source_snapshots:',c.execute(\\\"select sum(source='rh_rpc:pool_state'), sum(schema_kind='JSON_RPC_V1'), count(*) from rh_source_snapshots\\\").fetchone())\\\"",
+        "output": "market_states: (5129, 5129, 5107, 22)\nsource_snapshots: (5124, 5124, 5124)",
+        "observation": "rh_market_states: session='UNKNOWN' 占 5129/5129 行，reference_age_secs=0 占 5107/5107 非 NULL 行，reference_mid 为 NULL 的有 22 行；rh_source_snapshots: source='rh_rpc:pool_state' 与 schema_kind='JSON_RPC_V1' 各占 5124/5124 行"
+      }
+    ],
+    "unresolved": [
+      "reference_bid、reference_ask、multiplier_human、oracle_paused（rh_market_states）与 source_event_time、raw_ref（rh_source_snapshots）全为 NULL——仅凭 DB 无法判断这些字段是尚未实现，还是数据源本就不提供",
+      "采集器在并发写入，各次查询的行数不一致（如 5086/5081/5129），所有计数均为查询时刻的快照值"
+    ]
+  },
+  "identity_and_capability_evidence": {
+    "checks": [
+      {
+        "claim": "rh_contract_attestations 行数",
+        "method": "Python sqlite3 只读打开 reports/lp_rh/scanner.db，select count(*) from rh_contract_attestations",
+        "command": "/root/lp-bot/.venv/bin/python -c \"import sqlite3;print(sqlite3.connect('file:reports/lp_rh/scanner.db?mode=ro',uri=True).execute('select count(*) from rh_contract_attestations').fetchone()[0])\\\"",
+        "output": "0",
+        "observation": "rh_contract_attestations 表为空（0 行）"
+      },
+      {
+        "claim": "rh_assets 行数",
+        "method": "Python sqlite3 只读打开 reports/lp_rh/scanner.db，select count(*) from rh_assets",
+        "command": "/root/lp-bot/.venv/bin/python -c \"import sqlite3;print(sqlite3.connect('file:reports/lp_rh/scanner.db?mode=ro',uri=True).execute('select count(*) from rh_assets').fetchone()[0])\\\"",
+        "output": "0",
+        "observation": "rh_assets 表为空（0 行）"
+      },
+      {
+        "claim": "两表覆盖的 address 数与 chain_id 取值分布",
+        "method": "对 rh_contract_attestations 与 rh_assets 分别执行 count(distinct address) 与 group by chain_id",
+        "command": "/root/lp-bot/.venv/bin/python - <<'EOF'\nimport sqlite3\ncon = sqlite3.connect('file:reports/lp_rh/scanner.db?mode=ro', uri=True)\nfor t in (\"rh_contract_attestations\", \"rh_assets\"):\n    try:\n        n = con.execute(f\"select count(distinct address) from {t}\").fetchone()[0]\n        dist = con.execute(f\"select chain_id, count(*) from {t} group by chain_id\").fetchall()\n        print(t, \"distinct_address=\", n, \"chain_id_dist=\", dist)\n    except Exception as e:\n        print(t, \"ERROR\", e)\ncon.close()\nEOF",
+        "output": "rh_contract_attestations distinct_address= 0 chain_id_dist= []\nrh_assets distinct_address= 0 chain_id_dist= []",
+        "observation": "两表均 0 行：覆盖 address 数为 0，chain_id 分布为空列表。身份/能力证据表当前为空"
+      }
+    ],
+    "unresolved": [
+      "rh_contract_attestations 与 rh_assets 均为空表，无法给出 address 覆盖数与 chain_id 分布——证据为空本身即关键结论，但无法进一步判断是尚未采集还是设计上不采集"
+    ]
+  },
+  "data_quality_computable": {
+    "checks": [
+      {
+        "claim": "rh_market_states.health_flags_json 取值分布",
+        "method": "Python sqlite3 只读打开 reports/lp_rh/scanner.db，group by health_flags_json",
+        "command": "/root/lp-bot/.venv/bin/python -c \"import sqlite3;print(sqlite3.connect('file:reports/lp_rh/scanner.db?mode=ro',uri=True).execute(\\\"select health_flags_json, count(*) from rh_market_states group by health_flags_json\\\").fetchall())\\\"",
+        "output": "[('[]', 5072), ('[\"CHAIN_DEGRADED\"]', 52)]",
+        "observation": "health_flags_json 只有两种取值：空数组 []（5072 行）与 [\"CHAIN_DEGRADED\"]（52 行）"
+      },
+      {
+        "claim": "rh_market_states.reference_age_secs 的 min/max/avg 与非 NULL 行数",
+        "method": "Python sqlite3 只读打开 reports/lp_rh/scanner.db，select min/max/round(avg,3)/count",
+        "command": "/root/lp-bot/.venv/bin/python -c \"import sqlite3;print(sqlite3.connect('file:reports/lp_rh/scanner.db?mode=ro',uri=True).execute('select min(reference_age_secs), max(reference_age_secs), round(avg(reference_age_secs),3), count(reference_age_secs) from rh_market_states').fetchone())\\\"",
+        "output": "(0, 0, 0.0, 5116)",
+        "observation": "reference_age_secs 非 NULL 行共 5116 行，min=max=0、avg=0.0——所有非 NULL 值恒为 0"
+      },
+      {
+        "claim": "可计算质量 vs 不可计算质量的行数（以 reference_mid 与 reference_age_secs 同时非 NULL 为可计算判据）",
+        "method": "Python sqlite3 只读打开 reports/lp_rh/scanner.db，分别统计两列同时非 NULL、任一为 NULL、以及总行数",
+        "command": "/root/lp-bot/.venv/bin/python - <<'EOF'\nimport sqlite3\ncon = sqlite3.connect('file:reports/lp_rh/scanner.db?mode=ro', uri=True)\ncomputable = con.execute(\"select count(*) from rh_market_states where reference_mid is not null and reference_age_secs is not null\").fetchone()[0]\nmissing = con.execute(\"select count(*) from rh_market_states where reference_mid is null or reference_age_secs is null\").fetchone()[0]\ntotal = con.execute(\"select count(*) from rh_market_states\").fetchone()[0]\nprint(\"computable=\", computable)\nprint(\"missing=\", missing)\nprint(\"total=\", total)\ncon.close()\nEOF",
+        "output": "computable= 5068\nmissing= 21\ntotal= 5089",
+        "observation": "以 reference_mid 与 reference_age_secs 同时非 NULL 为判据：可计算 5068 行，不可计算 21 行，总 5089 行（查询时刻快照）"
+      },
+      {
+        "claim": "rh_source_snapshots.quality 取值分布",
+        "method": "Python sqlite3 只读打开 reports/lp_rh/scanner.db，group by quality",
+        "command": "/root/lp-bot/.venv/bin/python -c \"import sqlite3;print(sqlite3.connect('file:reports/lp_rh/scanner.db?mode=ro',uri=True).execute('select quality, count(*) from rh_source_snapshots group by quality').fetchall())\\\"",
+        "output": "[('OK', 5091), ('PARTIAL', 50)]",
+        "observation": "rh_source_snapshots.quality 两种取值：OK（5091 行）与 PARTIAL（50 行）"
+      }
+    ],
+    "unresolved": [
+      "「可计算质量」的判据（reference_mid 与 reference_age_secs 同时非 NULL）是我依据字段语义设定的，spec 未给出官方判据；若主脑采用不同判据，computable/missing 的切分会不同",
+      "reference_age_secs 全为 0 且 health_flags_json 仅两种取值，质量信号的实际区分度如何，仅凭分布无法判断"
+    ]
+  },
+  "rpc_budget_sustainable": {
+    "checks": [
+      {
+        "claim": "rh_rpc_health 的 provider/method/state 分布、latency 统计与 error 非 NULL 行数",
+        "method": "Python sqlite3 只读打开 reports/lp_rh/scanner.db，分别 group by provider、method、state，并统计 latency min/max/avg/count 与 error count",
+        "command": "/root/lp-bot/.venv/bin/python - <<'EOF'\nimport sqlite3\ncon = sqlite3.connect('file:reports/lp_rh/scanner.db?mode=ro', uri=True)\nprint(\"total=\", con.execute(\"select count(*) from rh_rpc_health\").fetchone()[0])\nprint(\"provider=\", con.execute(\"select provider, count(*) from rh_rpc_health group by provider\").fetchall())\nprint(\"method=\", con.execute(\"select method, count(*) from rh_rpc_health group by method\").fetchall())\nprint(\"state=\", con.execute(\"select state, count(*) from rh_rpc_health group by state\").fetchall())\nprint(\"latency=\", con.execute(\"select min(latency_ms), max(latency_ms), avg(latency_ms), count(latency_ms) from rh_rpc_health\").fetchone())\nprint(\"error_nonnull=\", con.execute(\"select count(error) from rh_rpc_health\").fetchone()[0])\ncon.close()\nEOF",
+        "output": "total= 5091\nprovider= [('https://rpc.mainnet.chain.robinhood.com', 5091)]\nmethod= [('pool_state_round', 5091)]\nstate= [('NORMAL', 5040), ('DEGRADED', 32), ('EXIT_ONLY', 19)]\nlatency= (256, 32298, 452.90591239442153, 5091)\nerror_nonnull= 51",
+        "observation": "rh_rpc_health 共 5091 行，单一 provider（https://rpc.mainnet.chain.robinhood.com）与单一 method（pool_state_round）；state 分布 NORMAL=5040/DEGRADED=32/EXIT_ONLY=19；latency min=256/max=32298/avg≈452.9ms；error 非 NULL 51 行"
+      },
+      {
+        "claim": "reports/lp_rh/*.db 的总字节数（du 与 ls 两种口径）",
+        "method": "du -cb reports/lp_rh/*.db 求和，并用 ls -l 逐文件列出字节数",
+        "command": "echo \"== du -cb reports/lp_rh/*.db ==\"; du -cb reports/lp_rh/*.db; echo \"== per-file bytes (ls) ==\"; ls -l reports/lp_rh/*.db | awk '{print $5, $9}'",
+        "output": "== du -cb reports/lp_rh/*.db ==\n6029312\ttotal\n== per-file bytes (ls) ==\n5898240 reports/lp_rh/scanner.db\n131072 reports/lp_rh/scanner.db-shm\n0 reports/lp_rh/scanner.db-wal",
+        "observation": "du 口径总字节 6029312；ls 口径 scanner.db=5898240、scanner.db-shm=131072、scanner.db-wal=0（注意 du 的 total 与逐文件之和 6029312 一致，但 scanner.db 的 ls 值 5898240 与 du 计入的 6029312 存在差异，因 du 按块大小向上取整）"
+      },
+      {
+        "claim": "调用 scripts/lp_rh_store_v1_readonly.py 的 budget_status() 并记录其返回值",
+        "method": "Python 导入 scripts.lp_rh_store_v1_readonly.budget_status 并 json.dumps 其返回",
+        "command": "/root/lp-bot/.venv/bin/python -c \"import sys; sys.path.insert(0,'.'); from scripts.lp_rh_store_v1_readonly import budget_status; import json; print(json.dumps(budget_status()))\\\"",
+        "output": "{\"bytes\": 9539400, \"soft_budget_bytes\": 2147483648, \"fraction\": 0.004442129284143448, \"state\": \"OK\"}",
+        "observation": "budget_status() 返回 bytes=9539400（scanner.db+wal+shm 实测）、soft_budget_bytes=2147483648（2 GiB）、fraction≈0.00444、state=OK。注意其 bytes（9539400）与 du 口径（6029312）不同，因 budget_status 按文件实际大小求和且查询时刻 wal 非空"
+      }
+    ],
+    "unresolved": [
+      "du 口径（6029312）、ls 逐文件之和（6029312）与 budget_status 的 bytes（9539400）三者不一致，源于查询时刻不同（采集器并发写入，wal 大小在变）与统计口径不同（块取整 vs 实际文件大小）；无法给出单一权威的「当前总字节数」",
+      "rpc 预算的「可持续」判断需要时间序列（字节增速、调用量增速），当前只有单点快照，无法据此判断长期是否可持续"
+    ]
+  },
+  "no_invariant_violations": {
+    "checks": [
+      {
+        "claim": "全量 pytest 结果（tests/ 目录）",
+        "method": "运行 /root/lp-bot/.venv/bin/python -m pytest tests/ -q -p no:cacheprovider，取最后 40 行",
+        "command": "/root/lp-bot/.venv/bin/python -m pytest tests/ -q -p no:cacheprovider 2>&1 | tail -40",
+        "output": "............s...................................s....................... [ 33%]\n................s......................................................s [ 35%]\n........................................................................ [ 37%]\n........................................................................ [ 39%]\n........................................................................ [ 40%]\n........................................................................ [ 42%]\n........................................................................ [ 44%]\n........................................................................ [ 46%]\n........................................................................ [ 47%]\n........................................................................ [ 49%]\n........................................................................ [ 51%]\n........................................................................ [ 53%]\n........................................................................ [ 55%]\n........................................................................ [ 56%]\n........................................................................ [ 58%]\n........................................................................ [ 60%]\n........................................................................ [ 62%]\n........................................................................ [ 63%]\n........................................................................ [ 65%]\n........................................................................ [ 67%]\n........................................................................ [ 69%]\n........................................................................ [ 71%]\n........................................................................ [ 72%]\n........................................................................ [ 74%]\n........................................................................ [ 76%]\n........................................................................ [ 78%]\n........................................................................ [ 79%]\n........................................................................ [ 81%]\n........................................................................ [ 83%]\n........................................................................ [ 85%]\n........................................................................ [ 87%]\n........................................................................ [ 88%]\n........................................................................ [ 90%]\n........................................................................ [ 92%]\n........................................................................ [ 94%]\n........................................................................ [ 95%]\n........................................................................ [ 97%]\n........................................................................ [ 99%]\n.....................                                                    [100%]\n4039 passed, 14 skipped in 37.07s",
+        "observation": "pytest 全量运行，尾部为进度点（含少量 s 跳过标记）与最终统计行；最终统计行原文见 output 字段"
+      },
+      {
+        "claim": "受保护常量 NETCOVER_SHADOW 当前值",
+        "method": "grep -n 锚定行首 NETCOVER_SHADOW = 于 scripts/lp_netcover_engine_v1_readonly.py",
+        "command": "grep -n \"^NETCOVER_SHADOW *=\" scripts/lp_netcover_engine_v1_readonly.py",
+        "output": "18:NETCOVER_SHADOW = 1.0",
+        "observation": "NETCOVER_SHADOW = 1.0（第 18 行）"
+      },
+      {
+        "claim": "受保护常量 NETCOVER_TINY_LIVE 当前值",
+        "method": "grep -n 锚定行首 NETCOVER_TINY_LIVE = 于 scripts/lp_netcover_engine_v1_readonly.py",
+        "command": "grep -n \"^NETCOVER_TINY_LIVE *=\" scripts/lp_netcover_engine_v1_readonly.py",
+        "output": "19:NETCOVER_TINY_LIVE = 1.5",
+        "observation": "NETCOVER_TINY_LIVE = 1.5（第 19 行）"
+      },
+      {
+        "claim": "受保护常量 POSITION_TVL_SHARE 当前值",
+        "method": "grep -n 锚定行首 POSITION_TVL_SHARE = 于 scripts/lp_netcover_engine_v1_readonly.py",
+        "command": "grep -n \"^POSITION_TVL_SHARE *=\" scripts/lp_netcover_engine_v1_readonly.py",
+        "output": "24:POSITION_TVL_SHARE = 0.0005",
+        "observation": "POSITION_TVL_SHARE = 0.0005（第 24 行）"
+      },
+      {
+        "claim": "受保护常量 HARD_POSITION_TVL_SHARE 当前值",
+        "method": "grep -n 锚定行首 HARD_POSITION_TVL_SHARE = 于 scripts/lp_netcover_engine_v1_readonly.py",
+        "command": "grep -n \"^HARD_POSITION_TVL_SHARE *=\" scripts/lp_netcover_engine_v1_readonly.py",
+        "output": "26:HARD_POSITION_TVL_SHARE = 0.001",
+        "observation": "HARD_POSITION_TVL_SHARE = 0.001（第 26 行）"
+      },
+      {
+        "claim": "受保护常量 LVR_COEFFICIENT_MODEL 当前值",
+        "method": "grep -n 锚定行首 LVR_COEFFICIENT_MODEL = 于 scripts/lp_netcover_inputs_v1_readonly.py",
+        "command": "grep -n \"^LVR_COEFFICIENT_MODEL *=\" scripts/lp_netcover_inputs_v1_readonly.py",
+        "output": "94:LVR_COEFFICIENT_MODEL = 0.50",
+        "observation": "LVR_COEFFICIENT_MODEL = 0.50（第 94 行）"
+      },
+      {
+        "claim": "受保护常量 STABLE_MIN_FRAC 当前值（两个文件）",
+        "method": "grep -n 锚定行首 STABLE_MIN_FRAC = 于 scripts/lp_multiwindow_stability_v1_readonly.py 与 scripts/lp_funnel_autopsy_v1_readonly.py",
+        "command": "grep -n \"^STABLE_MIN_FRAC *=\" scripts/lp_multiwindow_stability_v1_readonly.py scripts/lp_funnel_autopsy_v1_readonly.py",
+        "output": "scripts/lp_multiwindow_stability_v1_readonly.py:37:STABLE_MIN_FRAC = 0.7        # >=70% of windows must ENTER to call it stable\nscripts/lp_funnel_autopsy_v1_readonly.py:46:STABLE_MIN_FRAC = 0.70",
+        "observation": "STABLE_MIN_FRAC 在 lp_multiwindow_stability_v1_readonly.py 第 37 行为 0.7，在 lp_funnel_autopsy_v1_readonly.py 第 46 行为 0.70（数值相同，写法不同）"
+      }
+    ],
+    "unresolved": [
+      "六个受保护常量的「当前值」已逐一记录，但 spec 未提供这些常量的「基准值/期望值」，无法据此判断是否发生漂移——是否违反不变量需主脑对照基准判断",
+      "pytest 的 14 skipped 未逐条列出跳过原因，仅记录总数"
+    ]
+  }
+}
