@@ -216,3 +216,93 @@ def test_render_dashboard_contains_sections():
 def test_render_dashboard_empty_state_no_crash():
     out = render_dashboard({})
     assert "NOT_MEASURED" in out
+
+
+# --- RH-02am: unknown/invalid LIVE action counts ---
+
+def test_live_gate_all_action_counts_unavailable():
+    lg = live_gate_status(usable_provider_count=2, capital_policy_approved=True,
+                          signatures=None, broadcasts=None, keys_created=None)
+    assert lg["live_allowed"] is False
+    assert "UNAUTHORIZED_ACTION_COUNTS_UNAVAILABLE" in lg["blockers"]
+
+
+def test_live_gate_signatures_none_is_unavailable():
+    lg = live_gate_status(usable_provider_count=2, capital_policy_approved=True,
+                          signatures=None, broadcasts=0, keys_created=0)
+    assert lg["live_allowed"] is False
+    assert "UNAUTHORIZED_ACTION_COUNTS_UNAVAILABLE" in lg["blockers"]
+
+
+def test_live_gate_broadcasts_none_is_unavailable():
+    lg = live_gate_status(usable_provider_count=2, capital_policy_approved=True,
+                          signatures=0, broadcasts=None, keys_created=0)
+    assert lg["live_allowed"] is False
+    assert "UNAUTHORIZED_ACTION_COUNTS_UNAVAILABLE" in lg["blockers"]
+
+
+def test_live_gate_keys_created_none_is_unavailable():
+    lg = live_gate_status(usable_provider_count=2, capital_policy_approved=True,
+                          signatures=0, broadcasts=0, keys_created=None)
+    assert lg["live_allowed"] is False
+    assert "UNAUTHORIZED_ACTION_COUNTS_UNAVAILABLE" in lg["blockers"]
+
+
+def test_live_gate_keys_created_bool_is_unavailable():
+    lg = live_gate_status(usable_provider_count=2, capital_policy_approved=True,
+                          signatures=0, broadcasts=0, keys_created=False)
+    assert lg["live_allowed"] is False
+    assert "UNAUTHORIZED_ACTION_COUNTS_UNAVAILABLE" in lg["blockers"]
+    assert "UNAUTHORIZED_ACTION_DETECTED" not in lg["blockers"]
+
+
+@pytest.mark.parametrize("field_value", [True, "0", 0.0])
+def test_live_gate_non_integer_action_count_is_unavailable(field_value):
+    lg = live_gate_status(usable_provider_count=2, capital_policy_approved=True,
+                          signatures=field_value, broadcasts=0, keys_created=0)
+    assert lg["live_allowed"] is False
+    assert "UNAUTHORIZED_ACTION_COUNTS_UNAVAILABLE" in lg["blockers"]
+
+
+def test_live_gate_negative_action_count_is_unavailable():
+    lg = live_gate_status(usable_provider_count=2, capital_policy_approved=True,
+                          signatures=-1, broadcasts=0, keys_created=0)
+    assert lg["live_allowed"] is False
+    assert "UNAUTHORIZED_ACTION_COUNTS_UNAVAILABLE" in lg["blockers"]
+
+
+def test_live_gate_unknown_and_detected_counts_report_both_blockers():
+    lg = live_gate_status(usable_provider_count=2, capital_policy_approved=True,
+                          signatures=None, broadcasts=1, keys_created=0)
+    assert lg["live_allowed"] is False
+    assert "UNAUTHORIZED_ACTION_COUNTS_UNAVAILABLE" in lg["blockers"]
+    assert "UNAUTHORIZED_ACTION_DETECTED" in lg["blockers"]
+
+
+# --- RH-02am: missing Stage B audit counts and LIVE verdict ---
+
+@pytest.mark.parametrize("field_and_blocker", [
+    ("unexplained_ledger_diffs", "UNEXPLAINED_LEDGER_DIFFS_UNAVAILABLE"),
+    ("invariant_violations", "INVARIANT_VIOLATIONS_UNAVAILABLE"),
+    ("missed_risk_events", "MISSED_RISK_EVENTS_UNAVAILABLE"),
+])
+def test_stage_b_missing_audit_count_blocks(field_and_blocker):
+    field, expected_blocker = field_and_blocker
+    values = {
+        "days_covered": STAGE_B_MIN_DAYS,
+        "weekends_covered": 1,
+        "unexplained_ledger_diffs": 0,
+        "invariant_violations": 0,
+        "missed_risk_events": 0,
+    }
+    values[field] = None
+    b = stage_b_status(**values)
+    assert b["passed"] is False
+    assert expected_blocker in b["blockers"]
+
+
+@pytest.mark.parametrize("live_gate", [None, {"blockers": [], "live_allowed": None}])
+def test_verdict_missing_live_gate_is_not_pass(live_gate):
+    v = graduation_verdict(passing_stage_a(), passing_stage_b(), live_gate)
+    assert v["verdict"] != "PASS"
+    assert "LIVE_EXECUTION" in v["explicitly_not_authorized"]

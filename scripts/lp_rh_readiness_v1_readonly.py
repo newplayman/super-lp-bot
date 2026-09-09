@@ -96,11 +96,17 @@ def stage_b_status(*, days_covered, weekends_covered, unexplained_ledger_diffs,
         blockers.append("DAYS_COVERED_INSUFFICIENT")
     if weekends_covered is None or weekends_covered < STAGE_B_MIN_WEEKENDS:
         blockers.append("WEEKENDS_COVERED_INSUFFICIENT")
-    if unexplained_ledger_diffs:
+    if unexplained_ledger_diffs is None:
+        blockers.append("UNEXPLAINED_LEDGER_DIFFS_UNAVAILABLE")
+    elif unexplained_ledger_diffs:
         blockers.append("UNEXPLAINED_LEDGER_DIFFS")
-    if invariant_violations:
+    if invariant_violations is None:
+        blockers.append("INVARIANT_VIOLATIONS_UNAVAILABLE")
+    elif invariant_violations:
         blockers.append("INVARIANT_VIOLATIONS")
-    if missed_risk_events:
+    if missed_risk_events is None:
+        blockers.append("MISSED_RISK_EVENTS_UNAVAILABLE")
+    elif missed_risk_events:
         blockers.append("MISSED_RISK_EVENTS")
     return {"days_covered": days_covered, "days_required": STAGE_B_MIN_DAYS,
             "weekends_covered": weekends_covered, "weekends_required": STAGE_B_MIN_WEEKENDS,
@@ -121,7 +127,14 @@ def live_gate_status(*, usable_provider_count, capital_policy_approved,
         blockers.append("CAPITAL_POLICY_CONFLICT")
     elif capital_policy_approved is None:
         blockers.append("CAPITAL_POLICY_NOT_APPROVED")
-    if signatures or broadcasts or keys_created:
+    action_counts = (signatures, broadcasts, keys_created)
+    valid_counts = tuple(
+        isinstance(value, int) and not isinstance(value, bool) and value >= 0
+        for value in action_counts
+    )
+    if not all(valid_counts):
+        blockers.append("UNAUTHORIZED_ACTION_COUNTS_UNAVAILABLE")
+    if any(valid and value > 0 for value, valid in zip(action_counts, valid_counts)):
         blockers.append("UNAUTHORIZED_ACTION_DETECTED")
     return {"usable_provider_count": usable_provider_count,
             "capital_policy_approved": capital_policy_approved,
@@ -132,7 +145,12 @@ def live_gate_status(*, usable_provider_count, capital_policy_approved,
 def graduation_verdict(stage_a, stage_b, live_gate) -> dict:
     """Overall verdict. Any live-gate blocker forces verdict != PASS."""
     stage_a, stage_b, live_gate = stage_a or {}, stage_b or {}, live_gate or {}
-    live_blockers = list(live_gate.get("blockers", []))
+    raw_live_blockers = live_gate.get("blockers")
+    live_blockers = (list(raw_live_blockers)
+                     if raw_live_blockers is not None
+                     else ["LIVE_GATE_STATUS_UNAVAILABLE"])
+    if not live_blockers and live_gate.get("live_allowed") is not True:
+        live_blockers.append("LIVE_GATE_STATUS_UNAVAILABLE")
     if live_blockers:
         verdict = "FAIL"
     elif stage_a.get("passed") and stage_b.get("passed"):
