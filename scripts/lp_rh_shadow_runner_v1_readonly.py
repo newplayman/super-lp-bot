@@ -327,11 +327,19 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
                                          horizon_hours=horizon_hours)
         gated = apply_netcover_gate([record])[0]
         step_reasons: list = []
+        # RH-02ab: judge at the sample's own time, not the wall clock.  A replay
+        # decision is "what would we have done at that moment?", so the gate's
+        # clock is the sample's sample_time.  When sample_time is missing or
+        # unparseable there is no replay moment to judge at: fall back to the
+        # wall clock for the timestamp, but the step must fail rather than pass
+        # (a decision without a replay moment is not a decision).
+        sample_time = sample.get("sample_time")
+        decision_now = sample_time if _as_datetime(sample_time) is not None else now_fn()
         decision = evaluate_terminal_gate(
             _terminal_record(sample, gated, i, pool_meta=pool_meta,
                              capital_usd=capital_usd, position_usd=position_usd,
-                             now=now_fn(), conjunct_reasons=step_reasons),
-            target_mode=target_mode, now=now_fn())
+                             now=decision_now, conjunct_reasons=step_reasons),
+            target_mode=target_mode, now=decision_now)
         eligible = bool(decision.terminal_eligible)
         simulated = bool(decision.simulated_policy_only)
 
@@ -340,7 +348,7 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
             res = try_reserve(conn, intent_id=f"rh-shadow-{strategy_episode}-{i}",
                               bucket="CORE", amount_usd=position_usd,
                               capital_usd=capital_usd, policy_version=POLICY_ID,
-                              now=now_fn())
+                              now=decision_now)
             granted = bool(res.get("granted"))
             if granted:
                 position_open = True
