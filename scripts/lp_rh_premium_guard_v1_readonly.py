@@ -113,22 +113,30 @@ def stock_entry_gate(*, session: str, health_flags: Sequence[str],
 
 
 def quote_freshness(*, generated_at, now,
-                    max_age_secs: int = 60) -> tuple[str, int]:
+                    max_age_secs: int = 60,
+                    future_tolerance_secs: int = 5) -> tuple[str, int]:
     """Return ``(status, age_secs)`` using the server-side ``generatedAt``.
 
     Both ``generated_at`` and ``now`` accept an RFC3339 string (including the
     9-digit fractional-seconds form the price API returns, e.g.
     ``2026-09-08T08:53:41.707033470Z``) or an aware datetime; normalization
     reuses ``lp_rh_market_session_v1_readonly._to_dt`` (import, not rewrite).
-    ``generated_at is None`` -> ``("UNKNOWN", -1)``.  Status is FRESH when the
-    age is within ``max_age_secs``, else STALE.  The age is measured from the
-    server ``generatedAt``, never the local fetch time (PRD §8.1).
+    ``generated_at is None`` -> ``("UNKNOWN", -1)``.  Ages from
+    ``-future_tolerance_secs`` through ``max_age_secs`` are FRESH; ages below
+    ``-future_tolerance_secs`` are INVALID because time runs in the wrong
+    direction; older ages are STALE.  The default 5-second future tolerance
+    accommodates normal second-level NTP drift and server/local clock
+    differences, but an hour-scale difference is not normal.  The age is
+    measured from the server ``generatedAt``, never the local fetch time
+    (PRD §8.1).
     """
     if generated_at is None:
         return "UNKNOWN", -1
     gen_dt = _to_dt(generated_at, "generated_at")
     now_dt = _to_dt(now, "now")
     age_secs = int((now_dt - gen_dt).total_seconds())
+    if age_secs < -future_tolerance_secs:
+        return "INVALID", age_secs
     if age_secs <= max_age_secs:
         return "FRESH", age_secs
     return "STALE", age_secs

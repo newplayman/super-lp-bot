@@ -188,6 +188,40 @@ def test_freshness_none_unknown():
     assert (status, age) == ("UNKNOWN", -1)
 
 
+# --- quote_freshness: future timestamps + positive-age regression ----------
+@pytest.mark.parametrize("lead_secs,expected", [
+    (3, ("FRESH", -3)),
+    (5, ("FRESH", -5)),
+    (10, ("INVALID", -10)),
+    (3600, ("INVALID", -3600)),
+])
+def test_freshness_future_timestamps_respect_tolerance(lead_secs, expected):
+    generated_at = _NOW + timedelta(seconds=lead_secs)
+    assert pg.quote_freshness(generated_at=generated_at, now=_NOW) == expected
+
+
+@pytest.mark.parametrize("age_secs,expected_status", [
+    (0, "FRESH"),
+    (30, "FRESH"),
+    (59, "FRESH"),
+    (61, "STALE"),
+    (3600, "STALE"),
+])
+def test_freshness_positive_age_regression(age_secs, expected_status):
+    generated_at = _NOW - timedelta(seconds=age_secs)
+    assert pg.quote_freshness(generated_at=generated_at, now=_NOW) == (
+        expected_status, age_secs)
+
+
+def test_freshness_none_sentinel_not_confused_with_negative_age():
+    assert pg.quote_freshness(generated_at=None, now=_NOW) == ("UNKNOWN", -1)
+    # A one-second future timestamp also has age -1, but it is a real timestamp
+    # and must follow the future-tolerance classification.
+    assert pg.quote_freshness(
+        generated_at=_NOW + timedelta(seconds=1), now=_NOW
+    ) == ("FRESH", -1)
+
+
 # --- stock_entry_gate: each gate rejects independently (no short-circuit) ---
 def test_gate_reject_session_not_rth():
     allowed, reasons = _gate(session="ETH")
