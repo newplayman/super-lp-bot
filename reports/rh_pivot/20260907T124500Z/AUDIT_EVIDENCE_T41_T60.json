@@ -1,0 +1,299 @@
+[
+  {
+    "id": "T41",
+    "scenario": "下跌后recenter",
+    "expected": "累计亏损与HODL初始lot不被重置",
+    "impl_sites": [
+      {"file": "scripts/lp_rh_pnl_v1_readonly.py", "line": 118, "snippet": "def hodl_benchmark(*, initial_token0_raw, initial_token1_raw, dec0, dec1,"},
+      {"file": "scripts/lp_rh_pnl_v1_readonly.py", "line": 123, "snippet": "    t1 quote.  Initial leg quantities are fixed at open, never reset.\"\"\""}
+    ],
+    "covering_tests": [
+      {"file": "tests/test_lp_rh_pnl_v1_readonly.py", "name": "test_t41_recenter_hodl_initial_lot_not_reset", "line": 74, "pytest_output": "1 passed in 0.01s"}
+    ],
+    "coverage": "COVERED",
+    "notes": "impl: hodl_benchmark in scripts/lp_rh_pnl_v1_readonly.py takes initial_token0_raw/initial_token1_raw; its docstring states initial leg quantities are fixed at open, never reset. test computes the benchmark at two price sets (before/after a recenter) and asserts recomputing at the original prices reproduces the original lot exactly."
+  },
+  {
+    "id": "T42",
+    "scenario": "同笔markout在30s／5m／30m",
+    "expected": "分列，不三次累计同一亏损",
+    "impl_sites": [
+      {"file": "scripts/lp_rh_markout_v1_readonly.py", "line": 31, "snippet": "PREREGISTERED_WINDOWS = (30, 300, 1800)"},
+      {"file": "scripts/lp_rh_markout_v1_readonly.py", "line": 190, "snippet": "    \"\"\"Aggregate one window only; never add markouts across windows."}
+    ],
+    "covering_tests": [
+      {"file": "tests/test_lp_rh_markout_v1_readonly.py", "name": "test_t42_profile_does_not_expose_cross_window_total", "line": 57, "pytest_output": "1 passed in 0.01s"},
+      {"file": "tests/test_lp_rh_markout_v1_readonly.py", "name": "test_t42_aggregate_is_selected_window_only", "line": 68, "pytest_output": "1 passed in 0.01s"},
+      {"file": "tests/test_lp_rh_pnl_v1_readonly.py", "name": "test_t42_same_fill_three_windows_not_triple_counted", "line": 98, "pytest_output": "1 passed in 0.01s"}
+    ],
+    "coverage": "COVERED",
+    "notes": "impl: PREREGISTERED_WINDOWS fixed at (30,300,1800); aggregate() docstring states it aggregates one window only and never adds markouts across windows. tests assert the profile exposes no cross-window total, aggregate is per-window, and the same single-fill PnL is counted once, not once per markout window."
+  },
+  {
+    "id": "T43",
+    "scenario": "MEME下跌跌穿下界",
+    "expected": "不自动下移／补仓，进入受限退出流程",
+    "impl_sites": [
+      {"file": "scripts/lp_rh_meme_audit_v1_readonly.py", "line": 190, "snippet": "def downtrend_recenter_guard(*, price_now: Any, range_lower: Any,"},
+      {"file": "scripts/lp_rh_meme_audit_v1_readonly.py", "line": 193, "snippet": "        return \"REMOVE_EVAL\", \"NO_DOWNTREND_RECENTER\""}
+    ],
+    "covering_tests": [
+      {"file": "tests/test_lp_rh_meme_audit_v1_readonly.py", "name": "test_t43_downtrend_cannot_recenter_lower", "line": 111, "pytest_output": "1 passed in 0.01s"}
+    ],
+    "coverage": "COVERED",
+    "notes": "impl: downtrend_recenter_guard returns status REMOVE_EVAL with reason NO_DOWNTREND_RECENTER when price_now is below range_lower with negative trend/volume. test asserts status is REMOVE_EVAL and that the substring RECENTER_LOWER does not appear in the status."
+  },
+  {
+    "id": "T44",
+    "scenario": "下跌池卖出失败但remove成功",
+    "expected": "`REMOVED_RISKY_INVENTORY`，不显示cash closed",
+    "impl_sites": [
+      {"file": "scripts/lp_rh_meme_audit_v1_readonly.py", "line": 197, "snippet": "def exit_state_machine(*, remove_ok: bool, swap_ok: bool | None,"},
+      {"file": "scripts/lp_rh_meme_audit_v1_readonly.py", "line": 206, "snippet": "        return \"REMOVED_RISKY_INVENTORY\", {"},
+      {"file": "scripts/lp_rh_meme_audit_v1_readonly.py", "line": 207, "snippet": "            \"cash_closed\": False, \"asset_cap_released\": False, \"residual_risk\": True,"}
+    ],
+    "covering_tests": [
+      {"file": "tests/test_lp_rh_meme_audit_v1_readonly.py", "name": "test_t44_remove_without_swap_keeps_risk", "line": 133, "pytest_output": "1 passed in 0.01s"}
+    ],
+    "coverage": "COVERED",
+    "notes": "impl: exit_state_machine with remove_ok=True, swap_ok=False, atomic=False returns state REMOVED_RISKY_INVENTORY with cash_closed False, asset_cap_released False, residual_risk True. test asserts exactly those four fields."
+  },
+  {
+    "id": "T45",
+    "scenario": "原子exit中swap回滚",
+    "expected": "remove亦视为未完成；独立重检后才可remove-only",
+    "impl_sites": [
+      {"file": "scripts/lp_rh_meme_audit_v1_readonly.py", "line": 200, "snippet": "        return \"ATOMIC_EXIT_REVERTED\", {\"remove_effective\": False}"},
+      {"file": "scripts/lp_exit_policy_v1_readonly.py", "line": 31, "snippet": "    REMOVE_ONLY = \"REMOVE_ONLY\""},
+      {"file": "scripts/lp_exit_policy_v1_readonly.py", "line": 434, "snippet": "        substate = \"remove_only\""}
+    ],
+    "covering_tests": [
+      {"file": "tests/test_lp_rh_meme_audit_v1_readonly.py", "name": "test_t45_atomic_swap_failure_reverts_remove", "line": 141, "pytest_output": "1 passed in 0.01s"}
+    ],
+    "coverage": "PARTIAL",
+    "notes": "impl: exit_state_machine with atomic=True, swap_ok=False returns ATOMIC_EXIT_REVERTED with remove_effective False; test asserts both. The expected's second clause (independent recheck before remove-only) has constants in scripts/lp_exit_policy_v1_readonly.py (ExitMode.REMOVE_ONLY line 31, substate remove_only line 434) but no recheck/independent gate and no test asserting that clause were found."
+  },
+  {
+    "id": "T46",
+    "scenario": "退出USDG导致加大USDG风险",
+    "expected": "不因action=exit绕过资产风险方向检查",
+    "impl_sites": [
+      {"file": "scripts/lp_rh_meme_audit_v1_readonly.py", "line": 212, "snippet": "def exit_direction_check(*, from_asset: str, to_asset: str,"},
+      {"file": "scripts/lp_rh_meme_audit_v1_readonly.py", "line": 225, "snippet": "        return False, f\"EXIT_INCREASES_CAPPED_EXPOSURE:{to_asset}\""}
+    ],
+    "covering_tests": [
+      {"file": "tests/test_lp_rh_meme_audit_v1_readonly.py", "name": "test_t46_exit_to_full_usdg_is_blocked", "line": 160, "pytest_output": "1 passed in 0.01s"}
+    ],
+    "coverage": "COVERED",
+    "notes": "impl: exit_direction_check returns (False, EXIT_INCREASES_CAPPED_EXPOSURE:USDG) when the exit target asset would push exposure to its cap. test asserts the exact tuple (False, EXIT_INCREASES_CAPPED_EXPOSURE:USDG)."
+  },
+  {
+    "id": "T47",
+    "scenario": "LIVE_TRADING=false／授权串错误",
+    "expected": "拦截在签名前；无签名副作用",
+    "impl_sites": [
+      {"file": "execution/base_m1_executor_v1.py", "line": 717, "snippet": "class LiveUnlock:"},
+      {"file": "execution/base_m1_executor_v1.py", "line": 731, "snippet": "        return self.environment_enabled and self.startup_confirmed"},
+      {"file": "execution/base_m1_executor_v1.py", "line": 748, "snippet": "            raise LiveTradingLocked(\"LIVE_TRADING plus startup confirmation are both required\")"},
+      {"file": "scripts/lp_c6_preflight_v1_readonly.py", "line": 104, "snippet": "    unit_default_false = \"Environment=LIVE_TRADING=false\" in unit_text"}
+    ],
+    "covering_tests": [
+      {"file": "tests/test_base_m1_executor_c4.py", "name": "test_broadcast_raises_unless_both_process_start_gates_open", "line": 102, "pytest_output": "3 passed in 0.03s"},
+      {"file": "tests/test_base_m1_executor_c4.py", "name": "test_dry_run_never_signs_or_broadcasts", "line": 190, "pytest_output": "1 passed in 0.04s"},
+      {"file": "tests/test_lp_c6_preflight_v1_readonly.py", "name": "test_broadcast_lock_proves_transport_unreached", "line": 42, "pytest_output": "1 passed in 0.03s"}
+    ],
+    "coverage": "COVERED",
+    "notes": "impl: LiveUnlock.unlocked() is True only when environment_enabled and startup_confirmed; require_unlocked raises LiveTradingLocked otherwise. lp_c6_preflight checks the unit default LIVE_TRADING=false. tests: broadcast raises LiveTradingLocked unless both process-start gates open (3 parametrized cases) with broadcast_count 0 and no rpc sends; dry-run returns broadcast_count 0, signed False, raw_transaction None; the broadcast lock check reports transport_send_calls 0 when LIVE_TRADING=false and fails when true."
+  },
+  {
+    "id": "T48",
+    "scenario": "calldata含非白名单target／recipient",
+    "expected": "decoder拒绝，simulation成功也不能放行",
+    "impl_sites": [
+      {"file": "scripts/lp_rh_calldata_decoder_v1_readonly.py", "line": 152, "snippet": "def check_targets(decoded, *, target, allowlist: set[str]) -> tuple[bool, list[str]]:"},
+      {"file": "scripts/lp_rh_calldata_decoder_v1_readonly.py", "line": 156, "snippet": "        reasons.append(\"TARGET_NOT_ALLOWLISTED\")"},
+      {"file": "scripts/lp_rh_calldata_decoder_v1_readonly.py", "line": 161, "snippet": "            reasons.append(\"SUBCALL_TARGET_NOT_ALLOWLISTED:\" + path)"},
+      {"file": "scripts/lp_rh_calldata_decoder_v1_readonly.py", "line": 164, "snippet": "                reasons.append(\"RECIPIENT_NOT_ALLOWLISTED:%s.recipient\" % path)"}
+    ],
+    "covering_tests": [
+      {"file": "tests/test_lp_rh_calldata_decoder_v1_readonly.py", "name": "test_multicall_child_target_outside_allowlist_is_named", "line": 120, "pytest_output": "1 passed in 0.01s"},
+      {"file": "tests/test_lp_rh_calldata_decoder_v1_readonly.py", "name": "test_top_level_target_outside_allowlist_is_rejected", "line": 127, "pytest_output": "1 passed in 0.01s"},
+      {"file": "tests/test_lp_rh_calldata_decoder_v1_readonly.py", "name": "test_t48_recipient_outside_allowlist_is_rejected", "line": 132, "pytest_output": "1 passed in 0.01s"}
+    ],
+    "coverage": "COVERED",
+    "notes": "impl: check_targets appends TARGET_NOT_ALLOWLISTED, SUBCALL_TARGET_NOT_ALLOWLISTED:<path>, and RECIPIENT_NOT_ALLOWLISTED:<path>.recipient for non-allowlisted targets/recipients. tests assert each of the three rejection reasons is emitted for a non-allowlisted multicall child target, top-level target, and recipient."
+  },
+  {
+    "id": "T49",
+    "scenario": "quote之后calldata／size／policy变化",
+    "expected": "原模拟失效；重新检查",
+    "impl_sites": [
+      {"file": "scripts/lp_rh_calldata_decoder_v1_readonly.py", "line": 222, "snippet": "_INTENT_FIELDS = (\"chain_id\", \"wallet_id\", \"position_id\", \"request_id\", \"decision_id\","},
+      {"file": "scripts/lp_rh_calldata_decoder_v1_readonly.py", "line": 242, "snippet": "def verify_intent(decoded, *, intent: Mapping) -> tuple[bool, list[str]]:"},
+      {"file": "scripts/lp_rh_calldata_decoder_v1_readonly.py", "line": 249, "snippet": "    reasons = [\"INTENT_MISMATCH:\" + x for x in _INTENT_FIELDS"}
+    ],
+    "covering_tests": [
+      {"file": "tests/test_lp_rh_calldata_decoder_v1_readonly.py", "name": "test_verify_intent_accepts_complete_matching_metadata", "line": 193, "pytest_output": "1 passed in 0.01s"},
+      {"file": "tests/test_lp_rh_calldata_decoder_v1_readonly.py", "name": "test_verify_intent_rejects_each_missing_required_field", "line": 198, "pytest_output": "11 passed in 0.02s"},
+      {"file": "tests/test_lp_rh_calldata_decoder_v1_readonly.py", "name": "test_verify_intent_rejects_mismatch", "line": 204, "pytest_output": "1 passed in 0.01s"}
+    ],
+    "coverage": "COVERED",
+    "notes": "impl: verify_intent checks all _INTENT_FIELDS (chain_id, wallet_id, position_id, request_id, decision_id, idempotency_key, policy_hash, code_version, snapshot_hash, calldata_hash, expires_at) and emits INTENT_FIELD_MISSING / INTENT_MISMATCH:<field>. tests assert a complete matching intent is accepted, each of the 11 fields missing is rejected, and a mismatched request_id is rejected."
+  },
+  {
+    "id": "T50",
+    "scenario": "单边LP的零数量腿 vs swap最小到账无约束",
+    "expected": "区分合法0与缺保护，不靠简单`!=0`判断全部安全",
+    "impl_sites": [
+      {"file": "scripts/lp_rh_calldata_decoder_v1_readonly.py", "line": 175, "snippet": "def check_amount_protection(decoded, *, leg0_expected_zero: bool,"},
+      {"file": "scripts/lp_rh_calldata_decoder_v1_readonly.py", "line": 186, "snippet": "                reasons.append(\"FABRICATED_MIN_OUT_ON_COLLECT:\" + path)"},
+      {"file": "scripts/lp_rh_calldata_decoder_v1_readonly.py", "line": 195, "snippet": "                reasons.append(\"LEGITIMATE_ZERO_LEG:%s.%s\" % (path, name))"},
+      {"file": "scripts/lp_rh_calldata_decoder_v1_readonly.py", "line": 197, "snippet": "                reasons.append(\"MISSING_SLIPPAGE_PROTECTION:%s.%s\" % (path, name))"}
+    ],
+    "covering_tests": [
+      {"file": "tests/test_lp_rh_calldata_decoder_v1_readonly.py", "name": "test_t50_zero_leg_is_legitimate", "line": 141, "pytest_output": "1 passed in 0.01s"},
+      {"file": "tests/test_lp_rh_calldata_decoder_v1_readonly.py", "name": "test_t50_nonzero_leg_with_zero_minimum_is_rejected", "line": 147, "pytest_output": "1 passed in 0.01s"},
+      {"file": "tests/test_lp_rh_calldata_decoder_v1_readonly.py", "name": "test_t50_swap_zero_minimum_is_rejected", "line": 153, "pytest_output": "1 passed in 0.01s"},
+      {"file": "tests/test_lp_rh_calldata_decoder_v1_readonly.py", "name": "test_t50_collect_fake_minimum_is_rejected", "line": 159, "pytest_output": "1 passed in 0.01s"}
+    ],
+    "coverage": "COVERED",
+    "notes": "impl: check_amount_protection distinguishes a zero leg expected to be zero (LEGITIMATE_ZERO_LEG) from a zero minimum on a nonzero leg or swap (MISSING_SLIPPAGE_PROTECTION) and a fabricated min-out on collect (FABRICATED_MIN_OUT_ON_COLLECT); the bad list excludes only LEGITIMATE_ZERO_LEG. tests assert each of the four cases."
+  },
+  {
+    "id": "T51",
+    "scenario": "广播HTTP超时、链上已有同nonce",
+    "expected": "UNKNOWN→对账，禁止重复开仓和释放reservation",
+    "impl_sites": [
+      {"file": "scripts/lp_rh_bucket_ledger_v1_readonly.py", "line": 43, "snippet": "RESERVED_STATUSES = (\"PENDING\", \"CONFIRMED\", \"BROADCAST_UNKNOWN\")"},
+      {"file": "scripts/lp_rh_bucket_ledger_v1_readonly.py", "line": 94, "snippet": "def try_reserve(conn: sqlite3.Connection, *, intent_id: str, bucket: str,"},
+      {"file": "scripts/lp_rh_bucket_ledger_v1_readonly.py", "line": 139, "snippet": "    Refuses to release a BROADCAST_UNKNOWN reservation (PRD §16.3, T51)."},
+      {"file": "scripts/lp_rh_bucket_ledger_v1_readonly.py", "line": 150, "snippet": "        raise ValueError(\"CANNOT_RELEASE_BROADCAST_UNKNOWN\")"}
+    ],
+    "covering_tests": [
+      {"file": "tests/test_lp_rh_bucket_ledger_v1_readonly.py", "name": "test_broadcast_unknown_counts_toward_occupancy", "line": 58, "pytest_output": "1 passed in 0.02s"},
+      {"file": "tests/test_lp_rh_bucket_ledger_v1_readonly.py", "name": "test_release_broadcast_unknown_rejected", "line": 70, "pytest_output": "1 passed in 0.04s"}
+    ],
+    "coverage": "COVERED",
+    "notes": "impl: RESERVED_STATUSES includes BROADCAST_UNKNOWN so it counts toward occupancy; release() raises CANNOT_RELEASE_BROADCAST_UNKNOWN for a BROADCAST_UNKNOWN reservation. tests assert a BROADCAST_UNKNOWN reservation blocks a second reservation (BUCKET_ACTIVE_CAP_EXCEEDED) and that releasing it raises CANNOT_RELEASE_BROADCAST_UNKNOWN."
+  },
+  {
+    "id": "T52",
+    "scenario": "crash在持久化nonce／提交／回执任一阶段",
+    "expected": "恢复不重签重复意图，最终账本一致",
+    "impl_sites": [
+      {"file": "scripts/lp_rh_bucket_ledger_v1_readonly.py", "line": 94, "snippet": "def try_reserve(conn: sqlite3.Connection, *, intent_id: str, bucket: str,"}
+    ],
+    "covering_tests": [
+      {"file": "tests/test_lp_rh_bucket_ledger_v1_readonly.py", "name": "test_try_reserve_duplicate_intent_id", "line": 107, "pytest_output": "1 passed in 0.02s"}
+    ],
+    "coverage": "COVERED",
+    "notes": "impl: try_reserve keys reservations by intent_id. test asserts a second try_reserve with the same intent_id raises sqlite3.IntegrityError (a duplicate intent is not re-reserved)."
+  },
+  {
+    "id": "T53",
+    "scenario": "仅L1posting滞后，L2多源继续推进",
+    "expected": "分层告警，不伪造execution停机结论",
+    "impl_sites": [],
+    "covering_tests": [],
+    "coverage": "NOT_COVERED",
+    "notes": "No L1/L2 finality or layered-alerting impl or test found. grep for L1_FINALIZED, L1_POSTED, L1_EVIDENCE, finality, and L2_ across scripts/ and tests/ returned no matches; broad L1/L2/layer matches are all false positives (provider_health_recorder HTTP-layer/transport-layer, multiplier_reader data-source layer, store storage layer, shadow_runner RH layers). No code or test implements the scenario."
+  },
+  {
+    "id": "T54",
+    "scenario": "只有等待时长无L1证据",
+    "expected": "不自动进入L1_FINALIZED",
+    "impl_sites": [],
+    "covering_tests": [],
+    "coverage": "NOT_COVERED",
+    "notes": "No L1 evidence code found; same source as T53. No L1_FINALIZED transition logic or test exists in scripts/ or tests/."
+  },
+  {
+    "id": "T55",
+    "scenario": "每道新增硬闸单独被摘除",
+    "expected": "对应危险样本出现错误放行，证明测试能抓漏接",
+    "impl_sites": [
+      {"file": "scripts/lp_rh_terminal_gate_v1_readonly.py", "line": 183, "snippet": "def mutation_witness_removed_gate(record, *, removed, target_mode, now) -> bool:"},
+      {"file": "scripts/lp_rh_funnel_autopsy_v1_readonly.py", "line": 116, "snippet": "def mutation_harness(records, *, target_mode, now) -> dict[str, dict[str, Any]]:"}
+    ],
+    "covering_tests": [
+      {"file": "tests/test_lp_rh_terminal_gate_v1_readonly.py", "name": "test_mutation_witness_detects_each_omitted_gate", "line": 97, "pytest_output": "10 passed in 0.08s"},
+      {"file": "tests/test_lp_rh_funnel_autopsy_v1_readonly.py", "name": "test_mutation_harness_detects_single_gate_witnesses", "line": 144, "pytest_output": "1 passed in 0.03s"}
+    ],
+    "coverage": "COVERED",
+    "notes": "impl: mutation_witness_removed_gate in scripts/lp_rh_terminal_gate_v1_readonly.py and mutation_harness in scripts/lp_rh_funnel_autopsy_v1_readonly.py. tests: for each of the 10 gates, a mutant restoring one false bit to True fails the sweep (10 parametrized cases); the harness reports false_admits>0 for at least one gate and witness_detected equals false_admits>0 for every gate."
+  },
+  {
+    "id": "T56",
+    "scenario": "旧Base模型同一SQLite快照新旧计算",
+    "expected": "未批准的逐闸结果差异=0",
+    "impl_sites": [],
+    "covering_tests": [],
+    "coverage": "NOT_COVERED",
+    "notes": "No old-Base-model per-gate diff comparison found. 旧Base模型/旧Base/Base模型 not found in scripts/ or tests/. scripts/lp_rh_terminal_gate_v1_readonly.py has legacy_required_conjunction (lines 29,42,90-95,114,127) but that is a record field, not a Base-model per-gate diff. regression matches in tests are real-data regression tests, not old-vs-new model comparison. No code computes 未批准的逐闸结果差异=0."
+  },
+  {
+    "id": "T57",
+    "scenario": "RH数据库／日志达预算",
+    "expected": "停非必要采集，风险证据优先；不删除旧项目资料",
+    "impl_sites": [
+      {"file": "scripts/lp_rh_store_v1_readonly.py", "line": 27, "snippet": "SOFT_BUDGET_BYTES = 2 * 1024 ** 3"},
+      {"file": "scripts/lp_rh_store_v1_readonly.py", "line": 362, "snippet": "def budget_status(path: Any = DEFAULT_DB_PATH) -> dict:"},
+      {"file": "scripts/lp_rh_collector_v1_readonly.py", "line": 293, "snippet": "            if budget[\"state\"] == \"OVER\":"},
+      {"file": "scripts/lp_rh_collector_v1_readonly.py", "line": 297, "snippet": "            sleep_for = interval_secs * 2 if budget[\"state\"] == \"WARN\" else interval_secs"}
+    ],
+    "covering_tests": [
+      {"file": "tests/test_lp_rh_store_v1_readonly.py", "name": "test_budget_status_ok", "line": 187, "pytest_output": "1 passed in 0.02s"},
+      {"file": "tests/test_lp_rh_store_v1_readonly.py", "name": "test_budget_status_warn_or_over", "line": 194, "pytest_output": "1 passed in 0.02s"},
+      {"file": "tests/test_lp_rh_collector_v1_readonly.py", "name": "test_budget_over_stops_collection_cleanly", "line": 194, "pytest_output": "1 passed in 0.06s"}
+    ],
+    "coverage": "PARTIAL",
+    "notes": "impl: budget_status in scripts/lp_rh_store_v1_readonly.py with SOFT_BUDGET_BYTES; collector stops collection when state is OVER and doubles the interval on WARN. tests: budget_status returns OK on a fresh store and WARN/OVER when SOFT_BUDGET_BYTES is set to 1; the collector stops cleanly (rc 0) at the round-20 budget gate before max_rounds=25. Covers 停非必要采集. 风险证据优先 (risk-evidence priority) and 不删除旧项目资料 (do not delete old project data) have no explicit risk_evidence/风险证据/不删除/non_essential logic; no-delete is implicit (read-only module, budget only stops collection)."
+  },
+  {
+    "id": "T58",
+    "scenario": "策略用户尝试读keystore或导入signer",
+    "expected": "权限／依赖测试拒绝，默认包保持只读",
+    "impl_sites": [
+      {"file": "scripts/lp_rh_calldata_decoder_v1_readonly.py", "line": 152, "snippet": "def check_targets(decoded, *, target, allowlist: set[str]) -> tuple[bool, list[str]]:"}
+    ],
+    "covering_tests": [
+      {"file": "tests/test_lp_rh_calldata_decoder_v1_readonly.py", "name": "test_source_has_no_forbidden_capability_names", "line": 211, "pytest_output": "1 passed in 0.01s"},
+      {"file": "tests/test_lp_c6_preflight_v1_readonly.py", "name": "test_keystore_check_stats_but_does_not_read_contents", "line": 51, "pytest_output": "1 passed in 0.03s"}
+    ],
+    "coverage": "COVERED",
+    "notes": "impl: test_source_has_no_forbidden_capability_names asserts the decoder source contains none of import web3, eth_account, sign, send_raw, private_key. lp_c6_preflight check_keystore_isolation checks keystore stats without reading contents. tests: the decoder source has no forbidden capability names; the keystore check reports contents_read False and fails when the password file is world-readable."
+  },
+  {
+    "id": "T59",
+    "scenario": "旧terminal字段无writer",
+    "expected": "producer-map验收FAIL，不把候选当经济证伪",
+    "impl_sites": [
+      {"file": "scripts/lp_rh_terminal_gate_v1_readonly.py", "line": 84, "snippet": "def evaluate_terminal_gate(record, *, target_mode, now) -> GateDecision:"},
+      {"file": "scripts/lp_rh_terminal_gate_v1_readonly.py", "line": 93, "snippet": "        reasons.append(\"LEGACY_CONJUNCTION_NO_PRODUCER\")"},
+      {"file": "scripts/lp_rh_funnel_autopsy_v1_readonly.py", "line": 137, "snippet": "def producer_map_check(records, required_fields) -> dict[str, dict[str, Any]]:"},
+      {"file": "scripts/lp_rh_funnel_autopsy_v1_readonly.py", "line": 145, "snippet": "            \"verdict\": \"NO_PRODUCER\" if missing == len(records) else \"OK\","}
+    ],
+    "covering_tests": [
+      {"file": "tests/test_lp_rh_terminal_gate_v1_readonly.py", "name": "test_t59_missing_producer_not_computed_fail", "line": 129, "pytest_output": "1 passed in 0.03s"},
+      {"file": "tests/test_lp_rh_funnel_autopsy_v1_readonly.py", "name": "test_producer_map_marks_all_missing_as_no_producer", "line": 165, "pytest_output": "1 passed in 0.03s"},
+      {"file": "tests/test_lp_rh_funnel_autopsy_v1_readonly.py", "name": "test_no_producer_is_input_unavailable_not_computed_fail", "line": 178, "pytest_output": "1 passed in 0.04s"}
+    ],
+    "coverage": "COVERED",
+    "notes": "impl: evaluate_terminal_gate emits LEGACY_CONJUNCTION_NO_PRODUCER when the legacy field is absent; producer_map_check marks a field NO_PRODUCER when missing in all records. tests: a record missing legacy_required_conjunction yields terminal_bits False, LEGACY_CONJUNCTION_NO_PRODUCER in reasons, terminal_eligible False, and primary_status not COMPUTED_FAIL; producer_map_check marks an all-missing field NO_PRODUCER; and all-missing records land in INPUTS_UNAVAILABLE with COMPUTED_FAIL 0."
+  },
+  {
+    "id": "T60",
+    "scenario": "策略0合格池／MEME全闲置",
+    "expected": "正常可解释结果，不强制下单完成配比",
+    "impl_sites": [
+      {"file": "scripts/lp_rh_funnel_autopsy_v1_readonly.py", "line": 102, "snippet": "def zero_candidate_explanation(summary) -> str:"}
+    ],
+    "covering_tests": [
+      {"file": "tests/test_lp_rh_funnel_autopsy_v1_readonly.py", "name": "test_zero_candidate_explanation_has_all_four_categories", "line": 117, "pytest_output": "1 passed in 0.03s"},
+      {"file": "tests/test_lp_rh_funnel_autopsy_v1_readonly.py", "name": "test_zero_candidate_explanation_avoids_forbidden_conclusion_words", "line": 132, "pytest_output": "1 passed in 0.03s"},
+      {"file": "tests/test_lp_rh_funnel_autopsy_v1_readonly.py", "name": "test_zero_candidate_explanation_reports_pass_count_too", "line": 139, "pytest_output": "1 passed in 0.03s"}
+    ],
+    "coverage": "COVERED",
+    "notes": "impl: zero_candidate_explanation in scripts/lp_rh_funnel_autopsy_v1_readonly.py renders a status-only explanation. tests: the explanation contains all four status categories (已完成经济评估且不合格, 尚未能评估, 不支持, 政策阻挡), avoids the conclusion words 无机会/no opportunity, and reports the COMPUTED_PASS count."
+  }
+]
