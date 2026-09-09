@@ -305,6 +305,10 @@ def collect_round(conn, *, dec0: int, dec1: int, last_good_block: Optional[int],
         # RH-02p: provenance columns for the reorg-rollback chain.
         "derived_block_number": good_block,
         "derived_block_hash": block_hash,
+        # RH-02w: same value as the rh_source_snapshots row written this
+        # round (one variable, not recomputed). None when the block
+        # timestamp is unavailable -- never now/sample_time.
+        "source_event_time": source_event_time,
     })
     conn.commit()
     return {"block_number": good_block, "price": price_text, "state": state,

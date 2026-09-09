@@ -71,7 +71,8 @@ _TABLES = [
         "reference_bid TEXT", "reference_ask TEXT", "reference_mid TEXT",
         "reference_age_secs INTEGER", "multiplier_human TEXT",
         "oracle_paused INTEGER",
-        "derived_block_hash TEXT", "derived_block_number INTEGER"]),
+        "derived_block_hash TEXT", "derived_block_number INTEGER",
+        "source_event_time TEXT"]),
     ("rh_rpc_health", ("provider", "method", "sample_time"), [
         "provider TEXT NOT NULL", "method TEXT NOT NULL",
         "sample_time TEXT NOT NULL", "latency_ms INTEGER",
@@ -190,6 +191,14 @@ DERIVED_TABLES = (
 )
 PROVENANCE_COLUMNS = ("derived_block_hash", "derived_block_number")
 
+# RH-02w: table-specific columns added after the initial schema, beyond the
+# RH-02f provenance pair.  Mapped by table name so _ensure_columns can
+# ALTER TABLE ADD COLUMN them idempotently on pre-existing databases.  A NULL
+# value means "not recorded at the time", not a fabricated timestamp.
+EXTRA_COLUMNS = {
+    "rh_market_states": (("source_event_time", "TEXT"),),
+}
+
 
 def _build_schema() -> str:
     parts = []
@@ -219,7 +228,7 @@ def open_store(path: Any = DEFAULT_DB_PATH, *, read_only: bool = False) -> sqlit
 
 
 def _ensure_columns(conn: sqlite3.Connection) -> None:
-    """Idempotently add the RH-02f provenance columns to the six derived tables.
+    """Idempotently add the RH-02f provenance columns plus RH-02w extras.
 
     Checks ``PRAGMA table_info`` first and only ``ALTER TABLE ... ADD COLUMN``
     the missing ones.  Never drops or rebuilds a table, so existing rows and
@@ -235,6 +244,11 @@ def _ensure_columns(conn: sqlite3.Connection) -> None:
         for column in PROVENANCE_COLUMNS:
             if column not in existing:
                 col_type = "TEXT" if column == "derived_block_hash" else "INTEGER"
+                conn.execute(
+                    f"ALTER TABLE {table} ADD COLUMN {column} {col_type}"
+                )
+        for column, col_type in EXTRA_COLUMNS.get(table, ()):
+            if column not in existing:
                 conn.execute(
                     f"ALTER TABLE {table} ADD COLUMN {column} {col_type}"
                 )
