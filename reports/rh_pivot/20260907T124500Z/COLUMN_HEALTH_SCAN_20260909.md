@@ -242,3 +242,24 @@ constant_columns (24):
   rh_source_snapshots.schema_kind
   rh_source_snapshots.source
 ```
+
+---
+
+## 读这份扫描结果时必须知道的：EMPTY 不等于缺陷
+
+哨兵是**发现工具，不是判决工具**。23 个 EMPTY 列里至少有两类是**正确的**：
+
+| 列 | 判定 | 理由 |
+|---|---|---|
+| `rh_pool_registry.pool_id` | **正确为 NULL** | `pool_id` 是 Uniswap **v4** 概念；本池 `protocol = v3` |
+| `rh_pool_registry.hooks` | **正确为 NULL** | 同上，v4 概念 |
+| `rh_tx_intents` / `rh_tx_receipts` / `rh_shadow_positions` 全表 | **正确为空** | 本项目累计签名 0 次、广播 0 次、动用资金 0 次 |
+| `rh_market_states.reference_bid` / `reference_ask` / `multiplier_human` | **需用户决定** | 要 REST 参考价；采集器 docstring 明确「no REST here」，填它们是设计变更 |
+
+真正是缺陷、且数据在手边的，本会话已全部处置：
+`derived_block_hash` / `derived_block_number` / `session`（RH-02p）、
+`source_event_time`（RH-02u）、`rh_assets` 六列（RH-02n）、
+`rh_pool_registry` 的 `token0` / `token1` / `fee` / `tick_spacing`（RH-02v，选择器已实测）。
+
+**不要为了让哨兵不报 EMPTY 而去填任何列。** 那会把一个诚实的 NULL
+换成一个编造的值，正是本项目反复付出代价的那类错误。
