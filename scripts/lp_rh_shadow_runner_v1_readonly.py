@@ -402,13 +402,20 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
 
 
 def load_samples_from_db(conn, *, pool: str, limit: int) -> tuple[list[dict], int]:
-    """Read real samples for `pool` from rh_market_states in sample_time order; reference_mid IS NULL is skipped and counted (never 0)."""
+    """Read the most recent `limit` real samples for `pool` from rh_market_states, replayed in ascending sample_time order; reference_mid IS NULL is skipped and counted (never 0)."""
     cur = conn.execute(
         "SELECT asset_address, sample_time, chain_id, reference_mid, "
         "multiplier_human, session, health_flags_json, reference_age_secs, "
         "oracle_paused, source_payload_hash, reference_bid, reference_ask, "
         "source_event_time "
-        "FROM rh_market_states WHERE asset_address = ? ORDER BY sample_time LIMIT ?",
+        "FROM ("
+        "SELECT asset_address, sample_time, chain_id, reference_mid, "
+        "multiplier_human, session, health_flags_json, reference_age_secs, "
+        "oracle_paused, source_payload_hash, reference_bid, reference_ask, "
+        "source_event_time "
+        "FROM rh_market_states WHERE asset_address = ? "
+        "ORDER BY sample_time DESC LIMIT ?"
+        ") ORDER BY sample_time",
         (pool, limit))
     samples: list[dict] = []
     skipped = 0
