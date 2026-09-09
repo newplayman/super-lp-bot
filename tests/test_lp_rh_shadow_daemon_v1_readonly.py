@@ -241,6 +241,12 @@ def test_open_live_store_readonly(tmp_path):
                    " values ('x','y',1,'z','{}')")
 
 
+def _live_store_fingerprint():
+    """(exists, mtime_ns) of the production shadow store, or (False, None)."""
+    p = REPO_ROOT / "reports" / "lp_rh" / "shadow.db"
+    return (p.exists(), p.stat().st_mtime_ns if p.exists() else None)
+
+
 def test_main_once_returns_zero_no_reports_db(tmp_path, monkeypatch):
     import scripts.lp_rh_shadow_daemon_v1_readonly as mod
     live = open_store(tmp_path / "live.db"); migrate(live)
@@ -248,12 +254,41 @@ def test_main_once_returns_zero_no_reports_db(tmp_path, monkeypatch):
     meta = tmp_path / "meta.json"; meta.write_text('{"dec0": 18, "dec1": 6}')
     db_path = tmp_path / "s.db"
     monkeypatch.setattr(mod, "LIVE_DB", str(tmp_path / "live.db"))
+    live_before = _live_store_fingerprint()
     rc = mod.main(["--once", "--db", str(db_path), "--pool", POOL,
                    "--pool-meta-json", str(meta), "--position-usd", "1000",
                    "--capital-usd", "10000", "--horizon-hours", "8760"])
     assert rc == 0
     assert db_path.exists()
-    assert not (REPO_ROOT / "reports" / "lp_rh" / "shadow.db").exists()
+    # Was `assert not (...shadow.db).exists()`, which asserted the absence of
+    # production state and went red the moment the real daemon was started.  What
+    # this guards is that a --once run touches only the path it was given, so
+    # compare the live store before and after instead.
+    assert live_before == _live_store_fingerprint(), (
+        "the --once run created or wrote the live shadow store")
     err = sqlite3.connect(db_path).execute(
         "select error from rh_shadow_episodes").fetchone()[0]
     assert err is None
+
+
+def test_session_is_derived_from_timestamp_not_the_column():
+    """The collector hardcodes session='UNKNOWN', so trusting the column is useless.
+
+    lp_rh_collector_v1_readonly line 228 writes the literal "UNKNOWN" for every
+    row, which made every blocker land in one bucket and defeated the point of
+    grouping by session.  Deriving it from sample_time is exact and works on rows
+    already collected.
+    """
+    from scripts.lp_rh_shadow_daemon_v1_readonly import _session_of
+    # 18:00 UTC is 14:00 ET, inside regular trading hours.
+    assert _session_of({"sample_time": "2026-09-08T18:00:00Z",
+                        "session": "UNKNOWN"}) == "RTH"
+    # 20:30 UTC is 16:30 ET, after the bell.
+    assert _session_of({"sample_time": "2026-09-08T20:30:00Z",
+                        "session": "UNKNOWN"}) == "POSTMARKET"
+
+
+def test_session_falls_back_to_the_column_when_the_stamp_is_unusable():
+    from scripts.lp_rh_shadow_daemon_v1_readonly import _session_of
+    assert _session_of({"sample_time": "not-a-time", "session": "RTH"}) == "RTH"
+    assert _session_of({"sample_time": None, "session": None}) == "UNKNOWN"

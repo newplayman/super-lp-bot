@@ -32,6 +32,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+from scripts.lp_rh_market_session_v1_readonly import classify_session
 from scripts.lp_rh_shadow_runner_v1_readonly import (  # noqa: E402
     DEFAULT_POOL, episode_summary, load_samples_from_db, run_episode,
 )
@@ -108,12 +109,36 @@ def _stamp(rfc3339):
     return _parse_rfc3339(rfc3339).strftime("%Y%m%d%H%M%S")
 
 
+def _session_of(sample):
+    """Session for a sample, derived from its timestamp rather than its column.
+
+    rh_market_states.session is hardcoded to "UNKNOWN" by the collector (see
+    lp_rh_collector_v1_readonly line 228), so every row carries UNKNOWN and
+    grouping blockers by it would be useless.  The session is a pure function of
+    the timestamp and the calendar, so deriving it here is exact, needs no
+    collector restart, and makes the rows already collected usable.  Falls back
+    to the stored value only when the timestamp cannot be parsed.
+    """
+    raw = sample.get("sample_time")
+    if raw:
+        try:
+            text = str(raw).replace("Z", "+00:00")
+            parsed = datetime.fromisoformat(text)
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=timezone.utc)
+            session, _ = classify_session(parsed, calendar=None)
+            return session
+        except (TypeError, ValueError):
+            pass
+    return sample.get("session") or "UNKNOWN"
+
+
 def blocker_rows_from_steps(steps, samples):
     """Per (conjunct, sample session) failure counts.  steps[i] <-> samples[i];
     the conjunct name is the part of each "<conjunct>: <why>" reason before the first colon."""
     counts = {}
     for step, sample in zip(steps, samples):
-        session = sample.get("session") or "UNKNOWN"
+        session = _session_of(sample)
         for reason in getattr(step, "conjunct_reasons", ()) or ():
             name = str(reason).split(":", 1)[0].strip()
             counts[(name, session)] = counts.get((name, session), 0) + 1

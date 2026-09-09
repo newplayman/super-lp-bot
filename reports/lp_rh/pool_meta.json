@@ -1,0 +1,255 @@
+{
+ "attestation_status": "ATTESTED_SAME_BLOCK",
+ "protocol": "v3",
+ "sqrt_price_x96": 3948718555786119890026495,
+ "current_tick": -198144,
+ "tick_spacing": 1,
+ "fee_pips": 100,
+ "liquidity": 10748670127530107182,
+ "tick_data": [
+  {
+   "tick_lower": -198184,
+   "tick_upper": -198184,
+   "liquidity_net": 26674215273706257
+  },
+  {
+   "tick_lower": -198181,
+   "tick_upper": -198181,
+   "liquidity_net": 47152920166923834
+  },
+  {
+   "tick_lower": -198179,
+   "tick_upper": -198179,
+   "liquidity_net": 863512045240428
+  },
+  {
+   "tick_lower": -198178,
+   "tick_upper": -198178,
+   "liquidity_net": 12832746073688
+  },
+  {
+   "tick_lower": -198177,
+   "tick_upper": -198177,
+   "liquidity_net": 19145234250032542
+  },
+  {
+   "tick_lower": -198176,
+   "tick_upper": -198176,
+   "liquidity_net": -2319052893405998
+  },
+  {
+   "tick_lower": -198170,
+   "tick_upper": -198170,
+   "liquidity_net": -347271269384674
+  },
+  {
+   "tick_lower": -198169,
+   "tick_upper": -198169,
+   "liquidity_net": -4108876878814598
+  },
+  {
+   "tick_lower": -198165,
+   "tick_upper": -198165,
+   "liquidity_net": -3521268271069102
+  },
+  {
+   "tick_lower": -198164,
+   "tick_upper": -198164,
+   "liquidity_net": 780937945731780
+  },
+  {
+   "tick_lower": -198163,
+   "tick_upper": -198163,
+   "liquidity_net": 47528796298651643
+  },
+  {
+   "tick_lower": -198162,
+   "tick_upper": -198162,
+   "liquidity_net": 28451593308951870
+  },
+  {
+   "tick_lower": -198161,
+   "tick_upper": -198161,
+   "liquidity_net": 10754610849188887
+  },
+  {
+   "tick_lower": -198160,
+   "tick_upper": -198160,
+   "liquidity_net": 21666133088747933
+  },
+  {
+   "tick_lower": -198159,
+   "tick_upper": -198159,
+   "liquidity_net": 16484807362410734
+  },
+  {
+   "tick_lower": -198158,
+   "tick_upper": -198158,
+   "liquidity_net": 427543614658923162
+  },
+  {
+   "tick_lower": -198156,
+   "tick_upper": -198156,
+   "liquidity_net": 26108144456231323
+  },
+  {
+   "tick_lower": -198152,
+   "tick_upper": -198152,
+   "liquidity_net": 17298299093625266
+  },
+  {
+   "tick_lower": -198150,
+   "tick_upper": -198150,
+   "liquidity_net": -21057244646131
+  },
+  {
+   "tick_lower": -198148,
+   "tick_upper": -198148,
+   "liquidity_net": 246690181236752656
+  },
+  {
+   "tick_lower": -198146,
+   "tick_upper": -198146,
+   "liquidity_net": 82375768531880470
+  },
+  {
+   "tick_lower": -198144,
+   "tick_upper": -198144,
+   "liquidity_net": 107743673894132854
+  },
+  {
+   "tick_lower": -198142,
+   "tick_upper": -198142,
+   "liquidity_net": 1447969805082083
+  },
+  {
+   "tick_lower": -198140,
+   "tick_upper": -198140,
+   "liquidity_net": -3226372567187437
+  },
+  {
+   "tick_lower": -198139,
+   "tick_upper": -198139,
+   "liquidity_net": -214339154377721157
+  },
+  {
+   "tick_lower": -198138,
+   "tick_upper": -198138,
+   "liquidity_net": -32351026859031499
+  },
+  {
+   "tick_lower": -198137,
+   "tick_upper": -198137,
+   "liquidity_net": -167139647079646236
+  },
+  {
+   "tick_lower": -198136,
+   "tick_upper": -198136,
+   "liquidity_net": -1502270565715690
+  },
+  {
+   "tick_lower": -198135,
+   "tick_upper": -198135,
+   "liquidity_net": -194467023300691
+  },
+  {
+   "tick_lower": -198134,
+   "tick_upper": -198134,
+   "liquidity_net": -44009138773867
+  },
+  {
+   "tick_lower": -198133,
+   "tick_upper": -198133,
+   "liquidity_net": 15565468112170459
+  },
+  {
+   "tick_lower": -198132,
+   "tick_upper": -198132,
+   "liquidity_net": 892955744831
+  },
+  {
+   "tick_lower": -198130,
+   "tick_upper": -198130,
+   "liquidity_net": 290100209439756
+  },
+  {
+   "tick_lower": -198129,
+   "tick_upper": -198129,
+   "liquidity_net": 1224834659912680
+  },
+  {
+   "tick_lower": -198128,
+   "tick_upper": -198128,
+   "liquidity_net": -8429916843260533
+  },
+  {
+   "tick_lower": -198126,
+   "tick_upper": -198126,
+   "liquidity_net": -3198975015531
+  },
+  {
+   "tick_lower": -198124,
+   "tick_upper": -198124,
+   "liquidity_net": 1633059151346899
+  },
+  {
+   "tick_lower": -198123,
+   "tick_upper": -198123,
+   "liquidity_net": -3356825421159859
+  },
+  {
+   "tick_lower": -198120,
+   "tick_upper": -198120,
+   "liquidity_net": 21024977011989460
+  },
+  {
+   "tick_lower": -198119,
+   "tick_upper": -198119,
+   "liquidity_net": -4318113043526295
+  },
+  {
+   "tick_lower": -198117,
+   "tick_upper": -198117,
+   "liquidity_net": -429498901396758051
+  },
+  {
+   "tick_lower": -198116,
+   "tick_upper": -198116,
+   "liquidity_net": -111775077522635706
+  },
+  {
+   "tick_lower": -198113,
+   "tick_upper": -198113,
+   "liquidity_net": -1971526263566261
+  },
+  {
+   "tick_lower": -198110,
+   "tick_upper": -198110,
+   "liquidity_net": 1951739201160454
+  },
+  {
+   "tick_lower": -198106,
+   "tick_upper": -198106,
+   "liquidity_net": -7787194461520210
+  },
+  {
+   "tick_lower": -198104,
+   "tick_upper": -198104,
+   "liquidity_net": -28316482861969460
+  }
+ ],
+ "token0_decimals": 18,
+ "token1_decimals": 6,
+ "input_price_usd": "2484.0",
+ "max_impact_bps": 50,
+ "fee": 100,
+ "dec0": 18,
+ "dec1": 6,
+ "liquidity_raw": 10748670127530107182,
+ "fee_apr_pct": 27.34,
+ "sigma_daily": 0.02038,
+ "gas_usd_estimate": 0.02,
+ "range_pct": 10.0,
+ "tvl_usd": 32037565.0,
+ "active_liquidity_notional_usd": 32037565.0
+}
