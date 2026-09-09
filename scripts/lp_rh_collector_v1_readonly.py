@@ -38,6 +38,9 @@ if str(REPO_ROOT) not in sys.path:
 from scripts.lp_rh_store_v1_readonly import (  # noqa: E402
     DEFAULT_DB_PATH, budget_status, insert_row, migrate, open_store,
 )
+from scripts.lp_rh_market_session_v1_readonly import (  # noqa: E402
+    classify_session,
+)
 
 # --- constants -------------------------------------------------------------
 RH_RPC_PRIMARY = os.environ.get(
@@ -65,6 +68,20 @@ def _utc_now() -> str:
     """UTC RFC3339 with microseconds (keeps per-round PKs unique)."""
     now = datetime.now(timezone.utc)
     return now.strftime("%Y-%m-%dT%H:%M:%S.") + "%06dZ" % now.microsecond
+
+def _classify_sample_session(now: str) -> str:
+    """Market session for the sample instant (RH-02p).
+
+    ``now`` is the RFC3339 UTC sample_time string written to
+    rh_market_states. Unparseable input keeps the historical "UNKNOWN"
+    fallback; classify_session's None-input behavior is owned by the
+    session module and is never exercised here.
+    """
+    try:
+        dt = datetime.fromisoformat(now.replace("Z", "+00:00"))
+    except (ValueError, TypeError, AttributeError):
+        return "UNKNOWN"
+    return classify_session(dt, calendar=None)[0]
 
 def _hex_to_int(value: Any) -> Optional[int]:
     if value is None or isinstance(value, int):
@@ -209,12 +226,17 @@ def collect_round(conn, *, dec0: int, dec1: int, last_good_block: Optional[int],
     # fetch failed, so re-fetch that specific block rather than reusing the
     # timestamp from the "latest" call above. One extra RPC call per round.
     block_timestamp = None
+    block_hash = None
     if good_block is not None:
         blk_age, err_age, ms_age = rpc_fn(
             "eth_getBlockByNumber", [hex(good_block), False])
         latencies.append(ms_age)
         if err_age is None and isinstance(blk_age, dict):
             block_timestamp = _hex_to_int(blk_age.get("timestamp"))
+            # RH-02p: provenance hash of good_block itself (not of the
+            # "latest" call above; good_block may be a prior round's
+            # last_good_block). None when unavailable, never "".
+            block_hash = blk_age.get("hash") or None
 
     insert_row(conn, "rh_rpc_health", {
         "provider": RH_RPC_PRIMARY, "method": "pool_state_round",
@@ -259,10 +281,12 @@ def collect_round(conn, *, dec0: int, dec1: int, last_good_block: Optional[int],
     if clock_skew:
         flags.add("CLOCK_SKEW")
 
+    session = _classify_sample_session(now)
+
     insert_row(conn, "rh_market_states", {
         "asset_address": POOL, "sample_time": now,
         "chain_id": CHAIN_ID, "source_payload_hash": payload_hash,
-        "session": "UNKNOWN",
+        "session": session,
         "health_flags_json": json.dumps(sorted(flags)),
         "reference_bid": None, "reference_ask": None,
         # reference_mid is the DEX pool price from sqrtPriceX96, not an
@@ -270,6 +294,9 @@ def collect_round(conn, *, dec0: int, dec1: int, last_good_block: Optional[int],
         "reference_mid": price_text,
         "reference_age_secs": reference_age_secs,
         "multiplier_human": None, "oracle_paused": None,
+        # RH-02p: provenance columns for the reorg-rollback chain.
+        "derived_block_number": good_block,
+        "derived_block_hash": block_hash,
     })
     conn.commit()
     return {"block_number": good_block, "price": price_text, "state": state,

@@ -131,9 +131,13 @@ def test_successful_round_writes_one_row_per_table(tmp_path):
 
 
 # --- 5. market-state row fields ----------------------------------------------
-def test_market_state_row_fields(tmp_path):
+def test_market_state_row_fields(tmp_path, monkeypatch):
     conn = _open(tmp_path)
     try:
+        # RH-02p: session is now classified; pin the sample instant to
+        # ET 10:00 on a weekday (2026-01-13 is a Tuesday) -> RTH.
+        monkeypatch.setattr(collector, "_utc_now",
+                            lambda: "2026-01-13T15:00:00.000000Z")
         collector.collect_round(conn, dec0=18, dec1=6, last_good_block=None,
                                 rpc_fn=_fake_rpc())
         mid, session, chain_id = conn.execute(
@@ -141,7 +145,7 @@ def test_market_state_row_fields(tmp_path):
         ).fetchone()
         assert Decimal(mid)  # decimal text, parseable by the store guard
         assert Decimal("2490.0") < Decimal(mid) < Decimal("2491.0")
-        assert session == "UNKNOWN"
+        assert session == "RTH"
         assert chain_id == 4663
     finally:
         conn.close()
@@ -381,15 +385,18 @@ def test_module_docstring_documents_reference_mid_semantics():
     assert "not an external reference" in doc
 
 
-def test_session_still_unknown(tmp_path):
-    # RH-02i must not change the session="UNKNOWN" behavior (regression).
+def test_session_now_classified(tmp_path, monkeypatch):
+    # RH-02p: session is now classified, not always UNKNOWN. Pin the sample
+    # instant to ET 10:00 on a weekday (2026-01-13 is a Tuesday) -> RTH.
     conn = _open(tmp_path)
     try:
+        monkeypatch.setattr(collector, "_utc_now",
+                            lambda: "2026-01-13T15:00:00.000000Z")
         collector.collect_round(conn, dec0=18, dec1=6, last_good_block=None,
                                 rpc_fn=_fake_rpc_ts("0x65"))
         session = conn.execute(
             "SELECT session FROM rh_market_states").fetchone()[0]
-        assert session == "UNKNOWN"
+        assert session == "RTH"
     finally:
         conn.close()
 
