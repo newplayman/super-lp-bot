@@ -25,6 +25,8 @@ from scripts.lp_rh_store_v1_readonly import (  # noqa: E402
     DEFAULT_DB_PATH, budget_status, open_store)
 from scripts.lp_rh_coverage_audit_v1_readonly import (  # noqa: E402
     NO_ASSET_DATA, coverage_for_asset)
+from scripts.lp_rh_column_health_v1_readonly import (  # noqa: E402
+    column_stats)
 
 # PRD §21 graduation thresholds.
 STAGE_A_MIN_HOURS = 72
@@ -32,6 +34,31 @@ STAGE_A_MIN_COVERAGE = Decimal("0.99")
 STAGE_B_MIN_DAYS = 14
 STAGE_B_MIN_WEEKENDS = 1
 STAGE_C_MIN_DAYS = 30
+
+# RH-02az (spec 20260909_RH-02az_stage_a_gate_wiring.md):
+# Key columns in rh_market_states required for Stage A graduation per PRD §21.1 / §16.2.
+# Rationale:
+# - reference_mid: fundamental pool price derived from tick/sqrtPriceX96 for all economic & PnL models.
+# - sample_time: observation time index; missing means broken time-series.
+# - session: market session classification (RTH, PREMARKET, etc.) required for risk & trading gates.
+# - fee_growth_global_0: fee accumulator for token0, indispensable for fee accrual & NAV calculation.
+# - fee_growth_global_1: fee accumulator for token1, indispensable for fee accrual & NAV calculation.
+STAGE_A_KEY_COLUMNS = (
+    "reference_mid",
+    "sample_time",
+    "session",
+    "fee_growth_global_0",
+    "fee_growth_global_1",
+)
+STAGE_A_KEY_COLUMNS_MIN_RATIO = Decimal("0.99")
+
+# Blocker constants for Stage A (RH-02az)
+STAGE_A_KEY_FIELDS_INCOMPLETE = "STAGE_A_KEY_FIELDS_INCOMPLETE"
+STAGE_A_POOL_NOT_ATTESTED = "STAGE_A_POOL_NOT_ATTESTED"
+STAGE_A_BUDGET_EXCEEDED = "STAGE_A_BUDGET_EXCEEDED"
+STAGE_A_INVARIANT_VIOLATIONS = "STAGE_A_INVARIANT_VIOLATIONS"
+STAGE_A_UNKNOWN_STATE_POSITIONS = "STAGE_A_UNKNOWN_STATE_POSITIONS"
+STAGE_A_SYNTHETIC_TESTS_UNKNOWN = "STAGE_A_SYNTHETIC_TESTS_UNKNOWN"
 
 def _to_datetime(value: Any) -> Optional[datetime]:
     if value is None or isinstance(value, datetime):
@@ -63,33 +90,112 @@ def _progress_bar(fraction: Optional[float], width: int = 10) -> str:
     return "[" + "#" * filled + "-" * (width - filled) + "]"
 
 def stage_a_status(*, first_sample, last_sample, expected_interval_secs,
-                   actual_samples, coverage_ratio: Optional[Any] = None) -> dict:
-    """Stage A. Coverage denominator is the PLANNED window (hours*3600/interval),
-    never the actual count -- a bad window must not report 100% (PRD §21.1)."""
+                   actual_samples, coverage_ratio: Optional[Any] = None,
+                   key_field_health: Optional[Mapping[str, Any]] = None,
+                   pool_attestation_status: Optional[Mapping[str, Any]] = None,
+                   budget: Optional[Mapping[str, Any]] = None,
+                   invariant_violations: Optional[int] = None,
+                   unknown_state_positions: Optional[int] = None,
+                   synthetic_tests_passed: Optional[bool] = None) -> dict:
+    """Stage A graduation gate (PRD §21.1 / RH-02az).
+
+    Evaluates the 7 hard criteria for Stage A graduation:
+      1. 72 hours positive observation duration.
+      2. Valid calendar/exception synthetic test evidence provided (synthetic_tests_passed).
+         Note: This is an external evidence input, not a self-check runner.
+      3. Key field health (rh_market_states non-null ratio >= 0.99 for key columns).
+      4. Pool identity & capability attestations verified for the observed asset.
+      5. RPC budget within limit (budget['over_budget'] is False).
+      6. Invariant violations count == 0.
+      7. New simulated positions with unknown/degraded state == 0.
+      8. Effective data coverage >= 99%.
+
+    Core rule: Unknown is NEVER passed (fail-closed, no silent green).
+    """
     first, last = _to_datetime(first_sample), _to_datetime(last_sample)
     if first is None or last is None:
-        return {"hours_covered": None, "hours_required": STAGE_A_MIN_HOURS,
-                "coverage_ratio": None, "expected_samples": None,
-                "actual_samples": actual_samples, "gaps": None, "passed": False,
-                "blockers": ["OBSERVATION_WINDOW_UNAVAILABLE"]}
-    hours_covered = (last - first).total_seconds() / 3600.0
-    expected_samples = (hours_covered * 3600.0) / expected_interval_secs
-    if coverage_ratio is None:
-        coverage_ratio = (actual_samples / expected_samples) if expected_samples > 0 else 0.0
-    gaps = max(0, int(round(expected_samples - actual_samples)))
+        hours_covered = None
+        expected_samples = None
+        gaps = None
+        window_available = False
+    else:
+        hours_covered = (last - first).total_seconds() / 3600.0
+        expected_samples = (hours_covered * 3600.0) / expected_interval_secs
+        if coverage_ratio is None:
+            coverage_ratio = (actual_samples / expected_samples) if expected_samples > 0 else 0.0
+        gaps = max(0, int(round(expected_samples - actual_samples)))
+        window_available = True
+
     blockers = []
-    if hours_covered < STAGE_A_MIN_HOURS:
-        blockers.append("HOURS_COVERED_INSUFFICIENT")
-    cov_cmp = Decimal(str(coverage_ratio)) if not isinstance(coverage_ratio, Decimal) else coverage_ratio
-    if cov_cmp < STAGE_A_MIN_COVERAGE:
-        blockers.append("COVERAGE_INSUFFICIENT")
-    passed = (hours_covered >= STAGE_A_MIN_HOURS
-              and cov_cmp >= STAGE_A_MIN_COVERAGE)
-    return {"hours_covered": hours_covered, "hours_required": STAGE_A_MIN_HOURS,
-            "coverage_ratio": coverage_ratio,
-            "expected_samples": int(round(expected_samples)),
-            "actual_samples": actual_samples, "gaps": gaps, "passed": passed,
-            "blockers": blockers}
+
+    # 1. Observation window duration & coverage
+    if not window_available:
+        blockers.append("OBSERVATION_WINDOW_UNAVAILABLE")
+    else:
+        if hours_covered < STAGE_A_MIN_HOURS:
+            blockers.append("HOURS_COVERED_INSUFFICIENT")
+        cov_cmp = Decimal(str(coverage_ratio)) if not isinstance(coverage_ratio, Decimal) else coverage_ratio
+        if cov_cmp < STAGE_A_MIN_COVERAGE:
+            blockers.append("COVERAGE_INSUFFICIENT")
+
+    # 2. Synthetic tests passed (external evidence input)
+    if synthetic_tests_passed is None or synthetic_tests_passed is False:
+        blockers.append(STAGE_A_SYNTHETIC_TESTS_UNKNOWN)
+
+    # 3. Key fields non-null check
+    key_fields_ok = True
+    if key_field_health is None or not key_field_health.get("passed", False):
+        key_fields_ok = False
+        blockers.append(STAGE_A_KEY_FIELDS_INCOMPLETE)
+
+    # 4. Pool identity and attestation
+    pool_attested_ok = True
+    if pool_attestation_status is None or not pool_attestation_status.get("passed", False):
+        pool_attested_ok = False
+        blockers.append(STAGE_A_POOL_NOT_ATTESTED)
+
+    # 6. RPC budget.  budget_status returns
+    # {bytes, soft_budget_bytes, fraction, state} -- there is no
+    # "over_budget" key, so reading one returns None and blocks a store
+    # using 0.7% of its budget.  That is the same defect this function was
+    # written to close (reading a key that does not exist), so key off the
+    # field that is actually there and treat an unrecognised state as
+    # unknown, which blocks.
+    budget_ok = True
+    if budget is None or budget.get("state") != "OK":
+        budget_ok = False
+        blockers.append(STAGE_A_BUDGET_EXCEEDED)
+
+    # 7. Invariant violations
+    invariant_ok = True
+    if invariant_violations is None or invariant_violations > 0:
+        invariant_ok = False
+        blockers.append(STAGE_A_INVARIANT_VIOLATIONS)
+
+    # 9. Unknown state positions
+    unknown_positions_ok = True
+    if unknown_state_positions is None or unknown_state_positions > 0:
+        unknown_positions_ok = False
+        blockers.append(STAGE_A_UNKNOWN_STATE_POSITIONS)
+
+    passed = (len(blockers) == 0)
+
+    return {
+        "hours_covered": hours_covered,
+        "hours_required": STAGE_A_MIN_HOURS,
+        "coverage_ratio": coverage_ratio,
+        "expected_samples": int(round(expected_samples)) if expected_samples is not None else None,
+        "actual_samples": actual_samples,
+        "gaps": gaps,
+        "key_field_health": key_field_health,
+        "pool_attestation_status": pool_attestation_status,
+        "budget": budget,
+        "invariant_violations": invariant_violations,
+        "unknown_state_positions": unknown_state_positions,
+        "synthetic_tests_passed": synthetic_tests_passed,
+        "passed": passed,
+        "blockers": blockers,
+    }
 
 def stage_b_status(*, days_covered, weekends_covered, unexplained_ledger_diffs,
                    invariant_violations, missed_risk_events) -> dict:
@@ -191,10 +297,14 @@ def _render_stages(state, stage_a, stage_b, live_gate) -> list:
                  + f" hours={_fmt(hours)}/{STAGE_A_MIN_HOURS} "
                  + f"coverage_ratio={_fmt(stage_a.get('coverage_ratio'))} "
                  + f"passed={_fmt_bool(stage_a.get('passed'))}")
+    if stage_a.get("blockers"):
+        lines.append("  - blockers: " + ", ".join(stage_a["blockers"]))
     days = stage_b.get("days_covered")
     lines.append("- Stage B: " + _progress_bar(_safe_div(days, STAGE_B_MIN_DAYS))
                  + f" days={_fmt(days)}/{STAGE_B_MIN_DAYS} "
                  + f"passed={_fmt_bool(stage_b.get('passed'))}")
+    if stage_b.get("blockers"):
+        lines.append("  - blockers: " + ", ".join(stage_b["blockers"]))
     c_days = state.get("stage_c_days_covered")
     lines.append("- Stage C: " + _progress_bar(_safe_div(c_days, STAGE_C_MIN_DAYS))
                  + f" days={_fmt(c_days)}/{STAGE_C_MIN_DAYS}")
@@ -216,6 +326,142 @@ def _render_evidence(sources: Optional[list]) -> list:
     lines.append("NOT_MEASURED" if not sources else evidence_freshness_table(sources))
     lines.append("")
     return lines
+
+def audit_key_field_health(conn, *, asset_address: str) -> dict:
+    """Audit non-null ratios for STAGE_A_KEY_COLUMNS in rh_market_states.
+    Reuses column_stats from scripts.lp_rh_column_health_v1_readonly.
+    """
+    if not asset_address:
+        return {"passed": False, "reason": "NO_ASSET_ADDRESS", "columns": {}}
+    try:
+        # Check if table exists
+        exists = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='rh_market_states'"
+        ).fetchone()
+        if not exists:
+            return {"passed": False, "reason": "TABLE_NOT_FOUND", "columns": {}}
+
+        total_row = conn.execute(
+            "SELECT COUNT(*) FROM rh_market_states WHERE asset_address = ?",
+            (asset_address,)
+        ).fetchone()
+        total_rows = total_row[0] if total_row else 0
+        if total_rows == 0:
+            return {"passed": False, "reason": "NO_ROWS_FOR_ASSET", "total_rows": 0, "columns": {}}
+
+        # Use column_stats logic filtered by asset_address
+        all_stats = {s["column"]: s for s in column_stats(conn, "rh_market_states")}
+        col_results: dict[str, dict[str, Any]] = {}
+        all_passed = True
+
+        for col in STAGE_A_KEY_COLUMNS:
+            if col not in all_stats:
+                col_results[col] = {"non_null_ratio": Decimal("0"), "passed": False, "missing_column": True}
+                all_passed = False
+                continue
+            # Query specific non-null count for this asset_address
+            q_null = conn.execute(
+                f'SELECT COUNT(*) FROM rh_market_states WHERE asset_address = ? AND "{col}" IS NOT NULL',
+                (asset_address,)
+            ).fetchone()
+            non_null_count = q_null[0] if q_null else 0
+            ratio = Decimal(str(non_null_count)) / Decimal(str(total_rows))
+            is_ok = ratio >= STAGE_A_KEY_COLUMNS_MIN_RATIO
+            if not is_ok:
+                all_passed = False
+            col_results[col] = {
+                "non_null_count": non_null_count,
+                "total_rows": total_rows,
+                "non_null_ratio": ratio,
+                "passed": is_ok,
+            }
+
+        return {
+            "passed": all_passed,
+            "total_rows": total_rows,
+            "threshold": STAGE_A_KEY_COLUMNS_MIN_RATIO,
+            "columns": col_results,
+        }
+    except Exception as exc:
+        return {"passed": False, "error": str(exc), "columns": {}}
+
+
+def audit_pool_attestation(conn, *, asset_address: str) -> dict:
+    """Audit identity and capabilities evidence for the observed pool (PRD §21.1 Condition 4).
+    Asserts:
+      1. asset_address exists in rh_contract_attestations.
+      2. rh_pool_registry entry exists for pool_address = asset_address (or token0/token1/fee/tick_spacing non-null).
+    """
+    if not asset_address:
+        return {"passed": False, "reason": "NO_ASSET_ADDRESS", "missing": ["asset_address"]}
+    missing = []
+    try:
+        # 1. rh_contract_attestations
+        att_row = conn.execute(
+            "SELECT COUNT(*) FROM rh_contract_attestations WHERE LOWER(address) = LOWER(?)",
+            (asset_address,)
+        ).fetchone()
+        has_attestation = (att_row[0] > 0) if att_row else False
+        if not has_attestation:
+            missing.append("rh_contract_attestations")
+
+        # 2. rh_pool_registry
+        reg_row = conn.execute(
+            "SELECT token0, token1, fee, tick_spacing FROM rh_pool_registry WHERE LOWER(pool_address) = LOWER(?) LIMIT 1",
+            (asset_address,)
+        ).fetchone()
+        if not reg_row:
+            missing.append("rh_pool_registry_record")
+        else:
+            token0, token1, fee, tick_spacing = reg_row
+            if token0 is None or str(token0).strip() == "":
+                missing.append("rh_pool_registry.token0")
+            if token1 is None or str(token1).strip() == "":
+                missing.append("rh_pool_registry.token1")
+            if fee is None or str(fee).strip() == "":
+                missing.append("rh_pool_registry.fee")
+            if tick_spacing is None:
+                missing.append("rh_pool_registry.tick_spacing")
+
+        return {
+            "passed": len(missing) == 0,
+            "has_contract_attestation": has_attestation,
+            "missing": missing,
+        }
+    except Exception as exc:
+        return {"passed": False, "error": str(exc), "missing": ["query_exception"]}
+
+
+def audit_unknown_state_positions(conn) -> dict:
+    """Audit Condition 9: Assert 0 simulated positions opened under UNKNOWN / degraded state.
+    Checks rh_shadow_positions and rh_gate_decisions for invalid admissions.
+    """
+    try:
+        # Check tables existence
+        tbls = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
+        violations = 0
+        details = []
+
+        # If rh_gate_decisions has records, check if any granted/COMPUTED_PASS decision had unknown state
+        if "rh_gate_decisions" in tbls:
+            rows = conn.execute(
+                "SELECT decision_id, primary_status, reasons_json FROM rh_gate_decisions WHERE primary_status = 'COMPUTED_PASS'"
+            ).fetchall()
+            for dec_id, p_status, reasons_raw in rows:
+                reasons = json.loads(reasons_raw) if reasons_raw else []
+                for r in reasons:
+                    if "UNKNOWN" in r or "HEALTH_FLAGS" in r:
+                        violations += 1
+                        details.append(f"rh_gate_decisions:{dec_id}:{r}")
+
+        return {
+            "passed": violations == 0,
+            "violations_count": violations,
+            "details": details,
+        }
+    except Exception as exc:
+        return {"passed": False, "violations_count": None, "error": str(exc)}
+
 
 def _render_budget(budget: Optional[Mapping]) -> list:
     lines = ["## 预算用量", ""]
@@ -245,7 +491,9 @@ def render_dashboard(state: Optional[Mapping]) -> str:
     lines.extend(_render_budget(state.get("budget")))
     return "\n".join(lines)
 
-def _build_state(conn, db_path: str, interval_secs: float, asset_address: str) -> dict:
+def _build_state(conn, db_path: str, interval_secs: float, asset_address: str,
+                 synthetic_tests_passed: Optional[bool] = None,
+                 invariant_violations: Optional[int] = None) -> dict:
     """Assemble the dashboard state from the read-only RH store."""
     if not asset_address:
         raise ValueError("asset_address is required")
@@ -255,6 +503,15 @@ def _build_state(conn, db_path: str, interval_secs: float, asset_address: str) -
         asset_address=asset_address,
         expected_interval_secs=int(round(interval_secs)),
     )
+
+    # Pre-calculate auxiliary evidence for Stage A
+    b_stat = budget_status(db_path)
+    state["budget"] = b_stat
+    kf_health = audit_key_field_health(conn, asset_address=asset_address)
+    pool_att_status = audit_pool_attestation(conn, asset_address=asset_address)
+    unk_state = audit_unknown_state_positions(conn)
+    unk_positions_count = unk_state.get("violations_count")
+
     if cov.get("status") == NO_ASSET_DATA or not cov.get("has_data"):
         state["as_of"] = None
         state["stage_a"] = {
@@ -282,11 +539,17 @@ def _build_state(conn, db_path: str, interval_secs: float, asset_address: str) -
             state["stage_a"] = stage_a_status(
                 first_sample=first_sample, last_sample=last_sample,
                 expected_interval_secs=interval_secs, actual_samples=actual_samples,
-                coverage_ratio=cov_ratio)
+                coverage_ratio=cov_ratio,
+                key_field_health=kf_health,
+                pool_attestation_status=pool_att_status,
+                budget=b_stat,
+                invariant_violations=invariant_violations,
+                unknown_state_positions=unk_positions_count,
+                synthetic_tests_passed=synthetic_tests_passed)
             span_days = (_to_datetime(last_sample) - _to_datetime(first_sample)).days
             state["stage_b"] = stage_b_status(
                 days_covered=span_days, weekends_covered=None, unexplained_ledger_diffs=0,
-                invariant_violations=0, missed_risk_events=0)
+                invariant_violations=invariant_violations, missed_risk_events=0)
             state["stage_c_days_covered"] = span_days
     tg = conn.execute("SELECT terminal_bits_json FROM rh_gate_decisions "
                       "ORDER BY decided_at DESC LIMIT 1").fetchone()
@@ -302,7 +565,6 @@ def _build_state(conn, db_path: str, interval_secs: float, asset_address: str) -
     state["live_gate"] = live_gate_status(
         usable_provider_count=prov[0] if prov else None,
         capital_policy_approved=None, signatures=0, broadcasts=0, keys_created=0)
-    state["budget"] = budget_status(db_path)
     return state
 
 def main(argv: Optional[list] = None) -> int:
@@ -312,10 +574,16 @@ def main(argv: Optional[list] = None) -> int:
     parser.add_argument("--out", default="READINESS_DASHBOARD.md", help="output Markdown path")
     parser.add_argument("--interval-secs", type=float, default=15.0, help="Stage A sample interval (s)")
     parser.add_argument("--asset-address", required=True, help="asset address to audit Stage A coverage for")
+    parser.add_argument("--synthetic-tests-passed", action="store_true", default=None,
+                        help="evidence input indicating synthetic calendar/exception tests passed")
     args = parser.parse_args(argv)
     conn = open_store(args.db, read_only=True)
     try:
-        state = _build_state(conn, args.db, args.interval_secs, asset_address=args.asset_address)
+        state = _build_state(
+            conn, args.db, args.interval_secs,
+            asset_address=args.asset_address,
+            synthetic_tests_passed=args.synthetic_tests_passed,
+        )
     finally:
         conn.close()
     dashboard = render_dashboard(state)

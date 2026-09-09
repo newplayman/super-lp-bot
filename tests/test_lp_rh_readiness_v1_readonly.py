@@ -19,6 +19,14 @@ from scripts.lp_rh_readiness_v1_readonly import (  # noqa: E402
     stage_b_status,
 )
 
+# The real shape returned by lp_rh_store.budget_status -- there is no
+# "over_budget" key.  Fixtures that invent one test a contract the code
+# does not have, which is how a store at 0.7% of budget came out blocked.
+BUDGET_OK = {"bytes": 15077192, "soft_budget_bytes": 2147483648,
+             "fraction": 0.007, "state": "OK"}
+BUDGET_OVER = {"bytes": 2147483649, "soft_budget_bytes": 2147483648,
+               "fraction": 1.0, "state": "OVER"}
+
 
 def clean_live_gate():
     return live_gate_status(usable_provider_count=2, capital_policy_approved=True,
@@ -29,7 +37,13 @@ def passing_stage_a():
     return stage_a_status(first_sample="2026-09-08T00:00:00Z",
                           last_sample="2026-09-11T00:00:00Z",
                           expected_interval_secs=15,
-                          actual_samples=72 * 3600 // 15)
+                          actual_samples=72 * 3600 // 15,
+                          synthetic_tests_passed=True,
+                          key_field_health={"passed": True},
+                          pool_attestation_status={"passed": True},
+                          budget=BUDGET_OK,
+                          invariant_violations=0,
+                          unknown_state_positions=0)
 
 
 def passing_stage_b():
@@ -84,6 +98,188 @@ def test_stage_a_missing_window_unavailable():
                        expected_interval_secs=15, actual_samples=0)
     assert a["passed"] is False
     assert "OBSERVATION_WINDOW_UNAVAILABLE" in a["blockers"]
+
+
+# --- RH-02az: PRD §21.1 7 Criteria Unit Tests ---
+
+def test_stage_a_synthetic_tests_missing_or_failed_blocks():
+    # Evidence missing -> blocked
+    a_none = stage_a_status(
+        first_sample="2026-09-08T00:00:00Z", last_sample="2026-09-11T00:00:00Z",
+        expected_interval_secs=15, actual_samples=72 * 3600 // 15,
+        synthetic_tests_passed=None, key_field_health={"passed": True},
+        pool_attestation_status={"passed": True}, budget=BUDGET_OK,
+        invariant_violations=0, unknown_state_positions=0,
+    )
+    assert a_none["passed"] is False
+    assert "STAGE_A_SYNTHETIC_TESTS_UNKNOWN" in a_none["blockers"]
+
+    # Evidence False -> blocked
+    a_false = stage_a_status(
+        first_sample="2026-09-08T00:00:00Z", last_sample="2026-09-11T00:00:00Z",
+        expected_interval_secs=15, actual_samples=72 * 3600 // 15,
+        synthetic_tests_passed=False, key_field_health={"passed": True},
+        pool_attestation_status={"passed": True}, budget=BUDGET_OK,
+        invariant_violations=0, unknown_state_positions=0,
+    )
+    assert a_false["passed"] is False
+    assert "STAGE_A_SYNTHETIC_TESTS_UNKNOWN" in a_false["blockers"]
+
+
+def test_stage_a_synthetic_tests_clean_passes():
+    a = passing_stage_a()
+    assert "STAGE_A_SYNTHETIC_TESTS_UNKNOWN" not in a["blockers"]
+    assert a["passed"] is True
+
+
+def test_stage_a_key_fields_incomplete_blocks():
+    # Missing / None
+    a_none = stage_a_status(
+        first_sample="2026-09-08T00:00:00Z", last_sample="2026-09-11T00:00:00Z",
+        expected_interval_secs=15, actual_samples=72 * 3600 // 15,
+        synthetic_tests_passed=True, key_field_health=None,
+        pool_attestation_status={"passed": True}, budget=BUDGET_OK,
+        invariant_violations=0, unknown_state_positions=0,
+    )
+    assert a_none["passed"] is False
+    assert "STAGE_A_KEY_FIELDS_INCOMPLETE" in a_none["blockers"]
+
+    # Incomplete (passed: False)
+    a_fail = stage_a_status(
+        first_sample="2026-09-08T00:00:00Z", last_sample="2026-09-11T00:00:00Z",
+        expected_interval_secs=15, actual_samples=72 * 3600 // 15,
+        synthetic_tests_passed=True, key_field_health={"passed": False, "reason": "fee_growth low"},
+        pool_attestation_status={"passed": True}, budget=BUDGET_OK,
+        invariant_violations=0, unknown_state_positions=0,
+    )
+    assert a_fail["passed"] is False
+    assert "STAGE_A_KEY_FIELDS_INCOMPLETE" in a_fail["blockers"]
+
+
+def test_stage_a_key_fields_clean_passes():
+    a = passing_stage_a()
+    assert "STAGE_A_KEY_FIELDS_INCOMPLETE" not in a["blockers"]
+    assert a["passed"] is True
+
+
+def test_stage_a_pool_attestation_missing_blocks():
+    # Missing attestation / None
+    a_none = stage_a_status(
+        first_sample="2026-09-08T00:00:00Z", last_sample="2026-09-11T00:00:00Z",
+        expected_interval_secs=15, actual_samples=72 * 3600 // 15,
+        synthetic_tests_passed=True, key_field_health={"passed": True},
+        pool_attestation_status=None, budget=BUDGET_OK,
+        invariant_violations=0, unknown_state_positions=0,
+    )
+    assert a_none["passed"] is False
+    assert "STAGE_A_POOL_NOT_ATTESTED" in a_none["blockers"]
+
+    # Attestation failed
+    a_fail = stage_a_status(
+        first_sample="2026-09-08T00:00:00Z", last_sample="2026-09-11T00:00:00Z",
+        expected_interval_secs=15, actual_samples=72 * 3600 // 15,
+        synthetic_tests_passed=True, key_field_health={"passed": True},
+        pool_attestation_status={"passed": False, "missing": ["rh_contract_attestations"]},
+        budget=BUDGET_OK, invariant_violations=0, unknown_state_positions=0,
+    )
+    assert a_fail["passed"] is False
+    assert "STAGE_A_POOL_NOT_ATTESTED" in a_fail["blockers"]
+
+
+def test_stage_a_pool_attestation_clean_passes():
+    a = passing_stage_a()
+    assert "STAGE_A_POOL_NOT_ATTESTED" not in a["blockers"]
+    assert a["passed"] is True
+
+
+def test_stage_a_budget_exceeded_blocks():
+    # Budget None
+    a_none = stage_a_status(
+        first_sample="2026-09-08T00:00:00Z", last_sample="2026-09-11T00:00:00Z",
+        expected_interval_secs=15, actual_samples=72 * 3600 // 15,
+        synthetic_tests_passed=True, key_field_health={"passed": True},
+        pool_attestation_status={"passed": True}, budget=None,
+        invariant_violations=0, unknown_state_positions=0,
+    )
+    assert a_none["passed"] is False
+    assert "STAGE_A_BUDGET_EXCEEDED" in a_none["blockers"]
+
+    # Budget over_budget True
+    a_over = stage_a_status(
+        first_sample="2026-09-08T00:00:00Z", last_sample="2026-09-11T00:00:00Z",
+        expected_interval_secs=15, actual_samples=72 * 3600 // 15,
+        synthetic_tests_passed=True, key_field_health={"passed": True},
+        pool_attestation_status={"passed": True}, budget=BUDGET_OVER,
+        invariant_violations=0, unknown_state_positions=0,
+    )
+    assert a_over["passed"] is False
+    assert "STAGE_A_BUDGET_EXCEEDED" in a_over["blockers"]
+
+
+def test_stage_a_budget_clean_passes():
+    a = passing_stage_a()
+    assert "STAGE_A_BUDGET_EXCEEDED" not in a["blockers"]
+    assert a["passed"] is True
+
+
+def test_stage_a_invariant_violations_blocks():
+    # None
+    a_none = stage_a_status(
+        first_sample="2026-09-08T00:00:00Z", last_sample="2026-09-11T00:00:00Z",
+        expected_interval_secs=15, actual_samples=72 * 3600 // 15,
+        synthetic_tests_passed=True, key_field_health={"passed": True},
+        pool_attestation_status={"passed": True}, budget=BUDGET_OK,
+        invariant_violations=None, unknown_state_positions=0,
+    )
+    assert a_none["passed"] is False
+    assert "STAGE_A_INVARIANT_VIOLATIONS" in a_none["blockers"]
+
+    # > 0
+    a_viol = stage_a_status(
+        first_sample="2026-09-08T00:00:00Z", last_sample="2026-09-11T00:00:00Z",
+        expected_interval_secs=15, actual_samples=72 * 3600 // 15,
+        synthetic_tests_passed=True, key_field_health={"passed": True},
+        pool_attestation_status={"passed": True}, budget=BUDGET_OK,
+        invariant_violations=2, unknown_state_positions=0,
+    )
+    assert a_viol["passed"] is False
+    assert "STAGE_A_INVARIANT_VIOLATIONS" in a_viol["blockers"]
+
+
+def test_stage_a_invariant_violations_clean_passes():
+    a = passing_stage_a()
+    assert "STAGE_A_INVARIANT_VIOLATIONS" not in a["blockers"]
+    assert a["passed"] is True
+
+
+def test_stage_a_unknown_state_positions_blocks():
+    # None
+    a_none = stage_a_status(
+        first_sample="2026-09-08T00:00:00Z", last_sample="2026-09-11T00:00:00Z",
+        expected_interval_secs=15, actual_samples=72 * 3600 // 15,
+        synthetic_tests_passed=True, key_field_health={"passed": True},
+        pool_attestation_status={"passed": True}, budget=BUDGET_OK,
+        invariant_violations=0, unknown_state_positions=None,
+    )
+    assert a_none["passed"] is False
+    assert "STAGE_A_UNKNOWN_STATE_POSITIONS" in a_none["blockers"]
+
+    # > 0
+    a_viol = stage_a_status(
+        first_sample="2026-09-08T00:00:00Z", last_sample="2026-09-11T00:00:00Z",
+        expected_interval_secs=15, actual_samples=72 * 3600 // 15,
+        synthetic_tests_passed=True, key_field_health={"passed": True},
+        pool_attestation_status={"passed": True}, budget=BUDGET_OK,
+        invariant_violations=0, unknown_state_positions=3,
+    )
+    assert a_viol["passed"] is False
+    assert "STAGE_A_UNKNOWN_STATE_POSITIONS" in a_viol["blockers"]
+
+
+def test_stage_a_unknown_state_positions_clean_passes():
+    a = passing_stage_a()
+    assert "STAGE_A_UNKNOWN_STATE_POSITIONS" not in a["blockers"]
+    assert a["passed"] is True
 
 
 # --- Stage B ---
@@ -372,7 +568,10 @@ def test_main_cli_requires_asset_address():
 
 
 def test_build_state_real_asset_coverage_reference():
-    from scripts.lp_rh_readiness_v1_readonly import _build_state
+    from scripts.lp_rh_readiness_v1_readonly import (
+        STAGE_A_POOL_NOT_ATTESTED,
+        _build_state,
+    )
     from scripts.lp_rh_store_v1_readonly import DEFAULT_DB_PATH, open_store
 
     if not Path(DEFAULT_DB_PATH).exists():
@@ -386,5 +585,50 @@ def test_build_state_real_asset_coverage_reference():
         assert float(st_a["coverage_ratio"]) == pytest.approx(0.9678, abs=0.01)
         assert st_a["passed"] is False
         assert "COVERAGE_INSUFFICIENT" in st_a["blockers"]
+        # RH-02az: Real scanner.db pool has no contract attestation for 0x52e65b17fb6e5ba00ed806f37afcd2daa50271ca
+        assert STAGE_A_POOL_NOT_ATTESTED in st_a["blockers"]
     finally:
         conn.close()
+
+
+def test_stage_a_regression_preserves_duration_and_coverage_logic():
+    """Anti-regression: Duration (< 72h) and coverage (< 0.99) behavior is identical
+    to baseline when other criteria are met."""
+    from decimal import Decimal
+
+    # 1. 72h satisfied, coverage < 0.99
+    expected = 72 * 3600 // 15
+    a1 = stage_a_status(
+        first_sample="2026-09-08T00:00:00Z", last_sample="2026-09-11T00:00:00Z",
+        expected_interval_secs=15, actual_samples=int(expected * 0.98),
+        synthetic_tests_passed=True, key_field_health={"passed": True},
+        pool_attestation_status={"passed": True}, budget=BUDGET_OK,
+        invariant_violations=0, unknown_state_positions=0,
+    )
+    assert a1["hours_covered"] == 72.0
+    assert Decimal(str(a1["coverage_ratio"])) < Decimal("0.99")
+    assert a1["passed"] is False
+    assert a1["blockers"] == ["COVERAGE_INSUFFICIENT"]
+
+    # 2. 72h not satisfied (< 72h), coverage >= 0.99
+    a2 = stage_a_status(
+        first_sample="2026-09-08T00:00:00Z", last_sample="2026-09-10T00:00:00Z",
+        expected_interval_secs=15, actual_samples=48 * 3600 // 15,
+        synthetic_tests_passed=True, key_field_health={"passed": True},
+        pool_attestation_status={"passed": True}, budget=BUDGET_OK,
+        invariant_violations=0, unknown_state_positions=0,
+    )
+    assert a2["hours_covered"] == 48.0
+    assert a2["passed"] is False
+    assert a2["blockers"] == ["HOURS_COVERED_INSUFFICIENT"]
+
+    # 3. Both satisfied
+    a3 = stage_a_status(
+        first_sample="2026-09-08T00:00:00Z", last_sample="2026-09-11T00:00:00Z",
+        expected_interval_secs=15, actual_samples=72 * 3600 // 15,
+        synthetic_tests_passed=True, key_field_health={"passed": True},
+        pool_attestation_status={"passed": True}, budget=BUDGET_OK,
+        invariant_violations=0, unknown_state_positions=0,
+    )
+    assert a3["passed"] is True
+    assert a3["blockers"] == []
