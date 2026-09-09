@@ -31,9 +31,18 @@ def _load_module_from_source(name: str, source: str, file_path: str | None = Non
     return module
 
 
+# The pre-fix baseline is pinned to the commit *before* RH-02ba landed, not
+# to HEAD.  Using HEAD works exactly until the fix is committed, at which
+# point "old" and "new" become the same file and every comparison silently
+# passes or fails for the wrong reason -- which is what happened here the
+# moment 4aa4497 landed.  A test that compares against history must name the
+# history it means.
+PRE_FIX_REV = "4aa4497^"
+
+
 def _load_git_head_module(rel_path: str, module_name: str):
-    """Load the HEAD version of a module using read-only `git show HEAD:...`."""
-    cmd = ["git", "show", f"HEAD:{rel_path}"]
+    """Load the pre-RH-02ba version of a module via read-only `git show`."""
+    cmd = ["git", "show", f"{PRE_FIX_REV}:{rel_path}"]
     res = subprocess.run(cmd, cwd=REPO_ROOT, capture_output=True, text=True, check=True)
     abs_path = str((REPO_ROOT / rel_path).resolve())
     return _load_module_from_source(module_name, res.stdout, file_path=abs_path)
