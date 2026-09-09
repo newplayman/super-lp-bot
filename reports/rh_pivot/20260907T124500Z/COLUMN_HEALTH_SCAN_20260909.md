@@ -263,3 +263,32 @@ constant_columns (24):
 
 **不要为了让哨兵不报 EMPTY 而去填任何列。** 那会把一个诚实的 NULL
 换成一个编造的值，正是本项目反复付出代价的那类错误。
+
+---
+
+## 2026-09-09 12:5x 复扫：EMPTY 列 23 → 10
+
+数据刷新后（重跑 `evidence_collector --once`，让 RH-02n / RH-02v 的修复触及既有行）：
+
+**已消除**：`rh_assets` 六列、`rh_pool_registry` 四列、
+`rh_market_states.derived_block_hash/derived_block_number/session`、
+`rh_source_snapshots.source_event_time`。
+
+**剩余 10 个，分三类**：
+
+| 列 | 类别 | 说明 |
+|---|---|---|
+| `rh_pool_registry.hooks` / `pool_id` | **正确为 NULL** | v4 概念，本池是 v3 |
+| `rh_market_states.reference_bid` / `reference_ask` / `multiplier_human` | **需用户决策** | 依赖 REST 参考价；采集器 docstring 明写「no REST here」，填它们是设计变更 |
+| `rh_market_states.oracle_paused` | 待定 | 需额外链上 `paused()` 调用（选择器 `0x5c975abb`），对 CORE 桶语义存疑 |
+| `rh_contract_attestations.abi_version` / `evidence_json` / `expires_at` | **语义未定义** | writer 已支持（从 record 读），但 `collect_attestations` 不产生。**不是「数据在手边没写」**——填什么需要先有设计：ABI 来源？证据存什么？attestation 多久过期？ |
+| `rh_source_snapshots.raw_ref` | **语义未定义** | 采集器写死 `None`；「引用什么」（路径／哈希／外部存储）未定义 |
+
+### 为什么不直接填满
+
+前面那批能修，是因为**值就躺在局部变量里**（区块 hash、时段、事件时间、资产字段）。
+这四个不同：**要填什么本身还没定义**。
+
+按本报告开头那条：**不要为了让哨兵不报 EMPTY 而填任何列**——
+那会把一个诚实的 NULL 换成一个编造的值，正是本项目反复付出代价的那类错误
+（`gas=0.02`、`session="UNKNOWN"`、`reference_age_secs=0` 都是这么来的）。
