@@ -38,6 +38,7 @@ def _create_table(conn: sqlite3.Connection) -> None:
         "reference_age_secs INTEGER, multiplier_human TEXT, "
         "oracle_paused INTEGER, derived_block_hash TEXT, "
         "derived_block_number INTEGER, source_event_time TEXT, "
+        "fee_growth_global_0 TEXT, fee_growth_global_1 TEXT, "
         "PRIMARY KEY (asset_address, sample_time))")
 
 

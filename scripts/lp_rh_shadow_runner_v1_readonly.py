@@ -415,12 +415,12 @@ def load_samples_from_db(conn, *, pool: str, limit: int) -> tuple[list[dict], in
         "SELECT asset_address, sample_time, chain_id, reference_mid, "
         "multiplier_human, session, health_flags_json, reference_age_secs, "
         "oracle_paused, source_payload_hash, reference_bid, reference_ask, "
-        "source_event_time "
+        "source_event_time, fee_growth_global_0, fee_growth_global_1 "
         "FROM ("
         "SELECT asset_address, sample_time, chain_id, reference_mid, "
         "multiplier_human, session, health_flags_json, reference_age_secs, "
         "oracle_paused, source_payload_hash, reference_bid, reference_ask, "
-        "source_event_time "
+        "source_event_time, fee_growth_global_0, fee_growth_global_1 "
         "FROM rh_market_states WHERE asset_address = ? "
         "ORDER BY sample_time DESC LIMIT ?"
         ") ORDER BY sample_time",
@@ -429,7 +429,8 @@ def load_samples_from_db(conn, *, pool: str, limit: int) -> tuple[list[dict], in
     skipped = 0
     for row in cur.fetchall():
         (asset, st, chain_id, mid, mult, session, flags_json, age,
-         oracle_paused, payload_hash, bid, ask, source_event_time) = row
+         oracle_paused, payload_hash, bid, ask, source_event_time,
+         fg0, fg1) = row
         if mid is None:
             skipped += 1
             continue
@@ -446,6 +447,11 @@ def load_samples_from_db(conn, *, pool: str, limit: int) -> tuple[list[dict], in
             "source_event_time": source_event_time,
             "reference_bid": bid,
             "reference_ask": ask,
+            # RH-02ae: fee-growth columns the NAV path reads.  NULL stays None
+            # (never 0): run_episode keys its NAV off `is not None`, and 0 would
+            # value a sample that carries no fee-growth data.
+            "fee_growth_global_0": fg0,
+            "fee_growth_global_1": fg1,
         })
     return samples, skipped
 
