@@ -90,6 +90,43 @@ def pool_meta_hash_of(meta_text):
     return hashlib.sha256(meta_text.encode("utf-8")).hexdigest()
 
 
+def load_pool_meta(path):
+    """Read and parse the pool-meta JSON; return (dict, hash).
+
+    The hash reuses pool_meta_hash_of so the episode hash semantics are
+    unchanged.  Raises on read or parse failure; the caller decides whether a
+    failure is fatal (first load) or a fallback (later episodes).
+    """
+    text = Path(path).read_text(encoding="utf-8")
+    return json.loads(text), pool_meta_hash_of(text)
+
+
+class PoolMetaProvider:
+    """Per-episode pool-meta reload with last-known-good fallback.
+
+    load() re-reads the file on every call (once per episode).  A successful
+    read becomes the new last-known-good value.  A failed read reuses the
+    last-known-good value and appends the error to reload_errors, so the
+    failure is visible rather than silent.  Only the very first load, when no
+    last-known-good value exists yet, propagates the error -- that preserves
+    the daemon's startup-failure behaviour.
+    """
+
+    def __init__(self, path):
+        self.path = path
+        self._last = None
+        self.reload_errors = []
+
+    def load(self):
+        try:
+            self._last = load_pool_meta(self.path)
+        except Exception as exc:
+            if self._last is None:
+                raise
+            self.reload_errors.append(repr(exc))
+        return self._last
+
+
 def _money_text(value):
     """Decimal/int/None -> decimal TEXT or None (a missing value is never 0)."""
     if value is None:
@@ -234,13 +271,21 @@ def run_round_safe(cfg, *, shadow_conn, episode_id, now_fn):
     return 0
 
 
-def run_daemon(cfg, *, shadow_conn, period_secs, now_fn, sleep_fn, stop_event):
+def run_daemon(cfg, *, shadow_conn, period_secs, now_fn, sleep_fn, stop_event,
+               pool_meta_provider=None):
     """The resident loop.  Each round's deadline is counted from that round's
-    start (not the previous round's end); sleeps in <=1.0s increments so SIGTERM/SIGINT are honored promptly."""
+    start (not the previous round's end); sleeps in <=1.0s increments so SIGTERM/SIGINT are honored promptly.
+    If pool_meta_provider is given, the pool-meta is re-read at the start of
+    each episode and that episode's cfg is built from the fresh value, so a
+    refreshed gas_usd_estimate takes effect from the next episode on; a failed
+    re-read falls back to the last-known-good value (see PoolMetaProvider)."""
     round_index = 0
     while not stop_event.is_set():
         round_start = now_fn()
         episode_id = "rh-shadow-" + _stamp(round_start) + "-" + str(round_index)
+        if pool_meta_provider is not None:
+            meta, meta_hash = pool_meta_provider.load()
+            cfg = {**cfg, "pool_meta": meta, "pool_meta_hash": meta_hash}
         run_round_safe(cfg, shadow_conn=shadow_conn, episode_id=episode_id,
                        now_fn=now_fn)
         round_index += 1
@@ -272,14 +317,17 @@ def main(argv=None):
     parser.add_argument("--once", action="store_true", help="one round, exit")
     args = parser.parse_args(argv)
 
-    pool_meta_text = Path(args.pool_meta_json).read_text(encoding="utf-8")
-    pool_meta = json.loads(pool_meta_text)
+    # First load at startup: a failure here propagates out of main() exactly as
+    # the old one-time read did (startup failure, not a silent fallback).  The
+    # provider keeps this value as last-known-good for later episodes.
+    provider = PoolMetaProvider(args.pool_meta_json)
+    pool_meta, pool_meta_hash = provider.load()
     cfg = {"live_db": LIVE_DB, "pool": args.pool, "samples": args.samples,
            "position_usd": Decimal(args.position_usd),
            "capital_usd": Decimal(args.capital_usd),
            "horizon_hours": args.horizon_hours, "target_mode": TARGET_MODE,
            "pool_meta": pool_meta,
-           "pool_meta_hash": pool_meta_hash_of(pool_meta_text)}
+           "pool_meta_hash": pool_meta_hash}
     shadow_conn = open_shadow_store(args.db)
     if args.pid_file:
         Path(args.pid_file).write_text(str(os.getpid()))
@@ -293,13 +341,17 @@ def main(argv=None):
     now_fn = _utc_now_rfc3339
     try:
         if args.once:
+            # --once is a single episode: re-read at its start like any other.
+            meta, meta_hash = provider.load()
+            cfg = {**cfg, "pool_meta": meta, "pool_meta_hash": meta_hash}
             episode_id = "rh-shadow-" + _stamp(now_fn()) + "-once"
             rc = run_round_safe(cfg, shadow_conn=shadow_conn,
                                 episode_id=episode_id, now_fn=now_fn)
         else:
             rc = run_daemon(cfg, shadow_conn=shadow_conn,
                             period_secs=args.period_secs, now_fn=now_fn,
-                            sleep_fn=time.sleep, stop_event=stop_event)
+                            sleep_fn=time.sleep, stop_event=stop_event,
+                            pool_meta_provider=provider)
     finally:
         shadow_conn.close()
         if args.pid_file:
