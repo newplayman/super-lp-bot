@@ -112,7 +112,17 @@ except Exception: print('?')" 2>/dev/null)
   PREV_GW=$gw
 
   # 5) 槽位空闲（仅在网关可用时才算问题）
-  n=$(ps -eo pid,ppid,cmd | grep qwen-task | grep -v grep | awk '$2==1' | wc -l)
+  # 数「顶层」qwen-task：父进程不在 qwen-task 集合内的那一个。
+  # 不能用 ppid==1（nohup 从交互 shell 起的 worker 父进程不是 init，会被漏数成 0，
+  # 反过来催主脑在满负荷时超额派活），也不能直接 wc -l
+  # （qwen-task 是 bash 包装，一路 worker 会有 2-3 个同名进程，会数成 3 路）。
+  _qw=$(ps -eo pid,ppid,cmd | grep qwen-task | grep -v grep)
+  if [ -z "$_qw" ]; then
+    n=0
+  else
+    n=$(awk 'NR==FNR{p[$1]=1;next} !($2 in p){c++} END{print c+0}' \
+          <(printf '%s\n' "$_qw") <(printf '%s\n' "$_qw"))
+  fi
   if [ "$n" -lt 2 ] && [ "$gw" = "200" ]; then
     [ "$IDLE_SINCE" -eq 0 ] && IDLE_SINCE=$(date +%s)
     if [ $(( $(date +%s) - IDLE_SINCE )) -ge 600 ]; then
