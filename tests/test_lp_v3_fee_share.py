@@ -49,3 +49,21 @@ def test_liquidity_decimal_scale_canonical():
     # 18/8 (cbBTC/WETH layout): canonical scale 10**13.
     liq_18_8 = position_liquidity_raw(1.0, 0.03, 7, 18, 8)
     assert liq_18_8 > 1e10
+
+
+def test_quote_usd_per_token1_scaling_and_guards():
+    # RH-02bb: quote=0.99 returns 207114224164452.517 (±1e-6 relative error)
+    liq_default = position_liquidity_raw(1000.0, 2484.0, 10.0, 18, 6)
+    liq_quote_1 = position_liquidity_raw(1000.0, 2484.0, 10.0, 18, 6, quote_usd_per_token1=1.0)
+    assert liq_default == liq_quote_1
+
+    liq_depeg = position_liquidity_raw(1000.0, 2484.0, 10.0, 18, 6, quote_usd_per_token1=0.99)
+    expected = 207114224164452.517
+    assert abs(liq_depeg - expected) / expected < 1e-6
+
+    # Non-positive or non-finite quote guards fail closed to 0.0
+    assert position_liquidity_raw(1000.0, 2484.0, 10.0, 18, 6, quote_usd_per_token1=0.0) == 0.0
+    assert position_liquidity_raw(1000.0, 2484.0, 10.0, 18, 6, quote_usd_per_token1=-1.0) == 0.0
+    assert position_liquidity_raw(1000.0, 2484.0, 10.0, 18, 6, quote_usd_per_token1=float("nan")) == 0.0
+    assert position_liquidity_raw(1000.0, 2484.0, 10.0, 18, 6, quote_usd_per_token1=float("inf")) == 0.0
+

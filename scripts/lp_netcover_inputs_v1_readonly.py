@@ -586,7 +586,7 @@ def _range_aware_fee_ev(
     else:
         return None, metadata
     state = _pool_cost_state(state_record)
-    position_quote = size_usd
+    quote_per_token1 = 1.0
     if state is None and scanner_measured_evidence:
         quote_usd = _number(scanner_measured_evidence.get("token1_usd"), positive=True)
         pair_price = _first_number(
@@ -596,16 +596,26 @@ def _range_aware_fee_ev(
         dec1 = _first_number(state_record, "dec1")
         if None not in (quote_usd, pair_price, dec0, dec1):
             state = (float(pair_price), int(dec0), int(dec1))
-            position_quote = size_usd / float(quote_usd)
+            quote_per_token1 = float(quote_usd)
     if l_active is None or state is None:
         return None, metadata
     price, dec0, dec1 = state
     try:
         l_reference = position_liquidity_raw(
-            position_quote, price, reference_range, dec0, dec1
+            size_usd,
+            price,
+            reference_range,
+            dec0,
+            dec1,
+            quote_usd_per_token1=quote_per_token1,
         )
         l_target = position_liquidity_raw(
-            position_quote, price, target_range, dec0, dec1
+            size_usd,
+            price,
+            target_range,
+            dec0,
+            dec1,
+            quote_usd_per_token1=quote_per_token1,
         )
         if not all(
             math.isfinite(value) and value > 0.0

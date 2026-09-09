@@ -1,8 +1,21 @@
 import math
 
-def position_liquidity_raw(size_usd, entry_price, range_pct, dec0=18, dec1=6):
-    if entry_price <= 0 or size_usd <= 0:
+def position_liquidity_raw(
+    size_usd,
+    entry_price,
+    range_pct,
+    dec0=18,
+    dec1=6,
+    quote_usd_per_token1: float = 1.0,
+):
+    if (
+        not math.isfinite(quote_usd_per_token1)
+        or quote_usd_per_token1 <= 0
+        or entry_price <= 0
+        or size_usd <= 0
+    ):
         return 0.0
+    size_quote = size_usd / quote_usd_per_token1
     p_lo = entry_price * (1 - range_pct / 100)
     p_hi = entry_price * (1 + range_pct / 100)
     sqrt_p = math.sqrt(entry_price)
@@ -14,7 +27,7 @@ def position_liquidity_raw(size_usd, entry_price, range_pct, dec0=18, dec1=6):
     # (The two coincide only when dec0 = 3*dec1, e.g. the 18/6 WETH-USDC case,
     # which is why this was previously masked; for 18/18 or 8/18 pools the old
     # factor under-scaled l_pos by many orders -> fee share collapsed to ~0.)
-    return (size_usd / vraw) * 10 ** ((dec0 + dec1) / 2)
+    return (size_quote / vraw) * 10 ** ((dec0 + dec1) / 2)
 
 
 def swap_notional_usd(amount1_raw, dec1=6):
