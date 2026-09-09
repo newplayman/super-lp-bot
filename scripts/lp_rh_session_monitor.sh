@@ -42,10 +42,21 @@ while true; do
     b=$(basename "$f")
     grep -qxF "$b" "$SEEN" && continue
     line=$(grep -E '^\[result' "$f" 2>/dev/null | tail -1)
+    # 只有 [result] 行不足以判完成：qwen-task 的包装脚本会另建一个短命日志，
+    # 写入一行 result 后即被清理，监护若只看这一行就会报出一个几分钟后
+    # 就不存在的文件名（2026-09-09 误报三次，两次导致主脑验收半成品）。
+    # 追加两项：该 spec 确实没有进程在跑、且日志文件此刻仍然存在。
     if [ -n "$line" ]; then
-      echo "$b" >> "$SEEN"
-      spec=$(grep -oE 'docs/specs/[^ "]*' "$f" 2>/dev/null | head -1 | grep -oE 'RH-[0-9a-z-]+')
-      echo "WORKER_DONE [${spec:-?}] $b :: $line"
+      spec_path=$(grep -oE 'docs/specs/[^ "]*' "$f" 2>/dev/null | head -1)
+      still_running=0
+      if [ -n "$spec_path" ]; then
+        pgrep -f "$(basename "$spec_path")" >/dev/null 2>&1 && still_running=1
+      fi
+      if [ "$still_running" -eq 0 ] && [ -e "$f" ]; then
+        echo "$b" >> "$SEEN"
+        spec=$(printf '%s' "$spec_path" | grep -oE 'RH-[0-9a-zA-Z-]+')
+        echo "WORKER_DONE [${spec:-?}] $b :: $line"
+      fi
     fi
   done
 
