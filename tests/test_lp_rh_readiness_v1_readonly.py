@@ -324,3 +324,67 @@ def test_verdict_true_live_allowed_without_blockers_passes():
     )
     assert v["verdict"] == "PASS"
     assert v["explicitly_not_authorized"] == []
+
+
+# --- Asset-scoped Stage A & CLI tests ---
+
+def test_build_state_requires_asset_address():
+    import sqlite3
+    from scripts.lp_rh_readiness_v1_readonly import _build_state
+
+    conn = sqlite3.connect(":memory:")
+    try:
+        with pytest.raises((ValueError, TypeError)):
+            _build_state(conn, ":memory:", 15.0, asset_address="")
+    finally:
+        conn.close()
+
+
+def test_build_state_no_asset_data_fails_stage_a():
+    import sqlite3
+    from scripts.lp_rh_readiness_v1_readonly import _build_state
+    from scripts.lp_rh_coverage_audit_v1_readonly import NO_ASSET_DATA
+
+    from scripts.lp_rh_store_v1_readonly import migrate
+
+    conn = sqlite3.connect(":memory:")
+    # Build the real schema rather than one hand-rolled table: _build_state
+    # reads rh_gate_decisions further down, so a partial fixture fails for a
+    # reason that has nothing to do with what this test is about.
+    migrate(conn)
+    try:
+        state = _build_state(conn, ":memory:", 15.0, asset_address="0xnonexistent")
+        st_a = state["stage_a"]
+        assert st_a["passed"] is False
+        assert st_a["coverage_ratio"] is None
+        assert NO_ASSET_DATA in st_a["blockers"]
+        assert st_a["reason"] == "无该资产数据"
+    finally:
+        conn.close()
+
+
+def test_main_cli_requires_asset_address():
+    from scripts.lp_rh_readiness_v1_readonly import main
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(["--db", "some.db"])
+    assert exc_info.value.code != 0
+
+
+def test_build_state_real_asset_coverage_reference():
+    from scripts.lp_rh_readiness_v1_readonly import _build_state
+    from scripts.lp_rh_store_v1_readonly import DEFAULT_DB_PATH, open_store
+
+    if not Path(DEFAULT_DB_PATH).exists():
+        pytest.skip("scanner.db not present")
+    conn = open_store(DEFAULT_DB_PATH, read_only=True)
+    try:
+        target_asset = "0x52e65b17fb6e5ba00ed806f37afcd2daa50271ca"
+        state = _build_state(conn, str(DEFAULT_DB_PATH), 15.0, asset_address=target_asset)
+        st_a = state["stage_a"]
+        assert st_a["coverage_ratio"] is not None
+        assert float(st_a["coverage_ratio"]) == pytest.approx(0.9678, abs=0.01)
+        assert st_a["passed"] is False
+        assert "COVERAGE_INSUFFICIENT" in st_a["blockers"]
+    finally:
+        conn.close()

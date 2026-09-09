@@ -23,6 +23,8 @@ from scripts.lp_rh_terminal_gate_v1_readonly import (  # noqa: E402
     CONJUNCT_ORDER, TERMINAL_CONJUNCTS)
 from scripts.lp_rh_store_v1_readonly import (  # noqa: E402
     DEFAULT_DB_PATH, budget_status, open_store)
+from scripts.lp_rh_coverage_audit_v1_readonly import (  # noqa: E402
+    NO_ASSET_DATA, coverage_for_asset)
 
 # PRD §21 graduation thresholds.
 STAGE_A_MIN_HOURS = 72
@@ -61,7 +63,7 @@ def _progress_bar(fraction: Optional[float], width: int = 10) -> str:
     return "[" + "#" * filled + "-" * (width - filled) + "]"
 
 def stage_a_status(*, first_sample, last_sample, expected_interval_secs,
-                   actual_samples) -> dict:
+                   actual_samples, coverage_ratio: Optional[Any] = None) -> dict:
     """Stage A. Coverage denominator is the PLANNED window (hours*3600/interval),
     never the actual count -- a bad window must not report 100% (PRD §21.1)."""
     first, last = _to_datetime(first_sample), _to_datetime(last_sample)
@@ -72,15 +74,17 @@ def stage_a_status(*, first_sample, last_sample, expected_interval_secs,
                 "blockers": ["OBSERVATION_WINDOW_UNAVAILABLE"]}
     hours_covered = (last - first).total_seconds() / 3600.0
     expected_samples = (hours_covered * 3600.0) / expected_interval_secs
-    coverage_ratio = (actual_samples / expected_samples) if expected_samples > 0 else 0.0
+    if coverage_ratio is None:
+        coverage_ratio = (actual_samples / expected_samples) if expected_samples > 0 else 0.0
     gaps = max(0, int(round(expected_samples - actual_samples)))
     blockers = []
     if hours_covered < STAGE_A_MIN_HOURS:
         blockers.append("HOURS_COVERED_INSUFFICIENT")
-    if coverage_ratio < STAGE_A_MIN_COVERAGE:
+    cov_cmp = Decimal(str(coverage_ratio)) if not isinstance(coverage_ratio, Decimal) else coverage_ratio
+    if cov_cmp < STAGE_A_MIN_COVERAGE:
         blockers.append("COVERAGE_INSUFFICIENT")
     passed = (hours_covered >= STAGE_A_MIN_HOURS
-              and coverage_ratio >= STAGE_A_MIN_COVERAGE)
+              and cov_cmp >= STAGE_A_MIN_COVERAGE)
     return {"hours_covered": hours_covered, "hours_required": STAGE_A_MIN_HOURS,
             "coverage_ratio": coverage_ratio,
             "expected_samples": int(round(expected_samples)),
@@ -241,22 +245,49 @@ def render_dashboard(state: Optional[Mapping]) -> str:
     lines.extend(_render_budget(state.get("budget")))
     return "\n".join(lines)
 
-def _build_state(conn, db_path: str, interval_secs: float) -> dict:
+def _build_state(conn, db_path: str, interval_secs: float, asset_address: str) -> dict:
     """Assemble the dashboard state from the read-only RH store."""
+    if not asset_address:
+        raise ValueError("asset_address is required")
     state: dict = {}
-    row = conn.execute("SELECT MIN(sample_time), MAX(sample_time), COUNT(*) "
-                       "FROM rh_market_states").fetchone()
-    first_sample, last_sample, actual_samples = row if row else (None, None, 0)
-    state["as_of"] = last_sample
-    if first_sample is not None and last_sample is not None:
-        state["stage_a"] = stage_a_status(
-            first_sample=first_sample, last_sample=last_sample,
-            expected_interval_secs=interval_secs, actual_samples=actual_samples)
-        span_days = (_to_datetime(last_sample) - _to_datetime(first_sample)).days
-        state["stage_b"] = stage_b_status(
-            days_covered=span_days, weekends_covered=None, unexplained_ledger_diffs=0,
-            invariant_violations=0, missed_risk_events=0)
-        state["stage_c_days_covered"] = span_days
+    cov = coverage_for_asset(
+        conn,
+        asset_address=asset_address,
+        expected_interval_secs=int(round(interval_secs)),
+    )
+    if cov.get("status") == NO_ASSET_DATA or not cov.get("has_data"):
+        state["as_of"] = None
+        state["stage_a"] = {
+            "hours_covered": None,
+            "hours_required": STAGE_A_MIN_HOURS,
+            "coverage_ratio": None,
+            "expected_samples": None,
+            "actual_samples": 0,
+            "gaps": None,
+            "passed": False,
+            "blockers": ["NO_ASSET_DATA"],
+            "reason": cov.get("message", "无该资产数据"),
+            "status": NO_ASSET_DATA,
+        }
+    else:
+        cov_ratio = cov.get("coverage_ratio")
+        row = conn.execute(
+            "SELECT MIN(sample_time), MAX(sample_time), COUNT(*) "
+            "FROM rh_market_states WHERE asset_address = ?",
+            (asset_address,)
+        ).fetchone()
+        first_sample, last_sample, actual_samples = row if row else (None, None, 0)
+        state["as_of"] = last_sample
+        if first_sample is not None and last_sample is not None:
+            state["stage_a"] = stage_a_status(
+                first_sample=first_sample, last_sample=last_sample,
+                expected_interval_secs=interval_secs, actual_samples=actual_samples,
+                coverage_ratio=cov_ratio)
+            span_days = (_to_datetime(last_sample) - _to_datetime(first_sample)).days
+            state["stage_b"] = stage_b_status(
+                days_covered=span_days, weekends_covered=None, unexplained_ledger_diffs=0,
+                invariant_violations=0, missed_risk_events=0)
+            state["stage_c_days_covered"] = span_days
     tg = conn.execute("SELECT terminal_bits_json FROM rh_gate_decisions "
                       "ORDER BY decided_at DESC LIMIT 1").fetchone()
     if tg and tg[0]:
@@ -280,10 +311,11 @@ def main(argv: Optional[list] = None) -> int:
     parser.add_argument("--db", default=str(DEFAULT_DB_PATH), help="RH scanner.db (read-only)")
     parser.add_argument("--out", default="READINESS_DASHBOARD.md", help="output Markdown path")
     parser.add_argument("--interval-secs", type=float, default=15.0, help="Stage A sample interval (s)")
+    parser.add_argument("--asset-address", required=True, help="asset address to audit Stage A coverage for")
     args = parser.parse_args(argv)
     conn = open_store(args.db, read_only=True)
     try:
-        state = _build_state(conn, args.db, args.interval_secs)
+        state = _build_state(conn, args.db, args.interval_secs, asset_address=args.asset_address)
     finally:
         conn.close()
     dashboard = render_dashboard(state)
