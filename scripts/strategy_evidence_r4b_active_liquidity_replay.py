@@ -16,9 +16,6 @@ import math
 import os
 import sys
 import csv
-from decimal import Decimal, getcontext
-
-getcontext().prec = 80
 
 # Constants
 ETH_USD = 1653.0

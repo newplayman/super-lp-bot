@@ -28,12 +28,10 @@ import json
 import sys
 from collections import defaultdict
 from dataclasses import dataclass
-from decimal import Decimal, getcontext
+from decimal import Decimal, localcontext
 from pathlib import Path
 from typing import Optional
 
-
-getcontext().prec = 60
 
 NOTIONALS_USD = [Decimal(x) for x in [20, 100, 500, 1000, 2000]]
 HOLD_WINDOWS_SEC = {
@@ -111,7 +109,9 @@ def load_fee_velocity(short_backfill_json: Path) -> dict:
         fee_usd = _safe_decimal(row.get("pool_fee_usd_proxy"))
         volume_usd = _safe_decimal(row.get("volume_usd_proxy"))
         wsec = WINDOW_SECONDS.get(window, 86400)
-        fee_per_sec = (fee_usd / wsec) if wsec > 0 else Decimal("0")
+        with localcontext() as ctx:
+            ctx.prec = 60
+            fee_per_sec = (fee_usd / wsec) if wsec > 0 else Decimal("0")
         out[(pool, window)] = {
             "fee_usd": fee_usd,
             "volume_usd": volume_usd,
@@ -185,46 +185,48 @@ def main(argv: Optional[list] = None) -> int:
                 cost_info = real_cost.get(cost_key, {})
                 fixed_cost = cost_info.get("fixed_cost_usd", Decimal("0"))
                 # Pool fee share = notional / pool_TVL (very rough)
-                pool_share = (notional / POOL_TVL_PROXY_USD) if POOL_TVL_PROXY_USD > 0 else Decimal("0")
-                fee_proxy = fee_per_sec * Decimal(hold_sec) * pool_share
+                with localcontext() as ctx:
+                    ctx.prec = 60
+                    pool_share = (notional / POOL_TVL_PROXY_USD) if POOL_TVL_PROXY_USD > 0 else Decimal("0")
+                    fee_proxy = fee_per_sec * Decimal(hold_sec) * pool_share
 
-                for scenario, il_factor in IL_LVR_SCENARIOS.items():
-                    il_lvr_usd = notional * il_factor * (Decimal(hold_sec) / Decimal(86400))
-                    net_ev = fee_proxy - fixed_cost - il_lvr_usd
-                    net_ev_pct = (net_ev / notional * Decimal("100")) if notional > 0 else Decimal("0")
+                    for scenario, il_factor in IL_LVR_SCENARIOS.items():
+                        il_lvr_usd = notional * il_factor * (Decimal(hold_sec) / Decimal(86400))
+                        net_ev = fee_proxy - fixed_cost - il_lvr_usd
+                        net_ev_pct = (net_ev / notional * Decimal("100")) if notional > 0 else Decimal("0")
 
-                    confidence = "low"
-                    if (pool_lower, src_window) in fee_velocity and fee_velocity[(pool_lower, src_window)]["fee_ready"]:
-                        confidence = "medium" if scenario in {"realistic", "conservative"} else "low"
+                        confidence = "low"
+                        if (pool_lower, src_window) in fee_velocity and fee_velocity[(pool_lower, src_window)]["fee_ready"]:
+                            confidence = "medium" if scenario in {"realistic", "conservative"} else "low"
 
-                    row = {
-                        "pool_id": pool_lower,
-                        "token_pair": meta["token_pair"],
-                        "fee_tier_raw": meta["fee_tier_raw"],
-                        "notional_usd": str(notional),
-                        "hold_window": hold_window,
-                        "hold_seconds": hold_sec,
-                        "fee_velocity_window_used": src_window,
-                        "scenario": scenario,
-                        "fee_proxy_usd": str(fee_proxy.quantize(Decimal("0.000001"))),
-                        "fixed_cost_usd": str(fixed_cost.quantize(Decimal("0.000001"))),
-                        "il_lvr_proxy_usd": str(il_lvr_usd.quantize(Decimal("0.000001"))),
-                        "net_ev_proxy_usd": str(net_ev.quantize(Decimal("0.000001"))),
-                        "net_ev_proxy_pct": str(net_ev_pct.quantize(Decimal("0.0001"))),
-                        "confidence": confidence,
-                        "fee_ready": (pool_lower, src_window) in fee_velocity and fee_velocity[(pool_lower, src_window)]["fee_ready"],
-                    }
-                    rows.append(row)
+                        row = {
+                            "pool_id": pool_lower,
+                            "token_pair": meta["token_pair"],
+                            "fee_tier_raw": meta["fee_tier_raw"],
+                            "notional_usd": str(notional),
+                            "hold_window": hold_window,
+                            "hold_seconds": hold_sec,
+                            "fee_velocity_window_used": src_window,
+                            "scenario": scenario,
+                            "fee_proxy_usd": str(fee_proxy.quantize(Decimal("0.000001"))),
+                            "fixed_cost_usd": str(fixed_cost.quantize(Decimal("0.000001"))),
+                            "il_lvr_proxy_usd": str(il_lvr_usd.quantize(Decimal("0.000001"))),
+                            "net_ev_proxy_usd": str(net_ev.quantize(Decimal("0.000001"))),
+                            "net_ev_proxy_pct": str(net_ev_pct.quantize(Decimal("0.0001"))),
+                            "confidence": confidence,
+                            "fee_ready": (pool_lower, src_window) in fee_velocity and fee_velocity[(pool_lower, src_window)]["fee_ready"],
+                        }
+                        rows.append(row)
 
-                    if net_ev > 0:
-                        positive_total += 1
-                        if scenario == "realistic":
-                            positive_realistic += 1
-                    if -Decimal("0.02") <= net_ev <= Decimal("0.02"):
-                        near_break_even += 1
-                    if scenario == "realistic" and row["fee_ready"]:
-                        if (best_row is None) or (Decimal(row["net_ev_proxy_usd"]) > Decimal(best_row["net_ev_proxy_usd"])):
-                            best_row = row
+                        if net_ev > 0:
+                            positive_total += 1
+                            if scenario == "realistic":
+                                positive_realistic += 1
+                        if -Decimal("0.02") <= net_ev <= Decimal("0.02"):
+                            near_break_even += 1
+                        if scenario == "realistic" and row["fee_ready"]:
+                            if (best_row is None) or (Decimal(row["net_ev_proxy_usd"]) > Decimal(best_row["net_ev_proxy_usd"])):
+                                best_row = row
 
     summary = {
         "stage": "LP_BSC_FEE_VELOCITY_RECOVERY_AND_PROBE_PREFLIGHT_PIPELINE_V1",

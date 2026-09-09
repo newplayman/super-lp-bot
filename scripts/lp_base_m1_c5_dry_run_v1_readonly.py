@@ -10,7 +10,7 @@ import time
 import urllib.request
 from dataclasses import asdict, replace
 from datetime import datetime, timezone
-from decimal import Decimal, getcontext
+from decimal import Decimal, localcontext
 from pathlib import Path
 from typing import Any
 
@@ -32,8 +32,6 @@ from execution.base_m1_executor_v1 import (
     encode_collect,
     encode_decrease,
 )
-
-getcontext().prec = 60
 
 WETH = "0x4200000000000000000000000000000000000006"
 USDC = "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
@@ -91,14 +89,16 @@ def _fetch_tvl(pool: str) -> tuple[float, dict[str, Any]]:
 
 
 def _active_notional(liquidity: int, sqrt_price_x96: int, lower: int, upper: int) -> float:
-    q96 = Decimal(2) ** 96
-    sqrt_p = Decimal(sqrt_price_x96) / q96
-    sqrt_a = Decimal("1.0001") ** (Decimal(lower) / 2)
-    sqrt_b = Decimal("1.0001") ** (Decimal(upper) / 2)
-    amount0 = Decimal(liquidity) * (sqrt_b - sqrt_p) / (sqrt_p * sqrt_b) / Decimal(10**18)
-    amount1 = Decimal(liquidity) * (sqrt_p - sqrt_a) / Decimal(10**6)
-    price = Decimal("1.0001") ** Decimal(_tick_from_sqrt(sqrt_price_x96)) * Decimal(10**12)
-    return float(amount0 * price + amount1)
+    with localcontext() as ctx:
+        ctx.prec = 60
+        q96 = Decimal(2) ** 96
+        sqrt_p = Decimal(sqrt_price_x96) / q96
+        sqrt_a = Decimal("1.0001") ** (Decimal(lower) / 2)
+        sqrt_b = Decimal("1.0001") ** (Decimal(upper) / 2)
+        amount0 = Decimal(liquidity) * (sqrt_b - sqrt_p) / (sqrt_p * sqrt_b) / Decimal(10**18)
+        amount1 = Decimal(liquidity) * (sqrt_p - sqrt_a) / Decimal(10**6)
+        price = Decimal("1.0001") ** Decimal(_tick_from_sqrt(sqrt_price_x96)) * Decimal(10**12)
+        return float(amount0 * price + amount1)
 
 
 def _tick_from_sqrt(sqrt_price_x96: int) -> int:

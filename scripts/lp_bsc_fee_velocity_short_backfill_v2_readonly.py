@@ -31,12 +31,10 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from decimal import Decimal, getcontext
+from decimal import Decimal, localcontext
 from pathlib import Path
 from typing import Any, Optional
 
-
-getcontext().prec = 60
 
 SWAP_TOPIC_PANCAKE_V3 = "0x19b47279256b2a23a1665c810c8d55a1758940ee09377d4f8d26497a3577dc83"
 BLOCK_SECONDS = 3.0
@@ -296,18 +294,22 @@ def main(argv: Optional[list] = None) -> int:
             total_swap_log_count += len(pool_window_logs)
 
             # Volume + fee proxy
-            fee_fraction = Decimal(meta["fee_tier_raw"]) / Decimal("1000000")
-            volume_usd_proxy = Decimal("0")
-            pool_fee_usd_proxy = Decimal("0")
-            unique_traders: set[str] = set()
-            for d in decoded:
-                vol0 = (Decimal(abs(d["amount0"])) / (Decimal(10) ** meta["token0_decimals"])) * p0_usd
-                vol1 = (Decimal(abs(d["amount1"])) / (Decimal(10) ** meta["token1_decimals"])) * p1_usd
-                v = max(vol0, vol1)
-                volume_usd_proxy += v
-                pool_fee_usd_proxy += v * fee_fraction
-                unique_traders.add(d["sender"])
-                unique_traders.add(d["recipient"])
+            with localcontext() as ctx:
+                ctx.prec = 60
+                fee_fraction = Decimal(meta["fee_tier_raw"]) / Decimal("1000000")
+                volume_usd_proxy = Decimal("0")
+                pool_fee_usd_proxy = Decimal("0")
+                unique_traders: set[str] = set()
+                for d in decoded:
+                    vol0 = (Decimal(abs(d["amount0"])) / (Decimal(10) ** meta["token0_decimals"])) * p0_usd
+                    vol1 = (Decimal(abs(d["amount1"])) / (Decimal(10) ** meta["token1_decimals"])) * p1_usd
+                    v = max(vol0, vol1)
+                    volume_usd_proxy += v
+                    pool_fee_usd_proxy += v * fee_fraction
+                    unique_traders.add(d["sender"])
+                    unique_traders.add(d["recipient"])
+                volume_usd_proxy_str = str(volume_usd_proxy.quantize(Decimal("0.01")))
+                pool_fee_usd_proxy_str = str(pool_fee_usd_proxy.quantize(Decimal("0.0001")))
 
             partial = bool(pool_window_errors) or decode_errs > 0
             root_cause = None
@@ -345,8 +347,8 @@ def main(argv: Optional[list] = None) -> int:
                 "decode_errors": decode_errs,
                 "eth_getLogs_error_count": len(pool_window_errors),
                 "unique_traders_approx": len(unique_traders),
-                "volume_usd_proxy": str(volume_usd_proxy.quantize(Decimal("0.01"))),
-                "pool_fee_usd_proxy": str(pool_fee_usd_proxy.quantize(Decimal("0.0001"))),
+                "volume_usd_proxy": volume_usd_proxy_str,
+                "pool_fee_usd_proxy": pool_fee_usd_proxy_str,
                 "partial": partial,
                 "root_cause": root_cause or "",
                 "fee_ready": fee_ready,
@@ -370,8 +372,12 @@ def main(argv: Optional[list] = None) -> int:
     # --- Aggregate ------------------------------------------------------
     fee_ready_pool_count = len(fee_ready_pool_set)
     swap_log_pool_count = len({r["pool_id"] for r in rows if r["raw_log_count"] > 0})
-    total_volume_usd = sum((Decimal(r["volume_usd_proxy"]) for r in rows), Decimal(0))
-    total_fee_usd = sum((Decimal(r["pool_fee_usd_proxy"]) for r in rows), Decimal(0))
+    with localcontext() as ctx:
+        ctx.prec = 60
+        total_volume_usd = sum((Decimal(r["volume_usd_proxy"]) for r in rows), Decimal(0))
+        total_fee_usd = sum((Decimal(r["pool_fee_usd_proxy"]) for r in rows), Decimal(0))
+        volume_usd_total_str = str(total_volume_usd.quantize(Decimal("0.01")))
+        pool_fee_usd_proxy_total_str = str(total_fee_usd.quantize(Decimal("0.0001")))
 
     summary = {
         "stage": "LP_BSC_FEE_VELOCITY_RECOVERY_AND_PROBE_PREFLIGHT_PIPELINE_V1",
@@ -391,8 +397,8 @@ def main(argv: Optional[list] = None) -> int:
         "fee_ready_pool_count": fee_ready_pool_count,
         "fee_ready_by_pool": fee_ready_by_pool,
         "fee_ready_by_window": fee_ready_by_window,
-        "volume_usd_total": str(total_volume_usd.quantize(Decimal("0.01"))),
-        "pool_fee_usd_proxy_total": str(total_fee_usd.quantize(Decimal("0.0001"))),
+        "volume_usd_total": volume_usd_total_str,
+        "pool_fee_usd_proxy_total": pool_fee_usd_proxy_total_str,
         "root_cause_distribution": root_cause_distribution,
         "rows": rows,
         "pool_metadata": pool_meta,

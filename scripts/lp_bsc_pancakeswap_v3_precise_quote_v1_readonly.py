@@ -10,7 +10,7 @@ import statistics
 import sys
 import time
 from dataclasses import dataclass
-from decimal import Decimal, getcontext
+from decimal import Decimal, localcontext
 from pathlib import Path
 from typing import Any
 from urllib import request
@@ -19,8 +19,6 @@ from eth_abi import decode as abi_decode
 from eth_abi import encode as abi_encode
 from eth_utils import keccak
 import requests
-
-getcontext().prec = 50
 
 RUN_ID = os.environ.get("RUN_ID_OVERRIDE", "20260601_162640")
 REPO_ROOT = Path(os.environ.get("REPO_ROOT_OVERRIDE", "/Users/bendu/lp-bot/v3"))
@@ -400,47 +398,55 @@ def token_price_map(candidates: list[CandidatePool], states: dict[str, PoolState
 
     changed = True
     rounds = 0
-    while changed and rounds < 8:
-        changed = False
-        rounds += 1
-        for c in candidates:
-            s = states.get(c.pool_id)
-            if not s or s.sqrt_price_x96 is None:
-                continue
-            da = decimals.get(c.token_a)
-            db = decimals.get(c.token_b)
-            if da is None or db is None:
-                continue
-            ratio = Decimal(s.sqrt_price_x96) ** 2 / (Decimal(2) ** 384)
-            p1_per_p0 = ratio * (Decimal(10) ** Decimal(da - db))
-            if p1_per_p0 <= 0:
-                continue
-            a = c.token_a.lower()
-            b = c.token_b.lower()
-            if a in prices and b not in prices:
-                prices[b] = prices[a] / p1_per_p0
-                changed = True
-            elif b in prices and a not in prices:
-                prices[a] = prices[b] * p1_per_p0
-                changed = True
+    with localcontext() as ctx:
+        ctx.prec = 50
+        while changed and rounds < 8:
+            changed = False
+            rounds += 1
+            for c in candidates:
+                s = states.get(c.pool_id)
+                if not s or s.sqrt_price_x96 is None:
+                    continue
+                da = decimals.get(c.token_a)
+                db = decimals.get(c.token_b)
+                if da is None or db is None:
+                    continue
+                ratio = Decimal(s.sqrt_price_x96) ** 2 / (Decimal(2) ** 384)
+                p1_per_p0 = ratio * (Decimal(10) ** Decimal(da - db))
+                if p1_per_p0 <= 0:
+                    continue
+                a = c.token_a.lower()
+                b = c.token_b.lower()
+                if a in prices and b not in prices:
+                    prices[b] = prices[a] / p1_per_p0
+                    changed = True
+                elif b in prices and a not in prices:
+                    prices[a] = prices[b] * p1_per_p0
+                    changed = True
     return prices
 
 
 def to_raw(notional_usd: int, price_usd: Decimal, decimals: int) -> int:
-    token_amount = Decimal(notional_usd) / price_usd
-    return int(token_amount * (Decimal(10) ** decimals))
+    with localcontext() as ctx:
+        ctx.prec = 50
+        token_amount = Decimal(notional_usd) / price_usd
+        return int(token_amount * (Decimal(10) ** decimals))
 
 
 def fallback_math_quote(amount_in_raw: int, decimals_in: int, decimals_out: int, price_in_usd: Decimal, price_out_usd: Decimal) -> tuple[int, float]:
-    amount_in_token = Decimal(amount_in_raw) / (Decimal(10) ** decimals_in)
-    out_token = amount_in_token * price_in_usd / price_out_usd
-    out_raw = int(out_token * (Decimal(10) ** decimals_out))
-    return out_raw, 0.0
+    with localcontext() as ctx:
+        ctx.prec = 50
+        amount_in_token = Decimal(amount_in_raw) / (Decimal(10) ** decimals_in)
+        out_token = amount_in_token * price_in_usd / price_out_usd
+        out_raw = int(out_token * (Decimal(10) ** decimals_out))
+        return out_raw, 0.0
 
 
 def price_to_usd_ratio(sqrt_price_x96: int, decimals_in: int, decimals_out: int) -> Decimal:
-    ratio = (Decimal(sqrt_price_x96) ** 2) / (Decimal(2) ** 384)
-    return ratio * (Decimal(10) ** Decimal(decimals_in - decimals_out))
+    with localcontext() as ctx:
+        ctx.prec = 50
+        ratio = (Decimal(sqrt_price_x96) ** 2) / (Decimal(2) ** 384)
+        return ratio * (Decimal(10) ** Decimal(decimals_in - decimals_out))
 
 
 def quote_rows(
@@ -558,23 +564,25 @@ def quote_rows(
                     continue
 
                 row["quote_success"] = "yes"
-                amount_out = Decimal(amount_out_raw) / (Decimal(10) ** out_dec)
-                row["amount_out_usd"] = float(amount_out * price_out)
-                slippage = 0.0
-                if row["quote_method"] == "quoter_v2_staticcall" and state and state.sqrt_price_x96 and row["sqrt_price_x96_after"] != "":
-                    try:
-                        before = price_to_usd_ratio(state.sqrt_price_x96, in_dec, out_dec)
-                        after = price_to_usd_ratio(int(row["sqrt_price_x96_after"]), in_dec, out_dec)
-                        if before > 0 and after > 0:
-                            row["estimated_price_impact_pct"] = float(abs(after / before - 1) * Decimal(100))
-                    except Exception:
-                        pass
-                if notional > 0:
-                    try:
-                        slippage = float(max(Decimal(0), (Decimal(notional) - Decimal(row["amount_out_usd"])) / Decimal(notional) * Decimal(100)))
-                    except Exception:
-                        slippage = ""
-                row["estimated_slippage_pct"] = slippage
+                with localcontext() as ctx:
+                    ctx.prec = 50
+                    amount_out = Decimal(amount_out_raw) / (Decimal(10) ** out_dec)
+                    row["amount_out_usd"] = float(amount_out * price_out)
+                    slippage = 0.0
+                    if row["quote_method"] == "quoter_v2_staticcall" and state and state.sqrt_price_x96 and row["sqrt_price_x96_after"] != "":
+                        try:
+                            before = price_to_usd_ratio(state.sqrt_price_x96, in_dec, out_dec)
+                            after = price_to_usd_ratio(int(row["sqrt_price_x96_after"]), in_dec, out_dec)
+                            if before > 0 and after > 0:
+                                row["estimated_price_impact_pct"] = float(abs(after / before - 1) * Decimal(100))
+                        except Exception:
+                            pass
+                    if notional > 0:
+                        try:
+                            slippage = float(max(Decimal(0), (Decimal(notional) - Decimal(row["amount_out_usd"])) / Decimal(notional) * Decimal(100)))
+                        except Exception:
+                            slippage = ""
+                    row["estimated_slippage_pct"] = slippage
 
                 if row["quote_method"] == "quoter_v2_staticcall":
                     row["confidence"] = "high" if notional <= 500 else "medium"

@@ -43,9 +43,7 @@ import os
 import sys
 import csv
 import time
-from decimal import Decimal, getcontext
-
-getcontext().prec = 80
+from decimal import Decimal, localcontext
 
 # ============================================================================
 # Constants and pool metadata
@@ -286,22 +284,24 @@ def compute_l_position_independent(size_usd, current_tick, range_pct, dec0, dec1
 
     # L_from_amount0 = amount0_raw * sqrtP * sqrtB / ((sqrtB - sqrtP) * 2^96)
     # Use Decimal for high precision.
-    if sqrt_b > sqrt_p:
-        L_from_amount0 = int(
-            (Decimal(amount0_raw) * Decimal(sqrt_p) * Decimal(sqrt_b))
-            / (Decimal(sqrt_b - sqrt_p) * Decimal(Q96))
-        )
-    else:
-        L_from_amount0 = 0  # price at or above upper, no token0 in range
+    with localcontext() as ctx:
+        ctx.prec = 80
+        if sqrt_b > sqrt_p:
+            L_from_amount0 = int(
+                (Decimal(amount0_raw) * Decimal(sqrt_p) * Decimal(sqrt_b))
+                / (Decimal(sqrt_b - sqrt_p) * Decimal(Q96))
+            )
+        else:
+            L_from_amount0 = 0  # price at or above upper, no token0 in range
 
-    # L_from_amount1 = amount1_raw * 2^96 / (sqrtP - sqrtA)
-    if sqrt_p > sqrt_a:
-        L_from_amount1 = int(
-            (Decimal(amount1_raw) * Decimal(Q96))
-            / Decimal(sqrt_p - sqrt_a)
-        )
-    else:
-        L_from_amount1 = 0  # price at or below lower, no token1 in range
+        # L_from_amount1 = amount1_raw * 2^96 / (sqrtP - sqrtA)
+        if sqrt_p > sqrt_a:
+            L_from_amount1 = int(
+                (Decimal(amount1_raw) * Decimal(Q96))
+                / Decimal(sqrt_p - sqrt_a)
+            )
+        else:
+            L_from_amount1 = 0  # price at or below lower, no token1 in range
 
     L_position = min(L_from_amount0, L_from_amount1)
 

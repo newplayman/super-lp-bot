@@ -11,16 +11,13 @@ import statistics
 import sys
 import time
 from dataclasses import dataclass
-from decimal import Decimal, getcontext
+from decimal import Decimal, localcontext
 from pathlib import Path
 from typing import Any
 
 from eth_abi import decode as abi_decode
 from eth_abi import encode as abi_encode
 from eth_utils import keccak
-
-
-getcontext().prec = 50
 
 
 def load_base_module() -> Any:
@@ -271,40 +268,42 @@ def derive_anchor_prices(candidates: list[Any], states: dict[str, Any], decimals
         prices[addr] = Decimal(1)
         sources[addr] = "stable_anchor"
 
-    for _ in range(8):
-        changes: dict[str, list[tuple[Decimal, str]]] = {}
-        for c in candidates:
-            s = states.get(c.pool_id)
-            if not s or s.sqrt_price_x96 is None:
-                continue
-            da = decimals.get(c.token_a.lower())
-            db = decimals.get(c.token_b.lower())
-            if da is None or db is None:
-                continue
-            ratio = (Decimal(s.sqrt_price_x96) ** 2) / (Decimal(2) ** 192)
-            p1_per_p0 = ratio * (Decimal(10) ** Decimal(da - db))
-            if p1_per_p0 <= 0:
-                continue
-            a = c.token_a.lower()
-            b = c.token_b.lower()
-            if a in prices and b not in prices:
-                changes.setdefault(b, []).append((prices[a] * p1_per_p0, f"slot0_pool_anchor:{c.pool_id}:{c.token_a_symbol}/{c.token_b_symbol}"))
-            if b in prices and a not in prices:
-                changes.setdefault(a, []).append((prices[b] / p1_per_p0, f"slot0_pool_anchor:{c.pool_id}:{c.token_a_symbol}/{c.token_b_symbol}"))
-        if not changes:
-            break
-        changed = False
-        for token, vals in changes.items():
-            if token in prices:
-                continue
-            vals_only = [v for v, _ in vals]
-            if not vals_only:
-                continue
-            prices[token] = Decimal(statistics.median([float(v) for v in vals_only]))
-            sources[token] = " | ".join(sorted({src for _, src in vals}))
-            changed = True
-        if not changed:
-            break
+    with localcontext() as ctx:
+        ctx.prec = 50
+        for _ in range(8):
+            changes: dict[str, list[tuple[Decimal, str]]] = {}
+            for c in candidates:
+                s = states.get(c.pool_id)
+                if not s or s.sqrt_price_x96 is None:
+                    continue
+                da = decimals.get(c.token_a.lower())
+                db = decimals.get(c.token_b.lower())
+                if da is None or db is None:
+                    continue
+                ratio = (Decimal(s.sqrt_price_x96) ** 2) / (Decimal(2) ** 192)
+                p1_per_p0 = ratio * (Decimal(10) ** Decimal(da - db))
+                if p1_per_p0 <= 0:
+                    continue
+                a = c.token_a.lower()
+                b = c.token_b.lower()
+                if a in prices and b not in prices:
+                    changes.setdefault(b, []).append((prices[a] * p1_per_p0, f"slot0_pool_anchor:{c.pool_id}:{c.token_a_symbol}/{c.token_b_symbol}"))
+                if b in prices and a not in prices:
+                    changes.setdefault(a, []).append((prices[b] / p1_per_p0, f"slot0_pool_anchor:{c.pool_id}:{c.token_a_symbol}/{c.token_b_symbol}"))
+            if not changes:
+                break
+            changed = False
+            for token, vals in changes.items():
+                if token in prices:
+                    continue
+                vals_only = [v for v, _ in vals]
+                if not vals_only:
+                    continue
+                prices[token] = Decimal(statistics.median([float(v) for v in vals_only]))
+                sources[token] = " | ".join(sorted({src for _, src in vals}))
+                changed = True
+            if not changed:
+                break
     return prices, sources
 
 
@@ -322,18 +321,20 @@ def build_amount_in_raw(
 ) -> tuple[int | None, str, Decimal | None, str]:
     if token_in_decimals is None:
         return None, "", None, "missing_decimals"
-    if token_in_symbol in STABLE_SYMBOLS:
-        amount_in_token = Decimal(notional_usd)
+    with localcontext() as ctx:
+        ctx.prec = 50
+        if token_in_symbol in STABLE_SYMBOLS:
+            amount_in_token = Decimal(notional_usd)
+            amount_in_raw = int(amount_in_token * (Decimal(10) ** token_in_decimals))
+            return amount_in_raw, "stable_anchor", Decimal(1), ""
+        anchor_price = token_anchor_price(token_in, prices)
+        if anchor_price is None or anchor_price <= 0:
+            return None, "", None, "amount_raw_unavailable"
+        amount_in_token = Decimal(notional_usd) / anchor_price
         amount_in_raw = int(amount_in_token * (Decimal(10) ** token_in_decimals))
-        return amount_in_raw, "stable_anchor", Decimal(1), ""
-    anchor_price = token_anchor_price(token_in, prices)
-    if anchor_price is None or anchor_price <= 0:
-        return None, "", None, "amount_raw_unavailable"
-    amount_in_token = Decimal(notional_usd) / anchor_price
-    amount_in_raw = int(amount_in_token * (Decimal(10) ** token_in_decimals))
-    if amount_in_raw <= 0:
-        return None, sources.get(token_in.lower(), ""), anchor_price, "non_positive_amount_raw"
-    return amount_in_raw, sources.get(token_in.lower(), ""), anchor_price, ""
+        if amount_in_raw <= 0:
+            return None, sources.get(token_in.lower(), ""), anchor_price, "non_positive_amount_raw"
+        return amount_in_raw, sources.get(token_in.lower(), ""), anchor_price, ""
 
 
 def staticcall_probe(
@@ -730,10 +731,12 @@ def run_staticcall_matrix(
                     gas_estimate_available_count += 1 if decoded_gas not in ("", None) else 0
                     initialized_ticks_crossed_available_count += 1 if decoded_ticks not in ("", None) else 0
                     try:
-                        amount_out = Decimal(decoded_amount_out) / (Decimal(10) ** int(dec_out or 18))
-                        row["amount_out_usd"] = float(amount_out * (anchor_price if anchor_price is not None else Decimal(1)))
-                        if notional > 0:
-                            row["estimated_slippage_pct"] = float(max(Decimal(0), (Decimal(notional) - Decimal(row["amount_out_usd"])) / Decimal(notional) * Decimal(100)))
+                        with localcontext() as ctx:
+                            ctx.prec = 50
+                            amount_out = Decimal(decoded_amount_out) / (Decimal(10) ** int(dec_out or 18))
+                            row["amount_out_usd"] = float(amount_out * (anchor_price if anchor_price is not None else Decimal(1)))
+                            if notional > 0:
+                                row["estimated_slippage_pct"] = float(max(Decimal(0), (Decimal(notional) - Decimal(row["amount_out_usd"])) / Decimal(notional) * Decimal(100)))
                     except Exception:
                         row["amount_out_usd"] = ""
                     if notional <= 500:
@@ -752,7 +755,9 @@ def run_staticcall_matrix(
                             row["quote_method"] = "pool_math_fallback"
                             row["amount_out_raw"] = out_raw2
                             row["quote_success"] = "yes" if out_raw2 > 0 else "no"
-                            row["amount_out_usd"] = float((Decimal(out_raw2) / (Decimal(10) ** dec_out)) * Decimal(1))
+                            with localcontext() as ctx:
+                                ctx.prec = 50
+                                row["amount_out_usd"] = float((Decimal(out_raw2) / (Decimal(10) ** dec_out)) * Decimal(1))
                             row["estimated_price_impact_pct"] = est_imp
                             fallback_math_used_count += 1
                             if out_raw2 > 0:

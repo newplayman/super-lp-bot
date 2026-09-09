@@ -36,12 +36,10 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from decimal import Decimal, getcontext
+from decimal import Decimal, localcontext
 from pathlib import Path
 from typing import Any, Optional
 
-
-getcontext().prec = 50
 
 SWAP_TOPIC_PANCAKE_V3 = "0x19b47279256b2a23a1665c810c8d55a1758940ee09377d4f8d26497a3577dc83"
 DEFAULT_POOL = "0x172fcD41E0913e95784454622d1c3724f546f849"  # WBNB/USDT fee=100
@@ -280,21 +278,24 @@ def main(argv: Optional[list] = None) -> int:
     decimals1 = DEFAULT_DECIMALS.get(args.token1, 18)
     p0 = DEFAULT_PRICES_USD.get(args.token0, Decimal("0"))
     p1 = DEFAULT_PRICES_USD.get(args.token1, Decimal("0"))
-    fee_fraction = Decimal(args.fee_tier_raw) / Decimal("1000000")
-
-    volume_usd_proxy = Decimal("0")
-    pool_fee_usd_proxy = Decimal("0")
-    unique_traders = set()
-    for r in decoded_rows:
-        # In v3, exactly one of amount0/amount1 is paid in by trader (positive),
-        # the other is paid out (negative). Volume = max(abs(amount0)*p0, abs(amount1)*p1).
-        vol0 = (Decimal(abs(r["amount0"])) / (Decimal(10) ** decimals0)) * p0
-        vol1 = (Decimal(abs(r["amount1"])) / (Decimal(10) ** decimals1)) * p1
-        v = max(vol0, vol1)
-        volume_usd_proxy += v
-        pool_fee_usd_proxy += v * fee_fraction
-        unique_traders.add(r["sender"])
-        unique_traders.add(r["recipient"])
+    with localcontext() as ctx:
+        ctx.prec = 50
+        fee_fraction = Decimal(args.fee_tier_raw) / Decimal("1000000")
+        volume_usd_proxy = Decimal("0")
+        pool_fee_usd_proxy = Decimal("0")
+        unique_traders = set()
+        for r in decoded_rows:
+            # In v3, exactly one of amount0/amount1 is paid in by trader (positive),
+            # the other is paid out (negative). Volume = max(abs(amount0)*p0, abs(amount1)*p1).
+            vol0 = (Decimal(abs(r["amount0"])) / (Decimal(10) ** decimals0)) * p0
+            vol1 = (Decimal(abs(r["amount1"])) / (Decimal(10) ** decimals1)) * p1
+            v = max(vol0, vol1)
+            volume_usd_proxy += v
+            pool_fee_usd_proxy += v * fee_fraction
+            unique_traders.add(r["sender"])
+            unique_traders.add(r["recipient"])
+        volume_usd_proxy_str = str(volume_usd_proxy.quantize(Decimal("0.01")))
+        pool_fee_usd_proxy_str = str(pool_fee_usd_proxy.quantize(Decimal("0.0001")))
 
     eth_getLogs_success = len(eth_getLogs_errors) == 0
     decode_success = decode_errors == 0
@@ -323,8 +324,8 @@ def main(argv: Optional[list] = None) -> int:
         "eth_getLogs_success": eth_getLogs_success,
         "decode_success": decode_success,
         "unique_traders_approx": len(unique_traders),
-        "volume_usd_proxy": str(volume_usd_proxy.quantize(Decimal("0.01"))),
-        "pool_fee_usd_proxy": str(pool_fee_usd_proxy.quantize(Decimal("0.0001"))),
+        "volume_usd_proxy": volume_usd_proxy_str,
+        "pool_fee_usd_proxy": pool_fee_usd_proxy_str,
         "smoke_pass": smoke_pass,
         "wallet_or_tx_touched": False,
         "can_run_probe_now": False,

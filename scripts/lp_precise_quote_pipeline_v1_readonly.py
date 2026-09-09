@@ -11,7 +11,7 @@ import statistics
 import subprocess
 import time
 from dataclasses import dataclass
-from decimal import Decimal, getcontext
+from decimal import Decimal, localcontext
 from pathlib import Path
 from typing import Any
 from urllib import request
@@ -21,8 +21,6 @@ from eth_abi import decode as abi_decode
 from eth_abi import encode as abi_encode
 from eth_utils import keccak
 
-
-getcontext().prec = 50
 
 RUN_ID = os.environ.get("RUN_ID_OVERRIDE", "20260601_120001")
 REPO_ROOT = Path(os.environ.get("REPO_ROOT_OVERRIDE", "/Users/bendu/lp-bot/v3"))
@@ -568,10 +566,12 @@ def fetch_pool_state(rpc_url: str, meta: PoolMeta) -> PoolState:
 
 
 def price_ratio_token1_per_token0(sqrt_price_x96: int, decimals0: int, decimals1: int) -> Decimal:
-    sqrt_dec = Decimal(sqrt_price_x96)
-    ratio = (sqrt_dec * sqrt_dec) / (Decimal(2) ** 192)
-    scale = Decimal(10) ** Decimal(decimals0 - decimals1)
-    return ratio * scale
+    with localcontext() as ctx:
+        ctx.prec = 50
+        sqrt_dec = Decimal(sqrt_price_x96)
+        ratio = (sqrt_dec * sqrt_dec) / (Decimal(2) ** 192)
+        scale = Decimal(10) ** Decimal(decimals0 - decimals1)
+        return ratio * scale
 
 
 def derive_usd_prices(metas: list[PoolMeta], states: dict[str, PoolState]) -> dict[str, Decimal]:
@@ -586,39 +586,45 @@ def derive_usd_prices(metas: list[PoolMeta], states: dict[str, PoolState]) -> di
         prices[addr] = Decimal(1)
     changed = True
     rounds = 0
-    while changed and rounds < 6:
-        changed = False
-        rounds += 1
-        for meta in metas:
-            state = states.get(meta.pool_id)
-            if not state or not state.sqrt_price_x96 or meta.token0_decimals is None or meta.token1_decimals is None:
-                continue
-            try:
-                ratio = price_ratio_token1_per_token0(state.sqrt_price_x96, meta.token0_decimals, meta.token1_decimals)
-            except Exception:
-                continue
-            token0 = meta.token0.lower()
-            token1 = meta.token1.lower()
-            if token0 in prices and token1 not in prices and ratio > 0:
-                prices[token1] = prices[token0] / ratio
-                changed = True
-            elif token1 in prices and token0 not in prices and ratio > 0:
-                prices[token0] = prices[token1] * ratio
-                changed = True
+    with localcontext() as ctx:
+        ctx.prec = 50
+        while changed and rounds < 6:
+            changed = False
+            rounds += 1
+            for meta in metas:
+                state = states.get(meta.pool_id)
+                if not state or not state.sqrt_price_x96 or meta.token0_decimals is None or meta.token1_decimals is None:
+                    continue
+                try:
+                    ratio = price_ratio_token1_per_token0(state.sqrt_price_x96, meta.token0_decimals, meta.token1_decimals)
+                except Exception:
+                    continue
+                token0 = meta.token0.lower()
+                token1 = meta.token1.lower()
+                if token0 in prices and token1 not in prices and ratio > 0:
+                    prices[token1] = prices[token0] / ratio
+                    changed = True
+                elif token1 in prices and token0 not in prices and ratio > 0:
+                    prices[token0] = prices[token1] * ratio
+                    changed = True
     return prices
 
 
 def notional_to_raw(notional_usd: int, token_price_usd: Decimal, decimals: int) -> int:
-    token_amount = Decimal(notional_usd) / token_price_usd
-    raw = token_amount * (Decimal(10) ** decimals)
-    return int(raw)
+    with localcontext() as ctx:
+        ctx.prec = 50
+        token_amount = Decimal(notional_usd) / token_price_usd
+        raw = token_amount * (Decimal(10) ** decimals)
+        return int(raw)
 
 
 def fallback_math_quote(amount_in_raw: int, decimals_in: int, decimals_out: int, price_in_usd: Decimal, price_out_usd: Decimal) -> tuple[int, float]:
-    amount_in_token = Decimal(amount_in_raw) / (Decimal(10) ** decimals_in)
-    out_token = amount_in_token * price_in_usd / price_out_usd
-    out_raw = int(out_token * (Decimal(10) ** decimals_out))
-    return out_raw, 0.0
+    with localcontext() as ctx:
+        ctx.prec = 50
+        amount_in_token = Decimal(amount_in_raw) / (Decimal(10) ** decimals_in)
+        out_token = amount_in_token * price_in_usd / price_out_usd
+        out_raw = int(out_token * (Decimal(10) ** decimals_out))
+        return out_raw, 0.0
 
 
 def quote_rows(
@@ -756,19 +762,21 @@ def quote_rows(
                         row["invalid_reason"] = f"quote_failed:{type(exc).__name__}"
                         rows.append(row)
                         continue
-                amount_out_raw_int = int(row["amount_out_raw"])
-                amount_out_token = Decimal(amount_out_raw_int) / (Decimal(10) ** out_dec)
-                amount_out_usd = amount_out_token * out_price
-                row["amount_out_usd"] = float(amount_out_usd)
-                ideal_out_usd = Decimal(notional)
-                if ideal_out_usd > 0:
-                    slippage_pct = max(Decimal(0), (ideal_out_usd - amount_out_usd) / ideal_out_usd * Decimal(100))
-                    row["estimated_slippage_pct"] = float(slippage_pct)
-                if row["quote_method"] == "quoter_v2_staticcall" and state and state.sqrt_price_x96 and row["sqrt_price_x96_after"]:
-                    before_price = price_ratio_token1_per_token0(state.sqrt_price_x96, meta.token0_decimals or 18, meta.token1_decimals or 18)
-                    after_price = price_ratio_token1_per_token0(int(row["sqrt_price_x96_after"]), meta.token0_decimals or 18, meta.token1_decimals or 18)
-                    if before_price > 0:
-                        row["estimated_price_impact_pct"] = float(abs(after_price / before_price - 1) * Decimal(100))
+                with localcontext() as ctx:
+                    ctx.prec = 50
+                    amount_out_raw_int = int(row["amount_out_raw"])
+                    amount_out_token = Decimal(amount_out_raw_int) / (Decimal(10) ** out_dec)
+                    amount_out_usd = amount_out_token * out_price
+                    row["amount_out_usd"] = float(amount_out_usd)
+                    ideal_out_usd = Decimal(notional)
+                    if ideal_out_usd > 0:
+                        slippage_pct = max(Decimal(0), (ideal_out_usd - amount_out_usd) / ideal_out_usd * Decimal(100))
+                        row["estimated_slippage_pct"] = float(slippage_pct)
+                    if row["quote_method"] == "quoter_v2_staticcall" and state and state.sqrt_price_x96 and row["sqrt_price_x96_after"]:
+                        before_price = price_ratio_token1_per_token0(state.sqrt_price_x96, meta.token0_decimals or 18, meta.token1_decimals or 18)
+                        after_price = price_ratio_token1_per_token0(int(row["sqrt_price_x96_after"]), meta.token0_decimals or 18, meta.token1_decimals or 18)
+                        if before_price > 0:
+                            row["estimated_price_impact_pct"] = float(abs(after_price / before_price - 1) * Decimal(100))
                 row["quote_success"] = "yes"
                 if row["quote_method"] == "quoter_v2_staticcall":
                     row["confidence"] = "high" if notional <= 500 else "medium"
