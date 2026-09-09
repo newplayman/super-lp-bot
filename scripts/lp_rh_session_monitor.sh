@@ -29,6 +29,7 @@ IDLE_SINCE=0
 LAST_HOUR=-1
 LAST_GW=""
 PREV_GW=""
+PREV_RTH=""
 for f in "$LOGDIR"/task-*.log; do
   [ -e "$f" ] || continue
   grep -qE '^\[result' "$f" 2>/dev/null && basename "$f" >> "$SEEN"
@@ -132,5 +133,22 @@ except Exception: print('?')" 2>/dev/null)
   else
     IDLE_SINCE=0
   fi
+  # 6) RTH 窗口开合（美东 09:30-16:00 工作日）
+  #    allows_new_position 的策略是 session=="RTH" 且零 flags，
+  #    RTH 之外任何时段都不放行——所以只有这个窗口内的 shadow 样本
+  #    才能检验「oracle 闸是不是唯一阻塞」。到点必须叫醒主脑。
+  _hm=$((10#$(TZ=America/New_York date +%H%M)))
+  _dow=$(TZ=America/New_York date +%u)
+  if [ "$_dow" -le 5 ] && [ "$_hm" -ge 930 ] && [ "$_hm" -lt 1600 ]; then rth=1; else rth=0; fi
+  if [ "$rth" != "$PREV_RTH" ]; then
+    if [ "$rth" = "1" ]; then
+      elig=$("$PY" -c "import sqlite3;c=sqlite3.connect('$ROOT/reports/lp_rh/shadow.db');print(c.execute('SELECT COALESCE(SUM(eligible_steps),0), COUNT(*) FROM rh_shadow_episodes').fetchone())" 2>/dev/null)
+      echo "RTH_WINDOW 开启（美东 $(TZ=America/New_York date +%H:%M)）— 唯一可能放行的时段，现在查 shadow 是否解锁；进入前累计 (eligible_steps, episodes)=${elig:-读取失败}"
+    else
+      echo "RTH_WINDOW 关闭（美东 $(TZ=America/New_York date +%H:%M)）— 此后样本不再具备放行条件"
+    fi
+    PREV_RTH=$rth
+  fi
+
   sleep 60
 done
