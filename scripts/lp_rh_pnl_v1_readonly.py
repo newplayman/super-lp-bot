@@ -154,11 +154,14 @@ def book_journal_event(conn: sqlite3.Connection, *, event_id: str,
 
 
 def attribution(*, nav_delta, fee_income, gas_paid, price_move_effect,
-                tolerance: Decimal = Decimal("0.000000001")) -> dict:
+                tolerance: Decimal = Decimal("0.000000001"),
+                missing_inputs: Sequence[str] = ()) -> dict:
     """Explanatory view only (PRD §12.2/§12.5); never alters the ledger.
 
     fee_income (+), gas_paid (deducted exactly once), price_move_effect (signed);
-    reconciles against nav_delta, flagging a mismatch rather than adjusting."""
+    reconciles against nav_delta, flagging a mismatch rather than adjusting.
+    Missing replay inputs are represented as zero for continuity, but force the
+    result to be unreconciled and are reported explicitly."""
     nd = _as_decimal("nav_delta", nav_delta)
     fi = _as_decimal("fee_income", fee_income)
     gp = _as_decimal("gas_paid", gas_paid)
@@ -166,13 +169,18 @@ def attribution(*, nav_delta, fee_income, gas_paid, price_move_effect,
     components = {"fee_income": fi, "gas_paid": -gp, "price_move_effect": pm}
     total = sum(components.values())
     unexplained = total - nd
-    return {
+    missing = list(dict.fromkeys(missing_inputs))
+    result = {
         "nav_delta": nd,
         "components": components,
         "sum_components": total,
         "unexplained": unexplained,
-        "reconciled": abs(unexplained) <= tolerance,
+        "reconciled": not missing and abs(unexplained) <= tolerance,
     }
+    if missing:
+        result["missing_inputs"] = missing
+        result["reason"] = "NAV_INPUT_MISSING: " + ", ".join(missing)
+    return result
 
 
 def liquidation_nav(*, reference_nav, haircut_by_asset: Mapping[str, Decimal],
@@ -210,16 +218,27 @@ def _process_events(payload: Mapping[str, Any]) -> dict:
             price_t1_token1_per_token0=Decimal(step["price_t1_token1_per_token0"]),
             quote_usd_per_token1=Decimal(step["quote_usd_per_token1"]),
         )
-        external = Decimal(step.get("external_net_flow", "0"))
+        external_missing = "external_net_flow" not in step
+        external = (Decimal(0) if external_missing
+                    else Decimal(step["external_net_flow"]))
         nav_delta = Decimal(0) if prev_nav is None else nav - prev_nav - external
-        pnl_delta = None if prev_nav is None else net_pnl(nav, prev_nav, external)
+        pnl_delta = (None if prev_nav is None or external_missing
+                     else net_pnl(nav, prev_nav, external))
+        attribution_fields = ("fee_income", "gas_paid", "price_move_effect")
+        missing_inputs = [name for name in attribution_fields if name not in step]
+        if external_missing:
+            missing_inputs.insert(0, "external_net_flow")
         attr = attribution(
             nav_delta=nav_delta,
-            fee_income=Decimal(step.get("fee_income", "0")),
-            gas_paid=Decimal(step.get("gas_paid", "0")),
-            price_move_effect=Decimal(step.get("price_move_effect", "0")),
+            fee_income=(Decimal(0) if "fee_income" not in step
+                        else Decimal(step["fee_income"])),
+            gas_paid=(Decimal(0) if "gas_paid" not in step
+                      else Decimal(step["gas_paid"])),
+            price_move_effect=(Decimal(0) if "price_move_effect" not in step
+                               else Decimal(step["price_move_effect"])),
+            missing_inputs=missing_inputs,
         )
-        steps_out.append({
+        step_out = {
             "mark_time": step["mark_time"],
             "nav": str(nav),
             "net_pnl": None if pnl_delta is None else str(pnl_delta),
@@ -230,7 +249,13 @@ def _process_events(payload: Mapping[str, Any]) -> dict:
                 "unexplained": str(attr["unexplained"]),
                 "components": {k: str(v) for k, v in attr["components"].items()},
             },
-        })
+        }
+        if external_missing:
+            step_out["net_pnl_reason"] = "NAV_INPUT_MISSING: external_net_flow"
+        if attr.get("missing_inputs"):
+            step_out["attribution"]["missing_inputs"] = attr["missing_inputs"]
+            step_out["attribution"]["reason"] = attr["reason"]
+        steps_out.append(step_out)
         prev_nav = nav
     return {"position_id": payload.get("position_id", ""), "steps": steps_out}
 

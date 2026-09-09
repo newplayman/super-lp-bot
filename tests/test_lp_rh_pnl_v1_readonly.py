@@ -242,3 +242,77 @@ def test_main_cli_end_to_end(tmp_path):
     assert payload["position_id"] == "pos-1"
     assert len(payload["steps"]) == 2
     assert payload["steps"][1]["net_pnl"] == "0"
+
+
+# --- replay missing-input handling ------------------------------------------
+def _replay_step(mark_time: str, wallet: str, **extra):
+    step = {
+        "mark_time": mark_time,
+        "wallet": wallet,
+        "lp_principal": "500",
+        "accrued_fees": "0",
+        "verified_rewards": "0",
+        "liabilities": "0",
+        "price_t1_token1_per_token0": "1",
+        "quote_usd_per_token1": "100",
+    }
+    step.update(extra)
+    return step
+
+
+def _replay_payload(steps):
+    return {
+        "position_id": "replay-inputs",
+        "initial_token0_raw": "1000000000000000000",
+        "initial_token1_raw": "1000000000000000000",
+        "dec0": 18,
+        "dec1": 18,
+        "steps": steps,
+    }
+
+
+def test_replay_missing_external_flow_is_unavailable_not_zero():
+    result = pnl._process_events(_replay_payload([
+        _replay_step("t0", "1000", external_net_flow="0",
+                     fee_income="0", gas_paid="0", price_move_effect="0"),
+        # Wallet gained 100 externally, but the flow field is absent.
+        _replay_step("t1", "1100", fee_income="0", gas_paid="0",
+                     price_move_effect="0"),
+    ]))
+    step = result["steps"][1]
+    assert step["net_pnl"] is None
+    assert "external_net_flow" in step["net_pnl_reason"]
+    assert step["net_pnl"] != "100"
+
+
+@pytest.mark.parametrize("external_flow", ["0", 0, Decimal(0)])
+def test_replay_explicit_zero_external_flow_remains_valid(external_flow):
+    result = pnl._process_events(_replay_payload([
+        _replay_step("t0", "1000", external_net_flow="0"),
+        _replay_step("t1", "1010", external_net_flow=external_flow),
+    ]))
+    assert result["steps"][1]["net_pnl"] == "10"
+
+
+def test_replay_missing_attribution_input_keeps_pnl_and_marks_unreconciled():
+    result = pnl._process_events(_replay_payload([
+        _replay_step("t0", "1000", external_net_flow="0",
+                     fee_income="0", gas_paid="0", price_move_effect="0"),
+        _replay_step("t1", "1010", external_net_flow="0",
+                     gas_paid="0", price_move_effect="0"),
+    ]))
+    step = result["steps"][1]
+    assert step["net_pnl"] == "10"
+    assert step["attribution"]["reconciled"] is False
+    assert "fee_income" in step["attribution"]["missing_inputs"]
+    assert "fee_income" in step["attribution"]["reason"]
+
+
+def test_replay_continues_after_missing_external_flow_step():
+    result = pnl._process_events(_replay_payload([
+        _replay_step("t0", "1000", external_net_flow="0"),
+        _replay_step("t1", "1100"),
+        _replay_step("t2", "1110", external_net_flow="0"),
+    ]))
+    assert result["steps"][1]["net_pnl"] is None
+    assert result["steps"][2]["net_pnl"] == "10"
