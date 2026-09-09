@@ -58,10 +58,21 @@ if [ "$need_restart" -eq 1 ]; then
     fi
     rm -f "$PIDF"
     setsid nohup env -u PYTHONPATH "$PY" scripts/lp_rh_shadow_daemon_v1_readonly.py \
-      --db "$DB" --period-secs 900 --pid-file "$PIDF" \
-      --pool-meta-json "$ROOT/reports/lp_rh/pool_meta.json" >> "$LOG" 2>&1 < /dev/null &
+      --db "$DB" --pool 0x52e65b17fb6e5ba00ed806f37afcd2daa50271ca \
+      --pool-meta-json "$ROOT/reports/lp_rh/pool_meta.json" --samples 200 \
+      --position-usd 1000 --capital-usd 10000 --horizon-hours 720 \
+      --period-secs 900 --pid-file "$PIDF" >> "$LOG" 2>&1 < /dev/null &
     restarts=$((restarts + 1))
-    say "RESTARTED reason=$reason rows=$rows restarts=$restarts"
+    # Verify the restart actually took.  A watchdog that logs RESTARTED
+    # without checking will claim success forever while the process dies
+    # on a bad argument list, which is exactly what happened here.
+    sleep 6
+    newpid=$(cat "$PIDF" 2>/dev/null || echo "")
+    if [ -n "$newpid" ] && kill -0 "$newpid" 2>/dev/null; then
+      say "RESTARTED reason=$reason rows=$rows restarts=$restarts pid=$newpid"
+    else
+      say "RESTART_FAILED reason=$reason rows=$rows restarts=$restarts (see $LOG)"
+    fi
   fi
 else
   say "OK pid=$pid rows=$rows age=${last}s restarts=$restarts"

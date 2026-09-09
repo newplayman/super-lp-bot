@@ -58,7 +58,16 @@ if [ "$need_restart" -eq 1 ]; then
     setsid nohup env -u PYTHONPATH "$PY" scripts/lp_rh_collector_v1_readonly.py \
       --db "$DB" --interval-secs 15 --pid-file "$PIDF" >> "$LOG" 2>&1 < /dev/null &
     restarts=$((restarts + 1))
-    say "RESTARTED reason=$reason rows=$rows restarts=$restarts"
+    # Verify the restart actually took.  A watchdog that logs RESTARTED
+    # without checking will claim success forever while the process dies
+    # on a bad argument list, which is exactly what happened here.
+    sleep 6
+    newpid=$(cat "$PIDF" 2>/dev/null || echo "")
+    if [ -n "$newpid" ] && kill -0 "$newpid" 2>/dev/null; then
+      say "RESTARTED reason=$reason rows=$rows restarts=$restarts pid=$newpid"
+    else
+      say "RESTART_FAILED reason=$reason rows=$rows restarts=$restarts (see $LOG)"
+    fi
   fi
 else
   say "OK pid=$pid rows=$rows age=${last}s restarts=$restarts"
