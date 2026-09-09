@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Tests for the RH coverage audit & gap attribution module (offline/read-only)."""
+import sqlite3
 import sys
 from datetime import datetime, timedelta
 from decimal import Decimal
@@ -17,6 +18,9 @@ from scripts.lp_rh_coverage_audit_v1_readonly import (  # noqa: E402
     attribute_gaps,
     coverage_verdict,
     evaluation_window_coverage,
+    coverage_by_asset,
+    coverage_for_asset,
+    NO_ASSET_DATA,
 )
 
 BASE = datetime(2026, 9, 8, 5, 15, 14)
@@ -213,3 +217,65 @@ def test_real_data_regression():
     assert round(float(a["coverage_ratio"]), 3) == 0.899
     assert a["systematic_drift"] is True
     assert len(a["gaps"]) == 4
+
+
+# --- asset-scoped database coverage ---
+
+def _asset_coverage_db():
+    conn = sqlite3.connect(":memory:")
+    conn.execute(
+        "CREATE TABLE rh_market_states ("
+        "asset_address TEXT NOT NULL, sample_time TEXT NOT NULL)"
+    )
+    rows = []
+    for asset in ("asset-a", "asset-b"):
+        for i in range(116):
+            sample_time = BASE + timedelta(seconds=3600 * i / 115)
+            rows.append((asset, sample_time.isoformat() + "Z"))
+    conn.executemany("INSERT INTO rh_market_states VALUES (?, ?)", rows)
+    return conn
+
+
+def test_asset_coverage_is_independent_and_never_summed():
+    conn = _asset_coverage_db()
+    try:
+        by_asset = coverage_by_asset(
+            conn, asset_addresses=("asset-a", "asset-b"),
+            expected_interval_secs=15)
+        assert set(by_asset) == {"asset-a", "asset-b"}
+        for result in by_asset.values():
+            assert result["status"] == "OK"
+            assert abs(float(result["coverage_ratio"]) - 0.484) < 0.001
+
+        combined = sum(
+            (result["coverage_ratio"] for result in by_asset.values()),
+            Decimal(0),
+        )
+        assert all(
+            result["coverage_ratio"] != combined
+            for result in by_asset.values()
+        )
+    finally:
+        conn.close()
+
+
+def test_unknown_asset_is_not_zero_coverage():
+    conn = _asset_coverage_db()
+    try:
+        result = coverage_for_asset(
+            conn, asset_address="asset-missing", expected_interval_secs=15)
+        assert result["status"] == NO_ASSET_DATA
+        assert result["message"] == "无该资产数据"
+        assert result["coverage_ratio"] is None
+        assert result["analysis"] is None
+    finally:
+        conn.close()
+
+
+def test_asset_address_is_required():
+    conn = _asset_coverage_db()
+    try:
+        with pytest.raises(TypeError):
+            coverage_for_asset(conn, expected_interval_secs=15)
+    finally:
+        conn.close()

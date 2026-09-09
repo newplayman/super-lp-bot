@@ -211,6 +211,93 @@ def evaluation_window_coverage(
     return Decimal(actual) / planned
 
 
+NO_ASSET_DATA = "NO_ASSET_DATA"
+
+
+def fetch_asset_sample_times(conn: Any, *, asset_address: str) -> List[str]:
+    """Return sample times for exactly one asset.
+
+    ``asset_address`` is intentionally keyword-only and has no default: a
+    caller must identify the asset instead of silently auditing all rows.
+    """
+    rows = conn.execute(
+        "SELECT sample_time FROM rh_market_states "
+        "WHERE asset_address = ? ORDER BY sample_time",
+        (asset_address,),
+    ).fetchall()
+    return [row[0] for row in rows]
+
+
+def _no_asset_data(asset_address: str) -> Dict[str, Any]:
+    """Return an explicit result for an asset absent from the store."""
+    return {
+        "asset_address": asset_address,
+        "status": NO_ASSET_DATA,
+        "has_data": False,
+        "message": "无该资产数据",
+        "reason": "no rows in rh_market_states for asset_address",
+        "coverage_ratio": None,
+        "analysis": None,
+        "attributed_gaps": [],
+        "verdict": None,
+    }
+
+
+def coverage_for_asset(
+    conn: Any,
+    *,
+    asset_address: str,
+    expected_interval_secs: int,
+    health_rows: Sequence[Dict[str, Any]] = (),
+) -> Dict[str, Any]:
+    """Audit coverage for exactly one asset.
+
+    The SQL query is asset-scoped. An absent asset is reported as
+    ``NO_ASSET_DATA`` rather than being passed to ``analyze_gaps`` as an empty
+    timeline, because no row and zero coverage are different states.
+    """
+    sample_times = fetch_asset_sample_times(conn, asset_address=asset_address)
+    if not sample_times:
+        return _no_asset_data(asset_address)
+
+    analysis = analyze_gaps(
+        sample_times, expected_interval_secs=expected_interval_secs)
+    attributed = attribute_gaps(analysis["gaps"], health_rows)
+    verdict = coverage_verdict({**analysis, "gaps": attributed})
+    return {
+        "asset_address": asset_address,
+        "status": "OK",
+        "has_data": True,
+        "coverage_ratio": analysis["coverage_ratio"],
+        "analysis": analysis,
+        "attributed_gaps": attributed,
+        "verdict": verdict,
+    }
+
+
+def coverage_by_asset(
+    conn: Any,
+    *,
+    asset_addresses: Sequence[str],
+    expected_interval_secs: int,
+    health_rows: Sequence[Dict[str, Any]] = (),
+) -> Dict[str, Dict[str, Any]]:
+    """Return independent coverage results keyed by asset address.
+
+    Each asset is queried and analyzed separately; sample counts and spans are
+    never combined across assets.
+    """
+    return {
+        asset_address: coverage_for_asset(
+            conn,
+            asset_address=asset_address,
+            expected_interval_secs=expected_interval_secs,
+            health_rows=health_rows,
+        )
+        for asset_address in asset_addresses
+    }
+
+
 def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(
         description="RH coverage audit & gap attribution (read-only)")
@@ -218,29 +305,30 @@ def main(argv: Optional[List[str]] = None) -> int:
                         help="RH scanner.db (read-only)")
     parser.add_argument("--interval-secs", type=int, default=15,
                         help="planned sample interval (s)")
+    parser.add_argument("--asset-address", required=True,
+                        help="asset address to audit (required; never all assets)")
     parser.add_argument("--out", default="COVERAGE_AUDIT.json",
                         help="output JSON path")
     args = parser.parse_args(argv)
     conn = open_store(args.db, read_only=True)
     try:
-        sample_times = [r[0] for r in conn.execute(
-            "SELECT sample_time FROM rh_market_states ORDER BY sample_time").fetchall()]
         health_rows = [
             {"sample_time": st, "state": state}
             for st, state in conn.execute(
                 "SELECT sample_time, state FROM rh_rpc_health ORDER BY sample_time").fetchall()
         ]
+        coverage = coverage_for_asset(
+            conn,
+            asset_address=args.asset_address,
+            expected_interval_secs=args.interval_secs,
+            health_rows=health_rows,
+        )
     finally:
         conn.close()
-    analysis = analyze_gaps(sample_times, expected_interval_secs=args.interval_secs)
-    attributed = attribute_gaps(analysis["gaps"], health_rows)
-    verdict = coverage_verdict({**analysis, "gaps": attributed})
     report = {
         "db": str(args.db),
         "interval_secs": args.interval_secs,
-        "analysis": analysis,
-        "attributed_gaps": attributed,
-        "verdict": verdict,
+        **coverage,
     }
     out_path = Path(args.out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
