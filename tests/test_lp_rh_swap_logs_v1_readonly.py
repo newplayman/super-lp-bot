@@ -233,3 +233,31 @@ def test_to_organic_events_field_names_match_rh05f():
     assert required.issubset(out[0].keys())
     assert isinstance(out[0]["block"], int)
     assert isinstance(out[0]["sender"], str)
+
+
+def test_call_timeout_is_explicit_and_defaults_high_enough():
+    """The hardcoded 30s timeout is why eight organic windows were lost.
+
+    The identical request that returned nothing at 30s returned 22,281 events at
+    90s, so the value decides whether data arrives at all and must be visible.
+    """
+    import scripts.lp_rh_swap_logs_v1_readonly as mod
+    assert mod.DEFAULT_CALL_TIMEOUT_SECS >= 60
+    import inspect
+    sig = inspect.signature(mod.make_urllib_call_fn)
+    assert "timeout_secs" in sig.parameters
+    assert sig.parameters["timeout_secs"].default == mod.DEFAULT_CALL_TIMEOUT_SECS
+
+
+def test_overload_errors_trigger_splitting_not_a_hard_failure():
+    """-32005 "network is busy" never matched the range-error keys.
+
+    It is an overload signal rather than a range complaint, so fetch_swaps treated
+    it as fatal and skipped the window.  On this chain it fires reliably at 8,800
+    blocks and never at 2,000, so asking for less is the correct response.
+    """
+    import scripts.lp_rh_swap_logs_v1_readonly as mod
+    assert mod._is_range_error(RuntimeError("the network is busy, please try again"))
+    assert mod._is_range_error(RuntimeError("{'code': -32005, 'message': 'busy'}"))
+    assert mod._is_range_error(RuntimeError("logs matched by query exceeds limit of 10000"))
+    assert not mod._is_range_error(ValueError("bad params"))

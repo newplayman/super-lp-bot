@@ -22,7 +22,11 @@ from typing import Callable, Optional
 SWAP_TOPIC0 = "0xc42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115fbcca67"
 
 # Substrings (lowercased) that mark a "range too large" provider error.
-_RANGE_ERROR_KEYS = ("more than", "too many", "range", "limit")
+# "busy" and -32005 are overload signals, not range complaints, but on this
+# chain they fire reliably at 8,800 blocks and never at 2,000, so the right
+# response is the same: ask for less.
+_RANGE_ERROR_KEYS = ("more than", "too many", "range", "limit",
+                     "busy", "-32005")
 
 _UINT256 = 2 ** 256
 _SIGN_BIT = 2 ** 255
@@ -197,8 +201,21 @@ def to_organic_events(events: list[dict]) -> list[dict]:
     return out
 
 
-def make_urllib_call_fn(rpc_url: str) -> Callable[[dict], list]:
-    """Build a real eth_getLogs call_fn backed by urllib (with a User-Agent)."""
+# Measured 2026-09-09 on the CORE seed pool: a 2,000-block window returns about
+# 8,000 logs and takes 17-18s on ordofi.  The original hardcoded 30s failed the
+# whole range while 90s returned 22,281 events from the identical request, which
+# is how eight windows were lost.  Callers on denser pools should raise it.
+DEFAULT_CALL_TIMEOUT_SECS = 90
+
+
+def make_urllib_call_fn(rpc_url: str,
+                        timeout_secs: float = DEFAULT_CALL_TIMEOUT_SECS
+                        ) -> Callable[[dict], list]:
+    """Build a real eth_getLogs call_fn backed by urllib (with a User-Agent).
+
+    ``timeout_secs`` is explicit because the value decides whether data arrives
+    at all: at 30s this same call returned nothing and marked the range failed.
+    """
     import urllib.request
 
     def call_fn(params: dict) -> list:
@@ -213,7 +230,7 @@ def make_urllib_call_fn(rpc_url: str) -> Callable[[dict], list]:
                 "User-Agent": "lpbot-rh05g/1.0 (read-only research)",
             },
         )
-        with urllib.request.urlopen(request, timeout=30) as response:
+        with urllib.request.urlopen(request, timeout=timeout_secs) as response:
             body = json.loads(response.read().decode("utf-8"))
         if isinstance(body, dict) and body.get("error"):
             raise RuntimeError(str(body["error"]))
