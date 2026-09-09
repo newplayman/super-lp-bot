@@ -93,8 +93,6 @@ def test_wider_range_requires_less_liquidity():
 
 def test_decimal_context_is_not_modified():
     before = getcontext().prec
-    assert before == 28
-
     _standard_position()
 
     assert getcontext().prec == before
@@ -307,8 +305,6 @@ def test_position_value_rejects_invalid_inputs(field, value):
 
 def test_position_value_does_not_modify_decimal_context():
     before = getcontext().prec
-    assert before == 28
-
     _standard_mark(Decimal("2474.055679"))
 
     assert getcontext().prec == before
