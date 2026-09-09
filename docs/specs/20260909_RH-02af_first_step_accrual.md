@@ -71,8 +71,14 @@ prev_fg0, prev_fg1 = Decimal(str(fg0)), Decimal(str(fg1))
 - 回归：`steps_without_nav` 仍只数 `nav is None` 的步数。
 - 回归：`net_pnl` 仍是 `nav_end - nav_start`。
 - 回归：`hodl_delta` 计算不受影响。
-- 大数精度：`Δ` 取 1，断言 `accrued` 增量精确等于 `1000 / 2**128`（`Decimal` 逐位相等）。
-- fg 递减（异常，理论上不该发生）→ 断言当前行为并写明（**若与源码冲突，停下来报告**）。
+- 大数精度：`Δ` 取 1，断言 `accrued` 增量与 `Decimal(1000) / Decimal(2)**128`
+  **在默认 28 位精度下相等**（即 `abs(a - b) <= abs(b) * Decimal("1e-25")`）。
+  **★不要断言「乘回去精确等于 1000」——`1000/2**128` 在 28 位精度下本就不可精确表示，
+  那个等式数学上无解★**（主脑上一版 spec 在此写错，worker 因此卡住 10 分钟，
+  已改正；不要试图用 `getcontext().prec` 提高精度来硬凑，保持默认上下文）。
+- fg 递减（异常，理论上不该发生）→ **只断言不抛异常且 `nav` 仍可得**，
+  并在测试 docstring 里写明观察到的实际行为。
+  **不要为此改动源码**；若认为源码行为不合理，停下来报告。
 - 端到端：`run_episode` 跑 3 条带 fg 的样本，`nav_start` 落在
   `capital ± position` 量级内（不是 143047）。
 

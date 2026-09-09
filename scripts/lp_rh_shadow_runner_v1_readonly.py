@@ -358,10 +358,19 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
         fg0, fg1 = sample.get("fee_growth_global_0"), sample.get("fee_growth_global_1")
         nav: Optional[Decimal] = None
         if fg0 is not None and fg1 is not None:
-            d0 = Decimal(str(fg0)) - (prev_fg0 or Decimal(0))
-            d1 = Decimal(str(fg1)) - (prev_fg1 or Decimal(0))
-            accrued += position_usd * (d0 + d1) / FEE_GROWTH_SCALE
-            prev_fg0, prev_fg1 = Decimal(str(fg0)), Decimal(str(fg1))
+            cur0, cur1 = Decimal(str(fg0)), Decimal(str(fg1))
+            # feeGrowthGlobal is a monotonic cumulative: only the difference
+            # between two adjacent readings is the increment.  With no previous
+            # reading the increment is "unknown", not "the whole pool's fees":
+            # record the reading but leave accrued unchanged (first step adds 0).
+            # Explicit `is None` check, not `or Decimal(0)`: Decimal(0) is a
+            # legitimate feeGrowth reading (a fresh pool) and `or` would treat
+            # it as "no previous value".
+            if prev_fg0 is not None and prev_fg1 is not None:
+                d0 = cur0 - prev_fg0
+                d1 = cur1 - prev_fg1
+                accrued += position_usd * (d0 + d1) / FEE_GROWTH_SCALE
+            prev_fg0, prev_fg1 = cur0, cur1
             nav = compute_nav(wallet=capital_usd - position_usd,
                               lp_principal=position_usd, accrued_fees=accrued,
                               verified_rewards=Decimal(0), liabilities=Decimal(0))
