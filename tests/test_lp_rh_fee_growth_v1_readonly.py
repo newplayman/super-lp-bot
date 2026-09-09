@@ -203,9 +203,15 @@ def test_end_to_end_nav_computed(tmp_path):
                            source_event_time="2026-09-08T17:59:58Z"),
             _replay_sample(1, sample_time="2026-09-08T18:01:00Z",
                            source_event_time="2026-09-08T18:00:58Z")]
+    # RH-02ai: the fee formula multiplies the position's liquidity, which is
+    # derived from the pool's price/range/decimals, so a replay without
+    # pool_meta can no longer produce a NAV.  The old formula only needed
+    # position_usd, which is exactly the dimensional error that was fixed.
     kw = dict(position_usd=POSITION_USD, horizon_hours=HORIZON_HOURS,
               capital_usd=CAPITAL_USD, target_mode="SHADOW_SCENARIO",
-              now_fn=lambda: "2026-09-08T19:00:00Z")
+              now_fn=lambda: "2026-09-08T19:00:00Z",
+              pool_meta={"input_price_usd": 2484.0, "range_pct": 10.0,
+                         "dec0": 18, "dec1": 6})
     # decision_id is keyed on candidate_key+target_mode, so the two runs need
     # separate stores (same samples would collide on rh_gate_decisions.decision_id).
     conn_no = open_store(tmp_path / "no.db")
@@ -218,6 +224,9 @@ def test_end_to_end_nav_computed(tmp_path):
         s2 = dict(s)
         s2["fee_growth_global_0"] = str(1000 + i)
         s2["fee_growth_global_1"] = str(2000 + i)
+        # RH-02ai: each leg is converted to USD at the step's own price before
+        # the two are summed, so a step without reference_mid fails closed.
+        s2["reference_mid"] = "2484"
         with_fg.append(s2)
     conn_yes = open_store(tmp_path / "yes.db")
     migrate(conn_yes)

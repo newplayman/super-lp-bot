@@ -40,6 +40,7 @@ from scripts.lp_rh_market_session_v1_readonly import (
 from scripts.lp_rh_exit_depth_v1_readonly import exit_depth_for_size
 from scripts.lp_rh_pnl_v1_readonly import compute_nav, hodl_benchmark, net_pnl
 from scripts.lp_rh_store_v1_readonly import insert_row, migrate, open_store
+from scripts.lp_v3_fee_share import position_liquidity_raw
 
 # Uniswap V3 fee-growth scaling: fees = L * delta(feeGrowthGlobal) / 2**128.
 FEE_GROWTH_SCALE = Decimal(2) ** 128
@@ -320,6 +321,12 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
     init1: Optional[Decimal] = None
     dec0, dec1 = DEFAULT_DEC0, DEFAULT_DEC1
     quote = DEFAULT_QUOTE_USD_PER_TOKEN1
+    # RH-02ai: the position's raw liquidity L_pos is fixed at open (it does not
+    # change with price), so it is resolved once and cached.  l_pos_resolved
+    # guards the lazy resolution; l_pos stays None when it cannot be computed
+    # (missing pool_meta key or position_liquidity_raw returned 0) -> fail-close.
+    l_pos: Optional[Decimal] = None
+    l_pos_resolved = False
 
     for i, sample in enumerate(samples):
         record = assemble_rh_clmm_inputs(_evidence_for(sample, pool_meta),
@@ -369,11 +376,57 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
             if prev_fg0 is not None and prev_fg1 is not None:
                 d0 = cur0 - prev_fg0
                 d1 = cur1 - prev_fg1
-                accrued += position_usd * (d0 + d1) / FEE_GROWTH_SCALE
+                # RH-02ai: dimensional fee accrual.  feeGrowthGlobal is in
+                # "tokens per unit of liquidity" (Q128), so it multiplies the
+                # position's raw liquidity L_pos, not its USD notional.  Each
+                # leg is scaled to human units by its own decimals, then to
+                # USD by its own price, before the two legs are summed.
+                fee_usd: Optional[Decimal] = None
+                if price is not None:
+                    if not l_pos_resolved:
+                        l_pos_resolved = True
+                        if pool_meta is not None and all(
+                                k in pool_meta for k in
+                                ("input_price_usd", "range_pct", "dec0", "dec1")):
+                            # pool_meta.json stores input_price_usd as a STRING
+                            # ("2484.0"), while the fixtures that exercise this
+                            # path use floats.  position_liquidity_raw compares
+                            # against 0, so the real file raises TypeError where
+                            # every test passes.  Coerce here rather than trust
+                            # the on-disk type.
+                            try:
+                                l_pos = Decimal(str(position_liquidity_raw(
+                                    float(position_usd),
+                                    float(pool_meta["input_price_usd"]),
+                                    float(pool_meta["range_pct"]),
+                                    int(pool_meta["dec0"]),
+                                    int(pool_meta["dec1"]))))
+                            except (TypeError, ValueError):
+                                l_pos = None
+                    if l_pos is not None and l_pos > 0:
+                        tok0 = (l_pos * d0 / FEE_GROWTH_SCALE
+                                / (Decimal(10) ** pool_meta["dec0"]))
+                        tok1 = (l_pos * d1 / FEE_GROWTH_SCALE
+                                / (Decimal(10) ** pool_meta["dec1"]))
+                        fee_usd = (tok0 * price + tok1) * quote
+                if fee_usd is not None:
+                    accrued += fee_usd
+                    nav = compute_nav(wallet=capital_usd - position_usd,
+                                      lp_principal=position_usd,
+                                      accrued_fees=accrued,
+                                      verified_rewards=Decimal(0),
+                                      liabilities=Decimal(0))
+                # else: fail-close (missing pool_meta key, L_pos==0, or
+                # price is None) -> nav stays None; no silent default.
+            else:
+                # First step: no previous reading, increment is "unknown"
+                # (RH-02af).  accrued stays 0; NAV is still computed.
+                nav = compute_nav(wallet=capital_usd - position_usd,
+                                  lp_principal=position_usd,
+                                  accrued_fees=accrued,
+                                  verified_rewards=Decimal(0),
+                                  liabilities=Decimal(0))
             prev_fg0, prev_fg1 = cur0, cur1
-            nav = compute_nav(wallet=capital_usd - position_usd,
-                              lp_principal=position_usd, accrued_fees=accrued,
-                              verified_rewards=Decimal(0), liabilities=Decimal(0))
         step_net_pnl = (net_pnl(nav, prev_nav, Decimal(0))
                         if nav is not None and prev_nav is not None else None)
         if nav is not None:

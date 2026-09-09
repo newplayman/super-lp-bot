@@ -68,11 +68,16 @@ def _passing_sample(idx, *, sample_time, **overrides):
 
 
 def _run(conn, samples, *, episode="ep"):
+    # RH-02ai: pool_meta is now required for a NAV -- the fee formula scales
+    # feeGrowth by the position's liquidity, derived from price/range/decimals.
+    # Without it the step fails closed rather than computing a wrong number.
     return run_episode(
         conn, strategy_episode=episode, samples=samples,
         position_usd=POSITION_USD, horizon_hours=HORIZON_HOURS,
         capital_usd=CAPITAL_USD, target_mode="SHADOW_SCENARIO",
         now_fn=lambda: "2026-01-01T01:00:00Z",
+        pool_meta={"input_price_usd": 2484.0, "range_pct": 10.0,
+                   "dec0": 18, "dec1": 6},
     )
 
 
@@ -125,6 +130,11 @@ def test_end_to_end_two_fg_samples_nav_computed(tmp_path):
         s2 = dict(s)
         s2["fee_growth_global_0"] = str(1000 + i)
         s2["fee_growth_global_1"] = str(2000 + i)
+        # RH-02ai: each leg is converted to USD at the step's own price before
+        # the two are summed, so a step without reference_mid fails closed.
+        # The old formula multiplied a USD notional straight into feeGrowth and
+        # so never needed a price -- that was the dimensional error.
+        s2["reference_mid"] = "2484"
         with_fg.append(s2)
     conn_yes = _fresh_store(tmp_path, "yes.db")
     steps_yes = _run(conn_yes, with_fg, episode="ep-withfg")
