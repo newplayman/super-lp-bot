@@ -124,3 +124,31 @@ gas sanity、native 储备、空区间分类、regime confidence、MEME 聚合�
 5. 故障注入脚本用了 `PPID` 这个 bash 只读变量，杀掉 organic 录制器后中断未重启
    ——顺着这个事故反而查出**两个看门狗本来就是坏的**（重启命令参数不全、进程秒退、
    却照样记 `RESTARTED`）。五个已全部加「重启后核实存活」并逐个验证。
+
+## 9. 会话监护必须由新会话重启（重要）
+
+监护是**会话级**的：本会话结束即终止。录制器和 cron 看门狗不受影响，
+但**没有人会在 worker 完成 / 录制器停滞 / 网关恢复时叫醒主脑**。
+
+脚本已入仓库：`scripts/lp_rh_session_monitor.sh`（126 行，含自身启动说明）。
+
+**新会话开场请立刻启动它**（Monitor 工具，persistent）：
+
+```
+Monitor({
+  command: "bash /opt/lpbot/lp-bot-v3-origin-check/scripts/lp_rh_session_monitor.sh",
+  description: "RH 监护：worker 完成/失败、五个录制器停滞、Stage A 里程碑、Qwen 网关、槽位空闲",
+  persistent: true,
+  timeout_ms: 3600000
+})
+```
+
+监护五类事件：`WORKER_DONE` / `STALLED` / `STAGE_A_MILESTONE` /
+`QWEN_GATEWAY`（已去抖）/ `IDLE_SLOTS`。
+
+**职责分工（不要混在一起）**：
+监护只观察与上报，**不重启任何进程**；进程自愈由 cron 上的五个
+`lp_rh_*_watchdog.sh` 负责。两者分开是故意的——
+一个既判断又上报的组件，会让它自己的失败更难被看见。
+
+**不要同时跑两份监护**，事件会重复。
