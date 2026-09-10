@@ -533,6 +533,12 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
     liquidity_human: Optional[Decimal] = None
     l_pos: Optional[Decimal] = None
     active_quote_evidence = None
+    # RH-02bu-2: virtual-open persistence state.  The reservation grant (event A)
+    # and the inventory resolution (event B) land on different steps, so the
+    # row is written at the end of the loop, once both are available.
+    position_row_written = False
+    pending_position_open_at: Optional[str] = None
+    inv_cached = None
 
     for i, sample in enumerate(samples):
         record = assemble_rh_clmm_inputs(_evidence_for(sample, pool_meta),
@@ -565,6 +571,7 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
             granted = bool(res.get("granted"))
             if granted:
                 position_open = True
+                pending_position_open_at = decision_now
 
         raw_price = sample.get("reference_mid")
         price = Decimal(str(raw_price)) if raw_price is not None else None
@@ -626,6 +633,7 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
                         liquidity_human = inv.liquidity_raw / scale
                         l_pos = inv.liquidity_raw
                         open_valid = True
+                        inv_cached = inv
                     else:
                         open_fail_reason = open_fail_reason or "RANGE_OR_INPUTS_INVALID"
                 except (TypeError, ValueError, InvalidOperation):
@@ -749,6 +757,44 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
             "accrued_fee": accrued if nav is not None else None,
             "unvalued_risk_json": json.dumps(risk_data, sort_keys=True),
         })
+        # RH-02bu-2: persist the virtual open position, at most one row per
+        # episode.  The quantities come from the inventory-resolution step
+        # (the episode's open assumption -- the HODL benchmark uses the same
+        # numbers); opened_at comes from the reservation-grant step.  The two
+        # may land on different steps; that is the existing shape of the
+        # economic model and this writer only records it, it does not change
+        # the model.  The _raw values are Decimals that may carry a fractional
+        # part, so they are stored via str() verbatim -- int() truncation
+        # would diverge from the values NAV uses.  No pool key means no row
+        # (pool_key is NOT NULL), never an empty-string placeholder.  A PK
+        # collision on a cross-round re-run is deliberately NOT caught here:
+        # it surfaces to the daemon layer (_run_episode_persisted), the same
+        # way rh_economic_evaluations collisions do.
+        if (pending_position_open_at is not None and not position_row_written
+                and open_valid and inv_cached is not None):
+            pool_key = None
+            if pool_meta is not None:
+                pool_key = pool_meta.get("pool_address") or pool_meta.get("pool_key")
+            if pool_key is None:
+                pool_key = sample.get("asset_address")
+            if pool_key:
+                insert_row(conn, "rh_shadow_positions", {
+                    "strategy_episode": strategy_episode,
+                    "position_id": f"rh-shadow-{strategy_episode}",
+                    "pool_key": pool_key,
+                    "profile": "CORE",
+                    "bucket": "CORE",
+                    "initial_token0_raw": str(inv_cached.amount0_raw),
+                    "initial_token1_raw": str(inv_cached.amount1_raw),
+                    "virtual_liquidity_raw": str(inv_cached.liquidity_raw),
+                    "tick_lower": None,
+                    "tick_upper": None,
+                    "opened_at": pending_position_open_at,
+                    "closed_at": None,
+                })
+                position_row_written = True
+            else:
+                step_reasons.append("SHADOW_POSITION_NOT_RECORDED:NO_POOL_KEY")
         steps.append(ShadowStep(
             i, sample_time, price, eligible, decision.primary_status,
             decision.dominant_blocker, nav, step_net_pnl, hodl_value,

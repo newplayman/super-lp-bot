@@ -623,3 +623,98 @@ def test_rh02bt_zero_max_impact_bps_is_not_treated_as_missing():
     bits, reasons = _conj(meta=_conj_meta(max_impact_bps=0))
     assert bits["position_and_exit_depth_pass"] is False
     assert not any("lacks max_impact_bps" in r for r in reasons), reasons
+
+
+# ---------------------------------------------------------------------------
+# RH-02bu-2: virtual open position persistence (rh_shadow_positions)
+# ---------------------------------------------------------------------------
+
+OPEN_META = {"range_pct": 10.0, "dec0": 18, "dec1": 6,
+             "pool_address": "0xpool-rh02bu2"}
+OPEN_PRICE = Decimal("1.0")
+OPEN_QUOTE = Decimal("2.0")
+
+
+def _open_sample(idx, **overrides):
+    """A passing sample that also resolves the open: RTH timestamp, price, bare quote."""
+    s = _passing_sample(
+        idx, price=OPEN_PRICE, quote_usd_per_token1=OPEN_QUOTE,
+        sample_time=f"2026-09-08T18:{idx:02d}:00Z")
+    s.update(overrides)
+    return s
+
+
+def test_rh02bu2_granted_step_writes_one_shadow_position(tmp_path):
+    conn = _fresh_store(tmp_path)
+    _run(conn, [_open_sample(i) for i in range(3)], pool_meta=OPEN_META)
+    assert conn.execute(
+        "SELECT COUNT(*) FROM rh_shadow_positions").fetchone()[0] == 1
+    conn.close()
+
+
+def test_rh02bu2_position_id_matches_position_marks(tmp_path):
+    conn = _fresh_store(tmp_path)
+    _run(conn, [_open_sample(i) for i in range(2)], episode="ep-bu2",
+         pool_meta=OPEN_META)
+    pos_id = conn.execute(
+        "SELECT position_id FROM rh_shadow_positions").fetchone()[0]
+    mark_ids = {r[0] for r in conn.execute(
+        "SELECT DISTINCT position_id FROM rh_position_marks")}
+    assert pos_id == "rh-shadow-ep-bu2"
+    assert pos_id in mark_ids
+    conn.close()
+
+
+def test_rh02bu2_raw_fields_match_inventory_verbatim(tmp_path):
+    conn = _fresh_store(tmp_path)
+    _run(conn, [_open_sample(i) for i in range(2)], pool_meta=OPEN_META)
+    row = conn.execute(
+        "SELECT initial_token0_raw, initial_token1_raw, virtual_liquidity_raw "
+        "FROM rh_shadow_positions").fetchone()
+    inv = inventory_for_position(
+        position_usd=POSITION_USD, entry_price=OPEN_PRICE,
+        range_pct=Decimal("10.0"), dec0=18, dec1=6,
+        quote_usd_per_token1=OPEN_QUOTE)
+    for value in row:
+        assert value is not None and value != "0"
+    assert row[0] == str(inv.amount0_raw)
+    assert row[1] == str(inv.amount1_raw)
+    assert row[2] == str(inv.liquidity_raw)
+    conn.close()
+
+
+def test_rh02bu2_no_granted_step_writes_no_shadow_position(tmp_path):
+    conn = _fresh_store(tmp_path)
+    samples = [_passing_sample(i, absolute_profit_pass=False,
+                               source_payload_hash=f"hash-{i}")
+               for i in range(3)]
+    _run(conn, samples, pool_meta=OPEN_META)
+    assert conn.execute(
+        "SELECT COUNT(*) FROM rh_shadow_positions").fetchone()[0] == 0
+    # the other three writers still record every step
+    assert conn.execute(
+        "SELECT COUNT(*) FROM rh_gate_decisions").fetchone()[0] == 3
+    assert conn.execute(
+        "SELECT COUNT(*) FROM rh_position_marks").fetchone()[0] == 3
+    assert conn.execute(
+        "SELECT COUNT(*) FROM rh_economic_evaluations").fetchone()[0] == 3
+    conn.close()
+
+
+def test_rh02bu2_multiple_eligible_steps_still_one_row(tmp_path):
+    conn = _fresh_store(tmp_path)
+    steps = _run(conn, [_open_sample(i) for i in range(5)], pool_meta=OPEN_META)
+    assert sum(1 for s in steps if s.terminal_eligible) >= 2
+    assert conn.execute(
+        "SELECT COUNT(*) FROM rh_shadow_positions").fetchone()[0] == 1
+    conn.close()
+
+
+def test_rh02bu2_missing_pool_key_writes_no_row_and_records_reason(tmp_path):
+    conn = _fresh_store(tmp_path)
+    meta = {"range_pct": 10.0, "dec0": 18, "dec1": 6}  # no pool identifier
+    steps = _run(conn, [_open_sample(i) for i in range(2)], pool_meta=meta)
+    assert conn.execute(
+        "SELECT COUNT(*) FROM rh_shadow_positions").fetchone()[0] == 0
+    assert any("NO_POOL_KEY" in r for s in steps for r in s.conjunct_reasons)
+    conn.close()
