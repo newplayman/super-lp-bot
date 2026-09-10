@@ -39,7 +39,12 @@ from scripts.lp_rh_market_session_v1_readonly import (
     evaluate_health,
 )
 from scripts.lp_rh_exit_depth_v1_readonly import exit_depth_for_size
-from scripts.lp_rh_pnl_v1_readonly import compute_nav, hodl_benchmark, net_pnl
+from scripts.lp_rh_pnl_v1_readonly import (
+    book_journal_event,
+    compute_nav,
+    hodl_benchmark,
+    net_pnl,
+)
 from scripts.lp_rh_store_v1_readonly import insert_row, migrate, open_store
 from scripts.lp_rh_v3_inventory_v1_readonly import (
     inventory_for_position,
@@ -793,6 +798,56 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
                     "closed_at": None,
                 })
                 position_row_written = True
+                # RH-02by: book the virtual open as a two-leg double-entry
+                # journal entry (assets move wallet -> LP position).  Each leg
+                # is one row.  NOTE: rh_journal's PRIMARY KEY is event_id, so
+                # the two legs cannot share one event_id (the spec's literal
+                # f"{strategy_episode}-open" would raise IntegrityError); each
+                # leg therefore carries its own event_id.  Each row is
+                # self-balancing (one debit + one credit account, same amount),
+                # so the Stage B balance audit (audit_unexplained_ledger_diffs)
+                # still reports count == 0.  is_external_flow=False: this is an
+                # internal transfer, not external funding (PRD D03 -- marking it
+                # external would pollute PnL attribution).  The asset field must
+                # be the real token address; a missing address means no journal
+                # row, never a pool address / empty string / placeholder.  A
+                # duplicate idempotency_key on a cross-round re-run is
+                # deliberately NOT caught here (RH-INV-13): it surfaces to the
+                # daemon layer (_run_episode_persisted), the same way the
+                # position row does.
+                tok0 = pool_meta.get("token0") if pool_meta else None
+                tok1 = pool_meta.get("token1") if pool_meta else None
+                if tok0 is not None and tok1 is not None:
+                    book_journal_event(
+                        conn,
+                        event_id=f"{strategy_episode}-open-token0",
+                        idempotency_key=f"{strategy_episode}-open-token0",
+                        debit="LP_POSITION_TOKEN0",
+                        credit="WALLET_TOKEN0",
+                        asset=tok0,
+                        amount_raw=inv_cached.amount0_raw,
+                        is_external_flow=False,
+                        ref={"position_id": f"rh-shadow-{strategy_episode}",
+                             "leg": "token0",
+                             "opened_at": pending_position_open_at},
+                        now=pending_position_open_at,
+                    )
+                    book_journal_event(
+                        conn,
+                        event_id=f"{strategy_episode}-open-token1",
+                        idempotency_key=f"{strategy_episode}-open-token1",
+                        debit="LP_POSITION_TOKEN1",
+                        credit="WALLET_TOKEN1",
+                        asset=tok1,
+                        amount_raw=inv_cached.amount1_raw,
+                        is_external_flow=False,
+                        ref={"position_id": f"rh-shadow-{strategy_episode}",
+                             "leg": "token1",
+                             "opened_at": pending_position_open_at},
+                        now=pending_position_open_at,
+                    )
+                else:
+                    step_reasons.append("JOURNAL_NOT_BOOKED:NO_TOKEN_ADDRESSES")
             else:
                 step_reasons.append("SHADOW_POSITION_NOT_RECORDED:NO_POOL_KEY")
         steps.append(ShadowStep(

@@ -18,6 +18,7 @@ from scripts.lp_rh_shadow_runner_v1_readonly import (
     run_episode,
 )
 from scripts.lp_rh_pnl_v1_readonly import hodl_benchmark
+from scripts.lp_rh_readiness_v1_readonly import audit_unexplained_ledger_diffs
 from scripts.lp_rh_store_v1_readonly import insert_row, migrate, open_store
 from scripts.lp_rh_v3_inventory_v1_readonly import inventory_for_position
 
@@ -717,4 +718,92 @@ def test_rh02bu2_missing_pool_key_writes_no_row_and_records_reason(tmp_path):
     assert conn.execute(
         "SELECT COUNT(*) FROM rh_shadow_positions").fetchone()[0] == 0
     assert any("NO_POOL_KEY" in r for s in steps for r in s.conjunct_reasons)
+    conn.close()
+
+
+# ---------------------------------------------------------------------------
+# RH-02by: virtual open booked into rh_journal (first double-entry rows)
+# ---------------------------------------------------------------------------
+
+OPEN_META_TOKENS = {"range_pct": 10.0, "dec0": 18, "dec1": 6,
+                    "pool_address": "0xpool-rh02by",
+                    "token0": "0xtoken0-rh02by",
+                    "token1": "0xtoken1-rh02by"}
+
+
+def _journal_rows(conn):
+    return conn.execute(
+        "SELECT idempotency_key, asset, amount_raw, is_external_flow "
+        "FROM rh_journal ORDER BY idempotency_key").fetchall()
+
+
+def test_rh02by_granted_step_writes_two_journal_rows(tmp_path):
+    conn = _fresh_store(tmp_path)
+    _run(conn, [_open_sample(i) for i in range(3)], pool_meta=OPEN_META_TOKENS)
+    assert conn.execute("SELECT COUNT(*) FROM rh_journal").fetchone()[0] == 2
+    conn.close()
+
+
+def test_rh02by_journal_asset_and_amount_match_inventory(tmp_path):
+    conn = _fresh_store(tmp_path)
+    _run(conn, [_open_sample(i) for i in range(2)], pool_meta=OPEN_META_TOKENS)
+    rows = _journal_rows(conn)
+    inv = inventory_for_position(
+        position_usd=POSITION_USD, entry_price=OPEN_PRICE,
+        range_pct=Decimal("10.0"), dec0=18, dec1=6,
+        quote_usd_per_token1=OPEN_QUOTE)
+    assert rows[0][0] == "ep-open-token0"
+    assert rows[0][1] == "0xtoken0-rh02by"
+    assert rows[0][2] == str(inv.amount0_raw)
+    assert rows[1][0] == "ep-open-token1"
+    assert rows[1][1] == "0xtoken1-rh02by"
+    assert rows[1][2] == str(inv.amount1_raw)
+    conn.close()
+
+
+def test_rh02by_journal_is_internal_flow(tmp_path):
+    conn = _fresh_store(tmp_path)
+    _run(conn, [_open_sample(i) for i in range(2)], pool_meta=OPEN_META_TOKENS)
+    rows = _journal_rows(conn)
+    assert len(rows) == 2
+    assert all(r[3] == 0 for r in rows)
+    conn.close()
+
+
+def test_rh02by_journal_idempotency_keys_distinct(tmp_path):
+    conn = _fresh_store(tmp_path)
+    _run(conn, [_open_sample(i) for i in range(2)], pool_meta=OPEN_META_TOKENS)
+    keys = [r[0] for r in _journal_rows(conn)]
+    assert len(keys) == 2
+    assert len(set(keys)) == 2
+    conn.close()
+
+
+def test_rh02by_no_granted_step_writes_no_journal(tmp_path):
+    conn = _fresh_store(tmp_path)
+    samples = [_passing_sample(i, absolute_profit_pass=False,
+                               source_payload_hash=f"hash-{i}")
+               for i in range(3)]
+    _run(conn, samples, pool_meta=OPEN_META_TOKENS)
+    assert conn.execute("SELECT COUNT(*) FROM rh_journal").fetchone()[0] == 0
+    conn.close()
+
+
+def test_rh02by_missing_token_addresses_no_journal_but_position_written(tmp_path):
+    conn = _fresh_store(tmp_path)
+    steps = _run(conn, [_open_sample(i) for i in range(2)], pool_meta=OPEN_META)
+    assert conn.execute("SELECT COUNT(*) FROM rh_journal").fetchone()[0] == 0
+    assert conn.execute(
+        "SELECT COUNT(*) FROM rh_shadow_positions").fetchone()[0] == 1
+    assert any("JOURNAL_NOT_BOOKED:NO_TOKEN_ADDRESSES" in r
+               for s in steps for r in s.conjunct_reasons)
+    conn.close()
+
+
+def test_rh02by_journal_entries_pass_stage_b_balance_audit(tmp_path):
+    conn = _fresh_store(tmp_path)
+    _run(conn, [_open_sample(i) for i in range(2)], pool_meta=OPEN_META_TOKENS)
+    result = audit_unexplained_ledger_diffs(conn)
+    assert result["count"] == 0
+    assert result["reason"] == "OK"
     conn.close()
