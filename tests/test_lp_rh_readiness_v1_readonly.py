@@ -865,9 +865,14 @@ def test_key_field_health_real_db_fee_growth_passes():
             assert col_stat["window_rows"] > 0
             assert col_stat["total_rows"] > col_stat["window_rows"]  # historical gap exists
             ratio = col_stat["non_null_ratio"]
+            # Only the gate threshold is asserted. An earlier revision also
+            # pinned the ratio into [0.998, 0.9995] "because the real value is
+            # ~99.87%" -- that is the current *data state*, not behaviour, and
+            # it self-invalidated as the collector kept running (global_1 drifted
+            # to 0.9978 and the test started failing on healthy data). Assert
+            # what the gate promises, never the number the database happens to
+            # hold today.
             assert ratio >= Decimal("0.99")
-            # Real non-null ratio should be ~99.87%
-            assert Decimal("0.998") <= ratio <= Decimal("0.9995")
 
         # Full _build_state check: STAGE_A_KEY_FIELDS_INCOMPLETE is gone
         st = _build_state(conn, str(DEFAULT_DB_PATH), 15.0, asset_address=core_asset)
@@ -1094,4 +1099,215 @@ def test_render_dashboard_key_field_window_visible():
     assert "fee_growth_global_0" in rendered
     assert "2026-09-09T16:05:55Z" in rendered
     assert "2254/10311" in rendered
+
+
+# --- RH-02bm & RH-02bm-2 tests ---
+import sqlite3
+from datetime import datetime, timedelta, timezone
+
+from scripts.lp_rh_readiness_v1_readonly import (
+    audit_missed_risk_events,
+    audit_unexplained_ledger_diffs,
+    audit_weekends_covered,
+)
+
+
+def test_audit_unexplained_ledger_diffs_missing_table():
+    """1. rh_journal table does not exist -> count is None, blockers include UNEXPLAINED_LEDGER_DIFFS_UNAVAILABLE."""
+    conn = sqlite3.connect(":memory:")
+    res = audit_unexplained_ledger_diffs(conn)
+    assert res["count"] is None
+    assert res["reason"] == "NO_JOURNAL_EVIDENCE"
+    status = stage_b_status(days_covered=14, weekends_covered=2,
+                            unexplained_ledger_diffs=res["count"],
+                            invariant_violations=0, missed_risk_events=0)
+    assert "UNEXPLAINED_LEDGER_DIFFS_UNAVAILABLE" in status["blockers"]
+    conn.close()
+
+
+def test_audit_unexplained_ledger_diffs_empty_table():
+    """2. rh_journal exists but 0 rows -> count is None (unknown, not zero diffs)."""
+    conn = sqlite3.connect(":memory:")
+    conn.execute("""CREATE TABLE rh_journal (
+        event_id TEXT, idempotency_key TEXT, account_debit TEXT, account_credit TEXT,
+        asset TEXT, amount_raw TEXT, is_external_flow INTEGER, ref_json TEXT, booked_at TEXT
+    )""")
+    res = audit_unexplained_ledger_diffs(conn)
+    assert res["count"] is None
+    assert res["reason"] == "NO_JOURNAL_EVIDENCE"
+    status = stage_b_status(days_covered=14, weekends_covered=2,
+                            unexplained_ledger_diffs=res["count"],
+                            invariant_violations=0, missed_risk_events=0)
+    assert "UNEXPLAINED_LEDGER_DIFFS_UNAVAILABLE" in status["blockers"]
+    conn.close()
+
+
+def test_audit_unexplained_ledger_diffs_unbalanced_entry():
+    """3. rh_journal has an unbalanced entry -> count == 1, blockers include UNEXPLAINED_LEDGER_DIFFS."""
+    conn = sqlite3.connect(":memory:")
+    conn.execute("""CREATE TABLE rh_journal (
+        event_id TEXT, idempotency_key TEXT, account_debit TEXT, account_credit TEXT,
+        asset TEXT, amount_raw TEXT, is_external_flow INTEGER, ref_json TEXT, booked_at TEXT
+    )""")
+    conn.execute(
+        "INSERT INTO rh_journal (event_id, idempotency_key, account_debit, account_credit, "
+        "asset, amount_raw, is_external_flow, ref_json, booked_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        ("evt_1", "idem_1", "VAULT_ETH", "", "0x52e65b17fb6e5ba00ed806f37afcd2daa50271ca",
+         "1000000000000000000", 0, "{}", "2026-09-08T00:00:00Z")
+    )
+    res = audit_unexplained_ledger_diffs(conn)
+    assert res["count"] == 1
+    assert res["reason"] == "UNBALANCED_ENTRIES"
+    status = stage_b_status(days_covered=14, weekends_covered=2,
+                            unexplained_ledger_diffs=res["count"],
+                            invariant_violations=0, missed_risk_events=0)
+    assert "UNEXPLAINED_LEDGER_DIFFS" in status["blockers"]
+    conn.close()
+
+
+def test_audit_missed_risk_events_empty_table():
+    """4. rh_gate_decisions has 0 rows -> count is None, blockers include MISSED_RISK_EVENTS_UNAVAILABLE."""
+    conn = sqlite3.connect(":memory:")
+    conn.execute("""CREATE TABLE rh_gate_decisions (
+        decision_id TEXT, candidate_key TEXT, target_mode TEXT, primary_status TEXT,
+        terminal_bits_json TEXT, dominant_blocker TEXT, reasons_json TEXT, snapshot_ids_json TEXT,
+        decided_at TEXT, derived_block_hash TEXT, derived_block_number INTEGER
+    )""")
+    res = audit_missed_risk_events(conn)
+    assert res["count"] is None
+    assert res["reason"] == "NO_GATE_DECISION_EVIDENCE"
+    status = stage_b_status(days_covered=14, weekends_covered=2,
+                            unexplained_ledger_diffs=0, invariant_violations=0,
+                            missed_risk_events=res["count"])
+    assert "MISSED_RISK_EVENTS_UNAVAILABLE" in status["blockers"]
+    conn.close()
+
+
+def test_audit_missed_risk_events_computed_pass_with_degraded_market():
+    """5. A primary_status='COMPUTED_PASS' decision + contemporary health_flags_json='[\"CHAIN_DEGRADED\"]' -> count >= 1."""
+    conn = sqlite3.connect(":memory:")
+    conn.execute("""CREATE TABLE rh_gate_decisions (
+        decision_id TEXT, candidate_key TEXT, target_mode TEXT, primary_status TEXT,
+        terminal_bits_json TEXT, dominant_blocker TEXT, reasons_json TEXT, snapshot_ids_json TEXT,
+        decided_at TEXT, derived_block_hash TEXT, derived_block_number INTEGER
+    )""")
+    conn.execute("""CREATE TABLE rh_market_states (
+        asset_address TEXT, sample_time TEXT, health_flags_json TEXT
+    )""")
+    conn.execute(
+        "INSERT INTO rh_market_states (asset_address, sample_time, health_flags_json) "
+        "VALUES (?, ?, ?)",
+        ("0x52e65b17fb6e5ba00ed806f37afcd2daa50271ca", "2026-09-08T12:00:00Z", '["CHAIN_DEGRADED"]')
+    )
+    conn.execute(
+        "INSERT INTO rh_gate_decisions (decision_id, candidate_key, target_mode, primary_status, "
+        "terminal_bits_json, dominant_blocker, reasons_json, snapshot_ids_json, decided_at, "
+        "derived_block_hash, derived_block_number) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        ("dec_1", "cand_1", "LIVE", "COMPUTED_PASS", "{}", None, "[]", "[]",
+         "2026-09-08T12:00:05Z", "0xabc", 100)
+    )
+    res = audit_missed_risk_events(conn)
+    assert res["count"] is not None and res["count"] >= 1
+    assert "rh_gate_decisions:dec_1:COMPUTED_PASS_with_health_flags:['CHAIN_DEGRADED']" in res["details"][0]
+    status = stage_b_status(days_covered=14, weekends_covered=2,
+                            unexplained_ledger_diffs=0, invariant_violations=0,
+                            missed_risk_events=res["count"])
+    assert "MISSED_RISK_EVENTS" in status["blockers"]
+    conn.close()
+
+
+def test_audit_weekends_covered_full_saturday_and_sunday():
+    """6. Complete Saturday + Sunday samples (each >= 90% density, interval 15s) -> weekends_covered == 2."""
+    conn = sqlite3.connect(":memory:")
+    conn.execute("""CREATE TABLE rh_market_states (
+        asset_address TEXT, sample_time TEXT
+    )""")
+    asset = "0x52e65b17fb6e5ba00ed806f37afcd2daa50271ca"
+    start_ts = datetime(2026, 9, 12, 0, 0, 0, tzinfo=timezone.utc)
+    rows = []
+    for i in range(11520):
+        t = start_ts + timedelta(seconds=i * 15)
+        rows.append((asset, t.isoformat().replace("+00:00", "Z")))
+    conn.executemany("INSERT INTO rh_market_states (asset_address, sample_time) VALUES (?, ?)", rows)
+    res = audit_weekends_covered(conn, asset_address=asset, interval_secs=15)
+    assert res["weekends_covered"] == 2
+    assert res["reason"] == "OK"
+    assert len(res["days"]) == 2
+    assert res["days"][0]["complete"] is True
+    assert res["days"][1]["complete"] is True
+    conn.close()
+
+
+def test_audit_weekends_covered_saturday_sparse_excluded():
+    """7. Saturday has only 10 samples -> that day is not counted."""
+    conn = sqlite3.connect(":memory:")
+    conn.execute("""CREATE TABLE rh_market_states (
+        asset_address TEXT, sample_time TEXT
+    )""")
+    asset = "0x52e65b17fb6e5ba00ed806f37afcd2daa50271ca"
+    start_ts = datetime(2026, 9, 12, 0, 0, 0, tzinfo=timezone.utc)
+    rows = []
+    for i in range(10):
+        t = start_ts + timedelta(hours=i)
+        rows.append((asset, t.isoformat().replace("+00:00", "Z")))
+    conn.executemany("INSERT INTO rh_market_states (asset_address, sample_time) VALUES (?, ?)", rows)
+    res = audit_weekends_covered(conn, asset_address=asset, interval_secs=15)
+    assert res["weekends_covered"] == 0
+    assert res["reason"] == "OK"
+    assert res["days"][0]["complete"] is False
+    conn.close()
+
+
+def test_audit_weekends_covered_partial_day_prorating_branches_no_crash():
+    """8. First/last partial day prorating branches are truly executed (Saturday 12:00 to Sunday 12:00).
+    Verifies weekends_covered has a concrete integer value and reason does not start with audit_exception:.
+    """
+    conn = sqlite3.connect(":memory:")
+    conn.execute("""CREATE TABLE rh_market_states (
+        asset_address TEXT, sample_time TEXT
+    )""")
+    asset = "0x52e65b17fb6e5ba00ed806f37afcd2daa50271ca"
+    start_ts = datetime(2026, 9, 12, 12, 0, 0, tzinfo=timezone.utc)
+    end_ts = datetime(2026, 9, 13, 12, 0, 0, tzinfo=timezone.utc)
+    rows = []
+    curr = start_ts
+    while curr <= end_ts:
+        rows.append((asset, curr.isoformat().replace("+00:00", "Z")))
+        curr += timedelta(seconds=15)
+    conn.executemany("INSERT INTO rh_market_states (asset_address, sample_time) VALUES (?, ?)", rows)
+
+    res = audit_weekends_covered(conn, asset_address=asset, interval_secs=15)
+    assert not res["reason"].startswith("audit_exception:")
+    assert res["reason"] == "OK"
+    assert isinstance(res["weekends_covered"], int)
+    assert res["weekends_covered"] == 2
+    assert len(res["days"]) == 2
+    assert res["days"][0]["complete"] is True
+    assert res["days"][1]["complete"] is True
+    conn.close()
+
+
+def test_audit_weekends_covered_case_insensitive_eip55_address():
+    """9. Asset address passed as mixed-case EIP-55 still matches lowercase stored rows."""
+    conn = sqlite3.connect(":memory:")
+    conn.execute("""CREATE TABLE rh_market_states (
+        asset_address TEXT, sample_time TEXT
+    )""")
+    lower_asset = "0x52e65b17fb6e5ba00ed806f37afcd2daa50271ca"
+    mixed_asset = "0x52E65b17Fb6e5BA00ed806f37afcd2dAa50271Ca"
+    start_ts = datetime(2026, 9, 12, 10, 0, 0, tzinfo=timezone.utc)
+    rows = []
+    for i in range(10):
+        t = start_ts + timedelta(seconds=i * 15)
+        rows.append((lower_asset, t.isoformat().replace("+00:00", "Z")))
+    conn.executemany("INSERT INTO rh_market_states (asset_address, sample_time) VALUES (?, ?)", rows)
+
+    res = audit_weekends_covered(conn, asset_address=mixed_asset, interval_secs=15)
+    assert res["reason"] == "OK"
+    assert res["checks_performed"] == ["rh_market_states:weekend_coverage"]
+    assert len(res["days"]) == 1
+    assert res["days"][0]["actual"] == 10
+    conn.close()
 

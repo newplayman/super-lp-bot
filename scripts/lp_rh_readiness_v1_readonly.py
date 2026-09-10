@@ -6,9 +6,10 @@ Missing data renders NOT_MEASURED, never 0/guess. No network, no live-store writ
 from __future__ import annotations
 
 import argparse
+import bisect
 import json
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 from typing import Any, Mapping, Optional
@@ -636,6 +637,207 @@ def audit_invariant_violations(conn) -> dict:
         }
 
 
+def _day_start(day, tzinfo):
+    """该 UTC 自然日的 00:00:00。"""
+    return datetime(day.year, day.month, day.day, tzinfo=tzinfo)
+
+
+def audit_weekends_covered(conn, *, asset_address, interval_secs=15) -> dict:
+    """Count complete weekend days (Sat/Sun, UTC) covered by rh_market_states
+    samples for one asset (RH-02bm).
+
+    A UTC calendar day is "complete" when it holds at least 90% of the samples
+    expected for that day (expected = day_span_secs / interval_secs). The first
+    and last partial days are prorated over their actual sample span instead of
+    being judged incomplete outright. Missing table or zero rows for the asset
+    -> weekends_covered=None (unknown, never 0).
+    """
+    try:
+        if not asset_address:
+            return {"weekends_covered": None, "checks_performed": [],
+                    "reason": "ASSET_ADDRESS_REQUIRED"}
+        interval = float(interval_secs)
+        if interval <= 0:
+            return {"weekends_covered": None, "checks_performed": [],
+                    "reason": "INVALID_INTERVAL"}
+        tbls = {r[0] for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
+        if "rh_market_states" not in tbls:
+            return {"weekends_covered": None, "checks_performed": [],
+                    "reason": "NO_MARKET_STATE_EVIDENCE"}
+        rows = conn.execute(
+            "SELECT sample_time FROM rh_market_states "
+            "WHERE LOWER(asset_address) = LOWER(?)",
+            (asset_address,)).fetchall()
+        times = sorted(t for r in rows if (t := _to_datetime(r[0])) is not None)
+        if not times:
+            return {"weekends_covered": None,
+                    "checks_performed": ["rh_market_states:weekend_coverage"],
+                    "reason": "NO_ASSET_SAMPLES"}
+        by_day: dict = {}
+        for t in times:
+            by_day[t.date()] = by_day.get(t.date(), 0) + 1
+        first_day, last_day = times[0].date(), times[-1].date()
+        complete_weekend_days = 0
+        day_details = []
+        for day in sorted(by_day):
+            actual = by_day[day]
+            if day == first_day and day == last_day:
+                span_secs = (times[-1] - times[0]).total_seconds()
+            elif day == first_day:
+                span_secs = (_day_start(day + timedelta(days=1), times[0].tzinfo) - times[0]).total_seconds()
+            elif day == last_day:
+                span_secs = (times[-1] - _day_start(day, times[-1].tzinfo)).total_seconds()
+            else:
+                span_secs = 86400.0
+            expected = span_secs / interval
+            complete = actual >= 0.9 * expected
+            is_weekend = day.weekday() in (5, 6)
+            if complete and is_weekend:
+                complete_weekend_days += 1
+            day_details.append({"date": str(day), "weekday": day.weekday(),
+                                "actual": actual, "expected": round(expected, 3),
+                                "complete": complete, "weekend": is_weekend})
+        return {"weekends_covered": complete_weekend_days,
+                "checks_performed": ["rh_market_states:weekend_coverage"],
+                "days": day_details, "reason": "OK"}
+    except Exception as exc:
+        return {"weekends_covered": None, "checks_performed": [],
+                "reason": f"audit_exception:{exc}"}
+
+
+def _journal_amount(value) -> Decimal:
+    """Parse a rh_journal amount_raw TEXT cell; unparseable -> 0 (matches the
+    CAST(... AS REAL) idiom used by audit_invariant_violations)."""
+    if value is None:
+        return Decimal(0)
+    try:
+        return Decimal(str(value).strip())
+    except Exception:
+        return Decimal(0)
+
+
+def audit_unexplained_ledger_diffs(conn) -> dict:
+    """Check rh_journal double-entry balance, grouped into entries by event_id
+    (RH-02bm). An entry is unexplained when its debit total (sum of amount_raw
+    over legs carrying a debit account) differs from its credit total, or when
+    any leg has an empty debit/credit account. Missing table OR zero rows ->
+    count=None with reason NO_JOURNAL_EVIDENCE: an empty ledger is 'unknown',
+    never 'zero diffs'.
+    """
+    try:
+        tbls = {r[0] for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
+        if "rh_journal" not in tbls:
+            return {"count": None, "checks_performed": [],
+                    "reason": "NO_JOURNAL_EVIDENCE"}
+        rows = conn.execute(
+            "SELECT event_id, account_debit, account_credit, amount_raw "
+            "FROM rh_journal").fetchall()
+        if not rows:
+            return {"count": None, "checks_performed": ["rh_journal:balance"],
+                    "reason": "NO_JOURNAL_EVIDENCE"}
+        entries: dict = {}
+        for idx, (event_id, acct_debit, acct_credit, amount_raw) in enumerate(rows):
+            key = event_id if event_id else f"__row__{idx}"
+            entries.setdefault(key, []).append((acct_debit, acct_credit, amount_raw))
+        count = 0
+        details = []
+        for key, legs in entries.items():
+            debit_total = Decimal(0)
+            credit_total = Decimal(0)
+            empty_account = False
+            for acct_debit, acct_credit, amount_raw in legs:
+                if not acct_debit or not acct_credit:
+                    empty_account = True
+                amount = _journal_amount(amount_raw)
+                if acct_debit:
+                    debit_total += amount
+                if acct_credit:
+                    credit_total += amount
+            if empty_account or debit_total != credit_total:
+                count += 1
+                details.append(f"rh_journal:{key}:debit={debit_total}:"
+                               f"credit={credit_total}:empty_account={empty_account}")
+        return {"count": count, "checks_performed": ["rh_journal:balance"],
+                "details": details,
+                "reason": "OK" if count == 0 else "UNBALANCED_ENTRIES"}
+    except Exception as exc:
+        return {"count": None, "checks_performed": [],
+                "reason": f"audit_exception:{exc}"}
+
+
+def _parse_health_flags(raw) -> list:
+    """Parse health_flags_json; returns the flag list (empty when the field is
+    null, '', '[]', or an empty list). Unparseable non-empty text is treated
+    as flagged (fail-close)."""
+    if raw is None:
+        return []
+    text = str(raw).strip()
+    if text in ("", "[]"):
+        return []
+    try:
+        parsed = json.loads(text)
+    except Exception:
+        return [text]
+    if isinstance(parsed, list):
+        return [f for f in parsed if f not in (None, "")]
+    return [parsed]
+
+
+def audit_missed_risk_events(conn) -> dict:
+    """Evidence of 'should have blocked but did not' (RH-02bm): a COMPUTED_PASS
+    rh_gate_decisions row whose nearest preceding market sample (max
+    sample_time <= decided_at) carries non-empty health flags. Missing
+    rh_gate_decisions table OR zero rows -> count=None with reason
+    NO_GATE_DECISION_EVIDENCE (never 0).
+    """
+    try:
+        tbls = {r[0] for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
+        if "rh_gate_decisions" not in tbls:
+            return {"count": None, "checks_performed": [],
+                    "reason": "NO_GATE_DECISION_EVIDENCE"}
+        total = conn.execute("SELECT COUNT(*) FROM rh_gate_decisions").fetchone()[0]
+        if total == 0:
+            return {"count": None,
+                    "checks_performed": ["rh_gate_decisions:missed_risk_events"],
+                    "reason": "NO_GATE_DECISION_EVIDENCE"}
+        decisions = conn.execute(
+            "SELECT decision_id, decided_at FROM rh_gate_decisions "
+            "WHERE primary_status = 'COMPUTED_PASS'").fetchall()
+        samples = []
+        if "rh_market_states" in tbls:
+            for sample_time, flags_raw in conn.execute(
+                    "SELECT sample_time, health_flags_json FROM rh_market_states"):
+                t = _to_datetime(sample_time)
+                if t is not None:
+                    samples.append((t, flags_raw))
+        samples.sort(key=lambda item: item[0])
+        sample_times = [t for t, _ in samples]
+        count = 0
+        details = []
+        for dec_id, decided_at in decisions:
+            decided = _to_datetime(decided_at)
+            if decided is None:
+                continue
+            idx = bisect.bisect_right(sample_times, decided) - 1
+            if idx < 0:
+                continue
+            flags = _parse_health_flags(samples[idx][1])
+            if flags:
+                count += 1
+                details.append(
+                    f"rh_gate_decisions:{dec_id}:COMPUTED_PASS_with_health_flags:{flags}")
+        return {"count": count, "sample_count": len(samples),
+                "checks_performed": ["rh_gate_decisions:missed_risk_events"],
+                "details": details,
+                "reason": "OK" if count == 0 else "MISSED_RISK_EVENTS_FOUND"}
+    except Exception as exc:
+        return {"count": None, "checks_performed": [],
+                "reason": f"audit_exception:{exc}"}
+
+
 def audit_unknown_state_positions(conn) -> dict:
     """Audit Condition 9: Assert 0 simulated positions opened under UNKNOWN / degraded state.
     Checks rh_shadow_positions and rh_gate_decisions for invalid admissions.
@@ -755,9 +957,19 @@ def _build_state(conn, db_path: str, interval_secs: float, asset_address: str,
                 unknown_state_positions=unk_positions_count,
                 synthetic_tests_passed=synthetic_tests_passed)
             span_days = (_to_datetime(last_sample) - _to_datetime(first_sample)).days
+            wk = audit_weekends_covered(conn, asset_address=asset_address,
+                                        interval_secs=interval_secs)
+            led = audit_unexplained_ledger_diffs(conn)
+            mre = audit_missed_risk_events(conn)
+            state["weekends_audit"] = wk
+            state["ledger_diffs_audit"] = led
+            state["missed_risk_events_audit"] = mre
             state["stage_b"] = stage_b_status(
-                days_covered=span_days, weekends_covered=None, unexplained_ledger_diffs=0,
-                invariant_violations=invariant_violations, missed_risk_events=0)
+                days_covered=span_days,
+                weekends_covered=wk.get("weekends_covered"),
+                unexplained_ledger_diffs=led.get("count"),
+                invariant_violations=invariant_violations,
+                missed_risk_events=mre.get("count"))
             state["stage_c_days_covered"] = span_days
     tg = conn.execute("SELECT terminal_bits_json FROM rh_gate_decisions "
                       "ORDER BY decided_at DESC LIMIT 1").fetchone()
