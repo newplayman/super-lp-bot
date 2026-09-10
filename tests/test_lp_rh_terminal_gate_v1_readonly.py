@@ -194,3 +194,70 @@ def test_same_record_differs_by_target_mode():
     live = tg.evaluate_terminal_gate(rec, target_mode="LIVE_READINESS", now=NOW)
     shadow = tg.evaluate_terminal_gate(rec, target_mode="SHADOW_SCENARIO", now=NOW)
     assert live.primary_status != shadow.primary_status
+
+
+def test_decision_id_without_episode_is_byte_identical_to_legacy():
+    """Regression guard: a record lacking ``strategy_episode`` must keep the
+    exact legacy ``decision_id``.  Any drift here silently changes every
+    existing ``rh_gate_decisions`` primary key and breaks the runner's
+    duplicate-row detection (commit 330ab3e measured 199 dup rows on it)."""
+    rec = _all_true_record()
+    assert "strategy_episode" not in rec
+    d = tg.evaluate_terminal_gate(rec, target_mode="LIVE_READINESS", now=NOW)
+    assert d.decision_id == f"rh-terminal-{rec['candidate_key']}-LIVE_READINESS"
+
+
+def test_decision_id_with_episode_is_prefixed_and_mode_suffixed():
+    """Regression guard: with ``strategy_episode`` the id must embed the
+    episode between the ``rh-terminal-`` prefix and the candidate_key, and
+    still end with the target mode so downstream consumers that split on
+    the trailing ``-<mode>`` keep working."""
+    rec = _all_true_record(strategy_episode="ep-1")
+    d = tg.evaluate_terminal_gate(rec, target_mode="LIVE_READINESS", now=NOW)
+    assert d.decision_id.startswith("rh-terminal-ep-1-")
+    assert d.decision_id.endswith("-LIVE_READINESS")
+
+
+def test_same_candidate_key_different_episodes_disagree():
+    """Purpose of this package: the daemon re-runs every 15 minutes over
+    overlapping sample windows, so the same candidate_key recurs across
+    rounds.  Distinct episodes must yield distinct decision_ids or the
+    cross-round ``rh_gate_decisions`` primary-key collision (the 199-row
+    duplicate ledger from commit 330ab3e) returns."""
+    base = _all_true_record()
+    a = tg.evaluate_terminal_gate(
+        dict(base, strategy_episode="ep-1"), target_mode="LIVE_READINESS", now=NOW)
+    b = tg.evaluate_terminal_gate(
+        dict(base, strategy_episode="ep-2"), target_mode="LIVE_READINESS", now=NOW)
+    assert a.decision_id != b.decision_id
+
+
+def test_same_episode_same_candidate_key_is_idempotent():
+    """Regression guard: within one round, re-evaluating the same record
+    (same episode + candidate_key) must produce the same decision_id.
+    Inserting the episode must not break the idempotency the runner relies
+    on to treat a re-evaluation as an upsert, not a new row."""
+    rec = _all_true_record(strategy_episode="ep-1")
+    a = tg.evaluate_terminal_gate(rec, target_mode="LIVE_READINESS", now=NOW)
+    b = tg.evaluate_terminal_gate(dict(rec), target_mode="LIVE_READINESS", now=NOW)
+    assert a.decision_id == b.decision_id
+
+
+def test_empty_string_episode_falls_back_to_legacy_id():
+    """Regression guard: an empty-string episode is 'absent', not a value.
+    Without this, ``rh-terminal--<key>-<mode>`` (double dash) would become a
+    new key shape and split the ledger between legacy and empty-episode
+    rows for the same logical decision."""
+    rec = _all_true_record(strategy_episode="")
+    d = tg.evaluate_terminal_gate(rec, target_mode="LIVE_READINESS", now=NOW)
+    assert d.decision_id == f"rh-terminal-{rec['candidate_key']}-LIVE_READINESS"
+
+
+def test_none_episode_falls_back_to_legacy_id():
+    """Regression guard: an explicit ``None`` episode must behave exactly
+    like a missing key.  The runner may serialize records where the field
+    exists but is null; treating that as an episode would mint ids of the
+    form ``rh-terminal-None-...`` and collide with no legacy row."""
+    rec = _all_true_record(strategy_episode=None)
+    d = tg.evaluate_terminal_gate(rec, target_mode="LIVE_READINESS", now=NOW)
+    assert d.decision_id == f"rh-terminal-{rec['candidate_key']}-LIVE_READINESS"

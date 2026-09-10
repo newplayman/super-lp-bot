@@ -165,8 +165,13 @@ def evaluate_terminal_gate(record, *, target_mode, now) -> GateDecision:
         reasons.append("SIMULATED_POLICY_ONLY")
 
     candidate_key = str(record.get("candidate_key") or record.get("pool_key") or "unknown")
+    episode = str(record.get("strategy_episode") or "").strip()
+    if episode:
+        decision_id = f"rh-terminal-{episode}-{candidate_key}-{target_mode}"
+    else:
+        decision_id = f"rh-terminal-{candidate_key}-{target_mode}"
     return GateDecision(
-        decision_id=f"rh-terminal-{candidate_key}-{target_mode}",
+        decision_id=decision_id,
         candidate_key=candidate_key,
         target_mode=target_mode,
         terminal_eligible=terminal_eligible,
