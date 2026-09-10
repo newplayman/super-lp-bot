@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-09-10T15:50:31Z",
+  "code_version": "a2f26259c9fd",
+  "code_version_source": "git rev-parse --short=12 HEAD",
+  "working_tree_clean": true,
+  "command": "python3 -m pytest tests/ -q -p no:cacheprovider",
+  "exit_code": 0,
+  "total": 4769,
+  "passed": 4755,
+  "failed": 0,
+  "errors": 0,
+  "skipped": 14,
+  "duration_secs": 50.95,
+  "all_passed": true
+}
