@@ -3,7 +3,7 @@
   "tool": "lp_silent_failure_lint_v1_readonly",
   "identity_schema": "(file, rule, fingerprint)",
   "note": "Baseline of known silent-failure hits matched by content fingerprint. --fail-on-new blocks any hit exceeding baseline occurrence count. Line numbers are for display only. Regenerate after an approved fix.",
-  "count": 368,
+  "count": 345,
   "hits": [
     {
       "file": "scripts/finalize_bsc_fee_velocity_overnight_run_v1_readonly.py",
@@ -141,15 +141,6 @@
       "key": "scripts/lp_bsc_fee_velocity_overnight_backfill_v1_readonly.py:352:8:5"
     },
     {
-      "file": "scripts/lp_bsc_fee_velocity_short_backfill_v2_readonly.py",
-      "line": 366,
-      "col": 54,
-      "rule": 1,
-      "fingerprint": "53edf110ee01e609",
-      "snippet": "root_cause_distribution[root_cause] = root_cause_distribution.get(root_cause, 0) + 1",
-      "key": "scripts/lp_bsc_fee_velocity_short_backfill_v2_readonly.py:366:54:1"
-    },
-    {
       "file": "scripts/lp_bsc_fee_velocity_smoke_v1_readonly.py",
       "line": 277,
       "col": 16,
@@ -265,15 +256,6 @@
       "fingerprint": "895b45bf022f4607",
       "snippet": "\"can_run_amount_fix\": verdict.get(\"quoter_staticcall_success_count\", 0) == 0,",
       "key": "scripts/lp_bsc_quoter_staticcall_amount_fix_v1_readonly.py:466:30:1"
-    },
-    {
-      "file": "scripts/lp_bsc_quoter_staticcall_amount_fix_v1_readonly.py",
-      "line": 749,
-      "col": 72,
-      "rule": 1,
-      "fingerprint": "956351c45a3703a5",
-      "snippet": "root_cause_counts[row[\"error_type\"] or \"unknown\"] = root_cause_counts.get(row[\"error_type\"] or \"unkn",
-      "key": "scripts/lp_bsc_quoter_staticcall_amount_fix_v1_readonly.py:749:72:1"
     },
     {
       "file": "scripts/lp_bsc_quoter_staticcall_amount_fix_v1_readonly.py",
@@ -490,24 +472,6 @@
       "fingerprint": "0696f643fec6d20b",
       "snippet": "for r in risk_data.get(\"row_count\", 0) and [] or []:",
       "key": "scripts/lp_candidate_scoring_v1_readonly.py:215:13:1"
-    },
-    {
-      "file": "scripts/lp_evm_standard_v3_universe_discovery_v1_readonly.py",
-      "line": 988,
-      "col": 31,
-      "rule": 1,
-      "fingerprint": "8b660f3a6f88bcc5",
-      "snippet": "by_chain[r[\"chain\"]] = by_chain.get(r[\"chain\"], 0) + 1",
-      "key": "scripts/lp_evm_standard_v3_universe_discovery_v1_readonly.py:988:31:1"
-    },
-    {
-      "file": "scripts/lp_evm_standard_v3_universe_discovery_v1_readonly.py",
-      "line": 989,
-      "col": 37,
-      "rule": 1,
-      "fingerprint": "2e41ee503fe07159",
-      "snippet": "by_protocol[r[\"protocol\"]] = by_protocol.get(r[\"protocol\"], 0) + 1",
-      "key": "scripts/lp_evm_standard_v3_universe_discovery_v1_readonly.py:989:37:1"
     },
     {
       "file": "scripts/lp_evm_standard_v3_universe_discovery_v1_readonly.py",
@@ -742,15 +706,6 @@
       "fingerprint": "30945f342ad5ab6c",
       "snippet": "return 0",
       "key": "scripts/lp_il_lvr_pipeline_v1_readonly.py:114:8:5"
-    },
-    {
-      "file": "scripts/lp_long_horizon_node_report_generator_v1.py",
-      "line": 197,
-      "col": 46,
-      "rule": 1,
-      "fingerprint": "f079e05aa6fa4e14",
-      "snippet": "observed_pools_per_chain[chain] = observed_pools_per_chain.get(chain, 0) + 1",
-      "key": "scripts/lp_long_horizon_node_report_generator_v1.py:197:46:1"
     },
     {
       "file": "scripts/lp_long_horizon_node_report_generator_v1.py",
@@ -1174,96 +1129,6 @@
       "fingerprint": "f24e05f7bce2289e",
       "snippet": "rpc_health = max(health_values, key=lambda item: severity.get(item, 0))",
       "key": "scripts/lp_panel_server_v1_readonly.py:213:57:1"
-    },
-    {
-      "file": "scripts/lp_polymarket_competitor_collector_v1_readonly.py",
-      "line": 328,
-      "col": 25,
-      "rule": 1,
-      "fingerprint": "2ddf65d8257c9f28",
-      "snippet": "rows_last += int(r.get(\"shallow_inserted\", 0)) + int(r.get(\"backfill_inserted\", 0))",
-      "key": "scripts/lp_polymarket_competitor_collector_v1_readonly.py:328:25:1"
-    },
-    {
-      "file": "scripts/lp_polymarket_competitor_collector_v1_readonly.py",
-      "line": 328,
-      "col": 61,
-      "rule": 1,
-      "fingerprint": "2ddf65d8257c9f28",
-      "snippet": "rows_last += int(r.get(\"shallow_inserted\", 0)) + int(r.get(\"backfill_inserted\", 0))",
-      "key": "scripts/lp_polymarket_competitor_collector_v1_readonly.py:328:61:1"
-    },
-    {
-      "file": "scripts/lp_polymarket_competitor_collector_v1_readonly.py",
-      "line": 329,
-      "col": 31,
-      "rule": 1,
-      "fingerprint": "9e632f1661e52686",
-      "snippet": "rows_total_seen += int(r.get(\"shallow_count\", 0))",
-      "key": "scripts/lp_polymarket_competitor_collector_v1_readonly.py:329:31:1"
-    },
-    {
-      "file": "scripts/lp_polymarket_competitor_collector_v1_readonly.py",
-      "line": 463,
-      "col": 8,
-      "rule": 3,
-      "fingerprint": "05ca82d016d97fc0",
-      "snippet": "\"SELECT timestamp, transactionHash FROM activity \"",
-      "key": "scripts/lp_polymarket_competitor_collector_v1_readonly.py:463:8:3"
-    },
-    {
-      "file": "scripts/lp_polymarket_competitor_collector_v1_readonly.py",
-      "line": 528,
-      "col": 8,
-      "rule": 3,
-      "fingerprint": "aea9418ac6cf433a",
-      "snippet": "\"SELECT raw_json FROM activity WHERE address = ? \"",
-      "key": "scripts/lp_polymarket_competitor_collector_v1_readonly.py:528:8:3"
-    },
-    {
-      "file": "scripts/lp_polymarket_competitor_collector_v1_readonly.py",
-      "line": 640,
-      "col": 17,
-      "rule": 1,
-      "fingerprint": "d1d0b8bfa906b80d",
-      "snippet": "f\"| {r.get('shallow_count', 0)} \"",
-      "key": "scripts/lp_polymarket_competitor_collector_v1_readonly.py:640:17:1"
-    },
-    {
-      "file": "scripts/lp_polymarket_competitor_collector_v1_readonly.py",
-      "line": 641,
-      "col": 17,
-      "rule": 1,
-      "fingerprint": "ce66a0138472926c",
-      "snippet": "f\"| {r.get('shallow_inserted', 0)} \"",
-      "key": "scripts/lp_polymarket_competitor_collector_v1_readonly.py:641:17:1"
-    },
-    {
-      "file": "scripts/lp_polymarket_competitor_collector_v1_readonly.py",
-      "line": 642,
-      "col": 17,
-      "rule": 1,
-      "fingerprint": "fa5e0cceb1379453",
-      "snippet": "f\"| {r.get('backfill_pages', 0)} \"",
-      "key": "scripts/lp_polymarket_competitor_collector_v1_readonly.py:642:17:1"
-    },
-    {
-      "file": "scripts/lp_polymarket_competitor_collector_v1_readonly.py",
-      "line": 643,
-      "col": 17,
-      "rule": 1,
-      "fingerprint": "fa5a98d896dbafdd",
-      "snippet": "f\"| {r.get('backfill_inserted', 0)} \"",
-      "key": "scripts/lp_polymarket_competitor_collector_v1_readonly.py:643:17:1"
-    },
-    {
-      "file": "scripts/lp_polymarket_competitor_collector_v1_readonly.py",
-      "line": 1184,
-      "col": 12,
-      "rule": 5,
-      "fingerprint": "8373f7e086bb2778",
-      "snippet": "return 2",
-      "key": "scripts/lp_polymarket_competitor_collector_v1_readonly.py:1184:12:5"
     },
     {
       "file": "scripts/lp_pool_resolve_and_rank_v1_readonly.py",
@@ -1968,24 +1833,6 @@
       "key": "scripts/lp_rh_daily_report_v1_readonly.py:250:24:1"
     },
     {
-      "file": "scripts/lp_rh_evidence_writer_v1_readonly.py",
-      "line": 124,
-      "col": 44,
-      "rule": 1,
-      "fingerprint": "ba0ee5e561892538",
-      "snippet": "result[\"missing_fields\"][col] = result[\"missing_fields\"].get(col, 0) + 1",
-      "key": "scripts/lp_rh_evidence_writer_v1_readonly.py:124:44:1"
-    },
-    {
-      "file": "scripts/lp_rh_evidence_writer_v1_readonly.py",
-      "line": 159,
-      "col": 45,
-      "rule": 1,
-      "fingerprint": "27e54651b3995bb6",
-      "snippet": "result[\"skip_reasons\"][reason] = result[\"skip_reasons\"].get(reason, 0) + 1",
-      "key": "scripts/lp_rh_evidence_writer_v1_readonly.py:159:45:1"
-    },
-    {
       "file": "scripts/lp_rh_exit_depth_v1_readonly.py",
       "line": 96,
       "col": 37,
@@ -2020,15 +1867,6 @@
       "fingerprint": "3aeaa4cf0b3eb05d",
       "snippet": "zero_for_one = bool(pool_state.get(\"zero_for_one\", True))",
       "key": "scripts/lp_rh_exit_depth_v1_readonly.py:296:23:2"
-    },
-    {
-      "file": "scripts/lp_rh_funnel_autopsy_v1_readonly.py",
-      "line": 63,
-      "col": 45,
-      "rule": 1,
-      "fingerprint": "29da20b42b32917c",
-      "snippet": "by_status[decision.primary_status] = by_status.get(decision.primary_status, 0) + 1",
-      "key": "scripts/lp_rh_funnel_autopsy_v1_readonly.py:63:45:1"
     },
     {
       "file": "scripts/lp_rh_funnel_autopsy_v1_readonly.py",
@@ -2122,15 +1960,6 @@
     },
     {
       "file": "scripts/lp_rh_provider_pool_v1_readonly.py",
-      "line": 192,
-      "col": 28,
-      "rule": 1,
-      "fingerprint": "0aa0d4c77362cf93",
-      "snippet": "self._fails[name] = self._fails.get(name, 0) + 1",
-      "key": "scripts/lp_rh_provider_pool_v1_readonly.py:192:28:1"
-    },
-    {
-      "file": "scripts/lp_rh_provider_pool_v1_readonly.py",
       "line": 214,
       "col": 25,
       "rule": 1,
@@ -2166,67 +1995,13 @@
       "key": "scripts/lp_rh_reorg_resolution_v1_readonly.py:146:36:3"
     },
     {
-      "file": "scripts/lp_rh_shadow_daemon_v1_readonly.py",
-      "line": 181,
-      "col": 38,
-      "rule": 1,
-      "fingerprint": "46c6fd6c60e2e97b",
-      "snippet": "counts[(name, session)] = counts.get((name, session), 0) + 1",
-      "key": "scripts/lp_rh_shadow_daemon_v1_readonly.py:181:38:1"
-    },
-    {
       "file": "scripts/lp_rh_shadow_runner_v1_readonly.py",
-      "line": 460,
-      "col": 39,
-      "rule": 1,
-      "fingerprint": "9a6886351ee10743",
-      "snippet": "max_impact_bps=Decimal(str(pool_meta.get(\"max_impact_bps\", 50))),",
-      "key": "scripts/lp_rh_shadow_runner_v1_readonly.py:460:39:1"
-    },
-    {
-      "file": "scripts/lp_rh_shadow_runner_v1_readonly.py",
-      "line": 533,
+      "line": 576,
       "col": 22,
       "rule": 2,
       "fingerprint": "0a5bed9d2eefede3",
       "snippet": "granted = bool(res.get(\"granted\"))",
-      "key": "scripts/lp_rh_shadow_runner_v1_readonly.py:533:22:2"
-    },
-    {
-      "file": "scripts/lp_rh_shadow_runner_v1_readonly.py",
-      "line": 745,
-      "col": 27,
-      "rule": 1,
-      "fingerprint": "cbb04132ce9c21a2",
-      "snippet": "counts[name] = counts.get(name, 0) + 1",
-      "key": "scripts/lp_rh_shadow_runner_v1_readonly.py:745:27:1"
-    },
-    {
-      "file": "scripts/lp_rh_shadow_runner_v1_readonly.py",
-      "line": 754,
-      "col": 42,
-      "rule": 1,
-      "fingerprint": "bdefb142e26fd0d1",
-      "snippet": "status_counts[s.primary_status] = status_counts.get(s.primary_status, 0) + 1",
-      "key": "scripts/lp_rh_shadow_runner_v1_readonly.py:754:42:1"
-    },
-    {
-      "file": "scripts/lp_rh_shadow_runner_v1_readonly.py",
-      "line": 756,
-      "col": 49,
-      "rule": 1,
-      "fingerprint": "8386ab2ee4059fe9",
-      "snippet": "blocker_counts[s.dominant_blocker] = blocker_counts.get(s.dominant_blocker, 0) + 1",
-      "key": "scripts/lp_rh_shadow_runner_v1_readonly.py:756:49:1"
-    },
-    {
-      "file": "scripts/lp_rh_shadow_runner_v1_readonly.py",
-      "line": 798,
-      "col": 43,
-      "rule": 1,
-      "fingerprint": "0ec0840243944a50",
-      "snippet": "steps_without_nav_reasons[r] = steps_without_nav_reasons.get(r, 0) + 1",
-      "key": "scripts/lp_rh_shadow_runner_v1_readonly.py:798:43:1"
+      "key": "scripts/lp_rh_shadow_runner_v1_readonly.py:576:22:2"
     },
     {
       "file": "scripts/lp_rh_snapshot_diff_v1_readonly.py",
@@ -2238,15 +2013,6 @@
       "key": "scripts/lp_rh_snapshot_diff_v1_readonly.py:57:8:5"
     },
     {
-      "file": "scripts/lp_rh_snapshot_diff_v1_readonly.py",
-      "line": 173,
-      "col": 38,
-      "rule": 1,
-      "fingerprint": "411f7cc8a32e8e3d",
-      "snippet": "status_transitions[key] = status_transitions.get(key, 0) + 1",
-      "key": "scripts/lp_rh_snapshot_diff_v1_readonly.py:173:38:1"
-    },
-    {
       "file": "scripts/lp_rh_store_v1_readonly.py",
       "line": 310,
       "col": 33,
@@ -2254,6 +2020,78 @@
       "fingerprint": "c3bac9005e6b8da7",
       "snippet": "+ \" FROM \" + table + \" WHERE derived_block_hash = ?\",",
       "key": "scripts/lp_rh_store_v1_readonly.py:310:33:3"
+    },
+    {
+      "file": "scripts/lp_rh_synthetic_evidence_v1.py",
+      "line": 85,
+      "col": 13,
+      "rule": 1,
+      "fingerprint": "87fa0d658a1cd644",
+      "snippet": "passed = counts.get(\"passed\", 0)",
+      "key": "scripts/lp_rh_synthetic_evidence_v1.py:85:13:1"
+    },
+    {
+      "file": "scripts/lp_rh_synthetic_evidence_v1.py",
+      "line": 86,
+      "col": 13,
+      "rule": 1,
+      "fingerprint": "614d94baaedea9d3",
+      "snippet": "failed = counts.get(\"failed\", 0)",
+      "key": "scripts/lp_rh_synthetic_evidence_v1.py:86:13:1"
+    },
+    {
+      "file": "scripts/lp_rh_synthetic_evidence_v1.py",
+      "line": 87,
+      "col": 14,
+      "rule": 1,
+      "fingerprint": "00ee12ba611434de",
+      "snippet": "skipped = counts.get(\"skipped\", 0)",
+      "key": "scripts/lp_rh_synthetic_evidence_v1.py:87:14:1"
+    },
+    {
+      "file": "scripts/lp_rh_synthetic_evidence_v1.py",
+      "line": 88,
+      "col": 13,
+      "rule": 1,
+      "fingerprint": "489018f05683e404",
+      "snippet": "errors = counts.get(\"error\", 0) + counts.get(\"errors\", 0)",
+      "key": "scripts/lp_rh_synthetic_evidence_v1.py:88:13:1"
+    },
+    {
+      "file": "scripts/lp_rh_synthetic_evidence_v1.py",
+      "line": 88,
+      "col": 38,
+      "rule": 1,
+      "fingerprint": "489018f05683e404",
+      "snippet": "errors = counts.get(\"error\", 0) + counts.get(\"errors\", 0)",
+      "key": "scripts/lp_rh_synthetic_evidence_v1.py:88:38:1"
+    },
+    {
+      "file": "scripts/lp_rh_synthetic_evidence_v1.py",
+      "line": 89,
+      "col": 14,
+      "rule": 1,
+      "fingerprint": "a132544a6ed96e89",
+      "snippet": "xfailed = counts.get(\"xfailed\", 0)",
+      "key": "scripts/lp_rh_synthetic_evidence_v1.py:89:14:1"
+    },
+    {
+      "file": "scripts/lp_rh_synthetic_evidence_v1.py",
+      "line": 90,
+      "col": 14,
+      "rule": 1,
+      "fingerprint": "3e8e5907e0b88fb5",
+      "snippet": "xpassed = counts.get(\"xpassed\", 0)",
+      "key": "scripts/lp_rh_synthetic_evidence_v1.py:90:14:1"
+    },
+    {
+      "file": "scripts/lp_rh_synthetic_evidence_v1.py",
+      "line": 205,
+      "col": 8,
+      "rule": 5,
+      "fingerprint": "8373f7e086bb2778",
+      "snippet": "return 2",
+      "key": "scripts/lp_rh_synthetic_evidence_v1.py:205:8:5"
     },
     {
       "file": "scripts/lp_rh_terminal_gate_v1_readonly.py",
@@ -2362,15 +2200,6 @@
       "fingerprint": "3481f2db74d2bd24",
       "snippet": "if self._cooldown_until.get(e[\"url\"], 0.0) <= now]",
       "key": "scripts/lp_rpc_pool_v1_readonly.py:273:19:1"
-    },
-    {
-      "file": "scripts/lp_rpc_pool_v1_readonly.py",
-      "line": 278,
-      "col": 16,
-      "rule": 1,
-      "fingerprint": "109e4cd1f28d5085",
-      "snippet": "fails = self._fails.get(url, 0) + 1",
-      "key": "scripts/lp_rpc_pool_v1_readonly.py:278:16:1"
     },
     {
       "file": "scripts/lp_rpc_pool_v1_readonly.py",
@@ -2545,21 +2374,21 @@
     },
     {
       "file": "scripts/lp_silent_failure_lint_v1_readonly.py",
-      "line": 349,
+      "line": 397,
       "col": 25,
       "rule": 1,
       "fingerprint": "130adc36bf09fbbc",
       "snippet": "if seen[ident] > baseline_counts.get(ident, 0):",
-      "key": "scripts/lp_silent_failure_lint_v1_readonly.py:349:25:1"
+      "key": "scripts/lp_silent_failure_lint_v1_readonly.py:397:25:1"
     },
     {
       "file": "scripts/lp_silent_failure_lint_v1_readonly.py",
-      "line": 430,
+      "line": 480,
       "col": 12,
       "rule": 5,
       "fingerprint": "8373f7e086bb2778",
       "snippet": "return 2",
-      "key": "scripts/lp_silent_failure_lint_v1_readonly.py:430:12:5"
+      "key": "scripts/lp_silent_failure_lint_v1_readonly.py:480:12:5"
     },
     {
       "file": "scripts/lp_solana_m1_dry_run_v1_readonly.py",
@@ -2940,15 +2769,6 @@
       "key": "scripts/lp_tier_c_exit_feasibility_v1_readonly.py:391:63:1"
     },
     {
-      "file": "scripts/lp_tier_c_exit_feasibility_v1_readonly.py",
-      "line": 408,
-      "col": 31,
-      "rule": 1,
-      "fingerprint": "e6ca0d0e92d7087c",
-      "snippet": "counts[v[\"verdict\"]] = counts.get(v[\"verdict\"], 0) + 1",
-      "key": "scripts/lp_tier_c_exit_feasibility_v1_readonly.py:408:31:1"
-    },
-    {
       "file": "scripts/lp_tp_d_compare_v1_readonly.py",
       "line": 71,
       "col": 65,
@@ -2995,15 +2815,6 @@
     },
     {
       "file": "scripts/lp_v3_tick_liquidity_pipeline_v2_readonly.py",
-      "line": 260,
-      "col": 33,
-      "rule": 1,
-      "fingerprint": "662a649e7776a303",
-      "snippet": "succ[r[\"pool_id\"]] = succ.get(r[\"pool_id\"], 0) + 1",
-      "key": "scripts/lp_v3_tick_liquidity_pipeline_v2_readonly.py:260:33:1"
-    },
-    {
-      "file": "scripts/lp_v3_tick_liquidity_pipeline_v2_readonly.py",
       "line": 268,
       "col": 81,
       "rule": 1,
@@ -3028,15 +2839,6 @@
       "fingerprint": "5e67158ea3310eed",
       "snippet": "\"quote_success_count\": succ.get(pool_id, 0),",
       "key": "scripts/lp_v3_tick_liquidity_pipeline_v2_readonly.py:310:35:1"
-    },
-    {
-      "file": "scripts/lp_v3_tick_liquidity_pipeline_v2_readonly.py",
-      "line": 522,
-      "col": 20,
-      "rule": 1,
-      "fingerprint": "aad14a8780551f8a",
-      "snippet": "dist[key] = dist.get(key, 0) + 1",
-      "key": "scripts/lp_v3_tick_liquidity_pipeline_v2_readonly.py:522:20:1"
     },
     {
       "file": "scripts/lp_v3_tick_liquidity_pipeline_v2_readonly.py",
@@ -3100,15 +2902,6 @@
       "fingerprint": "36b952c2261f537b",
       "snippet": "source_runtime_minutes = source_verdict.get(\"actual_runtime_minutes\", 0)",
       "key": "scripts/rebuild_lp_long_horizon_6h_verdict_from_checkpoints_v1.py:310:29:1"
-    },
-    {
-      "file": "scripts/strategy_evidence_r4c_independent_clmm_liquidity_replay.py",
-      "line": 627,
-      "col": 42,
-      "rule": 1,
-      "fingerprint": "96dd0529ee0880d6",
-      "snippet": "rec_counts[c[\"recommendation\"]] = rec_counts.get(c[\"recommendation\"], 0) + 1",
-      "key": "scripts/strategy_evidence_r4c_independent_clmm_liquidity_replay.py:627:42:1"
     },
     {
       "file": "scripts/strategy_pivot_d1_delta_hedged_lp_feasibility.py",

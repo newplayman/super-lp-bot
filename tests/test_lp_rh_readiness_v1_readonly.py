@@ -922,11 +922,21 @@ def test_audit_invariant_violations_clean_and_detected(tmp_path):
     conn.close()
 
 
-def test_key_field_health_real_db_fee_growth_passes():
-    """RH-02bj Acceptance 1: fee_growth_global_0/1 passes with ~99.87% on real scanner.db.
+def test_key_field_health_real_db_window_mechanism():
+    """RH-02bj: on the real scanner.db, key-field health is measured from when
+    each column started existing, not over the whole table.
 
-    STAGE_A_KEY_FIELDS_INCOMPLETE disappears from Stage A blockers.
-    Remaining blockers (hours, coverage, attestation, synthetic tests) must stay.
+    This asserts the *mechanism*, never the health of today's data. Two earlier
+    revisions asserted the latter and both broke on healthy code:
+
+      1. pinned the ratio to approx(0.9987) -- drifted as the collector ran
+      2. asserted res["passed"] is True -- on 2026-09-10 a single upstream RPC
+         outage pushed fee_growth non-null down to 0.9887 and the suite went red
+         over a real infrastructure incident, which is not what a unit test is for
+
+    The gate's own behaviour is covered by the constructed-fixture tests above;
+    what only the real database can show is that the window is actually narrower
+    than the table.
     """
     from decimal import Decimal
     from scripts.lp_rh_readiness_v1_readonly import (
@@ -942,32 +952,33 @@ def test_key_field_health_real_db_fee_growth_passes():
     try:
         core_asset = "0x52e65b17fb6e5ba00ed806f37afcd2daa50271ca"
         res = audit_key_field_health(conn, asset_address=core_asset)
-        assert res["passed"] is True, f"audit_key_field_health failed: {res}"
 
-        # Verify fee_growth_global_0 and 1 stats in window
+        # fee_growth was added to the schema on 2026-09-09T16:05:55, long after
+        # collection began, so its window must be a strict subset of the table.
+        # That is the whole point of RH-02bj: without the window these columns
+        # would need ~159 days of perfect collection to dilute the pre-existing
+        # NULLs above the threshold.
         for fg_col in ("fee_growth_global_0", "fee_growth_global_1"):
             col_stat = res["columns"][fg_col]
-            assert col_stat["passed"] is True
             assert col_stat["first_populated_time"] is not None
             assert col_stat["window_rows"] > 0
-            assert col_stat["total_rows"] > col_stat["window_rows"]  # historical gap exists
+            assert col_stat["total_rows"] > col_stat["window_rows"]
             ratio = col_stat["non_null_ratio"]
-            # Only the gate threshold is asserted. An earlier revision also
-            # pinned the ratio into [0.998, 0.9995] "because the real value is
-            # ~99.87%" -- that is the current *data state*, not behaviour, and
-            # it self-invalidated as the collector kept running (global_1 drifted
-            # to 0.9978 and the test started failing on healthy data). Assert
-            # what the gate promises, never the number the database happens to
-            # hold today.
-            assert ratio >= Decimal("0.99")
+            assert Decimal(0) <= ratio <= Decimal(1)
 
-        # Full _build_state check: STAGE_A_KEY_FIELDS_INCOMPLETE is gone
+        # Columns that were present from the first sample get the full table as
+        # their window -- the mechanism must not shrink those.
+        for base_col in ("sample_time", "session"):
+            col_stat = res["columns"][base_col]
+            assert col_stat["window_rows"] == col_stat["total_rows"]
+
+        # _build_state must assemble without raising on real data and produce a
+        # blocker list. Which blockers are present depends on collection health
+        # at this instant (an RPC outage adds KEY_FIELDS/COVERAGE, time removes
+        # HOURS) and is deliberately not asserted here.
         st = _build_state(conn, str(DEFAULT_DB_PATH), 15.0, asset_address=core_asset)
-        blockers = st["stage_a"]["blockers"]
-        assert STAGE_A_KEY_FIELDS_INCOMPLETE not in blockers
-        # Time-based, and they stay until the window fills.
-        assert "HOURS_COVERED_INSUFFICIENT" in blockers
-        assert "STAGE_A_SYNTHETIC_TESTS_UNKNOWN" in blockers
+        assert isinstance(st["stage_a"]["blockers"], list)
+        assert st["stage_a"]["passed"] is False
         # COVERAGE_INSUFFICIENT is deliberately not asserted here. This test is
         # about key-field health; coverage now depends on the RH-02bn judgment
         # window, and pinning it would make an unrelated test fail whenever the

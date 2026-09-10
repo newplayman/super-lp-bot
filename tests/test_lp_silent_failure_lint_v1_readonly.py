@@ -6,6 +6,7 @@ from pathlib import Path
 from scripts.lp_silent_failure_lint_v1_readonly import (
     BaselineFormatError,
     _load_baseline,
+    _scan_source,
     fingerprint_snippet,
     main,
     normalize_snippet,
@@ -37,6 +38,77 @@ def test_rule1_none_or_str_default_is_clean():
     assert 1 not in _rules('x = d.get("k", None)')
     assert 1 not in _rules('x = d.get("k")')
     assert 1 not in _rules('x = d.get("k", "default")')
+
+
+# --- Rule 1: counter-increment idiom `.get(k, 0) + N` is excluded ---
+def test_rule1_counter_increment_add_is_excluded():
+    assert 1 not in _rules('counts[k] = counts.get(k, 0) + 1')
+
+
+def test_rule1_counter_increment_subscript_is_excluded():
+    assert 1 not in _rules('by_day[d] = by_day.get(d, 0) + 1')
+
+
+def test_rule1_counter_increment_sub_is_excluded():
+    assert 1 not in _rules('x = c.get(k, 0) - 1')
+
+
+def test_rule1_counter_increment_float_is_excluded():
+    assert 1 not in _rules('x = c.get(k, 0) + 2.5')
+
+
+def test_rule1_counter_increment_right_not_literal_is_reported():
+    assert 1 in _rules('total = a.get(k, 0) + b.get(k, 0)')
+
+
+def test_rule1_counter_increment_right_is_variable_is_reported():
+    assert 1 in _rules('x = state.get("balance", 0) - fee')
+
+
+def test_rule1_counter_increment_default_not_zero_is_reported():
+    assert 1 in _rules('y = cfg.get("retries", 3) + 1')
+
+
+def test_rule1_counter_increment_get_on_right_is_reported():
+    assert 1 in _rules('z = 1 + counts.get(k, 0)')
+
+
+def test_rule1_counter_increment_parent_is_compare_is_reported():
+    assert 1 in _rules('w = cp.get("usdc_balance_raw", 0) < 10 * 10**6')
+
+
+def test_rule1_counter_increment_parent_is_boolop_is_reported():
+    assert 1 in _rules('v = int(state.get("pool_count", 0) or 0)')
+
+
+def test_rule1_counter_increment_default_is_bool_not_treated_as_zero():
+    # Spec intent for the bool case: a bool default must NOT be treated as the
+    # counter-increment literal 0 (condition 3 excludes bool, since False == 0).
+    # Note: `False` is not a numeric default, so `flags.get(k, False)` is not a
+    # rule1 hit to begin with; we assert the exclusion predicate directly.
+    import ast
+    from scripts.lp_silent_failure_lint_v1_readonly import (
+        _annotate_parents, _is_counter_increment)
+    tree = ast.parse('u = flags.get(k, False) + 1')
+    _annotate_parents(tree)
+    get_calls = [n for n in ast.walk(tree)
+                 if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
+                 and n.func.attr == "get"]
+    assert len(get_calls) == 1
+    call = get_calls[0]
+    assert _is_counter_increment(call, getattr(call, "_lint_parent", None)) is False
+
+
+def test_rule1_counter_increment_excluded_count():
+    src = (
+        'counts[k] = counts.get(k, 0) + 1\n'
+        'by_day[d] = by_day.get(d, 0) + 1\n'
+        'x = state.get("balance", 0) - fee\n'
+    )
+    hits, excluded = _scan_source(src, "snippet.py")
+    rule1_hits = [h for h in hits if h.rule == 1]
+    assert len(rule1_hits) == 1
+    assert excluded == 2
 
 
 # --- Rule 2: bool(x.get(...)) ---

@@ -124,6 +124,38 @@ def _is_numeric_default(node: ast.AST) -> bool:
     return _is_numeric_constant(node) or _is_decimal_numeric_call(node)
 
 
+def _annotate_parents(tree: ast.AST) -> None:
+    """One-shot: set `child._lint_parent = parent` for every child node in the tree."""
+    for parent in ast.walk(tree):
+        for child in ast.iter_child_nodes(parent):
+            child._lint_parent = parent
+
+
+def _is_counter_increment(call_node: ast.AST, parent) -> bool:
+    """True if `call_node` is a `.get(k, 0)` used as the LEFT operand of a
+    `+ <numeric literal>` / `- <numeric literal>` BinOp — the counter-increment
+    idiom, where 0 is the only correct semantic ("not yet counted = zero").
+    All four conditions must hold; if any fails the hit is still reported."""
+    if not isinstance(parent, ast.BinOp):
+        return False
+    if not isinstance(parent.op, (ast.Add, ast.Sub)):
+        return False
+    if parent.left is not call_node:
+        return False
+    if len(call_node.args) < 2:
+        return False
+    default = call_node.args[1]
+    if not (isinstance(default, ast.Constant) and default.value == 0
+            and not isinstance(default.value, bool)):
+        return False
+    right = parent.right
+    if not (isinstance(right, ast.Constant)
+            and isinstance(right.value, (int, float))
+            and not isinstance(right.value, bool)):
+        return False
+    return True
+
+
 def _sql_address_eq_without_lower(s: str) -> bool:
     return bool(_ADDR_EQ_RE.search(s)) and not bool(_LOWER_RE.search(s))
 
@@ -192,12 +224,13 @@ def _is_return_constant(node: ast.AST) -> bool:
     return isinstance(node, ast.Constant) and node.value is not None
 
 
-def scan_source(source: str, filename: str) -> list[Hit]:
-    """Parse one source string and return all rule hits (empty list on SyntaxError)."""
+def _scan_source(source: str, filename: str) -> tuple[list[Hit], int]:
+    """Parse one source string; return (hits, excluded_counter_idiom).
+    Empty hits on SyntaxError."""
     try:
         tree = ast.parse(source, filename=filename)
     except SyntaxError:
-        return []
+        return [], 0
     lines = source.splitlines()
 
     def snippet(node: ast.AST) -> str:
@@ -206,15 +239,20 @@ def scan_source(source: str, filename: str) -> list[Hit]:
             return lines[ln - 1].strip()[:100]
         return ""
 
+    _annotate_parents(tree)
     hits: list[Hit] = []
+    excluded_counter_idiom = 0
 
     # Rule 1: .get(key, <numeric literal>)
     for node in ast.walk(tree):
         if (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
                 and node.func.attr == "get" and len(node.args) >= 2
                 and _is_numeric_default(node.args[1])):
-            hits.append(Hit(filename, node.lineno, node.col_offset, 1,
-                            snippet(node), WHY[1]))
+            if _is_counter_increment(node, getattr(node, "_lint_parent", None)):
+                excluded_counter_idiom += 1
+            else:
+                hits.append(Hit(filename, node.lineno, node.col_offset, 1,
+                                snippet(node), WHY[1]))
 
     # Rule 2: bool(x.get(...))
     for node in ast.walk(tree):
@@ -249,6 +287,12 @@ def scan_source(source: str, filename: str) -> list[Hit]:
                                     snippet(stmt), WHY[5]))
                     break
 
+    return hits, excluded_counter_idiom
+
+
+def scan_source(source: str, filename: str) -> list[Hit]:
+    """Parse one source string and return all rule hits (empty list on SyntaxError)."""
+    hits, _ = _scan_source(source, filename)
     return hits
 
 
@@ -262,17 +306,21 @@ def _label(p: Path, root: Path | None) -> str:
     return str(p)
 
 
-def scan_files(paths: list[Path], root: Path | None = None) -> list[Hit]:
-    """Scan .py files on disk and return all hits, sorted by (file, line, col, rule)."""
+def scan_files(paths: list[Path], root: Path | None = None) -> tuple[list[Hit], int]:
+    """Scan .py files on disk; return (hits, excluded_counter_idiom),
+    hits sorted by (file, line, col, rule)."""
     hits: list[Hit] = []
+    excluded_counter_idiom = 0
     for p in paths:
         try:
             source = p.read_text(encoding="utf-8")
         except (OSError, UnicodeDecodeError):
             continue
-        hits.extend(scan_source(source, _label(p, root)))
+        h, e = _scan_source(source, _label(p, root))
+        hits.extend(h)
+        excluded_counter_idiom += e
     hits.sort(key=lambda h: (h.file, h.line, h.col, h.rule))
-    return hits
+    return hits, excluded_counter_idiom
 
 
 def _default_root() -> Path:
@@ -378,18 +426,19 @@ def _write_baseline(path: Path, hits: list[Hit]) -> None:
                     encoding="utf-8")
 
 
-def _print_table(hits: list[Hit]) -> None:
+def _print_table(hits: list[Hit], excluded_counter_idiom: int = 0) -> None:
     if not hits:
         print("no silent-failure patterns found")
-        return
-    print(f"{'RULE':<5} {'LOCATION':<55} SNIPPET")
-    print("-" * 100)
-    for h in hits:
-        print(f"{h.rule:<5} {f'{h.file}:{h.line}':<55} {h.snippet}")
-    print("-" * 100)
-    print(f"{len(hits)} hit(s). Why each rule is dangerous:")
-    for rule in sorted({h.rule for h in hits}):
-        print(f"  rule {rule}: {WHY[rule]}")
+    else:
+        print(f"{'RULE':<5} {'LOCATION':<55} SNIPPET")
+        print("-" * 100)
+        for h in hits:
+            print(f"{h.rule:<5} {f'{h.file}:{h.line}':<55} {h.snippet}")
+        print("-" * 100)
+        print(f"{len(hits)} hit(s). Why each rule is dangerous:")
+        for rule in sorted({h.rule for h in hits}):
+            print(f"  rule {rule}: {WHY[rule]}")
+    print(f"excluded_counter_idiom: {excluded_counter_idiom}")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -411,11 +460,12 @@ def main(argv: list[str] | None = None) -> int:
     baseline_path = Path(args.baseline) if args.baseline else _default_baseline(root)
 
     if args.stdin:
-        hits = scan_source(sys.stdin.read(), args.name)
+        hits, excluded_counter_idiom = _scan_source(sys.stdin.read(), args.name)
     elif args.path:
-        hits = scan_files([Path(args.path)], root=root)
+        hits, excluded_counter_idiom = scan_files([Path(args.path)], root=root)
     else:
-        hits = scan_files(sorted((root / "scripts").glob("*.py")), root=root)
+        hits, excluded_counter_idiom = scan_files(
+            sorted((root / "scripts").glob("*.py")), root=root)
 
     if args.write_baseline:
         _write_baseline(baseline_path, hits)
@@ -433,11 +483,12 @@ def main(argv: list[str] | None = None) -> int:
         if args.json:
             print(json.dumps({
                 "count": len(hits), "new_count": len(new),
+                "excluded_counter_idiom": excluded_counter_idiom,
                 "hits": [h.to_dict() for h in hits],
                 "new": [h.to_dict() for h in new],
             }, ensure_ascii=False, indent=2))
         else:
-            _print_table(hits)
+            _print_table(hits, excluded_counter_idiom)
             print(f"\n--fail-on-new: {len(new)} new hit(s) not in baseline "
                   f"({baseline_path})")
             for h in new:
@@ -446,10 +497,11 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.json:
         print(json.dumps({"count": len(hits),
+                          "excluded_counter_idiom": excluded_counter_idiom,
                           "hits": [h.to_dict() for h in hits]},
                          ensure_ascii=False, indent=2))
     else:
-        _print_table(hits)
+        _print_table(hits, excluded_counter_idiom)
     return 0
 
 

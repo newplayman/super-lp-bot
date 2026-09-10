@@ -802,8 +802,8 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
                 # journal entry (assets move wallet -> LP position).  Each leg
                 # is one row.  NOTE: rh_journal's PRIMARY KEY is event_id, so
                 # the two legs cannot share one event_id (the spec's literal
-                # f"{strategy_episode}-open" would raise IntegrityError); each
-                # leg therefore carries its own event_id.  Each row is
+                # f"{strategy_episode}-open" would violate that primary key);
+                # each leg therefore carries its own event_id.  Each row is
                 # self-balancing (one debit + one credit account, same amount),
                 # so the Stage B balance audit (audit_unexplained_ledger_diffs)
                 # still reports count == 0.  is_external_flow=False: this is an
