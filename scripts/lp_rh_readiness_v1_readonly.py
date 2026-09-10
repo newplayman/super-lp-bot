@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 import bisect
 import json
+import re
 import subprocess
 import sys
 from datetime import datetime, timedelta, timezone
@@ -210,7 +211,18 @@ STAGE_A_INVARIANT_VIOLATIONS = "STAGE_A_INVARIANT_VIOLATIONS"
 STAGE_A_INVARIANT_VIOLATIONS_UNAVAILABLE = "STAGE_A_INVARIANT_VIOLATIONS_UNAVAILABLE"
 STAGE_A_UNKNOWN_STATE_POSITIONS = "STAGE_A_UNKNOWN_STATE_POSITIONS"
 STAGE_A_SYNTHETIC_TESTS_UNKNOWN = "STAGE_A_SYNTHETIC_TESTS_UNKNOWN"
+STAGE_A_SYNTHETIC_TESTS_FAILED = "STAGE_A_SYNTHETIC_TESTS_FAILED"
 JUDGMENT_WINDOW_UNRESOLVED = "JUDGMENT_WINDOW_UNRESOLVED"
+
+# Synthetic test evidence audit reasons (RH-02bw)
+SYNTHETIC_EVIDENCE_MISSING = "SYNTHETIC_EVIDENCE_MISSING"
+SYNTHETIC_EVIDENCE_INVALID = "SYNTHETIC_EVIDENCE_INVALID"
+SYNTHETIC_EVIDENCE_SCHEMA_MISMATCH = "SYNTHETIC_EVIDENCE_SCHEMA_MISMATCH"
+SYNTHETIC_EVIDENCE_INCOMPLETE = "SYNTHETIC_EVIDENCE_INCOMPLETE"
+SYNTHETIC_EVIDENCE_HEAD_UNRESOLVED = "SYNTHETIC_EVIDENCE_HEAD_UNRESOLVED"
+SYNTHETIC_EVIDENCE_STALE_CODE_VERSION = "SYNTHETIC_EVIDENCE_STALE_CODE_VERSION"
+SYNTHETIC_EVIDENCE_DIRTY_WORKING_TREE = "SYNTHETIC_EVIDENCE_DIRTY_WORKING_TREE"
+SYNTHETIC_TESTS_FAILED = "SYNTHETIC_TESTS_FAILED"
 
 # Key field health reason codes (RH-02bj)
 KEY_FIELD_NEVER_POPULATED = "KEY_FIELD_NEVER_POPULATED"
@@ -306,9 +318,11 @@ def stage_a_status(*, first_sample, last_sample, expected_interval_secs,
         if cov_cmp < STAGE_A_MIN_COVERAGE:
             blockers.append("COVERAGE_INSUFFICIENT")
 
-    # 2. Synthetic tests passed (external evidence input)
-    if synthetic_tests_passed is None or synthetic_tests_passed is False:
+    # 2. Synthetic tests passed (external evidence input, RH-02bw)
+    if synthetic_tests_passed is None:
         blockers.append(STAGE_A_SYNTHETIC_TESTS_UNKNOWN)
+    elif synthetic_tests_passed is False:
+        blockers.append(STAGE_A_SYNTHETIC_TESTS_FAILED)
 
     # 3. Key fields non-null check
     key_fields_ok = True
@@ -495,6 +509,22 @@ def _render_stages(state, stage_a, stage_b, live_gate) -> list:
         if unavail:
             v_str = _fmt(inv_audit.get("violations_count"))
             lines.append(f"  - invariant: {v_str} (未执行的检查: {', '.join(unavail)})")
+    syn = state.get("synthetic_evidence") if state else None
+    if syn:
+        s_passed = syn.get("passed")
+        s_reason = syn.get("reason", "SYNTHETIC_EVIDENCE_MISSING")
+        if s_passed is True:
+            lines.append(f"  - synthetic: OK (code_version={_fmt(syn.get('code_version'))}, generated_at={_fmt(syn.get('generated_at'))})")
+        elif s_passed is False:
+            lines.append(f"  - synthetic: FAILED ({s_reason})")
+        else:
+            lines.append(f"  - synthetic: NOT_MEASURED ({s_reason})")
+    elif stage_a.get("synthetic_tests_passed") is True:
+        lines.append("  - synthetic: OK (code_version=OVERRIDE, generated_at=NOT_MEASURED)")
+    elif stage_a.get("synthetic_tests_passed") is False:
+        lines.append(f"  - synthetic: FAILED ({STAGE_A_SYNTHETIC_TESTS_FAILED})")
+    else:
+        lines.append("  - synthetic: NOT_MEASURED (SYNTHETIC_EVIDENCE_MISSING)")
     kf = stage_a.get("key_field_health")
     if kf and isinstance(kf, dict) and kf.get("columns"):
         lines.append("  - key_fields:")
@@ -1135,6 +1165,169 @@ def audit_unknown_state_positions(conn) -> dict:
         return {"passed": False, "violations_count": None, "error": str(exc)}
 
 
+def audit_synthetic_tests(path: Any, *, repo_root: Any) -> dict:
+    """Audit synthetic test evidence file against repo HEAD (RH-02bw).
+
+    Fail-close semantics:
+      - None / missing file / invalid JSON -> None
+      - Schema mismatch / incomplete / unresolved HEAD -> None
+      - Stale code version (not matching HEAD) -> False
+      - Dirty working tree in evidence -> False
+      - Tests failed -> False
+      - All checks pass -> True
+    """
+    if path is None:
+        return {
+            "passed": None,
+            "reason": SYNTHETIC_EVIDENCE_MISSING,
+            "code_version": None,
+            "head_version": None,
+            "generated_at": None,
+            "evidence_path": None,
+        }
+
+    p = Path(path)
+    ev_path_str = str(path)
+    if not p.exists() or not p.is_file():
+        return {
+            "passed": None,
+            "reason": SYNTHETIC_EVIDENCE_MISSING,
+            "code_version": None,
+            "head_version": None,
+            "generated_at": None,
+            "evidence_path": ev_path_str,
+        }
+
+    try:
+        raw_text = p.read_text(encoding="utf-8")
+        data = json.loads(raw_text)
+    except Exception:
+        return {
+            "passed": None,
+            "reason": SYNTHETIC_EVIDENCE_INVALID,
+            "code_version": None,
+            "head_version": None,
+            "generated_at": None,
+            "evidence_path": ev_path_str,
+        }
+
+    if not isinstance(data, dict):
+        return {
+            "passed": None,
+            "reason": SYNTHETIC_EVIDENCE_INVALID,
+            "code_version": None,
+            "head_version": None,
+            "generated_at": None,
+            "evidence_path": ev_path_str,
+        }
+
+    # Schema version check
+    if data.get("schema_version") != 1:
+        return {
+            "passed": None,
+            "reason": SYNTHETIC_EVIDENCE_SCHEMA_MISMATCH,
+            "code_version": data.get("code_version") if isinstance(data.get("code_version"), str) else None,
+            "head_version": None,
+            "generated_at": data.get("generated_at") if isinstance(data.get("generated_at"), str) else None,
+            "evidence_path": ev_path_str,
+        }
+
+    # Incomplete check (must have code_version and all_passed keys)
+    if "code_version" not in data or "all_passed" not in data:
+        return {
+            "passed": None,
+            "reason": SYNTHETIC_EVIDENCE_INCOMPLETE,
+            "code_version": data.get("code_version") if isinstance(data.get("code_version"), str) else None,
+            "head_version": None,
+            "generated_at": data.get("generated_at") if isinstance(data.get("generated_at"), str) else None,
+            "evidence_path": ev_path_str,
+        }
+
+    # Parse generated_at (must be parseable ISO datetime)
+    gen_at = data.get("generated_at")
+    if gen_at is None or not isinstance(gen_at, str) or _to_datetime(gen_at) is None:
+        return {
+            "passed": None,
+            "reason": SYNTHETIC_EVIDENCE_INVALID,
+            "code_version": data.get("code_version") if isinstance(data.get("code_version"), str) else None,
+            "head_version": None,
+            "generated_at": gen_at if isinstance(gen_at, str) else None,
+            "evidence_path": ev_path_str,
+        }
+
+    # Resolve HEAD via git rev-parse --short=12 HEAD in repo_root
+    root_path = Path(repo_root) if repo_root else Path(REPO_ROOT)
+    head_version = None
+    if root_path.exists() and root_path.is_dir():
+        try:
+            proc = subprocess.run(
+                ["git", "rev-parse", "--short=12", "HEAD"],
+                cwd=str(root_path),
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if proc.returncode == 0:
+                sha = proc.stdout.strip()
+                if re.fullmatch(r"[0-9a-f]{12}", sha):
+                    head_version = sha
+        except Exception:
+            head_version = None
+
+    if head_version is None:
+        return {
+            "passed": None,
+            "reason": SYNTHETIC_EVIDENCE_HEAD_UNRESOLVED,
+            "code_version": data.get("code_version") if isinstance(data.get("code_version"), str) else None,
+            "head_version": None,
+            "generated_at": gen_at,
+            "evidence_path": ev_path_str,
+        }
+
+    # Stale code version check
+    file_code_version = data.get("code_version")
+    if file_code_version != head_version:
+        return {
+            "passed": False,
+            "reason": SYNTHETIC_EVIDENCE_STALE_CODE_VERSION,
+            "code_version": file_code_version if isinstance(file_code_version, str) else None,
+            "head_version": head_version,
+            "generated_at": gen_at,
+            "evidence_path": ev_path_str,
+        }
+
+    # Dirty working tree check
+    if data.get("working_tree_clean") is not True:
+        return {
+            "passed": False,
+            "reason": SYNTHETIC_EVIDENCE_DIRTY_WORKING_TREE,
+            "code_version": file_code_version,
+            "head_version": head_version,
+            "generated_at": gen_at,
+            "evidence_path": ev_path_str,
+        }
+
+    # Tests all passed check
+    if data.get("all_passed") is not True:
+        return {
+            "passed": False,
+            "reason": SYNTHETIC_TESTS_FAILED,
+            "code_version": file_code_version,
+            "head_version": head_version,
+            "generated_at": gen_at,
+            "evidence_path": ev_path_str,
+        }
+
+    return {
+        "passed": True,
+        "reason": "OK",
+        "code_version": file_code_version,
+        "head_version": head_version,
+        "generated_at": gen_at,
+        "evidence_path": ev_path_str,
+    }
+
+
 def _render_budget(budget: Optional[Mapping]) -> list:
     lines = ["## 预算用量", ""]
     b = budget or {}
@@ -1165,6 +1358,7 @@ def render_dashboard(state: Optional[Mapping]) -> str:
 
 def _build_state(conn, db_path: str, interval_secs: float, asset_address: str,
                  synthetic_tests_passed: Optional[bool] = None,
+                 synthetic_evidence_path: Optional[str] = None,
                  invariant_violations: Optional[int] = None,
                  judgment_window_start: Optional[str] = None,
                  repo_root: Optional[str] = None) -> dict:
@@ -1172,6 +1366,8 @@ def _build_state(conn, db_path: str, interval_secs: float, asset_address: str,
     if not asset_address:
         raise ValueError("asset_address is required")
     state: dict = {}
+
+    root = repo_root if repo_root is not None else str(REPO_ROOT)
 
     # Resolve judgment window
     if judgment_window_start is not None:
@@ -1182,9 +1378,28 @@ def _build_state(conn, db_path: str, interval_secs: float, asset_address: str,
             "reason": "OK",
         }
     else:
-        root = repo_root if repo_root is not None else str(REPO_ROOT)
         judgment_window = resolve_judgment_window(root)
     state["judgment_window"] = judgment_window
+
+    # Resolve synthetic test evidence (RH-02bw)
+    ev_path = (
+        synthetic_evidence_path
+        if synthetic_evidence_path is not None
+        else str(Path(root) / "reports" / "lp_rh" / "synthetic_tests_evidence.json")
+    )
+    if synthetic_tests_passed is not None:
+        state["synthetic_evidence"] = {
+            "passed": synthetic_tests_passed,
+            "reason": "CLI_OVERRIDE",
+            "code_version": "OVERRIDE",
+            "head_version": None,
+            "generated_at": None,
+            "evidence_path": ev_path,
+        }
+    else:
+        syn_audit = audit_synthetic_tests(ev_path, repo_root=root)
+        synthetic_tests_passed = syn_audit["passed"]
+        state["synthetic_evidence"] = syn_audit
 
     cov = coverage_for_asset(
         conn,
@@ -1333,6 +1548,8 @@ def main(argv: Optional[list] = None) -> int:
     parser.add_argument("--asset-address", required=True, help="asset address to audit Stage A coverage for")
     parser.add_argument("--synthetic-tests-passed", action="store_true", default=None,
                         help="evidence input indicating synthetic calendar/exception tests passed")
+    parser.add_argument("--synthetic-evidence-path", default=None,
+                        help="path to synthetic test evidence JSON (defaults to reports/lp_rh/synthetic_tests_evidence.json)")
     parser.add_argument("--invariant-violations", type=int, default=None,
                         help="override detected invariant violations count (defaults to read-only DB audit)")
     parser.add_argument("--judgment-window-start", default=None,
@@ -1346,6 +1563,7 @@ def main(argv: Optional[list] = None) -> int:
             conn, args.db, args.interval_secs,
             asset_address=args.asset_address,
             synthetic_tests_passed=args.synthetic_tests_passed,
+            synthetic_evidence_path=args.synthetic_evidence_path,
             invariant_violations=args.invariant_violations,
             judgment_window_start=args.judgment_window_start,
             repo_root=args.repo,

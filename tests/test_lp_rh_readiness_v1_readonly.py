@@ -36,6 +36,35 @@ BUDGET_OVER = {"bytes": 2147483649, "soft_budget_bytes": 2147483648,
                "fraction": 1.0, "state": "OVER"}
 
 
+
+def _market_row(**over):
+    """One rh_market_states row with every NOT NULL column filled in.
+
+    Four workers in a row hand-wrote this dict and hit
+    `NOT NULL constraint failed`, because insert_row() silently drops names the
+    table does not have -- one of them passed twelve keys of which nine were
+    invented (pool_address, block_number, price, spread, depth_bid, ...), so the
+    only signal was a NOT NULL failure on a column they *had* omitted.
+
+    Real columns:
+      NOT NULL: asset_address, sample_time, chain_id, session, health_flags_json
+      nullable: source_payload_hash, reference_bid, reference_ask, reference_mid,
+                reference_age_secs, multiplier_human, oracle_paused,
+                derived_block_hash, derived_block_number, source_event_time,
+                fee_growth_global_0, fee_growth_global_1
+    """
+    row = {
+        "asset_address": "0x52e65b17fb6e5ba00ed806f37afcd2daa50271ca",
+        "sample_time": "2026-09-08T00:00:00Z",
+        "chain_id": 4663,
+        "session": "RTH",
+        "health_flags_json": "[]",
+        "reference_mid": "2400",
+    }
+    row.update(over)
+    return row
+
+
 def clean_live_gate():
     return live_gate_status(usable_provider_count=2, capital_policy_approved=True,
                             signatures=0, broadcasts=0, keys_created=0)
@@ -122,7 +151,7 @@ def test_stage_a_synthetic_tests_missing_or_failed_blocks():
     assert a_none["passed"] is False
     assert "STAGE_A_SYNTHETIC_TESTS_UNKNOWN" in a_none["blockers"]
 
-    # Evidence False -> blocked
+    # Evidence False -> blocked (RH-02bw: STAGE_A_SYNTHETIC_TESTS_FAILED)
     a_false = stage_a_status(
         first_sample="2026-09-08T00:00:00Z", last_sample="2026-09-11T00:00:00Z",
         expected_interval_secs=15, actual_samples=72 * 3600 // 15,
@@ -131,7 +160,8 @@ def test_stage_a_synthetic_tests_missing_or_failed_blocks():
         invariant_violations=0, unknown_state_positions=0,
     )
     assert a_false["passed"] is False
-    assert "STAGE_A_SYNTHETIC_TESTS_UNKNOWN" in a_false["blockers"]
+    assert "STAGE_A_SYNTHETIC_TESTS_FAILED" in a_false["blockers"]
+    assert "STAGE_A_SYNTHETIC_TESTS_UNKNOWN" not in a_false["blockers"]
 
 
 def test_stage_a_synthetic_tests_clean_passes():
@@ -2044,3 +2074,345 @@ def test_rh02bv_9_eip55_address_case_insensitivity(tmp_path):
     assert res["attestation_status"] == "ATTESTED_SAME_BLOCK"
     assert res["missing"] == []
     conn.close()
+
+
+# --- RH-02bw: Synthetic test evidence gate tests ---
+
+def _get_live_repo_head(repo_root=REPO_ROOT) -> str:
+    import subprocess
+    proc = subprocess.run(
+        ["git", "rev-parse", "--short=12", "HEAD"],
+        cwd=str(repo_root),
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    return proc.stdout.strip()
+
+
+def test_rh02bw_1_synthetic_evidence_missing(tmp_path):
+    """1. 文件不存在 -> passed is None, reason SYNTHETIC_EVIDENCE_MISSING, blockers 含 STAGE_A_SYNTHETIC_TESTS_UNKNOWN."""
+    from scripts.lp_rh_readiness_v1_readonly import (
+        audit_synthetic_tests,
+        SYNTHETIC_EVIDENCE_MISSING,
+        STAGE_A_SYNTHETIC_TESTS_UNKNOWN,
+        stage_a_status,
+    )
+    missing_file = tmp_path / "does_not_exist.json"
+    res = audit_synthetic_tests(missing_file, repo_root=REPO_ROOT)
+    assert res["passed"] is None
+    assert res["reason"] == SYNTHETIC_EVIDENCE_MISSING
+    assert res["code_version"] is None
+    assert res["head_version"] is None
+    assert res["evidence_path"] == str(missing_file)
+
+    st_a = stage_a_status(
+        first_sample="2026-09-08T00:00:00Z",
+        last_sample="2026-09-11T00:00:00Z",
+        expected_interval_secs=15,
+        actual_samples=72 * 3600 // 15,
+        synthetic_tests_passed=res["passed"],
+        key_field_health={"passed": True},
+        pool_attestation_status={"passed": True},
+        budget=BUDGET_OK,
+        invariant_violations=0,
+        unknown_state_positions=0,
+    )
+    assert st_a["passed"] is False
+    assert STAGE_A_SYNTHETIC_TESTS_UNKNOWN in st_a["blockers"]
+
+
+def test_rh02bw_2_synthetic_evidence_invalid_json(tmp_path):
+    """2. 文件内容不是 JSON -> SYNTHETIC_EVIDENCE_INVALID, passed is None."""
+    import json
+    from scripts.lp_rh_readiness_v1_readonly import (
+        audit_synthetic_tests,
+        SYNTHETIC_EVIDENCE_INVALID,
+    )
+    corrupt_file = tmp_path / "corrupt.json"
+    corrupt_file.write_text("not json {{{", encoding="utf-8")
+    res = audit_synthetic_tests(corrupt_file, repo_root=REPO_ROOT)
+    assert res["passed"] is None
+    assert res["reason"] == SYNTHETIC_EVIDENCE_INVALID
+
+    # Also non-object JSON
+    non_obj = tmp_path / "array.json"
+    non_obj.write_text("[1, 2, 3]", encoding="utf-8")
+    res_arr = audit_synthetic_tests(non_obj, repo_root=REPO_ROOT)
+    assert res_arr["passed"] is None
+    assert res_arr["reason"] == SYNTHETIC_EVIDENCE_INVALID
+
+    # Also invalid generated_at
+    bad_date = tmp_path / "bad_date.json"
+    bad_date.write_text(json.dumps({
+        "schema_version": 1, "code_version": "1234567890ab", "all_passed": True, "generated_at": "not-iso-date"
+    }), encoding="utf-8")
+    res_date = audit_synthetic_tests(bad_date, repo_root=REPO_ROOT)
+    assert res_date["passed"] is None
+    assert res_date["reason"] == SYNTHETIC_EVIDENCE_INVALID
+
+
+def test_rh02bw_3_synthetic_evidence_schema_mismatch(tmp_path):
+    """3. schema_version: 2 -> SYNTHETIC_EVIDENCE_SCHEMA_MISMATCH, passed is None."""
+    import json
+    from scripts.lp_rh_readiness_v1_readonly import (
+        audit_synthetic_tests,
+        SYNTHETIC_EVIDENCE_SCHEMA_MISMATCH,
+    )
+    head = _get_live_repo_head(REPO_ROOT)
+    ev_file = tmp_path / "schema2.json"
+    ev_file.write_text(json.dumps({
+        "schema_version": 2,
+        "code_version": head,
+        "working_tree_clean": True,
+        "all_passed": True,
+        "generated_at": "2026-09-10T03:05:00Z",
+    }), encoding="utf-8")
+    res = audit_synthetic_tests(ev_file, repo_root=REPO_ROOT)
+    assert res["passed"] is None
+    assert res["reason"] == SYNTHETIC_EVIDENCE_SCHEMA_MISMATCH
+
+
+def test_rh02bw_4_synthetic_evidence_incomplete(tmp_path):
+    """4. 缺 all_passed 键 / code_version 键 -> SYNTHETIC_EVIDENCE_INCOMPLETE, passed is None."""
+    import json
+    from scripts.lp_rh_readiness_v1_readonly import (
+        audit_synthetic_tests,
+        SYNTHETIC_EVIDENCE_INCOMPLETE,
+    )
+    head = _get_live_repo_head(REPO_ROOT)
+    # Missing all_passed
+    ev_file = tmp_path / "missing_all_passed.json"
+    ev_file.write_text(json.dumps({
+        "schema_version": 1,
+        "code_version": head,
+        "working_tree_clean": True,
+        "generated_at": "2026-09-10T03:05:00Z",
+    }), encoding="utf-8")
+    res = audit_synthetic_tests(ev_file, repo_root=REPO_ROOT)
+    assert res["passed"] is None
+    assert res["reason"] == SYNTHETIC_EVIDENCE_INCOMPLETE
+
+    # Missing code_version
+    ev_file2 = tmp_path / "missing_code_ver.json"
+    ev_file2.write_text(json.dumps({
+        "schema_version": 1,
+        "all_passed": True,
+        "working_tree_clean": True,
+        "generated_at": "2026-09-10T03:05:00Z",
+    }), encoding="utf-8")
+    res2 = audit_synthetic_tests(ev_file2, repo_root=REPO_ROOT)
+    assert res2["passed"] is None
+    assert res2["reason"] == SYNTHETIC_EVIDENCE_INCOMPLETE
+
+
+def test_rh02bw_5_synthetic_evidence_stale_code_version(tmp_path):
+    """5. code_version 是一个明显不同的值 -> passed is False, SYNTHETIC_EVIDENCE_STALE_CODE_VERSION."""
+    import json
+    from scripts.lp_rh_readiness_v1_readonly import (
+        audit_synthetic_tests,
+        SYNTHETIC_EVIDENCE_STALE_CODE_VERSION,
+        STAGE_A_SYNTHETIC_TESTS_FAILED,
+        STAGE_A_SYNTHETIC_TESTS_UNKNOWN,
+        stage_a_status,
+    )
+    head = _get_live_repo_head(REPO_ROOT)
+    stale_sha = "0000deadbeef" if head != "0000deadbeef" else "1111deadbeef"
+    ev_file = tmp_path / "stale.json"
+    ev_file.write_text(json.dumps({
+        "schema_version": 1,
+        "code_version": stale_sha,
+        "working_tree_clean": True,
+        "all_passed": True,
+        "generated_at": "2026-09-10T03:05:00Z",
+    }), encoding="utf-8")
+    res = audit_synthetic_tests(ev_file, repo_root=REPO_ROOT)
+    assert res["passed"] is False
+    assert res["reason"] == SYNTHETIC_EVIDENCE_STALE_CODE_VERSION
+    assert res["code_version"] == stale_sha
+    assert res["head_version"] == head
+
+    st_a = stage_a_status(
+        first_sample="2026-09-08T00:00:00Z",
+        last_sample="2026-09-11T00:00:00Z",
+        expected_interval_secs=15,
+        actual_samples=72 * 3600 // 15,
+        synthetic_tests_passed=res["passed"],
+        key_field_health={"passed": True},
+        pool_attestation_status={"passed": True},
+        budget=BUDGET_OK,
+        invariant_violations=0,
+        unknown_state_positions=0,
+    )
+    assert st_a["passed"] is False
+    assert STAGE_A_SYNTHETIC_TESTS_FAILED in st_a["blockers"]
+    assert STAGE_A_SYNTHETIC_TESTS_UNKNOWN not in st_a["blockers"]
+
+
+def test_rh02bw_6_synthetic_evidence_dirty_working_tree(tmp_path):
+    """6. code_version 正确但 working_tree_clean: false -> SYNTHETIC_EVIDENCE_DIRTY_WORKING_TREE, passed is False."""
+    import json
+    from scripts.lp_rh_readiness_v1_readonly import (
+        audit_synthetic_tests,
+        SYNTHETIC_EVIDENCE_DIRTY_WORKING_TREE,
+    )
+    head = _get_live_repo_head(REPO_ROOT)
+    ev_file = tmp_path / "dirty.json"
+    ev_file.write_text(json.dumps({
+        "schema_version": 1,
+        "code_version": head,
+        "working_tree_clean": False,
+        "all_passed": True,
+        "generated_at": "2026-09-10T03:05:00Z",
+    }), encoding="utf-8")
+    res = audit_synthetic_tests(ev_file, repo_root=REPO_ROOT)
+    assert res["passed"] is False
+    assert res["reason"] == SYNTHETIC_EVIDENCE_DIRTY_WORKING_TREE
+    assert res["code_version"] == head
+    assert res["head_version"] == head
+
+
+def test_rh02bw_7_synthetic_evidence_tests_failed(tmp_path):
+    """7. code_version 正确、clean、但 all_passed: false -> SYNTHETIC_TESTS_FAILED, passed is False."""
+    import json
+    from scripts.lp_rh_readiness_v1_readonly import (
+        audit_synthetic_tests,
+        SYNTHETIC_TESTS_FAILED,
+        STAGE_A_SYNTHETIC_TESTS_FAILED,
+        stage_a_status,
+    )
+    head = _get_live_repo_head(REPO_ROOT)
+    ev_file = tmp_path / "failed.json"
+    ev_file.write_text(json.dumps({
+        "schema_version": 1,
+        "code_version": head,
+        "working_tree_clean": True,
+        "all_passed": False,
+        "generated_at": "2026-09-10T03:05:00Z",
+    }), encoding="utf-8")
+    res = audit_synthetic_tests(ev_file, repo_root=REPO_ROOT)
+    assert res["passed"] is False
+    assert res["reason"] == SYNTHETIC_TESTS_FAILED
+
+    st_a = stage_a_status(
+        first_sample="2026-09-08T00:00:00Z",
+        last_sample="2026-09-11T00:00:00Z",
+        expected_interval_secs=15,
+        actual_samples=72 * 3600 // 15,
+        synthetic_tests_passed=res["passed"],
+        key_field_health={"passed": True},
+        pool_attestation_status={"passed": True},
+        budget=BUDGET_OK,
+        invariant_violations=0,
+        unknown_state_positions=0,
+    )
+    assert st_a["passed"] is False
+    assert STAGE_A_SYNTHETIC_TESTS_FAILED in st_a["blockers"]
+
+
+def test_rh02bw_8_synthetic_evidence_clean_pass(tmp_path):
+    """8. 全部正确 -> passed is True, reason OK, Stage A blockers 不含任何 STAGE_A_SYNTHETIC_TESTS_*."""
+    import json
+    from scripts.lp_rh_readiness_v1_readonly import (
+        audit_synthetic_tests,
+        stage_a_status,
+        render_dashboard,
+    )
+    head = _get_live_repo_head(REPO_ROOT)
+    ev_file = tmp_path / "ok.json"
+    gen_time = "2026-09-10T03:05:00Z"
+    ev_file.write_text(json.dumps({
+        "schema_version": 1,
+        "code_version": head,
+        "working_tree_clean": True,
+        "all_passed": True,
+        "generated_at": gen_time,
+    }), encoding="utf-8")
+    res = audit_synthetic_tests(ev_file, repo_root=REPO_ROOT)
+    assert res["passed"] is True
+    assert res["reason"] == "OK"
+    assert res["code_version"] == head
+    assert res["head_version"] == head
+    assert res["generated_at"] == gen_time
+
+    st_a = stage_a_status(
+        first_sample="2026-09-08T00:00:00Z",
+        last_sample="2026-09-11T00:00:00Z",
+        expected_interval_secs=15,
+        actual_samples=72 * 3600 // 15,
+        synthetic_tests_passed=res["passed"],
+        key_field_health={"passed": True},
+        pool_attestation_status={"passed": True},
+        budget=BUDGET_OK,
+        invariant_violations=0,
+        unknown_state_positions=0,
+    )
+    assert not any(b.startswith("STAGE_A_SYNTHETIC_TESTS_") for b in st_a["blockers"])
+    assert st_a["passed"] is True
+
+    # Also test dashboard rendering
+    state = {
+        "synthetic_evidence": res,
+        "stage_a": st_a,
+    }
+    rendered = render_dashboard(state)
+    assert f"- synthetic: OK (code_version={head}, generated_at={gen_time})" in rendered
+
+
+def test_rh02bw_9_cli_synthetic_tests_passed_override(tmp_path):
+    """9. CLI 显式传 synthetic_tests_passed=True 时，即使证据文件不存在也按 True 走（人工覆盖优先）."""
+    from scripts.lp_rh_readiness_v1_readonly import (
+        _build_state,
+        render_dashboard,
+        STAGE_A_SYNTHETIC_TESTS_UNKNOWN,
+        STAGE_A_SYNTHETIC_TESTS_FAILED,
+    )
+    missing_file = str(tmp_path / "non_existent_ev.json")
+    db_file = tmp_path / "test.db"
+    conn = open_store(str(db_file))
+    migrate(conn)
+    addr = "0x52e65b17fb6e5ba00ed806f37afcd2daa50271ca"
+    insert_row(conn, "rh_market_states", _market_row(
+        sample_time="2026-09-08T00:00:00Z", asset_address=addr))
+    conn.commit()
+    try:
+        st = _build_state(
+            conn, str(db_file), 15.0,
+            asset_address=addr,
+            synthetic_tests_passed=True,
+            synthetic_evidence_path=missing_file,
+            repo_root=str(REPO_ROOT),
+        )
+        assert st["stage_a"]["synthetic_tests_passed"] is True
+        blockers = st["stage_a"]["blockers"]
+        assert STAGE_A_SYNTHETIC_TESTS_UNKNOWN not in blockers
+        assert STAGE_A_SYNTHETIC_TESTS_FAILED not in blockers
+        assert st["synthetic_evidence"]["passed"] is True
+        assert st["synthetic_evidence"]["reason"] == "CLI_OVERRIDE"
+
+        rendered = render_dashboard(st)
+        assert "- synthetic: OK (code_version=OVERRIDE" in rendered
+    finally:
+        conn.close()
+
+
+def test_rh02bw_10_synthetic_evidence_head_unresolved(tmp_path):
+    """10. 非 git 仓库无法解析 HEAD -> SYNTHETIC_EVIDENCE_HEAD_UNRESOLVED, passed is None."""
+    import json
+    from scripts.lp_rh_readiness_v1_readonly import (
+        audit_synthetic_tests,
+        SYNTHETIC_EVIDENCE_HEAD_UNRESOLVED,
+    )
+    empty_dir = tmp_path / "not_git"
+    empty_dir.mkdir()
+    ev_file = tmp_path / "ev.json"
+    ev_file.write_text(json.dumps({
+        "schema_version": 1,
+        "code_version": "1234567890ab",
+        "working_tree_clean": True,
+        "all_passed": True,
+        "generated_at": "2026-09-10T03:05:00Z",
+    }), encoding="utf-8")
+    res = audit_synthetic_tests(ev_file, repo_root=empty_dir)
+    assert res["passed"] is None
+    assert res["reason"] == SYNTHETIC_EVIDENCE_HEAD_UNRESOLVED
