@@ -101,12 +101,12 @@ def _passing_sample(idx, *, price=None, fee_growth=None, **overrides):
 
 
 def _run(conn, samples, *, episode="ep", target_mode="SHADOW_SCENARIO",
-         pool_meta=None):
+         pool_meta=None, allow_bare_quote=True):
     return run_episode(
         conn, strategy_episode=episode, samples=samples,
         position_usd=POSITION_USD, horizon_hours=HORIZON_HOURS,
         capital_usd=CAPITAL_USD, target_mode=target_mode, now_fn=lambda: NOW,
-        pool_meta=pool_meta,
+        pool_meta=pool_meta, allow_bare_quote=allow_bare_quote,
     )
 
 
@@ -469,6 +469,7 @@ def test_rh02al_real_pool_meta_and_db_sanity(tmp_path):
         conn, strategy_episode="sanity", samples=samples,
         position_usd=POSITION_USD, horizon_hours=720.0, capital_usd=CAPITAL_USD,
         target_mode="SHADOW_SCENARIO", now_fn=lambda: NOW, pool_meta=meta_with_quote,
+        allow_bare_quote=True,
     )
     s = episode_summary(steps)
     assert s["nav_start"] == CAPITAL_USD

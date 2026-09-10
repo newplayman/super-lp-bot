@@ -7,6 +7,7 @@ read-only; all Shadow writes go to a scratch store.  No wallet, no broadcast.
 """
 import argparse
 import json
+import math
 import sys
 import tempfile
 from dataclasses import asdict, dataclass
@@ -68,8 +69,9 @@ class ShadowStep:
     net_pnl: Optional[Decimal]
     hodl_value: Optional[Decimal]
     reservation_granted: bool
-    simulated_policy_only: bool
+    simulated_policy_only: bool = True
     conjunct_reasons: tuple = ()
+    nav_reason: Optional[str] = None
 
 
 def _candidate_key(sample: Mapping[str, Any], step_index: int) -> str:
@@ -159,6 +161,83 @@ def _as_datetime(value):
         return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
     except (TypeError, ValueError):
         return None
+
+
+def validate_quote_evidence(
+    raw_quote: Any,
+    sample_time: Any = None,
+    *,
+    allow_bare_quote: bool = False,
+) -> tuple[Optional[Decimal], Optional[str]]:
+    """Validate quote evidence against provenance and replay freshness rules.
+
+    Returns (quote_decimal, error_reason).
+    When valid, returns (quote_decimal, None).
+    When invalid, returns (None, reason) where reason is one of:
+      - QUOTE_EVIDENCE_MISSING
+      - QUOTE_EVIDENCE_UNPROVENANCED
+      - QUOTE_EVIDENCE_INVALID_VALUE
+      - QUOTE_EVIDENCE_SOURCE_EMPTY
+      - QUOTE_EVIDENCE_OBSERVED_AT_UNPARSEABLE
+      - QUOTE_EVIDENCE_INVALID_TTL
+      - QUOTE_EVIDENCE_EXPIRED
+    """
+    if raw_quote is None:
+        return None, "QUOTE_EVIDENCE_MISSING"
+
+    if not isinstance(raw_quote, dict):
+        if not allow_bare_quote:
+            return None, "QUOTE_EVIDENCE_UNPROVENANCED"
+        try:
+            val = Decimal(str(raw_quote))
+            if not val.is_finite() or val <= 0:
+                return None, "QUOTE_EVIDENCE_INVALID_VALUE"
+            return val, None
+        except (TypeError, ValueError, InvalidOperation):
+            return None, "QUOTE_EVIDENCE_INVALID_VALUE"
+
+    if "value" not in raw_quote or raw_quote["value"] is None:
+        return None, "QUOTE_EVIDENCE_MISSING"
+
+    try:
+        val = Decimal(str(raw_quote["value"]))
+        if not val.is_finite() or val <= 0:
+            return None, "QUOTE_EVIDENCE_INVALID_VALUE"
+    except (TypeError, ValueError, InvalidOperation):
+        return None, "QUOTE_EVIDENCE_INVALID_VALUE"
+
+    source = raw_quote.get("source")
+    if source is None or not str(source).strip():
+        return None, "QUOTE_EVIDENCE_SOURCE_EMPTY"
+
+    observed_raw = raw_quote.get("observed_at")
+    if observed_raw is None:
+        return None, "QUOTE_EVIDENCE_OBSERVED_AT_UNPARSEABLE"
+    observed_dt = _as_datetime(observed_raw)
+    if observed_dt is None:
+        return None, "QUOTE_EVIDENCE_OBSERVED_AT_UNPARSEABLE"
+
+    ttl_raw = raw_quote.get("ttl_secs")
+    if ttl_raw is None:
+        return None, "QUOTE_EVIDENCE_INVALID_TTL"
+    try:
+        ttl = float(ttl_raw)
+        if not math.isfinite(ttl) or ttl <= 0:
+            return None, "QUOTE_EVIDENCE_INVALID_TTL"
+    except (TypeError, ValueError):
+        return None, "QUOTE_EVIDENCE_INVALID_TTL"
+
+    if sample_time is None:
+        return None, "QUOTE_EVIDENCE_EXPIRED"
+    sample_dt = _as_datetime(sample_time)
+    if sample_dt is None:
+        return None, "QUOTE_EVIDENCE_EXPIRED"
+
+    age_secs = (sample_dt - observed_dt).total_seconds()
+    if age_secs > ttl:
+        return None, "QUOTE_EVIDENCE_EXPIRED"
+
+    return val, None
 
 
 def compute_conjuncts(sample, gated, *, pool_meta=None, capital_usd,
@@ -312,7 +391,8 @@ def _finish_conjuncts(bits, reasons, gated, pool_meta, capital_usd,
 
 
 def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
-                capital_usd, target_mode, now_fn, pool_meta=None):
+                capital_usd, target_mode, now_fn, pool_meta=None,
+                allow_bare_quote=False):
     """Replay one Shadow episode over `samples`, writing gate decisions and position marks to `conn`."""
     steps: list[ShadowStep] = []
     position_open = False
@@ -322,6 +402,7 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
     accrued = Decimal(0)
     open_resolved = False
     open_valid = False
+    open_fail_reason: Optional[str] = None
     entry_price: Optional[Decimal] = None
     range_pct_val: Optional[Decimal] = None
     dec0_val: int = DEFAULT_DEC0
@@ -331,6 +412,7 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
     amount1_human: Optional[Decimal] = None
     liquidity_human: Optional[Decimal] = None
     l_pos: Optional[Decimal] = None
+    active_quote_evidence = None
 
     for i, sample in enumerate(samples):
         record = assemble_rh_clmm_inputs(_evidence_for(sample, pool_meta),
@@ -367,9 +449,21 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
         raw_price = sample.get("reference_mid")
         price = Decimal(str(raw_price)) if raw_price is not None else None
 
-        # RH-02al / RH-02bd: On the first step with a valid reference_mid (the open step),
+        raw_quote = sample.get("quote_usd_per_token1")
+        if raw_quote is None and pool_meta is not None:
+            raw_quote = pool_meta.get("quote_usd_per_token1")
+        if raw_quote is not None:
+            active_quote_evidence = raw_quote
+
+        step_quote_val, quote_reason = validate_quote_evidence(
+            active_quote_evidence,
+            sample_time=sample_time,
+            allow_bare_quote=allow_bare_quote,
+        )
+
+        # RH-02al / RH-02bd / RH-02bg: On the first step with a valid reference_mid (the open step),
         # resolve and cache the position inventory and liquidity. Fail-closed:
-        # if pool_meta lacks range_pct, or entry_price missing, or quote missing/<=0,
+        # if pool_meta lacks range_pct, or entry_price missing, or quote missing/expired/unprovenanced,
         # or dec0/dec1 missing, open_valid stays False and nav/hodl remain None for the episode.
         # No silent defaults for quote (PRD:651 forbids forcing $1) or decimals.
         if not open_resolved and price is not None and price > 0:
@@ -382,45 +476,60 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
                     d0_raw = pool_meta.get("dec0", pool_meta.get("token0_decimals", sample.get("dec0")))
                     d1_raw = pool_meta.get("dec1", pool_meta.get("token1_decimals", sample.get("dec1")))
                     if d0_raw is None or d1_raw is None:
+                        open_fail_reason = "DECIMALS_MISSING"
                         raise ValueError("dec0/dec1 missing")
                     d0 = int(d0_raw)
                     d1 = int(d1_raw)
 
-                    # Quote must be explicitly present in sample or pool_meta (no silent $1 default)
-                    raw_quote = sample.get("quote_usd_per_token1")
-                    if raw_quote is None and pool_meta is not None:
-                        raw_quote = pool_meta.get("quote_usd_per_token1")
-                    if raw_quote is None:
-                        raise ValueError("quote_usd_per_token1 missing")
-                    q = Decimal(str(raw_quote))
-                    p_usd = Decimal(str(position_usd))
+                    if step_quote_val is None:
+                        open_fail_reason = quote_reason
+                        raise ValueError(f"quote invalid: {quote_reason}")
 
-                    if r_pct > 0 and r_pct < 100 and q > 0 and d0 >= 0 and d1 >= 0 and p_usd > 0:
+                    p_usd = Decimal(str(position_usd))
+                    if r_pct > 0 and r_pct < 100 and step_quote_val > 0 and d0 >= 0 and d1 >= 0 and p_usd > 0:
                         inv = inventory_for_position(
                             position_usd=p_usd,
                             entry_price=price,
                             range_pct=r_pct,
                             dec0=d0,
                             dec1=d1,
-                            quote_usd_per_token1=q,
+                            quote_usd_per_token1=step_quote_val,
                         )
                         scale = (Decimal(10) ** d0 * Decimal(10) ** d1).sqrt()
                         entry_price = price
                         range_pct_val = r_pct
                         dec0_val = d0
                         dec1_val = d1
-                        quote_val = q
+                        quote_val = step_quote_val
                         amount0_human = inv.amount0_human
                         amount1_human = inv.amount1_human
                         liquidity_human = inv.liquidity_raw / scale
                         l_pos = inv.liquidity_raw
                         open_valid = True
+                    else:
+                        open_fail_reason = open_fail_reason or "RANGE_OR_INPUTS_INVALID"
                 except (TypeError, ValueError, InvalidOperation):
                     open_valid = False
+            else:
+                open_valid = False
+                open_fail_reason = "RANGE_PCT_MISSING"
 
         fg0, fg1 = sample.get("fee_growth_global_0"), sample.get("fee_growth_global_1")
         nav: Optional[Decimal] = None
-        if open_valid and price is not None and fg0 is not None and fg1 is not None:
+        nav_reason: Optional[str] = None
+        if not open_valid:
+            nav = None
+            nav_reason = open_fail_reason or quote_reason or "OPEN_INVALID"
+        elif price is None:
+            nav = None
+            nav_reason = "PRICE_MISSING"
+        elif step_quote_val is None:
+            nav = None
+            nav_reason = quote_reason
+        elif fg0 is None or fg1 is None:
+            nav = None
+            nav_reason = "FEE_GROWTH_MISSING"
+        else:
             try:
                 cur0, cur1 = Decimal(str(fg0)), Decimal(str(fg1))
                 if prev_fg0 is not None and prev_fg1 is not None:
@@ -428,7 +537,7 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
                     d1 = cur1 - prev_fg1
                     tok0 = (l_pos * d0 / FEE_GROWTH_SCALE / (Decimal(10) ** dec0_val))
                     tok1 = (l_pos * d1 / FEE_GROWTH_SCALE / (Decimal(10) ** dec1_val))
-                    fee_usd = (tok0 * price + tok1) * quote_val
+                    fee_usd = (tok0 * price + tok1) * step_quote_val
                     accrued += fee_usd
                 prev_fg0, prev_fg1 = cur0, cur1
 
@@ -437,7 +546,7 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
                     liquidity_human=liquidity_human,
                     entry_price=entry_price,
                     range_pct=range_pct_val,
-                    quote_usd_per_token1=quote_val,
+                    quote_usd_per_token1=step_quote_val,
                 )
                 nav = compute_nav(
                     wallet=Decimal(str(capital_usd)) - Decimal(str(position_usd)),
@@ -448,6 +557,7 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
                 )
             except (TypeError, ValueError, InvalidOperation):
                 nav = None
+                nav_reason = "NAV_COMPUTATION_ERROR"
 
         step_net_pnl = (net_pnl(nav, prev_nav, Decimal(0))
                         if nav is not None and prev_nav is not None else None)
@@ -455,8 +565,8 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
             prev_nav = nav
 
         hodl_value: Optional[Decimal] = None
-        if open_valid and price is not None:
-            hodl_value = amount0_human * price * quote_val + amount1_human * quote_val
+        if open_valid and price is not None and step_quote_val is not None:
+            hodl_value = amount0_human * price * step_quote_val + amount1_human * step_quote_val
 
         insert_row(conn, "rh_gate_decisions", {
             "decision_id": decision.decision_id, "candidate_key": decision.candidate_key,
@@ -468,17 +578,20 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
             "decided_at": decision.decided_at,
         })
         sample_time = sample.get("sample_time")
+        risk_data = {"skipped": nav is None}
+        if nav is None and nav_reason is not None:
+            risk_data["reason"] = nav_reason
         insert_row(conn, "rh_position_marks", {
             "position_id": f"rh-shadow-{strategy_episode}",
             "mark_time": sample_time if sample_time is not None else now_fn(),
             "price_snapshot_id": None, "reference_nav": nav, "liquidation_nav": None,
             "accrued_fee": accrued if nav is not None else None,
-            "unvalued_risk_json": json.dumps({"skipped": nav is None}, sort_keys=True),
+            "unvalued_risk_json": json.dumps(risk_data, sort_keys=True),
         })
         steps.append(ShadowStep(
             i, sample_time, price, eligible, decision.primary_status,
             decision.dominant_blocker, nav, step_net_pnl, hodl_value,
-            granted, simulated, tuple(step_reasons)))
+            granted, simulated, tuple(step_reasons), nav_reason))
     return steps
 
 
@@ -584,6 +697,12 @@ def episode_summary(steps: Sequence[ShadowStep], *, load_skipped: int = 0) -> di
         window_end_time = None
         window_reason = "NO_OVERLAPPING_STEPS"
 
+    steps_without_nav_reasons: dict[str, int] = {}
+    for s in steps:
+        if s.nav is None and getattr(s, "nav_reason", None) is not None:
+            r = s.nav_reason
+            steps_without_nav_reasons[r] = steps_without_nav_reasons.get(r, 0) + 1
+
     return {
         "total_steps": len(steps),
         "eligible_steps": sum(1 for s in steps if s.terminal_eligible),
@@ -598,6 +717,7 @@ def episode_summary(steps: Sequence[ShadowStep], *, load_skipped: int = 0) -> di
         # 40 when the database held 7 null prices.  They are different facts.
         "skipped_at_load": load_skipped,
         "steps_without_nav": sum(1 for s in steps if s.nav is None),
+        "steps_without_nav_reasons": steps_without_nav_reasons,
         # Which conjunct actually failed, not just the roll-up that masks them.
         # legacy_required_conjunction sits first in CONJUNCT_ORDER so it always
         # takes the blame; these counts say what it was waiting on.
@@ -619,6 +739,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                         "liquidity, tick_data, token0_decimals, token1_decimals, "
                         "input_price_usd.  Without it the conjuncts that need pool "
                         "state fail closed and say so.")
+    p.add_argument("--allow-bare-quote", action="store_true", default=False,
+                   help="Allow bare numbers for quote_usd_per_token1 without "
+                        "provenance or TTL check (default False: fails closed).")
     a = p.parse_args(argv)
 
     live_conn = open_store(Path(a.db), read_only=True)
@@ -639,7 +762,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         steps = run_episode(sc, strategy_episode=ep, samples=samples,
                             position_usd=Decimal("1000"), horizon_hours=24.0,
                             capital_usd=Decimal("10000"), target_mode=a.target_mode,
-                            now_fn=now, pool_meta=pool_meta)
+                            now_fn=now, pool_meta=pool_meta,
+                            allow_bare_quote=a.allow_bare_quote)
         sc.close()
 
     payload = {"target_mode": a.target_mode, "pool": a.pool, "strategy_episode": ep,

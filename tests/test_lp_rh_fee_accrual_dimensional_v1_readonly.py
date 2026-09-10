@@ -89,12 +89,12 @@ def _passing_sample(idx, *, price=None, fee_growth=None, **overrides):
 
 
 def _run(conn, samples, *, episode="ep", target_mode="SHADOW_SCENARIO",
-         pool_meta=None):
+         pool_meta=None, allow_bare_quote=True):
     return run_episode(
         conn, strategy_episode=episode, samples=samples,
         position_usd=POSITION_USD, horizon_hours=HORIZON_HOURS,
         capital_usd=CAPITAL_USD, target_mode=target_mode, now_fn=lambda: NOW,
-        pool_meta=pool_meta,
+        pool_meta=pool_meta, allow_bare_quote=allow_bare_quote,
     )
 
 

@@ -212,7 +212,8 @@ def test_end_to_end_nav_computed(tmp_path):
               now_fn=lambda: "2026-09-08T19:00:00Z",
               pool_meta={"input_price_usd": 2484.0, "range_pct": 10.0,
                          "quote_usd_per_token1": 1.0,
-                         "dec0": 18, "dec1": 6})
+                         "dec0": 18, "dec1": 6},
+              allow_bare_quote=True)
     # decision_id is keyed on candidate_key+target_mode, so the two runs need
     # separate stores (same samples would collide on rh_gate_decisions.decision_id).
     conn_no = open_store(tmp_path / "no.db")

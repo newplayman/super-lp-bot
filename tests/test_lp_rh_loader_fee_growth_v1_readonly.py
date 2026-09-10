@@ -79,6 +79,7 @@ def _run(conn, samples, *, episode="ep"):
         pool_meta={"input_price_usd": 2484.0, "range_pct": 10.0,
                    "quote_usd_per_token1": 1.0,
                    "dec0": 18, "dec1": 6},
+        allow_bare_quote=True,
     )
 
 
