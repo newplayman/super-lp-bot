@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-09-10T20:05:11.004271Z",
+  "code_version": "bc780ecda7a6",
+  "working_tree_clean": false,
+  "db_path": "/opt/lpbot/lp-bot-v3-origin-check/reports/lp_rh/scanner.db",
+  "as_of": "2026-09-10T20:05:00.859144Z",
+  "stage_a": {
+    "passed": false,
+    "blockers": [
+      "HOURS_COVERED_INSUFFICIENT",
+      "STAGE_A_SYNTHETIC_TESTS_FAILED"
+    ],
+    "hours_covered": 11.931784367222223,
+    "hours_required": 72,
+    "coverage_ratio": "0.9958100558659217877094972067"
+  },
+  "stage_b": {
+    "passed": false,
+    "blockers": [
+      "DAYS_COVERED_INSUFFICIENT",
+      "WEEKENDS_COVERED_INSUFFICIENT"
+    ],
+    "days_covered": 2,
+    "days_required": 14
+  },
+  "live_gate": {
+    "live_allowed": false,
+    "blockers": [
+      "SINGLE_PROVIDER_NOT_ALLOWED_FOR_LIVE",
+      "CAPITAL_POLICY_NOT_APPROVED"
+    ]
+  },
+  "full_test": null,
+  "fault_injection": {
+    "report_present": true,
+    "scenarios_passed": 6,
+    "scenarios_total": 6
+  },
+  "verdict": "NOT_GRADUATED",
+  "verdict_reasons": [
+    "STAGE_A: HOURS_COVERED_INSUFFICIENT",
+    "STAGE_A: STAGE_A_SYNTHETIC_TESTS_FAILED",
+    "STAGE_B: DAYS_COVERED_INSUFFICIENT",
+    "STAGE_B: WEEKENDS_COVERED_INSUFFICIENT",
+    "LIVE_GATE: SINGLE_PROVIDER_NOT_ALLOWED_FOR_LIVE",
+    "LIVE_GATE: CAPITAL_POLICY_NOT_APPROVED"
+  ],
+  "tiny_live_authorized": false
+}

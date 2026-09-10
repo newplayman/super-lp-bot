@@ -141,3 +141,128 @@ def test_gas_units_keys_positive():
     for key in ("v3_mint", "v3_burn_collect", "swap"):
         assert key in mod.GAS_UNITS
         assert mod.GAS_UNITS[key] > 0
+
+
+# --- observed_gas_usd (RH-02cg) ---------------------------------------------
+
+def _create_gas_db(conn, rows=None):
+    conn.execute(
+        """
+        CREATE TABLE rh_gas_observations (
+            observed_at TEXT NOT NULL,
+            gas_price_wei INTEGER,
+            native_price_usd TEXT,
+            gas_usd TEXT,
+            block_number INTEGER,
+            receipt_n INTEGER,
+            source TEXT,
+            PRIMARY KEY (observed_at, block_number)
+        )
+        """
+    )
+    if rows:
+        for r in rows:
+            conn.execute(
+                "INSERT INTO rh_gas_observations "
+                "(observed_at, gas_price_wei, native_price_usd, gas_usd, block_number, receipt_n, source) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                r,
+            )
+    conn.commit()
+
+
+def test_observed_gas_usd_five_fresh_samples(tmp_path):
+    import sqlite3
+    conn = sqlite3.connect(":memory:")
+    now = "2026-09-10T12:00:00Z"
+    # 5 samples within 1 hour
+    rows = [
+        ("2026-09-10T11:50:00Z", 100, "2500", "0.20", 1, 10, "test"),
+        ("2026-09-10T11:40:00Z", 100, "2500", "0.22", 2, 10, "test"),
+        ("2026-09-10T11:30:00Z", 100, "2500", "0.24", 3, 10, "test"),
+        ("2026-09-10T11:20:00Z", 100, "2500", "0.26", 4, 10, "test"),
+        ("2026-09-10T11:10:00Z", 100, "2500", "0.28", 5, 10, "test"),
+    ]
+    _create_gas_db(conn, rows)
+    res = mod.observed_gas_usd(conn, now=now)
+    assert res["reason"] == "OK"
+    assert res["sample_count"] == 5
+    assert res["gas_usd"] == Decimal("0.24")
+    assert res["source"] == "observed"
+    assert res["newest_observed_at"] == "2026-09-10T11:50:00Z"
+
+
+def test_observed_gas_usd_table_missing():
+    import sqlite3
+    conn = sqlite3.connect(":memory:")
+    now = "2026-09-10T12:00:00Z"
+    res = mod.observed_gas_usd(conn, now=now)
+    assert res["gas_usd"] is None
+    assert res["reason"] == "GAS_OBSERVATIONS_TABLE_MISSING"
+    assert res["sample_count"] == 0
+
+
+def test_observed_gas_usd_empty_table():
+    import sqlite3
+    conn = sqlite3.connect(":memory:")
+    _create_gas_db(conn, [])
+    now = "2026-09-10T12:00:00Z"
+    res = mod.observed_gas_usd(conn, now=now)
+    assert res["gas_usd"] is None
+    assert res["reason"] == "GAS_OBSERVATIONS_EMPTY"
+    assert res["sample_count"] == 0
+
+
+def test_observed_gas_usd_insufficient_samples():
+    import sqlite3
+    conn = sqlite3.connect(":memory:")
+    now = "2026-09-10T12:00:00Z"
+    # 2 samples (< min_samples=3)
+    rows = [
+        ("2026-09-10T11:50:00Z", 100, "2500", "0.20", 1, 10, "test"),
+        ("2026-09-10T11:40:00Z", 100, "2500", "0.22", 2, 10, "test"),
+    ]
+    _create_gas_db(conn, rows)
+    res = mod.observed_gas_usd(conn, now=now)
+    assert res["gas_usd"] is None
+    assert res["reason"] == "GAS_OBSERVATIONS_INSUFFICIENT"
+    assert res["sample_count"] == 2
+
+
+def test_observed_gas_usd_stale():
+    import sqlite3
+    conn = sqlite3.connect(":memory:")
+    now = "2026-09-10T14:00:00Z"
+    # Newest is 2 hours ago (> max_age_secs=3600)
+    rows = [
+        ("2026-09-10T12:00:00Z", 100, "2500", "0.20", 1, 10, "test"),
+        ("2026-09-10T11:50:00Z", 100, "2500", "0.22", 2, 10, "test"),
+        ("2026-09-10T11:40:00Z", 100, "2500", "0.24", 3, 10, "test"),
+    ]
+    _create_gas_db(conn, rows)
+    res = mod.observed_gas_usd(conn, now=now, max_age_secs=3600)
+    assert res["gas_usd"] is None
+    assert res["reason"] == "GAS_OBSERVATIONS_STALE"
+    assert res["newest_observed_at"] == "2026-09-10T12:00:00Z"
+
+
+def test_observed_gas_usd_outlier_spike_resistance():
+    import sqlite3
+    conn = sqlite3.connect(":memory:")
+    now = "2026-09-10T12:00:00Z"
+    # 5 samples, one is 100x spike
+    rows = [
+        ("2026-09-10T11:50:00Z", 100, "2500", "0.20", 1, 10, "test"),
+        ("2026-09-10T11:45:00Z", 100, "2500", "0.21", 2, 10, "test"),
+        ("2026-09-10T11:40:00Z", 100, "2500", "25.0", 3, 10, "test"),  # spike!
+        ("2026-09-10T11:35:00Z", 100, "2500", "0.22", 4, 10, "test"),
+        ("2026-09-10T11:30:00Z", 100, "2500", "0.23", 5, 10, "test"),
+    ]
+    _create_gas_db(conn, rows)
+    res = mod.observed_gas_usd(conn, now=now)
+    assert res["reason"] == "OK"
+    assert res["sample_count"] == 5
+    # Median of [0.20, 0.21, 0.22, 0.23, 25.0] is 0.22
+    assert res["gas_usd"] == Decimal("0.22")
+    assert res["gas_usd"] < Decimal("0.5")  # Not dragged by the spike
+

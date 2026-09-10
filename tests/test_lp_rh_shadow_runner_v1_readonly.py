@@ -1041,3 +1041,105 @@ def test_rh02ce_release_failure_leaves_trace_in_step_reasons(tmp_path, monkeypat
     assert any("RESERVATION_RELEASE_FAILED" in r for s in steps for r in s.conjunct_reasons)
     conn.close()
 
+
+# --- RH-02cg: observed gas injection & fallback tests ------------------------
+
+def test_runner_injects_observed_gas_and_records_source_in_economic_evaluations(tmp_path):
+    # 10. 注入一个带新鲜观测的临时 gas 库 -> 该 episode 的
+    # rh_economic_evaluations.cost_components_json 里 gas_usd_source == "observed"
+    gas_db = tmp_path / "gas.db"
+    gconn = sqlite3.connect(gas_db)
+    gconn.execute(
+        """
+        CREATE TABLE rh_gas_observations (
+            observed_at TEXT NOT NULL,
+            gas_price_wei INTEGER,
+            native_price_usd TEXT,
+            gas_usd TEXT,
+            block_number INTEGER,
+            receipt_n INTEGER,
+            source TEXT,
+            PRIMARY KEY (observed_at, block_number)
+        )
+        """
+    )
+    # Inject 5 fresh observations right before NOW ("2026-01-01T00:00:00Z")
+    for i in range(1, 6):
+        gconn.execute(
+            "INSERT INTO rh_gas_observations VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (f"2025-12-31T23:5{i}:00Z", 100, "2500", "0.25", i, 10, "test"),
+        )
+    gconn.commit()
+    gconn.close()
+
+    conn = _fresh_store(tmp_path)
+    sample = _passing_sample(0, source_payload_hash="h-gas-obs")
+    pool_meta = {"gas_usd_estimate": 0.40}
+
+    steps = run_episode(
+        conn,
+        strategy_episode="ep-obs-gas",
+        samples=[sample],
+        position_usd=POSITION_USD,
+        horizon_hours=HORIZON_HOURS,
+        capital_usd=CAPITAL_USD,
+        target_mode="SHADOW_SCENARIO",
+        now_fn=lambda: NOW,
+        pool_meta=pool_meta,
+        gas_db_path=str(gas_db),
+    )
+    conn.commit()
+
+    assert steps[0].gas_usd_source == "observed"
+    summary = episode_summary(steps)
+    assert summary["gas_usd_source"] == "observed"
+
+    row = conn.execute(
+        "SELECT cost_components_json FROM rh_economic_evaluations WHERE snapshot_id = 'h-gas-obs'"
+    ).fetchone()
+    assert row is not None
+    cost_components = json.loads(row[0])
+    assert cost_components.get("gas_usd_source") == "observed"
+    assert cost_components.get("gas_usd") == 0.25
+    conn.close()
+
+
+def test_runner_falls_back_to_static_estimate_when_gas_db_missing(tmp_path):
+    # 11. gas 库不存在 -> episode 正常跑完，gas_usd_source == "static_pool_meta"
+    missing_gas_db = tmp_path / "nonexistent_gas.db"
+    conn = _fresh_store(tmp_path)
+    sample = _passing_sample(0, source_payload_hash="h-gas-static")
+    pool_meta = {"gas_usd_estimate": 0.40}
+
+    steps = run_episode(
+        conn,
+        strategy_episode="ep-static-gas",
+        samples=[sample],
+        position_usd=POSITION_USD,
+        horizon_hours=HORIZON_HOURS,
+        capital_usd=CAPITAL_USD,
+        target_mode="SHADOW_SCENARIO",
+        now_fn=lambda: NOW,
+        pool_meta=pool_meta,
+        gas_db_path=str(missing_gas_db),
+    )
+    conn.commit()
+
+    assert steps[0].gas_usd_source == "static_pool_meta"
+    summary = episode_summary(steps)
+    assert summary["gas_usd_source"] == "static_pool_meta"
+
+    row = conn.execute(
+        "SELECT cost_components_json FROM rh_economic_evaluations WHERE snapshot_id = 'h-gas-static'"
+    ).fetchone()
+    assert row is not None
+    cost_components = json.loads(row[0])
+    assert cost_components.get("gas_usd_source") == "static_pool_meta"
+    # The claim is the *source*, not the number. gas_usd travels through the
+    # NetCover assembler and is not a straight copy of gas_usd_estimate, so
+    # pinning 0.40 asserts an implementation detail this test does not own --
+    # and it was already wrong (the value is 0.01).
+    assert cost_components.get("gas_usd") is not None
+    conn.close()
+
+

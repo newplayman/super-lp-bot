@@ -8,6 +8,7 @@ read-only; all Shadow writes go to a scratch store.  No wallet, no broadcast.
 import argparse
 import json
 import math
+import sqlite3
 import sys
 import tempfile
 from dataclasses import asdict, dataclass
@@ -20,6 +21,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+from scripts.lp_rh_gas_estimator_v1_readonly import observed_gas_usd
 from scripts.lp_rh_netcover_inputs_v1_readonly import assemble_rh_clmm_inputs
 from scripts.lp_netcover_engine_v1_readonly import apply_netcover_gate
 from scripts.lp_rh_terminal_gate_v1_readonly import (
@@ -61,6 +63,7 @@ from scripts.lp_rh_v3_inventory_v1_readonly import (
 FEE_GROWTH_SCALE = Decimal(2) ** 128
 DEFAULT_POOL = "0x52e65b17fb6e5ba00ed806f37afcd2daa50271ca"
 DEFAULT_DB = "reports/lp_rh/scanner.db"
+DEFAULT_GAS_DB = "reports/lp_rh/gas_history.db"
 # Virtual two-leg HODL lot (D04: not 50/50); fixed at first step, never reset (T41).
 VIRTUAL_INITIAL_TOKEN0_RAW = Decimal("1000000000000000000")
 VIRTUAL_INITIAL_TOKEN1_RAW = Decimal("1000000")
@@ -83,6 +86,7 @@ class ShadowStep:
     simulated_policy_only: bool = True
     conjunct_reasons: tuple = ()
     nav_reason: Optional[str] = None
+    gas_usd_source: Optional[str] = None
 
 
 def _candidate_key(sample: Mapping[str, Any], step_index: int) -> str:
@@ -137,6 +141,7 @@ _POOL_EVIDENCE_KEYS = (
     "attestation_status", "protocol", "sqrt_price_x96", "fee", "dec0", "dec1",
     "liquidity_raw", "fee_apr_pct", "sigma_daily", "gas_usd_estimate",
     "range_pct", "tvl_usd", "active_liquidity_notional_usd",
+    "observed_gas_usd",
 )
 
 
@@ -525,8 +530,23 @@ def _finish_conjuncts(bits, reasons, gated, pool_meta, capital_usd,
 
 def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
                 capital_usd, target_mode, now_fn, pool_meta=None,
-                allow_bare_quote=False):
+                allow_bare_quote=False, gas_db_path=DEFAULT_GAS_DB):
     """Replay one Shadow episode over `samples`, writing gate decisions and position marks to `conn`."""
+    # RH-02cg: take gas observation once per episode (not per step).
+    effective_pool_meta = dict(pool_meta) if pool_meta else {}
+    episode_now = now_fn() if callable(now_fn) else str(now_fn)
+    if gas_db_path and Path(gas_db_path).exists():
+        try:
+            gas_conn = sqlite3.connect(f"file:{gas_db_path}?mode=ro", uri=True)
+            try:
+                obs = observed_gas_usd(gas_conn, now=episode_now)
+                if obs.get("reason") == "OK" and obs.get("gas_usd") is not None:
+                    effective_pool_meta["observed_gas_usd"] = float(obs["gas_usd"])
+            finally:
+                gas_conn.close()
+        except Exception:
+            pass
+
     steps: list[ShadowStep] = []
     position_open = False
     prev_nav: Optional[Decimal] = None
@@ -554,7 +574,7 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
     inv_cached = None
 
     for i, sample in enumerate(samples):
-        record = assemble_rh_clmm_inputs(_evidence_for(sample, pool_meta),
+        record = assemble_rh_clmm_inputs(_evidence_for(sample, effective_pool_meta),
                                          position_usd=position_usd,
                                          horizon_hours=horizon_hours)
         gated = apply_netcover_gate([record])[0]
@@ -568,7 +588,7 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
         sample_time = sample.get("sample_time")
         decision_now = sample_time if _as_datetime(sample_time) is not None else now_fn()
         decision = evaluate_terminal_gate(
-            _terminal_record(sample, gated, i, pool_meta=pool_meta,
+            _terminal_record(sample, gated, i, pool_meta=effective_pool_meta,
                              capital_usd=capital_usd, position_usd=position_usd,
                              now=decision_now, conjunct_reasons=step_reasons,
                              strategy_episode=strategy_episode),
@@ -742,7 +762,10 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
                 "fee_ev": _economic_str(gated.get("fee_ev_usd")),
                 "reward_ev": _economic_str(gated.get("reward_ev_usd")),
                 "cost_components_json": json.dumps(
-                    {k: gated.get(k) for k in _COST_COMPONENT_KEYS},
+                    dict(
+                        {k: gated.get(k) for k in _COST_COMPONENT_KEYS},
+                        gas_usd_source=gated.get("gas_usd_source"),
+                    ),
                     sort_keys=True),
                 "netcover": _economic_str(gated.get("netcover")),
                 # abs_profit / q_min / q_max have no key in `gated` yet: the
@@ -869,7 +892,8 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
         steps.append(ShadowStep(
             i, sample_time, price, eligible, decision.primary_status,
             decision.dominant_blocker, nav, step_net_pnl, hodl_value,
-            granted, simulated, tuple(step_reasons), nav_reason))
+            granted, simulated, tuple(step_reasons), nav_reason,
+            gated.get("gas_usd_source")))
 
     if position_open:
         release_now = None
@@ -1035,6 +1059,7 @@ def episode_summary(steps: Sequence[ShadowStep], *, load_skipped: int = 0) -> di
         # legacy_required_conjunction sits first in CONJUNCT_ORDER so it always
         # takes the blame; these counts say what it was waiting on.
         "conjunct_failure_counts": _conjunct_failure_counts(steps),
+        "gas_usd_source": getattr(steps[0], "gas_usd_source", None) if steps else None,
     }
 
 

@@ -125,12 +125,18 @@ def assemble_rh_clmm_inputs(evidence, *, position_usd, horizon_hours):
         # engine's non-negative amount check never sees a -1e-18 slippage.
         slippage_usd = max(0.0, roundtrip_cost_usd(pos, liquidity_raw, price, fee_tier, d0, d1)
                            - entry_cost_usd - exit_cost_usd)
+    observed_gas_usd = _to_float(evidence.get("observed_gas_usd"))
     gas_usd_estimate = _to_float(evidence.get("gas_usd_estimate"))
-    if gas_usd_estimate is None:
-        gas_usd = None
-        missing.append(("gas_usd_estimate", "CHAIN_DATA_UNAVAILABLE"))
-    else:
+    if observed_gas_usd is not None:
+        gas_usd = observed_gas_usd
+        gas_usd_source = "observed"
+    elif gas_usd_estimate is not None:
         gas_usd = gas_usd_estimate
+        gas_usd_source = "static_pool_meta"
+    else:
+        gas_usd = None
+        gas_usd_source = None
+        missing.append(("gas_usd_estimate", "CHAIN_DATA_UNAVAILABLE"))
     record = {
         "protocol_type": "clmm",
         "netcover_model_path": netcover_model_path("clmm"),
@@ -145,6 +151,7 @@ def assemble_rh_clmm_inputs(evidence, *, position_usd, horizon_hours):
         "entry_cost_usd": entry_cost_usd,
         "exit_cost_usd": exit_cost_usd,
         "gas_usd": gas_usd,
+        "gas_usd_source": gas_usd_source,
         "slippage_usd": slippage_usd,
         "reward_conversion_cost_usd": 0.0,
         "exit_latency_loss_usd": pos * (EXIT_LATENCY_LOSS_APR_PCT_MODEL / 100.0) * horizon_hours / 8760.0,

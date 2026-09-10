@@ -317,3 +317,38 @@ def test_t32_zero_fee_distinct_from_unknown_fee():
     assert out_none["fee_ev_usd"] is None
     assert not _has_missing(out_zero, "fee_apr_pct", "EXTERNAL_DATA_UNAVAILABLE")
     assert _has_missing(out_none, "fee_apr_pct", "EXTERNAL_DATA_UNAVAILABLE")
+
+
+# --- RH-02cg: observed gas vs static estimate -------------------------------
+
+def test_evidence_with_observed_gas_usd_prefers_it_and_sets_source():
+    # 7. evidence 带 observed_gas_usd -> gas_usd 用它，gas_usd_source == "observed"
+    ev = _evidence(observed_gas_usd=0.25, gas_usd_estimate=0.40)
+    out = assemble_rh_clmm_inputs(ev, position_usd=Decimal("1000"), horizon_hours=24.0)
+    assert out["gas_usd"] == 0.25
+    assert out["gas_usd_source"] == "observed"
+    # apply_netcover_gate preserves gas_usd_source
+    gated = apply_netcover_gate([out])[0]
+    assert gated.get("gas_usd_source") == "observed"
+
+
+def test_evidence_without_observed_gas_usd_falls_back_to_static_estimate():
+    # 8. evidence 不带 -> 用 gas_usd_estimate，gas_usd_source == "static_pool_meta"
+    ev = _evidence(gas_usd_estimate=0.40)
+    out = assemble_rh_clmm_inputs(ev, position_usd=Decimal("1000"), horizon_hours=24.0)
+    assert out["gas_usd"] == 0.40
+    assert out["gas_usd_source"] == "static_pool_meta"
+    gated = apply_netcover_gate([out])[0]
+    assert gated.get("gas_usd_source") == "static_pool_meta"
+
+
+def test_evidence_with_neither_gas_estimate_fails_closed():
+    # 9. 两者都没有 -> gas_usd is None，missing 含 gas_usd_estimate，gas_usd_source is None
+    ev = _evidence(gas_usd_estimate=None)
+    out = assemble_rh_clmm_inputs(ev, position_usd=Decimal("1000"), horizon_hours=24.0)
+    assert out["gas_usd"] is None
+    assert out["gas_usd_source"] is None
+    assert _has_missing(out, "gas_usd_estimate", "CHAIN_DATA_UNAVAILABLE")
+    gated = apply_netcover_gate([out])[0]
+    assert gated.get("gas_usd_source") is None
+

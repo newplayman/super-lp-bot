@@ -2014,30 +2014,30 @@
     },
     {
       "file": "scripts/lp_rh_shadow_daemon_v1_readonly.py",
-      "line": 334,
+      "line": 387,
       "col": 19,
       "rule": 1,
       "fingerprint": "59be20d56e0eced6",
       "snippet": "dup_rows = copy_stats.get(\"rh_gate_decisions\", {}).get(\"skipped_existing\", 0)",
-      "key": "scripts/lp_rh_shadow_daemon_v1_readonly.py:334:19:1"
+      "key": "scripts/lp_rh_shadow_daemon_v1_readonly.py:387:19:1"
     },
     {
       "file": "scripts/lp_rh_shadow_daemon_v1_readonly.py",
-      "line": 406,
+      "line": 459,
       "col": 48,
       "rule": 1,
       "fingerprint": "c6e72a6c6422a97f",
       "snippet": "parts.append(f\"{short}:{copied_stats[tbl].get('copied', 0)}\")",
-      "key": "scripts/lp_rh_shadow_daemon_v1_readonly.py:406:48:1"
+      "key": "scripts/lp_rh_shadow_daemon_v1_readonly.py:459:48:1"
     },
     {
       "file": "scripts/lp_rh_shadow_runner_v1_readonly.py",
-      "line": 579,
+      "line": 605,
       "col": 22,
       "rule": 2,
       "fingerprint": "0a5bed9d2eefede3",
       "snippet": "granted = bool(res.get(\"granted\"))",
-      "key": "scripts/lp_rh_shadow_runner_v1_readonly.py:579:22:2"
+      "key": "scripts/lp_rh_shadow_runner_v1_readonly.py:605:22:2"
     },
     {
       "file": "scripts/lp_rh_snapshot_diff_v1_readonly.py",

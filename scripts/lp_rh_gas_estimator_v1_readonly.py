@@ -21,8 +21,9 @@ All money is ``Decimal``.
 from __future__ import annotations
 
 import argparse
-import json
+from datetime import datetime, timezone
 from decimal import Decimal
+import json
 from pathlib import Path
 from typing import Any, Mapping, Optional, Sequence
 
@@ -89,6 +90,113 @@ def round_trip_gas_usd(
         native_price_usd=native_price_usd,
         gas_units=units,
     )
+
+
+def _parse_iso(ts_str: str) -> Optional[datetime]:
+    if not ts_str:
+        return None
+    try:
+        dt = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
+    except Exception:
+        return None
+
+
+def observed_gas_usd(
+    conn,
+    *,
+    now: str,
+    max_age_secs: int = 3600,
+    min_samples: int = 3,
+) -> dict:
+    """近期真实 gas 观测的中位数。
+
+    返回 {"gas_usd": Decimal|None, "source": str, "sample_count": int,
+          "newest_observed_at": str|None, "reason": str}
+    """
+    now_dt = _parse_iso(now)
+    if now_dt is None:
+        raise ValueError(f"Invalid 'now' timestamp: {now!r}")
+
+    # Check table existence
+    try:
+        cur = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='rh_gas_observations'"
+        )
+        if not cur.fetchone():
+            return {
+                "gas_usd": None,
+                "source": "observed",
+                "sample_count": 0,
+                "newest_observed_at": None,
+                "reason": "GAS_OBSERVATIONS_TABLE_MISSING",
+            }
+    except Exception:
+        return {
+            "gas_usd": None,
+            "source": "observed",
+            "sample_count": 0,
+            "newest_observed_at": None,
+            "reason": "GAS_OBSERVATIONS_TABLE_MISSING",
+        }
+
+    # Fetch all records from rh_gas_observations
+    rows = conn.execute(
+        "SELECT observed_at, gas_usd FROM rh_gas_observations ORDER BY observed_at DESC"
+    ).fetchall()
+
+    if not rows:
+        return {
+            "gas_usd": None,
+            "source": "observed",
+            "sample_count": 0,
+            "newest_observed_at": None,
+            "reason": "GAS_OBSERVATIONS_EMPTY",
+        }
+
+    newest_observed_at = rows[0][0]
+    newest_dt = _parse_iso(newest_observed_at)
+    if newest_dt is None or (now_dt - newest_dt).total_seconds() > max_age_secs:
+        return {
+            "gas_usd": None,
+            "source": "observed",
+            "sample_count": 0,
+            "newest_observed_at": newest_observed_at,
+            "reason": "GAS_OBSERVATIONS_STALE",
+        }
+
+    # Collect valid samples within max_age_secs window
+    valid_gas_vals: list[Decimal] = []
+    for obs_at_str, gas_usd_raw in rows:
+        obs_dt = _parse_iso(obs_at_str)
+        if obs_dt is None:
+            continue
+        age_secs = (now_dt - obs_dt).total_seconds()
+        if 0 <= age_secs <= max_age_secs:
+            val = _to_decimal(gas_usd_raw)
+            if val is not None:
+                valid_gas_vals.append(val)
+
+    sample_count = len(valid_gas_vals)
+    if sample_count < min_samples:
+        return {
+            "gas_usd": None,
+            "source": "observed",
+            "sample_count": sample_count,
+            "newest_observed_at": newest_observed_at,
+            "reason": "GAS_OBSERVATIONS_INSUFFICIENT",
+        }
+
+    med = _median(valid_gas_vals)
+    return {
+        "gas_usd": med,
+        "source": "observed",
+        "sample_count": sample_count,
+        "newest_observed_at": newest_observed_at,
+        "reason": "OK",
+    }
 
 
 def _median(values: Sequence[Decimal]) -> Optional[Decimal]:
