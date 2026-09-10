@@ -46,6 +46,7 @@ from scripts.lp_rh_market_session_v1_readonly import (  # noqa: E402
 # --- constants -------------------------------------------------------------
 RH_RPC_PRIMARY = os.environ.get(
     "RH_RPC_PRIMARY", "https://rpc.mainnet.chain.robinhood.com")
+RH_RPC_SECONDARY = os.environ.get("RH_RPC_SECONDARY", "").strip()
 USER_AGENT = "curl/8.5.0"
 RPC_TIMEOUT_SECS = 12
 CHAIN_ID = 4663
@@ -172,9 +173,8 @@ def price_to_text(price: Decimal) -> str:
 
 
 # --- rpc --------------------------------------------------------------------
-def rpc(method: str, params: Optional[list] = None, *, url: str = RH_RPC_PRIMARY,
-        timeout: int = RPC_TIMEOUT_SECS) -> Tuple[Any, Any, int]:
-    """Return (result, error, latency_ms). A JSON-RPC error is never a 0 (T12)."""
+def _single_rpc(url: str, method: str, params: Optional[list],
+                timeout: int) -> Tuple[Any, Any, int]:
     body = json.dumps({"jsonrpc": "2.0", "id": 1, "method": method,
                        "params": params or []}).encode()
     req = urllib.request.Request(
@@ -193,6 +193,62 @@ def rpc(method: str, params: Optional[list] = None, *, url: str = RH_RPC_PRIMARY
             int((time.time() - started) * 1000)
 
 
+def rpc(method: str, params: Optional[list] = None, *,
+        url: Optional[str] = None, timeout: int = RPC_TIMEOUT_SECS,
+        used: Optional[dict] = None) -> Tuple[Any, Any, int]:
+    """Return (result, error, latency_ms). A JSON-RPC error is never a 0 (T12).
+
+    If url is explicitly provided, only that endpoint is queried (no failover).
+    If url is omitted, queries RH_RPC_PRIMARY and fails over to RH_RPC_SECONDARY
+    (if configured) on transport failure or JSON-RPC error.
+    If used (dict) is provided, fills used["provider"] and used["failover"].
+    """
+    if url is not None:
+        res, err, ms = _single_rpc(url, method, params, timeout)
+        if isinstance(used, dict):
+            used["provider"] = url
+            used["failover"] = False
+        return res, err, ms
+
+    primary = os.environ.get("RH_RPC_PRIMARY") or RH_RPC_PRIMARY
+    res1, err1, ms1 = _single_rpc(primary, method, params, timeout)
+    if err1 is None:
+        if isinstance(used, dict):
+            used["provider"] = primary
+            used["failover"] = False
+        return res1, None, ms1
+
+    secondary = (os.environ.get("RH_RPC_SECONDARY")
+                 if "RH_RPC_SECONDARY" in os.environ
+                 else RH_RPC_SECONDARY)
+    if isinstance(secondary, str):
+        secondary = secondary.strip()
+    else:
+        secondary = ""
+
+    if not secondary:
+        if isinstance(used, dict):
+            used["provider"] = primary
+            used["failover"] = False
+        return res1, err1, ms1
+
+    # Primary failed and secondary is configured: attempt failover
+    res2, err2, ms2 = _single_rpc(secondary, method, params, timeout)
+    total_ms = ms1 + ms2
+    if err2 is None:
+        if isinstance(used, dict):
+            used["provider"] = secondary
+            used["failover"] = True
+            used["primary_error"] = err1
+        return res2, None, total_ms
+
+    if isinstance(used, dict):
+        used["provider"] = secondary
+        used["failover"] = True
+        used["primary_error"] = err1
+    return None, {"primary": err1, "secondary": err2}, total_ms
+
+
 def read_decimals(token: str, rpc_fn: Callable = rpc) -> Optional[int]:
     res, err, _ = rpc_fn("eth_call", [{"to": token, "data": SEL_DECIMALS},
                                       "latest"])
@@ -208,9 +264,28 @@ def collect_round(conn, *, dec0: int, dec1: int, last_good_block: Optional[int],
     raw: Dict[str, Any] = {}
     errors: List[str] = []
     latencies: List[int] = []
+    providers_used: List[str] = []
+    failover_traces: List[str] = []
+    last_provider: Optional[str] = None
 
-    blk, err, ms = rpc_fn("eth_getBlockByNumber", ["latest", False])
-    latencies.append(ms)
+    def _call(method: str, params: Optional[list] = None) -> Tuple[Any, Any, int]:
+        nonlocal last_provider
+        u: Dict[str, Any] = {}
+        try:
+            res, err, ms = rpc_fn(method, params, used=u)
+        except TypeError:
+            res, err, ms = rpc_fn(method, params)
+        latencies.append(ms)
+        if u.get("provider"):
+            last_provider = u["provider"]
+            if err is None:
+                providers_used.append(u["provider"])
+        if u.get("failover"):
+            p_err = u.get("primary_error")
+            failover_traces.append(f"primary_failover:{_err_text(p_err)}")
+        return res, err, ms
+
+    blk, err, _ = _call("eth_getBlockByNumber", ["latest", False])
     block_number = None
     if err is None and isinstance(blk, dict):
         block_number = _hex_to_int(blk.get("number"))
@@ -219,17 +294,15 @@ def collect_round(conn, *, dec0: int, dec1: int, last_good_block: Optional[int],
     else:
         errors.append(f"eth_getBlockByNumber:{_err_text(err)}")
 
-    slot0, err, ms = rpc_fn("eth_call",
-                            [{"to": POOL, "data": SEL_SLOT0}, "latest"])
-    latencies.append(ms)
+    slot0, err, _ = _call("eth_call",
+                          [{"to": POOL, "data": SEL_SLOT0}, "latest"])
     if err is None:
         raw["slot0"] = slot0
     else:
         errors.append(f"slot0:{_err_text(err)}")
 
-    liq, err, ms = rpc_fn("eth_call",
-                          [{"to": POOL, "data": SEL_LIQUIDITY}, "latest"])
-    latencies.append(ms)
+    liq, err, _ = _call("eth_call",
+                        [{"to": POOL, "data": SEL_LIQUIDITY}, "latest"])
     if err is None:
         raw["liquidity"] = liq
     else:
@@ -240,22 +313,19 @@ def collect_round(conn, *, dec0: int, dec1: int, last_good_block: Optional[int],
     # feeGrowth value and must stay distinct from "not asked".  These are NAV
     # inputs, not pool state, so a failure here does not count toward the
     # chain-health error tally (state/flags are driven by the pool reads above).
-    fg0, err, ms = rpc_fn("eth_call",
-                          [{"to": POOL, "data": SEL_FEE_GROWTH_0}, "latest"])
-    latencies.append(ms)
+    fg0, err, _ = _call("eth_call",
+                        [{"to": POOL, "data": SEL_FEE_GROWTH_0}, "latest"])
     fee_growth_0 = _uint256_hex_to_decimal_text(fg0) if err is None else None
 
-    fg1, err, ms = rpc_fn("eth_call",
-                          [{"to": POOL, "data": SEL_FEE_GROWTH_1}, "latest"])
-    latencies.append(ms)
+    fg1, err, _ = _call("eth_call",
+                        [{"to": POOL, "data": SEL_FEE_GROWTH_1}, "latest"])
     fee_growth_1 = _uint256_hex_to_decimal_text(fg1) if err is None else None
 
     balances = {}
     for label, token in (("token0", TOKEN0), ("token1", TOKEN1)):
-        bal, err, ms = rpc_fn("eth_call",
-                              [{"to": token, "data": _balance_data(POOL)},
-                               "latest"])
-        latencies.append(ms)
+        bal, err, _ = _call("eth_call",
+                            [{"to": token, "data": _balance_data(POOL)},
+                             "latest"])
         if err is None:
             balances[label] = bal
         else:
@@ -272,9 +342,8 @@ def collect_round(conn, *, dec0: int, dec1: int, last_good_block: Optional[int],
     block_timestamp = None
     block_hash = None
     if good_block is not None:
-        blk_age, err_age, ms_age = rpc_fn(
+        blk_age, err_age, _ = _call(
             "eth_getBlockByNumber", [hex(good_block), False])
-        latencies.append(ms_age)
         if err_age is None and isinstance(blk_age, dict):
             block_timestamp = _hex_to_int(blk_age.get("timestamp"))
             # RH-02p: provenance hash of good_block itself (not of the
@@ -282,11 +351,20 @@ def collect_round(conn, *, dec0: int, dec1: int, last_good_block: Optional[int],
             # last_good_block). None when unavailable, never "".
             block_hash = blk_age.get("hash") or None
 
+    effective_provider = (
+        providers_used[-1] if providers_used
+        else (last_provider or (os.environ.get("RH_RPC_PRIMARY") or RH_RPC_PRIMARY))
+    )
+    health_errors = list(errors)
+    for ft in failover_traces:
+        if ft not in health_errors:
+            health_errors.append(ft)
+
     insert_row(conn, "rh_rpc_health", {
-        "provider": RH_RPC_PRIMARY, "method": "pool_state_round",
+        "provider": effective_provider, "method": "pool_state_round",
         "sample_time": now,
         "latency_ms": max(latencies) if latencies else None,
-        "error": "; ".join(errors) if errors else None,
+        "error": "; ".join(health_errors) if health_errors else None,
         "last_good_block": good_block, "state": state,
     })
 

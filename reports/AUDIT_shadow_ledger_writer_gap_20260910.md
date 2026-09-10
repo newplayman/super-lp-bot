@@ -265,3 +265,46 @@ Stage A 的 `invariant_violations` 检查是在对着空气打勾。
 RH-02bp 刻意设计成**零风险**：不给 `--ledger-db` 时与现在完全一致，
 代码就绪但不生效。是否切换到持久库、是否重启 daemon，是主脑验收后
 **需要用户点头**的决定——那意味着让一个至今只读的 daemon 开始写生产库。
+
+---
+
+## 更正（2026-09-10 07:20）：`rh_position_marks` 的「重复」是误判
+
+`d957453` 的 commit message 与当时给用户的汇报里，把
+「`rh_position_marks` 778 行但只有 317 个不同 `mark_time`」称为缺陷，
+并写了「重复的 NAV 序列会污染最差日与不确定性统计」。**这是错的。**
+
+按 episode 拆开看，每个 episode 内部零重复：
+
+```
+rh-shadow-...064033-0   181 行, 181 个不同时刻
+rh-shadow-...065533-1   197 行, 197 个不同时刻
+rh-shadow-...071033-2   200 行, 200 个不同时刻
+rh-shadow-...071432-0   200 行, 200 个不同时刻
+
+主键 (position_id, mark_time) 重复组数: 0
+```
+
+`position_id` 是 `f"rh-shadow-{strategy_episode}"`，含 episode，
+所以**跨 episode 在同一时刻各有一行是主键允许的，语义上也应该允许**——
+每一轮是一次独立的反事实模拟，各自记录自己的 NAV 序列。
+把它们合并或去掉才会真正破坏 Stage B 的统计。
+
+**误判的原因**：只看了聚合数字 `count(*) != count(distinct mark_time)`，
+没有按 `position_id` 分组再看。这正是本仓库反复出现的那类错误——
+聚合掩盖分组结构。同一个毛病本轮已在别人的产出里批评过四次。
+
+**修复本身没有做错事**：RH-02ca 要求按 `(position_id, mark_time)` 去重，
+防的是**同一 episode 内** rollback 重跑造成的重复，那是真实存在的路径。
+跨 episode 的多行不受影响。所以代码是对的，只是当初给出的理由有一半站不住。
+
+**仍然成立的部分**：`rh_economic_evaluations` 卡在 181 不再增长是真缺陷，
+根因（三张表不在 `_copy_new_rows` 里）也是真的。修复后：
+
+```
+rh_economic_evaluations  181 -> 317   与 rh_gate_decisions 的 317 一致
+economic 主键重复         0
+daemon 日志              copied={gate:16, econ:136, marks:200, pos:0, journal:0, resv:0}
+```
+
+`econ:136` 就是修复前会被丢掉的那部分。

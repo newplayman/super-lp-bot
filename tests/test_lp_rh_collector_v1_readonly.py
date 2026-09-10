@@ -7,8 +7,11 @@ rpc_fn callables (never the network), all databases live under tmp_path
 """
 from __future__ import annotations
 
+import json
 import os
 import subprocess
+import urllib.error
+import urllib.request
 from decimal import Decimal
 from pathlib import Path
 
@@ -415,3 +418,235 @@ def test_round_makes_at_most_one_extra_rpc_call(tmp_path):
         assert rpc.calls["block_fetches"] == 2
     finally:
         conn.close()
+
+
+# --- 14. RH-02cb: RPC failover tests -----------------------------------------
+class _DummyResp:
+    def __init__(self, data: dict):
+        self._raw = json.dumps(data).encode("utf-8")
+
+    def read(self):
+        return self._raw
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        pass
+
+
+def test_rpc_no_secondary_makes_exactly_one_request(monkeypatch):
+    monkeypatch.delenv("RH_RPC_SECONDARY", raising=False)
+    monkeypatch.setattr(collector, "RH_RPC_SECONDARY", "")
+    calls = []
+
+    def fake_urlopen(req, timeout=None):
+        calls.append(req.full_url)
+        return _DummyResp({"jsonrpc": "2.0", "id": 1, "result": "0x1237"})
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    res, err, ms = collector.rpc("eth_chainId")
+    assert len(calls) == 1
+    assert calls[0] == collector.RH_RPC_PRIMARY
+    assert res == "0x1237"
+    assert err is None
+
+    calls.clear()
+
+    def fake_urlopen_fail(req, timeout=None):
+        calls.append(req.full_url)
+        raise urllib.error.URLError("connection refused")
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen_fail)
+    res, err, ms = collector.rpc("eth_chainId")
+    assert len(calls) == 1
+    assert res is None
+    assert "transport" in err
+
+
+def test_rpc_failover_on_transport_error(monkeypatch):
+    primary = "https://primary.example.com"
+    secondary = "https://secondary.example.com"
+    monkeypatch.setattr(collector, "RH_RPC_PRIMARY", primary)
+    monkeypatch.setattr(collector, "RH_RPC_SECONDARY", secondary)
+    calls = []
+
+    def fake_urlopen(req, timeout=None):
+        calls.append(req.full_url)
+        if req.full_url == primary:
+            raise urllib.error.URLError("primary unreachable")
+        return _DummyResp({"jsonrpc": "2.0", "id": 1, "result": "0x1237"})
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    used = {}
+    res, err, ms = collector.rpc("eth_chainId", used=used)
+    assert calls == [primary, secondary]
+    assert res == "0x1237"
+    assert err is None
+    assert used["provider"] == secondary
+    assert used["failover"] is True
+
+
+def test_rpc_failover_on_json_rpc_error(monkeypatch):
+    primary = "https://primary.example.com"
+    secondary = "https://secondary.example.com"
+    monkeypatch.setattr(collector, "RH_RPC_PRIMARY", primary)
+    monkeypatch.setattr(collector, "RH_RPC_SECONDARY", secondary)
+    calls = []
+
+    def fake_urlopen(req, timeout=None):
+        calls.append(req.full_url)
+        if req.full_url == primary:
+            return _DummyResp({"jsonrpc": "2.0", "id": 1,
+                               "error": {"code": -32000, "message": "server error"}})
+        return _DummyResp({"jsonrpc": "2.0", "id": 1, "result": "0x1237"})
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    used = {}
+    res, err, ms = collector.rpc("eth_chainId", used=used)
+    assert calls == [primary, secondary]
+    assert res == "0x1237"
+    assert err is None
+    assert used["provider"] == secondary
+    assert used["failover"] is True
+
+
+def test_rpc_explicit_url_never_fails_over(monkeypatch):
+    primary = "https://primary.example.com"
+    secondary = "https://secondary.example.com"
+    explicit = "https://explicit.example.com"
+    monkeypatch.setattr(collector, "RH_RPC_PRIMARY", primary)
+    monkeypatch.setattr(collector, "RH_RPC_SECONDARY", secondary)
+    calls = []
+
+    def fake_urlopen(req, timeout=None):
+        calls.append(req.full_url)
+        raise urllib.error.URLError("explicit down")
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    used = {}
+    res, err, ms = collector.rpc("eth_chainId", url=explicit, used=used)
+    assert calls == [explicit]
+    assert res is None
+    assert "transport" in err
+    assert used["provider"] == explicit
+    assert used["failover"] is False
+
+
+def test_rpc_both_fail_returns_both_errors(monkeypatch):
+    primary = "https://primary.example.com"
+    secondary = "https://secondary.example.com"
+    monkeypatch.setattr(collector, "RH_RPC_PRIMARY", primary)
+    monkeypatch.setattr(collector, "RH_RPC_SECONDARY", secondary)
+
+    def fake_urlopen(req, timeout=None):
+        if req.full_url == primary:
+            return _DummyResp({"jsonrpc": "2.0", "id": 1,
+                               "error": {"code": -32001, "message": "primary dead"}})
+        return _DummyResp({"jsonrpc": "2.0", "id": 1,
+                           "error": {"code": -32002, "message": "secondary dead"}})
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    res, err, ms = collector.rpc("eth_chainId")
+    assert res is None
+    assert isinstance(err, dict)
+    assert "primary" in err and "secondary" in err
+    assert err["primary"]["code"] == -32001
+    assert err["secondary"]["code"] == -32002
+
+
+def test_rpc_latency_is_sum_of_both_attempts(monkeypatch):
+    primary = "https://primary.example.com"
+    secondary = "https://secondary.example.com"
+    monkeypatch.setattr(collector, "RH_RPC_PRIMARY", primary)
+    monkeypatch.setattr(collector, "RH_RPC_SECONDARY", secondary)
+    times = [100.0, 100.1, 100.1, 100.35]
+
+    def fake_time():
+        return times.pop(0) if times else 100.5
+
+    monkeypatch.setattr(collector.time, "time", fake_time)
+
+    def fake_urlopen(req, timeout=None):
+        if req.full_url == primary:
+            raise urllib.error.URLError("timeout")
+        return _DummyResp({"jsonrpc": "2.0", "id": 1, "result": "0x1237"})
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    res, err, ms = collector.rpc("eth_chainId")
+    assert res == "0x1237"
+    # The point is that the failed primary attempt is counted, not that the
+    # arithmetic lands on an exact millisecond. The implementation measures the
+    # whole span -- int((100.35-100.0)*1000) is 349 in binary floating point --
+    # rather than summing two separately-rounded legs (100+250=350). Both are
+    # defensible; neither is worth a brittle equality. What must not happen is
+    # 250, the successful leg alone.
+    assert ms >= 300, f"latency {ms}ms must cover both attempts, not just the successful one"
+
+
+def test_rh_rpc_health_records_effective_provider_and_failover_trace(tmp_path, monkeypatch):
+    conn = _open(tmp_path)
+    primary = "https://primary.example.com"
+    secondary = "https://secondary.example.com"
+    monkeypatch.setattr(collector, "RH_RPC_PRIMARY", primary)
+    monkeypatch.setattr(collector, "RH_RPC_SECONDARY", secondary)
+
+    def fake_urlopen(req, timeout=None):
+        if req.full_url == primary:
+            raise urllib.error.URLError("primary unreachable")
+        payload = json.loads(req.data.decode("utf-8"))
+        method = payload["method"]
+        params = payload.get("params", [])
+        if method == "eth_getBlockByNumber":
+            return _DummyResp({"jsonrpc": "2.0", "id": 1, "result": {
+                "number": BLOCK_HEX, "hash": "0xh", "timestamp": "0x65",
+                "baseFeePerGas": "0x3b9aca00"}})
+        assert method == "eth_call"
+        data = params[0]["data"]
+        if data == collector.SEL_SLOT0:
+            return _DummyResp({"jsonrpc": "2.0", "id": 1, "result": SLOT0_HEX})
+        if data == collector.SEL_LIQUIDITY:
+            return _DummyResp({"jsonrpc": "2.0", "id": 1, "result": "0x1"})
+        if data == collector.SEL_FEE_GROWTH_0:
+            return _DummyResp({"jsonrpc": "2.0", "id": 1, "result": "0x" + "01" * 32})
+        if data == collector.SEL_FEE_GROWTH_1:
+            return _DummyResp({"jsonrpc": "2.0", "id": 1, "result": "0x" + "02" * 32})
+        if data.startswith(collector.SEL_BALANCE_OF):
+            return _DummyResp({"jsonrpc": "2.0", "id": 1, "result": "0x1"})
+        return _DummyResp({"jsonrpc": "2.0", "id": 1, "result": "0x0"})
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    try:
+        collector.collect_round(conn, dec0=18, dec1=6, last_good_block=None)
+        row = conn.execute(
+            "SELECT provider, error, state FROM rh_rpc_health"
+        ).fetchone()
+        assert row is not None
+        provider, error, state = row
+        assert provider == secondary
+        assert error is not None
+        assert "primary_failover" in error
+        assert state == "NORMAL"
+    finally:
+        conn.close()
+
+
+def test_rpc_primary_success_never_calls_secondary(monkeypatch):
+    primary = "https://primary.example.com"
+    secondary = "https://secondary.example.com"
+    monkeypatch.setattr(collector, "RH_RPC_PRIMARY", primary)
+    monkeypatch.setattr(collector, "RH_RPC_SECONDARY", secondary)
+    calls = []
+
+    def fake_urlopen(req, timeout=None):
+        calls.append(req.full_url)
+        return _DummyResp({"jsonrpc": "2.0", "id": 1, "result": "0x1237"})
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    used = {}
+    res, err, ms = collector.rpc("eth_chainId", used=used)
+    assert calls == [primary]
+    assert res == "0x1237"
+    assert err is None
+    assert used["provider"] == primary
+    assert used["failover"] is False
