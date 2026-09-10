@@ -127,6 +127,48 @@ def estimate_rpc_calls(targets: List[Dict[str, Any]]) -> Dict[str, int]:
     return calls
 
 
+def _registry_tables_ready(conn: sqlite3.Connection) -> bool:
+    """True when both rh_pool_registry and rh_contract_attestations exist."""
+    names = {row[0] for row in conn.execute(
+        "SELECT name FROM sqlite_master WHERE type = 'table'")}
+    return {"rh_pool_registry", "rh_contract_attestations"} <= names
+
+
+def detect_registry_attestation_drift(
+    conn: Optional[sqlite3.Connection],
+) -> Dict[str, Any]:
+    """列出 registry 与 attestations 结论不一致的池。只读，不修改。
+
+    对 rh_pool_registry 里每个有 pool_address 的行，取该地址在
+    rh_contract_attestations 里最新一行（created_at DESC）的
+    attestation_status；两者不同即为 drift。registry 没有对应
+    attestation 行的池不算 drift（没有结论可比较）。
+    """
+    if conn is None or not _registry_tables_ready(conn):
+        return {"drift_count": 0, "rows": []}
+    rows: List[Dict[str, Any]] = []
+    for pool_address, registry_status in conn.execute(
+            "SELECT pool_address, attestation_status FROM rh_pool_registry "
+            "WHERE pool_address IS NOT NULL AND pool_address != ''"):
+        latest = conn.execute(
+            "SELECT attestation_status, created_at FROM rh_contract_attestations "
+            "WHERE LOWER(address) = LOWER(?) "
+            "ORDER BY created_at DESC LIMIT 1",
+            (pool_address,),
+        ).fetchone()
+        if latest is None:
+            continue
+        attestation_status, created_at = latest
+        if attestation_status != registry_status:
+            rows.append({
+                "pool_address": pool_address,
+                "registry_status": registry_status,
+                "attestation_status": attestation_status,
+                "attestation_created_at": created_at,
+            })
+    return {"drift_count": len(rows), "rows": rows}
+
+
 def plan_backfill(
     conn: Optional[sqlite3.Connection],
     *,
@@ -151,7 +193,86 @@ def plan_backfill(
         "estimated_rpc_calls": estimate_rpc_calls(targets),
         "network_calls_made": 0,
         "db_writes_made": 0,
+        "registry_drift": detect_registry_attestation_drift(conn),
     }
+
+
+def sync_registry_attestation_status(
+    conn: sqlite3.Connection,
+    *,
+    records: List[Dict[str, Any]],
+    chain_id: int,
+) -> Dict[str, Any]:
+    """把 rh_contract_attestations 的结论回写到 rh_pool_registry.attestation_status。
+
+    只对 registry 里确实存在的 pool_address 生效；registry 没有的地址跳过并计数
+    （backfill 会给 token0/token1/beacon 等非池地址也做认证，那些本来就不该进 registry）。
+
+    - 按 LOWER(pool_address) = LOWER(?) 匹配（EIP-55 大小写）
+    - registry 没有该地址 -> skipped_not_in_registry，不 INSERT 新行
+    - 有该行 -> 更新为该地址在 rh_contract_attestations 里最新一行
+      （created_at DESC）的 attestation_status；任何状态（含 FAILED）照实回写
+    - registry 有该地址但 attestations 没有对应行 -> 保持原样，
+      计入 skipped_no_attestation
+    """
+    result: Dict[str, Any] = {
+        "updated": 0,
+        "unchanged": 0,
+        "skipped_not_in_registry": 0,
+        "skipped_no_attestation": 0,
+        "details": [],
+    }
+    seen: set = set()
+    for record in records:
+        address = record.get("address")
+        if not address:
+            continue
+        key = str(address).strip().lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        registry_row = conn.execute(
+            "SELECT attestation_status FROM rh_pool_registry "
+            "WHERE LOWER(pool_address) = LOWER(?)",
+            (key,),
+        ).fetchone()
+        if registry_row is None:
+            result["skipped_not_in_registry"] += 1
+            result["details"].append(
+                {"address": key, "action": "skipped_not_in_registry"})
+            continue
+        current_status = registry_row[0]
+        latest = conn.execute(
+            "SELECT attestation_status FROM rh_contract_attestations "
+            "WHERE LOWER(address) = LOWER(?) AND chain_id = ? "
+            "ORDER BY created_at DESC LIMIT 1",
+            (key, chain_id),
+        ).fetchone()
+        if latest is None:
+            result["skipped_no_attestation"] += 1
+            result["details"].append({
+                "address": key, "action": "skipped_no_attestation",
+                "registry_status": current_status,
+            })
+            continue
+        new_status = latest[0]
+        if new_status == current_status:
+            result["unchanged"] += 1
+            result["details"].append(
+                {"address": key, "action": "unchanged", "status": new_status})
+            continue
+        conn.execute(
+            "UPDATE rh_pool_registry SET attestation_status = ? "
+            "WHERE LOWER(pool_address) = LOWER(?)",
+            (new_status, key),
+        )
+        result["updated"] += 1
+        result["details"].append({
+            "address": key, "action": "updated",
+            "from_status": current_status, "to_status": new_status,
+        })
+    conn.commit()
+    return result
 
 
 def apply_backfill(
