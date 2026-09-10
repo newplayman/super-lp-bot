@@ -20,6 +20,7 @@ import hashlib
 import json
 import os
 import signal
+import sqlite3
 import sys
 import tempfile
 import threading
@@ -215,29 +216,125 @@ def persist_episode(conn, *, episode_id, started_at, ended_at, pool, target_mode
             (episode_id, conjunct, count, session))
 
 
+def _episode_kwargs(cfg, *, episode_id, sample_list, now_fn):
+    """The run_episode kwargs shared by the scratch and ledger branches.
+
+    Both branches must pass identical arguments to run_episode (only the
+    connection differs), so the kwargs are built in one place.
+    """
+    return dict(strategy_episode=episode_id, samples=sample_list,
+                position_usd=cfg["position_usd"],
+                horizon_hours=cfg["horizon_hours"],
+                capital_usd=cfg["capital_usd"], target_mode=cfg["target_mode"],
+                now_fn=now_fn, pool_meta=cfg["pool_meta"])
+
+
+def _copy_new_rows(scratch_conn, ledger_conn, existing_decision_ids):
+    """Copy the episode's new rows from scratch into the ledger, skipping the
+    duplicate decision_ids the ledger already holds (those rows are not
+    re-written, and the ledger's existing rows are never deleted)."""
+    for row in scratch_conn.execute(
+            "SELECT decision_id, candidate_key, target_mode, primary_status,"
+            " terminal_bits_json, dominant_blocker, reasons_json,"
+            " snapshot_ids_json, decided_at FROM rh_gate_decisions"):
+        if row[0] in existing_decision_ids:
+            continue
+        ledger_conn.execute(
+            "INSERT INTO rh_gate_decisions (decision_id, candidate_key,"
+            " target_mode, primary_status, terminal_bits_json, dominant_blocker,"
+            " reasons_json, snapshot_ids_json, decided_at)"
+            " VALUES (?,?,?,?,?,?,?,?,?)", row)
+    for row in scratch_conn.execute(
+            "SELECT position_id, mark_time, price_snapshot_id, reference_nav,"
+            " liquidation_nav, accrued_fee, unvalued_risk_json"
+            " FROM rh_position_marks"):
+        ledger_conn.execute(
+            "INSERT INTO rh_position_marks (position_id, mark_time,"
+            " price_snapshot_id, reference_nav, liquidation_nav, accrued_fee,"
+            " unvalued_risk_json) VALUES (?,?,?,?,?,?,?)", row)
+    for row in scratch_conn.execute(
+            "SELECT intent_id, policy_version, bucket, amount_usd, status,"
+            " created_at, released_at FROM rh_bucket_reservations"):
+        ledger_conn.execute(
+            "INSERT INTO rh_bucket_reservations (intent_id, policy_version,"
+            " bucket, amount_usd, status, created_at, released_at)"
+            " VALUES (?,?,?,?,?,?,?)", row)
+
+
+def _run_episode_persisted(ledger_conn, *, cfg, episode_id, sample_list, now_fn):
+    """Run the episode on the persistent ledger, counting duplicate decision_ids.
+
+    decision_id does not include the episode, so re-running an overlapping
+    sample window collides on the rh_gate_decisions PK.  The episode is run on
+    the ledger; when a duplicate collides we roll back, re-run on a fresh
+    scratch to recover the full steps, count the duplicates, and copy the new
+    (non-duplicate) rows into the ledger.  Returns (steps, duplicate_rows).
+    """
+    kwargs = _episode_kwargs(cfg, episode_id=episode_id, sample_list=sample_list,
+                             now_fn=now_fn)
+    try:
+        steps = run_episode(ledger_conn, **kwargs)
+        ledger_conn.commit()
+        return steps, 0
+    except sqlite3.IntegrityError:
+        ledger_conn.rollback()
+        with tempfile.TemporaryDirectory() as scratch_dir:
+            scratch_conn = open_store(Path(scratch_dir) / "scratch.db")
+            migrate(scratch_conn)
+            try:
+                steps = run_episode(scratch_conn, **kwargs)
+                scratch_conn.commit()
+                decision_ids = [r[0] for r in scratch_conn.execute(
+                    "SELECT decision_id FROM rh_gate_decisions")]
+                existing = set()
+                if decision_ids:
+                    ph = ",".join("?" for _ in decision_ids)
+                    existing = {r[0] for r in ledger_conn.execute(
+                        "SELECT decision_id FROM rh_gate_decisions WHERE"
+                        " decision_id IN (" + ph + ")", decision_ids)}
+                _copy_new_rows(scratch_conn, ledger_conn, existing)
+                ledger_conn.commit()
+            finally:
+                scratch_conn.close()
+        return steps, len(existing)
+
+
 def run_one_round(cfg, *, shadow_conn, episode_id, started_at, now_fn):
-    """One round: read the latest live samples (read-only), run the episode in a
-    per-round scratch store, and upsert the summary into the daemon's store."""
+    """One round: read the latest live samples (read-only), run the episode, and
+    upsert the summary into the daemon's store.  When cfg carries ledger_db the
+    episode's rows are persisted to that store (duplicates counted, not masked);
+    otherwise a throwaway scratch store is used and destroyed."""
     live_conn = open_live_store(cfg["live_db"])
     try:
         sample_list, skipped = load_samples_from_db(
             live_conn, pool=cfg["pool"], limit=cfg["samples"])
     finally:
         live_conn.close()
-    with tempfile.TemporaryDirectory() as scratch_dir:
-        scratch_conn = open_store(Path(scratch_dir) / "scratch.db")
-        migrate(scratch_conn)
+    ledger_db = cfg.get("ledger_db")
+    if ledger_db:
+        ledger_conn = open_store(Path(ledger_db))
+        migrate(ledger_conn)
         try:
-            steps = run_episode(
-                scratch_conn, strategy_episode=episode_id, samples=sample_list,
-                position_usd=cfg["position_usd"],
-                horizon_hours=cfg["horizon_hours"],
-                capital_usd=cfg["capital_usd"], target_mode=cfg["target_mode"],
-                now_fn=now_fn, pool_meta=cfg["pool_meta"])
-            scratch_conn.commit()
+            steps, duplicate_rows = _run_episode_persisted(
+                ledger_conn, cfg=cfg, episode_id=episode_id,
+                sample_list=sample_list, now_fn=now_fn)
         finally:
-            scratch_conn.close()
+            ledger_conn.close()
+    else:
+        duplicate_rows = None
+        with tempfile.TemporaryDirectory() as scratch_dir:
+            scratch_conn = open_store(Path(scratch_dir) / "scratch.db")
+            migrate(scratch_conn)
+            try:
+                steps = run_episode(
+                    scratch_conn, **_episode_kwargs(
+                        cfg, episode_id=episode_id, sample_list=sample_list,
+                        now_fn=now_fn))
+                scratch_conn.commit()
+            finally:
+                scratch_conn.close()
     summary = episode_summary(steps, load_skipped=skipped)
+    summary["ledger_duplicate_rows"] = duplicate_rows
     persist_episode(
         shadow_conn, episode_id=episode_id, started_at=started_at,
         ended_at=now_fn(), pool=cfg["pool"], target_mode=cfg["target_mode"],
@@ -251,12 +348,20 @@ def run_one_round(cfg, *, shadow_conn, episode_id, started_at, now_fn):
 
 def run_round_safe(cfg, *, shadow_conn, episode_id, now_fn):
     """Run one round; a round exception is recorded in the error column, never
-    fatal to the daemon.  Returns 0 either way."""
+    fatal to the daemon.  Returns 0 either way.  When the ledger is enabled the
+    round's ledger_duplicate_rows is printed so the count is visible, not just
+    stored in the summary."""
     started_at = now_fn()
     try:
-        run_one_round(cfg, shadow_conn=shadow_conn, episode_id=episode_id,
-                      started_at=started_at, now_fn=now_fn)
+        summary = run_one_round(cfg, shadow_conn=shadow_conn,
+                                episode_id=episode_id, started_at=started_at,
+                                now_fn=now_fn)
+        if summary.get("ledger_duplicate_rows") is not None:
+            print(f"[rh-shadow-daemon] {episode_id}: ledger_duplicate_rows="
+                  f"{summary['ledger_duplicate_rows']}", file=sys.stderr)
     except Exception as exc:
+        print(f"[rh-shadow-daemon] {episode_id}: round failed: {exc!r}",
+              file=sys.stderr)
         try:
             persist_episode(
                 shadow_conn, episode_id=episode_id, started_at=started_at,
@@ -315,6 +420,10 @@ def main(argv=None):
     parser.add_argument("--horizon-hours", type=float, required=True)
     parser.add_argument("--pid-file", default=None)
     parser.add_argument("--once", action="store_true", help="one round, exit")
+    parser.add_argument("--ledger-db", default=None,
+                        help="persist every step's gate/mark/reservation rows to "
+                             "this store; when omitted each round uses a "
+                             "throwaway scratch store and the rows are destroyed")
     args = parser.parse_args(argv)
 
     # First load at startup: a failure here propagates out of main() exactly as
@@ -327,7 +436,8 @@ def main(argv=None):
            "capital_usd": Decimal(args.capital_usd),
            "horizon_hours": args.horizon_hours, "target_mode": TARGET_MODE,
            "pool_meta": pool_meta,
-           "pool_meta_hash": pool_meta_hash}
+           "pool_meta_hash": pool_meta_hash,
+           "ledger_db": args.ledger_db}
     shadow_conn = open_shadow_store(args.db)
     if args.pid_file:
         Path(args.pid_file).write_text(str(os.getpid()))

@@ -127,6 +127,29 @@ _POOL_EVIDENCE_KEYS = (
 )
 
 
+# RH-02bq: the eight cost/risk components that sum to the NetCover model's
+# expected_risk_cost.  Persisted verbatim (as JSON) so the full-cost breakdown
+# is auditable, not just the NetCover ratio.
+_COST_COMPONENT_KEYS = (
+    "il_ev_usd", "lvr_ev_usd", "entry_cost_usd", "exit_cost_usd",
+    "gas_usd", "slippage_usd", "reward_conversion_cost_usd",
+    "exit_latency_loss_usd",
+)
+
+
+def _economic_str(value):
+    """Store an economic value as a fixed-point decimal string; None stays None.
+
+    The store's money-column guard rejects raw floats and scientific-notation
+    strings (str(1.6e-08) == '1.6e-08' fails the decimal regex), so round-trip
+    through Decimal for a plain decimal string.  Missing values stay None, never
+    0 or '' (fail-close: a missing economic number is not a zero).
+    """
+    if value is None:
+        return None
+    return format(Decimal(str(value)), "f")
+
+
 def _evidence_for(sample, pool_meta):
     """Sample plus the pool evidence, without mutating either.
 
@@ -665,6 +688,47 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
             "snapshot_ids_json": json.dumps(decision.snapshot_ids, sort_keys=True),
             "decided_at": decision.decided_at,
         })
+        # RH-02bq: persist this step's NetCover economic result.  `gated` was
+        # computed above; this row is the only place the economic numbers reach
+        # the store.  Fail-close: a sample without a source_payload_hash has no
+        # stable snapshot id, so the row is skipped (never fabricated) and the
+        # reason is recorded on the step.  No primary-key collision is caught
+        # here: a re-run of the same sample across rounds must surface to the
+        # daemon layer (RH-02bp), not be silently absorbed.
+        snapshot_id = sample.get("source_payload_hash")
+        if snapshot_id is not None:
+            insert_row(conn, "rh_economic_evaluations", {
+                "candidate_key": decision.candidate_key,
+                "snapshot_id": snapshot_id,
+                # model_version is the gate's versioned model path (e.g.
+                # clmm_vol_sized_range_v1); the fallback is a placeholder only
+                # if the gate ever omits it.  policy_version is this runner's
+                # policy id (the same one reserved above), not a placeholder.
+                "model_version": gated.get("netcover_model_path") or "rh_clmm_v1",
+                "policy_version": POLICY_ID,
+                "horizon_hours": int(horizon_hours),
+                "position_usd": str(position_usd),
+                "fee_ev": _economic_str(gated.get("fee_ev_usd")),
+                "reward_ev": _economic_str(gated.get("reward_ev_usd")),
+                "cost_components_json": json.dumps(
+                    {k: gated.get(k) for k in _COST_COMPONENT_KEYS},
+                    sort_keys=True),
+                "netcover": _economic_str(gated.get("netcover")),
+                # abs_profit / q_min / q_max have no key in `gated` yet: the
+                # absolute-profit decision and the size-interval module are not
+                # wired into apply_netcover_gate.  Stored as None, never a value
+                # we computed ourselves (fail-close).
+                "abs_profit": _economic_str(gated.get("abs_profit")),
+                "q_min": _economic_str(gated.get("q_min")),
+                "q_max": _economic_str(gated.get("q_max")),
+                "missing_inputs_json": json.dumps(
+                    gated.get("missing_inputs") or [], sort_keys=True),
+                "evaluated_at": decision.decided_at,
+                "derived_block_hash": sample.get("derived_block_hash"),
+                "derived_block_number": sample.get("derived_block_number"),
+            })
+        else:
+            step_reasons.append("ECONOMIC_EVAL_SKIPPED_NO_SNAPSHOT_ID")
         sample_time = sample.get("sample_time")
         risk_data = {"skipped": nav is None}
         if nav is None and nav_reason is not None:

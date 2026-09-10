@@ -292,3 +292,131 @@ def test_session_falls_back_to_the_column_when_the_stamp_is_unusable():
     from scripts.lp_rh_shadow_daemon_v1_readonly import _session_of
     assert _session_of({"sample_time": "not-a-time", "session": "RTH"}) == "RTH"
     assert _session_of({"sample_time": None, "session": None}) == "UNKNOWN"
+
+
+# ---------------------------------------------------------------------------
+# --ledger-db: persist every step's gate/mark/reservation rows to a store.
+#
+# decision_id does not include the episode, so re-running an overlapping sample
+# window collides on the rh_gate_decisions PK.  The daemon must catch that class
+# of collision, count it (ledger_duplicate_rows), and not let the round crash --
+# and it must NOT mask it with INSERT OR IGNORE.  Without the arg the behavior
+# is byte-for-byte unchanged (throwaway scratch, destroyed).
+# ---------------------------------------------------------------------------
+
+def _cfg_with_ledger(live_db, ledger_db, pool=POOL):
+    cfg = _cfg(live_db, pool=pool)
+    cfg["ledger_db"] = ledger_db
+    return cfg
+
+
+def _ledger_counts(path):
+    conn = sqlite3.connect(path)
+    try:
+        gate = conn.execute(
+            "select count(*) from rh_gate_decisions").fetchone()[0]
+        marks = conn.execute(
+            "select count(*) from rh_position_marks").fetchone()[0]
+        return gate, marks
+    finally:
+        conn.close()
+
+
+def test_no_ledger_db_behavior_unchanged(tmp_path):
+    live = open_store(tmp_path / "live.db"); migrate(live)
+    _insert_minimal_sample(live, POOL, NOW); live.commit(); live.close()
+    shadow = open_shadow_store(":memory:")
+    summary = run_one_round(_cfg(str(tmp_path / "live.db")), shadow_conn=shadow,
+                            episode_id="ep1", started_at=NOW, now_fn=lambda: NOW)
+    # Persistence not enabled -> the field is None, not 0.
+    assert summary["ledger_duplicate_rows"] is None
+    # No ledger file was created; the scratch store is destroyed.
+    assert not (tmp_path / "ledger.db").exists()
+
+
+def test_ledger_db_persists_gate_and_marks(tmp_path):
+    live = open_store(tmp_path / "live.db"); migrate(live)
+    _insert_minimal_sample(live, POOL, NOW); live.commit(); live.close()
+    ledger = tmp_path / "ledger.db"
+    shadow = open_shadow_store(":memory:")
+    summary = run_one_round(
+        _cfg_with_ledger(str(tmp_path / "live.db"), str(ledger)),
+        shadow_conn=shadow, episode_id="ep1", started_at=NOW,
+        now_fn=lambda: NOW)
+    assert ledger.exists()
+    gate, marks = _ledger_counts(str(ledger))
+    assert gate > 0
+    assert marks > 0
+    # Fresh ledger -> no duplicates.
+    assert summary["ledger_duplicate_rows"] == 0
+
+
+def test_ledger_db_duplicate_counted_not_masked(tmp_path):
+    live = open_store(tmp_path / "live.db"); migrate(live)
+    for i in range(3):
+        _insert_minimal_sample(live, POOL, f"2026-01-01T00:0{i}:00Z")
+    live.commit(); live.close()
+    ledger = tmp_path / "ledger.db"
+    shadow = open_shadow_store(":memory:")
+    cfg = _cfg_with_ledger(str(tmp_path / "live.db"), str(ledger))
+    # Round 1: fresh ledger, no duplicates.
+    s1 = run_one_round(cfg, shadow_conn=shadow, episode_id="ep1",
+                       started_at=NOW, now_fn=lambda: NOW)
+    gate1, _ = _ledger_counts(str(ledger))
+    assert s1["ledger_duplicate_rows"] == 0
+    assert gate1 > 0
+    # Round 2: same samples, every decision_id collides on the PK.
+    s2 = run_one_round(cfg, shadow_conn=shadow, episode_id="ep2",
+                       started_at=NOW, now_fn=lambda: NOW)
+    gate2, _ = _ledger_counts(str(ledger))
+    # The collision is counted, not masked: all three are reported.
+    assert s2["ledger_duplicate_rows"] == 3
+    # Round 1's rows were neither deleted nor overwritten.
+    assert gate2 >= gate1
+
+
+def test_unwritable_ledger_db_fails_not_silent(tmp_path):
+    live = open_store(tmp_path / "live.db"); migrate(live)
+    _insert_minimal_sample(live, POOL, NOW); live.commit(); live.close()
+    # Make the ledger path unwritable: its parent is a regular file, so
+    # open_store's mkdir raises.  The round must fail clearly, not fall back.
+    blocker = tmp_path / "blocker"; blocker.write_text("x")
+    cfg = _cfg(str(tmp_path / "live.db"))
+    cfg["ledger_db"] = str(blocker / "x.db")
+    shadow = open_shadow_store(":memory:")
+    rc = run_round_safe(cfg, shadow_conn=shadow, episode_id="ep",
+                        now_fn=lambda: NOW)
+    assert rc == 0
+    err = shadow.execute(
+        "select error from rh_shadow_episodes").fetchone()[0]
+    # The round clearly failed and the reason was recorded.
+    assert err is not None and err != ""
+    # No silent fallback to scratch: the ledger file was never created.
+    assert not (blocker / "x.db").exists()
+
+
+def test_both_branches_pass_identical_run_episode_args(tmp_path, monkeypatch):
+    import scripts.lp_rh_shadow_daemon_v1_readonly as mod
+    live = open_store(tmp_path / "live.db"); migrate(live)
+    _insert_minimal_sample(live, POOL, NOW); live.commit(); live.close()
+    calls = []
+    orig = mod.run_episode
+
+    def capture(conn, **kwargs):
+        calls.append(dict(kwargs))
+        return orig(conn, **kwargs)
+
+    monkeypatch.setattr(mod, "run_episode", capture)
+    shadow = open_shadow_store(":memory:")
+    now_fn = lambda: NOW
+    # scratch branch (no ledger_db)
+    run_one_round(_cfg(str(tmp_path / "live.db")), shadow_conn=shadow,
+                  episode_id="ep1", started_at=NOW, now_fn=now_fn)
+    # ledger branch
+    cfg = _cfg(str(tmp_path / "live.db"))
+    cfg["ledger_db"] = str(tmp_path / "ledger.db")
+    run_one_round(cfg, shadow_conn=shadow, episode_id="ep1",
+                  started_at=NOW, now_fn=now_fn)
+    assert len(calls) == 2
+    # Only the connection differs; the kwargs are identical.
+    assert calls[0] == calls[1]

@@ -4,6 +4,7 @@ All tests use tmp_path scratch stores and synthetic samples.  The live store
 (reports/lp_rh/scanner.db) is only ever opened read-only, and only to verify
 the suite does not write to it.  No network, no wallet, no broadcast.
 """
+import json
 import sqlite3
 from decimal import Decimal
 from pathlib import Path
@@ -502,5 +503,97 @@ def test_load_samples_parses_health_flags(tmp_path):
 
     assert samples[3]["chain_degraded"] is False
     assert samples[3]["halt"] is True
+    conn.close()
+
+
+# --- RH-02bq: rh_economic_evaluations writer ---------------------------------
+
+def test_economic_row_count_matches_gate_decisions_minus_skipped(tmp_path):
+    conn = _fresh_store(tmp_path)
+    samples = [
+        _passing_sample(0, source_payload_hash="h-0"),
+        _passing_sample(1),  # no source_payload_hash -> economic row skipped
+        _passing_sample(2, source_payload_hash="h-2"),
+        _passing_sample(3),  # no source_payload_hash -> economic row skipped
+        _passing_sample(4, source_payload_hash="h-4"),
+    ]
+    _run(conn, samples)
+    conn.commit()
+    gate_count = conn.execute("SELECT COUNT(*) FROM rh_gate_decisions").fetchone()[0]
+    econ_count = conn.execute("SELECT COUNT(*) FROM rh_economic_evaluations").fetchone()[0]
+    assert gate_count == 5
+    assert econ_count == 3  # 5 gate decisions - 2 skipped (no source_payload_hash)
+    assert econ_count == gate_count - 2
+    conn.close()
+
+
+def test_stored_netcover_equals_recomputed_gated_value(tmp_path):
+    from scripts.lp_rh_shadow_runner_v1_readonly import _evidence_for
+    from scripts.lp_rh_netcover_inputs_v1_readonly import assemble_rh_clmm_inputs
+    from scripts.lp_netcover_engine_v1_readonly import apply_netcover_gate
+    conn = _fresh_store(tmp_path)
+    sample = _passing_sample(0, source_payload_hash="h-0")
+    _run(conn, [sample])
+    conn.commit()
+    stored_netcover = conn.execute(
+        "SELECT netcover FROM rh_economic_evaluations WHERE snapshot_id = 'h-0'"
+    ).fetchone()[0]
+    # Independently recompute the gate for this sample, exactly as the runner does.
+    record = assemble_rh_clmm_inputs(_evidence_for(sample, None),
+                                     position_usd=POSITION_USD,
+                                     horizon_hours=HORIZON_HOURS)
+    gated = apply_netcover_gate([record])[0]
+    assert gated["netcover"] is not None  # a real number, not a placeholder
+    expected = format(Decimal(str(gated["netcover"])), "f")
+    assert stored_netcover == expected
+    conn.close()
+
+
+def test_missing_netcover_input_stores_none_netcover_and_missing_inputs(tmp_path):
+    conn = _fresh_store(tmp_path)
+    s = _passing_sample(0, source_payload_hash="h-0")
+    del s["fee_apr_pct"]  # missing NetCover input -> netcover None
+    _run(conn, [s])
+    conn.commit()
+    row = conn.execute(
+        "SELECT netcover, missing_inputs_json FROM rh_economic_evaluations "
+        "WHERE snapshot_id = 'h-0'"
+    ).fetchone()
+    assert row is not None
+    netcover, missing_json = row
+    assert netcover is None  # not "0" or ""
+    missing = json.loads(missing_json)
+    assert isinstance(missing, list) and len(missing) > 0
+    assert any(m.get("field") == "fee_apr_pct" for m in missing)
+    conn.close()
+
+
+def test_no_source_payload_hash_writes_no_economic_row_and_records_reason(tmp_path):
+    conn = _fresh_store(tmp_path)
+    samples = [
+        _passing_sample(0, source_payload_hash="h-0"),  # writes a row
+        _passing_sample(1),  # no source_payload_hash -> no row, reason recorded
+    ]
+    steps = _run(conn, samples)
+    conn.commit()
+    econ_count = conn.execute("SELECT COUNT(*) FROM rh_economic_evaluations").fetchone()[0]
+    assert econ_count == 1  # only the first sample wrote a row
+    assert "ECONOMIC_EVAL_SKIPPED_NO_SNAPSHOT_ID" in steps[1].conjunct_reasons
+    assert "ECONOMIC_EVAL_SKIPPED_NO_SNAPSHOT_ID" not in steps[0].conjunct_reasons
+    conn.close()
+
+
+def test_evaluated_at_equals_gate_decisions_decided_at(tmp_path):
+    conn = _fresh_store(tmp_path)
+    sample = _passing_sample(0, source_payload_hash="h-0")
+    _run(conn, [sample])
+    conn.commit()
+    econ_evaluated_at = conn.execute(
+        "SELECT evaluated_at FROM rh_economic_evaluations"
+    ).fetchone()[0]
+    gate_decided_at = conn.execute(
+        "SELECT decided_at FROM rh_gate_decisions"
+    ).fetchone()[0]
+    assert econ_evaluated_at == gate_decided_at
     conn.close()
 
