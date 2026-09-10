@@ -254,12 +254,45 @@ def test_readonly_connection_write_raises(tmp_path):
         insert_row(ro, "rh_gate_decisions", row)
     ro.close()
 
-def test_live_db_row_count_unchanged():
-    if _LIVE_SNAPSHOT is None:
+def test_live_db_not_polluted_by_test_fixtures():
+    """The suite must never write to the live store.
+
+    This used to snapshot every rh_ table's row count at import and assert it was
+    unchanged. That worked while the live store was quiescent. It no longer is:
+    the collector writes every 15s and, since the daemon moved to --ledger-db, so
+    does the shadow loop every 15 minutes -- both legitimately. The counts now
+    move for reasons that have nothing to do with the test suite, which made this
+    flaky (it failed in a full run and passed in isolation, minutes apart).
+
+    Checking for fixture fingerprints is both stable under concurrent writers and
+    a stricter statement of the actual guarantee: not "nothing changed" but
+    "nothing *we* made is in there".
+    """
+    if not LIVE_DB.exists():
         pytest.skip("live store not present")
-    current = _live_counts()
-    assert current is not None
-    assert current == _LIVE_SNAPSHOT, "test suite wrote to the live store"
+    conn = sqlite3.connect(f"file:{LIVE_DB}?mode=ro", uri=True)
+    try:
+        conn.execute("PRAGMA busy_timeout=30000")
+        probes = (
+            ("rh_shadow_positions", "strategy_episode", ("ep1", "ep2", "ep-1")),
+            ("rh_shadow_positions", "pool_key", ("0xpool", "0xpool-rh02by")),
+            ("rh_journal", "event_id", ("ep1-open-token0", "ep1-open-token1")),
+            ("rh_gate_decisions", "candidate_key", ("cand_1", "unknown")),
+        )
+        existing = {r[0] for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'")}
+        for table, column, values in probes:
+            if table not in existing:
+                continue
+            placeholders = ",".join("?" for _ in values)
+            found = conn.execute(
+                f"SELECT COUNT(*) FROM {table} WHERE {column} IN ({placeholders})",
+                values).fetchone()[0]
+            assert found == 0, (
+                f"test fixture leaked into the live store: "
+                f"{table}.{column} matched one of {values}")
+    finally:
+        conn.close()
 
 
 # --- RH-04f: the nine non-netcover conjuncts ---------------------------------

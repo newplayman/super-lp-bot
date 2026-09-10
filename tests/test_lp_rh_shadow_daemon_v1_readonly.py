@@ -420,3 +420,210 @@ def test_both_branches_pass_identical_run_episode_args(tmp_path, monkeypatch):
     assert len(calls) == 2
     # Only the connection differs; the kwargs are identical.
     assert calls[0] == calls[1]
+
+
+# ---------------------------------------------------------------------------
+# RH-02ca: ledger rollback path copy_new_rows gap tests
+# ---------------------------------------------------------------------------
+
+def test_meta_runner_tables_match_ledger_tables():
+    """RH-02ca section 4 meta-test: runner written tables == _LEDGER_TABLES."""
+    import re
+    from scripts.lp_rh_shadow_daemon_v1_readonly import _LEDGER_TABLES
+    src = (REPO_ROOT / "scripts" / "lp_rh_shadow_runner_v1_readonly.py").read_text()
+    written = set(re.findall(r'insert_row\(\s*conn\s*,\s*"(rh_\w+)"', src))
+    written.add("rh_journal")
+    if "try_reserve" in src:
+        written.add("rh_bucket_reservations")
+    assert written == set(_LEDGER_TABLES)
+
+
+def test_economic_evaluations_grow_across_rounds_and_no_duplicate_pk(tmp_path):
+    """RH-02ca section 2: economic evaluations grow in round 2 with no duplicate PK."""
+    live = open_store(tmp_path / "live.db"); migrate(live)
+    for i in range(2):
+        insert_row(live, "rh_market_states", {
+            "asset_address": POOL, "sample_time": f"2026-01-01T00:0{i}:00Z", "chain_id": 4663,
+            "reference_mid": "1.0", "multiplier_human": None, "session": "ASIA",
+            "health_flags_json": "{}", "reference_age_secs": 10, "oracle_paused": 0,
+            "source_payload_hash": f"hash-{i}", "reference_bid": None, "reference_ask": None,
+        })
+    live.commit(); live.close()
+    ledger = tmp_path / "ledger.db"
+    shadow = open_shadow_store(":memory:")
+    cfg = _cfg_with_ledger(str(tmp_path / "live.db"), str(ledger))
+    s1 = run_one_round(cfg, shadow_conn=shadow, episode_id="ep1",
+                       started_at=NOW, now_fn=lambda: NOW)
+    c1 = open_store(ledger)
+    econ1 = c1.execute("SELECT count(*) FROM rh_economic_evaluations").fetchone()[0]
+    c1.close()
+    assert econ1 == 2
+    # Add new sample for round 2 (reads samples 0, 1, 2)
+    live = open_store(tmp_path / "live.db")
+    insert_row(live, "rh_market_states", {
+        "asset_address": POOL, "sample_time": "2026-01-01T00:02:00Z", "chain_id": 4663,
+        "reference_mid": "1.0", "multiplier_human": None, "session": "ASIA",
+        "health_flags_json": "{}", "reference_age_secs": 10, "oracle_paused": 0,
+        "source_payload_hash": "hash-2", "reference_bid": None, "reference_ask": None,
+    })
+    live.commit(); live.close()
+    s2 = run_one_round(cfg, shadow_conn=shadow, episode_id="ep2",
+                       started_at=NOW, now_fn=lambda: NOW)
+    c2 = open_store(ledger)
+    econ2 = c2.execute("SELECT count(*) FROM rh_economic_evaluations").fetchone()[0]
+    pk_dist = c2.execute(
+        "SELECT count(DISTINCT candidate_key || '|' || snapshot_id || '|' || "
+        "model_version || '|' || policy_version || '|' || horizon_hours || '|' || position_usd) "
+        "FROM rh_economic_evaluations").fetchone()[0]
+    c2.close()
+    assert econ2 > econ1
+    assert econ2 == 3
+    assert pk_dist == econ2
+
+
+def test_position_marks_dedup_no_duplicate_mark_time(tmp_path):
+    """RH-02ca section 3: position marks deduplicated, count == count(distinct PK)."""
+    live = open_store(tmp_path / "live.db"); migrate(live)
+    for i in range(3):
+        _insert_minimal_sample(live, POOL, f"2026-01-01T00:0{i}:00Z")
+    live.commit(); live.close()
+    ledger = tmp_path / "ledger.db"
+    shadow = open_shadow_store(":memory:")
+    cfg = _cfg_with_ledger(str(tmp_path / "live.db"), str(ledger))
+    run_one_round(cfg, shadow_conn=shadow, episode_id="ep1",
+                  started_at=NOW, now_fn=lambda: NOW)
+    run_one_round(cfg, shadow_conn=shadow, episode_id="ep2",
+                  started_at=NOW, now_fn=lambda: NOW)
+    conn = open_store(ledger)
+    total = conn.execute("SELECT count(*) FROM rh_position_marks").fetchone()[0]
+    distinct = conn.execute(
+        "SELECT count(DISTINCT position_id || '|' || mark_time) FROM rh_position_marks").fetchone()[0]
+    conn.close()
+    assert total == distinct
+
+
+def test_gate_decisions_dedup_maintained(tmp_path):
+    """RH-02ca section 4: gate decisions deduplication is maintained without regression."""
+    live = open_store(tmp_path / "live.db"); migrate(live)
+    for i in range(3):
+        _insert_minimal_sample(live, POOL, f"2026-01-01T00:0{i}:00Z")
+    live.commit(); live.close()
+    ledger = tmp_path / "ledger.db"
+    shadow = open_shadow_store(":memory:")
+    cfg = _cfg_with_ledger(str(tmp_path / "live.db"), str(ledger))
+    run_one_round(cfg, shadow_conn=shadow, episode_id="ep1",
+                  started_at=NOW, now_fn=lambda: NOW)
+    run_one_round(cfg, shadow_conn=shadow, episode_id="ep2",
+                  started_at=NOW, now_fn=lambda: NOW)
+    conn = open_store(ledger)
+    total = conn.execute("SELECT count(*) FROM rh_gate_decisions").fetchone()[0]
+    distinct = conn.execute("SELECT count(DISTINCT decision_id) FROM rh_gate_decisions").fetchone()[0]
+    conn.close()
+    assert total == distinct
+    assert total == 3
+
+
+def test_copy_new_rows_stats_match_scratch_row_counts(tmp_path):
+    """RH-02ca section 5: copy_new_rows stats copied + skipped_existing == scratch count."""
+    from scripts.lp_rh_shadow_daemon_v1_readonly import _copy_new_rows, _LEDGER_TABLES
+    scratch = open_store(tmp_path / "scratch.db"); migrate(scratch)
+    ledger = open_store(tmp_path / "ledger.db"); migrate(ledger)
+    insert_row(ledger, "rh_gate_decisions", {
+        "decision_id": "dec-0", "candidate_key": "cand-0", "target_mode": "SHADOW_SCENARIO",
+        "primary_status": "COMPUTED_PASS", "terminal_bits_json": "{}", "dominant_blocker": None,
+        "reasons_json": "[]", "snapshot_ids_json": "[]", "decided_at": NOW,
+    })
+    insert_row(ledger, "rh_position_marks", {
+        "position_id": "pos-0", "mark_time": NOW, "price_snapshot_id": "s0",
+        "reference_nav": "1000", "liquidation_nav": "1000", "accrued_fee": "0",
+        "unvalued_risk_json": "{}",
+    })
+    ledger.commit()
+    insert_row(scratch, "rh_gate_decisions", {
+        "decision_id": "dec-0", "candidate_key": "cand-0", "target_mode": "SHADOW_SCENARIO",
+        "primary_status": "COMPUTED_PASS", "terminal_bits_json": "{}", "dominant_blocker": None,
+        "reasons_json": "[]", "snapshot_ids_json": "[]", "decided_at": NOW,
+    })
+    insert_row(scratch, "rh_gate_decisions", {
+        "decision_id": "dec-1", "candidate_key": "cand-1", "target_mode": "SHADOW_SCENARIO",
+        "primary_status": "COMPUTED_PASS", "terminal_bits_json": "{}", "dominant_blocker": None,
+        "reasons_json": "[]", "snapshot_ids_json": "[]", "decided_at": NOW,
+    })
+    insert_row(scratch, "rh_position_marks", {
+        "position_id": "pos-0", "mark_time": NOW, "price_snapshot_id": "s0",
+        "reference_nav": "1000", "liquidation_nav": "1000", "accrued_fee": "0",
+        "unvalued_risk_json": "{}",
+    })
+    insert_row(scratch, "rh_position_marks", {
+        "position_id": "pos-1", "mark_time": NOW, "price_snapshot_id": "s1",
+        "reference_nav": "1000", "liquidation_nav": "1000", "accrued_fee": "0",
+        "unvalued_risk_json": "{}",
+    })
+    insert_row(scratch, "rh_economic_evaluations", {
+        "candidate_key": "cand-0", "snapshot_id": "snap-0", "model_version": "m1",
+        "policy_version": "p1", "horizon_hours": 24, "position_usd": "1000",
+        "evaluated_at": NOW,
+    })
+    scratch.commit()
+    stats = _copy_new_rows(scratch, ledger)
+    ledger.commit()
+    assert set(stats.keys()) == set(_LEDGER_TABLES)
+    for tbl in _LEDGER_TABLES:
+        cnt = scratch.execute(f"SELECT count(*) FROM {tbl}").fetchone()[0]
+        assert stats[tbl]["copied"] + stats[tbl]["skipped_existing"] == cnt
+    assert stats["rh_gate_decisions"] == {"copied": 1, "skipped_existing": 1}
+    assert stats["rh_position_marks"] == {"copied": 1, "skipped_existing": 1}
+    assert stats["rh_economic_evaluations"] == {"copied": 1, "skipped_existing": 0}
+    scratch.close(); ledger.close()
+
+
+def test_shadow_positions_and_journal_survive_the_rollback_path(tmp_path):
+    """RH-02ca section 6: the two tables added last must be carried by _copy_new_rows.
+
+    Driving this through run_one_round would need a granted step, which needs the
+    terminal gate to pass, which needs a New York RTH timestamp -- the module's
+    NOW is 00:00Z (19:00 ET the previous day), so nothing is ever granted and the
+    assertion passes vacuously on a broken copier. The earlier version of this
+    test did exactly that and found 0 rows.
+
+    So it exercises the copier directly, which is where the defect was: writers
+    for rh_shadow_positions (f1ab502) and rh_journal (4af0aba) landed after
+    _copy_new_rows (330ab3e) and were never added to it, so on every round that
+    hit the primary-key rollback path their rows were silently dropped.
+    """
+    from scripts.lp_rh_shadow_daemon_v1_readonly import _copy_new_rows
+
+    scratch = open_store(tmp_path / "scratch.db"); migrate(scratch)
+    ledger = open_store(tmp_path / "ledger.db"); migrate(ledger)
+
+    insert_row(scratch, "rh_shadow_positions", {
+        "strategy_episode": "ep1", "position_id": "rh-shadow-ep1",
+        "pool_key": "0xpool", "profile": "CORE", "bucket": "CORE",
+        "initial_token0_raw": "123", "initial_token1_raw": "456",
+        "virtual_liquidity_raw": "789", "opened_at": "2026-09-10T00:00:00Z",
+    })
+    for leg in ("token0", "token1"):
+        insert_row(scratch, "rh_journal", {
+            "event_id": f"ep1-open-{leg}", "idempotency_key": f"ep1-open-{leg}",
+            "account_debit": f"LP_POSITION_{leg.upper()}",
+            "account_credit": f"WALLET_{leg.upper()}",
+            "asset": "0xtoken", "amount_raw": "1000",
+            "is_external_flow": 0, "booked_at": "2026-09-10T00:00:00Z",
+        })
+    scratch.commit()
+
+    stats = _copy_new_rows(scratch, ledger, set())
+    ledger.commit()
+    assert ledger.execute("SELECT COUNT(*) FROM rh_shadow_positions").fetchone()[0] == 1
+    assert ledger.execute("SELECT COUNT(*) FROM rh_journal").fetchone()[0] == 2
+    assert stats["rh_shadow_positions"]["copied"] == 1
+    assert stats["rh_journal"]["copied"] == 2
+
+    # Second round over the same scratch: nothing new, nothing duplicated.
+    stats2 = _copy_new_rows(scratch, ledger, set())
+    ledger.commit()
+    assert ledger.execute("SELECT COUNT(*) FROM rh_shadow_positions").fetchone()[0] == 1
+    assert ledger.execute("SELECT COUNT(*) FROM rh_journal").fetchone()[0] == 2
+    assert stats2["rh_shadow_positions"] == {"copied": 0, "skipped_existing": 1}
+    assert stats2["rh_journal"] == {"copied": 0, "skipped_existing": 2}
+    scratch.close(); ledger.close()

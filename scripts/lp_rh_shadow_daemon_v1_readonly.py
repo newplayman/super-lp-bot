@@ -229,36 +229,79 @@ def _episode_kwargs(cfg, *, episode_id, sample_list, now_fn):
                 now_fn=now_fn, pool_meta=cfg["pool_meta"])
 
 
-def _copy_new_rows(scratch_conn, ledger_conn, existing_decision_ids):
+_LEDGER_TABLES = (
+    "rh_gate_decisions",
+    "rh_economic_evaluations",
+    "rh_position_marks",
+    "rh_shadow_positions",
+    "rh_journal",
+    "rh_bucket_reservations",
+)
+
+_TABLE_PRIMARY_KEYS = {
+    "rh_gate_decisions": ("decision_id",),
+    "rh_economic_evaluations": (
+        "candidate_key", "snapshot_id", "model_version",
+        "policy_version", "horizon_hours", "position_usd",
+    ),
+    "rh_position_marks": ("position_id", "mark_time"),
+    "rh_shadow_positions": ("strategy_episode", "position_id"),
+    "rh_journal": ("event_id",),
+    "rh_bucket_reservations": ("intent_id",),
+}
+
+_TABLE_SHORT_NAMES = {
+    "rh_gate_decisions": "gate",
+    "rh_position_marks": "marks",
+    "rh_economic_evaluations": "econ",
+    "rh_shadow_positions": "pos",
+    "rh_journal": "journal",
+    "rh_bucket_reservations": "resv",
+}
+
+
+def _copy_new_rows(scratch_conn, ledger_conn, existing_decision_ids=None):
     """Copy the episode's new rows from scratch into the ledger, skipping the
-    duplicate decision_ids the ledger already holds (those rows are not
-    re-written, and the ledger's existing rows are never deleted)."""
-    for row in scratch_conn.execute(
-            "SELECT decision_id, candidate_key, target_mode, primary_status,"
-            " terminal_bits_json, dominant_blocker, reasons_json,"
-            " snapshot_ids_json, decided_at FROM rh_gate_decisions"):
-        if row[0] in existing_decision_ids:
+    duplicate primary keys the ledger already holds (those rows are not
+    re-written, and the ledger's existing rows are never deleted).
+
+    Returns per-table copy stats: {table: {"copied": n, "skipped_existing": n}}.
+    """
+    stats = {}
+    for table in _LEDGER_TABLES:
+        cols = [r[1] for r in scratch_conn.execute(f"PRAGMA table_info({table})").fetchall()]
+        if not cols:
             continue
-        ledger_conn.execute(
-            "INSERT INTO rh_gate_decisions (decision_id, candidate_key,"
-            " target_mode, primary_status, terminal_bits_json, dominant_blocker,"
-            " reasons_json, snapshot_ids_json, decided_at)"
-            " VALUES (?,?,?,?,?,?,?,?,?)", row)
-    for row in scratch_conn.execute(
-            "SELECT position_id, mark_time, price_snapshot_id, reference_nav,"
-            " liquidation_nav, accrued_fee, unvalued_risk_json"
-            " FROM rh_position_marks"):
-        ledger_conn.execute(
-            "INSERT INTO rh_position_marks (position_id, mark_time,"
-            " price_snapshot_id, reference_nav, liquidation_nav, accrued_fee,"
-            " unvalued_risk_json) VALUES (?,?,?,?,?,?,?)", row)
-    for row in scratch_conn.execute(
-            "SELECT intent_id, policy_version, bucket, amount_usd, status,"
-            " created_at, released_at FROM rh_bucket_reservations"):
-        ledger_conn.execute(
-            "INSERT INTO rh_bucket_reservations (intent_id, policy_version,"
-            " bucket, amount_usd, status, created_at, released_at)"
-            " VALUES (?,?,?,?,?,?,?)", row)
+        pk_cols = _TABLE_PRIMARY_KEYS[table]
+        pk_indices = [cols.index(c) for c in pk_cols]
+        pk_cols_sql = ", ".join(pk_cols)
+
+        existing_keys = {
+            tuple(r)
+            for r in ledger_conn.execute(f"SELECT {pk_cols_sql} FROM {table}").fetchall()
+        }
+        if table == "rh_gate_decisions" and existing_decision_ids is not None:
+            for d in existing_decision_ids:
+                existing_keys.add((d,) if not isinstance(d, tuple) else d)
+
+        cols_sql = ", ".join(cols)
+        placeholders = ", ".join("?" for _ in cols)
+        insert_sql = f"INSERT INTO {table} ({cols_sql}) VALUES ({placeholders})"
+        select_sql = f"SELECT {cols_sql} FROM {table}"
+
+        copied = 0
+        skipped = 0
+        for row in scratch_conn.execute(select_sql):
+            pk_val = tuple(row[idx] for idx in pk_indices)
+            if pk_val in existing_keys:
+                skipped += 1
+                continue
+            ledger_conn.execute(insert_sql, row)
+            existing_keys.add(pk_val)
+            copied += 1
+
+        stats[table] = {"copied": copied, "skipped_existing": skipped}
+    return stats
 
 
 def _run_episode_persisted(ledger_conn, *, cfg, episode_id, sample_list, now_fn):
@@ -268,14 +311,14 @@ def _run_episode_persisted(ledger_conn, *, cfg, episode_id, sample_list, now_fn)
     sample window collides on the rh_gate_decisions PK.  The episode is run on
     the ledger; when a duplicate collides we roll back, re-run on a fresh
     scratch to recover the full steps, count the duplicates, and copy the new
-    (non-duplicate) rows into the ledger.  Returns (steps, duplicate_rows).
+    (non-duplicate) rows into the ledger.  Returns (steps, duplicate_rows, copy_stats).
     """
     kwargs = _episode_kwargs(cfg, episode_id=episode_id, sample_list=sample_list,
                              now_fn=now_fn)
     try:
         steps = run_episode(ledger_conn, **kwargs)
         ledger_conn.commit()
-        return steps, 0
+        return steps, 0, None
     except sqlite3.IntegrityError:
         ledger_conn.rollback()
         with tempfile.TemporaryDirectory() as scratch_dir:
@@ -284,19 +327,12 @@ def _run_episode_persisted(ledger_conn, *, cfg, episode_id, sample_list, now_fn)
             try:
                 steps = run_episode(scratch_conn, **kwargs)
                 scratch_conn.commit()
-                decision_ids = [r[0] for r in scratch_conn.execute(
-                    "SELECT decision_id FROM rh_gate_decisions")]
-                existing = set()
-                if decision_ids:
-                    ph = ",".join("?" for _ in decision_ids)
-                    existing = {r[0] for r in ledger_conn.execute(
-                        "SELECT decision_id FROM rh_gate_decisions WHERE"
-                        " decision_id IN (" + ph + ")", decision_ids)}
-                _copy_new_rows(scratch_conn, ledger_conn, existing)
+                copy_stats = _copy_new_rows(scratch_conn, ledger_conn)
                 ledger_conn.commit()
             finally:
                 scratch_conn.close()
-        return steps, len(existing)
+        dup_rows = copy_stats.get("rh_gate_decisions", {}).get("skipped_existing", 0)
+        return steps, dup_rows, copy_stats
 
 
 def run_one_round(cfg, *, shadow_conn, episode_id, started_at, now_fn):
@@ -315,13 +351,14 @@ def run_one_round(cfg, *, shadow_conn, episode_id, started_at, now_fn):
         ledger_conn = open_store(Path(ledger_db))
         migrate(ledger_conn)
         try:
-            steps, duplicate_rows = _run_episode_persisted(
+            steps, duplicate_rows, copy_stats = _run_episode_persisted(
                 ledger_conn, cfg=cfg, episode_id=episode_id,
                 sample_list=sample_list, now_fn=now_fn)
         finally:
             ledger_conn.close()
     else:
         duplicate_rows = None
+        copy_stats = None
         with tempfile.TemporaryDirectory() as scratch_dir:
             scratch_conn = open_store(Path(scratch_dir) / "scratch.db")
             migrate(scratch_conn)
@@ -335,6 +372,8 @@ def run_one_round(cfg, *, shadow_conn, episode_id, started_at, now_fn):
                 scratch_conn.close()
     summary = episode_summary(steps, load_skipped=skipped)
     summary["ledger_duplicate_rows"] = duplicate_rows
+    summary["copied"] = copy_stats
+    summary["ledger_copied"] = copy_stats
     persist_episode(
         shadow_conn, episode_id=episode_id, started_at=started_at,
         ended_at=now_fn(), pool=cfg["pool"], target_mode=cfg["target_mode"],
@@ -357,8 +396,19 @@ def run_round_safe(cfg, *, shadow_conn, episode_id, now_fn):
                                 episode_id=episode_id, started_at=started_at,
                                 now_fn=now_fn)
         if summary.get("ledger_duplicate_rows") is not None:
+            dup = summary["ledger_duplicate_rows"]
+            copied_stats = summary.get("copied") or summary.get("ledger_copied")
+            if copied_stats:
+                parts = []
+                for tbl in _LEDGER_TABLES:
+                    if tbl in copied_stats:
+                        short = _TABLE_SHORT_NAMES.get(tbl, tbl)
+                        parts.append(f"{short}:{copied_stats[tbl].get('copied', 0)}")
+                copied_str = " copied={" + ", ".join(parts) + "}"
+            else:
+                copied_str = ""
             print(f"[rh-shadow-daemon] {episode_id}: ledger_duplicate_rows="
-                  f"{summary['ledger_duplicate_rows']}", file=sys.stderr)
+                  f"{dup}{copied_str}", file=sys.stderr)
     except Exception as exc:
         print(f"[rh-shadow-daemon] {episode_id}: round failed: {exc!r}",
               file=sys.stderr)

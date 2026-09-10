@@ -3,7 +3,7 @@
   "tool": "lp_silent_failure_lint_v1_readonly",
   "identity_schema": "(file, rule, fingerprint)",
   "note": "Baseline of known silent-failure hits matched by content fingerprint. --fail-on-new blocks any hit exceeding baseline occurrence count. Line numbers are for display only. Regenerate after an approved fix.",
-  "count": 345,
+  "count": 347,
   "hits": [
     {
       "file": "scripts/finalize_bsc_fee_velocity_overnight_run_v1_readonly.py",
@@ -1780,39 +1780,39 @@
     },
     {
       "file": "scripts/lp_rh_collector_v1_readonly.py",
-      "line": 88,
+      "line": 89,
       "col": 8,
       "rule": 5,
       "fingerprint": "16f08ca1eb1c16ff",
       "snippet": "return \"UNKNOWN\"",
-      "key": "scripts/lp_rh_collector_v1_readonly.py:88:8:5"
+      "key": "scripts/lp_rh_collector_v1_readonly.py:89:8:5"
     },
     {
       "file": "scripts/lp_rh_collector_v1_readonly.py",
-      "line": 147,
+      "line": 148,
       "col": 8,
       "rule": 5,
       "fingerprint": "e706fa9325ded821",
       "snippet": "return False",
-      "key": "scripts/lp_rh_collector_v1_readonly.py:147:8:5"
+      "key": "scripts/lp_rh_collector_v1_readonly.py:148:8:5"
     },
     {
       "file": "scripts/lp_rh_collector_v1_readonly.py",
-      "line": 149,
+      "line": 150,
       "col": 8,
       "rule": 5,
       "fingerprint": "37992c22232b4712",
       "snippet": "return True",
-      "key": "scripts/lp_rh_collector_v1_readonly.py:149:8:5"
+      "key": "scripts/lp_rh_collector_v1_readonly.py:150:8:5"
     },
     {
       "file": "scripts/lp_rh_collector_v1_readonly.py",
-      "line": 160,
+      "line": 161,
       "col": 8,
       "rule": 5,
       "fingerprint": "37992c22232b4712",
       "snippet": "return True",
-      "key": "scripts/lp_rh_collector_v1_readonly.py:160:8:5"
+      "key": "scripts/lp_rh_collector_v1_readonly.py:161:8:5"
     },
     {
       "file": "scripts/lp_rh_daily_report_v1_readonly.py",
@@ -1993,6 +1993,24 @@
       "fingerprint": "098a4146451494b1",
       "snippet": "UPDATE {CONTENDED_TABLE}",
       "key": "scripts/lp_rh_reorg_resolution_v1_readonly.py:146:36:3"
+    },
+    {
+      "file": "scripts/lp_rh_shadow_daemon_v1_readonly.py",
+      "line": 334,
+      "col": 19,
+      "rule": 1,
+      "fingerprint": "59be20d56e0eced6",
+      "snippet": "dup_rows = copy_stats.get(\"rh_gate_decisions\", {}).get(\"skipped_existing\", 0)",
+      "key": "scripts/lp_rh_shadow_daemon_v1_readonly.py:334:19:1"
+    },
+    {
+      "file": "scripts/lp_rh_shadow_daemon_v1_readonly.py",
+      "line": 406,
+      "col": 48,
+      "rule": 1,
+      "fingerprint": "c6e72a6c6422a97f",
+      "snippet": "parts.append(f\"{short}:{copied_stats[tbl].get('copied', 0)}\")",
+      "key": "scripts/lp_rh_shadow_daemon_v1_readonly.py:406:48:1"
     },
     {
       "file": "scripts/lp_rh_shadow_runner_v1_readonly.py",
