@@ -661,3 +661,202 @@ def test_same_episode_rerun_still_deduped(tmp_path):
     distinct = conn.execute("SELECT COUNT(DISTINCT decision_id) FROM rh_gate_decisions").fetchone()[0]
     conn.close()
     assert total == distinct == 3
+
+
+# --- RH-02ce: reservation sync on rollback & cap enforcement ----------------
+
+def _daemon_passing_sample(idx=0, pool=POOL, sample_time=NOW):
+    return {
+        "candidate_key": f"{pool}-{idx}",
+        "sample_time": sample_time,
+        "chain_id": 4663,
+        "attestation_status": "ATTESTED_SAME_BLOCK",
+        "protocol": "v3",
+        "fee_apr_pct": 100.0,
+        "sigma_daily": 0.0,
+        "liquidity_raw": 1e20,
+        "sqrt_price_x96": 4_340_000_000_000_000_000_000_000_000_000,
+        "fee": 500,
+        "dec0": 18,
+        "dec1": 6,
+        "gas_usd_estimate": 0.01,
+        "legacy_required_conjunction": True,
+        "identity_verified": True,
+        "protocol_capabilities_sufficient": True,
+        "data_complete_and_fresh": True,
+        "profile_policy_pass": True,
+        "market_and_chain_risk_pass": True,
+        "absolute_profit_pass": True,
+        "position_and_exit_depth_pass": True,
+        "capital_policy_pass": True,
+        "reference_mid": Decimal("1.0"),
+    }
+
+
+def test_rh02ce_scratch_syncs_reservations_cap_denies_on_rollback(tmp_path):
+    """RH-02ce defect 1 core evidence: ledger has 4 PENDING reservations x 1000 (total 4000).
+
+    When rerun hits the rollback path, reservations are synced to scratch where reserved_total == 4000.
+    With CORE active cap at 4250, room is only 250, so this round's try_reserve(1000) is DENIED.
+    Before the fix, scratch was empty (reserved_total == 0) and the reservation was incorrectly granted.
+    """
+    from scripts.lp_rh_shadow_daemon_v1_readonly import _run_episode_persisted
+    from scripts.lp_rh_bucket_ledger_v1_readonly import POLICY_ID
+
+    ledger = open_store(tmp_path / "ledger.db"); migrate(ledger)
+    for i in range(4):
+        insert_row(ledger, "rh_bucket_reservations", {
+            "intent_id": f"existing-resv-{i}",
+            "policy_version": POLICY_ID,
+            "bucket": "CORE",
+            "amount_usd": "1000",
+            "status": "PENDING",
+            "created_at": NOW,
+            "released_at": None,
+        })
+    ep_id = "ep-rb1"
+    sample = _daemon_passing_sample(0, sample_time="2026-09-08T18:00:00Z")
+    cand_key = f"{sample['candidate_key']}@{sample['sample_time']}"
+    colliding_decision_id = f"rh-terminal-{ep_id}-{cand_key}-SHADOW_SCENARIO"
+    insert_row(ledger, "rh_gate_decisions", {
+        "decision_id": colliding_decision_id,
+        "candidate_key": cand_key,
+        "target_mode": "SHADOW_SCENARIO",
+        "primary_status": "COMPUTED_PASS",
+        "terminal_bits_json": "{}",
+        "dominant_blocker": None,
+        "reasons_json": "[]",
+        "snapshot_ids_json": "[]",
+        "decided_at": NOW,
+    })
+    ledger.commit()
+
+    cfg = _cfg(str(tmp_path / "live.db"))
+    cfg["ledger_db"] = str(tmp_path / "ledger.db")
+
+    steps, dup_rows, copy_stats = _run_episode_persisted(
+        ledger, cfg=cfg, episode_id=ep_id, sample_list=[sample], now_fn=lambda: NOW)
+
+    assert dup_rows == 1
+    assert copy_stats["reservations_synced"] == 4
+    assert steps[0].terminal_eligible is True
+    assert steps[0].reservation_granted is False
+    ledger.close()
+
+
+def test_rh02ce_empty_ledger_syncs_zero_and_grants(tmp_path):
+    """RH-02ce defect 1: when ledger has 0 reservations, 0 rows are synced to scratch without error,
+    and a passing sample's reservation is granted normally on scratch.
+    """
+    from scripts.lp_rh_shadow_daemon_v1_readonly import _run_episode_persisted
+
+    ledger = open_store(tmp_path / "ledger.db"); migrate(ledger)
+    ep_id = "ep-rb2"
+    sample = _daemon_passing_sample(0, sample_time="2026-09-08T18:00:00Z")
+    cand_key = f"{sample['candidate_key']}@{sample['sample_time']}"
+    colliding_decision_id = f"rh-terminal-{ep_id}-{cand_key}-SHADOW_SCENARIO"
+    insert_row(ledger, "rh_gate_decisions", {
+        "decision_id": colliding_decision_id,
+        "candidate_key": cand_key,
+        "target_mode": "SHADOW_SCENARIO",
+        "primary_status": "COMPUTED_PASS",
+        "terminal_bits_json": "{}",
+        "dominant_blocker": None,
+        "reasons_json": "[]",
+        "snapshot_ids_json": "[]",
+        "decided_at": NOW,
+    })
+    ledger.commit()
+
+    cfg = _cfg(str(tmp_path / "live.db"))
+    cfg["ledger_db"] = str(tmp_path / "ledger.db")
+
+    steps, dup_rows, copy_stats = _run_episode_persisted(
+        ledger, cfg=cfg, episode_id=ep_id, sample_list=[sample], now_fn=lambda: NOW)
+
+    assert dup_rows == 1
+    assert copy_stats["reservations_synced"] == 0
+    assert steps[0].terminal_eligible is True
+    assert steps[0].reservation_granted is True
+    ledger.close()
+
+
+def test_rh02ce_stats_reservations_synced_matches_ledger_count(tmp_path):
+    """RH-02ce defect 1: stats['reservations_synced'] accurately reflects the number
+    of reservations synced from ledger to scratch on rollback.
+    """
+    from scripts.lp_rh_shadow_daemon_v1_readonly import _run_episode_persisted
+    from scripts.lp_rh_bucket_ledger_v1_readonly import POLICY_ID
+
+    ledger = open_store(tmp_path / "ledger.db"); migrate(ledger)
+    for i in range(3):
+        insert_row(ledger, "rh_bucket_reservations", {
+            "intent_id": f"resv-{i}",
+            "policy_version": POLICY_ID,
+            "bucket": "CORE",
+            "amount_usd": "500",
+            "status": "PENDING",
+            "created_at": NOW,
+            "released_at": None,
+        })
+    ep_id = "ep-rb3"
+    sample = _daemon_passing_sample(0, sample_time="2026-09-08T18:00:00Z")
+    cand_key = f"{sample['candidate_key']}@{sample['sample_time']}"
+    colliding_decision_id = f"rh-terminal-{ep_id}-{cand_key}-SHADOW_SCENARIO"
+    insert_row(ledger, "rh_gate_decisions", {
+        "decision_id": colliding_decision_id,
+        "candidate_key": cand_key,
+        "target_mode": "SHADOW_SCENARIO",
+        "primary_status": "COMPUTED_PASS",
+        "terminal_bits_json": "{}",
+        "dominant_blocker": None,
+        "reasons_json": "[]",
+        "snapshot_ids_json": "[]",
+        "decided_at": NOW,
+    })
+    ledger.commit()
+
+    cfg = _cfg(str(tmp_path / "live.db"))
+    cfg["ledger_db"] = str(tmp_path / "ledger.db")
+
+    steps, dup_rows, copy_stats = _run_episode_persisted(
+        ledger, cfg=cfg, episode_id=ep_id, sample_list=[sample], now_fn=lambda: NOW)
+
+    assert copy_stats["reservations_synced"] == 3
+    ledger.close()
+
+
+
+def test_reservation_sync_excludes_own_episode(tmp_path):
+    """Syncing the ledger's reservations must skip the ones this episode made.
+
+    RH-02ce syncs reservations into scratch so bucket_active_cap has something to
+    bind against. But a replay of the same episode_id re-issues the same
+    intent_ids, and try_reserve deliberately lets a duplicate intent_id surface
+    as IntegrityError (RH-INV-13, no double-booking) -- so syncing them back
+    would abort the replay it was meant to enable. Other episodes' rows must
+    still come across, or the cap check is empty again.
+    """
+    from scripts.lp_rh_shadow_daemon_v1_readonly import _sync_reservations
+    from scripts.lp_rh_bucket_ledger_v1_readonly import POLICY_ID
+
+    ledger = open_store(tmp_path / "ledger.db"); migrate(ledger)
+    for ep, idx in (("ep-mine", 0), ("ep-other", 0), ("ep-other", 1)):
+        ledger.execute(
+            "INSERT INTO rh_bucket_reservations (intent_id, policy_version, bucket,"
+            " amount_usd, status, created_at, released_at)"
+            " VALUES (?, ?, 'CORE', '1000', 'PENDING', '2026-09-10T14:00:00Z', NULL)",
+            (f"rh-shadow-{ep}-{idx}", POLICY_ID))
+    ledger.commit()
+
+    scratch = open_store(tmp_path / "scratch.db"); migrate(scratch)
+    synced = _sync_reservations(ledger, scratch, exclude_episode="ep-mine")
+    assert synced == 2, "the two ep-other rows must come across"
+    intents = {r[0] for r in scratch.execute("SELECT intent_id FROM rh_bucket_reservations")}
+    assert intents == {"rh-shadow-ep-other-0", "rh-shadow-ep-other-1"}
+
+    # Without the exclusion every row is copied -- which is what made the same
+    # episode's replay collide.
+    scratch2 = open_store(tmp_path / "scratch2.db"); migrate(scratch2)
+    assert _sync_reservations(ledger, scratch2) == 3
+    ledger.close(); scratch.close(); scratch2.close()

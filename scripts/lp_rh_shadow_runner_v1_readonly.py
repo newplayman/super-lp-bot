@@ -30,6 +30,7 @@ from scripts.lp_rh_bucket_ledger_v1_readonly import (
     POLICY_ID,
     bucket_active_cap,
     capital_policy_conflict,
+    release,
     try_reserve,
 )
 from scripts.lp_rh_registry_v1_readonly import RH_CHAIN_ID
@@ -45,7 +46,12 @@ from scripts.lp_rh_pnl_v1_readonly import (
     hodl_benchmark,
     net_pnl,
 )
-from scripts.lp_rh_store_v1_readonly import insert_row, migrate, open_store
+from scripts.lp_rh_store_v1_readonly import (
+    assert_utc_rfc3339,
+    insert_row,
+    migrate,
+    open_store,
+)
 from scripts.lp_rh_v3_inventory_v1_readonly import (
     inventory_for_position,
     position_value_at,
@@ -864,6 +870,35 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
             i, sample_time, price, eligible, decision.primary_status,
             decision.dominant_blocker, nav, step_net_pnl, hodl_value,
             granted, simulated, tuple(step_reasons), nav_reason))
+
+    if position_open:
+        release_now = None
+        if steps and steps[-1].sample_time:
+            try:
+                release_now = assert_utc_rfc3339(steps[-1].sample_time, "sample_time")
+            except (ValueError, TypeError):
+                release_now = None
+        if release_now is None:
+            release_now = now_fn()
+
+        granted_step = next((s for s in steps if s.reservation_granted), None)
+        if granted_step is not None:
+            intent_id = f"rh-shadow-{strategy_episode}-{granted_step.step_index}"
+            released = release(
+                conn,
+                intent_id=intent_id,
+                now=release_now,
+                reason="SHADOW_EPISODE_COMPLETE",
+            )
+            if not released:
+                reasons = list(steps[-1].conjunct_reasons)
+                reasons.append("RESERVATION_RELEASE_FAILED:INTENT_NOT_FOUND")
+                steps[-1].conjunct_reasons = tuple(reasons)
+                if granted_step is not steps[-1]:
+                    g_reasons = list(granted_step.conjunct_reasons)
+                    g_reasons.append("RESERVATION_RELEASE_FAILED:INTENT_NOT_FOUND")
+                    granted_step.conjunct_reasons = tuple(g_reasons)
+
     return steps
 
 

@@ -304,6 +304,56 @@ def _copy_new_rows(scratch_conn, ledger_conn, existing_decision_ids=None):
     return stats
 
 
+def _sync_reservations(ledger_conn, scratch_conn, *, exclude_episode=None) -> int:
+    """Copy the ledger's rh_bucket_reservations into scratch before re-running.
+
+    Without this the cap check runs against an empty table: the rollback path
+    replays the episode on a fresh scratch store where reserved_total is 0, so
+    bucket_active_cap never binds. Production reached 7000 USD of PENDING
+    reservations against a 4250 cap and kept granting.
+
+    `exclude_episode` skips the rows this episode itself created. Re-running the
+    same episode_id (crash recovery, a manual --once) is going to re-issue those
+    exact intent_ids, and try_reserve lets a duplicate intent_id propagate as
+    IntegrityError by design (RH-INV-13) -- syncing them back would abort the
+    replay. Their capital is not double-counted either way, since the replay
+    re-reserves it.
+
+    Read-only on ledger_conn; writes only to scratch_conn. Column names come
+    from PRAGMA table_info rather than being hand-written.
+    Returns the number of rows synced.
+    """
+    table = "rh_bucket_reservations"
+    ledger_cols = [r[1] for r in ledger_conn.execute(f"PRAGMA table_info({table})").fetchall()]
+    if not ledger_cols:
+        return 0
+    scratch_cols = [r[1] for r in scratch_conn.execute(f"PRAGMA table_info({table})").fetchall()]
+    if not scratch_cols:
+        return 0
+    common_cols = [c for c in ledger_cols if c in scratch_cols]
+    if not common_cols:
+        return 0
+
+    cols_sql = ", ".join(common_cols)
+    placeholders = ", ".join("?" for _ in common_cols)
+    insert_sql = f"INSERT INTO {table} ({cols_sql}) VALUES ({placeholders})"
+    select_sql = f"SELECT {cols_sql} FROM {table}"
+
+    prefix = f"rh-shadow-{exclude_episode}-" if exclude_episode else None
+    intent_idx = common_cols.index("intent_id") if "intent_id" in common_cols else None
+
+    synced = 0
+    for row in ledger_conn.execute(select_sql).fetchall():
+        if prefix is not None and intent_idx is not None:
+            intent = row[intent_idx]
+            if intent is not None and str(intent).startswith(prefix):
+                continue
+        scratch_conn.execute(insert_sql, row)
+        synced += 1
+    scratch_conn.commit()
+    return synced
+
+
 def _run_episode_persisted(ledger_conn, *, cfg, episode_id, sample_list, now_fn):
     """Run the episode on the persistent ledger, counting duplicate decision_ids.
 
@@ -324,10 +374,13 @@ def _run_episode_persisted(ledger_conn, *, cfg, episode_id, sample_list, now_fn)
         with tempfile.TemporaryDirectory() as scratch_dir:
             scratch_conn = open_store(Path(scratch_dir) / "scratch.db")
             migrate(scratch_conn)
+            synced = _sync_reservations(ledger_conn, scratch_conn,
+                                        exclude_episode=episode_id)
             try:
                 steps = run_episode(scratch_conn, **kwargs)
                 scratch_conn.commit()
                 copy_stats = _copy_new_rows(scratch_conn, ledger_conn)
+                copy_stats["reservations_synced"] = synced
                 ledger_conn.commit()
             finally:
                 scratch_conn.close()
@@ -404,6 +457,8 @@ def run_round_safe(cfg, *, shadow_conn, episode_id, now_fn):
                     if tbl in copied_stats:
                         short = _TABLE_SHORT_NAMES.get(tbl, tbl)
                         parts.append(f"{short}:{copied_stats[tbl].get('copied', 0)}")
+                if "reservations_synced" in copied_stats:
+                    parts.append(f"reservations_synced:{copied_stats['reservations_synced']}")
                 copied_str = " copied={" + ", ".join(parts) + "}"
             else:
                 copied_str = ""

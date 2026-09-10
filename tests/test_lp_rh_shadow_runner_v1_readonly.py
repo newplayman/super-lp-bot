@@ -966,3 +966,78 @@ def test_rh02cc_distinct_episodes_no_primary_key_collision(tmp_path):
     assert len([d for d in ids if "round-1" in d]) == 3
     assert len([d for d in ids if "round-2" in d]) == 3
     conn.close()
+
+
+# --- RH-02ce: reservation release at episode completion ---------------------
+
+def test_rh02ce_granted_step_released_at_episode_end(tmp_path):
+    """RH-02ce defect 2: an episode with a granted reservation must release it upon normal completion.
+
+    Guards against reservations staying PENDING forever and exhausting the bucket cap.
+    Asserts status is RELEASED and released_at is stamped per release() semantics.
+    """
+    conn = _fresh_store(tmp_path)
+    steps = _run(conn, [_passing_sample(0)], episode="ep-grant-rel")
+    assert steps[0].reservation_granted is True
+    row = conn.execute(
+        "SELECT intent_id, status, released_at FROM rh_bucket_reservations WHERE intent_id = ?",
+        ("rh-shadow-ep-grant-rel-0",),
+    ).fetchone()
+    assert row is not None
+    assert row[0] == "rh-shadow-ep-grant-rel-0"
+    assert row[1] == "RELEASED"
+    assert row[2] is not None
+    conn.close()
+
+
+def test_rh02ce_no_granted_step_does_not_call_release(tmp_path):
+    """RH-02ce defect 2: an episode without any granted reservation must not attempt release.
+
+    Guards against phantom release calls or corrupting reservation table when no reservation was granted.
+    """
+    conn = _fresh_store(tmp_path)
+    samples = [_passing_sample(0, absolute_profit_pass=False)]
+    steps = _run(conn, samples, episode="ep-nogrant")
+    assert not any(s.reservation_granted for s in steps)
+    count = conn.execute("SELECT COUNT(*) FROM rh_bucket_reservations").fetchone()[0]
+    assert count == 0
+    conn.close()
+
+
+def test_rh02ce_sequential_episodes_both_granted_due_to_release(tmp_path):
+    """RH-02ce defect 2 core evidence: running two consecutive episodes, each granted and released.
+
+    The second episode's reserved_total does NOT include the first episode's released reservation,
+    allowing both episodes to be granted without eating up active capacity.
+    """
+    from scripts.lp_rh_bucket_ledger_v1_readonly import POLICY_ID, reserved_total
+    conn = _fresh_store(tmp_path)
+    steps1 = _run(conn, [_passing_sample(0)], episode="ep1")
+    conn.commit()
+    assert steps1[0].reservation_granted is True
+    assert reserved_total(conn, "CORE", POLICY_ID) == Decimal("0")
+
+    steps2 = _run(conn, [_passing_sample(0)], episode="ep2")
+    conn.commit()
+    assert steps2[0].reservation_granted is True
+    assert reserved_total(conn, "CORE", POLICY_ID) == Decimal("0")
+
+    rows = conn.execute("SELECT intent_id, status FROM rh_bucket_reservations ORDER BY intent_id").fetchall()
+    assert len(rows) == 2
+    assert all(r[1] == "RELEASED" for r in rows)
+    conn.close()
+
+
+def test_rh02ce_release_failure_leaves_trace_in_step_reasons(tmp_path, monkeypatch):
+    """RH-02ce defect 2: when release() returns False (e.g. intent not found),
+    it must not fail silently; a trace is recorded in step reasons.
+    """
+    import scripts.lp_rh_shadow_runner_v1_readonly as runner_mod
+    conn = _fresh_store(tmp_path)
+    assert runner_mod.release(conn, "rh-shadow-nonexistent", now=NOW, reason="TEST") is False
+    monkeypatch.setattr(runner_mod, "release", lambda *args, **kwargs: False)
+    steps = _run(conn, [_passing_sample(0)], episode="ep-rel-fail")
+    assert steps[0].reservation_granted is True
+    assert any("RESERVATION_RELEASE_FAILED" in r for s in steps for r in s.conjunct_reasons)
+    conn.close()
+
