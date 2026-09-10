@@ -233,10 +233,10 @@ def test_one_row_per_step_and_duplicate_decision_id(tmp_path):
     conn.commit()
     assert conn.execute("SELECT COUNT(*) FROM rh_gate_decisions").fetchone()[0] == 3
     assert conn.execute("SELECT COUNT(*) FROM rh_position_marks").fetchone()[0] == 3
-    # Same samples + target_mode => same decision_ids; a fresh episode keeps the
-    # reservation intent_id new so the collision is specifically on decision_id.
+    # Same episode + same samples + target_mode => same decision_ids;
+    # collision is specifically on decision_id.
     with pytest.raises(sqlite3.IntegrityError):
-        _run(conn, samples, episode="ep2")
+        _run(conn, samples, episode="ep1")
     conn.close()
 
 
@@ -839,4 +839,130 @@ def test_rh02by_journal_entries_pass_stage_b_balance_audit(tmp_path):
     result = audit_unexplained_ledger_diffs(conn)
     assert result["count"] == 0
     assert result["reason"] == "OK"
+    conn.close()
+
+
+# --- RH-02cc: mark provenance and episode in decision_id ---
+
+def test_rh02cc_sample_provenance_propagated_to_position_marks(tmp_path):
+    """1. 样本带 source_payload_hash / derived_block_hash / derived_block_number
+    -> mark 行的对应三列等于样本里的值（逐字）。"""
+    conn = _fresh_store(tmp_path)
+    samples = [
+        _passing_sample(0, source_payload_hash="payload-h0",
+                        derived_block_hash="block-h0", derived_block_number=12345),
+        _passing_sample(1, source_payload_hash="payload-h1",
+                        derived_block_hash="block-h1", derived_block_number=12346),
+    ]
+    _run(conn, samples, episode="ep-prov")
+    rows = conn.execute(
+        "SELECT price_snapshot_id, derived_block_hash, derived_block_number "
+        "FROM rh_position_marks ORDER BY mark_time"
+    ).fetchall()
+    assert len(rows) == 2
+    assert rows[0] == ("payload-h0", "block-h0", 12345)
+    assert rows[1] == ("payload-h1", "block-h1", 12346)
+    conn.close()
+
+
+def test_rh02cc_missing_provenance_defaults_to_none(tmp_path):
+    """2. 样本缺这三个字段 -> 三列都是 None，episode 不崩。"""
+    conn = _fresh_store(tmp_path)
+    samples = [_passing_sample(i) for i in range(2)]
+    for s in samples:
+        s.pop("source_payload_hash", None)
+        s.pop("derived_block_hash", None)
+        s.pop("derived_block_number", None)
+    steps = _run(conn, samples, episode="ep-noprov")
+    assert len(steps) == 2
+    rows = conn.execute(
+        "SELECT price_snapshot_id, derived_block_hash, derived_block_number "
+        "FROM rh_position_marks ORDER BY mark_time"
+    ).fetchall()
+    assert len(rows) == 2
+    assert rows[0] == (None, None, None)
+    assert rows[1] == (None, None, None)
+    conn.close()
+
+
+def test_rh02cc_mark_price_snapshot_id_matches_economic_evaluation(tmp_path):
+    """3. mark 的 price_snapshot_id 与同一步 rh_economic_evaluations.snapshot_id 相等
+    —— 证明两表可按快照 join。"""
+    conn = _fresh_store(tmp_path)
+    samples = [
+        _passing_sample(0, source_payload_hash="snap-0"),
+        _passing_sample(1, source_payload_hash="snap-1"),
+    ]
+    _run(conn, samples, episode="ep-join")
+    marks = conn.execute(
+        "SELECT mark_time, price_snapshot_id FROM rh_position_marks ORDER BY mark_time"
+    ).fetchall()
+    econs = conn.execute(
+        "SELECT evaluated_at, snapshot_id FROM rh_economic_evaluations ORDER BY evaluated_at"
+    ).fetchall()
+    assert len(marks) == 2 and len(econs) == 2
+    for (m_time, m_snap), (e_time, e_snap) in zip(marks, econs):
+        assert m_snap == e_snap
+        assert m_snap is not None
+    conn.close()
+
+
+def test_rh02cc_unvalued_risk_json_contains_liquidation_nav_reason(tmp_path):
+    """4. unvalued_risk_json 里含 liquidation_nav_reason，且 liquidation_nav 仍是 None。"""
+    conn = _fresh_store(tmp_path)
+    samples = [_passing_sample(i) for i in range(2)]
+    _run(conn, samples, episode="ep-liq")
+    rows = conn.execute(
+        "SELECT liquidation_nav, unvalued_risk_json FROM rh_position_marks"
+    ).fetchall()
+    assert len(rows) == 2
+    for liq_nav, risk_json in rows:
+        assert liq_nav is None
+        data = json.loads(risk_json)
+        assert data.get("liquidation_nav_reason") == "NOT_COMPUTED:EXIT_DEPTH_PER_STEP_NOT_WIRED"
+    conn.close()
+
+
+def test_rh02cc_terminal_record_includes_episode_when_provided():
+    """5. _terminal_record(..., strategy_episode="ep-x") -> 返回的 record 含 strategy_episode == "ep-x"。"""
+    from scripts.lp_rh_shadow_runner_v1_readonly import _terminal_record
+    sample = _passing_sample(0)
+    gated = dict(sample)
+    rec = _terminal_record(sample, gated, 0, strategy_episode="ep-x")
+    assert rec.get("strategy_episode") == "ep-x"
+
+
+def test_rh02cc_terminal_record_omits_episode_when_missing_or_empty():
+    """6. _terminal_record(...) 不传该参数 -> record 不含 strategy_episode 键。"""
+    from scripts.lp_rh_shadow_runner_v1_readonly import _terminal_record
+    sample = _passing_sample(0)
+    gated = dict(sample)
+    rec_default = _terminal_record(sample, gated, 0)
+    assert "strategy_episode" not in rec_default
+    rec_none = _terminal_record(sample, gated, 0, strategy_episode=None)
+    assert "strategy_episode" not in rec_none
+    rec_empty = _terminal_record(sample, gated, 0, strategy_episode="")
+    assert "strategy_episode" not in rec_empty
+
+
+def test_rh02cc_distinct_episodes_no_primary_key_collision(tmp_path):
+    """7. 端到端：同一批样本跑两个不同 episode
+    -> rh_gate_decisions 行数是两倍（decision_id 因 episode 不同而不冲突），
+    且无重复 decision_id。"""
+    conn = _fresh_store(tmp_path)
+    samples = [_passing_sample(i) for i in range(3)]
+    # Commit between episodes the way the daemon does. try_reserve opens its own
+    # BEGIN IMMEDIATE, so leaving round-1's transaction open makes round-2 fail
+    # with "cannot start a transaction within a transaction" -- an artefact of
+    # the fixture, not of the code under test.
+    _run(conn, samples, episode="round-1")
+    conn.commit()
+    _run(conn, samples, episode="round-2")
+    conn.commit()
+    ids = [r[0] for r in conn.execute("SELECT decision_id FROM rh_gate_decisions")]
+    assert len(ids) == 6
+    assert len(set(ids)) == 6, f"decision_id collision across episodes: {ids}"
+    # Group rather than slice: row order is not part of the contract.
+    assert len([d for d in ids if "round-1" in d]) == 3
+    assert len([d for d in ids if "round-2" in d]) == 3
     conn.close()

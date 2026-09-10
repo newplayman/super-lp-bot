@@ -370,7 +370,11 @@ def test_ledger_db_duplicate_counted_not_masked(tmp_path):
                        started_at=NOW, now_fn=lambda: NOW)
     gate2, _ = _ledger_counts(str(ledger))
     # The collision is counted, not masked: all three are reported.
-    assert s2["ledger_duplicate_rows"] == 3
+    # Was 3 before RH-02cc: decision_id embedded only the sample time, so a
+    # different episode over the same samples collided on every row. Now the
+    # episode is part of the id, which is the entire point -- distinct episodes
+    # no longer collide, and the daemon stops replaying each round twice.
+    assert s2["ledger_duplicate_rows"] == 0
     # Round 1's rows were neither deleted nor overwritten.
     assert gate2 >= gate1
 
@@ -520,7 +524,10 @@ def test_gate_decisions_dedup_maintained(tmp_path):
     distinct = conn.execute("SELECT count(DISTINCT decision_id) FROM rh_gate_decisions").fetchone()[0]
     conn.close()
     assert total == distinct
-    assert total == 3
+    # Two episodes x 3 samples. Before RH-02cc this was 3, because episode 2's
+    # decision_ids collided with episode 1's and were dropped -- losing an entire
+    # episode's gate history.
+    assert total == 6
 
 
 def test_copy_new_rows_stats_match_scratch_row_counts(tmp_path):
@@ -627,3 +634,30 @@ def test_shadow_positions_and_journal_survive_the_rollback_path(tmp_path):
     assert stats2["rh_shadow_positions"] == {"copied": 0, "skipped_existing": 1}
     assert stats2["rh_journal"] == {"copied": 0, "skipped_existing": 2}
     scratch.close(); ledger.close()
+
+
+def test_same_episode_rerun_still_deduped(tmp_path):
+    """RH-02cc removed cross-episode collisions; same-episode reruns must still dedupe.
+
+    A daemon restarted under the same episode_id -- crash recovery, or a manual
+    --once replay -- regenerates identical decision_ids. Those still have to be
+    counted and skipped, or the fix for one collision would have opened another.
+    """
+    live = open_store(tmp_path / "live.db"); migrate(live)
+    for i in range(3):
+        _insert_minimal_sample(live, POOL, f"2026-01-01T00:0{i}:00Z")
+    live.commit(); live.close()
+    ledger = tmp_path / "ledger.db"
+    shadow = open_shadow_store(":memory:")
+    cfg = _cfg_with_ledger(str(tmp_path / "live.db"), str(ledger))
+    s1 = run_one_round(cfg, shadow_conn=shadow, episode_id="same-ep",
+                       started_at=NOW, now_fn=lambda: NOW)
+    s2 = run_one_round(cfg, shadow_conn=shadow, episode_id="same-ep",
+                       started_at=NOW, now_fn=lambda: NOW)
+    assert s1["ledger_duplicate_rows"] == 0
+    assert s2["ledger_duplicate_rows"] == 3, "same episode replayed must be deduped"
+    conn = open_store(ledger)
+    total = conn.execute("SELECT COUNT(*) FROM rh_gate_decisions").fetchone()[0]
+    distinct = conn.execute("SELECT COUNT(DISTINCT decision_id) FROM rh_gate_decisions").fetchone()[0]
+    conn.close()
+    assert total == distinct == 3

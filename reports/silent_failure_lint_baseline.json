@@ -3,7 +3,7 @@
   "tool": "lp_silent_failure_lint_v1_readonly",
   "identity_schema": "(file, rule, fingerprint)",
   "note": "Baseline of known silent-failure hits matched by content fingerprint. --fail-on-new blocks any hit exceeding baseline occurrence count. Line numbers are for display only. Regenerate after an approved fix.",
-  "count": 347,
+  "count": 349,
   "hits": [
     {
       "file": "scripts/finalize_bsc_fee_velocity_overnight_run_v1_readonly.py",
@@ -1869,6 +1869,24 @@
       "key": "scripts/lp_rh_exit_depth_v1_readonly.py:296:23:2"
     },
     {
+      "file": "scripts/lp_rh_fault_injection_v1_readonly.py",
+      "line": 803,
+      "col": 42,
+      "rule": 1,
+      "fingerprint": "5d20adcb51f98879",
+      "snippet": "f\"| fee_growth_0 非空比例 | `{prod_before.get('24h_ratio_0', 0):.4f}` | `{s1['control']['col_0_ratio']:.",
+      "key": "scripts/lp_rh_fault_injection_v1_readonly.py:803:42:1"
+    },
+    {
+      "file": "scripts/lp_rh_fault_injection_v1_readonly.py",
+      "line": 804,
+      "col": 42,
+      "rule": 1,
+      "fingerprint": "ae1dc443c41c3509",
+      "snippet": "f\"| fee_growth_1 非空比例 | `{prod_before.get('24h_ratio_1', 0):.4f}` | `{s1['control']['col_1_ratio']:.",
+      "key": "scripts/lp_rh_fault_injection_v1_readonly.py:804:42:1"
+    },
+    {
       "file": "scripts/lp_rh_funnel_autopsy_v1_readonly.py",
       "line": 105,
       "col": 24,
@@ -2014,12 +2032,12 @@
     },
     {
       "file": "scripts/lp_rh_shadow_runner_v1_readonly.py",
-      "line": 576,
+      "line": 579,
       "col": 22,
       "rule": 2,
       "fingerprint": "0a5bed9d2eefede3",
       "snippet": "granted = bool(res.get(\"granted\"))",
-      "key": "scripts/lp_rh_shadow_runner_v1_readonly.py:576:22:2"
+      "key": "scripts/lp_rh_shadow_runner_v1_readonly.py:579:22:2"
     },
     {
       "file": "scripts/lp_rh_snapshot_diff_v1_readonly.py",

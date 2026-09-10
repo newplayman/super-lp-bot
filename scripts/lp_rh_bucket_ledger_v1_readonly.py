@@ -109,12 +109,42 @@ def try_reserve(conn: sqlite3.Connection, *, intent_id: str, bucket: str,
         raise ValueError("NON_POSITIVE_RESERVATION")
     now = assert_utc_rfc3339(now, "now")
     amount_text = assert_decimal_text(_to_decimal_text(amount_usd), "amount_usd")
-    conn.execute("BEGIN IMMEDIATE")
+    # BEGIN IMMEDIATE only works when no transaction is open. The runner reaches
+    # here mid-episode: open_store uses sqlite3's implicit-transaction mode
+    # (isolation_level ''), so the first insert_row of gate/mark/economic rows
+    # has already opened one. Before the terminal gate could grant, every step
+    # failed on session and try_reserve was never called from a dirty
+    # connection -- the first New York RTH window would have crashed the episode
+    # with "cannot start a transaction within a transaction".
+    #
+    # A SAVEPOINT nests, so the reservation stays atomic either way: standalone
+    # callers still get their own BEGIN IMMEDIATE, and a caller that already
+    # holds a transaction gets a nested unit that can be rolled back on its own.
+    own_txn = not conn.in_transaction
+    _SP = "rh_try_reserve"
+    if own_txn:
+        conn.execute("BEGIN IMMEDIATE")
+    else:
+        conn.execute(f"SAVEPOINT {_SP}")
+
+    def _undo() -> None:
+        if own_txn:
+            conn.execute("ROLLBACK")
+        else:
+            conn.execute(f"ROLLBACK TO {_SP}")
+            conn.execute(f"RELEASE {_SP}")
+
+    def _finish() -> None:
+        if own_txn:
+            conn.execute("COMMIT")
+        else:
+            conn.execute(f"RELEASE {_SP}")
+
     try:
         reserved = reserved_total(conn, bucket, policy_version)
         room = bucket_active_cap(capital_usd, bucket) - reserved
         if amount_usd > room:
-            conn.execute("ROLLBACK")
+            _undo()
             return {"granted": False, "reason": "BUCKET_ACTIVE_CAP_EXCEEDED",
                     "room": _to_decimal_text(room)}
         conn.execute(
@@ -123,12 +153,12 @@ def try_reserve(conn: sqlite3.Connection, *, intent_id: str, bucket: str,
             "released_at) VALUES (?, ?, ?, ?, 'PENDING', ?, NULL)",
             (intent_id, policy_version, bucket, amount_text, now),
         )
-        conn.execute("COMMIT")
+        _finish()
         return {"granted": True, "reservation_id": intent_id,
                 "room_after": _to_decimal_text(room - amount_usd)}
     except Exception:
         if conn.in_transaction:
-            conn.execute("ROLLBACK")
+            _undo()
         raise
 
 

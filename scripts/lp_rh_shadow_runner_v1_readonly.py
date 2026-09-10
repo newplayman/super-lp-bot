@@ -89,7 +89,7 @@ def _candidate_key(sample: Mapping[str, Any], step_index: int) -> str:
 
 def _terminal_record(sample, gated, step_index, *, pool_meta=None,
                     capital_usd=None, position_usd=None, now=None,
-                    conjunct_reasons=None) -> dict:
+                    conjunct_reasons=None, strategy_episode=None) -> dict:
     """Merge the gated record with the nine non-netcover conjuncts.
 
     The conjuncts are computed from the modules that own them.  A sample may
@@ -110,6 +110,8 @@ def _terminal_record(sample, gated, step_index, *, pool_meta=None,
     if "capital_policy_conflict" in sample:
         rec["capital_policy_conflict"] = sample["capital_policy_conflict"]
     rec["candidate_key"] = _candidate_key(sample, step_index)
+    if strategy_episode:
+        rec["strategy_episode"] = strategy_episode
     return rec
 
 
@@ -562,7 +564,8 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
         decision = evaluate_terminal_gate(
             _terminal_record(sample, gated, i, pool_meta=pool_meta,
                              capital_usd=capital_usd, position_usd=position_usd,
-                             now=decision_now, conjunct_reasons=step_reasons),
+                             now=decision_now, conjunct_reasons=step_reasons,
+                             strategy_episode=strategy_episode),
             target_mode=target_mode, now=decision_now)
         eligible = bool(decision.terminal_eligible)
         simulated = bool(decision.simulated_policy_only)
@@ -752,15 +755,22 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
         else:
             step_reasons.append("ECONOMIC_EVAL_SKIPPED_NO_SNAPSHOT_ID")
         sample_time = sample.get("sample_time")
-        risk_data = {"skipped": nav is None}
+        risk_data = {
+            "skipped": nav is None,
+            "liquidation_nav_reason": "NOT_COMPUTED:EXIT_DEPTH_PER_STEP_NOT_WIRED",
+        }
         if nav is None and nav_reason is not None:
             risk_data["reason"] = nav_reason
         insert_row(conn, "rh_position_marks", {
             "position_id": f"rh-shadow-{strategy_episode}",
             "mark_time": sample_time if sample_time is not None else now_fn(),
-            "price_snapshot_id": None, "reference_nav": nav, "liquidation_nav": None,
+            "price_snapshot_id": sample.get("source_payload_hash"),
+            "reference_nav": nav,
+            "liquidation_nav": None,
             "accrued_fee": accrued if nav is not None else None,
             "unvalued_risk_json": json.dumps(risk_data, sort_keys=True),
+            "derived_block_hash": sample.get("derived_block_hash"),
+            "derived_block_number": sample.get("derived_block_number"),
         })
         # RH-02bu-2: persist the virtual open position, at most one row per
         # episode.  The quantities come from the inventory-resolution step

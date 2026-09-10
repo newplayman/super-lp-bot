@@ -153,3 +153,61 @@ def test_migrate_inside_transaction_raises(tmp_path):
             c.execute("ROLLBACK")
     finally:
         c.close()
+
+
+def test_try_reserve_works_inside_an_open_transaction(tmp_path):
+    """The runner calls try_reserve mid-episode, with rows already written.
+
+    open_store leaves sqlite3 in implicit-transaction mode, so the first
+    insert_row opens a transaction and a later BEGIN IMMEDIATE raises
+    "cannot start a transaction within a transaction". This never fired before
+    2026-09-10: the terminal gate rejects every step outside New York RTH, so
+    try_reserve was only ever reached on a clean connection. The first RTH
+    window would have crashed the whole episode.
+    """
+    from scripts.lp_rh_store_v1_readonly import insert_row, migrate, open_store
+    from scripts.lp_rh_bucket_ledger_v1_readonly import POLICY_ID, try_reserve
+
+    conn = open_store(tmp_path / "txn.db")
+    migrate(conn)
+    insert_row(conn, "rh_gate_decisions", {
+        "decision_id": "d1", "candidate_key": "c1", "target_mode": "SHADOW",
+        "primary_status": "COMPUTED_FAIL", "terminal_bits_json": "{}",
+        "decided_at": "2026-09-10T14:00:00Z",
+    })
+    assert conn.in_transaction, "fixture premise: a transaction is open"
+
+    res = try_reserve(conn, intent_id="i1", bucket="CORE",
+                      amount_usd=Decimal("10"), capital_usd=Decimal("10000"),
+                      policy_version=POLICY_ID, now="2026-10-10T14:00:00Z")
+    assert res["granted"] is True
+
+    # The caller's transaction survives: its earlier row is still pending, and
+    # committing it persists both.
+    conn.commit()
+    assert conn.execute("SELECT COUNT(*) FROM rh_gate_decisions").fetchone()[0] == 1
+    assert conn.execute("SELECT COUNT(*) FROM rh_bucket_reservations").fetchone()[0] == 1
+    conn.close()
+
+
+def test_try_reserve_denial_inside_transaction_keeps_caller_rows(tmp_path):
+    """A denied reservation must roll back only itself, not the caller's work."""
+    from scripts.lp_rh_store_v1_readonly import insert_row, migrate, open_store
+    from scripts.lp_rh_bucket_ledger_v1_readonly import POLICY_ID, try_reserve
+
+    conn = open_store(tmp_path / "txn2.db")
+    migrate(conn)
+    insert_row(conn, "rh_gate_decisions", {
+        "decision_id": "d1", "candidate_key": "c1", "target_mode": "SHADOW",
+        "primary_status": "COMPUTED_FAIL", "terminal_bits_json": "{}",
+        "decided_at": "2026-09-10T14:00:00Z",
+    })
+    # Far beyond the CORE active cap, so this is denied.
+    res = try_reserve(conn, intent_id="i1", bucket="CORE",
+                      amount_usd=Decimal("999999"), capital_usd=Decimal("10000"),
+                      policy_version=POLICY_ID, now="2026-10-10T14:00:00Z")
+    assert res["granted"] is False
+    conn.commit()
+    assert conn.execute("SELECT COUNT(*) FROM rh_gate_decisions").fetchone()[0] == 1
+    assert conn.execute("SELECT COUNT(*) FROM rh_bucket_reservations").fetchone()[0] == 0
+    conn.close()
