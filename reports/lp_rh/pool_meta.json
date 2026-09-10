@@ -259,5 +259,12 @@
   "receipt_n": 5,
   "gas_units_total": 800000,
   "computed_at": "2026-09-09T08:49:23.769717+00:00"
+ },
+ "quote_usd_per_token1": {
+  "value": "1.0",
+  "source": "coingecko:global-dollar/usd (simple/price, free tier, no key)",
+  "observed_at": "2026-09-10T01:50:10Z",
+  "ttl_secs": 86400,
+  "note": "USDG = Global Dollar. Observed depeg 0.0000%. TTL 24h; on expiry the runner reports QUOTE_EVIDENCE_EXPIRED and produces no NAV rather than reusing a stale rate."
  }
 }
