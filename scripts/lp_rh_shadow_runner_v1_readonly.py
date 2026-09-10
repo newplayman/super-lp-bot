@@ -475,12 +475,21 @@ def _finish_conjuncts(bits, reasons, gated, pool_meta, capital_usd,
             fail("absolute_profit_pass", f"net EV {net} <= 0")
 
     # position_and_exit_depth_pass -- the pool must absorb an exit at this size.
+    #
+    # RH-02bt: max_impact_bps used to fall back to 50 when the key was absent.
+    # That turned a risk gate into a rubber stamp on a single config omission --
+    # no error, no log line, just a permissive threshold nobody chose.  Missing
+    # tolerance is unknown tolerance, so it fails closed like tick_data does.
+    # Tested with `is None`, not falsiness: 0 bps is a legitimate (if
+    # unsatisfiable) tolerance and must not be mistaken for a missing key.
     if not pool_meta or not pool_meta.get("tick_data"):
         fail("position_and_exit_depth_pass", "pool_meta lacks tick_data")
+    elif pool_meta.get("max_impact_bps") is None:
+        fail("position_and_exit_depth_pass", "pool_meta lacks max_impact_bps")
     else:
         depth = exit_depth_for_size(
             position_value_usd=Decimal(str(position_usd)),
-            max_impact_bps=Decimal(str(pool_meta.get("max_impact_bps", 50))),
+            max_impact_bps=Decimal(str(pool_meta["max_impact_bps"])),
             **{k: v for k, v in pool_meta.items()
                if k not in ("attestation_status", "protocol", "max_impact_bps")})
         if depth.get("sufficient"):

@@ -597,3 +597,29 @@ def test_evaluated_at_equals_gate_decisions_decided_at(tmp_path):
     assert econ_evaluated_at == gate_decided_at
     conn.close()
 
+
+
+def test_rh02bt_missing_max_impact_bps_fails_closed():
+    """RH-02bt: pool_meta without max_impact_bps must fail the exit-depth gate.
+
+    It used to default to 50 bps, so a single config omission silently relaxed a
+    risk gate to a threshold nobody chose -- no error, no log line. This assertion
+    is what keeps the permissive default from coming back.
+    """
+    meta = _conj_meta()
+    del meta["max_impact_bps"]
+    bits, reasons = _conj(meta=meta)
+    assert bits["position_and_exit_depth_pass"] is False
+    assert any("max_impact_bps" in r for r in reasons), reasons
+
+
+def test_rh02bt_zero_max_impact_bps_is_not_treated_as_missing():
+    """RH-02bt: 0 bps is a real (if unsatisfiable) tolerance, not an absent key.
+
+    The guard tests `is None` rather than falsiness, so a legitimate zero reaches
+    exit_depth_for_size and is judged on its own merits. Conflating the two is the
+    exact mistake this repo keeps finding elsewhere.
+    """
+    bits, reasons = _conj(meta=_conj_meta(max_impact_bps=0))
+    assert bits["position_and_exit_depth_pass"] is False
+    assert not any("lacks max_impact_bps" in r for r in reasons), reasons
