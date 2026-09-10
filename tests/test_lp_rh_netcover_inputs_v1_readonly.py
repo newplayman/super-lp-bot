@@ -232,3 +232,88 @@ def test_cli_end_to_end(tmp_path):
     rec = data["results"][0]
     assert rec["primary_status"] in ("COMPUTED_PASS", "COMPUTED_FAIL", "INPUTS_UNAVAILABLE")
     assert "netcover_pass" in rec
+
+
+def test_fee_apr_zero_int_is_known_zero():
+    """fee_apr_pct=0 (int) is a legitimate zero, not unknown.
+
+    Guards against a "defensive" `if not value: return None` added to
+    `_to_float`, which would silently turn a real fee=0 into a missing
+    input and change the economics while every existing test stays green.
+    """
+    out = assemble_rh_clmm_inputs(_evidence(fee_apr_pct=0), position_usd=Decimal("1000"), horizon_hours=24.0)
+    assert out["fee_ev_usd"] == 0.0
+    assert not _has_missing(out, "fee_apr_pct", "EXTERNAL_DATA_UNAVAILABLE")
+
+
+def test_fee_apr_zero_float_is_known_zero():
+    """fee_apr_pct=0.0 (float) is a legitimate zero, not unknown.
+
+    Same regression guard as the int case: a falsy-check in `_to_float`
+    would misclassify a real zero fee as EXTERNAL_DATA_UNAVAILABLE.
+    """
+    out = assemble_rh_clmm_inputs(_evidence(fee_apr_pct=0.0), position_usd=Decimal("1000"), horizon_hours=24.0)
+    assert out["fee_ev_usd"] == 0.0
+    assert not _has_missing(out, "fee_apr_pct", "EXTERNAL_DATA_UNAVAILABLE")
+
+
+def test_fee_apr_zero_string_is_known_zero():
+    """fee_apr_pct="0" (string) parses to a legitimate zero, not unknown.
+
+    Guards the string path of `_to_float`: a falsy-check would drop a
+    real "0" fee into missing_inputs.
+    """
+    out = assemble_rh_clmm_inputs(_evidence(fee_apr_pct="0"), position_usd=Decimal("1000"), horizon_hours=24.0)
+    assert out["fee_ev_usd"] == 0.0
+    assert not _has_missing(out, "fee_apr_pct", "EXTERNAL_DATA_UNAVAILABLE")
+
+
+def test_fee_apr_zero_string_float_is_known_zero():
+    """fee_apr_pct="0.0" (string) parses to a legitimate zero, not unknown.
+
+    Guards the string path of `_to_float` for the "0.0" spelling.
+    """
+    out = assemble_rh_clmm_inputs(_evidence(fee_apr_pct="0.0"), position_usd=Decimal("1000"), horizon_hours=24.0)
+    assert out["fee_ev_usd"] == 0.0
+    assert not _has_missing(out, "fee_apr_pct", "EXTERNAL_DATA_UNAVAILABLE")
+
+
+def test_fee_apr_empty_string_is_unknown():
+    """fee_apr_pct="" (empty string) is unknown, not a zero.
+
+    Pins the empty-string half of T32: it must land in missing_inputs as
+    EXTERNAL_DATA_UNAVAILABLE, exactly like None.
+    """
+    out = assemble_rh_clmm_inputs(_evidence(fee_apr_pct=""), position_usd=Decimal("1000"), horizon_hours=24.0)
+    assert out["fee_ev_usd"] is None
+    assert _has_missing(out, "fee_apr_pct", "EXTERNAL_DATA_UNAVAILABLE")
+
+
+def test_fee_apr_unknown_string_is_unknown():
+    """fee_apr_pct="unknown" is unknown, not a zero.
+
+    Pins the non-numeric-string half of T32: a placeholder string must
+    land in missing_inputs, not be coerced to a number.
+    """
+    out = assemble_rh_clmm_inputs(_evidence(fee_apr_pct="unknown"), position_usd=Decimal("1000"), horizon_hours=24.0)
+    assert out["fee_ev_usd"] is None
+    assert _has_missing(out, "fee_apr_pct", "EXTERNAL_DATA_UNAVAILABLE")
+
+
+def test_t32_zero_fee_distinct_from_unknown_fee():
+    """T32 (PRD L1024): a legal fee=0 must be distinguished from fee unknown.
+
+    Runs both calls in one test and asserts they diverge: the zero call
+    yields fee_ev_usd == 0.0 with no missing entry, while the None call
+    yields fee_ev_usd is None with a missing entry. The standalone
+    fee_apr_pct=None case is already pinned by
+    test_missing_fee_apr_marks_input_unavailable; this test adds the
+    zero-vs-None divergence in a single assertion. A regression that
+    collapses the two would fail here.
+    """
+    out_zero = assemble_rh_clmm_inputs(_evidence(fee_apr_pct=0), position_usd=Decimal("1000"), horizon_hours=24.0)
+    out_none = assemble_rh_clmm_inputs(_evidence(fee_apr_pct=None), position_usd=Decimal("1000"), horizon_hours=24.0)
+    assert out_zero["fee_ev_usd"] == 0.0
+    assert out_none["fee_ev_usd"] is None
+    assert not _has_missing(out_zero, "fee_apr_pct", "EXTERNAL_DATA_UNAVAILABLE")
+    assert _has_missing(out_none, "fee_apr_pct", "EXTERNAL_DATA_UNAVAILABLE")
