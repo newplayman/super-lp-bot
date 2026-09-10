@@ -240,6 +240,70 @@ def validate_quote_evidence(
     return val, None
 
 
+def parse_health_flags(raw_flags) -> tuple[dict[str, bool], list[str]]:
+    """Parse health_flags_json (or sequence) and map to risk booleans.
+
+    Known flags:
+      - "CHAIN_DEGRADED" -> chain_degraded=True
+      - "HALT" -> halt=True
+      - "CORP_ACTION" / "CORP_ACTION_PENDING" -> corp_action_pending=True
+      - "SOURCE_DISAGREEMENT" / "SOURCES_DISAGREE" -> sources_disagree=True
+      - "CLOCK_SKEW" -> collector internal timing flag (no separate boolean)
+
+    Returns:
+      (booleans_dict, errors_list)
+      If raw_flags is None, empty string, or empty sequence, all booleans are False and errors are empty.
+      If JSON decoding fails, or unknown flags are present, errors will name the failure/flag.
+    """
+    booleans = {
+        "chain_degraded": False,
+        "halt": False,
+        "corp_action_pending": False,
+        "sources_disagree": False,
+    }
+    errors: list[str] = []
+
+    if raw_flags is None:
+        return booleans, errors
+
+    if isinstance(raw_flags, str):
+        trimmed = raw_flags.strip()
+        if not trimmed:
+            return booleans, errors
+        try:
+            parsed = json.loads(trimmed)
+        except Exception as exc:  # noqa: BLE001
+            return booleans, [f"HEALTH_FLAGS_JSON_INVALID: {exc}"]
+    elif isinstance(raw_flags, (list, tuple, set, frozenset)):
+        parsed = raw_flags
+    else:
+        return booleans, [f"HEALTH_FLAGS_JSON_INVALID: unexpected type {type(raw_flags).__name__}"]
+
+    if not isinstance(parsed, (list, tuple, set, frozenset)):
+        return booleans, [f"HEALTH_FLAGS_JSON_INVALID: expected list, got {type(parsed).__name__}"]
+
+    for item in parsed:
+        flag = str(item).strip()
+        if not flag:
+            continue
+        if flag == "CHAIN_DEGRADED":
+            booleans["chain_degraded"] = True
+        elif flag == "HALT":
+            booleans["halt"] = True
+        elif flag in ("CORP_ACTION", "CORP_ACTION_PENDING"):
+            booleans["corp_action_pending"] = True
+        elif flag in ("SOURCE_DISAGREEMENT", "SOURCES_DISAGREE"):
+            booleans["sources_disagree"] = True
+        elif flag in ("CLOCK_SKEW", "ORACLE_PAUSED", "ORACLE_UNAVAILABLE", "ORACLE_STALE", "API_STALE"):
+            # Known flags from market session / collector that are either handled elsewhere
+            # or purely informational; valid flags that do not raise unknown flag errors.
+            pass
+        else:
+            errors.append(f"HEALTH_FLAGS_UNKNOWN: {flag}")
+
+    return booleans, errors
+
+
 def compute_conjuncts(sample, gated, *, pool_meta=None, capital_usd,
                       position_usd, now):
     """Compute the nine non-netcover conjuncts from the modules that own them.
@@ -298,19 +362,43 @@ def compute_conjuncts(sample, gated, *, pool_meta=None, capital_usd,
         fail("market_and_chain_risk_pass", f"unparseable timestamp {now!r}")
         return _finish_conjuncts(bits, reasons, gated, pool_meta,
                                  capital_usd, position_usd, fail)
+
+    # RH-02ao: Health flags parsing & fail-closed on unknown/invalid flags.
+    # Check if flags were already parsed into sample or if health_flags_json is present.
+    health_errors = sample.get("health_flags_errors")
+    if health_errors is None:
+        # Fall back to parsing health_flags_json if booleans not pre-populated.
+        raw_flags = sample.get("health_flags_json")
+        flags_bools, health_errors = parse_health_flags(raw_flags)
+        flag_chain_degraded = True if (flags_bools["chain_degraded"] or sample.get("chain_degraded") is True) else False
+        flag_halt = True if (flags_bools["halt"] or sample.get("halt") is True) else False
+        flag_corp_action = True if (flags_bools["corp_action_pending"] or sample.get("corp_action_pending") is True) else False
+        flag_sources_disagree = True if (flags_bools["sources_disagree"] or sample.get("sources_disagree") is True) else False
+    else:
+        flag_chain_degraded = True if sample.get("chain_degraded") is True else False
+        flag_halt = True if sample.get("halt") is True else False
+        flag_corp_action = True if sample.get("corp_action_pending") is True else False
+        flag_sources_disagree = True if sample.get("sources_disagree") is True else False
+
+    if health_errors:
+        for err in health_errors:
+            fail("market_and_chain_risk_pass", err)
+        return _finish_conjuncts(bits, reasons, gated, pool_meta,
+                                 capital_usd, position_usd, fail)
+
     # CORE bucket: the on-chain pool price has no independent oracle, so the
     # block timestamp (source_event_time) IS the price's generation time and
     # serves as both oracle_updated_at and api_generated_at.  STOCK buckets
     # must instead go through resolve_freshness (RH-02L); never reuse this.
     flags = evaluate_health(
-        oracle_paused=bool(sample.get("oracle_paused")),
+        oracle_paused=True if (sample.get("oracle_paused") is True or sample.get("oracle_paused") == 1) else False,
         oracle_updated_at=sample.get("source_event_time"),
         api_generated_at=sample.get("source_event_time"),
         now=now_dt,
-        halt=bool(sample.get("halt")),
-        corp_action_pending=bool(sample.get("corp_action_pending")),
-        sources_disagree=bool(sample.get("sources_disagree")),
-        chain_degraded=bool(sample.get("chain_degraded")),
+        halt=flag_halt,
+        corp_action_pending=flag_corp_action,
+        sources_disagree=flag_sources_disagree,
+        chain_degraded=flag_chain_degraded,
         oracle_heartbeat_secs=sample.get("oracle_heartbeat_secs") or 3600,
         api_stale_secs=age,
     )
@@ -620,6 +708,7 @@ def load_samples_from_db(conn, *, pool: str, limit: int) -> tuple[list[dict], in
         if mid is None:
             skipped += 1
             continue
+        flags_bools, health_errs = parse_health_flags(flags_json)
         samples.append({
             "asset_address": asset, "sample_time": st, "chain_id": chain_id,
             "reference_mid": Decimal(str(mid)), "multiplier_human": mult,
@@ -627,6 +716,11 @@ def load_samples_from_db(conn, *, pool: str, limit: int) -> tuple[list[dict], in
             # conjunct that needs it fails closed and names itself.
             "session": session,
             "health_flags_json": flags_json,
+            "chain_degraded": flags_bools["chain_degraded"],
+            "halt": flags_bools["halt"],
+            "corp_action_pending": flags_bools["corp_action_pending"],
+            "sources_disagree": flags_bools["sources_disagree"],
+            "health_flags_errors": health_errs if health_errs else None,
             "reference_age_secs": age,
             "oracle_paused": oracle_paused,
             "source_payload_hash": payload_hash,

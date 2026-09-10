@@ -42,7 +42,12 @@ PRICE = Decimal("2484")
 
 
 def _passing_sample(idx, *, price=PRICE, fee_growth=(X0, X1), sample_time=None, **overrides):
-    s_time = sample_time or f"2026-01-01T00:{idx:02d}:00Z"
+    # idx runs past 59 in the 200-step case, and f"00:{idx:02d}" then produces
+    # "00:100:00" -- a string that looks like a timestamp and is not one.
+    # Carry the overflow into hours instead.
+    s_time = sample_time or (
+        f"2026-01-01T{idx // 60:02d}:{idx % 60:02d}:00Z"
+    )
     s = {
         "candidate_key": f"pool-{idx}",
         "sample_time": s_time,

@@ -437,3 +437,70 @@ def test_nothing_defaults_to_true_when_everything_is_missing():
                                       position_usd=Decimal("50"), now=None)
     assert not any(bits.values()), bits
     assert len(reasons) >= 6
+
+
+# --- RH-02ao: health_flags parsing and risk conjunct tests -------------------
+
+def test_conjunct_market_risk_chain_degraded_fails():
+    # Synthetic sample with health_flags_json containing CHAIN_DEGRADED
+    bits, reasons = _conj(sample=_conj_sample(health_flags_json='["CHAIN_DEGRADED"]'))
+    assert bits["market_and_chain_risk_pass"] is False
+    assert any("CHAIN_DEGRADED" in r for r in reasons)
+
+
+def test_conjunct_market_risk_empty_or_none_health_flags_passes():
+    # health_flags_json=None and '[]' -> four booleans False, does not fail
+    bits_none, reasons_none = _conj(sample=_conj_sample(health_flags_json=None))
+    assert bits_none["market_and_chain_risk_pass"] is True
+    assert reasons_none == []
+
+    bits_empty, reasons_empty = _conj(sample=_conj_sample(health_flags_json="[]"))
+    assert bits_empty["market_and_chain_risk_pass"] is True
+    assert reasons_empty == []
+
+
+def test_conjunct_market_risk_bad_json_fails_closed():
+    # health_flags_json bad JSON -> fail-closed with parse error
+    bits, reasons = _conj(sample=_conj_sample(health_flags_json="{ 坏的 json"))
+    assert bits["market_and_chain_risk_pass"] is False
+    assert any("HEALTH_FLAGS_JSON_INVALID" in r for r in reasons)
+
+
+def test_conjunct_market_risk_unknown_flag_fails_closed():
+    # health_flags_json containing unknown flag -> fail-closed naming the flag
+    bits, reasons = _conj(sample=_conj_sample(health_flags_json='["SOMETHING_NEW"]'))
+    assert bits["market_and_chain_risk_pass"] is False
+    assert any("HEALTH_FLAGS_UNKNOWN: SOMETHING_NEW" in r for r in reasons)
+
+
+def test_load_samples_parses_health_flags(tmp_path):
+    conn = _fresh_store(tmp_path)
+    # health_flags_json is NOT NULL in the store, so None cannot occur there --
+    # inserting it fails at the database, not at the parser.  The shapes that
+    # can actually reach the loader are a flag list, an empty list, and an
+    # empty string.
+    for i, flags_str in enumerate(['["CHAIN_DEGRADED"]', '[]', '', '["HALT"]']):
+        insert_row(conn, "rh_market_states", {
+            "asset_address": "poolRisk",
+            "sample_time": f"2026-01-01T00:{i:02d}:00Z",
+            "chain_id": 4663, "session": "RTH",
+            "health_flags_json": flags_str,
+            "reference_mid": "100.0", "multiplier_human": "1.0",
+        })
+    samples, skipped = load_samples_from_db(conn, pool="poolRisk", limit=10)
+    assert skipped == 0
+    assert len(samples) == 4
+
+    assert samples[0]["chain_degraded"] is True
+    assert samples[0]["halt"] is False
+
+    assert samples[1]["chain_degraded"] is False
+    assert samples[1]["halt"] is False
+
+    assert samples[2]["chain_degraded"] is False
+    assert samples[2]["halt"] is False
+
+    assert samples[3]["chain_degraded"] is False
+    assert samples[3]["halt"] is True
+    conn.close()
+

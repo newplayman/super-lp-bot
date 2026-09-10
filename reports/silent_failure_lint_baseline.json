@@ -1,7 +1,7 @@
 {
   "tool": "lp_silent_failure_lint_v1_readonly",
   "note": "Baseline of known silent-failure hits. --fail-on-new blocks any hit whose key is not listed here. Regenerate after an approved fix.",
-  "count": 371,
+  "count": 366,
   "hits": [
     {
       "key": "scripts/finalize_bsc_fee_velocity_overnight_run_v1_readonly.py:126:8:5",
@@ -1932,89 +1932,49 @@
       "snippet": "counts[(name, session)] = counts.get((name, session), 0) + 1"
     },
     {
-      "key": "scripts/lp_rh_shadow_runner_v1_readonly.py:306:22:2",
+      "key": "scripts/lp_rh_shadow_runner_v1_readonly.py:460:39:1",
       "file": "scripts/lp_rh_shadow_runner_v1_readonly.py",
-      "line": 306,
-      "col": 22,
-      "rule": 2,
-      "snippet": "oracle_paused=bool(sample.get(\"oracle_paused\")),"
-    },
-    {
-      "key": "scripts/lp_rh_shadow_runner_v1_readonly.py:310:13:2",
-      "file": "scripts/lp_rh_shadow_runner_v1_readonly.py",
-      "line": 310,
-      "col": 13,
-      "rule": 2,
-      "snippet": "halt=bool(sample.get(\"halt\")),"
-    },
-    {
-      "key": "scripts/lp_rh_shadow_runner_v1_readonly.py:311:28:2",
-      "file": "scripts/lp_rh_shadow_runner_v1_readonly.py",
-      "line": 311,
-      "col": 28,
-      "rule": 2,
-      "snippet": "corp_action_pending=bool(sample.get(\"corp_action_pending\")),"
-    },
-    {
-      "key": "scripts/lp_rh_shadow_runner_v1_readonly.py:312:25:2",
-      "file": "scripts/lp_rh_shadow_runner_v1_readonly.py",
-      "line": 312,
-      "col": 25,
-      "rule": 2,
-      "snippet": "sources_disagree=bool(sample.get(\"sources_disagree\")),"
-    },
-    {
-      "key": "scripts/lp_rh_shadow_runner_v1_readonly.py:313:23:2",
-      "file": "scripts/lp_rh_shadow_runner_v1_readonly.py",
-      "line": 313,
-      "col": 23,
-      "rule": 2,
-      "snippet": "chain_degraded=bool(sample.get(\"chain_degraded\")),"
-    },
-    {
-      "key": "scripts/lp_rh_shadow_runner_v1_readonly.py:372:39:1",
-      "file": "scripts/lp_rh_shadow_runner_v1_readonly.py",
-      "line": 372,
+      "line": 460,
       "col": 39,
       "rule": 1,
       "snippet": "max_impact_bps=Decimal(str(pool_meta.get(\"max_impact_bps\", 50))),"
     },
     {
-      "key": "scripts/lp_rh_shadow_runner_v1_readonly.py:445:22:2",
+      "key": "scripts/lp_rh_shadow_runner_v1_readonly.py:533:22:2",
       "file": "scripts/lp_rh_shadow_runner_v1_readonly.py",
-      "line": 445,
+      "line": 533,
       "col": 22,
       "rule": 2,
       "snippet": "granted = bool(res.get(\"granted\"))"
     },
     {
-      "key": "scripts/lp_rh_shadow_runner_v1_readonly.py:651:27:1",
+      "key": "scripts/lp_rh_shadow_runner_v1_readonly.py:745:27:1",
       "file": "scripts/lp_rh_shadow_runner_v1_readonly.py",
-      "line": 651,
+      "line": 745,
       "col": 27,
       "rule": 1,
       "snippet": "counts[name] = counts.get(name, 0) + 1"
     },
     {
-      "key": "scripts/lp_rh_shadow_runner_v1_readonly.py:660:42:1",
+      "key": "scripts/lp_rh_shadow_runner_v1_readonly.py:754:42:1",
       "file": "scripts/lp_rh_shadow_runner_v1_readonly.py",
-      "line": 660,
+      "line": 754,
       "col": 42,
       "rule": 1,
       "snippet": "status_counts[s.primary_status] = status_counts.get(s.primary_status, 0) + 1"
     },
     {
-      "key": "scripts/lp_rh_shadow_runner_v1_readonly.py:662:49:1",
+      "key": "scripts/lp_rh_shadow_runner_v1_readonly.py:756:49:1",
       "file": "scripts/lp_rh_shadow_runner_v1_readonly.py",
-      "line": 662,
+      "line": 756,
       "col": 49,
       "rule": 1,
       "snippet": "blocker_counts[s.dominant_blocker] = blocker_counts.get(s.dominant_blocker, 0) + 1"
     },
     {
-      "key": "scripts/lp_rh_shadow_runner_v1_readonly.py:704:43:1",
+      "key": "scripts/lp_rh_shadow_runner_v1_readonly.py:798:43:1",
       "file": "scripts/lp_rh_shadow_runner_v1_readonly.py",
-      "line": 704,
+      "line": 798,
       "col": 43,
       "rule": 1,
       "snippet": "steps_without_nav_reasons[r] = steps_without_nav_reasons.get(r, 0) + 1"
