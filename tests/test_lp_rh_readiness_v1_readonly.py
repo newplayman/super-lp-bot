@@ -619,8 +619,19 @@ def test_build_state_real_asset_coverage_reference():
         assert float(st_a["coverage_ratio"]) == pytest.approx(0.9678, abs=0.01)
         assert st_a["passed"] is False
         assert "COVERAGE_INSUFFICIENT" in st_a["blockers"]
-        # RH-02az: Real scanner.db pool has no contract attestation for 0x52e65b17fb6e5ba00ed806f37afcd2daa50271ca
-        assert STAGE_A_POOL_NOT_ATTESTED in st_a["blockers"]
+        # Attestation state is data, not behaviour: this asserted the live pool
+        # had none, which stopped being true the moment the backfill ran.  What
+        # is worth pinning here is that the blocker tracks the data -- present
+        # when the pool is unattested, absent when it is attested.  The
+        # constructed cases above cover both directions.
+        attested = conn.execute(
+            "SELECT COUNT(*) FROM rh_contract_attestations WHERE LOWER(address) = LOWER(?)",
+            (target_asset,),
+        ).fetchone()[0]
+        if attested:
+            assert STAGE_A_POOL_NOT_ATTESTED not in st_a["blockers"]
+        else:
+            assert STAGE_A_POOL_NOT_ATTESTED in st_a["blockers"]
     finally:
         conn.close()
 
@@ -822,4 +833,265 @@ def test_audit_invariant_violations_clean_and_detected(tmp_path):
     # The negative mid on 0x111 was caught:
     assert "STAGE_A_INVARIANT_VIOLATIONS" in st["stage_a"]["blockers"]
     conn.close()
+
+
+def test_key_field_health_real_db_fee_growth_passes():
+    """RH-02bj Acceptance 1: fee_growth_global_0/1 passes with ~99.87% on real scanner.db.
+
+    STAGE_A_KEY_FIELDS_INCOMPLETE disappears from Stage A blockers.
+    Remaining blockers (hours, coverage, attestation, synthetic tests) must stay.
+    """
+    from decimal import Decimal
+    from scripts.lp_rh_readiness_v1_readonly import (
+        _build_state,
+        audit_key_field_health,
+        STAGE_A_KEY_FIELDS_INCOMPLETE,
+    )
+
+    if not DEFAULT_DB_PATH.exists():
+        pytest.skip(f"Real database {DEFAULT_DB_PATH} not found")
+
+    conn = open_store(str(DEFAULT_DB_PATH), read_only=True)
+    try:
+        core_asset = "0x52e65b17fb6e5ba00ed806f37afcd2daa50271ca"
+        res = audit_key_field_health(conn, asset_address=core_asset)
+        assert res["passed"] is True, f"audit_key_field_health failed: {res}"
+
+        # Verify fee_growth_global_0 and 1 stats in window
+        for fg_col in ("fee_growth_global_0", "fee_growth_global_1"):
+            col_stat = res["columns"][fg_col]
+            assert col_stat["passed"] is True
+            assert col_stat["first_populated_time"] is not None
+            assert col_stat["window_rows"] > 0
+            assert col_stat["total_rows"] > col_stat["window_rows"]  # historical gap exists
+            ratio = col_stat["non_null_ratio"]
+            assert ratio >= Decimal("0.99")
+            # Real non-null ratio should be ~99.87%
+            assert Decimal("0.998") <= ratio <= Decimal("0.9995")
+
+        # Full _build_state check: STAGE_A_KEY_FIELDS_INCOMPLETE is gone
+        st = _build_state(conn, str(DEFAULT_DB_PATH), 15.0, asset_address=core_asset)
+        blockers = st["stage_a"]["blockers"]
+        assert STAGE_A_KEY_FIELDS_INCOMPLETE not in blockers
+        # These two are time-based and will stay until the window fills.
+        assert "HOURS_COVERED_INSUFFICIENT" in blockers
+        assert "COVERAGE_INSUFFICIENT" in blockers
+        assert "STAGE_A_SYNTHETIC_TESTS_UNKNOWN" in blockers
+        # POOL_NOT_ATTESTED is deliberately not asserted: it depends on whether
+        # the backfill has run, and it had not when this test was written.
+        # Asserting a blocker that someone is actively working to clear turns
+        # fixing the problem into a test failure.
+    finally:
+        conn.close()
+
+
+def test_key_field_health_never_populated_column_blocks(tmp_path):
+    """RH-02bj Acceptance 2: Column that was never populated (all NULL) MUST block.
+
+    Cannot pass under an empty window (guard against empty-set false greens).
+    Reason must identify KEY_FIELD_NEVER_POPULATED and name the column.
+    """
+    from decimal import Decimal
+    from scripts.lp_rh_readiness_v1_readonly import (
+        audit_key_field_health,
+        stage_a_status,
+        KEY_FIELD_NEVER_POPULATED,
+        STAGE_A_KEY_FIELDS_INCOMPLETE,
+    )
+
+    db_file = tmp_path / "never_pop.db"
+    conn = open_store(str(db_file))
+    migrate(conn)
+
+    asset = "0xaaaa111122223333444455556666777788889999"
+    # Insert 10 rows with fee_growth_global_0 completely NULL
+    for i in range(10):
+        insert_row(conn, "rh_market_states", {
+            "asset_address": asset,
+            "chain_id": 4663,
+            "health_flags_json": "[]",
+            "session": "REGULAR",
+            "sample_time": f"2026-09-08T0{i}:00:00Z",
+            "reference_mid": "2500.0",
+            "fee_growth_global_0": None,  # NEVER POPULATED
+            "fee_growth_global_1": "12345",
+        })
+
+    res = audit_key_field_health(conn, asset_address=asset)
+    assert res["passed"] is False
+    assert KEY_FIELD_NEVER_POPULATED in res.get("reason", "")
+    assert res.get("code") == KEY_FIELD_NEVER_POPULATED
+
+    col_stat = res["columns"]["fee_growth_global_0"]
+    assert col_stat["passed"] is False
+    assert col_stat["first_populated_time"] is None
+    assert col_stat["window_rows"] == 0
+    assert col_stat["non_null_count"] == 0
+    assert col_stat["non_null_ratio"] == Decimal("0")
+    assert col_stat["code"] == KEY_FIELD_NEVER_POPULATED
+    assert "fee_growth_global_0" in col_stat["reason"]
+
+    # In Stage A status, this must block graduation
+    st_a = stage_a_status(
+        first_sample="2026-09-08T00:00:00Z",
+        last_sample="2026-09-11T00:00:00Z",
+        expected_interval_secs=15,
+        actual_samples=72 * 3600 // 15,
+        synthetic_tests_passed=True,
+        key_field_health=res,
+        pool_attestation_status={"passed": True},
+        budget=BUDGET_OK,
+        invariant_violations=0,
+        unknown_state_positions=0,
+    )
+    assert st_a["passed"] is False
+    assert STAGE_A_KEY_FIELDS_INCOMPLETE in st_a["blockers"]
+    conn.close()
+
+
+def test_key_field_health_window_boundary_and_non_null_calculation(tmp_path):
+    """RH-02bj Acceptance 3: Pre-deployment NULLs excluded; window NULLs calculated accurately."""
+    from decimal import Decimal
+    from scripts.lp_rh_readiness_v1_readonly import (
+        audit_key_field_health,
+        KEY_FIELD_INCOMPLETE,
+    )
+
+    db_file = tmp_path / "window_bound.db"
+    conn = open_store(str(db_file))
+    migrate(conn)
+
+    asset = "0xbbbb111122223333444455556666777788889999"
+    # 1. 5 pre-deployment rows (fee_growth_global_0 is NULL)
+    for i in range(5):
+        insert_row(conn, "rh_market_states", {
+            "asset_address": asset,
+            "chain_id": 4663,
+            "health_flags_json": "[]",
+            "session": "REGULAR",
+            "sample_time": f"2026-09-08T00:0{i}:00Z",
+            "reference_mid": "2500.0",
+            "fee_growth_global_0": None,
+            "fee_growth_global_1": "1000",
+        })
+
+    # 2. 100 rows in the deployment window: 99 non-null, 1 NULL (at minute 50)
+    for i in range(100):
+        m = i % 60
+        h = i // 60
+        fg0_val = None if i == 50 else str(1000 + i)
+        insert_row(conn, "rh_market_states", {
+            "asset_address": asset,
+            "chain_id": 4663,
+            "health_flags_json": "[]",
+            "session": "REGULAR",
+            "sample_time": f"2026-09-09T{h:02d}:{m:02d}:00Z",
+            "reference_mid": "2500.0",
+            "fee_growth_global_0": fg0_val,
+            "fee_growth_global_1": "2000",
+        })
+
+    # Total rows = 105. Window starts at 2026-09-09T00:00:00Z.
+    # Window rows = 100. Non-null = 99. Ratio = 0.99 -> PASS.
+    res = audit_key_field_health(conn, asset_address=asset)
+    assert res["passed"] is True
+    fg0 = res["columns"]["fee_growth_global_0"]
+    assert fg0["passed"] is True
+    assert fg0["first_populated_time"] == "2026-09-09T00:00:00Z"
+    assert fg0["total_rows"] == 105
+    assert fg0["window_rows"] == 100
+    assert fg0["non_null_count"] == 99
+    assert fg0["non_null_ratio"] == Decimal("0.99")
+
+    # 3. Add one more NULL row in the window: 99 / 101 ≈ 0.9802 < 0.99 -> FAIL
+    insert_row(conn, "rh_market_states", {
+        "asset_address": asset,
+        "chain_id": 4663,
+        "health_flags_json": "[]",
+        "session": "REGULAR",
+        "sample_time": "2026-09-09T02:00:00Z",
+        "reference_mid": "2500.0",
+        "fee_growth_global_0": None,
+        "fee_growth_global_1": "2000",
+    })
+    res2 = audit_key_field_health(conn, asset_address=asset)
+    assert res2["passed"] is False
+    fg0_2 = res2["columns"]["fee_growth_global_0"]
+    assert fg0_2["passed"] is False
+    assert fg0_2["window_rows"] == 101
+    assert fg0_2["non_null_count"] == 99
+    assert KEY_FIELD_INCOMPLETE in fg0_2["reason"]
+    conn.close()
+
+
+def test_key_field_health_anti_regression_all_populated(tmp_path):
+    """RH-02bj Acceptance 4: A database with all columns 100% non-null behaves identically to baseline."""
+    from decimal import Decimal
+    from scripts.lp_rh_readiness_v1_readonly import (
+        STAGE_A_KEY_COLUMNS,
+        audit_key_field_health,
+    )
+
+    db_file = tmp_path / "all_pop.db"
+    conn = open_store(str(db_file))
+    migrate(conn)
+
+    asset = "0xcccc111122223333444455556666777788889999"
+    for i in range(10):
+        insert_row(conn, "rh_market_states", {
+            "asset_address": asset,
+            "chain_id": 4663,
+            "health_flags_json": "[]",
+            "session": "REGULAR",
+            "sample_time": f"2026-09-08T0{i}:00:00Z",
+            "reference_mid": "2500.0",
+            "fee_growth_global_0": "1000",
+            "fee_growth_global_1": "2000",
+        })
+
+    res = audit_key_field_health(conn, asset_address=asset)
+    assert res["passed"] is True
+    assert res["total_rows"] == 10
+    for col in STAGE_A_KEY_COLUMNS:
+        c = res["columns"][col]
+        assert c["passed"] is True
+        assert c["total_rows"] == 10
+        assert c["window_rows"] == 10
+        assert c["non_null_count"] == 10
+        assert c["non_null_ratio"] == Decimal("1")
+    conn.close()
+
+
+def test_render_dashboard_key_field_window_visible():
+    """RH-02bj Acceptance Requirement 2: Dashboard clearly displays key field window info."""
+    from decimal import Decimal
+    from scripts.lp_rh_readiness_v1_readonly import render_dashboard
+
+    state = {
+        "stage_a": {
+            "hours_covered": 48.0,
+            "coverage_ratio": Decimal("0.995"),
+            "passed": False,
+            "blockers": ["HOURS_COVERED_INSUFFICIENT"],
+            "key_field_health": {
+                "passed": True,
+                "columns": {
+                    "fee_growth_global_0": {
+                        "first_populated_time": "2026-09-09T16:05:55Z",
+                        "window_rows": 2254,
+                        "total_rows": 10311,
+                        "non_null_ratio": Decimal("0.9987"),
+                        "passed": True,
+                    }
+                }
+            }
+        },
+        "stage_b": {"passed": False},
+        "live_gate": {"live_allowed": False, "blockers": ["SINGLE_PROVIDER_NOT_ALLOWED_FOR_LIVE"]},
+    }
+    rendered = render_dashboard(state)
+    assert "key_fields:" in rendered
+    assert "fee_growth_global_0" in rendered
+    assert "2026-09-09T16:05:55Z" in rendered
+    assert "2254/10311" in rendered
 

@@ -60,6 +60,11 @@ STAGE_A_INVARIANT_VIOLATIONS = "STAGE_A_INVARIANT_VIOLATIONS"
 STAGE_A_UNKNOWN_STATE_POSITIONS = "STAGE_A_UNKNOWN_STATE_POSITIONS"
 STAGE_A_SYNTHETIC_TESTS_UNKNOWN = "STAGE_A_SYNTHETIC_TESTS_UNKNOWN"
 
+# Key field health reason codes (RH-02bj)
+KEY_FIELD_NEVER_POPULATED = "KEY_FIELD_NEVER_POPULATED"
+KEY_FIELD_INCOMPLETE = "KEY_FIELD_INCOMPLETE"
+KEY_FIELD_MISSING_COLUMN = "KEY_FIELD_MISSING_COLUMN"
+
 def _to_datetime(value: Any) -> Optional[datetime]:
     if value is None or isinstance(value, datetime):
         return value
@@ -300,6 +305,21 @@ def _render_stages(state, stage_a, stage_b, live_gate) -> list:
                  + f"passed={_fmt_bool(stage_a.get('passed'))}")
     if stage_a.get("blockers"):
         lines.append("  - blockers: " + ", ".join(stage_a["blockers"]))
+    kf = stage_a.get("key_field_health")
+    if kf and isinstance(kf, dict) and kf.get("columns"):
+        lines.append("  - key_fields:")
+        for col_name, c_stat in kf["columns"].items():
+            first_time = c_stat.get("first_populated_time")
+            w_rows = c_stat.get("window_rows")
+            t_rows = c_stat.get("total_rows")
+            ratio = c_stat.get("non_null_ratio")
+            p = c_stat.get("passed")
+            if first_time is None:
+                lines.append(f"    - {col_name}: NEVER_POPULATED (全表 {t_rows} 行均为 NULL) passed={_fmt_bool(p)}")
+            elif t_rows is not None and w_rows is not None and w_rows < t_rows:
+                lines.append(f"    - {col_name}: ratio={_fmt(ratio)} (窗口自 {first_time} 起, 最近 {w_rows}/{t_rows} 行) passed={_fmt_bool(p)}")
+            else:
+                lines.append(f"    - {col_name}: ratio={_fmt(ratio)} (窗口行数={w_rows}) passed={_fmt_bool(p)}")
     days = stage_b.get("days_covered")
     lines.append("- Stage B: " + _progress_bar(_safe_div(days, STAGE_B_MIN_DAYS))
                  + f" days={_fmt(days)}/{STAGE_B_MIN_DAYS} "
@@ -330,7 +350,8 @@ def _render_evidence(sources: Optional[list]) -> list:
 
 def audit_key_field_health(conn, *, asset_address: str) -> dict:
     """Audit non-null ratios for STAGE_A_KEY_COLUMNS in rh_market_states.
-    Reuses column_stats from scripts.lp_rh_column_health_v1_readonly.
+    RH-02bj: Windowed per-column starting from that column's first non-null sample_time.
+    Columns never populated are explicitly blocked under KEY_FIELD_NEVER_POPULATED.
     """
     if not asset_address:
         return {"passed": False, "reason": "NO_ASSET_ADDRESS", "columns": {}}
@@ -354,35 +375,116 @@ def audit_key_field_health(conn, *, asset_address: str) -> dict:
         all_stats = {s["column"]: s for s in column_stats(conn, "rh_market_states")}
         col_results: dict[str, dict[str, Any]] = {}
         all_passed = True
+        failed_reasons: list[str] = []
 
         for col in STAGE_A_KEY_COLUMNS:
             if col not in all_stats:
-                col_results[col] = {"non_null_ratio": Decimal("0"), "passed": False, "missing_column": True}
+                col_reason = f"{KEY_FIELD_MISSING_COLUMN}:{col}"
+                col_results[col] = {
+                    "first_populated_time": None,
+                    "window_rows": 0,
+                    "window_non_null_ratio": Decimal("0"),
+                    "non_null_count": 0,
+                    "total_rows": total_rows,
+                    "non_null_ratio": Decimal("0"),
+                    "passed": False,
+                    "missing_column": True,
+                    "reason": col_reason,
+                    "code": KEY_FIELD_MISSING_COLUMN,
+                }
                 all_passed = False
+                failed_reasons.append(col_reason)
                 continue
-            # Query specific non-null count for this asset_address
-            q_null = conn.execute(
-                f'SELECT COUNT(*) FROM rh_market_states WHERE LOWER(asset_address) = LOWER(?) AND "{col}" IS NOT NULL',
+
+            # Query earliest populated sample_time for this column and asset
+            min_row = conn.execute(
+                f'SELECT MIN(sample_time) FROM rh_market_states '
+                f'WHERE LOWER(asset_address) = LOWER(?) AND "{col}" IS NOT NULL',
                 (asset_address,)
             ).fetchone()
-            non_null_count = q_null[0] if q_null else 0
-            ratio = Decimal(str(non_null_count)) / Decimal(str(total_rows))
-            is_ok = ratio >= STAGE_A_KEY_COLUMNS_MIN_RATIO
-            if not is_ok:
+            first_time = min_row[0] if min_row else None
+
+            # Defect guard: A column that was never populated (first_time is None)
+            # must NEVER pass under an empty window (0 rows, 0 nulls != 100% pass).
+            if first_time is None:
+                col_reason = f"{KEY_FIELD_NEVER_POPULATED}:{col}"
+                col_results[col] = {
+                    "first_populated_time": None,
+                    "window_rows": 0,
+                    "window_non_null_ratio": Decimal("0"),
+                    "non_null_count": 0,
+                    "total_rows": total_rows,
+                    "non_null_ratio": Decimal("0"),
+                    "passed": False,
+                    "reason": col_reason,
+                    "code": KEY_FIELD_NEVER_POPULATED,
+                }
                 all_passed = False
-            col_results[col] = {
+                failed_reasons.append(col_reason)
+                continue
+
+            # Query window metrics: rows >= first_time and non-null count >= first_time
+            w_row = conn.execute(
+                f'SELECT COUNT(*), COUNT("{col}") FROM rh_market_states '
+                f'WHERE LOWER(asset_address) = LOWER(?) AND sample_time >= ?',
+                (asset_address, first_time)
+            ).fetchone()
+            window_rows = w_row[0] if w_row else 0
+            non_null_count = w_row[1] if w_row else 0
+
+            if window_rows == 0:
+                col_reason = f"{KEY_FIELD_NEVER_POPULATED}:{col}"
+                col_results[col] = {
+                    "first_populated_time": first_time,
+                    "window_rows": 0,
+                    "window_non_null_ratio": Decimal("0"),
+                    "non_null_count": 0,
+                    "total_rows": total_rows,
+                    "non_null_ratio": Decimal("0"),
+                    "passed": False,
+                    "reason": col_reason,
+                    "code": KEY_FIELD_NEVER_POPULATED,
+                }
+                all_passed = False
+                failed_reasons.append(col_reason)
+                continue
+
+            ratio = Decimal(str(non_null_count)) / Decimal(str(window_rows))
+            is_ok = ratio >= STAGE_A_KEY_COLUMNS_MIN_RATIO
+            col_info: dict[str, Any] = {
+                "first_populated_time": first_time,
+                "window_rows": window_rows,
+                "window_non_null_ratio": ratio,
                 "non_null_count": non_null_count,
                 "total_rows": total_rows,
                 "non_null_ratio": ratio,
                 "passed": is_ok,
             }
+            if not is_ok:
+                all_passed = False
+                col_reason = f"{KEY_FIELD_INCOMPLETE}:{col}"
+                col_info["reason"] = col_reason
+                col_info["code"] = KEY_FIELD_INCOMPLETE
+                failed_reasons.append(col_reason)
 
-        return {
+            col_results[col] = col_info
+
+        res: dict[str, Any] = {
             "passed": all_passed,
             "total_rows": total_rows,
             "threshold": STAGE_A_KEY_COLUMNS_MIN_RATIO,
             "columns": col_results,
         }
+        if not all_passed:
+            res["reasons"] = failed_reasons
+            never_pop_cols = [c for c, d in col_results.items() if d.get("code") == KEY_FIELD_NEVER_POPULATED]
+            if never_pop_cols:
+                res["code"] = KEY_FIELD_NEVER_POPULATED
+                res["reason"] = f"{KEY_FIELD_NEVER_POPULATED}:{','.join(never_pop_cols)}"
+            else:
+                res["code"] = KEY_FIELD_INCOMPLETE
+                res["reason"] = "; ".join(failed_reasons)
+        return res
     except Exception as exc:
         return {"passed": False, "error": str(exc), "columns": {}}
 
