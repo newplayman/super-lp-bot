@@ -424,13 +424,20 @@ def test_unprovenanced_bare_quote_default_rejected(tmp_path):
 
 
 def test_ac6_real_pool_meta_200_steps_missing_quote(tmp_path):
-    """AC 6: Real pool_meta.json has no quote key -> 200 steps all no NAV, reason QUOTE_EVIDENCE_MISSING."""
+    """AC 6: real pool_meta shape, quote removed -> every step no NAV, reason
+    QUOTE_EVIDENCE_MISSING.
+
+    Originally this asserted the live pool_meta.json had no quote key, which
+    held only until one was configured -- a test whose subject is a mutable
+    production file passes for as long as nobody fixes the thing it describes.
+    It takes the real file for its shape and strips the quote itself, so it
+    tests the runner's behaviour rather than the config's current state.
+    """
     if not REAL_POOL_META_PATH.exists():
         pytest.skip("real pool_meta.json not present")
     with open(REAL_POOL_META_PATH, "r", encoding="utf-8") as fh:
         real_meta = json.load(fh)
-
-    assert "quote_usd_per_token1" not in real_meta, "real pool_meta.json must not yet have quote_usd_per_token1"
+    real_meta.pop("quote_usd_per_token1", None)
 
     # Try loading real samples from scanner.db, else synthetic samples
     samples = []
