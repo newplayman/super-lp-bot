@@ -69,3 +69,10 @@ vendor/
 .codex/
 .agents/
 reports/polymarket_competitor_*.tar.gz
+
+# polymarket competitor collector -- an August workload on this host, stopped
+# since 2026-08-08 and not part of the RH pivot.  Files stay on disk; they do
+# not belong in this repo.
+scripts/*polymarket*
+tests/*polymarket*
+reports/polymarket_competitor/
