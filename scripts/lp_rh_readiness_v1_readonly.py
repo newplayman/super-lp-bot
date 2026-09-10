@@ -8,11 +8,12 @@ from __future__ import annotations
 import argparse
 import bisect
 import json
+import subprocess
 import sys
 from datetime import datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
-from typing import Any, Mapping, Optional
+from typing import Any, Mapping, Optional, Sequence, List
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
@@ -25,7 +26,12 @@ from scripts.lp_rh_terminal_gate_v1_readonly import (  # noqa: E402
 from scripts.lp_rh_store_v1_readonly import (  # noqa: E402
     DEFAULT_DB_PATH, budget_status, open_store)
 from scripts.lp_rh_coverage_audit_v1_readonly import (  # noqa: E402
-    NO_ASSET_DATA, coverage_for_asset)
+    NO_ASSET_DATA,
+    analyze_gaps,
+    attribute_gaps,
+    coverage_verdict,
+    _no_asset_data,
+)
 from scripts.lp_rh_column_health_v1_readonly import (  # noqa: E402
     column_stats)
 
@@ -35,6 +41,149 @@ STAGE_A_MIN_COVERAGE = Decimal("0.99")
 STAGE_B_MIN_DAYS = 14
 STAGE_B_MIN_WEEKENDS = 1
 STAGE_C_MIN_DAYS = 30
+
+COLLECTION_CODE_PATHS = (
+    "scripts/lp_rh_collector_v1_readonly.py",
+    "scripts/lp_rh_store_v1_readonly.py",
+)
+
+def resolve_judgment_window(repo_root: str) -> dict:
+    """判定窗口起点 = 采集侧代码最后一次 commit 的时间（UTC）。
+
+    返回 {"window_start": "<ISO8601 Z>" | None,
+          "code_version": "<short sha 12>" | None,
+          "source": "git log -1 -- <COLLECTION_CODE_PATHS>",
+          "reason": "<拿不到时写清楚为什么>"}
+    """
+    source_desc = f"git log -1 -- {' '.join(COLLECTION_CODE_PATHS)}"
+    root_path = Path(repo_root)
+    if not root_path.exists() or not root_path.is_dir():
+        return {
+            "window_start": None,
+            "code_version": None,
+            "source": source_desc,
+            "reason": f"repo_root does not exist or is not a directory: {repo_root}",
+        }
+    cmd = [
+        "git", "log", "-1",
+        "--format=%H\t%cI",
+        "--",
+        *COLLECTION_CODE_PATHS,
+    ]
+    try:
+        proc = subprocess.run(
+            cmd,
+            cwd=str(root_path),
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except FileNotFoundError:
+        return {
+            "window_start": None,
+            "code_version": None,
+            "source": source_desc,
+            "reason": "git binary not found",
+        }
+    except Exception as exc:
+        return {
+            "window_start": None,
+            "code_version": None,
+            "source": source_desc,
+            "reason": f"failed to execute git: {exc}",
+        }
+
+    if proc.returncode != 0:
+        err = proc.stderr.strip() or f"exit code {proc.returncode}"
+        return {
+            "window_start": None,
+            "code_version": None,
+            "source": source_desc,
+            "reason": f"git log returned non-zero: {err}",
+        }
+
+    out = proc.stdout.strip()
+    if not out:
+        return {
+            "window_start": None,
+            "code_version": None,
+            "source": source_desc,
+            "reason": "git log returned empty output for collection paths",
+        }
+
+    parts = out.split("\t")
+    if len(parts) < 2:
+        return {
+            "window_start": None,
+            "code_version": None,
+            "source": source_desc,
+            "reason": f"malformed git log output: {out}",
+        }
+
+    commit_sha, commit_date_iso = parts[0].strip(), parts[1].strip()
+    try:
+        dt = datetime.fromisoformat(commit_date_iso.replace("Z", "+00:00"))
+        # Format as standard ISO8601 UTC with Z
+        dt_utc = dt.astimezone(datetime.now().astimezone().tzinfo).utctimetuple()
+        # Even cleaner: convert dt to UTC
+        from datetime import timezone
+        dt_z = dt.astimezone(timezone.utc)
+        formatted_start = dt_z.strftime("%Y-%m-%dT%H:%M:%SZ")
+    except Exception as exc:
+        return {
+            "window_start": None,
+            "code_version": None,
+            "source": source_desc,
+            "reason": f"invalid commit timestamp '{commit_date_iso}': {exc}",
+        }
+
+    return {
+        "window_start": formatted_start,
+        "code_version": commit_sha[:12] if commit_sha else None,
+        "source": source_desc,
+        "reason": "OK",
+    }
+
+def coverage_for_asset(
+    conn: Any,
+    *,
+    asset_address: str,
+    expected_interval_secs: int,
+    health_rows: Sequence[Mapping[str, Any]] = (),
+    since: Optional[str] = None,
+) -> dict:
+    """Audit coverage for exactly one asset, optionally windowed by `since` timestamp."""
+    if since is not None:
+        rows = conn.execute(
+            "SELECT sample_time FROM rh_market_states "
+            "WHERE LOWER(asset_address) = LOWER(?) AND sample_time >= ? "
+            "ORDER BY sample_time",
+            (asset_address, since),
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            "SELECT sample_time FROM rh_market_states "
+            "WHERE LOWER(asset_address) = LOWER(?) "
+            "ORDER BY sample_time",
+            (asset_address,),
+        ).fetchall()
+    sample_times = [row[0] for row in rows]
+    if not sample_times:
+        return _no_asset_data(asset_address)
+
+    analysis = analyze_gaps(
+        sample_times, expected_interval_secs=expected_interval_secs)
+    attributed = attribute_gaps(analysis["gaps"], health_rows)
+    verdict = coverage_verdict({**analysis, "gaps": attributed})
+    return {
+        "asset_address": asset_address,
+        "status": "OK",
+        "has_data": True,
+        "coverage_ratio": analysis["coverage_ratio"],
+        "analysis": analysis,
+        "attributed_gaps": attributed,
+        "verdict": verdict,
+    }
 
 # RH-02az (spec 20260909_RH-02az_stage_a_gate_wiring.md):
 # Key columns in rh_market_states required for Stage A graduation per PRD §21.1 / §16.2.
@@ -61,6 +210,7 @@ STAGE_A_INVARIANT_VIOLATIONS = "STAGE_A_INVARIANT_VIOLATIONS"
 STAGE_A_INVARIANT_VIOLATIONS_UNAVAILABLE = "STAGE_A_INVARIANT_VIOLATIONS_UNAVAILABLE"
 STAGE_A_UNKNOWN_STATE_POSITIONS = "STAGE_A_UNKNOWN_STATE_POSITIONS"
 STAGE_A_SYNTHETIC_TESTS_UNKNOWN = "STAGE_A_SYNTHETIC_TESTS_UNKNOWN"
+JUDGMENT_WINDOW_UNRESOLVED = "JUDGMENT_WINDOW_UNRESOLVED"
 
 # Key field health reason codes (RH-02bj)
 KEY_FIELD_NEVER_POPULATED = "KEY_FIELD_NEVER_POPULATED"
@@ -103,11 +253,14 @@ def stage_a_status(*, first_sample, last_sample, expected_interval_secs,
                    budget: Optional[Mapping[str, Any]] = None,
                    invariant_violations: Optional[int] = None,
                    unknown_state_positions: Optional[int] = None,
-                   synthetic_tests_passed: Optional[bool] = None) -> dict:
-    """Stage A graduation gate (PRD §21.1 / RH-02az).
+                   synthetic_tests_passed: Optional[bool] = None,
+                   judgment_window: Optional[Mapping[str, Any]] = None,
+                   cumulative: Optional[Mapping[str, Any]] = None,
+                   recent_72h: Optional[Mapping[str, Any]] = None) -> dict:
+    """Stage A graduation gate (PRD §21.1 / RH-02az / RH-02bn).
 
     Evaluates the 7 hard criteria for Stage A graduation:
-      1. 72 hours positive observation duration.
+      1. 72 hours positive observation duration in judgment window.
       2. Valid calendar/exception synthetic test evidence provided (synthetic_tests_passed).
          Note: This is an external evidence input, not a self-check runner.
       3. Key field health (rh_market_states non-null ratio >= 0.99 for key columns).
@@ -115,7 +268,7 @@ def stage_a_status(*, first_sample, last_sample, expected_interval_secs,
       5. RPC budget within limit (budget['over_budget'] is False).
       6. Invariant violations count == 0.
       7. New simulated positions with unknown/degraded state == 0.
-      8. Effective data coverage >= 99%.
+      8. Effective data coverage >= 99% in judgment window.
 
     Core rule: Unknown is NEVER passed (fail-closed, no silent green).
     """
@@ -134,6 +287,11 @@ def stage_a_status(*, first_sample, last_sample, expected_interval_secs,
         window_available = True
 
     blockers = []
+
+    # 0. Judgment window resolution check (RH-02bn fail-close)
+    if judgment_window is not None:
+        if judgment_window.get("window_start") is None:
+            blockers.append(JUDGMENT_WINDOW_UNRESOLVED)
 
     # 1. Observation window duration & coverage
     if not window_available:
@@ -191,7 +349,7 @@ def stage_a_status(*, first_sample, last_sample, expected_interval_secs,
 
     passed = (len(blockers) == 0)
 
-    return {
+    res = {
         "hours_covered": hours_covered,
         "hours_required": STAGE_A_MIN_HOURS,
         "coverage_ratio": coverage_ratio,
@@ -207,6 +365,14 @@ def stage_a_status(*, first_sample, last_sample, expected_interval_secs,
         "passed": passed,
         "blockers": blockers,
     }
+
+    # RH-02bn additional fields
+    res["judgment_window_start"] = judgment_window.get("window_start") if judgment_window else None
+    res["judgment_code_version"] = judgment_window.get("code_version") if judgment_window else None
+    res["cumulative_hours"] = cumulative.get("hours_covered") if cumulative else None
+    res["cumulative_coverage_ratio"] = cumulative.get("coverage_ratio") if cumulative else None
+    res["recent_72h_coverage_ratio"] = recent_72h.get("coverage_ratio") if recent_72h else None
+    return res
 
 def stage_b_status(*, days_covered, weekends_covered, unexplained_ledger_diffs,
                    invariant_violations, missed_risk_events) -> dict:
@@ -308,6 +474,16 @@ def _render_stages(state, stage_a, stage_b, live_gate) -> list:
                  + f" hours={_fmt(hours)}/{STAGE_A_MIN_HOURS} "
                  + f"coverage_ratio={_fmt(stage_a.get('coverage_ratio'))} "
                  + f"passed={_fmt_bool(stage_a.get('passed'))}")
+    jw_start = stage_a.get("judgment_window_start")
+    jw_ver = stage_a.get("judgment_code_version")
+    actual_s = stage_a.get("actual_samples")
+    if jw_start:
+        lines.append(f"  - 判定窗口: 自 {jw_start} 起 (code_version={jw_ver}), 窗口内 {_fmt(actual_s)} 行")
+    cum_h = stage_a.get("cumulative_hours")
+    cum_c = stage_a.get("cumulative_coverage_ratio")
+    rec_c = stage_a.get("recent_72h_coverage_ratio")
+    if cum_h is not None or cum_c is not None or rec_c is not None:
+        lines.append(f"  - 参考(不判定): 累计 hours={_fmt(cum_h)} coverage={_fmt(cum_c)} | 近72h coverage={_fmt(rec_c)}")
     if stage_a.get("blockers"):
         lines.append("  - blockers: " + ", ".join(stage_a["blockers"]))
     inv_audit = state.get("invariant_violations_audit") if state else None
@@ -935,11 +1111,27 @@ def render_dashboard(state: Optional[Mapping]) -> str:
 
 def _build_state(conn, db_path: str, interval_secs: float, asset_address: str,
                  synthetic_tests_passed: Optional[bool] = None,
-                 invariant_violations: Optional[int] = None) -> dict:
+                 invariant_violations: Optional[int] = None,
+                 judgment_window_start: Optional[str] = None,
+                 repo_root: Optional[str] = None) -> dict:
     """Assemble the dashboard state from the read-only RH store."""
     if not asset_address:
         raise ValueError("asset_address is required")
     state: dict = {}
+
+    # Resolve judgment window
+    if judgment_window_start is not None:
+        judgment_window = {
+            "window_start": judgment_window_start,
+            "code_version": "OVERRIDE",
+            "source": "--judgment-window-start override",
+            "reason": "OK",
+        }
+    else:
+        root = repo_root if repo_root is not None else str(REPO_ROOT)
+        judgment_window = resolve_judgment_window(root)
+    state["judgment_window"] = judgment_window
+
     cov = coverage_for_asset(
         conn,
         asset_address=asset_address,
@@ -973,7 +1165,7 @@ def _build_state(conn, db_path: str, interval_secs: float, asset_address: str,
             "status": NO_ASSET_DATA,
         }
     else:
-        cov_ratio = cov.get("coverage_ratio")
+        # Full cumulative range
         row = conn.execute(
             "SELECT MIN(sample_time), MAX(sample_time), COUNT(*) "
             "FROM rh_market_states WHERE LOWER(asset_address) = LOWER(?)",
@@ -981,17 +1173,72 @@ def _build_state(conn, db_path: str, interval_secs: float, asset_address: str,
         ).fetchone()
         first_sample, last_sample, actual_samples = row if row else (None, None, 0)
         state["as_of"] = last_sample
+
+        # Cumulative coverage
+        cum_hours = None
+        cum_exp = None
+        if first_sample is not None and last_sample is not None:
+            f_dt, l_dt = _to_datetime(first_sample), _to_datetime(last_sample)
+            if f_dt and l_dt:
+                cum_hours = (l_dt - f_dt).total_seconds() / 3600.0
+                cum_exp = (cum_hours * 3600.0) / interval_secs
+        cumulative_dict = {
+            "hours_covered": cum_hours,
+            "coverage_ratio": cov.get("coverage_ratio"),
+            "actual_samples": actual_samples,
+            "expected_samples": int(round(cum_exp)) if cum_exp is not None else None,
+        }
+
+        # Recent 72h coverage
+        recent_72h_dict = {}
+        if last_sample is not None:
+            l_dt = _to_datetime(last_sample)
+            if l_dt:
+                since_72h = (l_dt - timedelta(hours=72)).strftime("%Y-%m-%dT%H:%M:%SZ")
+                cov_72h = coverage_for_asset(
+                    conn,
+                    asset_address=asset_address,
+                    expected_interval_secs=int(round(interval_secs)),
+                    since=since_72h,
+                )
+                recent_72h_dict = {
+                    "coverage_ratio": cov_72h.get("coverage_ratio"),
+                }
+
+        # Windowed coverage
+        win_start = judgment_window.get("window_start")
+        if win_start is not None:
+            cov_win = coverage_for_asset(
+                conn,
+                asset_address=asset_address,
+                expected_interval_secs=int(round(interval_secs)),
+                since=win_start,
+            )
+            row_win = conn.execute(
+                "SELECT MIN(sample_time), MAX(sample_time), COUNT(*) "
+                "FROM rh_market_states WHERE LOWER(asset_address) = LOWER(?) AND sample_time >= ?",
+                (asset_address, win_start)
+            ).fetchone()
+            win_first, win_last, win_actual = row_win if row_win else (None, None, 0)
+            cov_ratio_to_judge = cov_win.get("coverage_ratio")
+        else:
+            win_first, win_last, win_actual = None, None, 0
+            cov_ratio_to_judge = None
+
         if first_sample is not None and last_sample is not None:
             state["stage_a"] = stage_a_status(
-                first_sample=first_sample, last_sample=last_sample,
-                expected_interval_secs=interval_secs, actual_samples=actual_samples,
-                coverage_ratio=cov_ratio,
+                first_sample=win_first, last_sample=win_last,
+                expected_interval_secs=interval_secs, actual_samples=win_actual,
+                coverage_ratio=cov_ratio_to_judge,
                 key_field_health=kf_health,
                 pool_attestation_status=pool_att_status,
                 budget=b_stat,
                 invariant_violations=invariant_violations,
                 unknown_state_positions=unk_positions_count,
-                synthetic_tests_passed=synthetic_tests_passed)
+                synthetic_tests_passed=synthetic_tests_passed,
+                judgment_window=judgment_window,
+                cumulative=cumulative_dict,
+                recent_72h=recent_72h_dict)
             span_days = (_to_datetime(last_sample) - _to_datetime(first_sample)).days
             wk = audit_weekends_covered(conn, asset_address=asset_address,
                                         interval_secs=interval_secs)
@@ -1034,6 +1281,10 @@ def main(argv: Optional[list] = None) -> int:
                         help="evidence input indicating synthetic calendar/exception tests passed")
     parser.add_argument("--invariant-violations", type=int, default=None,
                         help="override detected invariant violations count (defaults to read-only DB audit)")
+    parser.add_argument("--judgment-window-start", default=None,
+                        help="override judgment window start timestamp (ISO8601 UTC)")
+    parser.add_argument("--repo", default=None,
+                        help="path to repo root containing git metadata (defaults to repo root of script)")
     args = parser.parse_args(argv)
     conn = open_store(args.db, read_only=True)
     try:
@@ -1042,6 +1293,8 @@ def main(argv: Optional[list] = None) -> int:
             asset_address=args.asset_address,
             synthetic_tests_passed=args.synthetic_tests_passed,
             invariant_violations=args.invariant_violations,
+            judgment_window_start=args.judgment_window_start,
+            repo_root=args.repo,
         )
     finally:
         conn.close()

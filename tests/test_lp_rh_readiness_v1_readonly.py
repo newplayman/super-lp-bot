@@ -621,10 +621,19 @@ def test_build_state_real_asset_coverage_reference():
         target_asset = "0x52e65b17fb6e5ba00ed806f37afcd2daa50271ca"
         state = _build_state(conn, str(DEFAULT_DB_PATH), 15.0, asset_address=target_asset)
         st_a = state["stage_a"]
+        # Assert structural properties, never the number the database happens
+        # to hold. An earlier revision pinned this to approx(0.9678) -- the live
+        # ratio at the time -- and it broke twice: once as the collector kept
+        # running, and again when RH-02bn moved the judgment to a window.
         assert st_a["coverage_ratio"] is not None
-        assert float(st_a["coverage_ratio"]) == pytest.approx(0.9678, abs=0.01)
+        assert 0 < float(st_a["coverage_ratio"]) <= 1
+        assert st_a["cumulative_coverage_ratio"] is not None
+        assert 0 < float(st_a["cumulative_coverage_ratio"]) <= 1
+        # The judgment window is a suffix of the full span, so it can never
+        # cover more hours than the cumulative view.
+        assert st_a["judgment_window_start"] is not None
+        assert float(st_a["hours_covered"]) <= float(st_a["cumulative_hours"])
         assert st_a["passed"] is False
-        assert "COVERAGE_INSUFFICIENT" in st_a["blockers"]
         # Attestation state is data, not behaviour: this asserted the live pool
         # had none, which stopped being true the moment the backfill ran.  What
         # is worth pinning here is that the blocker tracks the data -- present
@@ -771,9 +780,17 @@ def test_address_case_insensitivity_coverage_and_build_state(tmp_path):
     assert _no_echo(kf_lower) == _no_echo(kf_upper) == _no_echo(kf_check)
 
     # 4. _build_state
-    st_lower = _build_state(conn, str(db_file), 60.0, asset_address=addr_lower, synthetic_tests_passed=True)
-    st_upper = _build_state(conn, str(db_file), 60.0, asset_address=addr_upper, synthetic_tests_passed=True)
-    st_check = _build_state(conn, str(db_file), 60.0, asset_address=addr_checksum, synthetic_tests_passed=True)
+    #
+    # judgment_window_start is pinned here on purpose. Without it, RH-02bn
+    # resolves the window from the repo's own git history (the last commit
+    # touching the collector), which has nothing to do with a tmp_path fixture:
+    # every constructed sample would fall before the window and the state would
+    # come back empty. This test is about address case, so the window is fixed
+    # to a point before the fixture's samples.
+    _WIN = "2026-09-01T00:00:00Z"
+    st_lower = _build_state(conn, str(db_file), 60.0, asset_address=addr_lower, synthetic_tests_passed=True, judgment_window_start=_WIN)
+    st_upper = _build_state(conn, str(db_file), 60.0, asset_address=addr_upper, synthetic_tests_passed=True, judgment_window_start=_WIN)
+    st_check = _build_state(conn, str(db_file), 60.0, asset_address=addr_checksum, synthetic_tests_passed=True, judgment_window_start=_WIN)
     assert st_lower["stage_a"]["actual_samples"] == 5
     assert st_lower["stage_a"]["actual_samples"] == st_upper["stage_a"]["actual_samples"] == st_check["stage_a"]["actual_samples"]
     assert st_lower["stage_a"]["blockers"] == st_upper["stage_a"]["blockers"] == st_check["stage_a"]["blockers"]
@@ -918,10 +935,13 @@ def test_key_field_health_real_db_fee_growth_passes():
         st = _build_state(conn, str(DEFAULT_DB_PATH), 15.0, asset_address=core_asset)
         blockers = st["stage_a"]["blockers"]
         assert STAGE_A_KEY_FIELDS_INCOMPLETE not in blockers
-        # These two are time-based and will stay until the window fills.
+        # Time-based, and they stay until the window fills.
         assert "HOURS_COVERED_INSUFFICIENT" in blockers
-        assert "COVERAGE_INSUFFICIENT" in blockers
         assert "STAGE_A_SYNTHETIC_TESTS_UNKNOWN" in blockers
+        # COVERAGE_INSUFFICIENT is deliberately not asserted here. This test is
+        # about key-field health; coverage now depends on the RH-02bn judgment
+        # window, and pinning it would make an unrelated test fail whenever the
+        # window moves. The windowed cases in the RH-02bn block cover it.
         # POOL_NOT_ATTESTED is deliberately not asserted: it depends on whether
         # the backfill has run, and it had not when this test was written.
         # Asserting a blocker that someone is actively working to clear turns
@@ -1512,3 +1532,276 @@ def test_rh02bo_render_dashboard_unavailable_checks():
     assert "invariant: NOT_MEASURED (未执行的检查: rh_journal:accounts_and_amounts, rh_gate_decisions:conjunction_consistency, rh_position_marks:nav_non_negative)" in rendered
 
 
+# --- RH-02bn: Judgment Window Tests ---
+
+def test_rh02bn_1_resolve_judgment_window_non_git_dir(tmp_path):
+    """1. resolve_judgment_window 指向非 git 目录 (tmp_path) -> window_start is None 且 reason 非空。"""
+    from scripts.lp_rh_readiness_v1_readonly import resolve_judgment_window
+    res = resolve_judgment_window(str(tmp_path))
+    assert res["window_start"] is None
+    assert res["code_version"] is None
+    assert res["reason"] is not None and len(res["reason"]) > 0
+
+
+def test_rh02bn_2_stage_a_status_unresolved_judgment_window():
+    """2. 承 1：stage_a_status 拿到 window_start is None 结果 -> blockers 含 JUDGMENT_WINDOW_UNRESOLVED, passed is False。"""
+    from scripts.lp_rh_readiness_v1_readonly import JUDGMENT_WINDOW_UNRESOLVED
+    unresolved_window = {
+        "window_start": None,
+        "code_version": None,
+        "source": "git log",
+        "reason": "non-git repo",
+    }
+    res = stage_a_status(
+        first_sample="2026-09-08T00:00:00Z",
+        last_sample="2026-09-11T00:00:00Z",
+        expected_interval_secs=15,
+        actual_samples=72 * 3600 // 15,
+        synthetic_tests_passed=True,
+        key_field_health={"passed": True},
+        pool_attestation_status={"passed": True},
+        budget=BUDGET_OK,
+        invariant_violations=0,
+        unknown_state_positions=0,
+        judgment_window=unresolved_window,
+    )
+    assert res["passed"] is False
+    assert JUDGMENT_WINDOW_UNRESOLVED in res["blockers"]
+
+
+def test_rh02bn_3_and_4_windowed_coverage_and_hours(tmp_path):
+    """3 & 4. 构造库：窗口前有大量缺口、窗口后满格。
+    -> 窗口内 coverage_ratio >= 0.99 且 blockers 不含 COVERAGE_INSUFFICIENT；
+    同一份数据的 cumulative_coverage_ratio < 0.99；
+    hours_covered 用的是窗口内跨度，明显小于 cumulative_hours。"""
+    from scripts.lp_rh_readiness_v1_readonly import _build_state
+    db_file = tmp_path / "test_window.db"
+    conn = open_store(str(db_file))
+    migrate(conn)
+
+    asset = "0x52e65b17fb6e5ba00ed806f37afcd2daa50271ca"
+
+    # Attestation.  Real columns only -- rh_contract_attestations has
+    # address/chain_id/block_hash/policy_version/attestation_status/created_at,
+    # and insert_row silently drops names that do not exist, so a guessed schema
+    # only surfaces later as a NOT NULL failure.
+    insert_row(conn, "rh_contract_attestations", {
+        "chain_id": 4663,
+        "address": asset,
+        "block_hash": "0x" + "cd" * 32,
+        "policy_version": "v1",
+        "attestation_status": "ATTESTED_SAME_BLOCK",
+        "created_at": "2026-09-09T00:00:00Z",
+    })
+
+    # Pre-window: 100 hours total span (from 2026-09-05T00:00:00Z to 2026-09-09T04:00:00Z)
+    # but only 10 samples (massive gaps)
+    t_start = datetime(2026, 9, 5, 0, 0, 0, tzinfo=timezone.utc)
+    for i in range(10):
+        st = (t_start + timedelta(hours=i * 10)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        conn.execute(
+            "INSERT INTO rh_market_states "
+            "(asset_address, sample_time, chain_id, session, health_flags_json, reference_mid, fee_growth_global_0, fee_growth_global_1) "
+            "VALUES (?, ?, 'base', 'REGULAR', '[]', '100', '1', '1')",
+            (asset, st),
+        )
+
+    # Window start
+    win_start_dt = datetime(2026, 9, 9, 12, 0, 0, tzinfo=timezone.utc)
+    win_start_iso = win_start_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    # Post-window: 73 hours of perfect cadence (interval=60s)
+    # 73 * 60 = 4380 samples
+    samples_in_window = 73 * 60
+    for i in range(samples_in_window):
+        st = (win_start_dt + timedelta(seconds=i * 60)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        conn.execute(
+            "INSERT INTO rh_market_states "
+            "(asset_address, sample_time, chain_id, session, health_flags_json, reference_mid, fee_growth_global_0, fee_growth_global_1) "
+            "VALUES (?, ?, 'base', 'REGULAR', '[]', '100', '1', '1')",
+            (asset, st),
+        )
+    conn.commit()
+
+    state = _build_state(
+        conn,
+        str(db_file),
+        interval_secs=60.0,
+        asset_address=asset,
+        synthetic_tests_passed=True,
+        invariant_violations=0,
+        judgment_window_start=win_start_iso,
+    )
+    conn.close()
+
+    st_a = state["stage_a"]
+    assert "COVERAGE_INSUFFICIENT" not in st_a["blockers"]
+    assert Decimal(str(st_a["coverage_ratio"])) >= Decimal("0.99")
+    assert Decimal(str(st_a["cumulative_coverage_ratio"])) < Decimal("0.99")
+    # Hours covered is window span (72.98 ~ 73.0), cumulative is ~180.98 hours
+    assert st_a["hours_covered"] < st_a["cumulative_hours"]
+    assert st_a["hours_covered"] >= 72.0
+    assert st_a["cumulative_hours"] > 100.0
+
+
+def test_rh02bn_5_thresholds_unmodified():
+    """5. 阈值没被动过：窗口内 hours=71.9 -> 仍有 HOURS_COVERED_INSUFFICIENT；窗口内 coverage=0.9899 -> 仍有 COVERAGE_INSUFFICIENT。"""
+    jw_ok = {"window_start": "2026-09-08T00:00:00Z", "code_version": "test1234", "source": "git", "reason": "OK"}
+    # 71.9 hours, 100% coverage
+    res_hours = stage_a_status(
+        first_sample="2026-09-08T00:00:00Z",
+        last_sample="2026-09-10T23:54:00Z",  # 71.9 hours = 258840s
+        expected_interval_secs=60,
+        actual_samples=258840 // 60,
+        synthetic_tests_passed=True,
+        key_field_health={"passed": True},
+        pool_attestation_status={"passed": True},
+        budget=BUDGET_OK,
+        invariant_violations=0,
+        unknown_state_positions=0,
+        judgment_window=jw_ok,
+    )
+    assert "HOURS_COVERED_INSUFFICIENT" in res_hours["blockers"]
+    assert res_hours["passed"] is False
+
+    # 72.0 hours, 0.9899 coverage
+    expected = 72 * 3600 // 60
+    res_cov = stage_a_status(
+        first_sample="2026-09-08T00:00:00Z",
+        last_sample="2026-09-11T00:00:00Z",
+        expected_interval_secs=60,
+        actual_samples=int(expected * 0.9899),
+        coverage_ratio=Decimal("0.9899"),
+        synthetic_tests_passed=True,
+        key_field_health={"passed": True},
+        pool_attestation_status={"passed": True},
+        budget=BUDGET_OK,
+        invariant_violations=0,
+        unknown_state_positions=0,
+        judgment_window=jw_ok,
+    )
+    assert "COVERAGE_INSUFFICIENT" in res_cov["blockers"]
+    assert res_cov["passed"] is False
+
+
+def test_rh02bn_6_judgment_window_override_cli_and_state(tmp_path):
+    """6. --judgment-window-start 覆盖生效，且 code_version == 'OVERRIDE'。"""
+    from scripts.lp_rh_readiness_v1_readonly import _build_state
+    db_file = tmp_path / "test_override.db"
+    conn = open_store(str(db_file))
+    migrate(conn)
+
+    asset = "0x52e65b17fb6e5ba00ed806f37afcd2daa50271ca"
+    conn.execute(
+        "INSERT INTO rh_market_states "
+        "(asset_address, sample_time, chain_id, session, health_flags_json, reference_mid, fee_growth_global_0, fee_growth_global_1) "
+        "VALUES (?, '2026-09-09T16:10:00Z', 'base', 'REGULAR', '[]', '100', '1', '1')",
+        (asset,),
+    )
+    conn.commit()
+
+    override_ts = "2026-09-09T16:05:41Z"
+    state = _build_state(
+        conn,
+        str(db_file),
+        interval_secs=15.0,
+        asset_address=asset,
+        judgment_window_start=override_ts,
+    )
+    conn.close()
+
+    jw = state["judgment_window"]
+    assert jw["window_start"] == override_ts
+    assert jw["code_version"] == "OVERRIDE"
+    assert state["stage_a"]["judgment_window_start"] == override_ts
+    assert state["stage_a"]["judgment_code_version"] == "OVERRIDE"
+
+
+def test_rh02bn_7_eip55_case_insensitivity_with_window(tmp_path):
+    """7. 地址用 EIP-55 混合大小写传入仍能匹配小写存储的行（带 since 窗口）。"""
+    from scripts.lp_rh_readiness_v1_readonly import coverage_for_asset
+    conn = sqlite3.connect(":memory:")
+    conn.execute("""CREATE TABLE rh_market_states (
+        asset_address TEXT, sample_time TEXT
+    )""")
+    stored_addr = "0x52e65b17fb6e5ba00ed806f37afcd2daa50271ca"
+    mixed_addr = "0x52E65b17Fb6e5BA00ed806f37afcd2dAa50271Ca"
+    upper_addr = "0X52E65B17FB6E5BA00ED806F37AFCD2DAA50271CA"
+
+    conn.execute("INSERT INTO rh_market_states VALUES (?, ?)", (stored_addr, "2026-09-09T10:00:00Z"))
+    conn.execute("INSERT INTO rh_market_states VALUES (?, ?)", (stored_addr, "2026-09-09T10:01:00Z"))
+    conn.execute("INSERT INTO rh_market_states VALUES (?, ?)", (stored_addr, "2026-09-09T10:02:00Z"))
+
+    cov_mixed = coverage_for_asset(conn, asset_address=mixed_addr, expected_interval_secs=60, since="2026-09-09T10:00:30Z")
+    cov_upper = coverage_for_asset(conn, asset_address=upper_addr, expected_interval_secs=60, since="2026-09-09T10:00:30Z")
+    cov_lower = coverage_for_asset(conn, asset_address=stored_addr, expected_interval_secs=60, since="2026-09-09T10:00:30Z")
+
+    assert cov_mixed["has_data"] is True
+    assert cov_mixed["analysis"]["total_samples"] == 2
+    assert cov_upper["analysis"]["total_samples"] == 2
+    assert cov_lower["analysis"]["total_samples"] == 2
+    conn.close()
+
+
+def test_rh02bn_8_reference_metrics_do_not_affect_blockers():
+    """8. recent_72h_coverage_ratio 与 cumulative_coverage_ratio 都出现在返回 dict 里，且都不影响 blockers。"""
+    jw_ok = {"window_start": "2026-09-08T00:00:00Z", "code_version": "test1234", "source": "git", "reason": "OK"}
+    bad_cumulative = {"hours_covered": 100.0, "coverage_ratio": Decimal("0.50"), "actual_samples": 500, "expected_samples": 1000}
+    bad_recent_72h = {"coverage_ratio": Decimal("0.20")}
+
+    # Windowed is good (72h, >=0.99 coverage)
+    res = stage_a_status(
+        first_sample="2026-09-08T00:00:00Z",
+        last_sample="2026-09-11T00:00:00Z",
+        expected_interval_secs=15,
+        actual_samples=72 * 3600 // 15,
+        synthetic_tests_passed=True,
+        key_field_health={"passed": True},
+        pool_attestation_status={"passed": True},
+        budget=BUDGET_OK,
+        invariant_violations=0,
+        unknown_state_positions=0,
+        judgment_window=jw_ok,
+        cumulative=bad_cumulative,
+        recent_72h=bad_recent_72h,
+    )
+    assert res["passed"] is True
+    assert res["blockers"] == []
+    assert res["cumulative_coverage_ratio"] == Decimal("0.50")
+    assert res["recent_72h_coverage_ratio"] == Decimal("0.20")
+
+
+
+
+
+def test_rh02bn_window_with_no_samples_fails_closed(tmp_path):
+    """RH-02bn: samples all older than the window means no data under the current
+    collector, which must fail closed rather than measure the old data.
+
+    This pins behaviour that is currently implicit: coverage/hours come back None
+    (never 0.0, never a stale figure from before the code changed) and Stage A
+    blocks on OBSERVATION_WINDOW_UNAVAILABLE.
+    """
+    from scripts.lp_rh_readiness_v1_readonly import _build_state
+
+    db_file = tmp_path / "no_window_data.db"
+    conn = open_store(str(db_file))
+    migrate(conn)
+    addr = "0x52e65b17fb6e5ba00ed806f37afcd2daa50271ca"
+    for i in range(5):
+        insert_row(conn, "rh_market_states", {
+            "asset_address": addr, "chain_id": 4663, "session": "RTH",
+            "health_flags_json": "[]", "sample_time": f"2026-09-08T00:0{i}:00Z",
+            "reference_mid": "2400",
+        })
+    conn.commit()
+
+    st = _build_state(conn, str(db_file), 15.0, asset_address=addr,
+                      judgment_window_start="2026-09-09T16:05:41Z")
+    a = st["stage_a"]
+    assert a["actual_samples"] == 0
+    assert a["hours_covered"] is None
+    assert a["coverage_ratio"] is None
+    assert a["passed"] is False
+    assert "OBSERVATION_WINDOW_UNAVAILABLE" in a["blockers"]
+    conn.close()
