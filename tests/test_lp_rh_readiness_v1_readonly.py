@@ -1805,3 +1805,242 @@ def test_rh02bn_window_with_no_samples_fails_closed(tmp_path):
     assert a["passed"] is False
     assert "OBSERVATION_WINDOW_UNAVAILABLE" in a["blockers"]
     conn.close()
+
+
+# --- RH-02bv: Attestation Status and Expiry Tests ---
+
+def _setup_rh02bv_pool(conn, asset_address: str):
+    insert_row(conn, "rh_pool_registry", {
+        "chain_id": 4663,
+        "protocol": "v3",
+        "pool_key": asset_address,
+        "pool_address": asset_address,
+        "token0": "0x4200000000000000000000000000000000000006",
+        "token1": asset_address,
+        "fee": "3000",
+        "tick_spacing": 60,
+        "attestation_status": "ATTESTED_SAME_BLOCK",
+        "discovered_at": "2026-09-08T00:00:00Z",
+    })
+
+
+def test_rh02bv_1_attested_same_block_and_null_expiry_passes(tmp_path):
+    """1. 状态 ATTESTED_SAME_BLOCK、expires_at 为 NULL -> passed is True (不误伤生产)."""
+    from scripts.lp_rh_readiness_v1_readonly import audit_pool_attestation
+    db_file = tmp_path / "bv1.db"
+    conn = open_store(str(db_file))
+    migrate(conn)
+    addr = "0x52e65b17fb6e5ba00ed806f37afcd2daa50271ca"
+    _setup_rh02bv_pool(conn, addr)
+    conn.execute(
+        "INSERT INTO rh_contract_attestations "
+        "(chain_id, address, block_hash, policy_version, attestation_status, expires_at, created_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (4663, addr, "0x" + "aa" * 32, "v1", "ATTESTED_SAME_BLOCK", None, "2026-09-08T00:00:00Z"),
+    )
+    conn.commit()
+    res = audit_pool_attestation(conn, asset_address=addr)
+    assert res["passed"] is True
+    assert res["has_contract_attestation"] is True
+    assert res["attestation_status"] == "ATTESTED_SAME_BLOCK"
+    assert res["attestation_expires_at"] is None
+    assert res["attestation_checked_at"] is not None
+    assert res["missing"] == []
+    conn.close()
+
+
+def test_rh02bv_2_status_failed_blocks(tmp_path):
+    """2. 状态 FAILED -> passed is False，missing 里能看到实际状态值."""
+    from scripts.lp_rh_readiness_v1_readonly import audit_pool_attestation
+    db_file = tmp_path / "bv2.db"
+    conn = open_store(str(db_file))
+    migrate(conn)
+    addr = "0x52e65b17fb6e5ba00ed806f37afcd2daa50271ca"
+    _setup_rh02bv_pool(conn, addr)
+    conn.execute(
+        "INSERT INTO rh_contract_attestations "
+        "(chain_id, address, block_hash, policy_version, attestation_status, expires_at, created_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (4663, addr, "0x" + "aa" * 32, "v1", "FAILED", None, "2026-09-08T00:00:00Z"),
+    )
+    conn.commit()
+    res = audit_pool_attestation(conn, asset_address=addr)
+    assert res["passed"] is False
+    assert res["has_contract_attestation"] is True
+    assert res["attestation_status"] == "FAILED"
+    assert "attestation_status=FAILED" in res["missing"]
+    conn.close()
+
+
+def test_rh02bv_3_status_mismatch_blocks(tmp_path):
+    """3. 状态 MISMATCH -> passed is False，missing 里能看到实际状态值."""
+    from scripts.lp_rh_readiness_v1_readonly import audit_pool_attestation
+    db_file = tmp_path / "bv3.db"
+    conn = open_store(str(db_file))
+    migrate(conn)
+    addr = "0x52e65b17fb6e5ba00ed806f37afcd2daa50271ca"
+    _setup_rh02bv_pool(conn, addr)
+    conn.execute(
+        "INSERT INTO rh_contract_attestations "
+        "(chain_id, address, block_hash, policy_version, attestation_status, expires_at, created_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (4663, addr, "0x" + "aa" * 32, "v1", "MISMATCH", None, "2026-09-08T00:00:00Z"),
+    )
+    conn.commit()
+    res = audit_pool_attestation(conn, asset_address=addr)
+    assert res["passed"] is False
+    assert res["has_contract_attestation"] is True
+    assert res["attestation_status"] == "MISMATCH"
+    assert "attestation_status=MISMATCH" in res["missing"]
+    conn.close()
+
+
+def test_rh02bv_4_status_null_or_empty_blocks(tmp_path):
+    """4. 状态为 NULL/空串 -> missing 含 attestation_status_unknown."""
+    import sqlite3
+    from scripts.lp_rh_readiness_v1_readonly import audit_pool_attestation
+    db_file = tmp_path / "bv4.db"
+    conn = open_store(str(db_file))
+    migrate(conn)
+    addr = "0x52e65b17fb6e5ba00ed806f37afcd2daa50271ca"
+    _setup_rh02bv_pool(conn, addr)
+    conn.execute(
+        "INSERT INTO rh_contract_attestations "
+        "(chain_id, address, block_hash, policy_version, attestation_status, expires_at, created_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (4663, addr, "0x" + "aa" * 32, "v1", "", None, "2026-09-08T00:00:00Z"),
+    )
+    conn.commit()
+    res_empty = audit_pool_attestation(conn, asset_address=addr)
+    assert res_empty["passed"] is False
+    assert "attestation_status_unknown" in res_empty["missing"]
+    conn.close()
+
+    conn_mem = sqlite3.connect(":memory:")
+    conn_mem.execute("CREATE TABLE rh_contract_attestations (address TEXT, attestation_status TEXT, expires_at TEXT, created_at TEXT)")
+    conn_mem.execute("CREATE TABLE rh_pool_registry (pool_address TEXT, token0 TEXT, token1 TEXT, fee TEXT, tick_spacing INT)")
+    conn_mem.execute("INSERT INTO rh_pool_registry VALUES (?, '0xt0', '0xt1', '3000', 60)", (addr,))
+    conn_mem.execute("INSERT INTO rh_contract_attestations VALUES (?, NULL, NULL, '2026-09-08T00:00:00Z')", (addr,))
+    res_null = audit_pool_attestation(conn_mem, asset_address=addr)
+    assert res_null["passed"] is False
+    assert "attestation_status_unknown" in res_null["missing"]
+    conn_mem.close()
+
+
+def test_rh02bv_5_expired_attestation_blocks(tmp_path):
+    """5. expires_at 早于注入的 now -> missing 含 attestation_expired."""
+    from scripts.lp_rh_readiness_v1_readonly import audit_pool_attestation
+    db_file = tmp_path / "bv5.db"
+    conn = open_store(str(db_file))
+    migrate(conn)
+    addr = "0x52e65b17fb6e5ba00ed806f37afcd2daa50271ca"
+    _setup_rh02bv_pool(conn, addr)
+    conn.execute(
+        "INSERT INTO rh_contract_attestations "
+        "(chain_id, address, block_hash, policy_version, attestation_status, expires_at, created_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (4663, addr, "0x" + "aa" * 32, "v1", "ATTESTED_SAME_BLOCK", "2026-09-08T12:00:00Z", "2026-09-08T00:00:00Z"),
+    )
+    conn.commit()
+    res = audit_pool_attestation(conn, asset_address=addr, now="2026-09-09T00:00:00Z")
+    assert res["passed"] is False
+    assert res["attestation_status"] == "ATTESTED_SAME_BLOCK"
+    assert res["attestation_expires_at"] == "2026-09-08T12:00:00Z"
+    assert "attestation_expired" in res["missing"]
+    conn.close()
+
+
+def test_rh02bv_6_future_expiry_passes(tmp_path):
+    """6. expires_at 晚于注入的 now -> 不算过期，passed is True."""
+    from scripts.lp_rh_readiness_v1_readonly import audit_pool_attestation
+    db_file = tmp_path / "bv6.db"
+    conn = open_store(str(db_file))
+    migrate(conn)
+    addr = "0x52e65b17fb6e5ba00ed806f37afcd2daa50271ca"
+    _setup_rh02bv_pool(conn, addr)
+    conn.execute(
+        "INSERT INTO rh_contract_attestations "
+        "(chain_id, address, block_hash, policy_version, attestation_status, expires_at, created_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (4663, addr, "0x" + "aa" * 32, "v1", "ATTESTED_SAME_BLOCK", "2026-09-12T00:00:00Z", "2026-09-08T00:00:00Z"),
+    )
+    conn.commit()
+    res = audit_pool_attestation(conn, asset_address=addr, now="2026-09-09T00:00:00Z")
+    assert res["passed"] is True
+    assert res["attestation_status"] == "ATTESTED_SAME_BLOCK"
+    assert res["attestation_expires_at"] == "2026-09-12T00:00:00Z"
+    assert "attestation_expired" not in res["missing"]
+    conn.close()
+
+
+def test_rh02bv_7_unparseable_expiry_fails_closed(tmp_path):
+    """7. expires_at 是无法解析的字符串（如 'soon'）-> missing 含 attestation_expires_at_invalid (fail-close)."""
+    from scripts.lp_rh_readiness_v1_readonly import audit_pool_attestation
+    db_file = tmp_path / "bv7.db"
+    conn = open_store(str(db_file))
+    migrate(conn)
+    addr = "0x52e65b17fb6e5ba00ed806f37afcd2daa50271ca"
+    _setup_rh02bv_pool(conn, addr)
+    conn.execute(
+        "INSERT INTO rh_contract_attestations "
+        "(chain_id, address, block_hash, policy_version, attestation_status, expires_at, created_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (4663, addr, "0x" + "aa" * 32, "v1", "ATTESTED_SAME_BLOCK", "soon", "2026-09-08T00:00:00Z"),
+    )
+    conn.commit()
+    res = audit_pool_attestation(conn, asset_address=addr, now="2026-09-09T00:00:00Z")
+    assert res["passed"] is False
+    assert "attestation_expires_at_invalid" in res["missing"]
+    conn.close()
+
+
+def test_rh02bv_8_latest_row_by_created_at_evaluated(tmp_path):
+    """8. 同一地址两行、created_at 不同、旧行 ATTESTED_SAME_BLOCK 新行 FAILED -> 取新行，passed is False."""
+    from scripts.lp_rh_readiness_v1_readonly import audit_pool_attestation
+    db_file = tmp_path / "bv8.db"
+    conn = open_store(str(db_file))
+    migrate(conn)
+    addr = "0x52e65b17fb6e5ba00ed806f37afcd2daa50271ca"
+    _setup_rh02bv_pool(conn, addr)
+    conn.execute(
+        "INSERT INTO rh_contract_attestations "
+        "(chain_id, address, block_hash, policy_version, attestation_status, expires_at, created_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (4663, addr, "0x" + "aa" * 32, "v1", "ATTESTED_SAME_BLOCK", None, "2026-09-07T00:00:00Z"),
+    )
+    conn.execute(
+        "INSERT INTO rh_contract_attestations "
+        "(chain_id, address, block_hash, policy_version, attestation_status, expires_at, created_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (4663, addr, "0x" + "bb" * 32, "v2", "FAILED", None, "2026-09-09T00:00:00Z"),
+    )
+    conn.commit()
+    res = audit_pool_attestation(conn, asset_address=addr)
+    assert res["passed"] is False
+    assert res["attestation_status"] == "FAILED"
+    assert "attestation_status=FAILED" in res["missing"]
+    conn.close()
+
+
+def test_rh02bv_9_eip55_address_case_insensitivity(tmp_path):
+    """9. 地址用 EIP-55 混合大小写传入，仍能匹配小写存储的行."""
+    from scripts.lp_rh_readiness_v1_readonly import audit_pool_attestation
+    db_file = tmp_path / "bv9.db"
+    conn = open_store(str(db_file))
+    migrate(conn)
+    addr_lower = "0x52e65b17fb6e5ba00ed806f37afcd2daa50271ca"
+    addr_eip55 = "0x52E65b17fb6E5bA00ed806f37AfCD2Daa50271Ca"
+    _setup_rh02bv_pool(conn, addr_lower)
+    conn.execute(
+        "INSERT INTO rh_contract_attestations "
+        "(chain_id, address, block_hash, policy_version, attestation_status, expires_at, created_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (4663, addr_lower, "0x" + "aa" * 32, "v1", "ATTESTED_SAME_BLOCK", None, "2026-09-08T00:00:00Z"),
+    )
+    conn.commit()
+    res = audit_pool_attestation(conn, asset_address=addr_eip55)
+    assert res["passed"] is True
+    assert res["has_contract_attestation"] is True
+    assert res["attestation_status"] == "ATTESTED_SAME_BLOCK"
+    assert res["missing"] == []
+    conn.close()

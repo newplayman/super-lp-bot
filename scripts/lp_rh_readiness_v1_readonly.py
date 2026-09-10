@@ -10,7 +10,7 @@ import bisect
 import json
 import subprocess
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
 from typing import Any, Mapping, Optional, Sequence, List
@@ -216,6 +216,9 @@ JUDGMENT_WINDOW_UNRESOLVED = "JUDGMENT_WINDOW_UNRESOLVED"
 KEY_FIELD_NEVER_POPULATED = "KEY_FIELD_NEVER_POPULATED"
 KEY_FIELD_INCOMPLETE = "KEY_FIELD_INCOMPLETE"
 KEY_FIELD_MISSING_COLUMN = "KEY_FIELD_MISSING_COLUMN"
+
+# Attestation passing statuses (RH-02bv)
+ATTESTATION_PASSING_STATUSES = frozenset({"ATTESTED_SAME_BLOCK"})
 
 def _to_datetime(value: Any) -> Optional[datetime]:
     if value is None or isinstance(value, datetime):
@@ -676,24 +679,65 @@ def audit_key_field_health(conn, *, asset_address: str) -> dict:
         return {"passed": False, "error": str(exc), "columns": {}}
 
 
-def audit_pool_attestation(conn, *, asset_address: str) -> dict:
+def audit_pool_attestation(conn, *, asset_address: str, now: Optional[str] = None) -> dict:
     """Audit identity and capabilities evidence for the observed pool (PRD §21.1 Condition 4).
     Asserts:
-      1. asset_address exists in rh_contract_attestations.
+      1. asset_address exists in rh_contract_attestations with passing status and not expired.
       2. rh_pool_registry entry exists for pool_address = asset_address (or token0/token1/fee/tick_spacing non-null).
     """
+    if now is None:
+        checked_at_dt = datetime.now(timezone.utc)
+    else:
+        parsed_now = _to_datetime(now)
+        checked_at_dt = parsed_now if parsed_now is not None else datetime.now(timezone.utc)
+    if checked_at_dt.tzinfo is None:
+        checked_at_dt = checked_at_dt.replace(tzinfo=timezone.utc)
+    checked_at_iso = checked_at_dt.isoformat()
+
     if not asset_address:
-        return {"passed": False, "reason": "NO_ASSET_ADDRESS", "missing": ["asset_address"]}
+        return {
+            "passed": False,
+            "reason": "NO_ASSET_ADDRESS",
+            "missing": ["asset_address"],
+            "attestation_status": None,
+            "attestation_expires_at": None,
+            "attestation_checked_at": checked_at_iso,
+        }
     missing = []
+    actual_status = None
+    raw_expires_at = None
+    has_attestation = False
     try:
         # 1. rh_contract_attestations
         att_row = conn.execute(
-            "SELECT COUNT(*) FROM rh_contract_attestations WHERE LOWER(address) = LOWER(?)",
+            "SELECT attestation_status, expires_at FROM rh_contract_attestations "
+            "WHERE LOWER(address) = LOWER(?) "
+            "ORDER BY created_at DESC LIMIT 1",
             (asset_address,)
         ).fetchone()
-        has_attestation = (att_row[0] > 0) if att_row else False
-        if not has_attestation:
+
+        if not att_row:
+            has_attestation = False
             missing.append("rh_contract_attestations")
+        else:
+            has_attestation = True
+            actual_status = att_row[0]
+            raw_expires_at = att_row[1]
+
+            if actual_status is None or str(actual_status).strip() == "":
+                missing.append("attestation_status_unknown")
+            elif actual_status not in ATTESTATION_PASSING_STATUSES:
+                missing.append(f"attestation_status={actual_status}")
+
+            if raw_expires_at is not None:
+                exp_dt = _to_datetime(raw_expires_at)
+                if exp_dt is None:
+                    missing.append("attestation_expires_at_invalid")
+                else:
+                    if exp_dt.tzinfo is None:
+                        exp_dt = exp_dt.replace(tzinfo=timezone.utc)
+                    if exp_dt < checked_at_dt:
+                        missing.append("attestation_expired")
 
         # 2. rh_pool_registry
         reg_row = conn.execute(
@@ -716,10 +760,20 @@ def audit_pool_attestation(conn, *, asset_address: str) -> dict:
         return {
             "passed": len(missing) == 0,
             "has_contract_attestation": has_attestation,
+            "attestation_status": actual_status,
+            "attestation_expires_at": raw_expires_at,
+            "attestation_checked_at": checked_at_iso,
             "missing": missing,
         }
     except Exception as exc:
-        return {"passed": False, "error": str(exc), "missing": ["query_exception"]}
+        return {
+            "passed": False,
+            "error": str(exc),
+            "missing": ["query_exception"],
+            "attestation_status": actual_status,
+            "attestation_expires_at": raw_expires_at,
+            "attestation_checked_at": checked_at_iso,
+        }
 
 
 def audit_invariant_violations(conn) -> dict:
