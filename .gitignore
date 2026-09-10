@@ -68,3 +68,4 @@ vendor/
 # codex/agent sandbox mount points
 .codex/
 .agents/
+reports/polymarket_competitor_*.tar.gz
