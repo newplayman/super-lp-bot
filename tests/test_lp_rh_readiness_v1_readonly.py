@@ -257,6 +257,10 @@ def test_stage_a_budget_over_blocks():
 
 
 def test_stage_a_invariant_violations_blocks():
+    from scripts.lp_rh_readiness_v1_readonly import (
+        STAGE_A_INVARIANT_VIOLATIONS,
+        STAGE_A_INVARIANT_VIOLATIONS_UNAVAILABLE,
+    )
     # None
     a_none = stage_a_status(
         first_sample="2026-09-08T00:00:00Z", last_sample="2026-09-11T00:00:00Z",
@@ -266,7 +270,8 @@ def test_stage_a_invariant_violations_blocks():
         invariant_violations=None, unknown_state_positions=0,
     )
     assert a_none["passed"] is False
-    assert "STAGE_A_INVARIANT_VIOLATIONS" in a_none["blockers"]
+    assert STAGE_A_INVARIANT_VIOLATIONS_UNAVAILABLE in a_none["blockers"]
+    assert STAGE_A_INVARIANT_VIOLATIONS not in a_none["blockers"]
 
     # > 0
     a_viol = stage_a_status(
@@ -277,7 +282,8 @@ def test_stage_a_invariant_violations_blocks():
         invariant_violations=2, unknown_state_positions=0,
     )
     assert a_viol["passed"] is False
-    assert "STAGE_A_INVARIANT_VIOLATIONS" in a_viol["blockers"]
+    assert STAGE_A_INVARIANT_VIOLATIONS in a_viol["blockers"]
+    assert STAGE_A_INVARIANT_VIOLATIONS_UNAVAILABLE not in a_viol["blockers"]
 
 
 def test_stage_a_invariant_violations_clean_passes():
@@ -785,7 +791,41 @@ def test_audit_invariant_violations_clean_and_detected(tmp_path):
     conn = open_store(str(db_file))
     migrate(conn)
 
-    # 1. Clean DB
+    # 1. Clean DB (all 4 tables have valid rows)
+    insert_row(conn, "rh_gate_decisions", {
+        "decision_id": "dec_1",
+        "candidate_key": "cand_1",
+        "target_mode": "SHADOW",
+        "decided_at": "2026-09-08T00:00:00Z",
+        "primary_status": "COMPUTED_PASS",
+        "dominant_blocker": "",
+        "terminal_bits_json": json.dumps({"bit1": True}),
+    })
+    insert_row(conn, "rh_position_marks", {
+        "position_id": "pos_1",
+        "mark_time": "2026-09-08T00:00:00Z",
+        "reference_nav": "100.0",
+    })
+    insert_row(conn, "rh_journal", {
+        "event_id": "evt_1",
+        "idempotency_key": "id_1",
+        "account_debit": "VAULT_ETH",
+        "account_credit": "USER_CASH",
+        "asset": "0x111",
+        "amount_raw": "1000",
+        "is_external_flow": 0,
+        "ref_json": "{}",
+        "booked_at": "2026-09-08T00:00:00Z",
+    })
+    insert_row(conn, "rh_market_states", {
+        "asset_address": "0x111",
+        "chain_id": 4663,
+        "health_flags_json": "[]",
+        "sample_time": "2026-09-08T00:00:00Z",
+        "reference_mid": "10.0",
+        "multiplier_human": "1.0",
+        "session": "REGULAR",
+    })
     clean_audit = audit_invariant_violations(conn)
     assert clean_audit["passed"] is True
     assert clean_audit["violations_count"] == 0
@@ -794,8 +834,8 @@ def test_audit_invariant_violations_clean_and_detected(tmp_path):
     insert_row(conn, "rh_market_states", {
         "asset_address": "0x111",
         "chain_id": 4663,
-            "health_flags_json": "[]",
-            "sample_time": "2026-09-08T00:00:00Z",
+        "health_flags_json": "[]",
+        "sample_time": "2026-09-08T00:00:01Z",
         "reference_mid": "-10.0",
         "multiplier_human": "1.0",
         "session": "REGULAR",
@@ -1310,4 +1350,165 @@ def test_audit_weekends_covered_case_insensitive_eip55_address():
     assert len(res["days"]) == 1
     assert res["days"][0]["actual"] == 10
     conn.close()
+
+
+# --- RH-02bo: Empty evidence is not zero invariant violations ---
+import json
+from decimal import Decimal
+
+from scripts.lp_rh_readiness_v1_readonly import (
+    STAGE_A_INVARIANT_VIOLATIONS,
+    STAGE_A_INVARIANT_VIOLATIONS_UNAVAILABLE,
+    audit_invariant_violations,
+)
+
+
+def test_rh02bo_1_all_tables_missing():
+    """1. 四张相关表全部不存在 -> violations_count is None, unavailable_checks 含全部四项。"""
+    conn = sqlite3.connect(":memory:")
+    res = audit_invariant_violations(conn)
+    assert res["violations_count"] is None
+    assert res["passed"] is False
+    expected = {
+        "rh_gate_decisions:conjunction_consistency",
+        "rh_market_states:price_positivity_and_spread",
+        "rh_position_marks:nav_non_negative",
+        "rh_journal:accounts_and_amounts",
+    }
+    assert set(res["unavailable_checks"]) == expected
+    assert res["checks_performed"] == []
+    conn.close()
+
+
+def test_rh02bo_2_all_tables_exist_but_empty():
+    """2. 四张表都存在但都是 0 行 -> violations_count is None (空表 != 零违反)。"""
+    conn = sqlite3.connect(":memory:")
+    conn.execute("CREATE TABLE rh_gate_decisions (decision_id TEXT, primary_status TEXT, terminal_bits_json TEXT, dominant_blocker TEXT)")
+    conn.execute("CREATE TABLE rh_market_states (reference_mid TEXT, reference_bid TEXT, reference_ask TEXT)")
+    conn.execute("CREATE TABLE rh_position_marks (reference_nav TEXT)")
+    conn.execute("CREATE TABLE rh_journal (account_debit TEXT, account_credit TEXT, amount_raw TEXT)")
+    res = audit_invariant_violations(conn)
+    assert res["violations_count"] is None
+    assert res["passed"] is False
+    expected = {
+        "rh_gate_decisions:conjunction_consistency",
+        "rh_market_states:price_positivity_and_spread",
+        "rh_position_marks:nav_non_negative",
+        "rh_journal:accounts_and_amounts",
+    }
+    assert set(res["unavailable_checks"]) == expected
+    assert res["checks_performed"] == []
+    conn.close()
+
+
+def test_rh02bo_3_one_table_has_rows_others_empty():
+    """3. rh_market_states 有正常行、其余三张为空 -> violations_count is None, checks_performed 含市场那项、unavailable_checks 含其余三项。"""
+    conn = sqlite3.connect(":memory:")
+    conn.execute("CREATE TABLE rh_gate_decisions (decision_id TEXT, primary_status TEXT, terminal_bits_json TEXT, dominant_blocker TEXT)")
+    conn.execute("CREATE TABLE rh_market_states (reference_mid TEXT, reference_bid TEXT, reference_ask TEXT)")
+    conn.execute("CREATE TABLE rh_position_marks (reference_nav TEXT)")
+    conn.execute("CREATE TABLE rh_journal (account_debit TEXT, account_credit TEXT, amount_raw TEXT)")
+    conn.execute("INSERT INTO rh_market_states VALUES ('100.0', '99.0', '101.0')")
+    res = audit_invariant_violations(conn)
+    assert res["violations_count"] is None
+    assert res["passed"] is False
+    assert res["checks_performed"] == ["rh_market_states:price_positivity_and_spread"]
+    expected_unavail = {
+        "rh_gate_decisions:conjunction_consistency",
+        "rh_position_marks:nav_non_negative",
+        "rh_journal:accounts_and_amounts",
+    }
+    assert set(res["unavailable_checks"]) == expected_unavail
+    conn.close()
+
+
+def test_rh02bo_4_all_tables_have_rows_and_clean():
+    """4. 四张表都有行且都干净 -> violations_count == 0, unavailable_checks == [], passed is True。"""
+    conn = sqlite3.connect(":memory:")
+    conn.execute("CREATE TABLE rh_gate_decisions (decision_id TEXT, primary_status TEXT, terminal_bits_json TEXT, dominant_blocker TEXT)")
+    conn.execute("CREATE TABLE rh_market_states (reference_mid TEXT, reference_bid TEXT, reference_ask TEXT)")
+    conn.execute("CREATE TABLE rh_position_marks (reference_nav TEXT)")
+    conn.execute("CREATE TABLE rh_journal (account_debit TEXT, account_credit TEXT, amount_raw TEXT)")
+    conn.execute("INSERT INTO rh_gate_decisions VALUES ('dec_1', 'COMPUTED_PASS', '{\"b\": true}', NULL)")
+    conn.execute("INSERT INTO rh_market_states VALUES ('100.0', '99.0', '101.0')")
+    conn.execute("INSERT INTO rh_position_marks VALUES ('50.0')")
+    conn.execute("INSERT INTO rh_journal VALUES ('ACC_A', 'ACC_B', '100')")
+    res = audit_invariant_violations(conn)
+    assert res["violations_count"] == 0
+    assert res["unavailable_checks"] == []
+    assert res["passed"] is True
+    assert len(res["checks_performed"]) == 4
+    conn.close()
+
+
+def test_rh02bo_5_all_tables_have_rows_with_violation():
+    """5. 四张表都有行、其中 rh_journal 有一条借贷账户为空的行 -> violations_count >= 1。"""
+    conn = sqlite3.connect(":memory:")
+    conn.execute("CREATE TABLE rh_gate_decisions (decision_id TEXT, primary_status TEXT, terminal_bits_json TEXT, dominant_blocker TEXT)")
+    conn.execute("CREATE TABLE rh_market_states (reference_mid TEXT, reference_bid TEXT, reference_ask TEXT)")
+    conn.execute("CREATE TABLE rh_position_marks (reference_nav TEXT)")
+    conn.execute("CREATE TABLE rh_journal (account_debit TEXT, account_credit TEXT, amount_raw TEXT)")
+    conn.execute("INSERT INTO rh_gate_decisions VALUES ('dec_1', 'COMPUTED_PASS', '{\"b\": true}', NULL)")
+    conn.execute("INSERT INTO rh_market_states VALUES ('100.0', '99.0', '101.0')")
+    conn.execute("INSERT INTO rh_position_marks VALUES ('50.0')")
+    conn.execute("INSERT INTO rh_journal VALUES ('', 'ACC_B', '100')")
+    res = audit_invariant_violations(conn)
+    assert res["violations_count"] is not None
+    assert res["violations_count"] >= 1
+    assert res["passed"] is False
+    assert res["unavailable_checks"] == []
+    conn.close()
+
+
+def test_rh02bo_6_stage_a_status_none_invariant():
+    """6. stage_a_status(invariant_violations=None, ...) -> blockers 含 STAGE_A_INVARIANT_VIOLATIONS_UNAVAILABLE 且不含 STAGE_A_INVARIANT_VIOLATIONS。"""
+    res = stage_a_status(
+        first_sample="2026-09-08T00:00:00Z", last_sample="2026-09-11T00:00:00Z",
+        expected_interval_secs=15, actual_samples=72 * 3600 // 15,
+        synthetic_tests_passed=True, key_field_health={"passed": True},
+        pool_attestation_status={"passed": True}, budget=BUDGET_OK,
+        invariant_violations=None, unknown_state_positions=0,
+    )
+    assert STAGE_A_INVARIANT_VIOLATIONS_UNAVAILABLE in res["blockers"]
+    assert STAGE_A_INVARIANT_VIOLATIONS not in res["blockers"]
+    assert res["passed"] is False
+
+
+def test_rh02bo_7_stage_a_status_positive_invariant():
+    """7. stage_a_status(invariant_violations=3, ...) -> blockers 含 STAGE_A_INVARIANT_VIOLATIONS 且不含 ..._UNAVAILABLE。"""
+    res = stage_a_status(
+        first_sample="2026-09-08T00:00:00Z", last_sample="2026-09-11T00:00:00Z",
+        expected_interval_secs=15, actual_samples=72 * 3600 // 15,
+        synthetic_tests_passed=True, key_field_health={"passed": True},
+        pool_attestation_status={"passed": True}, budget=BUDGET_OK,
+        invariant_violations=3, unknown_state_positions=0,
+    )
+    assert STAGE_A_INVARIANT_VIOLATIONS in res["blockers"]
+    assert STAGE_A_INVARIANT_VIOLATIONS_UNAVAILABLE not in res["blockers"]
+    assert res["passed"] is False
+
+
+def test_rh02bo_render_dashboard_unavailable_checks():
+    """RH-02bo Markdown 报告显示未执行的检查。"""
+    state = {
+        "stage_a": {
+            "hours_covered": 72.0,
+            "coverage_ratio": Decimal("0.995"),
+            "passed": False,
+            "blockers": [STAGE_A_INVARIANT_VIOLATIONS_UNAVAILABLE],
+        },
+        "stage_b": {"passed": False},
+        "live_gate": {"live_allowed": False},
+        "invariant_violations_audit": {
+            "violations_count": None,
+            "unavailable_checks": [
+                "rh_journal:accounts_and_amounts",
+                "rh_gate_decisions:conjunction_consistency",
+                "rh_position_marks:nav_non_negative",
+            ],
+        },
+    }
+    rendered = render_dashboard(state)
+    assert "invariant: NOT_MEASURED (未执行的检查: rh_journal:accounts_and_amounts, rh_gate_decisions:conjunction_consistency, rh_position_marks:nav_non_negative)" in rendered
+
 

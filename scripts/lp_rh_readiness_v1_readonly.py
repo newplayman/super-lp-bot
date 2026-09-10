@@ -58,6 +58,7 @@ STAGE_A_KEY_FIELDS_INCOMPLETE = "STAGE_A_KEY_FIELDS_INCOMPLETE"
 STAGE_A_POOL_NOT_ATTESTED = "STAGE_A_POOL_NOT_ATTESTED"
 STAGE_A_BUDGET_EXCEEDED = "STAGE_A_BUDGET_EXCEEDED"
 STAGE_A_INVARIANT_VIOLATIONS = "STAGE_A_INVARIANT_VIOLATIONS"
+STAGE_A_INVARIANT_VIOLATIONS_UNAVAILABLE = "STAGE_A_INVARIANT_VIOLATIONS_UNAVAILABLE"
 STAGE_A_UNKNOWN_STATE_POSITIONS = "STAGE_A_UNKNOWN_STATE_POSITIONS"
 STAGE_A_SYNTHETIC_TESTS_UNKNOWN = "STAGE_A_SYNTHETIC_TESTS_UNKNOWN"
 
@@ -175,7 +176,10 @@ def stage_a_status(*, first_sample, last_sample, expected_interval_secs,
 
     # 7. Invariant violations
     invariant_ok = True
-    if invariant_violations is None or invariant_violations > 0:
+    if invariant_violations is None:
+        invariant_ok = False
+        blockers.append(STAGE_A_INVARIANT_VIOLATIONS_UNAVAILABLE)
+    elif invariant_violations > 0:
         invariant_ok = False
         blockers.append(STAGE_A_INVARIANT_VIOLATIONS)
 
@@ -306,6 +310,12 @@ def _render_stages(state, stage_a, stage_b, live_gate) -> list:
                  + f"passed={_fmt_bool(stage_a.get('passed'))}")
     if stage_a.get("blockers"):
         lines.append("  - blockers: " + ", ".join(stage_a["blockers"]))
+    inv_audit = state.get("invariant_violations_audit") if state else None
+    if inv_audit and isinstance(inv_audit, dict):
+        unavail = inv_audit.get("unavailable_checks")
+        if unavail:
+            v_str = _fmt(inv_audit.get("violations_count"))
+            lines.append(f"  - invariant: {v_str} (未执行的检查: {', '.join(unavail)})")
     kf = stage_a.get("key_field_health")
     if kf and isinstance(kf, dict) and kf.get("columns"):
         lines.append("  - key_fields:")
@@ -548,21 +558,26 @@ def audit_invariant_violations(conn) -> dict:
       4. Journal balance integrity: in rh_journal, debit and credit accounts must
          be non-empty, and amount_raw must be non-negative.
     Returns:
-      dict with passed, violations_count, details, checks_performed, unsupported.
+      dict with passed, violations_count, details, checks_performed, unavailable_checks, unsupported.
     """
     try:
         tbls = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
         violations = 0
         details = []
         checks_performed = []
+        unavailable_checks = []
         unsupported = [
             "INV-IL-01 (fee/reward ex-nav separation requiring full replay)",
             "INV-V4-01 (v4 snapshot collector dynamic mutation)",
             "INV-TVLSHARE-01 (active liquidity allocator live boundary)",
         ]
 
-        if "rh_gate_decisions" in tbls:
-            checks_performed.append("rh_gate_decisions:conjunction_consistency")
+        # 1. rh_gate_decisions:conjunction_consistency
+        gate_check = "rh_gate_decisions:conjunction_consistency"
+        if "rh_gate_decisions" not in tbls or conn.execute("SELECT COUNT(*) FROM rh_gate_decisions").fetchone()[0] == 0:
+            unavailable_checks.append(gate_check)
+        else:
+            checks_performed.append(gate_check)
             rows = conn.execute(
                 "SELECT decision_id, primary_status, terminal_bits_json, dominant_blocker "
                 "FROM rh_gate_decisions WHERE primary_status = 'COMPUTED_PASS'"
@@ -582,8 +597,12 @@ def audit_invariant_violations(conn) -> dict:
                     except Exception:
                         pass
 
-        if "rh_market_states" in tbls:
-            checks_performed.append("rh_market_states:price_positivity_and_spread")
+        # 2. rh_market_states:price_positivity_and_spread
+        mkt_check = "rh_market_states:price_positivity_and_spread"
+        if "rh_market_states" not in tbls or conn.execute("SELECT COUNT(*) FROM rh_market_states").fetchone()[0] == 0:
+            unavailable_checks.append(mkt_check)
+        else:
+            checks_performed.append(mkt_check)
             # mid > 0 check
             bad_mids = conn.execute(
                 "SELECT COUNT(*) FROM rh_market_states WHERE reference_mid IS NOT NULL AND CAST(reference_mid AS REAL) <= 0"
@@ -600,8 +619,12 @@ def audit_invariant_violations(conn) -> dict:
                 violations += crossed
                 details.append(f"rh_market_states:crossed_market_count:{crossed}")
 
-        if "rh_position_marks" in tbls:
-            checks_performed.append("rh_position_marks:nav_non_negative")
+        # 3. rh_position_marks:nav_non_negative
+        pos_check = "rh_position_marks:nav_non_negative"
+        if "rh_position_marks" not in tbls or conn.execute("SELECT COUNT(*) FROM rh_position_marks").fetchone()[0] == 0:
+            unavailable_checks.append(pos_check)
+        else:
+            checks_performed.append(pos_check)
             bad_navs = conn.execute(
                 "SELECT COUNT(*) FROM rh_position_marks WHERE reference_nav IS NOT NULL AND CAST(reference_nav AS REAL) < 0"
             ).fetchone()[0]
@@ -609,8 +632,12 @@ def audit_invariant_violations(conn) -> dict:
                 violations += bad_navs
                 details.append(f"rh_position_marks:negative_reference_nav_count:{bad_navs}")
 
-        if "rh_journal" in tbls:
-            checks_performed.append("rh_journal:accounts_and_amounts")
+        # 4. rh_journal:accounts_and_amounts
+        journal_check = "rh_journal:accounts_and_amounts"
+        if "rh_journal" not in tbls or conn.execute("SELECT COUNT(*) FROM rh_journal").fetchone()[0] == 0:
+            unavailable_checks.append(journal_check)
+        else:
+            checks_performed.append(journal_check)
             bad_journal = conn.execute(
                 "SELECT COUNT(*) FROM rh_journal WHERE (account_debit = '' OR account_credit = '') "
                 "OR (CAST(amount_raw AS REAL) < 0)"
@@ -619,11 +646,19 @@ def audit_invariant_violations(conn) -> dict:
                 violations += bad_journal
                 details.append(f"rh_journal:invalid_journal_rows:{bad_journal}")
 
+        if unavailable_checks:
+            final_violations = None
+            passed = False
+        else:
+            final_violations = violations
+            passed = (violations == 0)
+
         return {
-            "passed": violations == 0,
-            "violations_count": violations,
+            "passed": passed,
+            "violations_count": final_violations,
             "details": details,
             "checks_performed": checks_performed,
+            "unavailable_checks": unavailable_checks,
             "unsupported": unsupported,
         }
     except Exception as exc:
@@ -632,6 +667,7 @@ def audit_invariant_violations(conn) -> dict:
             "violations_count": None,
             "error": str(exc),
             "checks_performed": [],
+            "unavailable_checks": [],
             "unsupported": [],
             "details": [f"audit_exception:{exc}"],
         }
