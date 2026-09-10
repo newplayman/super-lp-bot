@@ -1,2935 +1,3321 @@
 {
+  "version": 2,
   "tool": "lp_silent_failure_lint_v1_readonly",
-  "note": "Baseline of known silent-failure hits. --fail-on-new blocks any hit whose key is not listed here. Regenerate after an approved fix.",
-  "count": 366,
+  "identity_schema": "(file, rule, fingerprint)",
+  "note": "Baseline of known silent-failure hits matched by content fingerprint. --fail-on-new blocks any hit exceeding baseline occurrence count. Line numbers are for display only. Regenerate after an approved fix.",
+  "count": 368,
   "hits": [
     {
-      "key": "scripts/finalize_bsc_fee_velocity_overnight_run_v1_readonly.py:126:8:5",
       "file": "scripts/finalize_bsc_fee_velocity_overnight_run_v1_readonly.py",
       "line": 126,
       "col": 8,
       "rule": 5,
-      "snippet": "return 0"
+      "fingerprint": "30945f342ad5ab6c",
+      "snippet": "return 0",
+      "key": "scripts/finalize_bsc_fee_velocity_overnight_run_v1_readonly.py:126:8:5"
     },
     {
-      "key": "scripts/finalize_bsc_fee_velocity_overnight_run_v1_readonly.py:186:21:1",
       "file": "scripts/finalize_bsc_fee_velocity_overnight_run_v1_readonly.py",
       "line": 186,
       "col": 21,
       "rule": 1,
-      "snippet": "pool_count = int(state.get(\"pool_count\", 0) or 0)"
+      "fingerprint": "b10ec8916670be60",
+      "snippet": "pool_count = int(state.get(\"pool_count\", 0) or 0)",
+      "key": "scripts/finalize_bsc_fee_velocity_overnight_run_v1_readonly.py:186:21:1"
     },
     {
-      "key": "scripts/finalize_bsc_fee_velocity_overnight_run_v1_readonly.py:187:30:1",
       "file": "scripts/finalize_bsc_fee_velocity_overnight_run_v1_readonly.py",
       "line": 187,
       "col": 30,
       "rule": 1,
-      "snippet": "selected_pool_count = int(state.get(\"selected_pool_count\", 0) or 0)"
+      "fingerprint": "38111b04a3b22489",
+      "snippet": "selected_pool_count = int(state.get(\"selected_pool_count\", 0) or 0)",
+      "key": "scripts/finalize_bsc_fee_velocity_overnight_run_v1_readonly.py:187:30:1"
     },
     {
-      "key": "scripts/lp_base_10u_probe_armed_runner_v1.py:275:8:5",
       "file": "scripts/lp_base_10u_probe_armed_runner_v1.py",
       "line": 275,
       "col": 8,
       "rule": 5,
-      "snippet": "return 1"
+      "fingerprint": "486d9affb60dbb00",
+      "snippet": "return 1",
+      "key": "scripts/lp_base_10u_probe_armed_runner_v1.py:275:8:5"
     },
     {
-      "key": "scripts/lp_base_10u_probe_readiness_monitor_v1.py:161:35:2",
       "file": "scripts/lp_base_10u_probe_readiness_monitor_v1.py",
       "line": 161,
       "col": 35,
       "rule": 2,
-      "snippet": "\"fresh_approval_required\": bool(cp.get(\"fresh_approval_required\")),"
+      "fingerprint": "f665104d26bd8ec4",
+      "snippet": "\"fresh_approval_required\": bool(cp.get(\"fresh_approval_required\")),",
+      "key": "scripts/lp_base_10u_probe_readiness_monitor_v1.py:161:35:2"
     },
     {
-      "key": "scripts/lp_base_10u_probe_readiness_monitor_v1.py:163:12:1",
       "file": "scripts/lp_base_10u_probe_readiness_monitor_v1.py",
       "line": 163,
       "col": 12,
       "rule": 1,
-      "snippet": "cp.get(\"usdc_balance_raw\", 0) < 10 * 10**6"
+      "fingerprint": "4a6c8e5f1fe34755",
+      "snippet": "cp.get(\"usdc_balance_raw\", 0) < 10 * 10**6",
+      "key": "scripts/lp_base_10u_probe_readiness_monitor_v1.py:163:12:1"
     },
     {
-      "key": "scripts/lp_base_10u_probe_readiness_monitor_v1.py:166:12:1",
       "file": "scripts/lp_base_10u_probe_readiness_monitor_v1.py",
       "line": 166,
       "col": 12,
       "rule": 1,
-      "snippet": "cp.get(\"weth_balance_raw\", 0) == 0"
+      "fingerprint": "75692bf75d9425c8",
+      "snippet": "cp.get(\"weth_balance_raw\", 0) == 0",
+      "key": "scripts/lp_base_10u_probe_readiness_monitor_v1.py:166:12:1"
     },
     {
-      "key": "scripts/lp_base_10u_probe_readiness_monitor_v1.py:175:12:1",
       "file": "scripts/lp_base_10u_probe_readiness_monitor_v1.py",
       "line": 175,
       "col": 12,
       "rule": 1,
-      "snippet": "and cp.get(\"usdc_balance_raw\", 0) >= 10 * 10**6"
+      "fingerprint": "4c77ab3e6a645e0e",
+      "snippet": "and cp.get(\"usdc_balance_raw\", 0) >= 10 * 10**6",
+      "key": "scripts/lp_base_10u_probe_readiness_monitor_v1.py:175:12:1"
     },
     {
-      "key": "scripts/lp_base_gas_estimate_feasibility_v1_readonly.py:113:8:5",
       "file": "scripts/lp_base_gas_estimate_feasibility_v1_readonly.py",
       "line": 113,
       "col": 8,
       "rule": 5,
-      "snippet": "return 1"
+      "fingerprint": "486d9affb60dbb00",
+      "snippet": "return 1",
+      "key": "scripts/lp_base_gas_estimate_feasibility_v1_readonly.py:113:8:5"
     },
     {
-      "key": "scripts/lp_base_pool_state_refresh_v1_readonly.py:139:8:5",
       "file": "scripts/lp_base_pool_state_refresh_v1_readonly.py",
       "line": 139,
       "col": 8,
       "rule": 5,
-      "snippet": "return 1"
+      "fingerprint": "486d9affb60dbb00",
+      "snippet": "return 1",
+      "key": "scripts/lp_base_pool_state_refresh_v1_readonly.py:139:8:5"
     },
     {
-      "key": "scripts/lp_base_rpc_and_contract_readiness_v1_readonly.py:110:8:5",
       "file": "scripts/lp_base_rpc_and_contract_readiness_v1_readonly.py",
       "line": 110,
       "col": 8,
       "rule": 5,
-      "snippet": "return 1"
+      "fingerprint": "486d9affb60dbb00",
+      "snippet": "return 1",
+      "key": "scripts/lp_base_rpc_and_contract_readiness_v1_readonly.py:110:8:5"
     },
     {
-      "key": "scripts/lp_base_wallet_balance_allowance_refresh_v1_readonly.py:133:8:5",
       "file": "scripts/lp_base_wallet_balance_allowance_refresh_v1_readonly.py",
       "line": 133,
       "col": 8,
       "rule": 5,
-      "snippet": "return 1"
+      "fingerprint": "486d9affb60dbb00",
+      "snippet": "return 1",
+      "key": "scripts/lp_base_wallet_balance_allowance_refresh_v1_readonly.py:133:8:5"
     },
     {
-      "key": "scripts/lp_bsc_10_20u_probe_preflight_design_v1_readonly.py:70:25:1",
       "file": "scripts/lp_bsc_10_20u_probe_preflight_design_v1_readonly.py",
       "line": 70,
       "col": 25,
       "rule": 1,
-      "snippet": "has_realistic = (econ.get(\"positive_proxy_count_realistic\", 0) or 0) > 0"
+      "fingerprint": "b4c5480a0b3824c6",
+      "snippet": "has_realistic = (econ.get(\"positive_proxy_count_realistic\", 0) or 0) > 0",
+      "key": "scripts/lp_bsc_10_20u_probe_preflight_design_v1_readonly.py:70:25:1"
     },
     {
-      "key": "scripts/lp_bsc_10_20u_probe_preflight_design_v1_readonly.py:71:23:1",
       "file": "scripts/lp_bsc_10_20u_probe_preflight_design_v1_readonly.py",
       "line": 71,
       "col": 23,
       "rule": 1,
-      "snippet": "has_near_be = (econ.get(\"near_break_even_count\", 0) or 0) > 0"
+      "fingerprint": "e8c5fbebfec68aad",
+      "snippet": "has_near_be = (econ.get(\"near_break_even_count\", 0) or 0) > 0",
+      "key": "scripts/lp_bsc_10_20u_probe_preflight_design_v1_readonly.py:71:23:1"
     },
     {
-      "key": "scripts/lp_bsc_fee_velocity_overnight_backfill_v1_readonly.py:352:8:5",
       "file": "scripts/lp_bsc_fee_velocity_overnight_backfill_v1_readonly.py",
       "line": 352,
       "col": 8,
       "rule": 5,
-      "snippet": "return False"
+      "fingerprint": "e706fa9325ded821",
+      "snippet": "return False",
+      "key": "scripts/lp_bsc_fee_velocity_overnight_backfill_v1_readonly.py:352:8:5"
     },
     {
-      "key": "scripts/lp_bsc_fee_velocity_short_backfill_v2_readonly.py:366:54:1",
       "file": "scripts/lp_bsc_fee_velocity_short_backfill_v2_readonly.py",
       "line": 366,
       "col": 54,
       "rule": 1,
-      "snippet": "root_cause_distribution[root_cause] = root_cause_distribution.get(root_cause, 0) + 1"
+      "fingerprint": "53edf110ee01e609",
+      "snippet": "root_cause_distribution[root_cause] = root_cause_distribution.get(root_cause, 0) + 1",
+      "key": "scripts/lp_bsc_fee_velocity_short_backfill_v2_readonly.py:366:54:1"
     },
     {
-      "key": "scripts/lp_bsc_fee_velocity_smoke_v1_readonly.py:277:16:1",
       "file": "scripts/lp_bsc_fee_velocity_smoke_v1_readonly.py",
       "line": 277,
       "col": 16,
       "rule": 1,
-      "snippet": "decimals0 = DEFAULT_DECIMALS.get(args.token0, 18)"
+      "fingerprint": "54f3d143d4d4ba33",
+      "snippet": "decimals0 = DEFAULT_DECIMALS.get(args.token0, 18)",
+      "key": "scripts/lp_bsc_fee_velocity_smoke_v1_readonly.py:277:16:1"
     },
     {
-      "key": "scripts/lp_bsc_fee_velocity_smoke_v1_readonly.py:278:16:1",
       "file": "scripts/lp_bsc_fee_velocity_smoke_v1_readonly.py",
       "line": 278,
       "col": 16,
       "rule": 1,
-      "snippet": "decimals1 = DEFAULT_DECIMALS.get(args.token1, 18)"
+      "fingerprint": "48d9ae32dba8b660",
+      "snippet": "decimals1 = DEFAULT_DECIMALS.get(args.token1, 18)",
+      "key": "scripts/lp_bsc_fee_velocity_smoke_v1_readonly.py:278:16:1"
     },
     {
-      "key": "scripts/lp_bsc_fee_velocity_smoke_v1_readonly.py:279:9:1",
       "file": "scripts/lp_bsc_fee_velocity_smoke_v1_readonly.py",
       "line": 279,
       "col": 9,
       "rule": 1,
-      "snippet": "p0 = DEFAULT_PRICES_USD.get(args.token0, Decimal(\"0\"))"
+      "fingerprint": "47a45e93405c8f8b",
+      "snippet": "p0 = DEFAULT_PRICES_USD.get(args.token0, Decimal(\"0\"))",
+      "key": "scripts/lp_bsc_fee_velocity_smoke_v1_readonly.py:279:9:1"
     },
     {
-      "key": "scripts/lp_bsc_fee_velocity_smoke_v1_readonly.py:280:9:1",
       "file": "scripts/lp_bsc_fee_velocity_smoke_v1_readonly.py",
       "line": 280,
       "col": 9,
       "rule": 1,
-      "snippet": "p1 = DEFAULT_PRICES_USD.get(args.token1, Decimal(\"0\"))"
+      "fingerprint": "140983dc0a8c72a7",
+      "snippet": "p1 = DEFAULT_PRICES_USD.get(args.token1, Decimal(\"0\"))",
+      "key": "scripts/lp_bsc_fee_velocity_smoke_v1_readonly.py:280:9:1"
     },
     {
-      "key": "scripts/lp_bsc_overnight_realdata_pipeline_v1_readonly.py:160:36:1",
       "file": "scripts/lp_bsc_overnight_realdata_pipeline_v1_readonly.py",
       "line": 160,
       "col": 36,
       "rule": 1,
-      "snippet": "\"fallback_math_used_count\": verdict.get(\"fallback_math_used_count\", 0),"
+      "fingerprint": "02a44c630666a401",
+      "snippet": "\"fallback_math_used_count\": verdict.get(\"fallback_math_used_count\", 0),",
+      "key": "scripts/lp_bsc_overnight_realdata_pipeline_v1_readonly.py:160:36:1"
     },
     {
-      "key": "scripts/lp_bsc_overnight_realdata_pipeline_v1_readonly.py:164:38:2",
       "file": "scripts/lp_bsc_overnight_realdata_pipeline_v1_readonly.py",
       "line": 164,
       "col": 38,
       "rule": 2,
-      "snippet": "\"can_run_overnight_readonly\": bool(verdict.get(\"quoter_v2_staticcall_fixed\")) and verdict.get(\"tiny_"
+      "fingerprint": "7967bba64bcaaef6",
+      "snippet": "\"can_run_overnight_readonly\": bool(verdict.get(\"quoter_v2_staticcall_fixed\")) and verdict.get(\"tiny_",
+      "key": "scripts/lp_bsc_overnight_realdata_pipeline_v1_readonly.py:164:38:2"
     },
     {
-      "key": "scripts/lp_bsc_overnight_realdata_pipeline_v1_readonly.py:456:11:1",
       "file": "scripts/lp_bsc_overnight_realdata_pipeline_v1_readonly.py",
       "line": 456,
       "col": 11,
       "rule": 1,
-      "snippet": "wbnb = price_by_token.get(\"0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c\", Decimal(\"0\"))"
+      "fingerprint": "fd4d87222a2c808e",
+      "snippet": "wbnb = price_by_token.get(\"0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c\", Decimal(\"0\"))",
+      "key": "scripts/lp_bsc_overnight_realdata_pipeline_v1_readonly.py:456:11:1"
     },
     {
-      "key": "scripts/lp_bsc_overnight_realdata_pipeline_v1_readonly.py:614:22:1",
       "file": "scripts/lp_bsc_overnight_realdata_pipeline_v1_readonly.py",
       "line": 614,
       "col": 22,
       "rule": 1,
-      "snippet": "elif best and best.get(\"net_ev_proxy_usd\", 0) > 0:"
+      "fingerprint": "d1fa84ba040092a3",
+      "snippet": "elif best and best.get(\"net_ev_proxy_usd\", 0) > 0:",
+      "key": "scripts/lp_bsc_overnight_realdata_pipeline_v1_readonly.py:614:22:1"
     },
     {
-      "key": "scripts/lp_bsc_overnight_realdata_pipeline_v1_readonly.py:617:26:1",
       "file": "scripts/lp_bsc_overnight_realdata_pipeline_v1_readonly.py",
       "line": 617,
       "col": 26,
       "rule": 1,
-      "snippet": "elif best and abs(best.get(\"net_ev_proxy_usd\", 0)) <= 0.5:"
+      "fingerprint": "4c2694d5b896b27c",
+      "snippet": "elif best and abs(best.get(\"net_ev_proxy_usd\", 0)) <= 0.5:",
+      "key": "scripts/lp_bsc_overnight_realdata_pipeline_v1_readonly.py:617:26:1"
     },
     {
-      "key": "scripts/lp_bsc_pancakeswap_v3_precise_quote_v2_readonly.py:221:8:5",
       "file": "scripts/lp_bsc_pancakeswap_v3_precise_quote_v2_readonly.py",
       "line": 221,
       "col": 8,
       "rule": 5,
-      "snippet": "return False"
+      "fingerprint": "e706fa9325ded821",
+      "snippet": "return False",
+      "key": "scripts/lp_bsc_pancakeswap_v3_precise_quote_v2_readonly.py:221:8:5"
     },
     {
-      "key": "scripts/lp_bsc_pancakeswap_v3_precise_quote_v2_readonly.py:1326:34:2",
       "file": "scripts/lp_bsc_pancakeswap_v3_precise_quote_v2_readonly.py",
       "line": 1326,
       "col": 34,
       "rule": 2,
-      "snippet": "\"bsc_rpc_readonly_ready\": bool(rpc_readiness.get(\"rpc_read_only_test_pass\")),"
+      "fingerprint": "a0c5da1cf99a1600",
+      "snippet": "\"bsc_rpc_readonly_ready\": bool(rpc_readiness.get(\"rpc_read_only_test_pass\")),",
+      "key": "scripts/lp_bsc_pancakeswap_v3_precise_quote_v2_readonly.py:1326:34:2"
     },
     {
-      "key": "scripts/lp_bsc_pancakeswap_v3_precise_quote_v2_readonly.py:1349:20:2",
       "file": "scripts/lp_bsc_pancakeswap_v3_precise_quote_v2_readonly.py",
       "line": 1349,
       "col": 20,
       "rule": 2,
-      "snippet": "\"db_ready\": bool(rpc_readiness.get(\"rpc_read_only_test_pass\")),"
+      "fingerprint": "94bc1c0262f6037a",
+      "snippet": "\"db_ready\": bool(rpc_readiness.get(\"rpc_read_only_test_pass\")),",
+      "key": "scripts/lp_bsc_pancakeswap_v3_precise_quote_v2_readonly.py:1349:20:2"
     },
     {
-      "key": "scripts/lp_bsc_quoter_staticcall_amount_fix_v1_readonly.py:466:30:1",
       "file": "scripts/lp_bsc_quoter_staticcall_amount_fix_v1_readonly.py",
       "line": 466,
       "col": 30,
       "rule": 1,
-      "snippet": "\"can_run_amount_fix\": verdict.get(\"quoter_staticcall_success_count\", 0) == 0,"
+      "fingerprint": "895b45bf022f4607",
+      "snippet": "\"can_run_amount_fix\": verdict.get(\"quoter_staticcall_success_count\", 0) == 0,",
+      "key": "scripts/lp_bsc_quoter_staticcall_amount_fix_v1_readonly.py:466:30:1"
     },
     {
-      "key": "scripts/lp_bsc_quoter_staticcall_amount_fix_v1_readonly.py:749:72:1",
       "file": "scripts/lp_bsc_quoter_staticcall_amount_fix_v1_readonly.py",
       "line": 749,
       "col": 72,
       "rule": 1,
-      "snippet": "root_cause_counts[row[\"error_type\"] or \"unknown\"] = root_cause_counts.get(row[\"error_type\"] or \"unkn"
+      "fingerprint": "956351c45a3703a5",
+      "snippet": "root_cause_counts[row[\"error_type\"] or \"unknown\"] = root_cause_counts.get(row[\"error_type\"] or \"unkn",
+      "key": "scripts/lp_bsc_quoter_staticcall_amount_fix_v1_readonly.py:749:72:1"
     },
     {
-      "key": "scripts/lp_bsc_quoter_staticcall_amount_fix_v1_readonly.py:1030:38:1",
       "file": "scripts/lp_bsc_quoter_staticcall_amount_fix_v1_readonly.py",
       "line": 1030,
       "col": 38,
       "rule": 1,
-      "snippet": "\"raw_revert_len\": row.get(\"revert_data_len\", 0),"
+      "fingerprint": "35362c636671a37c",
+      "snippet": "\"raw_revert_len\": row.get(\"revert_data_len\", 0),",
+      "key": "scripts/lp_bsc_quoter_staticcall_amount_fix_v1_readonly.py:1030:38:1"
     },
     {
-      "key": "scripts/lp_bsc_quoter_staticcall_amount_fix_v1_readonly.py:1222:20:2",
       "file": "scripts/lp_bsc_quoter_staticcall_amount_fix_v1_readonly.py",
       "line": 1222,
       "col": 20,
       "rule": 2,
-      "snippet": "\"db_ready\": bool(rpc_readiness.get(\"rpc_read_only_test_pass\")),"
+      "fingerprint": "94bc1c0262f6037a",
+      "snippet": "\"db_ready\": bool(rpc_readiness.get(\"rpc_read_only_test_pass\")),",
+      "key": "scripts/lp_bsc_quoter_staticcall_amount_fix_v1_readonly.py:1222:20:2"
     },
     {
-      "key": "scripts/lp_bsc_realdata_economics_with_recovered_fee_v1_readonly.py:111:15:1",
       "file": "scripts/lp_bsc_realdata_economics_with_recovered_fee_v1_readonly.py",
       "line": 111,
       "col": 15,
       "rule": 1,
-      "snippet": "wsec = WINDOW_SECONDS.get(window, 86400)"
+      "fingerprint": "c1e23eedefad8ec9",
+      "snippet": "wsec = WINDOW_SECONDS.get(window, 86400)",
+      "key": "scripts/lp_bsc_realdata_economics_with_recovered_fee_v1_readonly.py:111:15:1"
     },
     {
-      "key": "scripts/lp_bsc_realdata_economics_with_recovered_fee_v1_readonly.py:119:25:2",
       "file": "scripts/lp_bsc_realdata_economics_with_recovered_fee_v1_readonly.py",
       "line": 119,
       "col": 25,
       "rule": 2,
-      "snippet": "\"fee_ready\": bool(row.get(\"fee_ready\")),"
+      "fingerprint": "d7740699e1e0f09f",
+      "snippet": "\"fee_ready\": bool(row.get(\"fee_ready\")),",
+      "key": "scripts/lp_bsc_realdata_economics_with_recovered_fee_v1_readonly.py:119:25:2"
     },
     {
-      "key": "scripts/lp_bsc_realdata_economics_with_recovered_fee_v1_readonly.py:186:29:1",
       "file": "scripts/lp_bsc_realdata_economics_with_recovered_fee_v1_readonly.py",
       "line": 186,
       "col": 29,
       "rule": 1,
-      "snippet": "fixed_cost = cost_info.get(\"fixed_cost_usd\", Decimal(\"0\"))"
+      "fingerprint": "6853d882f9b0dc05",
+      "snippet": "fixed_cost = cost_info.get(\"fixed_cost_usd\", Decimal(\"0\"))",
+      "key": "scripts/lp_bsc_realdata_economics_with_recovered_fee_v1_readonly.py:186:29:1"
     },
     {
-      "key": "scripts/lp_bsc_recovery_final_verdict_v1_readonly.py:61:27:1",
       "file": "scripts/lp_bsc_recovery_final_verdict_v1_readonly.py",
       "line": 61,
       "col": 27,
       "rule": 1,
-      "snippet": "usable_bsc_rpc_count = matrix.get(\"usable_count\", 0) if matrix else 0"
+      "fingerprint": "db3fea71164a60a8",
+      "snippet": "usable_bsc_rpc_count = matrix.get(\"usable_count\", 0) if matrix else 0",
+      "key": "scripts/lp_bsc_recovery_final_verdict_v1_readonly.py:61:27:1"
     },
     {
-      "key": "scripts/lp_bsc_recovery_final_verdict_v1_readonly.py:63:17:2",
       "file": "scripts/lp_bsc_recovery_final_verdict_v1_readonly.py",
       "line": 63,
       "col": 17,
       "rule": 2,
-      "snippet": "smoke_pass = bool(smoke.get(\"smoke_pass\")) if smoke else False"
+      "fingerprint": "f5c15a18aa9ab6cb",
+      "snippet": "smoke_pass = bool(smoke.get(\"smoke_pass\")) if smoke else False",
+      "key": "scripts/lp_bsc_recovery_final_verdict_v1_readonly.py:63:17:2"
     },
     {
-      "key": "scripts/lp_bsc_recovery_final_verdict_v1_readonly.py:65:27:1",
       "file": "scripts/lp_bsc_recovery_final_verdict_v1_readonly.py",
       "line": 65,
       "col": 27,
       "rule": 1,
-      "snippet": "fee_ready_pool_count = backfill.get(\"fee_ready_pool_count\", 0) if backfill else 0"
+      "fingerprint": "375e0f19bab2607d",
+      "snippet": "fee_ready_pool_count = backfill.get(\"fee_ready_pool_count\", 0) if backfill else 0",
+      "key": "scripts/lp_bsc_recovery_final_verdict_v1_readonly.py:65:27:1"
     },
     {
-      "key": "scripts/lp_bsc_recovery_final_verdict_v1_readonly.py:66:29:1",
       "file": "scripts/lp_bsc_recovery_final_verdict_v1_readonly.py",
       "line": 66,
       "col": 29,
       "rule": 1,
-      "snippet": "decoded_swap_log_count = backfill.get(\"decoded_swap_log_count\", 0) if backfill else 0"
+      "fingerprint": "c9c7b4b232b52a95",
+      "snippet": "decoded_swap_log_count = backfill.get(\"decoded_swap_log_count\", 0) if backfill else 0",
+      "key": "scripts/lp_bsc_recovery_final_verdict_v1_readonly.py:66:29:1"
     },
     {
-      "key": "scripts/lp_bsc_recovery_final_verdict_v1_readonly.py:68:20:1",
       "file": "scripts/lp_bsc_recovery_final_verdict_v1_readonly.py",
       "line": 68,
       "col": 20,
       "rule": 1,
-      "snippet": "pos_realistic = econ.get(\"positive_proxy_count_realistic\", 0) if econ else 0"
+      "fingerprint": "9b8bc5f6b64aaa4d",
+      "snippet": "pos_realistic = econ.get(\"positive_proxy_count_realistic\", 0) if econ else 0",
+      "key": "scripts/lp_bsc_recovery_final_verdict_v1_readonly.py:68:20:1"
     },
     {
-      "key": "scripts/lp_bsc_recovery_final_verdict_v1_readonly.py:69:14:1",
       "file": "scripts/lp_bsc_recovery_final_verdict_v1_readonly.py",
       "line": 69,
       "col": 14,
       "rule": 1,
-      "snippet": "near_be = econ.get(\"near_break_even_count\", 0) if econ else 0"
+      "fingerprint": "d812d2c6378fae76",
+      "snippet": "near_be = econ.get(\"near_break_even_count\", 0) if econ else 0",
+      "key": "scripts/lp_bsc_recovery_final_verdict_v1_readonly.py:69:14:1"
     },
     {
-      "key": "scripts/lp_bsc_recovery_final_verdict_v1_readonly.py:105:43:2",
       "file": "scripts/lp_bsc_recovery_final_verdict_v1_readonly.py",
       "line": 105,
       "col": 43,
       "rule": 2,
-      "snippet": "\"old_runner_stopped_by_this_task\": bool(fin.get(\"runner_stopped_by_this_task\")) if fin else False,"
+      "fingerprint": "40530f1768fd5f1b",
+      "snippet": "\"old_runner_stopped_by_this_task\": bool(fin.get(\"runner_stopped_by_this_task\")) if fin else False,",
+      "key": "scripts/lp_bsc_recovery_final_verdict_v1_readonly.py:105:43:2"
     },
     {
-      "key": "scripts/lp_c6_preflight_v1_readonly.py:286:17:2",
       "file": "scripts/lp_c6_preflight_v1_readonly.py",
       "line": 286,
       "col": 17,
       "rule": 2,
-      "snippet": "passed = bool(evidence.get(\"balance_ok\")) and bool(evidence.get(\"gas_reserve_ok\"))"
+      "fingerprint": "38e46d708305a5b6",
+      "snippet": "passed = bool(evidence.get(\"balance_ok\")) and bool(evidence.get(\"gas_reserve_ok\"))",
+      "key": "scripts/lp_c6_preflight_v1_readonly.py:286:17:2"
     },
     {
-      "key": "scripts/lp_c6_preflight_v1_readonly.py:286:54:2",
       "file": "scripts/lp_c6_preflight_v1_readonly.py",
       "line": 286,
       "col": 54,
       "rule": 2,
-      "snippet": "passed = bool(evidence.get(\"balance_ok\")) and bool(evidence.get(\"gas_reserve_ok\"))"
+      "fingerprint": "38e46d708305a5b6",
+      "snippet": "passed = bool(evidence.get(\"balance_ok\")) and bool(evidence.get(\"gas_reserve_ok\"))",
+      "key": "scripts/lp_c6_preflight_v1_readonly.py:286:54:2"
     },
     {
-      "key": "scripts/lp_candidate_scoring_v1_readonly.py:70:17:1",
       "file": "scripts/lp_candidate_scoring_v1_readonly.py",
       "line": 70,
       "col": 17,
       "rule": 1,
-      "snippet": "oor_at_15m = oor_lookup.get((chain, protocol, pool_addr, \"15m\"), 1.0)"
+      "fingerprint": "668ca420daf15328",
+      "snippet": "oor_at_15m = oor_lookup.get((chain, protocol, pool_addr, \"15m\"), 1.0)",
+      "key": "scripts/lp_candidate_scoring_v1_readonly.py:70:17:1"
     },
     {
-      "key": "scripts/lp_candidate_scoring_v1_readonly.py:90:10:1",
       "file": "scripts/lp_candidate_scoring_v1_readonly.py",
       "line": 90,
       "col": 10,
       "rule": 1,
-      "snippet": "cap = pool.get(f\"capacity_{n}\", 0.0) or 0.0"
+      "fingerprint": "8d596f4d94997ebf",
+      "snippet": "cap = pool.get(f\"capacity_{n}\", 0.0) or 0.0",
+      "key": "scripts/lp_candidate_scoring_v1_readonly.py:90:10:1"
     },
     {
-      "key": "scripts/lp_candidate_scoring_v1_readonly.py:94:10:1",
       "file": "scripts/lp_candidate_scoring_v1_readonly.py",
       "line": 94,
       "col": 10,
       "rule": 1,
-      "snippet": "liq = pool.get(\"liquidity\", 0) or 0"
+      "fingerprint": "f86f31090af046a7",
+      "snippet": "liq = pool.get(\"liquidity\", 0) or 0",
+      "key": "scripts/lp_candidate_scoring_v1_readonly.py:94:10:1"
     },
     {
-      "key": "scripts/lp_candidate_scoring_v1_readonly.py:98:11:1",
       "file": "scripts/lp_candidate_scoring_v1_readonly.py",
       "line": 98,
       "col": 11,
       "rule": 1,
-      "snippet": "conf = pool.get(\"confidence\", 0.0) or 0.0"
+      "fingerprint": "be4a132f6460197d",
+      "snippet": "conf = pool.get(\"confidence\", 0.0) or 0.0",
+      "key": "scripts/lp_candidate_scoring_v1_readonly.py:98:11:1"
     },
     {
-      "key": "scripts/lp_candidate_scoring_v1_readonly.py:112:13:1",
       "file": "scripts/lp_candidate_scoring_v1_readonly.py",
       "line": 112,
       "col": 13,
       "rule": 1,
-      "snippet": "cap_10 = pool.get(\"capacity_10\", 0) or 0"
+      "fingerprint": "adb33b6ba69a71c3",
+      "snippet": "cap_10 = pool.get(\"capacity_10\", 0) or 0",
+      "key": "scripts/lp_candidate_scoring_v1_readonly.py:112:13:1"
     },
     {
-      "key": "scripts/lp_candidate_scoring_v1_readonly.py:113:15:1",
       "file": "scripts/lp_candidate_scoring_v1_readonly.py",
       "line": 113,
       "col": 15,
       "rule": 1,
-      "snippet": "cap_2000 = pool.get(\"capacity_2000\", 0) or 0"
+      "fingerprint": "29eb397d981bd682",
+      "snippet": "cap_2000 = pool.get(\"capacity_2000\", 0) or 0",
+      "key": "scripts/lp_candidate_scoring_v1_readonly.py:113:15:1"
     },
     {
-      "key": "scripts/lp_candidate_scoring_v1_readonly.py:120:18:1",
       "file": "scripts/lp_candidate_scoring_v1_readonly.py",
       "line": 120,
       "col": 18,
       "rule": 1,
-      "snippet": "chain_score = CHAIN_RISK_SCORE.get(chain, 0.5)"
+      "fingerprint": "595ad5f6c2f939ee",
+      "snippet": "chain_score = CHAIN_RISK_SCORE.get(chain, 0.5)",
+      "key": "scripts/lp_candidate_scoring_v1_readonly.py:120:18:1"
     },
     {
-      "key": "scripts/lp_candidate_scoring_v1_readonly.py:140:20:1",
       "file": "scripts/lp_candidate_scoring_v1_readonly.py",
       "line": 140,
       "col": 20,
       "rule": 1,
-      "snippet": "\"fee_tier\": pool.get(\"fee_tier\", 0),"
+      "fingerprint": "4b28b5b964d02fbc",
+      "snippet": "\"fee_tier\": pool.get(\"fee_tier\", 0),",
+      "key": "scripts/lp_candidate_scoring_v1_readonly.py:140:20:1"
     },
     {
-      "key": "scripts/lp_candidate_scoring_v1_readonly.py:164:21:1",
       "file": "scripts/lp_candidate_scoring_v1_readonly.py",
       "line": 164,
       "col": 21,
       "rule": 1,
-      "snippet": "if ev is None or ev.get(\"net_ev_proxy_usd\", 0) <= 0:"
+      "fingerprint": "170f148aa9898dbe",
+      "snippet": "if ev is None or ev.get(\"net_ev_proxy_usd\", 0) <= 0:",
+      "key": "scripts/lp_candidate_scoring_v1_readonly.py:164:21:1"
     },
     {
-      "key": "scripts/lp_candidate_scoring_v1_readonly.py:215:13:1",
       "file": "scripts/lp_candidate_scoring_v1_readonly.py",
       "line": 215,
       "col": 13,
       "rule": 1,
-      "snippet": "for r in risk_data.get(\"row_count\", 0) and [] or []:"
+      "fingerprint": "0696f643fec6d20b",
+      "snippet": "for r in risk_data.get(\"row_count\", 0) and [] or []:",
+      "key": "scripts/lp_candidate_scoring_v1_readonly.py:215:13:1"
     },
     {
-      "key": "scripts/lp_evm_standard_v3_universe_discovery_v1_readonly.py:988:31:1",
       "file": "scripts/lp_evm_standard_v3_universe_discovery_v1_readonly.py",
       "line": 988,
       "col": 31,
       "rule": 1,
-      "snippet": "by_chain[r[\"chain\"]] = by_chain.get(r[\"chain\"], 0) + 1"
+      "fingerprint": "8b660f3a6f88bcc5",
+      "snippet": "by_chain[r[\"chain\"]] = by_chain.get(r[\"chain\"], 0) + 1",
+      "key": "scripts/lp_evm_standard_v3_universe_discovery_v1_readonly.py:988:31:1"
     },
     {
-      "key": "scripts/lp_evm_standard_v3_universe_discovery_v1_readonly.py:989:37:1",
       "file": "scripts/lp_evm_standard_v3_universe_discovery_v1_readonly.py",
       "line": 989,
       "col": 37,
       "rule": 1,
-      "snippet": "by_protocol[r[\"protocol\"]] = by_protocol.get(r[\"protocol\"], 0) + 1"
+      "fingerprint": "2e41ee503fe07159",
+      "snippet": "by_protocol[r[\"protocol\"]] = by_protocol.get(r[\"protocol\"], 0) + 1",
+      "key": "scripts/lp_evm_standard_v3_universe_discovery_v1_readonly.py:989:37:1"
     },
     {
-      "key": "scripts/lp_evm_standard_v3_universe_discovery_v1_readonly.py:996:7:1",
       "file": "scripts/lp_evm_standard_v3_universe_discovery_v1_readonly.py",
       "line": 996,
       "col": 7,
       "rule": 1,
-      "snippet": "if discovered_by_chain.get(\"BSC\", 0) > 0 and quote_ready_count > 0:"
+      "fingerprint": "1af84a333d107f81",
+      "snippet": "if discovered_by_chain.get(\"BSC\", 0) > 0 and quote_ready_count > 0:",
+      "key": "scripts/lp_evm_standard_v3_universe_discovery_v1_readonly.py:996:7:1"
     },
     {
-      "key": "scripts/lp_evm_standard_v3_universe_discovery_v1_readonly.py:1071:24:1",
       "file": "scripts/lp_evm_standard_v3_universe_discovery_v1_readonly.py",
       "line": 1071,
       "col": 24,
       "rule": 1,
-      "snippet": "\"bsc_included\": discovered_by_chain.get(\"BSC\", 0) > 0,"
+      "fingerprint": "4fe715f3a8d54765",
+      "snippet": "\"bsc_included\": discovered_by_chain.get(\"BSC\", 0) > 0,",
+      "key": "scripts/lp_evm_standard_v3_universe_discovery_v1_readonly.py:1071:24:1"
     },
     {
-      "key": "scripts/lp_evm_universe_expansion_design_v1_readonly.py:193:38:2",
       "file": "scripts/lp_evm_universe_expansion_design_v1_readonly.py",
       "line": 193,
       "col": 38,
       "rule": 2,
-      "snippet": "'universe_likely_too_narrow': bool(scope_verdict.get('universe_likely_too_narrow', False)),"
+      "fingerprint": "7640495f76e6d7b5",
+      "snippet": "'universe_likely_too_narrow': bool(scope_verdict.get('universe_likely_too_narrow', False)),",
+      "key": "scripts/lp_evm_universe_expansion_design_v1_readonly.py:193:38:2"
     },
     {
-      "key": "scripts/lp_evm_universe_expansion_design_v1_readonly.py:230:35:1",
       "file": "scripts/lp_evm_universe_expansion_design_v1_readonly.py",
       "line": 230,
       "col": 35,
       "rule": 1,
-      "snippet": "'base_pool_count': int(scope_verdict.get('base_pool_count', 0)),"
+      "fingerprint": "8b969a2503f41264",
+      "snippet": "'base_pool_count': int(scope_verdict.get('base_pool_count', 0)),",
+      "key": "scripts/lp_evm_universe_expansion_design_v1_readonly.py:230:35:1"
     },
     {
-      "key": "scripts/lp_evm_universe_expansion_design_v1_readonly.py:231:37:1",
       "file": "scripts/lp_evm_universe_expansion_design_v1_readonly.py",
       "line": 231,
       "col": 37,
       "rule": 1,
-      "snippet": "'solana_pool_count': int(scope_verdict.get('solana_pool_count', 0)),"
+      "fingerprint": "401cb45cd3d95ca8",
+      "snippet": "'solana_pool_count': int(scope_verdict.get('solana_pool_count', 0)),",
+      "key": "scripts/lp_evm_universe_expansion_design_v1_readonly.py:231:37:1"
     },
     {
-      "key": "scripts/lp_evm_universe_expansion_design_v1_readonly.py:232:46:1",
       "file": "scripts/lp_evm_universe_expansion_design_v1_readonly.py",
       "line": 232,
       "col": 46,
       "rule": 1,
-      "snippet": "'standard_evm_v3_pool_count': int(scope_verdict.get('standard_evm_v3_pool_count', 0)),"
+      "fingerprint": "0f256e801bb8cab9",
+      "snippet": "'standard_evm_v3_pool_count': int(scope_verdict.get('standard_evm_v3_pool_count', 0)),",
+      "key": "scripts/lp_evm_universe_expansion_design_v1_readonly.py:232:46:1"
     },
     {
-      "key": "scripts/lp_evm_v3_pool_readiness_probe_v1_readonly.py:135:8:5",
       "file": "scripts/lp_evm_v3_pool_readiness_probe_v1_readonly.py",
       "line": 135,
       "col": 8,
       "rule": 5,
-      "snippet": "return 0"
+      "fingerprint": "30945f342ad5ab6c",
+      "snippet": "return 0",
+      "key": "scripts/lp_evm_v3_pool_readiness_probe_v1_readonly.py:135:8:5"
     },
     {
-      "key": "scripts/lp_evm_v3_pool_readiness_probe_v1_readonly.py:154:8:5",
       "file": "scripts/lp_evm_v3_pool_readiness_probe_v1_readonly.py",
       "line": 154,
       "col": 8,
       "rule": 5,
-      "snippet": "return 18"
+      "fingerprint": "c33084525b0f167f",
+      "snippet": "return 18",
+      "key": "scripts/lp_evm_v3_pool_readiness_probe_v1_readonly.py:154:8:5"
     },
     {
-      "key": "scripts/lp_evm_v3_pool_readiness_probe_v1_readonly.py:180:8:5",
       "file": "scripts/lp_evm_v3_pool_readiness_probe_v1_readonly.py",
       "line": 180,
       "col": 8,
       "rule": 5,
-      "snippet": "return 0"
+      "fingerprint": "30945f342ad5ab6c",
+      "snippet": "return 0",
+      "key": "scripts/lp_evm_v3_pool_readiness_probe_v1_readonly.py:180:8:5"
     },
     {
-      "key": "scripts/lp_evm_v3_pool_readiness_probe_v1_readonly.py:187:8:5",
       "file": "scripts/lp_evm_v3_pool_readiness_probe_v1_readonly.py",
       "line": 187,
       "col": 8,
       "rule": 5,
-      "snippet": "return 0"
+      "fingerprint": "30945f342ad5ab6c",
+      "snippet": "return 0",
+      "key": "scripts/lp_evm_v3_pool_readiness_probe_v1_readonly.py:187:8:5"
     },
     {
-      "key": "scripts/lp_evm_v3_pool_readiness_probe_v1_readonly.py:210:8:5",
       "file": "scripts/lp_evm_v3_pool_readiness_probe_v1_readonly.py",
       "line": 210,
       "col": 8,
       "rule": 5,
-      "snippet": "return 0"
+      "fingerprint": "30945f342ad5ab6c",
+      "snippet": "return 0",
+      "key": "scripts/lp_evm_v3_pool_readiness_probe_v1_readonly.py:210:8:5"
     },
     {
-      "key": "scripts/lp_evm_v3_pool_readiness_probe_v1_readonly.py:273:17:1",
       "file": "scripts/lp_evm_v3_pool_readiness_probe_v1_readonly.py",
       "line": 273,
       "col": 17,
       "rule": 1,
-      "snippet": "native_usd = CHAIN_NATIVE_USD.get(chain, 2700.0)"
+      "fingerprint": "f015b96c64e7c618",
+      "snippet": "native_usd = CHAIN_NATIVE_USD.get(chain, 2700.0)",
+      "key": "scripts/lp_evm_v3_pool_readiness_probe_v1_readonly.py:273:17:1"
     },
     {
-      "key": "scripts/lp_fee_velocity_pipeline_fix_repeat_v1_readonly.py:115:8:5",
       "file": "scripts/lp_fee_velocity_pipeline_fix_repeat_v1_readonly.py",
       "line": 115,
       "col": 8,
       "rule": 5,
-      "snippet": "return 0"
+      "fingerprint": "30945f342ad5ab6c",
+      "snippet": "return 0",
+      "key": "scripts/lp_fee_velocity_pipeline_fix_repeat_v1_readonly.py:115:8:5"
     },
     {
-      "key": "scripts/lp_fee_velocity_pipeline_v1_readonly.py:104:8:5",
       "file": "scripts/lp_fee_velocity_pipeline_v1_readonly.py",
       "line": 104,
       "col": 8,
       "rule": 5,
-      "snippet": "return 0"
+      "fingerprint": "30945f342ad5ab6c",
+      "snippet": "return 0",
+      "key": "scripts/lp_fee_velocity_pipeline_v1_readonly.py:104:8:5"
     },
     {
-      "key": "scripts/lp_funnel_autopsy_v1_readonly.py:77:29:2",
       "file": "scripts/lp_funnel_autopsy_v1_readonly.py",
       "line": 77,
       "col": 29,
       "rule": 2,
-      "snippet": "\"resolution_status\": bool(gates.get(\"status_ok\", False)),"
+      "fingerprint": "aaceadcd9dd9e5ff",
+      "snippet": "\"resolution_status\": bool(gates.get(\"status_ok\", False)),",
+      "key": "scripts/lp_funnel_autopsy_v1_readonly.py:77:29:2"
     },
     {
-      "key": "scripts/lp_funnel_autopsy_v1_readonly.py:78:25:2",
       "file": "scripts/lp_funnel_autopsy_v1_readonly.py",
       "line": 78,
       "col": 25,
       "rule": 2,
-      "snippet": "\"asset_quality\": bool(gates.get(\"quality\", False)),"
+      "fingerprint": "516481e2a6e03d74",
+      "snippet": "\"asset_quality\": bool(gates.get(\"quality\", False)),",
+      "key": "scripts/lp_funnel_autopsy_v1_readonly.py:78:25:2"
     },
     {
-      "key": "scripts/lp_funnel_autopsy_v1_readonly.py:79:23:2",
       "file": "scripts/lp_funnel_autopsy_v1_readonly.py",
       "line": 79,
       "col": 23,
       "rule": 2,
-      "snippet": "\"yield_cover\": bool(gates.get(\"yield_cover\", False)),"
+      "fingerprint": "c6d4a72153d1a50d",
+      "snippet": "\"yield_cover\": bool(gates.get(\"yield_cover\", False)),",
+      "key": "scripts/lp_funnel_autopsy_v1_readonly.py:79:23:2"
     },
     {
-      "key": "scripts/lp_funnel_autopsy_v1_readonly.py:80:30:2",
       "file": "scripts/lp_funnel_autopsy_v1_readonly.py",
       "line": 80,
       "col": 30,
       "rule": 2,
-      "snippet": "\"multiwindow_stable\": bool(gates.get(\"stable\", False)),"
+      "fingerprint": "b8211ef2e6474116",
+      "snippet": "\"multiwindow_stable\": bool(gates.get(\"stable\", False)),",
+      "key": "scripts/lp_funnel_autopsy_v1_readonly.py:80:30:2"
     },
     {
-      "key": "scripts/lp_funnel_rerank_evaluation_v1_readonly.py:66:11:2",
       "file": "scripts/lp_funnel_rerank_evaluation_v1_readonly.py",
       "line": 66,
       "col": 11,
       "rule": 2,
-      "snippet": "return bool(record.get(\"vetted\", False)) and bool(record.get(\"netcover_pass\", False))"
+      "fingerprint": "077de811ae579baa",
+      "snippet": "return bool(record.get(\"vetted\", False)) and bool(record.get(\"netcover_pass\", False))",
+      "key": "scripts/lp_funnel_rerank_evaluation_v1_readonly.py:66:11:2"
     },
     {
-      "key": "scripts/lp_funnel_rerank_evaluation_v1_readonly.py:66:49:2",
       "file": "scripts/lp_funnel_rerank_evaluation_v1_readonly.py",
       "line": 66,
       "col": 49,
       "rule": 2,
-      "snippet": "return bool(record.get(\"vetted\", False)) and bool(record.get(\"netcover_pass\", False))"
+      "fingerprint": "077de811ae579baa",
+      "snippet": "return bool(record.get(\"vetted\", False)) and bool(record.get(\"netcover_pass\", False))",
+      "key": "scripts/lp_funnel_rerank_evaluation_v1_readonly.py:66:49:2"
     },
     {
-      "key": "scripts/lp_funnel_rerank_evaluation_v1_readonly.py:118:63:2",
       "file": "scripts/lp_funnel_rerank_evaluation_v1_readonly.py",
       "line": 118,
       "col": 63,
       "rule": 2,
-      "snippet": "record[\"research_netcover_pass_before_boundary\"] = bool("
+      "fingerprint": "22cf8ee2384af4f6",
+      "snippet": "record[\"research_netcover_pass_before_boundary\"] = bool(",
+      "key": "scripts/lp_funnel_rerank_evaluation_v1_readonly.py:118:63:2"
     },
     {
-      "key": "scripts/lp_funnel_rerank_evaluation_v1_readonly.py:121:56:2",
       "file": "scripts/lp_funnel_rerank_evaluation_v1_readonly.py",
       "line": 121,
       "col": 56,
       "rule": 2,
-      "snippet": "record[\"research_vetted_before_boundary\"] = bool(record.get(\"vetted\", False))"
+      "fingerprint": "65fa47449804df4a",
+      "snippet": "record[\"research_vetted_before_boundary\"] = bool(record.get(\"vetted\", False))",
+      "key": "scripts/lp_funnel_rerank_evaluation_v1_readonly.py:121:56:2"
     },
     {
-      "key": "scripts/lp_funnel_rerank_v1_readonly.py:302:12:2",
       "file": "scripts/lp_funnel_rerank_v1_readonly.py",
       "line": 302,
       "col": 12,
       "rule": 2,
-      "snippet": "bool(enriched[index].get(\"suspect\")),"
+      "fingerprint": "02a2969114afadad",
+      "snippet": "bool(enriched[index].get(\"suspect\")),",
+      "key": "scripts/lp_funnel_rerank_v1_readonly.py:302:12:2"
     },
     {
-      "key": "scripts/lp_funnel_vet_v1_readonly.py:47:8:5",
       "file": "scripts/lp_funnel_vet_v1_readonly.py",
       "line": 47,
       "col": 8,
       "rule": 5,
-      "snippet": "return 0.0"
+      "fingerprint": "8725d058f45489d4",
+      "snippet": "return 0.0",
+      "key": "scripts/lp_funnel_vet_v1_readonly.py:47:8:5"
     },
     {
-      "key": "scripts/lp_funnel_vet_v1_readonly.py:91:20:2",
       "file": "scripts/lp_funnel_vet_v1_readonly.py",
       "line": 91,
       "col": 20,
       "rule": 2,
-      "snippet": "rec[\"stable\"] = bool(sub.get(\"stable\", False))"
+      "fingerprint": "9f5277affed646c7",
+      "snippet": "rec[\"stable\"] = bool(sub.get(\"stable\", False))",
+      "key": "scripts/lp_funnel_vet_v1_readonly.py:91:20:2"
     },
     {
-      "key": "scripts/lp_il_lvr_pipeline_v1_readonly.py:114:8:5",
       "file": "scripts/lp_il_lvr_pipeline_v1_readonly.py",
       "line": 114,
       "col": 8,
       "rule": 5,
-      "snippet": "return 0"
+      "fingerprint": "30945f342ad5ab6c",
+      "snippet": "return 0",
+      "key": "scripts/lp_il_lvr_pipeline_v1_readonly.py:114:8:5"
     },
     {
-      "key": "scripts/lp_long_horizon_node_report_generator_v1.py:197:46:1",
       "file": "scripts/lp_long_horizon_node_report_generator_v1.py",
       "line": 197,
       "col": 46,
       "rule": 1,
-      "snippet": "observed_pools_per_chain[chain] = observed_pools_per_chain.get(chain, 0) + 1"
+      "fingerprint": "f079e05aa6fa4e14",
+      "snippet": "observed_pools_per_chain[chain] = observed_pools_per_chain.get(chain, 0) + 1",
+      "key": "scripts/lp_long_horizon_node_report_generator_v1.py:197:46:1"
     },
     {
-      "key": "scripts/lp_long_horizon_node_report_generator_v1.py:201:21:1",
       "file": "scripts/lp_long_horizon_node_report_generator_v1.py",
       "line": 201,
       "col": 21,
       "rule": 1,
-      "snippet": "pool_count = observed_pools_per_chain.get(chain, 0)"
+      "fingerprint": "c423b4f0f187cd91",
+      "snippet": "pool_count = observed_pools_per_chain.get(chain, 0)",
+      "key": "scripts/lp_long_horizon_node_report_generator_v1.py:201:21:1"
     },
     {
-      "key": "scripts/lp_long_horizon_node_report_generator_v1.py:284:31:2",
       "file": "scripts/lp_long_horizon_node_report_generator_v1.py",
       "line": 284,
       "col": 31,
       "rule": 2,
-      "snippet": "\"quote_ready\": bool(row.get(\"quote_ready\", False)),"
+      "fingerprint": "bae359c30f2e1f05",
+      "snippet": "\"quote_ready\": bool(row.get(\"quote_ready\", False)),",
+      "key": "scripts/lp_long_horizon_node_report_generator_v1.py:284:31:2"
     },
     {
-      "key": "scripts/lp_long_horizon_node_report_generator_v1.py:285:29:2",
       "file": "scripts/lp_long_horizon_node_report_generator_v1.py",
       "line": 285,
       "col": 29,
       "rule": 2,
-      "snippet": "\"fee_ready\": bool(row.get(\"fee_ready\", False)),"
+      "fingerprint": "e90e01386da209d4",
+      "snippet": "\"fee_ready\": bool(row.get(\"fee_ready\", False)),",
+      "key": "scripts/lp_long_horizon_node_report_generator_v1.py:285:29:2"
     },
     {
-      "key": "scripts/lp_long_horizon_node_report_generator_v1.py:286:28:2",
       "file": "scripts/lp_long_horizon_node_report_generator_v1.py",
       "line": 286,
       "col": 28,
       "rule": 2,
-      "snippet": "\"ev_ready\": bool(row.get(\"ev_ready\", False)),"
+      "fingerprint": "ed3c9df2916e3ede",
+      "snippet": "\"ev_ready\": bool(row.get(\"ev_ready\", False)),",
+      "key": "scripts/lp_long_horizon_node_report_generator_v1.py:286:28:2"
     },
     {
-      "key": "scripts/lp_long_horizon_r1_real_data_collector_v1.py:450:31:1",
       "file": "scripts/lp_long_horizon_r1_real_data_collector_v1.py",
       "line": 450,
       "col": 31,
       "rule": 1,
-      "snippet": "\"fee_tier_or_fee_bps\": pool.get(\"fee_tier_or_fee_bps\", 0),"
+      "fingerprint": "90b1ad241fd282eb",
+      "snippet": "\"fee_tier_or_fee_bps\": pool.get(\"fee_tier_or_fee_bps\", 0),",
+      "key": "scripts/lp_long_horizon_r1_real_data_collector_v1.py:450:31:1"
     },
     {
-      "key": "scripts/lp_long_horizon_r1_real_data_collector_v1.py:451:51:1",
       "file": "scripts/lp_long_horizon_r1_real_data_collector_v1.py",
       "line": 451,
       "col": 51,
       "rule": 1,
-      "snippet": "\"tvl_usd_proxy\": pool.get(\"tvl_proxy_usd\", pool.get(\"vol24h_usd\", 0.0)) or 0.0,"
+      "fingerprint": "ca73942b8bfed00b",
+      "snippet": "\"tvl_usd_proxy\": pool.get(\"tvl_proxy_usd\", pool.get(\"vol24h_usd\", 0.0)) or 0.0,",
+      "key": "scripts/lp_long_horizon_r1_real_data_collector_v1.py:451:51:1"
     },
     {
-      "key": "scripts/lp_long_horizon_r1_real_data_collector_v1.py:492:52:1",
       "file": "scripts/lp_long_horizon_r1_real_data_collector_v1.py",
       "line": 492,
       "col": 52,
       "rule": 1,
-      "snippet": "\"price_impact_bps\": 0.0, \"fee_bps\": pool.get(\"fee_tier_or_fee_bps\", 0),"
+      "fingerprint": "bc1fdeb23950030e",
+      "snippet": "\"price_impact_bps\": 0.0, \"fee_bps\": pool.get(\"fee_tier_or_fee_bps\", 0),",
+      "key": "scripts/lp_long_horizon_r1_real_data_collector_v1.py:492:52:1"
     },
     {
-      "key": "scripts/lp_long_horizon_r1_real_data_collector_v1.py:508:14:1",
       "file": "scripts/lp_long_horizon_r1_real_data_collector_v1.py",
       "line": 508,
       "col": 14,
       "rule": 1,
-      "snippet": "fee_bps = pool.get(\"fee_tier_or_fee_bps\", 0)"
+      "fingerprint": "3116dba93da56231",
+      "snippet": "fee_bps = pool.get(\"fee_tier_or_fee_bps\", 0)",
+      "key": "scripts/lp_long_horizon_r1_real_data_collector_v1.py:508:14:1"
     },
     {
-      "key": "scripts/lp_long_horizon_r1_real_data_collector_v1.py:532:43:1",
       "file": "scripts/lp_long_horizon_r1_real_data_collector_v1.py",
       "line": 532,
       "col": 43,
       "rule": 1,
-      "snippet": "volume_usd = float(vol.get(\"m15\", 0) or 0)"
+      "fingerprint": "98aac56f871fc9c6",
+      "snippet": "volume_usd = float(vol.get(\"m15\", 0) or 0)",
+      "key": "scripts/lp_long_horizon_r1_real_data_collector_v1.py:532:43:1"
     },
     {
-      "key": "scripts/lp_long_horizon_r1_real_data_collector_v1.py:534:43:1",
       "file": "scripts/lp_long_horizon_r1_real_data_collector_v1.py",
       "line": 534,
       "col": 43,
       "rule": 1,
-      "snippet": "volume_usd = float(vol.get(\"h1\", 0) or 0)"
+      "fingerprint": "1e8edb76805bf88a",
+      "snippet": "volume_usd = float(vol.get(\"h1\", 0) or 0)",
+      "key": "scripts/lp_long_horizon_r1_real_data_collector_v1.py:534:43:1"
     },
     {
-      "key": "scripts/lp_long_horizon_r1_real_data_collector_v1.py:536:44:1",
       "file": "scripts/lp_long_horizon_r1_real_data_collector_v1.py",
       "line": 536,
       "col": 44,
       "rule": 1,
-      "snippet": "volume_usd = float((vol.get(\"h1\", 0) or 0) * 4)"
+      "fingerprint": "1f2747d1ff7a5273",
+      "snippet": "volume_usd = float((vol.get(\"h1\", 0) or 0) * 4)",
+      "key": "scripts/lp_long_horizon_r1_real_data_collector_v1.py:536:44:1"
     },
     {
-      "key": "scripts/lp_long_horizon_r1_real_data_collector_v1.py:538:43:1",
       "file": "scripts/lp_long_horizon_r1_real_data_collector_v1.py",
       "line": 538,
       "col": 43,
       "rule": 1,
-      "snippet": "volume_usd = float(vol.get(\"h24\", 0) or 0)"
+      "fingerprint": "9a8d2e2e071755ee",
+      "snippet": "volume_usd = float(vol.get(\"h24\", 0) or 0)",
+      "key": "scripts/lp_long_horizon_r1_real_data_collector_v1.py:538:43:1"
     },
     {
-      "key": "scripts/lp_long_horizon_r1_real_data_collector_v1.py:540:44:1",
       "file": "scripts/lp_long_horizon_r1_real_data_collector_v1.py",
       "line": 540,
       "col": 44,
       "rule": 1,
-      "snippet": "volume_usd = float((vol.get(\"h24\", 0) or 0) * 7)"
+      "fingerprint": "2fd9db47e56060fa",
+      "snippet": "volume_usd = float((vol.get(\"h24\", 0) or 0) * 7)",
+      "key": "scripts/lp_long_horizon_r1_real_data_collector_v1.py:540:44:1"
     },
     {
-      "key": "scripts/lp_long_horizon_r1_real_data_collector_v1.py:722:10:1",
       "file": "scripts/lp_long_horizon_r1_real_data_collector_v1.py",
       "line": 722,
       "col": 10,
       "rule": 1,
-      "snippet": "tvl = pool.get(\"tvl_proxy_usd\", 0) or 0"
+      "fingerprint": "c970b54dfbbb4135",
+      "snippet": "tvl = pool.get(\"tvl_proxy_usd\", 0) or 0",
+      "key": "scripts/lp_long_horizon_r1_real_data_collector_v1.py:722:10:1"
     },
     {
-      "key": "scripts/lp_long_horizon_r1_real_data_collector_v1.py:772:47:1",
       "file": "scripts/lp_long_horizon_r1_real_data_collector_v1.py",
       "line": 772,
       "col": 47,
       "rule": 1,
-      "snippet": "pools_sorted = sorted(pools, key=lambda p: priority.get((p.get(\"chain\"), p.get(\"protocol\")), 99))"
+      "fingerprint": "038670b74afea456",
+      "snippet": "pools_sorted = sorted(pools, key=lambda p: priority.get((p.get(\"chain\"), p.get(\"protocol\")), 99))",
+      "key": "scripts/lp_long_horizon_r1_real_data_collector_v1.py:772:47:1"
     },
     {
-      "key": "scripts/lp_long_horizon_readonly_collector_v1.py:308:76:1",
       "file": "scripts/lp_long_horizon_readonly_collector_v1.py",
       "line": 308,
       "col": 76,
       "rule": 1,
-      "snippet": "pools.sort(key=lambda p: (not p.get(\"stable_classified\", False), -float(p.get(\"tvl_proxy_usd\", 0) or"
+      "fingerprint": "e8aff33aab852fb5",
+      "snippet": "pools.sort(key=lambda p: (not p.get(\"stable_classified\", False), -float(p.get(\"tvl_proxy_usd\", 0) or",
+      "key": "scripts/lp_long_horizon_readonly_collector_v1.py:308:76:1"
     },
     {
-      "key": "scripts/lp_long_horizon_readonly_collector_v1.py:357:31:1",
       "file": "scripts/lp_long_horizon_readonly_collector_v1.py",
       "line": 357,
       "col": 31,
       "rule": 1,
-      "snippet": "\"fee_tier_or_fee_bps\": real_pool.get(\"fee_tier_or_fee_bps\", 0),"
+      "fingerprint": "94d772a91170f0e9",
+      "snippet": "\"fee_tier_or_fee_bps\": real_pool.get(\"fee_tier_or_fee_bps\", 0),",
+      "key": "scripts/lp_long_horizon_readonly_collector_v1.py:357:31:1"
     },
     {
-      "key": "scripts/lp_long_horizon_readonly_collector_v1.py:358:25:1",
       "file": "scripts/lp_long_horizon_readonly_collector_v1.py",
       "line": 358,
       "col": 25,
       "rule": 1,
-      "snippet": "\"tvl_proxy_usd\": real_pool.get(\"tvl_proxy_usd\", 0),"
+      "fingerprint": "dda082cca23a926b",
+      "snippet": "\"tvl_proxy_usd\": real_pool.get(\"tvl_proxy_usd\", 0),",
+      "key": "scripts/lp_long_horizon_readonly_collector_v1.py:358:25:1"
     },
     {
-      "key": "scripts/lp_long_horizon_readonly_collector_v1.py:359:28:1",
       "file": "scripts/lp_long_horizon_readonly_collector_v1.py",
       "line": 359,
       "col": 28,
       "rule": 1,
-      "snippet": "\"vol24h_proxy_usd\": real_pool.get(\"vol24h_usd\", 0),"
+      "fingerprint": "13b285b7ab676e18",
+      "snippet": "\"vol24h_proxy_usd\": real_pool.get(\"vol24h_usd\", 0),",
+      "key": "scripts/lp_long_horizon_readonly_collector_v1.py:359:28:1"
     },
     {
-      "key": "scripts/lp_long_horizon_readonly_collector_v1.py:661:39:1",
       "file": "scripts/lp_long_horizon_readonly_collector_v1.py",
       "line": 661,
       "col": 39,
       "rule": 1,
-      "snippet": "\"fee_tier_or_fee_bps\": p.get(\"fee_tier_or_fee_bps\", 0),"
+      "fingerprint": "f9558355e7b148b4",
+      "snippet": "\"fee_tier_or_fee_bps\": p.get(\"fee_tier_or_fee_bps\", 0),",
+      "key": "scripts/lp_long_horizon_readonly_collector_v1.py:661:39:1"
     },
     {
-      "key": "scripts/lp_long_horizon_readonly_collector_v1.py:662:33:1",
       "file": "scripts/lp_long_horizon_readonly_collector_v1.py",
       "line": 662,
       "col": 33,
       "rule": 1,
-      "snippet": "\"tvl_proxy_usd\": p.get(\"tvl_proxy_usd\", 0),"
+      "fingerprint": "3c5f735d6234a289",
+      "snippet": "\"tvl_proxy_usd\": p.get(\"tvl_proxy_usd\", 0),",
+      "key": "scripts/lp_long_horizon_readonly_collector_v1.py:662:33:1"
     },
     {
-      "key": "scripts/lp_long_horizon_readonly_collector_v1.py:663:30:1",
       "file": "scripts/lp_long_horizon_readonly_collector_v1.py",
       "line": 663,
       "col": 30,
       "rule": 1,
-      "snippet": "\"vol24h_usd\": p.get(\"vol24h_usd\", 0),"
+      "fingerprint": "d42f61678966b0e2",
+      "snippet": "\"vol24h_usd\": p.get(\"vol24h_usd\", 0),",
+      "key": "scripts/lp_long_horizon_readonly_collector_v1.py:663:30:1"
     },
     {
-      "key": "scripts/lp_long_horizon_readonly_collector_v1.py:790:64:1",
       "file": "scripts/lp_long_horizon_readonly_collector_v1.py",
       "line": 790,
       "col": 64,
       "rule": 1,
-      "snippet": "max_pools=args.max_pools if args.max_pools > 0 else universe.get(\"selected_real_pool_count\", 33),"
+      "fingerprint": "4ac16df10e03f73a",
+      "snippet": "max_pools=args.max_pools if args.max_pools > 0 else universe.get(\"selected_real_pool_count\", 33),",
+      "key": "scripts/lp_long_horizon_readonly_collector_v1.py:790:64:1"
     },
     {
-      "key": "scripts/lp_long_horizon_readonly_real_data_smoke_v1.py:226:8:5",
       "file": "scripts/lp_long_horizon_readonly_real_data_smoke_v1.py",
       "line": 226,
       "col": 8,
       "rule": 5,
-      "snippet": "return 7"
+      "fingerprint": "ea66986c22b11851",
+      "snippet": "return 7",
+      "key": "scripts/lp_long_horizon_readonly_real_data_smoke_v1.py:226:8:5"
     },
     {
-      "key": "scripts/lp_lvr_coefficient_calibration_v1_readonly.py:144:50:1",
       "file": "scripts/lp_lvr_coefficient_calibration_v1_readonly.py",
       "line": 144,
       "col": 50,
       "rule": 1,
-      "snippet": "\"event_count_in_full_replay\": event_counts.get(pool, 0),"
+      "fingerprint": "b8db6969b7e68778",
+      "snippet": "\"event_count_in_full_replay\": event_counts.get(pool, 0),",
+      "key": "scripts/lp_lvr_coefficient_calibration_v1_readonly.py:144:50:1"
     },
     {
-      "key": "scripts/lp_lvr_coefficient_calibration_v1_readonly.py:222:16:2",
       "file": "scripts/lp_lvr_coefficient_calibration_v1_readonly.py",
       "line": 222,
       "col": 16,
       "rule": 2,
-      "snippet": "bool(gates.get(\"status_ok\"))"
+      "fingerprint": "8c5c1cea62c38a80",
+      "snippet": "bool(gates.get(\"status_ok\"))",
+      "key": "scripts/lp_lvr_coefficient_calibration_v1_readonly.py:222:16:2"
     },
     {
-      "key": "scripts/lp_lvr_coefficient_calibration_v1_readonly.py:223:20:2",
       "file": "scripts/lp_lvr_coefficient_calibration_v1_readonly.py",
       "line": 223,
       "col": 20,
       "rule": 2,
-      "snippet": "and bool(gates.get(\"quality\"))"
+      "fingerprint": "1bcc8bb29284617e",
+      "snippet": "and bool(gates.get(\"quality\"))",
+      "key": "scripts/lp_lvr_coefficient_calibration_v1_readonly.py:223:20:2"
     },
     {
-      "key": "scripts/lp_lvr_coefficient_calibration_v1_readonly.py:224:20:2",
       "file": "scripts/lp_lvr_coefficient_calibration_v1_readonly.py",
       "line": 224,
       "col": 20,
       "rule": 2,
-      "snippet": "and bool(gates.get(\"yield_cover\"))"
+      "fingerprint": "1ca068a356652387",
+      "snippet": "and bool(gates.get(\"yield_cover\"))",
+      "key": "scripts/lp_lvr_coefficient_calibration_v1_readonly.py:224:20:2"
     },
     {
-      "key": "scripts/lp_lvr_coefficient_calibration_v1_readonly.py:225:20:2",
       "file": "scripts/lp_lvr_coefficient_calibration_v1_readonly.py",
       "line": 225,
       "col": 20,
       "rule": 2,
-      "snippet": "and bool(gates.get(\"stable\"))"
+      "fingerprint": "cea74852fb329438",
+      "snippet": "and bool(gates.get(\"stable\"))",
+      "key": "scripts/lp_lvr_coefficient_calibration_v1_readonly.py:225:20:2"
     },
     {
-      "key": "scripts/lp_lvr_coefficient_calibration_v1_readonly.py:227:20:2",
       "file": "scripts/lp_lvr_coefficient_calibration_v1_readonly.py",
       "line": 227,
       "col": 20,
       "rule": 2,
-      "snippet": "and bool(gates.get(\"position_cap\"))"
+      "fingerprint": "2b823a769df693e4",
+      "snippet": "and bool(gates.get(\"position_cap\"))",
+      "key": "scripts/lp_lvr_coefficient_calibration_v1_readonly.py:227:20:2"
     },
     {
-      "key": "scripts/lp_m0n_income_validation_v1_readonly.py:92:8:5",
       "file": "scripts/lp_m0n_income_validation_v1_readonly.py",
       "line": 92,
       "col": 8,
       "rule": 5,
-      "snippet": "return False"
+      "fingerprint": "e706fa9325ded821",
+      "snippet": "return False",
+      "key": "scripts/lp_m0n_income_validation_v1_readonly.py:92:8:5"
     },
     {
-      "key": "scripts/lp_meteora_dlmm_known_pool_feed_expansion_overnight_v1_finalize.py:255:299:1",
       "file": "scripts/lp_meteora_dlmm_known_pool_feed_expansion_overnight_v1_finalize.py",
       "line": 255,
       "col": 299,
       "rule": 1,
-      "snippet": "f\"| `{r.get('pool_address', '?')[:8]}…` | {r.get('base_fee_bps', '')} | {r.get('max_fee_bps', '')} |"
+      "fingerprint": "df6e212f99adc49a",
+      "snippet": "f\"| `{r.get('pool_address', '?')[:8]}…` | {r.get('base_fee_bps', '')} | {r.get('max_fee_bps', '')} |",
+      "key": "scripts/lp_meteora_dlmm_known_pool_feed_expansion_overnight_v1_finalize.py:255:299:1"
     },
     {
-      "key": "scripts/lp_meteora_dlmm_known_pool_feed_expansion_overnight_v1_finalize.py:297:36:1",
       "file": "scripts/lp_meteora_dlmm_known_pool_feed_expansion_overnight_v1_finalize.py",
       "line": 297,
       "col": 36,
       "rule": 1,
-      "snippet": "pools_attempted                  = {bin_liq_summary.get('pools_attempted', 0)}"
+      "fingerprint": "05335137ec911cc3",
+      "snippet": "pools_attempted                  = {bin_liq_summary.get('pools_attempted', 0)}",
+      "key": "scripts/lp_meteora_dlmm_known_pool_feed_expansion_overnight_v1_finalize.py:297:36:1"
     },
     {
-      "key": "scripts/lp_meteora_dlmm_known_pool_feed_expansion_overnight_v1_finalize.py:298:36:1",
       "file": "scripts/lp_meteora_dlmm_known_pool_feed_expansion_overnight_v1_finalize.py",
       "line": 298,
       "col": 36,
       "rule": 1,
-      "snippet": "bins_decoded                     = {bin_liq_summary.get('bins_decoded', 0)}"
+      "fingerprint": "f21fce216c8d148b",
+      "snippet": "bins_decoded                     = {bin_liq_summary.get('bins_decoded', 0)}",
+      "key": "scripts/lp_meteora_dlmm_known_pool_feed_expansion_overnight_v1_finalize.py:298:36:1"
     },
     {
-      "key": "scripts/lp_meteora_dlmm_known_pool_feed_expansion_overnight_v1_finalize.py:299:36:1",
       "file": "scripts/lp_meteora_dlmm_known_pool_feed_expansion_overnight_v1_finalize.py",
       "line": 299,
       "col": 36,
       "rule": 1,
-      "snippet": "bins_with_liquidity              = {bin_liq_summary.get('bins_with_liquidity', 0)}"
+      "fingerprint": "3656c1a2e8884211",
+      "snippet": "bins_with_liquidity              = {bin_liq_summary.get('bins_with_liquidity', 0)}",
+      "key": "scripts/lp_meteora_dlmm_known_pool_feed_expansion_overnight_v1_finalize.py:299:36:1"
     },
     {
-      "key": "scripts/lp_meteora_dlmm_known_pool_feed_expansion_overnight_v1_finalize.py:300:36:1",
       "file": "scripts/lp_meteora_dlmm_known_pool_feed_expansion_overnight_v1_finalize.py",
       "line": 300,
       "col": 36,
       "rule": 1,
-      "snippet": "pools_with_near_active_liquidity = {bin_liq_summary.get('pools_with_near_active_liquidity', 0)}"
+      "fingerprint": "84284f53ded6583b",
+      "snippet": "pools_with_near_active_liquidity = {bin_liq_summary.get('pools_with_near_active_liquidity', 0)}",
+      "key": "scripts/lp_meteora_dlmm_known_pool_feed_expansion_overnight_v1_finalize.py:300:36:1"
     },
     {
-      "key": "scripts/lp_meteora_dlmm_known_pool_feed_expansion_overnight_v1_finalize.py:301:36:1",
       "file": "scripts/lp_meteora_dlmm_known_pool_feed_expansion_overnight_v1_finalize.py",
       "line": 301,
       "col": 36,
       "rule": 1,
-      "snippet": "pools_with_sparse_liquidity      = {bin_liq_summary.get('pools_with_sparse_liquidity', 0)}"
+      "fingerprint": "6f6ee18c644324b3",
+      "snippet": "pools_with_sparse_liquidity      = {bin_liq_summary.get('pools_with_sparse_liquidity', 0)}",
+      "key": "scripts/lp_meteora_dlmm_known_pool_feed_expansion_overnight_v1_finalize.py:301:36:1"
     },
     {
-      "key": "scripts/lp_meteora_dlmm_known_pool_feed_expansion_overnight_v1_finalize.py:433:158:1",
       "file": "scripts/lp_meteora_dlmm_known_pool_feed_expansion_overnight_v1_finalize.py",
       "line": 433,
       "col": 158,
       "rule": 1,
-      "snippet": "f\"| `{s.get('pool_address', '?')[:8]}…` | {s.get('token_pair', '')} | {s.get('base_fee_bps', '')} | "
+      "fingerprint": "2ce63479a5ae3506",
+      "snippet": "f\"| `{s.get('pool_address', '?')[:8]}…` | {s.get('token_pair', '')} | {s.get('base_fee_bps', '')} | ",
+      "key": "scripts/lp_meteora_dlmm_known_pool_feed_expansion_overnight_v1_finalize.py:433:158:1"
     },
     {
-      "key": "scripts/lp_meteora_dlmm_known_pool_feed_expansion_overnight_v1_finalize.py:433:201:1",
       "file": "scripts/lp_meteora_dlmm_known_pool_feed_expansion_overnight_v1_finalize.py",
       "line": 433,
       "col": 201,
       "rule": 1,
-      "snippet": "f\"| `{s.get('pool_address', '?')[:8]}…` | {s.get('token_pair', '')} | {s.get('base_fee_bps', '')} | "
+      "fingerprint": "2ce63479a5ae3506",
+      "snippet": "f\"| `{s.get('pool_address', '?')[:8]}…` | {s.get('token_pair', '')} | {s.get('base_fee_bps', '')} | ",
+      "key": "scripts/lp_meteora_dlmm_known_pool_feed_expansion_overnight_v1_finalize.py:433:201:1"
     },
     {
-      "key": "scripts/lp_meteora_dlmm_known_pool_feed_expansion_overnight_v1_finalize.py:434:47:1",
       "file": "scripts/lp_meteora_dlmm_known_pool_feed_expansion_overnight_v1_finalize.py",
       "line": 434,
       "col": 47,
       "rule": 1,
-      "snippet": "for s in sorted(scored, key=lambda x: -x.get(\"score\", 0))[:10]"
+      "fingerprint": "09bd3be4ba0f7f1b",
+      "snippet": "for s in sorted(scored, key=lambda x: -x.get(\"score\", 0))[:10]",
+      "key": "scripts/lp_meteora_dlmm_known_pool_feed_expansion_overnight_v1_finalize.py:434:47:1"
     },
     {
-      "key": "scripts/lp_multiwindow_stability_v1_readonly.py:66:8:5",
       "file": "scripts/lp_multiwindow_stability_v1_readonly.py",
       "line": 66,
       "col": 8,
       "rule": 5,
-      "snippet": "return 0.0"
+      "fingerprint": "8725d058f45489d4",
+      "snippet": "return 0.0",
+      "key": "scripts/lp_multiwindow_stability_v1_readonly.py:66:8:5"
     },
     {
-      "key": "scripts/lp_netcover_calibration_v1_readonly.py:124:24:1",
       "file": "scripts/lp_netcover_calibration_v1_readonly.py",
       "line": 124,
       "col": 24,
       "rule": 1,
-      "snippet": "quote_usd = _finite(snapshot.get(\"measured_token1_usd\", 1.0), \"measured_token1_usd\", positive=True)"
+      "fingerprint": "9bd66eb0c9594ff1",
+      "snippet": "quote_usd = _finite(snapshot.get(\"measured_token1_usd\", 1.0), \"measured_token1_usd\", positive=True)",
+      "key": "scripts/lp_netcover_calibration_v1_readonly.py:124:24:1"
     },
     {
-      "key": "scripts/lp_netcover_calibration_v1_readonly.py:189:26:1",
       "file": "scripts/lp_netcover_calibration_v1_readonly.py",
       "line": 189,
       "col": 26,
       "rule": 1,
-      "snippet": "il_ev = abs(float(runner.get(\"il\", 0.0)))"
+      "fingerprint": "5212b5b36e8a8a8a",
+      "snippet": "il_ev = abs(float(runner.get(\"il\", 0.0)))",
+      "key": "scripts/lp_netcover_calibration_v1_readonly.py:189:26:1"
     },
     {
-      "key": "scripts/lp_netcover_calibration_v1_readonly.py:208:33:1",
       "file": "scripts/lp_netcover_calibration_v1_readonly.py",
       "line": 208,
       "col": 33,
       "rule": 1,
-      "snippet": "\"net_pnl_usd\": float(runner.get(\"net_usd\", 0.0)),"
+      "fingerprint": "a837579fda0c0917",
+      "snippet": "\"net_pnl_usd\": float(runner.get(\"net_usd\", 0.0)),",
+      "key": "scripts/lp_netcover_calibration_v1_readonly.py:208:33:1"
     },
     {
-      "key": "scripts/lp_netcover_calibration_v1_readonly.py:294:30:1",
       "file": "scripts/lp_netcover_calibration_v1_readonly.py",
       "line": 294,
       "col": 30,
       "rule": 1,
-      "snippet": "expected_il=abs(float(runner.get(\"il\", 0.0))) * scale,"
+      "fingerprint": "3925801f26c9105d",
+      "snippet": "expected_il=abs(float(runner.get(\"il\", 0.0))) * scale,",
+      "key": "scripts/lp_netcover_calibration_v1_readonly.py:294:30:1"
     },
     {
-      "key": "scripts/lp_panel_server_v1_readonly.py:140:8:5",
       "file": "scripts/lp_panel_server_v1_readonly.py",
       "line": 140,
       "col": 8,
       "rule": 5,
-      "snippet": "return \"UNKNOWN\""
+      "fingerprint": "16f08ca1eb1c16ff",
+      "snippet": "return \"UNKNOWN\"",
+      "key": "scripts/lp_panel_server_v1_readonly.py:140:8:5"
     },
     {
-      "key": "scripts/lp_panel_server_v1_readonly.py:213:57:1",
       "file": "scripts/lp_panel_server_v1_readonly.py",
       "line": 213,
       "col": 57,
       "rule": 1,
-      "snippet": "rpc_health = max(health_values, key=lambda item: severity.get(item, 0))"
+      "fingerprint": "f24e05f7bce2289e",
+      "snippet": "rpc_health = max(health_values, key=lambda item: severity.get(item, 0))",
+      "key": "scripts/lp_panel_server_v1_readonly.py:213:57:1"
     },
     {
-      "key": "scripts/lp_polymarket_competitor_collector_v1_readonly.py:328:25:1",
       "file": "scripts/lp_polymarket_competitor_collector_v1_readonly.py",
       "line": 328,
       "col": 25,
       "rule": 1,
-      "snippet": "rows_last += int(r.get(\"shallow_inserted\", 0)) + int(r.get(\"backfill_inserted\", 0))"
+      "fingerprint": "2ddf65d8257c9f28",
+      "snippet": "rows_last += int(r.get(\"shallow_inserted\", 0)) + int(r.get(\"backfill_inserted\", 0))",
+      "key": "scripts/lp_polymarket_competitor_collector_v1_readonly.py:328:25:1"
     },
     {
-      "key": "scripts/lp_polymarket_competitor_collector_v1_readonly.py:328:61:1",
       "file": "scripts/lp_polymarket_competitor_collector_v1_readonly.py",
       "line": 328,
       "col": 61,
       "rule": 1,
-      "snippet": "rows_last += int(r.get(\"shallow_inserted\", 0)) + int(r.get(\"backfill_inserted\", 0))"
+      "fingerprint": "2ddf65d8257c9f28",
+      "snippet": "rows_last += int(r.get(\"shallow_inserted\", 0)) + int(r.get(\"backfill_inserted\", 0))",
+      "key": "scripts/lp_polymarket_competitor_collector_v1_readonly.py:328:61:1"
     },
     {
-      "key": "scripts/lp_polymarket_competitor_collector_v1_readonly.py:329:31:1",
       "file": "scripts/lp_polymarket_competitor_collector_v1_readonly.py",
       "line": 329,
       "col": 31,
       "rule": 1,
-      "snippet": "rows_total_seen += int(r.get(\"shallow_count\", 0))"
+      "fingerprint": "9e632f1661e52686",
+      "snippet": "rows_total_seen += int(r.get(\"shallow_count\", 0))",
+      "key": "scripts/lp_polymarket_competitor_collector_v1_readonly.py:329:31:1"
     },
     {
-      "key": "scripts/lp_polymarket_competitor_collector_v1_readonly.py:463:8:3",
       "file": "scripts/lp_polymarket_competitor_collector_v1_readonly.py",
       "line": 463,
       "col": 8,
       "rule": 3,
-      "snippet": "\"SELECT timestamp, transactionHash FROM activity \""
+      "fingerprint": "05ca82d016d97fc0",
+      "snippet": "\"SELECT timestamp, transactionHash FROM activity \"",
+      "key": "scripts/lp_polymarket_competitor_collector_v1_readonly.py:463:8:3"
     },
     {
-      "key": "scripts/lp_polymarket_competitor_collector_v1_readonly.py:528:8:3",
       "file": "scripts/lp_polymarket_competitor_collector_v1_readonly.py",
       "line": 528,
       "col": 8,
       "rule": 3,
-      "snippet": "\"SELECT raw_json FROM activity WHERE address = ? \""
+      "fingerprint": "aea9418ac6cf433a",
+      "snippet": "\"SELECT raw_json FROM activity WHERE address = ? \"",
+      "key": "scripts/lp_polymarket_competitor_collector_v1_readonly.py:528:8:3"
     },
     {
-      "key": "scripts/lp_polymarket_competitor_collector_v1_readonly.py:640:17:1",
       "file": "scripts/lp_polymarket_competitor_collector_v1_readonly.py",
       "line": 640,
       "col": 17,
       "rule": 1,
-      "snippet": "f\"| {r.get('shallow_count', 0)} \""
+      "fingerprint": "d1d0b8bfa906b80d",
+      "snippet": "f\"| {r.get('shallow_count', 0)} \"",
+      "key": "scripts/lp_polymarket_competitor_collector_v1_readonly.py:640:17:1"
     },
     {
-      "key": "scripts/lp_polymarket_competitor_collector_v1_readonly.py:641:17:1",
       "file": "scripts/lp_polymarket_competitor_collector_v1_readonly.py",
       "line": 641,
       "col": 17,
       "rule": 1,
-      "snippet": "f\"| {r.get('shallow_inserted', 0)} \""
+      "fingerprint": "ce66a0138472926c",
+      "snippet": "f\"| {r.get('shallow_inserted', 0)} \"",
+      "key": "scripts/lp_polymarket_competitor_collector_v1_readonly.py:641:17:1"
     },
     {
-      "key": "scripts/lp_polymarket_competitor_collector_v1_readonly.py:642:17:1",
       "file": "scripts/lp_polymarket_competitor_collector_v1_readonly.py",
       "line": 642,
       "col": 17,
       "rule": 1,
-      "snippet": "f\"| {r.get('backfill_pages', 0)} \""
+      "fingerprint": "fa5e0cceb1379453",
+      "snippet": "f\"| {r.get('backfill_pages', 0)} \"",
+      "key": "scripts/lp_polymarket_competitor_collector_v1_readonly.py:642:17:1"
     },
     {
-      "key": "scripts/lp_polymarket_competitor_collector_v1_readonly.py:643:17:1",
       "file": "scripts/lp_polymarket_competitor_collector_v1_readonly.py",
       "line": 643,
       "col": 17,
       "rule": 1,
-      "snippet": "f\"| {r.get('backfill_inserted', 0)} \""
+      "fingerprint": "fa5a98d896dbafdd",
+      "snippet": "f\"| {r.get('backfill_inserted', 0)} \"",
+      "key": "scripts/lp_polymarket_competitor_collector_v1_readonly.py:643:17:1"
     },
     {
-      "key": "scripts/lp_polymarket_competitor_collector_v1_readonly.py:1184:12:5",
       "file": "scripts/lp_polymarket_competitor_collector_v1_readonly.py",
       "line": 1184,
       "col": 12,
       "rule": 5,
-      "snippet": "return 2"
+      "fingerprint": "8373f7e086bb2778",
+      "snippet": "return 2",
+      "key": "scripts/lp_polymarket_competitor_collector_v1_readonly.py:1184:12:5"
     },
     {
-      "key": "scripts/lp_pool_resolve_and_rank_v1_readonly.py:1190:33:1",
       "file": "scripts/lp_pool_resolve_and_rank_v1_readonly.py",
       "line": 1190,
       "col": 33,
       "rule": 1,
-      "snippet": "records.sort(key=lambda rec: rec.get(\"composite_score\", 0.0), reverse=True)"
+      "fingerprint": "0f54b52a2eaaca7c",
+      "snippet": "records.sort(key=lambda rec: rec.get(\"composite_score\", 0.0), reverse=True)",
+      "key": "scripts/lp_pool_resolve_and_rank_v1_readonly.py:1190:33:1"
     },
     {
-      "key": "scripts/lp_portfolio_allocator_v1_readonly.py:84:12:5",
       "file": "scripts/lp_portfolio_allocator_v1_readonly.py",
       "line": 84,
       "col": 12,
       "rule": 5,
-      "snippet": "return False"
+      "fingerprint": "e706fa9325ded821",
+      "snippet": "return False",
+      "key": "scripts/lp_portfolio_allocator_v1_readonly.py:84:12:5"
     },
     {
-      "key": "scripts/lp_portfolio_allocator_v1_readonly.py:104:49:1",
       "file": "scripts/lp_portfolio_allocator_v1_readonly.py",
       "line": 104,
       "col": 49,
       "rule": 1,
-      "snippet": "reward = float(rec.get(\"reward_apr\", rec.get(\"apyReward\", 0.0)) or 0.0)"
+      "fingerprint": "1ea28c1dfc77fa8d",
+      "snippet": "reward = float(rec.get(\"reward_apr\", rec.get(\"apyReward\", 0.0)) or 0.0)",
+      "key": "scripts/lp_portfolio_allocator_v1_readonly.py:104:49:1"
     },
     {
-      "key": "scripts/lp_portfolio_allocator_v1_readonly.py:116:8:5",
       "file": "scripts/lp_portfolio_allocator_v1_readonly.py",
       "line": 116,
       "col": 8,
       "rule": 5,
-      "snippet": "return 0.0"
+      "fingerprint": "8725d058f45489d4",
+      "snippet": "return 0.0",
+      "key": "scripts/lp_portfolio_allocator_v1_readonly.py:116:8:5"
     },
     {
-      "key": "scripts/lp_portfolio_allocator_v1_readonly.py:130:14:1",
       "file": "scripts/lp_portfolio_allocator_v1_readonly.py",
       "line": 130,
       "col": 14,
       "rule": 1,
-      "snippet": "cap = max_pools.get(t, 0)"
+      "fingerprint": "a7352189597d00d3",
+      "snippet": "cap = max_pools.get(t, 0)",
+      "key": "scripts/lp_portfolio_allocator_v1_readonly.py:130:14:1"
     },
     {
-      "key": "scripts/lp_portfolio_allocator_v1_readonly.py:314:32:2",
       "file": "scripts/lp_portfolio_allocator_v1_readonly.py",
       "line": 314,
       "col": 32,
       "rule": 2,
-      "snippet": "smap[pool] = {\"stable\": bool(st.get(\"stable\")), \"enter_frac\": st.get(\"enter_frac\")}"
+      "fingerprint": "af4a84a1eeba2c78",
+      "snippet": "smap[pool] = {\"stable\": bool(st.get(\"stable\")), \"enter_frac\": st.get(\"enter_frac\")}",
+      "key": "scripts/lp_portfolio_allocator_v1_readonly.py:314:32:2"
     },
     {
-      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:154:8:5",
       "file": "scripts/lp_portfolio_paper_runner_v1_readonly.py",
       "line": 154,
       "col": 8,
       "rule": 5,
-      "snippet": "return \"UNKNOWN\""
+      "fingerprint": "16f08ca1eb1c16ff",
+      "snippet": "return \"UNKNOWN\"",
+      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:154:8:5"
     },
     {
-      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:711:32:1",
       "file": "scripts/lp_portfolio_paper_runner_v1_readonly.py",
       "line": 711,
       "col": 32,
       "rule": 1,
-      "snippet": "legacy = max(0.0, float(state.get(\"reward_quote\", 0.0)))"
+      "fingerprint": "ccbe9e17df685c39",
+      "snippet": "legacy = max(0.0, float(state.get(\"reward_quote\", 0.0)))",
+      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:711:32:1"
     },
     {
-      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:801:25:1",
       "file": "scripts/lp_portfolio_paper_runner_v1_readonly.py",
       "line": 801,
       "col": 25,
       "rule": 1,
-      "snippet": "capital_time = float(state.get(\"capital_time\", {}).get(\"time_in_range_seconds\", 0.0))"
+      "fingerprint": "a0730c46595e6e6e",
+      "snippet": "capital_time = float(state.get(\"capital_time\", {}).get(\"time_in_range_seconds\", 0.0))",
+      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:801:25:1"
     },
     {
-      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:816:50:1",
       "file": "scripts/lp_portfolio_paper_runner_v1_readonly.py",
       "line": 816,
       "col": 50,
       "rule": 1,
-      "snippet": "capital_time = float(state[\"capital\"] * float(clock.get(\"time_in_range_seconds\", 0.0)))"
+      "fingerprint": "1350aa92481d0879",
+      "snippet": "capital_time = float(state[\"capital\"] * float(clock.get(\"time_in_range_seconds\", 0.0)))",
+      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:816:50:1"
     },
     {
-      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:822:16:1",
       "file": "scripts/lp_portfolio_paper_runner_v1_readonly.py",
       "line": 822,
       "col": 16,
       "rule": 1,
-      "snippet": "+ float(costs.get(\"gas_cost\", 0.0))"
+      "fingerprint": "a92a7d073abbc1f5",
+      "snippet": "+ float(costs.get(\"gas_cost\", 0.0))",
+      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:822:16:1"
     },
     {
-      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:823:16:1",
       "file": "scripts/lp_portfolio_paper_runner_v1_readonly.py",
       "line": 823,
       "col": 16,
       "rule": 1,
-      "snippet": "+ float(costs.get(\"priority_fee\", 0.0))"
+      "fingerprint": "b3532eb61b714b4b",
+      "snippet": "+ float(costs.get(\"priority_fee\", 0.0))",
+      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:823:16:1"
     },
     {
-      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:824:16:1",
       "file": "scripts/lp_portfolio_paper_runner_v1_readonly.py",
       "line": 824,
       "col": 16,
       "rule": 1,
-      "snippet": "+ float(costs.get(\"switching_cost\", 0.0))"
+      "fingerprint": "eaa2f65ff1213a8a",
+      "snippet": "+ float(costs.get(\"switching_cost\", 0.0))",
+      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:824:16:1"
     },
     {
-      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:825:17:1",
       "file": "scripts/lp_portfolio_paper_runner_v1_readonly.py",
       "line": 825,
       "col": 17,
       "rule": 1,
-      "snippet": "+ (float(costs.get(\"exit_latency_loss\", 0.0)) if state.get(\"exited\") else 0.0)"
+      "fingerprint": "cb140a68071a57cd",
+      "snippet": "+ (float(costs.get(\"exit_latency_loss\", 0.0)) if state.get(\"exited\") else 0.0)",
+      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:825:17:1"
     },
     {
-      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:830:17:2",
       "file": "scripts/lp_portfolio_paper_runner_v1_readonly.py",
       "line": 830,
       "col": 17,
       "rule": 2,
-      "snippet": "fully_cash = bool(state.get(\"exited\")) and \"inventory_holdings\" not in exited"
+      "fingerprint": "0150ebbb9b5f0324",
+      "snippet": "fully_cash = bool(state.get(\"exited\")) and \"inventory_holdings\" not in exited",
+      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:830:17:2"
     },
     {
-      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:842:26:1",
       "file": "scripts/lp_portfolio_paper_runner_v1_readonly.py",
       "line": 842,
       "col": 26,
       "rule": 1,
-      "snippet": "\"gas_cost\": float(costs.get(\"gas_cost\", 0.0)),"
+      "fingerprint": "5d9b5903988fae11",
+      "snippet": "\"gas_cost\": float(costs.get(\"gas_cost\", 0.0)),",
+      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:842:26:1"
     },
     {
-      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:843:30:1",
       "file": "scripts/lp_portfolio_paper_runner_v1_readonly.py",
       "line": 843,
       "col": 30,
       "rule": 1,
-      "snippet": "\"priority_fee\": float(costs.get(\"priority_fee\", 0.0)),"
+      "fingerprint": "a097e15456813845",
+      "snippet": "\"priority_fee\": float(costs.get(\"priority_fee\", 0.0)),",
+      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:843:30:1"
     },
     {
-      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:845:32:1",
       "file": "scripts/lp_portfolio_paper_runner_v1_readonly.py",
       "line": 845,
       "col": 32,
       "rule": 1,
-      "snippet": "\"exit_swap_cost\": float(costs.get(\"exit_swap_cost\", 0.0)),"
+      "fingerprint": "c1905aeba59b916e",
+      "snippet": "\"exit_swap_cost\": float(costs.get(\"exit_swap_cost\", 0.0)),",
+      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:845:32:1"
     },
     {
-      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:846:26:1",
       "file": "scripts/lp_portfolio_paper_runner_v1_readonly.py",
       "line": 846,
       "col": 26,
       "rule": 1,
-      "snippet": "\"slippage\": float(costs.get(\"slippage\", 0.0)),"
+      "fingerprint": "21b2f4c1f147a784",
+      "snippet": "\"slippage\": float(costs.get(\"slippage\", 0.0)),",
+      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:846:26:1"
     },
     {
-      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:847:30:1",
       "file": "scripts/lp_portfolio_paper_runner_v1_readonly.py",
       "line": 847,
       "col": 30,
       "rule": 1,
-      "snippet": "\"price_impact\": float(costs.get(\"price_impact\", 0.0)),"
+      "fingerprint": "6d330bd532a7416b",
+      "snippet": "\"price_impact\": float(costs.get(\"price_impact\", 0.0)),",
+      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:847:30:1"
     },
     {
-      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:848:30:1",
       "file": "scripts/lp_portfolio_paper_runner_v1_readonly.py",
       "line": 848,
       "col": 30,
       "rule": 1,
-      "snippet": "\"lvr_estimate\": float(costs.get(\"lvr_estimate\", 0.0)),"
+      "fingerprint": "a96571be94a156a3",
+      "snippet": "\"lvr_estimate\": float(costs.get(\"lvr_estimate\", 0.0)),",
+      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:848:30:1"
     },
     {
-      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:849:35:1",
       "file": "scripts/lp_portfolio_paper_runner_v1_readonly.py",
       "line": 849,
       "col": 35,
       "rule": 1,
-      "snippet": "\"exit_latency_loss\": float(costs.get(\"exit_latency_loss\", 0.0)),"
+      "fingerprint": "9645954b3704e524",
+      "snippet": "\"exit_latency_loss\": float(costs.get(\"exit_latency_loss\", 0.0)),",
+      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:849:35:1"
     },
     {
-      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:850:32:1",
       "file": "scripts/lp_portfolio_paper_runner_v1_readonly.py",
       "line": 850,
       "col": 32,
       "rule": 1,
-      "snippet": "\"switching_cost\": float(costs.get(\"switching_cost\", 0.0)),"
+      "fingerprint": "78f8fb064a262816",
+      "snippet": "\"switching_cost\": float(costs.get(\"switching_cost\", 0.0)),",
+      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:850:32:1"
     },
     {
-      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:883:34:1",
       "file": "scripts/lp_portfolio_paper_runner_v1_readonly.py",
       "line": 883,
       "col": 34,
       "rule": 1,
-      "snippet": "version = int(record.get(\"ledger_schema_version\", 1))"
+      "fingerprint": "fe7459aef79838a1",
+      "snippet": "version = int(record.get(\"ledger_schema_version\", 1))",
+      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:883:34:1"
     },
     {
-      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1033:17:1",
       "file": "scripts/lp_portfolio_paper_runner_v1_readonly.py",
       "line": 1033,
       "col": 17,
       "rule": 1,
-      "snippet": "final_tick = snapshot.get(\"final_tick\", 0)"
+      "fingerprint": "69f3a1b9b59c1b85",
+      "snippet": "final_tick = snapshot.get(\"final_tick\", 0)",
+      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1033:17:1"
     },
     {
-      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1177:8:5",
       "file": "scripts/lp_portfolio_paper_runner_v1_readonly.py",
       "line": 1177,
       "col": 8,
       "rule": 5,
-      "snippet": "return False"
+      "fingerprint": "e706fa9325ded821",
+      "snippet": "return False",
+      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1177:8:5"
     },
     {
-      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1337:25:2",
       "file": "scripts/lp_portfolio_paper_runner_v1_readonly.py",
       "line": 1337,
       "col": 25,
       "rule": 2,
-      "snippet": "exit_on_breach = bool(a.get(\"exit_on_breach\", False))"
+      "fingerprint": "de187ca46d0b2d1b",
+      "snippet": "exit_on_breach = bool(a.get(\"exit_on_breach\", False))",
+      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1337:25:2"
     },
     {
-      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1342:30:2",
       "file": "scripts/lp_portfolio_paper_runner_v1_readonly.py",
       "line": 1342,
       "col": 30,
       "rule": 2,
-      "snippet": "exit_policy_enabled = bool("
+      "fingerprint": "df83a1a54c81e7b0",
+      "snippet": "exit_policy_enabled = bool(",
+      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1342:30:2"
     },
     {
-      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1353:35:1",
       "file": "scripts/lp_portfolio_paper_runner_v1_readonly.py",
       "line": 1353,
       "col": 35,
       "rule": 1,
-      "snippet": "risky_inventory_target=a.get(\"risky_inventory_target\", 0.25),"
+      "fingerprint": "9eac63e3df11f0ac",
+      "snippet": "risky_inventory_target=a.get(\"risky_inventory_target\", 0.25),",
+      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1353:35:1"
     },
     {
-      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1354:34:1",
       "file": "scripts/lp_portfolio_paper_runner_v1_readonly.py",
       "line": 1354,
       "col": 34,
       "rule": 1,
-      "snippet": "max_exit_slippage_bps=a.get(\"max_exit_slippage_bps\", 75.0),"
+      "fingerprint": "b33bd9b0a9912d1f",
+      "snippet": "max_exit_slippage_bps=a.get(\"max_exit_slippage_bps\", 75.0),",
+      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1354:34:1"
     },
     {
-      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1356:35:1",
       "file": "scripts/lp_portfolio_paper_runner_v1_readonly.py",
       "line": 1356,
       "col": 35,
       "rule": 1,
-      "snippet": "major_cooldown_minutes=a.get(\"major_cooldown_minutes\", 30),"
+      "fingerprint": "d64a6fbcfab93f73",
+      "snippet": "major_cooldown_minutes=a.get(\"major_cooldown_minutes\", 30),",
+      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1356:35:1"
     },
     {
-      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1358:35:1",
       "file": "scripts/lp_portfolio_paper_runner_v1_readonly.py",
       "line": 1358,
       "col": 35,
       "rule": 1,
-      "snippet": "reward_token_price_usd=a.get(\"reward_token_price_usd\", 1.0),"
+      "fingerprint": "6605b4da2bcf01ee",
+      "snippet": "reward_token_price_usd=a.get(\"reward_token_price_usd\", 1.0),",
+      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1358:35:1"
     },
     {
-      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1359:21:1",
       "file": "scripts/lp_portfolio_paper_runner_v1_readonly.py",
       "line": 1359,
       "col": 21,
       "rule": 1,
-      "snippet": "gas_cost=a.get(\"gas_cost\", 0.0),"
+      "fingerprint": "0f3d7eb36b0ec549",
+      "snippet": "gas_cost=a.get(\"gas_cost\", 0.0),",
+      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1359:21:1"
     },
     {
-      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1360:25:1",
       "file": "scripts/lp_portfolio_paper_runner_v1_readonly.py",
       "line": 1360,
       "col": 25,
       "rule": 1,
-      "snippet": "priority_fee=a.get(\"priority_fee\", 0.0),"
+      "fingerprint": "c54c558257060a26",
+      "snippet": "priority_fee=a.get(\"priority_fee\", 0.0),",
+      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1360:25:1"
     },
     {
-      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1361:47:1",
       "file": "scripts/lp_portfolio_paper_runner_v1_readonly.py",
       "line": 1361,
       "col": 47,
       "rule": 1,
-      "snippet": "lvr_estimate=a.get(\"lvr_estimate\", a.get(\"lvr_estimate_model\", 0.0)),"
+      "fingerprint": "32d8aee37ff63291",
+      "snippet": "lvr_estimate=a.get(\"lvr_estimate\", a.get(\"lvr_estimate_model\", 0.0)),",
+      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1361:47:1"
     },
     {
-      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1363:37:1",
       "file": "scripts/lp_portfolio_paper_runner_v1_readonly.py",
       "line": 1363,
       "col": 37,
       "rule": 1,
-      "snippet": "\"exit_latency_loss\", a.get(\"exit_latency_loss_model\", 0.0)"
+      "fingerprint": "e3f77b8046a6a565",
+      "snippet": "\"exit_latency_loss\", a.get(\"exit_latency_loss_model\", 0.0)",
+      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1363:37:1"
     },
     {
-      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1365:27:1",
       "file": "scripts/lp_portfolio_paper_runner_v1_readonly.py",
       "line": 1365,
       "col": 27,
       "rule": 1,
-      "snippet": "switching_cost=a.get(\"switching_cost\", 0.0),"
+      "fingerprint": "fd8dba317a07d83b",
+      "snippet": "switching_cost=a.get(\"switching_cost\", 0.0),",
+      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1365:27:1"
     },
     {
-      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1372:32:1",
       "file": "scripts/lp_portfolio_paper_runner_v1_readonly.py",
       "line": 1372,
       "col": 32,
       "rule": 1,
-      "snippet": "\"reward_apr\": float(a.get(\"reward_apr\", 0.0)),"
+      "fingerprint": "79f73c759d68d1f4",
+      "snippet": "\"reward_apr\": float(a.get(\"reward_apr\", 0.0)),",
+      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1372:32:1"
     },
     {
-      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1374:38:1",
       "file": "scripts/lp_portfolio_paper_runner_v1_readonly.py",
       "line": 1374,
       "col": 38,
       "rule": 1,
-      "snippet": "\"reward_price_usd\": float(a.get(\"reward_token_price_usd\", 1.0)),"
+      "fingerprint": "9e8daa665d1e1821",
+      "snippet": "\"reward_price_usd\": float(a.get(\"reward_token_price_usd\", 1.0)),",
+      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1374:38:1"
     },
     {
-      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1626:8:5",
       "file": "scripts/lp_portfolio_paper_runner_v1_readonly.py",
       "line": 1626,
       "col": 8,
       "rule": 5,
-      "snippet": "return False"
+      "fingerprint": "e706fa9325ded821",
+      "snippet": "return False",
+      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1626:8:5"
     },
     {
-      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1667:8:5",
       "file": "scripts/lp_portfolio_paper_runner_v1_readonly.py",
       "line": 1667,
       "col": 8,
       "rule": 5,
-      "snippet": "return False"
+      "fingerprint": "e706fa9325ded821",
+      "snippet": "return False",
+      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1667:8:5"
     },
     {
-      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1704:22:2",
       "file": "scripts/lp_portfolio_paper_runner_v1_readonly.py",
       "line": 1704,
       "col": 22,
       "rule": 2,
-      "snippet": "requires_window = bool("
+      "fingerprint": "6d7dc05504c9e45d",
+      "snippet": "requires_window = bool(",
+      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1704:22:2"
     },
     {
-      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1725:8:5",
       "file": "scripts/lp_portfolio_paper_runner_v1_readonly.py",
       "line": 1725,
       "col": 8,
       "rule": 5,
-      "snippet": "return False"
+      "fingerprint": "e706fa9325ded821",
+      "snippet": "return False",
+      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1725:8:5"
     },
     {
-      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1775:31:1",
       "file": "scripts/lp_portfolio_paper_runner_v1_readonly.py",
       "line": 1775,
       "col": 31,
       "rule": 1,
-      "snippet": "reward_token_price_usd=pool_record.get(\"reward_price_usd\", 1.0),"
+      "fingerprint": "bd066f33f900de57",
+      "snippet": "reward_token_price_usd=pool_record.get(\"reward_price_usd\", 1.0),",
+      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1775:31:1"
     },
     {
-      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1776:17:1",
       "file": "scripts/lp_portfolio_paper_runner_v1_readonly.py",
       "line": 1776,
       "col": 17,
       "rule": 1,
-      "snippet": "gas_cost=costs.get(\"gas_cost\", 0.0),"
+      "fingerprint": "f4e7562e9f93b55c",
+      "snippet": "gas_cost=costs.get(\"gas_cost\", 0.0),",
+      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1776:17:1"
     },
     {
-      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1777:21:1",
       "file": "scripts/lp_portfolio_paper_runner_v1_readonly.py",
       "line": 1777,
       "col": 21,
       "rule": 1,
-      "snippet": "priority_fee=costs.get(\"priority_fee\", 0.0),"
+      "fingerprint": "a6f58c9655d73ab1",
+      "snippet": "priority_fee=costs.get(\"priority_fee\", 0.0),",
+      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1777:21:1"
     },
     {
-      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1778:21:1",
       "file": "scripts/lp_portfolio_paper_runner_v1_readonly.py",
       "line": 1778,
       "col": 21,
       "rule": 1,
-      "snippet": "lvr_estimate=costs.get(\"lvr_estimate\", 0.0),"
+      "fingerprint": "f3a68ea4a96c2585",
+      "snippet": "lvr_estimate=costs.get(\"lvr_estimate\", 0.0),",
+      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1778:21:1"
     },
     {
-      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1779:26:1",
       "file": "scripts/lp_portfolio_paper_runner_v1_readonly.py",
       "line": 1779,
       "col": 26,
       "rule": 1,
-      "snippet": "exit_latency_loss=costs.get(\"exit_latency_loss\", 0.0),"
+      "fingerprint": "576427c38a08e647",
+      "snippet": "exit_latency_loss=costs.get(\"exit_latency_loss\", 0.0),",
+      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1779:26:1"
     },
     {
-      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1780:23:1",
       "file": "scripts/lp_portfolio_paper_runner_v1_readonly.py",
       "line": 1780,
       "col": 23,
       "rule": 1,
-      "snippet": "switching_cost=costs.get(\"switching_cost\", 0.0),"
+      "fingerprint": "5be5996387421b57",
+      "snippet": "switching_cost=costs.get(\"switching_cost\", 0.0),",
+      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1780:23:1"
     },
     {
-      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1788:8:1",
       "file": "scripts/lp_portfolio_paper_runner_v1_readonly.py",
       "line": 1788,
       "col": 8,
       "rule": 1,
-      "snippet": "pool_record.get(\"realized_pnl_carry_usd\", 0.0)"
+      "fingerprint": "ff94d4ea3ea92553",
+      "snippet": "pool_record.get(\"realized_pnl_carry_usd\", 0.0)",
+      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1788:8:1"
     },
     {
-      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1884:39:1",
       "file": "scripts/lp_portfolio_paper_runner_v1_readonly.py",
       "line": 1884,
       "col": 39,
       "rule": 1,
-      "snippet": "reward_token_price_usd=p.get(\"reward_price_usd\", 1.0),"
+      "fingerprint": "f5255c43b0fdbc1d",
+      "snippet": "reward_token_price_usd=p.get(\"reward_price_usd\", 1.0),",
+      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1884:39:1"
     },
     {
-      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1899:26:1",
       "file": "scripts/lp_portfolio_paper_runner_v1_readonly.py",
       "line": 1899,
       "col": 26,
       "rule": 1,
-      "snippet": "pnl_carry = float(p.get(\"realized_pnl_carry_usd\", 0.0))"
+      "fingerprint": "299269296075af1e",
+      "snippet": "pnl_carry = float(p.get(\"realized_pnl_carry_usd\", 0.0))",
+      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1899:26:1"
     },
     {
-      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1921:22:2",
       "file": "scripts/lp_portfolio_paper_runner_v1_readonly.py",
       "line": 1921,
       "col": 22,
       "rule": 2,
-      "snippet": "\"exited\": bool(st.get(\"exited\")),"
+      "fingerprint": "129413e4841cab67",
+      "snippet": "\"exited\": bool(st.get(\"exited\")),",
+      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:1921:22:2"
     },
     {
-      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:2110:26:1",
       "file": "scripts/lp_portfolio_paper_runner_v1_readonly.py",
       "line": 2110,
       "col": 26,
       "rule": 1,
-      "snippet": "pnl_carry = float(p.get(\"realized_pnl_carry_usd\", 0.0))"
+      "fingerprint": "299269296075af1e",
+      "snippet": "pnl_carry = float(p.get(\"realized_pnl_carry_usd\", 0.0))",
+      "key": "scripts/lp_portfolio_paper_runner_v1_readonly.py:2110:26:1"
     },
     {
-      "key": "scripts/lp_quote_depth_curve_v2_readonly.py:136:8:5",
       "file": "scripts/lp_quote_depth_curve_v2_readonly.py",
       "line": 136,
       "col": 8,
       "rule": 5,
-      "snippet": "return 0"
+      "fingerprint": "30945f342ad5ab6c",
+      "snippet": "return 0",
+      "key": "scripts/lp_quote_depth_curve_v2_readonly.py:136:8:5"
     },
     {
-      "key": "scripts/lp_real_data_reopen_prep_v1_readonly.py:205:29:2",
       "file": "scripts/lp_real_data_reopen_prep_v1_readonly.py",
       "line": 205,
       "col": 29,
       "rule": 2,
-      "snippet": "\"can_run_probe_now\": bool(il_lvr.get(\"can_run_probe_now\")),"
+      "fingerprint": "765291f2d6fb76a3",
+      "snippet": "\"can_run_probe_now\": bool(il_lvr.get(\"can_run_probe_now\")),",
+      "key": "scripts/lp_real_data_reopen_prep_v1_readonly.py:205:29:2"
     },
     {
-      "key": "scripts/lp_rejection_reason_v1_readonly.py:93:11:2",
       "file": "scripts/lp_rejection_reason_v1_readonly.py",
       "line": 93,
       "col": 11,
       "rule": 2,
-      "snippet": "if not bool(record.get(\"vetted\", False)):"
+      "fingerprint": "28b1dbf7262e6db3",
+      "snippet": "if not bool(record.get(\"vetted\", False)):",
+      "key": "scripts/lp_rejection_reason_v1_readonly.py:93:11:2"
     },
     {
-      "key": "scripts/lp_rejection_reason_v1_readonly.py:95:11:2",
       "file": "scripts/lp_rejection_reason_v1_readonly.py",
       "line": 95,
       "col": 11,
       "rule": 2,
-      "snippet": "if not bool(record.get(\"netcover_pass\", False)):"
+      "fingerprint": "26ee6138d78d421e",
+      "snippet": "if not bool(record.get(\"netcover_pass\", False)):",
+      "key": "scripts/lp_rejection_reason_v1_readonly.py:95:11:2"
     },
     {
-      "key": "scripts/lp_report_digest_v1_readonly.py:135:69:2",
       "file": "scripts/lp_report_digest_v1_readonly.py",
       "line": 135,
       "col": 69,
       "rule": 2,
-      "snippet": "1 for pool in pools if isinstance(pool, Mapping) and bool(pool.get(\"exited\"))"
+      "fingerprint": "ed7546df84a0ad6f",
+      "snippet": "1 for pool in pools if isinstance(pool, Mapping) and bool(pool.get(\"exited\"))",
+      "key": "scripts/lp_report_digest_v1_readonly.py:135:69:2"
     },
     {
-      "key": "scripts/lp_report_digest_v1_readonly.py:142:24:2",
       "file": "scripts/lp_report_digest_v1_readonly.py",
       "line": 142,
       "col": 24,
       "rule": 2,
-      "snippet": "and not bool(pool.get(\"exited\"))"
+      "fingerprint": "f04b64290c7d99d0",
+      "snippet": "and not bool(pool.get(\"exited\"))",
+      "key": "scripts/lp_report_digest_v1_readonly.py:142:24:2"
     },
     {
-      "key": "scripts/lp_report_digest_v1_readonly.py:274:36:1",
       "file": "scripts/lp_report_digest_v1_readonly.py",
       "line": 274,
       "col": 36,
       "rule": 1,
-      "snippet": "f\"- Valid ticks: **{heartbeat.get('ticks', 0):,}** \""
+      "fingerprint": "559c9cc064d7b8b8",
+      "snippet": "f\"- Valid ticks: **{heartbeat.get('ticks', 0):,}** \"",
+      "key": "scripts/lp_report_digest_v1_readonly.py:274:36:1"
     },
     {
-      "key": "scripts/lp_report_digest_v1_readonly.py:275:27:1",
       "file": "scripts/lp_report_digest_v1_readonly.py",
       "line": 275,
       "col": 27,
       "rule": 1,
-      "snippet": "f\"(unique {heartbeat.get('unique_ticks', 0):,}; malformed lines \""
+      "fingerprint": "547f2a0a6ef1e6ee",
+      "snippet": "f\"(unique {heartbeat.get('unique_ticks', 0):,}; malformed lines \"",
+      "key": "scripts/lp_report_digest_v1_readonly.py:275:27:1"
     },
     {
-      "key": "scripts/lp_report_digest_v1_readonly.py:276:19:1",
       "file": "scripts/lp_report_digest_v1_readonly.py",
       "line": 276,
       "col": 19,
       "rule": 1,
-      "snippet": "f\"{heartbeat.get('malformed_lines', 0):,})\","
+      "fingerprint": "2bdc01e026ad8d06",
+      "snippet": "f\"{heartbeat.get('malformed_lines', 0):,})\",",
+      "key": "scripts/lp_report_digest_v1_readonly.py:276:19:1"
     },
     {
-      "key": "scripts/lp_report_digest_v1_readonly.py:282:36:1",
       "file": "scripts/lp_report_digest_v1_readonly.py",
       "line": 282,
       "col": 36,
       "rule": 1,
-      "snippet": "f\"- Breach events: {heartbeat.get('breach_events', 0):,}; last tick pools \""
+      "fingerprint": "579d281a2a2ceea2",
+      "snippet": "f\"- Breach events: {heartbeat.get('breach_events', 0):,}; last tick pools \"",
+      "key": "scripts/lp_report_digest_v1_readonly.py:282:36:1"
     },
     {
-      "key": "scripts/lp_report_digest_v1_readonly.py:283:19:1",
       "file": "scripts/lp_report_digest_v1_readonly.py",
       "line": 283,
       "col": 19,
       "rule": 1,
-      "snippet": "f\"{heartbeat.get('last_pool_count', 0):,} \""
+      "fingerprint": "b1bea4644cbece80",
+      "snippet": "f\"{heartbeat.get('last_pool_count', 0):,} \"",
+      "key": "scripts/lp_report_digest_v1_readonly.py:283:19:1"
     },
     {
-      "key": "scripts/lp_report_digest_v1_readonly.py:284:27:1",
       "file": "scripts/lp_report_digest_v1_readonly.py",
       "line": 284,
       "col": 27,
       "rule": 1,
-      "snippet": "f\"(exited {heartbeat.get('last_exited_count', 0):,}, active OOR \""
+      "fingerprint": "0360f7b33704ceb0",
+      "snippet": "f\"(exited {heartbeat.get('last_exited_count', 0):,}, active OOR \"",
+      "key": "scripts/lp_report_digest_v1_readonly.py:284:27:1"
     },
     {
-      "key": "scripts/lp_report_digest_v1_readonly.py:285:19:1",
       "file": "scripts/lp_report_digest_v1_readonly.py",
       "line": 285,
       "col": 19,
       "rule": 1,
-      "snippet": "f\"{heartbeat.get('last_out_of_range_count', 0):,})\","
+      "fingerprint": "9cd90c71e9abf9fa",
+      "snippet": "f\"{heartbeat.get('last_out_of_range_count', 0):,})\",",
+      "key": "scripts/lp_report_digest_v1_readonly.py:285:19:1"
     },
     {
-      "key": "scripts/lp_report_digest_v1_readonly.py:300:32:1",
       "file": "scripts/lp_report_digest_v1_readonly.py",
       "line": 300,
       "col": 32,
       "rule": 1,
-      "snippet": "f\"- Snapshots: {scanner.get('snapshot_count', 0):,}; opportunities \""
+      "fingerprint": "1ccbafe7e3aeede8",
+      "snippet": "f\"- Snapshots: {scanner.get('snapshot_count', 0):,}; opportunities \"",
+      "key": "scripts/lp_report_digest_v1_readonly.py:300:32:1"
     },
     {
-      "key": "scripts/lp_report_digest_v1_readonly.py:301:19:1",
       "file": "scripts/lp_report_digest_v1_readonly.py",
       "line": 301,
       "col": 19,
       "rule": 1,
-      "snippet": "f\"{scanner.get('opportunity_count', 0):,} (accepted \""
+      "fingerprint": "c39f6aeed1e2a67f",
+      "snippet": "f\"{scanner.get('opportunity_count', 0):,} (accepted \"",
+      "key": "scripts/lp_report_digest_v1_readonly.py:301:19:1"
     },
     {
-      "key": "scripts/lp_report_digest_v1_readonly.py:302:19:1",
       "file": "scripts/lp_report_digest_v1_readonly.py",
       "line": 302,
       "col": 19,
       "rule": 1,
-      "snippet": "f\"{scanner.get('accepted_count', 0):,}, rejected \""
+      "fingerprint": "3ea17e997a193d51",
+      "snippet": "f\"{scanner.get('accepted_count', 0):,}, rejected \"",
+      "key": "scripts/lp_report_digest_v1_readonly.py:302:19:1"
     },
     {
-      "key": "scripts/lp_report_digest_v1_readonly.py:303:19:1",
       "file": "scripts/lp_report_digest_v1_readonly.py",
       "line": 303,
       "col": 19,
       "rule": 1,
-      "snippet": "f\"{scanner.get('rejected_count', 0):,})\","
+      "fingerprint": "fbe094f6b47e8daa",
+      "snippet": "f\"{scanner.get('rejected_count', 0):,})\",",
+      "key": "scripts/lp_report_digest_v1_readonly.py:303:19:1"
     },
     {
-      "key": "scripts/lp_reward_persistence_v1_readonly.py:46:14:1",
       "file": "scripts/lp_reward_persistence_v1_readonly.py",
       "line": 46,
       "col": 14,
       "rule": 1,
-      "snippet": "raw = record.get(\"reward_apr\", 0.0)"
+      "fingerprint": "b0443fb4f8e9950f",
+      "snippet": "raw = record.get(\"reward_apr\", 0.0)",
+      "key": "scripts/lp_reward_persistence_v1_readonly.py:46:14:1"
     },
     {
-      "key": "scripts/lp_rh_collector_v1_readonly.py:88:8:5",
       "file": "scripts/lp_rh_collector_v1_readonly.py",
       "line": 88,
       "col": 8,
       "rule": 5,
-      "snippet": "return \"UNKNOWN\""
+      "fingerprint": "16f08ca1eb1c16ff",
+      "snippet": "return \"UNKNOWN\"",
+      "key": "scripts/lp_rh_collector_v1_readonly.py:88:8:5"
     },
     {
-      "key": "scripts/lp_rh_collector_v1_readonly.py:147:8:5",
       "file": "scripts/lp_rh_collector_v1_readonly.py",
       "line": 147,
       "col": 8,
       "rule": 5,
-      "snippet": "return False"
+      "fingerprint": "e706fa9325ded821",
+      "snippet": "return False",
+      "key": "scripts/lp_rh_collector_v1_readonly.py:147:8:5"
     },
     {
-      "key": "scripts/lp_rh_collector_v1_readonly.py:149:8:5",
       "file": "scripts/lp_rh_collector_v1_readonly.py",
       "line": 149,
       "col": 8,
       "rule": 5,
-      "snippet": "return True"
+      "fingerprint": "37992c22232b4712",
+      "snippet": "return True",
+      "key": "scripts/lp_rh_collector_v1_readonly.py:149:8:5"
     },
     {
-      "key": "scripts/lp_rh_collector_v1_readonly.py:160:8:5",
       "file": "scripts/lp_rh_collector_v1_readonly.py",
       "line": 160,
       "col": 8,
       "rule": 5,
-      "snippet": "return True"
+      "fingerprint": "37992c22232b4712",
+      "snippet": "return True",
+      "key": "scripts/lp_rh_collector_v1_readonly.py:160:8:5"
     },
     {
-      "key": "scripts/lp_rh_daily_report_v1_readonly.py:107:24:1",
       "file": "scripts/lp_rh_daily_report_v1_readonly.py",
       "line": 107,
       "col": 24,
       "rule": 1,
-      "snippet": "computed_pass = int(statuses.get(\"COMPUTED_PASS\", 0))"
+      "fingerprint": "10aa10727530d3ab",
+      "snippet": "computed_pass = int(statuses.get(\"COMPUTED_PASS\", 0))",
+      "key": "scripts/lp_rh_daily_report_v1_readonly.py:107:24:1"
     },
     {
-      "key": "scripts/lp_rh_daily_report_v1_readonly.py:250:24:1",
       "file": "scripts/lp_rh_daily_report_v1_readonly.py",
       "line": 250,
       "col": 24,
       "rule": 1,
-      "snippet": "computed_pass = int(statuses.get(\"COMPUTED_PASS\", 0))"
+      "fingerprint": "10aa10727530d3ab",
+      "snippet": "computed_pass = int(statuses.get(\"COMPUTED_PASS\", 0))",
+      "key": "scripts/lp_rh_daily_report_v1_readonly.py:250:24:1"
     },
     {
-      "key": "scripts/lp_rh_evidence_writer_v1_readonly.py:124:44:1",
       "file": "scripts/lp_rh_evidence_writer_v1_readonly.py",
       "line": 124,
       "col": 44,
       "rule": 1,
-      "snippet": "result[\"missing_fields\"][col] = result[\"missing_fields\"].get(col, 0) + 1"
+      "fingerprint": "ba0ee5e561892538",
+      "snippet": "result[\"missing_fields\"][col] = result[\"missing_fields\"].get(col, 0) + 1",
+      "key": "scripts/lp_rh_evidence_writer_v1_readonly.py:124:44:1"
     },
     {
-      "key": "scripts/lp_rh_evidence_writer_v1_readonly.py:159:45:1",
       "file": "scripts/lp_rh_evidence_writer_v1_readonly.py",
       "line": 159,
       "col": 45,
       "rule": 1,
-      "snippet": "result[\"skip_reasons\"][reason] = result[\"skip_reasons\"].get(reason, 0) + 1"
+      "fingerprint": "27e54651b3995bb6",
+      "snippet": "result[\"skip_reasons\"][reason] = result[\"skip_reasons\"].get(reason, 0) + 1",
+      "key": "scripts/lp_rh_evidence_writer_v1_readonly.py:159:45:1"
     },
     {
-      "key": "scripts/lp_rh_exit_depth_v1_readonly.py:96:37:1",
       "file": "scripts/lp_rh_exit_depth_v1_readonly.py",
       "line": 96,
       "col": 37,
       "rule": 1,
-      "snippet": "events[row.tick_lower] = events.get(row.tick_lower, 0) + row.liquidity_net"
+      "fingerprint": "cb3b184fc211cb0f",
+      "snippet": "events[row.tick_lower] = events.get(row.tick_lower, 0) + row.liquidity_net",
+      "key": "scripts/lp_rh_exit_depth_v1_readonly.py:96:37:1"
     },
     {
-      "key": "scripts/lp_rh_exit_depth_v1_readonly.py:99:37:1",
       "file": "scripts/lp_rh_exit_depth_v1_readonly.py",
       "line": 99,
       "col": 37,
       "rule": 1,
-      "snippet": "events[row.tick_lower] = events.get(row.tick_lower, 0) + row.liquidity_net"
+      "fingerprint": "cb3b184fc211cb0f",
+      "snippet": "events[row.tick_lower] = events.get(row.tick_lower, 0) + row.liquidity_net",
+      "key": "scripts/lp_rh_exit_depth_v1_readonly.py:99:37:1"
     },
     {
-      "key": "scripts/lp_rh_exit_depth_v1_readonly.py:100:37:1",
       "file": "scripts/lp_rh_exit_depth_v1_readonly.py",
       "line": 100,
       "col": 37,
       "rule": 1,
-      "snippet": "events[row.tick_upper] = events.get(row.tick_upper, 0) - row.liquidity_net"
+      "fingerprint": "d192a55936423b25",
+      "snippet": "events[row.tick_upper] = events.get(row.tick_upper, 0) - row.liquidity_net",
+      "key": "scripts/lp_rh_exit_depth_v1_readonly.py:100:37:1"
     },
     {
-      "key": "scripts/lp_rh_exit_depth_v1_readonly.py:296:23:2",
       "file": "scripts/lp_rh_exit_depth_v1_readonly.py",
       "line": 296,
       "col": 23,
       "rule": 2,
-      "snippet": "zero_for_one = bool(pool_state.get(\"zero_for_one\", True))"
+      "fingerprint": "3aeaa4cf0b3eb05d",
+      "snippet": "zero_for_one = bool(pool_state.get(\"zero_for_one\", True))",
+      "key": "scripts/lp_rh_exit_depth_v1_readonly.py:296:23:2"
     },
     {
-      "key": "scripts/lp_rh_funnel_autopsy_v1_readonly.py:63:45:1",
       "file": "scripts/lp_rh_funnel_autopsy_v1_readonly.py",
       "line": 63,
       "col": 45,
       "rule": 1,
-      "snippet": "by_status[decision.primary_status] = by_status.get(decision.primary_status, 0) + 1"
+      "fingerprint": "29da20b42b32917c",
+      "snippet": "by_status[decision.primary_status] = by_status.get(decision.primary_status, 0) + 1",
+      "key": "scripts/lp_rh_funnel_autopsy_v1_readonly.py:63:45:1"
     },
     {
-      "key": "scripts/lp_rh_funnel_autopsy_v1_readonly.py:105:24:1",
       "file": "scripts/lp_rh_funnel_autopsy_v1_readonly.py",
       "line": 105,
       "col": 24,
       "rule": 1,
-      "snippet": "computed_pass = int(statuses.get(\"COMPUTED_PASS\", 0))"
+      "fingerprint": "10aa10727530d3ab",
+      "snippet": "computed_pass = int(statuses.get(\"COMPUTED_PASS\", 0))",
+      "key": "scripts/lp_rh_funnel_autopsy_v1_readonly.py:105:24:1"
     },
     {
-      "key": "scripts/lp_rh_funnel_autopsy_v1_readonly.py:109:50:1",
       "file": "scripts/lp_rh_funnel_autopsy_v1_readonly.py",
       "line": 109,
       "col": 50,
       "rule": 1,
-      "snippet": "f\"已完成经济评估且不合格: {int(statuses.get('COMPUTED_FAIL', 0))}\","
+      "fingerprint": "af90bdac647dd3f7",
+      "snippet": "f\"已完成经济评估且不合格: {int(statuses.get('COMPUTED_FAIL', 0))}\",",
+      "key": "scripts/lp_rh_funnel_autopsy_v1_readonly.py:109:50:1"
     },
     {
-      "key": "scripts/lp_rh_funnel_autopsy_v1_readonly.py:110:32:1",
       "file": "scripts/lp_rh_funnel_autopsy_v1_readonly.py",
       "line": 110,
       "col": 32,
       "rule": 1,
-      "snippet": "f\"尚未能评估: {int(statuses.get('INPUTS_UNAVAILABLE', 0))}\","
+      "fingerprint": "ef9e3f15681dea68",
+      "snippet": "f\"尚未能评估: {int(statuses.get('INPUTS_UNAVAILABLE', 0))}\",",
+      "key": "scripts/lp_rh_funnel_autopsy_v1_readonly.py:110:32:1"
     },
     {
-      "key": "scripts/lp_rh_funnel_autopsy_v1_readonly.py:111:26:1",
       "file": "scripts/lp_rh_funnel_autopsy_v1_readonly.py",
       "line": 111,
       "col": 26,
       "rule": 1,
-      "snippet": "f\"不支持: {int(statuses.get('UNSUPPORTED', 0))}\","
+      "fingerprint": "bb696816c27afe89",
+      "snippet": "f\"不支持: {int(statuses.get('UNSUPPORTED', 0))}\",",
+      "key": "scripts/lp_rh_funnel_autopsy_v1_readonly.py:111:26:1"
     },
     {
-      "key": "scripts/lp_rh_funnel_autopsy_v1_readonly.py:112:29:1",
       "file": "scripts/lp_rh_funnel_autopsy_v1_readonly.py",
       "line": 112,
       "col": 29,
       "rule": 1,
-      "snippet": "f\"政策阻挡: {int(statuses.get('POLICY_BLOCKED', 0))}\","
+      "fingerprint": "2a881da7ffe77092",
+      "snippet": "f\"政策阻挡: {int(statuses.get('POLICY_BLOCKED', 0))}\",",
+      "key": "scripts/lp_rh_funnel_autopsy_v1_readonly.py:112:29:1"
     },
     {
-      "key": "scripts/lp_rh_netcover_inputs_v1_readonly.py:90:22:2",
       "file": "scripts/lp_rh_netcover_inputs_v1_readonly.py",
       "line": 90,
       "col": 22,
       "rule": 2,
-      "snippet": "reward_verified = bool(evidence.get(\"reward_verified\", False))"
+      "fingerprint": "e8f7f6a7b5f5c60e",
+      "snippet": "reward_verified = bool(evidence.get(\"reward_verified\", False))",
+      "key": "scripts/lp_rh_netcover_inputs_v1_readonly.py:90:22:2"
     },
     {
-      "key": "scripts/lp_rh_organic_volume_v1_readonly.py:225:29:1",
       "file": "scripts/lp_rh_organic_volume_v1_readonly.py",
       "line": 225,
       "col": 29,
       "rule": 1,
-      "snippet": "sender: max(volume - matched.get(sender, Decimal(\"0\")), Decimal(\"0\"))"
+      "fingerprint": "aa7cf0c457deaa98",
+      "snippet": "sender: max(volume - matched.get(sender, Decimal(\"0\")), Decimal(\"0\"))",
+      "key": "scripts/lp_rh_organic_volume_v1_readonly.py:225:29:1"
     },
     {
-      "key": "scripts/lp_rh_pool_probe_v1_readonly.py:109:24:1",
       "file": "scripts/lp_rh_pool_probe_v1_readonly.py",
       "line": 109,
       "col": 24,
       "rule": 1,
-      "snippet": "+ _abi_int24(pk.get(\"tick_spacing\", 0))"
+      "fingerprint": "18ff278c860306dc",
+      "snippet": "+ _abi_int24(pk.get(\"tick_spacing\", 0))",
+      "key": "scripts/lp_rh_pool_probe_v1_readonly.py:109:24:1"
     },
     {
-      "key": "scripts/lp_rh_pool_probe_v1_readonly.py:120:24:1",
       "file": "scripts/lp_rh_pool_probe_v1_readonly.py",
       "line": 120,
       "col": 24,
       "rule": 1,
-      "snippet": "\"tick_spacing\": candidate.get(\"tick_spacing\", 0),"
+      "fingerprint": "ce1f2e3d8d88cf5a",
+      "snippet": "\"tick_spacing\": candidate.get(\"tick_spacing\", 0),",
+      "key": "scripts/lp_rh_pool_probe_v1_readonly.py:120:24:1"
     },
     {
-      "key": "scripts/lp_rh_provider_pool_v1_readonly.py:178:15:1",
       "file": "scripts/lp_rh_provider_pool_v1_readonly.py",
       "line": 178,
       "col": 15,
       "rule": 1,
-      "snippet": "if self._cooling_until.get(name, 0.0) <= now:"
+      "fingerprint": "7ea96c5fab826735",
+      "snippet": "if self._cooling_until.get(name, 0.0) <= now:",
+      "key": "scripts/lp_rh_provider_pool_v1_readonly.py:178:15:1"
     },
     {
-      "key": "scripts/lp_rh_provider_pool_v1_readonly.py:192:28:1",
       "file": "scripts/lp_rh_provider_pool_v1_readonly.py",
       "line": 192,
       "col": 28,
       "rule": 1,
-      "snippet": "self._fails[name] = self._fails.get(name, 0) + 1"
+      "fingerprint": "0aa0d4c77362cf93",
+      "snippet": "self._fails[name] = self._fails.get(name, 0) + 1",
+      "key": "scripts/lp_rh_provider_pool_v1_readonly.py:192:28:1"
     },
     {
-      "key": "scripts/lp_rh_provider_pool_v1_readonly.py:214:25:1",
       "file": "scripts/lp_rh_provider_pool_v1_readonly.py",
       "line": 214,
       "col": 25,
       "rule": 1,
-      "snippet": "\"fails\": self._fails.get(name, 0),"
+      "fingerprint": "11af68de84013e04",
+      "snippet": "\"fails\": self._fails.get(name, 0),",
+      "key": "scripts/lp_rh_provider_pool_v1_readonly.py:214:25:1"
     },
     {
-      "key": "scripts/lp_rh_provider_pool_v1_readonly.py:215:33:1",
       "file": "scripts/lp_rh_provider_pool_v1_readonly.py",
       "line": 215,
       "col": 33,
       "rule": 1,
-      "snippet": "\"cooling_until\": self._cooling_until.get(name, 0.0),"
+      "fingerprint": "6a228b121b91e823",
+      "snippet": "\"cooling_until\": self._cooling_until.get(name, 0.0),",
+      "key": "scripts/lp_rh_provider_pool_v1_readonly.py:215:33:1"
     },
     {
-      "key": "scripts/lp_rh_reorg_resolution_v1_readonly.py:135:40:3",
       "file": "scripts/lp_rh_reorg_resolution_v1_readonly.py",
       "line": 135,
       "col": 40,
       "rule": 3,
-      "snippet": "UPDATE {CONTENDED_TABLE}"
+      "fingerprint": "098a4146451494b1",
+      "snippet": "UPDATE {CONTENDED_TABLE}",
+      "key": "scripts/lp_rh_reorg_resolution_v1_readonly.py:135:40:3"
     },
     {
-      "key": "scripts/lp_rh_reorg_resolution_v1_readonly.py:146:36:3",
       "file": "scripts/lp_rh_reorg_resolution_v1_readonly.py",
       "line": 146,
       "col": 36,
       "rule": 3,
-      "snippet": "UPDATE {CONTENDED_TABLE}"
+      "fingerprint": "098a4146451494b1",
+      "snippet": "UPDATE {CONTENDED_TABLE}",
+      "key": "scripts/lp_rh_reorg_resolution_v1_readonly.py:146:36:3"
     },
     {
-      "key": "scripts/lp_rh_shadow_daemon_v1_readonly.py:181:38:1",
       "file": "scripts/lp_rh_shadow_daemon_v1_readonly.py",
       "line": 181,
       "col": 38,
       "rule": 1,
-      "snippet": "counts[(name, session)] = counts.get((name, session), 0) + 1"
+      "fingerprint": "46c6fd6c60e2e97b",
+      "snippet": "counts[(name, session)] = counts.get((name, session), 0) + 1",
+      "key": "scripts/lp_rh_shadow_daemon_v1_readonly.py:181:38:1"
     },
     {
-      "key": "scripts/lp_rh_shadow_runner_v1_readonly.py:460:39:1",
       "file": "scripts/lp_rh_shadow_runner_v1_readonly.py",
       "line": 460,
       "col": 39,
       "rule": 1,
-      "snippet": "max_impact_bps=Decimal(str(pool_meta.get(\"max_impact_bps\", 50))),"
+      "fingerprint": "9a6886351ee10743",
+      "snippet": "max_impact_bps=Decimal(str(pool_meta.get(\"max_impact_bps\", 50))),",
+      "key": "scripts/lp_rh_shadow_runner_v1_readonly.py:460:39:1"
     },
     {
-      "key": "scripts/lp_rh_shadow_runner_v1_readonly.py:533:22:2",
       "file": "scripts/lp_rh_shadow_runner_v1_readonly.py",
       "line": 533,
       "col": 22,
       "rule": 2,
-      "snippet": "granted = bool(res.get(\"granted\"))"
+      "fingerprint": "0a5bed9d2eefede3",
+      "snippet": "granted = bool(res.get(\"granted\"))",
+      "key": "scripts/lp_rh_shadow_runner_v1_readonly.py:533:22:2"
     },
     {
-      "key": "scripts/lp_rh_shadow_runner_v1_readonly.py:745:27:1",
       "file": "scripts/lp_rh_shadow_runner_v1_readonly.py",
       "line": 745,
       "col": 27,
       "rule": 1,
-      "snippet": "counts[name] = counts.get(name, 0) + 1"
+      "fingerprint": "cbb04132ce9c21a2",
+      "snippet": "counts[name] = counts.get(name, 0) + 1",
+      "key": "scripts/lp_rh_shadow_runner_v1_readonly.py:745:27:1"
     },
     {
-      "key": "scripts/lp_rh_shadow_runner_v1_readonly.py:754:42:1",
       "file": "scripts/lp_rh_shadow_runner_v1_readonly.py",
       "line": 754,
       "col": 42,
       "rule": 1,
-      "snippet": "status_counts[s.primary_status] = status_counts.get(s.primary_status, 0) + 1"
+      "fingerprint": "bdefb142e26fd0d1",
+      "snippet": "status_counts[s.primary_status] = status_counts.get(s.primary_status, 0) + 1",
+      "key": "scripts/lp_rh_shadow_runner_v1_readonly.py:754:42:1"
     },
     {
-      "key": "scripts/lp_rh_shadow_runner_v1_readonly.py:756:49:1",
       "file": "scripts/lp_rh_shadow_runner_v1_readonly.py",
       "line": 756,
       "col": 49,
       "rule": 1,
-      "snippet": "blocker_counts[s.dominant_blocker] = blocker_counts.get(s.dominant_blocker, 0) + 1"
+      "fingerprint": "8386ab2ee4059fe9",
+      "snippet": "blocker_counts[s.dominant_blocker] = blocker_counts.get(s.dominant_blocker, 0) + 1",
+      "key": "scripts/lp_rh_shadow_runner_v1_readonly.py:756:49:1"
     },
     {
-      "key": "scripts/lp_rh_shadow_runner_v1_readonly.py:798:43:1",
       "file": "scripts/lp_rh_shadow_runner_v1_readonly.py",
       "line": 798,
       "col": 43,
       "rule": 1,
-      "snippet": "steps_without_nav_reasons[r] = steps_without_nav_reasons.get(r, 0) + 1"
+      "fingerprint": "0ec0840243944a50",
+      "snippet": "steps_without_nav_reasons[r] = steps_without_nav_reasons.get(r, 0) + 1",
+      "key": "scripts/lp_rh_shadow_runner_v1_readonly.py:798:43:1"
     },
     {
-      "key": "scripts/lp_rh_snapshot_diff_v1_readonly.py:57:8:5",
       "file": "scripts/lp_rh_snapshot_diff_v1_readonly.py",
       "line": 57,
       "col": 8,
       "rule": 5,
-      "snippet": "return \"unknown\""
+      "fingerprint": "d78bcd35e8e78e8f",
+      "snippet": "return \"unknown\"",
+      "key": "scripts/lp_rh_snapshot_diff_v1_readonly.py:57:8:5"
     },
     {
-      "key": "scripts/lp_rh_snapshot_diff_v1_readonly.py:173:38:1",
       "file": "scripts/lp_rh_snapshot_diff_v1_readonly.py",
       "line": 173,
       "col": 38,
       "rule": 1,
-      "snippet": "status_transitions[key] = status_transitions.get(key, 0) + 1"
+      "fingerprint": "411f7cc8a32e8e3d",
+      "snippet": "status_transitions[key] = status_transitions.get(key, 0) + 1",
+      "key": "scripts/lp_rh_snapshot_diff_v1_readonly.py:173:38:1"
     },
     {
-      "key": "scripts/lp_rh_store_v1_readonly.py:310:33:3",
       "file": "scripts/lp_rh_store_v1_readonly.py",
       "line": 310,
       "col": 33,
       "rule": 3,
-      "snippet": "+ \" FROM \" + table + \" WHERE derived_block_hash = ?\","
+      "fingerprint": "c3bac9005e6b8da7",
+      "snippet": "+ \" FROM \" + table + \" WHERE derived_block_hash = ?\",",
+      "key": "scripts/lp_rh_store_v1_readonly.py:310:33:3"
     },
     {
-      "key": "scripts/lp_rh_terminal_gate_v1_readonly.py:76:15:2",
       "file": "scripts/lp_rh_terminal_gate_v1_readonly.py",
       "line": 76,
       "col": 15,
       "rule": 2,
-      "snippet": "return bool(cpc.get(\"conflict\"))"
+      "fingerprint": "8063545c0572d94d",
+      "snippet": "return bool(cpc.get(\"conflict\"))",
+      "key": "scripts/lp_rh_terminal_gate_v1_readonly.py:76:15:2"
     },
     {
-      "key": "scripts/lp_rh_terminal_gate_v1_readonly.py:97:24:2",
       "file": "scripts/lp_rh_terminal_gate_v1_readonly.py",
       "line": 97,
       "col": 24,
       "rule": 2,
-      "snippet": "identity_verified = bool(record.get(\"identity_verified\"))"
+      "fingerprint": "e805b95749220492",
+      "snippet": "identity_verified = bool(record.get(\"identity_verified\"))",
+      "key": "scripts/lp_rh_terminal_gate_v1_readonly.py:97:24:2"
     },
     {
-      "key": "scripts/lp_rh_terminal_gate_v1_readonly.py:98:39:2",
       "file": "scripts/lp_rh_terminal_gate_v1_readonly.py",
       "line": 98,
       "col": 39,
       "rule": 2,
-      "snippet": "protocol_capabilities_sufficient = bool(record.get(\"protocol_capabilities_sufficient\"))"
+      "fingerprint": "5911aa5a70aba40e",
+      "snippet": "protocol_capabilities_sufficient = bool(record.get(\"protocol_capabilities_sufficient\"))",
+      "key": "scripts/lp_rh_terminal_gate_v1_readonly.py:98:39:2"
     },
     {
-      "key": "scripts/lp_rh_terminal_gate_v1_readonly.py:99:30:2",
       "file": "scripts/lp_rh_terminal_gate_v1_readonly.py",
       "line": 99,
       "col": 30,
       "rule": 2,
-      "snippet": "data_complete_and_fresh = bool(record.get(\"data_complete_and_fresh\"))"
+      "fingerprint": "66fe35c4135b315d",
+      "snippet": "data_complete_and_fresh = bool(record.get(\"data_complete_and_fresh\"))",
+      "key": "scripts/lp_rh_terminal_gate_v1_readonly.py:99:30:2"
     },
     {
-      "key": "scripts/lp_rh_terminal_gate_v1_readonly.py:100:26:2",
       "file": "scripts/lp_rh_terminal_gate_v1_readonly.py",
       "line": 100,
       "col": 26,
       "rule": 2,
-      "snippet": "profile_policy_pass = bool(record.get(\"profile_policy_pass\"))"
+      "fingerprint": "866a30f5b247ba45",
+      "snippet": "profile_policy_pass = bool(record.get(\"profile_policy_pass\"))",
+      "key": "scripts/lp_rh_terminal_gate_v1_readonly.py:100:26:2"
     },
     {
-      "key": "scripts/lp_rh_terminal_gate_v1_readonly.py:101:33:2",
       "file": "scripts/lp_rh_terminal_gate_v1_readonly.py",
       "line": 101,
       "col": 33,
       "rule": 2,
-      "snippet": "market_and_chain_risk_pass = bool(record.get(\"market_and_chain_risk_pass\"))"
+      "fingerprint": "61fc1fcb00559527",
+      "snippet": "market_and_chain_risk_pass = bool(record.get(\"market_and_chain_risk_pass\"))",
+      "key": "scripts/lp_rh_terminal_gate_v1_readonly.py:101:33:2"
     },
     {
-      "key": "scripts/lp_rh_terminal_gate_v1_readonly.py:102:20:2",
       "file": "scripts/lp_rh_terminal_gate_v1_readonly.py",
       "line": 102,
       "col": 20,
       "rule": 2,
-      "snippet": "netcover_pass = bool(record.get(\"netcover_pass\"))"
+      "fingerprint": "894a61f7a586c511",
+      "snippet": "netcover_pass = bool(record.get(\"netcover_pass\"))",
+      "key": "scripts/lp_rh_terminal_gate_v1_readonly.py:102:20:2"
     },
     {
-      "key": "scripts/lp_rh_terminal_gate_v1_readonly.py:103:27:2",
       "file": "scripts/lp_rh_terminal_gate_v1_readonly.py",
       "line": 103,
       "col": 27,
       "rule": 2,
-      "snippet": "absolute_profit_pass = bool(record.get(\"absolute_profit_pass\"))"
+      "fingerprint": "5f02255a4b945259",
+      "snippet": "absolute_profit_pass = bool(record.get(\"absolute_profit_pass\"))",
+      "key": "scripts/lp_rh_terminal_gate_v1_readonly.py:103:27:2"
     },
     {
-      "key": "scripts/lp_rh_terminal_gate_v1_readonly.py:104:35:2",
       "file": "scripts/lp_rh_terminal_gate_v1_readonly.py",
       "line": 104,
       "col": 35,
       "rule": 2,
-      "snippet": "position_and_exit_depth_pass = bool(record.get(\"position_and_exit_depth_pass\"))"
+      "fingerprint": "766ae7cc7e1b51f4",
+      "snippet": "position_and_exit_depth_pass = bool(record.get(\"position_and_exit_depth_pass\"))",
+      "key": "scripts/lp_rh_terminal_gate_v1_readonly.py:104:35:2"
     },
     {
-      "key": "scripts/lp_rh_terminal_gate_v1_readonly.py:111:30:2",
       "file": "scripts/lp_rh_terminal_gate_v1_readonly.py",
       "line": 111,
       "col": 30,
       "rule": 2,
-      "snippet": "capital_policy_pass = bool(record.get(\"capital_policy_pass\"))"
+      "fingerprint": "222b5404ca5a2d46",
+      "snippet": "capital_policy_pass = bool(record.get(\"capital_policy_pass\"))",
+      "key": "scripts/lp_rh_terminal_gate_v1_readonly.py:111:30:2"
     },
     {
-      "key": "scripts/lp_rpc_pool_v1_readonly.py:243:18:1",
       "file": "scripts/lp_rpc_pool_v1_readonly.py",
       "line": 243,
       "col": 18,
       "rule": 1,
-      "snippet": "float(self._chain_cfg.get(\"pool_min_interval_secs\", 0.0)),"
+      "fingerprint": "cb6827f11cbd23a4",
+      "snippet": "float(self._chain_cfg.get(\"pool_min_interval_secs\", 0.0)),",
+      "key": "scripts/lp_rpc_pool_v1_readonly.py:243:18:1"
     },
     {
-      "key": "scripts/lp_rpc_pool_v1_readonly.py:273:19:1",
       "file": "scripts/lp_rpc_pool_v1_readonly.py",
       "line": 273,
       "col": 19,
       "rule": 1,
-      "snippet": "if self._cooldown_until.get(e[\"url\"], 0.0) <= now]"
+      "fingerprint": "3481f2db74d2bd24",
+      "snippet": "if self._cooldown_until.get(e[\"url\"], 0.0) <= now]",
+      "key": "scripts/lp_rpc_pool_v1_readonly.py:273:19:1"
     },
     {
-      "key": "scripts/lp_rpc_pool_v1_readonly.py:278:16:1",
       "file": "scripts/lp_rpc_pool_v1_readonly.py",
       "line": 278,
       "col": 16,
       "rule": 1,
-      "snippet": "fails = self._fails.get(url, 0) + 1"
+      "fingerprint": "109e4cd1f28d5085",
+      "snippet": "fails = self._fails.get(url, 0) + 1",
+      "key": "scripts/lp_rpc_pool_v1_readonly.py:278:16:1"
     },
     {
-      "key": "scripts/lp_rpc_pool_v1_readonly.py:298:41:1",
       "file": "scripts/lp_rpc_pool_v1_readonly.py",
       "line": 298,
       "col": 41,
       "rule": 1,
-      "snippet": "failed = {url for url in urls if self._fails.get(url, 0) > 0}"
+      "fingerprint": "f42344075b3c55c2",
+      "snippet": "failed = {url for url in urls if self._fails.get(url, 0) > 0}",
+      "key": "scripts/lp_rpc_pool_v1_readonly.py:298:41:1"
     },
     {
-      "key": "scripts/lp_rpc_pool_v1_readonly.py:300:35:1",
       "file": "scripts/lp_rpc_pool_v1_readonly.py",
       "line": 300,
       "col": 35,
       "rule": 1,
-      "snippet": "url for url in urls if self._cooldown_until.get(url, 0.0) > now"
+      "fingerprint": "14862e62c209e0d6",
+      "snippet": "url for url in urls if self._cooldown_until.get(url, 0.0) > now",
+      "key": "scripts/lp_rpc_pool_v1_readonly.py:300:35:1"
     },
     {
-      "key": "scripts/lp_rpc_pool_v1_readonly.py:309:17:1",
       "file": "scripts/lp_rpc_pool_v1_readonly.py",
       "line": 309,
       "col": 17,
       "rule": 1,
-      "snippet": "(self._fails.get(url, 0) for url in urls), default=0"
+      "fingerprint": "d508d31efdbbbb75",
+      "snippet": "(self._fails.get(url, 0) for url in urls), default=0",
+      "key": "scripts/lp_rpc_pool_v1_readonly.py:309:17:1"
     },
     {
-      "key": "scripts/lp_rpc_pool_v1_readonly.py:312:65:1",
       "file": "scripts/lp_rpc_pool_v1_readonly.py",
       "line": 312,
       "col": 65,
       "rule": 1,
-      "snippet": "{\"url\": endpoint[\"url\"], \"consecutive_failures\": self._fails.get(endpoint[\"url\"], 0),"
+      "fingerprint": "4c2229b7ff25fbdb",
+      "snippet": "{\"url\": endpoint[\"url\"], \"consecutive_failures\": self._fails.get(endpoint[\"url\"], 0),",
+      "key": "scripts/lp_rpc_pool_v1_readonly.py:312:65:1"
     },
     {
-      "key": "scripts/lp_rpc_pool_v1_readonly.py:313:28:1",
       "file": "scripts/lp_rpc_pool_v1_readonly.py",
       "line": 313,
       "col": 28,
       "rule": 1,
-      "snippet": "\"cooling\": self._cooldown_until.get(endpoint[\"url\"], 0.0) > now}"
+      "fingerprint": "306f57f4bd84fede",
+      "snippet": "\"cooling\": self._cooldown_until.get(endpoint[\"url\"], 0.0) > now}",
+      "key": "scripts/lp_rpc_pool_v1_readonly.py:313:28:1"
     },
     {
-      "key": "scripts/lp_rpc_pool_v1_readonly.py:328:34:1",
       "file": "scripts/lp_rpc_pool_v1_readonly.py",
       "line": 328,
       "col": 34,
       "rule": 1,
-      "snippet": "endpoint_pace = float(endpoint.get(\"min_interval_secs\", 0.0))"
+      "fingerprint": "4c4b50a772d9b07c",
+      "snippet": "endpoint_pace = float(endpoint.get(\"min_interval_secs\", 0.0))",
+      "key": "scripts/lp_rpc_pool_v1_readonly.py:328:34:1"
     },
     {
-      "key": "scripts/lp_rpc_pool_v1_readonly.py:333:16:1",
       "file": "scripts/lp_rpc_pool_v1_readonly.py",
       "line": 333,
       "col": 16,
       "rule": 1,
-      "snippet": "self._chain_cfg.get(\"method_min_interval_secs\", {}).get(method, 0.0))"
+      "fingerprint": "4a8527699cc3c2ff",
+      "snippet": "self._chain_cfg.get(\"method_min_interval_secs\", {}).get(method, 0.0))",
+      "key": "scripts/lp_rpc_pool_v1_readonly.py:333:16:1"
     },
     {
-      "key": "scripts/lp_rwa_anchors_v1_readonly.py:184:17:2",
       "file": "scripts/lp_rwa_anchors_v1_readonly.py",
       "line": 184,
       "col": 17,
       "rule": 2,
-      "snippet": "halted = bool(metadata.get(\"isTradingHalted\")) or bool(quote_payload.get(\"isTradingHalted\"))"
+      "fingerprint": "87b1e2b964343486",
+      "snippet": "halted = bool(metadata.get(\"isTradingHalted\")) or bool(quote_payload.get(\"isTradingHalted\"))",
+      "key": "scripts/lp_rwa_anchors_v1_readonly.py:184:17:2"
     },
     {
-      "key": "scripts/lp_rwa_anchors_v1_readonly.py:184:58:2",
       "file": "scripts/lp_rwa_anchors_v1_readonly.py",
       "line": 184,
       "col": 58,
       "rule": 2,
-      "snippet": "halted = bool(metadata.get(\"isTradingHalted\")) or bool(quote_payload.get(\"isTradingHalted\"))"
+      "fingerprint": "87b1e2b964343486",
+      "snippet": "halted = bool(metadata.get(\"isTradingHalted\")) or bool(quote_payload.get(\"isTradingHalted\"))",
+      "key": "scripts/lp_rwa_anchors_v1_readonly.py:184:58:2"
     },
     {
-      "key": "scripts/lp_rwa_collector_daemon_v1_readonly.py:672:12:5",
       "file": "scripts/lp_rwa_collector_daemon_v1_readonly.py",
       "line": 672,
       "col": 12,
       "rule": 5,
-      "snippet": "return False"
+      "fingerprint": "e706fa9325ded821",
+      "snippet": "return False",
+      "key": "scripts/lp_rwa_collector_daemon_v1_readonly.py:672:12:5"
     },
     {
-      "key": "scripts/lp_scanner_daemon_v1_readonly.py:362:13:2",
       "file": "scripts/lp_scanner_daemon_v1_readonly.py",
       "line": 362,
       "col": 13,
       "rule": 2,
-      "snippet": "vetted = bool(rec.get(\"vetted\", False))"
+      "fingerprint": "f2af3717a719c443",
+      "snippet": "vetted = bool(rec.get(\"vetted\", False))",
+      "key": "scripts/lp_scanner_daemon_v1_readonly.py:362:13:2"
     },
     {
-      "key": "scripts/lp_scanner_daemon_v1_readonly.py:705:12:5",
       "file": "scripts/lp_scanner_daemon_v1_readonly.py",
       "line": 705,
       "col": 12,
       "rule": 5,
-      "snippet": "return \"DEGRADED\""
+      "fingerprint": "058ad16ebf359d40",
+      "snippet": "return \"DEGRADED\"",
+      "key": "scripts/lp_scanner_daemon_v1_readonly.py:705:12:5"
     },
     {
-      "key": "scripts/lp_scanner_daemon_v1_readonly.py:791:31:1",
       "file": "scripts/lp_scanner_daemon_v1_readonly.py",
       "line": 791,
       "col": 31,
       "rule": 1,
-      "snippet": "key=lambda record: record.get(\"composite_score\", 0.0),"
+      "fingerprint": "c94a1a9f65f0439f",
+      "snippet": "key=lambda record: record.get(\"composite_score\", 0.0),",
+      "key": "scripts/lp_scanner_daemon_v1_readonly.py:791:31:1"
     },
     {
-      "key": "scripts/lp_scanner_daemon_v1_readonly.py:1186:24:2",
       "file": "scripts/lp_scanner_daemon_v1_readonly.py",
       "line": 1186,
       "col": 24,
       "rule": 2,
-      "snippet": "\"complete\": bool(measured.get(\"complete\")),"
+      "fingerprint": "9986c5772d7d1015",
+      "snippet": "\"complete\": bool(measured.get(\"complete\")),",
+      "key": "scripts/lp_scanner_daemon_v1_readonly.py:1186:24:2"
     },
     {
-      "key": "scripts/lp_scanner_daemon_v1_readonly.py:1253:30:2",
       "file": "scripts/lp_scanner_daemon_v1_readonly.py",
       "line": 1253,
       "col": 30,
       "rule": 2,
-      "snippet": "netcover_passed = bool(rec.get(\"netcover_pass\", False)) and not permanent_reason"
+      "fingerprint": "49bcab6828bf5667",
+      "snippet": "netcover_passed = bool(rec.get(\"netcover_pass\", False)) and not permanent_reason",
+      "key": "scripts/lp_scanner_daemon_v1_readonly.py:1253:30:2"
     },
     {
-      "key": "scripts/lp_scanner_daemon_v1_readonly.py:1287:27:2",
       "file": "scripts/lp_scanner_daemon_v1_readonly.py",
       "line": 1287,
       "col": 27,
       "rule": 2,
-      "snippet": "prior_vetted = bool(source.get(\"vetted\", False))"
+      "fingerprint": "166737a0ab82829e",
+      "snippet": "prior_vetted = bool(source.get(\"vetted\", False))",
+      "key": "scripts/lp_scanner_daemon_v1_readonly.py:1287:27:2"
     },
     {
-      "key": "scripts/lp_scanner_daemon_v1_readonly.py:1867:8:5",
       "file": "scripts/lp_scanner_daemon_v1_readonly.py",
       "line": 1867,
       "col": 8,
       "rule": 5,
-      "snippet": "return 1"
+      "fingerprint": "486d9affb60dbb00",
+      "snippet": "return 1",
+      "key": "scripts/lp_scanner_daemon_v1_readonly.py:1867:8:5"
     },
     {
-      "key": "scripts/lp_shadow_gate_v1_readonly.py:466:15:1",
       "file": "scripts/lp_shadow_gate_v1_readonly.py",
       "line": 466,
       "col": 15,
       "rule": 1,
-      "snippet": "f\"{report.get('position_coverage', {}).get('unique_position_identities', 0)}；\""
+      "fingerprint": "e7be595280660a3e",
+      "snippet": "f\"{report.get('position_coverage', {}).get('unique_position_identities', 0)}；\"",
+      "key": "scripts/lp_shadow_gate_v1_readonly.py:466:15:1"
     },
     {
-      "key": "scripts/lp_shadow_gate_v1_readonly.py:468:15:1",
       "file": "scripts/lp_shadow_gate_v1_readonly.py",
       "line": 468,
       "col": 15,
       "rule": 1,
-      "snippet": "f\"{report.get('position_coverage', {}).get('unique_root_pools', 0)}。\""
+      "fingerprint": "7784f640288700d6",
+      "snippet": "f\"{report.get('position_coverage', {}).get('unique_root_pools', 0)}。\"",
+      "key": "scripts/lp_shadow_gate_v1_readonly.py:468:15:1"
     },
     {
-      "key": "scripts/lp_solana_m1_dry_run_v1_readonly.py:55:16:2",
+      "file": "scripts/lp_silent_failure_lint_v1_readonly.py",
+      "line": 349,
+      "col": 25,
+      "rule": 1,
+      "fingerprint": "130adc36bf09fbbc",
+      "snippet": "if seen[ident] > baseline_counts.get(ident, 0):",
+      "key": "scripts/lp_silent_failure_lint_v1_readonly.py:349:25:1"
+    },
+    {
+      "file": "scripts/lp_silent_failure_lint_v1_readonly.py",
+      "line": 430,
+      "col": 12,
+      "rule": 5,
+      "fingerprint": "8373f7e086bb2778",
+      "snippet": "return 2",
+      "key": "scripts/lp_silent_failure_lint_v1_readonly.py:430:12:5"
+    },
+    {
       "file": "scripts/lp_solana_m1_dry_run_v1_readonly.py",
       "line": 55,
       "col": 16,
       "rule": 2,
-      "snippet": "bool(_mapping(item, \"account\").get(\"is_signer\", False)),"
+      "fingerprint": "cfd69a7c3551cafa",
+      "snippet": "bool(_mapping(item, \"account\").get(\"is_signer\", False)),",
+      "key": "scripts/lp_solana_m1_dry_run_v1_readonly.py:55:16:2"
     },
     {
-      "key": "scripts/lp_solana_m1_dry_run_v1_readonly.py:56:16:2",
       "file": "scripts/lp_solana_m1_dry_run_v1_readonly.py",
       "line": 56,
       "col": 16,
       "rule": 2,
-      "snippet": "bool(_mapping(item, \"account\").get(\"is_writable\", False)),"
+      "fingerprint": "b85d99e61120363b",
+      "snippet": "bool(_mapping(item, \"account\").get(\"is_writable\", False)),",
+      "key": "scripts/lp_solana_m1_dry_run_v1_readonly.py:56:16:2"
     },
     {
-      "key": "scripts/lp_solana_m1_dry_run_v1_readonly.py:191:21:2",
       "file": "scripts/lp_solana_m1_dry_run_v1_readonly.py",
       "line": 191,
       "col": 21,
       "rule": 2,
-      "snippet": "reduces_risk=bool(intent_value.get(\"reduces_risk\", False)),"
+      "fingerprint": "86ca43fca3170ad9",
+      "snippet": "reduces_risk=bool(intent_value.get(\"reduces_risk\", False)),",
+      "key": "scripts/lp_solana_m1_dry_run_v1_readonly.py:191:21:2"
     },
     {
-      "key": "scripts/lp_solana_program_id_onchain_verifier_v1.py:138:28:2",
       "file": "scripts/lp_solana_program_id_onchain_verifier_v1.py",
       "line": 138,
       "col": 28,
       "rule": 2,
-      "snippet": "out[\"executable\"] = bool(v.get(\"executable\", False))"
+      "fingerprint": "900391727a6761fe",
+      "snippet": "out[\"executable\"] = bool(v.get(\"executable\", False))",
+      "key": "scripts/lp_solana_program_id_onchain_verifier_v1.py:138:28:2"
     },
     {
-      "key": "scripts/lp_solana_program_id_onchain_verifier_v1.py:143:26:1",
       "file": "scripts/lp_solana_program_id_onchain_verifier_v1.py",
       "line": 143,
       "col": 26,
       "rule": 1,
-      "snippet": "out[\"lamports\"] = v.get(\"lamports\", 0)"
+      "fingerprint": "a57481ddef089c64",
+      "snippet": "out[\"lamports\"] = v.get(\"lamports\", 0)",
+      "key": "scripts/lp_solana_program_id_onchain_verifier_v1.py:143:26:1"
     },
     {
-      "key": "scripts/lp_solana_stock_stage2_v1_readonly.py:475:8:5",
       "file": "scripts/lp_solana_stock_stage2_v1_readonly.py",
       "line": 475,
       "col": 8,
       "rule": 5,
-      "snippet": "return False"
+      "fingerprint": "e706fa9325ded821",
+      "snippet": "return False",
+      "key": "scripts/lp_solana_stock_stage2_v1_readonly.py:475:8:5"
     },
     {
-      "key": "scripts/lp_solana_stock_stage2_v1_readonly.py:1111:7:1",
       "file": "scripts/lp_solana_stock_stage2_v1_readonly.py",
       "line": 1111,
       "col": 7,
       "rule": 1,
-      "snippet": "if replay.get(\"swap_count\", 0) <= 0:"
+      "fingerprint": "9269c157c5423887",
+      "snippet": "if replay.get(\"swap_count\", 0) <= 0:",
+      "key": "scripts/lp_solana_stock_stage2_v1_readonly.py:1111:7:1"
     },
     {
-      "key": "scripts/lp_solana_stock_stage2_v1_readonly.py:1182:16:1",
       "file": "scripts/lp_solana_stock_stage2_v1_readonly.py",
       "line": 1182,
       "col": 16,
       "rule": 1,
-      "snippet": "and replay.get(\"swap_count\", 0) > 0"
+      "fingerprint": "c8e6d1bac0a72466",
+      "snippet": "and replay.get(\"swap_count\", 0) > 0",
+      "key": "scripts/lp_solana_stock_stage2_v1_readonly.py:1182:16:1"
     },
     {
-      "key": "scripts/lp_stock_tier_c_shadow_v1_readonly.py:195:39:1",
       "file": "scripts/lp_stock_tier_c_shadow_v1_readonly.py",
       "line": 195,
       "col": 39,
       "rule": 1,
-      "snippet": "output[str(pool_id)] = int(replay.get(\"swap_count\", 0))"
+      "fingerprint": "d2829f00ebc9309f",
+      "snippet": "output[str(pool_id)] = int(replay.get(\"swap_count\", 0))",
+      "key": "scripts/lp_stock_tier_c_shadow_v1_readonly.py:195:39:1"
     },
     {
-      "key": "scripts/lp_stock_token_universe_v1_readonly.py:326:29:1",
       "file": "scripts/lp_stock_token_universe_v1_readonly.py",
       "line": 326,
       "col": 29,
       "rule": 1,
-      "snippet": "\"tier_counts\": {key: tier_counts.get(key, 0) for key in (\"A\", \"B\", \"C\", \"stock_stock\")},"
+      "fingerprint": "c9d2b65355447c11",
+      "snippet": "\"tier_counts\": {key: tier_counts.get(key, 0) for key in (\"A\", \"B\", \"C\", \"stock_stock\")},",
+      "key": "scripts/lp_stock_token_universe_v1_readonly.py:326:29:1"
     },
     {
-      "key": "scripts/lp_stock_token_universe_v1_readonly.py:328:25:1",
       "file": "scripts/lp_stock_token_universe_v1_readonly.py",
       "line": 328,
       "col": 25,
       "rule": 1,
-      "snippet": "chain: {key: counts.get(key, 0) for key in (\"A\", \"B\", \"C\", \"stock_stock\")}"
+      "fingerprint": "712a7278b1595921",
+      "snippet": "chain: {key: counts.get(key, 0) for key in (\"A\", \"B\", \"C\", \"stock_stock\")}",
+      "key": "scripts/lp_stock_token_universe_v1_readonly.py:328:25:1"
     },
     {
-      "key": "scripts/lp_stock_token_universe_v1_readonly.py:332:37:1",
       "file": "scripts/lp_stock_token_universe_v1_readonly.py",
       "line": 332,
       "col": 37,
       "rule": 1,
-      "snippet": "\"issuer_unknown_pool_count\": issuer_pool_counts.get(\"unknown\", 0),"
+      "fingerprint": "e3cec334042c1c2c",
+      "snippet": "\"issuer_unknown_pool_count\": issuer_pool_counts.get(\"unknown\", 0),",
+      "key": "scripts/lp_stock_token_universe_v1_readonly.py:332:37:1"
     },
     {
-      "key": "scripts/lp_stock_token_universe_v1_readonly.py:336:39:2",
       "file": "scripts/lp_stock_token_universe_v1_readonly.py",
       "line": 336,
       "col": 39,
       "rule": 2,
-      "snippet": "\"wash_suspect_pool_count\": sum(bool(row.get(\"wash_suspect\")) for row in materialized),"
+      "fingerprint": "475e1ed0fd0addd4",
+      "snippet": "\"wash_suspect_pool_count\": sum(bool(row.get(\"wash_suspect\")) for row in materialized),",
+      "key": "scripts/lp_stock_token_universe_v1_readonly.py:336:39:2"
     },
     {
-      "key": "scripts/lp_survival_horizon_ev_model_v1_readonly.py:88:26:1",
       "file": "scripts/lp_survival_horizon_ev_model_v1_readonly.py",
       "line": 88,
       "col": 26,
       "rule": 1,
-      "snippet": "return expected_fee * IL_LVR_RATIO.get(scenario, 0.30)"
+      "fingerprint": "0f8bb34e120570b9",
+      "snippet": "return expected_fee * IL_LVR_RATIO.get(scenario, 0.30)",
+      "key": "scripts/lp_survival_horizon_ev_model_v1_readonly.py:88:26:1"
     },
     {
-      "key": "scripts/lp_survival_horizon_ev_model_v1_readonly.py:148:16:1",
       "file": "scripts/lp_survival_horizon_ev_model_v1_readonly.py",
       "line": 148,
       "col": 16,
       "rule": 1,
-      "snippet": "gas_proxy = pool.get(\"gas_cost_proxy\", 0.0) or 0.0"
+      "fingerprint": "5aefa501edd03755",
+      "snippet": "gas_proxy = pool.get(\"gas_cost_proxy\", 0.0) or 0.0",
+      "key": "scripts/lp_survival_horizon_ev_model_v1_readonly.py:148:16:1"
     },
     {
-      "key": "scripts/lp_survival_horizon_ev_model_v1_readonly.py:164:20:1",
       "file": "scripts/lp_survival_horizon_ev_model_v1_readonly.py",
       "line": 164,
       "col": 20,
       "rule": 1,
-      "snippet": "\"fee_tier\": pool.get(\"fee_tier\", 0),"
+      "fingerprint": "4b28b5b964d02fbc",
+      "snippet": "\"fee_tier\": pool.get(\"fee_tier\", 0),",
+      "key": "scripts/lp_survival_horizon_ev_model_v1_readonly.py:164:20:1"
     },
     {
-      "key": "scripts/lp_survival_horizon_ev_model_v1_readonly.py:179:22:1",
       "file": "scripts/lp_survival_horizon_ev_model_v1_readonly.py",
       "line": 179,
       "col": 22,
       "rule": 1,
-      "snippet": "\"confidence\": pool.get(\"confidence\", 0.0),"
+      "fingerprint": "dddcc75190cc7801",
+      "snippet": "\"confidence\": pool.get(\"confidence\", 0.0),",
+      "key": "scripts/lp_survival_horizon_ev_model_v1_readonly.py:179:22:1"
     },
     {
-      "key": "scripts/lp_survival_out_of_range_risk_v1_readonly.py:79:12:1",
       "file": "scripts/lp_survival_out_of_range_risk_v1_readonly.py",
       "line": 79,
       "col": 12,
       "rule": 1,
-      "snippet": "sd_hr = TICK_STDDEV_PER_HR.get(chain, 60.0)"
+      "fingerprint": "a0b9a1f08356159b",
+      "snippet": "sd_hr = TICK_STDDEV_PER_HR.get(chain, 60.0)",
+      "key": "scripts/lp_survival_out_of_range_risk_v1_readonly.py:79:12:1"
     },
     {
-      "key": "scripts/lp_survival_out_of_range_risk_v1_readonly.py:89:16:1",
       "file": "scripts/lp_survival_out_of_range_risk_v1_readonly.py",
       "line": 89,
       "col": 16,
       "rule": 1,
-      "snippet": "sd_hr = TICK_STDDEV_PER_HR.get(chain, 60.0)"
+      "fingerprint": "a0b9a1f08356159b",
+      "snippet": "sd_hr = TICK_STDDEV_PER_HR.get(chain, 60.0)",
+      "key": "scripts/lp_survival_out_of_range_risk_v1_readonly.py:89:16:1"
     },
     {
-      "key": "scripts/lp_survival_out_of_range_risk_v1_readonly.py:117:24:1",
       "file": "scripts/lp_survival_out_of_range_risk_v1_readonly.py",
       "line": 117,
       "col": 24,
       "rule": 1,
-      "snippet": "\"fee_tier\": pool.get(\"fee_tier\", 0),"
+      "fingerprint": "4b28b5b964d02fbc",
+      "snippet": "\"fee_tier\": pool.get(\"fee_tier\", 0),",
+      "key": "scripts/lp_survival_out_of_range_risk_v1_readonly.py:117:24:1"
     },
     {
-      "key": "scripts/lp_survival_out_of_range_risk_v1_readonly.py:203:35:1",
       "file": "scripts/lp_survival_out_of_range_risk_v1_readonly.py",
       "line": 203,
       "col": 35,
       "rule": 1,
-      "snippet": "\"base_historical_samples\": base_hist.get(\"samples\", 0),"
+      "fingerprint": "c7aaaece731c1602",
+      "snippet": "\"base_historical_samples\": base_hist.get(\"samples\", 0),",
+      "key": "scripts/lp_survival_out_of_range_risk_v1_readonly.py:203:35:1"
     },
     {
-      "key": "scripts/lp_tier_b_baseline_v1_readonly.py:97:27:1",
       "file": "scripts/lp_tier_b_baseline_v1_readonly.py",
       "line": 97,
       "col": 27,
       "rule": 1,
-      "snippet": "fee_tier_bps = int(row.get(\"fee_tier_bps\", 0) or 0)"
+      "fingerprint": "ed573331412bd1d3",
+      "snippet": "fee_tier_bps = int(row.get(\"fee_tier_bps\", 0) or 0)",
+      "key": "scripts/lp_tier_b_baseline_v1_readonly.py:97:27:1"
     },
     {
-      "key": "scripts/lp_tier_b_baseline_v1_readonly.py:209:7:1",
       "file": "scripts/lp_tier_b_baseline_v1_readonly.py",
       "line": 209,
       "col": 7,
       "rule": 1,
-      "snippet": "if payload[\"tier_histogram\"].get(\"B\", 0) == 0:"
+      "fingerprint": "94b760e4ccc6e31a",
+      "snippet": "if payload[\"tier_histogram\"].get(\"B\", 0) == 0:",
+      "key": "scripts/lp_tier_b_baseline_v1_readonly.py:209:7:1"
     },
     {
-      "key": "scripts/lp_tier_b_baseline_v2_readonly.py:36:8:5",
       "file": "scripts/lp_tier_b_baseline_v2_readonly.py",
       "line": 36,
       "col": 8,
       "rule": 5,
-      "snippet": "return 0.0"
+      "fingerprint": "8725d058f45489d4",
+      "snippet": "return 0.0",
+      "key": "scripts/lp_tier_b_baseline_v2_readonly.py:36:8:5"
     },
     {
-      "key": "scripts/lp_tier_b_baseline_v2_readonly.py:58:8:5",
       "file": "scripts/lp_tier_b_baseline_v2_readonly.py",
       "line": 58,
       "col": 8,
       "rule": 5,
-      "snippet": "return False"
+      "fingerprint": "e706fa9325ded821",
+      "snippet": "return False",
+      "key": "scripts/lp_tier_b_baseline_v2_readonly.py:58:8:5"
     },
     {
-      "key": "scripts/lp_tier_b_baseline_v2_readonly.py:327:27:1",
       "file": "scripts/lp_tier_b_baseline_v2_readonly.py",
       "line": 327,
       "col": 27,
       "rule": 1,
-      "snippet": "\"raw_b_count\": int(raw_tier_histogram.get(\"B\", 0)),"
+      "fingerprint": "6d5fad2ca8d59854",
+      "snippet": "\"raw_b_count\": int(raw_tier_histogram.get(\"B\", 0)),",
+      "key": "scripts/lp_tier_b_baseline_v2_readonly.py:327:27:1"
     },
     {
-      "key": "scripts/lp_tier_b_level2_replay_v1_readonly.py:184:48:1",
       "file": "scripts/lp_tier_b_level2_replay_v1_readonly.py",
       "line": 184,
       "col": 48,
       "rule": 1,
-      "snippet": "sorted_swaps = sorted(swaps, key=lambda x: (x.get(\"block\", 0), x.get(\"price\", 0.0)))"
+      "fingerprint": "57e216bb4d5bad0a",
+      "snippet": "sorted_swaps = sorted(swaps, key=lambda x: (x.get(\"block\", 0), x.get(\"price\", 0.0)))",
+      "key": "scripts/lp_tier_b_level2_replay_v1_readonly.py:184:48:1"
     },
     {
-      "key": "scripts/lp_tier_b_level2_replay_v1_readonly.py:184:67:1",
       "file": "scripts/lp_tier_b_level2_replay_v1_readonly.py",
       "line": 184,
       "col": 67,
       "rule": 1,
-      "snippet": "sorted_swaps = sorted(swaps, key=lambda x: (x.get(\"block\", 0), x.get(\"price\", 0.0)))"
+      "fingerprint": "57e216bb4d5bad0a",
+      "snippet": "sorted_swaps = sorted(swaps, key=lambda x: (x.get(\"block\", 0), x.get(\"price\", 0.0)))",
+      "key": "scripts/lp_tier_b_level2_replay_v1_readonly.py:184:67:1"
     },
     {
-      "key": "scripts/lp_tier_b_level2_replay_v1_readonly.py:209:26:1",
       "file": "scripts/lp_tier_b_level2_replay_v1_readonly.py",
       "line": 209,
       "col": 26,
       "rule": 1,
-      "snippet": "float(s.get(\"liquidity\", 0) or 0),"
+      "fingerprint": "13ebbbd1fe79701e",
+      "snippet": "float(s.get(\"liquidity\", 0) or 0),",
+      "key": "scripts/lp_tier_b_level2_replay_v1_readonly.py:209:26:1"
     },
     {
-      "key": "scripts/lp_tier_b_level2_replay_v1_readonly.py:210:24:1",
       "file": "scripts/lp_tier_b_level2_replay_v1_readonly.py",
       "line": 210,
       "col": 24,
       "rule": 1,
-      "snippet": "int(s.get(\"amount1\", 0)),"
+      "fingerprint": "0ea357ab0d53679c",
+      "snippet": "int(s.get(\"amount1\", 0)),",
+      "key": "scripts/lp_tier_b_level2_replay_v1_readonly.py:210:24:1"
     },
     {
-      "key": "scripts/lp_tier_b_level2_replay_v1_readonly.py:240:27:1",
       "file": "scripts/lp_tier_b_level2_replay_v1_readonly.py",
       "line": 240,
       "col": 27,
       "rule": 1,
-      "snippet": "last_rebal_block = int(sorted_swaps[0].get(\"block\", 0) or 0)"
+      "fingerprint": "83b1cbc7c053c295",
+      "snippet": "last_rebal_block = int(sorted_swaps[0].get(\"block\", 0) or 0)",
+      "key": "scripts/lp_tier_b_level2_replay_v1_readonly.py:240:27:1"
     },
     {
-      "key": "scripts/lp_tier_b_level2_replay_v1_readonly.py:244:18:1",
       "file": "scripts/lp_tier_b_level2_replay_v1_readonly.py",
       "line": 244,
       "col": 18,
       "rule": 1,
-      "snippet": "blk = int(s.get(\"block\", 0) or 0)"
+      "fingerprint": "f01ef2a4648a4caf",
+      "snippet": "blk = int(s.get(\"block\", 0) or 0)",
+      "key": "scripts/lp_tier_b_level2_replay_v1_readonly.py:244:18:1"
     },
     {
-      "key": "scripts/lp_tier_b_level2_replay_v1_readonly.py:250:22:1",
       "file": "scripts/lp_tier_b_level2_replay_v1_readonly.py",
       "line": 250,
       "col": 22,
       "rule": 1,
-      "snippet": "float(s.get(\"liquidity\", 0) or 0),"
+      "fingerprint": "13ebbbd1fe79701e",
+      "snippet": "float(s.get(\"liquidity\", 0) or 0),",
+      "key": "scripts/lp_tier_b_level2_replay_v1_readonly.py:250:22:1"
     },
     {
-      "key": "scripts/lp_tier_b_level2_replay_v1_readonly.py:251:20:1",
       "file": "scripts/lp_tier_b_level2_replay_v1_readonly.py",
       "line": 251,
       "col": 20,
       "rule": 1,
-      "snippet": "int(s.get(\"amount1\", 0)),"
+      "fingerprint": "0ea357ab0d53679c",
+      "snippet": "int(s.get(\"amount1\", 0)),",
+      "key": "scripts/lp_tier_b_level2_replay_v1_readonly.py:251:20:1"
     },
     {
-      "key": "scripts/lp_tier_b_level2_replay_v1_readonly.py:284:18:1",
       "file": "scripts/lp_tier_b_level2_replay_v1_readonly.py",
       "line": 284,
       "col": 18,
       "rule": 1,
-      "snippet": "float(s.get(\"liquidity\", 0) or 0),"
+      "fingerprint": "13ebbbd1fe79701e",
+      "snippet": "float(s.get(\"liquidity\", 0) or 0),",
+      "key": "scripts/lp_tier_b_level2_replay_v1_readonly.py:284:18:1"
     },
     {
-      "key": "scripts/lp_tier_b_level2_replay_v1_readonly.py:285:16:1",
       "file": "scripts/lp_tier_b_level2_replay_v1_readonly.py",
       "line": 285,
       "col": 16,
       "rule": 1,
-      "snippet": "int(s.get(\"amount1\", 0)),"
+      "fingerprint": "0ea357ab0d53679c",
+      "snippet": "int(s.get(\"amount1\", 0)),",
+      "key": "scripts/lp_tier_b_level2_replay_v1_readonly.py:285:16:1"
     },
     {
-      "key": "scripts/lp_tier_c_exit_feasibility_v1_readonly.py:157:22:1",
       "file": "scripts/lp_tier_c_exit_feasibility_v1_readonly.py",
       "line": 157,
       "col": 22,
       "rule": 1,
-      "snippet": "liq_entry = next((s.get(\"liquidity\", 0) for s in swaps if s.get(\"liquidity\")), 0)"
+      "fingerprint": "4fdbca9e13bc8479",
+      "snippet": "liq_entry = next((s.get(\"liquidity\", 0) for s in swaps if s.get(\"liquidity\")), 0)",
+      "key": "scripts/lp_tier_c_exit_feasibility_v1_readonly.py:157:22:1"
     },
     {
-      "key": "scripts/lp_tier_c_exit_feasibility_v1_readonly.py:202:18:1",
       "file": "scripts/lp_tier_c_exit_feasibility_v1_readonly.py",
       "line": 202,
       "col": 18,
       "rule": 1,
-      "snippet": "liq_window = [s.get(\"liquidity\", 0) for s in swaps[: breach_i + max(1, dump_lookahead)] if s.get(\"li"
+      "fingerprint": "4df850e9b4969c24",
+      "snippet": "liq_window = [s.get(\"liquidity\", 0) for s in swaps[: breach_i + max(1, dump_lookahead)] if s.get(\"li",
+      "key": "scripts/lp_tier_c_exit_feasibility_v1_readonly.py:202:18:1"
     },
     {
-      "key": "scripts/lp_tier_c_exit_feasibility_v1_readonly.py:387:18:1",
       "file": "scripts/lp_tier_c_exit_feasibility_v1_readonly.py",
       "line": 387,
       "col": 18,
       "rule": 1,
-      "snippet": "fwd = int(p.get(\"blocks_forward\", 5000))"
+      "fingerprint": "34536cdbbf8590f3",
+      "snippet": "fwd = int(p.get(\"blocks_forward\", 5000))",
+      "key": "scripts/lp_tier_c_exit_feasibility_v1_readonly.py:387:18:1"
     },
     {
-      "key": "scripts/lp_tier_c_exit_feasibility_v1_readonly.py:388:25:1",
       "file": "scripts/lp_tier_c_exit_feasibility_v1_readonly.py",
       "line": 388,
       "col": 25,
       "rule": 1,
-      "snippet": "dec0, dec1 = int(p.get(\"dec0\", 18)), int(p.get(\"dec1\", 18))"
+      "fingerprint": "af1aeb91252edc29",
+      "snippet": "dec0, dec1 = int(p.get(\"dec0\", 18)), int(p.get(\"dec1\", 18))",
+      "key": "scripts/lp_tier_c_exit_feasibility_v1_readonly.py:388:25:1"
     },
     {
-      "key": "scripts/lp_tier_c_exit_feasibility_v1_readonly.py:388:49:1",
       "file": "scripts/lp_tier_c_exit_feasibility_v1_readonly.py",
       "line": 388,
       "col": 49,
       "rule": 1,
-      "snippet": "dec0, dec1 = int(p.get(\"dec0\", 18)), int(p.get(\"dec1\", 18))"
+      "fingerprint": "af1aeb91252edc29",
+      "snippet": "dec0, dec1 = int(p.get(\"dec0\", 18)), int(p.get(\"dec1\", 18))",
+      "key": "scripts/lp_tier_c_exit_feasibility_v1_readonly.py:388:49:1"
     },
     {
-      "key": "scripts/lp_tier_c_exit_feasibility_v1_readonly.py:391:63:1",
       "file": "scripts/lp_tier_c_exit_feasibility_v1_readonly.py",
       "line": 391,
       "col": 63,
       "rule": 1,
-      "snippet": "r = analyze_exit_feasibility(swaps, entry_price, float(p.get(\"range_pct\", 5)))"
+      "fingerprint": "c0cdb3ef5414b7cf",
+      "snippet": "r = analyze_exit_feasibility(swaps, entry_price, float(p.get(\"range_pct\", 5)))",
+      "key": "scripts/lp_tier_c_exit_feasibility_v1_readonly.py:391:63:1"
     },
     {
-      "key": "scripts/lp_tier_c_exit_feasibility_v1_readonly.py:408:31:1",
       "file": "scripts/lp_tier_c_exit_feasibility_v1_readonly.py",
       "line": 408,
       "col": 31,
       "rule": 1,
-      "snippet": "counts[v[\"verdict\"]] = counts.get(v[\"verdict\"], 0) + 1"
+      "fingerprint": "e6ca0d0e92d7087c",
+      "snippet": "counts[v[\"verdict\"]] = counts.get(v[\"verdict\"], 0) + 1",
+      "key": "scripts/lp_tier_c_exit_feasibility_v1_readonly.py:408:31:1"
     },
     {
-      "key": "scripts/lp_tp_d_compare_v1_readonly.py:71:65:2",
       "file": "scripts/lp_tp_d_compare_v1_readonly.py",
       "line": 71,
       "col": 65,
       "rule": 2,
-      "snippet": "former, current = bool(row[\"same_batch_former_stable\"]), bool(row.get(\"stable\"))"
+      "fingerprint": "8759dfde235e9fff",
+      "snippet": "former, current = bool(row[\"same_batch_former_stable\"]), bool(row.get(\"stable\"))",
+      "key": "scripts/lp_tp_d_compare_v1_readonly.py:71:65:2"
     },
     {
-      "key": "scripts/lp_tp_d_compare_v1_readonly.py:110:43:2",
       "file": "scripts/lp_tp_d_compare_v1_readonly.py",
       "line": 110,
       "col": 43,
       "rule": 2,
-      "snippet": "\"current_10_stable_count\": sum(bool(row.get(\"stable\")) for row in controlled),"
+      "fingerprint": "7faaf8ed20618ec3",
+      "snippet": "\"current_10_stable_count\": sum(bool(row.get(\"stable\")) for row in controlled),",
+      "key": "scripts/lp_tp_d_compare_v1_readonly.py:110:43:2"
     },
     {
-      "key": "scripts/lp_universe_scope_audit_v1_readonly.py:391:28:2",
       "file": "scripts/lp_universe_scope_audit_v1_readonly.py",
       "line": 391,
       "col": 28,
       "rule": 2,
-      "snippet": "\"freeze_completed\": bool(read_json(REPO_ROOT / \"reports\" / \"lp_real_data_final_freeze\" / \"20260601_1"
+      "fingerprint": "aabbaddc9af27935",
+      "snippet": "\"freeze_completed\": bool(read_json(REPO_ROOT / \"reports\" / \"lp_real_data_final_freeze\" / \"20260601_1",
+      "key": "scripts/lp_universe_scope_audit_v1_readonly.py:391:28:2"
     },
     {
-      "key": "scripts/lp_universe_scope_audit_v1_readonly.py:749:27:2",
       "file": "scripts/lp_universe_scope_audit_v1_readonly.py",
       "line": 749,
       "col": 27,
       "rule": 2,
-      "snippet": "\"db_audit_ok\": bool(db_meta.get(\"db_ready\")),"
+      "fingerprint": "064cbcd7aa14e67b",
+      "snippet": "\"db_audit_ok\": bool(db_meta.get(\"db_ready\")),",
+      "key": "scripts/lp_universe_scope_audit_v1_readonly.py:749:27:2"
     },
     {
-      "key": "scripts/lp_universe_screener_v1_readonly.py:177:21:1",
       "file": "scripts/lp_universe_screener_v1_readonly.py",
       "line": 177,
       "col": 21,
       "rule": 1,
-      "snippet": "raw_reward = p.get(\"reward_apr\", 0.0)"
+      "fingerprint": "acdeccd211492d26",
+      "snippet": "raw_reward = p.get(\"reward_apr\", 0.0)",
+      "key": "scripts/lp_universe_screener_v1_readonly.py:177:21:1"
     },
     {
-      "key": "scripts/lp_v3_tick_liquidity_pipeline_v2_readonly.py:260:33:1",
       "file": "scripts/lp_v3_tick_liquidity_pipeline_v2_readonly.py",
       "line": 260,
       "col": 33,
       "rule": 1,
-      "snippet": "succ[r[\"pool_id\"]] = succ.get(r[\"pool_id\"], 0) + 1"
+      "fingerprint": "662a649e7776a303",
+      "snippet": "succ[r[\"pool_id\"]] = succ.get(r[\"pool_id\"], 0) + 1",
+      "key": "scripts/lp_v3_tick_liquidity_pipeline_v2_readonly.py:260:33:1"
     },
     {
-      "key": "scripts/lp_v3_tick_liquidity_pipeline_v2_readonly.py:268:81:1",
       "file": "scripts/lp_v3_tick_liquidity_pipeline_v2_readonly.py",
       "line": 268,
       "col": 81,
       "rule": 1,
-      "snippet": "if c[\"chain\"] != \"base\" or c[\"pool_type\"] != \"concentrated_liquidity\" or succ.get(c[\"pool_id\"], 0) <"
+      "fingerprint": "660cbacd4a7ce1c3",
+      "snippet": "if c[\"chain\"] != \"base\" or c[\"pool_type\"] != \"concentrated_liquidity\" or succ.get(c[\"pool_id\"], 0) <",
+      "key": "scripts/lp_v3_tick_liquidity_pipeline_v2_readonly.py:268:81:1"
     },
     {
-      "key": "scripts/lp_v3_tick_liquidity_pipeline_v2_readonly.py:281:39:1",
       "file": "scripts/lp_v3_tick_liquidity_pipeline_v2_readonly.py",
       "line": 281,
       "col": 39,
       "rule": 1,
-      "snippet": "\"quote_success_count\": succ.get(pool_id, 0),"
+      "fingerprint": "5e67158ea3310eed",
+      "snippet": "\"quote_success_count\": succ.get(pool_id, 0),",
+      "key": "scripts/lp_v3_tick_liquidity_pipeline_v2_readonly.py:281:39:1"
     },
     {
-      "key": "scripts/lp_v3_tick_liquidity_pipeline_v2_readonly.py:310:35:1",
       "file": "scripts/lp_v3_tick_liquidity_pipeline_v2_readonly.py",
       "line": 310,
       "col": 35,
       "rule": 1,
-      "snippet": "\"quote_success_count\": succ.get(pool_id, 0),"
+      "fingerprint": "5e67158ea3310eed",
+      "snippet": "\"quote_success_count\": succ.get(pool_id, 0),",
+      "key": "scripts/lp_v3_tick_liquidity_pipeline_v2_readonly.py:310:35:1"
     },
     {
-      "key": "scripts/lp_v3_tick_liquidity_pipeline_v2_readonly.py:522:20:1",
       "file": "scripts/lp_v3_tick_liquidity_pipeline_v2_readonly.py",
       "line": 522,
       "col": 20,
       "rule": 1,
-      "snippet": "dist[key] = dist.get(key, 0) + 1"
+      "fingerprint": "aad14a8780551f8a",
+      "snippet": "dist[key] = dist.get(key, 0) + 1",
+      "key": "scripts/lp_v3_tick_liquidity_pipeline_v2_readonly.py:522:20:1"
     },
     {
-      "key": "scripts/lp_v3_tick_liquidity_pipeline_v2_readonly.py:547:43:1",
       "file": "scripts/lp_v3_tick_liquidity_pipeline_v2_readonly.py",
       "line": 547,
       "col": 43,
       "rule": 1,
-      "snippet": "\"precise_quote_success_count\": succ.get(row[\"pool_id\"], {}).get(\"count\", 0),"
+      "fingerprint": "0459beaef8787fc3",
+      "snippet": "\"precise_quote_success_count\": succ.get(row[\"pool_id\"], {}).get(\"count\", 0),",
+      "key": "scripts/lp_v3_tick_liquidity_pipeline_v2_readonly.py:547:43:1"
     },
     {
-      "key": "scripts/lp_v3_tick_liquidity_pipeline_v2_readonly.py:720:14:1",
       "file": "scripts/lp_v3_tick_liquidity_pipeline_v2_readonly.py",
       "line": 720,
       "col": 14,
       "rule": 1,
-      "snippet": "\"v1\": prev.get(\"invalid_count\", 0),"
+      "fingerprint": "cc24f02eda921417",
+      "snippet": "\"v1\": prev.get(\"invalid_count\", 0),",
+      "key": "scripts/lp_v3_tick_liquidity_pipeline_v2_readonly.py:720:14:1"
     },
     {
-      "key": "scripts/lp_v3_tick_liquidity_pipeline_v2_readonly.py:722:69:1",
       "file": "scripts/lp_v3_tick_liquidity_pipeline_v2_readonly.py",
       "line": 722,
       "col": 69,
       "rule": 1,
-      "snippet": "\"direction\": \"improved\" if result_summary[\"invalid_count\"] < prev.get(\"invalid_count\", 0) else \"same"
+      "fingerprint": "a2443dd69a3b311c",
+      "snippet": "\"direction\": \"improved\" if result_summary[\"invalid_count\"] < prev.get(\"invalid_count\", 0) else \"same",
+      "key": "scripts/lp_v3_tick_liquidity_pipeline_v2_readonly.py:722:69:1"
     },
     {
-      "key": "scripts/lp_virtual_notional_economics_v1_readonly.py:126:8:5",
       "file": "scripts/lp_virtual_notional_economics_v1_readonly.py",
       "line": 126,
       "col": 8,
       "rule": 5,
-      "snippet": "return 0"
+      "fingerprint": "30945f342ad5ab6c",
+      "snippet": "return 0",
+      "key": "scripts/lp_virtual_notional_economics_v1_readonly.py:126:8:5"
     },
     {
-      "key": "scripts/lp_virtual_notional_economics_v1_readonly.py:401:16:1",
       "file": "scripts/lp_virtual_notional_economics_v1_readonly.py",
       "line": 401,
       "col": 16,
       "rule": 1,
-      "snippet": "tier_mult = {\"A\": 1.0, \"B\": 0.9, \"C\": 0.7}.get(meta.inferred_tier, 0.75)"
+      "fingerprint": "c1f9769d5489ebb1",
+      "snippet": "tier_mult = {\"A\": 1.0, \"B\": 0.9, \"C\": 0.7}.get(meta.inferred_tier, 0.75)",
+      "key": "scripts/lp_virtual_notional_economics_v1_readonly.py:401:16:1"
     },
     {
-      "key": "scripts/lp_vol_range_sizer_v1_readonly.py:263:47:1",
       "file": "scripts/lp_vol_range_sizer_v1_readonly.py",
       "line": 263,
       "col": 47,
       "rule": 1,
-      "snippet": "print(f\"{r['label']}: {st} (swaps {r.get('n_swaps',0)})\")"
+      "fingerprint": "dee21dab923ada1f",
+      "snippet": "print(f\"{r['label']}: {st} (swaps {r.get('n_swaps',0)})\")",
+      "key": "scripts/lp_vol_range_sizer_v1_readonly.py:263:47:1"
     },
     {
-      "key": "scripts/rebuild_lp_long_horizon_6h_verdict_from_checkpoints_v1.py:310:29:1",
       "file": "scripts/rebuild_lp_long_horizon_6h_verdict_from_checkpoints_v1.py",
       "line": 310,
       "col": 29,
       "rule": 1,
-      "snippet": "source_runtime_minutes = source_verdict.get(\"actual_runtime_minutes\", 0)"
+      "fingerprint": "36b952c2261f537b",
+      "snippet": "source_runtime_minutes = source_verdict.get(\"actual_runtime_minutes\", 0)",
+      "key": "scripts/rebuild_lp_long_horizon_6h_verdict_from_checkpoints_v1.py:310:29:1"
     },
     {
-      "key": "scripts/strategy_evidence_r4c_independent_clmm_liquidity_replay.py:627:42:1",
       "file": "scripts/strategy_evidence_r4c_independent_clmm_liquidity_replay.py",
       "line": 627,
       "col": 42,
       "rule": 1,
-      "snippet": "rec_counts[c[\"recommendation\"]] = rec_counts.get(c[\"recommendation\"], 0) + 1"
+      "fingerprint": "96dd0529ee0880d6",
+      "snippet": "rec_counts[c[\"recommendation\"]] = rec_counts.get(c[\"recommendation\"], 0) + 1",
+      "key": "scripts/strategy_evidence_r4c_independent_clmm_liquidity_replay.py:627:42:1"
     },
     {
-      "key": "scripts/strategy_pivot_d1_delta_hedged_lp_feasibility.py:205:40:1",
       "file": "scripts/strategy_pivot_d1_delta_hedged_lp_feasibility.py",
       "line": 205,
       "col": 40,
       "rule": 1,
-      "snippet": "in_range_frac = IN_RANGE_FRAC.get(rng, 1.0)"
+      "fingerprint": "3512ce54c71c5062",
+      "snippet": "in_range_frac = IN_RANGE_FRAC.get(rng, 1.0)",
+      "key": "scripts/strategy_pivot_d1_delta_hedged_lp_feasibility.py:205:40:1"
     },
     {
-      "key": "scripts/strategy_pivot_d1_delta_hedged_lp_feasibility.py:210:90:1",
       "file": "scripts/strategy_pivot_d1_delta_hedged_lp_feasibility.py",
       "line": 210,
       "col": 90,
       "rule": 1,
-      "snippet": "fee_per_dollar_per_day = fee_per_dollar_per_day_24h * in_range_frac / IN_RANGE_FRAC.get(rng, 1.0)"
+      "fingerprint": "3e13a4aa93fe65dd",
+      "snippet": "fee_per_dollar_per_day = fee_per_dollar_per_day_24h * in_range_frac / IN_RANGE_FRAC.get(rng, 1.0)",
+      "key": "scripts/strategy_pivot_d1_delta_hedged_lp_feasibility.py:210:90:1"
     },
     {
-      "key": "scripts/strategy_pivot_d2_dynamic_delta_funding_history.py:294:41:1",
       "file": "scripts/strategy_pivot_d2_dynamic_delta_funding_history.py",
       "line": 294,
       "col": 41,
       "rule": 1,
-      "snippet": "fee_per_dollar_per_day = info[\"r4c_fee_per_dollar_per_day\"].get(rng, 0.005)"
+      "fingerprint": "2ccaa072cae33252",
+      "snippet": "fee_per_dollar_per_day = info[\"r4c_fee_per_dollar_per_day\"].get(rng, 0.005)",
+      "key": "scripts/strategy_pivot_d2_dynamic_delta_funding_history.py:294:41:1"
     },
     {
-      "key": "scripts/strategy_pivot_d3_aerodrome_reward_edge.py:219:41:1",
       "file": "scripts/strategy_pivot_d3_aerodrome_reward_edge.py",
       "line": 219,
       "col": 41,
       "rule": 1,
-      "snippet": "fee_per_dollar_per_day = R4C_FEES[pool_addr].get(rng, 0.005)"
+      "fingerprint": "02bb42257bfe1a96",
+      "snippet": "fee_per_dollar_per_day = R4C_FEES[pool_addr].get(rng, 0.005)",
+      "key": "scripts/strategy_pivot_d3_aerodrome_reward_edge.py:219:41:1"
     },
     {
-      "key": "scripts/strategy_pivot_d4_finalize_v1.py:138:19:1",
       "file": "scripts/strategy_pivot_d4_finalize_v1.py",
       "line": 138,
       "col": 19,
       "rule": 1,
-      "snippet": "realized = last.get(\"net_pnl_usd\", 0.0)"
+      "fingerprint": "1910fb19bfc9e7d3",
+      "snippet": "realized = last.get(\"net_pnl_usd\", 0.0)",
+      "key": "scripts/strategy_pivot_d4_finalize_v1.py:138:19:1"
     },
     {
-      "key": "scripts/strategy_pivot_d4_realtime_paper_shadow_validation.py:197:8:5",
       "file": "scripts/strategy_pivot_d4_realtime_paper_shadow_validation.py",
       "line": 197,
       "col": 8,
       "rule": 5,
-      "snippet": "return 0.05  # 0.05 gwei typical Base"
+      "fingerprint": "2800057c738de287",
+      "snippet": "return 0.05  # 0.05 gwei typical Base",
+      "key": "scripts/strategy_pivot_d4_realtime_paper_shadow_validation.py:197:8:5"
     },
     {
-      "key": "scripts/strategy_pivot_d4_realtime_paper_shadow_validation.py:332:23:1",
       "file": "scripts/strategy_pivot_d4_realtime_paper_shadow_validation.py",
       "line": 332,
       "col": 23,
       "rule": 1,
-      "snippet": "if p.get(\"tvlUsd\", 0) > 5_000_000:"
+      "fingerprint": "67337a663244439f",
+      "snippet": "if p.get(\"tvlUsd\", 0) > 5_000_000:",
+      "key": "scripts/strategy_pivot_d4_realtime_paper_shadow_validation.py:332:23:1"
     },
     {
-      "key": "scripts/strategy_pivot_d4_realtime_paper_shadow_validation.py:333:40:1",
       "file": "scripts/strategy_pivot_d4_realtime_paper_shadow_validation.py",
       "line": 333,
       "col": 40,
       "rule": 1,
-      "snippet": "apr_pct = float(p.get(\"apyReward\", 0) or 0)"
+      "fingerprint": "1910dfdcf853de4e",
+      "snippet": "apr_pct = float(p.get(\"apyReward\", 0) or 0)",
+      "key": "scripts/strategy_pivot_d4_realtime_paper_shadow_validation.py:333:40:1"
     },
     {
-      "key": "scripts/strategy_pivot_d4_realtime_paper_shadow_validation.py:373:21:1",
       "file": "scripts/strategy_pivot_d4_realtime_paper_shadow_validation.py",
       "line": 373,
       "col": 21,
       "rule": 1,
-      "snippet": "return float(r.get(\"ethereum\", {}).get(\"usd\", 0))"
+      "fingerprint": "e26df61ff13fe880",
+      "snippet": "return float(r.get(\"ethereum\", {}).get(\"usd\", 0))",
+      "key": "scripts/strategy_pivot_d4_realtime_paper_shadow_validation.py:373:21:1"
     },
     {
-      "key": "scripts/strategy_pivot_d4_realtime_paper_shadow_validation.py:442:77:1",
       "file": "scripts/strategy_pivot_d4_realtime_paper_shadow_validation.py",
       "line": 442,
       "col": 77,
       "rule": 1,
-      "snippet": "fee = fee_for_swap_usd(self.l_pos_raw, float(l_active_raw or 0), ev.get(\"amount1\", 0))"
+      "fingerprint": "880d39dec38cb852",
+      "snippet": "fee = fee_for_swap_usd(self.l_pos_raw, float(l_active_raw or 0), ev.get(\"amount1\", 0))",
+      "key": "scripts/strategy_pivot_d4_realtime_paper_shadow_validation.py:442:77:1"
     },
     {
-      "key": "scripts/strategy_pivot_d4_realtime_paper_shadow_validation.py:547:50:1",
       "file": "scripts/strategy_pivot_d4_realtime_paper_shadow_validation.py",
       "line": 547,
       "col": 50,
       "rule": 1,
-      "snippet": "self.reward_apr_pct = row.get(\"reward_apr_pct\", 63.52)"
+      "fingerprint": "e18d0520bee6464e",
+      "snippet": "self.reward_apr_pct = row.get(\"reward_apr_pct\", 63.52)",
+      "key": "scripts/strategy_pivot_d4_realtime_paper_shadow_validation.py:547:50:1"
     },
     {
-      "key": "scripts/strategy_pivot_d4_realtime_paper_shadow_validation.py:740:31:1",
       "file": "scripts/strategy_pivot_d4_realtime_paper_shadow_validation.py",
       "line": 740,
       "col": 31,
       "rule": 1,
-      "snippet": "l_active = decoded.get(\"liquidity\", 0)"
+      "fingerprint": "e70df6a2da56c474",
+      "snippet": "l_active = decoded.get(\"liquidity\", 0)",
+      "key": "scripts/strategy_pivot_d4_realtime_paper_shadow_validation.py:740:31:1"
     },
     {
-      "key": "scripts/strategy_pivot_d4_realtime_paper_shadow_validation.py:751:12:5",
       "file": "scripts/strategy_pivot_d4_realtime_paper_shadow_validation.py",
       "line": 751,
       "col": 12,
       "rule": 5,
-      "snippet": "return 0"
+      "fingerprint": "30945f342ad5ab6c",
+      "snippet": "return 0",
+      "key": "scripts/strategy_pivot_d4_realtime_paper_shadow_validation.py:751:12:5"
     },
     {
-      "key": "scripts/test_stage_supervisor_finalize_from_existing_checkpoints_v1.py:218:17:2",
       "file": "scripts/test_stage_supervisor_finalize_from_existing_checkpoints_v1.py",
       "line": 218,
       "col": 17,
       "rule": 2,
-      "snippet": "gate_valid = bool(agg_summary.get(\"actual_runtime_valid_for_\" + stage + \"_gate\", False))"
+      "fingerprint": "9e66af559df36649",
+      "snippet": "gate_valid = bool(agg_summary.get(\"actual_runtime_valid_for_\" + stage + \"_gate\", False))",
+      "key": "scripts/test_stage_supervisor_finalize_from_existing_checkpoints_v1.py:218:17:2"
     },
     {
-      "key": "scripts/test_stage_supervisor_finalize_from_existing_checkpoints_v1.py:280:17:2",
       "file": "scripts/test_stage_supervisor_finalize_from_existing_checkpoints_v1.py",
       "line": 280,
       "col": 17,
       "rule": 2,
-      "snippet": "gate_valid = bool(agg_summary.get(\"actual_runtime_valid_for_\" + stage + \"_gate\", False))"
+      "fingerprint": "9e66af559df36649",
+      "snippet": "gate_valid = bool(agg_summary.get(\"actual_runtime_valid_for_\" + stage + \"_gate\", False))",
+      "key": "scripts/test_stage_supervisor_finalize_from_existing_checkpoints_v1.py:280:17:2"
     },
     {
-      "key": "scripts/test_stage_supervisor_finalize_from_existing_checkpoints_v1.py:294:34:1",
       "file": "scripts/test_stage_supervisor_finalize_from_existing_checkpoints_v1.py",
       "line": 294,
       "col": 34,
       "rule": 1,
-      "snippet": "\"actual_runtime_minutes\": agg_summary.get(\"actual_runtime_minutes\", 0),"
+      "fingerprint": "ae0dc5f55aaf72a2",
+      "snippet": "\"actual_runtime_minutes\": agg_summary.get(\"actual_runtime_minutes\", 0),",
+      "key": "scripts/test_stage_supervisor_finalize_from_existing_checkpoints_v1.py:294:34:1"
     },
     {
-      "key": "scripts/test_stage_supervisor_finalize_from_existing_checkpoints_v1.py:302:31:1",
       "file": "scripts/test_stage_supervisor_finalize_from_existing_checkpoints_v1.py",
       "line": 302,
       "col": 31,
       "rule": 1,
-      "snippet": "\"selected_pool_count\": agg_summary.get(\"selected_pool_count\", 0),"
+      "fingerprint": "b3dccc75bec1c34f",
+      "snippet": "\"selected_pool_count\": agg_summary.get(\"selected_pool_count\", 0),",
+      "key": "scripts/test_stage_supervisor_finalize_from_existing_checkpoints_v1.py:302:31:1"
     },
     {
-      "key": "scripts/test_stage_supervisor_finalize_from_existing_checkpoints_v1.py:303:30:1",
       "file": "scripts/test_stage_supervisor_finalize_from_existing_checkpoints_v1.py",
       "line": 303,
       "col": 30,
       "rule": 1,
-      "snippet": "\"pool_snapshot_rows\": total.get(\"pool_snapshots\", 0),"
+      "fingerprint": "bc6bf1d2bdf569c7",
+      "snippet": "\"pool_snapshot_rows\": total.get(\"pool_snapshots\", 0),",
+      "key": "scripts/test_stage_supervisor_finalize_from_existing_checkpoints_v1.py:303:30:1"
     },
     {
-      "key": "scripts/test_stage_supervisor_finalize_from_existing_checkpoints_v1.py:304:31:1",
       "file": "scripts/test_stage_supervisor_finalize_from_existing_checkpoints_v1.py",
       "line": 304,
       "col": 31,
       "rule": 1,
-      "snippet": "\"quote_snapshot_rows\": total.get(\"quote_snapshots\", 0),"
+      "fingerprint": "20c30f8a3ce66880",
+      "snippet": "\"quote_snapshot_rows\": total.get(\"quote_snapshots\", 0),",
+      "key": "scripts/test_stage_supervisor_finalize_from_existing_checkpoints_v1.py:304:31:1"
     },
     {
-      "key": "scripts/test_stage_supervisor_finalize_from_existing_checkpoints_v1.py:305:29:1",
       "file": "scripts/test_stage_supervisor_finalize_from_existing_checkpoints_v1.py",
       "line": 305,
       "col": 29,
       "rule": 1,
-      "snippet": "\"fee_velocity_rows\": total.get(\"fee_velocity\", 0),"
+      "fingerprint": "60af9cc5792e819a",
+      "snippet": "\"fee_velocity_rows\": total.get(\"fee_velocity\", 0),",
+      "key": "scripts/test_stage_supervisor_finalize_from_existing_checkpoints_v1.py:305:29:1"
     },
     {
-      "key": "scripts/test_stage_supervisor_finalize_from_existing_checkpoints_v1.py:306:39:1",
       "file": "scripts/test_stage_supervisor_finalize_from_existing_checkpoints_v1.py",
       "line": 306,
       "col": 39,
       "rule": 1,
-      "snippet": "\"liquidity_distribution_rows\": total.get(\"liquidity_distribution\", 0),"
+      "fingerprint": "9221cca4931b427c",
+      "snippet": "\"liquidity_distribution_rows\": total.get(\"liquidity_distribution\", 0),",
+      "key": "scripts/test_stage_supervisor_finalize_from_existing_checkpoints_v1.py:306:39:1"
     },
     {
-      "key": "scripts/test_stage_supervisor_finalize_from_existing_checkpoints_v1.py:307:30:1",
       "file": "scripts/test_stage_supervisor_finalize_from_existing_checkpoints_v1.py",
       "line": 307,
       "col": 30,
       "rule": 1,
-      "snippet": "\"market_regime_rows\": total.get(\"market_regime\", 0),"
+      "fingerprint": "db9e51d36cdab04a",
+      "snippet": "\"market_regime_rows\": total.get(\"market_regime\", 0),",
+      "key": "scripts/test_stage_supervisor_finalize_from_existing_checkpoints_v1.py:307:30:1"
     },
     {
-      "key": "scripts/test_stage_supervisor_finalize_from_existing_checkpoints_v1.py:308:47:1",
       "file": "scripts/test_stage_supervisor_finalize_from_existing_checkpoints_v1.py",
       "line": 308,
       "col": 47,
       "rule": 1,
-      "snippet": "\"actual_fee_accrual_placeholder_rows\": total.get(\"actual_fee_accrual\", 0),"
+      "fingerprint": "dc5989107fcfe026",
+      "snippet": "\"actual_fee_accrual_placeholder_rows\": total.get(\"actual_fee_accrual\", 0),",
+      "key": "scripts/test_stage_supervisor_finalize_from_existing_checkpoints_v1.py:308:47:1"
     }
   ]
 }

@@ -25,6 +25,8 @@ from __future__ import annotations
 
 import argparse
 import ast
+from collections import Counter
+import hashlib
 import json
 import re
 import sys
@@ -53,6 +55,18 @@ _NUM_RE = re.compile(r"^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$")
 # SQL: <...address.../...hash.../pool> = ?  (case-insensitive; \bpool avoids pool_id)
 _ADDR_EQ_RE = re.compile(r"(?i)\b(\w*address\w*|\w*hash\w*|pool)\s*=\s*\?")
 _LOWER_RE = re.compile(r"(?i)\blower\s*\(")
+_WS_COLLAPSE_RE = re.compile(r"\s+")
+
+
+def normalize_snippet(text: str) -> str:
+    """Strip outer whitespace and collapse internal consecutive whitespace to a single space."""
+    return _WS_COLLAPSE_RE.sub(" ", text.strip())
+
+
+def fingerprint_snippet(text: str) -> str:
+    """Normalized snippet sha256 prefix (16 hex chars)."""
+    norm = normalize_snippet(text)
+    return hashlib.sha256(norm.encode("utf-8")).hexdigest()[:16]
 
 
 @dataclass
@@ -63,8 +77,18 @@ class Hit:
     rule: int
     snippet: str
     why: str
+    fingerprint: str = ""
+
+    def __post_init__(self) -> None:
+        if not self.fingerprint:
+            self.fingerprint = fingerprint_snippet(self.snippet)
+
+    def identity(self) -> tuple[str, int, str]:
+        """Content-based identity: (relative_file_path, rule, normalized_fingerprint)."""
+        return (self.file, self.rule, self.fingerprint)
 
     def key(self) -> str:
+        """Display key (file:line:col:rule) preserved for backwards-compatible presentation."""
         return f"{self.file}:{self.line}:{self.col}:{self.rule}"
 
     def to_dict(self) -> dict:
@@ -259,26 +283,94 @@ def _default_baseline(root: Path) -> Path:
     return root / "reports" / "silent_failure_lint_baseline.json"
 
 
-def _load_baseline(path: Path) -> set[str]:
+class BaselineFormatError(ValueError):
+    """Raised when baseline format is outdated or invalid."""
+    pass
+
+
+def _load_baseline(path: Path) -> Counter[tuple[str, int, str]]:
+    """Load baseline and return counter of (file, rule, fingerprint).
+
+    Raises FileNotFoundError if baseline path does not exist.
+    Raises BaselineFormatError if file is legacy (lacks fingerprint or version != 2).
+    """
     if not path.exists():
-        return set()
+        raise FileNotFoundError(f"baseline file not found: {path}")
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return set()
-    return {h["key"] for h in data.get("hits", [])}
+    except json.JSONDecodeError as exc:
+        raise BaselineFormatError(f"invalid JSON in baseline {path}: {exc}") from exc
+
+    # The v1 baseline was a bare list, so data.get() raises AttributeError on
+    # it rather than reporting a format problem -- and an uncaught crash that
+    # still exits 0 reads as "no new hits", which is exactly the failure mode
+    # this tool exists to catch.
+    if not isinstance(data, dict):
+        raise BaselineFormatError(
+            f"baseline {path} is the legacy list format (no fingerprints). "
+            f"Re-generate with --write-baseline."
+        )
+
+    version = data.get("version")
+    hits_raw = data.get("hits")
+    if hits_raw is None or not isinstance(hits_raw, list):
+        raise BaselineFormatError(
+            f"baseline {path} missing 'hits' list. Re-generate with --write-baseline."
+        )
+
+    # Legacy detection: version < 2 or missing "fingerprint" on hits
+    if version != 2:
+        raise BaselineFormatError(
+            f"基线是旧格式（version={version!r}，缺指纹字段），"
+            f"请使用 --write-baseline 重新生成：python scripts/lp_silent_failure_lint_v1_readonly.py --write-baseline"
+        )
+
+    counts: Counter[tuple[str, int, str]] = Counter()
+    for item in hits_raw:
+        fp = item.get("fingerprint")
+        f = item.get("file")
+        r = item.get("rule")
+        if not fp or f is None or r is None:
+            raise BaselineFormatError(
+                f"基线包含缺少 fingerprint/file/rule 的旧条目: {item}. "
+                f"请使用 --write-baseline 重新生成。"
+            )
+        counts[(f, int(r), str(fp))] += 1
+    return counts
+
+
+def find_new_hits(hits: list[Hit], baseline_counts: Counter[tuple[str, int, str]]) -> list[Hit]:
+    """Find hits that exceed baseline counts for (file, rule, fingerprint)."""
+    seen: Counter[tuple[str, int, str]] = Counter()
+    new_hits: list[Hit] = []
+    for h in hits:
+        ident = h.identity()
+        seen[ident] += 1
+        if seen[ident] > baseline_counts.get(ident, 0):
+            new_hits.append(h)
+    return new_hits
 
 
 def _write_baseline(path: Path, hits: list[Hit]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = {
+        "version": 2,
         "tool": "lp_silent_failure_lint_v1_readonly",
-        "note": ("Baseline of known silent-failure hits. --fail-on-new blocks any "
-                 "hit whose key is not listed here. Regenerate after an approved fix."),
+        "identity_schema": "(file, rule, fingerprint)",
+        "note": ("Baseline of known silent-failure hits matched by content fingerprint. "
+                 "--fail-on-new blocks any hit exceeding baseline occurrence count. "
+                 "Line numbers are for display only. Regenerate after an approved fix."),
         "count": len(hits),
         "hits": [
-            {"key": h.key(), "file": h.file, "line": h.line, "col": h.col,
-             "rule": h.rule, "snippet": h.snippet}
+            {
+                "file": h.file,
+                "line": h.line,
+                "col": h.col,
+                "rule": h.rule,
+                "fingerprint": h.fingerprint,
+                "snippet": h.snippet,
+                "key": h.key(),
+            }
             for h in hits
         ],
     }
@@ -331,8 +423,13 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.fail_on_new:
-        known = _load_baseline(baseline_path)
-        new = [h for h in hits if h.key() not in known]
+        try:
+            known_counts = _load_baseline(baseline_path)
+        except (FileNotFoundError, BaselineFormatError) as exc:
+            sys.stderr.write(f"ERROR: {exc}\n")
+            return 2
+
+        new = find_new_hits(hits, known_counts)
         if args.json:
             print(json.dumps({
                 "count": len(hits), "new_count": len(new),
@@ -344,7 +441,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"\n--fail-on-new: {len(new)} new hit(s) not in baseline "
                   f"({baseline_path})")
             for h in new:
-                print(f"  NEW rule {h.rule}  {h.file}:{h.line}  {h.snippet}")
+                print(f"  NEW rule {h.rule}  {h.file}:{h.line}  [{h.fingerprint}]  {h.snippet}")
         return 1 if new else 0
 
     if args.json:
