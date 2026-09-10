@@ -86,23 +86,46 @@ for db, tbl, limit, label in (("scanner.db","rh_market_states",420,"采集器"),
 PYEOF
 
   # 3) Stage A 每小时里程碑
+  #
+  # 必须与闸门同口径。RH-02bn (commit 7ffbb24) 起，Stage A 判的是「采集侧代码
+  # 最后一次变更之后」那段窗口，不是全量跨度。监护若继续报累计小时数，会报出
+  # 一个闸门根本不看的数字（实测两者曾相差 47h vs 12.7h），让人以为快毕业了。
+  # 窗口起点的取法与 resolve_judgment_window() 一致：collector + store 的最后
+  # 一次 commit 时间。取不到就报 -1 不出里程碑，绝不退回累计口径。
   h=$("$PY" -c "
-import sqlite3,datetime
+import sqlite3,datetime,subprocess
 try:
+    r=subprocess.run(['git','log','-1','--format=%cI','--',
+                      'scripts/lp_rh_collector_v1_readonly.py',
+                      'scripts/lp_rh_store_v1_readonly.py'],
+                     cwd='$ROOT',capture_output=True,text=True)
+    since=r.stdout.strip()
+    if r.returncode!=0 or not since: raise RuntimeError('no window')
+    w=datetime.datetime.fromisoformat(since).astimezone(datetime.timezone.utc)
+    iso=w.isoformat().replace('+00:00','Z')
     c=sqlite3.connect('file:$ROOT/reports/lp_rh/scanner.db?mode=ro',uri=True)
-    a,b=c.execute('select min(sample_time),max(sample_time) from rh_market_states').fetchone()
+    a,b=c.execute('select min(sample_time),max(sample_time) from rh_market_states'
+                  ' where sample_time>=?',(iso,)).fetchone()
+    if a is None: raise RuntimeError('no rows in window')
     f=lambda s: datetime.datetime.fromisoformat(s.replace('Z','+00:00'))
     print(int((f(b)-f(a)).total_seconds()//3600))
 except Exception: print(-1)" 2>/dev/null)
   if [ "${h:--1}" -ge 0 ] && [ "$h" -gt "$LAST_HOUR" ]; then
     LAST_HOUR=$h
     rows=$("$PY" -c "
-import sqlite3
+import sqlite3,datetime,subprocess
 try:
+    r=subprocess.run(['git','log','-1','--format=%cI','--',
+                      'scripts/lp_rh_collector_v1_readonly.py',
+                      'scripts/lp_rh_store_v1_readonly.py'],
+                     cwd='$ROOT',capture_output=True,text=True)
+    w=datetime.datetime.fromisoformat(r.stdout.strip()).astimezone(datetime.timezone.utc)
+    iso=w.isoformat().replace('+00:00','Z')
     c=sqlite3.connect('file:$ROOT/reports/lp_rh/scanner.db?mode=ro',uri=True)
-    print(c.execute('select count(*) from rh_market_states').fetchone()[0])
+    print(c.execute('select count(*) from rh_market_states where sample_time>=?',
+                    (iso,)).fetchone()[0])
 except Exception: print('?')" 2>/dev/null)
-    echo "STAGE_A_MILESTONE ${h}h / 72h  samples=${rows}"
+    echo "STAGE_A_MILESTONE ${h}h / 72h  samples=${rows}  (判定窗口口径, 非累计)"
   fi
 
   # 4) Qwen 推理网关：状态变化时报一次（派活的关键依赖）
