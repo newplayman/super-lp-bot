@@ -11,7 +11,6 @@ from __future__ import annotations
 import importlib.util
 import json
 import math
-import subprocess
 import sys
 from decimal import Decimal
 from pathlib import Path
@@ -19,6 +18,7 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+PRE_FIX_FIXTURES_DIR = REPO_ROOT / "tests" / "fixtures" / "rh02ba_pre_fix"
 
 
 def _load_module_from_source(name: str, source: str, file_path: str | None = None):
@@ -27,25 +27,20 @@ def _load_module_from_source(name: str, source: str, file_path: str | None = Non
     module = importlib.util.module_from_spec(spec)
     if file_path is not None:
         module.__file__ = file_path
-    exec(compile(source, file_path or f"<git_show:{name}>", "exec"), module.__dict__)
+    exec(compile(source, file_path or f"<fixture:{name}>", "exec"), module.__dict__)
     return module
 
 
-# The pre-fix baseline is pinned to the commit *before* RH-02ba landed, not
-# to HEAD.  Using HEAD works exactly until the fix is committed, at which
-# point "old" and "new" become the same file and every comparison silently
-# passes or fails for the wrong reason -- which is what happened here the
-# moment 4aa4497 landed.  A test that compares against history must name the
-# history it means.
-PRE_FIX_REV = "4aa4497^"
-
-
-def _load_git_head_module(rel_path: str, module_name: str):
-    """Load the pre-RH-02ba version of a module via read-only `git show`."""
-    cmd = ["git", "show", f"{PRE_FIX_REV}:{rel_path}"]
-    res = subprocess.run(cmd, cwd=REPO_ROOT, capture_output=True, text=True, check=True)
-    abs_path = str((REPO_ROOT / rel_path).resolve())
-    return _load_module_from_source(module_name, res.stdout, file_path=abs_path)
+def _load_pre_fix_module(rel_path: str, module_name: str):
+    """Load the pre-RH-02ba snapshot of a module from tests/fixtures/rh02ba_pre_fix."""
+    fixture_path = PRE_FIX_FIXTURES_DIR / Path(rel_path).name
+    if not fixture_path.is_file():
+        raise FileNotFoundError(
+            f"Pre-fix fixture snapshot missing: {fixture_path}. "
+            "Differential testing requires frozen pre-fix snapshot to prevent regression."
+        )
+    source = fixture_path.read_text(encoding="utf-8")
+    return _load_module_from_source(module_name, source, file_path=str(fixture_path.resolve()))
 
 
 # ---------------------------------------------------------------------------
@@ -86,7 +81,7 @@ def test_issue1_known_token_price_anti_regression():
 
     new and old price tables and calculations produce identical Decimal amounts.
     """
-    old_bf = _load_git_head_module(
+    old_bf = _load_pre_fix_module(
         "scripts/lp_bsc_fee_velocity_short_backfill_v2_readonly.py", "old_bf_issue1"
     )
     import scripts.lp_bsc_fee_velocity_short_backfill_v2_readonly as new_bf
@@ -101,7 +96,7 @@ def test_issue1_known_token_price_anti_regression():
 
 def test_issue2_missing_capacity_fails_close():
     """Repro & Fail-close: Missing capacity field must return None, NOT 100 bps jump."""
-    old_ev = _load_git_head_module(
+    old_ev = _load_pre_fix_module(
         "scripts/lp_survival_horizon_ev_model_v1_readonly.py", "old_ev_issue2"
     )
     import scripts.lp_survival_horizon_ev_model_v1_readonly as new_ev
@@ -129,7 +124,7 @@ def test_issue2_missing_capacity_fails_close():
 
 def test_issue2_full_capacity_slippage_is_not_zero():
     """Repro & Floor slippage: At capacity_proxy = 1.0, slippage must NOT be 0.0."""
-    old_ev = _load_git_head_module(
+    old_ev = _load_pre_fix_module(
         "scripts/lp_survival_horizon_ev_model_v1_readonly.py", "old_ev_issue2_floor"
     )
     import scripts.lp_survival_horizon_ev_model_v1_readonly as new_ev
@@ -170,7 +165,7 @@ def test_issue2_real_probe_data_anti_regression():
 
 def test_issue3_exact_tick_boundaries_vs_linear_approximation():
     """Repro: Exact Uniswap V3 log tick math vs linear approximation error."""
-    old_d4 = _load_git_head_module(
+    old_d4 = _load_pre_fix_module(
         "scripts/strategy_pivot_d4_realtime_paper_shadow_validation.py", "old_d4_issue3"
     )
     import scripts.strategy_pivot_d4_realtime_paper_shadow_validation as new_d4
@@ -241,7 +236,7 @@ def test_issue4_missing_p95_drift_fails_to_calibrated_base_rate():
 
     calibrated TICK_STDDEV_PER_HR['Base'] (60.0), NOT 700 / sqrt(8) = 247.48.
     """
-    old_oor = _load_git_head_module(
+    old_oor = _load_pre_fix_module(
         "scripts/lp_survival_out_of_range_risk_v1_readonly.py", "old_oor_issue4"
     )
     import scripts.lp_survival_out_of_range_risk_v1_readonly as new_oor
@@ -282,7 +277,7 @@ def test_issue4_missing_p95_drift_fails_to_calibrated_base_rate():
 
 def test_issue4_observed_p95_drift_anti_regression():
     """Anti-regression: When p95_abs_drift IS present, old and new give identical results."""
-    old_oor = _load_git_head_module(
+    old_oor = _load_pre_fix_module(
         "scripts/lp_survival_out_of_range_risk_v1_readonly.py", "old_oor_issue4_obs"
     )
     import scripts.lp_survival_out_of_range_risk_v1_readonly as new_oor
@@ -335,7 +330,7 @@ def test_issue5_malformed_abi_slot_fails_close():
 
     must raise ValueError instead of silently returning corrupted positive tick.
     """
-    old_bf = _load_git_head_module(
+    old_bf = _load_pre_fix_module(
         "scripts/lp_bsc_fee_velocity_short_backfill_v2_readonly.py", "old_bf_issue5"
     )
     import scripts.lp_bsc_fee_velocity_short_backfill_v2_readonly as new_bf
@@ -370,7 +365,7 @@ def test_issue5_malformed_abi_slot_fails_close():
 
 def test_issue5_valid_standard_swap_log_anti_regression():
     """Anti-regression: Valid ABI-encoded swap log produces identical values on old and new."""
-    old_bf = _load_git_head_module(
+    old_bf = _load_pre_fix_module(
         "scripts/lp_bsc_fee_velocity_short_backfill_v2_readonly.py", "old_bf_issue5_valid"
     )
     import scripts.lp_bsc_fee_velocity_short_backfill_v2_readonly as new_bf
