@@ -17,6 +17,7 @@ from scripts.lp_rh_reconciliation_v1 import (
     check_c1_double_entry_balance,
     check_c2_opening_legs,
     check_c3_fee_accrual,
+    main,
 )
 
 
@@ -295,3 +296,179 @@ def test_reconciliation_c1_unbalanced_unexplained(test_db):
     assert res["evidence"]["c1"]["diff_count"] > 0
     assert res["evidence"]["c1"]["reason"] == "UNBALANCED_ENTRIES"
     assert "c1_diffs" in res["delta"]
+
+
+def test_reconciliation_no_since_regression(test_db):
+    """11. No --since parameter: identical behavior to baseline regression."""
+    _populate_balanced_dataset(test_db)
+    res = run_reconciliation(test_db, since=None)
+    assert res["verdict"] == "PASS"
+    assert res["since"] is None
+    for k in ("c1", "c2", "c3"):
+        assert res["evidence"][k]["has_evidence"] is True
+        assert res["evidence"][k]["since"] is None
+        assert res["evidence"][k]["rows_examined"] > 0
+    assert res["delta"] == {}
+
+
+def test_reconciliation_since_after_all_data_insufficient(test_db):
+    """12. --since after all data: all 3 checks have no samples -> INSUFFICIENT_EVIDENCE (never PASS)."""
+    _populate_balanced_dataset(test_db)
+    future_since = "2026-09-11T12:00:00Z"
+    res = run_reconciliation(test_db, since=future_since)
+
+    assert res["verdict"] == "INSUFFICIENT_EVIDENCE"
+    assert res["since"] == future_since
+    for k in ("c1", "c2", "c3"):
+        check_ev = res["evidence"][k]
+        assert check_ev["has_evidence"] is False
+        assert check_ev["since"] == future_since
+        assert check_ev["rows_examined"] == 0
+    assert "insufficient_evidence" in res["delta"]
+    assert len(res["delta"]["insufficient_evidence"]) == 3
+
+
+def test_reconciliation_since_excludes_historical_diff_pass(test_db):
+    """13. --since excludes historical diff and balances in window -> PASS, rows_examined reflects window count."""
+    t_old = "2026-09-11T08:00:00.000000Z"
+    insert_row(test_db, "rh_shadow_positions", {
+        "strategy_episode": "ep-old", "position_id": "pos-old", "pool_key": "pool-1",
+        "profile": "narrow", "bucket": "b-1", "initial_token0_raw": "10", "initial_token1_raw": "20",
+        "tick_lower": -10, "tick_upper": 10, "virtual_liquidity_raw": "1000", "opened_at": t_old,
+    })
+    insert_row(test_db, "rh_journal", {
+        "event_id": "pos-old-open-t0", "idempotency_key": "pos-old-open-t0",
+        "account_debit": "LP_POSITION_TOKEN0", "account_credit": "WALLET_TOKEN0",
+        "asset": "0xtoken0", "amount_raw": "10", "is_external_flow": 0,
+        "ref_json": json.dumps({"position_id": "pos-old", "leg": "token0"}), "booked_at": t_old,
+    })
+    insert_row(test_db, "rh_journal", {
+        "event_id": "pos-old-open-t1", "idempotency_key": "pos-old-open-t1",
+        "account_debit": "LP_POSITION_TOKEN1", "account_credit": "WALLET_TOKEN1",
+        "asset": "0xtoken1", "amount_raw": "20", "is_external_flow": 0,
+        "ref_json": json.dumps({"position_id": "pos-old", "leg": "token1"}), "booked_at": t_old,
+    })
+    insert_row(test_db, "rh_position_marks", {
+        "position_id": "pos-old", "mark_time": t_old, "accrued_fee": "50.0",
+    })
+
+    t_new = "2026-09-11T11:00:00.000000Z"
+    insert_row(test_db, "rh_shadow_positions", {
+        "strategy_episode": "ep-new", "position_id": "pos-new", "pool_key": "pool-1",
+        "profile": "narrow", "bucket": "b-1", "initial_token0_raw": "15", "initial_token1_raw": "25",
+        "tick_lower": -10, "tick_upper": 10, "virtual_liquidity_raw": "1000", "opened_at": t_new,
+    })
+    insert_row(test_db, "rh_journal", {
+        "event_id": "pos-new-open-t0", "idempotency_key": "pos-new-open-t0",
+        "account_debit": "LP_POSITION_TOKEN0", "account_credit": "WALLET_TOKEN0",
+        "asset": "0xtoken0", "amount_raw": "15", "is_external_flow": 0,
+        "ref_json": json.dumps({"position_id": "pos-new", "leg": "token0"}), "booked_at": t_new,
+    })
+    insert_row(test_db, "rh_journal", {
+        "event_id": "pos-new-open-t1", "idempotency_key": "pos-new-open-t1",
+        "account_debit": "LP_POSITION_TOKEN1", "account_credit": "WALLET_TOKEN1",
+        "asset": "0xtoken1", "amount_raw": "25", "is_external_flow": 0,
+        "ref_json": json.dumps({"position_id": "pos-new", "leg": "token1"}), "booked_at": t_new,
+    })
+    insert_row(test_db, "rh_journal", {
+        "event_id": "pos-new-fee", "idempotency_key": "pos-new-fee",
+        "account_debit": "LP_FEES_RECEIVABLE", "account_credit": "LP_FEE_INCOME",
+        "asset": "0xtoken1", "amount_raw": "12.5", "is_external_flow": 0,
+        "ref_json": json.dumps({"position_id": "pos-new", "kind": "fee"}), "booked_at": t_new,
+    })
+    insert_row(test_db, "rh_position_marks", {
+        "position_id": "pos-new", "mark_time": t_new, "accrued_fee": "12.5",
+    })
+    test_db.commit()
+
+    res = run_reconciliation(test_db, since="2026-09-11T10:00:00Z")
+    assert res["verdict"] == "PASS"
+    assert res["evidence"]["c1"]["rows_examined"] == 3
+    assert res["evidence"]["c1"]["diff_count"] == 0
+    assert res["evidence"]["c2"]["rows_examined"] == 1
+    assert res["evidence"]["c2"]["diff_count"] == 0
+    assert res["evidence"]["c3"]["rows_examined"] == 1
+    assert res["evidence"]["c3"]["positions_examined"] == 1
+    assert res["evidence"]["c3"]["fee_journal_rows_examined"] == 1
+    assert res["evidence"]["c3"]["diff_count"] == 0
+
+
+def test_reconciliation_since_includes_historical_diff_unexplained(test_db):
+    """14. --since window includes historical diff -> UNEXPLAINED_DIFF."""
+    t_old = "2026-09-11T08:00:00.000000Z"
+    insert_row(test_db, "rh_shadow_positions", {
+        "strategy_episode": "ep-old", "position_id": "pos-old", "pool_key": "pool-1",
+        "profile": "narrow", "bucket": "b-1", "initial_token0_raw": "10", "initial_token1_raw": "20",
+        "tick_lower": -10, "tick_upper": 10, "virtual_liquidity_raw": "1000", "opened_at": t_old,
+    })
+    insert_row(test_db, "rh_journal", {
+        "event_id": "pos-old-open-t0", "idempotency_key": "pos-old-open-t0",
+        "account_debit": "LP_POSITION_TOKEN0", "account_credit": "WALLET_TOKEN0",
+        "asset": "0xtoken0", "amount_raw": "10", "is_external_flow": 0,
+        "ref_json": json.dumps({"position_id": "pos-old", "leg": "token0"}), "booked_at": t_old,
+    })
+    insert_row(test_db, "rh_journal", {
+        "event_id": "pos-old-open-t1", "idempotency_key": "pos-old-open-t1",
+        "account_debit": "LP_POSITION_TOKEN1", "account_credit": "WALLET_TOKEN1",
+        "asset": "0xtoken1", "amount_raw": "20", "is_external_flow": 0,
+        "ref_json": json.dumps({"position_id": "pos-old", "leg": "token1"}), "booked_at": t_old,
+    })
+    insert_row(test_db, "rh_position_marks", {
+        "position_id": "pos-old", "mark_time": t_old, "accrued_fee": "50.0",
+    })
+    test_db.commit()
+
+    res = run_reconciliation(test_db, since="2026-09-11T07:00:00Z")
+    assert res["verdict"] == "UNEXPLAINED_DIFF"
+    assert res["evidence"]["c3"]["diff_count"] == 1
+    assert "c3_diffs" in res["delta"]
+
+
+def test_reconciliation_since_invalid_format(tmp_path, capsys):
+    """15. --since invalid format (no tz, not a date, empty) -> non-zero exit and stderr error."""
+    db_file = tmp_path / "recon_inv.db"
+    conn = open_store(db_file, read_only=False)
+    migrate(conn)
+    conn.close()
+
+    for invalid_ts in ("2026-09-11", "not-a-date", "2026-09-11T10:52:54", ""):
+        conn_mem = open_store(db_file, read_only=True)
+        with pytest.raises(ValueError, match="Invalid RFC3339 timestamp"):
+            run_reconciliation(conn_mem, since=invalid_ts)
+        conn_mem.close()
+
+        rc = main(["--db", str(db_file), "--since", invalid_ts])
+        assert rc != 0
+        captured = capsys.readouterr()
+        assert "invalid --since timestamp" in captured.err
+
+
+def test_evidence_json_has_since_field(test_db):
+    """16. evidence_json has since field in all 3 checks (null when omitted)."""
+    _populate_balanced_dataset(test_db)
+
+    # 1. Without since: since is null
+    res1 = run_reconciliation(test_db, apply=True, since=None)
+    row1 = test_db.execute(
+        "SELECT evidence_json FROM rh_reconciliation_runs WHERE run_id = ?",
+        (res1["run_id"],)
+    ).fetchone()
+    assert row1 is not None
+    ev1 = json.loads(row1[0])
+    for k in ("c1", "c2", "c3"):
+        assert "since" in ev1[k]
+        assert ev1[k]["since"] is None
+
+    # 2. With since: since is recorded
+    since_val = "2026-09-11T09:00:00Z"
+    res2 = run_reconciliation(test_db, apply=True, since=since_val)
+    row2 = test_db.execute(
+        "SELECT evidence_json FROM rh_reconciliation_runs WHERE run_id = ?",
+        (res2["run_id"],)
+    ).fetchone()
+    assert row2 is not None
+    ev2 = json.loads(row2[0])
+    for k in ("c1", "c2", "c3"):
+        assert "since" in ev2[k]
+        assert ev2[k]["since"] == since_val
+

@@ -15,6 +15,7 @@ import decimal
 from decimal import Decimal
 import json
 from pathlib import Path
+import re
 import sqlite3
 import sys
 from typing import Any, Callable, Mapping, Optional, Sequence, Tuple
@@ -27,38 +28,161 @@ if str(REPO_ROOT) not in sys.path:
 from scripts.lp_rh_readiness_v1_readonly import audit_unexplained_ledger_diffs
 from scripts.lp_rh_store_v1_readonly import DEFAULT_DB_PATH, insert_row, open_store
 
+_RFC3339_RE = re.compile(
+    r"^\d{4}-\d{2}-\d{2}[Tt]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:[Zz]|[+-]\d{2}:\d{2})$"
+)
 
-def check_c1_double_entry_balance(conn: sqlite3.Connection) -> dict[str, Any]:
+
+def validate_rfc3339(val: str) -> str:
+    """Validate RFC3339 timestamp with timezone and normalize to UTC Z representation."""
+    if not isinstance(val, str):
+        raise ValueError(f"Timestamp must be string, got {type(val).__name__}")
+    ts = val.strip()
+    if not _RFC3339_RE.match(ts):
+        raise ValueError(f"Invalid RFC3339 timestamp (must include date, time, and timezone): {ts!r}")
+    try:
+        dt = datetime.fromisoformat(ts.replace("Z", "+00:00").replace("z", "+00:00"))
+    except Exception as exc:
+        raise ValueError(f"Invalid RFC3339 timestamp: {ts!r} ({exc})") from exc
+
+    if dt.tzinfo is None:
+        raise ValueError(f"RFC3339 timestamp must include timezone: {ts!r}")
+
+    dt_utc = dt.astimezone(timezone.utc)
+    if dt_utc.microsecond:
+        return dt_utc.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+    return dt_utc.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def check_c1_double_entry_balance(
+    conn: sqlite3.Connection,
+    *,
+    since: Optional[str] = None,
+) -> dict[str, Any]:
     """C1: Check rh_journal double-entry balance via audit_unexplained_ledger_diffs."""
     try:
-        journal_count = conn.execute("SELECT COUNT(*) FROM rh_journal").fetchone()[0]
-    except Exception:
-        journal_count = 0
+        tables = {r[0] for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
+        if "rh_journal" not in tables:
+            return {
+                "check": "C1_DOUBLE_ENTRY_BALANCE",
+                "since": since,
+                "has_evidence": False,
+                "rows_examined": 0,
+                "reason": "NO_JOURNAL_EVIDENCE",
+                "details": [],
+                "diff_count": None,
+            }
 
-    audit_res = audit_unexplained_ledger_diffs(conn)
-    diff_count = audit_res.get("count")
-
-    if diff_count is None or journal_count == 0:
+        if since is not None:
+            journal_count = conn.execute(
+                "SELECT COUNT(*) FROM rh_journal WHERE booked_at > ?", (since,)
+            ).fetchone()[0]
+        else:
+            journal_count = conn.execute("SELECT COUNT(*) FROM rh_journal").fetchone()[0]
+    except Exception as exc:
         return {
             "check": "C1_DOUBLE_ENTRY_BALANCE",
+            "since": since,
             "has_evidence": False,
-            "rows_examined": journal_count,
-            "reason": audit_res.get("reason", "NO_JOURNAL_EVIDENCE"),
-            "details": audit_res.get("details", []),
+            "rows_examined": 0,
+            "reason": f"audit_exception:{exc}",
+            "details": [],
             "diff_count": None,
         }
 
+    if journal_count == 0:
+        return {
+            "check": "C1_DOUBLE_ENTRY_BALANCE",
+            "since": since,
+            "has_evidence": False,
+            "rows_examined": 0,
+            "reason": "NO_JOURNAL_EVIDENCE",
+            "details": [],
+            "diff_count": None,
+        }
+
+    if since is not None:
+        try:
+            rows = conn.execute(
+                "SELECT event_id, account_debit, account_credit, amount_raw "
+                "FROM rh_journal WHERE booked_at > ?", (since,)
+            ).fetchall()
+            entries: dict[str, list] = {}
+            for idx, (event_id, acct_debit, acct_credit, amount_raw) in enumerate(rows):
+                key = event_id if event_id else f"__row__{idx}"
+                entries.setdefault(key, []).append((acct_debit, acct_credit, amount_raw))
+            count = 0
+            details = []
+            with decimal.localcontext(decimal.Context(prec=100)):
+                for key, legs in entries.items():
+                    debit_total = Decimal(0)
+                    credit_total = Decimal(0)
+                    empty_account = False
+                    for acct_debit, acct_credit, amount_raw in legs:
+                        if not acct_debit or not acct_credit:
+                            empty_account = True
+                        amt = Decimal(0)
+                        if amount_raw is not None:
+                            try:
+                                amt = Decimal(str(amount_raw).strip())
+                            except Exception:
+                                amt = Decimal(0)
+                        if acct_debit:
+                            debit_total += amt
+                        if acct_credit:
+                            credit_total += amt
+                    if empty_account or debit_total != credit_total:
+                        count += 1
+                        details.append(
+                            f"rh_journal:{key}:debit={debit_total}:"
+                            f"credit={credit_total}:empty_account={empty_account}"
+                        )
+            diff_count = count
+            reason = "OK" if count == 0 else "UNBALANCED_ENTRIES"
+        except Exception as exc:
+            return {
+                "check": "C1_DOUBLE_ENTRY_BALANCE",
+                "since": since,
+                "has_evidence": False,
+                "rows_examined": journal_count,
+                "reason": f"audit_exception:{exc}",
+                "details": [],
+                "diff_count": None,
+            }
+    else:
+        audit_res = audit_unexplained_ledger_diffs(conn)
+        diff_count = audit_res.get("count")
+        details = audit_res.get("details", [])
+        reason = audit_res.get("reason", "OK")
+
+        if diff_count is None:
+            return {
+                "check": "C1_DOUBLE_ENTRY_BALANCE",
+                "since": since,
+                "has_evidence": False,
+                "rows_examined": journal_count,
+                "reason": reason,
+                "details": details,
+                "diff_count": None,
+            }
+
     return {
         "check": "C1_DOUBLE_ENTRY_BALANCE",
+        "since": since,
         "has_evidence": True,
         "rows_examined": journal_count,
-        "reason": audit_res.get("reason", "OK"),
-        "details": audit_res.get("details", []),
+        "reason": reason,
+        "details": details,
         "diff_count": diff_count,
     }
 
 
-def check_c2_opening_legs(conn: sqlite3.Connection) -> dict[str, Any]:
+def check_c2_opening_legs(
+    conn: sqlite3.Connection,
+    *,
+    since: Optional[str] = None,
+) -> dict[str, Any]:
     """C2: Reconcile rh_shadow_positions initial amounts with opening legs in rh_journal."""
     try:
         tables = {r[0] for r in conn.execute(
@@ -66,6 +190,7 @@ def check_c2_opening_legs(conn: sqlite3.Connection) -> dict[str, Any]:
         if "rh_shadow_positions" not in tables or "rh_journal" not in tables:
             return {
                 "check": "C2_OPENING_LEGS",
+                "since": since,
                 "has_evidence": False,
                 "rows_examined": 0,
                 "reason": "MISSING_TABLES",
@@ -73,12 +198,20 @@ def check_c2_opening_legs(conn: sqlite3.Connection) -> dict[str, Any]:
                 "diffs": [],
             }
 
-        pos_rows = conn.execute(
-            "SELECT position_id, initial_token0_raw, initial_token1_raw "
-            "FROM rh_shadow_positions").fetchall()
+        if since is not None:
+            pos_rows = conn.execute(
+                "SELECT position_id, initial_token0_raw, initial_token1_raw "
+                "FROM rh_shadow_positions WHERE opened_at > ?",
+                (since,),
+            ).fetchall()
+        else:
+            pos_rows = conn.execute(
+                "SELECT position_id, initial_token0_raw, initial_token1_raw "
+                "FROM rh_shadow_positions").fetchall()
         if not pos_rows:
             return {
                 "check": "C2_OPENING_LEGS",
+                "since": since,
                 "has_evidence": False,
                 "rows_examined": 0,
                 "reason": "NO_SHADOW_POSITIONS_EVIDENCE",
@@ -86,12 +219,20 @@ def check_c2_opening_legs(conn: sqlite3.Connection) -> dict[str, Any]:
                 "diffs": [],
             }
 
-        journal_rows = conn.execute(
-            "SELECT account_debit, account_credit, amount_raw, ref_json "
-            "FROM rh_journal").fetchall()
+        if since is not None:
+            journal_rows = conn.execute(
+                "SELECT account_debit, account_credit, amount_raw, ref_json "
+                "FROM rh_journal WHERE booked_at > ?",
+                (since,),
+            ).fetchall()
+        else:
+            journal_rows = conn.execute(
+                "SELECT account_debit, account_credit, amount_raw, ref_json "
+                "FROM rh_journal").fetchall()
         if not journal_rows:
             return {
                 "check": "C2_OPENING_LEGS",
+                "since": since,
                 "has_evidence": False,
                 "rows_examined": len(pos_rows),
                 "reason": "NO_JOURNAL_EVIDENCE",
@@ -158,6 +299,7 @@ def check_c2_opening_legs(conn: sqlite3.Connection) -> dict[str, Any]:
 
         return {
             "check": "C2_OPENING_LEGS",
+            "since": since,
             "has_evidence": True,
             "rows_examined": len(pos_rows),
             "journal_rows_examined": len(journal_rows),
@@ -168,6 +310,7 @@ def check_c2_opening_legs(conn: sqlite3.Connection) -> dict[str, Any]:
     except Exception as exc:
         return {
             "check": "C2_OPENING_LEGS",
+            "since": since,
             "has_evidence": False,
             "rows_examined": 0,
             "reason": f"audit_exception:{exc}",
@@ -176,7 +319,11 @@ def check_c2_opening_legs(conn: sqlite3.Connection) -> dict[str, Any]:
         }
 
 
-def check_c3_fee_accrual(conn: sqlite3.Connection) -> dict[str, Any]:
+def check_c3_fee_accrual(
+    conn: sqlite3.Connection,
+    *,
+    since: Optional[str] = None,
+) -> dict[str, Any]:
     """C3: Reconcile rh_journal LP_FEES_RECEIVABLE / LP_FEE_INCOME with position marks accrued_fee."""
     try:
         tables = {r[0] for r in conn.execute(
@@ -184,6 +331,7 @@ def check_c3_fee_accrual(conn: sqlite3.Connection) -> dict[str, Any]:
         if "rh_position_marks" not in tables or "rh_journal" not in tables:
             return {
                 "check": "C3_FEE_ACCRUAL",
+                "since": since,
                 "has_evidence": False,
                 "rows_examined": 0,
                 "reason": "MISSING_TABLES",
@@ -191,10 +339,18 @@ def check_c3_fee_accrual(conn: sqlite3.Connection) -> dict[str, Any]:
                 "details": {},
             }
 
-        mark_count = conn.execute("SELECT COUNT(*) FROM rh_position_marks").fetchone()[0]
+        if since is not None:
+            mark_count = conn.execute(
+                "SELECT COUNT(*) FROM rh_position_marks WHERE mark_time > ?",
+                (since,),
+            ).fetchone()[0]
+        else:
+            mark_count = conn.execute("SELECT COUNT(*) FROM rh_position_marks").fetchone()[0]
+
         if mark_count == 0:
             return {
                 "check": "C3_FEE_ACCRUAL",
+                "since": since,
                 "has_evidence": False,
                 "rows_examined": 0,
                 "reason": "NO_POSITION_MARKS_EVIDENCE",
@@ -202,15 +358,28 @@ def check_c3_fee_accrual(conn: sqlite3.Connection) -> dict[str, Any]:
                 "details": {},
             }
 
-        fee_journal_rows = conn.execute(
-            "SELECT amount_raw FROM rh_journal "
-            "WHERE account_debit = 'LP_FEES_RECEIVABLE' AND account_credit = 'LP_FEE_INCOME'"
-        ).fetchall()
+        if since is not None:
+            fee_journal_rows = conn.execute(
+                "SELECT amount_raw FROM rh_journal "
+                "WHERE account_debit = 'LP_FEES_RECEIVABLE' AND account_credit = 'LP_FEE_INCOME' "
+                "AND booked_at > ?",
+                (since,),
+            ).fetchall()
+            mark_rows = conn.execute(
+                "SELECT position_id, mark_time, accrued_fee FROM rh_position_marks "
+                "WHERE mark_time > ? ORDER BY mark_time ASC",
+                (since,),
+            ).fetchall()
+        else:
+            fee_journal_rows = conn.execute(
+                "SELECT amount_raw FROM rh_journal "
+                "WHERE account_debit = 'LP_FEES_RECEIVABLE' AND account_credit = 'LP_FEE_INCOME'"
+            ).fetchall()
+            mark_rows = conn.execute(
+                "SELECT position_id, mark_time, accrued_fee FROM rh_position_marks "
+                "ORDER BY mark_time ASC"
+            ).fetchall()
 
-        mark_rows = conn.execute(
-            "SELECT position_id, mark_time, accrued_fee FROM rh_position_marks "
-            "ORDER BY mark_time ASC"
-        ).fetchall()
         latest_marks: dict[str, Any] = {}
         for pos_id, _mark_time, accrued_fee in mark_rows:
             latest_marks[pos_id] = accrued_fee
@@ -242,6 +411,7 @@ def check_c3_fee_accrual(conn: sqlite3.Connection) -> dict[str, Any]:
         if len(fee_journal_rows) == 0 and not has_non_zero_accrued and marks_fee_total == Decimal(0):
             return {
                 "check": "C3_FEE_ACCRUAL",
+                "since": since,
                 "has_evidence": False,
                 "rows_examined": mark_count,
                 "positions_examined": len(latest_marks),
@@ -262,6 +432,7 @@ def check_c3_fee_accrual(conn: sqlite3.Connection) -> dict[str, Any]:
 
         return {
             "check": "C3_FEE_ACCRUAL",
+            "since": since,
             "has_evidence": True,
             "rows_examined": mark_count,
             "positions_examined": len(latest_marks),
@@ -273,6 +444,7 @@ def check_c3_fee_accrual(conn: sqlite3.Connection) -> dict[str, Any]:
     except Exception as exc:
         return {
             "check": "C3_FEE_ACCRUAL",
+            "since": since,
             "has_evidence": False,
             "rows_examined": 0,
             "reason": f"audit_exception:{exc}",
@@ -308,15 +480,19 @@ def run_reconciliation(
     conn: sqlite3.Connection,
     *,
     apply: bool = False,
+    since: Optional[str] = None,
     now_fn: Optional[Callable[[], str]] = None,
 ) -> dict[str, Any]:
     """Run all reconciliation checks and optionally persist to rh_reconciliation_runs."""
+    if since is not None:
+        since = validate_rfc3339(since)
+
     get_now = now_fn or (lambda: datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"))
     started_at = get_now()
 
-    c1 = check_c1_double_entry_balance(conn)
-    c2 = check_c2_opening_legs(conn)
-    c3 = check_c3_fee_accrual(conn)
+    c1 = check_c1_double_entry_balance(conn, since=since)
+    c2 = check_c2_opening_legs(conn, since=since)
+    c3 = check_c3_fee_accrual(conn, since=since)
 
     evidence = {
         "c1": c1,
@@ -371,6 +547,7 @@ def run_reconciliation(
         "run_id": run_id,
         "started_at": started_at,
         "finished_at": finished_at,
+        "since": since,
         "verdict": verdict,
         "applied": apply,
         "derived_block_hash": block_hash,
@@ -385,17 +562,31 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(description="LP RH Reconciliation Runner")
     parser.add_argument("--db", type=str, default=str(DEFAULT_DB_PATH),
                         help="Path to SQLite database (default: reports/lp_rh/scanner.db)")
+    parser.add_argument("--since", type=str, default=None,
+                        help="RFC3339 timestamp with timezone (only examine records after this time)")
     parser.add_argument("--apply", action="store_true",
                         help="Write reconciliation result to rh_reconciliation_runs (default: dry-run)")
     parser.add_argument("--json", action="store_true",
                         help="Output pure JSON result")
     args = parser.parse_args(argv)
 
+    since = None
+    parse_error = None
+    if args.since is not None:
+        try:
+            since = validate_rfc3339(args.since)
+        except ValueError as exc:
+            parse_error = str(exc)
+
+    if parse_error is not None:
+        sys.stderr.write(f"Error: invalid --since timestamp: {parse_error}\n")
+        return 2
+
     db_path = Path(args.db).resolve()
     # In dry-run mode, open read-only to guarantee no accidental database mutations
     conn = open_store(db_path, read_only=not args.apply)
     try:
-        res = run_reconciliation(conn, apply=args.apply)
+        res = run_reconciliation(conn, apply=args.apply, since=since)
     finally:
         conn.close()
 
