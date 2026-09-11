@@ -194,7 +194,11 @@ def compute_size_interval(
     q_min_reason: Optional[str] = None
     costs = {k: gated.get(k) for k in _COST_COMPONENT_KEYS}
     fee_ev = gated.get("fee_ev_usd")
-    reward_ev = gated.get("reward_ev_usd", 0.0)
+    # No default here: apply_netcover_gate always sets reward_ev_usd (0.0 when
+    # the reward is unverified or absent, per T33 -- advertised APR is not
+    # verified income). The None case is handled once, below, where the Decimal
+    # is built. A second default here would only hide a genuinely missing key.
+    reward_ev = gated.get("reward_ev_usd")
 
     if any(v is None for v in costs.values()) or fee_ev is None or position_usd is None:
         q_min = None
@@ -1379,15 +1383,21 @@ def episode_summary(steps: Sequence[ShadowStep], *, load_skipped: int = 0) -> di
         window_reason = "NO_OVERLAPPING_STEPS"
 
     steps_without_nav_reasons: dict[str, int] = {}
+    size_interval_status_counts: dict[str, int] = {}
     for s in steps:
         if s.nav is None and getattr(s, "nav_reason", None) is not None:
             r = s.nav_reason
             steps_without_nav_reasons[r] = steps_without_nav_reasons.get(r, 0) + 1
+        s_int = getattr(s, "size_interval", None)
+        if s_int and isinstance(s_int, dict) and s_int.get("status"):
+            st = str(s_int["status"])
+            size_interval_status_counts[st] = size_interval_status_counts.get(st, 0) + 1
 
     return {
         "total_steps": len(steps),
         "eligible_steps": sum(1 for s in steps if s.terminal_eligible),
         "status_counts": status_counts, "dominant_blocker_counts": blocker_counts,
+        "size_interval_status_counts": size_interval_status_counts,
         "first_eligible_at": next((s.sample_time for s in steps if s.terminal_eligible), None),
         "nav_start": nav_start, "nav_end": nav_end, "net_pnl": net_pnl_val,
         "hodl_delta": hodl_delta,

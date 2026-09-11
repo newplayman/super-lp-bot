@@ -1559,6 +1559,285 @@ def test_rh02ck_cost_components_json_exit_gas_reserve_usd_null_when_unavailable(
     conn.close()
 
 
+# ---------------------------------------------------------------------------
+# RH-02cl / T31: size_interval wiring into main chain & rh_economic_evaluations
+# ---------------------------------------------------------------------------
+
+def test_rh02cl_normal_inputs_computed_status(tmp_path):
+    """1. 正常输入 -> rh_economic_evaluations.q_min 与 q_max 非 NULL，q_min < q_max，status 为 COMPUTED。"""
+    conn = _fresh_store(tmp_path)
+    sample = _passing_sample(0, source_payload_hash="h-cl-1")
+    meta = _conj_meta(tvl_usd=32037565.0)
+
+    steps = run_episode(
+        conn,
+        strategy_episode="ep-cl-1",
+        samples=[sample],
+        position_usd=POSITION_USD,
+        horizon_hours=HORIZON_HOURS,
+        capital_usd=CAPITAL_USD,
+        target_mode="SHADOW_SCENARIO",
+        now_fn=lambda: NOW,
+        pool_meta=meta,
+    )
+    conn.commit()
+
+    row = conn.execute(
+        "SELECT q_min, q_max, cost_components_json FROM rh_economic_evaluations WHERE snapshot_id = 'h-cl-1'"
+    ).fetchone()
+    assert row is not None
+    q_min_str, q_max_str, cc_json = row
+    assert q_min_str is not None, "q_min must not be NULL"
+    assert q_max_str is not None, "q_max must not be NULL"
+
+    q_min_dec = Decimal(q_min_str)
+    q_max_dec = Decimal(q_max_str)
+    assert q_min_dec > 0
+    assert q_max_dec > 0
+    assert q_min_dec < q_max_dec, f"Expected q_min < q_max, got {q_min_dec} >= {q_max_dec}"
+
+    cc = json.loads(cc_json)
+    assert "size_interval" in cc
+    s_meta = cc["size_interval"]
+    assert s_meta["status"] == "COMPUTED"
+    assert s_meta["width"] is not None and s_meta["width"] > 0
+
+    summary = episode_summary(steps)
+    assert "size_interval_status_counts" in summary
+    assert summary["size_interval_status_counts"].get("COMPUTED") == 1
+    conn.close()
+
+
+def test_rh02cl_per_dollar_net_non_positive_yields_inputs_unavailable(tmp_path):
+    """2. per_dollar_net <= 0 -> q_min is None, status INPUTS_UNAVAILABLE, reason 含 NO_SIZE_IS_PROFITABLE。"""
+    conn = _fresh_store(tmp_path)
+    # Set fee_apr_pct very low so fee_ev_usd is tiny compared to variable costs (IL, LVR, slippage)
+    sample = _passing_sample(0, source_payload_hash="h-cl-2", fee_apr_pct=0.00001, sigma_daily=0.05)
+    meta = _conj_meta(tvl_usd=32037565.0)
+
+    run_episode(
+        conn,
+        strategy_episode="ep-cl-2",
+        samples=[sample],
+        position_usd=POSITION_USD,
+        horizon_hours=HORIZON_HOURS,
+        capital_usd=CAPITAL_USD,
+        target_mode="SHADOW_SCENARIO",
+        now_fn=lambda: NOW,
+        pool_meta=meta,
+    )
+    conn.commit()
+
+    row = conn.execute(
+        "SELECT q_min, q_max, cost_components_json FROM rh_economic_evaluations WHERE snapshot_id = 'h-cl-2'"
+    ).fetchone()
+    assert row is not None
+    q_min_str, q_max_str, cc_json = row
+    assert q_min_str is None, f"q_min must be NULL when unprofitable, got {q_min_str}"
+    assert q_max_str is not None
+
+    cc = json.loads(cc_json)
+    s_meta = cc["size_interval"]
+    assert s_meta["status"] == "INPUTS_UNAVAILABLE"
+    assert "NO_SIZE_IS_PROFITABLE" in s_meta["reason"]
+    conn.close()
+
+
+def test_rh02cl_any_cost_component_none_yields_q_min_none(tmp_path):
+    """3. 任一成本项为 None -> q_min 为 None（不是把该项当 0）。"""
+    conn = _fresh_store(tmp_path)
+    # If sigma_daily is None, NetCover assembler cannot compute il_ev_usd/lvr_ev_usd (they become None)
+    sample = _passing_sample(0, source_payload_hash="h-cl-3")
+    del sample["sigma_daily"]
+    meta = _conj_meta(tvl_usd=32037565.0)
+
+    run_episode(
+        conn,
+        strategy_episode="ep-cl-3",
+        samples=[sample],
+        position_usd=POSITION_USD,
+        horizon_hours=HORIZON_HOURS,
+        capital_usd=CAPITAL_USD,
+        target_mode="SHADOW_SCENARIO",
+        now_fn=lambda: NOW,
+        pool_meta=meta,
+    )
+    conn.commit()
+
+    row = conn.execute(
+        "SELECT q_min, cost_components_json FROM rh_economic_evaluations WHERE snapshot_id = 'h-cl-3'"
+    ).fetchone()
+    assert row is not None
+    q_min_str, cc_json = row
+    assert q_min_str is None, f"q_min must be None when a cost component is None, got {q_min_str}"
+    cc = json.loads(cc_json)
+    assert cc["size_interval"]["status"] == "INPUTS_UNAVAILABLE"
+    assert "INPUTS_MISSING" in cc["size_interval"]["reason"]
+    conn.close()
+
+
+def test_rh02cl_q_min_greater_than_q_max_yields_empty_interval(tmp_path):
+    """4. q_min > q_max -> status SIZE_INTERVAL_EMPTY，width 为负且如实写入。"""
+    conn = _fresh_store(tmp_path)
+    sample = _passing_sample(0, source_payload_hash="h-cl-4")
+    # Small tvl_usd so POSITION_TVL_SHARE * TVL is tiny (e.g. 0.0005 * 100 = 0.05 USD)
+    # while q_min is much larger (several dollars)
+    meta = _conj_meta(tvl_usd=100.0)
+
+    run_episode(
+        conn,
+        strategy_episode="ep-cl-4",
+        samples=[sample],
+        position_usd=POSITION_USD,
+        horizon_hours=HORIZON_HOURS,
+        capital_usd=CAPITAL_USD,
+        target_mode="SHADOW_SCENARIO",
+        now_fn=lambda: NOW,
+        pool_meta=meta,
+    )
+    conn.commit()
+
+    row = conn.execute(
+        "SELECT q_min, q_max, cost_components_json FROM rh_economic_evaluations WHERE snapshot_id = 'h-cl-4'"
+    ).fetchone()
+    assert row is not None
+    q_min_str, q_max_str, cc_json = row
+    assert q_min_str is not None and q_max_str is not None
+    q_min_dec = Decimal(q_min_str)
+    q_max_dec = Decimal(q_max_str)
+    assert q_min_dec > q_max_dec, f"Expected q_min > q_max, got {q_min_dec} <= {q_max_dec}"
+
+    cc = json.loads(cc_json)
+    s_meta = cc["size_interval"]
+    assert s_meta["status"] == "SIZE_INTERVAL_EMPTY"
+    assert s_meta["width"] is not None
+    assert s_meta["width"] < 0
+    expected_width = float(q_max_dec - q_min_dec)
+    assert abs(s_meta["width"] - expected_width) < 1e-4
+    conn.close()
+
+
+def test_rh02cl_q_max_is_partial_true_and_contains_three_missing():
+    """5. q_max_is_partial is True，q_max_constraints_missing 恰好含那三项。"""
+    from scripts.lp_rh_shadow_runner_v1_readonly import compute_size_interval
+    import sqlite3
+    dummy_conn = sqlite3.connect(":memory:")
+    gated = {
+        "fee_ev_usd": 10.0,
+        "reward_ev_usd": 0.0,
+        "il_ev_usd": 0.1,
+        "lvr_ev_usd": 0.1,
+        "slippage_usd": 0.05,
+        "exit_latency_loss_usd": 0.01,
+        "reward_conversion_cost_usd": 0.0,
+        "entry_cost_usd": 0.2,
+        "exit_cost_usd": 0.2,
+        "gas_usd": 0.1,
+    }
+    pool_meta = {
+        "tvl_usd": 1000000.0,
+        "max_impact_bps": 50,
+        "tick_data": [{"tick_lower": -100, "tick_upper": 100, "liquidity_net": 10**18}],
+        "sqrt_price_x96": 3950376364833515856698135,
+        "current_tick": 0,
+        "fee_pips": 100,
+        "liquidity": 10**18,
+    }
+    gas_res = {"required_usd": "5.0"}
+    res = compute_size_interval(
+        dummy_conn,
+        gated=gated,
+        capital_usd=Decimal("10000"),
+        position_usd=Decimal("1000"),
+        pool_meta=pool_meta,
+        gas_reserve_result=gas_res,
+    )
+    dummy_conn.close()
+
+    assert res["q_max_is_partial"] is True
+    assert set(res["q_max_constraints_missing"]) >= {
+        "global_active_room",
+        "approved_position_cap",
+        "asset_exposure_room",
+    }
+    assert res["q_max"] is not None
+
+
+def test_rh02cl_terminal_bits_json_identical_before_and_after(tmp_path):
+    """6. 终闸未被影响：同一批样本在本包接入后，rh_gate_decisions 的 terminal_bits_json 逐字相同（无 q_max 介入）。"""
+    conn = _fresh_store(tmp_path)
+    sample = _passing_sample(0, source_payload_hash="h-cl-6")
+    meta = _conj_meta(tvl_usd=32037565.0)
+
+    run_episode(
+        conn,
+        strategy_episode="ep-cl-6",
+        samples=[sample],
+        position_usd=POSITION_USD,
+        horizon_hours=HORIZON_HOURS,
+        capital_usd=CAPITAL_USD,
+        target_mode="SHADOW_SCENARIO",
+        now_fn=lambda: NOW,
+        pool_meta=meta,
+    )
+    conn.commit()
+
+    row = conn.execute(
+        "SELECT terminal_bits_json FROM rh_gate_decisions WHERE candidate_key = 'pool-0@2026-01-01T00:00:00Z'"
+    ).fetchone()
+    assert row is not None
+    bits = json.loads(row[0])
+    # Verify conjuncts in terminal_bits
+    from scripts.lp_rh_terminal_gate_v1_readonly import CONJUNCT_ORDER
+    for conjunct in CONJUNCT_ORDER:
+        assert conjunct in bits
+    # Verify no size_interval or q_max leaked into gate terminal_bits
+    assert "q_max" not in bits
+    assert "size_interval" not in bits
+    assert "size_interval_pass" not in bits
+    conn.close()
+
+
+def test_rh02cl_exit_depth_missing_cap_not_in_candidate_limits(tmp_path):
+    """7. exit_depth_for_size 返回 max_exit_usd is None -> 该约束不参与 min，并出现在 q_max_constraints_missing 里。"""
+    from scripts.lp_rh_shadow_runner_v1_readonly import compute_size_interval
+    import sqlite3
+    dummy_conn = sqlite3.connect(":memory:")
+    gated = {
+        "fee_ev_usd": 10.0,
+        "reward_ev_usd": 0.0,
+        "il_ev_usd": 0.1,
+        "lvr_ev_usd": 0.1,
+        "slippage_usd": 0.05,
+        "exit_latency_loss_usd": 0.01,
+        "reward_conversion_cost_usd": 0.0,
+        "entry_cost_usd": 0.2,
+        "exit_cost_usd": 0.2,
+        "gas_usd": 0.1,
+    }
+    # Pool meta lacks tick_data -> exit depth cap cannot be computed (returns None)
+    pool_meta = {
+        "tvl_usd": 1000000.0,
+        "max_impact_bps": 50,
+        "tick_data": None,
+    }
+    res = compute_size_interval(
+        dummy_conn,
+        gated=gated,
+        capital_usd=Decimal("10000"),
+        position_usd=Decimal("1000"),
+        pool_meta=pool_meta,
+        gas_reserve_result=None,
+    )
+    dummy_conn.close()
+
+    assert "measured_exit_depth_cap" in res["q_max_constraints_missing"]
+    assert "measured_exit_depth_cap" not in res["q_max_constraints_applied"]
+    assert res["q_max_binding"] != "measured_exit_depth_cap"
+    assert res["q_max"] is not None
+
+
+
 
 
 
