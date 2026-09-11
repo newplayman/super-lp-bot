@@ -48,6 +48,7 @@ from scripts.lp_rh_market_session_v1_readonly import (
     classify_session,
     evaluate_health,
 )
+from scripts.lp_rh_in_range_v1_readonly import tick_from_price
 from scripts.lp_rh_exit_depth_v1_readonly import exit_depth_for_size
 from scripts.lp_rh_pnl_v1_readonly import (
     book_journal_event,
@@ -96,6 +97,7 @@ class ShadowStep:
     gas_usd_source: Optional[str] = None
     gas_reserve: Optional[dict] = None
     size_interval: Optional[dict] = None
+    in_range: Optional[bool] = None
 
 
 def _candidate_key(sample: Mapping[str, Any], step_index: int) -> str:
@@ -819,6 +821,8 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
     position_row_written = False
     pending_position_open_at: Optional[str] = None
     inv_cached = None
+    tick_lower: Optional[int] = None
+    tick_upper: Optional[int] = None
 
     for i, sample in enumerate(samples):
         record = assemble_rh_clmm_inputs(_evidence_for(sample, effective_pool_meta),
@@ -915,6 +919,12 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
                         l_pos = inv.liquidity_raw
                         open_valid = True
                         inv_cached = inv
+                        p_lower = price * (Decimal(1) - r_pct / Decimal(100))
+                        p_upper = price * (Decimal(1) + r_pct / Decimal(100))
+                        t_a = tick_from_price(p_lower, dec0=d0, dec1=d1)
+                        t_b = tick_from_price(p_upper, dec0=d0, dec1=d1)
+                        tick_lower = min(t_a, t_b)
+                        tick_upper = max(t_a, t_b)
                     else:
                         open_fail_reason = open_fail_reason or "RANGE_OR_INPUTS_INVALID"
                 except (TypeError, ValueError, InvalidOperation):
@@ -922,6 +932,14 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
             else:
                 open_valid = False
                 open_fail_reason = "RANGE_PCT_MISSING"
+
+        step_in_range: Optional[bool] = None
+        if price is not None and tick_lower is not None and tick_upper is not None:
+            try:
+                t = tick_from_price(price, dec0=dec0_val, dec1=dec1_val)
+                step_in_range = bool(tick_lower <= t < tick_upper)
+            except (TypeError, ValueError, InvalidOperation):
+                step_in_range = None
 
         fg0, fg1 = sample.get("fee_growth_global_0"), sample.get("fee_growth_global_1")
         nav: Optional[Decimal] = None
@@ -947,7 +965,8 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
                     tok0 = (l_pos * d0 / FEE_GROWTH_SCALE / (Decimal(10) ** dec0_val))
                     tok1 = (l_pos * d1 / FEE_GROWTH_SCALE / (Decimal(10) ** dec1_val))
                     fee_usd = (tok0 * price + tok1) * step_quote_val
-                    accrued += fee_usd
+                    if step_in_range is True:
+                        accrued += fee_usd
                 prev_fg0, prev_fg1 = cur0, cur1
 
                 lp_val = position_value_at(
@@ -1054,6 +1073,7 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
         risk_data = {
             "skipped": nav is None,
             "liquidation_nav_reason": "NOT_COMPUTED:EXIT_DEPTH_PER_STEP_NOT_WIRED",
+            "in_range": step_in_range,
         }
         if nav is None and nav_reason is not None:
             risk_data["reason"] = nav_reason
@@ -1098,8 +1118,8 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
                     "initial_token0_raw": str(inv_cached.amount0_raw),
                     "initial_token1_raw": str(inv_cached.amount1_raw),
                     "virtual_liquidity_raw": str(inv_cached.liquidity_raw),
-                    "tick_lower": None,
-                    "tick_upper": None,
+                    "tick_lower": tick_lower,
+                    "tick_upper": tick_upper,
                     "opened_at": pending_position_open_at,
                     "closed_at": None,
                 })
@@ -1168,7 +1188,8 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
                 "enforced": gas_reserve_result.get("enforced"),
                 "native_balance_known": gas_reserve_result.get("native_balance_known"),
             },
-            size_interval=size_interval_res))
+            size_interval=size_interval_res,
+            in_range=step_in_range))
 
     if position_open:
         release_now = None
@@ -1337,7 +1358,7 @@ def _conjunct_failure_counts(steps) -> dict:
     return dict(sorted(counts.items(), key=lambda kv: (-kv[1], kv[0])))
 
 
-def episode_summary(steps: Sequence[ShadowStep], *, load_skipped: int = 0) -> dict:
+def episode_summary(steps: Sequence[ShadowStep], *, load_skipped: int = 0, pool_meta: Optional[dict] = None) -> dict:
     """Aggregate an episode into the RH-04b summary dict."""
     status_counts: dict[str, int] = {}
     blocker_counts: dict[str, int] = {}
@@ -1384,7 +1405,20 @@ def episode_summary(steps: Sequence[ShadowStep], *, load_skipped: int = 0) -> di
 
     steps_without_nav_reasons: dict[str, int] = {}
     size_interval_status_counts: dict[str, int] = {}
+    in_range_steps = 0
+    out_of_range_steps = 0
+    skipped_no_price = 0
+    summary_tick_lower: Optional[int] = None
+    summary_tick_upper: Optional[int] = None
+
     for s in steps:
+        if getattr(s, "in_range", None) is True:
+            in_range_steps += 1
+        elif getattr(s, "in_range", None) is False:
+            out_of_range_steps += 1
+        else:
+            skipped_no_price += 1
+
         if s.nav is None and getattr(s, "nav_reason", None) is not None:
             r = s.nav_reason
             steps_without_nav_reasons[r] = steps_without_nav_reasons.get(r, 0) + 1
@@ -1393,11 +1427,43 @@ def episode_summary(steps: Sequence[ShadowStep], *, load_skipped: int = 0) -> di
             st = str(s_int["status"])
             size_interval_status_counts[st] = size_interval_status_counts.get(st, 0) + 1
 
+    denom = in_range_steps + out_of_range_steps
+    in_range_fraction_val = (Decimal(in_range_steps) / Decimal(denom)) if denom > 0 else None
+
+    # Derive tick_lower / tick_upper from open step if pool_meta and entry price are present
+    open_step = next((s for s in steps if s.price is not None and s.price > 0), None)
+    if open_step is not None and pool_meta is not None and "range_pct" in pool_meta:
+        try:
+            r_pct = Decimal(str(pool_meta["range_pct"]))
+            d0_raw = pool_meta.get("dec0", pool_meta.get("token0_decimals"))
+            d1_raw = pool_meta.get("dec1", pool_meta.get("token1_decimals"))
+            if d0_raw is not None and d1_raw is not None and 0 < r_pct < 100:
+                d0 = int(d0_raw)
+                d1 = int(d1_raw)
+                p_lower = open_step.price * (Decimal(1) - r_pct / Decimal(100))
+                p_upper = open_step.price * (Decimal(1) + r_pct / Decimal(100))
+                t_a = tick_from_price(p_lower, dec0=d0, dec1=d1)
+                t_b = tick_from_price(p_upper, dec0=d0, dec1=d1)
+                summary_tick_lower = min(t_a, t_b)
+                summary_tick_upper = max(t_a, t_b)
+        except (TypeError, ValueError, InvalidOperation):
+            pass
+
+    in_range_summary = {
+        "in_range_steps": in_range_steps,
+        "out_of_range_steps": out_of_range_steps,
+        "skipped_no_price": skipped_no_price,
+        "fraction": in_range_fraction_val,
+        "tick_lower": summary_tick_lower,
+        "tick_upper": summary_tick_upper,
+    }
+
     return {
         "total_steps": len(steps),
         "eligible_steps": sum(1 for s in steps if s.terminal_eligible),
         "status_counts": status_counts, "dominant_blocker_counts": blocker_counts,
         "size_interval_status_counts": size_interval_status_counts,
+        "in_range": in_range_summary,
         "first_eligible_at": next((s.sample_time for s in steps if s.terminal_eligible), None),
         "nav_start": nav_start, "nav_end": nav_end, "net_pnl": net_pnl_val,
         "hodl_delta": hodl_delta,
@@ -1464,7 +1530,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     payload = {"target_mode": a.target_mode, "pool": a.pool, "strategy_episode": ep,
                "steps": [asdict(s) for s in steps],
-               "summary": episode_summary(steps, load_skipped=load_skipped)}
+               "summary": episode_summary(steps, load_skipped=load_skipped, pool_meta=pool_meta)}
     out_text = json.dumps(payload, indent=2, default=str)
     if a.out:
         Path(a.out).write_text(out_text)

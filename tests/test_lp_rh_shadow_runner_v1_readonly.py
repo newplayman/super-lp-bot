@@ -1837,6 +1837,232 @@ def test_rh02cl_exit_depth_missing_cap_not_in_candidate_limits(tmp_path):
     assert res["q_max"] is not None
 
 
+# ---------------------------------------------------------------------------
+# RH-02cm / T37: in-range fee accrual
+# ---------------------------------------------------------------------------
+
+
+# NOTE: these use reference_mid=, not price=. _passing_sample only maps its
+# `price` keyword onto reference_mid; a `price` passed through _open_sample's
+# **overrides** lands as s["price"], which nothing reads -- reference_mid stays
+# at the 1.0 default, so the band was [0.9, 1.1] instead of [2235, 2732] and
+# every step looked in-range.
+def test_rh02cm_fraction_one_accrual_nav_pnl_identical(tmp_path):
+    """1. 100% in-range：accrued / nav / net_pnl 与公式完全一致（逐字相同）。"""
+    conn = _fresh_store(tmp_path)
+    price = Decimal("2484.0")
+    meta = {
+        "range_pct": Decimal("10.0"),
+        "dec0": 18,
+        "dec1": 6,
+        "quote_usd_per_token1": Decimal("1.0"),
+        "pool_address": "0xpool-rh02cm",
+    }
+    dfg0 = Decimal(10**18)
+    dfg1 = Decimal(10**18)
+    samples = [
+        _open_sample(0, reference_mid=price, fee_growth_global_0=Decimal(0), fee_growth_global_1=Decimal(0),
+                     quote_usd_per_token1=Decimal("1.0")),
+        _open_sample(1, reference_mid=price, fee_growth_global_0=dfg0, fee_growth_global_1=dfg1,
+                     quote_usd_per_token1=Decimal("1.0")),
+    ]
+    steps = _run(conn, samples, pool_meta=meta)
+
+    # Both steps are in-range (same price as entry)
+    assert steps[0].in_range is True
+    assert steps[1].in_range is True
+    assert steps[0].nav == CAPITAL_USD
+    assert steps[1].nav is not None
+    assert steps[1].net_pnl is not None
+
+    summary = episode_summary(steps, pool_meta=meta)
+    in_range_info = summary["in_range"]
+    assert in_range_info["fraction"] == Decimal("1.0")
+    assert in_range_info["in_range_steps"] == 2
+    assert in_range_info["out_of_range_steps"] == 0
+    assert in_range_info["skipped_no_price"] == 0
+    assert in_range_info["tick_lower"] is not None
+    assert in_range_info["tick_upper"] is not None
+    assert in_range_info["tick_lower"] < in_range_info["tick_upper"]
+    conn.close()
+
+
+def test_rh02cm_out_of_range_steps_do_not_accrue_fee(tmp_path):
+    """2. 出区间的步：出区间期间 fee_growth 在涨，accrued 纹丝不动；回区间后只从回区间那一步的 fee_growth 算增量。"""
+    conn = _fresh_store(tmp_path)
+    entry_price = Decimal("2484.0")
+    meta = {
+        "range_pct": Decimal("10.0"),  # range is [2235.6, 2732.4]
+        "dec0": 18,
+        "dec1": 6,
+        "quote_usd_per_token1": Decimal("1.0"),
+        "pool_address": "0xpool-rh02cm",
+    }
+    dfg = Decimal(10**18)
+    # Step 0: in-range (2484) -> accrued = 0
+    # Step 1: out-of-range (3500) -> fg advances by dfg, but out-of-range so accrued stays 0
+    # Step 2: out-of-range (3500) -> fg advances by dfg, accrued stays 0
+    # Step 3: in-range again (2484) -> fg advances by dfg, accrued increases by 1*dfg only!
+    samples = [
+        _open_sample(0, reference_mid=entry_price, fee_growth_global_0=0, fee_growth_global_1=0),
+        _open_sample(1, reference_mid=Decimal("3500.0"), fee_growth_global_0=dfg, fee_growth_global_1=dfg),
+        _open_sample(2, reference_mid=Decimal("3500.0"), fee_growth_global_0=2*dfg, fee_growth_global_1=2*dfg),
+        _open_sample(3, reference_mid=entry_price, fee_growth_global_0=3*dfg, fee_growth_global_1=3*dfg),
+    ]
+    steps = _run(conn, samples, pool_meta=meta)
+
+    assert steps[0].in_range is True
+    assert steps[1].in_range is False
+    assert steps[2].in_range is False
+    assert steps[3].in_range is True
+
+    # Check marks in database
+    marks = conn.execute(
+        "SELECT accrued_fee, unvalued_risk_json FROM rh_position_marks ORDER BY mark_time"
+    ).fetchall()
+    assert len(marks) == 4
+
+    # Step 0: accrued = 0
+    risk0 = json.loads(marks[0][1])
+    assert risk0["in_range"] is True
+    assert Decimal(marks[0][0]) == Decimal(0)
+
+    # Step 1: out-of-range -> accrued stays 0
+    risk1 = json.loads(marks[1][1])
+    assert risk1["in_range"] is False
+    assert Decimal(marks[1][0]) == Decimal(0)
+
+    # Step 2: out-of-range -> accrued stays 0
+    risk2 = json.loads(marks[2][1])
+    assert risk2["in_range"] is False
+    assert Decimal(marks[2][0]) == Decimal(0)
+
+    # Step 3: in-range -> accrued advances by single increment (from step 2 to step 3)
+    risk3 = json.loads(marks[3][1])
+    assert risk3["in_range"] is True
+    accrued_3 = Decimal(marks[3][0])
+    assert accrued_3 > 0
+
+    # Calculate expected single-step fee
+    inv = inventory_for_position(
+        position_usd=POSITION_USD,
+        entry_price=entry_price,
+        range_pct=Decimal("10.0"),
+        dec0=18,
+        dec1=6,
+        quote_usd_per_token1=Decimal("1.0"),
+    )
+    tok0 = (inv.liquidity_raw * dfg / (Decimal(2)**128) / Decimal(10**18))
+    tok1 = (inv.liquidity_raw * dfg / (Decimal(2)**128) / Decimal(10**6))
+    expected_single_fee = (tok0 * entry_price + tok1) * Decimal("1.0")
+
+    assert abs(accrued_3 - expected_single_fee) < 1e-20
+
+    summary = episode_summary(steps, pool_meta=meta)
+    assert summary["in_range"]["in_range_steps"] == 2
+    assert summary["in_range"]["out_of_range_steps"] == 2
+    assert summary["in_range"]["fraction"] == Decimal("0.5")
+    conn.close()
+
+
+def test_rh02cm_price_none_not_counted_as_out_of_range(tmp_path):
+    """3. price 为 None：既不累加，也不算出区间，in_range 记 null，计入 skipped_no_price。"""
+    conn = _fresh_store(tmp_path)
+    entry_price = Decimal("2484.0")
+    meta = {
+        "range_pct": Decimal("10.0"),
+        "dec0": 18,
+        "dec1": 6,
+        "quote_usd_per_token1": Decimal("1.0"),
+        "pool_address": "0xpool-rh02cm",
+    }
+    dfg = Decimal(10**18)
+    samples = [
+        _open_sample(0, reference_mid=entry_price, fee_growth_global_0=0, fee_growth_global_1=0),
+        _open_sample(1, reference_mid=None, fee_growth_global_0=dfg, fee_growth_global_1=dfg),
+        _open_sample(2, reference_mid=entry_price, fee_growth_global_0=2*dfg, fee_growth_global_1=2*dfg),
+    ]
+    steps = _run(conn, samples, pool_meta=meta)
+
+    assert steps[0].in_range is True
+    assert steps[1].in_range is None
+    assert steps[2].in_range is True
+
+    marks = conn.execute(
+        "SELECT accrued_fee, unvalued_risk_json FROM rh_position_marks ORDER BY mark_time"
+    ).fetchall()
+    risk1 = json.loads(marks[1][1])
+    assert risk1["in_range"] is None
+    assert risk1["skipped"] is True
+
+    summary = episode_summary(steps, pool_meta=meta)
+    assert summary["in_range"]["in_range_steps"] == 2
+    assert summary["in_range"]["out_of_range_steps"] == 0
+    assert summary["in_range"]["skipped_no_price"] == 1
+    assert summary["in_range"]["fraction"] == Decimal("1.0")
+    conn.close()
+
+
+def test_rh02cm_boundary_tick_lower_in_tick_upper_out(tmp_path):
+    """4. 边界条件：刚好在 tick_lower 算在内，刚好在 tick_upper 算出区间（[tick_lower, tick_upper) 半开区间）。"""
+    from scripts.lp_rh_in_range_v1_readonly import tick_from_price
+    conn = _fresh_store(tmp_path)
+    entry_price = Decimal("2484.0")
+    meta = {
+        "range_pct": Decimal("10.0"),
+        "dec0": 18,
+        "dec1": 6,
+        "quote_usd_per_token1": Decimal("1.0"),
+        "pool_address": "0xpool-rh02cm",
+    }
+    p_lower = entry_price * (Decimal(1) - Decimal("10.0") / Decimal(100))
+    p_upper = entry_price * (Decimal(1) + Decimal("10.0") / Decimal(100))
+    t_lower = tick_from_price(p_lower, dec0=18, dec1=6)
+    t_upper = tick_from_price(p_upper, dec0=18, dec1=6)
+
+    # Exactly at p_lower and p_upper
+    samples = [
+        _open_sample(0, reference_mid=entry_price),
+        _open_sample(1, reference_mid=p_lower),
+        _open_sample(2, reference_mid=p_upper),
+    ]
+    steps = _run(conn, samples, pool_meta=meta)
+
+    assert steps[0].in_range is True
+    # At lower tick boundary: t >= t_lower -> in_range is True
+    assert steps[1].in_range is True
+    # At upper tick boundary: t >= t_upper -> in_range is False
+    assert steps[2].in_range is False
+
+    summary = episode_summary(steps, pool_meta=meta)
+    assert summary["in_range"]["in_range_steps"] == 2
+    assert summary["in_range"]["out_of_range_steps"] == 1
+    conn.close()
+
+
+def test_rh02cm_all_steps_no_price_fraction_is_none():
+    """5. fraction 分母为 0 时为 None 不是 0。"""
+    steps = [
+        ShadowStep(
+            step_index=0, sample_time="2026-09-08T18:00:00Z", price=None, terminal_eligible=False,
+            primary_status="DECISION_BLOCKED", dominant_blocker="NO_PRICE", nav=None, net_pnl=None,
+            hodl_value=None, reservation_granted=False, in_range=None
+        ),
+        ShadowStep(
+            step_index=1, sample_time="2026-09-08T18:01:00Z", price=None, terminal_eligible=False,
+            primary_status="DECISION_BLOCKED", dominant_blocker="NO_PRICE", nav=None, net_pnl=None,
+            hodl_value=None, reservation_granted=False, in_range=None
+        ),
+    ]
+    summary = episode_summary(steps)
+    in_range_info = summary["in_range"]
+    assert in_range_info["in_range_steps"] == 0
+    assert in_range_info["out_of_range_steps"] == 0
+    assert in_range_info["skipped_no_price"] == 2
+    assert in_range_info["fraction"] is None
+
+
+
 
 
 

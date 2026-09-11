@@ -423,7 +423,7 @@ def run_one_round(cfg, *, shadow_conn, episode_id, started_at, now_fn):
                 scratch_conn.commit()
             finally:
                 scratch_conn.close()
-    summary = episode_summary(steps, load_skipped=skipped)
+    summary = episode_summary(steps, load_skipped=skipped, pool_meta=cfg.get("pool_meta"))
     summary["ledger_duplicate_rows"] = duplicate_rows
     summary["copied"] = copy_stats
     summary["ledger_copied"] = copy_stats
@@ -448,6 +448,12 @@ def run_round_safe(cfg, *, shadow_conn, episode_id, now_fn):
         summary = run_one_round(cfg, shadow_conn=shadow_conn,
                                 episode_id=episode_id, started_at=started_at,
                                 now_fn=now_fn)
+        in_range_meta = summary.get("in_range")
+        if in_range_meta and "fraction" in in_range_meta:
+            frac = in_range_meta["fraction"]
+            frac_str = f"{frac:.4f}" if isinstance(frac, (float, Decimal)) else str(frac)
+            print(f"[rh-shadow-daemon] {episode_id}: in_range={frac_str}",
+                  file=sys.stderr)
         if summary.get("ledger_duplicate_rows") is not None:
             dup = summary["ledger_duplicate_rows"]
             copied_stats = summary.get("copied") or summary.get("ledger_copied")
