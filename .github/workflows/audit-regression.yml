@@ -1,0 +1,42 @@
+name: Audit regression (gpt-6pro R01-R08)
+on:
+  push:
+    branches:
+      - feat/prd-v2.1-m0-shadow
+      - feat/supabase-postgres-deployment
+  pull_request:
+    branches:
+      - feat/prd-v2.1-m0-shadow
+  schedule:
+    # 每天 04:00Z 跑一次（错开 RTH 13:30-20:00Z 与 cron */5 集中）
+    - cron: "37 4 * * *"
+
+jobs:
+  audit-repro:
+    name: audit_repro.py R01-R08
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install audit script (vendored)
+        # audit_repro.py 是 gpt-6pro 提供的，PIN 到固定 commit。
+        # 改为本地 vendored 而不是下载 zip，避免供应链风险。
+        run: |
+          mkdir -p tools/audit_repro
+          # 主脑后续会把 audit_repro.py 拷到 tools/audit_repro/audit_repro.py
+          # 在这之前，本 workflow 允许失败——CI 不阻断当前 commit
+          if [ -f tools/audit_repro/audit_repro.py ]; then
+            python tools/audit_repro/audit_repro.py --json-out audit_results.json
+            cat audit_results.json
+            # 期望：defects_reproduced = 0
+            # 若 > 0：job fail，让 PR 不能合并
+            python -c "import json; d = json.load(open('audit_results.json')); n = d.get('defects_reproduced', -1); assert n == 0, f'audit_repro.py still reproduces {n} defects'"
+          else
+            echo "::warning::audit_repro.py not vendored yet (tools/audit_repro/audit_repro.py missing). This warning will be removed once the file is vendored."
+            exit 0
+          fi

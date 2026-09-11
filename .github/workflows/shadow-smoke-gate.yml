@@ -25,7 +25,9 @@ on:
   schedule:
     - cron: "37 6 * * *"
   push:
-    branches: [feat/supabase-postgres-deployment]
+    branches:
+      - feat/prd-v2.1-m0-shadow   # 当前 RH 分支
+      - feat/supabase-postgres-deployment  # 保留，不破坏既有
     paths:
       - "cmd/lpbot/**"
       - "internal/**"
@@ -38,6 +40,9 @@ on:
       - "internal/adapters/store/postgres/migrator/**"
       - ".github/workflows/shadow-smoke-gate.yml"
       - "Makefile"
+  pull_request:
+    branches:
+      - feat/prd-v2.1-m0-shadow
 
 concurrency:
   group: shadow-smoke-gate-${{ github.ref }}
