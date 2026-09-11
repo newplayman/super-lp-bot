@@ -1,0 +1,43 @@
+{
+  "generated_at": "2026-09-11T13:24:18.311778Z",
+  "provider_db_path": "/opt/lpbot/lp-bot-v3-origin-check/reports/lp_rh/provider_health.db",
+  "scanner_db_path": "/opt/lpbot/lp-bot-v3-origin-check/reports/lp_rh/scanner.db",
+  "providers": {
+    "arrowrpc": {
+      "total_calls": 2168,
+      "success_calls": 0,
+      "error_calls": 2168,
+      "success_rate": "0.0000",
+      "observation_start": "2026-09-08T18:13:30.062012Z",
+      "observation_end": "2026-09-11T13:10:58.291810Z"
+    },
+    "ordofi": {
+      "total_calls": 2168,
+      "success_calls": 2145,
+      "error_calls": 23,
+      "success_rate": "0.9894",
+      "observation_start": "2026-09-08T18:13:30.062012Z",
+      "observation_end": "2026-09-11T13:10:58.291810Z"
+    },
+    "publicnode": {
+      "total_calls": 2168,
+      "success_calls": 1303,
+      "error_calls": 865,
+      "success_rate": "0.6010",
+      "observation_start": "2026-09-08T18:13:30.062012Z",
+      "observation_end": "2026-09-11T13:10:58.291810Z"
+    },
+    "robinhood": {
+      "total_calls": 2168,
+      "success_calls": 1824,
+      "error_calls": 344,
+      "success_rate": "0.8413",
+      "observation_start": "2026-09-08T18:13:30.062012Z",
+      "observation_end": "2026-09-11T13:10:58.291810Z"
+    }
+  },
+  "failover_count": 25,
+  "budget_status": "UNKNOWN",
+  "budget_status_reason": "FREE_TIER_QUOTA_UNTRACKED: provider_health.db tracks capability probes but does not record rate limits or remaining free quota balance",
+  "reason": "FREE_TIER_QUOTA_UNTRACKED: provider_health.db tracks capability probes but does not record rate limits or remaining free quota balance"
+}
