@@ -177,6 +177,8 @@ def execute_cleanup(
             released += 1
         else:
             failed += 1
+    if released > 0:
+        conn.commit()
     return released, failed
 
 

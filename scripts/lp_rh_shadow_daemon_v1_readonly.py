@@ -284,6 +284,15 @@ def _copy_new_rows(scratch_conn, ledger_conn, existing_decision_ids=None):
             for d in existing_decision_ids:
                 existing_keys.add((d,) if not isinstance(d, tuple) else d)
 
+        ledger_resv_status = {}
+        if table == "rh_bucket_reservations":
+            ledger_resv_status = {
+                r[0]: r[1]
+                for r in ledger_conn.execute(
+                    "SELECT intent_id, status FROM rh_bucket_reservations"
+                ).fetchall()
+            }
+
         cols_sql = ", ".join(cols)
         placeholders = ", ".join("?" for _ in cols)
         insert_sql = f"INSERT INTO {table} ({cols_sql}) VALUES ({placeholders})"
@@ -294,10 +303,27 @@ def _copy_new_rows(scratch_conn, ledger_conn, existing_decision_ids=None):
         for row in scratch_conn.execute(select_sql):
             pk_val = tuple(row[idx] for idx in pk_indices)
             if pk_val in existing_keys:
+                if table == "rh_bucket_reservations":
+                    intent_id = row[cols.index("intent_id")]
+                    scratch_status = row[cols.index("status")]
+                    ledger_status = ledger_resv_status.get(intent_id)
+                    if (scratch_status in ("RELEASED", "EXPIRED") and
+                            ledger_status in ("PENDING", "CONFIRMED", "BROADCAST_UNKNOWN")):
+                        scratch_released_at = row[cols.index("released_at")]
+                        ledger_conn.execute(
+                            "UPDATE rh_bucket_reservations SET status = ?, released_at = ? "
+                            "WHERE intent_id = ?",
+                            (scratch_status, scratch_released_at, intent_id),
+                        )
+                        ledger_resv_status[intent_id] = scratch_status
+                        copied += 1
+                        continue
                 skipped += 1
                 continue
             ledger_conn.execute(insert_sql, row)
             existing_keys.add(pk_val)
+            if table == "rh_bucket_reservations":
+                ledger_resv_status[row[cols.index("intent_id")]] = row[cols.index("status")]
             copied += 1
 
         stats[table] = {"copied": copied, "skipped_existing": skipped}

@@ -108,6 +108,146 @@ def compute_nav(*, wallet, lp_principal, accrued_fees, verified_rewards,
     return w + p + f + r - l
 
 
+class LiquidationNavResult(tuple):
+    """Result of compute_liquidation_nav supporting tuple unpacking, dict and attribute access."""
+
+    def __new__(cls, nav: Optional[Decimal], reason: Optional[str] = None):
+        return super().__new__(cls, (nav, reason))
+
+    @property
+    def liquidation_nav(self) -> Optional[Decimal]:
+        return self[0]
+
+    @property
+    def nav(self) -> Optional[Decimal]:
+        return self[0]
+
+    @property
+    def reason(self) -> Optional[str]:
+        return self[1]
+
+    def get(self, key: str, default=None):
+        if key in ("liquidation_nav", "nav"):
+            return self[0]
+        if key == "reason":
+            return self[1]
+        return default
+
+    def __getitem__(self, item):
+        if isinstance(item, str):
+            return self.get(item)
+        return super().__getitem__(item)
+
+
+def compute_full_cost_nav(
+    *,
+    wallet,
+    lp_principal,
+    accrued_fees,
+    entry_cost_usd,
+    exit_cost_usd,
+    gas_usd,
+    slippage_usd,
+    verified_rewards=Decimal(0),
+    liabilities=Decimal(0),
+) -> Decimal:
+    """Compute full-cost NAV: wallet + lp_principal - entry_cost - exit_cost - gas - slippage + accrued_fees + rewards - liabilities.
+
+    Fail-close: all numeric parameters are validated via _as_decimal.
+    """
+    w = _as_decimal("wallet", wallet)
+    p = _as_decimal("lp_principal", lp_principal)
+    f = _as_decimal("accrued_fees", accrued_fees)
+    ec = _as_decimal("entry_cost_usd", entry_cost_usd)
+    xc = _as_decimal("exit_cost_usd", exit_cost_usd)
+    g = _as_decimal("gas_usd", gas_usd)
+    s = _as_decimal("slippage_usd", slippage_usd)
+    r = _as_decimal("verified_rewards", verified_rewards)
+    l = _as_decimal("liabilities", liabilities)
+    return w + p - ec - xc - g - s + f + r - l
+
+
+def compute_liquidation_nav(
+    *,
+    l_pos=None,
+    price=None,
+    range=None,
+    fee_growth_0=None,
+    fee_growth_1=None,
+    decimals=None,
+    slippage_bps_max=Decimal("200"),
+    entry_cost_usd=Decimal(0),
+    exit_cost_usd=Decimal(0),
+    gas_usd=Decimal(0),
+    quote_usd_per_token1=Decimal(1),
+    **kwargs,
+) -> LiquidationNavResult:
+    """Conservative maximum extractable cash on exit given fee growth + slippage cap.
+
+    Strictly fail-close: if any required input (l_pos, price, range, fee_growth_0,
+    fee_growth_1, decimals) is missing, returns LiquidationNavResult(None, "LIQUIDATION_NAV_INPUT_MISSING").
+    """
+    if (l_pos is None or price is None or range is None or
+            fee_growth_0 is None or fee_growth_1 is None or decimals is None):
+        return LiquidationNavResult(None, "LIQUIDATION_NAV_INPUT_MISSING")
+
+    try:
+        l = Decimal(str(l_pos))
+        px = Decimal(str(price))
+        fg0 = Decimal(str(fee_growth_0))
+        fg1 = Decimal(str(fee_growth_1))
+        slip_bps = Decimal(str(slippage_bps_max))
+        ec = Decimal(str(entry_cost_usd)) if entry_cost_usd is not None else Decimal(0)
+        xc = Decimal(str(exit_cost_usd)) if exit_cost_usd is not None else Decimal(0)
+        g = Decimal(str(gas_usd)) if gas_usd is not None else Decimal(0)
+        q = Decimal(str(quote_usd_per_token1)) if quote_usd_per_token1 is not None else Decimal(1)
+
+        if isinstance(decimals, (tuple, list)):
+            dec0, dec1 = int(decimals[0]), int(decimals[1])
+        else:
+            dec0 = dec1 = int(decimals)
+
+        if l <= 0 or px <= 0:
+            return LiquidationNavResult(Decimal(0), None)
+
+        if isinstance(range, (tuple, list)):
+            lower_p, upper_p = Decimal(str(range[0])), Decimal(str(range[1]))
+        elif isinstance(range, (int, float, Decimal, str)):
+            rpct = Decimal(str(range))
+            lower_p = px * (Decimal(1) - rpct / Decimal(100))
+            upper_p = px * (Decimal(1) + rpct / Decimal(100))
+        else:
+            return LiquidationNavResult(None, "LIQUIDATION_NAV_INPUT_MISSING")
+
+        sqrt_pa = lower_p.sqrt()
+        sqrt_pb = upper_p.sqrt()
+        sqrt_p = px.sqrt()
+
+        if px <= lower_p:
+            amt0 = l * (sqrt_pb - sqrt_pa) / (sqrt_pa * sqrt_pb)
+            amt1 = Decimal(0)
+        elif px >= upper_p:
+            amt0 = Decimal(0)
+            amt1 = l * (sqrt_pb - sqrt_pa)
+        else:
+            amt0 = l * (sqrt_pb - sqrt_p) / (sqrt_p * sqrt_pb)
+            amt1 = l * (sqrt_p - sqrt_pa)
+
+        pos_val_usd = (amt0 * px + amt1) * q
+        fee_scale = Decimal(2) ** Decimal(128)
+        tok0_fees = l * fg0 / fee_scale / (Decimal(10) ** dec0)
+        tok1_fees = l * fg1 / fee_scale / (Decimal(10) ** dec1)
+        fee_val_usd = (tok0_fees * px + tok1_fees) * q
+
+        slippage_factor = slip_bps / Decimal(10000)
+        conservative_exit_val = (pos_val_usd + fee_val_usd) * (Decimal(1) - slippage_factor)
+        net_liq_nav = conservative_exit_val - ec - xc - g
+        return LiquidationNavResult(max(Decimal(0), net_liq_nav), None)
+    except Exception:
+        return LiquidationNavResult(None, "LIQUIDATION_NAV_COMPUTATION_ERROR")
+
+
+
 def net_pnl(nav_t1: Decimal, nav_t0: Decimal,
             external_net_flow: Decimal) -> Decimal:
     """NetPnL(t0,t1) = NAV(t1) - NAV(t0) - net external flow (PRD §12.1)."""

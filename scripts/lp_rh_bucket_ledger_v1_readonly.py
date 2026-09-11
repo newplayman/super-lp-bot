@@ -183,7 +183,6 @@ def release(conn: sqlite3.Connection, intent_id: str, *, now: str,
         "WHERE intent_id = ?",
         (now, intent_id),
     )
-    conn.commit()
     return True
 
 
@@ -197,7 +196,6 @@ def set_status(conn: sqlite3.Connection, intent_id: str, status: str, *,
         "UPDATE rh_bucket_reservations SET status = ? WHERE intent_id = ?",
         (status, intent_id),
     )
-    conn.commit()
 
 
 def capital_policy_conflict(capital_usd: Decimal, *,

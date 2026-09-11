@@ -1118,7 +1118,7 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
                     else:
                         fee_usd_organic = fee_usd_raw
                     fee_usd = fee_usd_organic
-                    if step_in_range is True:
+                    if position_open and step_in_range is True:
                         accrued += fee_usd
                         accrued_raw += fee_usd_raw
                 else:
@@ -1235,6 +1235,7 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
             step_reasons.append("ECONOMIC_EVAL_SKIPPED_NO_SNAPSHOT_ID")
         sample_time = sample.get("sample_time")
         risk_data = {
+            "accrued_accrual_basis": "position_open_v2",
             "skipped": nav is None,
             "liquidation_nav_reason": "NOT_COMPUTED:EXIT_DEPTH_PER_STEP_NOT_WIRED",
             "in_range": step_in_range,
