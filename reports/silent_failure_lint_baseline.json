@@ -3,7 +3,7 @@
   "tool": "lp_silent_failure_lint_v1_readonly",
   "identity_schema": "(file, rule, fingerprint)",
   "note": "Baseline of known silent-failure hits matched by content fingerprint. --fail-on-new blocks any hit exceeding baseline occurrence count. Line numbers are for display only. Regenerate after an approved fix.",
-  "count": 349,
+  "count": 350,
   "hits": [
     {
       "file": "scripts/finalize_bsc_fee_velocity_overnight_run_v1_readonly.py",
@@ -2011,6 +2011,15 @@
       "fingerprint": "098a4146451494b1",
       "snippet": "UPDATE {CONTENDED_TABLE}",
       "key": "scripts/lp_rh_reorg_resolution_v1_readonly.py:146:36:3"
+    },
+    {
+      "file": "scripts/lp_rh_reservation_cleanup_v1.py",
+      "line": 110,
+      "col": 8,
+      "rule": 5,
+      "fingerprint": "e706fa9325ded821",
+      "snippet": "return False",
+      "key": "scripts/lp_rh_reservation_cleanup_v1.py:110:8:5"
     },
     {
       "file": "scripts/lp_rh_shadow_daemon_v1_readonly.py",
