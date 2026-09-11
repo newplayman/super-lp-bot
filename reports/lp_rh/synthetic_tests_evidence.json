@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-11T14:07:50Z",
-  "code_version": "26de0f4d9e21",
+  "generated_at": "2026-09-11T16:00:19Z",
+  "code_version": "47eb8b380f17",
   "code_version_source": "git log -1 --format=%H -- scripts tests configs pytest.ini",
   "working_tree_clean": true,
   "command": "python3 -m pytest tests/ -q -p no:cacheprovider",
@@ -11,6 +11,6 @@
   "failed": 0,
   "errors": 0,
   "skipped": 14,
-  "duration_secs": 52.21,
+  "duration_secs": 51.53,
   "all_passed": true
 }
