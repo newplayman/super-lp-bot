@@ -2430,6 +2430,161 @@ def test_rh02cn_daemon_log_line(capsys):
     assert "[rh-shadow-daemon] ep-test-organic: organic=8/10" in captured.err
 
 
+# ---------------------------------------------------------------------------
+# RH-03 / T35: leg_fraction & leg_fraction_status persistence into cost_components_json
+# ---------------------------------------------------------------------------
+
+def test_rh03_cost_components_json_contains_leg_fraction_keys(tmp_path):
+    """1. 跑一个 episode -> rh_economic_evaluations.cost_components_json 里确实带 leg_fraction 与 leg_fraction_status 两个键。"""
+    conn = _fresh_store(tmp_path)
+    sample = _passing_sample(0, source_payload_hash="h-lf-keys")
+    meta = _conj_meta(range_pct=Decimal("10.0"))
+
+    _run(conn, [sample], pool_meta=meta)
+    conn.commit()
+
+    row = conn.execute(
+        "SELECT cost_components_json FROM rh_economic_evaluations WHERE snapshot_id = 'h-lf-keys'"
+    ).fetchone()
+    assert row is not None, "rh_economic_evaluations row must exist"
+    cc = json.loads(row[0])
+    assert "leg_fraction" in cc, "cost_components_json must contain leg_fraction key"
+    assert "leg_fraction_status" in cc, "cost_components_json must contain leg_fraction_status key"
+    conn.close()
+
+
+def test_rh03_leg_fraction_computed_when_derivable(tmp_path):
+    """2. 比例算得出时 -> leg_fraction_status == 'COMPUTED'，Decimal(leg_fraction) 等于被测模块返回的值。"""
+    from scripts.lp_rh_netcover_inputs_v1_readonly import assemble_rh_clmm_inputs
+    from scripts.lp_rh_shadow_runner_v1_readonly import _evidence_for
+
+    conn = _fresh_store(tmp_path)
+    sample = _passing_sample(0, source_payload_hash="h-lf-computed")
+    meta = _conj_meta(range_pct=Decimal("10.0"))
+
+    ev = _evidence_for(sample, meta)
+    expected_record = assemble_rh_clmm_inputs(ev, position_usd=POSITION_USD, horizon_hours=HORIZON_HOURS)
+    assert expected_record["leg_fraction_status"] == "COMPUTED"
+
+    _run(conn, [sample], pool_meta=meta)
+    conn.commit()
+
+    row = conn.execute(
+        "SELECT cost_components_json FROM rh_economic_evaluations WHERE snapshot_id = 'h-lf-computed'"
+    ).fetchone()
+    assert row is not None
+    cc = json.loads(row[0])
+    assert cc["leg_fraction_status"] == "COMPUTED"
+    assert isinstance(cc["leg_fraction"], str), "leg_fraction must be stored as fixed-point decimal string, not float"
+    assert Decimal(cc["leg_fraction"]) == Decimal(str(expected_record["leg_fraction"]))
+    conn.close()
+
+
+def test_rh03_leg_fraction_fallback_when_range_pct_missing(tmp_path):
+    """3. 比例算不出(造一个缺 range_pct 的 pool_meta) -> 落库的 leg_fraction 是 1.0、leg_fraction_status 以 FALLBACK_FULL_POSITION: 开头。"""
+    from scripts.lp_rh_netcover_inputs_v1_readonly import assemble_rh_clmm_inputs
+    from scripts.lp_rh_shadow_runner_v1_readonly import _evidence_for
+
+    conn = _fresh_store(tmp_path)
+    meta = {k: v for k, v in _conj_meta().items() if k != "range_pct"}
+    sample = _passing_sample(0, source_payload_hash="h-lf-fallback")
+    assert "range_pct" not in sample
+
+    ev = _evidence_for(sample, meta)
+    expected_record = assemble_rh_clmm_inputs(ev, position_usd=POSITION_USD, horizon_hours=HORIZON_HOURS)
+    assert expected_record["leg_fraction_status"].startswith("FALLBACK_FULL_POSITION:")
+
+    _run(conn, [sample], pool_meta=meta)
+    conn.commit()
+
+    row = conn.execute(
+        "SELECT cost_components_json FROM rh_economic_evaluations WHERE snapshot_id = 'h-lf-fallback'"
+    ).fetchone()
+    assert row is not None
+    cc = json.loads(row[0])
+    assert isinstance(cc["leg_fraction"], str), "leg_fraction must be stored as string"
+    assert Decimal(cc["leg_fraction"]) == Decimal("1.0")
+    assert cc["leg_fraction_status"].startswith("FALLBACK_FULL_POSITION:")
+    assert cc["leg_fraction_status"] == expected_record["leg_fraction_status"]
+    conn.close()
+
+
+def test_rh03_regression_existing_cost_keys_unchanged(tmp_path):
+    """4. 回归保护: 八个既有成本键的数值一个都没变。"""
+    from scripts.lp_rh_netcover_inputs_v1_readonly import assemble_rh_clmm_inputs
+    from scripts.lp_netcover_engine_v1_readonly import apply_netcover_gate
+    from scripts.lp_rh_shadow_runner_v1_readonly import _COST_COMPONENT_KEYS, _evidence_for
+
+    conn = _fresh_store(tmp_path)
+    sample = _passing_sample(0, source_payload_hash="h-lf-regression")
+    meta = _conj_meta(range_pct=Decimal("10.0"))
+
+    ev = _evidence_for(sample, meta)
+    expected_record = assemble_rh_clmm_inputs(ev, position_usd=POSITION_USD, horizon_hours=HORIZON_HOURS)
+    expected_gated = apply_netcover_gate([expected_record])[0]
+
+    _run(conn, [sample], pool_meta=meta)
+    conn.commit()
+
+    row = conn.execute(
+        "SELECT cost_components_json FROM rh_economic_evaluations WHERE snapshot_id = 'h-lf-regression'"
+    ).fetchone()
+    assert row is not None
+    cc = json.loads(row[0])
+
+    for k in _COST_COMPONENT_KEYS:
+        assert k in cc, f"Cost key {k} must exist in cost_components_json"
+        exp_val = expected_gated.get(k)
+        if exp_val is None:
+            assert cc[k] is None
+        else:
+            assert Decimal(str(cc[k])) == Decimal(str(exp_val)), f"Mismatch on {k}: {cc[k]} vs {exp_val}"
+
+    assert cc.get("gas_usd_source") == expected_gated.get("gas_usd_source")
+    assert "size_interval" in cc
+    conn.close()
+
+
+def test_rh03_leg_fraction_none_when_unavailable(tmp_path):
+    """5. 取不到时存 None，不要存 0、不要存空字符串、不要省略这个键。"""
+    from unittest.mock import patch
+    from scripts.lp_netcover_engine_v1_readonly import apply_netcover_gate
+
+    conn = _fresh_store(tmp_path)
+    sample = _passing_sample(0, source_payload_hash="h-lf-none")
+    meta = _conj_meta()
+
+    real_apply = apply_netcover_gate
+
+    def mock_apply_gate(records, **kwargs):
+        res = real_apply(records, **kwargs)
+        for r in res:
+            r.pop("leg_fraction", None)
+            r.pop("leg_fraction_status", None)
+        return res
+
+    with patch("scripts.lp_rh_shadow_runner_v1_readonly.apply_netcover_gate", side_effect=mock_apply_gate):
+        _run(conn, [sample], pool_meta=meta)
+    conn.commit()
+
+    row = conn.execute(
+        "SELECT cost_components_json FROM rh_economic_evaluations WHERE snapshot_id = 'h-lf-none'"
+    ).fetchone()
+    assert row is not None
+    cc = json.loads(row[0])
+
+    assert "leg_fraction" in cc, "key leg_fraction must not be omitted"
+    assert "leg_fraction_status" in cc, "key leg_fraction_status must not be omitted"
+    assert cc["leg_fraction"] is None, "leg_fraction must be None when unavailable"
+    assert cc["leg_fraction_status"] is None, "leg_fraction_status must be None when unavailable"
+    assert cc["leg_fraction"] != 0
+    assert cc["leg_fraction"] != "0"
+    assert cc["leg_fraction"] != ""
+    assert cc["leg_fraction_status"] != ""
+    conn.close()
+
+
+
 
 
 

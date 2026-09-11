@@ -178,7 +178,7 @@ def _economic_str(value):
     through Decimal for a plain decimal string.  Missing values stay None, never
     0 or '' (fail-close: a missing economic number is not a zero).
     """
-    if value is None:
+    if value is None or value == "":
         return None
     return format(Decimal(str(value)), "f")
 
@@ -1152,6 +1152,8 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
                         gas_usd_source=gated.get("gas_usd_source"),
                         exit_gas_reserve_usd=float(gas_reserve_result["required_usd"]) if gas_reserve_result.get("required_usd") is not None else None,
                         size_interval=size_interval_meta,
+                        leg_fraction=_economic_str(gated.get("leg_fraction")),
+                        leg_fraction_status=gated.get("leg_fraction_status") or None,
                     ),
                     sort_keys=True),
                 "netcover": _economic_str(gated.get("netcover")),
