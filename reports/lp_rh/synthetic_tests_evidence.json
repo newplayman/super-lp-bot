@@ -1,16 +1,16 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-11T10:04:03Z",
-  "code_version": "9a4e3f29b326",
-  "code_version_source": "git rev-parse --short=12 HEAD",
+  "generated_at": "2026-09-11T12:04:51Z",
+  "code_version": "302afaca87f6",
+  "code_version_source": "git log -1 --format=%H -- scripts tests configs pytest.ini",
   "working_tree_clean": true,
   "command": "python3 -m pytest tests/ -q -p no:cacheprovider",
   "exit_code": 0,
-  "total": 4839,
-  "passed": 4825,
+  "total": 4874,
+  "passed": 4860,
   "failed": 0,
   "errors": 0,
   "skipped": 14,
-  "duration_secs": 49.88,
+  "duration_secs": 54.99,
   "all_passed": true
 }
