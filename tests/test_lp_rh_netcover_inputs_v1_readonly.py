@@ -352,3 +352,128 @@ def test_evidence_with_neither_gas_estimate_fails_closed():
     gated = apply_netcover_gate([out])[0]
     assert gated.get("gas_usd_source") is None
 
+
+# --- RH-03 / T35: CLMM two-leg conversion actual fraction ---------------------
+
+def test_t35_known_leg_fraction_scales_entry_exit_costs_proportionally():
+    # 1. 给定一个已知比例（例如 0.3）-> entry/exit 成本恰好是全额的 0.3 倍
+    sqrt_price_x96 = int(10 * (2 ** 96))  # price = 100.0 for dec0=6, dec1=6
+    ev_full = _evidence(liquidity_raw=1e25, sqrt_price_x96=sqrt_price_x96, dec0=6, dec1=6, fee=3000)
+    ev_30 = _evidence(liquidity_raw=1e25, sqrt_price_x96=sqrt_price_x96, dec0=6, dec1=6, fee=3000, leg_fraction=0.3)
+    out_full = assemble_rh_clmm_inputs(ev_full, position_usd=Decimal("1000"), horizon_hours=24.0)
+    out_30 = assemble_rh_clmm_inputs(ev_30, position_usd=Decimal("1000"), horizon_hours=24.0)
+    assert out_30["leg_fraction"] == 0.3
+    assert out_30["leg_fraction_status"] == "COMPUTED"
+    assert out_30["entry_cost_usd"] == pytest.approx(out_full["entry_cost_usd"] * 0.3)
+    assert out_30["exit_cost_usd"] == pytest.approx(out_full["exit_cost_usd"] * 0.3)
+
+
+def test_t35_missing_leg_fraction_inputs_falls_back_to_full_position():
+    # 2. 比例算不出（输入缺失）-> 回退 1.0，成本与修改前完全一致，且 leg_fraction_status 为 FALLBACK_FULL_POSITION:*
+    ev_missing = _evidence()  # Default evidence lacks range_pct and leg_fraction
+    assert "range_pct" not in ev_missing
+    out = assemble_rh_clmm_inputs(ev_missing, position_usd=Decimal("1000"), horizon_hours=24.0)
+    assert out["leg_fraction"] == 1.0
+    assert out["leg_fraction_status"].startswith("FALLBACK_FULL_POSITION:")
+    assert out["leg_fraction_status"] == "FALLBACK_FULL_POSITION:RANGE_PCT_MISSING"
+    # Cost matches full position calculation (1000U position)
+    ev_full = _evidence(leg_fraction=1.0)
+    out_full = assemble_rh_clmm_inputs(ev_full, position_usd=Decimal("1000"), horizon_hours=24.0)
+    assert out["entry_cost_usd"] == out_full["entry_cost_usd"]
+    assert out["exit_cost_usd"] == out_full["exit_cost_usd"]
+
+
+@pytest.mark.parametrize("invalid_frac,expected_reason_prefix", [
+    (None, "FALLBACK_FULL_POSITION:NONE"),
+    (0, "FALLBACK_FULL_POSITION:ZERO"),
+    (0.0, "FALLBACK_FULL_POSITION:ZERO"),
+    (1.5, "FALLBACK_FULL_POSITION:EXCEEDS_ONE"),
+    (-0.5, "FALLBACK_FULL_POSITION:NEGATIVE"),
+])
+def test_t35_invalid_leg_fractions_fall_back_to_full_position_and_flag(invalid_frac, expected_reason_prefix):
+    # 3. 比例为 None / 0 / 1.5 -> 三种都回退 1.0 并标记（注意 0 也要拒绝：零换腿意味着零成本，那是结论不是输入）
+    ev = _evidence(leg_fraction=invalid_frac)
+    out = assemble_rh_clmm_inputs(ev, position_usd=Decimal("1000"), horizon_hours=24.0)
+    assert out["leg_fraction"] == 1.0
+    assert out["leg_fraction_status"].startswith("FALLBACK_FULL_POSITION:")
+    assert out["leg_fraction_status"] == expected_reason_prefix
+    # Costs are full-position costs
+    out_full = assemble_rh_clmm_inputs(_evidence(leg_fraction=1.0), position_usd=Decimal("1000"), horizon_hours=24.0)
+    assert out["entry_cost_usd"] == out_full["entry_cost_usd"]
+    assert out["exit_cost_usd"] == out_full["exit_cost_usd"]
+
+
+def test_t35_leg_fraction_one_point_zero_is_computed_status():
+    # 4. 比例 = 1.0（真的需要全额换腿）-> 结果与修改前一致，status 为 COMPUTED
+    ev = _evidence(leg_fraction=1.0)
+    out = assemble_rh_clmm_inputs(ev, position_usd=Decimal("1000"), horizon_hours=24.0)
+    assert out["leg_fraction"] == 1.0
+    assert out["leg_fraction_status"] == "COMPUTED"
+    # Matches baseline full-position costs
+    out_default = assemble_rh_clmm_inputs(_evidence(), position_usd=Decimal("1000"), horizon_hours=24.0)
+    assert out["entry_cost_usd"] == out_default["entry_cost_usd"]
+    assert out["exit_cost_usd"] == out_default["exit_cost_usd"]
+
+
+def test_t35_leg_fraction_and_status_present_in_all_cost_records():
+    # 5. leg_fraction 与 leg_fraction_status 都出现在返回的成本分项里
+    # 5a. Successful computed fraction via range_pct
+    out_comp = assemble_rh_clmm_inputs(_evidence(range_pct=20.0), position_usd=Decimal("1000"), horizon_hours=24.0)
+    assert "leg_fraction" in out_comp
+    assert "leg_fraction_status" in out_comp
+    assert out_comp["leg_fraction_status"] == "COMPUTED"
+    assert 0.0 < out_comp["leg_fraction"] < 1.0
+
+    # 5b. Fallback when range_pct missing
+    out_fallback = assemble_rh_clmm_inputs(_evidence(), position_usd=Decimal("1000"), horizon_hours=24.0)
+    assert "leg_fraction" in out_fallback
+    assert "leg_fraction_status" in out_fallback
+    assert out_fallback["leg_fraction"] == 1.0
+    assert out_fallback["leg_fraction_status"] == "FALLBACK_FULL_POSITION:RANGE_PCT_MISSING"
+
+    # 5c. Missing cost inputs
+    out_no_cost = assemble_rh_clmm_inputs(_evidence(liquidity_raw=None), position_usd=Decimal("1000"), horizon_hours=24.0)
+    assert "leg_fraction" in out_no_cost
+    assert "leg_fraction_status" in out_no_cost
+    assert out_no_cost["leg_fraction"] == 1.0
+    assert out_no_cost["leg_fraction_status"] == "FALLBACK_FULL_POSITION:CHAIN_DATA_UNAVAILABLE"
+
+    # 5d. Fail closed (e.g. chain_id mismatch)
+    out_fc = assemble_rh_clmm_inputs(_evidence(chain_id=1), position_usd=Decimal("1000"), horizon_hours=24.0)
+    assert "leg_fraction" in out_fc
+    assert "leg_fraction_status" in out_fc
+    assert out_fc["leg_fraction"] == 1.0
+    assert out_fc["leg_fraction_status"] == "FALLBACK_FULL_POSITION:RH_CHAIN_ID_MISMATCH"
+
+
+def test_t35_regression_other_cost_components_invariant_under_fraction():
+    # 6. 回归保护：NetCover 的其他成本分项（il_ev / lvr_ev / gas / exit_latency）数值不变
+    out_full = assemble_rh_clmm_inputs(_evidence(), position_usd=Decimal("1000"), horizon_hours=24.0)
+    out_fraction = assemble_rh_clmm_inputs(_evidence(range_pct=20.0), position_usd=Decimal("1000"), horizon_hours=24.0)
+
+    invariant_keys = ("il_ev_usd", "gas_usd", "exit_latency_loss_usd", "reward_conversion_cost_usd", "fee_ev_usd", "reward_ev_usd")
+    for key in invariant_keys:
+        assert out_fraction[key] == out_full[key], f"{key} should be invariant under leg_fraction changes"
+
+
+def test_t35_range_pct_invokes_clmm_token0_value_fraction():
+    # 真实计算：range_pct 调用 clmm_token0_value_fraction
+    ev = _evidence(range_pct=20.0)
+    out = assemble_rh_clmm_inputs(ev, position_usd=Decimal("1000"), horizon_hours=24.0)
+    assert out["leg_fraction_status"] == "COMPUTED"
+    d0, d1 = ev["dec0"], ev["dec1"]
+    price = ((ev["sqrt_price_x96"] / 2.0 ** 96) ** 2) * (10 ** d0) / (10 ** d1)
+    from scripts.lp_swap_cost_model_v1_readonly import clmm_token0_value_fraction
+    expected_fraction = clmm_token0_value_fraction(price, 20.0)
+    assert out["leg_fraction"] == pytest.approx(expected_fraction)
+    assert 0.0 < out["leg_fraction"] < 1.0
+
+
+def test_t35_range_pct_calculation_error_falls_back():
+    # 越界计算：range_pct >= 100 报错回退
+    ev = _evidence(range_pct=150.0)
+    out = assemble_rh_clmm_inputs(ev, position_usd=Decimal("1000"), horizon_hours=24.0)
+    assert out["leg_fraction"] == 1.0
+    assert out["leg_fraction_status"].startswith("FALLBACK_FULL_POSITION:CALCULATION_ERROR:")
+
+

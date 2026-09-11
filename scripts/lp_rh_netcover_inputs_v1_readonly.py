@@ -59,6 +59,8 @@ def _fail_closed(reason, missing_fields, *, evidence, position_usd, horizon_hour
         "holding_horizon_hours": horizon_hours,
         "rh_evidence_block_hash": evidence.get("block_hash"),
         "assembled_at": _utc_now_rfc3339(),
+        "leg_fraction": 1.0,
+        "leg_fraction_status": f"FALLBACK_FULL_POSITION:{reason}",
     }
     for key in REQUIRED_ENGINE_KEYS:
         record[key] = None
@@ -108,6 +110,8 @@ def assemble_rh_clmm_inputs(evidence, *, position_usd, horizon_hours):
     cost_ok = all(v is not None and v > 0 for v in (liquidity_raw, sqrt_price_x96, fee, dec0, dec1))
     if not cost_ok:
         entry_cost_usd = exit_cost_usd = slippage_usd = None
+        leg_fraction = 1.0
+        leg_fraction_status = "FALLBACK_FULL_POSITION:CHAIN_DATA_UNAVAILABLE"
         for field in ("liquidity_raw", "sqrt_price_x96", "fee", "dec0", "dec1"):
             if _to_float(evidence.get(field)) is None:
                 missing.append((field, "CHAIN_DATA_UNAVAILABLE"))
@@ -119,11 +123,55 @@ def assemble_rh_clmm_inputs(evidence, *, position_usd, horizon_hours):
         # "not economically viable" verdict. See COST_MODEL_PRICE_SCALE_BUG.md.
         price = ((sqrt_price_x96 / 2.0 ** 96) ** 2) * (10 ** d0) / (10 ** d1)
         fee_tier = fee / 1e6
-        entry_cost_usd = exit_conversion_cost_usd(pos, liquidity_raw, price, fee_tier, d0, d1, side="buy_base")
-        exit_cost_usd = exit_conversion_cost_usd(pos, liquidity_raw, price, fee_tier, d0, d1, side="sell_base")
+
+        # CLMM two-leg conversion: only swap the actual required leg fraction (PRD §19 RH-03 / T35).
+        # Fail-close: missing, uncomputable, <= 0, or > 1 fraction falls back to 1.0 (conservative upper bound).
+        range_pct = _to_float(evidence.get("range_pct"))
+        raw_fraction = None
+        fraction_source_reason = None
+        if "leg_fraction" in evidence:
+            raw_fraction = _to_float(evidence.get("leg_fraction"))
+            if raw_fraction is None:
+                fraction_source_reason = "NONE"
+        elif "conversion_fraction" in evidence:
+            raw_fraction = _to_float(evidence.get("conversion_fraction"))
+            if raw_fraction is None:
+                fraction_source_reason = "NONE"
+        elif range_pct is not None:
+            try:
+                raw_fraction = clmm_token0_value_fraction(price, range_pct)
+            except Exception as exc:
+                raw_fraction = None
+                fraction_source_reason = f"CALCULATION_ERROR:{exc}"
+        else:
+            raw_fraction = None
+            fraction_source_reason = "RANGE_PCT_MISSING"
+
+        if raw_fraction is None:
+            leg_fraction = 1.0
+            reason = fraction_source_reason or "NONE"
+            leg_fraction_status = f"FALLBACK_FULL_POSITION:{reason}"
+        elif not (0.0 < raw_fraction <= 1.0) or not math.isfinite(raw_fraction):
+            leg_fraction = 1.0
+            if raw_fraction == 0.0:
+                reason = "ZERO"
+            elif raw_fraction < 0.0:
+                reason = "NEGATIVE"
+            elif raw_fraction > 1.0:
+                reason = "EXCEEDS_ONE"
+            else:
+                reason = "NON_FINITE"
+            leg_fraction_status = f"FALLBACK_FULL_POSITION:{reason}"
+        else:
+            leg_fraction = float(raw_fraction)
+            leg_fraction_status = "COMPUTED"
+
+        conversion_notional = pos * leg_fraction
+        entry_cost_usd = exit_conversion_cost_usd(conversion_notional, liquidity_raw, price, fee_tier, d0, d1, side="buy_base")
+        exit_cost_usd = exit_conversion_cost_usd(conversion_notional, liquidity_raw, price, fee_tier, d0, d1, side="sell_base")
         # roundtrip is entry+exit by construction; clamp float noise so the
         # engine's non-negative amount check never sees a -1e-18 slippage.
-        slippage_usd = max(0.0, roundtrip_cost_usd(pos, liquidity_raw, price, fee_tier, d0, d1)
+        slippage_usd = max(0.0, roundtrip_cost_usd(conversion_notional, liquidity_raw, price, fee_tier, d0, d1)
                            - entry_cost_usd - exit_cost_usd)
     observed_gas_usd = _to_float(evidence.get("observed_gas_usd"))
     gas_usd_estimate = _to_float(evidence.get("gas_usd_estimate"))
@@ -155,6 +203,8 @@ def assemble_rh_clmm_inputs(evidence, *, position_usd, horizon_hours):
         "slippage_usd": slippage_usd,
         "reward_conversion_cost_usd": 0.0,
         "exit_latency_loss_usd": pos * (EXIT_LATENCY_LOSS_APR_PCT_MODEL / 100.0) * horizon_hours / 8760.0,
+        "leg_fraction": leg_fraction,
+        "leg_fraction_status": leg_fraction_status,
         "missing_inputs": [{"field": f, "reason": r} for f, r in missing],
     }
     if reward_unverified_reason is not None:
