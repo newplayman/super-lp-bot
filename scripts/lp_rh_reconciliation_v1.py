@@ -26,7 +26,11 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from scripts.lp_rh_readiness_v1_readonly import audit_unexplained_ledger_diffs
+from scripts.lp_rh_shadow_runner_v1_readonly import validate_quote_evidence
 from scripts.lp_rh_store_v1_readonly import DEFAULT_DB_PATH, insert_row, open_store
+
+DEFAULT_POOL_META_PATH = Path("reports/lp_rh/pool_meta.json")
+TOLERANCE_C3 = Decimal("1e-18")
 
 _RFC3339_RE = re.compile(
     r"^\d{4}-\d{2}-\d{2}[Tt]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:[Zz]|[+-]\d{2}:\d{2})$"
@@ -323,6 +327,8 @@ def check_c3_fee_accrual(
     conn: sqlite3.Connection,
     *,
     since: Optional[str] = None,
+    pool_meta: Optional[Union[str, Path, Mapping[str, Any]]] = None,
+    now: Optional[Union[datetime, str]] = None,
 ) -> dict[str, Any]:
     """C3: Reconcile rh_journal LP_FEES_RECEIVABLE / LP_FEE_INCOME with position marks accrued_fee."""
     try:
@@ -384,31 +390,14 @@ def check_c3_fee_accrual(
         for pos_id, _mark_time, accrued_fee in mark_rows:
             latest_marks[pos_id] = accrued_fee
 
-        fee_journal_total = Decimal(0)
-        marks_fee_total = Decimal(0)
-        has_non_zero_accrued = False
-
-        with decimal.localcontext(decimal.Context(prec=100)):
-            for (amt_raw,) in fee_journal_rows:
-                try:
-                    fee_journal_total += Decimal(str(amt_raw).strip())
-                except Exception:
-                    pass
-
-            for pos_id, accrued_fee in latest_marks.items():
-                if accrued_fee is not None and str(accrued_fee).strip() not in ("", "None"):
-                    try:
-                        f_val = Decimal(str(accrued_fee).strip())
-                        marks_fee_total += f_val
-                        if f_val != Decimal(0):
-                            has_non_zero_accrued = True
-                    except Exception:
-                        pass
-
-            diff = fee_journal_total - marks_fee_total
+        has_fee_journal = len(fee_journal_rows) > 0
+        has_non_zero_accrued = any(
+            f is not None and str(f).strip() not in ("", "None", "0", "0.0")
+            for f in latest_marks.values()
+        )
 
         # Fail-close: if no fee journal entries and all marks accrued_fee are zero/NULL -> no sample
-        if len(fee_journal_rows) == 0 and not has_non_zero_accrued and marks_fee_total == Decimal(0):
+        if not has_fee_journal and not has_non_zero_accrued:
             return {
                 "check": "C3_FEE_ACCRUAL",
                 "since": since,
@@ -420,12 +409,144 @@ def check_c3_fee_accrual(
                 "diff_count": None,
                 "details": {},
             }
-        has_diff = (diff != Decimal(0))
+
+        # Resolve pool_meta configuration
+        meta_target = pool_meta if pool_meta is not None else DEFAULT_POOL_META_PATH
+        if isinstance(meta_target, (str, Path)):
+            try:
+                with open(meta_target, "r", encoding="utf-8") as fh:
+                    meta_dict = json.load(fh)
+            except Exception as exc:
+                return {
+                    "check": "C3_FEE_ACCRUAL",
+                    "since": since,
+                    "has_evidence": False,
+                    "rows_examined": mark_count,
+                    "positions_examined": len(latest_marks),
+                    "fee_journal_rows_examined": len(fee_journal_rows),
+                    "reason": f"POOL_META_READ_ERROR: {exc}",
+                    "diff_count": None,
+                    "details": {},
+                }
+        elif isinstance(meta_target, Mapping):
+            meta_dict = meta_target
+        else:
+            return {
+                "check": "C3_FEE_ACCRUAL",
+                "since": since,
+                "has_evidence": False,
+                "rows_examined": mark_count,
+                "positions_examined": len(latest_marks),
+                "fee_journal_rows_examined": len(fee_journal_rows),
+                "reason": f"POOL_META_INVALID_TYPE: {type(meta_target).__name__}",
+                "diff_count": None,
+                "details": {},
+            }
+
+        # Validate dec1
+        dec1_raw = meta_dict.get("dec1", meta_dict.get("token1_decimals"))
+        if dec1_raw is None:
+            return {
+                "check": "C3_FEE_ACCRUAL",
+                "since": since,
+                "has_evidence": False,
+                "rows_examined": mark_count,
+                "positions_examined": len(latest_marks),
+                "fee_journal_rows_examined": len(fee_journal_rows),
+                "reason": "POOL_META_MISSING_DEC1: dec1 not found in pool_meta",
+                "diff_count": None,
+                "details": {},
+            }
+        try:
+            dec1 = int(dec1_raw)
+            if dec1 < 0:
+                raise ValueError(f"negative dec1: {dec1}")
+        except (TypeError, ValueError) as exc:
+            return {
+                "check": "C3_FEE_ACCRUAL",
+                "since": since,
+                "has_evidence": False,
+                "rows_examined": mark_count,
+                "positions_examined": len(latest_marks),
+                "fee_journal_rows_examined": len(fee_journal_rows),
+                "reason": f"POOL_META_INVALID_DEC1: {exc}",
+                "diff_count": None,
+                "details": {},
+            }
+
+        # Validate quote_usd_per_token1
+        raw_quote = meta_dict.get("quote_usd_per_token1")
+        if raw_quote is None:
+            return {
+                "check": "C3_FEE_ACCRUAL",
+                "since": since,
+                "has_evidence": False,
+                "rows_examined": mark_count,
+                "positions_examined": len(latest_marks),
+                "fee_journal_rows_examined": len(fee_journal_rows),
+                "reason": "QUOTE_EVIDENCE_MISSING: quote_usd_per_token1 not found in pool_meta",
+                "diff_count": None,
+                "details": {},
+            }
+
+        if now is not None:
+            if isinstance(now, datetime):
+                eval_time = now if now.tzinfo else now.replace(tzinfo=timezone.utc)
+            else:
+                eval_time = datetime.fromisoformat(str(now).replace("Z", "+00:00"))
+        else:
+            eval_time = datetime.now(timezone.utc)
+
+        quote_val, quote_err = validate_quote_evidence(raw_quote, sample_time=eval_time)
+        if quote_err is not None or quote_val is None:
+            return {
+                "check": "C3_FEE_ACCRUAL",
+                "since": since,
+                "has_evidence": False,
+                "rows_examined": mark_count,
+                "positions_examined": len(latest_marks),
+                "fee_journal_rows_examined": len(fee_journal_rows),
+                "reason": str(quote_err),
+                "diff_count": None,
+                "details": {},
+            }
+
+        fee_divisor = Decimal(10) ** dec1
+        fee_journal_raw_total = Decimal(0)
+        fee_journal_usd_total = Decimal(0)
+        marks_fee_total = Decimal(0)
+
+        with decimal.localcontext(decimal.Context(prec=100)):
+            for (amt_raw,) in fee_journal_rows:
+                try:
+                    raw_dec = Decimal(str(amt_raw).strip())
+                    fee_journal_raw_total += raw_dec
+                    usd_amt = (raw_dec * quote_val) / fee_divisor
+                    fee_journal_usd_total += usd_amt
+                except Exception:
+                    pass
+
+            for pos_id, accrued_fee in latest_marks.items():
+                if accrued_fee is not None and str(accrued_fee).strip() not in ("", "None"):
+                    try:
+                        f_val = Decimal(str(accrued_fee).strip())
+                        marks_fee_total += f_val
+                    except Exception:
+                        pass
+
+            diff = fee_journal_usd_total - marks_fee_total
+
+        has_diff = abs(diff) > TOLERANCE_C3
 
         details = {
-            "fee_journal_total": str(fee_journal_total),
+            "fee_journal_raw_total": str(fee_journal_raw_total),
+            "fee_journal_usd_total": str(fee_journal_usd_total),
+            "fee_journal_total": str(fee_journal_usd_total),
             "marks_fee_total": str(marks_fee_total),
             "diff": str(diff),
+            "tolerance": str(TOLERANCE_C3),
+            "quote": str(quote_val),
+            "dec1": dec1,
             "fee_journal_count": len(fee_journal_rows),
             "positions_with_marks": len(latest_marks),
         }
@@ -439,6 +560,9 @@ def check_c3_fee_accrual(
             "fee_journal_rows_examined": len(fee_journal_rows),
             "reason": "OK" if not has_diff else "FEE_ACCRUAL_DIFF",
             "diff_count": 1 if has_diff else 0,
+            "quote": str(quote_val),
+            "dec1": dec1,
+            "tolerance": str(TOLERANCE_C3),
             "details": details,
         }
     except Exception as exc:
@@ -482,6 +606,7 @@ def run_reconciliation(
     apply: bool = False,
     since: Optional[str] = None,
     now_fn: Optional[Callable[[], str]] = None,
+    pool_meta: Optional[Union[str, Path, Mapping[str, Any]]] = None,
 ) -> dict[str, Any]:
     """Run all reconciliation checks and optionally persist to rh_reconciliation_runs."""
     if since is not None:
@@ -489,10 +614,14 @@ def run_reconciliation(
 
     get_now = now_fn or (lambda: datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"))
     started_at = get_now()
+    try:
+        now_dt = datetime.fromisoformat(started_at.replace("Z", "+00:00"))
+    except Exception:
+        now_dt = datetime.now(timezone.utc)
 
     c1 = check_c1_double_entry_balance(conn, since=since)
     c2 = check_c2_opening_legs(conn, since=since)
-    c3 = check_c3_fee_accrual(conn, since=since)
+    c3 = check_c3_fee_accrual(conn, since=since, pool_meta=pool_meta, now=now_dt)
 
     evidence = {
         "c1": c1,
@@ -564,6 +693,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                         help="Path to SQLite database (default: reports/lp_rh/scanner.db)")
     parser.add_argument("--since", type=str, default=None,
                         help="RFC3339 timestamp with timezone (only examine records after this time)")
+    parser.add_argument("--pool-meta", type=str, default=str(DEFAULT_POOL_META_PATH),
+                        help="Path to pool_meta.json (default: reports/lp_rh/pool_meta.json)")
     parser.add_argument("--apply", action="store_true",
                         help="Write reconciliation result to rh_reconciliation_runs (default: dry-run)")
     parser.add_argument("--json", action="store_true",
@@ -586,7 +717,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     # In dry-run mode, open read-only to guarantee no accidental database mutations
     conn = open_store(db_path, read_only=not args.apply)
     try:
-        res = run_reconciliation(conn, apply=args.apply, since=since)
+        res = run_reconciliation(conn, apply=args.apply, since=since, pool_meta=args.pool_meta)
     finally:
         conn.close()
 

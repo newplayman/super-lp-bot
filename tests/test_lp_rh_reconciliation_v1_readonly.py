@@ -32,6 +32,26 @@ def test_db(tmp_path):
     conn.close()
 
 
+DEFAULT_TEST_POOL_META = {
+    "dec1": 6,
+    "quote_usd_per_token1": {
+        "value": "1.0",
+        "source": "coingecko:global-dollar",
+        "observed_at": "2026-09-11T10:00:00.000000Z",
+        "ttl_secs": 86400,
+    },
+}
+
+
+@pytest.fixture(autouse=True)
+def _mock_default_pool_meta(monkeypatch):
+    """Ensure tests use DEFAULT_TEST_POOL_META by default rather than host production file."""
+    monkeypatch.setattr(
+        "scripts.lp_rh_reconciliation_v1.DEFAULT_POOL_META_PATH",
+        DEFAULT_TEST_POOL_META,
+    )
+
+
 def _populate_balanced_dataset(conn: sqlite3.Connection, *, position_id="pos-test-1"):
     """Populate standard balanced dataset for C1, C2, and C3."""
     now_str = "2026-09-11T10:00:00.000000Z"
@@ -73,14 +93,14 @@ def _populate_balanced_dataset(conn: sqlite3.Connection, *, position_id="pos-tes
         "ref_json": json.dumps({"position_id": position_id, "leg": "token1"}),
         "booked_at": now_str,
     })
-    # C3 Fee journal entry
+    # C3 Fee journal entry (raw token units: 15.75 * 10^6 / 1.0 = 15750000)
     insert_row(conn, "rh_journal", {
         "event_id": f"{position_id}-fee",
         "idempotency_key": f"{position_id}-fee",
         "account_debit": "LP_FEES_RECEIVABLE",
         "account_credit": "LP_FEE_INCOME",
         "asset": "0xtoken1",
-        "amount_raw": "15.75",
+        "amount_raw": "15750000",
         "is_external_flow": 0,
         "ref_json": json.dumps({"position_id": position_id, "kind": "fee"}),
         "booked_at": now_str,
@@ -373,7 +393,7 @@ def test_reconciliation_since_excludes_historical_diff_pass(test_db):
     insert_row(test_db, "rh_journal", {
         "event_id": "pos-new-fee", "idempotency_key": "pos-new-fee",
         "account_debit": "LP_FEES_RECEIVABLE", "account_credit": "LP_FEE_INCOME",
-        "asset": "0xtoken1", "amount_raw": "12.5", "is_external_flow": 0,
+        "asset": "0xtoken1", "amount_raw": "12500000", "is_external_flow": 0,
         "ref_json": json.dumps({"position_id": "pos-new", "kind": "fee"}), "booked_at": t_new,
     })
     insert_row(test_db, "rh_position_marks", {
@@ -471,4 +491,192 @@ def test_evidence_json_has_since_field(test_db):
     for k in ("c1", "c2", "c3"):
         assert "since" in ev2[k]
         assert ev2[k]["since"] == since_val
+
+
+# =====================================================================
+# RH-02cy: C3 Fee Accrual Unit Conversion and Fail-Close Tests (>= 6)
+# =====================================================================
+
+def test_c3_matching_conversion_pass(test_db):
+    """1. Journal records raw, marks records USD, match after conversion -> C3 PASS, diff_count=0."""
+    now_str = "2026-09-11T13:30:00.000000Z"
+    pos_id = "pos-prod-match"
+    # Exact production numbers from clean window
+    insert_row(test_db, "rh_shadow_positions", {
+        "strategy_episode": "ep-prod", "position_id": pos_id, "pool_key": "pool-1",
+        "profile": "narrow", "bucket": "b-1", "initial_token0_raw": "100", "initial_token1_raw": "200",
+        "tick_lower": -10, "tick_upper": 10, "virtual_liquidity_raw": "1000", "opened_at": now_str,
+    })
+    insert_row(test_db, "rh_journal", {
+        "event_id": f"{pos_id}-t0", "idempotency_key": f"{pos_id}-t0",
+        "account_debit": "LP_POSITION_TOKEN0", "account_credit": "WALLET_TOKEN0",
+        "asset": "0xtoken0", "amount_raw": "100", "is_external_flow": 0,
+        "ref_json": json.dumps({"position_id": pos_id, "leg": "token0"}), "booked_at": now_str,
+    })
+    insert_row(test_db, "rh_journal", {
+        "event_id": f"{pos_id}-t1", "idempotency_key": f"{pos_id}-t1",
+        "account_debit": "LP_POSITION_TOKEN1", "account_credit": "WALLET_TOKEN1",
+        "asset": "0xtoken1", "amount_raw": "200", "is_external_flow": 0,
+        "ref_json": json.dumps({"position_id": pos_id, "leg": "token1"}), "booked_at": now_str,
+    })
+    insert_row(test_db, "rh_journal", {
+        "event_id": f"{pos_id}-fee", "idempotency_key": f"{pos_id}-fee",
+        "account_debit": "LP_FEES_RECEIVABLE", "account_credit": "LP_FEE_INCOME",
+        "asset": "0xtoken1", "amount_raw": "105678.5414471455946505877164", "is_external_flow": 0,
+        "ref_json": json.dumps({"position_id": pos_id, "kind": "fee"}), "booked_at": now_str,
+    })
+    insert_row(test_db, "rh_position_marks", {
+        "position_id": pos_id, "mark_time": now_str, "price_snapshot_id": "snap-1",
+        "reference_nav": "300.0", "liquidation_nav": None,
+        "accrued_fee": "0.1056746313411120502635856447", "unvalued_risk_json": "{}",
+    })
+    test_db.commit()
+
+    pool_meta = {
+        "dec1": 6,
+        "quote_usd_per_token1": {
+            "value": "0.999963",
+            "source": "coingecko:global-dollar",
+            "observed_at": "2026-09-11T13:41:35Z",
+            "ttl_secs": 86400,
+        }
+    }
+    res = run_reconciliation(test_db, pool_meta=pool_meta, since="2026-09-11T13:29:00Z")
+    assert res["verdict"] == "PASS"
+    c3 = res["evidence"]["c3"]
+    assert c3["has_evidence"] is True
+    assert c3["diff_count"] == 0
+    assert c3["reason"] == "OK"
+    assert Decimal(c3["details"]["diff"]) <= Decimal("1e-18")
+
+
+def test_c3_mismatch_unexplained_diff(test_db):
+    """2. Mismatch after conversion (journal underreports by 1%) -> UNEXPLAINED_DIFF."""
+    _populate_balanced_dataset(test_db, position_id="pos-mismatch")
+    # Under-report journal fee by 1% (15750000 * 0.99 = 15592500)
+    test_db.execute(
+        "UPDATE rh_journal SET amount_raw = '15592500' WHERE account_debit = 'LP_FEES_RECEIVABLE'"
+    )
+    test_db.commit()
+
+    res = run_reconciliation(test_db)
+    assert res["verdict"] == "UNEXPLAINED_DIFF"
+    c3 = res["evidence"]["c3"]
+    assert c3["has_evidence"] is True
+    assert c3["diff_count"] == 1
+    assert c3["reason"] == "FEE_ACCRUAL_DIFF"
+    assert "c3_diffs" in res["delta"]
+    assert Decimal(res["delta"]["c3_diffs"]["diff"]) < 0
+
+
+def test_c3_missing_dec1_insufficient(test_db):
+    """3. pool_meta missing dec1 -> C3 INSUFFICIENT_EVIDENCE (never assume dec1=6)."""
+    _populate_balanced_dataset(test_db, position_id="pos-nodec1")
+    meta_no_dec1 = {
+        "quote_usd_per_token1": {
+            "value": "1.0",
+            "source": "test",
+            "observed_at": "2026-09-11T10:00:00Z",
+            "ttl_secs": 86400,
+        }
+    }
+    res = run_reconciliation(test_db, pool_meta=meta_no_dec1)
+    assert res["verdict"] == "INSUFFICIENT_EVIDENCE"
+    c3 = res["evidence"]["c3"]
+    assert c3["has_evidence"] is False
+    assert c3["diff_count"] is None
+    assert "DEC1" in c3["reason"]
+
+
+def test_c3_missing_quote_insufficient(test_db):
+    """4. pool_meta missing quote -> C3 INSUFFICIENT_EVIDENCE (never assume quote=1.0)."""
+    _populate_balanced_dataset(test_db, position_id="pos-noquote")
+    meta_no_quote = {
+        "dec1": 6,
+    }
+    res = run_reconciliation(test_db, pool_meta=meta_no_quote)
+    assert res["verdict"] == "INSUFFICIENT_EVIDENCE"
+    c3 = res["evidence"]["c3"]
+    assert c3["has_evidence"] is False
+    assert c3["diff_count"] is None
+    assert "QUOTE" in c3["reason"]
+
+
+def test_c3_expired_quote_insufficient(test_db):
+    """5. quote past TTL -> C3 INSUFFICIENT_EVIDENCE."""
+    _populate_balanced_dataset(test_db, position_id="pos-expired")
+    meta_expired = {
+        "dec1": 6,
+        "quote_usd_per_token1": {
+            "value": "1.0",
+            "source": "test",
+            "observed_at": "2026-09-10T10:00:00Z",
+            "ttl_secs": 3600,  # 1 hour TTL
+        }
+    }
+    # Run evaluation at 2026-09-11T10:00:00Z (24h later)
+    res = run_reconciliation(
+        test_db,
+        pool_meta=meta_expired,
+        now_fn=lambda: "2026-09-11T10:00:00.000000Z",
+    )
+    assert res["verdict"] == "INSUFFICIENT_EVIDENCE"
+    c3 = res["evidence"]["c3"]
+    assert c3["has_evidence"] is False
+    assert c3["diff_count"] is None
+    assert "QUOTE_EVIDENCE_EXPIRED" in c3["reason"]
+
+
+def test_c3_evidence_json_records_quote_dec1_tolerance(test_db):
+    """6. evidence_json records actual quote, dec1, and tolerance values."""
+    _populate_balanced_dataset(test_db, position_id="pos-audit")
+    res = run_reconciliation(test_db, apply=True)
+    row = test_db.execute(
+        "SELECT evidence_json FROM rh_reconciliation_runs WHERE run_id = ?",
+        (res["run_id"],),
+    ).fetchone()
+    assert row is not None
+    ev = json.loads(row[0])
+    c3 = ev["c3"]
+    assert c3["quote"] == "1.0"
+    assert c3["dec1"] == 6
+    assert Decimal(c3["tolerance"]) == Decimal("1e-18")
+    assert c3["details"]["quote"] == "1.0"
+    assert c3["details"]["dec1"] == 6
+    assert Decimal(c3["details"]["tolerance"]) == Decimal("1e-18")
+
+
+def test_c3_regression_c1_c2_unaffected(test_db):
+    """7. Regression protection: C1 and C2 results remain identical to before."""
+    _populate_balanced_dataset(test_db, position_id="pos-regr")
+    # Break C1: insert unbalanced journal entry with empty credit
+    insert_row(test_db, "rh_journal", {
+        "event_id": "c1-imbalance", "idempotency_key": "c1-imbalance",
+        "account_debit": "LP_POSITION_TOKEN0", "account_credit": "",
+        "asset": "0xtoken0", "amount_raw": "999.0", "is_external_flow": 0,
+        "ref_json": "{}", "booked_at": "2026-09-11T10:00:00.000000Z",
+    })
+    test_db.commit()
+
+    res = run_reconciliation(test_db)
+    assert res["verdict"] == "UNEXPLAINED_DIFF"
+    assert res["evidence"]["c1"]["diff_count"] > 0
+    assert res["evidence"]["c1"]["reason"] == "UNBALANCED_ENTRIES"
+    assert "c1_diffs" in res["delta"]
+
+
+def test_c3_pool_meta_file_path_and_unreadable(tmp_path, test_db):
+    """8. pool_meta loaded from valid json file passes; missing file yields INSUFFICIENT_EVIDENCE."""
+    _populate_balanced_dataset(test_db, position_id="pos-file")
+    valid_file = tmp_path / "pool_meta_valid.json"
+    valid_file.write_text(json.dumps(DEFAULT_TEST_POOL_META))
+
+    res_ok = run_reconciliation(test_db, pool_meta=valid_file)
+    assert res_ok["verdict"] == "PASS"
+
+    non_existent = tmp_path / "does_not_exist.json"
+    res_err = run_reconciliation(test_db, pool_meta=non_existent)
+    assert res_err["verdict"] == "INSUFFICIENT_EVIDENCE"
+    assert "POOL_META_READ_ERROR" in res_err["evidence"]["c3"]["reason"]
+
 
