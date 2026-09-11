@@ -923,6 +923,79 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
                     g_reasons.append("RESERVATION_RELEASE_FAILED:INTENT_NOT_FOUND")
                     granted_step.conjunct_reasons = tuple(g_reasons)
 
+        # RH-02ci: book fee accrual into rh_journal at episode close
+        if accrued > 0:
+            fee_quote = None
+            fee_dec1 = None
+            if pool_meta:
+                raw_quote = pool_meta.get("quote_usd_per_token1")
+                if raw_quote is not None:
+                    last_time = steps[-1].sample_time if steps else None
+                    q_val, _ = validate_quote_evidence(
+                        raw_quote,
+                        sample_time=last_time,
+                        allow_bare_quote=allow_bare_quote,
+                    )
+                    if q_val is not None and q_val > 0:
+                        fee_quote = q_val
+                d1_raw = pool_meta.get("dec1", pool_meta.get("token1_decimals"))
+                if d1_raw is not None:
+                    try:
+                        d1_int = int(d1_raw)
+                        if d1_int >= 0:
+                            fee_dec1 = d1_int
+                    except (TypeError, ValueError):
+                        fee_dec1 = None
+
+            if fee_quote is not None and fee_dec1 is not None:
+                tok1 = pool_meta.get("token1") if pool_meta else None
+                if tok1 is not None:
+                    fee_amount_raw = (accrued / fee_quote) * (Decimal(10) ** fee_dec1)
+                    book_journal_event(
+                        conn,
+                        event_id=f"{strategy_episode}-fees",
+                        idempotency_key=f"{strategy_episode}-fees",
+                        debit="LP_FEES_RECEIVABLE",
+                        credit="LP_FEE_INCOME",
+                        asset=tok1,
+                        amount_raw=fee_amount_raw,
+                        is_external_flow=False,
+                        ref={
+                            "position_id": f"rh-shadow-{strategy_episode}",
+                            "kind": "fee_accrual",
+                            "steps": len(steps),
+                            "accrued_usd": str(accrued),
+                        },
+                        now=release_now,
+                    )
+                else:
+                    if steps:
+                        reasons = list(steps[-1].conjunct_reasons)
+                        reasons.append("FEE_JOURNAL_NOT_BOOKED:NO_TOKEN_ADDRESSES")
+                        steps[-1].conjunct_reasons = tuple(reasons)
+                        if granted_step is not None and granted_step is not steps[-1]:
+                            g_reasons = list(granted_step.conjunct_reasons)
+                            g_reasons.append("FEE_JOURNAL_NOT_BOOKED:NO_TOKEN_ADDRESSES")
+                            granted_step.conjunct_reasons = tuple(g_reasons)
+            else:
+                if steps:
+                    reasons = list(steps[-1].conjunct_reasons)
+                    reasons.append("FEE_JOURNAL_NOT_BOOKED:NO_QUOTE_OR_DEC1")
+                    steps[-1].conjunct_reasons = tuple(reasons)
+                    if granted_step is not None and granted_step is not steps[-1]:
+                        g_reasons = list(granted_step.conjunct_reasons)
+                        g_reasons.append("FEE_JOURNAL_NOT_BOOKED:NO_QUOTE_OR_DEC1")
+                        granted_step.conjunct_reasons = tuple(g_reasons)
+        elif accrued == 0:
+            if steps:
+                reasons = list(steps[-1].conjunct_reasons)
+                reasons.append("FEE_JOURNAL_NOT_BOOKED:ZERO_ACCRUED")
+                steps[-1].conjunct_reasons = tuple(reasons)
+                if granted_step is not None and granted_step is not steps[-1]:
+                    g_reasons = list(granted_step.conjunct_reasons)
+                    g_reasons.append("FEE_JOURNAL_NOT_BOOKED:ZERO_ACCRUED")
+                    granted_step.conjunct_reasons = tuple(g_reasons)
+
     return steps
 
 

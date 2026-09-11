@@ -1143,3 +1143,148 @@ def test_runner_falls_back_to_static_estimate_when_gas_db_missing(tmp_path):
     conn.close()
 
 
+# ---------------------------------------------------------------------------
+# RH-02ci: fee accrual booked into rh_journal (closing attribution)
+# ---------------------------------------------------------------------------
+
+FEE_META_TOKENS = {
+    **OPEN_META_TOKENS,
+    "quote_usd_per_token1": Decimal("2.0"),
+}
+
+
+def _fee_samples(count=2, delta_fg=10**18):
+    """Samples whose fee_growth actually advances, so `accrued` ends up > 0.
+
+    The runner reads fee_growth_global_0 / fee_growth_global_1 off the sample
+    (lp_rh_shadow_runner_v1_readonly.py:679). An earlier version passed a
+    `fee_growth` tuple, which nothing reads -- accrued stayed at zero, no fee
+    entry was ever booked, and the assertions were checking a path the fixture
+    could not reach.
+    """
+    samples = []
+    for i in range(count):
+        samples.append(_open_sample(
+            i,
+            fee_growth_global_0=Decimal(i * delta_fg),
+            fee_growth_global_1=Decimal(i * delta_fg),
+        ))
+    return samples
+
+
+def test_rh02ci_granted_step_accrued_positive_writes_fee_journal(tmp_path):
+    conn = _fresh_store(tmp_path)
+    _run(conn, _fee_samples(2), pool_meta=FEE_META_TOKENS)
+    rows = conn.execute(
+        "SELECT event_id, idempotency_key, account_debit, account_credit, "
+        "asset, amount_raw, is_external_flow FROM rh_journal "
+        "ORDER BY event_id"
+    ).fetchall()
+    assert len(rows) == 3
+    fee_row = next(r for r in rows if r[0] == "ep-fees")
+    assert fee_row[0] == "ep-fees"
+    assert fee_row[1] == "ep-fees"
+    assert fee_row[2] == "LP_FEES_RECEIVABLE"
+    assert fee_row[3] == "LP_FEE_INCOME"
+    assert fee_row[4] == "0xtoken1-rh02by"
+    assert fee_row[6] == 0
+    last_accrued = conn.execute(
+        "SELECT accrued_fee FROM rh_position_marks ORDER BY mark_time DESC LIMIT 1"
+    ).fetchone()[0]
+    expected_raw = (Decimal(last_accrued) / Decimal("2.0")) * Decimal(10**6)
+    assert Decimal(fee_row[5]) == expected_raw
+    conn.close()
+
+
+def test_rh02ci_fee_journal_ref_metadata(tmp_path):
+    conn = _fresh_store(tmp_path)
+    _run(conn, _fee_samples(2), episode="ep-ref", pool_meta=FEE_META_TOKENS)
+    ref_raw = conn.execute(
+        "SELECT ref_json FROM rh_journal WHERE event_id = 'ep-ref-fees'"
+    ).fetchone()[0]
+    ref = json.loads(ref_raw)
+    last_accrued = conn.execute(
+        "SELECT accrued_fee FROM rh_position_marks ORDER BY mark_time DESC LIMIT 1"
+    ).fetchone()[0]
+    assert ref["kind"] == "fee_accrual"
+    assert ref["position_id"] == "rh-shadow-ep-ref"
+    assert ref["steps"] == 2
+    # Compare as Decimals: str(Decimal) switches to scientific notation for
+    # small magnitudes ("3.00E-11" vs "0.0000000000300..."), so a string equality
+    # here fails on two spellings of the same number.
+    assert Decimal(ref["accrued_usd"]) == Decimal(last_accrued)
+    conn.close()
+
+
+def test_rh02ci_accrued_zero_no_fee_journal(tmp_path):
+    conn = _fresh_store(tmp_path)
+    _run(conn, [_open_sample(i) for i in range(2)], pool_meta=FEE_META_TOKENS)
+    assert conn.execute("SELECT COUNT(*) FROM rh_journal").fetchone()[0] == 2
+    assert conn.execute(
+        "SELECT COUNT(*) FROM rh_journal WHERE event_id LIKE '%-fees'"
+    ).fetchone()[0] == 0
+    conn.close()
+
+
+def test_rh02ci_missing_quote_no_fee_journal_but_open_written(tmp_path):
+    conn = _fresh_store(tmp_path)
+    steps = _run(conn, _fee_samples(2), pool_meta=OPEN_META_TOKENS)
+    assert conn.execute("SELECT COUNT(*) FROM rh_journal").fetchone()[0] == 2
+    assert conn.execute(
+        "SELECT COUNT(*) FROM rh_journal WHERE event_id LIKE '%-fees'"
+    ).fetchone()[0] == 0
+    assert any("FEE_JOURNAL_NOT_BOOKED:NO_QUOTE_OR_DEC1" in r
+               for s in steps for r in s.conjunct_reasons)
+    conn.close()
+
+
+def test_rh02ci_missing_dec1_no_fee_journal_but_open_written(tmp_path):
+    conn = _fresh_store(tmp_path)
+    # dec1 must be absent from BOTH meta and the samples: _evidence_for falls
+    # back to the sample, so leaving dec1=6 on the sample meant the runner still
+    # had it and the fail-close path was never reached. The fee_growth keys also
+    # have to be the ones the runner reads (see _fee_samples).
+    meta = {k: v for k, v in FEE_META_TOKENS.items() if k != "dec1"}
+    samples = [_open_sample(i,
+                            fee_growth_global_0=Decimal(i * 10**18),
+                            fee_growth_global_1=Decimal(i * 10**18))
+               for i in range(2)]
+    steps = _run(conn, samples, pool_meta=meta)
+    assert conn.execute("SELECT COUNT(*) FROM rh_journal").fetchone()[0] == 2
+    assert conn.execute(
+        "SELECT COUNT(*) FROM rh_journal WHERE event_id LIKE '%-fees'"
+    ).fetchone()[0] == 0
+    assert any("FEE_JOURNAL_NOT_BOOKED:NO_QUOTE_OR_DEC1" in r
+               for s in steps for r in s.conjunct_reasons)
+    conn.close()
+
+
+def test_rh02ci_fee_journal_passes_stage_b_balance_audit(tmp_path):
+    conn = _fresh_store(tmp_path)
+    _run(conn, _fee_samples(2), pool_meta=FEE_META_TOKENS)
+    result = audit_unexplained_ledger_diffs(conn)
+    assert result["count"] == 0
+    assert result["reason"] == "OK"
+    conn.close()
+
+
+def test_rh02ci_no_granted_step_no_journal(tmp_path):
+    conn = _fresh_store(tmp_path)
+    samples = [_passing_sample(i, absolute_profit_pass=False,
+                               fee_growth=(Decimal(i * 10**18), Decimal(i * 10**18)))
+               for i in range(3)]
+    _run(conn, samples, pool_meta=FEE_META_TOKENS)
+    assert conn.execute("SELECT COUNT(*) FROM rh_journal").fetchone()[0] == 0
+    conn.close()
+
+
+def test_rh02ci_duplicate_episode_replays_raise_integrity_error(tmp_path):
+    conn = _fresh_store(tmp_path)
+    _run(conn, _fee_samples(2), episode="ep-dup", pool_meta=FEE_META_TOKENS)
+    with pytest.raises(sqlite3.IntegrityError):
+        _run(conn, _fee_samples(2), episode="ep-dup", pool_meta=FEE_META_TOKENS)
+    conn.close()
+
+
+
+

@@ -3,7 +3,7 @@
   "tool": "lp_silent_failure_lint_v1_readonly",
   "identity_schema": "(file, rule, fingerprint)",
   "note": "Baseline of known silent-failure hits matched by content fingerprint. --fail-on-new blocks any hit exceeding baseline occurrence count. Line numbers are for display only. Regenerate after an approved fix.",
-  "count": 350,
+  "count": 353,
   "hits": [
     {
       "file": "scripts/finalize_bsc_fee_velocity_overnight_run_v1_readonly.py",
@@ -1993,6 +1993,33 @@
       "fingerprint": "6a228b121b91e823",
       "snippet": "\"cooling_until\": self._cooling_until.get(name, 0.0),",
       "key": "scripts/lp_rh_provider_pool_v1_readonly.py:215:33:1"
+    },
+    {
+      "file": "scripts/lp_rh_reorg_detector_v1_readonly.py",
+      "line": 354,
+      "col": 8,
+      "rule": 5,
+      "fingerprint": "8373f7e086bb2778",
+      "snippet": "return 2",
+      "key": "scripts/lp_rh_reorg_detector_v1_readonly.py:354:8:5"
+    },
+    {
+      "file": "scripts/lp_rh_reorg_detector_v1_readonly.py",
+      "line": 360,
+      "col": 8,
+      "rule": 5,
+      "fingerprint": "8373f7e086bb2778",
+      "snippet": "return 2",
+      "key": "scripts/lp_rh_reorg_detector_v1_readonly.py:360:8:5"
+    },
+    {
+      "file": "scripts/lp_rh_reorg_detector_v1_readonly.py",
+      "line": 370,
+      "col": 12,
+      "rule": 5,
+      "fingerprint": "8373f7e086bb2778",
+      "snippet": "return 2",
+      "key": "scripts/lp_rh_reorg_detector_v1_readonly.py:370:12:5"
     },
     {
       "file": "scripts/lp_rh_reorg_resolution_v1_readonly.py",
