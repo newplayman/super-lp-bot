@@ -392,6 +392,8 @@ def _run_episode_persisted(ledger_conn, *, cfg, episode_id, sample_list, now_fn)
     kwargs = _episode_kwargs(cfg, episode_id=episode_id, sample_list=sample_list,
                              now_fn=now_fn)
     try:
+        if not ledger_conn.in_transaction:
+            ledger_conn.execute("BEGIN IMMEDIATE")
         steps = run_episode(ledger_conn, **kwargs)
         ledger_conn.commit()
         return steps, 0, None
