@@ -2676,7 +2676,7 @@ def test_pool_state_unavailable(tmp_path):
     conn = _fresh_store(tmp_path)
     sample = _passing_sample(0, sample_time="2026-09-10T12:00:00Z", source_payload_hash="h-unavail")
     meta = _conj_meta(as_of=None, observed_at=None)
-    _run(conn, [sample], pool_meta=meta, pool_meta_path=None)
+    _run(conn, [sample], pool_meta=meta)
     conn.commit()
 
     row = conn.execute(

@@ -862,9 +862,9 @@ def test_reservation_sync_excludes_own_episode(tmp_path):
     ledger.close(); scratch.close(); scratch2.close()
 
 
-# --- RH-02cf: pool_meta_path wired from daemon to run_episode ---------------
+# --- Daemon pool state tests ---------------
 
-def _run_daemon_pool_state_test(tmp_path, pool_meta, *, sample_time="2026-09-08T18:00:00Z", pool_meta_path=None, payload_hash="h-daemon-ps"):
+def _run_daemon_pool_state_test(tmp_path, pool_meta, *, sample_time="2026-09-08T18:00:00Z", payload_hash="h-daemon-ps"):
     live = open_store(tmp_path / "live.db"); migrate(live)
     insert_row(live, "rh_market_states", {
         "asset_address": POOL, "sample_time": sample_time, "chain_id": 4663,
@@ -878,8 +878,6 @@ def _run_daemon_pool_state_test(tmp_path, pool_meta, *, sample_time="2026-09-08T
     shadow = open_shadow_store(":memory:")
     cfg = _cfg_with_ledger(str(tmp_path / "live.db"), str(ledger_path))
     cfg["pool_meta"] = pool_meta
-    if pool_meta_path is not None:
-        cfg["pool_meta_path"] = str(pool_meta_path)
 
     summary = run_one_round(
         cfg, shadow_conn=shadow, episode_id=f"ep-{payload_hash}",
@@ -913,7 +911,6 @@ def test_daemon_pool_state_production_shape_unavailable(tmp_path):
     cc, reasons = _run_daemon_pool_state_test(
         tmp_path,
         pool_meta={"sqrt_price_x96": "123", "quote": "0.5"},
-        pool_meta_path=meta_file,
     )
     assert cc["pool_state_source"] == "UNAVAILABLE"
     assert cc["pool_state_as_of"] is None
@@ -1025,7 +1022,6 @@ def test_daemon_pool_state_mtime_touch_does_not_affect_result(tmp_path):
         tmp_path / "run1",
         pool_meta={"sqrt_price_x96": "123", "quote": "0.5"},
         sample_time=sample_time,
-        pool_meta_path=meta_file,
         payload_hash="h-run1",
     )
 
@@ -1036,7 +1032,6 @@ def test_daemon_pool_state_mtime_touch_does_not_affect_result(tmp_path):
         tmp_path / "run2",
         pool_meta={"sqrt_price_x96": "123", "quote": "0.5"},
         sample_time=sample_time,
-        pool_meta_path=meta_file,
         payload_hash="h-run2",
     )
 

@@ -389,7 +389,6 @@ def _timestamp_str(val: Any) -> Optional[str]:
 
 def _resolve_pool_state_as_of(
     pool_meta: Optional[Mapping[str, Any]],
-    pool_meta_path: Optional[Any] = None,
 ) -> tuple[Optional[str], str]:
     """Resolve pool state timestamp and provenance source.
 
@@ -799,14 +798,13 @@ def _finish_conjuncts(bits, reasons, gated, pool_meta, capital_usd,
 def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
                 capital_usd, target_mode, now_fn, pool_meta=None,
                 allow_bare_quote=False, gas_db_path=DEFAULT_GAS_DB,
-                enforce_gas_reserve=False, organic_db_path=DEFAULT_ORGANIC_DB,
-                pool_meta_path=None):
+                enforce_gas_reserve=False, organic_db_path=DEFAULT_ORGANIC_DB):
     """Replay one Shadow episode over `samples`, writing gate decisions and position marks to `conn`."""
     # RH-02cg: take gas observation once per episode (not per step).
     effective_pool_meta = dict(pool_meta) if pool_meta else {}
     episode_now = now_fn() if callable(now_fn) else str(now_fn)
     pool_state_as_of, pool_state_source = _resolve_pool_state_as_of(
-        effective_pool_meta, pool_meta_path=pool_meta_path
+        effective_pool_meta
     )
 
     # RH-02cn: load organic windows once per episode
@@ -1747,8 +1745,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                             now_fn=now, pool_meta=pool_meta,
                             allow_bare_quote=a.allow_bare_quote,
                             enforce_gas_reserve=a.enforce_gas_reserve,
-                            organic_db_path=a.organic_db,
-                            pool_meta_path=a.pool_meta_json)
+                            organic_db_path=a.organic_db)
         sc.close()
 
     payload = {"target_mode": a.target_mode, "pool": a.pool, "strategy_episode": ep,
