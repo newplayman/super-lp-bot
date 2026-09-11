@@ -14,9 +14,11 @@
 from __future__ import annotations
 
 from pathlib import Path
+import subprocess
 import pytest
 
 from scripts.lp_rh_fault_injection_v1_readonly import (
+    get_attested_code_version,
     run_all_fault_injections,
     run_scenario_1,
     run_scenario_2,
@@ -73,6 +75,62 @@ def test_fault_injection_scenario_5_synthetic_evidence_stale_code_version(tmp_pa
     assert res["control_passed"] is True, "对照组未通过"
     assert res["is_intercepted"] is True, "注入组未被拦截"
     assert res["control"]["audit_passed"] is True
+    assert res["injected"]["audit_passed"] is False
+    assert res["injected"]["reason"] == "SYNTHETIC_EVIDENCE_STALE_CODE_VERSION"
+    assert "STAGE_A_SYNTHETIC_TESTS_FAILED" in res["injected"]["blockers"]
+    assert "STAGE_A_SYNTHETIC_TESTS_FAILED" not in res["control"]["blockers"]
+ 
+ 
+def test_fault_injection_scenario_5_head_diverged_from_attested_version(tmp_path):
+    """防复发验证：构造「整仓 HEAD 与 ATTESTED 版本不相等」的状态，
+    验证场景 5 的对照组仍须通过（严格以 ATTESTED 口径而非整仓 HEAD 为准）。
+    """
+    repo_dir = tmp_path / "repo"
+    repo_dir.mkdir()
+
+    # 初始化独立的临时 git 仓库
+    subprocess.run(["git", "init"], cwd=repo_dir, check=True, capture_output=True)
+    subprocess.run(["git", "config", "user.name", "Test Runner"], cwd=repo_dir, check=True, capture_output=True)
+    subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=repo_dir, check=True, capture_output=True)
+
+    # 1. 提交受证明路径文件 scripts/x.py
+    scripts_dir = repo_dir / "scripts"
+    scripts_dir.mkdir()
+    (scripts_dir / "x.py").write_text("# attested code\n", encoding="utf-8")
+    subprocess.run(["git", "add", "."], cwd=repo_dir, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-m", "feat: attested code update"], cwd=repo_dir, check=True, capture_output=True)
+
+    attested_sha = subprocess.run(
+        ["git", "rev-parse", "--short=12", "HEAD"],
+        cwd=repo_dir, check=True, capture_output=True, text=True,
+    ).stdout.strip()
+
+    # 2. 提交非受证明路径文件 reports/y.md，使整仓 HEAD 向前推移
+    reports_dir = repo_dir / "reports"
+    reports_dir.mkdir()
+    (reports_dir / "y.md").write_text("# un-attested report\n", encoding="utf-8")
+    subprocess.run(["git", "add", "."], cwd=repo_dir, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-m", "docs: report update"], cwd=repo_dir, check=True, capture_output=True)
+
+    head_sha = subprocess.run(
+        ["git", "rev-parse", "--short=12", "HEAD"],
+        cwd=repo_dir, check=True, capture_output=True, text=True,
+    ).stdout.strip()
+
+    # 验证前置状态：HEAD 与 ATTESTED 版本确已分叉
+    assert head_sha != attested_sha, "整仓 HEAD 与 ATTESTED 版本必须分叉不相等"
+    assert get_attested_code_version(repo_dir) == attested_sha
+
+    # 执行场景 5：对照组仍必须通过，注入组仍必须拦截
+    scratch = tmp_path / "scratch"
+    scratch.mkdir()
+    res = run_scenario_5(scratch, repo_root=repo_dir)
+
+    assert res["control_passed"] is True, "当整仓 HEAD 与 ATTESTED 版本分叉时，对照组仍须通过"
+    assert res["is_intercepted"] is True, "注入组仍须被拦截"
+    assert res["control"]["audit_passed"] is True
+    assert res["control"]["evidence_code_version"] == attested_sha
+    assert res["control"]["evidence_code_version"] != head_sha
     assert res["injected"]["audit_passed"] is False
     assert res["injected"]["reason"] == "SYNTHETIC_EVIDENCE_STALE_CODE_VERSION"
     assert "STAGE_A_SYNTHETIC_TESTS_FAILED" in res["injected"]["blockers"]

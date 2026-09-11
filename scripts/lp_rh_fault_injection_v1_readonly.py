@@ -70,16 +70,16 @@ from scripts.lp_rh_store_v1_readonly import (
 )
 
 
-def get_repo_head(repo_root: Path = REPO_ROOT) -> str:
-    """获取当前 HEAD 短 commit hash (12字符)."""
-    proc = subprocess.run(
-        ["git", "rev-parse", "--short=12", "HEAD"],
-        cwd=str(repo_root),
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    return proc.stdout.strip()
+from scripts.lp_rh_synthetic_evidence_v1 import (
+    ATTESTED_CODE_PATHS,
+    resolve_code_version,
+)
+
+
+def get_attested_code_version(repo_root: Path = REPO_ROOT) -> str:
+    """获取受证明路径 (ATTESTED_CODE_PATHS) 的最新 commit hash (12字符)."""
+    sha, _ = resolve_code_version(str(repo_root))
+    return sha
 
 
 def check_prod_db_state(prod_db_path: Path = PROD_DB_PATH) -> Dict[str, Any]:
@@ -535,25 +535,26 @@ def run_scenario_4(scratch_dir: Path) -> Dict[str, Any]:
 # ==============================================================================
 # 场景 5: 合成测试证据的 code_version 与 HEAD 不符
 # ==============================================================================
-def run_scenario_5(scratch_dir: Path) -> Dict[str, Any]:
-    """场景 5: 合成测试证据的 code_version 与 HEAD 不符.
-    对照组: code_version == live git HEAD, working_tree_clean=True, all_passed=True -> passed=True.
-    注入组: code_version == '0000deadbeef' (与 HEAD 不符) -> passed=False,
+def run_scenario_5(scratch_dir: Path, repo_root: Path = REPO_ROOT) -> Dict[str, Any]:
+    """场景 5: 合成测试证据的 code_version 与受证明路径版本 (ATTESTED) 不符.
+    对照组: code_version == live git ATTESTED 版本 (ATTESTED_CODE_PATHS 口径),
+            working_tree_clean=True, all_passed=True -> passed=True.
+    注入组: code_version == '0000deadbeef' (与受证明版本不符) -> passed=False,
             reason=SYNTHETIC_EVIDENCE_STALE_CODE_VERSION, Stage A 出现 STAGE_A_SYNTHETIC_TESTS_FAILED.
     """
-    head = get_repo_head()
-    stale_sha = "0000deadbeef" if head != "0000deadbeef" else "1111deadbeef"
+    code_ver = get_attested_code_version(repo_root)
+    stale_sha = "0000deadbeef" if code_ver != "0000deadbeef" else "1111deadbeef"
 
     # 1. 对照组
     ev_ctrl = scratch_dir / "syn_ctrl.json"
     ev_ctrl.write_text(json.dumps({
         "schema_version": 1,
-        "code_version": head,
+        "code_version": code_ver,
         "working_tree_clean": True,
         "all_passed": True,
         "generated_at": "2026-09-10T03:00:00Z",
     }), encoding="utf-8")
-    res_c = audit_synthetic_tests(ev_ctrl, repo_root=REPO_ROOT)
+    res_c = audit_synthetic_tests(ev_ctrl, repo_root=repo_root)
     stage_a_ctrl = stage_a_status(**_create_passing_stage_a_params({"synthetic_tests_passed": res_c["passed"]}))
 
     # 2. 注入组
@@ -565,7 +566,7 @@ def run_scenario_5(scratch_dir: Path) -> Dict[str, Any]:
         "all_passed": True,
         "generated_at": "2026-09-10T03:00:00Z",
     }), encoding="utf-8")
-    res_i = audit_synthetic_tests(ev_inj, repo_root=REPO_ROOT)
+    res_i = audit_synthetic_tests(ev_inj, repo_root=repo_root)
     stage_a_inj = stage_a_status(**_create_passing_stage_a_params({"synthetic_tests_passed": res_i["passed"]}))
 
     ctrl_ok = (
@@ -582,9 +583,9 @@ def run_scenario_5(scratch_dir: Path) -> Dict[str, Any]:
     return {
         "scenario": 5,
         "name": "合成测试证据的 code_version 与 HEAD 不符",
-        "head_version": head,
+        "head_version": code_ver,
         "control": {
-            "evidence_code_version": head,
+            "evidence_code_version": code_ver,
             "audit_passed": res_c["passed"],
             "reason": res_c["reason"],
             "stage_a_passed": stage_a_ctrl["passed"],
