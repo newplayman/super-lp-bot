@@ -2091,14 +2091,15 @@ def test_rh02bv_9_eip55_address_case_insensitivity(tmp_path):
 
 def _get_live_repo_head(repo_root=REPO_ROOT) -> str:
     import subprocess
+    from scripts.lp_rh_synthetic_evidence_v1 import ATTESTED_CODE_PATHS
     proc = subprocess.run(
-        ["git", "rev-parse", "--short=12", "HEAD"],
+        ["git", "log", "-1", "--format=%H", "--", *ATTESTED_CODE_PATHS],
         cwd=str(repo_root),
         capture_output=True,
         text=True,
         check=True,
     )
-    return proc.stdout.strip()
+    return proc.stdout.strip()[:12]
 
 
 def test_rh02bw_1_synthetic_evidence_missing(tmp_path):
@@ -2427,3 +2428,45 @@ def test_rh02bw_10_synthetic_evidence_head_unresolved(tmp_path):
     res = audit_synthetic_tests(ev_file, repo_root=empty_dir)
     assert res["passed"] is None
     assert res["reason"] == SYNTHETIC_EVIDENCE_HEAD_UNRESOLVED
+
+
+def test_rh02bw_11_attested_paths_unaffected_by_doc_commits(tmp_path):
+    """11. 提交仅修改 docs/reports 不会使证据过期（code_version 只关注 ATTESTED_CODE_PATHS）."""
+    import json
+    import subprocess
+    from scripts.lp_rh_readiness_v1_readonly import audit_synthetic_tests
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init"], cwd=str(repo), check=True, capture_output=True)
+    subprocess.run(["git", "config", "user.name", "Test Runner"], cwd=str(repo), check=True, capture_output=True)
+    subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=str(repo), check=True, capture_output=True)
+    (repo / "scripts").mkdir()
+    (repo / "scripts" / "tool.py").write_text("# tool\n", encoding="utf-8")
+    subprocess.run(["git", "add", "."], cwd=str(repo), check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-m", "add scripts"], cwd=str(repo), check=True, capture_output=True)
+
+    proc = subprocess.run(
+        ["git", "log", "-1", "--format=%H", "--", "scripts"],
+        cwd=str(repo), capture_output=True, text=True, check=True,
+    )
+    expected_version = proc.stdout.strip()[:12]
+
+    ev_file = repo / "ev.json"
+    ev_file.write_text(json.dumps({
+        "schema_version": 1,
+        "code_version": expected_version,
+        "working_tree_clean": True,
+        "all_passed": True,
+        "generated_at": "2026-09-10T03:05:00Z",
+    }), encoding="utf-8")
+
+    # Now make a commit touching only docs and reports
+    (repo / "docs").mkdir()
+    (repo / "docs" / "manual.md").write_text("# Manual\n", encoding="utf-8")
+    subprocess.run(["git", "add", "."], cwd=str(repo), check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-m", "docs only"], cwd=str(repo), check=True, capture_output=True)
+
+    res = audit_synthetic_tests(ev_file, repo_root=repo)
+    assert res["passed"] is True
+    assert res["reason"] == "OK"
+    assert res["head_version"] == expected_version

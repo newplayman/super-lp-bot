@@ -35,6 +35,8 @@ from scripts.lp_rh_coverage_audit_v1_readonly import (  # noqa: E402
 )
 from scripts.lp_rh_column_health_v1_readonly import (  # noqa: E402
     column_stats)
+from scripts.lp_rh_synthetic_evidence_v1 import (  # noqa: E402
+    ATTESTED_CODE_PATHS)
 
 # PRD §21 graduation thresholds.
 STAGE_A_MIN_HOURS = 72
@@ -1255,22 +1257,27 @@ def audit_synthetic_tests(path: Any, *, repo_root: Any) -> dict:
             "evidence_path": ev_path_str,
         }
 
-    # Resolve HEAD via git rev-parse --short=12 HEAD in repo_root
+    # Resolve attested code version via git log -1 --format=%H -- <ATTESTED_CODE_PATHS> in repo_root
     root_path = Path(repo_root) if repo_root else Path(REPO_ROOT)
     head_version = None
     if root_path.exists() and root_path.is_dir():
         try:
             proc = subprocess.run(
-                ["git", "rev-parse", "--short=12", "HEAD"],
+                [
+                    "git", "log", "-1",
+                    "--format=%H",
+                    "--",
+                    *ATTESTED_CODE_PATHS,
+                ],
                 cwd=str(root_path),
                 capture_output=True,
                 text=True,
                 check=False,
             )
             if proc.returncode == 0:
-                sha = proc.stdout.strip()
-                if re.fullmatch(r"[0-9a-f]{12}", sha):
-                    head_version = sha
+                sha_full = proc.stdout.strip()
+                if re.fullmatch(r"[0-9a-f]{40}", sha_full):
+                    head_version = sha_full[:12]
         except Exception:
             head_version = None
 

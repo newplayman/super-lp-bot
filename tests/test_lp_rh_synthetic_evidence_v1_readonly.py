@@ -152,3 +152,188 @@ def test_main_runtime_error_returns_2(tmp_path, capsys):
     assert not (tmp_path / "out.json").exists()
     err = capsys.readouterr().err
     assert "error:" in err or "git" in err
+
+
+def _make_test_repo(tmp_path: Path) -> Path:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+
+    def _run(*cmd):
+        subprocess.run(["git", *cmd], cwd=str(repo), check=True, capture_output=True, text=True)
+
+    _run("init")
+    _run("config", "user.name", "Test Runner")
+    _run("config", "user.email", "test@example.com")
+    (repo / "scripts").mkdir()
+    (repo / "scripts" / "tool.py").write_text("# tool\n", encoding="utf-8")
+    (repo / "tests").mkdir()
+    (repo / "tests" / "test_tool.py").write_text("# test\n", encoding="utf-8")
+    (repo / "configs").mkdir()
+    (repo / "configs" / "config.json").write_text("{}\n", encoding="utf-8")
+    (repo / "pytest.ini").write_text("[pytest]\n", encoding="utf-8")
+    _run("add", ".")
+    _run("commit", "-m", "Initial commit with attested paths")
+    return repo
+
+
+def test_parity_generator_and_readiness_code_version(tmp_path):
+    """1. 两侧口径一致：同一个仓库状态下，生成侧算出的 version 与比对侧算出的 version 必须相等。"""
+    from scripts.lp_rh_readiness_v1_readonly import audit_synthetic_tests
+    repo = _make_test_repo(tmp_path)
+    sha_gen, clean_gen = generator.resolve_code_version(str(repo))
+    assert clean_gen is True
+    assert len(sha_gen) == 12
+
+    ev_file = repo / "ev.json"
+    ev_file.write_text(json.dumps({
+        "schema_version": 1,
+        "code_version": sha_gen,
+        "working_tree_clean": True,
+        "all_passed": True,
+        "generated_at": "2026-09-11T00:00:00Z",
+    }), encoding="utf-8")
+    audit = audit_synthetic_tests(ev_file, repo_root=str(repo))
+    assert audit["head_version"] == sha_gen
+    assert audit["passed"] is True
+
+    # Also verify parity on live repo
+    live_sha, _ = generator.resolve_code_version(str(REPO_ROOT))
+    live_audit = audit_synthetic_tests(ev_file, repo_root=str(REPO_ROOT))
+    assert live_audit["head_version"] == live_sha
+
+
+def test_unattested_paths_do_not_stale_evidence(tmp_path):
+    """2. 只改 docs/ 或 reports/ 或根目录 .md 的提交 -> version 不变 -> 证据不过期。"""
+    from scripts.lp_rh_readiness_v1_readonly import audit_synthetic_tests
+    repo = _make_test_repo(tmp_path)
+    v0, _ = generator.resolve_code_version(str(repo))
+
+    ev_file = repo / "ev.json"
+    ev_file.write_text(json.dumps({
+        "schema_version": 1,
+        "code_version": v0,
+        "working_tree_clean": True,
+        "all_passed": True,
+        "generated_at": "2026-09-11T00:00:00Z",
+    }), encoding="utf-8")
+
+    # Modify docs, reports, and root .md
+    docs_dir = repo / "docs"
+    docs_dir.mkdir()
+    (docs_dir / "guide.md").write_text("# Guide\n", encoding="utf-8")
+    reports_dir = repo / "reports" / "lp_rh"
+    reports_dir.mkdir(parents=True)
+    (reports_dir / "some_report.json").write_text("{}", encoding="utf-8")
+    (repo / "README.md").write_text("# Title\n", encoding="utf-8")
+
+    subprocess.run(["git", "add", "."], cwd=str(repo), check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-m", "docs and reports update"], cwd=str(repo), check=True, capture_output=True)
+
+    v_after, _ = generator.resolve_code_version(str(repo))
+    assert v_after == v0
+
+    audit = audit_synthetic_tests(ev_file, repo_root=str(repo))
+    assert audit["head_version"] == v0
+    assert audit["passed"] is True
+    assert audit["reason"] == "OK"
+
+
+def test_scripts_change_stales_evidence(tmp_path):
+    """3. 改 scripts/ 下的文件的提交 -> version 变 -> 证据过期。"""
+    from scripts.lp_rh_readiness_v1_readonly import (
+        audit_synthetic_tests,
+        SYNTHETIC_EVIDENCE_STALE_CODE_VERSION,
+    )
+    repo = _make_test_repo(tmp_path)
+    v0, _ = generator.resolve_code_version(str(repo))
+
+    ev_file = repo / "ev.json"
+    ev_file.write_text(json.dumps({
+        "schema_version": 1,
+        "code_version": v0,
+        "working_tree_clean": True,
+        "all_passed": True,
+        "generated_at": "2026-09-11T00:00:00Z",
+    }), encoding="utf-8")
+
+    (repo / "scripts" / "tool.py").write_text("# updated tool\n", encoding="utf-8")
+    subprocess.run(["git", "commit", "-am", "update scripts"], cwd=str(repo), check=True, capture_output=True)
+
+    v1, _ = generator.resolve_code_version(str(repo))
+    assert v1 != v0
+
+    audit = audit_synthetic_tests(ev_file, repo_root=str(repo))
+    assert audit["head_version"] == v1
+    assert audit["passed"] is False
+    assert audit["reason"] == SYNTHETIC_EVIDENCE_STALE_CODE_VERSION
+
+
+def test_tests_change_updates_version(tmp_path):
+    """4. 改 tests/ 下的文件 -> version 变。"""
+    repo = _make_test_repo(tmp_path)
+    v0, _ = generator.resolve_code_version(str(repo))
+
+    (repo / "tests" / "test_tool.py").write_text("# updated test\n", encoding="utf-8")
+    subprocess.run(["git", "commit", "-am", "update tests"], cwd=str(repo), check=True, capture_output=True)
+
+    v1, _ = generator.resolve_code_version(str(repo))
+    assert v1 != v0
+
+
+def test_configs_change_updates_version(tmp_path):
+    """5. 改 configs/ 下的文件 -> version 变。"""
+    repo = _make_test_repo(tmp_path)
+    v0, _ = generator.resolve_code_version(str(repo))
+
+    (repo / "configs" / "config.json").write_text('{"key": "val"}\n', encoding="utf-8")
+    subprocess.run(["git", "commit", "-am", "update configs"], cwd=str(repo), check=True, capture_output=True)
+
+    v1, _ = generator.resolve_code_version(str(repo))
+    assert v1 != v0
+
+
+def test_pytest_ini_change_updates_version(tmp_path):
+    """6. 改 pytest.ini -> version 变。"""
+    repo = _make_test_repo(tmp_path)
+    v0, _ = generator.resolve_code_version(str(repo))
+
+    (repo / "pytest.ini").write_text("[pytest]\naddopts = -v\n", encoding="utf-8")
+    subprocess.run(["git", "commit", "-am", "update pytest.ini"], cwd=str(repo), check=True, capture_output=True)
+
+    v1, _ = generator.resolve_code_version(str(repo))
+    assert v1 != v0
+
+
+def test_empty_git_log_output_fail_close(tmp_path):
+    """7. git log 对这些路径返回空输出 -> 沿用失败处理，不得当成通过。"""
+    from scripts.lp_rh_readiness_v1_readonly import (
+        audit_synthetic_tests,
+        SYNTHETIC_EVIDENCE_HEAD_UNRESOLVED,
+    )
+    repo = tmp_path / "repo_no_attested"
+    repo.mkdir()
+    subprocess.run(["git", "init"], cwd=str(repo), check=True, capture_output=True)
+    subprocess.run(["git", "config", "user.name", "Test Runner"], cwd=str(repo), check=True, capture_output=True)
+    subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=str(repo), check=True, capture_output=True)
+    (repo / "unrelated.txt").write_text("only unrelated\n", encoding="utf-8")
+    subprocess.run(["git", "add", "."], cwd=str(repo), check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-m", "only unrelated file"], cwd=str(repo), check=True, capture_output=True)
+
+    # 1. Generator side must fail-close (raise RuntimeError), NOT pass or return empty string
+    with pytest.raises(RuntimeError) as exc_info:
+        generator.resolve_code_version(str(repo))
+    assert "unexpected git log sha" in str(exc_info.value) or "git log" in str(exc_info.value)
+
+    # 2. Readiness auditor side must fail-close (passed=None, reason=HEAD_UNRESOLVED), NEVER True
+    ev_file = repo / "ev.json"
+    ev_file.write_text(json.dumps({
+        "schema_version": 1,
+        "code_version": "1234567890ab",
+        "working_tree_clean": True,
+        "all_passed": True,
+        "generated_at": "2026-09-11T00:00:00Z",
+    }), encoding="utf-8")
+    audit = audit_synthetic_tests(ev_file, repo_root=str(repo))
+    assert audit["passed"] is None
+    assert audit["head_version"] is None
+    assert audit["reason"] == SYNTHETIC_EVIDENCE_HEAD_UNRESOLVED

@@ -7,8 +7,8 @@ intended to serve as the `synthetic_tests_passed` evidence source for the
 Stage A gate (wiring the gate is a separate, later task).
 
 Fail-close semantics:
-  * code_version comes from `git rev-parse --short=12 HEAD`. If it cannot be
-    resolved, no file is written and the process exits with code 2.
+  * code_version comes from `git log -1 --format=%H -- <ATTESTED_CODE_PATHS>` (short 12).
+    If it cannot be resolved, no file is written and the process exits with code 2.
   * all_passed requires exit_code==0 AND failed==0 AND errors==0 AND total>0.
     A zero-test run (total==0) is NEVER a pass.
 """
@@ -23,23 +23,31 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 SCHEMA_VERSION = 1
-CODE_VERSION_SOURCE = "git rev-parse --short=12 HEAD"
+ATTESTED_CODE_PATHS = ("scripts", "tests", "configs", "pytest.ini")
+CODE_VERSION_SOURCE = f"git log -1 --format=%H -- {' '.join(ATTESTED_CODE_PATHS)}"
 SUMMARY_KEYS = ("total", "passed", "failed", "errors", "skipped", "duration_secs")
 
 
 def resolve_code_version(repo: str) -> tuple[str, bool]:
     """Return (short_sha_12, working_tree_clean). Raise RuntimeError on failure."""
+    cmd = [
+        "git", "log", "-1",
+        "--format=%H",
+        "--",
+        *ATTESTED_CODE_PATHS,
+    ]
     rev = subprocess.run(
-        ["git", "rev-parse", "--short=12", "HEAD"],
+        cmd,
         cwd=repo, capture_output=True, text=True,
     )
     if rev.returncode != 0:
         raise RuntimeError(
-            f"git rev-parse failed (rc={rev.returncode}): {rev.stderr.strip()}"
+            f"git log failed (rc={rev.returncode}): {rev.stderr.strip()}"
         )
-    sha = rev.stdout.strip()
-    if not re.fullmatch(r"[0-9a-f]{12}", sha):
-        raise RuntimeError(f"unexpected git short sha: {sha!r}")
+    sha_full = rev.stdout.strip()
+    if not re.fullmatch(r"[0-9a-f]{40}", sha_full):
+        raise RuntimeError(f"unexpected git log sha: {sha_full!r}")
+    sha = sha_full[:12]
     status = subprocess.run(
         ["git", "status", "--porcelain"],
         cwd=repo, capture_output=True, text=True,
