@@ -1286,5 +1286,279 @@ def test_rh02ci_duplicate_episode_replays_raise_integrity_error(tmp_path):
     conn.close()
 
 
+# ---------------------------------------------------------------------------
+# RH-02ck: gas reserve gate tests
+# ---------------------------------------------------------------------------
+
+def _create_test_gas_db(path):
+    gconn = sqlite3.connect(path)
+    gconn.execute(
+        """
+        CREATE TABLE rh_gas_observations (
+            observed_at TEXT NOT NULL,
+            gas_price_wei INTEGER,
+            native_price_usd TEXT,
+            gas_usd TEXT,
+            block_number INTEGER,
+            receipt_n INTEGER,
+            source TEXT,
+            PRIMARY KEY (observed_at, block_number)
+        )
+        """
+    )
+    for i in range(1, 6):
+        gconn.execute(
+            "INSERT INTO rh_gas_observations VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (f"2025-12-31T23:5{i}:00Z", 20000000000, "2500", "0.25", i, 10, "test"),
+        )
+    gconn.commit()
+    gconn.close()
+
+
+def test_rh02ck_default_enforce_false_unknown_balance_backward_compatible(tmp_path):
+    # 1. enforce_gas_reserve=False (默认) + 余额未知 -> episode 行为与现在逐字相同，
+    # position_and_exit_depth_pass 不受影响，但 summary 里 gas_reserve.sufficient is False、enforced is False
+    gas_db = tmp_path / "gas.db"
+    _create_test_gas_db(gas_db)
+    conn = _fresh_store(tmp_path)
+    sample = _passing_sample(0, source_payload_hash="h-ck-1")
+    # pool_meta has tick_data and max_impact_bps so position_and_exit_depth_pass normally passes
+    meta = _conj_meta()
+
+    steps = run_episode(
+        conn,
+        strategy_episode="ep-ck-1",
+        samples=[sample],
+        position_usd=POSITION_USD,
+        horizon_hours=HORIZON_HOURS,
+        capital_usd=CAPITAL_USD,
+        target_mode="SHADOW_SCENARIO",
+        now_fn=lambda: NOW,
+        pool_meta=meta,
+        gas_db_path=str(gas_db),
+        # enforce_gas_reserve defaults to False
+    )
+    conn.commit()
+
+    assert steps[0].terminal_eligible is True
+    assert steps[0].primary_status == "COMPUTED_PASS"
+    assert steps[0].dominant_blocker is None
+    summary = episode_summary(steps)
+    gr = summary.get("gas_reserve")
+    assert gr is not None
+    assert gr["sufficient"] is False
+    assert gr["enforced"] is False
+    assert gr["native_balance_known"] is False
+    assert "NATIVE_BALANCE_UNKNOWN" in gr["reason"]
+    assert "position_and_exit_depth_pass" not in summary.get("conjunct_failure_counts", {})
+    conn.close()
+
+
+def test_rh02ck_enforce_true_unknown_balance_fails_exit_depth(tmp_path):
+    # 2. enforce_gas_reserve=True + 余额未知 -> position_and_exit_depth_pass 为 False，reasons 含 NATIVE_GAS_RESERVE_INSUFFICIENT
+    gas_db = tmp_path / "gas.db"
+    _create_test_gas_db(gas_db)
+    conn = _fresh_store(tmp_path)
+    sample = _passing_sample(0, source_payload_hash="h-ck-2")
+    meta = _conj_meta()  # lacks native_balance_wei
+
+    steps = run_episode(
+        conn,
+        strategy_episode="ep-ck-2",
+        samples=[sample],
+        position_usd=POSITION_USD,
+        horizon_hours=HORIZON_HOURS,
+        capital_usd=CAPITAL_USD,
+        target_mode="SHADOW_SCENARIO",
+        now_fn=lambda: NOW,
+        pool_meta=meta,
+        gas_db_path=str(gas_db),
+        enforce_gas_reserve=True,
+    )
+    conn.commit()
+
+    # Assert the conjunct, not terminal_eligible: under
+    # target_mode="SHADOW_SCENARIO" the gate reports simulated_policy_only and
+    # terminal_eligible does not track this conjunct. The spec asks for
+    # position_and_exit_depth_pass, and that is what the reasons carry.
+    assert any("position_and_exit_depth_pass" in r and
+               "NATIVE_GAS_RESERVE_INSUFFICIENT" in r
+               for r in steps[0].conjunct_reasons), steps[0].conjunct_reasons
+    # primary_status and eligible_steps are not asserted: under
+    # SHADOW_SCENARIO the gate marks the decision simulated_policy_only and
+    # those two do not follow this conjunct. What must hold is that the failure
+    # is recorded and counted, which is what the gate is for.
+    summary = episode_summary(steps)
+    assert "position_and_exit_depth_pass" in summary["conjunct_failure_counts"]
+    conn.close()
+
+
+def test_rh02ck_enforce_true_sufficient_native_balance_passes(tmp_path):
+    # 3. enforce_gas_reserve=True + native_balance_wei 充足 -> 该 conjunct 不因此失败
+    gas_db = tmp_path / "gas.db"
+    _create_test_gas_db(gas_db)
+    conn = _fresh_store(tmp_path)
+    sample = _passing_sample(0, source_payload_hash="h-ck-3")
+    # 1 ETH = 10**18 wei >> required gas
+    meta = _conj_meta(native_balance_wei=10**18)
+
+    steps = run_episode(
+        conn,
+        strategy_episode="ep-ck-3",
+        samples=[sample],
+        position_usd=POSITION_USD,
+        horizon_hours=HORIZON_HOURS,
+        capital_usd=CAPITAL_USD,
+        target_mode="SHADOW_SCENARIO",
+        now_fn=lambda: NOW,
+        pool_meta=meta,
+        gas_db_path=str(gas_db),
+        enforce_gas_reserve=True,
+    )
+    conn.commit()
+
+    assert steps[0].terminal_eligible is True
+    assert steps[0].primary_status == "COMPUTED_PASS"
+    assert not any("NATIVE_GAS_RESERVE_INSUFFICIENT" in r for r in steps[0].conjunct_reasons)
+    summary = episode_summary(steps)
+    assert summary["gas_reserve"]["sufficient"] is True
+    assert summary["gas_reserve"]["enforced"] is True
+    assert summary["gas_reserve"]["native_balance_known"] is True
+    conn.close()
+
+
+def test_rh02ck_enforce_true_weth_only_fails_with_weth_note(tmp_path):
+    # 4. enforce_gas_reserve=True + 只有 weth_balance_wei 没有 native -> 判不足，理由里能看出 WETH 不顶
+    gas_db = tmp_path / "gas.db"
+    _create_test_gas_db(gas_db)
+    conn = _fresh_store(tmp_path)
+    sample = _passing_sample(0, source_payload_hash="h-ck-4")
+    # 10 WETH but no native_balance_wei
+    meta = _conj_meta(weth_balance_wei=10 * 10**18)
+
+    steps = run_episode(
+        conn,
+        strategy_episode="ep-ck-4",
+        samples=[sample],
+        position_usd=POSITION_USD,
+        horizon_hours=HORIZON_HOURS,
+        capital_usd=CAPITAL_USD,
+        target_mode="SHADOW_SCENARIO",
+        now_fn=lambda: NOW,
+        pool_meta=meta,
+        gas_db_path=str(gas_db),
+        enforce_gas_reserve=True,
+    )
+    conn.commit()
+
+    # Assert the conjunct, not terminal_eligible: under
+    # target_mode="SHADOW_SCENARIO" the gate reports simulated_policy_only and
+    # terminal_eligible does not track this conjunct. The spec asks for
+    # position_and_exit_depth_pass, and that is what the reasons carry.
+    assert any("position_and_exit_depth_pass" in r and
+               "NATIVE_GAS_RESERVE_INSUFFICIENT" in r
+               for r in steps[0].conjunct_reasons), steps[0].conjunct_reasons
+    assert any("NATIVE_GAS_RESERVE_INSUFFICIENT" in r for r in steps[0].conjunct_reasons)
+    summary = episode_summary(steps)
+    gr = summary["gas_reserve"]
+    assert gr["sufficient"] is False
+    # Check that the reason reflects wrapped WETH does not count
+    assert "WETH is an ERC-20" in gr["reason"]
+    assert "cannot pay gas" in gr["reason"]
+    conn.close()
+
+
+def test_rh02ck_gas_db_missing_graceful_fallback(tmp_path):
+    # 5. gas 库缺失 -> required_usd is None，reason 说明原因，默认开关下 episode 照常跑完
+    missing_gas_db = tmp_path / "nonexistent.db"
+    conn = _fresh_store(tmp_path)
+    sample = _passing_sample(0, source_payload_hash="h-ck-5")
+    meta = _conj_meta()
+
+    steps = run_episode(
+        conn,
+        strategy_episode="ep-ck-5",
+        samples=[sample],
+        position_usd=POSITION_USD,
+        horizon_hours=HORIZON_HOURS,
+        capital_usd=CAPITAL_USD,
+        target_mode="SHADOW_SCENARIO",
+        now_fn=lambda: NOW,
+        pool_meta=meta,
+        gas_db_path=str(missing_gas_db),
+        enforce_gas_reserve=False,
+    )
+    conn.commit()
+
+    assert steps[0].terminal_eligible is True
+    assert steps[0].primary_status == "COMPUTED_PASS"
+    summary = episode_summary(steps)
+    gr = summary["gas_reserve"]
+    assert gr["required_usd"] is None
+    assert gr["sufficient"] is False
+    assert "GAS_DB_UNAVAILABLE" in gr["reason"]
+    conn.close()
+
+
+def test_rh02ck_cost_components_json_exit_gas_reserve_usd_null_when_unavailable(tmp_path):
+    # 6. cost_components_json 里 exit_gas_reserve_usd 在取不到时是 null 而非 0；取到时是数值
+    missing_gas_db = tmp_path / "nonexistent.db"
+    conn = _fresh_store(tmp_path)
+    sample1 = _passing_sample(0, source_payload_hash="h-ck-6-null")
+    meta = _conj_meta()
+
+    run_episode(
+        conn,
+        strategy_episode="ep-ck-6-null",
+        samples=[sample1],
+        position_usd=POSITION_USD,
+        horizon_hours=HORIZON_HOURS,
+        capital_usd=CAPITAL_USD,
+        target_mode="SHADOW_SCENARIO",
+        now_fn=lambda: NOW,
+        pool_meta=meta,
+        gas_db_path=str(missing_gas_db),
+    )
+    conn.commit()
+
+    row = conn.execute(
+        "SELECT cost_components_json FROM rh_economic_evaluations WHERE snapshot_id = 'h-ck-6-null'"
+    ).fetchone()
+    assert row is not None
+    cc = json.loads(row[0])
+    assert "exit_gas_reserve_usd" in cc
+    assert cc["exit_gas_reserve_usd"] is None
+    assert cc["exit_gas_reserve_usd"] != 0
+
+    # Also test when gas db is present, exit_gas_reserve_usd is a positive number
+    gas_db = tmp_path / "gas.db"
+    _create_test_gas_db(gas_db)
+    sample2 = _passing_sample(1, source_payload_hash="h-ck-6-val")
+    run_episode(
+        conn,
+        strategy_episode="ep-ck-6-val",
+        samples=[sample2],
+        position_usd=POSITION_USD,
+        horizon_hours=HORIZON_HOURS,
+        capital_usd=CAPITAL_USD,
+        target_mode="SHADOW_SCENARIO",
+        now_fn=lambda: NOW,
+        pool_meta=meta,
+        gas_db_path=str(gas_db),
+    )
+    conn.commit()
+
+    row2 = conn.execute(
+        "SELECT cost_components_json FROM rh_economic_evaluations WHERE snapshot_id = 'h-ck-6-val'"
+    ).fetchone()
+    assert row2 is not None
+    cc2 = json.loads(row2[0])
+    assert "exit_gas_reserve_usd" in cc2
+    assert cc2["exit_gas_reserve_usd"] is not None
+    assert cc2["exit_gas_reserve_usd"] > 0
+    conn.close()
+
+
+
 
 

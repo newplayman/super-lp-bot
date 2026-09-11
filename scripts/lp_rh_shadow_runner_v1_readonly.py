@@ -22,6 +22,11 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from scripts.lp_rh_gas_estimator_v1_readonly import observed_gas_usd
+from scripts.lp_rh_gas_reserve_v1_readonly import (
+    exit_gas_requirement_usd,
+    native_reserve_gate,
+    wrapped_does_not_count,
+)
 from scripts.lp_rh_netcover_inputs_v1_readonly import assemble_rh_clmm_inputs
 from scripts.lp_netcover_engine_v1_readonly import apply_netcover_gate
 from scripts.lp_rh_terminal_gate_v1_readonly import (
@@ -33,8 +38,10 @@ from scripts.lp_rh_bucket_ledger_v1_readonly import (
     bucket_active_cap,
     capital_policy_conflict,
     release,
+    reserved_total,
     try_reserve,
 )
+from scripts.lp_rh_size_interval_v1_readonly import size_interval
 from scripts.lp_rh_registry_v1_readonly import RH_CHAIN_ID
 from scripts.lp_rh_market_session_v1_readonly import (
     allows_new_position,
@@ -87,6 +94,8 @@ class ShadowStep:
     conjunct_reasons: tuple = ()
     nav_reason: Optional[str] = None
     gas_usd_source: Optional[str] = None
+    gas_reserve: Optional[dict] = None
+    size_interval: Optional[dict] = None
 
 
 def _candidate_key(sample: Mapping[str, Any], step_index: int) -> str:
@@ -154,6 +163,8 @@ _COST_COMPONENT_KEYS = (
     "exit_latency_loss_usd",
 )
 
+POSITION_TVL_SHARE = Decimal("0.0005")
+
 
 def _economic_str(value):
     """Store an economic value as a fixed-point decimal string; None stays None.
@@ -166,6 +177,156 @@ def _economic_str(value):
     if value is None:
         return None
     return format(Decimal(str(value)), "f")
+
+
+def compute_size_interval(
+    conn: sqlite3.Connection,
+    *,
+    gated: Mapping[str, Any],
+    capital_usd: Any,
+    position_usd: Any,
+    pool_meta: Optional[Mapping[str, Any]],
+    gas_reserve_result: Optional[Mapping[str, Any]],
+) -> dict:
+    """Compute q_min and partial q_max, classifying the feasibility interval (RH-02cl / T31)."""
+    # 1. q_min computation
+    q_min: Optional[Decimal] = None
+    q_min_reason: Optional[str] = None
+    costs = {k: gated.get(k) for k in _COST_COMPONENT_KEYS}
+    fee_ev = gated.get("fee_ev_usd")
+    reward_ev = gated.get("reward_ev_usd", 0.0)
+
+    if any(v is None for v in costs.values()) or fee_ev is None or position_usd is None:
+        q_min = None
+        q_min_reason = "INPUTS_MISSING"
+    else:
+        try:
+            pos_dec = Decimal(str(position_usd))
+            if pos_dec <= Decimal(0):
+                q_min = None
+                q_min_reason = "POSITION_USD_NON_POSITIVE"
+            else:
+                fee_ev_dec = Decimal(str(fee_ev))
+                reward_ev_dec = Decimal(str(reward_ev)) if reward_ev is not None else Decimal(0)
+                il_ev_dec = Decimal(str(costs["il_ev_usd"]))
+                lvr_ev_dec = Decimal(str(costs["lvr_ev_usd"]))
+                slippage_dec = Decimal(str(costs["slippage_usd"]))
+                exit_latency_dec = Decimal(str(costs["exit_latency_loss_usd"]))
+                reward_conversion_dec = Decimal(str(costs["reward_conversion_cost_usd"]))
+
+                entry_cost_dec = Decimal(str(costs["entry_cost_usd"]))
+                exit_cost_dec = Decimal(str(costs["exit_cost_usd"]))
+                gas_cost_dec = Decimal(str(costs["gas_usd"]))
+
+                variable_costs = (
+                    il_ev_dec
+                    + lvr_ev_dec
+                    + slippage_dec
+                    + exit_latency_dec
+                    + reward_conversion_dec
+                )
+                per_dollar_net = (
+                    fee_ev_dec + reward_ev_dec - variable_costs
+                ) / pos_dec
+                fixed_round_trip = entry_cost_dec + exit_cost_dec + gas_cost_dec
+
+                if per_dollar_net <= Decimal(0):
+                    q_min = None
+                    q_min_reason = "NO_SIZE_IS_PROFITABLE"
+                else:
+                    q_min = fixed_round_trip / per_dollar_net
+        except (TypeError, ValueError, InvalidOperation) as exc:
+            q_min = None
+            q_min_reason = f"CALCULATION_ERROR:{type(exc).__name__}"
+
+    # 2. q_max computation (partial constraints)
+    applied_constraints: list[str] = []
+    missing_constraints: list[str] = [
+        "global_active_room",
+        "approved_position_cap",
+        "asset_exposure_room",
+    ]
+    candidate_limits: list[tuple[Decimal, str]] = []
+
+    # Constraint 1: bucket_active_room
+    try:
+        cap_val = bucket_active_cap(Decimal(str(capital_usd)), "CORE")
+        res_val = reserved_total(conn, "CORE", POLICY_ID)
+        room = Decimal(str(cap_val)) - Decimal(str(res_val))
+        candidate_limits.append((room, "bucket_active_room"))
+        applied_constraints.append("bucket_active_room")
+    except Exception:
+        missing_constraints.append("bucket_active_room")
+
+    # Constraint 2: POSITION_TVL_SHARE * TVL
+    tvl_raw = pool_meta.get("tvl_usd") if pool_meta else None
+    if tvl_raw is not None:
+        try:
+            tvl_dec = Decimal(str(tvl_raw))
+            candidate_limits.append((POSITION_TVL_SHARE * tvl_dec, "tvl_share"))
+            applied_constraints.append("tvl_share")
+        except (TypeError, ValueError, InvalidOperation):
+            missing_constraints.append("tvl_share")
+    else:
+        missing_constraints.append("tvl_share")
+
+    # Constraint 3: measured_exit_depth_cap
+    exit_depth_val: Optional[Decimal] = None
+    if pool_meta and pool_meta.get("tick_data") and pool_meta.get("max_impact_bps") is not None:
+        try:
+            depth_dict = exit_depth_for_size(
+                position_value_usd=Decimal(str(position_usd)),
+                max_impact_bps=Decimal(str(pool_meta["max_impact_bps"])),
+                **{k: v for k, v in pool_meta.items()
+                   if k not in ("attestation_status", "protocol", "max_impact_bps", "_gas_reserve_result")}
+            )
+            raw_max_exit = depth_dict.get("max_exit_usd")
+            if raw_max_exit is not None:
+                exit_depth_val = Decimal(str(raw_max_exit))
+        except Exception:
+            exit_depth_val = None
+
+    if exit_depth_val is not None:
+        candidate_limits.append((exit_depth_val, "measured_exit_depth_cap"))
+        applied_constraints.append("measured_exit_depth_cap")
+    else:
+        missing_constraints.append("measured_exit_depth_cap")
+
+    # Constraint 4: spendable_cash_after_native_gas_reserve
+    gas_req = gas_reserve_result.get("required_usd") if gas_reserve_result else None
+    if gas_req is not None and capital_usd is not None:
+        try:
+            spendable = Decimal(str(capital_usd)) - Decimal(str(gas_req))
+            candidate_limits.append((spendable, "spendable_cash_after_native_gas_reserve"))
+            applied_constraints.append("spendable_cash_after_native_gas_reserve")
+        except (TypeError, ValueError, InvalidOperation):
+            missing_constraints.append("spendable_cash_after_native_gas_reserve")
+    else:
+        missing_constraints.append("spendable_cash_after_native_gas_reserve")
+
+    if candidate_limits:
+        candidate_limits.sort(key=lambda item: item[0])
+        q_max, q_max_binding = candidate_limits[0]
+    else:
+        q_max, q_max_binding = None, None
+
+    interval_result = size_interval(q_min=q_min, q_max=q_max)
+
+    combined_reason = interval_result["reason"]
+    if q_min is None and q_min_reason is not None:
+        combined_reason = f"{combined_reason}; q_min unavailable: {q_min_reason}"
+
+    return {
+        "status": interval_result["status"],
+        "q_min": interval_result["q_min"],
+        "q_max": interval_result["q_max"],
+        "width": interval_result["width"],
+        "reason": combined_reason,
+        "q_max_binding": q_max_binding,
+        "q_max_constraints_applied": applied_constraints,
+        "q_max_constraints_missing": sorted(missing_constraints),
+        "q_max_is_partial": True,
+    }
 
 
 def _evidence_for(sample, pool_meta):
@@ -511,7 +672,12 @@ def _finish_conjuncts(bits, reasons, gated, pool_meta, capital_usd,
             **{k: v for k, v in pool_meta.items()
                if k not in ("attestation_status", "protocol", "max_impact_bps")})
         if depth.get("sufficient"):
-            bits["position_and_exit_depth_pass"] = True
+            # RH-02ck: if enforce_gas_reserve is True, insufficient native gas reserve fails position_and_exit_depth_pass
+            gas_res = pool_meta.get("_gas_reserve_result") if pool_meta else None
+            if gas_res and gas_res.get("enforce") and not gas_res.get("pass"):
+                fail("position_and_exit_depth_pass", f"NATIVE_GAS_RESERVE_INSUFFICIENT:{gas_res.get('reason')}")
+            else:
+                bits["position_and_exit_depth_pass"] = True
         else:
             fail("position_and_exit_depth_pass", str(depth.get("reason")))
 
@@ -530,11 +696,27 @@ def _finish_conjuncts(bits, reasons, gated, pool_meta, capital_usd,
 
 def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
                 capital_usd, target_mode, now_fn, pool_meta=None,
-                allow_bare_quote=False, gas_db_path=DEFAULT_GAS_DB):
+                allow_bare_quote=False, gas_db_path=DEFAULT_GAS_DB,
+                enforce_gas_reserve=False):
     """Replay one Shadow episode over `samples`, writing gate decisions and position marks to `conn`."""
     # RH-02cg: take gas observation once per episode (not per step).
     effective_pool_meta = dict(pool_meta) if pool_meta else {}
     episode_now = now_fn() if callable(now_fn) else str(now_fn)
+
+    # RH-02ck: gas reserve check once per episode
+    # 1) Fetch gas_price_wei and native_price_usd from gas_db
+    # 2) Call exit_gas_requirement_usd
+    # 3) Call native_reserve_gate and wrapped_does_not_count
+    gas_reserve_result = {
+        "required_usd": None,
+        "sufficient": False,
+        "reason": "GAS_DB_UNAVAILABLE",
+        "enforced": bool(enforce_gas_reserve),
+        "native_balance_known": False,
+        "pass": False,
+        "enforce": bool(enforce_gas_reserve),
+    }
+    latest_gas_obs = None
     if gas_db_path and Path(gas_db_path).exists():
         try:
             gas_conn = sqlite3.connect(f"file:{gas_db_path}?mode=ro", uri=True)
@@ -542,10 +724,71 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
                 obs = observed_gas_usd(gas_conn, now=episode_now)
                 if obs.get("reason") == "OK" and obs.get("gas_usd") is not None:
                     effective_pool_meta["observed_gas_usd"] = float(obs["gas_usd"])
+
+                # Fetch latest gas observation for gas reserve calculation
+                cur = gas_conn.execute(
+                    "SELECT gas_price_wei, native_price_usd FROM rh_gas_observations "
+                    "ORDER BY observed_at DESC LIMIT 1"
+                )
+                latest_gas_obs = cur.fetchone()
             finally:
                 gas_conn.close()
         except Exception:
             pass
+
+    native_balance_wei = effective_pool_meta.get("native_balance_wei")
+    weth_balance_wei = effective_pool_meta.get("weth_balance_wei")
+    native_balance_known = native_balance_wei is not None
+
+    if latest_gas_obs is not None and latest_gas_obs[0] is not None and latest_gas_obs[1] is not None:
+        g_price_wei, n_price_usd = latest_gas_obs[0], latest_gas_obs[1]
+        req_usd = exit_gas_requirement_usd(gas_price_wei=g_price_wei, native_price_usd=n_price_usd)
+        gate_res = native_reserve_gate(
+            native_balance_wei=native_balance_wei,
+            gas_price_wei=g_price_wei,
+            native_price_usd=n_price_usd,
+        )
+        wrapped_res = wrapped_does_not_count(
+            weth_balance_wei=weth_balance_wei,
+            native_balance_wei=native_balance_wei,
+        )
+        reason = gate_res.get("reason")
+        if weth_balance_wei is not None and native_balance_wei is None:
+            reason = f"{reason}:{wrapped_res.get('note')}"
+
+        req_usd_str = str(req_usd) if req_usd is not None else (str(gate_res["required_usd"]) if gate_res.get("required_usd") is not None else None)
+        sufficient = bool(gate_res.get("pass"))
+
+        gas_reserve_result = {
+            "required_usd": req_usd_str,
+            "sufficient": sufficient,
+            "reason": reason,
+            "enforced": bool(enforce_gas_reserve),
+            "native_balance_known": native_balance_known,
+            "pass": sufficient,
+            "enforce": bool(enforce_gas_reserve),
+        }
+    else:
+        req_usd_str = None
+        wrapped_res = wrapped_does_not_count(
+            weth_balance_wei=weth_balance_wei,
+            native_balance_wei=native_balance_wei,
+        )
+        reason = "GAS_DB_UNAVAILABLE" if not (gas_db_path and Path(gas_db_path).exists()) else "GAS_OBSERVATIONS_UNAVAILABLE"
+        if weth_balance_wei is not None and native_balance_wei is None:
+            reason = f"{reason}:{wrapped_res.get('note')}"
+
+        gas_reserve_result = {
+            "required_usd": None,
+            "sufficient": False,
+            "reason": reason,
+            "enforced": bool(enforce_gas_reserve),
+            "native_balance_known": native_balance_known,
+            "pass": False,
+            "enforce": bool(enforce_gas_reserve),
+        }
+
+    effective_pool_meta["_gas_reserve_result"] = gas_reserve_result
 
     steps: list[ShadowStep] = []
     position_open = False
@@ -739,6 +982,16 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
             "snapshot_ids_json": json.dumps(decision.snapshot_ids, sort_keys=True),
             "decided_at": decision.decided_at,
         })
+        # RH-02cl: compute economic feasibility interval [q_min, q_max]
+        size_interval_res = compute_size_interval(
+            conn,
+            gated=gated,
+            capital_usd=capital_usd,
+            position_usd=position_usd,
+            pool_meta=effective_pool_meta,
+            gas_reserve_result=gas_reserve_result,
+        )
+
         # RH-02bq: persist this step's NetCover economic result.  `gated` was
         # computed above; this row is the only place the economic numbers reach
         # the store.  Fail-close: a sample without a source_payload_hash has no
@@ -748,6 +1001,15 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
         # daemon layer (RH-02bp), not be silently absorbed.
         snapshot_id = sample.get("source_payload_hash")
         if snapshot_id is not None:
+            size_interval_meta = {
+                "status": size_interval_res["status"],
+                "width": float(size_interval_res["width"]) if size_interval_res.get("width") is not None else None,
+                "reason": size_interval_res.get("reason"),
+                "q_max_binding": size_interval_res.get("q_max_binding"),
+                "q_max_constraints_applied": size_interval_res.get("q_max_constraints_applied"),
+                "q_max_constraints_missing": size_interval_res.get("q_max_constraints_missing"),
+                "q_max_is_partial": size_interval_res.get("q_max_is_partial", True),
+            }
             insert_row(conn, "rh_economic_evaluations", {
                 "candidate_key": decision.candidate_key,
                 "snapshot_id": snapshot_id,
@@ -765,16 +1027,17 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
                     dict(
                         {k: gated.get(k) for k in _COST_COMPONENT_KEYS},
                         gas_usd_source=gated.get("gas_usd_source"),
+                        exit_gas_reserve_usd=float(gas_reserve_result["required_usd"]) if gas_reserve_result.get("required_usd") is not None else None,
+                        size_interval=size_interval_meta,
                     ),
                     sort_keys=True),
                 "netcover": _economic_str(gated.get("netcover")),
-                # abs_profit / q_min / q_max have no key in `gated` yet: the
-                # absolute-profit decision and the size-interval module are not
-                # wired into apply_netcover_gate.  Stored as None, never a value
-                # we computed ourselves (fail-close).
+                # abs_profit has no key in `gated` yet: the absolute-profit
+                # decision is not wired into apply_netcover_gate.
+                # q_min / q_max are computed by compute_size_interval (RH-02cl).
                 "abs_profit": _economic_str(gated.get("abs_profit")),
-                "q_min": _economic_str(gated.get("q_min")),
-                "q_max": _economic_str(gated.get("q_max")),
+                "q_min": _economic_str(size_interval_res.get("q_min")),
+                "q_max": _economic_str(size_interval_res.get("q_max")),
                 "missing_inputs_json": json.dumps(
                     gated.get("missing_inputs") or [], sort_keys=True),
                 "evaluated_at": decision.decided_at,
@@ -893,7 +1156,15 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
             i, sample_time, price, eligible, decision.primary_status,
             decision.dominant_blocker, nav, step_net_pnl, hodl_value,
             granted, simulated, tuple(step_reasons), nav_reason,
-            gated.get("gas_usd_source")))
+            gated.get("gas_usd_source"),
+            gas_reserve={
+                "required_usd": gas_reserve_result.get("required_usd"),
+                "sufficient": gas_reserve_result.get("sufficient"),
+                "reason": gas_reserve_result.get("reason"),
+                "enforced": gas_reserve_result.get("enforced"),
+                "native_balance_known": gas_reserve_result.get("native_balance_known"),
+            },
+            size_interval=size_interval_res))
 
     if position_open:
         release_now = None
@@ -1133,6 +1404,7 @@ def episode_summary(steps: Sequence[ShadowStep], *, load_skipped: int = 0) -> di
         # takes the blame; these counts say what it was waiting on.
         "conjunct_failure_counts": _conjunct_failure_counts(steps),
         "gas_usd_source": getattr(steps[0], "gas_usd_source", None) if steps else None,
+        "gas_reserve": getattr(steps[0], "gas_reserve", None) if steps else None,
     }
 
 
@@ -1153,6 +1425,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     p.add_argument("--allow-bare-quote", action="store_true", default=False,
                    help="Allow bare numbers for quote_usd_per_token1 without "
                         "provenance or TTL check (default False: fails closed).")
+    p.add_argument("--enforce-gas-reserve", action="store_true", default=False,
+                   help="Enforce native gas reserve in terminal gate (default False: record only).")
     a = p.parse_args(argv)
 
     live_conn = open_store(Path(a.db), read_only=True)
@@ -1174,7 +1448,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                             position_usd=Decimal("1000"), horizon_hours=24.0,
                             capital_usd=Decimal("10000"), target_mode=a.target_mode,
                             now_fn=now, pool_meta=pool_meta,
-                            allow_bare_quote=a.allow_bare_quote)
+                            allow_bare_quote=a.allow_bare_quote,
+                            enforce_gas_reserve=a.enforce_gas_reserve)
         sc.close()
 
     payload = {"target_mode": a.target_mode, "pool": a.pool, "strategy_episode": ep,
