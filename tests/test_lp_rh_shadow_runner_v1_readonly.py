@@ -2584,6 +2584,208 @@ def test_rh03_leg_fraction_none_when_unavailable(tmp_path):
     conn.close()
 
 
+def test_pool_state_source_as_of(tmp_path):
+    """1. pool_meta with as_of -> pool_state_source == 'AS_OF', age calculated correctly."""
+    conn = _fresh_store(tmp_path)
+    sample = _passing_sample(0, sample_time="2026-09-10T12:00:00Z", source_payload_hash="h-as-of")
+    meta = _conj_meta(as_of="2026-09-10T10:00:00Z")
+    _run(conn, [sample], pool_meta=meta)
+    conn.commit()
+
+    row = conn.execute(
+        "SELECT cost_components_json FROM rh_economic_evaluations WHERE snapshot_id = 'h-as-of'"
+    ).fetchone()
+    assert row is not None
+    cc = json.loads(row[0])
+    assert cc["pool_state_source"] == "AS_OF"
+    assert cc["pool_state_as_of"] == "2026-09-10T10:00:00Z"
+    assert Decimal(cc["pool_state_age_secs"]) == Decimal("7200")
+    conn.close()
+
+
+def test_pool_state_source_observed_at(tmp_path):
+    """2. Only observed_at -> source == 'OBSERVED_AT'."""
+    conn = _fresh_store(tmp_path)
+    sample = _passing_sample(0, sample_time="2026-09-10T12:00:00Z", source_payload_hash="h-obs-at")
+    meta = _conj_meta(as_of=None, observed_at="2026-09-10T11:00:00Z")
+    _run(conn, [sample], pool_meta=meta)
+    conn.commit()
+
+    row = conn.execute(
+        "SELECT cost_components_json FROM rh_economic_evaluations WHERE snapshot_id = 'h-obs-at'"
+    ).fetchone()
+    assert row is not None
+    cc = json.loads(row[0])
+    assert cc["pool_state_source"] == "OBSERVED_AT"
+    assert cc["pool_state_as_of"] == "2026-09-10T11:00:00Z"
+    assert Decimal(cc["pool_state_age_secs"]) == Decimal("3600")
+    conn.close()
+
+
+def test_pool_state_source_pool_state_observed_at(tmp_path):
+    """3. pool_state_observed_at present -> source == 'POOL_STATE_OBSERVED_AT', age uses that timestamp."""
+    conn = _fresh_store(tmp_path)
+    sample = _passing_sample(0, sample_time="2026-09-10T12:00:00Z", source_payload_hash="h-pso")
+    meta = _conj_meta(pool_state_observed_at="2026-09-10T10:00:00Z")
+    _run(conn, [sample], pool_meta=meta)
+    conn.commit()
+
+    row = conn.execute(
+        "SELECT cost_components_json FROM rh_economic_evaluations WHERE snapshot_id = 'h-pso'"
+    ).fetchone()
+    assert row is not None
+    cc = json.loads(row[0])
+    assert cc["pool_state_source"] == "POOL_STATE_OBSERVED_AT"
+    assert cc["pool_state_as_of"] == "2026-09-10T10:00:00Z"
+    assert Decimal(cc["pool_state_age_secs"]) == Decimal("7200")
+    conn.close()
+
+
+def test_pool_state_source_negative_age_in_future(tmp_path):
+    """Pool state observed in future compared to sample_time -> age_secs is negative, POOL_STATE_AS_OF_IN_FUTURE:<sec>, no STALE."""
+    conn = _fresh_store(tmp_path)
+    sample = _passing_sample(0, sample_time="2026-09-10T10:00:00Z", source_payload_hash="h-future")
+    meta = _conj_meta(pool_state_observed_at="2026-09-10T10:05:00Z")
+    _run(conn, [sample], pool_meta=meta)
+    conn.commit()
+
+    row = conn.execute(
+        "SELECT cost_components_json FROM rh_economic_evaluations WHERE snapshot_id = 'h-future'"
+    ).fetchone()
+    assert row is not None
+    cc = json.loads(row[0])
+    assert cc["pool_state_source"] == "POOL_STATE_OBSERVED_AT"
+    assert cc["pool_state_as_of"] == "2026-09-10T10:05:00Z"
+    assert Decimal(cc["pool_state_age_secs"]) == Decimal("-300")
+    assert Decimal(cc["pool_state_age_secs"]) < 0
+
+    gate_row = conn.execute(
+        "SELECT reasons_json FROM rh_gate_decisions WHERE candidate_key = ?",
+        (sample["candidate_key"] + "@" + sample["sample_time"],)
+    ).fetchone()
+    assert gate_row is not None
+    reasons = json.loads(gate_row[0])
+    assert any(r.startswith("POOL_STATE_AS_OF_IN_FUTURE:") for r in reasons)
+    assert "POOL_STATE_AS_OF_IN_FUTURE:300" in reasons
+    assert not any("POOL_STATE_STALE" in r for r in reasons)
+    conn.close()
+
+
+def test_pool_state_unavailable(tmp_path):
+    """4. None available -> source == 'UNAVAILABLE', as_of/age both None (not 0), POOL_STATE_AS_OF_UNAVAILABLE in reasons."""
+    conn = _fresh_store(tmp_path)
+    sample = _passing_sample(0, sample_time="2026-09-10T12:00:00Z", source_payload_hash="h-unavail")
+    meta = _conj_meta(as_of=None, observed_at=None)
+    _run(conn, [sample], pool_meta=meta, pool_meta_path=None)
+    conn.commit()
+
+    row = conn.execute(
+        "SELECT cost_components_json FROM rh_economic_evaluations WHERE snapshot_id = 'h-unavail'"
+    ).fetchone()
+    assert row is not None
+    cc = json.loads(row[0])
+    assert cc["pool_state_source"] == "UNAVAILABLE"
+    assert cc["pool_state_as_of"] is None
+    assert cc["pool_state_as_of"] != 0
+    assert cc["pool_state_as_of"] != "0"
+    assert cc["pool_state_age_secs"] is None
+    assert cc["pool_state_age_secs"] != 0
+    assert cc["pool_state_age_secs"] != "0"
+
+    gate_row = conn.execute(
+        "SELECT reasons_json FROM rh_gate_decisions WHERE candidate_key = ?",
+        (sample["candidate_key"] + "@" + sample["sample_time"],)
+    ).fetchone()
+    assert gate_row is not None
+    reasons = json.loads(gate_row[0])
+    assert "POOL_STATE_AS_OF_UNAVAILABLE" in reasons
+    conn.close()
+
+
+def test_pool_state_stale_over_6h_recorded_in_db(tmp_path):
+    """5. age > 6h -> rh_gate_decisions.reasons_json queried from DB contains POOL_STATE_STALE:<sec>."""
+    conn = _fresh_store(tmp_path)
+    sample = _passing_sample(0, sample_time="2026-09-10T08:00:00Z", source_payload_hash="h-stale")
+    meta = _conj_meta(as_of="2026-09-10T00:00:00Z")  # 8h stale = 28800s > 21600s
+    _run(conn, [sample], pool_meta=meta)
+    conn.commit()
+
+    gate_row = conn.execute(
+        "SELECT reasons_json FROM rh_gate_decisions WHERE candidate_key = ?",
+        (sample["candidate_key"] + "@" + sample["sample_time"],)
+    ).fetchone()
+    assert gate_row is not None
+    reasons = json.loads(gate_row[0])
+    assert any(r.startswith("POOL_STATE_STALE:") for r in reasons)
+    assert "POOL_STATE_STALE:28800" in reasons
+    conn.close()
+
+
+def test_pool_state_fresh_under_6h_no_stale_reason(tmp_path):
+    """6. age <= 6h -> reasons_json contains neither POOL_STATE_STALE nor POOL_STATE_AS_OF_UNAVAILABLE."""
+    conn = _fresh_store(tmp_path)
+    sample = _passing_sample(0, sample_time="2026-09-10T05:00:00Z", source_payload_hash="h-fresh")
+    meta = _conj_meta(as_of="2026-09-10T00:00:00Z")  # 5h stale = 18000s <= 21600s
+    _run(conn, [sample], pool_meta=meta)
+    conn.commit()
+
+    gate_row = conn.execute(
+        "SELECT reasons_json FROM rh_gate_decisions WHERE candidate_key = ?",
+        (sample["candidate_key"] + "@" + sample["sample_time"],)
+    ).fetchone()
+    assert gate_row is not None
+    reasons = json.loads(gate_row[0])
+    assert not any("POOL_STATE_STALE" in r for r in reasons)
+    assert "POOL_STATE_AS_OF_UNAVAILABLE" not in reasons
+    conn.close()
+
+
+def test_pool_state_stale_non_blocking_regression(tmp_path):
+    """7. Regression check: stale pool state does NOT flip terminal gates or block position opening; costs identical."""
+    conn_fresh = _fresh_store(tmp_path / "fresh")
+    conn_stale = _fresh_store(tmp_path / "stale")
+
+    sample_fresh = _passing_sample(0, sample_time="2026-09-10T01:00:00Z", source_payload_hash="h-reg-fresh")
+    meta_fresh = _conj_meta(as_of="2026-09-10T00:00:00Z")  # 1h stale
+
+    sample_stale = _passing_sample(0, sample_time="2026-09-11T06:00:00Z", source_payload_hash="h-reg-stale")
+    meta_stale = _conj_meta(as_of="2026-09-10T00:00:00Z")  # 30h stale
+
+    steps_fresh = _run(conn_fresh, [sample_fresh], pool_meta=meta_fresh)
+    steps_stale = _run(conn_stale, [sample_stale], pool_meta=meta_stale)
+    conn_fresh.commit()
+    conn_stale.commit()
+
+    assert steps_fresh[0].terminal_eligible is True
+    assert steps_stale[0].terminal_eligible is True
+    assert steps_fresh[0].primary_status == "COMPUTED_PASS"
+    assert steps_stale[0].primary_status == "COMPUTED_PASS"
+    assert steps_fresh[0].dominant_blocker is None
+    assert steps_stale[0].dominant_blocker is None
+    assert steps_fresh[0].reservation_granted is True
+    assert steps_stale[0].reservation_granted is True
+
+    row_fresh = conn_fresh.execute(
+        "SELECT fee_ev, reward_ev, netcover, cost_components_json FROM rh_economic_evaluations WHERE snapshot_id = 'h-reg-fresh'"
+    ).fetchone()
+    row_stale = conn_stale.execute(
+        "SELECT fee_ev, reward_ev, netcover, cost_components_json FROM rh_economic_evaluations WHERE snapshot_id = 'h-reg-stale'"
+    ).fetchone()
+    assert row_fresh is not None and row_stale is not None
+    assert row_fresh[0] == row_stale[0]
+    assert row_fresh[1] == row_stale[1]
+    assert row_fresh[2] == row_stale[2]
+
+    cc_fresh = json.loads(row_fresh[3])
+    cc_stale = json.loads(row_stale[3])
+    for k in ("entry_cost_usd", "exit_cost_usd", "gas_usd", "slippage_usd", "il_ev_usd", "lvr_ev_usd", "leg_fraction"):
+        assert cc_fresh.get(k) == cc_stale.get(k), f"Mismatch for {k}: {cc_fresh.get(k)} vs {cc_stale.get(k)}"
+
+    conn_fresh.close()
+    conn_stale.close()
+
+
+
 
 
 

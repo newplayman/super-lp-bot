@@ -143,6 +143,10 @@ def _terminal_record(sample, gated, step_index, *, pool_meta=None,
 # catches a genuinely dead feed.
 REFERENCE_MAX_AGE_SECS = 120.0
 
+# Freshness ceiling for the pool state (as_of / observed_at / file mtime), in seconds.
+# 21600s = 6h.  Staleness produces a non-blocking gate reason code.
+POOL_STATE_STALE_SECS = 21600
+
 # Legacy 100U policy floor (PRD D02).  Reported against, never rewritten here.
 LEGACY_MIN_POSITION_USD = Decimal("50")
 
@@ -371,6 +375,42 @@ def _as_datetime(value):
         return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
     except (TypeError, ValueError):
         return None
+
+
+def _timestamp_str(val: Any) -> Optional[str]:
+    if val is None:
+        return None
+    if isinstance(val, datetime):
+        dt = val if val.tzinfo else val.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    s = str(val).strip()
+    return s if s else None
+
+
+def _resolve_pool_state_as_of(
+    pool_meta: Optional[Mapping[str, Any]],
+    pool_meta_path: Optional[Any] = None,
+) -> tuple[Optional[str], str]:
+    """Resolve pool state timestamp and provenance source.
+
+    Priority:
+    1. pool_meta["pool_state_observed_at"] (RFC3339) -> source "POOL_STATE_OBSERVED_AT"
+    2. pool_meta["as_of"] (RFC3339) -> source "AS_OF"
+    3. pool_meta["observed_at"] (RFC3339) -> source "OBSERVED_AT"
+    4. Neither -> (None, "UNAVAILABLE")
+    """
+    if pool_meta and isinstance(pool_meta, Mapping):
+        pso = _timestamp_str(pool_meta.get("pool_state_observed_at"))
+        if pso:
+            return pso, "POOL_STATE_OBSERVED_AT"
+        as_of = _timestamp_str(pool_meta.get("as_of"))
+        if as_of:
+            return as_of, "AS_OF"
+        obs = _timestamp_str(pool_meta.get("observed_at"))
+        if obs:
+            return obs, "OBSERVED_AT"
+
+    return None, "UNAVAILABLE"
 
 
 def validate_quote_evidence(
@@ -759,11 +799,15 @@ def _finish_conjuncts(bits, reasons, gated, pool_meta, capital_usd,
 def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
                 capital_usd, target_mode, now_fn, pool_meta=None,
                 allow_bare_quote=False, gas_db_path=DEFAULT_GAS_DB,
-                enforce_gas_reserve=False, organic_db_path=DEFAULT_ORGANIC_DB):
+                enforce_gas_reserve=False, organic_db_path=DEFAULT_ORGANIC_DB,
+                pool_meta_path=None):
     """Replay one Shadow episode over `samples`, writing gate decisions and position marks to `conn`."""
     # RH-02cg: take gas observation once per episode (not per step).
     effective_pool_meta = dict(pool_meta) if pool_meta else {}
     episode_now = now_fn() if callable(now_fn) else str(now_fn)
+    pool_state_as_of, pool_state_source = _resolve_pool_state_as_of(
+        effective_pool_meta, pool_meta_path=pool_meta_path
+    )
 
     # RH-02cn: load organic windows once per episode
     organic_windows: list[dict] = []
@@ -913,13 +957,27 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
                                          horizon_hours=horizon_hours)
         gated = apply_netcover_gate([record])[0]
         step_reasons: list = []
+        sample_time = sample.get("sample_time")
+        step_pool_age_secs: Optional[float] = None
+        if pool_state_as_of is not None and sample_time is not None:
+            st_dt = _as_datetime(sample_time)
+            as_of_dt = _as_datetime(pool_state_as_of)
+            if st_dt is not None and as_of_dt is not None:
+                step_pool_age_secs = (st_dt - as_of_dt).total_seconds()
+
+        if pool_state_as_of is None or step_pool_age_secs is None:
+            step_reasons.append("POOL_STATE_AS_OF_UNAVAILABLE")
+        elif step_pool_age_secs < 0:
+            step_reasons.append(f"POOL_STATE_AS_OF_IN_FUTURE:{int(abs(step_pool_age_secs))}")
+        elif step_pool_age_secs > POOL_STATE_STALE_SECS:
+            step_reasons.append(f"POOL_STATE_STALE:{int(step_pool_age_secs)}")
+
         # RH-02ab: judge at the sample's own time, not the wall clock.  A replay
         # decision is "what would we have done at that moment?", so the gate's
         # clock is the sample's sample_time.  When sample_time is missing or
         # unparseable there is no replay moment to judge at: fall back to the
         # wall clock for the timestamp, but the step must fail rather than pass
         # (a decision without a replay moment is not a decision).
-        sample_time = sample.get("sample_time")
         decision_now = sample_time if _as_datetime(sample_time) is not None else now_fn()
         decision = evaluate_terminal_gate(
             _terminal_record(sample, gated, i, pool_meta=effective_pool_meta,
@@ -927,6 +985,9 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
                              now=decision_now, conjunct_reasons=step_reasons,
                              strategy_episode=strategy_episode),
             target_mode=target_mode, now=decision_now)
+        for r in step_reasons:
+            if r not in decision.reasons:
+                decision.reasons.append(r)
         eligible = bool(decision.terminal_eligible)
         simulated = bool(decision.simulated_policy_only)
 
@@ -1154,6 +1215,9 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
                         size_interval=size_interval_meta,
                         leg_fraction=_economic_str(gated.get("leg_fraction")),
                         leg_fraction_status=gated.get("leg_fraction_status") or None,
+                        pool_state_as_of=pool_state_as_of,
+                        pool_state_age_secs=_economic_str(step_pool_age_secs),
+                        pool_state_source=pool_state_source,
                     ),
                     sort_keys=True),
                 "netcover": _economic_str(gated.get("netcover")),
@@ -1683,7 +1747,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                             now_fn=now, pool_meta=pool_meta,
                             allow_bare_quote=a.allow_bare_quote,
                             enforce_gas_reserve=a.enforce_gas_reserve,
-                            organic_db_path=a.organic_db)
+                            organic_db_path=a.organic_db,
+                            pool_meta_path=a.pool_meta_json)
         sc.close()
 
     payload = {"target_mode": a.target_mode, "pool": a.pool, "strategy_episode": ep,

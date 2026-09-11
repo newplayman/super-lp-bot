@@ -860,3 +860,192 @@ def test_reservation_sync_excludes_own_episode(tmp_path):
     scratch2 = open_store(tmp_path / "scratch2.db"); migrate(scratch2)
     assert _sync_reservations(ledger, scratch2) == 3
     ledger.close(); scratch.close(); scratch2.close()
+
+
+# --- RH-02cf: pool_meta_path wired from daemon to run_episode ---------------
+
+def _run_daemon_pool_state_test(tmp_path, pool_meta, *, sample_time="2026-09-08T18:00:00Z", pool_meta_path=None, payload_hash="h-daemon-ps"):
+    live = open_store(tmp_path / "live.db"); migrate(live)
+    insert_row(live, "rh_market_states", {
+        "asset_address": POOL, "sample_time": sample_time, "chain_id": 4663,
+        "reference_mid": "1.0", "multiplier_human": None, "session": "ASIA",
+        "health_flags_json": "{}", "reference_age_secs": 10, "oracle_paused": 0,
+        "source_payload_hash": payload_hash, "reference_bid": None, "reference_ask": None,
+    })
+    live.commit(); live.close()
+
+    ledger_path = tmp_path / "ledger.db"
+    shadow = open_shadow_store(":memory:")
+    cfg = _cfg_with_ledger(str(tmp_path / "live.db"), str(ledger_path))
+    cfg["pool_meta"] = pool_meta
+    if pool_meta_path is not None:
+        cfg["pool_meta_path"] = str(pool_meta_path)
+
+    summary = run_one_round(
+        cfg, shadow_conn=shadow, episode_id=f"ep-{payload_hash}",
+        started_at=sample_time, now_fn=lambda: sample_time,
+    )
+    assert summary["total_steps"] == 1
+
+    ledger = open_store(ledger_path)
+    try:
+        row = ledger.execute(
+            "SELECT cost_components_json FROM rh_economic_evaluations WHERE snapshot_id = ?",
+            (payload_hash,)
+        ).fetchone()
+        assert row is not None, "rh_economic_evaluations row must exist"
+        cc = json.loads(row[0])
+
+        gate_row = ledger.execute(
+            "SELECT reasons_json FROM rh_gate_decisions"
+        ).fetchone()
+        assert gate_row is not None, "rh_gate_decisions row must exist"
+        reasons = json.loads(gate_row[0])
+        return cc, reasons
+    finally:
+        ledger.close()
+
+
+def test_daemon_pool_state_production_shape_unavailable(tmp_path):
+    """1. Current production shape: no timestamp fields in pool_meta -> UNAVAILABLE, as_of/age None, POOL_STATE_AS_OF_UNAVAILABLE in DB."""
+    meta_file = tmp_path / "pool_meta.json"
+    meta_file.write_text(json.dumps({"sqrt_price_x96": "123", "quote": "0.5"}), encoding="utf-8")
+    cc, reasons = _run_daemon_pool_state_test(
+        tmp_path,
+        pool_meta={"sqrt_price_x96": "123", "quote": "0.5"},
+        pool_meta_path=meta_file,
+    )
+    assert cc["pool_state_source"] == "UNAVAILABLE"
+    assert cc["pool_state_as_of"] is None
+    assert cc["pool_state_age_secs"] is None
+    assert "POOL_STATE_AS_OF_UNAVAILABLE" in reasons
+
+
+def test_daemon_pool_state_observed_at_stale_over_6h(tmp_path):
+    """2. pool_state_observed_at present and stale (>6h) -> source POOL_STATE_OBSERVED_AT, POOL_STATE_STALE:<secs> in DB."""
+    sample_time = "2026-09-10T12:00:00Z"
+    observed_at = "2026-09-10T04:00:00Z"
+    cc, reasons = _run_daemon_pool_state_test(
+        tmp_path,
+        pool_meta={"pool_state_observed_at": observed_at},
+        sample_time=sample_time,
+    )
+    assert cc["pool_state_source"] == "POOL_STATE_OBSERVED_AT"
+    assert cc["pool_state_as_of"] == observed_at
+    assert Decimal(cc["pool_state_age_secs"]) == Decimal("28800")
+    assert any(r.startswith("POOL_STATE_STALE:") for r in reasons)
+    assert "POOL_STATE_STALE:28800" in reasons
+    assert "POOL_STATE_AS_OF_UNAVAILABLE" not in reasons
+
+
+def test_daemon_pool_state_observed_at_fresh_under_6h(tmp_path):
+    """3. pool_state_observed_at present and fresh (<=6h) -> source POOL_STATE_OBSERVED_AT, no STALE reason in DB."""
+    sample_time = "2026-09-10T12:00:00Z"
+    observed_at = "2026-09-10T11:00:00Z"
+    cc, reasons = _run_daemon_pool_state_test(
+        tmp_path,
+        pool_meta={"pool_state_observed_at": observed_at},
+        sample_time=sample_time,
+    )
+    assert cc["pool_state_source"] == "POOL_STATE_OBSERVED_AT"
+    assert cc["pool_state_as_of"] == observed_at
+    assert Decimal(cc["pool_state_age_secs"]) == Decimal("3600")
+    assert not any("POOL_STATE_STALE" in r for r in reasons)
+    assert "POOL_STATE_AS_OF_UNAVAILABLE" not in reasons
+
+
+def test_daemon_pool_state_priorities(tmp_path):
+    """4. Priorities: pool_state_observed_at > as_of > observed_at."""
+    # 4a: pool_state_observed_at beats as_of
+    cc_a, _ = _run_daemon_pool_state_test(
+        tmp_path / "prio_a",
+        pool_meta={
+            "pool_state_observed_at": "2026-09-10T10:00:00Z",
+            "as_of": "2026-09-10T09:00:00Z",
+            "observed_at": "2026-09-10T08:00:00Z",
+        },
+        sample_time="2026-09-10T12:00:00Z",
+        payload_hash="h-prio-a",
+    )
+    assert cc_a["pool_state_source"] == "POOL_STATE_OBSERVED_AT"
+    assert cc_a["pool_state_as_of"] == "2026-09-10T10:00:00Z"
+
+    # 4b: as_of beats observed_at
+    cc_b, _ = _run_daemon_pool_state_test(
+        tmp_path / "prio_b",
+        pool_meta={
+            "as_of": "2026-09-10T09:00:00Z",
+            "observed_at": "2026-09-10T08:00:00Z",
+        },
+        sample_time="2026-09-10T12:00:00Z",
+        payload_hash="h-prio-b",
+    )
+    assert cc_b["pool_state_source"] == "AS_OF"
+    assert cc_b["pool_state_as_of"] == "2026-09-10T09:00:00Z"
+
+    # 4c: observed_at fallback
+    cc_c, _ = _run_daemon_pool_state_test(
+        tmp_path / "prio_c",
+        pool_meta={"observed_at": "2026-09-10T08:00:00Z"},
+        sample_time="2026-09-10T12:00:00Z",
+        payload_hash="h-prio-c",
+    )
+    assert cc_c["pool_state_source"] == "OBSERVED_AT"
+    assert cc_c["pool_state_as_of"] == "2026-09-10T08:00:00Z"
+
+
+def test_daemon_pool_state_as_of_in_future(tmp_path):
+    """5. Pool state timestamp in future compared to sample_time -> negative age preserved, POOL_STATE_AS_OF_IN_FUTURE:<sec>, no STALE."""
+    sample_time = "2026-09-10T10:00:00Z"
+    observed_at = "2026-09-10T10:05:00Z"
+    cc, reasons = _run_daemon_pool_state_test(
+        tmp_path,
+        pool_meta={"pool_state_observed_at": observed_at},
+        sample_time=sample_time,
+    )
+    assert Decimal(cc["pool_state_age_secs"]) == Decimal("-300")
+    assert Decimal(cc["pool_state_age_secs"]) < 0
+    assert any(r.startswith("POOL_STATE_AS_OF_IN_FUTURE:") for r in reasons)
+    assert "POOL_STATE_AS_OF_IN_FUTURE:300" in reasons
+    assert not any("POOL_STATE_STALE" in r for r in reasons)
+    assert "POOL_STATE_AS_OF_UNAVAILABLE" not in reasons
+
+
+def test_daemon_pool_state_mtime_touch_does_not_affect_result(tmp_path):
+    """6. Anti-regression: touching pool_meta file mtime (e.g. quote refresh) does not change provenance or staleness."""
+    import os
+
+    meta_file = tmp_path / "pool_meta.json"
+    meta_file.write_text(json.dumps({"sqrt_price_x96": "123", "quote": "0.5"}), encoding="utf-8")
+    old_time = 1773316800
+    os.utime(meta_file, (old_time, old_time))
+
+    sample_time = "2026-09-11T14:00:00Z"
+    cc1, reasons1 = _run_daemon_pool_state_test(
+        tmp_path / "run1",
+        pool_meta={"sqrt_price_x96": "123", "quote": "0.5"},
+        sample_time=sample_time,
+        pool_meta_path=meta_file,
+        payload_hash="h-run1",
+    )
+
+    fresh_time = 1789135200
+    os.utime(meta_file, (fresh_time, fresh_time))
+
+    cc2, reasons2 = _run_daemon_pool_state_test(
+        tmp_path / "run2",
+        pool_meta={"sqrt_price_x96": "123", "quote": "0.5"},
+        sample_time=sample_time,
+        pool_meta_path=meta_file,
+        payload_hash="h-run2",
+    )
+
+    assert cc1["pool_state_source"] == "UNAVAILABLE"
+    assert cc2["pool_state_source"] == "UNAVAILABLE"
+    assert cc1["pool_state_as_of"] is None
+    assert cc2["pool_state_as_of"] is None
+    assert cc1["pool_state_age_secs"] is None
+    assert cc2["pool_state_age_secs"] is None
+    assert "POOL_STATE_AS_OF_UNAVAILABLE" in reasons1
+    assert "POOL_STATE_AS_OF_UNAVAILABLE" in reasons2
+    assert cc1 == cc2

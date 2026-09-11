@@ -226,7 +226,8 @@ def _episode_kwargs(cfg, *, episode_id, sample_list, now_fn):
                 position_usd=cfg["position_usd"],
                 horizon_hours=cfg["horizon_hours"],
                 capital_usd=cfg["capital_usd"], target_mode=cfg["target_mode"],
-                now_fn=now_fn, pool_meta=cfg["pool_meta"])
+                now_fn=now_fn, pool_meta=cfg["pool_meta"],
+                pool_meta_path=cfg.get("pool_meta_path"))
 
 
 _LEDGER_TABLES = (
@@ -508,6 +509,8 @@ def run_daemon(cfg, *, shadow_conn, period_secs, now_fn, sleep_fn, stop_event,
         if pool_meta_provider is not None:
             meta, meta_hash = pool_meta_provider.load()
             cfg = {**cfg, "pool_meta": meta, "pool_meta_hash": meta_hash}
+            if not cfg.get("pool_meta_path") and getattr(pool_meta_provider, "path", None):
+                cfg["pool_meta_path"] = pool_meta_provider.path
         run_round_safe(cfg, shadow_conn=shadow_conn, episode_id=episode_id,
                        now_fn=now_fn)
         round_index += 1
@@ -554,6 +557,7 @@ def main(argv=None):
            "horizon_hours": args.horizon_hours, "target_mode": TARGET_MODE,
            "pool_meta": pool_meta,
            "pool_meta_hash": pool_meta_hash,
+           "pool_meta_path": args.pool_meta_json,
            "ledger_db": args.ledger_db}
     shadow_conn = open_shadow_store(args.db)
     if args.pid_file:
