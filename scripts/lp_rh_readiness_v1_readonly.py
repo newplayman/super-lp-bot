@@ -394,9 +394,21 @@ def stage_a_status(*, first_sample, last_sample, expected_interval_secs,
     return res
 
 def stage_b_status(*, days_covered, weekends_covered, unexplained_ledger_diffs,
-                   invariant_violations, missed_risk_events) -> dict:
+                   invariant_violations, missed_risk_events,
+                   profile_locked=None,
+                   code_version_locked=None,
+                   policy_version_locked=None,
+                   capital_policy_version_locked=None,
+                   full_cost_profitable_episodes=None,
+                   min_profitable_episodes=10,
+                   oos_episode_ratio=None,
+                   min_oos_ratio=Decimal("0.30"),
+                   exit_stress_passed=None,
+                   netcover_passed=None,
+                   reconciliation_blocker=None) -> dict:
     """Stage B. Running the full 14 days does NOT auto-PASS (PRD §21.2): any
-    unexplained diff, invariant violation, or missed risk event keeps it failed."""
+    unexplained diff, invariant violation, missed risk event, or missing
+    economic evidence keeps it failed."""
     blockers = []
     if days_covered is None or days_covered < STAGE_B_MIN_DAYS:
         blockers.append("DAYS_COVERED_INSUFFICIENT")
@@ -414,11 +426,51 @@ def stage_b_status(*, days_covered, weekends_covered, unexplained_ledger_diffs,
         blockers.append("MISSED_RISK_EVENTS_UNAVAILABLE")
     elif missed_risk_events:
         blockers.append("MISSED_RISK_EVENTS")
+
+    # Economic & policy locks (F05)
+    if profile_locked is not True:
+        blockers.append("PROFILE_NOT_LOCKED")
+    if code_version_locked is not True:
+        blockers.append("CODE_VERSION_NOT_LOCKED")
+    if policy_version_locked is not True:
+        blockers.append("POLICY_VERSION_NOT_LOCKED")
+    if capital_policy_version_locked is not True:
+        blockers.append("CAPITAL_POLICY_VERSION_NOT_LOCKED")
+
+    if full_cost_profitable_episodes is None:
+        blockers.append("ECONOMIC_EVIDENCE_MISSING")
+    elif full_cost_profitable_episodes < min_profitable_episodes:
+        blockers.append("FULL_COST_PROFITABLE_EPISODES_INSUFFICIENT")
+
+    if oos_episode_ratio is None:
+        blockers.append("OOS_EPISODE_RATIO_UNAVAILABLE")
+    else:
+        try:
+            if Decimal(str(oos_episode_ratio)) < Decimal(str(min_oos_ratio)):
+                blockers.append("OOS_EPISODE_RATIO_INSUFFICIENT")
+        except Exception:
+            blockers.append("OOS_EPISODE_RATIO_INVALID")
+
+    if exit_stress_passed is not True:
+        blockers.append("EXIT_STRESS_NOT_PASSED")
+    if netcover_passed is not True:
+        blockers.append("NETCOVER_NOT_PASSED")
+    if reconciliation_blocker:
+        blockers.append(reconciliation_blocker)
+
     return {"days_covered": days_covered, "days_required": STAGE_B_MIN_DAYS,
             "weekends_covered": weekends_covered, "weekends_required": STAGE_B_MIN_WEEKENDS,
             "unexplained_ledger_diffs": unexplained_ledger_diffs,
             "invariant_violations": invariant_violations,
             "missed_risk_events": missed_risk_events,
+            "profile_locked": profile_locked is True,
+            "code_version_locked": code_version_locked is True,
+            "policy_version_locked": policy_version_locked is True,
+            "capital_policy_version_locked": capital_policy_version_locked is True,
+            "full_cost_profitable_episodes": full_cost_profitable_episodes,
+            "oos_episode_ratio": str(oos_episode_ratio) if oos_episode_ratio is not None else None,
+            "exit_stress_passed": exit_stress_passed is True,
+            "netcover_passed": netcover_passed is True,
             "passed": not blockers, "blockers": blockers}
 
 def live_gate_status(*, usable_provider_count, capital_policy_approved,
@@ -570,10 +622,12 @@ def _render_evidence(sources: Optional[list]) -> list:
     lines.append("")
     return lines
 
-def audit_key_field_health(conn, *, asset_address: str) -> dict:
+def audit_key_field_health(conn, *, asset_address: str,
+                           evaluation_window_start: Optional[str] = None,
+                           evaluation_window_end: Optional[str] = None) -> dict:
     """Audit non-null ratios for STAGE_A_KEY_COLUMNS in rh_market_states.
-    RH-02bj: Windowed per-column starting from that column's first non-null sample_time.
-    Columns never populated are explicitly blocked under KEY_FIELD_NEVER_POPULATED.
+    F07: Evaluation window denominator is unified across all columns.
+    No per-column window shrinking is permitted.
     """
     if not asset_address:
         return {"passed": False, "reason": "NO_ASSET_ADDRESS", "columns": {}}
@@ -593,6 +647,20 @@ def audit_key_field_health(conn, *, asset_address: str) -> dict:
         if total_rows == 0:
             return {"passed": False, "reason": "NO_ROWS_FOR_ASSET", "total_rows": 0, "columns": {}}
 
+        # Unified evaluation window across all columns
+        where_parts = ["LOWER(asset_address) = LOWER(?)"]
+        params: list = [asset_address]
+        if evaluation_window_start is not None:
+            where_parts.append("sample_time >= ?")
+            params.append(evaluation_window_start)
+        if evaluation_window_end is not None:
+            where_parts.append("sample_time <= ?")
+            params.append(evaluation_window_end)
+        where_clause = " WHERE " + " AND ".join(where_parts)
+
+        w_row = conn.execute(f"SELECT COUNT(*) FROM rh_market_states{where_clause}", params).fetchone()
+        window_rows = w_row[0] if w_row else 0
+
         # Use column_stats logic filtered by asset_address
         all_stats = {s["column"]: s for s in column_stats(conn, "rh_market_states")}
         col_results: dict[str, dict[str, Any]] = {}
@@ -604,12 +672,14 @@ def audit_key_field_health(conn, *, asset_address: str) -> dict:
                 col_reason = f"{KEY_FIELD_MISSING_COLUMN}:{col}"
                 col_results[col] = {
                     "first_populated_time": None,
-                    "window_rows": 0,
+                    "first_populated_at": None,
+                    "window_rows": window_rows,
                     "window_non_null_ratio": Decimal("0"),
                     "non_null_count": 0,
                     "total_rows": total_rows,
                     "non_null_ratio": Decimal("0"),
                     "passed": False,
+                    "health_passed": False,
                     "missing_column": True,
                     "reason": col_reason,
                     "code": KEY_FIELD_MISSING_COLUMN,
@@ -618,7 +688,7 @@ def audit_key_field_health(conn, *, asset_address: str) -> dict:
                 failed_reasons.append(col_reason)
                 continue
 
-            # Query earliest populated sample_time for this column and asset
+            # Query earliest populated sample_time for diagnosis only
             min_row = conn.execute(
                 f'SELECT MIN(sample_time) FROM rh_market_states '
                 f'WHERE LOWER(asset_address) = LOWER(?) AND "{col}" IS NOT NULL',
@@ -626,18 +696,19 @@ def audit_key_field_health(conn, *, asset_address: str) -> dict:
             ).fetchone()
             first_time = min_row[0] if min_row else None
 
-            # Defect guard: A column that was never populated (first_time is None)
-            # must NEVER pass under an empty window (0 rows, 0 nulls != 100% pass).
+            # Defect guard: A column that was never populated must fail
             if first_time is None:
                 col_reason = f"{KEY_FIELD_NEVER_POPULATED}:{col}"
                 col_results[col] = {
                     "first_populated_time": None,
+                    "first_populated_at": None,
                     "window_rows": 0,
                     "window_non_null_ratio": Decimal("0"),
                     "non_null_count": 0,
                     "total_rows": total_rows,
                     "non_null_ratio": Decimal("0"),
                     "passed": False,
+                    "health_passed": False,
                     "reason": col_reason,
                     "code": KEY_FIELD_NEVER_POPULATED,
                 }
@@ -645,25 +716,25 @@ def audit_key_field_health(conn, *, asset_address: str) -> dict:
                 failed_reasons.append(col_reason)
                 continue
 
-            # Query window metrics: rows >= first_time and non-null count >= first_time
-            w_row = conn.execute(
-                f'SELECT COUNT(*), COUNT("{col}") FROM rh_market_states '
-                f'WHERE LOWER(asset_address) = LOWER(?) AND sample_time >= ?',
-                (asset_address, first_time)
+            # Query unified window metrics for this column
+            pop_row = conn.execute(
+                f'SELECT COUNT("{col}") FROM rh_market_states{where_clause}',
+                params
             ).fetchone()
-            window_rows = w_row[0] if w_row else 0
-            non_null_count = w_row[1] if w_row else 0
+            non_null_count = pop_row[0] if pop_row else 0
 
             if window_rows == 0:
                 col_reason = f"{KEY_FIELD_NEVER_POPULATED}:{col}"
                 col_results[col] = {
                     "first_populated_time": first_time,
+                    "first_populated_at": first_time,
                     "window_rows": 0,
                     "window_non_null_ratio": Decimal("0"),
                     "non_null_count": 0,
                     "total_rows": total_rows,
                     "non_null_ratio": Decimal("0"),
                     "passed": False,
+                    "health_passed": False,
                     "reason": col_reason,
                     "code": KEY_FIELD_NEVER_POPULATED,
                 }
@@ -675,12 +746,14 @@ def audit_key_field_health(conn, *, asset_address: str) -> dict:
             is_ok = ratio >= STAGE_A_KEY_COLUMNS_MIN_RATIO
             col_info: dict[str, Any] = {
                 "first_populated_time": first_time,
+                "first_populated_at": first_time,
                 "window_rows": window_rows,
                 "window_non_null_ratio": ratio,
                 "non_null_count": non_null_count,
                 "total_rows": total_rows,
                 "non_null_ratio": ratio,
                 "passed": is_ok,
+                "health_passed": is_ok,
             }
             if not is_ok:
                 all_passed = False
@@ -694,6 +767,7 @@ def audit_key_field_health(conn, *, asset_address: str) -> dict:
         res: dict[str, Any] = {
             "passed": all_passed,
             "total_rows": total_rows,
+            "window_rows": window_rows,
             "threshold": STAGE_A_KEY_COLUMNS_MIN_RATIO,
             "columns": col_results,
         }
@@ -945,10 +1019,9 @@ def audit_weekends_covered(conn, *, asset_address, interval_secs=15) -> dict:
     samples for one asset (RH-02bm).
 
     A UTC calendar day is "complete" when it holds at least 90% of the samples
-    expected for that day (expected = day_span_secs / interval_secs). The first
-    and last partial days are prorated over their actual sample span instead of
-    being judged incomplete outright. Missing table or zero rows for the asset
-    -> weekends_covered=None (unknown, never 0).
+    expected for that day. For weekend days, the expected samples are evaluated
+    over the full UTC day (expected = max(86400.0 / interval_secs, 720.0)).
+    Missing table or zero rows for the asset -> weekends_covered=None (unknown, never 0).
     """
     try:
         if not asset_address:
@@ -988,9 +1061,14 @@ def audit_weekends_covered(conn, *, asset_address, interval_secs=15) -> dict:
                 span_secs = (times[-1] - _day_start(day, times[-1].tzinfo)).total_seconds()
             else:
                 span_secs = 86400.0
-            expected = span_secs / interval
-            complete = actual >= 0.9 * expected
+
             is_weekend = day.weekday() in (5, 6)
+            if is_weekend:
+                expected = max(span_secs / interval, 720.0)
+            else:
+                expected = span_secs / interval
+
+            complete = actual >= 0.9 * expected
             if complete and is_weekend:
                 complete_weekend_days += 1
             day_details.append({"date": str(day), "weekday": day.weekday(),
@@ -1017,9 +1095,12 @@ def _journal_amount(value) -> Decimal:
 
 def audit_unexplained_ledger_diffs(conn) -> dict:
     """Check rh_journal double-entry balance, grouped into entries by event_id
-    (RH-02bm). An entry is unexplained when its debit total (sum of amount_raw
+    (RH-02bm), and check rh_reconciliation_runs for unexplained diffs or failed runs.
+    An entry is unexplained when its debit total (sum of amount_raw
     over legs carrying a debit account) differs from its credit total, or when
-    any leg has an empty debit/credit account. Missing table OR zero rows ->
+    any leg has an empty debit/credit account.
+    If rh_reconciliation_runs exists, any run not 'PASS' is counted as an unexplained diff.
+    Missing table OR zero rows ->
     count=None with reason NO_JOURNAL_EVIDENCE: an empty ledger is 'unknown',
     never 'zero diffs'.
     """
@@ -1057,6 +1138,18 @@ def audit_unexplained_ledger_diffs(conn) -> dict:
                 count += 1
                 details.append(f"rh_journal:{key}:debit={debit_total}:"
                                f"credit={credit_total}:empty_account={empty_account}")
+
+        # Check rh_reconciliation_runs table (F06)
+        if "rh_reconciliation_runs" in tbls:
+            rcols = [r[1] for r in conn.execute("PRAGMA table_info(rh_reconciliation_runs)").fetchall()]
+            vcol = "verdict" if "verdict" in rcols else ("status" if "status" in rcols else (rcols[0] if rcols else None))
+            if vcol:
+                recon_rows = conn.execute(f"SELECT {vcol} FROM rh_reconciliation_runs").fetchall()
+                for (rst,) in recon_rows:
+                    if rst != "PASS":
+                        count += 1
+                        details.append(f"rh_reconciliation_runs:status={rst}")
+
         return {"count": count, "checks_performed": ["rh_journal:balance"],
                 "details": details,
                 "reason": "OK" if count == 0 else "UNBALANCED_ENTRIES"}
@@ -1417,7 +1510,10 @@ def _build_state(conn, db_path: str, interval_secs: float, asset_address: str,
     # Pre-calculate auxiliary evidence for Stage A
     b_stat = budget_status(db_path)
     state["budget"] = b_stat
-    kf_health = audit_key_field_health(conn, asset_address=asset_address)
+    kf_health = audit_key_field_health(
+        conn, asset_address=asset_address,
+        evaluation_window_start=judgment_window.get("window_start")
+    )
     pool_att_status = audit_pool_attestation(conn, asset_address=asset_address)
     unk_state = audit_unknown_state_positions(conn)
     unk_positions_count = unk_state.get("violations_count")
@@ -1515,7 +1611,6 @@ def _build_state(conn, db_path: str, interval_secs: float, asset_address: str,
                 judgment_window=judgment_window,
                 cumulative=cumulative_dict,
                 recent_72h=recent_72h_dict)
-            span_days = (_to_datetime(last_sample) - _to_datetime(first_sample)).days
             wk = audit_weekends_covered(conn, asset_address=asset_address,
                                         interval_secs=interval_secs)
             led = audit_unexplained_ledger_diffs(conn)
@@ -1523,13 +1618,47 @@ def _build_state(conn, db_path: str, interval_secs: float, asset_address: str,
             state["weekends_audit"] = wk
             state["ledger_diffs_audit"] = led
             state["missed_risk_events_audit"] = mre
+
+            # F05: Calculate effective_days_covered (complete UTC days)
+            effective_days_covered = 0
+            if wk.get("days"):
+                effective_days_covered = sum(1 for d in wk["days"] if d.get("complete"))
+            state["effective_days_covered"] = effective_days_covered
+
+            # F06: Reconciliation verification from rh_reconciliation_runs
+            reconciliation_blocker = None
+            tbls = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
+            if "rh_reconciliation_runs" not in tbls:
+                reconciliation_blocker = "RECONCILIATION_EVIDENCE_MISSING"
+                recon_audit = {"runs_examined": 0, "status": "MISSING", "reconciliation_blocker": reconciliation_blocker}
+            else:
+                rcols = [r[1] for r in conn.execute("PRAGMA table_info(rh_reconciliation_runs)").fetchall()]
+                vcol = "verdict" if "verdict" in rcols else ("status" if "status" in rcols else (rcols[0] if rcols else None))
+                order_col = "started_at" if "started_at" in rcols else "rowid"
+                runs = conn.execute(
+                    f"SELECT {vcol} FROM rh_reconciliation_runs ORDER BY {order_col} DESC LIMIT 5"
+                ).fetchall()
+                if not runs:
+                    reconciliation_blocker = "RECONCILIATION_EVIDENCE_MISSING"
+                    recon_audit = {"runs_examined": 0, "status": "EMPTY", "reconciliation_blocker": reconciliation_blocker}
+                else:
+                    failed_runs = [r[0] for r in runs if r[0] != "PASS"]
+                    if failed_runs:
+                        reconciliation_blocker = f"RECONCILIATION_{failed_runs[0]}"
+                        recon_audit = {"runs_examined": len(runs), "status": failed_runs[0], "failed_runs": failed_runs, "reconciliation_blocker": reconciliation_blocker}
+                    else:
+                        recon_audit = {"runs_examined": len(runs), "status": "PASS", "reconciliation_blocker": None}
+            state["reconciliation_audit"] = recon_audit
+
             state["stage_b"] = stage_b_status(
-                days_covered=span_days,
+                days_covered=effective_days_covered,
                 weekends_covered=wk.get("weekends_covered"),
                 unexplained_ledger_diffs=led.get("count"),
                 invariant_violations=invariant_violations,
-                missed_risk_events=mre.get("count"))
-            state["stage_c_days_covered"] = span_days
+                missed_risk_events=mre.get("count"),
+                reconciliation_blocker=reconciliation_blocker,
+            )
+            state["stage_c_days_covered"] = None
     tg = conn.execute("SELECT terminal_bits_json FROM rh_gate_decisions "
                       "ORDER BY decided_at DESC LIMIT 1").fetchone()
     if tg and tg[0]:

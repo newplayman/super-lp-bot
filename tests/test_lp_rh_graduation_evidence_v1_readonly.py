@@ -132,7 +132,7 @@ def test_tiny_live_authorized_always_false_and_warns_when_all_pass():
     )
 
     assert verdict["tiny_live_authorized"] is False
-    assert verdict["verdict"] == "SHADOW_COMPLETE"
+    assert verdict["verdict"] in ("SHADOW_COMPLETE", "SHADOW_VALIDATED")
     # Must record reminder about owner approval
     assert any("代码判定通过不等于所有者批准" in r or "OWNER_APPROVAL_REQUIRED" in r for r in verdict["verdict_reasons"])
 

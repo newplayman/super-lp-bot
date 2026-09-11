@@ -279,17 +279,31 @@ def build_verdict(
         elif fault_injection.get("scenarios_passed") is None:
             verdict_reasons.append("EVIDENCE_UNAVAILABLE:fault_injection_counts")
 
-    # 6. Verdict evaluation
+    # 6. Verdict evaluation (F08)
     stage_a_passed = bool(stage_a_data and stage_a_data.get("passed") is True)
     stage_b_passed = bool(stage_b_data and stage_b_data.get("passed") is True)
     live_gate_passed = bool(live_gate_data and live_gate_data.get("live_allowed") is True)
 
-    if stage_a_passed and stage_b_passed:
-        verdict = "SHADOW_COMPLETE"
-    elif stage_a_passed:
+    manual_override_blocked = False
+
+    has_test_failure = False
+    if full_test_data is not None:
+        if (full_test_data.get("failed") or 0) > 0 or full_test_data.get("exit_code") != 0:
+            has_test_failure = True
+    if fault_injection_data is not None:
+        sp = fault_injection_data.get("scenarios_passed")
+        st = fault_injection_data.get("scenarios_total")
+        if not fault_injection_data.get("report_present") or sp is None or (st is not None and sp < st):
+            has_test_failure = True
+
+    if not stage_a_passed:
+        verdict = "NOT_GRADUATED"
+    elif has_test_failure:
+        verdict = "OBSERVATION_INCOMPLETE"
+    elif not stage_b_passed:
         verdict = "STAGE_A_PASSED"
     else:
-        verdict = "NOT_GRADUATED"
+        verdict = "SHADOW_VALIDATED"
 
     # 7. Tiny Live Authorization rule (Fail-close)
     all_three_passed = stage_a_passed and stage_b_passed and live_gate_passed
@@ -315,6 +329,7 @@ def build_verdict(
         "verdict": verdict,
         "verdict_reasons": verdict_reasons,
         "tiny_live_authorized": tiny_live_authorized,
+        "manual_override_blocked": manual_override_blocked,
     }
 
 
