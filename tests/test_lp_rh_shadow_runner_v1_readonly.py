@@ -21,6 +21,7 @@ from scripts.lp_rh_pnl_v1_readonly import hodl_benchmark
 from scripts.lp_rh_readiness_v1_readonly import audit_unexplained_ledger_diffs
 from scripts.lp_rh_store_v1_readonly import insert_row, migrate, open_store
 from scripts.lp_rh_v3_inventory_v1_readonly import inventory_for_position
+from scripts.lp_rh_organic_recorder_v1_readonly import SCHEMA as ORGANIC_SCHEMA
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 LIVE_DB = REPO_ROOT / "reports" / "lp_rh" / "scanner.db"
@@ -70,12 +71,12 @@ def _passing_sample(idx, *, price=None, fee_growth=None, **overrides):
 
 
 def _run(conn, samples, *, episode="ep", target_mode="SHADOW_SCENARIO", pool_meta=None,
-         allow_bare_quote=True):
+         allow_bare_quote=True, **kwargs):
     return run_episode(
         conn, strategy_episode=episode, samples=samples,
         position_usd=POSITION_USD, horizon_hours=HORIZON_HOURS,
         capital_usd=CAPITAL_USD, target_mode=target_mode, now_fn=lambda: NOW,
-        pool_meta=pool_meta, allow_bare_quote=allow_bare_quote,
+        pool_meta=pool_meta, allow_bare_quote=allow_bare_quote, **kwargs
     )
 
 
@@ -2060,6 +2061,368 @@ def test_rh02cm_all_steps_no_price_fraction_is_none():
     assert in_range_info["out_of_range_steps"] == 0
     assert in_range_info["skipped_no_price"] == 2
     assert in_range_info["fraction"] is None
+
+
+def _create_organic_db(db_path, windows=()):
+    conn = sqlite3.connect(str(db_path))
+    conn.executescript(ORGANIC_SCHEMA)
+    for idx, w in enumerate(windows, 1):
+        conn.execute(
+            """
+            INSERT INTO rh_organic_windows (
+                window_start_block, window_end_block, sample_time, provider,
+                n_events, n_unique_senders, top1_share, top5_share, hhi,
+                round_trip_share, total_volume, round_trip_volume,
+                concentration_excess_volume, organic_fraction, coverage_frac,
+                fetch_status, estimate_status, error
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                w.get("window_start_block", idx * 100),
+                w.get("window_end_block", (idx + 1) * 100),
+                w["sample_time"],
+                w.get("provider", "test"),
+                w.get("n_events", 10),
+                w.get("n_unique_senders", 5),
+                w.get("top1_share", "0.2"),
+                w.get("top5_share", "0.5"),
+                w.get("hhi", "0.1"),
+                w.get("round_trip_share", "0.05"),
+                w.get("total_volume", "100000"),
+                w.get("round_trip_volume", "5000"),
+                w.get("concentration_excess_volume", "0"),
+                str(w["organic_fraction"]) if w.get("organic_fraction") is not None else None,
+                str(w["coverage_frac"]) if w.get("coverage_frac") is not None else None,
+                w.get("fetch_status", "OK"),
+                w.get("estimate_status", "COMPUTED"),
+                w.get("error"),
+            ),
+        )
+    conn.commit()
+    conn.close()
+
+
+def test_rh02cn_1_organic_discount_accrual_nine_tenths(tmp_path):
+    """1. 窗口 organic_fraction = 0.9、COMPUTED、coverage_frac = 1 -> accrued 恰好是 0.9 倍。"""
+    conn = _fresh_store(tmp_path)
+    org_db = tmp_path / "organic.db"
+    _create_organic_db(org_db, [{
+        "sample_time": "2026-09-08T18:00:00Z",
+        "organic_fraction": "0.9",
+        "estimate_status": "COMPUTED",
+        "coverage_frac": "1.0",
+    }])
+    price = Decimal("2484.0")
+    meta = {
+        "range_pct": Decimal("10.0"),
+        "dec0": 18,
+        "dec1": 6,
+        "quote_usd_per_token1": Decimal("1.0"),
+        "pool_address": "0xpool-rh02cn",
+    }
+    dfg0 = Decimal(10**18)
+    dfg1 = Decimal(10**18)
+    samples = [
+        _open_sample(0, reference_mid=price, fee_growth_global_0=Decimal(0), fee_growth_global_1=Decimal(0),
+                     quote_usd_per_token1=Decimal("1.0")),
+        _open_sample(1, reference_mid=price, fee_growth_global_0=dfg0, fee_growth_global_1=dfg1,
+                     quote_usd_per_token1=Decimal("1.0")),
+    ]
+    steps = _run(conn, samples, pool_meta=meta, organic_db_path=str(org_db))
+    summary = episode_summary(steps, pool_meta=meta)
+    org = summary["organic"]
+    assert org["accrued_raw"] > 0
+    assert org["accrued_organic"] == org["accrued_raw"] * Decimal("0.9")
+    assert org["steps_discounted"] == 2
+    assert org["steps_not_discounted"] == 0
+    assert org["fraction_avg"] == Decimal("0.9")
+
+    marks = conn.execute("SELECT accrued_fee, unvalued_risk_json FROM rh_position_marks ORDER BY mark_time").fetchall()
+    assert Decimal(marks[1][0]) == org["accrued_organic"]
+    risk1 = json.loads(marks[1][1])
+    assert risk1["organic_status"] == "OK"
+    assert risk1["organic_fraction"] == 0.9
+
+
+def test_rh02cn_2_no_window_fail_close(tmp_path):
+    """2. 无窗口 -> 不折减，accrued_organic == accrued_raw，标记 NO_WINDOW。"""
+    conn = _fresh_store(tmp_path)
+    org_db = tmp_path / "organic_empty.db"
+    _create_organic_db(org_db, [])
+    price = Decimal("2484.0")
+    meta = {
+        "range_pct": Decimal("10.0"),
+        "dec0": 18,
+        "dec1": 6,
+        "quote_usd_per_token1": Decimal("1.0"),
+        "pool_address": "0xpool-rh02cn",
+    }
+    dfg0 = Decimal(10**18)
+    dfg1 = Decimal(10**18)
+    samples = [
+        _open_sample(0, reference_mid=price, fee_growth_global_0=Decimal(0), fee_growth_global_1=Decimal(0),
+                     quote_usd_per_token1=Decimal("1.0")),
+        _open_sample(1, reference_mid=price, fee_growth_global_0=dfg0, fee_growth_global_1=dfg1,
+                     quote_usd_per_token1=Decimal("1.0")),
+    ]
+    steps = _run(conn, samples, pool_meta=meta, organic_db_path=str(org_db))
+    summary = episode_summary(steps, pool_meta=meta)
+    org = summary["organic"]
+    assert org["accrued_raw"] > 0
+    assert org["accrued_organic"] == org["accrued_raw"]
+    assert org["steps_discounted"] == 0
+    assert org["steps_not_discounted"] == 2
+
+    marks = conn.execute("SELECT unvalued_risk_json FROM rh_position_marks ORDER BY mark_time").fetchall()
+    risk1 = json.loads(marks[1][0])
+    assert risk1["organic_status"] == "ORGANIC_UNAVAILABLE:NO_WINDOW"
+    assert risk1["organic_fraction"] is None
+
+
+def test_rh02cn_3_estimate_status_not_computed(tmp_path):
+    """3. estimate_status = 'INPUTS_UNAVAILABLE' -> 不折减并标记。"""
+    conn = _fresh_store(tmp_path)
+    org_db = tmp_path / "organic.db"
+    _create_organic_db(org_db, [{
+        "sample_time": "2026-09-08T18:00:00Z",
+        "organic_fraction": "0.9",
+        "estimate_status": "INPUTS_UNAVAILABLE",
+        "coverage_frac": "1.0",
+    }])
+    price = Decimal("2484.0")
+    meta = {
+        "range_pct": Decimal("10.0"),
+        "dec0": 18,
+        "dec1": 6,
+        "quote_usd_per_token1": Decimal("1.0"),
+        "pool_address": "0xpool-rh02cn",
+    }
+    dfg0 = Decimal(10**18)
+    dfg1 = Decimal(10**18)
+    samples = [
+        _open_sample(0, reference_mid=price, fee_growth_global_0=Decimal(0), fee_growth_global_1=Decimal(0),
+                     quote_usd_per_token1=Decimal("1.0")),
+        _open_sample(1, reference_mid=price, fee_growth_global_0=dfg0, fee_growth_global_1=dfg1,
+                     quote_usd_per_token1=Decimal("1.0")),
+    ]
+    steps = _run(conn, samples, pool_meta=meta, organic_db_path=str(org_db))
+    summary = episode_summary(steps, pool_meta=meta)
+    org = summary["organic"]
+    assert org["accrued_raw"] > 0
+    assert org["accrued_organic"] == org["accrued_raw"]
+    assert org["steps_discounted"] == 0
+    assert org["steps_not_discounted"] == 2
+
+    marks = conn.execute("SELECT unvalued_risk_json FROM rh_position_marks ORDER BY mark_time").fetchall()
+    risk1 = json.loads(marks[1][0])
+    assert risk1["organic_status"] == "ORGANIC_UNAVAILABLE:INPUTS_UNAVAILABLE"
+    assert risk1["organic_fraction"] is None
+
+
+def test_rh02cn_4_partial_coverage(tmp_path):
+    """4. coverage_frac = 0.5 -> 不折减并标记 PARTIAL_COVERAGE。"""
+    conn = _fresh_store(tmp_path)
+    org_db = tmp_path / "organic.db"
+    _create_organic_db(org_db, [{
+        "sample_time": "2026-09-08T18:00:00Z",
+        "organic_fraction": "0.9",
+        "estimate_status": "COMPUTED",
+        "coverage_frac": "0.5",
+    }])
+    price = Decimal("2484.0")
+    meta = {
+        "range_pct": Decimal("10.0"),
+        "dec0": 18,
+        "dec1": 6,
+        "quote_usd_per_token1": Decimal("1.0"),
+        "pool_address": "0xpool-rh02cn",
+    }
+    dfg0 = Decimal(10**18)
+    dfg1 = Decimal(10**18)
+    samples = [
+        _open_sample(0, reference_mid=price, fee_growth_global_0=Decimal(0), fee_growth_global_1=Decimal(0),
+                     quote_usd_per_token1=Decimal("1.0")),
+        _open_sample(1, reference_mid=price, fee_growth_global_0=dfg0, fee_growth_global_1=dfg1,
+                     quote_usd_per_token1=Decimal("1.0")),
+    ]
+    steps = _run(conn, samples, pool_meta=meta, organic_db_path=str(org_db))
+    summary = episode_summary(steps, pool_meta=meta)
+    org = summary["organic"]
+    assert org["accrued_raw"] > 0
+    assert org["accrued_organic"] == org["accrued_raw"]
+    assert org["steps_discounted"] == 0
+    assert org["steps_not_discounted"] == 2
+
+    marks = conn.execute("SELECT unvalued_risk_json FROM rh_position_marks ORDER BY mark_time").fetchall()
+    risk1 = json.loads(marks[1][0])
+    assert risk1["organic_status"] == "ORGANIC_UNAVAILABLE:PARTIAL_COVERAGE"
+    assert risk1["organic_fraction"] is None
+
+
+@pytest.mark.parametrize("invalid_frac", [None, "0", "1.5"])
+def test_rh02cn_5_invalid_fraction(tmp_path, invalid_frac):
+    """5. organic_fraction = None / 0 / 1.5 -> 都不折减并标记 INVALID_FRACTION。"""
+    conn = _fresh_store(tmp_path)
+    org_db = tmp_path / "organic.db"
+    _create_organic_db(org_db, [{
+        "sample_time": "2026-09-08T18:00:00Z",
+        "organic_fraction": invalid_frac,
+        "estimate_status": "COMPUTED",
+        "coverage_frac": "1.0",
+    }])
+    price = Decimal("2484.0")
+    meta = {
+        "range_pct": Decimal("10.0"),
+        "dec0": 18,
+        "dec1": 6,
+        "quote_usd_per_token1": Decimal("1.0"),
+        "pool_address": "0xpool-rh02cn",
+    }
+    dfg0 = Decimal(10**18)
+    dfg1 = Decimal(10**18)
+    samples = [
+        _open_sample(0, reference_mid=price, fee_growth_global_0=Decimal(0), fee_growth_global_1=Decimal(0),
+                     quote_usd_per_token1=Decimal("1.0")),
+        _open_sample(1, reference_mid=price, fee_growth_global_0=dfg0, fee_growth_global_1=dfg1,
+                     quote_usd_per_token1=Decimal("1.0")),
+    ]
+    steps = _run(conn, samples, pool_meta=meta, organic_db_path=str(org_db))
+    summary = episode_summary(steps, pool_meta=meta)
+    org = summary["organic"]
+    assert org["accrued_raw"] > 0
+    assert org["accrued_organic"] == org["accrued_raw"]
+    assert org["steps_discounted"] == 0
+    assert org["steps_not_discounted"] == 2
+
+    marks = conn.execute("SELECT unvalued_risk_json FROM rh_position_marks ORDER BY mark_time").fetchall()
+    risk1 = json.loads(marks[1][0])
+    assert risk1["organic_status"] == "ORGANIC_UNAVAILABLE:INVALID_FRACTION"
+    assert risk1["organic_fraction"] is None
+
+
+def test_rh02cn_6_steps_span_multiple_windows(tmp_path):
+    """6. 三个窗口时间不同、步跨越它们 -> 每步用各自不晚于自己的窗口，非最新窗口。"""
+    conn = _fresh_store(tmp_path)
+    org_db = tmp_path / "organic.db"
+    _create_organic_db(org_db, [
+        {"sample_time": "2026-09-08T18:00:00Z", "organic_fraction": "0.8", "estimate_status": "COMPUTED", "coverage_frac": "1.0"},
+        {"sample_time": "2026-09-08T18:02:00Z", "organic_fraction": "0.9", "estimate_status": "COMPUTED", "coverage_frac": "1.0"},
+        {"sample_time": "2026-09-08T18:04:00Z", "organic_fraction": "0.7", "estimate_status": "COMPUTED", "coverage_frac": "1.0"},
+    ])
+    price = Decimal("2484.0")
+    meta = {
+        "range_pct": Decimal("10.0"),
+        "dec0": 18,
+        "dec1": 6,
+        "quote_usd_per_token1": Decimal("1.0"),
+        "pool_address": "0xpool-rh02cn",
+    }
+    samples = [
+        _open_sample(0, reference_mid=price, sample_time="2026-09-08T18:00:00Z", fee_growth_global_0=Decimal(0), fee_growth_global_1=Decimal(0)),
+        _open_sample(1, reference_mid=price, sample_time="2026-09-08T18:01:00Z", fee_growth_global_0=Decimal(10**18), fee_growth_global_1=Decimal(10**18)),
+        _open_sample(2, reference_mid=price, sample_time="2026-09-08T18:03:00Z", fee_growth_global_0=Decimal(2 * 10**18), fee_growth_global_1=Decimal(2 * 10**18)),
+        _open_sample(3, reference_mid=price, sample_time="2026-09-08T18:05:00Z", fee_growth_global_0=Decimal(3 * 10**18), fee_growth_global_1=Decimal(3 * 10**18)),
+    ]
+    steps = _run(conn, samples, pool_meta=meta, organic_db_path=str(org_db))
+    marks = conn.execute("SELECT unvalued_risk_json FROM rh_position_marks ORDER BY mark_time").fetchall()
+    risks = [json.loads(m[0]) for m in marks]
+    assert risks[0]["organic_fraction"] == 0.8
+    assert risks[1]["organic_fraction"] == 0.8
+    assert risks[2]["organic_fraction"] == 0.9
+    assert risks[3]["organic_fraction"] == 0.7
+
+
+def test_rh02cn_7_stack_with_in_range(tmp_path):
+    """7. 与 in-range 叠加：区间外不累加，区间内且有窗口累加折减后的值。"""
+    conn = _fresh_store(tmp_path)
+    org_db = tmp_path / "organic.db"
+    _create_organic_db(org_db, [{
+        "sample_time": "2026-09-08T18:00:00Z",
+        "organic_fraction": "0.9",
+        "estimate_status": "COMPUTED",
+        "coverage_frac": "1.0",
+    }])
+    price = Decimal("2484.0")
+    meta = {
+        "range_pct": Decimal("10.0"),
+        "dec0": 18,
+        "dec1": 6,
+        "quote_usd_per_token1": Decimal("1.0"),
+        "pool_address": "0xpool-rh02cn",
+    }
+    dfg = Decimal(10**18)
+    samples = [
+        _open_sample(0, reference_mid=price, sample_time="2026-09-08T18:00:00Z",
+                     fee_growth_global_0=Decimal(0), fee_growth_global_1=Decimal(0)),
+        _open_sample(1, reference_mid=price * Decimal("1.5"), sample_time="2026-09-08T18:01:00Z",
+                     fee_growth_global_0=dfg, fee_growth_global_1=dfg),
+        _open_sample(2, reference_mid=price, sample_time="2026-09-08T18:02:00Z",
+                     fee_growth_global_0=dfg * 2, fee_growth_global_1=dfg * 2),
+    ]
+    steps = _run(conn, samples, pool_meta=meta, organic_db_path=str(org_db))
+    marks = conn.execute("SELECT accrued_fee, unvalued_risk_json FROM rh_position_marks ORDER BY mark_time").fetchall()
+    assert Decimal(marks[0][0]) == Decimal(0)
+    risk1 = json.loads(marks[1][1])
+    assert risk1["in_range"] is False
+    assert risk1["organic_status"] == "OK"
+    assert Decimal(marks[1][0]) == Decimal(0)
+    risk2 = json.loads(marks[2][1])
+    assert risk2["in_range"] is True
+    assert risk2["organic_status"] == "OK"
+    assert Decimal(marks[2][0]) > Decimal(0)
+    assert Decimal(marks[2][0]) == steps[2].organic["fee_usd_organic"]
+    assert risk2["fee_usd_organic"] == pytest.approx(float(steps[2].organic["fee_usd_organic"]))
+
+
+def test_rh02cn_8_summary_fractions_none_when_no_windows(tmp_path):
+    """8. fraction_min / fraction_max / fraction_avg 在全部步都没窗口时都是 None 不是 0。"""
+    conn = _fresh_store(tmp_path)
+    org_db = tmp_path / "organic_empty.db"
+    _create_organic_db(org_db, [])
+    price = Decimal("2484.0")
+    meta = {
+        "range_pct": Decimal("10.0"),
+        "dec0": 18,
+        "dec1": 6,
+        "quote_usd_per_token1": Decimal("1.0"),
+        "pool_address": "0xpool-rh02cn",
+    }
+    samples = [
+        _open_sample(0, reference_mid=price, fee_growth_global_0=Decimal(0), fee_growth_global_1=Decimal(0)),
+        _open_sample(1, reference_mid=price, fee_growth_global_0=Decimal(10**18), fee_growth_global_1=Decimal(10**18)),
+    ]
+    steps = _run(conn, samples, pool_meta=meta, organic_db_path=str(org_db))
+    summary = episode_summary(steps, pool_meta=meta)
+    org = summary["organic"]
+    assert org["steps_discounted"] == 0
+    assert org["steps_not_discounted"] == 2
+    assert org["fraction_min"] is None
+    assert org["fraction_max"] is None
+    assert org["fraction_avg"] is None
+    assert org["fraction_min"] is not 0
+    assert org["fraction_max"] is not 0
+    assert org["fraction_avg"] is not 0
+
+
+def test_rh02cn_daemon_log_line(capsys):
+    """Test daemon log line formats organic=<disc>/<tot>."""
+    from scripts.lp_rh_shadow_daemon_v1_readonly import run_round_safe
+    from unittest.mock import patch, MagicMock
+
+    summary = {
+        "total_steps": 10,
+        "organic": {
+            "steps_discounted": 8,
+            "steps_not_discounted": 2,
+        },
+    }
+    with patch("scripts.lp_rh_shadow_daemon_v1_readonly.run_one_round", return_value=summary):
+        cfg = MagicMock()
+        cfg.shadow_db = ":memory:"
+        cfg.dry_run = True
+        run_round_safe(cfg, shadow_conn=MagicMock(), episode_id="ep-test-organic", now_fn=lambda: "2026-09-08T18:00:00Z")
+    captured = capsys.readouterr()
+    assert "[rh-shadow-daemon] ep-test-organic: organic=8/10" in captured.err
 
 
 

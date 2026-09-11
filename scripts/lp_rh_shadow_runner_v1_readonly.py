@@ -72,6 +72,7 @@ FEE_GROWTH_SCALE = Decimal(2) ** 128
 DEFAULT_POOL = "0x52e65b17fb6e5ba00ed806f37afcd2daa50271ca"
 DEFAULT_DB = "reports/lp_rh/scanner.db"
 DEFAULT_GAS_DB = "reports/lp_rh/gas_history.db"
+DEFAULT_ORGANIC_DB = "reports/lp_rh/organic.db"
 # Virtual two-leg HODL lot (D04: not 50/50); fixed at first step, never reset (T41).
 VIRTUAL_INITIAL_TOKEN0_RAW = Decimal("1000000000000000000")
 VIRTUAL_INITIAL_TOKEN1_RAW = Decimal("1000000")
@@ -98,6 +99,7 @@ class ShadowStep:
     gas_reserve: Optional[dict] = None
     size_interval: Optional[dict] = None
     in_range: Optional[bool] = None
+    organic: Optional[dict] = None
 
 
 def _candidate_key(sample: Mapping[str, Any], step_index: int) -> str:
@@ -448,6 +450,60 @@ def validate_quote_evidence(
     return val, None
 
 
+def _find_closest_organic_window(windows: Sequence[dict], sample_time: Any) -> Optional[dict]:
+    """Find the closest organic window not later than sample_time (RH-02cn)."""
+    step_dt = _as_datetime(sample_time)
+    if step_dt is None or not windows:
+        return None
+    candidates = [w for w in windows if w["dt"] <= step_dt]
+    if not candidates:
+        return None
+    return candidates[-1]
+
+
+def resolve_organic_discount(window: Optional[dict]) -> tuple[str, Optional[Decimal]]:
+    """Determine organic discount status and fraction according to RH-02cn.
+
+    Fail-close conditions:
+      - Window missing -> ORGANIC_UNAVAILABLE:NO_WINDOW
+      - estimate_status != 'COMPUTED' -> ORGANIC_UNAVAILABLE:<status>
+      - coverage_frac < 1 -> ORGANIC_UNAVAILABLE:PARTIAL_COVERAGE
+      - organic_fraction is None or not in (0, 1] -> ORGANIC_UNAVAILABLE:INVALID_FRACTION
+
+    Returns (status, fraction). When valid, status is 'OK' and fraction is Decimal.
+    When fail-close, fraction is None (never defaulted to 1.0).
+    """
+    if window is None:
+        return "ORGANIC_UNAVAILABLE:NO_WINDOW", None
+
+    status = window.get("estimate_status")
+    if status != "COMPUTED":
+        status_tag = status if status is not None else "NONE"
+        return f"ORGANIC_UNAVAILABLE:{status_tag}", None
+
+    cov_val = window.get("coverage_frac")
+    if cov_val is None:
+        return "ORGANIC_UNAVAILABLE:PARTIAL_COVERAGE", None
+    try:
+        cov = Decimal(str(cov_val))
+        if cov < Decimal("1"):
+            return "ORGANIC_UNAVAILABLE:PARTIAL_COVERAGE", None
+    except Exception:
+        return "ORGANIC_UNAVAILABLE:PARTIAL_COVERAGE", None
+
+    frac_val = window.get("organic_fraction")
+    if frac_val is None:
+        return "ORGANIC_UNAVAILABLE:INVALID_FRACTION", None
+    try:
+        frac = Decimal(str(frac_val))
+        if frac <= Decimal("0") or frac > Decimal("1"):
+            return "ORGANIC_UNAVAILABLE:INVALID_FRACTION", None
+    except Exception:
+        return "ORGANIC_UNAVAILABLE:INVALID_FRACTION", None
+
+    return "OK", frac
+
+
 def parse_health_flags(raw_flags) -> tuple[dict[str, bool], list[str]]:
     """Parse health_flags_json (or sequence) and map to risk booleans.
 
@@ -703,11 +759,37 @@ def _finish_conjuncts(bits, reasons, gated, pool_meta, capital_usd,
 def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
                 capital_usd, target_mode, now_fn, pool_meta=None,
                 allow_bare_quote=False, gas_db_path=DEFAULT_GAS_DB,
-                enforce_gas_reserve=False):
+                enforce_gas_reserve=False, organic_db_path=DEFAULT_ORGANIC_DB):
     """Replay one Shadow episode over `samples`, writing gate decisions and position marks to `conn`."""
     # RH-02cg: take gas observation once per episode (not per step).
     effective_pool_meta = dict(pool_meta) if pool_meta else {}
     episode_now = now_fn() if callable(now_fn) else str(now_fn)
+
+    # RH-02cn: load organic windows once per episode
+    organic_windows: list[dict] = []
+    if organic_db_path and Path(organic_db_path).exists():
+        try:
+            org_conn = sqlite3.connect(f"file:{organic_db_path}?mode=ro", uri=True)
+            try:
+                cur = org_conn.execute(
+                    "SELECT sample_time, organic_fraction, coverage_frac, estimate_status "
+                    "FROM rh_organic_windows"
+                )
+                for st, frac, cov, est_stat in cur.fetchall():
+                    dt = _as_datetime(st)
+                    if dt is not None:
+                        organic_windows.append({
+                            "sample_time": st,
+                            "dt": dt,
+                            "organic_fraction": frac,
+                            "coverage_frac": cov,
+                            "estimate_status": est_stat,
+                        })
+                organic_windows.sort(key=lambda w: w["dt"])
+            finally:
+                org_conn.close()
+        except Exception:
+            pass
 
     # RH-02ck: gas reserve check once per episode
     # 1) Fetch gas_price_wei and native_price_usd from gas_db
@@ -802,6 +884,7 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
     prev_fg0: Optional[Decimal] = None
     prev_fg1: Optional[Decimal] = None
     accrued = Decimal(0)
+    accrued_raw = Decimal(0)
     open_resolved = False
     open_valid = False
     open_fail_reason: Optional[str] = None
@@ -941,6 +1024,12 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
             except (TypeError, ValueError, InvalidOperation):
                 step_in_range = None
 
+        # RH-02cn: resolve organic window for this step
+        step_window = _find_closest_organic_window(organic_windows, sample.get("sample_time"))
+        organic_status, organic_fraction = resolve_organic_discount(step_window)
+        fee_usd_raw: Optional[Decimal] = None
+        fee_usd_organic: Optional[Decimal] = None
+
         fg0, fg1 = sample.get("fee_growth_global_0"), sample.get("fee_growth_global_1")
         nav: Optional[Decimal] = None
         nav_reason: Optional[str] = None
@@ -964,9 +1053,18 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
                     d1 = cur1 - prev_fg1
                     tok0 = (l_pos * d0 / FEE_GROWTH_SCALE / (Decimal(10) ** dec0_val))
                     tok1 = (l_pos * d1 / FEE_GROWTH_SCALE / (Decimal(10) ** dec1_val))
-                    fee_usd = (tok0 * price + tok1) * step_quote_val
+                    fee_usd_raw = (tok0 * price + tok1) * step_quote_val
+                    if organic_status == "OK" and organic_fraction is not None:
+                        fee_usd_organic = fee_usd_raw * organic_fraction
+                    else:
+                        fee_usd_organic = fee_usd_raw
+                    fee_usd = fee_usd_organic
                     if step_in_range is True:
                         accrued += fee_usd
+                        accrued_raw += fee_usd_raw
+                else:
+                    fee_usd_raw = Decimal(0)
+                    fee_usd_organic = Decimal(0)
                 prev_fg0, prev_fg1 = cur0, cur1
 
                 lp_val = position_value_at(
@@ -986,6 +1084,8 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
             except (TypeError, ValueError, InvalidOperation):
                 nav = None
                 nav_reason = "NAV_COMPUTATION_ERROR"
+                fee_usd_raw = None
+                fee_usd_organic = None
 
         step_net_pnl = (net_pnl(nav, prev_nav, Decimal(0))
                         if nav is not None and prev_nav is not None else None)
@@ -1074,6 +1174,10 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
             "skipped": nav is None,
             "liquidation_nav_reason": "NOT_COMPUTED:EXIT_DEPTH_PER_STEP_NOT_WIRED",
             "in_range": step_in_range,
+            "fee_usd_raw": float(fee_usd_raw) if fee_usd_raw is not None else None,
+            "fee_usd_organic": float(fee_usd_organic) if fee_usd_organic is not None else None,
+            "organic_fraction": float(organic_fraction) if organic_fraction is not None else None,
+            "organic_status": organic_status,
         }
         if nav is None and nav_reason is not None:
             risk_data["reason"] = nav_reason
@@ -1189,7 +1293,15 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
                 "native_balance_known": gas_reserve_result.get("native_balance_known"),
             },
             size_interval=size_interval_res,
-            in_range=step_in_range))
+            in_range=step_in_range,
+            organic={
+                "status": organic_status,
+                "fraction": organic_fraction,
+                "fee_usd_raw": fee_usd_raw,
+                "fee_usd_organic": fee_usd_organic,
+                "accrued_raw": accrued_raw,
+                "accrued_organic": accrued,
+            }))
 
     if position_open:
         release_now = None
@@ -1458,12 +1570,56 @@ def episode_summary(steps: Sequence[ShadowStep], *, load_skipped: int = 0, pool_
         "tick_upper": summary_tick_upper,
     }
 
+    # RH-02cn: organic discount summary
+    steps_discounted = sum(
+        1 for s in steps
+        if getattr(s, "organic", None) and s.organic.get("status") == "OK"
+    )
+    steps_not_discounted = len(steps) - steps_discounted
+
+    fractions = [
+        s.organic["fraction"] for s in steps
+        if getattr(s, "organic", None) and s.organic.get("status") == "OK" and s.organic.get("fraction") is not None
+    ]
+    if fractions:
+        frac_min = min(fractions)
+        frac_max = max(fractions)
+        frac_avg = sum(fractions) / Decimal(len(fractions))
+    else:
+        frac_min = None
+        frac_max = None
+        frac_avg = None
+
+    accrued_raw = sum(
+        (s.organic["fee_usd_raw"] for s in steps
+         if getattr(s, "organic", None) and s.organic.get("fee_usd_raw") is not None
+         and getattr(s, "in_range", None) is True),
+        Decimal(0)
+    )
+    accrued_organic = sum(
+        (s.organic["fee_usd_organic"] for s in steps
+         if getattr(s, "organic", None) and s.organic.get("fee_usd_organic") is not None
+         and getattr(s, "in_range", None) is True),
+        Decimal(0)
+    )
+
+    organic_summary = {
+        "steps_discounted": steps_discounted,
+        "steps_not_discounted": steps_not_discounted,
+        "fraction_min": frac_min,
+        "fraction_max": frac_max,
+        "fraction_avg": frac_avg,
+        "accrued_raw": accrued_raw,
+        "accrued_organic": accrued_organic,
+    }
+
     return {
         "total_steps": len(steps),
         "eligible_steps": sum(1 for s in steps if s.terminal_eligible),
         "status_counts": status_counts, "dominant_blocker_counts": blocker_counts,
         "size_interval_status_counts": size_interval_status_counts,
         "in_range": in_range_summary,
+        "organic": organic_summary,
         "first_eligible_at": next((s.sample_time for s in steps if s.terminal_eligible), None),
         "nav_start": nav_start, "nav_end": nav_end, "net_pnl": net_pnl_val,
         "hodl_delta": hodl_delta,
@@ -1475,9 +1631,6 @@ def episode_summary(steps: Sequence[ShadowStep], *, load_skipped: int = 0, pool_
         "skipped_at_load": load_skipped,
         "steps_without_nav": sum(1 for s in steps if s.nav is None),
         "steps_without_nav_reasons": steps_without_nav_reasons,
-        # Which conjunct actually failed, not just the roll-up that masks them.
-        # legacy_required_conjunction sits first in CONJUNCT_ORDER so it always
-        # takes the blame; these counts say what it was waiting on.
         "conjunct_failure_counts": _conjunct_failure_counts(steps),
         "gas_usd_source": getattr(steps[0], "gas_usd_source", None) if steps else None,
         "gas_reserve": getattr(steps[0], "gas_reserve", None) if steps else None,
@@ -1503,6 +1656,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                         "provenance or TTL check (default False: fails closed).")
     p.add_argument("--enforce-gas-reserve", action="store_true", default=False,
                    help="Enforce native gas reserve in terminal gate (default False: record only).")
+    p.add_argument("--organic-db", default=DEFAULT_ORGANIC_DB,
+                   help="Path to organic.db for volume discount.")
     a = p.parse_args(argv)
 
     live_conn = open_store(Path(a.db), read_only=True)
@@ -1525,7 +1680,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                             capital_usd=Decimal("10000"), target_mode=a.target_mode,
                             now_fn=now, pool_meta=pool_meta,
                             allow_bare_quote=a.allow_bare_quote,
-                            enforce_gas_reserve=a.enforce_gas_reserve)
+                            enforce_gas_reserve=a.enforce_gas_reserve,
+                            organic_db_path=a.organic_db)
         sc.close()
 
     payload = {"target_mode": a.target_mode, "pool": a.pool, "strategy_episode": ep,

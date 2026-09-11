@@ -454,6 +454,12 @@ def run_round_safe(cfg, *, shadow_conn, episode_id, now_fn):
             frac_str = f"{frac:.4f}" if isinstance(frac, (float, Decimal)) else str(frac)
             print(f"[rh-shadow-daemon] {episode_id}: in_range={frac_str}",
                   file=sys.stderr)
+        organic_meta = summary.get("organic")
+        if organic_meta and "steps_discounted" in organic_meta:
+            disc = organic_meta["steps_discounted"]
+            tot = summary.get("total_steps") or 0
+            print(f"[rh-shadow-daemon] {episode_id}: organic={disc}/{tot}",
+                  file=sys.stderr)
         if summary.get("ledger_duplicate_rows") is not None:
             dup = summary["ledger_duplicate_rows"]
             copied_stats = summary.get("copied") or summary.get("ledger_copied")

@@ -228,7 +228,7 @@ def test_cli_writes_decimal_result(tmp_path):
     source.write_text(json.dumps(state))
     import subprocess
     subprocess.run([
-        "/root/lp-bot/.venv/bin/python", str(Path(mod.__file__)),
+        sys.executable, str(Path(mod.__file__)),
         "--pool-state-json", str(source), "--position-usd", "1000",
         "--max-impact-bps", "100", "--out", str(output)], check=True)
     payload = json.loads(output.read_text())
