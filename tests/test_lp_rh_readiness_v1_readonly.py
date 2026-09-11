@@ -86,7 +86,15 @@ def passing_stage_a():
 def passing_stage_b():
     return stage_b_status(days_covered=STAGE_B_MIN_DAYS, weekends_covered=1,
                           unexplained_ledger_diffs=0, invariant_violations=0,
-                          missed_risk_events=0)
+                          missed_risk_events=0,
+                          profile_locked=True,
+                          code_version_locked=True,
+                          policy_version_locked=True,
+                          capital_policy_version_locked=True,
+                          full_cost_profitable_episodes=10,
+                          oos_episode_ratio=Decimal("0.30"),
+                          exit_stress_passed=True,
+                          netcover_passed=True)
 
 
 # --- Stage A ---
@@ -962,7 +970,7 @@ def test_key_field_health_real_db_window_mechanism():
             col_stat = res["columns"][fg_col]
             assert col_stat["first_populated_time"] is not None
             assert col_stat["window_rows"] > 0
-            assert col_stat["total_rows"] > col_stat["window_rows"]
+            assert col_stat["window_rows"] == res["total_rows"]
             ratio = col_stat["non_null_ratio"]
             assert Decimal(0) <= ratio <= Decimal(1)
 
@@ -1099,7 +1107,7 @@ def test_key_field_health_window_boundary_and_non_null_calculation(tmp_path):
 
     # Total rows = 105. Window starts at 2026-09-09T00:00:00Z.
     # Window rows = 100. Non-null = 99. Ratio = 0.99 -> PASS.
-    res = audit_key_field_health(conn, asset_address=asset)
+    res = audit_key_field_health(conn, asset_address=asset, evaluation_window_start="2026-09-09T00:00:00Z")
     assert res["passed"] is True
     fg0 = res["columns"]["fee_growth_global_0"]
     assert fg0["passed"] is True
@@ -1120,7 +1128,7 @@ def test_key_field_health_window_boundary_and_non_null_calculation(tmp_path):
         "fee_growth_global_0": None,
         "fee_growth_global_1": "2000",
     })
-    res2 = audit_key_field_health(conn, asset_address=asset)
+    res2 = audit_key_field_health(conn, asset_address=asset, evaluation_window_start="2026-09-09T00:00:00Z")
     assert res2["passed"] is False
     fg0_2 = res2["columns"]["fee_growth_global_0"]
     assert fg0_2["passed"] is False
