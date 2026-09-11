@@ -1174,9 +1174,9 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
             "skipped": nav is None,
             "liquidation_nav_reason": "NOT_COMPUTED:EXIT_DEPTH_PER_STEP_NOT_WIRED",
             "in_range": step_in_range,
-            "fee_usd_raw": float(fee_usd_raw) if fee_usd_raw is not None else None,
-            "fee_usd_organic": float(fee_usd_organic) if fee_usd_organic is not None else None,
-            "organic_fraction": float(organic_fraction) if organic_fraction is not None else None,
+            "fee_usd_raw": _economic_str(fee_usd_raw),
+            "fee_usd_organic": _economic_str(fee_usd_organic),
+            "organic_fraction": _economic_str(organic_fraction),
             "organic_status": organic_status,
         }
         if nav is None and nav_reason is not None:

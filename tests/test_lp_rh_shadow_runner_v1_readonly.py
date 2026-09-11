@@ -2141,7 +2141,11 @@ def test_rh02cn_1_organic_discount_accrual_nine_tenths(tmp_path):
     assert Decimal(marks[1][0]) == org["accrued_organic"]
     risk1 = json.loads(marks[1][1])
     assert risk1["organic_status"] == "OK"
-    assert risk1["organic_fraction"] == 0.9
+    assert isinstance(risk1["organic_fraction"], str)
+    assert Decimal(risk1["organic_fraction"]) == Decimal("0.9")
+    assert isinstance(risk1["fee_usd_raw"], str)
+    assert isinstance(risk1["fee_usd_organic"], str)
+    assert Decimal(risk1["fee_usd_organic"]) == Decimal(risk1["fee_usd_raw"]) * Decimal("0.9")
 
 
 def test_rh02cn_2_no_window_fail_close(tmp_path):
@@ -2326,10 +2330,10 @@ def test_rh02cn_6_steps_span_multiple_windows(tmp_path):
     steps = _run(conn, samples, pool_meta=meta, organic_db_path=str(org_db))
     marks = conn.execute("SELECT unvalued_risk_json FROM rh_position_marks ORDER BY mark_time").fetchall()
     risks = [json.loads(m[0]) for m in marks]
-    assert risks[0]["organic_fraction"] == 0.8
-    assert risks[1]["organic_fraction"] == 0.8
-    assert risks[2]["organic_fraction"] == 0.9
-    assert risks[3]["organic_fraction"] == 0.7
+    assert Decimal(risks[0]["organic_fraction"]) == Decimal("0.8")
+    assert Decimal(risks[1]["organic_fraction"]) == Decimal("0.8")
+    assert Decimal(risks[2]["organic_fraction"]) == Decimal("0.9")
+    assert Decimal(risks[3]["organic_fraction"]) == Decimal("0.7")
 
 
 def test_rh02cn_7_stack_with_in_range(tmp_path):
@@ -2371,7 +2375,8 @@ def test_rh02cn_7_stack_with_in_range(tmp_path):
     assert risk2["organic_status"] == "OK"
     assert Decimal(marks[2][0]) > Decimal(0)
     assert Decimal(marks[2][0]) == steps[2].organic["fee_usd_organic"]
-    assert risk2["fee_usd_organic"] == pytest.approx(float(steps[2].organic["fee_usd_organic"]))
+    assert Decimal(risk2["fee_usd_organic"]) == steps[2].organic["fee_usd_organic"]
+    assert Decimal(risk2["fee_usd_organic"]) == Decimal(risk2["fee_usd_raw"]) * Decimal("0.9")
 
 
 def test_rh02cn_8_summary_fractions_none_when_no_windows(tmp_path):
