@@ -380,6 +380,43 @@ def _sync_reservations(ledger_conn, scratch_conn, *, exclude_episode=None) -> in
     return synced
 
 
+def _record_tx_intents_safe(ledger_conn, steps, *, cfg, episode_id, now_fn):
+    """Invoke TxIntentWriter once per PROPOSED intent at gate decision point."""
+    try:
+        from scripts.lp_rh_tx_intents_writer_v1 import TxIntentWriter
+        writer = TxIntentWriter(ledger_conn)
+        for step in steps:
+            if getattr(step, "reservation_granted", False):
+                step_idx = getattr(step, "step_index", 0)
+                chain_id = int(cfg["chain_id"]) if ("chain_id" in cfg and cfg["chain_id"] is not None) else 8453
+                pool = str(cfg.get("pool") or "0x0000000000000000000000000000000000000000")
+                wallet = cfg.get("wallet_id")
+                wallet_addr = str(wallet or "0x0000000000000000000000000000000000000000")
+                sel = str(cfg.get("selector") or "0x00000000")
+                cd_hash = str(cfg.get("calldata_hash") or "0x0000000000000000000000000000000000000000000000000000000000000000")
+                val_wei = str(cfg["value_wei"]) if ("value_wei" in cfg and cfg["value_wei"] is not None) else "0"
+                pol_hash = str(cfg.get("policy_hash") or "0x0000000000000000000000000000000000000000000000000000000000000000")
+                exp_at = str(cfg.get("expires_at") or (now_fn() if callable(now_fn) else str(now_fn)))
+                writer.write_intent(
+                    request_id=f"rh-tx-{episode_id}-{step_idx}",
+                    idempotency_key=f"rh-tx-intent-{episode_id}-{step_idx}",
+                    chain_id=chain_id,
+                    wallet_id=wallet,
+                    position_id=f"rh-shadow-{episode_id}-{step_idx}",
+                    intent_type=cfg.get("intent_type", "OPEN"),
+                    target_address=pool,
+                    recipient_address=wallet_addr,
+                    selector=sel,
+                    calldata_hash=cd_hash,
+                    value_wei=val_wei,
+                    policy_hash=pol_hash,
+                    expires_at=exp_at,
+                )
+    except Exception as exc:
+        import sys
+        sys.stderr.write(f"[tx_intents_writer] {exc}\n")
+
+
 def _run_episode_persisted(ledger_conn, *, cfg, episode_id, sample_list, now_fn):
     """Run the episode on the persistent ledger, counting duplicate decision_ids.
 
@@ -395,6 +432,7 @@ def _run_episode_persisted(ledger_conn, *, cfg, episode_id, sample_list, now_fn)
         if not ledger_conn.in_transaction:
             ledger_conn.execute("BEGIN IMMEDIATE")
         steps = run_episode(ledger_conn, **kwargs)
+        _record_tx_intents_safe(ledger_conn, steps, cfg=cfg, episode_id=episode_id, now_fn=now_fn)
         ledger_conn.commit()
         return steps, 0, None
     except sqlite3.IntegrityError:
@@ -409,6 +447,7 @@ def _run_episode_persisted(ledger_conn, *, cfg, episode_id, sample_list, now_fn)
                 scratch_conn.commit()
                 copy_stats = _copy_new_rows(scratch_conn, ledger_conn)
                 copy_stats["reservations_synced"] = synced
+                _record_tx_intents_safe(ledger_conn, steps, cfg=cfg, episode_id=episode_id, now_fn=now_fn)
                 ledger_conn.commit()
             finally:
                 scratch_conn.close()

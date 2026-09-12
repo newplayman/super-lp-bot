@@ -3,7 +3,7 @@
   "tool": "lp_silent_failure_lint_v1_readonly",
   "identity_schema": "(file, rule, fingerprint)",
   "note": "Baseline of known silent-failure hits matched by content fingerprint. --fail-on-new blocks any hit exceeding baseline occurrence count. Line numbers are for display only. Regenerate after an approved fix.",
-  "count": 354,
+  "count": 360,
   "hits": [
     {
       "file": "scripts/finalize_bsc_fee_velocity_overnight_run_v1_readonly.py",
@@ -3190,6 +3190,66 @@
       "fingerprint": "dc5989107fcfe026",
       "snippet": "\"actual_fee_accrual_placeholder_rows\": total.get(\"actual_fee_accrual\", 0),",
       "key": "scripts/test_stage_supervisor_finalize_from_existing_checkpoints_v1.py:308:47:1"
+    },
+    {
+      "file": "scripts/lp_rh_quote_refresh_cron.py",
+      "line": 36,
+      "col": 8,
+      "rule": 5,
+      "fingerprint": "e706fa9325ded821",
+      "snippet": "return False",
+      "note": "lint false positive: _is_pid_alive ProcessLookupError branch — PID 不存在 → alive=False 是 alive 判断函数的正确语义,非错误码",
+      "key": "scripts/lp_rh_quote_refresh_cron.py:36:8:5"
+    },
+    {
+      "file": "scripts/lp_rh_quote_refresh_cron.py",
+      "line": 38,
+      "col": 8,
+      "rule": 5,
+      "fingerprint": "37992c22232b4712",
+      "snippet": "return True",
+      "note": "lint false positive: _is_pid_alive PermissionError branch — 无权限 kill 时说明 PID 存在(可能其他用户),按 alive 处理",
+      "key": "scripts/lp_rh_quote_refresh_cron.py:38:8:5"
+    },
+    {
+      "file": "scripts/lp_rh_quote_refresh_cron.py",
+      "line": 62,
+      "col": 8,
+      "rule": 5,
+      "fingerprint": "e706fa9325ded821",
+      "snippet": "return False",
+      "note": "lint false positive: _acquire_pid_lock PID file write failure — 返回 False 通知 main() lock 获取失败,main() exit 2",
+      "key": "scripts/lp_rh_quote_refresh_cron.py:62:8:5"
+    },
+    {
+      "file": "scripts/lp_rh_quote_refresh_cron.py",
+      "line": 125,
+      "col": 8,
+      "rule": 5,
+      "fingerprint": "52513ffe3505899e",
+      "snippet": "return 124",
+      "note": "lint false positive: main() exit code 124 = coreutils timeout 命令约定,非错误伪装",
+      "key": "scripts/lp_rh_quote_refresh_cron.py:125:8:5"
+    },
+    {
+      "file": "scripts/lp_rh_quote_refresh_cron.py",
+      "line": 129,
+      "col": 8,
+      "rule": 5,
+      "fingerprint": "486d9affb60dbb00",
+      "snippet": "return 1",
+      "note": "lint false positive: main() exit code 1 = Unix 一般错误约定,非错误伪装",
+      "key": "scripts/lp_rh_quote_refresh_cron.py:129:8:5"
+    },
+    {
+      "file": "scripts/lp_rh_tx_intents_writer_v1.py",
+      "line": 195,
+      "col": 27,
+      "rule": 3,
+      "fingerprint": "2153d588393379a6",
+      "snippet": "updates.append(\"tx_hash = ?\")",
+      "note": "lint false positive: SQL UPDATE SET 子句不是 WHERE 子句 — placeholder 赋值不存在大小写问题,linter 应区分 SET vs WHERE",
+      "key": "scripts/lp_rh_tx_intents_writer_v1.py:195:27:3"
     }
   ]
 }

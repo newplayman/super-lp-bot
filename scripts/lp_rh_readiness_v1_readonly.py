@@ -10,6 +10,7 @@ import bisect
 import json
 import os
 import re
+import sqlite3
 import subprocess
 import sys
 from datetime import datetime, timedelta, timezone
@@ -502,14 +503,58 @@ def stage_b_status(*, days_covered, weekends_covered, unexplained_ledger_diffs,
             "netcover_passed": netcover_passed is True,
             "passed": not blockers, "blockers": blockers}
 
-def live_gate_status(*, usable_provider_count, capital_policy_approved,
-                     signatures, broadcasts, keys_created) -> dict:
+SINGLE_PROVIDER_BLOCKER = "SINGLE_PROVIDER_NOT_ALLOWED_FOR_LIVE"
+
+
+def usable_providers_from_db(db_path: str) -> dict:
+    """Read usable provider count and degraded status from rh_rpc_health in db_path."""
+    path = Path(db_path)
+    if not path.exists():
+        raise FileNotFoundError(f"Database not found: {db_path}")
+    conn = sqlite3.connect(f"file:{path.resolve()}?mode=ro", uri=True, timeout=10.0)
+    try:
+        tbl = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='rh_rpc_health'"
+        ).fetchone()
+        if not tbl:
+            raise sqlite3.OperationalError("no such table: rh_rpc_health")
+        query = (
+            "SELECT provider, COUNT(*) AS n FROM rh_rpc_health "
+            "WHERE success_count > fail_count AND sample_time > datetime('now', '-1 hour') "
+            "GROUP BY provider"
+        )
+        rows = conn.execute(query).fetchall()
+        providers = [row[0] for row in rows if row[1] > 0]
+        deg_query = (
+            "SELECT provider, MIN(sample_time) FROM rh_rpc_health "
+            "WHERE (fail_count >= success_count OR state = 'DEGRADED') "
+            "AND sample_time > datetime('now', '-1 hour') "
+            "GROUP BY provider"
+        )
+        degraded_since = {
+            row[0]: str(row[1]) for row in conn.execute(deg_query).fetchall()
+            if row[1] is not None
+        }
+        return {"count": len(providers), "providers": sorted(providers), "degraded_since": degraded_since}
+    finally:
+        conn.close()
+
+
+def live_gate_status(*, usable_provider_count=None, capital_policy_approved,
+                     signatures, broadcasts, keys_created,
+                     rh_rpc_health_db_path: str | None = None) -> dict:
     """LIVE gate (PRD §8.3). live_allowed is False unless every check is clean:
     >=2 usable providers, capital policy explicitly approved, zero unauthorized
     signatures / broadcasts / keys."""
+    if rh_rpc_health_db_path is not None:
+        try:
+            db_res = usable_providers_from_db(rh_rpc_health_db_path)
+            usable_provider_count = db_res["count"]
+        except Exception:
+            pass
     blockers = []
     if usable_provider_count is None or usable_provider_count < 2:
-        blockers.append("SINGLE_PROVIDER_NOT_ALLOWED_FOR_LIVE")
+        blockers.append(SINGLE_PROVIDER_BLOCKER)
     if capital_policy_approved is False:
         blockers.append("CAPITAL_POLICY_CONFLICT")
     elif capital_policy_approved is None:

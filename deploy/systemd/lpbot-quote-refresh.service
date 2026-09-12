@@ -1,0 +1,13 @@
+[Unit]
+Description=LP Bot Robinhood Quote Refresh Cron
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# User lpbot does not exist on host (id lpbot -> no such user); using root per spec
+User=root
+WorkingDirectory=/opt/lpbot/lp-bot-v3-origin-check
+ExecStart=/usr/bin/python3 /opt/lpbot/lp-bot-v3-origin-check/scripts/lp_rh_quote_refresh_cron.py
+StandardOutput=append:/var/log/lpbot/quote-refresh.log
+StandardError=inherit

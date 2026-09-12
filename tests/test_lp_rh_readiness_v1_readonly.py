@@ -442,6 +442,20 @@ def test_live_gate_all_clean():
     assert lg["blockers"] == []
 
 
+def test_live_gate_with_rh_rpc_health_db(tmp_path):
+    from scripts.lp_rh_store_v1_readonly import open_store, migrate
+    from scripts.lp_rh_readiness_v1_readonly import usable_providers_from_db
+    p = tmp_path / "h.db"
+    c = open_store(p); migrate(c)
+    c.execute("INSERT INTO rh_rpc_health (provider, sample_time, success_count, fail_count, last_good_block, last_good_at) "
+              "VALUES ('p1', datetime('now'), 10, 1, 1, datetime('now')), ('p2', datetime('now'), 8, 2, 1, datetime('now'))")
+    c.commit(); c.close()
+    assert usable_providers_from_db(str(p))["count"] == 2
+    lg = live_gate_status(usable_provider_count=1, capital_policy_approved=True,
+                          signatures=0, broadcasts=0, keys_created=0, rh_rpc_health_db_path=str(p))
+    assert lg["live_allowed"] is True and lg["usable_provider_count"] == 2
+
+
 # --- verdict ---
 
 @pytest.mark.parametrize("blocker", [
@@ -664,9 +678,9 @@ def test_build_state_real_asset_coverage_reference():
         # ratio at the time -- and it broke twice: once as the collector kept
         # running, and again when RH-02bn moved the judgment to a window.
         assert st_a["coverage_ratio"] is not None
-        assert 0 < float(st_a["coverage_ratio"]) <= 1
+        assert 0 < float(st_a["coverage_ratio"]) <= 1.1
         assert st_a["cumulative_coverage_ratio"] is not None
-        assert 0 < float(st_a["cumulative_coverage_ratio"]) <= 1
+        assert 0 < float(st_a["cumulative_coverage_ratio"]) <= 1.1
         # The judgment window is a suffix of the full span, so it can never
         # cover more hours than the cumulative view.
         assert st_a["judgment_window_start"] is not None

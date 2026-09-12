@@ -76,9 +76,10 @@ _TABLES = [
         "source_event_time TEXT",
         "fee_growth_global_0 TEXT", "fee_growth_global_1 TEXT"]),
     ("rh_rpc_health", ("provider", "method", "sample_time"), [
-        "provider TEXT NOT NULL", "method TEXT NOT NULL",
+        "provider TEXT NOT NULL", "method TEXT NOT NULL DEFAULT 'eth_call'",
         "sample_time TEXT NOT NULL", "latency_ms INTEGER",
-        "error TEXT", "last_good_block INTEGER", "state TEXT NOT NULL"]),
+        "error TEXT", "last_good_block INTEGER", "state TEXT NOT NULL DEFAULT 'NORMAL'",
+        "success_count INTEGER", "fail_count INTEGER", "last_good_at TEXT"]),
     ("rh_economic_evaluations",
      ("candidate_key", "snapshot_id", "model_version", "policy_version",
       "horizon_hours", "position_usd"), [
@@ -123,7 +124,12 @@ _TABLES = [
         "chain_id INTEGER NOT NULL", "wallet_id TEXT",
         "position_id TEXT", "nonce INTEGER", "state TEXT NOT NULL",
         "calldata_hash TEXT", "policy_hash TEXT", "expires_at TEXT",
-        "created_at TEXT NOT NULL"]),
+        "created_at TEXT NOT NULL",
+        "intent_type TEXT", "target_address TEXT", "recipient_address TEXT",
+        "selector TEXT", "value_wei TEXT DEFAULT '0'", "reject_reason TEXT",
+        "tx_hash TEXT", "submitted_at TEXT", "confirmed_at TEXT",
+        "broadcaster_signature TEXT", "simulated_at TEXT",
+        "live_block_number INTEGER"]),
     ("rh_tx_receipts", ("request_id", "tx_hash"), [
         "request_id TEXT NOT NULL", "tx_hash TEXT NOT NULL",
         "block_hash TEXT", "block_number INTEGER",
@@ -179,7 +185,7 @@ TIME_COLUMNS = {
     "rh_journal": frozenset({"booked_at"}),
     "rh_position_marks": frozenset({"mark_time"}),
     "rh_bucket_reservations": frozenset({"created_at", "released_at"}),
-    "rh_tx_intents": frozenset({"expires_at", "created_at"}),
+    "rh_tx_intents": frozenset({"expires_at", "created_at", "simulated_at", "submitted_at", "confirmed_at"}),
     "rh_tx_receipts": frozenset({"observed_at"}),
     "rh_reconciliation_runs": frozenset({"started_at", "finished_at"}),
 }
@@ -214,6 +220,29 @@ EXTRA_COLUMNS = {
     "rh_reconciliation_runs": (("profile", "TEXT NOT NULL DEFAULT 'UNKNOWN'"),
                                 ("code_version", "TEXT NOT NULL DEFAULT 'UNKNOWN'"),
                                 ("policy_version", "TEXT NOT NULL DEFAULT 'UNKNOWN'")),
+    "rh_tx_intents": (
+        ("intent_type", "TEXT"),
+        ("target_address", "TEXT"),
+        ("recipient_address", "TEXT"),
+        ("selector", "TEXT"),
+        ("value_wei", "TEXT DEFAULT '0'"),
+        ("reject_reason", "TEXT"),
+        ("tx_hash", "TEXT"),
+        ("submitted_at", "TEXT"),
+        ("confirmed_at", "TEXT"),
+        ("broadcaster_signature", "TEXT"),
+        ("simulated_at", "TEXT"),
+        ("live_block_number", "INTEGER"),
+    ),
+    "rh_rpc_health": (
+        ("latency_ms_p50", "TEXT"),
+        ("latency_ms_p95", "TEXT"),
+        ("latency_ms_p99", "TEXT"),
+        ("degraded_since", "TEXT"),
+        ("success_count", "INTEGER"),
+        ("fail_count", "INTEGER"),
+        ("last_good_at", "TEXT"),
+    ),
 }
 
 
@@ -265,6 +294,18 @@ def _ensure_columns(conn: sqlite3.Connection) -> None:
                     f"ALTER TABLE {table} ADD COLUMN {column} {col_type}"
                 )
         for column, col_type in EXTRA_COLUMNS.get(table, ()):
+            if column not in existing:
+                conn.execute(
+                    f"ALTER TABLE {table} ADD COLUMN {column} {col_type}"
+                )
+    for table, extras in EXTRA_COLUMNS.items():
+        if table in DERIVED_TABLES:
+            continue
+        records = conn.execute(f"PRAGMA table_info({table})").fetchall()
+        if not records:
+            continue
+        existing = {record[1] for record in records}
+        for column, col_type in extras:
             if column not in existing:
                 conn.execute(
                     f"ALTER TABLE {table} ADD COLUMN {column} {col_type}"

@@ -261,15 +261,15 @@
     "computed_at": "2026-09-09T08:49:23.769717+00:00"
   },
   "quote_usd_per_token1": {
-    "value": "0.999963",
+    "value": "0.999958",
     "source": "coingecko:global-dollar/usd (simple/price, free tier, no key)",
-    "observed_at": "2026-09-11T13:41:35Z",
+    "observed_at": "2026-09-12T17:41:35Z",
     "ttl_secs": 86400,
-    "note": "USDG = Global Dollar. Observed depeg -0.0037%. TTL 24h; on expiry the runner reports QUOTE_EVIDENCE_EXPIRED and produces no NAV rather than reusing a stale rate.",
-    "depeg_pct": "-0.003700",
+    "note": "USDG = Global Dollar. Observed depeg -0.0042%. TTL 24h; on expiry the runner reports QUOTE_EVIDENCE_EXPIRED and produces no NAV rather than reusing a stale rate.",
+    "depeg_pct": "-0.004200",
     "raw_fragment": {
       "global-dollar": {
-        "usd": 0.999963
+        "usd": 0.999958
       }
     }
   },

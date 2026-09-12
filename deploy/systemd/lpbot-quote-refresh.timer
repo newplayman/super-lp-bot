@@ -1,0 +1,10 @@
+[Unit]
+Description=Run LP Bot Robinhood Quote Refresh every 5 minutes
+
+[Timer]
+OnCalendar=*:*/5
+Persistent=true
+AccuracySec=10s
+
+[Install]
+WantedBy=timers.target
