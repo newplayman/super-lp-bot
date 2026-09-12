@@ -1,0 +1,22 @@
+# LPBot 测试依赖(Python,CI + 本地一致)
+#
+# 来源:对 tests/ scripts/ 真做 grep 第三方 import 后固化。
+# - `from Crypto...` => pycryptodome
+# - `from requests...` => requests
+# - `import yaml` / `from yaml...` => pyyaml
+# - `from eth_abi / eth_utils` => eth-abi + eth-utils
+# - `import psycopg2` => psycopg2-binary(运行时为 sqlite,但代码 import 路径在)
+# - `import pytest` / `@pytest.fixture` => pytest
+# - `-n auto` 用到 => pytest-xdist
+#
+# 任何缺漏会在 pytest collection 阶段立即报 No module named <X>。
+# 不要把这个文件当随手最小 pip 列表维护;若 import 加进来,这里也要加。
+
+pytest>=7.4
+pytest-xdist>=3.5
+pycryptodome>=3.20
+requests>=2.32
+pyyaml>=6.0
+eth-abi>=4.2
+eth-utils>=4.2
+psycopg2-binary>=2.9; python_version < "3.13"
