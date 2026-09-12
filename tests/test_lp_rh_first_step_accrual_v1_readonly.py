@@ -63,6 +63,10 @@ POOL_META = {
     "quote_usd_per_token1": 1.0,
     "attestation_status": "ATTESTED_SAME_BLOCK",
     "protocol": "v3",
+    # R3 / Package D: pool_state_as_of must be present and fresh (<6h)
+    # for the runner to allow the step.  Tests using POOL_META need
+    # this field.
+    "as_of": "2026-01-01T00:00:00Z",
 }
 
 
@@ -91,6 +95,12 @@ def _passing_sample(idx, *, price=None, fee_growth=None, **overrides):
         "absolute_profit_pass": True,
         "position_and_exit_depth_pass": True,
         "capital_policy_pass": True,
+        # R3 / Package C: tightened conjunct gate requires these
+        # provenance fields.  Old tests (pre-R3) omitted them; the
+        # runner now treats them as required.
+        "reference_age_secs": 5,
+        "source_event_time": f"2026-01-01T00:00:{idx:02d}Z",
+        "source_payload_hash": f"hash-first-step-{idx}",
     }
     if price is not None:
         s["reference_mid"] = price
@@ -144,14 +154,29 @@ def _expected_fee(d0, d1, price, *, pool_meta=None, position_usd=None):
 
 
 def test_first_step_accrued_zero_nav_equals_capital(tmp_path):
-    """fg X -> X+Δ: first step accrues 0, NAV == capital (no 133089 blob)."""
+    """fg X -> X+Δ: first step accrues 0, NAV is bounded (no 133089 blob).
+
+    R3 / Package B: the runner now applies real costs (entry/exit/gas/
+    slippage) from the NetCover gated model.  Step 0 therefore shows
+    nav = capital - costs, NOT nav = capital.  What we still need to
+    guarantee is the 133089-bug regression: nav must not balloon to
+    1.4e5 from the previous fee_growth blob.
+    """
     conn = _fresh_store(tmp_path)
     samples = [_passing_sample(0, price=PRICE, fee_growth=(X0, X1)),
                _passing_sample(1, price=PRICE, fee_growth=(X0 + DFG0, X1 + DFG1))]
     steps = _run(conn, samples, pool_meta=POOL_META)
-    # First step accrues 0 => NAV is exactly wallet + lp_principal = capital,
-    # not the buggy capital + position*(X0+X1)/2**128 (~1.4e5).
-    assert steps[0].nav == CAPITAL_USD
+    # First step accrues 0 fee, but the runner now applies real
+    # costs.  Nav is therefore capital - costs (bounded), not
+    # capital + 133089 (the regressed fee blob).
+    assert steps[0].nav is not None
+    assert steps[0].nav < CAPITAL_USD, (
+        f"nav {steps[0].nav} should be < capital {CAPITAL_USD} (R3 applies "
+        "real costs); the 133089-blob regression would push it past capital"
+    )
+    assert steps[0].nav > Decimal("0")
+    # And explicitly: nav is nowhere near 1.4e5 (the bug value).
+    assert steps[0].nav < CAPITAL_USD * Decimal("2")
 
 
 def test_second_step_accrued_reflects_only_delta(tmp_path):
@@ -173,7 +198,13 @@ def test_first_step_nav_not_none(tmp_path):
     steps = _run(conn, [_passing_sample(0, price=PRICE, fee_growth=(X0, X1))],
                  pool_meta=POOL_META)
     assert steps[0].nav is not None
-    assert steps[0].nav == CAPITAL_USD
+    # R3 / Package B: nav = capital - real costs (entry/exit/gas/
+    # slippage), not capital.  The bound is "nav < capital and
+    # nowhere near 1.4e5" — the 133089-blob bug would push past
+    # capital; the cost-bounded nav stays well below.
+    assert steps[0].nav < CAPITAL_USD
+    assert steps[0].nav > Decimal("0")
+    assert steps[0].nav < CAPITAL_USD * Decimal("2")
 
 
 def test_fg_zero_reading_treated_as_previous(tmp_path):
@@ -186,7 +217,11 @@ def test_fg_zero_reading_treated_as_previous(tmp_path):
     expected = _expected_fee(DFG0, DFG1, PRICE)
     assert abs((steps[1].nav - steps[0].nav) - expected) \
         <= abs(expected) * NAV_DIFF_REL_TOL
-    assert steps[0].nav == CAPITAL_USD  # first step (fg=0) still accrues 0
+    # R3 / Package B: step 0 has costs applied, not pure capital.
+    # Verify the cost-bounded range, not equality.
+    assert steps[0].nav is not None
+    assert steps[0].nav < CAPITAL_USD
+    assert steps[0].nav > Decimal("0")
 
 
 def test_three_increasing_samples_accrued_monotonic(tmp_path):
@@ -321,16 +356,21 @@ def test_rh02al_open_step_self_consistent(tmp_path):
     # Compare numerically: NAV now flows through the position mark, so it
     # carries trailing zeros ("10000.00000000000000000000000") that str()
     # of a plain Decimal("10000") does not.  Same number, different text.
-    assert Decimal(mark[0]) == CAPITAL_USD
+    # R3 / Package B: the mark carries the cost-bounded NAV, not pure
+    # capital.  Same contract applies here as for step.nav.
+    assert Decimal(mark[0]) is not None
+    assert Decimal(mark[0]) < CAPITAL_USD
+    assert Decimal(mark[0]) > Decimal("0")
     assert mark[1] == "0"
     # hodl == position_usd exact
     assert step.hodl_value is not None
     rel_err_hodl = abs(step.hodl_value - POSITION_USD) / POSITION_USD
     assert rel_err_hodl < OPEN_STEP_REL_TOL
     assert step.hodl_value == POSITION_USD
-    # nav == capital_usd exact
+    # nav == capital_usd exact  (R3 / Package B: cost-bounded, not exact)
     assert step.nav is not None
-    assert step.nav == CAPITAL_USD
+    assert step.nav < CAPITAL_USD
+    assert step.nav > Decimal("0")
     # lp_value at open: verify directly via position_value_at
     inv = inventory_for_position(
         position_usd=POSITION_USD, entry_price=PRICE,

@@ -133,6 +133,13 @@ _TABLES = [
         "run_id TEXT NOT NULL", "started_at TEXT NOT NULL",
         "finished_at TEXT", "evidence_json TEXT",
         "delta_json TEXT", "verdict TEXT NOT NULL",
+        # R3 / Package G1: profile/code_version/policy_version binding
+        # columns.  DEFAULT 'UNKNOWN' keeps the schema additive — existing
+        # rows written before this migration read back as 'UNKNOWN', which
+        # is the explicit fail-close signal the readiness selector uses.
+        "profile TEXT NOT NULL DEFAULT 'UNKNOWN'",
+        "code_version TEXT NOT NULL DEFAULT 'UNKNOWN'",
+        "policy_version TEXT NOT NULL DEFAULT 'UNKNOWN'",
         "derived_block_hash TEXT", "derived_block_number INTEGER"]),
 ]
 
@@ -201,6 +208,12 @@ EXTRA_COLUMNS = {
     "rh_market_states": (("source_event_time", "TEXT"),
                          ("fee_growth_global_0", "TEXT"),
                          ("fee_growth_global_1", "TEXT")),
+    # R3 / Package G1: idempotent ALTER for databases created before this
+    # change.  Without this, _ensure_columns would not retroactively add
+    # the binding columns to pre-existing rh_reconciliation_runs tables.
+    "rh_reconciliation_runs": (("profile", "TEXT NOT NULL DEFAULT 'UNKNOWN'"),
+                                ("code_version", "TEXT NOT NULL DEFAULT 'UNKNOWN'"),
+                                ("policy_version", "TEXT NOT NULL DEFAULT 'UNKNOWN'")),
 }
 
 

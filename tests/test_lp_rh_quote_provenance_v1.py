@@ -76,6 +76,10 @@ def _passing_sample(idx, *, price=PRICE, fee_growth=(X0, X1), sample_time=None, 
         s["reference_mid"] = price
     if fee_growth is not None:
         s["fee_growth_global_0"], s["fee_growth_global_1"] = fee_growth
+    # R3 / Package C conjunct fields
+    s["reference_age_secs"] = 5
+    s["source_event_time"] = s_time
+    s["source_payload_hash"] = f"hash-quote-provenance-{idx}"
     s.update(overrides)
     return s
 
@@ -88,6 +92,8 @@ def _base_meta(**overrides):
         "dec1": 6,
         "attestation_status": "ATTESTED_SAME_BLOCK",
         "protocol": "v3",
+        # R3 / Package D: pool_meta must carry as_of.
+        "as_of": "2026-01-01T00:00:00Z",
     }
     m.update(overrides)
     return m

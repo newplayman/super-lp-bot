@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 import bisect
 import json
+import os
 import re
 import subprocess
 import sys
@@ -37,6 +38,34 @@ from scripts.lp_rh_column_health_v1_readonly import (  # noqa: E402
     column_stats)
 from scripts.lp_rh_synthetic_evidence_v1 import (  # noqa: E402
     ATTESTED_CODE_PATHS)
+from scripts.lp_rh_bucket_ledger_v1_readonly import POLICY_ID  # noqa: E402
+
+
+def _resolve_current_code_version() -> str:
+    """Best-effort git HEAD SHA for the current checkout.
+
+    R3 / Package G3: graduation evidence is now bound to a specific code
+    version.  CI overrides via ``LPBOT_CURRENT_CODE_VERSION``; locally we
+    try ``git rev-parse HEAD`` and fall back to ``UNKNOWN`` when the
+    checkout is not a git working tree.
+    """
+    env = os.environ.get("LPBOT_CURRENT_CODE_VERSION")
+    if env:
+        return env
+    try:
+        out = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"],
+            cwd=str(REPO_ROOT), stderr=subprocess.DEVNULL, timeout=5,
+        ).decode("utf-8").strip()
+        if out:
+            return out
+    except Exception:
+        pass
+    return "UNKNOWN"
+
+
+CURRENT_CODE_VERSION = _resolve_current_code_version()
+CURRENT_POLICY_VERSION = POLICY_ID
 
 # PRD §21 graduation thresholds.
 STAGE_A_MIN_HOURS = 72
@@ -1058,11 +1087,16 @@ def audit_weekends_covered(conn, *, asset_address, interval_secs=15) -> dict:
                 # Single isolated day without multi-day continuity requires full 86,400s calendar day
                 expected = 86400.0 / interval
             elif day == first_day:
+                # R3 / Package F: partial first day counts ONLY the seconds
+                # actually captured, not the 21,600s (6h) compromise that
+                # 6fda329 carried forward.  With a 12h capture window the
+                # first day was being scored as a complete day; that let
+                # 6h of pre-noon samples declare a full weekend day.
                 span_secs = (_day_start(day + timedelta(days=1), times[0].tzinfo) - times[0]).total_seconds()
-                expected = max(span_secs / interval, 21600.0 / interval)
+                expected = span_secs / interval
             elif day == last_day:
                 span_secs = (times[-1] - _day_start(day, times[-1].tzinfo)).total_seconds()
-                expected = max(span_secs / interval, 21600.0 / interval)
+                expected = span_secs / interval
             else:
                 span_secs = 86400.0
                 expected = 86400.0 / interval
@@ -1163,7 +1197,15 @@ def audit_unexplained_ledger_diffs(conn) -> dict:
 
 
 def select_graduation_reconciliation_evidence(conn, *, profile="CORE", code_version=None, policy_version=None, window_start=None) -> dict:
-    """Select and audit reconciliation runs bound to specific profile, code version, policy, and frozen window (RH-07-FIX-C / R2-05)."""
+    """Select and audit reconciliation runs bound to specific profile, code
+    version, policy, and frozen window (RH-07-FIX-C / R2-05 + R3 / Package G2).
+
+    R3 change: the profile / code_version / policy_version bind columns are
+    REQUIRED.  When the caller asks for any of them and the live schema
+    lacks the column, the selector returns ``SCHEMA_BINDING_MISSING``
+    rather than silently dropping the filter (which would let an old PASS
+    run be selected by a new code version).
+    """
     tbls = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
     if "rh_reconciliation_runs" not in tbls:
         return {"runs_examined": 0, "status": "MISSING", "reconciliation_blocker": "RECONCILIATION_EVIDENCE_MISSING"}
@@ -1173,19 +1215,38 @@ def select_graduation_reconciliation_evidence(conn, *, profile="CORE", code_vers
     if not vcol:
         return {"runs_examined": 0, "status": "MISSING", "reconciliation_blocker": "RECONCILIATION_EVIDENCE_MISSING"}
 
+    # R3 / Package G2: fail-close on missing binding columns.  A selector
+    # that silently drops ``WHERE profile = ?`` because the column does
+    # not exist would let an old PASS run satisfy a new profile/code/policy
+    # and re-promote frozen evidence.  That is the regression the re-audit
+    # pointed out.
+    required_bindings = []
+    if profile:
+        required_bindings.append(("profile", profile))
+    if code_version:
+        required_bindings.append(("code_version", code_version))
+    if policy_version:
+        required_bindings.append(("policy_version", policy_version))
+    for col, value in required_bindings:
+        if col not in rcols:
+            return {"runs_examined": 0,
+                    "status": "SCHEMA_BINDING_MISSING",
+                    "missing_column": col,
+                    "reconciliation_blocker": f"RECONCILIATION_SCHEMA_BINDING_MISSING:{col}"}
+
     query = f"SELECT {vcol} FROM rh_reconciliation_runs"
     params = []
     where_clauses = []
     if window_start and "started_at" in rcols:
         where_clauses.append("started_at >= ?")
         params.append(window_start)
-    if profile and "profile" in rcols:
+    if profile:
         where_clauses.append("profile = ?")
         params.append(profile)
-    if code_version and "code_version" in rcols:
+    if code_version:
         where_clauses.append("code_version = ?")
         params.append(code_version)
-    if policy_version and "policy_version" in rcols:
+    if policy_version:
         where_clauses.append("policy_version = ?")
         params.append(policy_version)
 
@@ -1683,10 +1744,19 @@ def _build_state(conn, db_path: str, interval_secs: float, asset_address: str,
                     effective_days_covered = sum(1 for d in wk["days"] if d.get("complete"))
             state["effective_days_covered"] = effective_days_covered
 
-            # R2-05: Use bound reconciliation evidence selector
+            # R2-05 + R3 / Package G3: bind the selector to the current
+            # code and policy version.  Previously the call passed only
+            # ``profile="CORE"``; the missing code_version / policy_version
+            # filters were silently dropped by the live selector because
+            # the schema lacked the columns, which let old PASS runs
+            # satisfy new graduation windows.
             win_start = judgment_window.get("window_start") if judgment_window else None
             recon_audit = select_graduation_reconciliation_evidence(
-                conn, profile="CORE", window_start=win_start,
+                conn,
+                profile="CORE",
+                code_version=CURRENT_CODE_VERSION,
+                policy_version=CURRENT_POLICY_VERSION,
+                window_start=win_start,
             )
             reconciliation_blocker = recon_audit.get("reconciliation_blocker")
             state["reconciliation_audit"] = recon_audit

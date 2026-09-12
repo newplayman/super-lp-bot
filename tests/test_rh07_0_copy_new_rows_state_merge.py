@@ -39,6 +39,10 @@ def _sample(idx, sample_time):
         "reference_mid": Decimal("1.0"),
         "fee_growth_global_0": 1000000000000 + idx * 1000000000000,
         "fee_growth_global_1": 2000000000000 + idx * 2000000000000,
+        # R3 / Package C conjunct fields
+        "reference_age_secs": 5,
+        "source_event_time": "2026-09-08T17:59:55Z",
+        "source_payload_hash": f"hash-rh07-0-merge-{idx}",
     }
 
 
@@ -78,6 +82,10 @@ def test_rh07_0_copy_new_rows_merges_released_reservation(tmp_path):
         "dec0": 18,
         "dec1": 6,
         "range_pct": Decimal("5.0"),
+        # R3 / Package D: pool_meta must carry as_of for the conjunct
+        # gate to allow the sample.
+        "as_of": NOW,
+        "attestation_status": "ATTESTED_SAME_BLOCK",
         "quote_usd_per_token1": {
             "value": "1.0",
             "source": "coingecko:test",

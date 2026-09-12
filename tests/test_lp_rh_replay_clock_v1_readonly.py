@@ -67,12 +67,14 @@ def _replay_sample(idx, *, sample_time, source_event_time, **overrides):
     return s
 
 
-def _run(conn, samples, *, episode="ep", now="2026-09-08T19:00:00Z"):
+def _run(conn, samples, *, episode="ep", now="2026-09-08T19:00:00Z",
+         pool_meta=None):
     return run_episode(
         conn, strategy_episode=episode, samples=samples,
         position_usd=POSITION_USD, horizon_hours=HORIZON_HOURS,
         capital_usd=CAPITAL_USD, target_mode="SHADOW_SCENARIO",
         now_fn=lambda: now,
+        pool_meta=pool_meta if pool_meta is not None else _DEFAULT_POOL_META,
     )
 
 
@@ -84,7 +86,12 @@ def _fresh(tmp_path):
 
 _GATED = {"fee_ev_usd": "40", "entry_cost_usd": "1",
           "exit_cost_usd": "1", "gas_usd": "0.02"}
-_META = {"attestation_status": "ATTESTED_SAME_BLOCK", "protocol": "v3"}
+# R3 / Package D: pool_meta must carry as_of and attestation; conjunct
+# gate refuses samples with as-of-unknown evidence.
+_META = {"attestation_status": "ATTESTED_SAME_BLOCK", "protocol": "v3",
+         "as_of": "2026-09-08T18:00:00Z", "dec0": 18, "dec1": 6,
+         "range_pct": 10.0, "pool_address": "0xpool-replay-clock"}
+_DEFAULT_POOL_META = _META
 
 
 # 1. RTH sample, source 2s before sample_time, wall clock 1h later: PASSES.
@@ -187,7 +194,11 @@ def test_200_samples_spanning_one_hour_all_pass(tmp_path):
     for i in range(200):
         t = (start + timedelta(seconds=i * 18)).isoformat().replace("+00:00", "Z")
         samples.append(_replay_sample(i, sample_time=t, source_event_time=t))
-    steps = _run(conn, samples, now="2026-09-08T19:00:00Z")
+    # R3 / Package D: pool_meta.as_of must align with the sample window
+    # (samples start at 17:00, so as_of must be ≤ 17:00 to avoid
+    # POOL_STATE_AS_OF_IN_FUTURE).
+    pm = dict(_DEFAULT_POOL_META, as_of="2026-09-08T17:00:00Z")
+    steps = _run(conn, samples, now="2026-09-08T19:00:00Z", pool_meta=pm)
     assert len(steps) == 200 and all(s.terminal_eligible for s in steps)
     conn.close()
 
@@ -225,7 +236,9 @@ def test_multiple_samples_each_judged_at_own_time(tmp_path):
         _replay_sample(1, sample_time="2026-09-08T18:30:00Z", source_event_time="2026-09-08T18:29:58Z"),
         _replay_sample(2, sample_time="2026-09-08T15:59:00Z", source_event_time="2026-09-08T15:58:58Z"),
     ]
-    steps = _run(conn, samples, now="2026-09-08T20:00:00Z")
+    # R3 / Package D: as_of must pre-date the earliest sample (15:59).
+    pm = dict(_DEFAULT_POOL_META, as_of="2026-09-08T15:00:00Z")
+    steps = _run(conn, samples, now="2026-09-08T20:00:00Z", pool_meta=pm)
     assert len(steps) == 3 and all(s.terminal_eligible for s in steps)
     conn.close()
 

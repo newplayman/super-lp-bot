@@ -226,7 +226,12 @@ def compute_liquidation_nav(
         sqrt_p = px.sqrt()
 
         scale_factor = (Decimal(10) ** dec0 * Decimal(10) ** dec1).sqrt()
-        l_human = l / scale_factor if l >= scale_factor else l
+        # R3 / Package E: unit contract is fixed — ``l`` is always raw
+        # liquidity (Q128.128 integer).  The previous threshold branch
+        # (``l / scale_factor if l >= scale_factor else l``) silently passed
+        # small ``l`` through as raw and amplified by ~1e12 for small
+        # principals.  Reject the unit mismatch instead of papering over it.
+        l_human = l / scale_factor
 
         if px <= lower_p:
             amt0 = l_human * (sqrt_pb - sqrt_pa) / (sqrt_pa * sqrt_pb)

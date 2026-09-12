@@ -30,29 +30,56 @@ jobs:
           GITHUB_HEAD_SHA: ${{ github.sha }}
         run: |
           cd ${{ github.workspace }}
-          python tools/audit_repro/audit_repro.py \
+          python3 tools/audit_repro/audit_repro.py \
             --repo "$GITHUB_WORKSPACE" \
             --allow-other-head \
             --json-out audit_results.json
           cat audit_results.json
+      # The assert step writes its Python body to a file via a single-quoted
+      # heredoc so YAML indentation in the block scalar never affects the
+      # parsed Python.  GITHUB_HEAD_SHA is passed via the step env (each step
+      # has its own env scope; it does NOT inherit from the prior step).
       - name: Assert mode, HEAD, and zero defects
+        env:
+          GITHUB_HEAD_SHA: ${{ github.sha }}
         run: |
-          python -c "
-import json, os, subprocess
-d = json.load(open('audit_results.json'))
-src = d.get('source', {})
-mode = src.get('mode')
-head = src.get('head')
-expected_head = os.environ['GITHUB_HEAD_SHA']
-defects = d.get('defects_reproduced', -1)
-probe_errors = d.get('probe_errors', -1)
+          cat > /tmp/assert_audit_repro.py <<'PYEOF'
+          import json
+          import os
+          import sys
 
-assert mode == 'AST_EXTRACTED_CHECKOUT_FUNCTIONS_WITH_TEST_SHIMS', \
-    f'CI ran wrong mode: {mode} (want AST_EXTRACTED_CHECKOUT_FUNCTIONS_WITH_TEST_SHIMS). ' \
-    f'Missing --repo is the typical cause; default is REDUCED_REFERENCE_MODEL pinned to old commit.'
-assert head == expected_head, \
-    f'AST head {head} != github.sha {expected_head}; --allow-other-head is required when HEAD != PIN'
-assert probe_errors == 0, f'probe_errors={probe_errors}'
-assert defects == 0, f'defects_reproduced={defects}; audit findings regressed'
-print(f'OK: mode={mode}, head={head[:12]}, defects={defects}')
-"
+          with open("audit_results.json", "r", encoding="utf-8") as fh:
+              d = json.load(fh)
+
+          src = d.get("source", {}) or {}
+          mode = src.get("mode")
+          head = src.get("head")
+          expected_head = os.environ.get("GITHUB_HEAD_SHA", "")
+          defects = d.get("defects_reproduced", -1)
+          probe_errors = d.get("probe_errors", -1)
+
+          if mode != "AST_EXTRACTED_CHECKOUT_FUNCTIONS_WITH_TEST_SHIMS":
+              sys.stderr.write(
+                  "FAIL: audit_repro ran in mode %r, "
+                  "expected AST_EXTRACTED_CHECKOUT_FUNCTIONS_WITH_TEST_SHIMS. "
+                  "Common cause: --repo / --allow-other-head missing.\n" % mode
+              )
+              sys.exit(2)
+          if not expected_head or head != expected_head:
+              sys.stderr.write(
+                  "FAIL: AST head %r != github.sha %r; "
+                  "--allow-other-head is required when HEAD != PIN.\n"
+                  % (head, expected_head)
+              )
+              sys.exit(2)
+          if probe_errors != 0:
+              sys.stderr.write("FAIL: probe_errors=%d\n" % probe_errors)
+              sys.exit(2)
+          if defects != 0:
+              sys.stderr.write(
+                  "FAIL: defects_reproduced=%d; audit findings regressed.\n" % defects
+              )
+              sys.exit(2)
+          print("OK: mode=%s head=%s defects=%d" % (mode, (head or "")[:12], defects))
+          PYEOF
+          python3 /tmp/assert_audit_repro.py

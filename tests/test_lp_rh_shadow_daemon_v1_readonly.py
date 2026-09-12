@@ -38,10 +38,20 @@ NOW = "2026-01-01T00:00:00Z"
 
 
 def _cfg(live_db, pool=POOL):
+    # R3 / Package D: pool_meta must carry as_of and attestation; tests
+    # default to a fresh window.  Tests that need a different window
+    # override ``cfg["pool_meta"]`` after calling _cfg.
+    default_pool_meta = {
+        "as_of": "2026-09-08T17:59:55Z",
+        "attestation_status": "ATTESTED_SAME_BLOCK",
+        "protocol": "v3",
+        "dec0": 18, "dec1": 6, "range_pct": 10.0,
+        "pool_address": "0xpool-shadow-daemon",
+    }
     return {"live_db": live_db, "pool": pool, "samples": 20,
             "position_usd": POSITION_USD, "capital_usd": CAPITAL_USD,
             "horizon_hours": HORIZON_HOURS, "target_mode": "SHADOW_SCENARIO",
-            "pool_meta": None, "pool_meta_hash": "h"}
+            "pool_meta": default_pool_meta, "pool_meta_hash": "h"}
 
 
 def _insert_minimal_sample(conn, pool, sample_time, *, session="ASIA", mid="1.0"):
@@ -690,6 +700,10 @@ def _daemon_passing_sample(idx=0, pool=POOL, sample_time=NOW):
         "position_and_exit_depth_pass": True,
         "capital_policy_pass": True,
         "reference_mid": Decimal("1.0"),
+        # R3 / Package C conjunct fields
+        "reference_age_secs": 5,
+        "source_event_time": "2026-09-08T17:59:55Z",
+        "source_payload_hash": f"hash-shadow-{idx}",
     }
 
 

@@ -115,8 +115,13 @@ def test_liquidation_nav_fail_close_on_missing_fee_growth():
 
 def test_liquidation_nav_valid_calculation():
     """compute_liquidation_nav calculates conservative exit value deducting slippage cap."""
+    # R3 / Package E: l_pos is the raw liquidity value, in the
+    # same unit scale the runner produces via inventory_for_position.
+    # For (dec0=18, dec1=6), a position of ~1000 USD worth of
+    # token1 at price 2500 produces l_raw ~ 1e15.  Using l_pos=1e15
+    # exercises the raw-unit contract end-to-end.
     res = compute_liquidation_nav(
-        l_pos=Decimal("1000000"),
+        l_pos=Decimal("1000000000000000"),  # 1e15
         price=Decimal("2500"),
         range=(Decimal("2400"), Decimal("2600")),
         fee_growth_0=Decimal("1000"),

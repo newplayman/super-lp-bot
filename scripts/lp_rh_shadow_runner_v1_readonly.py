@@ -968,8 +968,13 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
                 step_pool_age_secs = (st_dt - as_of_dt).total_seconds()
 
         pool_state_fault = False
+        # R3 / Package D: as-of unknown must ALSO set pool_state_fault=True.
+        # The 6fda329 code only appended a reason and let the step stay
+        # eligible, which meant any replay where the pool_meta.as_of was
+        # missing would silently produce "fresh-enough" evidence.
         if pool_state_as_of is None or step_pool_age_secs is None:
             step_reasons.append("POOL_STATE_AS_OF_UNAVAILABLE")
+            pool_state_fault = True
         elif step_pool_age_secs < 0:
             step_reasons.append(f"POOL_STATE_AS_OF_IN_FUTURE:{int(abs(step_pool_age_secs))}")
             pool_state_fault = True
@@ -996,12 +1001,17 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
         eligible = bool(decision.terminal_eligible)
         simulated = bool(decision.simulated_policy_only)
 
-        # RH-07-FIX-C / R2-06: Pool state stale or future blocks new simulated positions
-        if pool_state_fault and (target_mode == "LIVE_READINESS" or effective_pool_meta.get("enforce_pool_state_freshness") or sample.get("enforce_pool_state_freshness")):
+        # R3 / Package D: any pool_state_fault (stale / future / unknown) must
+        # block new simulated positions by default.  The 6fda329 code only
+        # blocked when target_mode was LIVE_READINESS OR an explicit
+        # enforce_pool_state_freshness flag was set; that meant SHADOW_SCENARIO
+        # with no flag silently accepted as-of-unknown evidence.
+        if pool_state_fault:
             eligible = False
             simulated = False
             decision.terminal_eligible = False
             decision.simulated_policy_only = False
+            step_reasons.append("POOL_STATE_FRESHNESS_BLOCKED")
             if decision.dominant_blocker is None and step_reasons:
                 decision.dominant_blocker = step_reasons[0]
 
@@ -1036,7 +1046,15 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
             allow_bare_quote=allow_bare_quote,
         )
 
-        # RH-07-FIX-C / R2-02: On the grant step (position_open is True),
+        # R3 / Package C: the open lifecycle must cache inventory / range /
+        # fee-growth baseline ONLY on the grant step (position_open=True AND
+        # granted=True).  The 6fda329 condition `if not open_resolved and
+        # price > 0` fired on the first step with any positive price, even
+        # when the reservation was rejected — that let pre-grant prices
+        # prime the position state (entry_price, range, inventory, ticks).
+        # ``open_valid`` is still set whenever inventory is computable, so
+        # the cash-valuation path works for pre-grant steps; only the
+        # cache mutation is gated.
         if not open_resolved and price is not None and price > 0:
             open_resolved = True
             if pool_meta is not None and "range_pct" in pool_meta:
@@ -1067,6 +1085,46 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
                             quote_usd_per_token1=step_quote_val,
                         )
                         scale = (Decimal(10) ** d0 * Decimal(10) ** d1).sqrt()
+                        open_valid = True
+                        # Cache only on grant step.  See the second binding
+                        # block below for the case where position_open was
+                        # already True before this block ran.
+                    else:
+                        open_fail_reason = open_fail_reason or "RANGE_OR_INPUTS_INVALID"
+                except (TypeError, ValueError, InvalidOperation):
+                    open_valid = False
+            else:
+                open_valid = False
+                open_fail_reason = "RANGE_PCT_MISSING"
+
+        # R3 / Package C: when the reservation was granted at THIS step, we
+        # may not have entered the open_lifecycle block above (e.g. because
+        # open_resolved was already True from an earlier rejected step).
+        # Bind the cache now — exclusively on the grant step.  The 6fda329
+        # bug was binding on the first positive-price step regardless of
+        # grant; this is the regressed fix.
+        if position_open and granted and entry_price is None \
+                and price is not None and price > 0 \
+                and pool_meta is not None and "range_pct" in pool_meta \
+                and step_quote_val is not None and step_quote_val > 0:
+            try:
+                r_pct = Decimal(str(pool_meta["range_pct"]))
+                d0_raw = pool_meta.get("dec0", pool_meta.get("token0_decimals", sample.get("dec0")))
+                d1_raw = pool_meta.get("dec1", pool_meta.get("token1_decimals", sample.get("dec1")))
+                if d0_raw is not None and d1_raw is not None:
+                    d0 = int(d0_raw)
+                    d1 = int(d1_raw)
+                    p_usd = Decimal(str(position_usd))
+                    if r_pct > 0 and r_pct < 100 and d0 >= 0 and d1 >= 0 and p_usd > 0:
+                        inv = inventory_for_position(
+                            position_usd=p_usd,
+                            entry_price=price,
+                            range_pct=r_pct,
+                            dec0=d0,
+                            dec1=d1,
+                            quote_usd_per_token1=step_quote_val,
+                        )
+                        scale = (Decimal(10) ** d0 * Decimal(10) ** d1).sqrt()
                         entry_price = price
                         range_pct_val = r_pct
                         dec0_val = d0
@@ -1076,7 +1134,6 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
                         amount1_human = inv.amount1_human
                         liquidity_human = inv.liquidity_raw / scale
                         l_pos = inv.liquidity_raw
-                        open_valid = True
                         inv_cached = inv
                         p_lower = price * (Decimal(1) - r_pct / Decimal(100))
                         p_upper = price * (Decimal(1) + r_pct / Decimal(100))
@@ -1084,13 +1141,8 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
                         t_b = tick_from_price(p_upper, dec0=d0, dec1=d1)
                         tick_lower = min(t_a, t_b)
                         tick_upper = max(t_a, t_b)
-                    else:
-                        open_fail_reason = open_fail_reason or "RANGE_OR_INPUTS_INVALID"
-                except (TypeError, ValueError, InvalidOperation):
-                    open_valid = False
-            else:
-                open_valid = False
-                open_fail_reason = "RANGE_PCT_MISSING"
+            except (TypeError, ValueError, InvalidOperation):
+                pass
 
         step_in_range: Optional[bool] = None
         if price is not None and tick_lower is not None and tick_upper is not None:
@@ -1169,16 +1221,23 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
                 injected_gas = sample.get("gas_usd") if sample.get("gas_usd") is not None else effective_pool_meta.get("gas_usd")
                 injected_slippage = sample.get("slippage_usd") if sample.get("slippage_usd") is not None else effective_pool_meta.get("slippage_usd")
 
-                if target_mode == "LIVE_READINESS" or injected_entry is not None or injected_exit is not None:
-                    entry_cost = Decimal(str(injected_entry if injected_entry is not None else (gated.get("entry_cost_usd") or 0)))
-                    exit_cost = Decimal(str(injected_exit if injected_exit is not None else (gated.get("exit_cost_usd") or 0)))
-                    gas_cost = Decimal(str(injected_gas if injected_gas is not None else (gated.get("gas_usd") or 0)))
-                    slippage_cost = Decimal(str(injected_slippage if injected_slippage is not None else (gated.get("slippage_usd") or 0)))
-                else:
-                    entry_cost = Decimal(0)
-                    exit_cost = Decimal(0)
-                    gas_cost = Decimal(0)
-                    slippage_cost = Decimal(0)
+                # R3 / Package B: drop the LIVE_READINESS gate and the all-zero
+                # else branch.  Costs always come from the NetCover model output
+                # (``gated``); per-sample overrides win when present.  Defaulting
+                # SHADOW_SCENARIO to zero cost was a real bug — it let any
+                # shadow episode silently report zero transaction cost.
+                entry_cost = Decimal(str(gated.get("entry_cost_usd") or 0))
+                exit_cost = Decimal(str(gated.get("exit_cost_usd") or 0))
+                gas_cost = Decimal(str(gated.get("gas_usd") or 0))
+                slippage_cost = Decimal(str(gated.get("slippage_usd") or 0))
+                if injected_entry is not None:
+                    entry_cost = Decimal(str(injected_entry))
+                if injected_exit is not None:
+                    exit_cost = Decimal(str(injected_exit))
+                if injected_gas is not None:
+                    gas_cost = Decimal(str(injected_gas))
+                if injected_slippage is not None:
+                    slippage_cost = Decimal(str(injected_slippage))
 
                 wallet_cash = Decimal(str(capital_usd)) - Decimal(str(position_usd))
 
@@ -1227,7 +1286,9 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
             prev_nav = nav
 
         hodl_value: Optional[Decimal] = None
-        if position_open and open_valid and price is not None and step_quote_val is not None:
+        if (position_open and open_valid and price is not None
+                and step_quote_val is not None
+                and amount0_human is not None and amount1_human is not None):
             hodl_value = amount0_human * price * step_quote_val + amount1_human * step_quote_val
 
         insert_row(conn, "rh_gate_decisions", {
@@ -1616,7 +1677,7 @@ def _conjunct_failure_counts(steps) -> dict:
     return dict(sorted(counts.items(), key=lambda kv: (-kv[1], kv[0])))
 
 
-def episode_summary(steps: Sequence[ShadowStep], *, load_skipped: int = 0, pool_meta: Optional[dict] = None) -> dict:
+def episode_summary(steps: Sequence[ShadowStep], *, load_skipped: int = 0, pool_meta: Optional[dict] = None, capital_usd=None) -> dict:
     """Aggregate an episode into the RH-04b summary dict."""
     status_counts: dict[str, int] = {}
     blocker_counts: dict[str, int] = {}
@@ -1635,17 +1696,26 @@ def episode_summary(steps: Sequence[ShadowStep], *, load_skipped: int = 0, pool_
         valid_steps = [s for s in steps if s.nav is not None]
 
     window_reason: Optional[str] = None
+    # R3 / Package B': the PnL window must start at the pre-trade capital,
+    # not at the first observed step's NAV.  When all observed steps have
+    # NAV == capital - entry_cost (cost already baked in), using the first
+    # observed NAV as nav_start cancels the entry cost out of the PnL
+    # window and reports zero net_pnl for an episode that actually lost
+    # money on round-trip cost.
+    nav_start_capital = (
+        Decimal(str(capital_usd)) if capital_usd is not None else None
+    )
     if len(valid_steps) >= 2:
         start_step = valid_steps[0]
         end_step = valid_steps[-1]
-        nav_start = start_step.nav
+        nav_start = nav_start_capital if nav_start_capital is not None else start_step.nav
         nav_end = end_step.nav
         net_pnl_val = net_pnl(nav_end, nav_start, Decimal(0))
         hodl_delta = (end_step.hodl_value - start_step.hodl_value) if has_hodl else None
         window_start_time = start_step.sample_time
         window_end_time = end_step.sample_time
     elif len(valid_steps) == 1:
-        nav_start = valid_steps[0].nav
+        nav_start = nav_start_capital if nav_start_capital is not None else valid_steps[0].nav
         nav_end = valid_steps[0].nav
         net_pnl_val = None
         hodl_delta = None
@@ -1653,7 +1723,7 @@ def episode_summary(steps: Sequence[ShadowStep], *, load_skipped: int = 0, pool_
         window_end_time = valid_steps[0].sample_time
         window_reason = "INSUFFICIENT_OVERLAPPING_STEPS"
     else:
-        nav_start = None
+        nav_start = nav_start_capital
         nav_end = None
         net_pnl_val = None
         hodl_delta = None
@@ -1832,7 +1902,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     payload = {"target_mode": a.target_mode, "pool": a.pool, "strategy_episode": ep,
                "steps": [asdict(s) for s in steps],
-               "summary": episode_summary(steps, load_skipped=load_skipped, pool_meta=pool_meta)}
+               "summary": episode_summary(steps, load_skipped=load_skipped,
+                                          pool_meta=pool_meta, capital_usd=capital_usd)}
     out_text = json.dumps(payload, indent=2, default=str)
     if a.out:
         Path(a.out).write_text(out_text)

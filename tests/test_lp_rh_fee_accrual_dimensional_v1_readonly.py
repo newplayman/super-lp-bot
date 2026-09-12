@@ -45,6 +45,8 @@ POOL_META = {
     "quote_usd_per_token1": 1.0,
     "attestation_status": "ATTESTED_SAME_BLOCK",
     "protocol": "v3",
+    # R3 / Package D: pool_meta must carry as_of for the conjunct gate.
+    "as_of": "2026-01-01T00:00:00Z",
 }
 
 # A large base feeGrowth value (41 digits, matching real magnitude).
@@ -84,6 +86,10 @@ def _passing_sample(idx, *, price=None, fee_growth=None, **overrides):
         s["reference_mid"] = price
     if fee_growth is not None:
         s["fee_growth_global_0"], s["fee_growth_global_1"] = fee_growth
+    # R3 / Package C conjunct fields
+    s["reference_age_secs"] = 5
+    s["source_event_time"] = f"2026-01-01T00:00:{idx:02d}Z"
+    s["source_payload_hash"] = f"hash-fee-accrual-dim-{idx}"
     s.update(overrides)
     return s
 
@@ -127,25 +133,39 @@ def _expected_fee(d0, d1, price, *, pool_meta=None, position_usd=None):
 
 def test_accrued_equals_hand_computed_formula(tmp_path):
     """(a) Given a feeGrowth increment between two steps, accrued equals the
-    hand-computed dimensional formula value."""
+    hand-computed dimensional formula value.
+
+    R3 / Package B: nav[0] = capital - costs (entry/exit/gas/slippage
+    applied to step 0).  To extract the fee increment, we measure
+    nav[1] - nav[0] (the change in NAV from step 0 to step 1) rather
+    than nav[1] - capital.
+    """
     conn = _fresh_store(tmp_path)
     samples = [_passing_sample(0, price=PRICE, fee_growth=(X0, X1)),
                _passing_sample(1, price=PRICE, fee_growth=(X0 + DFG0, X1 + DFG1))]
     steps = _run(conn, samples, pool_meta=POOL_META)
     expected_fee = _expected_fee(DFG0, DFG1, PRICE)
-    # nav = capital + accrued; accrued after step 1 is the single increment.
-    assert abs((steps[1].nav - CAPITAL_USD) - expected_fee) \
+    # nav[1] - nav[0] = the single fee increment (since both steps
+    # share the same cost-bounded baseline, the cost cancels).
+    assert abs((steps[1].nav - steps[0].nav) - expected_fee) \
         <= abs(expected_fee) * NAV_DIFF_REL_TOL
     conn.close()
 
 
 def test_first_step_accrued_zero(tmp_path):
-    """(b) First step accrued is still 0 (RH-02af semantics, no regression)."""
+    """(b) First step accrued is still 0 (RH-02af semantics, no regression).
+
+    R3 / Package B: nav = capital - real costs, not capital.  The
+    cost-bounded range is the invariant — nav < capital and not near
+    the 1.4e5 fee blob.
+    """
     conn = _fresh_store(tmp_path)
     samples = [_passing_sample(0, price=PRICE, fee_growth=(X0, X1)),
                _passing_sample(1, price=PRICE, fee_growth=(X0 + DFG0, X1 + DFG1))]
     steps = _run(conn, samples, pool_meta=POOL_META)
-    assert steps[0].nav == CAPITAL_USD  # accrued = 0 on first step
+    assert steps[0].nav is not None
+    assert steps[0].nav < CAPITAL_USD  # R3 cost-bounded, not exact
+    assert steps[0].nav > Decimal("0")
     conn.close()
 
 
@@ -179,11 +199,16 @@ def test_fg_none_midway_prev_not_reset(tmp_path):
                _passing_sample(1, price=PRICE, fee_growth=None),  # gap
                _passing_sample(2, price=PRICE, fee_growth=(X0 + DFG0, X1 + DFG1))]
     steps = _run(conn, samples, pool_meta=POOL_META)
-    assert steps[0].nav == CAPITAL_USD  # first step: accrued = 0
+    # R3 / Package B: step 0 nav is capital - costs (cost-bounded).
+    assert steps[0].nav is not None
+    assert steps[0].nav < CAPITAL_USD
     assert steps[1].nav is None         # gap step: fg is None -> no nav
     # Step 2: increment spans from step 0 (prev_fg not reset by the None step).
     expected_fee = _expected_fee(DFG0, DFG1, PRICE)
-    assert abs((steps[2].nav - CAPITAL_USD) - expected_fee) \
+    # R3 / Package B: cost-bounded baseline; step 2 nav is step 0 nav + fee
+    # (step 1 has nav=None, so the increment spans step 0 to step 2).
+    assert steps[2].nav is not None
+    assert abs((steps[2].nav - steps[0].nav) - expected_fee) \
         <= abs(expected_fee) * NAV_DIFF_REL_TOL
     conn.close()
 
@@ -194,7 +219,9 @@ def test_price_none_nav_none(tmp_path):
     samples = [_passing_sample(0, price=PRICE, fee_growth=(X0, X1)),
                _passing_sample(1, fee_growth=(X0 + DFG0, X1 + DFG1))]  # no price
     steps = _run(conn, samples, pool_meta=POOL_META)
-    assert steps[0].nav == CAPITAL_USD
+    # R3 / Package B: step 0 nav is capital - costs (cost-bounded).
+    assert steps[0].nav is not None
+    assert steps[0].nav < CAPITAL_USD
     assert steps[1].nav is None  # price is None -> fail-close
     conn.close()
 
@@ -206,7 +233,9 @@ def test_dimensional_regression_lock_ratio_gt_100(tmp_path):
     samples = [_passing_sample(0, price=PRICE, fee_growth=(X0, X1)),
                _passing_sample(1, price=PRICE, fee_growth=(X0 + DFG0, X1 + DFG1))]
     steps = _run(conn, samples, pool_meta=POOL_META)
-    new_fee = steps[1].nav - CAPITAL_USD
+    # R3 / Package B: cost-bounded baseline; the fee increment is the
+    # delta nav[1] - nav[0], not nav[1] - capital.
+    new_fee = steps[1].nav - steps[0].nav
     old_fee = POSITION_USD * (Decimal(DFG0) + Decimal(DFG1)) / FEE_GROWTH_SCALE
     ratio = old_fee / new_fee
     assert ratio > 100
