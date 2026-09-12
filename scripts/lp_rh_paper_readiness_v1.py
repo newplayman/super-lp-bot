@@ -3,6 +3,13 @@
 Provides compute_paper_readiness() aggregating 16 concrete Paper-technical gates.
 Each gate is a pure function returning:
   {"pass": bool, "evidence": dict, "reason": str | None}
+
+Verdict rules:
+  - "PASS" iff all REQUIRED gates have pass=True AND no REQUIRED gate carries an
+    UNKNOWN-class reason (UNKNOWN/UNOBSERVED/NOT_DETERMINABLE/HEAD_MISMATCH/...
+    /FILE_MISSING/PARSE_ERROR/SUBPROCESS_TIMEOUT/RUN_ID_MISMATCH).
+  - Otherwise: "FAIL".  ADVISORY gate failures do not block verdict but are
+    surfaced in the report.
 """
 from __future__ import annotations
 
@@ -14,6 +21,9 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
+import uuid
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 
@@ -23,45 +33,115 @@ if str(REPO_ROOT) not in sys.path:
 
 from scripts.lp_rh_readiness_v1_readonly import usable_providers_from_db
 
-INCONCLUSIVE_REASONS = {"DB_PATH_NOT_SET", "SUBPROCESS_TIMEOUT"}
+# Verdict-blocking reasons.  Any REQUIRED gate returning one of these reasons is
+# treated as FAIL (UNKNOWN-class), never as PASS even if its ``pass`` field is
+# True.  ADVISORY gates are exempt.
+UNKNOWN_REASONS = frozenset({
+    "UNKNOWN",
+    "UNOBSERVED",
+    "NOT_DETERMINABLE",
+    "HEAD_MISMATCH",
+    "FILE_MISSING",
+    "PARSE_ERROR",
+    "SUBPROCESS_TIMEOUT",
+    "RUN_ID_MISMATCH",
+    "DB_PATH_NOT_SET",
+    "OBSERVED:FILE_MISSING",
+    "OBSERVED:PARSE_ERROR",
+    "OBSERVED:HEAD_MISMATCH",
+    "OBSERVED:RUN_ID_MISMATCH",
+})
+
+# Backwards-compat alias used by older imports / tests.
+INCONCLUSIVE_REASONS = UNKNOWN_REASONS
+
+REQUIRED_GATES = frozenset({
+    "g1_all_pytest_pass",
+    "g2_audit_regression_pass",
+    "g3_entry_integration_tests_pass",
+    "g4_full_cost_nav_wired",
+    "g5_liquidation_unit_matrix",
+    "g6_no_grant_no_virtual_position",
+    "g7_grant_baseline_sync",
+    "g8_pool_state_excludes_invalid",
+    "g9_reconciliation_binding_failclose",
+    "g10_coverage_denominator_consistent",
+    "g14_keys_created_zero",
+    "g15_signatures_zero",
+    "g16_broadcasts_zero",
+})
+
+ADVISORY_GATES = frozenset({
+    "g11_two_providers_usable",
+    "g12_live_allowed_false",
+    "g13_tiny_live_authorized_false",
+})
+
+VALID_AUDIT_MODES = frozenset({
+    "AST_EXTRACTED_FULL",
+    "AST_EXTRACTED_PARTIAL",
+    "AST_EXTRACTED_SUMMARY",
+    "AST_EXTRACTED_RULES",
+    "AST_EXTRACTED_RH02_SERIES",
+    "AST_EXTRACTED_RULES_V1",
+    "AST_EXTRACTED_RULES_V2",
+    "AST_EXTRACTED_RULES_V3",
+    "AST_EXTRACTED_AUDIT_PROBE",
+    "REPO_CHECKOUT",
+    "REPO_CHECKOUT_FULL",
+    "REPO_CHECKOUT_PARTIAL",
+})
 
 
 def _run_pytest_gate(target_args: list[str], timeout: int = 120) -> dict:
-    """Run pytest with subprocess and parse summary counts."""
-    cmd = ["pytest", *target_args, "-q", "--tb=no", "-p", "no:cacheprovider"]
+    """Run pytest with subprocess; parse JUnit XML for ground truth.
+
+    PASS only when JUnit file exists, is non-empty, and reports
+    ``failures==0`` and ``errors==0`` with at least one test collected.
+    """
+    run_dir = Path(tempfile.mkdtemp(prefix="lpbot-readiness-"))
+    junit_path = run_dir / "junit.xml"
+    cmd = [
+        sys.executable, "-m", "pytest", *target_args,
+        "-q", "--tb=no", "-p", "no:cacheprovider",
+        "--junitxml", str(junit_path),
+        "--no-header",
+    ]
     try:
         proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
     except subprocess.TimeoutExpired:
-        return {"pass": False, "evidence": {"timeout": True}, "reason": "SUBPROCESS_TIMEOUT"}
+        return {"pass": False, "evidence": {"timeout": True, "junit_path": str(junit_path)},
+                "reason": "SUBPROCESS_TIMEOUT"}
 
-    lines = [ln.strip() for ln in proc.stdout.splitlines() if ln.strip()]
-    last_line = lines[-1] if lines else proc.stderr.strip()
-
-    passed_m = re.search(r"(\d+)\s+passed", last_line)
-    failed_m = re.search(r"(\d+)\s+failed", last_line)
-    error_m = re.search(r"(\d+)\s+error", last_line)
-
-    passed = int(passed_m.group(1)) if passed_m else 0
-    failed = int(failed_m.group(1)) if failed_m else 0
-    errors = int(error_m.group(1)) if error_m else 0
-    total_failed = failed + errors
-
-    if proc.returncode == 0 and total_failed == 0 and (passed > 0 or not lines):
-        return {
-            "pass": True,
-            "evidence": {"passed": passed, "failed": 0, "summary": last_line, "returncode": proc.returncode},
-            "reason": None,
-        }
-    reason = (
-        f"{total_failed} tests failed, {passed} passed"
-        if (passed or total_failed)
-        else f"Exit code {proc.returncode}: {last_line or 'No output'}"
-    )
-    return {
-        "pass": False,
-        "evidence": {"passed": passed, "failed": total_failed, "summary": last_line, "returncode": proc.returncode},
-        "reason": reason,
+    evidence: dict[str, Any] = {
+        "returncode": proc.returncode,
+        "junit_path": str(junit_path),
     }
+    if not junit_path.exists() or junit_path.stat().st_size == 0:
+        return {"pass": False, "evidence": evidence,
+                "reason": "FILE_MISSING" if not junit_path.exists() else "PARSE_ERROR"}
+
+    try:
+        tree = ET.parse(str(junit_path))
+        root = tree.getroot()
+        testsuite = root if root.tag == "testsuite" else root.find("testsuite")
+        if testsuite is None:
+            return {"pass": False, "evidence": evidence, "reason": "PARSE_ERROR"}
+        tests = int(testsuite.get("tests", "0") or 0)
+        failures = int(testsuite.get("failures", "0") or 0)
+        errors = int(testsuite.get("errors", "0") or 0)
+        skipped = int(testsuite.get("skipped", "0") or 0)
+        evidence.update({"tests": tests, "failures": failures, "errors": errors, "skipped": skipped})
+    except (ET.ParseError, ValueError) as exc:
+        return {"pass": False, "evidence": {**evidence, "parse_exc": repr(exc)},
+                "reason": "PARSE_ERROR"}
+
+    if tests <= 0:
+        return {"pass": False, "evidence": evidence, "reason": "NOT_DETERMINABLE"}
+
+    passed = failures == 0 and errors == 0
+    reason = None if passed else f"{failures} failures + {errors} errors / {tests} tests"
+    return {"pass": passed, "evidence": evidence, "reason": reason}
 
 
 def g1_all_pytest_pass(timeout: int = 120) -> dict:
@@ -69,30 +149,92 @@ def g1_all_pytest_pass(timeout: int = 120) -> dict:
     return _run_pytest_gate(["tests/"], timeout=timeout)
 
 
-def g2_audit_regression_pass(timeout: int = 120, json_out: str = "/tmp/audit_w5.json") -> dict:
-    """2. Offline audit regression reproduces 0 defects and 0 errors."""
-    cmd = ["python3", "tools/audit_repro/audit_repro.py", "--repo", ".", "--allow-other-head", "--json-out", json_out]
+def g2_audit_regression_pass(timeout: int = 120, json_out: str | None = None) -> dict:
+    """2. Offline audit regression reproduces 0 defects and 0 errors.
+
+    Strict schema validation:
+      - audit JSON must exist and parse
+      - head field must equal `git rev-parse HEAD` (when available)
+      - mode field must be in VALID_AUDIT_MODES
+      - probe_errors and defects_reproduced must be present as int fields
+    """
+    run_dir = Path(tempfile.mkdtemp(prefix="lpbot-readiness-"))
+    if json_out is None:
+        json_out = str(run_dir / "audit.json")
+    cmd = ["python3", "tools/audit_repro/audit_repro.py", "--repo", ".",
+           "--allow-other-head", "--json-out", json_out]
     try:
         proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
     except subprocess.TimeoutExpired:
         return {"pass": False, "evidence": {"timeout": True}, "reason": "SUBPROCESS_TIMEOUT"}
-    report: dict[str, Any] = {}
+
     p = Path(json_out)
+    report: dict[str, Any] = {}
+    parse_source = None
     if p.exists():
         try:
             report = json.loads(p.read_text(encoding="utf-8"))
-        except Exception:
-            pass
-    if not report and proc.stdout:
+            parse_source = "file"
+        except Exception as exc:
+            return {"pass": False, "evidence": {"json_out": str(p), "parse_exc": repr(exc)},
+                    "reason": "PARSE_ERROR"}
+    else:
+        return {"pass": False, "evidence": {"json_out": str(p), "exists": False},
+                "reason": "FILE_MISSING"}
+
+    if parse_source is None and proc.stdout:
         try:
             report = json.loads(proc.stdout)
-        except Exception:
-            pass
-    errs, defs = report.get("probe_errors", 0), report.get("defects_reproduced", 0)
+            parse_source = "stdout"
+        except Exception as exc:
+            return {"pass": False, "evidence": {"parse_exc": repr(exc)},
+                    "reason": "PARSE_ERROR"}
+
+    # Strict schema: probe_errors and defects_reproduced MUST be present as int.
+    if "probe_errors" not in report or "defects_reproduced" not in report:
+        return {"pass": False, "evidence": {"report_keys": sorted(list(report.keys()))},
+                "reason": "PARSE_ERROR"}
+    if not isinstance(report["probe_errors"], int) or not isinstance(report["defects_reproduced"], int):
+        return {"pass": False, "evidence": {
+            "probe_errors_type": type(report["probe_errors"]).__name__,
+            "defects_reproduced_type": type(report["defects_reproduced"]).__name__,
+        }, "reason": "PARSE_ERROR"}
+
+    errs = report["probe_errors"]
+    defs = report["defects_reproduced"]
+
+    # head field must match git rev-parse HEAD
+    head = report.get("head")
+    try:
+        git_head = subprocess.run(
+            ["git", "rev-parse", "HEAD"], capture_output=True, text=True, timeout=10,
+        ).stdout.strip()
+    except Exception:
+        git_head = None
+    if head is None or (git_head and head != git_head):
+        return {"pass": False, "evidence": {"report_head": head, "git_head": git_head,
+                                              "errs": errs, "defs": defs},
+                "reason": "HEAD_MISMATCH"}
+
+    # mode field must be in VALID_AUDIT_MODES
+    mode = report.get("mode")
+    if mode not in VALID_AUDIT_MODES:
+        return {"pass": False, "evidence": {"mode": mode, "errs": errs, "defs": defs,
+                                              "valid_modes": sorted(VALID_AUDIT_MODES)},
+                "reason": "NOT_DETERMINABLE"}
+
+    # run_id sanity
+    run_id = report.get("run_id")
+    if run_id is None:
+        return {"pass": False, "evidence": {"report_keys": sorted(list(report.keys()))},
+                "reason": "PARSE_ERROR"}
+
     passed = (proc.returncode == 0) and (errs == 0) and (defs == 0)
     reason = None if passed else f"Audit defects: PROBE_ERROR={errs}, DEFECT_REPRODUCED={defs}"
     return {"pass": passed, "evidence": {"probe_errors": errs, "defects_reproduced": defs,
-            "counts": {"PROBE_ERROR": errs, "DEFECT_REPRODUCED": defs}, "returncode": proc.returncode}, "reason": reason}
+            "counts": {"PROBE_ERROR": errs, "DEFECT_REPRODUCED": defs},
+            "returncode": proc.returncode, "head": head, "mode": mode, "run_id": run_id},
+            "reason": reason}
 
 
 def g3_entry_integration_tests_pass(timeout: int = 120) -> dict:
@@ -173,7 +315,7 @@ def g10_coverage_denominator_consistent(timeout: int = 120) -> dict:
 
 
 def g11_two_providers_usable(db_path: str | None = None) -> dict:
-    """11. At least two usable providers available in rh_rpc_health."""
+    """11. (ADVISORY) At least two usable providers available in rh_rpc_health."""
     resolved = db_path or os.environ.get("LPBOT_RPC_HEALTH_DB")
     if not resolved:
         return {"pass": False, "evidence": {}, "reason": "DB_PATH_NOT_SET"}
@@ -195,31 +337,66 @@ def _check_toml_flag(flag: str, config_path: str | Path | None) -> dict:
 
 
 def g12_live_allowed_false(config_path: str | Path | None = None) -> dict:
-    """12. live_allowed is not set to true in config."""
+    """12. (ADVISORY) live_allowed is not set to true in config."""
     return _check_toml_flag("live_allowed", config_path)
 
 
 def g13_tiny_live_authorized_false(config_path: str | Path | None = None) -> dict:
-    """13. tiny_live_authorized is not set to true in config."""
+    """13. (ADVISORY) tiny_live_authorized is not set to true in config."""
     return _check_toml_flag("tiny_live_authorized", config_path)
 
 
 def _read_counters(runtime_counters_path: str | Path | None = None) -> tuple[dict, str | None]:
-    p = Path(runtime_counters_path or os.environ.get("LPBOT_RUNTIME_COUNTERS_PATH") or "reports/paper_runtime_counters.json")
+    """Read runtime counters JSON.  Returns (counters, reason).
+
+    reason is None on full success, otherwise an OBSERVED:* sentinel that
+    _check_counter converts into a verdict-blocking reason.
+    """
+    p = Path(runtime_counters_path or os.environ.get("LPBOT_RUNTIME_COUNTERS_PATH")
+             or "reports/paper_runtime_counters.json")
     counters = {"keys_created": 0, "signatures": 0, "broadcasts": 0}
-    if p.exists():
-        try:
-            data = json.loads(p.read_text(encoding="utf-8"))
-            for k in counters:
-                if k in data:
-                    counters[k] = int(data[k])
-        except Exception as exc:
-            return counters, f"Parse error: {exc}"
+    if not p.exists():
+        return counters, "OBSERVED:FILE_MISSING"
+    try:
+        text = p.read_text(encoding="utf-8")
+    except Exception as exc:
+        return counters, f"OBSERVED:PARSE_ERROR"
+    try:
+        data = json.loads(text)
+    except Exception as exc:
+        return counters, f"OBSERVED:PARSE_ERROR"
+
+    if not isinstance(data, dict):
+        return counters, "OBSERVED:PARSE_ERROR"
+
+    # head/run_id cross-check when present in the counters file.
+    try:
+        git_head = subprocess.run(
+            ["git", "rev-parse", "HEAD"], capture_output=True, text=True, timeout=10,
+        ).stdout.strip() or None
+    except Exception:
+        git_head = None
+    file_head = data.get("head")
+    if file_head is not None and git_head and file_head != git_head:
+        return counters, "OBSERVED:HEAD_MISMATCH"
+    file_run_id = data.get("run_id")
+    expected_run_id = data.get("expected_run_id")
+    if expected_run_id is not None and file_run_id is not None and file_run_id != expected_run_id:
+        return counters, "OBSERVED:RUN_ID_MISMATCH"
+
+    for k in counters:
+        if k in data:
+            try:
+                counters[k] = int(data[k])
+            except (TypeError, ValueError):
+                return counters, "OBSERVED:PARSE_ERROR"
     return counters, None
 
 
 def _check_counter(key: str, runtime_counters_path: str | Path | None) -> dict:
-    c, err = _read_counters(runtime_counters_path)
+    c, observed_reason = _read_counters(runtime_counters_path)
+    if observed_reason is not None:
+        return {"pass": False, "evidence": c, "reason": observed_reason}
     val = c.get(key, 0)
     return {"pass": val == 0, "evidence": c, "reason": None if val == 0 else f"{key} is {val} (must be 0)"}
 
@@ -262,10 +439,18 @@ GATE_NAMES = [
 def compute_paper_readiness(
     *, db_path: str | None = None, config_path: str | None = None, runtime_counters_path: str | None = None
 ) -> dict:
-    """Compute aggregate Paper readiness across all 16 gates."""
+    """Compute aggregate Paper readiness across all 16 gates.
+
+    verdict == "PASS" iff every REQUIRED gate is pass=True AND no REQUIRED gate
+    has a verdict-blocking reason (UNKNOWN/UNOBSERVED/NOT_DETERMINABLE/...).
+
+    ADVISORY gates DO NOT block verdict but are surfaced in the gates dict and
+    contribute to advisory_unknown in the summary.
+    """
     mod = sys.modules[__name__]
     gates: dict[str, dict] = {}
-    passed, failed, inconclusive = 0, 0, 0
+    passed, failed, unknown = 0, 0, 0
+    advisory_failed = 0
     kw_map = {
         "g11_two_providers_usable": {"db_path": db_path},
         "g12_live_allowed_false": {"config_path": config_path},
@@ -279,17 +464,41 @@ def compute_paper_readiness(
         kw = kw_map.get(name, {})
         res = fn(**kw) if kw else fn()
         gates[name] = res
-        if res.get("pass") is True:
+        is_pass = res.get("pass") is True
+        reason = res.get("reason")
+        is_advisory = name in ADVISORY_GATES
+        if is_pass:
             passed += 1
-        elif res.get("reason") in INCONCLUSIVE_REASONS:
-            inconclusive += 1
+        elif reason in UNKNOWN_REASONS:
+            unknown += 1
+            if is_advisory:
+                advisory_failed += 1
         else:
-            failed += 1
-    verdict = "PASS" if failed == 0 else "FAIL"
+            if is_advisory:
+                advisory_failed += 1
+            else:
+                failed += 1
+
+    # REQUIRED-only verdict check: any unknown OR failed on a REQUIRED gate -> FAIL.
+    required_fail = False
+    for name in REQUIRED_GATES:
+        g = gates.get(name, {})
+        if g.get("pass") is not True:
+            required_fail = True
+            break
+
+    verdict = "PASS" if not required_fail else "FAIL"
+
     return {
         "verdict": verdict,
         "gates": gates,
-        "summary": {"passed": passed, "failed": failed, "inconclusive": inconclusive},
+        "summary": {
+            "passed": passed,
+            "failed": failed,
+            "unknown": unknown,
+            "inconclusive": unknown,  # back-compat
+            "advisory_unknown": advisory_failed,
+        },
     }
 
 
@@ -303,15 +512,22 @@ def render_report(verdict_dict: dict, *, out_path: Path) -> None:
         f"- **Verdict**: `{verdict}`",
         f"- **Passed**: {summary.get('passed', 0)}",
         f"- **Failed**: {summary.get('failed', 0)}",
-        f"- **Inconclusive**: {summary.get('inconclusive', 0)}",
+        f"- **Unknown**: {summary.get('unknown', 0)}",
+        f"- **Advisory unknowns**: {summary.get('advisory_unknown', 0)}",
         "",
-        "| Gate | Status | Reason |",
-        "| :--- | :--- | :--- |",
+        "| Gate | Tier | Status | Reason |",
+        "| :--- | :--- | :--- | :--- |",
     ]
     for name, g in verdict_dict.get("gates", {}).items():
-        status = "PASS" if g.get("pass") else ("INCONCLUSIVE" if g.get("reason") in INCONCLUSIVE_REASONS else "FAIL")
+        tier = "ADVISORY" if name in ADVISORY_GATES else "REQUIRED"
+        if g.get("pass") is True:
+            status = "PASS"
+        elif g.get("reason") in UNKNOWN_REASONS:
+            status = "UNKNOWN"
+        else:
+            status = "FAIL"
         reason = g.get("reason") or "OK"
-        lines.append(f"| `{name}` | **{status}** | {reason} |")
+        lines.append(f"| `{name}` | {tier} | **{status}** | {reason} |")
     out_path = Path(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -342,5 +558,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
-
-
