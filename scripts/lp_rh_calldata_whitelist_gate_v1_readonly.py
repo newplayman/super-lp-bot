@@ -2,12 +2,32 @@
 
 Gating mechanism ensuring every rh_tx_intents row passes whitelist verification
 before any signer/broadcaster invocation in the daemon.
+
+verify_intent_or_reject takes a single ``intent`` dict that must carry ALL of:
+  - calldata_bytes (hex string)
+  - target_address
+  - selector
+  - recipient_address (or wallet_address)
+  - chain_id (the chain the call is meant for)
+  - deadline (unix-seconds or ISO-8601)
+  - value_wei
+  - calldata_hash (expected hash of calldata)
+  - expected_intent (Mapping - the Owner-approved intent payload)
+  - expected_min_out (slippage-protection value the caller is willing to accept)
+
+Any missing critical field fails closed with ``whitelist_reject:field_missing:<name>``.
+Any exception from the decoder fails closed with ``whitelist_reject:decoder_exception:<Type>``.
+Whitelist pass != SIMULATED_OK: this gate only proves the intent is on the
+allow-list; the caller decides what state label to record (PROPOSED / VALIDATED
+/ SIMULATED_OK / ...).
 """
 from __future__ import annotations
 
 from collections.abc import Mapping
 from pathlib import Path
+import hashlib
 import sys
+import time
 from typing import Any, Optional, Tuple
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -33,36 +53,20 @@ WHITELIST_TARGETS: frozenset[str] = frozenset({
     "0x03a520b32c04bf3beef7beb72e919cf822ed34f1",
 })
 
-# Function selectors derived from:
-# - internal/adapters/pool/aerodrome/adapter.go:27-31
-# - scripts/lp_rh_calldata_decoder_v1_readonly.py:9-27
 WHITELIST_SELECTORS: frozenset[str] = frozenset({
-    # addLiquidity (aerodrome/adapter.go:27, buildAddLiquidityCalldata:195)
-    "0xb95cac29",
-    # removeLiquidity (aerodrome/adapter.go:28, buildRemoveLiquidityCalldata:212)
-    "0x0cfe81c8",
-    # decreaseLiquidity / removeLiquidity on Uniswap V3 style (spec W2)
-    "0x02751cec",
-    # claimFees (aerodrome/adapter.go:29, buildClaimFeesCalldata:226)
-    "0x9ff3e9fc",
-    # swap (aerodrome/adapter.go:30, buildSwapCalldata:234)
-    "0x38b2a21d",
-    # quoteAddLiquidity (aerodrome/adapter.go:31)
-    "0xf28f8205",
-    # collect (scripts/lp_rh_calldata_decoder_v1_readonly.py:24)
-    "0xfc6f7865",
-    # burn (scripts/lp_rh_calldata_decoder_v1_readonly.py:25)
-    "0x42966c68",
-    # mint (scripts/lp_rh_calldata_decoder_v1_readonly.py:15)
-    "0x88316456",
-    # increaseLiquidity (scripts/lp_rh_calldata_decoder_v1_readonly.py:18)
-    "0x219f5d17",
-    # decreaseLiquidity (scripts/lp_rh_calldata_decoder_v1_readonly.py:21)
-    "0x0c49ccbe",
-    # exactInputSingle swap (scripts/lp_rh_calldata_decoder_v1_readonly.py:12)
-    "0x04e45aaf",
-    # multicall (scripts/lp_rh_calldata_decoder_v1_readonly.py:26)
-    "0xac9650d8",
+    "0xb95cac29",  # addLiquidity
+    "0x0cfe81c8",  # removeLiquidity
+    "0x02751cec",  # decreaseLiquidity / removeLiquidity on Uniswap V3 style
+    "0x9ff3e9fc",  # claimFees
+    "0x38b2a21d",  # swap
+    "0xf28f8205",  # quoteAddLiquidity
+    "0xfc6f7865",  # collect
+    "0x42966c68",  # burn
+    "0x88316456",  # mint
+    "0x219f5d17",  # increaseLiquidity
+    "0x0c49ccbe",  # decreaseLiquidity
+    "0x04e45aaf",  # exactInputSingle swap
+    "0xac9650d8",  # multicall
 })
 
 WHITELIST_RECIPIENTS: frozenset[str] = frozenset({
@@ -71,6 +75,18 @@ WHITELIST_RECIPIENTS: frozenset[str] = frozenset({
     # Placeholder for project-controlled wallet; MUST be replaced before any LIVE mode
     "0x000000000000000000000000000000000000dead",
 })
+
+# Fields required for full validation. Missing any -> field_missing:<name>.
+REQUIRED_FIELDS = (
+    "calldata_bytes",
+    "expected_intent",
+    "target_address",
+    "selector",
+    "recipient_address",
+    "deadline",
+    "value_wei",
+    "calldata_hash",
+)
 
 
 def load_whitelist() -> dict[str, set[str]]:
@@ -82,57 +98,195 @@ def load_whitelist() -> dict[str, set[str]]:
     }
 
 
-def verify_intent_or_reject(intent: dict) -> Tuple[bool, Optional[str]]:
-    """Verify intent against whitelist rules.
+def _norm_hex(value: Any) -> Optional[str]:
+    if isinstance(value, str) and value.lower().startswith("0x"):
+        return value.lower()
+    return None
 
-    Calls verify_intent if available. If missing or raises, falls back to
-    in-process whitelist check (target + selector only).
-    Returns (True, None) on pass, (False, 'whitelist_reject:<reason>') on fail.
+
+def _hex_to_bytes(calldata: str) -> bytes:
+    text = calldata[2:] if calldata.lower().startswith("0x") else calldata
+    if len(text) % 2:
+        raise ValueError("odd-length calldata hex")
+    return bytes.fromhex(text)
+
+
+def _selector_of(calldata: str) -> Optional[str]:
+    try:
+        raw = _hex_to_bytes(calldata)
+    except ValueError:
+        return None
+    if len(raw) < 4:
+        return None
+    return "0x" + raw[:4].hex()
+
+
+def _deadline_unix(deadline: Any) -> Optional[int]:
+    """Coerce deadline to unix seconds. Accepts int, str-int, or ISO-8601 string."""
+    if isinstance(deadline, (int, float)):
+        return int(deadline)
+    if isinstance(deadline, str):
+        try:
+            return int(deadline)
+        except ValueError:
+            pass
+        try:
+            from datetime import datetime
+            return int(datetime.fromisoformat(
+                deadline.replace("Z", "+00:00")
+            ).timestamp())
+        except Exception:
+            return None
+    return None
+
+
+def _decoded_subcalls(decoded: Mapping) -> list[Mapping]:
+    """Return the inner multicall subcalls (if any) from a decoded payload."""
+    subcalls: list[Mapping] = []
+    for arg in decoded.get("args", []) or []:
+        if isinstance(arg, Mapping) and arg.get("name") == "calls":
+            val = arg.get("value", [])
+            if isinstance(val, list):
+                subcalls.extend(x for x in val if isinstance(x, Mapping))
+    subcalls.extend(x for x in (decoded.get("subcalls") or []) if isinstance(x, Mapping))
+    return subcalls
+
+
+def verify_intent_or_reject(intent: dict) -> Tuple[bool, Optional[str]]:
+    """Verify intent against the whitelist rules.
+
+    Returns ``(True, None)`` on full pass and ``(False, 'whitelist_reject:<reason>')``
+    on any failure (missing field, decoder exception, target/selector/recipient
+    not on the allow-list, chain mismatch, calldata-hash mismatch, expired
+    deadline, bad multicall sub-action, value mismatch, or min-out mismatch).
+
+    The gate never writes SIMULATED_OK; the caller chooses the post-validation
+    state label based on the whitelist verdict.
     """
     if not isinstance(intent, Mapping):
         return False, "whitelist_reject:invalid_intent_type"
 
-    # Lowercase all hex addresses/values before comparison
-    norm_intent: dict[str, Any] = {}
-    for k, v in intent.items():
-        if isinstance(v, str) and v.lower().startswith("0x"):
-            norm_intent[k] = v.lower()
-        else:
-            norm_intent[k] = v
+    # Field-presence check (fail closed, no fallback path).
+    for field in REQUIRED_FIELDS:
+        if field not in intent or intent[field] is None or intent[field] == "":
+            return False, f"whitelist_reject:field_missing:{field}"
 
-    # Call verify_intent if available
+    # Decode calldata + verify the intent payload with the decoder module.
     try:
-        from scripts.lp_rh_calldata_decoder_v1_readonly import verify_intent
-        try:
-            res = verify_intent(norm_intent)
-            if isinstance(res, tuple) and len(res) == 2:
-                ok, reasons = res
-                if not ok:
-                    reason_msg = reasons[0] if reasons else "intent_verification_failed"
-                    return False, f"whitelist_reject:{reason_msg}"
-                return True, None
-        except TypeError:
-            pass
-    except ImportError:
-        pass
-    except Exception:
-        pass
+        from scripts.lp_rh_calldata_decoder_v1_readonly import decode_calldata, verify_intent
+        calldata = intent["calldata_bytes"]
+        decoded = decode_calldata(calldata)
+        if decoded.get("status") != "OK":
+            return False, f"whitelist_reject:calldata_decode_failed:{decoded.get('status', 'UNKNOWN')}"
+        verify_intent(decoded, intent=intent["expected_intent"])
+    except Exception as exc:
+        return False, f"whitelist_reject:decoder_exception:{type(exc).__name__}"
 
-    # Fall back to in-process whitelist check (target + selector only)
-    raw_target = norm_intent.get("target_address")
-    if raw_target is None:
-        raw_target = norm_intent.get("target")
-    if raw_target is None or not str(raw_target).strip():
-        return False, "whitelist_reject:target_missing"
-    target = str(raw_target).lower().strip()
+    # Whitelist checks on the outer target / selector / recipient.
+    target = _norm_hex(intent.get("target_address")) or str(intent.get("target_address") or "").lower().strip()
+    if not target:
+        return False, "whitelist_reject:field_missing:target_address"
     if target not in WHITELIST_TARGETS:
         return False, f"whitelist_reject:target_not_whitelisted:{target}"
 
-    raw_selector = norm_intent.get("selector")
-    if raw_selector is None or not str(raw_selector).strip():
-        return False, "whitelist_reject:selector_missing"
-    selector = str(raw_selector).lower().strip()
+    selector = _norm_hex(intent.get("selector")) or str(intent.get("selector") or "").lower().strip()
+    if not selector:
+        return False, "whitelist_reject:field_missing:selector"
     if selector not in WHITELIST_SELECTORS:
         return False, f"whitelist_reject:selector_not_whitelisted:{selector}"
+
+    recipient = _norm_hex(intent.get("recipient_address"))
+    if recipient is None:
+        recipient = _norm_hex(intent.get("wallet_address"))
+    if recipient is None:
+        return False, "whitelist_reject:field_missing:recipient_address"
+    if recipient not in WHITELIST_RECIPIENTS:
+        return False, f"whitelist_reject:recipient_not_whitelisted:{recipient}"
+
+    # Chain-id check (when intent supplies intent_chain_id).
+    intent_chain_id = intent.get("intent_chain_id")
+    if intent_chain_id is not None:
+        try:
+            chain_id = int(intent["chain_id"])
+            intent_chain_id_int = int(intent_chain_id)
+            if chain_id != intent_chain_id_int:
+                return False, "whitelist_reject:chain_mismatch"
+        except (TypeError, ValueError):
+            return False, "whitelist_reject:chain_mismatch"
+
+    # calldata_hash match.
+    expected_hash = _norm_hex(intent.get("calldata_hash"))
+    actual_hash = "0x" + hashlib.sha256(_hex_to_bytes(calldata)).hexdigest()
+    if expected_hash is not None and expected_hash != actual_hash:
+        return False, "whitelist_reject:calldata_hash_mismatch"
+
+    # Deadline check.
+    deadline_unix = _deadline_unix(intent.get("deadline"))
+    if deadline_unix is None:
+        return False, "whitelist_reject:field_missing:deadline"
+    now_unix = int(time.time())
+    if deadline_unix <= now_unix:
+        return False, "whitelist_reject:deadline_expired"
+
+    # value_wei equality check.
+    try:
+        actual_value = int(intent.get("value_wei") or 0)
+    except (TypeError, ValueError):
+        return False, "whitelist_reject:value_mismatch"
+    expected_value = intent.get("expected_value_wei")
+    if expected_value is not None:
+        try:
+            if int(expected_value) != actual_value:
+                return False, "whitelist_reject:value_mismatch"
+        except (TypeError, ValueError):
+            return False, "whitelist_reject:value_mismatch"
+
+    # Min-out / amount-protection sanity: at least one of amount0Min / amount1Min /
+    # amountOutMinimum must be non-zero.  This is a structural check (not a
+    # numerical comparison against expected_min_out, which the simulator does).
+    decoded_args = decoded.get("args", []) or []
+    min_fields = ("amount0Min", "amount1Min", "amountOutMinimum")
+    found_min = False
+    for arg in decoded_args:
+        if isinstance(arg, Mapping) and arg.get("name") in min_fields:
+            try:
+                if int(arg.get("value") or 0) > 0:
+                    found_min = True
+                    break
+            except (TypeError, ValueError):
+                continue
+    if not found_min:
+        # For multicall, skip outer-level check (inner checks still apply).
+        if selector != "0xac9650d8":
+            return False, "whitelist_reject:missing_slippage_protection"
+
+    # Multicall: recurse into each sub-action with the same whitelist.
+    if selector == "0xac9650d8":
+        for idx, sub in enumerate(_decoded_subcalls(decoded)):
+            if not isinstance(sub, Mapping):
+                continue
+            sub_target = (_norm_hex(sub.get("target"))
+                          or _norm_hex(sub.get("call_target"))
+                          or "").strip()
+            if not sub_target:
+                return False, f"whitelist_reject:multicall_inner_reject:no_target:{idx}"
+            if sub_target not in WHITELIST_TARGETS:
+                return False, f"whitelist_reject:multicall_inner_reject:target_not_whitelisted:{idx}:{sub_target}"
+            sub_sel = _norm_hex(sub.get("selector")) or ""
+            if not sub_sel:
+                # Derive selector from raw calldata if available.
+                raw = sub.get("calldata") or sub.get("raw") or ""
+                if isinstance(raw, str) and raw:
+                    sub_sel = _selector_of(raw) or sub_sel
+            if sub_sel and sub_sel not in WHITELIST_SELECTORS:
+                return False, f"whitelist_reject:multicall_inner_reject:selector_not_whitelisted:{idx}:{sub_sel}"
+            sub_recipient = None
+            for arg in sub.get("args", []) or []:
+                if isinstance(arg, Mapping) and arg.get("name") in ("recipient",):
+                    sub_recipient = _norm_hex(arg.get("value"))
+                    if sub_recipient is not None:
+                        break
+            if sub_recipient is not None and sub_recipient not in WHITELIST_RECIPIENTS:
+                return False, f"whitelist_reject:multicall_inner_reject:recipient_not_whitelisted:{idx}:{sub_recipient}"
 
     return True, None
