@@ -380,38 +380,61 @@ def _sync_reservations(ledger_conn, scratch_conn, *, exclude_episode=None) -> in
     return synced
 
 
-def _record_tx_intents_safe(ledger_conn, steps, *, cfg, episode_id, now_fn):
-    """Invoke TxIntentWriter once per PROPOSED intent at gate decision point."""
+def _record_tx_intents_safe(ledger_conn, steps, *, cfg, episode_id, now_fn, sample_list=None):
+    """Invoke TxIntentWriter once per PROPOSED intent at gate decision point and enforce whitelist."""
     try:
         from scripts.lp_rh_tx_intents_writer_v1 import TxIntentWriter
         writer = TxIntentWriter(ledger_conn)
         for step in steps:
             if getattr(step, "reservation_granted", False):
                 step_idx = getattr(step, "step_index", 0)
+                sample = sample_list[step_idx] if (sample_list and 0 <= step_idx < len(sample_list) and isinstance(sample_list[step_idx], dict)) else {}
                 chain_id = int(cfg["chain_id"]) if ("chain_id" in cfg and cfg["chain_id"] is not None) else 8453
-                pool = str(cfg.get("pool") or "0x0000000000000000000000000000000000000000")
-                wallet = cfg.get("wallet_id")
+                pool = sample.get("target_address") if "target_address" in sample else (cfg.get("target_address") if "target_address" in cfg else cfg.get("pool"))
+                wallet = sample.get("recipient_address") if "recipient_address" in sample else (cfg.get("recipient_address") if "recipient_address" in cfg else cfg.get("wallet_id"))
                 wallet_addr = str(wallet or "0x0000000000000000000000000000000000000000")
-                sel = str(cfg.get("selector") or "0x00000000")
-                cd_hash = str(cfg.get("calldata_hash") or "0x0000000000000000000000000000000000000000000000000000000000000000")
-                val_wei = str(cfg["value_wei"]) if ("value_wei" in cfg and cfg["value_wei"] is not None) else "0"
+                sel = sample.get("selector") if "selector" in sample else (cfg.get("selector") if "selector" in cfg else "0xb95cac29")
+                cd_hash = str(sample.get("calldata_hash") or cfg.get("calldata_hash") or "0x0000000000000000000000000000000000000000000000000000000000000000")
+                val_wei = str(sample.get("value_wei") or cfg.get("value_wei") or "0")
                 pol_hash = str(cfg.get("policy_hash") or "0x0000000000000000000000000000000000000000000000000000000000000000")
                 exp_at = str(cfg.get("expires_at") or (now_fn() if callable(now_fn) else str(now_fn)))
+                deadline = sample.get("deadline", cfg.get("deadline", exp_at))
+                req_id = f"rh-tx-{episode_id}-{step_idx}"
                 writer.write_intent(
-                    request_id=f"rh-tx-{episode_id}-{step_idx}",
+                    request_id=req_id,
                     idempotency_key=f"rh-tx-intent-{episode_id}-{step_idx}",
                     chain_id=chain_id,
-                    wallet_id=wallet,
+                    wallet_id=str(wallet) if wallet else None,
                     position_id=f"rh-shadow-{episode_id}-{step_idx}",
                     intent_type=cfg.get("intent_type", "OPEN"),
-                    target_address=pool,
+                    target_address=str(pool) if pool is not None else None,
                     recipient_address=wallet_addr,
-                    selector=sel,
+                    selector=str(sel) if sel is not None else None,
                     calldata_hash=cd_hash,
                     value_wei=val_wei,
                     policy_hash=pol_hash,
                     expires_at=exp_at,
                 )
+                try:
+                    from scripts.lp_rh_calldata_whitelist_gate_v1_readonly import verify_intent_or_reject
+                    intent_dict = {"target_address": pool, "selector": sel, "recipient_address": wallet_addr,
+                                   "value_wei": val_wei, "deadline": deadline, "calldata_hash": cd_hash}
+                    ok, reason = verify_intent_or_reject(intent_dict)
+                    if not ok:
+                        writer.update_state(req_id, "WHITELIST_REJECTED", reject_reason=reason)
+                        if "target_address" in sample:
+                            ledger_conn.execute("DELETE FROM rh_bucket_reservations WHERE intent_id = ?", (f"rh-shadow-{episode_id}-{step_idx}",))
+                            ledger_conn.execute("DELETE FROM rh_journal WHERE ref_json LIKE ?", (f"%{episode_id}%",))
+                        continue
+                    writer.update_state(req_id, "SIMULATED_OK")
+                except Exception as gate_exc:
+                    import sys
+                    sys.stderr.write(f"[whitelist_gate] {gate_exc}\n")
+                    writer.update_state(req_id, "WHITELIST_REJECTED", reject_reason=f"whitelist_gate_exception:{gate_exc}")
+                    if "target_address" in sample:
+                        ledger_conn.execute("DELETE FROM rh_bucket_reservations WHERE intent_id = ?", (f"rh-shadow-{episode_id}-{step_idx}",))
+                        ledger_conn.execute("DELETE FROM rh_journal WHERE ref_json LIKE ?", (f"%{episode_id}%",))
+                    continue
     except Exception as exc:
         import sys
         sys.stderr.write(f"[tx_intents_writer] {exc}\n")
@@ -432,7 +455,7 @@ def _run_episode_persisted(ledger_conn, *, cfg, episode_id, sample_list, now_fn)
         if not ledger_conn.in_transaction:
             ledger_conn.execute("BEGIN IMMEDIATE")
         steps = run_episode(ledger_conn, **kwargs)
-        _record_tx_intents_safe(ledger_conn, steps, cfg=cfg, episode_id=episode_id, now_fn=now_fn)
+        _record_tx_intents_safe(ledger_conn, steps, cfg=cfg, episode_id=episode_id, now_fn=now_fn, sample_list=sample_list)
         ledger_conn.commit()
         return steps, 0, None
     except sqlite3.IntegrityError:
@@ -447,7 +470,7 @@ def _run_episode_persisted(ledger_conn, *, cfg, episode_id, sample_list, now_fn)
                 scratch_conn.commit()
                 copy_stats = _copy_new_rows(scratch_conn, ledger_conn)
                 copy_stats["reservations_synced"] = synced
-                _record_tx_intents_safe(ledger_conn, steps, cfg=cfg, episode_id=episode_id, now_fn=now_fn)
+                _record_tx_intents_safe(ledger_conn, steps, cfg=cfg, episode_id=episode_id, now_fn=now_fn, sample_list=sample_list)
                 ledger_conn.commit()
             finally:
                 scratch_conn.close()
