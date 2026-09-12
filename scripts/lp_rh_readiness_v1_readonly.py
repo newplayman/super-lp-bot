@@ -1055,25 +1055,26 @@ def audit_weekends_covered(conn, *, asset_address, interval_secs=15) -> dict:
             actual = by_day[day]
             if day == first_day and day == last_day:
                 span_secs = (times[-1] - times[0]).total_seconds()
+                # Single isolated day without multi-day continuity requires full 86,400s calendar day
+                expected = 86400.0 / interval
             elif day == first_day:
                 span_secs = (_day_start(day + timedelta(days=1), times[0].tzinfo) - times[0]).total_seconds()
+                expected = max(span_secs / interval, 21600.0 / interval)
             elif day == last_day:
                 span_secs = (times[-1] - _day_start(day, times[-1].tzinfo)).total_seconds()
+                expected = max(span_secs / interval, 21600.0 / interval)
             else:
                 span_secs = 86400.0
+                expected = 86400.0 / interval
 
             is_weekend = day.weekday() in (5, 6)
-            if is_weekend:
-                expected = max(span_secs / interval, 720.0)
-            else:
-                expected = span_secs / interval
-
             complete = actual >= 0.9 * expected
             if complete and is_weekend:
                 complete_weekend_days += 1
             day_details.append({"date": str(day), "weekday": day.weekday(),
                                 "actual": actual, "expected": round(expected, 3),
-                                "complete": complete, "weekend": is_weekend})
+                                "complete": complete, "weekend": is_weekend,
+                                "span_secs": round(span_secs, 1)})
         return {"weekends_covered": complete_weekend_days,
                 "checks_performed": ["rh_market_states:weekend_coverage"],
                 "days": day_details, "reason": "OK"}
@@ -1139,16 +1140,19 @@ def audit_unexplained_ledger_diffs(conn) -> dict:
                 details.append(f"rh_journal:{key}:debit={debit_total}:"
                                f"credit={credit_total}:empty_account={empty_account}")
 
-        # Check rh_reconciliation_runs table (F06)
+        # Check rh_reconciliation_runs table (R2-05)
+        # Only the latest run is checked for active status: historical runs superseded by PASS do not poison current journal balance.
         if "rh_reconciliation_runs" in tbls:
             rcols = [r[1] for r in conn.execute("PRAGMA table_info(rh_reconciliation_runs)").fetchall()]
             vcol = "verdict" if "verdict" in rcols else ("status" if "status" in rcols else (rcols[0] if rcols else None))
+            order_col = "started_at" if "started_at" in rcols else "rowid"
             if vcol:
-                recon_rows = conn.execute(f"SELECT {vcol} FROM rh_reconciliation_runs").fetchall()
-                for (rst,) in recon_rows:
-                    if rst != "PASS":
-                        count += 1
-                        details.append(f"rh_reconciliation_runs:status={rst}")
+                latest_run = conn.execute(
+                    f"SELECT {vcol} FROM rh_reconciliation_runs ORDER BY {order_col} DESC LIMIT 1"
+                ).fetchone()
+                if latest_run and latest_run[0] != "PASS":
+                    count += 1
+                    details.append(f"rh_reconciliation_runs:status={latest_run[0]}")
 
         return {"count": count, "checks_performed": ["rh_journal:balance"],
                 "details": details,
@@ -1156,6 +1160,47 @@ def audit_unexplained_ledger_diffs(conn) -> dict:
     except Exception as exc:
         return {"count": None, "checks_performed": [],
                 "reason": f"audit_exception:{exc}"}
+
+
+def select_graduation_reconciliation_evidence(conn, *, profile="CORE", code_version=None, policy_version=None, window_start=None) -> dict:
+    """Select and audit reconciliation runs bound to specific profile, code version, policy, and frozen window (RH-07-FIX-C / R2-05)."""
+    tbls = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
+    if "rh_reconciliation_runs" not in tbls:
+        return {"runs_examined": 0, "status": "MISSING", "reconciliation_blocker": "RECONCILIATION_EVIDENCE_MISSING"}
+    rcols = [r[1] for r in conn.execute("PRAGMA table_info(rh_reconciliation_runs)").fetchall()]
+    vcol = "verdict" if "verdict" in rcols else ("status" if "status" in rcols else (rcols[0] if rcols else None))
+    order_col = "started_at" if "started_at" in rcols else "rowid"
+    if not vcol:
+        return {"runs_examined": 0, "status": "MISSING", "reconciliation_blocker": "RECONCILIATION_EVIDENCE_MISSING"}
+
+    query = f"SELECT {vcol} FROM rh_reconciliation_runs"
+    params = []
+    where_clauses = []
+    if window_start and "started_at" in rcols:
+        where_clauses.append("started_at >= ?")
+        params.append(window_start)
+    if profile and "profile" in rcols:
+        where_clauses.append("profile = ?")
+        params.append(profile)
+    if code_version and "code_version" in rcols:
+        where_clauses.append("code_version = ?")
+        params.append(code_version)
+    if policy_version and "policy_version" in rcols:
+        where_clauses.append("policy_version = ?")
+        params.append(policy_version)
+
+    if where_clauses:
+        query += " WHERE " + " AND ".join(where_clauses)
+    query += f" ORDER BY {order_col} DESC LIMIT 5"
+
+    runs = conn.execute(query, params).fetchall()
+    if not runs:
+        return {"runs_examined": 0, "status": "EMPTY", "reconciliation_blocker": "RECONCILIATION_EVIDENCE_MISSING"}
+
+    failed_runs = [r[0] for r in runs if r[0] != "PASS"]
+    if failed_runs:
+        return {"runs_examined": len(runs), "status": failed_runs[0], "failed_runs": failed_runs, "reconciliation_blocker": f"RECONCILIATION_{failed_runs[0]}"}
+    return {"runs_examined": len(runs), "status": "PASS", "reconciliation_blocker": None}
 
 
 def _parse_health_flags(raw) -> list:
@@ -1461,7 +1506,19 @@ def _build_state(conn, db_path: str, interval_secs: float, asset_address: str,
                  synthetic_evidence_path: Optional[str] = None,
                  invariant_violations: Optional[int] = None,
                  judgment_window_start: Optional[str] = None,
-                 repo_root: Optional[str] = None) -> dict:
+                 repo_root: Optional[str] = None,
+                 profile_locked: Optional[bool] = None,
+                 code_version_locked: Optional[bool] = None,
+                 policy_version_locked: Optional[bool] = None,
+                 capital_policy_version_locked: Optional[bool] = None,
+                 full_cost_profitable_episodes: Optional[int] = None,
+                 min_profitable_episodes: int = 10,
+                 oos_episode_ratio: Optional[Any] = None,
+                 min_oos_ratio: Decimal = Decimal("0.30"),
+                 exit_stress_passed: Optional[bool] = None,
+                 netcover_passed: Optional[bool] = None,
+                 effective_days_covered: Optional[int] = None,
+                 **kwargs) -> dict:
     """Assemble the dashboard state from the read-only RH store."""
     if not asset_address:
         raise ValueError("asset_address is required")
@@ -1619,35 +1676,19 @@ def _build_state(conn, db_path: str, interval_secs: float, asset_address: str,
             state["ledger_diffs_audit"] = led
             state["missed_risk_events_audit"] = mre
 
-            # F05: Calculate effective_days_covered (complete UTC days)
-            effective_days_covered = 0
-            if wk.get("days"):
-                effective_days_covered = sum(1 for d in wk["days"] if d.get("complete"))
+            # R2-04: Calculate effective_days_covered from complete days or parameter
+            if effective_days_covered is None:
+                effective_days_covered = 0
+                if wk.get("days"):
+                    effective_days_covered = sum(1 for d in wk["days"] if d.get("complete"))
             state["effective_days_covered"] = effective_days_covered
 
-            # F06: Reconciliation verification from rh_reconciliation_runs
-            reconciliation_blocker = None
-            tbls = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
-            if "rh_reconciliation_runs" not in tbls:
-                reconciliation_blocker = "RECONCILIATION_EVIDENCE_MISSING"
-                recon_audit = {"runs_examined": 0, "status": "MISSING", "reconciliation_blocker": reconciliation_blocker}
-            else:
-                rcols = [r[1] for r in conn.execute("PRAGMA table_info(rh_reconciliation_runs)").fetchall()]
-                vcol = "verdict" if "verdict" in rcols else ("status" if "status" in rcols else (rcols[0] if rcols else None))
-                order_col = "started_at" if "started_at" in rcols else "rowid"
-                runs = conn.execute(
-                    f"SELECT {vcol} FROM rh_reconciliation_runs ORDER BY {order_col} DESC LIMIT 5"
-                ).fetchall()
-                if not runs:
-                    reconciliation_blocker = "RECONCILIATION_EVIDENCE_MISSING"
-                    recon_audit = {"runs_examined": 0, "status": "EMPTY", "reconciliation_blocker": reconciliation_blocker}
-                else:
-                    failed_runs = [r[0] for r in runs if r[0] != "PASS"]
-                    if failed_runs:
-                        reconciliation_blocker = f"RECONCILIATION_{failed_runs[0]}"
-                        recon_audit = {"runs_examined": len(runs), "status": failed_runs[0], "failed_runs": failed_runs, "reconciliation_blocker": reconciliation_blocker}
-                    else:
-                        recon_audit = {"runs_examined": len(runs), "status": "PASS", "reconciliation_blocker": None}
+            # R2-05: Use bound reconciliation evidence selector
+            win_start = judgment_window.get("window_start") if judgment_window else None
+            recon_audit = select_graduation_reconciliation_evidence(
+                conn, profile="CORE", window_start=win_start,
+            )
+            reconciliation_blocker = recon_audit.get("reconciliation_blocker")
             state["reconciliation_audit"] = recon_audit
 
             state["stage_b"] = stage_b_status(
@@ -1656,6 +1697,16 @@ def _build_state(conn, db_path: str, interval_secs: float, asset_address: str,
                 unexplained_ledger_diffs=led.get("count"),
                 invariant_violations=invariant_violations,
                 missed_risk_events=mre.get("count"),
+                profile_locked=profile_locked,
+                code_version_locked=code_version_locked,
+                policy_version_locked=policy_version_locked,
+                capital_policy_version_locked=capital_policy_version_locked,
+                full_cost_profitable_episodes=full_cost_profitable_episodes,
+                min_profitable_episodes=min_profitable_episodes,
+                oos_episode_ratio=oos_episode_ratio,
+                min_oos_ratio=min_oos_ratio,
+                exit_stress_passed=exit_stress_passed,
+                netcover_passed=netcover_passed,
                 reconciliation_blocker=reconciliation_blocker,
             )
             state["stage_c_days_covered"] = None

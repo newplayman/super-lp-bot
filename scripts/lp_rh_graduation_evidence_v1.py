@@ -209,6 +209,9 @@ def build_verdict(
     working_tree_clean: Optional[bool],
     db_path: str,
     generated_at: str,
+    *,
+    skip_tests: bool = False,
+    **kwargs,
 ) -> Dict[str, Any]:
     """Assemble the GRADUATION_VERDICT dictionary following PRD and spec fail-close rules."""
     stage_a_raw = state.get("stage_a")
@@ -216,6 +219,7 @@ def build_verdict(
     live_gate_raw = state.get("live_gate")
 
     verdict_reasons: List[str] = []
+    has_test_failure = False
 
     # 1. Stage A extraction
     if stage_a_raw is None:
@@ -258,46 +262,62 @@ def build_verdict(
         for b in live_gate_data["blockers"]:
             verdict_reasons.append(f"LIVE_GATE: {b}")
 
-    # 4. Full test handling
+    # 4. Full test handling (RH-07-FIX-C / R2-07)
     if full_test is None:
         full_test_data = None
+        verdict_reasons.append("EVIDENCE_UNAVAILABLE:full_test")
+        has_test_failure = True
     else:
         full_test_data = full_test
-        if full_test.get("failed") and full_test["failed"] > 0:
+        if (full_test.get("passed") or 0) <= 0:
+            verdict_reasons.append("FULL_TEST_NO_PASS: no passed tests recorded")
+            has_test_failure = True
+        if (full_test.get("failed") or 0) > 0:
             verdict_reasons.append(f"FULL_TEST_FAILED: {full_test['failed']} failures")
+            has_test_failure = True
         if full_test.get("exit_code") != 0:
             verdict_reasons.append(f"FULL_TEST_NONZERO_EXIT: {full_test.get('exit_code')}")
+            has_test_failure = True
 
-    # 5. Fault injection handling
+    # 5. Fault injection handling (RH-07-FIX-C / R2-07)
     if fault_injection is None:
         fault_injection_data = None
         verdict_reasons.append("EVIDENCE_UNAVAILABLE:fault_injection")
+        has_test_failure = True
     else:
         fault_injection_data = fault_injection
+        sp = fault_injection.get("scenarios_passed")
+        st = fault_injection.get("scenarios_total")
         if not fault_injection.get("report_present"):
             verdict_reasons.append("EVIDENCE_UNAVAILABLE:fault_injection_report")
-        elif fault_injection.get("scenarios_passed") is None:
+            has_test_failure = True
+        elif sp is None or st is None:
             verdict_reasons.append("EVIDENCE_UNAVAILABLE:fault_injection_counts")
+            has_test_failure = True
+        elif st <= 0:
+            verdict_reasons.append("FAULT_INJECTION_EMPTY: 0 scenarios tested")
+            has_test_failure = True
+        elif sp < st:
+            verdict_reasons.append(f"FAULT_INJECTION_FAILED: {sp}/{st} scenarios passed")
+            has_test_failure = True
 
-    # 6. Verdict evaluation (F08)
+    # 6. Working tree cleanliness (RH-07-FIX-C / R2-07)
+    if working_tree_clean is not True:
+        verdict_reasons.append("WORKING_TREE_DIRTY: working tree has uncommitted modifications")
+        has_test_failure = True
+
+    # 7. Verdict evaluation (F08 / R2-07)
     stage_a_passed = bool(stage_a_data and stage_a_data.get("passed") is True)
     stage_b_passed = bool(stage_b_data and stage_b_data.get("passed") is True)
     live_gate_passed = bool(live_gate_data and live_gate_data.get("live_allowed") is True)
 
     manual_override_blocked = False
 
-    has_test_failure = False
-    if full_test_data is not None:
-        if (full_test_data.get("failed") or 0) > 0 or full_test_data.get("exit_code") != 0:
-            has_test_failure = True
-    if fault_injection_data is not None:
-        sp = fault_injection_data.get("scenarios_passed")
-        st = fault_injection_data.get("scenarios_total")
-        if not fault_injection_data.get("report_present") or sp is None or (st is not None and sp < st):
-            has_test_failure = True
-
     if not stage_a_passed:
         verdict = "NOT_GRADUATED"
+    elif skip_tests:
+        verdict = "OBSERVATION_NOT_VALIDATED"
+        verdict_reasons.append("TESTS_SKIPPED: full tests were skipped")
     elif has_test_failure:
         verdict = "OBSERVATION_INCOMPLETE"
     elif not stage_b_passed:
@@ -405,6 +425,7 @@ def generate_graduation_evidence(
         working_tree_clean=working_tree_clean,
         db_path=str(db_path),
         generated_at=generated_at,
+        skip_tests=skip_tests,
     )
     verdict_path = out_dir / "GRADUATION_VERDICT.json"
     verdict_path.write_text(json.dumps(verdict_dict, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")

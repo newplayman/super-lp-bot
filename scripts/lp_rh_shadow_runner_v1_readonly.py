@@ -52,6 +52,8 @@ from scripts.lp_rh_in_range_v1_readonly import tick_from_price
 from scripts.lp_rh_exit_depth_v1_readonly import exit_depth_for_size
 from scripts.lp_rh_pnl_v1_readonly import (
     book_journal_event,
+    compute_full_cost_nav,
+    compute_liquidation_nav,
     compute_nav,
     hodl_benchmark,
     net_pnl,
@@ -922,9 +924,11 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
 
     steps: list[ShadowStep] = []
     position_open = False
-    prev_nav: Optional[Decimal] = None
+    prev_nav: Optional[Decimal] = Decimal(str(capital_usd))
     prev_fg0: Optional[Decimal] = None
     prev_fg1: Optional[Decimal] = None
+    open_fg0: Optional[Decimal] = None
+    open_fg1: Optional[Decimal] = None
     accrued = Decimal(0)
     accrued_raw = Decimal(0)
     open_resolved = False
@@ -963,12 +967,15 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
             if st_dt is not None and as_of_dt is not None:
                 step_pool_age_secs = (st_dt - as_of_dt).total_seconds()
 
+        pool_state_fault = False
         if pool_state_as_of is None or step_pool_age_secs is None:
             step_reasons.append("POOL_STATE_AS_OF_UNAVAILABLE")
         elif step_pool_age_secs < 0:
             step_reasons.append(f"POOL_STATE_AS_OF_IN_FUTURE:{int(abs(step_pool_age_secs))}")
+            pool_state_fault = True
         elif step_pool_age_secs > POOL_STATE_STALE_SECS:
             step_reasons.append(f"POOL_STATE_STALE:{int(step_pool_age_secs)}")
+            pool_state_fault = True
 
         # RH-02ab: judge at the sample's own time, not the wall clock.  A replay
         # decision is "what would we have done at that moment?", so the gate's
@@ -989,6 +996,15 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
         eligible = bool(decision.terminal_eligible)
         simulated = bool(decision.simulated_policy_only)
 
+        # RH-07-FIX-C / R2-06: Pool state stale or future blocks new simulated positions
+        if pool_state_fault and (target_mode == "LIVE_READINESS" or effective_pool_meta.get("enforce_pool_state_freshness") or sample.get("enforce_pool_state_freshness")):
+            eligible = False
+            simulated = False
+            decision.terminal_eligible = False
+            decision.simulated_policy_only = False
+            if decision.dominant_blocker is None and step_reasons:
+                decision.dominant_blocker = step_reasons[0]
+
         granted = False
         if eligible and not position_open:
             res = try_reserve(conn, intent_id=f"rh-shadow-{strategy_episode}-{i}",
@@ -999,6 +1015,11 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
             if granted:
                 position_open = True
                 pending_position_open_at = decision_now
+                # RH-07-FIX-C / R2-02: Establish fee growth baseline on the grant step
+                fg0_init, fg1_init = sample.get("fee_growth_global_0"), sample.get("fee_growth_global_1")
+                if fg0_init is not None and fg1_init is not None:
+                    prev_fg0, prev_fg1 = Decimal(str(fg0_init)), Decimal(str(fg1_init))
+                    open_fg0, open_fg1 = prev_fg0, prev_fg1
 
         raw_price = sample.get("reference_mid")
         price = Decimal(str(raw_price)) if raw_price is not None else None
@@ -1015,11 +1036,7 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
             allow_bare_quote=allow_bare_quote,
         )
 
-        # RH-02al / RH-02bd / RH-02bg: On the first step with a valid reference_mid (the open step),
-        # resolve and cache the position inventory and liquidity. Fail-closed:
-        # if pool_meta lacks range_pct, or entry_price missing, or quote missing/expired/unprovenanced,
-        # or dec0/dec1 missing, open_valid stays False and nav/hodl remain None for the episode.
-        # No silent defaults for quote (PRD:651 forbids forcing $1) or decimals.
+        # RH-07-FIX-C / R2-02: On the grant step (position_open is True),
         if not open_resolved and price is not None and price > 0:
             open_resolved = True
             if pool_meta is not None and "range_pct" in pool_meta:
@@ -1092,18 +1109,32 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
         fg0, fg1 = sample.get("fee_growth_global_0"), sample.get("fee_growth_global_1")
         nav: Optional[Decimal] = None
         nav_reason: Optional[str] = None
+        liquidation_nav_val: Optional[Decimal] = None
+        liquidation_nav_reason = "NOT_COMPUTED:EXIT_DEPTH_PER_STEP_NOT_WIRED"
+
         if not open_valid:
             nav = None
             nav_reason = open_fail_reason or quote_reason or "OPEN_INVALID"
+            liquidation_nav_val = None
         elif price is None:
             nav = None
             nav_reason = "PRICE_MISSING"
+            liquidation_nav_val = None
         elif step_quote_val is None:
             nav = None
             nav_reason = quote_reason
+            liquidation_nav_val = None
+        elif not position_open:
+            # RH-07-FIX-C / R2-02: Cash valuation prior to or without position grant.
+            # No virtual LP inventory is held.
+            nav = Decimal(str(capital_usd))
+            liquidation_nav_val = Decimal(str(capital_usd))
+            liquidation_nav_reason = "POSITION_NOT_OPEN:CASH_VALUATION"
+            nav_reason = "POSITION_NOT_OPEN"
         elif fg0 is None or fg1 is None:
             nav = None
             nav_reason = "FEE_GROWTH_MISSING"
+            liquidation_nav_val = None
         else:
             try:
                 cur0, cur1 = Decimal(str(fg0)), Decimal(str(fg1))
@@ -1133,16 +1164,60 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
                     range_pct=range_pct_val,
                     quote_usd_per_token1=step_quote_val,
                 )
-                nav = compute_nav(
-                    wallet=Decimal(str(capital_usd)) - Decimal(str(position_usd)),
+                injected_entry = sample.get("entry_cost_usd") if sample.get("entry_cost_usd") is not None else effective_pool_meta.get("entry_cost_usd")
+                injected_exit = sample.get("exit_cost_usd") if sample.get("exit_cost_usd") is not None else effective_pool_meta.get("exit_cost_usd")
+                injected_gas = sample.get("gas_usd") if sample.get("gas_usd") is not None else effective_pool_meta.get("gas_usd")
+                injected_slippage = sample.get("slippage_usd") if sample.get("slippage_usd") is not None else effective_pool_meta.get("slippage_usd")
+
+                if target_mode == "LIVE_READINESS" or injected_entry is not None or injected_exit is not None:
+                    entry_cost = Decimal(str(injected_entry if injected_entry is not None else (gated.get("entry_cost_usd") or 0)))
+                    exit_cost = Decimal(str(injected_exit if injected_exit is not None else (gated.get("exit_cost_usd") or 0)))
+                    gas_cost = Decimal(str(injected_gas if injected_gas is not None else (gated.get("gas_usd") or 0)))
+                    slippage_cost = Decimal(str(injected_slippage if injected_slippage is not None else (gated.get("slippage_usd") or 0)))
+                else:
+                    entry_cost = Decimal(0)
+                    exit_cost = Decimal(0)
+                    gas_cost = Decimal(0)
+                    slippage_cost = Decimal(0)
+
+                wallet_cash = Decimal(str(capital_usd)) - Decimal(str(position_usd))
+
+                nav = compute_full_cost_nav(
+                    wallet=wallet_cash,
                     lp_principal=lp_val.value_usd,
+                    entry_cost_usd=entry_cost,
+                    exit_cost_usd=exit_cost,
+                    gas_usd=gas_cost,
+                    slippage_usd=slippage_cost,
                     accrued_fees=accrued,
                     verified_rewards=Decimal(0),
                     liabilities=Decimal(0),
                 )
+                p_lower = entry_price * (Decimal(1) - range_pct_val / Decimal(100))
+                p_upper = entry_price * (Decimal(1) + range_pct_val / Decimal(100))
+                fg0_acc = max(Decimal(0), cur0 - open_fg0) if (open_fg0 is not None and cur0 is not None) else Decimal(0)
+                fg1_acc = max(Decimal(0), cur1 - open_fg1) if (open_fg1 is not None and cur1 is not None) else Decimal(0)
+                liq_res = compute_liquidation_nav(
+                    wallet=wallet_cash,
+                    l_pos=l_pos,
+                    price=price,
+                    range=(p_lower, p_upper),
+                    fee_growth_0=fg0_acc,
+                    fee_growth_1=fg1_acc,
+                    decimals=(dec0_val, dec1_val),
+                    slippage_bps_max=Decimal("200"),
+                    entry_cost_usd=entry_cost,
+                    exit_cost_usd=exit_cost,
+                    gas_usd=gas_cost,
+                    quote_usd_per_token1=step_quote_val,
+                )
+                liquidation_nav_val = liq_res.nav
+                liquidation_nav_reason = liq_res.reason
             except (TypeError, ValueError, InvalidOperation):
                 nav = None
                 nav_reason = "NAV_COMPUTATION_ERROR"
+                liquidation_nav_val = None
+                liquidation_nav_reason = "NAV_COMPUTATION_ERROR"
                 fee_usd_raw = None
                 fee_usd_organic = None
 
@@ -1152,7 +1227,7 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
             prev_nav = nav
 
         hodl_value: Optional[Decimal] = None
-        if open_valid and price is not None and step_quote_val is not None:
+        if position_open and open_valid and price is not None and step_quote_val is not None:
             hodl_value = amount0_human * price * step_quote_val + amount1_human * step_quote_val
 
         insert_row(conn, "rh_gate_decisions", {
@@ -1235,15 +1310,21 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
             step_reasons.append("ECONOMIC_EVAL_SKIPPED_NO_SNAPSHOT_ID")
         sample_time = sample.get("sample_time")
         risk_data = {
+            "position_open": position_open,
             "accrued_accrual_basis": "position_open_v2",
             "skipped": nav is None,
-            "liquidation_nav_reason": "NOT_COMPUTED:EXIT_DEPTH_PER_STEP_NOT_WIRED",
+            "liquidation_nav_reason": liquidation_nav_reason or "OK",
             "in_range": step_in_range,
             "fee_usd_raw": _economic_str(fee_usd_raw),
             "fee_usd_organic": _economic_str(fee_usd_organic),
             "organic_fraction": _economic_str(organic_fraction),
             "organic_status": organic_status,
         }
+        if position_open and open_valid:
+            risk_data["entry_cost_usd"] = _economic_str(gated.get("entry_cost_usd"))
+            risk_data["exit_cost_usd"] = _economic_str(gated.get("exit_cost_usd"))
+            risk_data["gas_usd"] = _economic_str(gated.get("gas_usd"))
+            risk_data["slippage_usd"] = _economic_str(gated.get("slippage_usd"))
         if nav is None and nav_reason is not None:
             risk_data["reason"] = nav_reason
         insert_row(conn, "rh_position_marks", {
@@ -1251,8 +1332,8 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
             "mark_time": sample_time if sample_time is not None else now_fn(),
             "price_snapshot_id": sample.get("source_payload_hash"),
             "reference_nav": nav,
-            "liquidation_nav": None,
-            "accrued_fee": accrued if nav is not None else None,
+            "liquidation_nav": liquidation_nav_val,
+            "accrued_fee": (Decimal(0) if (accrued is not None and accrued == 0) else accrued) if nav is not None else None,
             "unvalued_risk_json": json.dumps(risk_data, sort_keys=True),
             "derived_block_hash": sample.get("derived_block_hash"),
             "derived_block_number": sample.get("derived_block_number"),

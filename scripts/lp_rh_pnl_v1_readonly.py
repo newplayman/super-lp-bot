@@ -169,6 +169,7 @@ def compute_full_cost_nav(
 
 def compute_liquidation_nav(
     *,
+    wallet=Decimal(0),
     l_pos=None,
     price=None,
     range=None,
@@ -201,6 +202,7 @@ def compute_liquidation_nav(
         xc = Decimal(str(exit_cost_usd)) if exit_cost_usd is not None else Decimal(0)
         g = Decimal(str(gas_usd)) if gas_usd is not None else Decimal(0)
         q = Decimal(str(quote_usd_per_token1)) if quote_usd_per_token1 is not None else Decimal(1)
+        w = Decimal(str(wallet)) if wallet is not None else Decimal(0)
 
         if isinstance(decimals, (tuple, list)):
             dec0, dec1 = int(decimals[0]), int(decimals[1])
@@ -208,7 +210,7 @@ def compute_liquidation_nav(
             dec0 = dec1 = int(decimals)
 
         if l <= 0 or px <= 0:
-            return LiquidationNavResult(Decimal(0), None)
+            return LiquidationNavResult(max(Decimal(0), w - ec - xc - g), None)
 
         if isinstance(range, (tuple, list)):
             lower_p, upper_p = Decimal(str(range[0])), Decimal(str(range[1]))
@@ -223,15 +225,18 @@ def compute_liquidation_nav(
         sqrt_pb = upper_p.sqrt()
         sqrt_p = px.sqrt()
 
+        scale_factor = (Decimal(10) ** dec0 * Decimal(10) ** dec1).sqrt()
+        l_human = l / scale_factor if l >= scale_factor else l
+
         if px <= lower_p:
-            amt0 = l * (sqrt_pb - sqrt_pa) / (sqrt_pa * sqrt_pb)
+            amt0 = l_human * (sqrt_pb - sqrt_pa) / (sqrt_pa * sqrt_pb)
             amt1 = Decimal(0)
         elif px >= upper_p:
             amt0 = Decimal(0)
-            amt1 = l * (sqrt_pb - sqrt_pa)
+            amt1 = l_human * (sqrt_pb - sqrt_pa)
         else:
-            amt0 = l * (sqrt_pb - sqrt_p) / (sqrt_p * sqrt_pb)
-            amt1 = l * (sqrt_p - sqrt_pa)
+            amt0 = l_human * (sqrt_pb - sqrt_p) / (sqrt_p * sqrt_pb)
+            amt1 = l_human * (sqrt_p - sqrt_pa)
 
         pos_val_usd = (amt0 * px + amt1) * q
         fee_scale = Decimal(2) ** Decimal(128)
@@ -241,7 +246,7 @@ def compute_liquidation_nav(
 
         slippage_factor = slip_bps / Decimal(10000)
         conservative_exit_val = (pos_val_usd + fee_val_usd) * (Decimal(1) - slippage_factor)
-        net_liq_nav = conservative_exit_val - ec - xc - g
+        net_liq_nav = w + conservative_exit_val - ec - xc - g
         return LiquidationNavResult(max(Decimal(0), net_liq_nav), None)
     except Exception:
         return LiquidationNavResult(None, "LIQUIDATION_NAV_COMPUTATION_ERROR")

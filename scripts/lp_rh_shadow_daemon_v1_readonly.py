@@ -308,7 +308,7 @@ def _copy_new_rows(scratch_conn, ledger_conn, existing_decision_ids=None):
                     scratch_status = row[cols.index("status")]
                     ledger_status = ledger_resv_status.get(intent_id)
                     if (scratch_status in ("RELEASED", "EXPIRED") and
-                            ledger_status in ("PENDING", "CONFIRMED", "BROADCAST_UNKNOWN")):
+                            ledger_status in ("PENDING", "CONFIRMED")):
                         scratch_released_at = row[cols.index("released_at")]
                         ledger_conn.execute(
                             "UPDATE rh_bucket_reservations SET status = ?, released_at = ? "
