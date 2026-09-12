@@ -8,12 +8,11 @@ on:
     branches:
       - feat/prd-v2.1-m0-shadow
   schedule:
-    # 每天 04:00Z 跑一次（错开 RTH 13:30-20:00Z 与 cron */5 集中）
     - cron: "37 4 * * *"
 
 jobs:
   audit-repro:
-    name: audit_repro.py R01-R08
+    name: audit_repro.py R01-R08 (repo AST extract)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -23,20 +22,37 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install audit script (vendored)
-        # audit_repro.py 是 gpt-6pro 提供的，PIN 到固定 commit。
-        # 改为本地 vendored 而不是下载 zip，避免供应链风险。
+      - name: Verify audit_repro.py is vendored
         run: |
-          mkdir -p tools/audit_repro
-          # 主脑后续会把 audit_repro.py 拷到 tools/audit_repro/audit_repro.py
-          # 在这之前，本 workflow 允许失败——CI 不阻断当前 commit
-          if [ -f tools/audit_repro/audit_repro.py ]; then
-            python tools/audit_repro/audit_repro.py --json-out audit_results.json
-            cat audit_results.json
-            # 期望：defects_reproduced = 0
-            # 若 > 0：job fail，让 PR 不能合并
-            python -c "import json; d = json.load(open('audit_results.json')); n = d.get('defects_reproduced', -1); assert n == 0, f'audit_repro.py still reproduces {n} defects'"
-          else
-            echo "::warning::audit_repro.py not vendored yet (tools/audit_repro/audit_repro.py missing). This warning will be removed once the file is vendored."
-            exit 0
-          fi
+          test -f tools/audit_repro/audit_repro.py
+      - name: Run audit_repro.py against THIS checkout
+        env:
+          GITHUB_HEAD_SHA: ${{ github.sha }}
+        run: |
+          cd ${{ github.workspace }}
+          python tools/audit_repro/audit_repro.py \
+            --repo "$GITHUB_WORKSPACE" \
+            --allow-other-head \
+            --json-out audit_results.json
+          cat audit_results.json
+      - name: Assert mode, HEAD, and zero defects
+        run: |
+          python -c "
+import json, os, subprocess
+d = json.load(open('audit_results.json'))
+src = d.get('source', {})
+mode = src.get('mode')
+head = src.get('head')
+expected_head = os.environ['GITHUB_HEAD_SHA']
+defects = d.get('defects_reproduced', -1)
+probe_errors = d.get('probe_errors', -1)
+
+assert mode == 'AST_EXTRACTED_CHECKOUT_FUNCTIONS_WITH_TEST_SHIMS', \
+    f'CI ran wrong mode: {mode} (want AST_EXTRACTED_CHECKOUT_FUNCTIONS_WITH_TEST_SHIMS). ' \
+    f'Missing --repo is the typical cause; default is REDUCED_REFERENCE_MODEL pinned to old commit.'
+assert head == expected_head, \
+    f'AST head {head} != github.sha {expected_head}; --allow-other-head is required when HEAD != PIN'
+assert probe_errors == 0, f'probe_errors={probe_errors}'
+assert defects == 0, f'defects_reproduced={defects}; audit findings regressed'
+print(f'OK: mode={mode}, head={head[:12]}, defects={defects}')
+"
