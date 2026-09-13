@@ -401,11 +401,14 @@ def test_stage_b_missed_risk_events_fail():
 
 # --- LIVE gate ---
 
-def test_live_gate_single_provider():
+def test_live_gate_single_provider_warning_not_blocker():
+    """H4: single provider -> warning (SINGLE_PROVIDER_DEGRADED), NOT a blocker."""
     lg = live_gate_status(usable_provider_count=1, capital_policy_approved=True,
                           signatures=0, broadcasts=0, keys_created=0)
-    assert lg["live_allowed"] is False
-    assert "SINGLE_PROVIDER_NOT_ALLOWED_FOR_LIVE" in lg["blockers"]
+    assert "SINGLE_PROVIDER_DEGRADED" in lg.get("warnings", [])
+    assert "SINGLE_PROVIDER_NOT_ALLOWED_FOR_LIVE" not in lg["blockers"]
+    # With no other blockers and capital_policy approved, live is allowed
+    assert lg["live_allowed"] is True
 
 
 def test_live_gate_signatures():
@@ -459,7 +462,7 @@ def test_live_gate_with_rh_rpc_health_db(tmp_path):
 # --- verdict ---
 
 @pytest.mark.parametrize("blocker", [
-    "SINGLE_PROVIDER_NOT_ALLOWED_FOR_LIVE",
+    "NO_PROVIDER_USABLE",
     "CAPITAL_POLICY_CONFLICT",
     "UNAUTHORIZED_ACTION_DETECTED",
 ])
@@ -468,6 +471,86 @@ def test_verdict_live_blocker_not_pass(blocker):
     v = graduation_verdict(passing_stage_a(), passing_stage_b(), live_gate)
     assert v["verdict"] != "PASS"
     assert "LIVE_EXECUTION" in v["explicitly_not_authorized"]
+
+
+# --- H4: live_gate from rh_rpc_health ---
+
+class TestLiveGateFromRpcHealth:
+    """H4: live_gate_status queries rh_rpc_health via usable_providers_from_db.
+
+    >=2 usable providers -> not blocked.
+    ==1 usable provider -> warning only (SINGLE_PROVIDER_DEGRADED), NOT blocker.
+    ==0 usable providers -> blocked (NO_PROVIDER_USABLE).
+    SINGLE_PROVIDER_NOT_ALLOWED_FOR_LIVE is no longer emitted as a blocker.
+    """
+
+    def test_two_usable_providers_not_blocked(self, tmp_path):
+        from scripts.lp_rh_store_v1_readonly import open_store, migrate
+        p = tmp_path / "two.db"
+        c = open_store(str(p)); migrate(c)
+        c.execute(
+            "INSERT INTO rh_rpc_health (provider, sample_time, success_count, fail_count, "
+            "last_good_block, last_good_at, state) VALUES "
+            "('p1', datetime('now'), 10, 1, 1, datetime('now'), 'GOOD'), "
+            "('p2', datetime('now'), 8, 2, 1, datetime('now'), 'GOOD')"
+        )
+        c.commit(); c.close()
+        lg = live_gate_status(
+            capital_policy_approved=True, signatures=0, broadcasts=0, keys_created=0,
+            rh_rpc_health_db_path=str(p)
+        )
+        assert lg["live_allowed"] is True
+        assert lg["usable_provider_count"] == 2
+        assert lg["blockers"] == []
+
+    def test_one_provider_warning_not_blocker(self, tmp_path):
+        from scripts.lp_rh_store_v1_readonly import open_store, migrate
+        p = tmp_path / "one.db"
+        c = open_store(str(p)); migrate(c)
+        c.execute(
+            "INSERT INTO rh_rpc_health (provider, sample_time, success_count, fail_count, "
+            "last_good_block, last_good_at, state) VALUES "
+            "('p1', datetime('now'), 10, 1, 1, datetime('now'), 'GOOD')"
+        )
+        c.commit(); c.close()
+        lg = live_gate_status(
+            capital_policy_approved=True, signatures=0, broadcasts=0, keys_created=0,
+            rh_rpc_health_db_path=str(p)
+        )
+        assert lg["live_allowed"] is True, "Single provider is WARNING, not blocker"
+        assert lg["usable_provider_count"] == 1
+        assert "SINGLE_PROVIDER_DEGRADED" in lg.get("warnings", [])
+        assert "SINGLE_PROVIDER_NOT_ALLOWED_FOR_LIVE" not in lg["blockers"]
+
+    def test_zero_providers_blocked(self, tmp_path):
+        from scripts.lp_rh_store_v1_readonly import open_store, migrate
+        p = tmp_path / "zero.db"
+        c = open_store(str(p)); migrate(c)
+        # No providers with success_count > fail_count
+        c.execute(
+            "INSERT INTO rh_rpc_health (provider, sample_time, success_count, fail_count, "
+            "last_good_block, last_good_at, state) VALUES "
+            "('p1', datetime('now'), 0, 5, 1, datetime('now'), 'BAD')"
+        )
+        c.commit(); c.close()
+        lg = live_gate_status(
+            capital_policy_approved=True, signatures=0, broadcasts=0, keys_created=0,
+            rh_rpc_health_db_path=str(p)
+        )
+        assert lg["live_allowed"] is False
+        assert lg["usable_provider_count"] == 0
+        assert "NO_PROVIDER_USABLE" in lg["blockers"]
+        assert "SINGLE_PROVIDER_NOT_ALLOWED_FOR_LIVE" not in lg["blockers"]
+
+    def test_string_literal_not_emitted_as_blocker(self):
+        """SINGLE_PROVIDER_NOT_ALLOWED_FOR_LIVE is never emitted as a blocker."""
+        for count in [0, 1, 2, 3]:
+            kwargs = dict(usable_provider_count=count, capital_policy_approved=True,
+                          signatures=0, broadcasts=0, keys_created=0)
+            lg = live_gate_status(**kwargs)
+            assert "SINGLE_PROVIDER_NOT_ALLOWED_FOR_LIVE" not in lg["blockers"], (
+                f"count={count}: {lg['blockers']}"
+            )
 
 
 def test_verdict_all_pass():

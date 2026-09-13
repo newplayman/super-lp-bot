@@ -155,3 +155,47 @@ python -m pytest tests/ -q --tb=line -p no:cacheprovider 2>&1 | tail -5
 ## 输出要求
 
 每 H 分块验证贴最后 10 行。最终 producer→consumer 验证贴完整 JSON 摘录（顶层 schema_version / run_id / mode / head_sha / probes 计数）。
+
+---
+
+## PATCH LOG (2026-09-13 W3 implementation)
+
+### H1 — versioned producer/consumer schema
+- **Created** `reports/paper_closeout_v3_rev1/schemas/audit_repro_v1.json` — JSON Schema documentation for audit_repro/1 contract.
+- **Modified** `tools/audit_repro/audit_repro.py`:
+  - Added `uuid` import, `SCHEMA_VERSION = "audit_repro/1"`, `VALID_AUDIT_MODES = frozenset({"AST_EXTRACTED_CHECKOUT_FUNCTIONS_WITH_TEST_SHIMS"})`.
+  - `main()` now generates `run_id = str(uuid.uuid4())` and adds `started_at`/`finished_at` timestamps.
+  - Mode validation: exits code 2 if mode not in `VALID_AUDIT_MODES`.
+  - Report now includes `schema_version`, `run_id`, `head_sha`, `mode`, `scope`, `tested_code_sha`, `tested_config_sha`, `started_at`, `finished_at`, `counts` at top level.
+  - Probes now include `evidence` key (non-empty for DEFECT_REPRODUCED status).
+- **Modified** `scripts/lp_rh_paper_readiness_v1.py`:
+  - `VALID_AUDIT_MODES` narrowed to the single valid mode `"AST_EXTRACTED_CHECKOUT_FUNCTIONS_WITH_TEST_SHIMS"`.
+  - Added `EXPECTED_SCHEMA_VERSION = "audit_repro/1"` and `REQUIRED_PROBE_IDS` (R01..R08).
+  - `g2_audit_regression_pass` now validates `schema_version`, `run_id`, `head_sha`, all 8 probe prefixes, `counts`. Returns `BLOCKED_BY_SCHEMA_MISMATCH` for any violation.
+  - `main()` added `--audit-json` and `--expected-run-id` CLI flags.
+
+### H2 — 5-gate isolation
+- **Modified** `scripts/lp_rh_paper_readiness_v1.py`:
+  - Added `GATE_DEFINITIONS` dict with 5 categories: `ENGINEERING_GATE`, `STAGE_A_DATA_GATE`, `PAPER_START_GATE`, `PROFILE_GRADUATION_GATE`, `LIVE_START_GATE`.
+  - Added `LIVE_STARTED_BY_THIS_TASK = False` (hard-coded).
+  - `compute_paper_readiness()` now returns `PAPER_TECHNICALLY_READY` (ENGINEERING + STAGE_A pass) and `LIVE_TECHNICALLY_READY` (PROFILE_GRADUATION pass).
+- **Modified** `tests/test_lp_rh_paper_readiness_v1.py`: added 6 new tests (`test_5_gate_categories_isolated`, `test_engineering_gate_no_72h_required`, `test_stage_a_gate_requires_72h_window`, `test_paper_ready_no_owner_approval`, `test_live_started_always_false`, `test_live_ready_does_not_require_owner_approval`, `test_gate_definitions_present`) + updated 3 existing mock fixtures to use new schema.
+
+### H3 — R01..R08 probe coverage
+- **Created** `tests/test_audit_repro_v3_probes_v1.py`: 13 tests validating schema fields, probe IDs, run_id uniqueness, mode whitelist.
+
+### H4 — live_gate from rh_rpc_health
+- **Modified** `scripts/lp_rh_readiness_v1_readonly.py`:
+  - Added `SINGLE_PROVIDER_WARNING = "SINGLE_PROVIDER_DEGRADED"` and `NO_PROVIDER_USABLE = "NO_PROVIDER_USABLE"` constants.
+  - `live_gate_status` now: `>=2` providers → no blocker; `==1` → warning (not blocker); `==0` → blocker `NO_PROVIDER_USABLE`.
+  - `SINGLE_PROVIDER_NOT_ALLOWED_FOR_LIVE` is no longer emitted as a blocker.
+  - Added `warnings` key to return dict.
+- **Modified** `tests/test_lp_rh_readiness_v1_readonly.py`:
+  - `test_live_gate_single_provider` → `test_live_gate_single_provider_warning_not_blocker` (single provider now warning, not blocker).
+  - Added `TestLiveGateFromRpcHealth` class with 4 tests: `test_two_usable_providers_not_blocked`, `test_one_provider_warning_not_blocker`, `test_zero_providers_blocked`, `test_string_literal_not_emitted_as_blocker`.
+  - Updated parametrized `test_verdict_live_blocker_not_pass` to use `NO_PROVIDER_USABLE` instead of `SINGLE_PROVIDER_NOT_ALLOWED_FOR_LIVE`.
+
+### H5 — provider independence probe
+- **Created** `scripts/lp_rh_provider_independence_v1.py`: `check_independence(provider_a_url, provider_b_url, resolver=None)` implementing DNS/IP comparison + latency p50 profiling.
+- **Created** `tests/test_lp_rh_provider_independence_v1.py`: 9 tests with mock resolvers covering same IP, different IPs, DNS failure, latency similarity.
+

@@ -504,6 +504,8 @@ def stage_b_status(*, days_covered, weekends_covered, unexplained_ledger_diffs,
             "passed": not blockers, "blockers": blockers}
 
 SINGLE_PROVIDER_BLOCKER = "SINGLE_PROVIDER_NOT_ALLOWED_FOR_LIVE"
+SINGLE_PROVIDER_WARNING = "SINGLE_PROVIDER_DEGRADED"
+NO_PROVIDER_USABLE = "NO_PROVIDER_USABLE"
 
 
 def usable_providers_from_db(db_path: str) -> dict:
@@ -545,7 +547,14 @@ def live_gate_status(*, usable_provider_count=None, capital_policy_approved,
                      rh_rpc_health_db_path: str | None = None) -> dict:
     """LIVE gate (PRD §8.3). live_allowed is False unless every check is clean:
     >=2 usable providers, capital policy explicitly approved, zero unauthorized
-    signatures / broadcasts / keys."""
+    signatures / broadcasts / keys.
+
+    H4: Provider count comes from rh_rpc_health when db_path is supplied.
+    >=2 providers -> not blocked.
+    ==1 provider -> WARNING (SINGLE_PROVIDER_DEGRADED), NOT a blocker.
+    ==0 providers -> blocked (NO_PROVIDER_USABLE).
+    The literal SINGLE_PROVIDER_NOT_ALLOWED_FOR_LIVE is no longer emitted.
+    """
     if rh_rpc_health_db_path is not None:
         try:
             db_res = usable_providers_from_db(rh_rpc_health_db_path)
@@ -553,8 +562,14 @@ def live_gate_status(*, usable_provider_count=None, capital_policy_approved,
         except Exception:
             pass
     blockers = []
-    if usable_provider_count is None or usable_provider_count < 2:
-        blockers.append(SINGLE_PROVIDER_BLOCKER)
+    warnings = []
+    if usable_provider_count is None:
+        blockers.append(NO_PROVIDER_USABLE)
+    elif usable_provider_count == 0:
+        blockers.append(NO_PROVIDER_USABLE)
+    elif usable_provider_count == 1:
+        warnings.append(SINGLE_PROVIDER_WARNING)
+    # else: >=2 -> no provider-related blocker or warning
     if capital_policy_approved is False:
         blockers.append("CAPITAL_POLICY_CONFLICT")
     elif capital_policy_approved is None:
@@ -572,7 +587,7 @@ def live_gate_status(*, usable_provider_count=None, capital_policy_approved,
             "capital_policy_approved": capital_policy_approved,
             "signatures": signatures, "broadcasts": broadcasts,
             "keys_created": keys_created, "live_allowed": not blockers,
-            "blockers": blockers}
+            "blockers": blockers, "warnings": warnings}
 
 def graduation_verdict(stage_a, stage_b, live_gate) -> dict:
     """Overall verdict. Any live-gate blocker forces verdict != PASS."""

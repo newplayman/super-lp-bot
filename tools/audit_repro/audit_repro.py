@@ -20,12 +20,15 @@ import platform
 import sqlite3
 import subprocess
 import sys
+import uuid
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
 PIN = "c2fb020a1ad36b7b186e71d3b25a0563b24b8e08"
+SCHEMA_VERSION = "audit_repro/1"
+VALID_AUDIT_MODES = frozenset({"AST_EXTRACTED_CHECKOUT_FUNCTIONS_WITH_TEST_SHIMS"})
 NOW = "2026-09-11T14:00:00Z"
 BUCKETS = ("CORE", "STOCK", "MEME")
 POLICY_ID = "rh_50_30_20_proposed_v1"
@@ -439,27 +442,78 @@ def main():
     parser.add_argument("--allow-other-head", action="store_true", help="Explicitly permit a changed checkout for repair comparison")
     parser.add_argument("--json-out", type=Path)
     args = parser.parse_args()
+    run_id = str(uuid.uuid4())
+    started_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     source = {"mode": "REDUCED_REFERENCE_MODEL", "not_full_repository_tests": True, "pinned_source": PIN}
     try:
+        tested_code_sha = None
+        tested_config_sha = None
+        scope = "reduced_reference_model"
         if args.repo:
             source.update(load_repo_functions(args.repo.resolve(), args.allow_other_head))
             source["mode"] = "AST_EXTRACTED_CHECKOUT_FUNCTIONS_WITH_TEST_SHIMS"
+            scope = "AST_EXTRACTED_CHECKOUT_FUNCTIONS_WITH_TEST_SHIMS"
+            # Extract code/config SHAs from git for the audited checkout
+            try:
+                code_out = subprocess.run(
+                    ["git", "rev-parse", "HEAD"], capture_output=True, text=True, timeout=10, cwd=str(args.repo.resolve())
+                )
+                tested_code_sha = code_out.stdout.strip() if code_out.returncode == 0 else None
+                config_out = subprocess.run(
+                    ["git", "hash-object", "configs/config.shadow.toml"],
+                    capture_output=True, text=True, timeout=10, cwd=str(args.repo.resolve())
+                )
+                tested_config_sha = config_out.stdout.strip() if config_out.returncode == 0 else None
+            except Exception:
+                tested_code_sha = None
+                tested_config_sha = None
+
+        # Validate mode against whitelist (exit 2 = PROBE_SETUP_ERROR equivalent)
+        mode = source.get("mode")
+        if mode not in VALID_AUDIT_MODES:
+            print(json.dumps({
+                "status": "PROBE_SETUP_ERROR",
+                "error": f"mode '{mode}' is not in the allowed whitelist: {sorted(VALID_AUDIT_MODES)}"
+            }, ensure_ascii=False), file=sys.stderr)
+            return 2
+
         items = []
         for name, probe in PROBES:
             try:
                 reproduced, details = probe()
-                items.append({"id": name, "status": "DEFECT_REPRODUCED" if reproduced else "NOT_REPRODUCED", "details": details})
+                status = "DEFECT_REPRODUCED" if reproduced else "NOT_REPRODUCED"
+                evidence = details if status == "DEFECT_REPRODUCED" else {}
+                items.append({"id": name, "status": status, "evidence": evidence, "details": details})
             except Exception as exc:
-                items.append({"id": name, "status": "PROBE_ERROR", "error": repr(exc)})
-        report = {"source": source, "python": platform.python_version(), "sqlite": sqlite3.sqlite_version,
-                  "tests": items, "defects_reproduced": sum(x["status"] == "DEFECT_REPRODUCED" for x in items),
-                  "probe_errors": sum(x["status"] == "PROBE_ERROR" for x in items)}
+                items.append({"id": name, "status": "PROBE_ERROR", "error": repr(exc), "evidence": {}})
+        finished_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        counts = {
+            "defects_reproduced": sum(x["status"] == "DEFECT_REPRODUCED" for x in items),
+            "probe_errors": sum(x["status"] == "PROBE_ERROR" for x in items),
+        }
+        head_sha = source.get("head")
+        report = {
+            "schema_version": SCHEMA_VERSION,
+            "run_id": run_id,
+            "head_sha": head_sha,
+            "mode": mode,
+            "scope": scope,
+            "tested_code_sha": tested_code_sha,
+            "tested_config_sha": tested_config_sha,
+            "started_at": started_at,
+            "finished_at": finished_at,
+            "python": platform.python_version(),
+            "sqlite": sqlite3.sqlite_version,
+            "source": source,
+            "probes": items,
+            "counts": counts,
+        }
         serialized = json.dumps(report, ensure_ascii=False, indent=2, default=str)
         print(serialized)
         if args.json_out:
             args.json_out.parent.mkdir(parents=True, exist_ok=True)
             args.json_out.write_text(serialized + "\n", encoding="utf-8")
-        return 2 if report["probe_errors"] else 1 if report["defects_reproduced"] else 0
+        return 2 if report["counts"]["probe_errors"] else 1 if report["counts"]["defects_reproduced"] else 0
     except Exception as exc:
         print(json.dumps({"status": "PROBE_SETUP_ERROR", "error": repr(exc)}, ensure_ascii=False), file=sys.stderr)
         return 2

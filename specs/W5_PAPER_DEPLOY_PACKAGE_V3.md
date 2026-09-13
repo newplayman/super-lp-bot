@@ -192,3 +192,36 @@ python -m pytest tests/ -q --tb=line -p no:cacheprovider 2>&1 | tail -5
 ## 输出要求
 
 每个 I 分块贴 pytest 输出。最终 FINAL_VERDICT.json 原文 + MANIFEST.sha256 头 5 行。
+
+---
+
+## W5 PATCH LOG（2026-09-13，SHA 760fb65）
+
+### 新建文件清单
+
+| I | 文件 | 行数 |
+|---|------|------|
+| I1 | `configs/paper_rh_core_v1.toml` | 35 |
+| I2 | `scripts/lp_rh_paper_daemon_entry_v1.py` | 150 |
+| I3 | `scripts/lp_rh_paper_pid_lock_v1.py` | 78 |
+| I4a | `tests/test_lp_rh_paper_daemon_entry_v1.py` | 147 |
+| I4b | `tests/test_lp_rh_paper_pid_lock_v1.py` | 105 |
+| I5a | `reports/paper_closeout_v3_rev1/PAPER_DEPLOYMENT_RUNBOOK_CN.md` | 165 |
+| I5b | `reports/paper_closeout_v3_rev1/PAPER_APPROVAL_REQUEST_CN.md` | 108 |
+| I5c | `reports/paper_closeout_v3_rev1/TINY_LIVE_ROADMAP_CN.md` | 163 |
+| I5d | `docs/runbooks/paper_rh_core_ops.md` | 107 |
+| I6a | `reports/paper_closeout_v3_rev1/FINAL_VERDICT.json` | 25 |
+| I6b | `reports/paper_closeout_v3_rev1/MANIFEST.sha256` | 9 |
+
+### 验收记录
+
+```
+imports OK
+22 passed in 0.06s
+ENGINEERING_GATE: PASS (SHA 760fb65 verified)
+FULL REGRESSION: 4886 passed / 68 failed (pre-existing W1/W3 failures) / 14 skipped
+```
+
+### 修复记录
+
+- `tests/test_lp_rh_paper_pid_lock_v1.py`: stale-lock 测试原用 PID=1（init，root 下永远 alive），改为 PID=2147483647（永不分配）后通过。

@@ -1,100 +1,188 @@
-"""Tests for lp_rh_provider_independence_v1."""
-from pathlib import Path
-from unittest import mock
+#!/usr/bin/env python3
+"""H5: Provider independence probe tests.
+
+Verifies check_independence() correctly classifies providers as independent or not
+based on DNS/IP overlap and latency profile comparison.
+"""
+from __future__ import annotations
+
+import socket
+
 import pytest
 
-from scripts.lp_rh_provider_independence_v1 import check_independence, render_report
+from scripts.lp_rh_provider_independence_v1 import (
+    LATENCY_DIFF_THRESHOLD,
+    check_independence,
+    resolve_hostname,
+)
 
 
-def _make_mock_response(status_code=200, content=b'{"jsonrpc":"2.0"}', issuer_cn="TestCA"):
-    resp = mock.MagicMock()
-    resp.status_code = status_code
-    resp.content = content
-    sock = mock.MagicMock()
-    sock.getpeercert.return_value = {
-        "issuer": ((("commonName", issuer_cn),),),
-        "subjectAltName": (("DNS", "example.com"),),
-    }
-    resp.raw.connection.sock = sock
-    return resp
+# ---------------------------------------------------------------------------
+# Mock resolvers: a single function that dispatches based on hostname prefix.
+# ---------------------------------------------------------------------------
+
+def _resolver_dispatch(url_a: str, url_b: str):
+    """Return a resolver that gives different IPs to provider_a vs provider_b URLs."""
+    def resolver(hostname: str):
+        # provider_a URL hostname contains "provider-a"
+        # provider_b URL hostname contains "provider-b"
+        if "provider-a" in hostname:
+            return ["93.184.216.34"]  # IP for provider A
+        elif "provider-b" in hostname:
+            return ["151.101.1.140"]  # IP for provider B
+        return []
+    return resolver
 
 
-def test_check_independence_two_distinct_endpoints():
-    def mock_getaddrinfo(host, port, *args, **kwargs):
-        if "alpha" in host:
-            return [(2, 1, 6, "", ("1.1.1.1", 443))]
-        return [(2, 1, 6, "", ("2.2.2.2", 443))]
-
-    perf_times = []
-    for _ in range(5):
-        perf_times.extend([0.0, 0.010])  # 10ms for alpha
-    for _ in range(5):
-        perf_times.extend([0.0, 0.050])  # 50ms for beta
-
-    def mock_get(url, *args, **kwargs):
-        return _make_mock_response(status_code=200, issuer_cn="CA-Alpha" if "alpha" in url else "CA-Beta")
-
-    with mock.patch("socket.getaddrinfo", side_effect=mock_getaddrinfo), \
-         mock.patch("requests.get", side_effect=mock_get), \
-         mock.patch("time.perf_counter", side_effect=perf_times):
-        res = check_independence("https://alpha.rpc.io", "https://beta.rpc.io")
-
-    assert res["independent"] is True
-    assert res["evidence"]["dns"]["shared_ips"] == []
-    assert res["evidence"]["latency_ms"]["too_close"] is False
-    assert res["evidence"]["certs"]["shared_issuer_cn"] is False
+RESOLVER_SAME_IP = lambda hostname: ["93.184.216.34"]
+RESOLVER_DIFFERENT_IPS = _resolver_dispatch(
+    "https://provider-a.example.com/eth",
+    "https://provider-b.example.com/eth"
+)
+RESOLVER_DNS_FAILURE = lambda hostname: (_ for _ in ()).throw(socket.gaierror("Name resolution failed"))
 
 
-def test_check_independence_same_ip_fails():
-    def mock_getaddrinfo(host, port, *args, **kwargs):
-        return [(2, 1, 6, "", ("10.0.0.1", 443))]
+# ---------------------------------------------------------------------------
+# DNS resolution tests.
+# ---------------------------------------------------------------------------
 
-    with mock.patch("socket.getaddrinfo", side_effect=mock_getaddrinfo):
-        res = check_independence("https://provider-a.com", "https://provider-b.com")
+class TestResolveHostname:
+    def test_same_ip_returns_not_independent(self):
+        """Identical IP sets -> independent=False, reason=shared_backend."""
+        result = check_independence(
+            "https://provider-a.example.com/eth",
+            "https://provider-b.example.com/eth",
+            resolver=RESOLVER_SAME_IP,
+        )
+        assert result["independent"] is False
+        assert result["reason"] == "shared_backend"
+        assert result["evidence"]["ips_a"] == result["evidence"]["ips_b"]
 
-    assert res["independent"] is False
-    assert "DNS" in res["reason"]
-    assert "10.0.0.1" in res["evidence"]["dns"]["shared_ips"]
+    def test_different_ip_distinct_latency_returns_independent(self):
+        """Different IPs with meaningfully different latency -> independent=True, reason=distinct."""
+        import scripts.lp_rh_provider_independence_v1 as pi_mod
+
+        orig = pi_mod.measure_latency
+
+        def fast_then_slow(url, resolver=None):
+            # Return fast (50ms) for provider-a, slow (500ms) for provider-b
+            if "provider-a" in url:
+                return {"p50_ms": 50.0, "samples": [0.05] * 5, "count": 5, "errors": 0, "success": True}
+            return {"p50_ms": 500.0, "samples": [0.5] * 5, "count": 5, "errors": 0, "success": True}
+
+        pi_mod.measure_latency = fast_then_slow
+        try:
+            result = check_independence(
+                "https://provider-a.example.com/eth",
+                "https://provider-b.example.com/eth",
+                resolver=RESOLVER_DIFFERENT_IPS,
+            )
+            assert result["independent"] is True
+            assert result["reason"] == "distinct"
+        finally:
+            pi_mod.measure_latency = orig
+
+    def test_dns_failure_returns_indeterminate(self):
+        """DNS failure for either provider -> independent=False, reason=dns_failure."""
+        result = check_independence(
+            "https://provider-a.example.com/eth",
+            "https://provider-b.example.com/eth",
+            resolver=RESOLVER_DNS_FAILURE,
+        )
+        assert result["independent"] is False
+        assert result["reason"] == "dns_failure"
+
+    def test_overlapping_ip_sets_shared_backend(self):
+        """Identical IP sets -> shared_backend (not overlapping sets)."""
+        def identical_resolver(hostname):
+            return ["1.2.3.4", "1.2.3.5"]  # same for both
+
+        result = check_independence(
+            "https://provider-a.example.com/eth",
+            "https://provider-b.example.com/eth",
+            resolver=identical_resolver,
+        )
+        assert result["independent"] is False
+        assert result["reason"] == "shared_backend"
 
 
-def test_check_independence_latency_too_close():
-    def mock_getaddrinfo(host, port, *args, **kwargs):
-        if "first" in host:
-            return [(2, 1, 6, "", ("1.1.1.1", 443))]
-        return [(2, 1, 6, "", ("2.2.2.2", 443))]
+class TestLatencyProfile:
+    def test_similar_latency_not_independent(self):
+        """Different IPs but nearly identical latency -> NOT independent, reason=similar_latency_profile."""
+        import scripts.lp_rh_provider_independence_v1 as pi_mod
 
-    perf_times = []
-    for _ in range(10):
-        perf_times.extend([0.0, 0.020])
+        orig = pi_mod.measure_latency
 
-    with mock.patch("socket.getaddrinfo", side_effect=mock_getaddrinfo), \
-         mock.patch("requests.get", return_value=_make_mock_response()), \
-         mock.patch("time.perf_counter", side_effect=perf_times):
-        res = check_independence("https://first.rpc.com", "https://second.rpc.com")
+        # Both ~100ms — difference < 30% threshold
+        def similar_latency(url, resolver=None):
+            return {"p50_ms": 100.0, "samples": [0.1] * 5, "count": 5, "errors": 0, "success": True}
 
-    assert res["independent"] is False
-    assert "latency cluster" in res["reason"].lower()
-    assert res["evidence"]["latency_ms"]["too_close"] is True
+        pi_mod.measure_latency = similar_latency
+        try:
+            result = check_independence(
+                "https://provider-a.example.com/eth",
+                "https://provider-b.example.com/eth",
+                resolver=RESOLVER_DIFFERENT_IPS,
+            )
+            assert result["independent"] is False
+            assert result["reason"] == "similar_latency_profile"
+        finally:
+            pi_mod.measure_latency = orig
 
 
-def test_render_report_writes_markdown(tmp_path):
-    report_file = tmp_path / "report.md"
-    sample_res = {
-        "independent": True,
-        "reason": "Endpoints are independent",
-        "evidence": {
-            "dns": {"provider_a_ips": ["1.1.1.1"], "provider_b_ips": ["2.2.2.2"], "shared_ips": []},
-            "latency_ms": {"provider_a": [10.0], "provider_b": [30.0], "median_a": 10.0, "median_b": 30.0, "diff_pct": 66.6, "too_close": False},
-            "certs": {"provider_a": {"issuer_cn": "CA1"}, "provider_b": {"issuer_cn": "CA2"}, "shared_issuer_cn": False},
-            "chain_id_responses": {
-                "provider_a": [{"status_code": 200, "latency_ms": 10.0, "fingerprint": "abc"}],
-                "provider_b": [{"status_code": 200, "latency_ms": 30.0, "fingerprint": "def"}],
-            },
-        },
-    }
-    render_report(sample_res, providers=["https://prov1.io", "https://prov2.io"], out_path=report_file)
-    assert report_file.exists()
-    content = report_file.read_text(encoding="utf-8")
-    assert "Independent:" in content
-    assert "DNS" in content
-    assert "latency" in content.lower()
+class TestEdgeCases:
+    def test_empty_provider_urls(self):
+        """Empty string URLs -> dns_failure (no IPs resolved)."""
+        result = check_independence("", "", resolver=lambda h: [])
+        assert result["reason"] == "dns_failure"
+
+    def test_none_resolver_invalid_domains(self):
+        """None resolver with invalid domains -> dns_failure without raising."""
+        result = check_independence(
+            "https://this-domain-does-not-exist-123456.invalid/eth",
+            "https://another-invalid-domain-654321.invalid/eth",
+            resolver=None,
+        )
+        assert result["reason"] in ("dns_failure", "indeterminate")
+
+    def test_evidence_contains_ips_and_latency(self):
+        """Result evidence dict contains IPs and (when reached) latency data."""
+        import scripts.lp_rh_provider_independence_v1 as pi_mod
+
+        orig = pi_mod.measure_latency
+        pi_mod.measure_latency = lambda url, resolver=None: {
+            "p50_ms": 80.0, "samples": [0.08] * 5, "count": 5, "errors": 0, "success": True
+        }
+        try:
+            result = check_independence(
+                "https://provider-a.example.com/eth",
+                "https://provider-b.example.com/eth",
+                resolver=RESOLVER_DIFFERENT_IPS,
+            )
+            ev = result["evidence"]
+            assert "ips_a" in ev and "ips_b" in ev
+            assert ev["ips_a"] != ev["ips_b"]
+            assert "latency_a" in ev and "latency_b" in ev
+            assert ev["latency_a"]["p50_ms"] == 80.0
+            assert ev["latency_b"]["p50_ms"] == 80.0
+        finally:
+            pi_mod.measure_latency = orig
+
+    def test_zero_latency_treated_as_distinct(self):
+        """Both latencies 0ms (local/mocked) -> independent=True, reason=distinct."""
+        import scripts.lp_rh_provider_independence_v1 as pi_mod
+
+        orig = pi_mod.measure_latency
+        pi_mod.measure_latency = lambda url, resolver=None: {
+            "p50_ms": 0.0, "samples": [0.0] * 5, "count": 5, "errors": 0, "success": True
+        }
+        try:
+            result = check_independence(
+                "https://provider-a.example.com/eth",
+                "https://provider-b.example.com/eth",
+                resolver=RESOLVER_DIFFERENT_IPS,
+            )
+            assert result["independent"] is True
+            assert result["reason"] == "distinct"
+        finally:
+            pi_mod.measure_latency = orig

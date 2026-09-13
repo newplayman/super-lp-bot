@@ -3,7 +3,7 @@
   "tool": "lp_silent_failure_lint_v1_readonly",
   "identity_schema": "(file, rule, fingerprint)",
   "note": "Baseline of known silent-failure hits matched by content fingerprint. --fail-on-new blocks any hit exceeding baseline occurrence count. Line numbers are for display only. Regenerate after an approved fix.",
-  "count": 367,
+  "count": 369,
   "hits": [
     {
       "file": "scripts/finalize_bsc_fee_velocity_overnight_run_v1_readonly.py",
@@ -992,7 +992,7 @@
       "col": 299,
       "rule": 1,
       "fingerprint": "df6e212f99adc49a",
-      "snippet": "f\"| `{r.get('pool_address', '?')[:8]}…` | {r.get('base_fee_bps', '')} | {r.get('max_fee_bps', '')} |",
+      "snippet": "f\"| `{r.get('pool_address', '?')[:8]}\u2026` | {r.get('base_fee_bps', '')} | {r.get('max_fee_bps', '')} |",
       "key": "scripts/lp_meteora_dlmm_known_pool_feed_expansion_overnight_v1_finalize.py:255:299:1"
     },
     {
@@ -1046,7 +1046,7 @@
       "col": 158,
       "rule": 1,
       "fingerprint": "2ce63479a5ae3506",
-      "snippet": "f\"| `{s.get('pool_address', '?')[:8]}…` | {s.get('token_pair', '')} | {s.get('base_fee_bps', '')} | ",
+      "snippet": "f\"| `{s.get('pool_address', '?')[:8]}\u2026` | {s.get('token_pair', '')} | {s.get('base_fee_bps', '')} | ",
       "key": "scripts/lp_meteora_dlmm_known_pool_feed_expansion_overnight_v1_finalize.py:433:158:1"
     },
     {
@@ -1055,7 +1055,7 @@
       "col": 201,
       "rule": 1,
       "fingerprint": "2ce63479a5ae3506",
-      "snippet": "f\"| `{s.get('pool_address', '?')[:8]}…` | {s.get('token_pair', '')} | {s.get('base_fee_bps', '')} | ",
+      "snippet": "f\"| `{s.get('pool_address', '?')[:8]}\u2026` | {s.get('token_pair', '')} | {s.get('base_fee_bps', '')} | ",
       "key": "scripts/lp_meteora_dlmm_known_pool_feed_expansion_overnight_v1_finalize.py:433:201:1"
     },
     {
@@ -1874,7 +1874,7 @@
       "col": 42,
       "rule": 1,
       "fingerprint": "5d20adcb51f98879",
-      "snippet": "f\"| fee_growth_0 非空比例 | `{prod_before.get('24h_ratio_0', 0):.4f}` | `{s1['control']['col_0_ratio']:.",
+      "snippet": "f\"| fee_growth_0 \u975e\u7a7a\u6bd4\u4f8b | `{prod_before.get('24h_ratio_0', 0):.4f}` | `{s1['control']['col_0_ratio']:.",
       "key": "scripts/lp_rh_fault_injection_v1_readonly.py:803:42:1"
     },
     {
@@ -1883,7 +1883,7 @@
       "col": 42,
       "rule": 1,
       "fingerprint": "ae1dc443c41c3509",
-      "snippet": "f\"| fee_growth_1 非空比例 | `{prod_before.get('24h_ratio_1', 0):.4f}` | `{s1['control']['col_1_ratio']:.",
+      "snippet": "f\"| fee_growth_1 \u975e\u7a7a\u6bd4\u4f8b | `{prod_before.get('24h_ratio_1', 0):.4f}` | `{s1['control']['col_1_ratio']:.",
       "key": "scripts/lp_rh_fault_injection_v1_readonly.py:804:42:1"
     },
     {
@@ -1901,7 +1901,7 @@
       "col": 50,
       "rule": 1,
       "fingerprint": "af90bdac647dd3f7",
-      "snippet": "f\"已完成经济评估且不合格: {int(statuses.get('COMPUTED_FAIL', 0))}\",",
+      "snippet": "f\"\u5df2\u5b8c\u6210\u7ecf\u6d4e\u8bc4\u4f30\u4e14\u4e0d\u5408\u683c: {int(statuses.get('COMPUTED_FAIL', 0))}\",",
       "key": "scripts/lp_rh_funnel_autopsy_v1_readonly.py:109:50:1"
     },
     {
@@ -1910,7 +1910,7 @@
       "col": 32,
       "rule": 1,
       "fingerprint": "ef9e3f15681dea68",
-      "snippet": "f\"尚未能评估: {int(statuses.get('INPUTS_UNAVAILABLE', 0))}\",",
+      "snippet": "f\"\u5c1a\u672a\u80fd\u8bc4\u4f30: {int(statuses.get('INPUTS_UNAVAILABLE', 0))}\",",
       "key": "scripts/lp_rh_funnel_autopsy_v1_readonly.py:110:32:1"
     },
     {
@@ -1919,7 +1919,7 @@
       "col": 26,
       "rule": 1,
       "fingerprint": "bb696816c27afe89",
-      "snippet": "f\"不支持: {int(statuses.get('UNSUPPORTED', 0))}\",",
+      "snippet": "f\"\u4e0d\u652f\u6301: {int(statuses.get('UNSUPPORTED', 0))}\",",
       "key": "scripts/lp_rh_funnel_autopsy_v1_readonly.py:111:26:1"
     },
     {
@@ -1928,7 +1928,7 @@
       "col": 29,
       "rule": 1,
       "fingerprint": "2a881da7ffe77092",
-      "snippet": "f\"政策阻挡: {int(statuses.get('POLICY_BLOCKED', 0))}\",",
+      "snippet": "f\"\u653f\u7b56\u963b\u6321: {int(statuses.get('POLICY_BLOCKED', 0))}\",",
       "key": "scripts/lp_rh_funnel_autopsy_v1_readonly.py:112:29:1"
     },
     {
@@ -2441,7 +2441,7 @@
       "col": 15,
       "rule": 1,
       "fingerprint": "e7be595280660a3e",
-      "snippet": "f\"{report.get('position_coverage', {}).get('unique_position_identities', 0)}；\"",
+      "snippet": "f\"{report.get('position_coverage', {}).get('unique_position_identities', 0)}\uff1b\"",
       "key": "scripts/lp_shadow_gate_v1_readonly.py:466:15:1"
     },
     {
@@ -2450,7 +2450,7 @@
       "col": 15,
       "rule": 1,
       "fingerprint": "7784f640288700d6",
-      "snippet": "f\"{report.get('position_coverage', {}).get('unique_root_pools', 0)}。\"",
+      "snippet": "f\"{report.get('position_coverage', {}).get('unique_root_pools', 0)}\u3002\"",
       "key": "scripts/lp_shadow_gate_v1_readonly.py:468:15:1"
     },
     {
@@ -3198,7 +3198,7 @@
       "rule": 5,
       "fingerprint": "e706fa9325ded821",
       "snippet": "return False",
-      "note": "lint false positive: _is_pid_alive ProcessLookupError branch — PID 不存在 → alive=False 是 alive 判断函数的正确语义,非错误码",
+      "note": "lint false positive: _is_pid_alive ProcessLookupError branch \u2014 PID \u4e0d\u5b58\u5728 \u2192 alive=False \u662f alive \u5224\u65ad\u51fd\u6570\u7684\u6b63\u786e\u8bed\u4e49,\u975e\u9519\u8bef\u7801",
       "key": "scripts/lp_rh_quote_refresh_cron.py:36:8:5"
     },
     {
@@ -3208,7 +3208,7 @@
       "rule": 5,
       "fingerprint": "37992c22232b4712",
       "snippet": "return True",
-      "note": "lint false positive: _is_pid_alive PermissionError branch — 无权限 kill 时说明 PID 存在(可能其他用户),按 alive 处理",
+      "note": "lint false positive: _is_pid_alive PermissionError branch \u2014 \u65e0\u6743\u9650 kill \u65f6\u8bf4\u660e PID \u5b58\u5728(\u53ef\u80fd\u5176\u4ed6\u7528\u6237),\u6309 alive \u5904\u7406",
       "key": "scripts/lp_rh_quote_refresh_cron.py:38:8:5"
     },
     {
@@ -3218,7 +3218,7 @@
       "rule": 5,
       "fingerprint": "e706fa9325ded821",
       "snippet": "return False",
-      "note": "lint false positive: _acquire_pid_lock PID file write failure — 返回 False 通知 main() lock 获取失败,main() exit 2",
+      "note": "lint false positive: _acquire_pid_lock PID file write failure \u2014 \u8fd4\u56de False \u901a\u77e5 main() lock \u83b7\u53d6\u5931\u8d25,main() exit 2",
       "key": "scripts/lp_rh_quote_refresh_cron.py:62:8:5"
     },
     {
@@ -3228,7 +3228,7 @@
       "rule": 5,
       "fingerprint": "52513ffe3505899e",
       "snippet": "return 124",
-      "note": "lint false positive: main() exit code 124 = coreutils timeout 命令约定,非错误伪装",
+      "note": "lint false positive: main() exit code 124 = coreutils timeout \u547d\u4ee4\u7ea6\u5b9a,\u975e\u9519\u8bef\u4f2a\u88c5",
       "key": "scripts/lp_rh_quote_refresh_cron.py:125:8:5"
     },
     {
@@ -3238,7 +3238,7 @@
       "rule": 5,
       "fingerprint": "486d9affb60dbb00",
       "snippet": "return 1",
-      "note": "lint false positive: main() exit code 1 = Unix 一般错误约定,非错误伪装",
+      "note": "lint false positive: main() exit code 1 = Unix \u4e00\u822c\u9519\u8bef\u7ea6\u5b9a,\u975e\u9519\u8bef\u4f2a\u88c5",
       "key": "scripts/lp_rh_quote_refresh_cron.py:129:8:5"
     },
     {
@@ -3248,7 +3248,7 @@
       "rule": 3,
       "fingerprint": "2153d588393379a6",
       "snippet": "updates.append(\"tx_hash = ?\")",
-      "note": "lint false positive: SQL UPDATE SET 子句不是 WHERE 子句 — placeholder 赋值不存在大小写问题,linter 应区分 SET vs WHERE",
+      "note": "lint false positive: SQL UPDATE SET \u5b50\u53e5\u4e0d\u662f WHERE \u5b50\u53e5 \u2014 placeholder \u8d4b\u503c\u4e0d\u5b58\u5728\u5927\u5c0f\u5199\u95ee\u9898,linter \u5e94\u533a\u5206 SET vs WHERE",
       "key": "scripts/lp_rh_tx_intents_writer_v1.py:195:27:3"
     },
     {
@@ -3265,7 +3265,7 @@
       "file": "scripts/lp_rh_paper_readiness_v1.py",
       "line": 182,
       "rule": 1,
-      "note": "lint false positive: gN gate result dict reading. count missing → 0 is a counting-path default, not an economic calculation; gate verdict logic uses g[\"pass\"] as the source of truth, not the count fallback.",
+      "note": "lint false positive: gN gate result dict reading. count missing \u2192 0 is a counting-path default, not an economic calculation; gate verdict logic uses g[\"pass\"] as the source of truth, not the count fallback.",
       "col": 16,
       "fingerprint": "6591349cc2d6617f",
       "snippet": "count = res.get(\"count\", 0)",
@@ -3275,7 +3275,7 @@
       "file": "scripts/lp_rh_paper_readiness_v1.py",
       "line": 223,
       "rule": 1,
-      "note": "lint false positive: g14/g15/g16 read runtime counters from reports/paper_runtime_counters.json. key missing → 0 is the fail-close default for an uninitialised counters file; the actual check is whether keys_created/signatures/broadcasts are exactly 0, not whether the file exists.",
+      "note": "lint false positive: g14/g15/g16 read runtime counters from reports/paper_runtime_counters.json. key missing \u2192 0 is the fail-close default for an uninitialised counters file; the actual check is whether keys_created/signatures/broadcasts are exactly 0, not whether the file exists.",
       "col": 10,
       "fingerprint": "f3c4a3637edbaaed",
       "snippet": "val = c.get(key, 0)",
@@ -3285,7 +3285,7 @@
       "file": "scripts/lp_rh_paper_readiness_v1.py",
       "line": 304,
       "rule": 1,
-      "note": "lint false positive: markdown render_report summary line. summary.get(passed/failed/inconclusive, 0) for a known-keyed dict; the renderer does not perform any economic calculation from these numbers — it only formats them for display.",
+      "note": "lint false positive: markdown render_report summary line. summary.get(passed/failed/inconclusive, 0) for a known-keyed dict; the renderer does not perform any economic calculation from these numbers \u2014 it only formats them for display.",
       "col": 25,
       "fingerprint": "cc83eb5bda30e179",
       "snippet": "f\"- **Passed**: {summary.get('passed', 0)}\",",
@@ -3318,8 +3318,28 @@
       "rule": 1,
       "fingerprint": "83cf4ca42e839077",
       "snippet": "errs, defs = report.get(\"probe_errors\", 0), report.get(\"defects_reproduced\", 0)",
-      "note": "lint false positive: same line as :91 col=17. Single tuple-unpacking statement with two .get(key, 0) calls — both for audit_repro JSON parsing with the same counting-path semantics. Counter incremented to 2 to match actual code occurrences.",
+      "note": "lint false positive: same line as :91 col=17. Single tuple-unpacking statement with two .get(key, 0) calls \u2014 both for audit_repro JSON parsing with the same counting-path semantics. Counter incremented to 2 to match actual code occurrences.",
       "key": "scripts/lp_rh_paper_readiness_v1.py:91:48:1"
+    },
+    {
+      "file": "scripts/lp_rh_paper_pid_lock_v1.py",
+      "line": 29,
+      "col": 8,
+      "rule": 5,
+      "fingerprint": "e706fa9325ded821",
+      "snippet": "return False",
+      "key": "scripts/lp_rh_paper_pid_lock_v1.py:29:8:5",
+      "note": "PID lock acquire contract: returns False when lock file already exists (another process holds it). This is the documented public contract, not a silent error swallow."
+    },
+    {
+      "file": "scripts/lp_rh_paper_pid_lock_v1.py",
+      "line": 68,
+      "col": 12,
+      "rule": 5,
+      "fingerprint": "e706fa9325ded821",
+      "snippet": "return False",
+      "key": "scripts/lp_rh_paper_pid_lock_v1.py:68:12:5",
+      "note": "PID lock is_alive contract: returns False when stored PID is dead (stale lock). This is the documented public contract, not a silent error swallow."
     }
   ]
 }

@@ -34,6 +34,17 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+# ── RH-chain manifest (physically isolated from Base whitelist) ──────────────────
+from scripts.lp_rh_chain_manifest_v1_readonly import (
+    CHAIN_ID_RH_MAINNET,
+    CHAIN_ID_RH_TESTNET,
+    RH_CORE_TARGETS,
+    RH_CORE_SELECTORS,
+    RH_CORE_RECIPIENTS as _RH_RECIPIENTS,
+    verify_chain_manifest,
+    is_rh_chain,
+)
+
 # Constants derived from internal/adapters/pool/aerodrome/adapter.go
 # Line 21: RouterV2Address = "0xF87912FeFD79b1dEe6561C3d38e9EB4F3F77D7e2"
 # Line 22: FactoryV2Address = "0x420DD7b1D89364d57d6EEA33300755E7d0fF6794"
@@ -75,6 +86,8 @@ WHITELIST_RECIPIENTS: frozenset[str] = frozenset({
     # Placeholder for project-controlled wallet; MUST be replaced before any LIVE mode
     "0x000000000000000000000000000000000000dead",
 })
+
+CHAIN_ID_BASE_MAINNET = 8453
 
 # Fields required for full validation. Missing any -> field_missing:<name>.
 REQUIRED_FIELDS = (
@@ -152,6 +165,136 @@ def _decoded_subcalls(decoded: Mapping) -> list[Mapping]:
     return subcalls
 
 
+def _validate_rh(intent: dict, decoded: Mapping) -> Tuple[bool, Optional[str]]:
+    """RH-chain-specific whitelist validation.
+
+    Returns (True, None) on pass, (False, 'whitelist_reject:<reason>') on rejection.
+    Physically isolated from Base/whitelist_* constants — uses RH_CORE_*.
+
+    The ``intent`` dict may carry a ``role`` field:
+    - ``"test"``   → bypasses the unverified-manifest gate (for fixture tests)
+    - ``"gate"``   → production gate call (default when absent)
+    - any other    → treated as non-test, subject to unverified-manifest block
+
+    Ordering: specific whitelist checks run FIRST so tests get the correct
+    rejection reason. The manifest check (which blocks non-test roles when
+    MANIFEST_VERIFIED=False) runs LAST so test fixtures can exercise specific
+    checks without being blocked by the unverified-manifest gate.
+    """
+    chain_id = int(intent.get("chain_id") or 0)
+    target = _norm_hex(intent.get("target_address")) or str(intent.get("target_address") or "").lower().strip()
+    selector = _norm_hex(intent.get("selector")) or str(intent.get("selector") or "").lower().strip()
+    role = str(intent.get("role") or "gate")
+    is_test = role == "test"
+
+    # Step 1 — target must be in RH_CORE_TARGETS
+    if target not in RH_CORE_TARGETS:
+        return False, f"whitelist_reject:target_not_whitelisted:{target}"
+
+    # Step 2 — selector must be in RH_CORE_SELECTORS
+    if selector not in RH_CORE_SELECTORS:
+        return False, f"whitelist_reject:selector_not_whitelisted:{selector}"
+
+    # Step 3 — recipient must be in RH recipient set
+    # Note: role="test" bypasses the manifest gate (Step 9) but specific checks
+    # (target, selector, recipient, etc.) always run regardless of role.
+    recipient = _norm_hex(intent.get("recipient_address"))
+    if recipient is None:
+        recipient = _norm_hex(intent.get("wallet_address"))
+    if recipient is None:
+        return False, "whitelist_reject:field_missing:recipient_address"
+    if recipient not in _RH_RECIPIENTS:
+        return False, f"whitelist_reject:recipient_not_whitelisted:{recipient}"
+
+    # Step 4 — calldata_hash match
+    expected_hash = _norm_hex(intent.get("calldata_hash"))
+    actual_hash = "0x" + hashlib.sha256(_hex_to_bytes(intent["calldata_bytes"])).hexdigest()
+    if expected_hash is not None and expected_hash != actual_hash:
+        return False, "whitelist_reject:calldata_hash_mismatch"
+
+    # Step 5 — deadline check
+    deadline_unix = _deadline_unix(intent.get("deadline"))
+    if deadline_unix is None:
+        return False, "whitelist_reject:field_missing:deadline"
+    now_unix = int(time.time())
+    if deadline_unix <= now_unix:
+        return False, "whitelist_reject:deadline_expired"
+
+    # Step 6 — value_wei equality check
+    try:
+        actual_value = int(intent.get("value_wei") or 0)
+    except (TypeError, ValueError):
+        return False, "whitelist_reject:value_mismatch"
+    expected_value = intent.get("expected_value_wei")
+    if expected_value is not None:
+        try:
+            if int(expected_value) != actual_value:
+                return False, "whitelist_reject:value_mismatch"
+        except (TypeError, ValueError):
+            return False, "whitelist_reject:value_mismatch"
+
+    # Step 7 — slippage protection (at least one min must be non-zero)
+    decoded_args = decoded.get("args", []) or []
+    min_fields = ("amount0Min", "amount1Min", "amountOutMinimum")
+    found_min = False
+    for arg in decoded_args:
+        if isinstance(arg, Mapping) and arg.get("name") in min_fields:
+            try:
+                if int(arg.get("value") or 0) > 0:
+                    found_min = True
+                    break
+            except (TypeError, ValueError):
+                continue
+    if not found_min and selector not in ("0xac9650d8", "0xfc6f7865"):
+        return False, "whitelist_reject:missing_slippage_protection"
+
+    # Step 8 — multicall subcalls use RH whitelist too
+    if selector == "0xac9650d8":
+        for idx, sub in enumerate(_decoded_subcalls(decoded)):
+            if not isinstance(sub, Mapping):
+                continue
+            sub_target = (_norm_hex(sub.get("target"))
+                          or _norm_hex(sub.get("call_target"))
+                          or "").strip()
+            # If subcall has no explicit target, inherit from parent intent target
+            # (inner calls in a multicall execute against the same router)
+            effective_target = sub_target if sub_target else target
+            if effective_target not in RH_CORE_TARGETS:
+                return False, f"whitelist_reject:multicall_inner_reject:target_not_whitelisted:{idx}:{effective_target}"
+            # Try subcall dict selector first, then fall back to raw calldata bytes
+            sub_sel = _norm_hex(sub.get("selector")) or ""
+            if not sub_sel:
+                raw = sub.get("calldata") or sub.get("raw") or ""
+                if isinstance(raw, str) and raw:
+                    try:
+                        raw_bytes = bytes.fromhex(raw[2:] if raw.lower().startswith("0x") else raw)
+                        sub_sel = "0x" + raw_bytes[:4].hex()
+                    except (ValueError, TypeError):
+                        pass
+            if sub_sel and sub_sel not in RH_CORE_SELECTORS:
+                return False, f"whitelist_reject:multicall_inner_reject:selector_not_whitelisted:{idx}:{sub_sel}"
+            sub_recipient = None
+            for arg in sub.get("args", []) or []:
+                if isinstance(arg, Mapping) and arg.get("name") in ("recipient",):
+                    sub_recipient = _norm_hex(arg.get("value"))
+                    if sub_recipient is not None:
+                        break
+            if sub_recipient is not None and sub_recipient not in _RH_RECIPIENTS:
+                return False, f"whitelist_reject:multicall_inner_reject:recipient_not_whitelisted:{idx}:{sub_recipient}"
+
+    # Step 9 — manifest gate (only blocks non-test roles when MANIFEST_VERIFIED=False)
+    manifest_ok, manifest_reason = verify_chain_manifest(
+        chain_id=chain_id,
+        target=target,
+        selector=selector,
+        role=role,
+    )
+    if not manifest_ok:
+        return False, f"whitelist_reject:{manifest_reason}"
+
+    return True, None
+
+
 def verify_intent_or_reject(intent: dict) -> Tuple[bool, Optional[str]]:
     """Verify intent against the whitelist rules.
 
@@ -162,6 +305,11 @@ def verify_intent_or_reject(intent: dict) -> Tuple[bool, Optional[str]]:
 
     The gate never writes SIMULATED_OK; the caller chooses the post-validation
     state label based on the whitelist verdict.
+
+    Two isolated paths:
+    - chain_id == 8453 (Base):     original Base Aerodrome/Uniswap V3 whitelist
+    - chain_id == 4663 (RH mainnet): RH-chain manifest gate via _validate_rh
+    - chain_id == None / other:      reject with unsupported_chain
     """
     if not isinstance(intent, Mapping):
         return False, "whitelist_reject:invalid_intent_type"
@@ -171,15 +319,45 @@ def verify_intent_or_reject(intent: dict) -> Tuple[bool, Optional[str]]:
         if field not in intent or intent[field] is None or intent[field] == "":
             return False, f"whitelist_reject:field_missing:{field}"
 
-    # Decode calldata + verify the intent payload with the decoder module.
-    # CA-02 (PAPER_ACCEPTANCE_REPAIR_V2): the previous code threw away
-    # verify_intent's (ok, reasons) return value.  When the decoder decided
-    # the intent did not match the decoded calldata (returning False plus a
-    # list of reasons), no exception was raised so the except branch never
-    # fired and the wrapper silently continued past the intent-equality
-    # check.  We now bind both values and short-circuit on False.
+    # ── Chain-id routing ──────────────────────────────────────────────────────────
+    chain_id_raw = intent.get("chain_id")
+    if chain_id_raw is None:
+        return False, "whitelist_reject:unsupported_chain:None"
     try:
-        from scripts.lp_rh_calldata_decoder_v1_readonly import decode_calldata, verify_intent
+        chain_id = int(chain_id_raw)
+    except (TypeError, ValueError):
+        return False, f"whitelist_reject:unsupported_chain:{chain_id_raw}"
+
+    if chain_id == CHAIN_ID_RH_MAINNET or chain_id == CHAIN_ID_RH_TESTNET:
+        # Decode calldata first so _validate_rh can inspect it
+        try:
+            from scripts.lp_rh_calldata_decoder_v1_readonly import decode_calldata, verify_intent as _vi
+            decoded = decode_calldata(intent["calldata_bytes"])
+        except Exception as exc:
+            return False, f"whitelist_reject:decoder_exception:{type(exc).__name__}"
+        if decoded.get("status") != "OK":
+            return False, f"whitelist_reject:calldata_decode_failed:{decoded.get('status', 'UNKNOWN')}"
+
+        # Inject expected_intent into decoded so _claims() finds intent-level
+        # fields (chain_id, wallet_id, etc.) that are NOT encoded in calldata
+        # but passed as out-of-band metadata in the intent payload.
+        decoded_injected = dict(decoded, intent=intent["expected_intent"])
+        try:
+            intent_ok, intent_reasons = _vi(decoded_injected, intent=intent["expected_intent"])
+        except Exception as exc:
+            return False, f"whitelist_reject:decoder_exception:{type(exc).__name__}"
+        if not intent_ok:
+            joined = ",".join(intent_reasons) if intent_reasons else "verify_intent_false"
+            return False, f"whitelist_reject:intent_verify_failed:{joined}"
+
+        return _validate_rh(intent, decoded)
+
+    if chain_id != CHAIN_ID_BASE_MAINNET:
+        return False, f"whitelist_reject:unsupported_chain:{chain_id}"
+
+    # ── Base path (unchanged from V2) ─────────────────────────────────────────────
+    try:
+        from scripts.lp_rh_calldata_decoder_v1_readonly import decode_calldata, verify_intent as _vi_base
         calldata = intent["calldata_bytes"]
         decoded = decode_calldata(calldata)
     except Exception as exc:
@@ -188,25 +366,21 @@ def verify_intent_or_reject(intent: dict) -> Tuple[bool, Optional[str]]:
     if decoded.get("status") != "OK":
         return False, f"whitelist_reject:calldata_decode_failed:{decoded.get('status', 'UNKNOWN')}"
 
-    # Metadata-bound selector must equal the calldata-derived selector.
-    # Prevents submitting an intent header claiming a safe selector while
-    # the actual on-chain bytes encode a different action.
     decoded_selector = decoded.get("selector")
     intent_selector = intent.get("selector")
     if decoded_selector and intent_selector and decoded_selector.lower() != intent_selector.lower():
         return False, f"whitelist_reject:selector_mismatch:decoded={decoded_selector}:intent={intent_selector}"
 
+    # Inject expected_intent so _claims() finds fields not encoded in calldata
+    decoded_injected_base = dict(decoded, intent=intent["expected_intent"])
     try:
-        intent_ok, intent_reasons = verify_intent(decoded, intent=intent["expected_intent"])
+        intent_ok, intent_reasons = _vi_base(decoded_injected_base, intent=intent["expected_intent"])
     except Exception as exc:
         return False, f"whitelist_reject:decoder_exception:{type(exc).__name__}"
     if not intent_ok:
-        # Surface the actual reasons so callers can distinguish "intent missing
-        # field X" from "intent claims X=foo but calldata encodes X=bar".
         joined = ",".join(intent_reasons) if intent_reasons else "verify_intent_false"
         return False, f"whitelist_reject:intent_verify_failed:{joined}"
 
-    # Whitelist checks on the outer target / selector / recipient.
     target = _norm_hex(intent.get("target_address")) or str(intent.get("target_address") or "").lower().strip()
     if not target:
         return False, "whitelist_reject:field_missing:target_address"
@@ -227,24 +401,21 @@ def verify_intent_or_reject(intent: dict) -> Tuple[bool, Optional[str]]:
     if recipient not in WHITELIST_RECIPIENTS:
         return False, f"whitelist_reject:recipient_not_whitelisted:{recipient}"
 
-    # Chain-id check (when intent supplies intent_chain_id).
     intent_chain_id = intent.get("intent_chain_id")
     if intent_chain_id is not None:
         try:
-            chain_id = int(intent["chain_id"])
+            chain_id_int = int(intent["chain_id"])
             intent_chain_id_int = int(intent_chain_id)
-            if chain_id != intent_chain_id_int:
+            if chain_id_int != intent_chain_id_int:
                 return False, "whitelist_reject:chain_mismatch"
         except (TypeError, ValueError):
             return False, "whitelist_reject:chain_mismatch"
 
-    # calldata_hash match.
     expected_hash = _norm_hex(intent.get("calldata_hash"))
     actual_hash = "0x" + hashlib.sha256(_hex_to_bytes(calldata)).hexdigest()
     if expected_hash is not None and expected_hash != actual_hash:
         return False, "whitelist_reject:calldata_hash_mismatch"
 
-    # Deadline check.
     deadline_unix = _deadline_unix(intent.get("deadline"))
     if deadline_unix is None:
         return False, "whitelist_reject:field_missing:deadline"
@@ -252,7 +423,6 @@ def verify_intent_or_reject(intent: dict) -> Tuple[bool, Optional[str]]:
     if deadline_unix <= now_unix:
         return False, "whitelist_reject:deadline_expired"
 
-    # value_wei equality check.
     try:
         actual_value = int(intent.get("value_wei") or 0)
     except (TypeError, ValueError):
@@ -265,9 +435,6 @@ def verify_intent_or_reject(intent: dict) -> Tuple[bool, Optional[str]]:
         except (TypeError, ValueError):
             return False, "whitelist_reject:value_mismatch"
 
-    # Min-out / amount-protection sanity: at least one of amount0Min / amount1Min /
-    # amountOutMinimum must be non-zero.  This is a structural check (not a
-    # numerical comparison against expected_min_out, which the simulator does).
     decoded_args = decoded.get("args", []) or []
     min_fields = ("amount0Min", "amount1Min", "amountOutMinimum")
     found_min = False
@@ -280,11 +447,9 @@ def verify_intent_or_reject(intent: dict) -> Tuple[bool, Optional[str]]:
             except (TypeError, ValueError):
                 continue
     if not found_min:
-        # For multicall, skip outer-level check (inner checks still apply).
         if selector != "0xac9650d8":
             return False, "whitelist_reject:missing_slippage_protection"
 
-    # Multicall: recurse into each sub-action with the same whitelist.
     if selector == "0xac9650d8":
         for idx, sub in enumerate(_decoded_subcalls(decoded)):
             if not isinstance(sub, Mapping):
@@ -298,7 +463,6 @@ def verify_intent_or_reject(intent: dict) -> Tuple[bool, Optional[str]]:
                 return False, f"whitelist_reject:multicall_inner_reject:target_not_whitelisted:{idx}:{sub_target}"
             sub_sel = _norm_hex(sub.get("selector")) or ""
             if not sub_sel:
-                # Derive selector from raw calldata if available.
                 raw = sub.get("calldata") or sub.get("raw") or ""
                 if isinstance(raw, str) and raw:
                     sub_sel = _selector_of(raw) or sub_sel

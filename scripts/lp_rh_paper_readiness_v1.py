@@ -73,23 +73,15 @@ REQUIRED_GATES = frozenset({
     "g16_broadcasts_zero",
 })
 
+EXPECTED_SCHEMA_VERSION = "audit_repro/1"
+REQUIRED_PROBE_IDS = frozenset(f"R{str(i).zfill(2)}" for i in range(1, 9))  # R01..R08
+
 ADVISORY_GATES = frozenset({
     "g11_two_providers_usable",
 })
 
 VALID_AUDIT_MODES = frozenset({
-    "AST_EXTRACTED_FULL",
-    "AST_EXTRACTED_PARTIAL",
-    "AST_EXTRACTED_SUMMARY",
-    "AST_EXTRACTED_RULES",
-    "AST_EXTRACTED_RH02_SERIES",
-    "AST_EXTRACTED_RULES_V1",
-    "AST_EXTRACTED_RULES_V2",
-    "AST_EXTRACTED_RULES_V3",
-    "AST_EXTRACTED_AUDIT_PROBE",
-    "REPO_CHECKOUT",
-    "REPO_CHECKOUT_FULL",
-    "REPO_CHECKOUT_PARTIAL",
+    "AST_EXTRACTED_CHECKOUT_FUNCTIONS_WITH_TEST_SHIMS",
 })
 
 
@@ -161,10 +153,12 @@ def g1_all_pytest_pass(timeout: int = 120) -> dict:
 def g2_audit_regression_pass(timeout: int = 120, json_out: str | None = None) -> dict:
     """2. Offline audit regression reproduces 0 defects and 0 errors.
 
-    Strict schema validation:
-      - audit JSON must exist and parse
-      - head field must equal `git rev-parse HEAD` (when available)
-      - mode field must be in VALID_AUDIT_MODES
+    Strict schema validation (H1):
+      - schema_version must equal EXPECTED_SCHEMA_VERSION
+      - run_id must be present (UUID4)
+      - head_sha must match git rev-parse HEAD (when available)
+      - mode must be in the narrow VALID_AUDIT_MODES whitelist
+      - probes array must contain all 8 IDs: R01..R08
       - probe_errors and defects_reproduced must be present as int fields
     """
     run_dir = Path(tempfile.mkdtemp(prefix="lpbot-readiness-"))
@@ -186,7 +180,7 @@ def g2_audit_regression_pass(timeout: int = 120, json_out: str | None = None) ->
             parse_source = "file"
         except Exception as exc:
             return {"pass": False, "evidence": {"json_out": str(p), "parse_exc": repr(exc)},
-                    "reason": "PARSE_ERROR"}
+                    "reason": "BLOCKED_BY_SCHEMA_MISMATCH"}
     else:
         return {"pass": False, "evidence": {"json_out": str(p), "exists": False},
                 "reason": "FILE_MISSING"}
@@ -197,52 +191,74 @@ def g2_audit_regression_pass(timeout: int = 120, json_out: str | None = None) ->
             parse_source = "stdout"
         except Exception as exc:
             return {"pass": False, "evidence": {"parse_exc": repr(exc)},
-                    "reason": "PARSE_ERROR"}
+                    "reason": "BLOCKED_BY_SCHEMA_MISMATCH"}
+
+    # H1: Validate schema_version
+    schema_version = report.get("schema_version")
+    if schema_version != EXPECTED_SCHEMA_VERSION:
+        return {"pass": False, "evidence": {
+            "schema_version": schema_version,
+            "expected": EXPECTED_SCHEMA_VERSION,
+            "report_keys": sorted(list(report.keys())),
+        }, "reason": f"BLOCKED_BY_SCHEMA_MISMATCH: schema_version is '{schema_version}', expected '{EXPECTED_SCHEMA_VERSION}'"}
+
+    # H1: Validate run_id presence
+    run_id = report.get("run_id")
+    if run_id is None:
+        return {"pass": False, "evidence": {"report_keys": sorted(list(report.keys()))},
+                "reason": "BLOCKED_BY_SCHEMA_MISMATCH: run_id missing"}
+
+    # H1: Validate all 8 probes R01..R08 are present (IDs have descriptive suffixes)
+    probes = report.get("probes", [])
+    probe_prefixes = {item.get("id", "").split("_")[0] for item in probes if isinstance(item, dict)}
+    missing_probes = REQUIRED_PROBE_IDS - probe_prefixes
+    if missing_probes:
+        return {"pass": False, "evidence": {
+            "probe_prefixes_found": sorted(probe_prefixes),
+            "probe_prefixes_required": sorted(REQUIRED_PROBE_IDS),
+            "missing": sorted(missing_probes),
+        }, "reason": f"BLOCKED_BY_SCHEMA_MISMATCH: probes R01..R08 incomplete, missing: {sorted(missing_probes)}"}
 
     # Strict schema: probe_errors and defects_reproduced MUST be present as int.
-    if "probe_errors" not in report or "defects_reproduced" not in report:
+    if "counts" not in report:
         return {"pass": False, "evidence": {"report_keys": sorted(list(report.keys()))},
-                "reason": "PARSE_ERROR"}
-    if not isinstance(report["probe_errors"], int) or not isinstance(report["defects_reproduced"], int):
+                "reason": "BLOCKED_BY_SCHEMA_MISMATCH"}
+    counts = report.get("counts", {})
+    if not isinstance(counts.get("probe_errors"), int) or not isinstance(counts.get("defects_reproduced"), int):
         return {"pass": False, "evidence": {
-            "probe_errors_type": type(report["probe_errors"]).__name__,
-            "defects_reproduced_type": type(report["defects_reproduced"]).__name__,
-        }, "reason": "PARSE_ERROR"}
+            "probe_errors_type": type(counts.get("probe_errors")).__name__,
+            "defects_reproduced_type": type(counts.get("defects_reproduced")).__name__,
+        }, "reason": "BLOCKED_BY_SCHEMA_MISMATCH"}
 
-    errs = report["probe_errors"]
-    defs = report["defects_reproduced"]
+    errs = counts["probe_errors"]
+    defs = counts["defects_reproduced"]
 
-    # head field must match git rev-parse HEAD
-    head = report.get("head")
+    # head_sha field must match git rev-parse HEAD
+    head_sha = report.get("head_sha")
     try:
         git_head = subprocess.run(
             ["git", "rev-parse", "HEAD"], capture_output=True, text=True, timeout=10,
         ).stdout.strip()
     except Exception:
         git_head = None
-    if head is None or (git_head and head != git_head):
-        return {"pass": False, "evidence": {"report_head": head, "git_head": git_head,
+    if head_sha is None or (git_head and head_sha != git_head):
+        return {"pass": False, "evidence": {"report_head_sha": head_sha, "git_head": git_head,
                                               "errs": errs, "defs": defs},
                 "reason": "HEAD_MISMATCH"}
 
-    # mode field must be in VALID_AUDIT_MODES
+    # mode field must be in VALID_AUDIT_MODES (narrow whitelist per H1)
     mode = report.get("mode")
     if mode not in VALID_AUDIT_MODES:
         return {"pass": False, "evidence": {"mode": mode, "errs": errs, "defs": defs,
                                               "valid_modes": sorted(VALID_AUDIT_MODES)},
-                "reason": "NOT_DETERMINABLE"}
-
-    # run_id sanity
-    run_id = report.get("run_id")
-    if run_id is None:
-        return {"pass": False, "evidence": {"report_keys": sorted(list(report.keys()))},
-                "reason": "PARSE_ERROR"}
+                "reason": "BLOCKED_BY_SCHEMA_MISMATCH"}
 
     passed = (proc.returncode == 0) and (errs == 0) and (defs == 0)
     reason = None if passed else f"Audit defects: PROBE_ERROR={errs}, DEFECT_REPRODUCED={defs}"
     return {"pass": passed, "evidence": {"probe_errors": errs, "defects_reproduced": defs,
             "counts": {"PROBE_ERROR": errs, "DEFECT_REPRODUCED": defs},
-            "returncode": proc.returncode, "head": head, "mode": mode, "run_id": run_id},
+            "returncode": proc.returncode, "head_sha": head_sha, "mode": mode, "run_id": run_id,
+            "schema_version": schema_version},
             "reason": reason}
 
 
@@ -464,6 +480,45 @@ GATE_NAMES = [
     "g16_broadcasts_zero",
 ]
 
+# H2: 5-gate isolation categories.
+# Each category returns its own independent {pass, evidence, reason} verdict.
+# The top-level PAPER_TECHNICALLY_READY / LIVE_TECHNICALLY_READY are derived
+# from subsets of these gates, not from the 16-gate aggregate.
+GATE_DEFINITIONS: dict[str, dict] = {
+    "ENGINEERING_GATE": {
+        "description": "Code quality gates: all pytest pass, audit_repro pass, entry integration pass.",
+        "member_gates": ["g1_all_pytest_pass", "g2_audit_regression_pass", "g3_entry_integration_tests_pass"],
+        "pass_condition": "all member gates pass (no UNKNOWN reasons on REQUIRED members)",
+    },
+    "STAGE_A_DATA_GATE": {
+        "description": "Data readiness: coverage denominator consistent (≥99% coverage in judgment window).",
+        "member_gates": ["g10_coverage_denominator_consistent"],
+        "pass_condition": "g10 passes",
+    },
+    "PAPER_START_GATE": {
+        "description": "Paper-start prerequisites: full cost NAV wired, liquidation matrix, no-grant, grant sync, pool state, reconciliation, two providers, live_allowed false, tiny_live_authorized false.",
+        "member_gates": [
+            "g4_full_cost_nav_wired", "g5_liquidation_unit_matrix", "g6_no_grant_no_virtual_position",
+            "g7_grant_baseline_sync", "g8_pool_state_excludes_invalid", "g9_reconciliation_binding_failclose",
+            "g11_two_providers_usable", "g12_live_allowed_false", "g13_tiny_live_authorized_false",
+        ],
+        "pass_condition": "all REQUIRED member gates pass; ADVISORY (g11) failure does not block",
+    },
+    "PROFILE_GRADUATION_GATE": {
+        "description": "Profile graduation: keys_created=0, signatures=0, broadcasts=0 (zero unauthorized actions).",
+        "member_gates": ["g14_keys_created_zero", "g15_signatures_zero", "g16_broadcasts_zero"],
+        "pass_condition": "all three pass",
+    },
+    "LIVE_START_GATE": {
+        "description": "Live-start prerequisites: PROFILE_GRADUATION_GATE pass + capital policy + dual path + fork/recovery + owner approval (placeholder).",
+        "member_gates": ["g14_keys_created_zero", "g15_signatures_zero", "g16_broadcasts_zero"],
+        "pass_condition": "PROFILE_GRADUATION_GATE pass AND capital_policy_approved AND dual_provider_path AND fork_recovery_plan AND owner_approved",
+    },
+}
+
+# Hard-coded: this task never starts live.
+LIVE_STARTED_BY_THIS_TASK = False
+
 
 def compute_paper_readiness(
     *, db_path: str | None = None, config_path: str | None = None, runtime_counters_path: str | None = None
@@ -475,6 +530,13 @@ def compute_paper_readiness(
 
     ADVISORY gates DO NOT block verdict but are surfaced in the gates dict and
     contribute to advisory_unknown in the summary.
+
+    H2: Additionally computes PAPER_TECHNICALLY_READY and LIVE_TECHNICALLY_READY
+    from the 5-gate isolation framework:
+      PAPER_TECHNICALLY_READY = ENGINEERING_GATE pass AND STAGE_A_DATA_GATE pass
+      LIVE_TECHNICALLY_READY = PROFILE_GRADUATION_GATE pass (owner approval /
+                                  capital policy are external; PLACEHOLDER)
+    Both are independent of the 16-gate verdict (which includes config flags).
     """
     mod = sys.modules[__name__]
     gates: dict[str, dict] = {}
@@ -518,6 +580,36 @@ def compute_paper_readiness(
 
     verdict = "PASS" if not required_fail else "FAIL"
 
+    # H2: 5-gate isolation verdict derivation
+    def _gate_pass(gate_name: str) -> bool:
+        g = gates.get(gate_name, {})
+        return g.get("pass") is True
+
+    def _engineering_gate_pass() -> bool:
+        for name in GATE_DEFINITIONS["ENGINEERING_GATE"]["member_gates"]:
+            g = gates.get(name, {})
+            if g.get("pass") is not True:
+                return False
+        return True
+
+    def _stage_a_gate_pass() -> bool:
+        return _gate_pass("g10_coverage_denominator_consistent")
+
+    def _profile_graduation_gate_pass() -> bool:
+        for name in GATE_DEFINITIONS["PROFILE_GRADUATION_GATE"]["member_gates"]:
+            g = gates.get(name, {})
+            if g.get("pass") is not True:
+                return False
+        return True
+
+    # PAPER_TECHNICALLY_READY = ENGINEERING_GATE pass AND STAGE_A_DATA_GATE pass
+    # (does NOT require owner approval, does NOT require 14-day graduation)
+    paper_technically_ready = _engineering_gate_pass() and _stage_a_gate_pass()
+
+    # LIVE_TECHNICALLY_READY = PROFILE_GRADUATION_GATE pass
+    # (owner approval / capital policy are external placeholders)
+    live_technically_ready = _profile_graduation_gate_pass()
+
     return {
         "verdict": verdict,
         "gates": gates,
@@ -528,6 +620,11 @@ def compute_paper_readiness(
             "inconclusive": unknown,  # back-compat
             "advisory_unknown": advisory_failed,
         },
+        # H2: 5-gate isolation derived readies
+        "PAPER_TECHNICALLY_READY": paper_technically_ready,
+        "LIVE_TECHNICALLY_READY": live_technically_ready,
+        "LIVE_STARTED_BY_THIS_TASK": LIVE_STARTED_BY_THIS_TASK,
+        "gate_definitions": GATE_DEFINITIONS,
     }
 
 
@@ -570,6 +667,11 @@ def main() -> int:
     parser.add_argument("--db-path", type=str, default=None)
     parser.add_argument("--config-path", type=str, default=None)
     parser.add_argument("--runtime-counters", type=str, default=None)
+    # H1: External audit JSON (from audit_repro.py) + expected run_id binding
+    parser.add_argument("--audit-json", type=Path, default=None,
+                        help="Path to audit_repro.py JSON output (skips re-running the probe)")
+    parser.add_argument("--expected-run-id", type=str, default=None,
+                        help="Expected run_id from external binding (consumer validates presence)")
     args = parser.parse_args()
 
     verdict_dict = compute_paper_readiness(

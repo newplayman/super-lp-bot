@@ -1705,12 +1705,24 @@ def episode_summary(steps: Sequence[ShadowStep], *, load_skipped: int = 0, pool_
     nav_start_capital = (
         Decimal(str(capital_usd)) if capital_usd is not None else None
     )
+    # Fail-close: when capital_usd is omitted, we cannot anchor nav_start to the
+    # pre-trade capital. Reporting net_pnl based on the first observed NAV
+    # silently cancels round-trip cost out of the PnL window. Require a
+    # baseline; if absent, return net_pnl=None and mark the window as
+    # NAV_START_CAPITAL_MISSING.
+    capital_missing = nav_start_capital is None
     if len(valid_steps) >= 2:
         start_step = valid_steps[0]
         end_step = valid_steps[-1]
-        nav_start = nav_start_capital if nav_start_capital is not None else start_step.nav
-        nav_end = end_step.nav
-        net_pnl_val = net_pnl(nav_end, nav_start, Decimal(0))
+        if capital_missing:
+            nav_start = None
+            nav_end = None
+            net_pnl_val = None
+            window_reason = "NAV_START_CAPITAL_MISSING"
+        else:
+            nav_start = nav_start_capital
+            nav_end = end_step.nav
+            net_pnl_val = net_pnl(nav_end, nav_start, Decimal(0))
         hodl_delta = (end_step.hodl_value - start_step.hodl_value) if has_hodl else None
         window_start_time = start_step.sample_time
         window_end_time = end_step.sample_time

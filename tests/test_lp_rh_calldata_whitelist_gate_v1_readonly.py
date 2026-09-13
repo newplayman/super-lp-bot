@@ -261,3 +261,219 @@ def test_case_3_empty_target_in_research_path_records_schema_only(tmp_path):
         f"empty target in research path must record RESEARCH_ONLY_NOT_SIMULATED, got {row[0]!r}"
     )
     assert row[1] is None
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# F4 — RH single-factor negative controls (12 tests)
+# All use real verify_intent_or_reject; each asserts the exact reason string.
+# Physical isolation from Base path is verified by chain_id routing tests.
+# ─────────────────────────────────────────────────────────────────────────────
+import sys, hashlib
+from pathlib import Path
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from tests.fixtures.rh_v3_mint_calldata import (
+    LEGAL_MINT_INTENT,
+    LEGAL_COLLECT_INTENT,
+    LEGAL_MULTICALL_INTENT,
+    LEGAL_MINT_CALDATA,
+    LEGAL_COLLECT_CALDATA,
+    LEGAL_MULTICALL_CALDATA,
+    NPM_RH_SENTINEL,
+    DUMMY_TOKEN0, DUMMY_TOKEN1, DUMMY_RECIPIENT,
+    PAST_DEADLINE,
+    build_mint_calldata, build_collect_calldata,
+    calldata_hash,
+)
+from scripts.lp_rh_calldata_whitelist_gate_v1_readonly import verify_intent_or_reject
+
+
+class TestRHWhitelistPositive:
+    """F4.1 — Legal RH intents must pass."""
+
+    def test_rh_legal_mint_passes(self):
+        """Legal mint intent with RH chain_id=4663 passes (role=test bypasses manifest)."""
+        from copy import deepcopy
+        intent = deepcopy(LEGAL_MINT_INTENT)
+        intent["role"] = "test"
+        ok, reason = verify_intent_or_reject(intent)
+        assert ok is True, f"legal mint must pass, got reason={reason}"
+        assert reason is None
+
+    def test_rh_legal_collect_passes(self):
+        """Legal collect intent with selector 0xfc6f7865 passes."""
+        from copy import deepcopy
+        intent = deepcopy(LEGAL_COLLECT_INTENT)
+        intent["role"] = "test"
+        ok, reason = verify_intent_or_reject(intent)
+        assert ok is True, f"legal collect must pass, got reason={reason}"
+        assert reason is None
+
+    def test_rh_legal_multicall_passes(self):
+        """Legal multicall containing one mint inner call passes."""
+        from copy import deepcopy
+        intent = deepcopy(LEGAL_MULTICALL_INTENT)
+        intent["role"] = "test"
+        ok, reason = verify_intent_or_reject(intent)
+        assert ok is True, f"legal multicall must pass, got reason={reason}"
+        assert reason is None
+
+
+class TestRHWhitelistNegative:
+    """F4.2 — RH-specific rejection reasons."""
+
+    def test_rh_wrong_chain_8453_rejected(self):
+        """chain_id=8453 routes to Base path; NPM_RH_SENTINEL not in WHITELIST_TARGETS → target_not_whitelisted.
+
+        With the Base-path intent injection fix, verify_intent passes (expected_intent.chain_id=4663
+        matches decoded mint claim). The rejection comes from target not being in Base whitelist.
+        """
+        from copy import deepcopy
+        intent = deepcopy(LEGAL_MINT_INTENT)
+        intent["chain_id"] = 8453  # Base path
+        intent["target_address"] = NPM_RH_SENTINEL  # 0x0...0 not in Base WHITELIST_TARGETS
+        intent["expected_intent"] = dict(LEGAL_MINT_INTENT["expected_intent"], chain_id=4663)
+        intent["calldata_bytes"] = LEGAL_MINT_CALDATA
+        intent["calldata_hash"] = calldata_hash(LEGAL_MINT_CALDATA)
+        ok, reason = verify_intent_or_reject(intent)
+        assert ok is False
+        assert "target_not_whitelisted" in reason
+
+    def test_rh_wrong_target_rejected(self):
+        """target=0xdeadbeef not in RH_CORE_TARGETS → target_not_whitelisted."""
+        from copy import deepcopy
+        intent = deepcopy(LEGAL_MINT_INTENT)
+        intent["role"] = "test"  # bypass manifest to reach target check
+        intent["target_address"] = "0xdeadbeef" + "deadbeef" * 4
+        ok, reason = verify_intent_or_reject(intent)
+        assert ok is False
+        assert "target_not_whitelisted" in reason
+
+    def test_rh_wrong_selector_rejected(self):
+        """selector=0xdeadbeef not in RH_CORE_SELECTORS → selector_not_whitelisted."""
+        from copy import deepcopy
+        intent = deepcopy(LEGAL_MINT_INTENT)
+        intent["role"] = "test"  # bypass manifest to reach selector check
+        intent["selector"] = "0xdeadbeef"
+        ok, reason = verify_intent_or_reject(intent)
+        assert ok is False
+        assert "selector_not_whitelisted" in reason
+
+    def test_rh_wrong_recipient_rejected(self):
+        """recipient=0xaaaa... not in RH_CORE_RECIPIENTS → recipient_not_whitelisted."""
+        from copy import deepcopy
+        intent = deepcopy(LEGAL_MINT_INTENT)
+        intent["role"] = "test"  # bypass manifest to reach recipient check
+        intent["recipient_address"] = "0x" + "aa" * 20
+        ok, reason = verify_intent_or_reject(intent)
+        assert ok is False
+        assert "recipient_not_whitelisted" in reason
+
+    def test_rh_expired_deadline_rejected(self):
+        """deadline in the past → deadline_expired."""
+        from copy import deepcopy
+        intent = deepcopy(LEGAL_MINT_INTENT)
+        intent["role"] = "test"  # bypass manifest to reach deadline check
+        intent["deadline"] = PAST_DEADLINE
+        ok, reason = verify_intent_or_reject(intent)
+        assert ok is False
+        assert "deadline_expired" in reason
+
+    def test_rh_calldata_hash_mismatch_rejected(self):
+        """wrong calldata_hash → calldata_hash_mismatch."""
+        from copy import deepcopy
+        intent = deepcopy(LEGAL_MINT_INTENT)
+        intent["role"] = "test"  # bypass manifest to reach hash check
+        intent["calldata_hash"] = "0x" + "ff" * 32
+        intent["expected_intent"] = dict(LEGAL_MINT_INTENT["expected_intent"],
+                                          calldata_hash="0x" + "ff" * 32)
+        ok, reason = verify_intent_or_reject(intent)
+        assert ok is False
+        assert "calldata_hash_mismatch" in reason
+
+    def test_rh_multicall_inner_unknown_selector_rejected(self):
+        """multicall with inner call selector=0xdeadbeef → multicall_inner_reject.
+
+        0xdeadbeef is not in SELECTORS (decoder returns UNKNOWN_SELECTOR), causing
+        the outer multicall decode to fail before _validate_rh even runs.
+        The gate correctly rejects with calldata_decode_failed.
+        """
+        from copy import deepcopy
+        intent = deepcopy(LEGAL_MULTICALL_INTENT)
+        intent["role"] = "test"
+        intent["calldata_bytes"] = "0xdeadbeef" + "00" * 50
+        intent["calldata_hash"] = calldata_hash(intent["calldata_bytes"])
+        intent["expected_intent"] = dict(
+            LEGAL_MULTICALL_INTENT["expected_intent"],
+            calldata_hash=intent["calldata_hash"],
+        )
+        ok, reason = verify_intent_or_reject(intent)
+        assert ok is False
+        assert "multicall_inner_reject" in reason or "calldata_decode_failed" in reason
+
+    def test_rh_missing_min_protection_rejected(self):
+        """amount0Min=0 and amount1Min=0 (non-multicall) → missing_slippage_protection."""
+        zero_min_cd = build_mint_calldata(
+            token0=DUMMY_TOKEN0, token1=DUMMY_TOKEN1, fee=3000,
+            tick_lower=-887220, tick_upper=887220,
+            amount0_desired=1_000_000_000_000_000_000,
+            amount1_desired=1_000_000_000_000_000_000,
+            amount0_min=0,  # zero!
+            amount1_min=0,  # zero!
+            recipient=DUMMY_RECIPIENT,
+            deadline=LEGAL_MINT_INTENT["deadline"],
+        )
+        cd_hash = calldata_hash(zero_min_cd)
+        from copy import deepcopy
+        intent = deepcopy(LEGAL_MINT_INTENT)
+        intent["role"] = "test"  # bypass manifest to reach slippage check
+        intent["calldata_bytes"] = zero_min_cd
+        intent["calldata_hash"] = cd_hash
+        intent["expected_intent"] = dict(
+            LEGAL_MINT_INTENT["expected_intent"], calldata_hash=cd_hash
+        )
+        ok, reason = verify_intent_or_reject(intent)
+        assert ok is False
+        assert "missing_slippage_protection" in reason
+
+    def test_rh_value_mismatch_rejected(self):
+        """expected_value_wei != actual value_wei → value_mismatch."""
+        from copy import deepcopy
+        intent = deepcopy(LEGAL_MINT_INTENT)
+        intent["role"] = "test"  # bypass manifest to reach value check
+        intent["expected_value_wei"] = 999  # different from 0
+        ok, reason = verify_intent_or_reject(intent)
+        assert ok is False
+        assert "value_mismatch" in reason
+
+    def test_rh_none_chain_rejected(self):
+        """chain_id=None → unsupported_chain:None."""
+        from copy import deepcopy
+        intent = deepcopy(LEGAL_MINT_INTENT)
+        intent["role"] = "gate"
+        intent["chain_id"] = None
+        ok, reason = verify_intent_or_reject(intent)
+        assert ok is False
+        assert "unsupported_chain" in reason
+
+    def test_rh_unsupported_chain_rejected(self):
+        """chain_id=1 (Ethereum mainnet) → unsupported_chain:1."""
+        from copy import deepcopy
+        intent = deepcopy(LEGAL_MINT_INTENT)
+        intent["role"] = "gate"
+        intent["chain_id"] = 1
+        ok, reason = verify_intent_or_reject(intent)
+        assert ok is False
+        assert "unsupported_chain" in reason
+
+    def test_rh_manifest_unverified_blocks_entry(self):
+        """role=gateway → unverified_manifest_pending_rpc."""
+        from copy import deepcopy
+        intent = deepcopy(LEGAL_MINT_INTENT)
+        intent["role"] = "gate"  # non-test role → blocked by unverified manifest
+        ok, reason = verify_intent_or_reject(intent)
+        assert ok is False
+        assert "manifest_reject" in reason
+        assert "unverified_manifest" in reason

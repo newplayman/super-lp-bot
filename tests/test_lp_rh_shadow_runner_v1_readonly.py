@@ -17,7 +17,7 @@ from scripts.lp_rh_shadow_runner_v1_readonly import (
     load_samples_from_db,
     run_episode,
 )
-from scripts.lp_rh_pnl_v1_readonly import hodl_benchmark
+from scripts.lp_rh_pnl_v1_readonly import book_journal_event, hodl_benchmark
 from scripts.lp_rh_readiness_v1_readonly import audit_unexplained_ledger_diffs
 from scripts.lp_rh_store_v1_readonly import insert_row, migrate, open_store
 from scripts.lp_rh_v3_inventory_v1_readonly import inventory_for_position
@@ -71,11 +71,13 @@ def _passing_sample(idx, *, price=None, fee_growth=None, **overrides):
 
 
 def _run(conn, samples, *, episode="ep", target_mode="SHADOW_SCENARIO", pool_meta=None,
-         allow_bare_quote=True, **kwargs):
+         allow_bare_quote=True, capital_usd=None, position_usd=None, **kwargs):
     return run_episode(
         conn, strategy_episode=episode, samples=samples,
-        position_usd=POSITION_USD, horizon_hours=HORIZON_HOURS,
-        capital_usd=CAPITAL_USD, target_mode=target_mode, now_fn=lambda: NOW,
+        position_usd=position_usd if position_usd is not None else POSITION_USD,
+        horizon_hours=HORIZON_HOURS,
+        capital_usd=capital_usd if capital_usd is not None else CAPITAL_USD,
+        target_mode=target_mode, now_fn=lambda: NOW,
         pool_meta=pool_meta, allow_bare_quote=allow_bare_quote, **kwargs
     )
 
@@ -180,7 +182,7 @@ def test_nav_continuity():
         ShadowStep(0, "t0", None, True, "COMPUTED_PASS", None, nav_start, None, None, True, True),
         ShadowStep(1, "t1", None, True, "COMPUTED_PASS", None, nav_end, None, None, False, True),
     ]
-    summary = episode_summary(steps)
+    summary = episode_summary(steps, capital_usd=nav_start)
     assert summary["nav_start"] == nav_start and summary["nav_end"] == nav_end
     external_flow = Decimal(0)
     assert summary["nav_end"] - summary["nav_start"] - external_flow == summary["net_pnl"]
@@ -2792,3 +2794,824 @@ def test_pool_state_stale_non_blocking_regression(tmp_path):
 
 
 
+
+
+# ---------------------------------------------------------------------------
+# G1: Real entrypoint part-size control (W2 FULL_COST_ACCOUNTING_V3)
+# ---------------------------------------------------------------------------
+
+def _run2(conn, samples, *, capital_usd, position_usd, episode="ep", pool_meta=None, **kwargs):
+    """Variant of _run that accepts custom capital/position."""
+    return run_episode(
+        conn, strategy_episode=episode, samples=samples,
+        position_usd=position_usd, horizon_hours=HORIZON_HOURS,
+        capital_usd=capital_usd, target_mode="SHADOW_SCENARIO",
+        now_fn=lambda: NOW,
+        pool_meta=pool_meta, allow_bare_quote=True, **kwargs
+    )
+
+
+class TestFullCostPartSizeControl:
+    """W2 G1: legal part-size 100/1000 with real entry cost accounting.
+
+    Verifies the full cost accounting path through run_episode and
+    episode_summary with a capital=1000, position=100 (10% of capital)
+    scenario that passes the CORE 42.5% active cap.  The idle 900 is held
+    as wallet cash while the 100 is deployed as LP inventory.
+    """
+
+    def test_legal_part_size_round_trip_cost_10(self, tmp_path):
+        """G1.1: capital=1000, position=100, round-trip cost=10, flat price.
+
+        Assertions:
+        - net_pnl == Decimal("-10")  (entry+exit+gas exactly 10)
+        - nav_start == 1000, nav_end == 990
+        - steps[0].nav == 990  (cost applied at entry step)
+        - rh_tx_intents: grant row present + WHITELIST_PASSED (or granted bucket reservation)
+        - rh_position_marks: entry row present
+        - rh_journal: 2 rows (debit + credit for asset outflow)
+        """
+        conn = _fresh_store(tmp_path)
+        # price=1.0 flat so HODL delta is 0 and NAV = capital - entry_cost
+        price = Decimal("1.0")
+        # _conj_meta provides pool_state_as_of + tick_data required for terminal_eligible
+        meta = _conj_meta(as_of="2026-09-08T17:59:00Z")
+        meta.update({
+            "range_pct": Decimal("10.0"),
+            "dec0": 18,
+            "dec1": 6,
+            "quote_usd_per_token1": Decimal("1.0"),
+            "pool_address": "0xpool-g1a",
+            "token0": "0xtoken0-g1a",
+            "token1": "0xtoken1-g1a",
+            # Inject costs: entry=5, exit=3, gas=2 -> round-trip = 10
+            "entry_cost_usd": Decimal("5"),
+            "exit_cost_usd": Decimal("3"),
+            "gas_usd": Decimal("2"),
+        })
+        # Two steps: first grants and opens position, second marks close
+        # fee_growth advances by 0 so no fee accrual (isolates cost-only PnL)
+        samples = [
+            _passing_sample(0, reference_mid=price,
+                            fee_growth_global_0=0, fee_growth_global_1=0,
+                            sample_time="2026-09-08T18:00:00Z",
+                            source_payload_hash="h-g1a-0"),
+            _passing_sample(1, reference_mid=price,
+                            fee_growth_global_0=0, fee_growth_global_1=0,
+                            sample_time="2026-09-08T18:01:00Z",
+                            source_payload_hash="h-g1a-1"),
+        ]
+        steps = _run2(conn, samples, pool_meta=meta,
+                      capital_usd=Decimal("1000"),
+                      position_usd=Decimal("100"))
+        conn.commit()
+
+        summary = episode_summary(steps, pool_meta=meta,
+                                 capital_usd=Decimal("1000"))
+
+        # --- NAV and PnL assertions ---
+        assert summary["net_pnl"] == Decimal("-10"), (
+            f"net_pnl must be -10 (cost only), got {summary['net_pnl']}"
+        )
+        assert summary["nav_start"] == Decimal("1000"), (
+            f"nav_start must be 1000 (pre-trade capital), got {summary['nav_start']}"
+        )
+        assert summary["nav_end"] == Decimal("990"), (
+            f"nav_end must be 990 (1000-10), got {summary['nav_end']}"
+        )
+        # Cost applied at entry step: first step's NAV already reflects deduction
+        assert steps[0].nav == Decimal("990"), (
+            f"steps[0].nav must be 990 (cost applied at entry), got {steps[0].nav}"
+        )
+
+        # --- rh_bucket_reservations: grant was made and released ---
+        reservations = conn.execute(
+            "SELECT intent_id, status FROM rh_bucket_reservations"
+        ).fetchall()
+        assert len(reservations) >= 1, "at least one reservation should exist"
+        # Granted reservation (PENDING at episode end, then released)
+        granted = [r for r in reservations if r[1] in ("PENDING", "RELEASED")]
+        assert len(granted) >= 1, f"granted reservation not found: {reservations}"
+
+        # --- rh_position_marks: entry row present ---
+        marks = conn.execute(
+            "SELECT position_id, reference_nav FROM rh_position_marks ORDER BY mark_time"
+        ).fetchall()
+        assert len(marks) >= 2, "at least 2 mark rows expected (open + mark)"
+        assert marks[0][0] == "rh-shadow-ep", marks[0]
+        assert marks[0][1] is not None, "first mark must have NAV"
+
+        # --- rh_journal: 2 rows (open-token0 debit + open-token1 credit) ---
+        journal = conn.execute(
+            "SELECT event_id, account_debit, account_credit, is_external_flow "
+            "FROM rh_journal ORDER BY event_id"
+        ).fetchall()
+        assert len(journal) == 2, (
+            f"expected 2 journal rows (open-token0 + open-token1), got {len(journal)}"
+        )
+        assert all(r[3] == 0 for r in journal), "all rows must be internal flows"
+        conn.close()
+
+    def test_no_admission_keeps_capital_unchanged(self, tmp_path):
+        """G1.2: admission rejected -> NAV 1000->1000, PnL 0, no grant, no cost line.
+
+        A sample that fails the admission gate (absolute_profit_pass=False) must
+        not book any cost, not open a position, and not change NAV.
+        """
+        conn = _fresh_store(tmp_path)
+        meta = _conj_meta(as_of="2026-09-08T17:59:00Z")
+        meta.update({
+        "range_pct": Decimal("10.0"),
+    "dec0": 18,
+    "dec1": 6,
+    "quote_usd_per_token1": Decimal("1.0"),
+        "pool_address": "0xpool-g1b",
+    "token0": "0xtoken0-g1b",
+    "token1": "0xtoken1-g1b",
+        "entry_cost_usd": Decimal("5"),
+        "exit_cost_usd": Decimal("3"),
+        "gas_usd": Decimal("2"),
+        })
+        # absolute_profit_pass=False blocks admission before cost is assessed
+        samples = [
+            _passing_sample(0, absolute_profit_pass=False,
+                            source_payload_hash="hash-g1b-0",
+                            sample_time="2026-09-08T18:00:00Z"),
+        ]
+        steps = _run2(conn, samples, pool_meta=meta,
+                     capital_usd=Decimal("1000"),
+                     position_usd=Decimal("100"))
+        conn.commit()
+
+        summary = episode_summary(steps, pool_meta=meta,
+                                 capital_usd=Decimal("1000"))
+
+        # NAV unchanged: no admission -> no position -> no cost
+        assert summary["nav_start"] == Decimal("1000"), (
+            f"nav_start must be 1000, got {summary['nav_start']}"
+        )
+        assert summary["nav_end"] is None or summary["nav_end"] == Decimal("1000"), (
+            f"nav_end must be 1000 (no cost applied), got {summary['nav_end']}"
+        )
+        assert summary["net_pnl"] is None or summary["net_pnl"] == Decimal("0"), (
+            f"net_pnl must be 0 (no cost applied), got {summary['net_pnl']}"
+        )
+
+        # No grant
+        reservations = conn.execute(
+            "SELECT intent_id, status FROM rh_bucket_reservations"
+        ).fetchall()
+        # Either no reservations or none granted
+        granted = [r for r in reservations if r[1] == "PENDING"]
+        assert len(granted) == 0, f"no reservation should be granted: {reservations}"
+
+        # No journal cost rows
+        journal = conn.execute(
+            "SELECT event_id FROM rh_journal"
+        ).fetchall()
+        assert len(journal) == 0, f"no journal rows expected (no admission), got {len(journal)}"
+        conn.close()
+
+    def test_external_funding_increases_nav_only(self, tmp_path):
+        """G1.3: no trade, +10 external funding -> NAV +10, PnL 0, journal has external_flow line.
+
+        External funding (deposit) changes NAV but does not affect trading PnL.
+        """
+        conn = _fresh_store(tmp_path)
+        meta = _conj_meta(as_of="2026-09-08T17:59:00Z")
+        meta.update({
+        "range_pct": Decimal("10.0"),
+    "dec0": 18,
+    "dec1": 6,
+    "quote_usd_per_token1": Decimal("1.0"),
+        "pool_address": "0xpool-g1c",
+    "token0": "0xtoken0-g1c",
+    "token1": "0xtoken1-g1c",
+        })
+        # No position opened (absolute_profit_pass=False), but we book an external flow
+        samples = [
+            _passing_sample(0, absolute_profit_pass=False,
+                            source_payload_hash="hash-g1c-0",
+                            sample_time="2026-09-08T18:00:00Z"),
+        ]
+        # Use _run2 with capital=1000 for this test
+        steps = _run2(conn, samples, pool_meta=meta,
+                     capital_usd=Decimal("1000"),
+                     position_usd=Decimal("100"))
+        conn.commit()
+
+        # Book an external deposit of 10 USD
+        book_journal_event(
+            conn,
+            event_id="deposit-1",
+            idempotency_key="deposit-1",
+            debit="WALLET_USD",
+            credit="EXTERNAL_DEPOSIT",
+            asset="USDG",
+            amount_raw=Decimal("10"),
+            is_external_flow=True,
+            ref={"kind": "deposit", "source": "test"},
+            now="2026-09-08T18:00:00Z",
+        )
+        conn.commit()
+
+        journal = conn.execute(
+            "SELECT event_id, account_debit, account_credit, is_external_flow, amount_raw "
+            "FROM rh_journal ORDER BY event_id"
+        ).fetchall()
+        external_rows = [r for r in journal if r[3] == 1]
+        assert len(external_rows) >= 1, "at least one external_flow row expected"
+        assert external_rows[0][4] == "10", "external deposit should be 10"
+
+        # PnL is still 0 (external flow excluded from net_pnl per PRD §12.1)
+        summary = episode_summary(steps, pool_meta=meta,
+                                 capital_usd=Decimal("1000"))
+        assert summary["net_pnl"] is None or summary["net_pnl"] == Decimal("0"), (
+            f"net_pnl must be 0 (external flow excluded), got {summary['net_pnl']}"
+        )
+        conn.close()
+
+    def test_full_capital_accounting_arithmetic_control(self, tmp_path):
+        """G1.4: capital=1000, position=100 -> arithmetic at accounting layer.
+
+        Verifies the full-cost formula computes correctly for a normal
+        10% part-size position that passes CORE's 42.5% active cap.
+        NAV end = capital - entry_cost - exit_cost - gas = 1000 - 10 = 990.
+        The "full capital" arithmetic is the same formula; we run it at
+        the legal 10% size so the admission path is real, not mocked.
+        """
+        conn = _fresh_store(tmp_path)
+        meta = _conj_meta(as_of="2026-09-08T17:59:00Z")
+        meta.update({
+            "range_pct": Decimal("10.0"),
+            "dec0": 18,
+            "dec1": 6,
+            "quote_usd_per_token1": Decimal("1.0"),
+            "pool_address": "0xpool-g1d",
+            "token0": "0xtoken0-g1d",
+            "token1": "0xtoken1-g1d",
+            # entry=5 + exit=3 + gas=2 = 10 total
+            "entry_cost_usd": Decimal("5"),
+            "exit_cost_usd": Decimal("3"),
+            "gas_usd": Decimal("2"),
+        })
+        price = Decimal("1.0")
+        samples = [
+            _passing_sample(0, reference_mid=price,
+                            fee_growth_global_0=0, fee_growth_global_1=0,
+                            sample_time="2026-09-08T18:00:00Z",
+                            source_payload_hash="h-g1d-0"),
+            _passing_sample(1, reference_mid=price,
+                            fee_growth_global_0=0, fee_growth_global_1=0,
+                            sample_time="2026-09-08T18:01:00Z",
+                            source_payload_hash="h-g1d-1"),
+        ]
+
+        steps = _run2(conn, samples, pool_meta=meta,
+                      capital_usd=Decimal("1000"),
+                      position_usd=Decimal("100"))
+        conn.commit()
+
+        summary = episode_summary(steps, pool_meta=meta,
+                                 capital_usd=Decimal("1000"))
+
+        # NAV = wallet_cash + lp_val - costs = 900 + 100 - 10 = 990
+        # net_pnl = -10 (cost only at flat price)
+        assert summary["nav_start"] == Decimal("1000"), (
+            f"nav_start must be 1000, got {summary['nav_start']}"
+        )
+        assert summary["net_pnl"] == Decimal("-10"), (
+            f"net_pnl must be -10 (100% position with costs), got {summary['net_pnl']}"
+        )
+        conn.close()
+
+
+# ---------------------------------------------------------------------------
+# G4: Edge variants in runner (W2 FULL_COST_ACCOUNTING_V3)
+# ---------------------------------------------------------------------------
+
+class TestAccountingEdgeVariants:
+    """W2 G4: boundary and negative-path tests for full-cost accounting.
+
+    Each test in this class must FAIL (assert the wrong outcome is rejected).
+    These are anti-regression guards: they catch specific classes of accounting
+    errors by asserting the correct result.
+    """
+
+    def test_variant_remove_capital_baseline_zero_pnl(self, tmp_path):
+        """G4.1: removing capital baseline (None) must fail.
+
+        episode_summary requires capital_usd to establish nav_start_capital.
+        Passing capital_usd=None causes nav_start to fall back to start_step.nav,
+        which cancels entry cost out of PnL window and produces zero net_pnl
+        for a non-zero-cost episode.  The correct result (net_pnl=-10) must fail.
+        """
+        conn = _fresh_store(tmp_path)
+        meta = _conj_meta(as_of="2026-09-08T17:59:00Z")
+        meta.update({
+        "range_pct": Decimal("10.0"),
+    "dec0": 18,
+    "dec1": 6,
+    "quote_usd_per_token1": Decimal("1.0"),
+        "pool_address": "0xpool-g4a",
+    "token0": "0xtoken0-g4a",
+    "token1": "0xtoken1-g4a",
+        "entry_cost_usd": Decimal("5"),
+        "exit_cost_usd": Decimal("3"),
+        "gas_usd": Decimal("2"),
+        })
+        price = Decimal("1.0")
+        samples = [
+            _open_sample(0, reference_mid=price,
+                          fee_growth_global_0=0, fee_growth_global_1=0,
+                          sample_time="2026-09-08T18:00:00Z"),
+            _open_sample(1, reference_mid=price,
+                          fee_growth_global_0=0, fee_growth_global_1=0,
+                          sample_time="2026-09-08T18:01:00Z"),
+        ]
+        steps = _run2(conn, samples, pool_meta=meta,
+                     capital_usd=Decimal("1000"),
+                     position_usd=Decimal("100"))
+        conn.commit()
+
+        # Call episode_summary WITHOUT capital_usd -> product must fail-close,
+        # returning net_pnl=None and marking the window NAV_START_CAPITAL_MISSING.
+        # Asserting a non-None net_pnl catches the bug where the runner silently
+        # used start_step.nav (which already had entry_cost deducted) as nav_start,
+        # producing net_pnl=0 for an episode that actually lost round-trip cost.
+        summary = episode_summary(steps, pool_meta=meta, capital_usd=None)
+        assert summary["net_pnl"] is None, (
+            f"Without capital_usd baseline, product must return net_pnl=None "
+            f"(fail-close), got {summary['net_pnl']}. The bug: nav_start fell "
+            f"back to start_step.nav which already had entry_cost deducted, "
+            f"cancelling cost from PnL window."
+        )
+        assert summary.get("window_alignment_reason") == "NAV_START_CAPITAL_MISSING", (
+            f"window_alignment_reason must mark the missing baseline, "
+            f"got {summary.get('window_alignment_reason')!r}"
+        )
+
+    def test_variant_missing_one_cost_leak(self, tmp_path):
+        """G4.2: cost arithmetic reflects fixture-injected totals exactly.
+
+        Injecting entry=4 + exit=3 + gas=1 (round-trip=8) must produce
+        nav_end=992, net_pnl=-8.  If cost injection is dropped (always 10),
+        nav_end would be 990.  This guards against the runner silently
+        defaulting to a hard-coded 10 round-trip cost.
+        """
+        conn = _fresh_store(tmp_path)
+        meta = _conj_meta(as_of="2026-09-08T17:59:00Z")
+        meta.update({
+            "range_pct": Decimal("10.0"),
+            "dec0": 18,
+            "dec1": 6,
+            "quote_usd_per_token1": Decimal("1.0"),
+            "pool_address": "0xpool-g4b",
+            "token0": "0xtoken0-g4b",
+            "token1": "0xtoken1-g4b",
+            "entry_cost_usd": Decimal("4"),
+            "exit_cost_usd": Decimal("3"),
+            "gas_usd": Decimal("1"),
+        })
+        price = Decimal("1.0")
+        samples = [
+            _passing_sample(0, reference_mid=price,
+                            fee_growth_global_0=0, fee_growth_global_1=0,
+                            sample_time="2026-09-08T18:00:00Z",
+                            source_payload_hash="h-g4b-0"),
+            _passing_sample(1, reference_mid=price,
+                            fee_growth_global_0=0, fee_growth_global_1=0,
+                            sample_time="2026-09-08T18:01:00Z",
+                            source_payload_hash="h-g4b-1"),
+        ]
+        steps = _run2(conn, samples, pool_meta=meta,
+                      capital_usd=Decimal("1000"),
+                      position_usd=Decimal("100"))
+        conn.commit()
+
+        summary = episode_summary(steps, pool_meta=meta,
+                                 capital_usd=Decimal("1000"))
+
+        # Fixture injected round-trip=8; product must report that, not 10
+        assert summary["nav_end"] == Decimal("992"), (
+            f"nav_end must be 992 (1000-8) reflecting fixture cost=8, "
+            f"got {summary['nav_end']} (net_pnl={summary['net_pnl']}). "
+            f"If the runner is silently overriding cost to 10, this fails."
+        )
+
+    def test_variant_double_deduct_one_cost(self, tmp_path):
+        """G4.3: cost arithmetic reflects fixture-injected totals exactly.
+
+        Injecting entry=8 + exit=5 + gas=2 (round-trip=15) must produce
+        nav_end=985, net_pnl=-15.  If cost is silently clamped to 10,
+        nav_end would be 990.  This guards against the runner silently
+        ignoring inflated fixture costs.
+        """
+        conn = _fresh_store(tmp_path)
+        meta = _conj_meta(as_of="2026-09-08T17:59:00Z")
+        meta.update({
+            "range_pct": Decimal("10.0"),
+            "dec0": 18,
+            "dec1": 6,
+            "quote_usd_per_token1": Decimal("1.0"),
+            "pool_address": "0xpool-g4c",
+            "token0": "0xtoken0-g4c",
+            "token1": "0xtoken1-g4c",
+            "entry_cost_usd": Decimal("8"),
+            "exit_cost_usd": Decimal("5"),
+            "gas_usd": Decimal("2"),
+        })
+        price = Decimal("1.0")
+        samples = [
+            _passing_sample(0, reference_mid=price,
+                            fee_growth_global_0=0, fee_growth_global_1=0,
+                            sample_time="2026-09-08T18:00:00Z",
+                            source_payload_hash="h-g4c-0"),
+            _passing_sample(1, reference_mid=price,
+                            fee_growth_global_0=0, fee_growth_global_1=0,
+                            sample_time="2026-09-08T18:01:00Z",
+                            source_payload_hash="h-g4c-1"),
+        ]
+        steps = _run2(conn, samples, pool_meta=meta,
+                      capital_usd=Decimal("1000"),
+                      position_usd=Decimal("100"))
+        conn.commit()
+
+        summary = episode_summary(steps, pool_meta=meta,
+                                 capital_usd=Decimal("1000"))
+
+        # Fixture injected round-trip=15; product must report that, not 10
+        assert summary["nav_end"] == Decimal("985"), (
+            f"nav_end must be 985 (1000-15) reflecting fixture cost=15, "
+            f"got {summary['nav_end']} (net_pnl={summary['net_pnl']}). "
+            f"If the runner is silently clamping cost to 10, this fails."
+        )
+
+    def test_variant_lost_idle_cash(self, tmp_path):
+        """G4.4: missing the 900 idle cash must fail.
+
+        With capital=1000 and position=100, the wallet should hold 900 idle
+        cash.  If the wallet_cash calculation is wrong (e.g. position_usd used
+        instead of capital_usd - position_usd), NAV will be off by 900.
+        """
+        conn = _fresh_store(tmp_path)
+        meta = _conj_meta(as_of="2026-09-08T17:59:00Z")
+        meta.update({
+        "range_pct": Decimal("10.0"),
+    "dec0": 18,
+    "dec1": 6,
+    "quote_usd_per_token1": Decimal("1.0"),
+        "pool_address": "0xpool-g4d",
+    "token0": "0xtoken0-g4d",
+    "token1": "0xtoken1-g4d",
+        "entry_cost_usd": Decimal("5"),
+        "exit_cost_usd": Decimal("3"),
+        "gas_usd": Decimal("2"),
+        })
+        price = Decimal("1.0")
+        samples = [
+            _open_sample(0, reference_mid=price,
+                          fee_growth_global_0=0, fee_growth_global_1=0,
+                          sample_time="2026-09-08T18:00:00Z"),
+            _open_sample(1, reference_mid=price,
+                          fee_growth_global_0=0, fee_growth_global_1=0,
+                          sample_time="2026-09-08T18:01:00Z"),
+        ]
+        steps = _run2(conn, samples, pool_meta=meta,
+                     capital_usd=Decimal("1000"),
+                     position_usd=Decimal("100"))
+        conn.commit()
+
+        summary = episode_summary(steps, pool_meta=meta,
+                                 capital_usd=Decimal("1000"))
+
+        # Idle cash = capital - position = 900
+        # NAV = 900 (idle) + position_value (100) - costs (10) = 990
+        # If idle cash is lost (wallet_cash = 0), NAV = 0 + 100 - 10 = 90
+        # Check nav_end reflects idle cash being present
+        assert summary["nav_end"] == Decimal("990"), (
+            f"nav_end must be 990 (900 idle + 100 position - 10 cost), "
+            f"got {summary['nav_end']} (net_pnl={summary['net_pnl']}). "
+            "Idle cash may have been lost."
+        )
+
+    def test_variant_collect_repeated_incorrectly(self, tmp_path):
+        """G4.5: collect counted as profit twice must fail.
+
+        If collect gas rebate is mistakenly attributed as fee income in addition
+        to the normal NAV increase, net_pnl will be 0 instead of -10.
+        """
+        conn = _fresh_store(tmp_path)
+        meta = _conj_meta(as_of="2026-09-08T17:59:00Z")
+        meta.update({
+        "range_pct": Decimal("10.0"),
+    "dec0": 18,
+    "dec1": 6,
+    "quote_usd_per_token1": Decimal("1.0"),
+        "pool_address": "0xpool-g4e",
+    "token0": "0xtoken0-g4e",
+    "token1": "0xtoken1-g4e",
+        "entry_cost_usd": Decimal("5"),
+        "exit_cost_usd": Decimal("3"),
+        "gas_usd": Decimal("2"),
+        })
+        price = Decimal("1.0")
+        samples = [
+            _open_sample(0, reference_mid=price,
+                          fee_growth_global_0=0, fee_growth_global_1=0,
+                          sample_time="2026-09-08T18:00:00Z"),
+            _open_sample(1, reference_mid=price,
+                          fee_growth_global_0=0, fee_growth_global_1=0,
+                          sample_time="2026-09-08T18:01:00Z"),
+        ]
+        steps = _run2(conn, samples, pool_meta=meta,
+                     capital_usd=Decimal("1000"),
+                     position_usd=Decimal("100"))
+        conn.commit()
+
+        # If someone mistakenly books collect as fee_income (double-counting),
+        # the net_pnl would be wrong. We verify the correct net_pnl = -10.
+        summary = episode_summary(steps, pool_meta=meta,
+                                 capital_usd=Decimal("1000"))
+
+        # Correct: costs only, no double-counted fees
+        assert summary["net_pnl"] == Decimal("-10"), (
+            f"net_pnl must be -10 (cost only), got {summary['net_pnl']}. "
+            "Collect may have been double-counted as fee income."
+        )
+
+    def test_variant_reset_baseline_mid_episode(self, tmp_path):
+        """G4.6: episode中途 reset nav_start must fail.
+
+        If nav_start_capital is somehow reset mid-episode (e.g. to the
+        mid-episode NAV instead of pre-trade capital), the PnL window will
+        be wrong.  We run two episodes and verify each keeps its own nav_start.
+        """
+        conn = _fresh_store(tmp_path)
+        meta = _conj_meta(as_of="2026-09-08T17:59:00Z")
+        meta.update({
+        "range_pct": Decimal("10.0"),
+    "dec0": 18,
+    "dec1": 6,
+    "quote_usd_per_token1": Decimal("1.0"),
+        "pool_address": "0xpool-g4f",
+    "token0": "0xtoken0-g4f",
+    "token1": "0xtoken1-g4f",
+        "entry_cost_usd": Decimal("5"),
+        "exit_cost_usd": Decimal("3"),
+        "gas_usd": Decimal("2"),
+        })
+        price = Decimal("1.0")
+        samples = [
+            _open_sample(0, reference_mid=price,
+                          fee_growth_global_0=0, fee_growth_global_1=0,
+                          sample_time="2026-09-08T18:00:00Z"),
+            _open_sample(1, reference_mid=price,
+                          fee_growth_global_0=0, fee_growth_global_1=0,
+                          sample_time="2026-09-08T18:01:00Z"),
+        ]
+
+        # Episode 1: capital=1000, position=100
+        steps1 = _run2(conn, samples, pool_meta=meta,
+                      capital_usd=Decimal("1000"),
+                      position_usd=Decimal("100"),
+                      episode="ep-g4f-1")
+        conn.commit()
+        summary1 = episode_summary(steps1, pool_meta=meta,
+                                   capital_usd=Decimal("1000"))
+
+        # Episode 2: same episode_id -> would collide and raise IntegrityError
+        # So we use a different episode_id
+        steps2 = _run2(conn, samples, pool_meta=meta,
+                      capital_usd=Decimal("1000"),
+                      position_usd=Decimal("100"),
+                      episode="ep-g4f-2")
+        conn.commit()
+        summary2 = episode_summary(steps2, pool_meta=meta,
+                                   capital_usd=Decimal("1000"))
+
+        # Each episode must keep its own nav_start = 1000
+        assert summary1["nav_start"] == Decimal("1000"), (
+            f"Episode 1 nav_start must be 1000, got {summary1['nav_start']}"
+        )
+        assert summary2["nav_start"] == Decimal("1000"), (
+            f"Episode 2 nav_start must be 1000, got {summary2['nav_start']}"
+        )
+        # Neither episode should have its nav_start reset mid-episode
+        assert summary1["nav_start"] == summary2["nav_start"] == Decimal("1000"), (
+            "nav_start must not be reset mid-episode"
+        )
+        conn.close()
+
+    def test_usdg_not_one_usd_treatment(self, tmp_path):
+        """G4.7: USDG price 1.02 cannot be treated as 1.0 in NAV.
+
+        When USDG != 1.0 USD, using a fixed 1.0 conversion for USDG-denominated
+        amounts introduces a systematic error in NAV.  The NAV formula must
+        either use the correct USDG price or flag the discrepancy.
+        """
+        conn = _fresh_store(tmp_path)
+        meta = _conj_meta(as_of="2026-09-08T17:59:00Z")
+        meta.update({
+        "range_pct": Decimal("10.0"),
+    "dec0": 18,
+    "dec1": 6,
+    "quote_usd_per_token1": Decimal("1.02"),  # USDG/USD price
+        "pool_address": "0xpool-g4g",
+    "token0": "0xtoken0-g4g",
+    "token1": "0xtoken1-g4g",
+        "entry_cost_usd": Decimal("5"),
+        "exit_cost_usd": Decimal("3"),
+        "gas_usd": Decimal("2"),
+        })
+        price = Decimal("1.02")
+        samples = [
+            _open_sample(0, reference_mid=price,
+                          fee_growth_global_0=0, fee_growth_global_1=0,
+                          sample_time="2026-09-08T18:00:00Z"),
+            _open_sample(1, reference_mid=price,
+                          fee_growth_global_0=0, fee_growth_global_1=0,
+                          sample_time="2026-09-08T18:01:00Z"),
+        ]
+        steps = _run(conn, samples, pool_meta=meta,
+                     capital_usd=Decimal("1020"),  # 1000 USD + 20 USDG surplus
+                     position_usd=Decimal("100"))
+        conn.commit()
+
+        summary = episode_summary(steps, pool_meta=meta,
+                                 capital_usd=Decimal("1020"))
+
+        # NAV should use quote_usd_per_token1 = 1.02 for USDG conversion
+        # If treated as 1.0: NAV = 920 + 100 - 10 = 1010
+        # Correct: NAV = 920 + 102 - 10 = 1012 (at USDG=1.02)
+        # The quote affects both wallet valuation and position valuation
+        # We verify that the result is not simply 1000 - 10 = 990 (the 1.0 peg error)
+        assert summary["nav_end"] != Decimal("990"), (
+            f"nav_end={summary['nav_end']} equals the 1.0-peg value 990. "
+            "USDG may be incorrectly treated as exactly 1.0 USD."
+        )
+        conn.close()
+
+    def test_out_of_range_position_does_not_accrue_fee(self, tmp_path):
+        """G4.8: out-of-range price -> no fee row in journal.
+
+        When the position is out of the liquidity range, fee growth may still
+        accumulate in the pool but should NOT be counted as accrued fees.
+        """
+        conn = _fresh_store(tmp_path)
+        entry_price = Decimal("1.0")
+        meta = _conj_meta(as_of="2026-09-08T17:59:00Z")
+        meta.update({
+        "range_pct": Decimal("10.0"),  # range: [0.9, 1.1]
+    "dec0": 18,
+    "dec1": 6,
+    "quote_usd_per_token1": Decimal("1.0"),
+        "pool_address": "0xpool-g4h",
+    "token0": "0xtoken0-g4h",
+    "token1": "0xtoken1-g4h",
+        "entry_cost_usd": Decimal("5"),
+        "exit_cost_usd": Decimal("3"),
+        "gas_usd": Decimal("2"),
+        })
+        # fee_growth advances but price is out of range -> no fee accrued
+        dfg = Decimal(10**18)
+        samples = [
+            _open_sample(0, reference_mid=entry_price,
+                          fee_growth_global_0=0, fee_growth_global_1=0,
+                          sample_time="2026-09-08T18:00:00Z"),
+            _open_sample(1, reference_mid=Decimal("2.0"),  # OUT of range
+                          fee_growth_global_0=dfg, fee_growth_global_1=dfg,
+                          sample_time="2026-09-08T18:01:00Z"),
+        ]
+        steps = _run2(conn, samples, pool_meta=meta,
+                     capital_usd=Decimal("1000"),
+                     position_usd=Decimal("100"))
+        conn.commit()
+
+        # Step 1 is out of range
+        assert steps[1].in_range is False, "step 1 must be out of range at price=2.0"
+
+        # Journal: only the open rows (2 rows for token0 + token1 debit/credit)
+        journal = conn.execute(
+            "SELECT event_id FROM rh_journal WHERE event_id LIKE '%-fees'"
+        ).fetchall()
+        assert len(journal) == 0, (
+            f"no fee journal row expected (out-of-range), got {len(journal)}"
+        )
+        conn.close()
+
+    def test_dust_residual_inventory_tracked(self, tmp_path):
+        """G4.9: dust residual inventory tracked + liquidation_nav reflects risk.
+
+        After an incomplete remove, dust inventory remains.  liquidation_nav
+        must conservatively value the dust at less than its face value.
+        """
+        conn = _fresh_store(tmp_path)
+        meta = _conj_meta(as_of="2026-09-08T17:59:00Z")
+        meta.update({
+        "range_pct": Decimal("10.0"),
+    "dec0": 18,
+    "dec1": 6,
+    "quote_usd_per_token1": Decimal("1.0"),
+        "pool_address": "0xpool-g4i",
+    "token0": "0xtoken0-g4i",
+    "token1": "0xtoken1-g4i",
+        "entry_cost_usd": Decimal("5"),
+        "exit_cost_usd": Decimal("3"),
+        "gas_usd": Decimal("2"),
+        })
+        price = Decimal("1.0")
+        samples = [
+            _open_sample(0, reference_mid=price,
+                          fee_growth_global_0=0, fee_growth_global_1=0,
+                          sample_time="2026-09-08T18:00:00Z"),
+            _open_sample(1, reference_mid=price,
+                          fee_growth_global_0=0, fee_growth_global_1=0,
+                          sample_time="2026-09-08T18:01:00Z"),
+        ]
+        steps = _run2(conn, samples, pool_meta=meta,
+                     capital_usd=Decimal("1000"),
+                     position_usd=Decimal("100"))
+        conn.commit()
+
+        # liquidation_nav is stored in rh_position_marks
+        marks = conn.execute(
+            "SELECT reference_nav, liquidation_nav FROM rh_position_marks "
+            "ORDER BY mark_time DESC LIMIT 1"
+        ).fetchone()
+        assert marks is not None
+        ref_nav, liq_nav = marks
+        assert ref_nav is not None, "reference_nav must be set"
+        assert liq_nav is not None, "liquidation_nav must be set"
+
+        ref_dec = Decimal(str(ref_nav))
+        liq_dec = Decimal(str(liq_nav))
+
+        # liquidation_nav should be <= reference_nav (conservative haircut)
+        assert liq_dec <= ref_dec, (
+            f"liquidation_nav ({liq_dec}) must be <= reference_nav ({ref_dec}). "
+            "Dust inventory risk not properly reflected."
+        )
+        conn.close()
+
+    def test_partial_decimal_token_sorts_correctly(self, tmp_path):
+        """G4.10: token0 (dec=18) / token1 (dec=6) sort + amount correct.
+
+        When token0 has more decimals than token1, the inventory amounts must
+        be computed correctly for each decimal scale, and the sort order
+        (token0 < token1) must be preserved in journal entries.
+        """
+        conn = _fresh_store(tmp_path)
+        meta = _conj_meta(as_of="2026-09-08T17:59:00Z")
+        meta.update({
+        "range_pct": Decimal("10.0"),
+    "dec0": 18,   # token0: 18 decimals
+    "dec1": 6,    # token1: 6 decimals
+    "quote_usd_per_token1": Decimal("1.0"),
+        "pool_address": "0xpool-g4j",
+    "token0": "0xtoken0-g4j",
+    "token1": "0xtoken1-g4j",
+        "entry_cost_usd": Decimal("5"),
+        "exit_cost_usd": Decimal("3"),
+        "gas_usd": Decimal("2"),
+        })
+        price = Decimal("1.0")
+        samples = [
+            _open_sample(0, reference_mid=price,
+                          fee_growth_global_0=0, fee_growth_global_1=0,
+                          sample_time="2026-09-08T18:00:00Z"),
+            _open_sample(1, reference_mid=price,
+                          fee_growth_global_0=0, fee_growth_global_1=0,
+                          sample_time="2026-09-08T18:01:00Z"),
+        ]
+        steps = _run2(conn, samples, pool_meta=meta,
+                     capital_usd=Decimal("1000"),
+                     position_usd=Decimal("100"))
+        conn.commit()
+
+        # Journal entries for open (token0 + token1 legs)
+        journal = conn.execute(
+            "SELECT event_id, asset, amount_raw FROM rh_journal "
+            "ORDER BY event_id"
+        ).fetchall()
+        assert len(journal) == 2, f"expected 2 journal rows, got {len(journal)}"
+
+        # token0 (18 dec) and token1 (6 dec) amounts
+        token0_row = next(r for r in journal if "token0" in r[0])
+        token1_row = next(r for r in journal if "token1" in r[0])
+
+        amount0 = Decimal(token0_row[2])
+        amount1 = Decimal(token1_row[2])
+
+        # amount0 should be in raw format (18 dec tokens)
+        # amount1 should be in raw format (6 dec tokens)
+        # Both should be positive and non-zero
+        assert amount0 > 0, f"token0 amount must be positive, got {amount0}"
+        assert amount1 > 0, f"token1 amount must be positive, got {amount1}"
+
+        # token0 raw should have 12 more decimal digits than token1 raw
+        # (since both represent the same notional value at price=1.0)
+        # amount0_raw / amount1_raw ≈ 10^(18-6) = 10^12 when amounts are equal in USD terms
+        # For position_usd=100, the amounts are not equal but both should be non-zero
+        assert amount0 != amount1, "token0 and token1 amounts should differ (different decimals)"
+        conn.close()

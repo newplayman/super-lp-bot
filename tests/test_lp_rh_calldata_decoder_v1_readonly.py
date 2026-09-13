@@ -48,15 +48,25 @@ def collect(extra=None):
     return call("0xfc6f7865", values)
 def multicall(*calls):
     encoded = [bytes.fromhex(item[2:]) for item in calls]
-    head_size = 32 + 32 * len(encoded)
+    # Compact Solidity bytes[] layout (matches Multicall3 + the decoder in
+    # scripts/lp_rh_calldata_decoder_v1_readonly.py):
+    #   body[0:32]               = top (0x20)
+    #   body[32:64]              = N (element count)
+    #   body[64:64+32*N]         = absolute byte offsets where each len_i word lives
+    #   body[offset_i:offset_i+32] = len_i
+    #   body[offset_i+32:offset_i+32+pad(len_i)] = data_i (raw calldata)
     pieces = [word(32), word(len(encoded))]
-    cursor = head_size
-    tails = []
+    cursor = 32 + 32 + 32 * len(encoded)   # body offset where len_0 word starts
+    offsets = []
     for item in encoded:
-        pieces.append(word(cursor))
+        offsets.append(word(cursor))
+        cursor += 32 + ((len(item) + 31) // 32) * 32
+    pieces.extend(offsets)
+    tails = []
+    cursor = 32 + 32 + 32 * len(encoded)
+    for item in encoded:
         padded = item.hex() + "0" * ((32 - len(item) % 32) % 32) * 2
         tails.append(word(len(item)) + padded)
-        cursor += 32 + ((len(item) + 31) // 32) * 32
     return "0xac9650d8" + "".join(pieces + tails)
 def test_approve_decodes_address_and_amount():
     decoded = decode_calldata(approve(123, WALLET))

@@ -62,21 +62,53 @@ def _word_at(data, offset):
         raise ValueError("word out of bounds")
     return data[offset:offset + 32]
 def _decode_bytes_array(body):
+    # Solidity bytes[] ABI has two equivalent layouts; we accept both.
+    #
+    # 1. Compact form (top==0x20):
+    #      body[0:32]              = top
+    #      body[32:64]             = N (element count)
+    #      body[64:64+32*N]        = absolute byte offsets where each len_i word lives
+    #      body[offset_i]          = len_i (raw byte count of data_i)
+    #      body[offset_i+32:...]   = data_i (raw calldata, padded to 32 bytes)
+    #
+    # 2. Standard form (top==N*32, N>=1):
+    #      body[0:32]                  = top
+    #      body[top:top+32]            = offset_0 (relative to data_section start)
+    #      body[top+32:top+64]         = offset_1
+    #      ...
+    #      body[top+32*(N-1):top+32*N] = offset_{N-1}
+    #      body[top+32*N:top+32*(N+1)] = N (element count)
+    #      body[top+32*(N+1):...]      = len_0, data_0_padded, len_1, ...
+    #    data_section_start = top + 32*(N+1).
+    #    absolute position of len_i = data_section_start + offset_i.
     top = _uint(_word_at(body, 0))
     if top % 32 or top < 32:
         raise ValueError("bad array offset")
-    count = _uint(_word_at(body, top))
-    head = top + 32
-    if head + count * 32 > len(body):
+    if top + 32 > len(body):
         raise ValueError("short array head")
+    if top == 32:
+        count = _uint(_word_at(body, 32))
+        if count == 0:
+            return [_arg("calls", "bytes[]", [])]
+        if 32 + 32 + 32 * count > len(body):
+            raise ValueError("short array head")
+        abs_offsets = [_uint(_word_at(body, 32 + 32 + 32 * i)) for i in range(count)]
+    else:
+        inferred_n = top // 32
+        if inferred_n == 0 or top % 32 != 0:
+            raise ValueError("non-standard array layout")
+        count = inferred_n
+        rel_offsets = [_uint(_word_at(body, top + 32 * i)) for i in range(count)]
+        data_section_start = top + 32 * (count + 1)
+        if data_section_start + 32 > len(body):
+            raise ValueError("short array head")
+        abs_offsets = [data_section_start + r for r in rel_offsets]
+    if any(o + 32 > len(body) for o in abs_offsets):
+        raise ValueError("bad item offset")
     children = []
-    for index in range(count):
-        relative = _uint(_word_at(body, head + index * 32))
-        start = top + relative
-        if start < head or start % 32:
-            raise ValueError("bad item offset")
-        length = _uint(_word_at(body, start))
-        data_start = start + 32
+    for start_i in abs_offsets:
+        length = _uint(_word_at(body, start_i))
+        data_start = start_i + 32
         data_end = data_start + length
         padded_end = data_start + ((length + 31) // 32) * 32
         if data_end > len(body) or padded_end > len(body):

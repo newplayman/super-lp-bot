@@ -1,0 +1,194 @@
+........................................................................ [  1%]
+........................................................................ [  2%]
+........................................................................ [  4%]
+........................................................................ [  5%]
+........................................................................ [  6%]
+........................................................................ [  8%]
+........................................................................ [  9%]
+........................................................................ [ 11%]
+......................s...........................s.....s.ss....s....... [ 12%]
+........................................................................ [ 13%]
+........................................................................ [ 15%]
+........................................................................ [ 16%]
+........................................................................ [ 17%]
+........................................................................ [ 19%]
+.......................................s................................ [ 20%]
+........................................................................ [ 22%]
+.....................s........................s......................... [ 23%]
+.............................s.......................................... [ 24%]
+.........................s...................................s.......... [ 26%]
+.............................s.......................................... [ 27%]
+............s........................................................... [ 29%]
+........................................................................ [ 30%]
+........................................................................ [ 31%]
+........................................................................ [ 33%]
+........................................................................ [ 34%]
+........................................................................ [ 35%]
+........................................................................ [ 37%]
+........................................................................ [ 38%]
+........................................................................ [ 40%]
+........................................................................ [ 41%]
+........................................................................ [ 42%]
+........................................................................ [ 44%]
+........................................................................ [ 45%]
+........................................................................ [ 46%]
+........................................................................ [ 48%]
+........................................................................ [ 49%]
+........................................................................ [ 51%]
+........................................................................ [ 52%]
+................................................................FF...F.F [ 53%]
+F.F..................................................................... [ 55%]
+........................................F............................... [ 56%]
+........................................................................ [ 58%]
+........................................................................ [ 59%]
+........................................................................ [ 60%]
+........................................................................ [ 62%]
+........................................................................ [ 63%]
+........................................................................ [ 64%]
+........................................................................ [ 66%]
+........................................................................ [ 67%]
+........................................................................ [ 69%]
+............................................................F..F.F.F.FF. [ 70%]
+FF..FF...FFF............................................................ [ 71%]
+........................................................................ [ 73%]
+...................................................FF.F................. [ 74%]
+...................FFF.FFFFFF.FF.......F.FF..FFFFFF..F.F.F........FFFF.F [ 76%]
+FFFFFF.F..............F................................................. [ 77%]
+........................................................................ [ 78%]
+........................................................................ [ 80%]
+........................................................................ [ 81%]
+........................................................................ [ 82%]
+........................................................................ [ 84%]
+........................................................................ [ 85%]
+........................................................................ [ 87%]
+........................................................................ [ 88%]
+........................................................................ [ 89%]
+........................................................................ [ 91%]
+........................................................................ [ 92%]
+........................................................................ [ 93%]
+........................................................................ [ 95%]
+........................................................................ [ 96%]
+........................................................................ [ 98%]
+........................................................................ [ 99%]
+.........................                                                [100%]
+=================================== FAILURES ===================================
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_first_step_accrual_v1_readonly.py:263: AssertionError: assert None == Decimal('9514.902606363014000000000000')
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_first_step_accrual_v1_readonly.py:273: TypeError: unsupported operand type(s) for -: 'NoneType' and 'NoneType'
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_first_step_accrual_v1_readonly.py:336: assert None is not None
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_first_step_accrual_v1_readonly.py:400: assert None is not None
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_first_step_accrual_v1_readonly.py:416: AssertionError: assert None == (Decimal('9514.929550093033138248440155') - Decimal('9514.902606363014000000000000'))
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_first_step_accrual_v1_readonly.py:513: AssertionError: assert None == Decimal('10000')
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_graduation_evidence_v1_readonly.py:96: AssertionError: assert 'HOURS_COVERED_INSUFFICIENT' in ['OBSERVATION_WINDOW_UNAVAILABLE', 'STAGE_A_SYNTHETIC_TESTS_FAILED', 'STAGE_A_KEY_FIELDS_INCOMPLETE', 'STAGE_A_POOL_NOT_ATTESTED', 'STAGE_A_INVARIANT_VIOLATIONS_UNAVAILABLE']
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_reconciliation_v1_readonly.py:127: AssertionError: assert 'INSUFFICIENT_EVIDENCE' == 'PASS'
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_reconciliation_v1_readonly.py:198: AssertionError: assert 'INSUFFICIENT_EVIDENCE' == 'UNEXPLAINED_DIFF'
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_reconciliation_v1_readonly.py:231: AssertionError: assert 'INSUFFICIENT_EVIDENCE' == 'UNEXPLAINED_DIFF'
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_reconciliation_v1_readonly.py:273: AssertionError: assert 'INSUFFICIENT_EVIDENCE' == 'PASS'
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_reconciliation_v1_readonly.py:314: AssertionError: assert 'INSUFFICIENT_EVIDENCE' == 'UNEXPLAINED_DIFF'
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_reconciliation_v1_readonly.py:325: AssertionError: assert 'INSUFFICIENT_EVIDENCE' == 'PASS'
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_reconciliation_v1_readonly.py:405: AssertionError: assert 'INSUFFICIENT_EVIDENCE' == 'PASS'
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_reconciliation_v1_readonly.py:442: AssertionError: assert 'INSUFFICIENT_EVIDENCE' == 'UNEXPLAINED_DIFF'
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_reconciliation_v1_readonly.py:545: AssertionError: assert 'INSUFFICIENT_EVIDENCE' == 'PASS'
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_reconciliation_v1_readonly.py:563: AssertionError: assert 'INSUFFICIENT_EVIDENCE' == 'UNEXPLAINED_DIFF'
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_reconciliation_v1_readonly.py:641: KeyError: 'quote'
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_reconciliation_v1_readonly.py:662: AssertionError: assert 'INSUFFICIENT_EVIDENCE' == 'UNEXPLAINED_DIFF'
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_reconciliation_v1_readonly.py:675: AssertionError: assert 'INSUFFICIENT_EVIDENCE' == 'PASS'
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_shadow_runner_v1_readonly.py:164: assert False
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_shadow_runner_v1_readonly.py:171: assert [False, False, False] == [True, False, False]
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_shadow_runner_v1_readonly.py:202: AssertionError: assert None == Decimal('1000.000000000000000000000000')
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_shadow_runner_v1_readonly.py:687: assert 0 == 1
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_shadow_runner_v1_readonly.py:696: TypeError: 'NoneType' object is not subscriptable
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_shadow_runner_v1_readonly.py:715: TypeError: 'NoneType' object is not iterable
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_shadow_runner_v1_readonly.py:744: assert 0 >= 2
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_shadow_runner_v1_readonly.py:756: assert False
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_shadow_runner_v1_readonly.py:779: assert 0 == 2
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_shadow_runner_v1_readonly.py:791: IndexError: list index out of range
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_shadow_runner_v1_readonly.py:804: assert 0 == 2
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_shadow_runner_v1_readonly.py:813: assert 0 == 2
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_shadow_runner_v1_readonly.py:832: assert 0 == 1
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_shadow_runner_v1_readonly.py:843: assert None == 0
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_shadow_runner_v1_readonly.py:984: AssertionError: assert False is True
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_shadow_runner_v1_readonly.py:1020: AssertionError: assert False is True
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_shadow_runner_v1_readonly.py:1043: AssertionError: assert False is True
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_shadow_runner_v1_readonly.py:1186: assert 0 == 3
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_shadow_runner_v1_readonly.py:1205: TypeError: 'NoneType' object is not subscriptable
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_shadow_runner_v1_readonly.py:1225: assert 0 == 2
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_shadow_runner_v1_readonly.py:1235: assert 0 == 2
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_shadow_runner_v1_readonly.py:1256: assert 0 == 2
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_shadow_runner_v1_readonly.py:1269: assert None == 0
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_shadow_runner_v1_readonly.py:1346: AssertionError: assert False is True
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_shadow_runner_v1_readonly.py:1423: AssertionError: assert False is True
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_shadow_runner_v1_readonly.py:1496: AssertionError: assert False is True
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_shadow_runner_v1_readonly.py:1875: AssertionError: assert None is True
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_shadow_runner_v1_readonly.py:1917: AssertionError: assert None is True
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_shadow_runner_v1_readonly.py:1990: AssertionError: assert None is True
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_shadow_runner_v1_readonly.py:2034: AssertionError: assert None is True
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_shadow_runner_v1_readonly.py:2136: AssertionError: assert Decimal('0') > 0
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_shadow_runner_v1_readonly.py:2177: AssertionError: assert Decimal('0') > 0
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_shadow_runner_v1_readonly.py:2217: AssertionError: assert Decimal('0') > 0
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_shadow_runner_v1_readonly.py:2257: AssertionError: assert Decimal('0') > 0
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_shadow_runner_v1_readonly.py:2298: AssertionError: assert Decimal('0') > 0
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_shadow_runner_v1_readonly.py:2298: AssertionError: assert Decimal('0') > 0
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_shadow_runner_v1_readonly.py:2298: AssertionError: assert Decimal('0') > 0
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_shadow_runner_v1_readonly.py:2372: assert None is False
+/opt/lpbot/lp-bot-v3-origin-check/tests/test_lp_rh_shadow_runner_v1_readonly.py:2762: AssertionError: assert False is True
+=========================== short test summary info ============================
+FAILED tests/test_lp_rh_first_step_accrual_v1_readonly.py::test_steps_without_nav_counts_only_none
+FAILED tests/test_lp_rh_first_step_accrual_v1_readonly.py::test_net_pnl_is_nav_end_minus_nav_start
+FAILED tests/test_lp_rh_first_step_accrual_v1_readonly.py::test_end_to_end_nav_start_magnitude
+FAILED tests/test_lp_rh_first_step_accrual_v1_readonly.py::test_rh02al_net_pnl_can_be_negative
+FAILED tests/test_lp_rh_first_step_accrual_v1_readonly.py::test_rh02al_window_alignment_equal_timestamps
+FAILED tests/test_lp_rh_first_step_accrual_v1_readonly.py::test_rh02al_real_pool_meta_and_db_sanity
+FAILED tests/test_lp_rh_graduation_evidence_v1_readonly.py::test_stage_a_not_passed_verdict_is_not_graduated_and_contains_blocker
+FAILED tests/test_lp_rh_reconciliation_v1_readonly.py::test_reconciliation_all_pass
+FAILED tests/test_lp_rh_reconciliation_v1_readonly.py::test_reconciliation_c3_fee_missing_in_journal_unexplained
+FAILED tests/test_lp_rh_reconciliation_v1_readonly.py::test_reconciliation_c2_amount_mismatch_unexplained
+FAILED tests/test_lp_rh_reconciliation_v1_readonly.py::test_reconciliation_apply_writes_valid_record
+FAILED tests/test_lp_rh_reconciliation_v1_readonly.py::test_reconciliation_c1_unbalanced_unexplained
+FAILED tests/test_lp_rh_reconciliation_v1_readonly.py::test_reconciliation_no_since_regression
+FAILED tests/test_lp_rh_reconciliation_v1_readonly.py::test_reconciliation_since_excludes_historical_diff_pass
+FAILED tests/test_lp_rh_reconciliation_v1_readonly.py::test_reconciliation_since_includes_historical_diff_unexplained
+FAILED tests/test_lp_rh_reconciliation_v1_readonly.py::test_c3_matching_conversion_pass
+FAILED tests/test_lp_rh_reconciliation_v1_readonly.py::test_c3_mismatch_unexplained_diff
+FAILED tests/test_lp_rh_reconciliation_v1_readonly.py::test_c3_evidence_json_records_quote_dec1_tolerance
+FAILED tests/test_lp_rh_reconciliation_v1_readonly.py::test_c3_regression_c1_c2_unaffected
+FAILED tests/test_lp_rh_reconciliation_v1_readonly.py::test_c3_pool_meta_file_path_and_unreadable
+FAILED tests/test_lp_rh_shadow_runner_v1_readonly.py::test_shadow_scenario_simulated_policy_only
+FAILED tests/test_lp_rh_shadow_runner_v1_readonly.py::test_reservation_only_first_eligible
+FAILED tests/test_lp_rh_shadow_runner_v1_readonly.py::test_hodl_initial_legs_constant_t41
+FAILED tests/test_lp_rh_shadow_runner_v1_readonly.py::test_rh02bu2_granted_step_writes_one_shadow_position
+FAILED tests/test_lp_rh_shadow_runner_v1_readonly.py::test_rh02bu2_position_id_matches_position_marks
+FAILED tests/test_lp_rh_shadow_runner_v1_readonly.py::test_rh02bu2_raw_fields_match_inventory_verbatim
+FAILED tests/test_lp_rh_shadow_runner_v1_readonly.py::test_rh02bu2_multiple_eligible_steps_still_one_row
+FAILED tests/test_lp_rh_shadow_runner_v1_readonly.py::test_rh02bu2_missing_pool_key_writes_no_row_and_records_reason
+FAILED tests/test_lp_rh_shadow_runner_v1_readonly.py::test_rh02by_granted_step_writes_two_journal_rows
+FAILED tests/test_lp_rh_shadow_runner_v1_readonly.py::test_rh02by_journal_asset_and_amount_match_inventory
+FAILED tests/test_lp_rh_shadow_runner_v1_readonly.py::test_rh02by_journal_is_internal_flow
+FAILED tests/test_lp_rh_shadow_runner_v1_readonly.py::test_rh02by_journal_idempotency_keys_distinct
+FAILED tests/test_lp_rh_shadow_runner_v1_readonly.py::test_rh02by_missing_token_addresses_no_journal_but_position_written
+FAILED tests/test_lp_rh_shadow_runner_v1_readonly.py::test_rh02by_journal_entries_pass_stage_b_balance_audit
+FAILED tests/test_lp_rh_shadow_runner_v1_readonly.py::test_rh02ce_granted_step_released_at_episode_end
+FAILED tests/test_lp_rh_shadow_runner_v1_readonly.py::test_rh02ce_sequential_episodes_both_granted_due_to_release
+FAILED tests/test_lp_rh_shadow_runner_v1_readonly.py::test_rh02ce_release_failure_leaves_trace_in_step_reasons
+FAILED tests/test_lp_rh_shadow_runner_v1_readonly.py::test_rh02ci_granted_step_accrued_positive_writes_fee_journal
+FAILED tests/test_lp_rh_shadow_runner_v1_readonly.py::test_rh02ci_fee_journal_ref_metadata
+FAILED tests/test_lp_rh_shadow_runner_v1_readonly.py::test_rh02ci_accrued_zero_no_fee_journal
+FAILED tests/test_lp_rh_shadow_runner_v1_readonly.py::test_rh02ci_missing_quote_no_fee_journal_but_open_written
+FAILED tests/test_lp_rh_shadow_runner_v1_readonly.py::test_rh02ci_missing_dec1_no_fee_journal_but_open_written
+FAILED tests/test_lp_rh_shadow_runner_v1_readonly.py::test_rh02ci_fee_journal_passes_stage_b_balance_audit
+FAILED tests/test_lp_rh_shadow_runner_v1_readonly.py::test_rh02ck_default_enforce_false_unknown_balance_backward_compatible
+FAILED tests/test_lp_rh_shadow_runner_v1_readonly.py::test_rh02ck_enforce_true_sufficient_native_balance_passes
+FAILED tests/test_lp_rh_shadow_runner_v1_readonly.py::test_rh02ck_gas_db_missing_graceful_fallback
+FAILED tests/test_lp_rh_shadow_runner_v1_readonly.py::test_rh02cm_fraction_one_accrual_nav_pnl_identical
+FAILED tests/test_lp_rh_shadow_runner_v1_readonly.py::test_rh02cm_out_of_range_steps_do_not_accrue_fee
+FAILED tests/test_lp_rh_shadow_runner_v1_readonly.py::test_rh02cm_price_none_not_counted_as_out_of_range
+FAILED tests/test_lp_rh_shadow_runner_v1_readonly.py::test_rh02cm_boundary_tick_lower_in_tick_upper_out
+FAILED tests/test_lp_rh_shadow_runner_v1_readonly.py::test_rh02cn_1_organic_discount_accrual_nine_tenths
+FAILED tests/test_lp_rh_shadow_runner_v1_readonly.py::test_rh02cn_2_no_window_fail_close
+FAILED tests/test_lp_rh_shadow_runner_v1_readonly.py::test_rh02cn_3_estimate_status_not_computed
+FAILED tests/test_lp_rh_shadow_runner_v1_readonly.py::test_rh02cn_4_partial_coverage
+FAILED tests/test_lp_rh_shadow_runner_v1_readonly.py::test_rh02cn_5_invalid_fraction[None]
+FAILED tests/test_lp_rh_shadow_runner_v1_readonly.py::test_rh02cn_5_invalid_fraction[0]
+FAILED tests/test_lp_rh_shadow_runner_v1_readonly.py::test_rh02cn_5_invalid_fraction[1.5]
+FAILED tests/test_lp_rh_shadow_runner_v1_readonly.py::test_rh02cn_7_stack_with_in_range
+FAILED tests/test_lp_rh_shadow_runner_v1_readonly.py::test_pool_state_stale_non_blocking_regression
+59 failed, 5136 passed, 14 skipped in 62.49s (0:01:02)
