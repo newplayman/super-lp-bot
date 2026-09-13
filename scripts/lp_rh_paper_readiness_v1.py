@@ -66,6 +66,8 @@ REQUIRED_GATES = frozenset({
     "g8_pool_state_excludes_invalid",
     "g9_reconciliation_binding_failclose",
     "g10_coverage_denominator_consistent",
+    "g12_live_allowed_false",
+    "g13_tiny_live_authorized_false",
     "g14_keys_created_zero",
     "g15_signatures_zero",
     "g16_broadcasts_zero",
@@ -73,8 +75,6 @@ REQUIRED_GATES = frozenset({
 
 ADVISORY_GATES = frozenset({
     "g11_two_providers_usable",
-    "g12_live_allowed_false",
-    "g13_tiny_live_authorized_false",
 })
 
 VALID_AUDIT_MODES = frozenset({
@@ -138,6 +138,15 @@ def _run_pytest_gate(target_args: list[str], timeout: int = 120) -> dict:
 
     if tests <= 0:
         return {"pass": False, "evidence": evidence, "reason": "NOT_DETERMINABLE"}
+
+    # CA-01 (PAPER_ACCEPTANCE_REPAIR_V2): the previous implementation only
+    # checked failures==0 + errors==0; a JUnit file that *exists* but came
+    # from a crashed pytest (non-zero returncode) could still report PASS
+    # via "tests>0 + 0 failures".  We now require subprocess returncode==0
+    # so we cannot pass a run that the runner itself marked as failed.
+    if proc.returncode != 0:
+        return {"pass": False, "evidence": {**evidence, "non_zero_returncode": proc.returncode},
+                "reason": "SUBPROCESS_NONZERO"}
 
     passed = failures == 0 and errors == 0
     reason = None if passed else f"{failures} failures + {errors} errors / {tests} tests"
@@ -351,25 +360,40 @@ def _read_counters(runtime_counters_path: str | Path | None = None) -> tuple[dic
 
     reason is None on full success, otherwise an OBSERVED:* sentinel that
     _check_counter converts into a verdict-blocking reason.
+
+    CA-01 (PAPER_ACCEPTANCE_REPAIR_V2): the previous implementation
+    initialised ``counters`` with three zeroes before reading the file,
+    then walked the file's keys and only overwrote the entries that
+    existed.  That meant a missing counters file still reported all
+    three keys at zero, which let ``g14/g15/g16`` pass with the
+    default-magic-number "0".  We now keep ``counters`` empty on
+    unobserved state and return ``OBSERVED:UNOBSERVED`` so the gate
+    cannot downgrade to PASS.  A file with missing fields also
+    returns ``OBSERVED:UNOBSERVED`` rather than silently falling
+    back to zero.
     """
     p = Path(runtime_counters_path or os.environ.get("LPBOT_RUNTIME_COUNTERS_PATH")
              or "reports/paper_runtime_counters.json")
-    counters = {"keys_created": 0, "signatures": 0, "broadcasts": 0}
+    observed = {}
     if not p.exists():
-        return counters, "OBSERVED:FILE_MISSING"
+        return observed, "OBSERVED:UNOBSERVED"
     try:
         text = p.read_text(encoding="utf-8")
     except Exception as exc:
-        return counters, f"OBSERVED:PARSE_ERROR"
+        return observed, "OBSERVED:PARSE_ERROR"
     try:
         data = json.loads(text)
     except Exception as exc:
-        return counters, f"OBSERVED:PARSE_ERROR"
+        return observed, "OBSERVED:PARSE_ERROR"
 
     if not isinstance(data, dict):
-        return counters, "OBSERVED:PARSE_ERROR"
+        return observed, "OBSERVED:PARSE_ERROR"
 
-    # head/run_id cross-check when present in the counters file.
+    # head/run_id cross-check when present in the counters file.  CA-01:
+    # when the file omits ``head``, we do not silently PASS; we require
+    # the recorded SHA to match ``git rev-parse HEAD``.  Only when git
+    # itself cannot be queried (no repo at the call site) do we accept
+    # the missing-head case.
     try:
         git_head = subprocess.run(
             ["git", "rev-parse", "HEAD"], capture_output=True, text=True, timeout=10,
@@ -377,20 +401,25 @@ def _read_counters(runtime_counters_path: str | Path | None = None) -> tuple[dic
     except Exception:
         git_head = None
     file_head = data.get("head")
-    if file_head is not None and git_head and file_head != git_head:
-        return counters, "OBSERVED:HEAD_MISMATCH"
+    if file_head is None:
+        if git_head is not None:
+            return observed, "OBSERVED:HEAD_MISSING"
+    elif git_head and file_head != git_head:
+        return observed, "OBSERVED:HEAD_MISMATCH"
     file_run_id = data.get("run_id")
     expected_run_id = data.get("expected_run_id")
     if expected_run_id is not None and file_run_id is not None and file_run_id != expected_run_id:
-        return counters, "OBSERVED:RUN_ID_MISMATCH"
+        return observed, "OBSERVED:RUN_ID_MISMATCH"
 
-    for k in counters:
-        if k in data:
-            try:
-                counters[k] = int(data[k])
-            except (TypeError, ValueError):
-                return counters, "OBSERVED:PARSE_ERROR"
-    return counters, None
+    # All three keys MUST be present; missing any is OBSERVED:UNOBSERVED.
+    for k in ("keys_created", "signatures", "broadcasts"):
+        if k not in data:
+            return observed, "OBSERVED:UNOBSERVED"
+        try:
+            observed[k] = int(data[k])
+        except (TypeError, ValueError):
+            return observed, "OBSERVED:PARSE_ERROR"
+    return observed, None
 
 
 def _check_counter(key: str, runtime_counters_path: str | Path | None) -> dict:

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 from pathlib import Path
 from unittest.mock import MagicMock, call
 
@@ -117,10 +118,16 @@ def test_compute_paper_readiness_invokes_subprocess_for_pytest(monkeypatch, tmp_
 
 
 def test_g14_g15_g16_read_counters_file(tmp_path: Path):
-    """Zero counters pass; non-zero fails."""
+    """Zero counters pass; non-zero fails.
+
+    CA-01 (PAPER_ACCEPTANCE_REPAIR_V2): counters file MUST carry the
+    head SHA so _read_counters can cross-check the recorded counters
+    against the live git HEAD.  Tests now write the current HEAD into
+    the file fixture.
+    """
     counters_file = tmp_path / "runtime_counters.json"
     counters_file.write_text(
-        json.dumps({"keys_created": 0, "signatures": 0, "broadcasts": 0}),
+        json.dumps({"head": _current_head(), "keys_created": 0, "signatures": 0, "broadcasts": 0}),
         encoding="utf-8",
     )
     assert g14_keys_created_zero(counters_file)["pass"] is True
@@ -128,7 +135,7 @@ def test_g14_g15_g16_read_counters_file(tmp_path: Path):
     assert g16_broadcasts_zero(counters_file)["pass"] is True
 
     counters_file.write_text(
-        json.dumps({"keys_created": 1, "signatures": 0, "broadcasts": 0}),
+        json.dumps({"head": _current_head(), "keys_created": 1, "signatures": 0, "broadcasts": 0}),
         encoding="utf-8",
     )
     res14 = g14_keys_created_zero(counters_file)
@@ -172,6 +179,16 @@ def _write_junit(path: Path, *, tests: int, failures: int = 0, errors: int = 0, 
         f'errors="{errors}" skipped="{skipped}"></testsuite>',
         encoding="utf-8",
     )
+
+
+def _current_head() -> str:
+    """Return the live git HEAD SHA so counters file fixtures can match."""
+    try:
+        return subprocess.run(
+            ["git", "rev-parse", "HEAD"], capture_output=True, text=True, timeout=10,
+        ).stdout.strip()
+    except Exception:
+        return ""
 
 
 def test_required_test_timeout_blocks(monkeypatch, tmp_path):
@@ -255,7 +272,13 @@ def test_advisory_missing_db_blocks_advisory_only(monkeypatch):
 
 
 def test_counters_missing_file_blocks(monkeypatch, tmp_path):
-    """Missing runtime counters file -> OBSERVED:FILE_MISSING -> verdict FAIL."""
+    """Missing runtime counters file -> OBSERVED:UNOBSERVED -> verdict FAIL.
+
+    CA-01 (PAPER_ACCEPTANCE_REPAIR_V2): previously this test expected
+    OBSERVED:FILE_MISSING.  The new contract returns OBSERVED:UNOBSERVED
+    so callers cannot rely on a hard-coded sentinel; the broader
+    UNOBSERVED family still triggers verdict FAIL.
+    """
     # Patch env so no production file is found.
     monkeypatch.setenv("LPBOT_RUNTIME_COUNTERS_PATH", str(tmp_path / "no-such-file.json"))
     for name in rmod.GATE_NAMES:
@@ -264,9 +287,9 @@ def test_counters_missing_file_blocks(monkeypatch, tmp_path):
         monkeypatch.setattr(rmod, name, lambda *a, **kw: {"pass": True, "evidence": {}, "reason": None})
     res = rmod.compute_paper_readiness()
     assert res["verdict"] == "FAIL"
-    assert res["gates"]["g14_keys_created_zero"]["reason"] == "OBSERVED:FILE_MISSING"
-    assert res["gates"]["g15_signatures_zero"]["reason"] == "OBSERVED:FILE_MISSING"
-    assert res["gates"]["g16_broadcasts_zero"]["reason"] == "OBSERVED:FILE_MISSING"
+    assert res["gates"]["g14_keys_created_zero"]["reason"] == "OBSERVED:UNOBSERVED"
+    assert res["gates"]["g15_signatures_zero"]["reason"] == "OBSERVED:UNOBSERVED"
+    assert res["gates"]["g16_broadcasts_zero"]["reason"] == "OBSERVED:UNOBSERVED"
 
 
 def test_counters_parse_error_blocks(monkeypatch, tmp_path):
@@ -301,10 +324,14 @@ def test_counters_wrong_head_blocks(monkeypatch, tmp_path):
 
 
 def test_nonzero_counters_blocks(monkeypatch, tmp_path):
-    """keys_created=1 -> verdict FAIL."""
+    """keys_created=1 -> verdict FAIL.
+
+    CA-01 (PAPER_ACCEPTANCE_REPAIR_V2): counters file MUST carry the head
+    SHA so _read_counters cross-checks before the integer comparison.
+    """
     f = tmp_path / "counters.json"
     f.write_text(json.dumps({
-        "keys_created": 1, "signatures": 0, "broadcasts": 0,
+        "head": _current_head(), "keys_created": 1, "signatures": 0, "broadcasts": 0,
     }), encoding="utf-8")
     monkeypatch.setenv("LPBOT_RUNTIME_COUNTERS_PATH", str(f))
     for name in rmod.GATE_NAMES:
@@ -461,11 +488,17 @@ def test_inconclusive_reasons_alias():
 
 
 def test_required_gates_constant():
-    """REQUIRED_GATES has 13 entries; g11/g12/g13 are advisory."""
-    assert len(rmod.REQUIRED_GATES) == 13
+    """CA-01 (PAPER_ACCEPTANCE_REPAIR_V2): REQUIRED_GATES has 15 entries;
+    only g11_two_providers_usable is advisory (RPC not observable in
+    read-only research path).  g12 / g13 / g14 / g15 / g16 must block the
+    overall verdict — live_allowed and tiny_live_authorized cannot sit in
+    advisory or a real config flip would silently clear the gate."""
+    assert len(rmod.REQUIRED_GATES) == 15
     assert "g11_two_providers_usable" in rmod.ADVISORY_GATES
-    assert "g12_live_allowed_false" in rmod.ADVISORY_GATES
-    assert "g13_tiny_live_authorized_false" in rmod.ADVISORY_GATES
+    assert "g12_live_allowed_false" not in rmod.ADVISORY_GATES
+    assert "g13_tiny_live_authorized_false" not in rmod.ADVISORY_GATES
+    assert "g12_live_allowed_false" in rmod.REQUIRED_GATES
+    assert "g13_tiny_live_authorized_false" in rmod.REQUIRED_GATES
     assert "g14_keys_created_zero" in rmod.REQUIRED_GATES
     assert "g16_broadcasts_zero" in rmod.REQUIRED_GATES
 
