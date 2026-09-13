@@ -128,6 +128,63 @@ def test_case_1b_verify_calldata_true_without_calldata_fails_closed(tmp_path):
     )
 
 
+def test_case_1c_wrapper_rejection_leaves_no_journal_or_reservation(tmp_path):
+    """Case 1c (CA-04 PAPER_ACCEPTANCE_REPAIR_V2): wrapper rejection MUST leave
+    no journal rows and no reservation rows for this episode.
+
+    Audit §3: ``拒绝后 steps、持仓、资金预约、journal、episode summary 的
+    状态必须一致``。  If wrapper rejects a step that the strategy would
+    otherwise have admitted, the journal debit/credit and the
+    rh_bucket_reservations row that ``run_episode`` already wrote must be
+    rolled back together with the step, not left dangling in the ledger.
+
+    This test provides a sample with a legal target (so the strategy admits
+    and ``run_episode`` writes journal + reservation rows) but then opts
+    into ``verify_calldata=True`` without supplying real calldata (so the
+    wrapper fail-closes inside ``_record_tx_intents_safe``).
+    """
+    ledger, cfg = _build_test_setup(tmp_path, LEGAL_ROUTER)
+    cfg["verify_calldata"] = True
+    ep_id = "ep-w2-case1c"
+    sample = _cost_sample(0, price=Decimal("2000.0"))
+    sample["target_address"] = LEGAL_ROUTER.lower()
+    sample["selector"] = "0xb95cac29"
+    # Deliberately no calldata_bytes -- wrapper must reject.
+
+    steps, dups, stats = _run_episode_persisted(
+        ledger,
+        cfg=cfg,
+        episode_id=ep_id,
+        sample_list=[sample],
+        now_fn=lambda: NOW,
+    )
+
+    intent_row = ledger.execute(
+        "SELECT state, reject_reason FROM rh_tx_intents WHERE position_id = ?",
+        (f"rh-shadow-{ep_id}-0",),
+    ).fetchone()
+    journal_count = ledger.execute(
+        "SELECT COUNT(*) FROM rh_journal WHERE ref_json LIKE ?",
+        (f"%{ep_id}%",),
+    ).fetchone()[0]
+    resv_count = ledger.execute(
+        "SELECT COUNT(*) FROM rh_bucket_reservations WHERE intent_id LIKE ?",
+        (f"%{ep_id}%",),
+    ).fetchone()[0]
+    ledger.close()
+
+    assert intent_row is not None, "Expected rh_tx_intents row"
+    assert intent_row[0] == "WHITELIST_REJECTED", (
+        f"wrapper must reject, got {intent_row[0]!r}"
+    )
+    assert journal_count == 0, (
+        f"rh_journal must have 0 rows for rejected episode {ep_id}, got {journal_count}"
+    )
+    assert resv_count == 0, (
+        f"rh_bucket_reservations must have 0 rows for rejected episode {ep_id}, got {resv_count}"
+    )
+
+
 def test_case_2_evil_target_rejected_by_gate(tmp_path):
     """Case 2: evil target_address injected via sample -> assert rh_tx_intents.state == 'WHITELIST_REJECTED' + reject_reason non-empty + rh_journal count == 0 + rh_bucket_reservations count == 0."""
     ledger, cfg = _build_test_setup(tmp_path, LEGAL_ROUTER)

@@ -68,6 +68,26 @@ def _row_to_dict(cursor: sqlite3.Cursor, row: Any) -> Optional[dict[str, Any]]:
     return {k: v for k, v in zip(names, row)}
 
 
+def _is_unique_idempotency_conflict(exc: sqlite3.IntegrityError, *, idempotency_key: str) -> bool:
+    """CA-04 (PAPER_ACCEPTANCE_REPAIR_V2): classify an IntegrityError.
+
+    Only UNIQUE constraint violations against the ``idempotency_key`` column
+    (or ``request_id`` -- the other candidate PK) are the recoverable
+    "already-recorded" path.  Anything else (NOT NULL violation, FK
+    violation, CHECK violation, UNIQUE on a different column) MUST propagate
+    so the caller can decide between rollback and structural schema repair.
+
+    The classifier inspects the error message string because SQLite's
+    stdlib binding does not expose structured constraint info.  Pattern
+    matches on the standard SQLite phrasing ``UNIQUE constraint failed:
+    <column>``.
+    """
+    msg = str(exc).lower()
+    if "unique constraint failed" not in msg:
+        return False
+    return idempotency_key.lower() in msg or "idempotency_key" in msg or "request_id" in msg
+
+
 class TxIntentWriter:
     """Writer and state manager for the rh_tx_intents SQLite table."""
 
@@ -146,8 +166,25 @@ class TxIntentWriter:
                     None,
                 ),
             )
-            self.conn.commit()
-        except sqlite3.IntegrityError:
+            # CA-04 (PAPER_ACCEPTANCE_REPAIR_V2): do NOT auto-commit.
+            # The caller owns the transaction boundary so it can roll back
+            # the writer row together with the journal/position/reservation
+            # rows from the same episode when admission decides to reject
+            # after the fact.  Auto-commit here would silently terminate the
+            # enclosing ``BEGIN IMMEDIATE`` transaction (SQLite has no nested
+            # transactions), making the caller's rollback a no-op and the
+            # subsequent writer.write_intent on the next step unable to
+            # observe its predecessor's row inside the same atomic boundary.
+        except sqlite3.IntegrityError as exc:
+            # CA-04: only the idempotency_key UNIQUE constraint conflict is
+            # the recoverable "already-recorded" path.  Other IntegrityError
+            # subclasses (NOT NULL violations, FK violations, CHECK
+            # violations) must propagate so the caller can decide between
+            # rollback and structural schema repair -- silently returning an
+            # idempotent_hit for those would mask real bugs (e.g. a caller
+            # passing ``wallet_id=None`` against a NOT NULL wallet_id column).
+            if not _is_unique_idempotency_conflict(exc, idempotency_key=idempotency_key):
+                raise
             cur = self.conn.execute(
                 "SELECT * FROM rh_tx_intents WHERE idempotency_key = ?",
                 (idempotency_key,),
@@ -219,7 +256,11 @@ class TxIntentWriter:
         params.append(request_id)
         sql = f"UPDATE rh_tx_intents SET {', '.join(updates)} WHERE request_id = ?"
         self.conn.execute(sql, params)
-        self.conn.commit()
+        # CA-04 (PAPER_ACCEPTANCE_REPAIR_V2): no auto-commit -- the caller
+        # owns the transaction boundary so it can roll back the state
+        # transition together with the journal / position / reservation
+        # rows from the same episode when admission decides to reject after
+        # the fact.
 
     def get_intent(self, request_id: str) -> Optional[dict[str, Any]]:
         """Retrieve full intent row by request_id."""
