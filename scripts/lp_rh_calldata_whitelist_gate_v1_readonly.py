@@ -172,15 +172,39 @@ def verify_intent_or_reject(intent: dict) -> Tuple[bool, Optional[str]]:
             return False, f"whitelist_reject:field_missing:{field}"
 
     # Decode calldata + verify the intent payload with the decoder module.
+    # CA-02 (PAPER_ACCEPTANCE_REPAIR_V2): the previous code threw away
+    # verify_intent's (ok, reasons) return value.  When the decoder decided
+    # the intent did not match the decoded calldata (returning False plus a
+    # list of reasons), no exception was raised so the except branch never
+    # fired and the wrapper silently continued past the intent-equality
+    # check.  We now bind both values and short-circuit on False.
     try:
         from scripts.lp_rh_calldata_decoder_v1_readonly import decode_calldata, verify_intent
         calldata = intent["calldata_bytes"]
         decoded = decode_calldata(calldata)
-        if decoded.get("status") != "OK":
-            return False, f"whitelist_reject:calldata_decode_failed:{decoded.get('status', 'UNKNOWN')}"
-        verify_intent(decoded, intent=intent["expected_intent"])
     except Exception as exc:
         return False, f"whitelist_reject:decoder_exception:{type(exc).__name__}"
+
+    if decoded.get("status") != "OK":
+        return False, f"whitelist_reject:calldata_decode_failed:{decoded.get('status', 'UNKNOWN')}"
+
+    # Metadata-bound selector must equal the calldata-derived selector.
+    # Prevents submitting an intent header claiming a safe selector while
+    # the actual on-chain bytes encode a different action.
+    decoded_selector = decoded.get("selector")
+    intent_selector = intent.get("selector")
+    if decoded_selector and intent_selector and decoded_selector.lower() != intent_selector.lower():
+        return False, f"whitelist_reject:selector_mismatch:decoded={decoded_selector}:intent={intent_selector}"
+
+    try:
+        intent_ok, intent_reasons = verify_intent(decoded, intent=intent["expected_intent"])
+    except Exception as exc:
+        return False, f"whitelist_reject:decoder_exception:{type(exc).__name__}"
+    if not intent_ok:
+        # Surface the actual reasons so callers can distinguish "intent missing
+        # field X" from "intent claims X=foo but calldata encodes X=bar".
+        joined = ",".join(intent_reasons) if intent_reasons else "verify_intent_false"
+        return False, f"whitelist_reject:intent_verify_failed:{joined}"
 
     # Whitelist checks on the outer target / selector / recipient.
     target = _norm_hex(intent.get("target_address")) or str(intent.get("target_address") or "").lower().strip()
