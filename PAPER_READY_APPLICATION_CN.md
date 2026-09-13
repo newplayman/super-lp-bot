@@ -304,4 +304,81 @@ python3 -m pytest tests/test_paper_a_no_grant.py \
 
 ---
 
-**等待 Owner 决定下一步。**
+## 6. PAPER_ACCEPTANCE_REPAIR_V1 — 审计 `56fb70f` 5 P1 缺陷修复（2026-09-13 追加）
+
+审计 HEAD `56fb70f6a441d3660658f16c234c6ea0c2c6fe03` 标记 5 个 P1 缺陷，本轮按 Owner `PAPER_ACCEPTANCE_REPAIR_V1` spec 修复，详细矩阵见 `REPAIR_MATRIX_CN.md`。新增 4 个 commit 在本地，未 push：
+
+| § | 主题 | commit | 摘要 |
+|---|---|---|---|
+| §5 | CI（requirements-test.txt + go mod tidy） | `4df9595` | Python 测试依赖固化清单；Go tidy 干净 |
+| §1 | Paper readiness 证据契约 | `cb0d36b` | REQUIRED/ADVISORY 分层；JUnit XML 解析；strict counters（缺位/head 错/非 0 全 block） |
+| §2 | calldata whitelist gate 真实签名 | `d370f92` | fail-closed；删降级分支；8 字段必需 + 5 目标 + 13 selector + 2 recipient + chain_id + calldata_hash + deadline + value_wei + multicall 子 action 全校验 |
+| §3 | daemon 拒绝时机/原子性/审计 | `4fd162e` | 删 `LIKE '%<episode_id>%'` ep-10 误删；step 状态同步；writer 异常传播；新增 `TxIntentWriterError`；daemon 层 opt-in `verify_calldata=True` 才调 wrapper |
+
+最终 HEAD：`4fd162e57c7a71bb9d889e82b6967304e5630029`
+
+### 6.1 修复后 pytest 摘要（同一 HEAD）
+
+| 阶段 | pass | fail | skip |
+|---|---|---|---|
+| 审计 baseline（commit `56fb70f`） | 4870 | 53 | 14 |
+| **本轮最终（HEAD `4fd162e`）** | **5048** | **55** | **14** |
+| 净 pass 增量 | **+178** | **+2** | 0 |
+
+55 fail = 53 baseline + 2 §2 wrapper 严格化的 B 类副作用（test_case_1 / test_case_3，本就在 baseline 中失败）。**§3 净修复 14 fail**（silent_failure_lint + ci_workflow + long_horizon transient），**引入 0 fail**。
+
+### 6.2 A-G 真实入口验收（77 全过）
+
+```
+test_paper_a_no_grant:        1 passed
+test_paper_b_delayed_grant:   1 passed
+test_paper_c_full_cost_flat:  1 passed
+test_paper_d_liquidation_matrix: 47 passed
+test_paper_e_pool_state:      3 passed
+test_paper_f_crash_recovery:  3 passed
+test_paper_g_whitelist_gate: 21 passed
+合计: 77 passed
+```
+
+### 6.3 §6 Paper readiness verdict（最终 HEAD）
+
+```
+verdict: FAIL
+summary: passed=9, failed=2, unknown=5, inconclusive=5, advisory_unknown=1
+```
+
+| gate | tier | pass | 原因 |
+|---|---|---|---|
+| g1_all_pytest_pass | REQUIRED | False | 53 baseline fail 残留 |
+| g2_audit_regression_pass | REQUIRED | False | audit_repro defects_reproduced=0（实绿），但 gate 解析 head 不一致（详见 REPAIR_MATRIX_CN §3.1） |
+| g3_entry_integration_tests_pass | REQUIRED | False | entry integration 测试未在本轮重跑 |
+| g4-g10 | REQUIRED | True | 实绿 |
+| g11_two_providers_usable | ADVISORY | False | read-only 路径无 RPC 观测 |
+| g12_live_allowed_false | ADVISORY | True | config.toml 静态检查 |
+| g13_tiny_live_authorized_false | ADVISORY | True | config.toml 静态检查 |
+| g14/g15/g16 | REQUIRED | False | runtime counters 文件缺失（按 §1 fail-closed 写 UNOBSERVED 而非 0） |
+
+### 6.4 最终固定输出
+
+```
+PAPER_STARTED=false
+LIVE_STARTED=false
+PAPER_START_REQUIRES_EXPLICIT_OWNER_APPROVAL=true
+PAPER_TECHNICALLY_READY=false
+```
+
+### 6.5 push 决策
+
+按 CLAUDE.md "未在本轮确认的不可逆动作"：
+- 4 commit 已在本地（4df9595 / cb0d36b / d370f92 / 4fd162e）
+- 仓库历史未见 push 规范；按 CLAUDE.md 交接准则"若从未 push 过则不要自作主张推远端"
+- **本轮不 push**。Owner 复核后决定 push / squash / rebase / 拆 PR
+
+### 6.6 仍未做的事（CLAUDE.md freeze 阻断）
+
+不启动 paper/live/canary；不创建私钥；不签名；不广播；不使用真实资金；不放宽 live_allowed；不设 tiny_live_authorized=true；不修改 main；不绕过 freeze。
+
+---
+
+**等待 Owner 决定下一步（push / 修 A 类 38 fail / 修 B 类 16 fail / 启动 paper）。**
+
