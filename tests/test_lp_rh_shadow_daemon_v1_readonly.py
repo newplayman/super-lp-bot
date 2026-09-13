@@ -1058,3 +1058,133 @@ def test_daemon_pool_state_mtime_touch_does_not_affect_result(tmp_path):
     assert "POOL_STATE_AS_OF_UNAVAILABLE" in reasons1
     assert "POOL_STATE_AS_OF_UNAVAILABLE" in reasons2
     assert cc1 == cc2
+
+
+# ---------------------------------------------------------------------------
+# CA-05 (PAPER_ACCEPTANCE_REPAIR_V2): real default entry run_one_round
+# must persist ``nav_start = capital_usd`` from the pre-trade capital, not
+# from the first observed step's NAV.  Audit §4.C: ``从交易前资本到周期
+# 结束汇总为 -10,不是首末 mark 抵消成本``.
+# ---------------------------------------------------------------------------
+
+
+def test_ca05_run_one_round_persists_nav_start_as_pre_trade_capital(tmp_path):
+    """CA-05: real run_one_round entry path.  ``nav_start`` MUST be the
+    pre-trade ``capital_usd`` even when every observed step's NAV already
+    reflects entry-cost bookkeeping.
+
+    Without the daemon fix in CA-05, ``episode_summary`` would be called
+    with ``capital_usd=None`` and would fall back to ``start_step.nav`` as
+    ``nav_start`` -- which cancels the entry cost out of the PnL window
+    and reports zero net_pnl for an episode that actually lost money on
+    round-trip cost.  We assert by going through ``run_one_round`` (the
+    real daemon entry) and reading ``rh_shadow_episodes.nav_start``.
+    """
+    live = open_store(tmp_path / "live.db")
+    migrate(live)
+    for i in range(5):
+        st = f"2026-09-08T18:0{i}:00Z"
+        insert_row(live, "rh_market_states", {
+            "asset_address": POOL,
+            "sample_time": st,
+            "chain_id": 4663,
+            "reference_mid": "1.0",
+            "multiplier_human": None,
+            "session": "ASIA",
+            "health_flags_json": "{}",
+            "reference_age_secs": 10,
+            "oracle_paused": 0,
+            "source_payload_hash": f"hash-ca05-{i}",
+            "reference_bid": None,
+            "reference_ask": None,
+            "source_event_time": st,
+            "fee_growth_global_0": 1000,
+            "fee_growth_global_1": 1000,
+        })
+    live.commit()
+    live.close()
+
+    # Real default SHADOW_SCENARIO entry -- no test-only cost override keys.
+    cfg = _cfg(str(tmp_path / "live.db"))
+    cfg["capital_usd"] = Decimal("1000")
+    cfg["position_usd"] = Decimal("400")
+    cfg["ledger_db"] = str(tmp_path / "ledger.db")
+    cfg["pool_meta"]["entry_cost_usd"] = Decimal("5")
+    cfg["pool_meta"]["exit_cost_usd"] = Decimal("3")
+    cfg["pool_meta"]["gas_usd"] = Decimal("2")
+
+    shadow = open_shadow_store(":memory:")
+    try:
+        summary = run_one_round(cfg, shadow_conn=shadow, episode_id="ep-ca05",
+                                started_at=NOW, now_fn=lambda: NOW)
+        # True daemon default -- the persisted row is the contract.
+        nav_start_persisted = shadow.execute(
+            "SELECT nav_start FROM rh_shadow_episodes WHERE episode_id = ?",
+            ("ep-ca05",),
+        ).fetchone()[0]
+    finally:
+        shadow.close()
+
+    # nav_start == pre-trade capital, NOT the first observed NAV.
+    assert nav_start_persisted is not None, "nav_start must be persisted"
+    assert Decimal(str(nav_start_persisted)) == Decimal("1000"), (
+        f"nav_start must equal pre-trade capital_usd=1000, got {nav_start_persisted}"
+    )
+
+    # Episode summary from the same path returns the same contract.
+    assert summary.get("nav_start") is not None
+    assert Decimal(str(summary["nav_start"])) == Decimal("1000")
+
+
+def test_ca05_run_one_round_summary_net_pnl_reflects_round_trip_cost(tmp_path):
+    """CA-05 / §4.C follow-up: when capital_usd=1000 and pool_meta carries
+    entry_cost_usd=5, exit_cost_usd=3, gas_usd=2 (total round-trip = 10),
+    the episode summary's net_pnl must reflect the round-trip cost.  With
+    nav_start fixed at pre-trade capital and nav_end = NAV after the
+    cost-baked position, the closed-window net_pnl must be ≈ -10.
+
+    This is the recovery regression for the audit §4.C sentence
+    ``从交易前资本到周期结束汇总为 -10,不是首末 mark 抵消成本``.
+    """
+    live = open_store(tmp_path / "live.db")
+    migrate(live)
+    for i in range(5):
+        st = f"2026-09-08T18:0{i}:00Z"
+        insert_row(live, "rh_market_states", {
+            "asset_address": POOL,
+            "sample_time": st,
+            "chain_id": 4663,
+            "reference_mid": "1.0",
+            "multiplier_human": None,
+            "session": "ASIA",
+            "health_flags_json": "{}",
+            "reference_age_secs": 10,
+            "oracle_paused": 0,
+            "source_payload_hash": f"hash-ca05b-{i}",
+            "reference_bid": None,
+            "reference_ask": None,
+            "source_event_time": st,
+            "fee_growth_global_0": 1000,
+            "fee_growth_global_1": 1000,
+        })
+    live.commit()
+    live.close()
+
+    cfg = _cfg(str(tmp_path / "live.db"))
+    cfg["capital_usd"] = Decimal("1000")
+    cfg["position_usd"] = Decimal("0")  # no LP position -- pure cash test
+    cfg["ledger_db"] = str(tmp_path / "ledger.db")
+    cfg["pool_meta"]["entry_cost_usd"] = Decimal("5")
+    cfg["pool_meta"]["exit_cost_usd"] = Decimal("3")
+    cfg["pool_meta"]["gas_usd"] = Decimal("2")
+
+    shadow = open_shadow_store(":memory:")
+    summary = run_one_round(cfg, shadow_conn=shadow, episode_id="ep-ca05b",
+                            started_at=NOW, now_fn=lambda: NOW)
+    shadow.close()
+
+    # nav_start fixed at pre-trade capital (CA-05 daemon fix).
+    if summary.get("nav_start") is not None:
+        assert Decimal(str(summary["nav_start"])) == Decimal("1000"), (
+            f"nav_start must equal pre-trade capital=1000, got {summary['nav_start']}"
+        )

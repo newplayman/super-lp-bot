@@ -654,7 +654,20 @@ def run_one_round(cfg, *, shadow_conn, episode_id, started_at, now_fn):
                 scratch_conn.commit()
             finally:
                 scratch_conn.close()
-    summary = episode_summary(steps, load_skipped=skipped, pool_meta=cfg.get("pool_meta"))
+    summary = episode_summary(
+        steps,
+        load_skipped=skipped,
+        pool_meta=cfg.get("pool_meta"),
+        # CA-05 (PAPER_ACCEPTANCE_REPAIR_V2): callers MUST pass capital_usd
+        # through.  episode_summary uses it as nav_start_capital so the
+        # window opens at the pre-trade capital (not the first observed
+        # step's NAV).  Without this argument the fallback ``start_step.nav``
+        # cancels the entry cost out of the PnL window and reports zero
+        # net_pnl for an episode that actually lost money on round-trip
+        # cost (audit §4.C: ``从交易前资本到周期结束汇总为 -10,不是首末
+        # mark 抵消成本``).
+        capital_usd=cfg.get("capital_usd"),
+    )
     summary["ledger_duplicate_rows"] = duplicate_rows
     summary["copied"] = copy_stats
     summary["ledger_copied"] = copy_stats
