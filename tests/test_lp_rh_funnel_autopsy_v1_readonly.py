@@ -1,10 +1,6 @@
 from __future__ import annotations
 
 import json
-import sys
-
-sys.path.insert(0, "/opt/lpbot/lp-bot-v3-origin-check")
-
 import pytest
 
 from scripts.lp_rh_funnel_autopsy_v1_readonly import (

@@ -7,9 +7,6 @@ regresses the surrounding columns and the primary key. All RPC traffic is
 injected via fake rpc_fn callables (never the network); all databases live
 under tmp_path.
 """
-import sys
-sys.path.insert(0, '/opt/lpbot/lp-bot-v3-origin-check')
-
 import sqlite3
 from decimal import Decimal
 

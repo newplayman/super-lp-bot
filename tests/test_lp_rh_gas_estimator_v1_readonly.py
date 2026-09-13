@@ -1,5 +1,3 @@
-import sys; sys.path.insert(0, '/opt/lpbot/lp-bot-v3-origin-check')
-
 from decimal import Decimal
 
 from scripts import lp_rh_gas_estimator_v1_readonly as mod

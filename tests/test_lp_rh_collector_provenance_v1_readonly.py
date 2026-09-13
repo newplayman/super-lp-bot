@@ -6,9 +6,6 @@ All RPC traffic is injected via fake rpc_fn callables (never the network);
 all databases live under tmp_path. The sample instant is controlled by
 monkeypatching collector._utc_now.
 """
-import sys
-sys.path.insert(0, '/opt/lpbot/lp-bot-v3-origin-check')
-
 from decimal import Decimal
 
 import pytest

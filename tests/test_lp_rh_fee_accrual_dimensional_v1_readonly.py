@@ -7,9 +7,6 @@ the position's raw liquidity L_pos by the feeGrowth increment, scales each leg
 to human units by its own decimals, then to USD by its own price.  No network,
 no wallet, no broadcast.
 """
-import sys
-sys.path.insert(0, '/opt/lpbot/lp-bot-v3-origin-check')
-
 from decimal import Decimal
 
 # RH-02bd: The previous relaxing of NAV_DIFF_REL_TOL from 1e-20 to 1e-12 was based

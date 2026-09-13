@@ -7,9 +7,6 @@ key. In-memory SQLite (migrate() builds the schema); no network.
 from __future__ import annotations
 
 import copy
-import sys
-sys.path.insert(0, '/opt/lpbot/lp-bot-v3-origin-check')
-
 import sqlite3
 
 import pytest

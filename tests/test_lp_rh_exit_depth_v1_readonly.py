@@ -1,5 +1,4 @@
-import sys; sys.path.insert(0, '/opt/lpbot/lp-bot-v3-origin-check')
-
+import sys
 from decimal import Decimal
 from pathlib import Path
 import json

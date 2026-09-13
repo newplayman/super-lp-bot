@@ -7,9 +7,6 @@ rpc_fn returning JSON-RPC envelopes (the _call contract); no network.
 """
 from __future__ import annotations
 
-import sys
-sys.path.insert(0, '/opt/lpbot/lp-bot-v3-origin-check')
-
 import sqlite3
 
 from scripts import lp_rh_store_v1_readonly as store

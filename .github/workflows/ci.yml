@@ -27,7 +27,7 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:
-          version: latest
+          version: v1.65.0
           args: --timeout=5m
 
       - name: Build all tags
@@ -68,7 +68,7 @@ jobs:
           go-version: "1.25"
           cache: true
       - name: Install advisory tools
-        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+        run: go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
       - name: Dependency audit
         run: |
           echo "=== Checking for dependency updates ==="
@@ -128,19 +128,19 @@ jobs:
           pip install -r requirements-test.txt
           pip install --no-deps pytest pycryptodome requests pyyaml
       - name: Run RH Python unit + integration tests
-        env:
-          # 显式禁止任何 RPC/secret 注入——验证是"无密钥、无 RPC"模式
-          RH_RPC_PRIMARY: ""
-          RH_RPC_SECONDARY: ""
-          DATABASE_URL: ""
+        # 默认不注入空 env：unit tests 必须用 tmp_path / fake transport 自洽；
+        # 仅下方 daemon entry-point step 才故意注入空 env 验证 no-send 护栏触发。
+        # 保留生产"变量存在即拒绝"的 no-send 护栏，未触达此 CI 改造时仍生效。
         run: |
           cd ${{ github.workspace }}
           python -m pytest tests/ -q --tb=short -p no:cacheprovider
       - name: Run daemon entry-point integration subset
-        # 不跑完整 daemon（需要 72h），只跑 _run_episode_persisted 等离线确定性入口
+        # 不跑完整 daemon（需要 72h），只跑 _run_episode_persisted 等离线确定性入口。
+        # 显式注入空 env 验证 no-send 护栏：DATABASE_URL / RH_RPC_* 已存在但为空 → 拒签拒广播。
         env:
           RH_RPC_PRIMARY: ""
           RH_RPC_SECONDARY: ""
+          DATABASE_URL: ""
         run: |
           cd ${{ github.workspace }}
           python -m pytest tests/ -q -k "episode_persisted or daemon or reconciliation or graduation or readiness" \

@@ -6,9 +6,6 @@ the earliest samples stale and market_and_chain_risk_pass failed on all of
 them.  Fix: the three gate-decision now values use sample_time (falling back to
 now_fn() when missing/unparseable); mark_time and recording uses unchanged.
 All tests use tmp_path scratch stores and synthetic samples; no network."""
-import sys
-sys.path.insert(0, '/opt/lpbot/lp-bot-v3-origin-check')
-
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path

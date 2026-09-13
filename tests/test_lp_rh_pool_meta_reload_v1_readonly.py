@@ -6,9 +6,6 @@ pool-meta is re-read at the start of every episode, with last-known-good
 fallback on read/parse failure.  Driven with tmp_path JSON files and a fake
 episode loop; no network, no wallet, no broadcast, nothing under reports/.
 """
-import sys
-sys.path.insert(0, '/opt/lpbot/lp-bot-v3-origin-check')
-
 import json
 import threading
 from decimal import Decimal

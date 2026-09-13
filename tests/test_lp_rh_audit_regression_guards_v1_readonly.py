@@ -15,10 +15,6 @@ Read-only: no network, no wallet, no chain state. No implementation file is
 modified; this package only adds tests.
 """
 import re
-import sys
-
-sys.path.insert(0, '/opt/lpbot/lp-bot-v3-origin-check')
-
 from scripts.lp_rh_meme_audit_v1_readonly import exit_state_machine
 from scripts.lp_rh_pool_probe_v1_readonly import (
     dispatch_protocol, probe_v3_pool, probe_v4_pool,

@@ -1,12 +1,10 @@
-import sys
-sys.path.insert(0, '/opt/lpbot/lp-bot-v3-origin-check')
-
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 import json
 import math
 from pathlib import Path
 import random
+import sys
 
 from scripts.lp_rh_premium_series_v1_readonly import (
     lvr_haircut_frac,

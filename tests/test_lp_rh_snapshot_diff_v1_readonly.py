@@ -8,8 +8,6 @@ import sys
 from decimal import Decimal
 from pathlib import Path
 
-sys.path.insert(0, "/opt/lpbot/lp-bot-v3-origin-check")
-
 from scripts.lp_rh_snapshot_diff_v1_readonly import (
     diff_replays, freeze_snapshot, load_baseline, main, replay_gates,
     save_baseline,

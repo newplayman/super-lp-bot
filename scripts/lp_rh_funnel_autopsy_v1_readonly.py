@@ -9,8 +9,6 @@ from pathlib import Path
 from datetime import datetime, timezone
 from typing import Any, Mapping, Sequence
 
-sys.path.insert(0, "/opt/lpbot/lp-bot-v3-origin-check")
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))

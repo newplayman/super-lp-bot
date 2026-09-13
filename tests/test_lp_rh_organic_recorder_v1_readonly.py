@@ -2,9 +2,6 @@
 
 In-memory SQLite + injected fake call_fn/head_fn; no network, no reports/ files.
 """
-import sys
-sys.path.insert(0, '/opt/lpbot/lp-bot-v3-origin-check')
-
 import sqlite3
 import urllib.error
 from decimal import Decimal

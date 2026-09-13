@@ -17,8 +17,6 @@ import sqlite3
 import sys
 from pathlib import Path
 
-sys.path.insert(0, "/opt/lpbot/lp-bot-v3-origin-check")
-
 import pytest
 
 from scripts.lp_netcover_snapshot_replay_v1_readonly import replay

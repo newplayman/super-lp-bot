@@ -1,5 +1,6 @@
 """Unit tests for lp_rh_quote_refresh_cron.py (offline verification)."""
 from __future__ import annotations
+import sys
 
 import json, os, subprocess, sys, time
 from pathlib import Path

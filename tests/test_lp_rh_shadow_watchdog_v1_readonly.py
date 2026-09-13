@@ -5,9 +5,6 @@ persist_episode, so the watchdog is exercised against exactly the schema the
 daemon writes.  The watchdog opens the store read-only and never writes.
 No network.
 """
-import sys
-sys.path.insert(0, '/opt/lpbot/lp-bot-v3-origin-check')
-
 import json
 import sqlite3
 from datetime import datetime, timezone

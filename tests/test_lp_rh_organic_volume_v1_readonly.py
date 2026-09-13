@@ -1,6 +1,3 @@
-import sys
-sys.path.insert(0, '/opt/lpbot/lp-bot-v3-origin-check')
-
 from decimal import Decimal
 
 from scripts.lp_rh_organic_volume_v1_readonly import (

@@ -4,8 +4,6 @@ import sys
 from decimal import Decimal
 from pathlib import Path
 
-sys.path.insert(0, '/opt/lpbot/lp-bot-v3-origin-check')
-
 from scripts.lp_rh_gas_refresh_v1_readonly import (  # noqa: E402
     apply_to_pool_meta, collect_gas_inputs, compute_refresh, main,
 )

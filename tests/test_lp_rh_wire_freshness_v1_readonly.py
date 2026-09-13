@@ -1,6 +1,3 @@
-import sys
-sys.path.insert(0, '/opt/lpbot/lp-bot-v3-origin-check')
-
 import sqlite3
 from datetime import datetime, timedelta
 from decimal import Decimal

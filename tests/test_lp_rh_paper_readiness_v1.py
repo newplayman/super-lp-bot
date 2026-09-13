@@ -1,5 +1,6 @@
 """Unit tests for lp_rh_paper_readiness_v1 module."""
 from __future__ import annotations
+import sys
 
 import json
 import subprocess

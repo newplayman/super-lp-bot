@@ -4,9 +4,6 @@ In-memory SQLite (migrate() builds the schema); no network, no reports/ writes.
 """
 from __future__ import annotations
 
-import sys
-sys.path.insert(0, '/opt/lpbot/lp-bot-v3-origin-check')
-
 import json
 import sqlite3
 

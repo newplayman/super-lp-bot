@@ -1,6 +1,3 @@
-import sys
-sys.path.insert(0, '/opt/lpbot/lp-bot-v3-origin-check')
-
 import hashlib
 import json
 import math

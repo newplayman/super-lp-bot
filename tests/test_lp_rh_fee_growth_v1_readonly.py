@@ -4,9 +4,6 @@ The collector now reads the two feeGrowth selectors per round and writes them
 to rh_market_states as decimal TEXT (None when not asked, never 0).  run_episode
 reads these columns to compute NAV; without them every step lacks NAV.  All
 tests use tmp_path scratch stores and a fake rpc_fn; no network."""
-import sys
-sys.path.insert(0, '/opt/lpbot/lp-bot-v3-origin-check')
-
 import sqlite3
 from datetime import datetime, timezone
 from decimal import Decimal

@@ -1,10 +1,6 @@
 #!/usr/bin/env python3
 """Tests for the RH-02r column health sentinel (offline, in-memory SQLite)."""
 import sqlite3
-import sys
-
-sys.path.insert(0, '/opt/lpbot/lp-bot-v3-origin-check')
-
 from scripts.lp_rh_column_health_v1_readonly import (  # noqa: E402
     classify_column,
     column_stats,

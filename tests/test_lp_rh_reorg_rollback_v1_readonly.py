@@ -2,10 +2,6 @@ from __future__ import annotations
 
 import json
 import sqlite3
-import sys
-
-sys.path.insert(0, '/opt/lpbot/lp-bot-v3-origin-check')
-
 import pytest
 
 from scripts import lp_rh_reorg_rollback_v1_readonly as rb

@@ -3,8 +3,6 @@ import sqlite3
 import sys
 from decimal import Decimal
 
-sys.path.insert(0, '/opt/lpbot/lp-bot-v3-origin-check')
-
 from scripts.lp_rh_gas_history_v1_readonly import (  # noqa: E402
     ensure_table, main, record_observation, summarize,
 )

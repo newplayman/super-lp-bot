@@ -1,0 +1,451 @@
+{
+  "schema_version": "failure-inventory/3",
+  "reviewed_sha": "18a8f39744af2d61d16737b7311d88cd88accea9",
+  "as_of_date": "2026-09-13",
+  "ci_run_id": 34742810457,
+  "ci_python_job_id": 103685283999,
+  "two_environments": {
+    "local_pytest": {
+      "command": "python3 -m pytest tests/ -q --tb=line -p no:cacheprovider --junitxml=...",
+      "environment": "localhost /opt/lpbot/lp-bot-v3-origin-check, no CI injections",
+      "totals": {
+        "tests_collected": 5126,
+        "failed": 53,
+        "passed": 5059,
+        "skipped": 14,
+        "errors": 0,
+        "wall_clock_seconds": 58.51
+      },
+      "classification_basis": "V2 REPAIR_ROOTCAUSE_CN.md categories A/B/C"
+    },
+    "ci_pytest": {
+      "command": "python -m pytest tests/ -q --tb=short -p no:cacheprovider",
+      "environment": "GitHub Actions runner with empty RH_RPC_PRIMARY/RH_RPC_SECONDARY/DATABASE_URL pre-set; hardcoded /opt/lpbot/lp-bot-v3-origin-check paths",
+      "totals": {
+        "tests_collected": 5126,
+        "failed": 415,
+        "passed": 4676,
+        "skipped": 30,
+        "errors": 5,
+        "wall_clock_seconds": 60.52
+      },
+      "classification_basis": "CI_VERIFIED_EXCERPTS_CN.md + repo diff between runner and localhost"
+    }
+  },
+  "category_definitions": {
+    "A_RUNNER_PRODUCT": "Runner path real product defects (output state does not match what test expects)",
+    "B_OLD_ASSERTION_NEW_SEMANTIC": "Old test assertions vs new approved semantics (renames, blocker keys, schema)",
+    "C_FIXTURE_INPUT": "Stale/missing fixture, time-sensitive input, or live_db fixture needed",
+    "D_CI_ENV_NO_SEND": "CI injected empty DATABASE_URL/RH_RPC_* triggers no-send guard failures (production safety net working correctly)",
+    "E_CI_HARDCODED_PATH": "Test references /opt/lpbot/lp-bot-v3-origin-check literally, only resolves in that exact CI env",
+    "F_HISTORICAL_SNAPSHOT_MISSING": "Frozen_report_assertion test references historical SQLite snapshot / report file no longer present",
+    "G_COLLECTOR_DAEMON": "collector/daemon operational tests depending on systemd or daemon state"
+  },
+  "failures_by_category": {
+    "B_OLD_ASSERTION_NEW_SEMANTIC": [
+      {
+        "nodeid": "test_stage_a_not_passed_verdict_is_not_graduated_and_contains_blocker (in tests.test_lp_rh_graduation_evidence_v1_readonly)",
+        "classname": "tests.test_lp_rh_graduation_evidence_v1_readonly",
+        "name": "test_stage_a_not_passed_verdict_is_not_graduated_and_contains_blocker",
+        "message": "AssertionError: assert 'HOURS_COVERED_INSUFFICIENT' in ['OBSERVATION_WINDOW_UNAVAILABLE', 'STAGE_A_SYNTHETIC_TESTS_FAILED', 'STAGE_A_KEY_FIELDS_INCOMPLETE', 'STAGE_A_POOL_NOT_ATTESTED', 'STAGE_A_INVARIANT_VIOLATIONS_UNAVAILABLE']",
+        "environment": "local_only"
+      },
+      {
+        "nodeid": "test_reconciliation_all_pass (in tests.test_lp_rh_reconciliation_v1_readonly)",
+        "classname": "tests.test_lp_rh_reconciliation_v1_readonly",
+        "name": "test_reconciliation_all_pass",
+        "message": "AssertionError: assert 'INSUFFICIENT_EVIDENCE' == 'PASS'\n  - PASS\n  + INSUFFICIENT_EVIDENCE",
+        "environment": "local_only"
+      },
+      {
+        "nodeid": "test_reconciliation_c3_fee_missing_in_journal_unexplained (in tests.test_lp_rh_reconciliation_v1_readonly)",
+        "classname": "tests.test_lp_rh_reconciliation_v1_readonly",
+        "name": "test_reconciliation_c3_fee_missing_in_journal_unexplained",
+        "message": "AssertionError: assert 'INSUFFICIENT_EVIDENCE' == 'UNEXPLAINED_DIFF'\n  - UNEXPLAINED_DIFF\n  + INSUFFICIENT_EVIDENCE",
+        "environment": "local_only"
+      },
+      {
+        "nodeid": "test_reconciliation_c2_amount_mismatch_unexplained (in tests.test_lp_rh_reconciliation_v1_readonly)",
+        "classname": "tests.test_lp_rh_reconciliation_v1_readonly",
+        "name": "test_reconciliation_c2_amount_mismatch_unexplained",
+        "message": "AssertionError: assert 'INSUFFICIENT_EVIDENCE' == 'UNEXPLAINED_DIFF'\n  - UNEXPLAINED_DIFF\n  + INSUFFICIENT_EVIDENCE",
+        "environment": "local_only"
+      },
+      {
+        "nodeid": "test_reconciliation_apply_writes_valid_record (in tests.test_lp_rh_reconciliation_v1_readonly)",
+        "classname": "tests.test_lp_rh_reconciliation_v1_readonly",
+        "name": "test_reconciliation_apply_writes_valid_record",
+        "message": "AssertionError: assert 'INSUFFICIENT_EVIDENCE' == 'PASS'\n  - PASS\n  + INSUFFICIENT_EVIDENCE",
+        "environment": "local_only"
+      },
+      {
+        "nodeid": "test_reconciliation_c1_unbalanced_unexplained (in tests.test_lp_rh_reconciliation_v1_readonly)",
+        "classname": "tests.test_lp_rh_reconciliation_v1_readonly",
+        "name": "test_reconciliation_c1_unbalanced_unexplained",
+        "message": "AssertionError: assert 'INSUFFICIENT_EVIDENCE' == 'UNEXPLAINED_DIFF'\n  - UNEXPLAINED_DIFF\n  + INSUFFICIENT_EVIDENCE",
+        "environment": "local_only"
+      },
+      {
+        "nodeid": "test_reconciliation_no_since_regression (in tests.test_lp_rh_reconciliation_v1_readonly)",
+        "classname": "tests.test_lp_rh_reconciliation_v1_readonly",
+        "name": "test_reconciliation_no_since_regression",
+        "message": "AssertionError: assert 'INSUFFICIENT_EVIDENCE' == 'PASS'\n  - PASS\n  + INSUFFICIENT_EVIDENCE",
+        "environment": "local_only"
+      },
+      {
+        "nodeid": "test_reconciliation_since_excludes_historical_diff_pass (in tests.test_lp_rh_reconciliation_v1_readonly)",
+        "classname": "tests.test_lp_rh_reconciliation_v1_readonly",
+        "name": "test_reconciliation_since_excludes_historical_diff_pass",
+        "message": "AssertionError: assert 'INSUFFICIENT_EVIDENCE' == 'PASS'\n  - PASS\n  + INSUFFICIENT_EVIDENCE",
+        "environment": "local_only"
+      },
+      {
+        "nodeid": "test_reconciliation_since_includes_historical_diff_unexplained (in tests.test_lp_rh_reconciliation_v1_readonly)",
+        "classname": "tests.test_lp_rh_reconciliation_v1_readonly",
+        "name": "test_reconciliation_since_includes_historical_diff_unexplained",
+        "message": "AssertionError: assert 'INSUFFICIENT_EVIDENCE' == 'UNEXPLAINED_DIFF'\n  - UNEXPLAINED_DIFF\n  + INSUFFICIENT_EVIDENCE",
+        "environment": "local_only"
+      },
+      {
+        "nodeid": "test_c3_matching_conversion_pass (in tests.test_lp_rh_reconciliation_v1_readonly)",
+        "classname": "tests.test_lp_rh_reconciliation_v1_readonly",
+        "name": "test_c3_matching_conversion_pass",
+        "message": "AssertionError: assert 'INSUFFICIENT_EVIDENCE' == 'PASS'\n  - PASS\n  + INSUFFICIENT_EVIDENCE",
+        "environment": "local_only"
+      },
+      {
+        "nodeid": "test_c3_mismatch_unexplained_diff (in tests.test_lp_rh_reconciliation_v1_readonly)",
+        "classname": "tests.test_lp_rh_reconciliation_v1_readonly",
+        "name": "test_c3_mismatch_unexplained_diff",
+        "message": "AssertionError: assert 'INSUFFICIENT_EVIDENCE' == 'UNEXPLAINED_DIFF'\n  - UNEXPLAINED_DIFF\n  + INSUFFICIENT_EVIDENCE",
+        "environment": "local_only"
+      },
+      {
+        "nodeid": "test_c3_evidence_json_records_quote_dec1_tolerance (in tests.test_lp_rh_reconciliation_v1_readonly)",
+        "classname": "tests.test_lp_rh_reconciliation_v1_readonly",
+        "name": "test_c3_evidence_json_records_quote_dec1_tolerance",
+        "message": "KeyError: 'quote'",
+        "environment": "local_only"
+      },
+      {
+        "nodeid": "test_c3_regression_c1_c2_unaffected (in tests.test_lp_rh_reconciliation_v1_readonly)",
+        "classname": "tests.test_lp_rh_reconciliation_v1_readonly",
+        "name": "test_c3_regression_c1_c2_unaffected",
+        "message": "AssertionError: assert 'INSUFFICIENT_EVIDENCE' == 'UNEXPLAINED_DIFF'\n  - UNEXPLAINED_DIFF\n  + INSUFFICIENT_EVIDENCE",
+        "environment": "local_only"
+      },
+      {
+        "nodeid": "test_c3_pool_meta_file_path_and_unreadable (in tests.test_lp_rh_reconciliation_v1_readonly)",
+        "classname": "tests.test_lp_rh_reconciliation_v1_readonly",
+        "name": "test_c3_pool_meta_file_path_and_unreadable",
+        "message": "AssertionError: assert 'INSUFFICIENT_EVIDENCE' == 'PASS'\n  - PASS\n  + INSUFFICIENT_EVIDENCE",
+        "environment": "local_only"
+      }
+    ],
+    "A_RUNNER_PRODUCT": [
+      {
+        "nodeid": "test_shadow_scenario_simulated_policy_only (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+        "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+        "name": "test_shadow_scenario_simulated_policy_only",
+        "message": "assert False\n +  where False = all(<generator object test_shadow_scenario_simulated_policy_only.<locals>.<genexpr> at 0x7c53ff311be0>)",
+        "environment": "local_only"
+      },
+      {
+        "nodeid": "test_reservation_only_first_eligible (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+        "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+        "name": "test_reservation_only_first_eligible",
+        "message": "assert [False, False, False] == [True, False, False]\n  At index 0 diff: False != True\n  Use -v to get more diff",
+        "environment": "local_only"
+      },
+      {
+        "nodeid": "test_hodl_initial_legs_constant_t41 (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+        "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+        "name": "test_hodl_initial_legs_constant_t41",
+        "message": "AssertionError: assert None == Decimal('1000.000000000000000000000000')\n +  where None = ShadowStep(step_index=0, sample_time='2026-01-01T00:00:00Z', price=Decimal('1.0'), terminal_eligible=False, primary_st...on': None, 'fee_usd_raw': None, 'fee_usd_organic': None, 'accrued_raw': Decimal('0'), 'accrued_organic': Decimal('0')}).hodl_value",
+        "environment": "local_only"
+      },
+      {
+        "nodeid": "test_rh02bu2_granted_step_writes_one_shadow_position (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+        "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+        "name": "test_rh02bu2_granted_step_writes_one_shadow_position",
+        "message": "assert 0 == 1",
+        "environment": "local_only"
+      },
+      {
+        "nodeid": "test_rh02bu2_position_id_matches_position_marks (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+        "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+        "name": "test_rh02bu2_position_id_matches_position_marks",
+        "message": "TypeError: 'NoneType' object is not subscriptable",
+        "environment": "local_only"
+      },
+      {
+        "nodeid": "test_rh02bu2_raw_fields_match_inventory_verbatim (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+        "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+        "name": "test_rh02bu2_raw_fields_match_inventory_verbatim",
+        "message": "TypeError: 'NoneType' object is not iterable",
+        "environment": "local_only"
+      },
+      {
+        "nodeid": "test_rh02bu2_multiple_eligible_steps_still_one_row (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+        "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+        "name": "test_rh02bu2_multiple_eligible_steps_still_one_row",
+        "message": "assert 0 >= 2\n +  where 0 = sum(<generator object test_rh02bu2_multiple_eligible_steps_still_one_row.<locals>.<genexpr> at 0x7c5400971000>)",
+        "environment": "local_only"
+      },
+      {
+        "nodeid": "test_rh02bu2_missing_pool_key_writes_no_row_and_records_reason (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+        "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+        "name": "test_rh02bu2_missing_pool_key_writes_no_row_and_records_reason",
+        "message": "assert False\n +  where False = any(<generator object test_rh02bu2_missing_pool_key_writes_no_row_and_records_reason.<locals>.<genexpr> at 0x7c5402c642e0>)",
+        "environment": "local_only"
+      },
+      {
+        "nodeid": "test_rh02by_granted_step_writes_two_journal_rows (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+        "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+        "name": "test_rh02by_granted_step_writes_two_journal_rows",
+        "message": "assert 0 == 2",
+        "environment": "local_only"
+      },
+      {
+        "nodeid": "test_rh02by_journal_asset_and_amount_match_inventory (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+        "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+        "name": "test_rh02by_journal_asset_and_amount_match_inventory",
+        "message": "IndexError: list index out of range",
+        "environment": "local_only"
+      },
+      {
+        "nodeid": "test_rh02by_journal_is_internal_flow (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+        "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+        "name": "test_rh02by_journal_is_internal_flow",
+        "message": "assert 0 == 2\n +  where 0 = len([])",
+        "environment": "local_only"
+      },
+      {
+        "nodeid": "test_rh02by_journal_idempotency_keys_distinct (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+        "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+        "name": "test_rh02by_journal_idempotency_keys_distinct",
+        "message": "assert 0 == 2\n +  where 0 = len([])",
+        "environment": "local_only"
+      },
+      {
+        "nodeid": "test_rh02by_missing_token_addresses_no_journal_but_position_written (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+        "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+        "name": "test_rh02by_missing_token_addresses_no_journal_but_position_written",
+        "message": "assert 0 == 1",
+        "environment": "local_only"
+      },
+      {
+        "nodeid": "test_rh02by_journal_entries_pass_stage_b_balance_audit (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+        "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+        "name": "test_rh02by_journal_entries_pass_stage_b_balance_audit",
+        "message": "assert None == 0",
+        "environment": "local_only"
+      },
+      {
+        "nodeid": "test_rh02ce_granted_step_released_at_episode_end (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+        "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+        "name": "test_rh02ce_granted_step_released_at_episode_end",
+        "message": "AssertionError: assert False is True\n +  where False = ShadowStep(step_index=0, sample_time='2026-01-01T00:00:00Z', price=None, terminal_eligible=False, primary_status='COMP...on': None, 'fee_usd_raw': None, 'fee_usd_organic': None, 'accrued_raw': Decimal('0'), 'accrued_organic': Decimal('0')}).reservation_granted",
+        "environment": "local_only"
+      },
+      {
+        "nodeid": "test_rh02ce_sequential_episodes_both_granted_due_to_release (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+        "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+        "name": "test_rh02ce_sequential_episodes_both_granted_due_to_release",
+        "message": "AssertionError: assert False is True\n +  where False = ShadowStep(step_index=0, sample_time='2026-01-01T00:00:00Z', price=None, terminal_eligible=False, primary_status='COMP...on': None, 'fee_usd_raw': None, 'fee_usd_organic': None, 'accrued_raw': Decimal('0'), 'accrued_organic': Decimal('0')}).reservation_granted",
+        "environment": "local_only"
+      },
+      {
+        "nodeid": "test_rh02ce_release_failure_leaves_trace_in_step_reasons (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+        "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+        "name": "test_rh02ce_release_failure_leaves_trace_in_step_reasons",
+        "message": "AssertionError: assert False is True\n +  where False = ShadowStep(step_index=0, sample_time='2026-01-01T00:00:00Z', price=None, terminal_eligible=False, primary_status='COMP...on': None, 'fee_usd_raw': None, 'fee_usd_organic': None, 'accrued_raw': Decimal('0'), 'accrued_organic': Decimal('0')}).reservation_granted",
+        "environment": "local_only"
+      },
+      {
+        "nodeid": "test_rh02ci_granted_step_accrued_positive_writes_fee_journal (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+        "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+        "name": "test_rh02ci_granted_step_accrued_positive_writes_fee_journal",
+        "message": "assert 0 == 3\n +  where 0 = len([])",
+        "environment": "local_only"
+      },
+      {
+        "nodeid": "test_rh02ci_fee_journal_ref_metadata (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+        "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+        "name": "test_rh02ci_fee_journal_ref_metadata",
+        "message": "TypeError: 'NoneType' object is not subscriptable",
+        "environment": "local_only"
+      },
+      {
+        "nodeid": "test_rh02ci_accrued_zero_no_fee_journal (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+        "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+        "name": "test_rh02ci_accrued_zero_no_fee_journal",
+        "message": "assert 0 == 2",
+        "environment": "local_only"
+      },
+      {
+        "nodeid": "test_rh02ci_missing_quote_no_fee_journal_but_open_written (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+        "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+        "name": "test_rh02ci_missing_quote_no_fee_journal_but_open_written",
+        "message": "assert 0 == 2",
+        "environment": "local_only"
+      },
+      {
+        "nodeid": "test_rh02ci_missing_dec1_no_fee_journal_but_open_written (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+        "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+        "name": "test_rh02ci_missing_dec1_no_fee_journal_but_open_written",
+        "message": "assert 0 == 2",
+        "environment": "local_only"
+      },
+      {
+        "nodeid": "test_rh02ci_fee_journal_passes_stage_b_balance_audit (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+        "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+        "name": "test_rh02ci_fee_journal_passes_stage_b_balance_audit",
+        "message": "assert None == 0",
+        "environment": "local_only"
+      },
+      {
+        "nodeid": "test_rh02ck_default_enforce_false_unknown_balance_backward_compatible (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+        "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+        "name": "test_rh02ck_default_enforce_false_unknown_balance_backward_compatible",
+        "message": "AssertionError: assert False is True\n +  where False = ShadowStep(step_index=0, sample_time='2026-01-01T00:00:00Z', price=None, terminal_eligible=False, primary_status='COMP...on': None, 'fee_usd_raw': None, 'fee_usd_organic': None, 'accrued_raw': Decimal('0'), 'accrued_organic': Decimal('0')}).terminal_eligible",
+        "environment": "local_only"
+      },
+      {
+        "nodeid": "test_rh02ck_enforce_true_sufficient_native_balance_passes (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+        "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+        "name": "test_rh02ck_enforce_true_sufficient_native_balance_passes",
+        "message": "AssertionError: assert False is True\n +  where False = ShadowStep(step_index=0, sample_time='2026-01-01T00:00:00Z', price=None, terminal_eligible=False, primary_status='COMP...on': None, 'fee_usd_raw': None, 'fee_usd_organic': None, 'accrued_raw': Decimal('0'), 'accrued_organic': Decimal('0')}).terminal_eligible",
+        "environment": "local_only"
+      },
+      {
+        "nodeid": "test_rh02ck_gas_db_missing_graceful_fallback (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+        "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+        "name": "test_rh02ck_gas_db_missing_graceful_fallback",
+        "message": "AssertionError: assert False is True\n +  where False = ShadowStep(step_index=0, sample_time='2026-01-01T00:00:00Z', price=None, terminal_eligible=False, primary_status='COMP...on': None, 'fee_usd_raw': None, 'fee_usd_organic': None, 'accrued_raw': Decimal('0'), 'accrued_organic': Decimal('0')}).terminal_eligible",
+        "environment": "local_only"
+      },
+      {
+        "nodeid": "test_rh02cm_fraction_one_accrual_nav_pnl_identical (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+        "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+        "name": "test_rh02cm_fraction_one_accrual_nav_pnl_identical",
+        "message": "AssertionError: assert None is True\n +  where None = ShadowStep(step_index=0, sample_time='2026-09-08T18:00:00Z', price=Decimal('2484.0'), terminal_eligible=False, primary...on': None, 'fee_usd_raw': None, 'fee_usd_organic': None, 'accrued_raw': Decimal('0'), 'accrued_organic': Decimal('0')}).in_range",
+        "environment": "local_only"
+      },
+      {
+        "nodeid": "test_rh02cm_out_of_range_steps_do_not_accrue_fee (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+        "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+        "name": "test_rh02cm_out_of_range_steps_do_not_accrue_fee",
+        "message": "AssertionError: assert None is True\n +  where None = ShadowStep(step_index=0, sample_time='2026-09-08T18:00:00Z', price=Decimal('2484.0'), terminal_eligible=False, primary...on': None, 'fee_usd_raw': None, 'fee_usd_organic': None, 'accrued_raw': Decimal('0'), 'accrued_organic': Decimal('0')}).in_range",
+        "environment": "local_only"
+      },
+      {
+        "nodeid": "test_rh02cm_price_none_not_counted_as_out_of_range (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+        "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+        "name": "test_rh02cm_price_none_not_counted_as_out_of_range",
+        "message": "AssertionError: assert None is True\n +  where None = ShadowStep(step_index=0, sample_time='2026-09-08T18:00:00Z', price=Decimal('2484.0'), terminal_eligible=False, primary...on': None, 'fee_usd_raw': None, 'fee_usd_organic': None, 'accrued_raw': Decimal('0'), 'accrued_organic': Decimal('0')}).in_range",
+        "environment": "local_only"
+      },
+      {
+        "nodeid": "test_rh02cm_boundary_tick_lower_in_tick_upper_out (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+        "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+        "name": "test_rh02cm_boundary_tick_lower_in_tick_upper_out",
+        "message": "AssertionError: assert None is True\n +  where None = ShadowStep(step_index=0, sample_time='2026-09-08T18:00:00Z', price=Decimal('2484.0'), terminal_eligible=False, primary...on': None, 'fee_usd_raw': None, 'fee_usd_organic': None, 'accrued_raw': Decimal('0'), 'accrued_organic': Decimal('0')}).in_range",
+        "environment": "local_only"
+      },
+      {
+        "nodeid": "test_rh02cn_1_organic_discount_accrual_nine_tenths (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+        "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+        "name": "test_rh02cn_1_organic_discount_accrual_nine_tenths",
+        "message": "AssertionError: assert Decimal('0') > 0",
+        "environment": "local_only"
+      },
+      {
+        "nodeid": "test_rh02cn_2_no_window_fail_close (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+        "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+        "name": "test_rh02cn_2_no_window_fail_close",
+        "message": "AssertionError: assert Decimal('0') > 0",
+        "environment": "local_only"
+      },
+      {
+        "nodeid": "test_rh02cn_3_estimate_status_not_computed (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+        "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+        "name": "test_rh02cn_3_estimate_status_not_computed",
+        "message": "AssertionError: assert Decimal('0') > 0",
+        "environment": "local_only"
+      },
+      {
+        "nodeid": "test_rh02cn_4_partial_coverage (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+        "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+        "name": "test_rh02cn_4_partial_coverage",
+        "message": "AssertionError: assert Decimal('0') > 0",
+        "environment": "local_only"
+      },
+      {
+        "nodeid": "test_rh02cn_5_invalid_fraction[None] (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+        "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+        "name": "test_rh02cn_5_invalid_fraction[None]",
+        "message": "AssertionError: assert Decimal('0') > 0",
+        "environment": "local_only"
+      },
+      {
+        "nodeid": "test_rh02cn_5_invalid_fraction[0] (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+        "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+        "name": "test_rh02cn_5_invalid_fraction[0]",
+        "message": "AssertionError: assert Decimal('0') > 0",
+        "environment": "local_only"
+      },
+      {
+        "nodeid": "test_rh02cn_5_invalid_fraction[1.5] (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+        "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+        "name": "test_rh02cn_5_invalid_fraction[1.5]",
+        "message": "AssertionError: assert Decimal('0') > 0",
+        "environment": "local_only"
+      },
+      {
+        "nodeid": "test_rh02cn_7_stack_with_in_range (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+        "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+        "name": "test_rh02cn_7_stack_with_in_range",
+        "message": "assert None is False",
+        "environment": "local_only"
+      },
+      {
+        "nodeid": "test_pool_state_stale_non_blocking_regression (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+        "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+        "name": "test_pool_state_stale_non_blocking_regression",
+        "message": "AssertionError: assert False is True\n +  where False = ShadowStep(step_index=0, sample_time='2026-09-11T06:00:00Z', price=None, terminal_eligible=False, primary_status='COMP...7284258'), 'fee_usd_raw': None, 'fee_usd_organic': None, 'accrued_raw': Decimal('0'), 'accrued_organic': Decimal('0')}).terminal_eligible",
+        "environment": "local_only"
+      }
+    ],
+    "D_CI_ENV_NO_SEND_estimated": {
+      "count_estimated": 200,
+      "evidence": "CI_VERIFIED_EXCYPTS_CN.md: \"多项no-send测试因DATABASE_URL存在而按设计拒绝；修CI环境，不删除生产护栏\"",
+      "fix": "Clear empty injected env vars in CI workflow before pytest runs",
+      "verified": false,
+      "fix_path": ".github/workflows/ci.yml"
+    },
+    "E_CI_HARDCODED_PATH_estimated": {
+      "count_estimated": 80,
+      "evidence": "CI_VERIFIED_EXCERPTS_CN.md: \"固定 /opt/lpbot/lp-bot-v3-origin-check 路径\"",
+      "fix": "Replace hardcoded absolute paths with repo-root relative or tmp_path fixtures",
+      "verified": false
+    },
+    "F_HISTORICAL_SNAPSHOT_MISSING_estimated": {
+      "count_estimated": 50,
+      "evidence": "CI_VERIFIED_EXCERPTS_CN.md: \"历史报告/SQLite快照缺失\"",
+      "fix": "Either provide synthetic fixture (frozen_report_assertion marker) or scope-change proposal to retire",
+      "verified": false
+    },
+    "G_COLLECTOR_DAEMON_estimated": {
+      "count_estimated": 32,
+      "evidence": "CI_VERIFIED_EXCERPTS_CN.md: \"collector和runner/reconciliation/graduation行为测试\"",
+      "fix": "WIP — distinguish collector tests vs daemon tests; some may be real product, some env",
+      "verified": false
+    }
+  },
+  "totals": {
+    "local_failures_categorized": 53,
+    "ci_only_failures_estimated_total": 362,
+    "note": "CI environment-induced failure counts are ESTIMATED from CI_VERIFIED_EXCERPTS_CN.md categories, not JUnit-derived."
+  }
+}

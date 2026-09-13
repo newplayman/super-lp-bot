@@ -4,9 +4,6 @@ fee_growth_global_0/1 columns so run_episode's NAV path gets its inputs.
 All tests use tmp_path scratch stores and synthetic rows.  No network, no
 wallet, no broadcast.  Pairs with scripts/lp_rh_shadow_runner_v1_readonly.py.
 """
-import sys
-sys.path.insert(0, '/opt/lpbot/lp-bot-v3-origin-check')
-
 from decimal import Decimal
 
 from scripts.lp_rh_shadow_runner_v1_readonly import (

@@ -23,8 +23,6 @@ NAV_DIFF_REL_TOL = Decimal("1e-20")
 OPEN_STEP_REL_TOL = Decimal("1e-25")
 from pathlib import Path
 
-sys.path.insert(0, '/opt/lpbot/lp-bot-v3-origin-check')
-
 from scripts.lp_rh_shadow_runner_v1_readonly import (
     DEFAULT_POOL,
     FEE_GROWTH_SCALE,

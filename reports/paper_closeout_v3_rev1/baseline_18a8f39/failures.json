@@ -1,0 +1,429 @@
+{
+  "total": 53,
+  "failures": [
+    {
+      "nodeid": "test_stage_a_not_passed_verdict_is_not_graduated_and_contains_blocker (in tests.test_lp_rh_graduation_evidence_v1_readonly)",
+      "classname": "tests.test_lp_rh_graduation_evidence_v1_readonly",
+      "name": "test_stage_a_not_passed_verdict_is_not_graduated_and_contains_blocker",
+      "type": "failure",
+      "message": "AssertionError: assert 'HOURS_COVERED_INSUFFICIENT' in ['OBSERVATION_WINDOW_UNAVAILABLE', 'STAGE_A_SYNTHETIC_TESTS_FAILED', 'STAGE_A_KEY_FIELDS_INCOMPLETE', 'STAGE_A_POOL_NOT_ATTESTED', 'STAGE_A_INVARIANT_VIOLATIONS_UNAVAILABLE']",
+      "text_excerpt": "E   AssertionError: assert 'HOURS_COVERED_INSUFFICIENT' in ['OBSERVATION_WINDOW_UNAVAILABLE', 'STAGE_A_SYNTHETIC_TESTS_FAILED', 'STAGE_A_KEY_FIELDS_INCOMPLETE', 'STAGE_A_POOL_NOT_ATTESTED', 'STAGE_A_INVARIANT_VIOLATIONS_UNAVAILABLE']"
+    },
+    {
+      "nodeid": "test_reconciliation_all_pass (in tests.test_lp_rh_reconciliation_v1_readonly)",
+      "classname": "tests.test_lp_rh_reconciliation_v1_readonly",
+      "name": "test_reconciliation_all_pass",
+      "type": "failure",
+      "message": "AssertionError: assert 'INSUFFICIENT_EVIDENCE' == 'PASS'\n  - PASS\n  + INSUFFICIENT_EVIDENCE",
+      "text_excerpt": "E   AssertionError: assert 'INSUFFICIENT_EVIDENCE' == 'PASS'\n      - PASS\n      + INSUFFICIENT_EVIDENCE"
+    },
+    {
+      "nodeid": "test_reconciliation_c3_fee_missing_in_journal_unexplained (in tests.test_lp_rh_reconciliation_v1_readonly)",
+      "classname": "tests.test_lp_rh_reconciliation_v1_readonly",
+      "name": "test_reconciliation_c3_fee_missing_in_journal_unexplained",
+      "type": "failure",
+      "message": "AssertionError: assert 'INSUFFICIENT_EVIDENCE' == 'UNEXPLAINED_DIFF'\n  - UNEXPLAINED_DIFF\n  + INSUFFICIENT_EVIDENCE",
+      "text_excerpt": "E   AssertionError: assert 'INSUFFICIENT_EVIDENCE' == 'UNEXPLAINED_DIFF'\n      - UNEXPLAINED_DIFF\n      + INSUFFICIENT_EVIDENCE"
+    },
+    {
+      "nodeid": "test_reconciliation_c2_amount_mismatch_unexplained (in tests.test_lp_rh_reconciliation_v1_readonly)",
+      "classname": "tests.test_lp_rh_reconciliation_v1_readonly",
+      "name": "test_reconciliation_c2_amount_mismatch_unexplained",
+      "type": "failure",
+      "message": "AssertionError: assert 'INSUFFICIENT_EVIDENCE' == 'UNEXPLAINED_DIFF'\n  - UNEXPLAINED_DIFF\n  + INSUFFICIENT_EVIDENCE",
+      "text_excerpt": "E   AssertionError: assert 'INSUFFICIENT_EVIDENCE' == 'UNEXPLAINED_DIFF'\n      - UNEXPLAINED_DIFF\n      + INSUFFICIENT_EVIDENCE"
+    },
+    {
+      "nodeid": "test_reconciliation_apply_writes_valid_record (in tests.test_lp_rh_reconciliation_v1_readonly)",
+      "classname": "tests.test_lp_rh_reconciliation_v1_readonly",
+      "name": "test_reconciliation_apply_writes_valid_record",
+      "type": "failure",
+      "message": "AssertionError: assert 'INSUFFICIENT_EVIDENCE' == 'PASS'\n  - PASS\n  + INSUFFICIENT_EVIDENCE",
+      "text_excerpt": "E   AssertionError: assert 'INSUFFICIENT_EVIDENCE' == 'PASS'\n      - PASS\n      + INSUFFICIENT_EVIDENCE"
+    },
+    {
+      "nodeid": "test_reconciliation_c1_unbalanced_unexplained (in tests.test_lp_rh_reconciliation_v1_readonly)",
+      "classname": "tests.test_lp_rh_reconciliation_v1_readonly",
+      "name": "test_reconciliation_c1_unbalanced_unexplained",
+      "type": "failure",
+      "message": "AssertionError: assert 'INSUFFICIENT_EVIDENCE' == 'UNEXPLAINED_DIFF'\n  - UNEXPLAINED_DIFF\n  + INSUFFICIENT_EVIDENCE",
+      "text_excerpt": "E   AssertionError: assert 'INSUFFICIENT_EVIDENCE' == 'UNEXPLAINED_DIFF'\n      - UNEXPLAINED_DIFF\n      + INSUFFICIENT_EVIDENCE"
+    },
+    {
+      "nodeid": "test_reconciliation_no_since_regression (in tests.test_lp_rh_reconciliation_v1_readonly)",
+      "classname": "tests.test_lp_rh_reconciliation_v1_readonly",
+      "name": "test_reconciliation_no_since_regression",
+      "type": "failure",
+      "message": "AssertionError: assert 'INSUFFICIENT_EVIDENCE' == 'PASS'\n  - PASS\n  + INSUFFICIENT_EVIDENCE",
+      "text_excerpt": "E   AssertionError: assert 'INSUFFICIENT_EVIDENCE' == 'PASS'\n      - PASS\n      + INSUFFICIENT_EVIDENCE"
+    },
+    {
+      "nodeid": "test_reconciliation_since_excludes_historical_diff_pass (in tests.test_lp_rh_reconciliation_v1_readonly)",
+      "classname": "tests.test_lp_rh_reconciliation_v1_readonly",
+      "name": "test_reconciliation_since_excludes_historical_diff_pass",
+      "type": "failure",
+      "message": "AssertionError: assert 'INSUFFICIENT_EVIDENCE' == 'PASS'\n  - PASS\n  + INSUFFICIENT_EVIDENCE",
+      "text_excerpt": "E   AssertionError: assert 'INSUFFICIENT_EVIDENCE' == 'PASS'\n      - PASS\n      + INSUFFICIENT_EVIDENCE"
+    },
+    {
+      "nodeid": "test_reconciliation_since_includes_historical_diff_unexplained (in tests.test_lp_rh_reconciliation_v1_readonly)",
+      "classname": "tests.test_lp_rh_reconciliation_v1_readonly",
+      "name": "test_reconciliation_since_includes_historical_diff_unexplained",
+      "type": "failure",
+      "message": "AssertionError: assert 'INSUFFICIENT_EVIDENCE' == 'UNEXPLAINED_DIFF'\n  - UNEXPLAINED_DIFF\n  + INSUFFICIENT_EVIDENCE",
+      "text_excerpt": "E   AssertionError: assert 'INSUFFICIENT_EVIDENCE' == 'UNEXPLAINED_DIFF'\n      - UNEXPLAINED_DIFF\n      + INSUFFICIENT_EVIDENCE"
+    },
+    {
+      "nodeid": "test_c3_matching_conversion_pass (in tests.test_lp_rh_reconciliation_v1_readonly)",
+      "classname": "tests.test_lp_rh_reconciliation_v1_readonly",
+      "name": "test_c3_matching_conversion_pass",
+      "type": "failure",
+      "message": "AssertionError: assert 'INSUFFICIENT_EVIDENCE' == 'PASS'\n  - PASS\n  + INSUFFICIENT_EVIDENCE",
+      "text_excerpt": "E   AssertionError: assert 'INSUFFICIENT_EVIDENCE' == 'PASS'\n      - PASS\n      + INSUFFICIENT_EVIDENCE"
+    },
+    {
+      "nodeid": "test_c3_mismatch_unexplained_diff (in tests.test_lp_rh_reconciliation_v1_readonly)",
+      "classname": "tests.test_lp_rh_reconciliation_v1_readonly",
+      "name": "test_c3_mismatch_unexplained_diff",
+      "type": "failure",
+      "message": "AssertionError: assert 'INSUFFICIENT_EVIDENCE' == 'UNEXPLAINED_DIFF'\n  - UNEXPLAINED_DIFF\n  + INSUFFICIENT_EVIDENCE",
+      "text_excerpt": "E   AssertionError: assert 'INSUFFICIENT_EVIDENCE' == 'UNEXPLAINED_DIFF'\n      - UNEXPLAINED_DIFF\n      + INSUFFICIENT_EVIDENCE"
+    },
+    {
+      "nodeid": "test_c3_evidence_json_records_quote_dec1_tolerance (in tests.test_lp_rh_reconciliation_v1_readonly)",
+      "classname": "tests.test_lp_rh_reconciliation_v1_readonly",
+      "name": "test_c3_evidence_json_records_quote_dec1_tolerance",
+      "type": "failure",
+      "message": "KeyError: 'quote'",
+      "text_excerpt": "E   KeyError: 'quote'"
+    },
+    {
+      "nodeid": "test_c3_regression_c1_c2_unaffected (in tests.test_lp_rh_reconciliation_v1_readonly)",
+      "classname": "tests.test_lp_rh_reconciliation_v1_readonly",
+      "name": "test_c3_regression_c1_c2_unaffected",
+      "type": "failure",
+      "message": "AssertionError: assert 'INSUFFICIENT_EVIDENCE' == 'UNEXPLAINED_DIFF'\n  - UNEXPLAINED_DIFF\n  + INSUFFICIENT_EVIDENCE",
+      "text_excerpt": "E   AssertionError: assert 'INSUFFICIENT_EVIDENCE' == 'UNEXPLAINED_DIFF'\n      - UNEXPLAINED_DIFF\n      + INSUFFICIENT_EVIDENCE"
+    },
+    {
+      "nodeid": "test_c3_pool_meta_file_path_and_unreadable (in tests.test_lp_rh_reconciliation_v1_readonly)",
+      "classname": "tests.test_lp_rh_reconciliation_v1_readonly",
+      "name": "test_c3_pool_meta_file_path_and_unreadable",
+      "type": "failure",
+      "message": "AssertionError: assert 'INSUFFICIENT_EVIDENCE' == 'PASS'\n  - PASS\n  + INSUFFICIENT_EVIDENCE",
+      "text_excerpt": "E   AssertionError: assert 'INSUFFICIENT_EVIDENCE' == 'PASS'\n      - PASS\n      + INSUFFICIENT_EVIDENCE"
+    },
+    {
+      "nodeid": "test_shadow_scenario_simulated_policy_only (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+      "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+      "name": "test_shadow_scenario_simulated_policy_only",
+      "type": "failure",
+      "message": "assert False\n +  where False = all(<generator object test_shadow_scenario_simulated_policy_only.<locals>.<genexpr> at 0x7c53ff311be0>)",
+      "text_excerpt": "E   assert False\n     +  where False = all(<generator object test_shadow_scenario_simulated_policy_only.<locals>.<genexpr> at 0x7c53ff311be0>)"
+    },
+    {
+      "nodeid": "test_reservation_only_first_eligible (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+      "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+      "name": "test_reservation_only_first_eligible",
+      "type": "failure",
+      "message": "assert [False, False, False] == [True, False, False]\n  At index 0 diff: False != True\n  Use -v to get more diff",
+      "text_excerpt": "E   assert [False, False, False] == [True, False, False]\n      At index 0 diff: False != True\n      Use -v to get more diff"
+    },
+    {
+      "nodeid": "test_hodl_initial_legs_constant_t41 (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+      "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+      "name": "test_hodl_initial_legs_constant_t41",
+      "type": "failure",
+      "message": "AssertionError: assert None == Decimal('1000.000000000000000000000000')\n +  where None = ShadowStep(step_index=0, sample_time='2026-01-01T00:00:00Z', price=Decimal('1.0'), terminal_eligible=False, primary_st...on': None, 'fee_usd_raw': None, 'fee_usd_organic': None, 'accrued_raw': Decimal('0'), 'accrued_organic': Decimal('0')}).hodl_value",
+      "text_excerpt": "E   AssertionError: assert None == Decimal('1000.000000000000000000000000')\n     +  where None = ShadowStep(step_index=0, sample_time='2026-01-01T00:00:00Z', price=Decimal('1.0'), terminal_eligible=False, primary_st...on': None, 'fee_usd_raw': None, 'fee_usd_organic': None, 'accrued_raw': Decimal('0'), 'accrued_organic': Decimal('0')}).hodl_value"
+    },
+    {
+      "nodeid": "test_rh02bu2_granted_step_writes_one_shadow_position (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+      "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+      "name": "test_rh02bu2_granted_step_writes_one_shadow_position",
+      "type": "failure",
+      "message": "assert 0 == 1",
+      "text_excerpt": "E   assert 0 == 1"
+    },
+    {
+      "nodeid": "test_rh02bu2_position_id_matches_position_marks (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+      "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+      "name": "test_rh02bu2_position_id_matches_position_marks",
+      "type": "failure",
+      "message": "TypeError: 'NoneType' object is not subscriptable",
+      "text_excerpt": "E   TypeError: 'NoneType' object is not subscriptable"
+    },
+    {
+      "nodeid": "test_rh02bu2_raw_fields_match_inventory_verbatim (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+      "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+      "name": "test_rh02bu2_raw_fields_match_inventory_verbatim",
+      "type": "failure",
+      "message": "TypeError: 'NoneType' object is not iterable",
+      "text_excerpt": "E   TypeError: 'NoneType' object is not iterable"
+    },
+    {
+      "nodeid": "test_rh02bu2_multiple_eligible_steps_still_one_row (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+      "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+      "name": "test_rh02bu2_multiple_eligible_steps_still_one_row",
+      "type": "failure",
+      "message": "assert 0 >= 2\n +  where 0 = sum(<generator object test_rh02bu2_multiple_eligible_steps_still_one_row.<locals>.<genexpr> at 0x7c5400971000>)",
+      "text_excerpt": "E   assert 0 >= 2\n     +  where 0 = sum(<generator object test_rh02bu2_multiple_eligible_steps_still_one_row.<locals>.<genexpr> at 0x7c5400971000>)"
+    },
+    {
+      "nodeid": "test_rh02bu2_missing_pool_key_writes_no_row_and_records_reason (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+      "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+      "name": "test_rh02bu2_missing_pool_key_writes_no_row_and_records_reason",
+      "type": "failure",
+      "message": "assert False\n +  where False = any(<generator object test_rh02bu2_missing_pool_key_writes_no_row_and_records_reason.<locals>.<genexpr> at 0x7c5402c642e0>)",
+      "text_excerpt": "E   assert False\n     +  where False = any(<generator object test_rh02bu2_missing_pool_key_writes_no_row_and_records_reason.<locals>.<genexpr> at 0x7c5402c642e0>)"
+    },
+    {
+      "nodeid": "test_rh02by_granted_step_writes_two_journal_rows (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+      "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+      "name": "test_rh02by_granted_step_writes_two_journal_rows",
+      "type": "failure",
+      "message": "assert 0 == 2",
+      "text_excerpt": "E   assert 0 == 2"
+    },
+    {
+      "nodeid": "test_rh02by_journal_asset_and_amount_match_inventory (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+      "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+      "name": "test_rh02by_journal_asset_and_amount_match_inventory",
+      "type": "failure",
+      "message": "IndexError: list index out of range",
+      "text_excerpt": "E   IndexError: list index out of range"
+    },
+    {
+      "nodeid": "test_rh02by_journal_is_internal_flow (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+      "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+      "name": "test_rh02by_journal_is_internal_flow",
+      "type": "failure",
+      "message": "assert 0 == 2\n +  where 0 = len([])",
+      "text_excerpt": "E   assert 0 == 2\n     +  where 0 = len([])"
+    },
+    {
+      "nodeid": "test_rh02by_journal_idempotency_keys_distinct (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+      "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+      "name": "test_rh02by_journal_idempotency_keys_distinct",
+      "type": "failure",
+      "message": "assert 0 == 2\n +  where 0 = len([])",
+      "text_excerpt": "E   assert 0 == 2\n     +  where 0 = len([])"
+    },
+    {
+      "nodeid": "test_rh02by_missing_token_addresses_no_journal_but_position_written (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+      "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+      "name": "test_rh02by_missing_token_addresses_no_journal_but_position_written",
+      "type": "failure",
+      "message": "assert 0 == 1",
+      "text_excerpt": "E   assert 0 == 1"
+    },
+    {
+      "nodeid": "test_rh02by_journal_entries_pass_stage_b_balance_audit (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+      "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+      "name": "test_rh02by_journal_entries_pass_stage_b_balance_audit",
+      "type": "failure",
+      "message": "assert None == 0",
+      "text_excerpt": "E   assert None == 0"
+    },
+    {
+      "nodeid": "test_rh02ce_granted_step_released_at_episode_end (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+      "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+      "name": "test_rh02ce_granted_step_released_at_episode_end",
+      "type": "failure",
+      "message": "AssertionError: assert False is True\n +  where False = ShadowStep(step_index=0, sample_time='2026-01-01T00:00:00Z', price=None, terminal_eligible=False, primary_status='COMP...on': None, 'fee_usd_raw': None, 'fee_usd_organic': None, 'accrued_raw': Decimal('0'), 'accrued_organic': Decimal('0')}).reservation_granted",
+      "text_excerpt": "E   AssertionError: assert False is True\n     +  where False = ShadowStep(step_index=0, sample_time='2026-01-01T00:00:00Z', price=None, terminal_eligible=False, primary_status='COMP...on': None, 'fee_usd_raw': None, 'fee_usd_organic': None, 'accrued_raw': Decimal('0'), 'accrued_organic': Decimal('0')}).reservation_granted"
+    },
+    {
+      "nodeid": "test_rh02ce_sequential_episodes_both_granted_due_to_release (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+      "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+      "name": "test_rh02ce_sequential_episodes_both_granted_due_to_release",
+      "type": "failure",
+      "message": "AssertionError: assert False is True\n +  where False = ShadowStep(step_index=0, sample_time='2026-01-01T00:00:00Z', price=None, terminal_eligible=False, primary_status='COMP...on': None, 'fee_usd_raw': None, 'fee_usd_organic': None, 'accrued_raw': Decimal('0'), 'accrued_organic': Decimal('0')}).reservation_granted",
+      "text_excerpt": "E   AssertionError: assert False is True\n     +  where False = ShadowStep(step_index=0, sample_time='2026-01-01T00:00:00Z', price=None, terminal_eligible=False, primary_status='COMP...on': None, 'fee_usd_raw': None, 'fee_usd_organic': None, 'accrued_raw': Decimal('0'), 'accrued_organic': Decimal('0')}).reservation_granted"
+    },
+    {
+      "nodeid": "test_rh02ce_release_failure_leaves_trace_in_step_reasons (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+      "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+      "name": "test_rh02ce_release_failure_leaves_trace_in_step_reasons",
+      "type": "failure",
+      "message": "AssertionError: assert False is True\n +  where False = ShadowStep(step_index=0, sample_time='2026-01-01T00:00:00Z', price=None, terminal_eligible=False, primary_status='COMP...on': None, 'fee_usd_raw': None, 'fee_usd_organic': None, 'accrued_raw': Decimal('0'), 'accrued_organic': Decimal('0')}).reservation_granted",
+      "text_excerpt": "E   AssertionError: assert False is True\n     +  where False = ShadowStep(step_index=0, sample_time='2026-01-01T00:00:00Z', price=None, terminal_eligible=False, primary_status='COMP...on': None, 'fee_usd_raw': None, 'fee_usd_organic': None, 'accrued_raw': Decimal('0'), 'accrued_organic': Decimal('0')}).reservation_granted"
+    },
+    {
+      "nodeid": "test_rh02ci_granted_step_accrued_positive_writes_fee_journal (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+      "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+      "name": "test_rh02ci_granted_step_accrued_positive_writes_fee_journal",
+      "type": "failure",
+      "message": "assert 0 == 3\n +  where 0 = len([])",
+      "text_excerpt": "E   assert 0 == 3\n     +  where 0 = len([])"
+    },
+    {
+      "nodeid": "test_rh02ci_fee_journal_ref_metadata (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+      "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+      "name": "test_rh02ci_fee_journal_ref_metadata",
+      "type": "failure",
+      "message": "TypeError: 'NoneType' object is not subscriptable",
+      "text_excerpt": "E   TypeError: 'NoneType' object is not subscriptable"
+    },
+    {
+      "nodeid": "test_rh02ci_accrued_zero_no_fee_journal (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+      "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+      "name": "test_rh02ci_accrued_zero_no_fee_journal",
+      "type": "failure",
+      "message": "assert 0 == 2",
+      "text_excerpt": "E   assert 0 == 2"
+    },
+    {
+      "nodeid": "test_rh02ci_missing_quote_no_fee_journal_but_open_written (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+      "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+      "name": "test_rh02ci_missing_quote_no_fee_journal_but_open_written",
+      "type": "failure",
+      "message": "assert 0 == 2",
+      "text_excerpt": "E   assert 0 == 2"
+    },
+    {
+      "nodeid": "test_rh02ci_missing_dec1_no_fee_journal_but_open_written (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+      "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+      "name": "test_rh02ci_missing_dec1_no_fee_journal_but_open_written",
+      "type": "failure",
+      "message": "assert 0 == 2",
+      "text_excerpt": "E   assert 0 == 2"
+    },
+    {
+      "nodeid": "test_rh02ci_fee_journal_passes_stage_b_balance_audit (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+      "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+      "name": "test_rh02ci_fee_journal_passes_stage_b_balance_audit",
+      "type": "failure",
+      "message": "assert None == 0",
+      "text_excerpt": "E   assert None == 0"
+    },
+    {
+      "nodeid": "test_rh02ck_default_enforce_false_unknown_balance_backward_compatible (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+      "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+      "name": "test_rh02ck_default_enforce_false_unknown_balance_backward_compatible",
+      "type": "failure",
+      "message": "AssertionError: assert False is True\n +  where False = ShadowStep(step_index=0, sample_time='2026-01-01T00:00:00Z', price=None, terminal_eligible=False, primary_status='COMP...on': None, 'fee_usd_raw': None, 'fee_usd_organic': None, 'accrued_raw': Decimal('0'), 'accrued_organic': Decimal('0')}).terminal_eligible",
+      "text_excerpt": "E   AssertionError: assert False is True\n     +  where False = ShadowStep(step_index=0, sample_time='2026-01-01T00:00:00Z', price=None, terminal_eligible=False, primary_status='COMP...on': None, 'fee_usd_raw': None, 'fee_usd_organic': None, 'accrued_raw': Decimal('0'), 'accrued_organic': Decimal('0')}).terminal_eligible"
+    },
+    {
+      "nodeid": "test_rh02ck_enforce_true_sufficient_native_balance_passes (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+      "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+      "name": "test_rh02ck_enforce_true_sufficient_native_balance_passes",
+      "type": "failure",
+      "message": "AssertionError: assert False is True\n +  where False = ShadowStep(step_index=0, sample_time='2026-01-01T00:00:00Z', price=None, terminal_eligible=False, primary_status='COMP...on': None, 'fee_usd_raw': None, 'fee_usd_organic': None, 'accrued_raw': Decimal('0'), 'accrued_organic': Decimal('0')}).terminal_eligible",
+      "text_excerpt": "E   AssertionError: assert False is True\n     +  where False = ShadowStep(step_index=0, sample_time='2026-01-01T00:00:00Z', price=None, terminal_eligible=False, primary_status='COMP...on': None, 'fee_usd_raw': None, 'fee_usd_organic': None, 'accrued_raw': Decimal('0'), 'accrued_organic': Decimal('0')}).terminal_eligible"
+    },
+    {
+      "nodeid": "test_rh02ck_gas_db_missing_graceful_fallback (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+      "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+      "name": "test_rh02ck_gas_db_missing_graceful_fallback",
+      "type": "failure",
+      "message": "AssertionError: assert False is True\n +  where False = ShadowStep(step_index=0, sample_time='2026-01-01T00:00:00Z', price=None, terminal_eligible=False, primary_status='COMP...on': None, 'fee_usd_raw': None, 'fee_usd_organic': None, 'accrued_raw': Decimal('0'), 'accrued_organic': Decimal('0')}).terminal_eligible",
+      "text_excerpt": "E   AssertionError: assert False is True\n     +  where False = ShadowStep(step_index=0, sample_time='2026-01-01T00:00:00Z', price=None, terminal_eligible=False, primary_status='COMP...on': None, 'fee_usd_raw': None, 'fee_usd_organic': None, 'accrued_raw': Decimal('0'), 'accrued_organic': Decimal('0')}).terminal_eligible"
+    },
+    {
+      "nodeid": "test_rh02cm_fraction_one_accrual_nav_pnl_identical (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+      "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+      "name": "test_rh02cm_fraction_one_accrual_nav_pnl_identical",
+      "type": "failure",
+      "message": "AssertionError: assert None is True\n +  where None = ShadowStep(step_index=0, sample_time='2026-09-08T18:00:00Z', price=Decimal('2484.0'), terminal_eligible=False, primary...on': None, 'fee_usd_raw': None, 'fee_usd_organic': None, 'accrued_raw': Decimal('0'), 'accrued_organic': Decimal('0')}).in_range",
+      "text_excerpt": "E   AssertionError: assert None is True\n     +  where None = ShadowStep(step_index=0, sample_time='2026-09-08T18:00:00Z', price=Decimal('2484.0'), terminal_eligible=False, primary...on': None, 'fee_usd_raw': None, 'fee_usd_organic': None, 'accrued_raw': Decimal('0'), 'accrued_organic': Decimal('0')}).in_range"
+    },
+    {
+      "nodeid": "test_rh02cm_out_of_range_steps_do_not_accrue_fee (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+      "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+      "name": "test_rh02cm_out_of_range_steps_do_not_accrue_fee",
+      "type": "failure",
+      "message": "AssertionError: assert None is True\n +  where None = ShadowStep(step_index=0, sample_time='2026-09-08T18:00:00Z', price=Decimal('2484.0'), terminal_eligible=False, primary...on': None, 'fee_usd_raw': None, 'fee_usd_organic': None, 'accrued_raw': Decimal('0'), 'accrued_organic': Decimal('0')}).in_range",
+      "text_excerpt": "E   AssertionError: assert None is True\n     +  where None = ShadowStep(step_index=0, sample_time='2026-09-08T18:00:00Z', price=Decimal('2484.0'), terminal_eligible=False, primary...on': None, 'fee_usd_raw': None, 'fee_usd_organic': None, 'accrued_raw': Decimal('0'), 'accrued_organic': Decimal('0')}).in_range"
+    },
+    {
+      "nodeid": "test_rh02cm_price_none_not_counted_as_out_of_range (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+      "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+      "name": "test_rh02cm_price_none_not_counted_as_out_of_range",
+      "type": "failure",
+      "message": "AssertionError: assert None is True\n +  where None = ShadowStep(step_index=0, sample_time='2026-09-08T18:00:00Z', price=Decimal('2484.0'), terminal_eligible=False, primary...on': None, 'fee_usd_raw': None, 'fee_usd_organic': None, 'accrued_raw': Decimal('0'), 'accrued_organic': Decimal('0')}).in_range",
+      "text_excerpt": "E   AssertionError: assert None is True\n     +  where None = ShadowStep(step_index=0, sample_time='2026-09-08T18:00:00Z', price=Decimal('2484.0'), terminal_eligible=False, primary...on': None, 'fee_usd_raw': None, 'fee_usd_organic': None, 'accrued_raw': Decimal('0'), 'accrued_organic': Decimal('0')}).in_range"
+    },
+    {
+      "nodeid": "test_rh02cm_boundary_tick_lower_in_tick_upper_out (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+      "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+      "name": "test_rh02cm_boundary_tick_lower_in_tick_upper_out",
+      "type": "failure",
+      "message": "AssertionError: assert None is True\n +  where None = ShadowStep(step_index=0, sample_time='2026-09-08T18:00:00Z', price=Decimal('2484.0'), terminal_eligible=False, primary...on': None, 'fee_usd_raw': None, 'fee_usd_organic': None, 'accrued_raw': Decimal('0'), 'accrued_organic': Decimal('0')}).in_range",
+      "text_excerpt": "E   AssertionError: assert None is True\n     +  where None = ShadowStep(step_index=0, sample_time='2026-09-08T18:00:00Z', price=Decimal('2484.0'), terminal_eligible=False, primary...on': None, 'fee_usd_raw': None, 'fee_usd_organic': None, 'accrued_raw': Decimal('0'), 'accrued_organic': Decimal('0')}).in_range"
+    },
+    {
+      "nodeid": "test_rh02cn_1_organic_discount_accrual_nine_tenths (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+      "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+      "name": "test_rh02cn_1_organic_discount_accrual_nine_tenths",
+      "type": "failure",
+      "message": "AssertionError: assert Decimal('0') > 0",
+      "text_excerpt": "E   AssertionError: assert Decimal('0') > 0"
+    },
+    {
+      "nodeid": "test_rh02cn_2_no_window_fail_close (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+      "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+      "name": "test_rh02cn_2_no_window_fail_close",
+      "type": "failure",
+      "message": "AssertionError: assert Decimal('0') > 0",
+      "text_excerpt": "E   AssertionError: assert Decimal('0') > 0"
+    },
+    {
+      "nodeid": "test_rh02cn_3_estimate_status_not_computed (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+      "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+      "name": "test_rh02cn_3_estimate_status_not_computed",
+      "type": "failure",
+      "message": "AssertionError: assert Decimal('0') > 0",
+      "text_excerpt": "E   AssertionError: assert Decimal('0') > 0"
+    },
+    {
+      "nodeid": "test_rh02cn_4_partial_coverage (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+      "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+      "name": "test_rh02cn_4_partial_coverage",
+      "type": "failure",
+      "message": "AssertionError: assert Decimal('0') > 0",
+      "text_excerpt": "E   AssertionError: assert Decimal('0') > 0"
+    },
+    {
+      "nodeid": "test_rh02cn_5_invalid_fraction[None] (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+      "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+      "name": "test_rh02cn_5_invalid_fraction[None]",
+      "type": "failure",
+      "message": "AssertionError: assert Decimal('0') > 0",
+      "text_excerpt": "E   AssertionError: assert Decimal('0') > 0"
+    },
+    {
+      "nodeid": "test_rh02cn_5_invalid_fraction[0] (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+      "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+      "name": "test_rh02cn_5_invalid_fraction[0]",
+      "type": "failure",
+      "message": "AssertionError: assert Decimal('0') > 0",
+      "text_excerpt": "E   AssertionError: assert Decimal('0') > 0"
+    },
+    {
+      "nodeid": "test_rh02cn_5_invalid_fraction[1.5] (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+      "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+      "name": "test_rh02cn_5_invalid_fraction[1.5]",
+      "type": "failure",
+      "message": "AssertionError: assert Decimal('0') > 0",
+      "text_excerpt": "E   AssertionError: assert Decimal('0') > 0"
+    },
+    {
+      "nodeid": "test_rh02cn_7_stack_with_in_range (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+      "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+      "name": "test_rh02cn_7_stack_with_in_range",
+      "type": "failure",
+      "message": "assert None is False",
+      "text_excerpt": "E   assert None is False"
+    },
+    {
+      "nodeid": "test_pool_state_stale_non_blocking_regression (in tests.test_lp_rh_shadow_runner_v1_readonly)",
+      "classname": "tests.test_lp_rh_shadow_runner_v1_readonly",
+      "name": "test_pool_state_stale_non_blocking_regression",
+      "type": "failure",
+      "message": "AssertionError: assert False is True\n +  where False = ShadowStep(step_index=0, sample_time='2026-09-11T06:00:00Z', price=None, terminal_eligible=False, primary_status='COMP...7284258'), 'fee_usd_raw': None, 'fee_usd_organic': None, 'accrued_raw': Decimal('0'), 'accrued_organic': Decimal('0')}).terminal_eligible",
+      "text_excerpt": "E   AssertionError: assert False is True\n     +  where False = ShadowStep(step_index=0, sample_time='2026-09-11T06:00:00Z', price=None, terminal_eligible=False, primary_status='COMP...7284258'), 'fee_usd_raw': None, 'fee_usd_organic': None, 'accrued_raw': Decimal('0'), 'accrued_organic': Decimal('0')}).terminal_eligible"
+    }
+  ]
+}

@@ -4,9 +4,6 @@ All tests use in-memory or tmp_path scratch stores and synthetic samples.
 The live source is only ever opened read-only. No network, no wallet, no
 broadcast, and nothing is written under reports/.
 """
-import sys
-sys.path.insert(0, '/opt/lpbot/lp-bot-v3-origin-check')
-
 import json
 import sqlite3
 import threading

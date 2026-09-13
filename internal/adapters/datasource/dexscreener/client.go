@@ -40,7 +40,7 @@ type PoolToken struct {
 
 // PoolInfo represents pool information from DexScreener.
 type PoolInfo struct {
-	PoolID      string      `json:"pairAddress"`
+	PoolID      string      `json:"-"`
 	PoolAddress string      `json:"pairAddress"`
 	ChainID     string      `json:"chainId"`
 	DEX         string      `json:"dexId"`

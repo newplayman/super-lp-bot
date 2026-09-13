@@ -1,3 +1,4 @@
+import sys
 """Repo-wide guard: a module that imports `scripts.*` must bootstrap sys.path.
 
 pytest puts the repo root on sys.path itself, so a module missing its own
