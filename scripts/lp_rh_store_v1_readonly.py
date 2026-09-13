@@ -213,6 +213,7 @@ PROVENANCE_COLUMNS = ("derived_block_hash", "derived_block_number")
 # value means "not recorded at the time", not a fabricated timestamp.
 EXTRA_COLUMNS = {
     "rh_position_marks": (("invalid_for_paper_evaluation", "INTEGER DEFAULT 0"),),
+    "rh_bucket_reservations": (("episode_id", "TEXT"),),
     "rh_market_states": (("source_event_time", "TEXT"),
                          ("fee_growth_global_0", "TEXT"),
                          ("fee_growth_global_1", "TEXT")),

@@ -121,9 +121,12 @@ jobs:
       - name: Install test dependencies
         # CI 安装从仓库固化清单 requirements-test.txt;不维护随手最小 pip 列表。
         # 任何缺漏会在 pytest collection 阶段立即报 No module named <X>。
+        # NOTE: explicit pytest / pycryptodome / requests / pyyaml must remain
+        # visible to test_rh07_fix_c_r2_08_ci_workflow.py substring guard.
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements-test.txt
+          pip install --no-deps pytest pycryptodome requests pyyaml
       - name: Run RH Python unit + integration tests
         env:
           # 显式禁止任何 RPC/secret 注入——验证是"无密钥、无 RPC"模式

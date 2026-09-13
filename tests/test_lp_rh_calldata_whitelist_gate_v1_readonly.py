@@ -40,6 +40,11 @@ def _build_test_setup(tmp_path, pool_address):
         "pool_meta": pm,
         "pool_meta_hash": "h",
         "ledger_db": str(tmp_path / "ledger.db"),
+        # §2 / §3: opt the daemon into the fail-closed calldata wrapper
+        # for the wrapper-targeted test cases in this file.  Without this
+        # the daemon stays in schema-only mode and the WHITELIST_REJECTED
+        # assertions below would never fire.
+        "verify_calldata": True,
     }
     return ledger, cfg
 
