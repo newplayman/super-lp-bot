@@ -166,7 +166,33 @@ CI `.github/workflows/ci.yml::python-rh-tests` 已从 `requirements-test.txt` �
 | `advisory-audit` 跑 `go vet` + `govulncheck` | OK（`continue-on-error: true`，不阻塞） |
 | `pytest --collect-only` 5126 tests 全部导入 OK | OK |
 | `audit_repro.py` mode / HEAD / defects 三项断言全过 | OK |
-| GitHub Actions 实际 CI 结果 | **未读**（本机无 `gh auth`，未 push）。需 Owner push 后用 `gh run view` / `gh pr checks` 复核最终结果 |
+| GitHub Actions 实际 CI 结果 | **已读**（push 后 run 34742476616, commit ee1a90e）—— 见 §1.6 |
+
+### 1.6 推送后 GitHub Actions 真实结果（run 34742476616, commit ee1a90e）
+
+```
+[completed/success] audit_repro.py R01-R08 (repo AST extract)        ← CA-01/-02/-03/-04/-05 范围 PASS
+[completed/failure] RH Python tests (no secrets, no RPC) (3.12)       ← pytest 退出码 != 0
+[completed/failure] quality-gate                                      ← golangci-lint 失败
+[completed/failure] advisory-audit                                    ← go vet 失败
+[completed/skipped] fork-tests                                        ← 未触发
+[completed/skipped] chaos-tests                                       ← 未触发
+```
+
+**根因分析**（均为 pre-existing,V2 6 个 commit 未触达）：
+
+- `quality-gate::golangci-lint` 失败根因 = `internal/adapters/datasource/dexscreener/client.go:43-44` 两个字段都标 `json:"pairAddress"`(重复 tag)。V2 6 个 commit 均未触达 `internal/adapters/datasource/dexscreener/`。go 1.23+ 把重复 json tag 升为 vet error,Go 1.22 还是 warning——此仓库 go-version: "1.25" 触发 error 路径。
+- `advisory-audit::Dependency audit` 失败根因 = `go vet ./...` 报同一条 dexscreener struct tag(同一根因,不同 entrypoint)。
+- `RH Python tests::Run RH Python unit + integration tests` 失败根因 = pytest 53 个 pre-existing baseline fail(全部位于 `test_lp_rh_shadow_runner_v1_readonly.py` RH-02 series + `test_lp_rh_reconciliation_v1_readonly.py` + `test_lp_rh_graduation_evidence_v1_readonly.py::test_stage_a_not_passed_verdict_is_not_graduated_and_contains_blocker`)。**V2 净 fail 数变化:V1 末 55(53+2 case1/3)→ V2 末 53**。CA-03 修了 case1/3 2 个 fail;CA-04/05 0 fail 增减。
+
+**V2 没引入任何新 fail**。audit §5 关注的 `audit-regression` 从 V1 "绿" 守住到 V2 "绿";新增的 11 个 CA-03/04/05 case 在 CI 中全 PASS(包含在 5059 PASSED 之中)。
+
+**后续工作**（V2 范围之外,Owner 决定）：
+
+1. `dexscreener/client.go:43-44` 改 `PoolAddress string json:"pairAddress"` 为 `PoolAddress string json:"poolAddress"`(PoolID 与 PoolAddress 字段同名 tag 是 typo)。**这条 pre-existing 修复一行,即可让 quality-gate + advisory-audit 转 PASS**。
+2. `test_lp_rh_shadow_runner_v1_readonly.py` 38 个 RH-02 fail 是 A 类 runner 路径真缺陷(下一任接手工作量)。
+3. 13 个 reconciliation + 1 graduation + B 类 fail = 旧断言 vs 新已批准语义(需 Owner 批准"测试断言跟随新已批准语义更新")。
+4. `g14/g15/g16` runtime counters 缺失(`OBSERVED:UNOBSERVED`)需 counters 采集脚本,CLAUDE.md freeze 阻断。
 
 ---
 
