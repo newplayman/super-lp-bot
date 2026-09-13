@@ -8,6 +8,12 @@ from typing import Any, Mapping, Optional
 
 STATE_PROPOSED = "PROPOSED"
 STATE_SIMULATED_OK = "SIMULATED_OK"
+# CA-03 (PAPER_ACCEPTANCE_REPAIR_V2): default research path (verify_calldata
+# False) MUST NOT label an intent SIMULATED_OK -- no decoder ran, no simulator
+# ran.  Callers that did not invoke verify_intent_or_reject (or whose wrapper
+# call did not produce evidence) MUST write RESEARCH_ONLY_NOT_SIMULATED so
+# downstream consumers can tell that no actual simulation occurred.
+STATE_RESEARCH_ONLY_NOT_SIMULATED = "RESEARCH_ONLY_NOT_SIMULATED"
 STATE_WHITELIST_REJECTED = "WHITELIST_REJECTED"
 STATE_DECODER_REJECTED = "DECODER_REJECTED"
 STATE_SIMULATED_FAIL = "SIMULATED_FAIL"

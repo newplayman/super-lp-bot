@@ -49,9 +49,19 @@ def _build_test_setup(tmp_path, pool_address):
     return ledger, cfg
 
 
-def test_case_1_legal_target_passes_gate(tmp_path):
-    """Case 1: legal target_address in sample -> assert rh_tx_intents.state == 'SIMULATED_OK' after run."""
+def test_case_1_research_path_writes_research_only_state(tmp_path):
+    """Case 1 (CA-03 PAPER_ACCEPTANCE_REPAIR_V2): default research path.
+
+    Default ``verify_calldata=False`` path MUST NOT label the intent
+    SIMULATED_OK -- no wrapper ran, no simulator ran.  The schema row gets
+    RESEARCH_ONLY_NOT_SIMULATED so downstream consumers (paper readiness
+    gates, admission, graduation) can tell that no actual simulation
+    occurred.  This was previously labeled SIMULATED_OK which silently
+    granted eligibility that had no wrapper evidence.
+    """
     ledger, cfg = _build_test_setup(tmp_path, LEGAL_ROUTER)
+    # Default research path -- do NOT opt into the wrapper.
+    cfg.pop("verify_calldata", None)
     ep_id = "ep-w2-case1"
     sample = _cost_sample(0, price=Decimal("2000.0"))
     sample["target_address"] = LEGAL_ROUTER.lower()
@@ -72,8 +82,50 @@ def test_case_1_legal_target_passes_gate(tmp_path):
     ledger.close()
 
     assert row is not None, "Expected rh_tx_intents row"
-    assert row[0] == "SIMULATED_OK"
+    assert row[0] == "RESEARCH_ONLY_NOT_SIMULATED", (
+        f"default research path must write RESEARCH_ONLY_NOT_SIMULATED, got {row[0]!r}"
+    )
     assert row[1] is None
+
+
+def test_case_1b_verify_calldata_true_without_calldata_fails_closed(tmp_path):
+    """Case 1b (CA-03): opted-in wrapper path with empty calldata MUST fail closed.
+
+    When the caller sets ``verify_calldata=True`` but does not supply a real
+    calldata payload, the wrapper must reject (decoder exception -> reject
+    reason starts with ``whitelist_reject:decoder_exception:``).  This proves
+    the wrapper is genuinely fail-closed: opting in is not enough to obtain
+    SIMULATED_OK -- real decoded bytes are required.
+    """
+    ledger, cfg = _build_test_setup(tmp_path, LEGAL_ROUTER)
+    cfg["verify_calldata"] = True
+    ep_id = "ep-w2-case1b"
+    sample = _cost_sample(0, price=Decimal("2000.0"))
+    sample["target_address"] = LEGAL_ROUTER.lower()
+    sample["selector"] = "0xb95cac29"
+    # Deliberately do NOT set sample["calldata_bytes"] -- wrapper must reject.
+
+    steps, dups, stats = _run_episode_persisted(
+        ledger,
+        cfg=cfg,
+        episode_id=ep_id,
+        sample_list=[sample],
+        now_fn=lambda: NOW,
+    )
+
+    row = ledger.execute(
+        "SELECT state, reject_reason FROM rh_tx_intents WHERE position_id = ?",
+        (f"rh-shadow-{ep_id}-0",),
+    ).fetchone()
+    ledger.close()
+
+    assert row is not None, "Expected rh_tx_intents row"
+    assert row[0] == "WHITELIST_REJECTED", (
+        f"wrapper must fail-closed on missing calldata, got {row[0]!r}"
+    )
+    assert row[1] is not None and "whitelist_reject:" in row[1], (
+        f"reject_reason must be a whitelist_reject reason, got {row[1]!r}"
+    )
 
 
 def test_case_2_evil_target_rejected_by_gate(tmp_path):
@@ -113,9 +165,21 @@ def test_case_2_evil_target_rejected_by_gate(tmp_path):
     assert resv_count == 0
 
 
-def test_case_3_empty_target_rejected_with_target_in_reason(tmp_path):
-    """Case 3: empty target_address (None) -> must produce state='WHITELIST_REJECTED' with reason containing 'target'."""
+def test_case_3_empty_target_in_research_path_records_schema_only(tmp_path):
+    """Case 3 (CA-03): empty target_address in default research path.
+
+    With ``verify_calldata=False`` (default research path), the wrapper is
+    never invoked.  An empty / None ``target_address`` therefore does NOT
+    produce a rejection; the daemon still writes a schema row carrying
+    ``RESEARCH_ONLY_NOT_SIMULATED``.  This is the explicit difference
+    between the research path (records intent but grants no eligibility)
+    and the wrapper path (case_1b / case_2 -- fail-closed when opted in).
+    The wrapper path's empty-target rejection is structurally redundant with
+    case_2 (evil target_address is also off the allow-list) and case_1b
+    (missing calldata fail-closes before any target check).
+    """
     ledger, cfg = _build_test_setup(tmp_path, LEGAL_ROUTER)
+    cfg.pop("verify_calldata", None)  # default research path
     ep_id = "ep-w2-case3"
     sample = _cost_sample(0, price=Decimal("2000.0"))
     sample["target_address"] = None
@@ -136,5 +200,7 @@ def test_case_3_empty_target_rejected_with_target_in_reason(tmp_path):
     ledger.close()
 
     assert row is not None, "Expected rh_tx_intents row"
-    assert row[0] == "WHITELIST_REJECTED"
-    assert row[1] is not None and "target" in row[1].lower()
+    assert row[0] == "RESEARCH_ONLY_NOT_SIMULATED", (
+        f"empty target in research path must record RESEARCH_ONLY_NOT_SIMULATED, got {row[0]!r}"
+    )
+    assert row[1] is None

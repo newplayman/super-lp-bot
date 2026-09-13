@@ -383,7 +383,7 @@ def _sync_reservations(ledger_conn, scratch_conn, *, exclude_episode=None) -> in
 def _record_tx_intents_safe(ledger_conn, steps, *, cfg, episode_id, now_fn, sample_list=None):
     """Invoke TxIntentWriter once per PROPOSED intent at gate decision point and enforce whitelist.
 
-    Refactor for PAPER_ACCEPTANCE_REPAIR_V1 §3:
+    Refactor for PAPER_ACCEPTANCE_REPAIR_V1 §3, hardened in PAPER_ACCEPTANCE_REPAIR_V2 CA-03:
       - Always write the rh_tx_intents schema row (audit trail must persist).
       - Invoke ``verify_intent_or_reject`` (PAPER_ACCEPTANCE_REPAIR_V1 §2 strict
         fail-closed wrapper) ONLY when the caller opts in via
@@ -391,10 +391,16 @@ def _record_tx_intents_safe(ledger_conn, steps, *, cfg, episode_id, now_fn, samp
         research-mode fixtures legitimately run without a fully populated
         calldata payload (no chain target / no mint calldata).  In that case
         this function stays strictly inside the schema-write layer and labels
-        the row ``SIMULATED_OK`` -- no wrapper invocation, no false-positive
-        "WHITELIST_PASSED".  This is NOT a downgrade of the §2 wrapper
-        (which is fail-closed when invoked); it is a daemon-layer policy that
-        keeps the wrapper out of the read-only research path entirely.
+        the row ``RESEARCH_ONLY_NOT_SIMULATED`` -- no wrapper invocation, no
+        false-positive ``SIMULATED_OK``.  Per CA-03, an intent whose calldata
+        was never decoded and never simulated MUST NOT carry the
+        ``SIMULATED_OK`` label; downstream consumers (paper readiness gates,
+        admission logic) must be able to tell that no actual simulation
+        occurred.  ``SIMULATED_OK`` is reserved for paths where the wrapper
+        ran and approved, or where an explicit simulator produced evidence.
+        This is NOT a downgrade of the §2 wrapper (which is fail-closed when
+        invoked); it is a daemon-layer policy that keeps the wrapper out of
+        the read-only research path entirely.
       - When the wrapper is invoked and rejects: mark state, mark step rejected
         (reservation_granted=False, terminal_eligible=False), and PRECISELY
         delete the current step's own reservation row by intent_id+episode_id.
@@ -496,7 +502,13 @@ def _record_tx_intents_safe(ledger_conn, steps, *, cfg, episode_id, now_fn, samp
             # not yet carry a full Aerodrome calldata payload.  Live paths
             # must set cfg["verify_calldata"] = True (or the build-tag-gated
             # live launcher must do it on their behalf).
-            writer.update_state(req_id, "SIMULATED_OK")
+            #
+            # CA-03 (PAPER_ACCEPTANCE_REPAIR_V2): the row MUST NOT carry
+            # SIMULATED_OK here -- no decoder ran, no simulator ran.  Down-
+            # stream consumers (paper readiness, admission, graduation) read
+            # the state column to decide eligibility; lying with SIMULATED_OK
+            # would silently grant admission that never had wrapper evidence.
+            writer.update_state(req_id, "RESEARCH_ONLY_NOT_SIMULATED")
             continue
 
         try:
