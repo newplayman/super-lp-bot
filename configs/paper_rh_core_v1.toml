@@ -1,0 +1,48 @@
+[meta]
+profile = "rh-core-paper-v1"
+scope = "paper_only_no_signing"
+expected_approval = false
+
+[chain]
+chain_id = 4663
+network = "robinhood_mainnet"
+
+[pool]
+profile = "CORE_V3"
+unknown_hook_policy = "REJECT_UNSUPPORTED"
+tvl_cap_usd = 1000
+
+[capital]
+virtual_capital_usd = 1000
+position_size_usd = 100
+idle_cash_usd = 900
+external_funding_initial_usd = 0
+
+[economics]
+stable_min_frac = 0.7
+netcover_shadow = 1.0
+expected_min_netcover = 1.5
+position_tvl_share = 0.0005
+hard_position_tvl_share = 0.001
+lvr_coefficient_model = 0.50
+
+[execution]
+mode = "paper_only"
+signing_enabled = false
+broadcasting_enabled = false
+
+[paths]
+ledger_db = "/var/lib/lpbot/paper_rh_core_v1.db"
+reports_dir = "/var/lib/lpbot/reports/paper_rh_core_v1/"
+pid_file = "/var/run/lpbot-paper-rh-core-v1.pid"
+
+[resources]
+max_rss_mb = 512
+max_disk_mb = 2048
+max_rpc_requests_per_minute = 60
+rpc_timeout_seconds = 30
+
+[safety]
+shutdown_on_window_close = true
+shutdown_on_data_stale_seconds = 600
+shutdown_on_invariant_violation = true
