@@ -146,3 +146,19 @@ reports/.../raw/                                  # 原始证据: pytest / go te
 - **不为通过测试放宽 CORE 或 NetCover**（保留六受保护常量）
 - **不为通过 lint 全局禁分析器或加 //nolint:**
 - **不悄悄修改 required 范围** — 217 lint 走 SCOPE_CHANGE_APPROVAL，未批不自动豁免
+
+---
+
+## 9. 已发现但**不属于本任务**的常驻进程（仅登记，不动）
+
+`ps` 检查到 5 个长跑 readonly 脚本在 `/opt/lpbot/lp-bot-v3-origin-check` 跑，由**其他会话/VPS** 启动，**不是本会话起的**，本任务不动它们：
+
+```
+PID 118592  lp_rh_provider_health_recorder_v1_readonly.py  --period-secs 900
+PID 119849  lp_rh_premium_recorder_v1_readonly.py          --period-secs 180
+PID 157737  lp_rh_organic_recorder_v1_readonly.py          --period-secs 900
+PID 2271374 lp_rh_collector_v1_readonly.py                 --interval-secs 15
+PID 2685886 lp_rh_shadow_daemon_v1_readonly.py             --period-secs 900
+```
+
+PID files 路径均位于 `reports/lp_rh/`，跟本任务交付目录 `reports/shadow_paper_convergence_20260914/` 互不相干。停掉任一将丢失 OHLCV / quote / pool-meta 历史链；**本任务不替 Owner 决定**。
