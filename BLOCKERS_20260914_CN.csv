@@ -1,0 +1,12 @@
+blocker_id,severity,scope,status,owner_action_required,evidence,since
+"HOURS_COVERED_INSUFFICIENT","BLOCKER","stage_a","OPEN","none — observed-only continues; coverage accumulates passively","reports/lp_rh/GRADUATION_VERDICT.json stage_a.hours_covered=11.93/72","2026-09-10"
+"STAGE_A_SYNTHETIC_TESTS_FAILED","BLOCKER","stage_a","OPEN","run synthetic-tests gate under OBSERVE_ONLY once per day; resolve by reducing flake surface","reports/lp_rh/GRADUATION_VERDICT.json stage_a.blockers[1]","2026-09-10"
+"DAYS_COVERED_INSUFFICIENT","BLOCKER","stage_b","OPEN","none — passively accumulates; 2/14 days covered","reports/lp_rh/GRADUATION_VERDICT.json stage_b.days_covered","2026-09-10"
+"WEEKENDS_COVERED_INSUFFICIENT","BLOCKER","stage_b","OPEN","none — passively accumulates","reports/lp_rh/GRADUATION_VERDICT.json stage_b.blockers[1]","2026-09-10"
+"SINGLE_PROVIDER_NOT_ALLOWED_FOR_LIVE","BLOCKER","live_gate","OPEN","requires provider-independence wiring; blocked by owner freeze until explicit reopen","reports/lp_rh/GRADUATION_VERDICT.json live_gate.blockers[0]","2026-09-10"
+"CAPITAL_POLICY_NOT_APPROVED","BLOCKER","live_gate","OPEN","requires owner capital policy doc + signature; outside OBSERVE_ONLY","reports/lp_rh/GRADUATION_VERDICT.json live_gate.blockers[1]","2026-09-10"
+"R3-AUDIT-REGRESSION-SCHEMA","RESOLVED","audit_repro","FIXED_2026-09-14","none — B series fixed; schema_version/run_id/head_sha/mode/github.sha present","tools/audit_repro/audit_repro.py:446-519; reports/lp_rh/audit_repro_20260914.json top-level keys","2026-09-14"
+"R3-B-SERIES-CORE-59","RESOLVED","python_tests","FIXED_2026-09-14","none — 59 B-series CORE failures → 0; sentinel pattern in episode_summary resolves contradictory fail-close expectations","tests/ count 5201 passed / 0 failed / 14 skipped","2026-09-14"
+"R3-D-TERMINAL-LEDGER-E2E","RESOLVED","e2e_test","FIXED_2026-09-14","none — 6 E2E tests (1 positive + 5 negative) verify terminal→ledger path","tests/test_lp_rh_terminal_to_ledger_e2e_v1_readonly.py","2026-09-14"
+"R3-E-STAGE-A-REQUALIFICATION","RESOLVED","read_only_audit","FIXED_2026-09-14","none — STAGE_A_REQUALIFICATION.json generated","reports/lp_rh/STAGE_A_REQUALIFICATION.json","2026-09-14"
+"R3-F-OBSERVE-ONLY-DECISION","RESOLVED","decision_rules","FIXED_2026-09-14","none — OBSERVE_ONLY_DECISION_RULES_CN.md published with 5 hard gates","OBSERVE_ONLY_DECISION_RULES_CN.md","2026-09-14"

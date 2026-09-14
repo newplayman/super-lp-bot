@@ -16,6 +16,7 @@ import argparse
 import ast
 import contextlib
 import json
+import os
 import platform
 import sqlite3
 import subprocess
@@ -492,6 +493,11 @@ def main():
             "probe_errors": sum(x["status"] == "PROBE_ERROR" for x in items),
         }
         head_sha = source.get("head")
+        # v2 schema contract: top-level derived fields so consumers
+        # (CI assert step, g2 gate, downstream JSON readers) do not need
+        # to reach into `counts` to read the canonical defect/probe counts.
+        # `github` is populated when --github-sha or GITHUB_SHA env is set.
+        github_sha = os.environ.get("GITHUB_SHA") or os.environ.get("GITHUB_HEAD_SHA")
         report = {
             "schema_version": SCHEMA_VERSION,
             "run_id": run_id,
@@ -507,6 +513,10 @@ def main():
             "source": source,
             "probes": items,
             "counts": counts,
+            # v2 derived top-level fields (single source of truth = counts):
+            "defects_reproduced": counts["defects_reproduced"],
+            "probe_errors": counts["probe_errors"],
+            "github": {"sha": github_sha} if github_sha else None,
         }
         serialized = json.dumps(report, ensure_ascii=False, indent=2, default=str)
         print(serialized)

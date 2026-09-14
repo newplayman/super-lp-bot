@@ -72,6 +72,40 @@ def _passing_sample(idx, *, price=None, fee_growth=None, **overrides):
 
 def _run(conn, samples, *, episode="ep", target_mode="SHADOW_SCENARIO", pool_meta=None,
          allow_bare_quote=True, capital_usd=None, position_usd=None, **kwargs):
+    # R3 / Package D + R2-06: inject fresh pool_state_as_of + tick_data
+    # + max_impact_bps when the test's pool_meta is silent on them, so
+    # terminal eligibility isn't blocked by as-of-unknown or pool-meta
+    # lacks tick_data checks.  Tests that intentionally exercise stale /
+    # future / unknown pool_state_as_of or absent tick_data pass those
+    # keys explicitly.
+    if pool_meta is None:
+        # Default pool_meta for tests that don't pass one.  Must include
+        # as_of within the 6h freshness window of the sample_time the
+        # test uses, plus tick_data and max_impact_bps so position
+        # depth conjuncts pass.
+        pool_meta = {
+            "as_of": "2025-12-31T23:00:00Z",
+            "tick_data": [{"tick_lower": -100, "tick_upper": 100,
+                           "liquidity_net": 10 ** 18}],
+            "max_impact_bps": 50,
+            "attestation_status": "ATTESTED_SAME_BLOCK",
+            "protocol": "v3",
+        }
+    if "as_of" not in pool_meta:
+        # 1h before the default _open_sample time of 2026-09-08T18:00:00Z,
+        # so the freshness check (POOL_STATE_STALE_SECS = 6h) passes
+        # without the test having to know about pool state semantics.
+        pool_meta = {**pool_meta, "as_of": "2026-09-08T17:00:00Z"}
+        if "tick_data" not in pool_meta:
+            pool_meta = {**pool_meta, "tick_data": [
+                {"tick_lower": -100, "tick_upper": 100, "liquidity_net": 10 ** 18}
+            ]}
+        if "max_impact_bps" not in pool_meta:
+            pool_meta = {**pool_meta, "max_impact_bps": 50}
+        if "attestation_status" not in pool_meta:
+            pool_meta = {**pool_meta, "attestation_status": "ATTESTED_SAME_BLOCK"}
+        if "protocol" not in pool_meta:
+            pool_meta = {**pool_meta, "protocol": "v3"}
     return run_episode(
         conn, strategy_episode=episode, samples=samples,
         position_usd=position_usd if position_usd is not None else POSITION_USD,
@@ -189,7 +223,12 @@ def test_nav_continuity():
 
 def test_hodl_initial_legs_constant_t41(tmp_path):
     conn = _fresh_store(tmp_path)
-    meta = {"range_pct": 10.0, "dec0": 18, "dec1": 6}
+    meta = {"range_pct": 10.0, "dec0": 18, "dec1": 6,
+            "tick_data": [{"tick_lower": -100, "tick_upper": 100, "liquidity_net": 10**18}],
+            "max_impact_bps": 50,
+            "attestation_status": "ATTESTED_SAME_BLOCK",
+            "protocol": "v3",
+            "as_of": "2026-01-01T00:00:00Z"}
     s0 = _passing_sample(0, price=Decimal("1.0"), quote_usd_per_token1=Decimal("2.0"))
     s1 = _passing_sample(1, price=Decimal("2.0"))  # no quote -> reuses s0's quote and cached legs
     steps = _run(conn, [s0, s1], pool_meta=meta)
@@ -323,6 +362,12 @@ def _conj_meta(**over):
                        "liquidity_net": 10 ** 18}],
         "token0_decimals": 18, "token1_decimals": 6,
         "input_price_usd": "2484", "max_impact_bps": 50,
+        # R3 / Package D: pool_state_as_of within the 6h freshness window.
+        # as_of=None triggers pool_state_fault and blocks terminal eligibility,
+        # so the default helper provides a fresh as_of to keep tests focused
+        # on the conjunct under test.  Tests that intentionally exercise stale
+        # / future / unknown pool_state_as_of override this explicitly.
+        "as_of": "2025-12-31T23:00:00Z",
     }
     m.update(over)
     return m
@@ -667,7 +712,12 @@ def test_rh02bt_zero_max_impact_bps_is_not_treated_as_missing():
 # ---------------------------------------------------------------------------
 
 OPEN_META = {"range_pct": 10.0, "dec0": 18, "dec1": 6,
-             "pool_address": "0xpool-rh02bu2"}
+             "pool_address": "0xpool-rh02bu2",
+             "tick_data": [{"tick_lower": -100, "tick_upper": 100, "liquidity_net": 10**18}],
+             "max_impact_bps": 50,
+             "attestation_status": "ATTESTED_SAME_BLOCK",
+             "protocol": "v3",
+             "as_of": "2026-09-08T17:00:00Z"}
 OPEN_PRICE = Decimal("1.0")
 OPEN_QUOTE = Decimal("2.0")
 
@@ -764,7 +814,10 @@ def test_rh02bu2_missing_pool_key_writes_no_row_and_records_reason(tmp_path):
 OPEN_META_TOKENS = {"range_pct": 10.0, "dec0": 18, "dec1": 6,
                     "pool_address": "0xpool-rh02by",
                     "token0": "0xtoken0-rh02by",
-                    "token1": "0xtoken1-rh02by"}
+                    "token1": "0xtoken1-rh02by",
+                    # R3 / Package D: fresh pool_state_as_of within 6h of
+                    # the default _open_sample time (2026-09-08T18:00:00Z).
+                    "as_of": "2026-09-08T17:00:00Z"}
 
 
 def _journal_rows(conn):
@@ -1860,14 +1913,27 @@ def test_rh02cm_fraction_one_accrual_nav_pnl_identical(tmp_path):
         "dec1": 6,
         "quote_usd_per_token1": Decimal("1.0"),
         "pool_address": "0xpool-rh02cm",
+        "tick_data": [{"tick_lower": -100, "tick_upper": 100, "liquidity_net": 10**18}],
+        "max_impact_bps": 50,
+        "attestation_status": "ATTESTED_SAME_BLOCK",
+        "protocol": "v3",
+        "as_of": "2026-09-08T17:00:00Z",
     }
     dfg0 = Decimal(10**18)
     dfg1 = Decimal(10**18)
     samples = [
         _open_sample(0, reference_mid=price, fee_growth_global_0=Decimal(0), fee_growth_global_1=Decimal(0),
-                     quote_usd_per_token1=Decimal("1.0")),
+                     quote_usd_per_token1=Decimal("1.0"),
+                     entry_cost_usd=Decimal("0"),
+                     exit_cost_usd=Decimal("0"),
+                     gas_usd=Decimal("0"),
+                     slippage_usd=Decimal("0")),
         _open_sample(1, reference_mid=price, fee_growth_global_0=dfg0, fee_growth_global_1=dfg1,
-                     quote_usd_per_token1=Decimal("1.0")),
+                     quote_usd_per_token1=Decimal("1.0"),
+                     entry_cost_usd=Decimal("0"),
+                     exit_cost_usd=Decimal("0"),
+                     gas_usd=Decimal("0"),
+                     slippage_usd=Decimal("0")),
     ]
     steps = _run(conn, samples, pool_meta=meta)
 
@@ -2743,15 +2809,23 @@ def test_pool_state_fresh_under_6h_no_stale_reason(tmp_path):
 
 
 def test_pool_state_stale_non_blocking_regression(tmp_path):
-    """7. Regression check: stale pool state does NOT flip terminal gates or block position opening; costs identical."""
+    """7. Regression check: pool-state freshness within the 6h cap (POOL_STATE_STALE_SECS)
+    does NOT flip terminal gates or block position opening; costs identical.
+
+    R3 / Package D: as-of >6h old triggers POOL_STATE_STALE and blocks.
+    The "non-blocking" assertion therefore applies to pool_state_fault=False
+    scenarios (within the freshness window).  The original test used 30h
+    stale, which crossed the 6h threshold and contradicted the R3 fix;
+    that scenario is now covered by test_rh07_fix_c_r2_06_stale_pool_state_blocks.
+    """
     conn_fresh = _fresh_store(tmp_path / "fresh")
     conn_stale = _fresh_store(tmp_path / "stale")
 
     sample_fresh = _passing_sample(0, sample_time="2026-09-10T01:00:00Z", source_payload_hash="h-reg-fresh")
     meta_fresh = _conj_meta(as_of="2026-09-10T00:00:00Z")  # 1h stale
 
-    sample_stale = _passing_sample(0, sample_time="2026-09-11T06:00:00Z", source_payload_hash="h-reg-stale")
-    meta_stale = _conj_meta(as_of="2026-09-10T00:00:00Z")  # 30h stale
+    sample_stale = _passing_sample(0, sample_time="2026-09-10T05:00:00Z", source_payload_hash="h-reg-stale")
+    meta_stale = _conj_meta(as_of="2026-09-10T00:00:00Z")  # 5h stale (within 6h threshold)
 
     steps_fresh = _run(conn_fresh, [sample_fresh], pool_meta=meta_fresh)
     steps_stale = _run(conn_stale, [sample_stale], pool_meta=meta_stale)

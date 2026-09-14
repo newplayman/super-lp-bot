@@ -61,6 +61,8 @@ POOL_META = {
     "quote_usd_per_token1": 1.0,
     "attestation_status": "ATTESTED_SAME_BLOCK",
     "protocol": "v3",
+    "tick_data": [{"tick_lower": -100, "tick_upper": 100, "liquidity_net": 10**18}],
+    "max_impact_bps": 50,
     # R3 / Package D: pool_state_as_of must be present and fresh (<6h)
     # for the runner to allow the step.  Tests using POOL_META need
     # this field.

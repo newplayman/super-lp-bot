@@ -1,0 +1,72 @@
+{
+  "scanned_at_utc": "2026-09-14T16:18:02.000003+00:00",
+  "caller_intent": "READ_ONLY_AUDIT",
+  "no_process_killed": true,
+  "no_daemon_modified": true,
+  "no_new_collector_spawned": true,
+  "processes": {
+    "collector": {
+      "pid": "2271374",
+      "ps": [
+        "PID    PPID     ELAPSED CMD",
+        "2271374       1  3-11:07:17 /root/lp-bot/.venv/bin/python /opt/lpbot/lp-bot-v3-origin-check/scripts/lp_rh_collector_v1_readonly.py --db /opt/lpbot/lp-bot-v3-origin-check/reports/lp_rh/scanner.db --interval-secs 15 --pid-file /opt/lpbot/lp-bot-v3-origin-check/reports/lp_rh/collector.pid"
+      ]
+    },
+    "organic_recorder": {
+      "pid": "157737",
+      "ps": [
+        "PID    PPID     ELAPSED CMD",
+        " 157737       1  5-12:29:54 /root/lp-bot/.venv/bin/python scripts/lp_rh_organic_recorder_v1_readonly.py --db /opt/lpbot/lp-bot-v3-origin-check/reports/lp_rh/organic.db --pool 0x52e65b17fb6e5ba00ed806f37afcd2daa50271ca --provider-url https://rpc.ordofi.network --span-blocks 8800 --period-secs 900 --pid-file /opt/lpbot/lp-bot-v3-origin-check/reports/lp_rh/organic_recorder.pid"
+      ]
+    },
+    "premium_recorder": {
+      "pid": "119849",
+      "ps": [
+        "PID    PPID     ELAPSED CMD",
+        " 119849       1  5-14:04:10 /root/lp-bot/.venv/bin/python scripts/lp_rh_premium_recorder_v1_readonly.py --db /opt/lpbot/lp-bot-v3-origin-check/reports/lp_rh/premium.db --period-secs 180 --pid-file /opt/lpbot/lp-bot-v3-origin-check/reports/lp_rh/premium_recorder.pid"
+      ]
+    },
+    "provider_health_recorder": {
+      "pid": "118592",
+      "ps": [
+        "PID    PPID     ELAPSED CMD",
+        " 118592       1  5-14:07:03 /root/lp-bot/.venv/bin/python scripts/lp_rh_provider_health_recorder_v1_readonly.py --db /opt/lpbot/lp-bot-v3-origin-check/reports/lp_rh/provider_health.db --period-secs 900 --pid-file /opt/lpbot/lp-bot-v3-origin-check/reports/lp_rh/provider_health_recorder.pid"
+      ]
+    },
+    "shadow_daemon": {
+      "pid": "2685886",
+      "ps": [
+        "PID    PPID     ELAPSED CMD",
+        "2685886 2685885  3-02:58:49 /root/lp-bot/.venv/bin/python /opt/lpbot/lp-bot-v3-origin-check/scripts/lp_rh_shadow_daemon_v1_readonly.py --db /opt/lpbot/lp-bot-v3-origin-check/reports/lp_rh/shadow.db --ledger-db /opt/lpbot/lp-bot-v3-origin-check/reports/lp_rh/scanner.db --pool 0x52e65b17fb6e5ba00ed806f37afcd2daa50271ca --pool-meta-json /opt/lpbot/lp-bot-v3-origin-check/reports/lp_rh/pool_meta.json --samples 200 --position-usd 1000 --capital-usd 10000 --horizon-hours 720 --period-secs 900 --pid-file /opt/lpbot/lp-bot-v3-origin-check/reports/lp_rh/shadow_daemon.pid"
+      ]
+    }
+  },
+  "latest_ticks_utc": {
+    "scanner": {
+      "rh_market_states": "2026-09-14T16:17:50.461453Z",
+      "rh_gate_decisions": "2026-09-14T16:04:05.453151Z",
+      "rh_position_marks": "2026-09-14T16:04:05.453151Z",
+      "rh_shadow_episodes": null,
+      "rh_tx_intents": null
+    },
+    "shadow": {
+      "rh_shadow_episodes": "2026-09-14T16:04:12.487802Z"
+    },
+    "premium": {
+      "rh_premium": null
+    },
+    "organic": {
+      "rh_organic_windows": "2026-09-14T16:12:35.648232Z"
+    },
+    "provider_health": {
+      "rh_provider_health": null
+    }
+  },
+  "row_counts": {
+    "scanner_rh_market_states": 36621,
+    "scanner_rh_gate_decisions": 79877,
+    "scanner_rh_position_marks": 84544,
+    "scanner_rh_tx_intents": 0,
+    "scanner_rh_shadow_episodes": null
+  }
+}

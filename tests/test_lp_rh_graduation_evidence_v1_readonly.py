@@ -34,24 +34,35 @@ CORE_ASSET = "0x52e65b17fb6e5ba00ed806f37afcd2daa50271ca"
 
 
 def _init_test_db(db_path: Path) -> None:
-    """Create a minimal valid RH sqlite database for readiness audit."""
+    """Create a minimal valid RH sqlite database for readiness audit.
+
+    Insert two samples within the judgment window (after 2026-09-13T04:27Z,
+    the last commit on collection code paths) spanning <72h so
+    coverage_for_asset returns has_data=True and stage_a_status computes
+    hours_covered (which then trips HOURS_COVERED_INSUFFICIENT because
+    1h < 72h).
+    """
     conn = open_store(db_path, read_only=False)
     migrate(conn)
-    # Insert a minimal sample to satisfy schema queries
-    insert_row(
-        conn,
-        "rh_market_states",
-        {
-            "asset_address": CORE_ASSET,
-            "sample_time": "2026-09-10T10:00:00Z",
-            "chain_id": 4663,
-            "session": "RTH",
-            "health_flags_json": "[]",
-            "reference_mid": "2400",
-            "fee_growth_global_0": "1000",
-            "fee_growth_global_1": "1000",
-        },
-    )
+    samples = [
+        ("2026-09-13T05:00:00Z", "2400"),
+        ("2026-09-13T06:00:00Z", "2410"),
+    ]
+    for sample_time, ref_mid in samples:
+        insert_row(
+            conn,
+            "rh_market_states",
+            {
+                "asset_address": CORE_ASSET,
+                "sample_time": sample_time,
+                "chain_id": 4663,
+                "session": "RTH",
+                "health_flags_json": "[]",
+                "reference_mid": ref_mid,
+                "fee_growth_global_0": "1000",
+                "fee_growth_global_1": "1000",
+            },
+        )
     conn.commit()
     conn.close()
 

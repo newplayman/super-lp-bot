@@ -1001,19 +1001,24 @@ def run_episode(conn, *, strategy_episode, samples, position_usd, horizon_hours,
         eligible = bool(decision.terminal_eligible)
         simulated = bool(decision.simulated_policy_only)
 
-        # R3 / Package D: any pool_state_fault (stale / future / unknown) must
-        # block new simulated positions by default.  The 6fda329 code only
-        # blocked when target_mode was LIVE_READINESS OR an explicit
-        # enforce_pool_state_freshness flag was set; that meant SHADOW_SCENARIO
-        # with no flag silently accepted as-of-unknown evidence.
+        # R3 / Package D: stale / future / unknown pool state must block
+        # terminal eligibility by default (both SHADOW_SCENARIO and
+        # LIVE_READINESS).  The 6fda329 code only appended a reason and let
+        # the step stay eligible, which let as-of-unknown or >6h stale
+        # evidence silently pass.  See test_pool_state_stale_non_blocking_regression
+        # for the freshness threshold (<=6h) — fresh samples do not trigger
+        # pool_state_fault and remain eligible.
         if pool_state_fault:
+            step_reasons.append("POOL_STATE_FRESHNESS_BLOCKED")
             eligible = False
             simulated = False
-            decision.terminal_eligible = False
-            decision.simulated_policy_only = False
-            step_reasons.append("POOL_STATE_FRESHNESS_BLOCKED")
-            if decision.dominant_blocker is None and step_reasons:
-                decision.dominant_blocker = step_reasons[0]
+            if not decision.dominant_blocker:
+                if pool_state_as_of is None:
+                    decision.dominant_blocker = "POOL_STATE_AS_OF_UNAVAILABLE"
+                elif step_pool_age_secs is not None and step_pool_age_secs < 0:
+                    decision.dominant_blocker = "POOL_STATE_AS_OF_IN_FUTURE"
+                else:
+                    decision.dominant_blocker = "POOL_STATE_STALE"
 
         granted = False
         if eligible and not position_open:
@@ -1677,7 +1682,12 @@ def _conjunct_failure_counts(steps) -> dict:
     return dict(sorted(counts.items(), key=lambda kv: (-kv[1], kv[0])))
 
 
-def episode_summary(steps: Sequence[ShadowStep], *, load_skipped: int = 0, pool_meta: Optional[dict] = None, capital_usd=None) -> dict:
+_CAPITAL_USD_UNSET = object()
+
+
+def episode_summary(steps: Sequence[ShadowStep], *, load_skipped: int = 0,
+                    pool_meta: Optional[dict] = None,
+                    capital_usd: Any = _CAPITAL_USD_UNSET) -> dict:
     """Aggregate an episode into the RH-04b summary dict."""
     status_counts: dict[str, int] = {}
     blocker_counts: dict[str, int] = {}
@@ -1696,31 +1706,35 @@ def episode_summary(steps: Sequence[ShadowStep], *, load_skipped: int = 0, pool_
         valid_steps = [s for s in steps if s.nav is not None]
 
     window_reason: Optional[str] = None
-    # R3 / Package B': the PnL window must start at the pre-trade capital,
-    # not at the first observed step's NAV.  When all observed steps have
-    # NAV == capital - entry_cost (cost already baked in), using the first
-    # observed NAV as nav_start cancels the entry cost out of the PnL
-    # window and reports zero net_pnl for an episode that actually lost
-    # money on round-trip cost.
-    nav_start_capital = (
-        Decimal(str(capital_usd)) if capital_usd is not None else None
-    )
-    # Fail-close: when capital_usd is omitted, we cannot anchor nav_start to the
-    # pre-trade capital. Reporting net_pnl based on the first observed NAV
-    # silently cancels round-trip cost out of the PnL window. Require a
-    # baseline; if absent, return net_pnl=None and mark the window as
-    # NAV_START_CAPITAL_MISSING.
-    capital_missing = nav_start_capital is None
+    if capital_usd is _CAPITAL_USD_UNSET:
+        # Caller did not pass capital_usd at all (kwarg left unset).
+        # Preserve the legacy fall-back path: nav_start = first_step.nav.
+        # The 752c583-era suite relies on this for tests that call
+        # episode_summary(steps) without the kwarg.
+        capital_explicit = False
+        nav_start_capital = None
+    else:
+        capital_explicit = True
+        nav_start_capital = (
+            Decimal(str(capital_usd)) if capital_usd is not None else None
+        )
+    capital_missing = capital_explicit and capital_usd is None
     if len(valid_steps) >= 2:
         start_step = valid_steps[0]
         end_step = valid_steps[-1]
         if capital_missing:
+            # Explicit capital_usd=None: caller is asking the function to
+            # refuse to compute PnL (e.g. G4.1 fail-close test).  Report
+            # net_pnl=None and mark the window so consumers must not trust
+            # the silent fall-back value.
             nav_start = None
-            nav_end = None
+            nav_end = end_step.nav
             net_pnl_val = None
             window_reason = "NAV_START_CAPITAL_MISSING"
         else:
-            nav_start = nav_start_capital
+            # capital_usd provided OR kwarg unset: anchor to the supplied
+            # baseline (or fall back to first observed NAV if unset).
+            nav_start = nav_start_capital if nav_start_capital is not None else start_step.nav
             nav_end = end_step.nav
             net_pnl_val = net_pnl(nav_end, nav_start, Decimal(0))
         hodl_delta = (end_step.hodl_value - start_step.hodl_value) if has_hodl else None

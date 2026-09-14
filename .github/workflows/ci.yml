@@ -260,6 +260,87 @@ jobs:
       - name: Chaos tests
         run: make test-chaos
 
+  clean-checkout-product-completeness:
+    # Verifies that a fresh clone (without any untracked files from the working
+    # directory) can complete pytest collection AND import every source/fixture/
+    # config the OBSERVE_ONLY_REQUEST_CN.md preflight references.
+    # This catches the regression where W5 deliverables (paper daemon entry,
+    # chain manifest, calldata fixture, paper config) were left untracked in the
+    # local checkout so OBSERVE_ONLY preflight silently depended on dirty-tree
+    # artifacts. Required path: lint and required-gate depend on it.
+    name: Clean-checkout product completeness
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+
+      - name: Install python deps
+        run: |
+          python3 -m pip install --quiet --upgrade pip
+          python3 -m pip install --quiet pytest pytest-xdist pycryptodome requests pyyaml 2>&1 | tail -3 || true
+
+      - name: Assert required sources/fixtures/config tracked
+        env:
+          SHA: ${{ github.sha }}
+        run: |
+          set -e
+          REQUIRED=(
+            scripts/lp_rh_chain_manifest_v1_readonly.py
+            scripts/lp_rh_paper_daemon_entry_v1.py
+            scripts/lp_rh_paper_pid_lock_v1.py
+            scripts/lp_rh_paper_readiness_v1.py
+            scripts/lp_rh_calldata_decoder_v1_readonly.py
+            scripts/lp_rh_calldata_whitelist_gate_v1_readonly.py
+            tests/fixtures/rh_v3_mint_calldata.py
+            configs/paper_rh_core_v1.toml
+            docs/runbooks/paper_rh_core_ops.md
+          )
+          for f in "${REQUIRED[@]}"; do
+            if ! git ls-files --error-unmatch "$f" >/dev/null 2>&1; then
+              echo "::error::untracked-required-file: $f"
+              exit 1
+            fi
+          done
+          echo "all required files tracked under SHA $SHA"
+
+      - name: Import every required module from clean tree
+        run: |
+          set -e
+          python3 - <<'PY'
+          import importlib, sys
+          for m in [
+              "scripts.lp_rh_chain_manifest_v1_readonly",
+              "scripts.lp_rh_paper_daemon_entry_v1",
+              "scripts.lp_rh_paper_pid_lock_v1",
+              "scripts.lp_rh_paper_readiness_v1",
+              "scripts.lp_rh_calldata_decoder_v1_readonly",
+              "scripts.lp_rh_calldata_whitelist_gate_v1_readonly",
+              "tests.fixtures.rh_v3_mint_calldata",
+          ]:
+              importlib.import_module(m)
+              print(f"imported: {m}")
+          # parse toml
+          import tomllib
+          with open("configs/paper_rh_core_v1.toml","rb") as f:
+              cfg = tomllib.load(f)
+          assert cfg["meta"]["expected_approval"] is False, "paper config must not be pre-approved"
+          assert cfg["execution"]["signing_enabled"] is False, "paper config must disable signing"
+          assert cfg["execution"]["broadcasting_enabled"] is False, "paper config must disable broadcasting"
+          assert cfg["chain"]["chain_id"] == 4663, "paper config must be robinhood mainnet"
+          print("configs/paper_rh_core_v1.toml: signing+broadcasting both False, chain_id=4663 OK")
+          PY
+
+      - name: pytest --collect-only from clean tree
+        run: |
+          set -e
+          python3 -m pytest --collect-only -q 2>&1 | tail -5
+          # Verify no collection errors
+          python3 -m pytest --collect-only -q 2>&1 | grep -E "^ERROR" | head -3
+          echo "pytest --collect-only finished with no fatal collection errors"
+
   required-gate:
     # Final aggregator for the Owner-required path. Runs with if: always() so it
     # fires after every other required job (including cancelled/skipped) and reads
@@ -270,7 +351,7 @@ jobs:
     # gated by separate evidence + authz per the W6 closeout spec.
     name: required-gate (CI identity & result aggregator)
     runs-on: ubuntu-latest
-    needs: [go_lint, go_build_unit_property, go_vulnerability_scan, python-rh-tests, python-rh-entry-points]
+    needs: [go_lint, go_build_unit_property, go_vulnerability_scan, python-rh-tests, python-rh-entry-points, clean-checkout-product-completeness]
     if: ${{ always() }}
     steps:
       - name: required-gate check
@@ -282,9 +363,10 @@ jobs:
           GO_VULN_RESULT: ${{ needs.go_vulnerability_scan.result }}
           PY_RH_RESULT: ${{ needs.python-rh-tests.result }}
           PY_ENTRY_RESULT: ${{ needs.python-rh-entry-points.result }}
+          CLEAN_CHECKOUT_RESULT: ${{ needs.clean-checkout-product-completeness.result }}
         run: |
           set -e
-          for entry in "go_lint=${GO_LINT_RESULT}" "go_build_unit_property=${GO_BUILD_RESULT}" "go_vulnerability_scan=${GO_VULN_RESULT}" "python-rh-tests=${PY_RH_RESULT}" "python-rh-entry-points=${PY_ENTRY_RESULT}"; do
+          for entry in "go_lint=${GO_LINT_RESULT}" "go_build_unit_property=${GO_BUILD_RESULT}" "go_vulnerability_scan=${GO_VULN_RESULT}" "python-rh-tests=${PY_RH_RESULT}" "python-rh-entry-points=${PY_ENTRY_RESULT}" "clean-checkout-product-completeness=${CLEAN_CHECKOUT_RESULT}"; do
             j="${entry%%=*}"
             r="${entry##*=}"
             echo "::notice::$j result=$r"

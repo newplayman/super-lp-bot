@@ -50,6 +50,22 @@ def _mock_default_pool_meta(monkeypatch):
         "scripts.lp_rh_reconciliation_v1.DEFAULT_POOL_META_PATH",
         DEFAULT_TEST_POOL_META,
     )
+    # The quote evidence TTL is 24h but the host clock may drift past the
+    # fixture's observed_at (2026-09-11); freeze datetime.now() inside the
+    # reconciliation module so QUOTE_EVIDENCE_EXPIRED cannot flip
+    # has_evidence to False.  Tests that need a different ``now`` may still
+    # override via the ``now`` kwarg on run_reconciliation.
+    from datetime import datetime, timezone
+    import scripts.lp_rh_reconciliation_v1 as _mod
+    fixed_now = datetime(2026, 9, 11, 10, 0, 0, tzinfo=timezone.utc)
+
+    class _FrozenDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            if tz is None:
+                return fixed_now.replace(tzinfo=None)
+            return fixed_now.astimezone(tz)
+    monkeypatch.setattr(_mod, "datetime", _FrozenDateTime)
 
 
 def _populate_balanced_dataset(conn: sqlite3.Connection, *, position_id="pos-test-1"):

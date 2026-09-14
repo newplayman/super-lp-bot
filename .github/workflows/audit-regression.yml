@@ -42,6 +42,7 @@ jobs:
       - name: Assert mode, HEAD, and zero defects
         env:
           GITHUB_HEAD_SHA: ${{ github.sha }}
+          GITHUB_SHA: ${{ github.sha }}
         run: |
           cat > /tmp/assert_audit_repro.py <<'PYEOF'
           import json
@@ -51,13 +52,34 @@ jobs:
           with open("audit_results.json", "r", encoding="utf-8") as fh:
               d = json.load(fh)
 
-          src = d.get("source", {}) or {}
-          mode = src.get("mode")
-          head = src.get("head")
-          expected_head = os.environ.get("GITHUB_HEAD_SHA", "")
-          defects = d.get("defects_reproduced", -1)
-          probe_errors = d.get("probe_errors", -1)
+          # v1 schema contract: schema_version / run_id / head_sha / mode are
+          # top-level. counts.defects_reproduced / counts.probe_errors are
+          # mirrored to top-level `defects_reproduced` / `probe_errors` so a
+          # single parser can read either path; assert both are consistent.
+          schema_version = d.get("schema_version")
+          if schema_version != "audit_repro/1":
+              sys.stderr.write(
+                  "FAIL: schema_version=%r; expected audit_repro/1. "
+                  "Update the assert step to the matching version.\n" % schema_version
+              )
+              sys.exit(2)
 
+          run_id = d.get("run_id")
+          if not run_id:
+              sys.stderr.write("FAIL: missing run_id at top level\n")
+              sys.exit(2)
+
+          head = d.get("head_sha")
+          expected_head = os.environ.get("GITHUB_HEAD_SHA") or os.environ.get("GITHUB_SHA", "")
+          if not expected_head or head != expected_head:
+              sys.stderr.write(
+                  "FAIL: head_sha %r != github.sha %r; "
+                  "--allow-other-head is required when HEAD != PIN.\n"
+                  % (head, expected_head)
+              )
+              sys.exit(2)
+
+          mode = d.get("mode")
           if mode != "AST_EXTRACTED_CHECKOUT_FUNCTIONS_WITH_TEST_SHIMS":
               sys.stderr.write(
                   "FAIL: audit_repro ran in mode %r, "
@@ -65,13 +87,35 @@ jobs:
                   "Common cause: --repo / --allow-other-head missing.\n" % mode
               )
               sys.exit(2)
-          if not expected_head or head != expected_head:
+
+          # top-level github.sha must equal GITHUB_SHA so external consumers
+          # can cross-check without re-reading workflow env.
+          gh = d.get("github") or {}
+          gh_sha = gh.get("sha")
+          if gh_sha != expected_head:
               sys.stderr.write(
-                  "FAIL: AST head %r != github.sha %r; "
-                  "--allow-other-head is required when HEAD != PIN.\n"
-                  % (head, expected_head)
+                  "FAIL: github.sha=%r != github.sha env=%r\n" % (gh_sha, expected_head)
               )
               sys.exit(2)
+
+          counts = d.get("counts") or {}
+          defects_top = d.get("defects_reproduced", -1)
+          probe_top = d.get("probe_errors", -1)
+          if defects_top != counts.get("defects_reproduced"):
+              sys.stderr.write(
+                  "FAIL: top-level defects_reproduced=%r != counts.defects_reproduced=%r\n"
+                  % (defects_top, counts.get("defects_reproduced"))
+              )
+              sys.exit(2)
+          if probe_top != counts.get("probe_errors"):
+              sys.stderr.write(
+                  "FAIL: top-level probe_errors=%r != counts.probe_errors=%r\n"
+                  % (probe_top, counts.get("probe_errors"))
+              )
+              sys.exit(2)
+
+          defects = counts.get("defects_reproduced")
+          probe_errors = counts.get("probe_errors")
           if probe_errors != 0:
               sys.stderr.write("FAIL: probe_errors=%d\n" % probe_errors)
               sys.exit(2)
@@ -80,6 +124,8 @@ jobs:
                   "FAIL: defects_reproduced=%d; audit findings regressed.\n" % defects
               )
               sys.exit(2)
-          print("OK: mode=%s head=%s defects=%d" % (mode, (head or "")[:12], defects))
+          print("OK: schema_version=%s run_id=%s mode=%s head=%s defects=%d probe_errors=%d github.sha=%s" % (
+              schema_version, run_id, mode, (head or "")[:12], defects, probe_errors, (gh_sha or "")[:12],
+          ))
           PYEOF
           python3 /tmp/assert_audit_repro.py
