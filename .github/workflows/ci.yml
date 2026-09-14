@@ -44,33 +44,31 @@ jobs:
       - name: tidy
         run: go mod tidy && git diff --exit-code go.mod go.sum
 
-      # CI closeout 2026-09-14: golangci-lint v2 in 多次 -build-tags=a,b,c 形态
-      # (即 .golangci.yml::run.build-tags 同时含多个 tag)会把这些 tag 当 AND 关系处理，
-      # 把 cmd/lpbot/mode_dryrun.go、mode_shadow.go、mode_live.go 三个文件同时拉进包，
-      # 触发 typecheck 假阳性 "validateMode redeclared"(每个 mode_*.go 各定义一次)。
-      # 真编译永远按单 tag 走(Makefile build-dryrun/shadow/live 各自 -tags=<one>),
-      # 三个文件互斥,无冲突 — go_build_unit_property job 已验证 PASS。
-      # 修复:lint job 用 sequential 3 次 invocation,每次单 tag,等价于 v1 时代的
-      # "lint across all build tags"语义且避开工具 bug。property/fork/chaos 是 test-only tag,
-      # 不影响 cmd/lpbot 包,不进入本 lint job。
-      # golangci-lint-action 自身 step 装 binary 并跑单次 lint; 因为该 action 不便串多
-      # 次 invocation,改在下面独立 run: 步骤里完成 sequential 3 次 lint。
-      # 该步骤 args 给一个 noop 命令 (--version) 让 action 立刻返回成功,只起 install
-      # binary 的作用。
-      - name: golangci-lint (install binary only)
-        uses: golangci/golangci-lint-action@23faadfdeb23a6f9e511beaba149bb123b5b145a  # v6.0.0
-        with:
-          version: v2.10.0
-          args: --version
+      # CI closeout 2026-09-14: 不再依赖 golangci/golangci-lint-action(它在单 step
+      # 内只能跑一次 lint invocation,不便串多次)。改用直接下载 binary + sequential
+      # 3 次 invocation,每次单 build tag。
+      # 根因:golangci-lint v2 在 comma-list build-tags(以及 .golangci.yml::run.build-tags
+      # 列多项)时会当 AND 解析,把 cmd/lpbot/mode_dryrun.go + mode_shadow.go +
+      # mode_live.go 三个 //go:build 隔离文件同时拉进包,触发 typecheck 假阳性
+      # "validateMode redeclared"。真编译(make build-dryrun/shadow/live)永远按单 tag
+      # 走,三个文件互斥,无冲突 — go_build_unit_property job 已验证 PASS。
+      # binary 通过官方 release tarball 下载(SHA256 校验),版本 v2.10.0 与项目 .golangci.yml
+      # v2 schema 对齐。
+      - name: Install golangci-lint v2.10.0
+        env:
+          LINT_VERSION: v2.10.0
+        run: |
+          set -euo pipefail
+          URL="https://github.com/golangci/golangci-lint/releases/download/${LINT_VERSION}/golangci-lint-${LINT_VERSION#v}-linux-amd64.tar.gz"
+          curl -sSfL --retry 3 -o /tmp/gl.tgz "$URL"
+          tar -C /tmp -xzf /tmp/gl.tgz
+          sudo mv "/tmp/golangci-lint-${LINT_VERSION#v}-linux-amd64/golangci-lint" /usr/local/bin/golangci-lint
+          golangci-lint --version
 
       - name: golangci-lint sequential by build tag
-        # CI closeout 2026-09-14: 改用 sequential 3 次 invocation, 每次单 build tag,
-        # 避免 golangci-lint v2 在 comma-list build-tags 上的工具 bug
-        # (会把多 tag 当 AND 解析, 把 cmd/lpbot/mode_*.go 同时拉进包触发 typecheck
-        # 假阳性 "validateMode redeclared")。 真编译 (make build-dryrun/shadow/live)
-        # 永远按单 tag 走, 三个文件互斥, 无冲突 — go_build_unit_property job 已
-        # 验证 PASS。 property/fork/chaos 是 test-only tag, 不影响 cmd/lpbot 包,
-        # 不进入本 lint job。
+        # 跑 3 次,每次单 tag: dryrun / shadow / live。
+        # 任何一次失败立即非零退出,让 step fail。不偷偷吞错。
+        # property/fork/chaos 是 test-only tag,不影响 cmd/lpbot 包,不进入本 lint job。
         run: |
           set -e
           for tag in dryrun shadow live; do
