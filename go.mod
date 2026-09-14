@@ -14,7 +14,7 @@ require (
 	github.com/pressly/goose/v3 v3.27.1
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/client_model v0.6.2
-	github.com/redis/go-redis/v9 v9.7.1
+	github.com/redis/go-redis/v9 v9.7.3
 	github.com/shopspring/decimal v1.4.0
 	github.com/stretchr/testify v1.11.1
 	go.uber.org/zap v1.28.0

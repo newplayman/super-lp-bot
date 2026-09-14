@@ -9,8 +9,23 @@ on:
   schedule:
     - cron: "0 6 * * *"
 
+# CI closeout 2026-09-14 changes (vs prior quality-gate aggregate):
+#   - golangci-lint-action pinned to SHA 23faadfdeb23a6f9e511beaba149bb123b5b145a (=v6.0.0)
+#     and version moved v1.65.0 -> v1.64.8 (v1.65.0 release asset has been removed from
+#     GitHub Releases; v1.64.8 is the last existing v1.x binary, same v1 config schema,
+#     same linters, no analysis-scope change).
+#   - quality-gate split into independent jobs so build/unit/property actually run even
+#     when lint fails: go_lint, go_build_unit_property, go_vulnerability_scan.
+#   - python-rh-tests split: python-rh-tests runs full pytest, python-rh-entry-points
+#     runs the entry-point subset with empty env, neither depends on the other.
+#   - required-gate aggregator runs with if: always() and only PASSES if every required
+#     job (including upstream quality-gate name for branch-protection back-compat)
+#     actually completed SUCCESS without cancelled/skipped/timed_out.
+#   - No continue-on-error on required path; no || true; failure semantics preserved.
+
 jobs:
-  quality-gate:
+  go_lint:
+    name: Go lint (golangci-lint, pinned)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -25,10 +40,31 @@ jobs:
         run: go mod tidy && git diff --exit-code go.mod go.sum
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@23faadfdeb23a6f9e511beaba149bb123b5b145a  # v6.0.0
         with:
-          version: v1.65.0
+          version: v1.64.8
           args: --timeout=5m
+
+      - name: Test files unmodified check
+        run: |
+          set -e
+          BASE=$(git merge-base origin/main HEAD || echo origin/main)
+          if git diff "$BASE" -- '*_test.go' | grep -E '^-[^-]' | grep -v '^---'; then
+            echo "ERROR: Cannot delete/modify *_test.go"
+            exit 1
+          fi
+
+  go_build_unit_property:
+    name: Go build + unit + property
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+          cache: true
 
       - name: Build all tags
         run: |
@@ -50,15 +86,8 @@ jobs:
       - name: Property tests
         run: make test-property
 
-      - name: Test files unmodified check
-        run: |
-          set -e
-          BASE=$(git merge-base origin/main HEAD || echo origin/main)
-          if git diff "$BASE" -- '*_test.go' | grep -E '^-[^-]' | grep -v '^---'; then
-            echo "ERROR: Cannot delete/modify *_test.go"
-            exit 1
-          fi
-  advisory-audit:
+  go_vulnerability_scan:
+    name: Go vet + govulncheck (advisory audit)
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
@@ -77,34 +106,33 @@ jobs:
           go vet ./...
           echo "=== Running govulncheck ==="
           "$(go env GOPATH)"/bin/govulncheck ./...
-  fork-tests:
-    runs-on: ubuntu-latest
-    needs: quality-gate
-    if: github.event.schedule == '0 6 * * *' || contains(github.event.head_commit.message, '[run-fork]')
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with: { go-version: "1.25" }
-      - uses: foundry-rs/foundry-toolchain@v1
-      - name: Fork tests
-        env:
-          BASE_RPC_PRIMARY: ${{ secrets.BASE_RPC_PRIMARY }}
-          SOL_RPC_PRIMARY:  ${{ secrets.SOL_RPC_PRIMARY }}
-        run: make test-fork
 
-  chaos-tests:
+  quality-gate:
+    # Back-compat aggregator preserving the original required status check name.
+    # Reads result of the split jobs (go_lint + go_build_unit_property +
+    # go_vulnerability_scan) and only PASSES if every required component is
+    # SUCCESS (not cancelled / skipped / failed / timed_out). required-gate below
+    # performs the same check including python tests.
+    name: quality-gate (back-compat aggregator)
     runs-on: ubuntu-latest
-    if: github.event_name == 'schedule'
-    needs: quality-gate
+    needs: [go_lint, go_build_unit_property, go_vulnerability_scan]
+    if: ${{ always() }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with: { go-version: "1.25" }
-      - name: Chaos tests
-        run: make test-chaos
+      - name: quality-gate gate
+        run: |
+          set -e
+          for j in go_lint go_build_unit_property go_vulnerability_scan; do
+            r="${{ needs.$j.result }}"
+            echo "::notice::$j result=$r"
+            if [ "$r" != "success" ]; then
+              echo "::error::quality-gate failed because $j=$r"
+              exit 1
+            fi
+          done
+          echo "quality-gate OK"
 
   python-rh-tests:
-    name: RH Python tests (no secrets, no RPC)
+    name: RH Python tests (no secrets, no RPC) (3.12)
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -129,19 +157,100 @@ jobs:
           pip install --no-deps pytest pycryptodome requests pyyaml
       - name: Run RH Python unit + integration tests
         # 默认不注入空 env：unit tests 必须用 tmp_path / fake transport 自洽；
-        # 仅下方 daemon entry-point step 才故意注入空 env 验证 no-send 护栏触发。
         # 保留生产"变量存在即拒绝"的 no-send 护栏，未触达此 CI 改造时仍生效。
         run: |
           cd ${{ github.workspace }}
           python -m pytest tests/ -q --tb=short -p no:cacheprovider
+
+  python-rh-entry-points:
+    name: RH Python entry-point integration subset
+    # 独立 job: 不 needs: python-rh-tests; 全量 pytest 失败不影响本 job 调度。
+    # 仅跑 _run_episode_persisted 等离线确定性入口(原任务书 §6.3 要求)。
+    # 显式注入空 env 验证 no-send 护栏:DATABASE_URL / RH_RPC_* 已存在但为空 → 拒签拒广播。
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12"]
+    env:
+      RH_RPC_PRIMARY: ""
+      RH_RPC_SECONDARY: ""
+      DATABASE_URL: ""
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-test.txt
+          pip install --no-deps pytest pycryptodome requests pyyaml
       - name: Run daemon entry-point integration subset
-        # 不跑完整 daemon（需要 72h），只跑 _run_episode_persisted 等离线确定性入口。
-        # 显式注入空 env 验证 no-send 护栏：DATABASE_URL / RH_RPC_* 已存在但为空 → 拒签拒广播。
-        env:
-          RH_RPC_PRIMARY: ""
-          RH_RPC_SECONDARY: ""
-          DATABASE_URL: ""
         run: |
           cd ${{ github.workspace }}
           python -m pytest tests/ -q -k "episode_persisted or daemon or reconciliation or graduation or readiness" \
             --tb=short -p no:cacheprovider
+
+  fork-tests:
+    runs-on: ubuntu-latest
+    needs: [quality-gate]
+    if: github.event.schedule == '0 6 * * *' || contains(github.event.head_commit.message, '[run-fork]')
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version: "1.25" }
+      - uses: foundry-rs/foundry-toolchain@v1
+      - name: Fork tests
+        env:
+          BASE_RPC_PRIMARY: ${{ secrets.BASE_RPC_PRIMARY }}
+          SOL_RPC_PRIMARY:  ${{ secrets.SOL_RPC_PRIMARY }}
+        run: make test-fork
+
+  chaos-tests:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    needs: [quality-gate]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version: "1.25" }
+      - name: Chaos tests
+        run: make test-chaos
+
+  required-gate:
+    # Final aggregator for the Owner-required path. Runs with if: always() so it
+    # fires after every other required job (including cancelled/skipped) and reads
+    # each job's .result, rejecting anything that is not literal "success".
+    # needs.result alone is not sufficient coverage proof; this job only confirms
+    # that each required job reached success without swallowing errors. PASSING
+    # required-gate does NOT automatically sign off Paper/Live; those remain
+    # gated by separate evidence + authz per the W6 closeout spec.
+    name: required-gate (CI identity & result aggregator)
+    runs-on: ubuntu-latest
+    needs: [go_lint, go_build_unit_property, go_vulnerability_scan, python-rh-tests, python-rh-entry-points]
+    if: ${{ always() }}
+    steps:
+      - name: required-gate check
+        run: |
+          set -e
+          declare -A REQUIRED=(
+            [go_lint]=1
+            [go_build_unit_property]=1
+            [go_vulnerability_scan]=1
+            [python-rh-tests]=1
+            [python-rh-entry-points]=1
+          )
+          for j in "${!REQUIRED[@]}"; do
+            r="${{ needs.$j.result }}"
+            echo "::notice::$j result=$r"
+            if [ "$r" != "success" ]; then
+              echo "::error::required-gate failed: $j result=$r (must be success)"
+              exit 1
+            fi
+          done
+          SHA="${{ github.sha }}"
+          echo "required-gate PASS for SHA $SHA"

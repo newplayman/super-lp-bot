@@ -1,0 +1,395 @@
+{
+  "total_count": 5,
+  "jobs": [
+    {
+      "id": 103867576206,
+      "run_id": 34809417880,
+      "workflow_name": "CI",
+      "head_branch": "feat/prd-v2.1-m0-shadow",
+      "run_url": "https://api.github.com/repos/newplayman/super-lp-bot/actions/runs/34809417880",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOSh8Hd88AAAAYLv1vjg",
+      "head_sha": "cb873f2cef814fd0ffdc6f4c94cba46d0efe7110",
+      "url": "https://api.github.com/repos/newplayman/super-lp-bot/actions/jobs/103867576206",
+      "html_url": "https://github.com/newplayman/super-lp-bot/actions/runs/34809417880/job/103867576206",
+      "status": "completed",
+      "conclusion": "failure",
+      "created_at": "2026-09-14T05:22:37Z",
+      "started_at": "2026-09-14T05:22:40Z",
+      "completed_at": "2026-09-14T05:23:05Z",
+      "name": "quality-gate",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-09-14T05:22:40Z",
+          "completed_at": "2026-09-14T05:22:42Z"
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-09-14T05:22:42Z",
+          "completed_at": "2026-09-14T05:22:47Z"
+        },
+        {
+          "name": "Run actions/setup-go@v5",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-09-14T05:22:47Z",
+          "completed_at": "2026-09-14T05:22:49Z"
+        },
+        {
+          "name": "tidy",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-09-14T05:22:49Z",
+          "completed_at": "2026-09-14T05:23:03Z"
+        },
+        {
+          "name": "golangci-lint",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 5,
+          "started_at": "2026-09-14T05:23:03Z",
+          "completed_at": "2026-09-14T05:23:03Z"
+        },
+        {
+          "name": "Build all tags",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 6,
+          "started_at": "2026-09-14T05:23:03Z",
+          "completed_at": "2026-09-14T05:23:03Z"
+        },
+        {
+          "name": "Migration sync check",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 7,
+          "started_at": "2026-09-14T05:23:03Z",
+          "completed_at": "2026-09-14T05:23:03Z"
+        },
+        {
+          "name": "Unit tests",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 8,
+          "started_at": "2026-09-14T05:23:03Z",
+          "completed_at": "2026-09-14T05:23:03Z"
+        },
+        {
+          "name": "Property tests",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 9,
+          "started_at": "2026-09-14T05:23:03Z",
+          "completed_at": "2026-09-14T05:23:03Z"
+        },
+        {
+          "name": "Test files unmodified check",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 10,
+          "started_at": "2026-09-14T05:23:03Z",
+          "completed_at": "2026-09-14T05:23:03Z"
+        },
+        {
+          "name": "Post golangci-lint",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 18,
+          "started_at": "2026-09-14T05:23:03Z",
+          "completed_at": "2026-09-14T05:23:03Z"
+        },
+        {
+          "name": "Post Run actions/setup-go@v5",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 19,
+          "started_at": "2026-09-14T05:23:03Z",
+          "completed_at": "2026-09-14T05:23:03Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 20,
+          "started_at": "2026-09-14T05:23:03Z",
+          "completed_at": "2026-09-14T05:23:03Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 21,
+          "started_at": "2026-09-14T05:23:03Z",
+          "completed_at": "2026-09-14T05:23:03Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/newplayman/super-lp-bot/check-runs/103867576206",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "runner_id": 1000001346,
+      "runner_name": "GitHub Actions 1000001346",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 103867576366,
+      "run_id": 34809417880,
+      "workflow_name": "CI",
+      "head_branch": "feat/prd-v2.1-m0-shadow",
+      "run_url": "https://api.github.com/repos/newplayman/super-lp-bot/actions/runs/34809417880",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOSh8Hd88AAAAYLv1wLg",
+      "head_sha": "cb873f2cef814fd0ffdc6f4c94cba46d0efe7110",
+      "url": "https://api.github.com/repos/newplayman/super-lp-bot/actions/jobs/103867576366",
+      "html_url": "https://github.com/newplayman/super-lp-bot/actions/runs/34809417880/job/103867576366",
+      "status": "completed",
+      "conclusion": "failure",
+      "created_at": "2026-09-14T05:22:37Z",
+      "started_at": "2026-09-14T05:22:40Z",
+      "completed_at": "2026-09-14T05:23:02Z",
+      "name": "RH Python tests (no secrets, no RPC) (3.12)",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-09-14T05:22:40Z",
+          "completed_at": "2026-09-14T05:22:41Z"
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-09-14T05:22:41Z",
+          "completed_at": "2026-09-14T05:22:45Z"
+        },
+        {
+          "name": "Set up Python 3.12",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-09-14T05:22:45Z",
+          "completed_at": "2026-09-14T05:22:45Z"
+        },
+        {
+          "name": "Install test dependencies",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-09-14T05:22:45Z",
+          "completed_at": "2026-09-14T05:22:52Z"
+        },
+        {
+          "name": "Run RH Python unit + integration tests",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 5,
+          "started_at": "2026-09-14T05:22:52Z",
+          "completed_at": "2026-09-14T05:23:01Z"
+        },
+        {
+          "name": "Run daemon entry-point integration subset",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 6,
+          "started_at": "2026-09-14T05:23:01Z",
+          "completed_at": "2026-09-14T05:23:01Z"
+        },
+        {
+          "name": "Post Set up Python 3.12",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 11,
+          "started_at": "2026-09-14T05:23:01Z",
+          "completed_at": "2026-09-14T05:23:01Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 12,
+          "started_at": "2026-09-14T05:23:01Z",
+          "completed_at": "2026-09-14T05:23:01Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 13,
+          "started_at": "2026-09-14T05:23:01Z",
+          "completed_at": "2026-09-14T05:23:01Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/newplayman/super-lp-bot/check-runs/103867576366",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "runner_id": 1000001347,
+      "runner_name": "GitHub Actions 1000001347",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 103867576424,
+      "run_id": 34809417880,
+      "workflow_name": "CI",
+      "head_branch": "feat/prd-v2.1-m0-shadow",
+      "run_url": "https://api.github.com/repos/newplayman/super-lp-bot/actions/runs/34809417880",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOSh8Hd88AAAAYLv1waA",
+      "head_sha": "cb873f2cef814fd0ffdc6f4c94cba46d0efe7110",
+      "url": "https://api.github.com/repos/newplayman/super-lp-bot/actions/jobs/103867576424",
+      "html_url": "https://github.com/newplayman/super-lp-bot/actions/runs/34809417880/job/103867576424",
+      "status": "completed",
+      "conclusion": "failure",
+      "created_at": "2026-09-14T05:22:37Z",
+      "started_at": "2026-09-14T05:22:40Z",
+      "completed_at": "2026-09-14T05:24:37Z",
+      "name": "advisory-audit",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-09-14T05:22:41Z",
+          "completed_at": "2026-09-14T05:22:42Z"
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-09-14T05:22:42Z",
+          "completed_at": "2026-09-14T05:22:45Z"
+        },
+        {
+          "name": "Run actions/setup-go@v5",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-09-14T05:22:45Z",
+          "completed_at": "2026-09-14T05:22:47Z"
+        },
+        {
+          "name": "Install advisory tools",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-09-14T05:22:47Z",
+          "completed_at": "2026-09-14T05:23:12Z"
+        },
+        {
+          "name": "Dependency audit",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 5,
+          "started_at": "2026-09-14T05:23:12Z",
+          "completed_at": "2026-09-14T05:24:35Z"
+        },
+        {
+          "name": "Post Run actions/setup-go@v5",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 9,
+          "started_at": "2026-09-14T05:24:35Z",
+          "completed_at": "2026-09-14T05:24:35Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10,
+          "started_at": "2026-09-14T05:24:35Z",
+          "completed_at": "2026-09-14T05:24:35Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-09-14T05:24:35Z",
+          "completed_at": "2026-09-14T05:24:35Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/newplayman/super-lp-bot/check-runs/103867576424",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "runner_id": 1000001348,
+      "runner_name": "GitHub Actions 1000001348",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 103867659663,
+      "run_id": 34809417880,
+      "workflow_name": "CI",
+      "head_branch": "feat/prd-v2.1-m0-shadow",
+      "run_url": "https://api.github.com/repos/newplayman/super-lp-bot/actions/runs/34809417880",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOSh8Hd88AAAAYLv61jw",
+      "head_sha": "cb873f2cef814fd0ffdc6f4c94cba46d0efe7110",
+      "url": "https://api.github.com/repos/newplayman/super-lp-bot/actions/jobs/103867659663",
+      "html_url": "https://github.com/newplayman/super-lp-bot/actions/runs/34809417880/job/103867659663",
+      "status": "completed",
+      "conclusion": "skipped",
+      "created_at": "2026-09-14T05:23:06Z",
+      "started_at": "2026-09-14T05:23:06Z",
+      "completed_at": "2026-09-14T05:23:05Z",
+      "name": "fork-tests",
+      "steps": [
+
+      ],
+      "check_run_url": "https://api.github.com/repos/newplayman/super-lp-bot/check-runs/103867659663",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "runner_id": null,
+      "runner_name": null,
+      "runner_group_id": null,
+      "runner_group_name": null
+    },
+    {
+      "id": 103867659965,
+      "run_id": 34809417880,
+      "workflow_name": "CI",
+      "head_branch": "feat/prd-v2.1-m0-shadow",
+      "run_url": "https://api.github.com/repos/newplayman/super-lp-bot/actions/runs/34809417880",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOSh8Hd88AAAAYLv62vQ",
+      "head_sha": "cb873f2cef814fd0ffdc6f4c94cba46d0efe7110",
+      "url": "https://api.github.com/repos/newplayman/super-lp-bot/actions/jobs/103867659965",
+      "html_url": "https://github.com/newplayman/super-lp-bot/actions/runs/34809417880/job/103867659965",
+      "status": "completed",
+      "conclusion": "skipped",
+      "created_at": "2026-09-14T05:23:06Z",
+      "started_at": "2026-09-14T05:23:06Z",
+      "completed_at": "2026-09-14T05:23:05Z",
+      "name": "chaos-tests",
+      "steps": [
+
+      ],
+      "check_run_url": "https://api.github.com/repos/newplayman/super-lp-bot/check-runs/103867659965",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "runner_id": null,
+      "runner_name": null,
+      "runner_group_id": null,
+      "runner_group_name": null
+    }
+  ]
+}
