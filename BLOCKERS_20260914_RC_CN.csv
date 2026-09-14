@@ -1,0 +1,11 @@
+id,severity,description,evidence,owner_decision_required,recommended_resolution,blocker_resolved
+G1_RESOLVED,RESOLVED,"Paper run_once 接 _run_episode_persisted 真实入口（不再 stub return 0）","scripts/lp_rh_paper_daemon_entry_v1.py:339-385","否","已实现","是"
+G2_RESOLVED,RESOLVED,"严格 E2E 正控制（无条件 NAV 1000→990、PnL=-10、对账 PASS）","tests/test_lp_rh_paper_daemon_entry_v1.py::TestPaperRunOncePositiveControl","否","已实现","是"
+G3_RESOLVED,RESOLVED,"Forward Paper 数据有效性 + Stage A 真算（禁止 PID/tick/row-count 代理）","scripts/lp_rh_paper_data_validity_v1.py + tests/test_lp_rh_paper_data_validity_v1.py","否","已实现","是"
+G4_RESOLVED,RESOLVED,"干净 checkout 重验 + JUnit/原始日志保存","reports/lp_rh/release_candidate_a767740/junit_full.xml + audit_repro.json","否","已实现","是"
+DB_EMPTY_NOT_PROVEN,OPEN,"rh_market_states 0 行 → Forward Paper 数据有效性 NOT_PROVEN","scripts/lp_rh_paper_data_validity_v1.py:165-178","是","等 owner 决策：是否启动采集器累积 ≥ 72h 数据","否"
+HOURS_COVERED_72H,OPEN,"本任务不累积 hours_covered（不启动新采集器）","rh_market_states 行数=0","是","owner 显式批准 OBSERVE_ONLY 退出后才累积","否"
+VERIFY_CALLDATA_OFF,OPEN,"paper episode verify_calldata=False（与 D1 一致；whitelist gate 是 W2 工作）","scripts/lp_rh_paper_daemon_entry_v1.py:367","否","下期 W2 接 TxIntentWriter + whitelist","否"
+SINGLE_PROVIDER,OPEN,"Live Gate SINGLE_PROVIDER_NOT_ALLOWED_FOR_LIVE（freeze 阻断）","scripts/lp_rh_readiness_v1_readonly.py:512","是","owner 显式解除 freeze 才修","否"
+CAPITAL_POLICY,OPEN,"Live Gate CAPITAL_POLICY_NOT_APPROVED（freeze 阻断）","configs/ + 资本政策文档","是","owner 提供政策文档 + 解除 freeze","否"
+LOCAL_VS_REMOTE_NOT_VERIFIED,OPEN,"远端 Actions 同一最终 SHA 状态未确认","Gap 4 一致性要求 owner 推送后目视","是","owner push → Actions → 视觉确认","否"

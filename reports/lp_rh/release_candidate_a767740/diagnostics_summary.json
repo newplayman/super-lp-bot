@@ -1,0 +1,77 @@
+{
+  "head_sha": "a7677405c2ecaaf100fe01124973ffec4511abfb",
+  "verdict": "FAIL",
+  "reasons": [
+    "COVERAGE_INSUFFICIENT",
+    "COVERAGE_INSUFFICIENT",
+    "STAGE_A_KEY_FIELDS_INCOMPLETE"
+  ],
+  "evidence": {
+    "first_sample": "2026-09-08T05:15:14.435446Z",
+    "last_sample": "2026-09-14T18:23:05.534389Z",
+    "actual_samples": 37122,
+    "db_reachable": true,
+    "table_present": true,
+    "nulls_per_col": {
+      "reference_mid": 84,
+      "sample_time": 0,
+      "session": 0,
+      "fee_growth_global_0": 8101,
+      "fee_growth_global_1": 8102
+    },
+    "hours_covered": 157.13,
+    "median_cadence_secs": 15.0,
+    "expected_samples": 37711,
+    "coverage_ratio": 0.9843782141115002,
+    "key_field_health": {
+      "passed": false,
+      "actual_samples": 37122,
+      "nulls_per_col": {
+        "reference_mid": 84,
+        "sample_time": 0,
+        "session": 0,
+        "fee_growth_global_0": 8101,
+        "fee_growth_global_1": 8102
+      }
+    },
+    "stage_a_status": {
+      "hours_covered": 157.13086081749998,
+      "hours_required": 72,
+      "coverage_ratio": "0.9843782141115002094706710240",
+      "expected_samples": 37711,
+      "actual_samples": 37122,
+      "gaps": 589,
+      "key_field_health": {
+        "passed": false,
+        "actual_samples": 37122,
+        "nulls_per_col": {
+          "reference_mid": 84,
+          "sample_time": 0,
+          "session": 0,
+          "fee_growth_global_0": 8101,
+          "fee_growth_global_1": 8102
+        }
+      },
+      "pool_attestation_status": {
+        "passed": true
+      },
+      "budget": {
+        "state": "OK",
+        "over_budget": false
+      },
+      "invariant_violations": 0,
+      "unknown_state_positions": 0,
+      "synthetic_tests_passed": true,
+      "passed": false,
+      "blockers": [
+        "COVERAGE_INSUFFICIENT",
+        "STAGE_A_KEY_FIELDS_INCOMPLETE"
+      ],
+      "judgment_window_start": null,
+      "judgment_code_version": null,
+      "cumulative_hours": null,
+      "cumulative_coverage_ratio": null,
+      "recent_72h_coverage_ratio": null
+    }
+  }
+}

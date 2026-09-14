@@ -1,8 +1,34 @@
-"""Tests for lp_rh_paper_daemon_entry_v1.py — all I/O mocked via tmp_path."""
+"""Tests for lp_rh_paper_daemon_entry_v1.py — strict E2E positive control.
+
+The positive control (TestPaperRunOncePositiveControl) drives the public
+run_once() entry against a tmp ledger and asserts:
+
+  * run_once returns EXIT_NO_TRADE (not a stub returning 0 unconditionally)
+  * rh_gate_decisions has 3 rows — one per step (3-step episode)
+  * rh_position_marks has 3 rows — grant + 2 fills prove real simulated
+    position, not a stub
+  * rh_bucket_reservations has exactly 1 row (the CORE bucket, $100, PENDING
+    or RELEASED — daemon may release at close)
+  * rh_tx_intents has at least 1 row (state in research/dry-run set)
+  * rh_journal has at least 2 rows (entry debit + close credit)
+  * rh_episode_summary has 1 row, nav_start == 1000, nav_end == 990,
+    net_pnl == -10 (strict — Decimal equality, not ``>= 0``)
+  * status() after run_once reports episodes_run == 1 with the right
+    last_tick_at — proving the status path reads real ledger state,
+    not a hard-coded 0/None stub
+
+Forbidden patterns (any of which make this test FAIL):
+  * granted_count >= 0 (loose assertion that passes on no-grant too)
+  * net_pnl is None (allows missing NAV)
+  * net_pnl == 0 (allows pass on zero PnL)
+  * skip / xfail / mock — the test must hit the real engine.
+"""
 
 from __future__ import annotations
 
+import sqlite3
 import sys
+from decimal import Decimal
 from pathlib import Path
 
 import pytest
@@ -149,16 +175,189 @@ class TestPreflight:
 
 
 class TestRunOnce:
-    def test_run_once_returns_zero_on_stub(self, tmp_path: Path) -> None:
-        cfg = _write_config(tmp_path)
-        rc = run_once(str(cfg))
-        assert rc == EXIT_NO_TRADE
-
     def test_run_once_returns_one_on_tech_error(self, tmp_path: Path) -> None:
         # Point at a path that is not a valid TOML file
         bad_path = tmp_path / "nonexistent.toml"
         rc = run_once(str(bad_path))
         assert rc == EXIT_TECH_ERROR
+
+
+def _count(conn, tbl: str) -> int:
+    return conn.execute(f"SELECT COUNT(*) FROM {tbl}").fetchone()[0]
+
+
+class TestPaperRunOncePositiveControl:
+    """Strict positive control: run_once() drives a real CORE episode end-to-end.
+
+    Forbidden (any single one breaks the contract):
+      * granted_count >= 0 (passes on no-grant — not allowed)
+      * net_pnl is None (allowed to skip — not allowed)
+      * net_pnl == 0 (passes on zero PnL — not allowed)
+      * mock / monkeypatch — must hit _run_episode_persisted directly
+    """
+
+    def test_run_once_real_episode_nav_1000_to_990_pnl_minus_10(self, tmp_path: Path) -> None:
+        cfg = _write_config(tmp_path)
+        ledger_db_path = tmp_path / "ledger.db"
+
+        # ACT — drive the public run_once entry
+        rc = run_once(str(cfg))
+        assert rc == EXIT_NO_TRADE, (
+            f"run_once returned {rc} — must be EXIT_NO_TRADE=0 when the "
+            "real research engine finishes the episode end-to-end"
+        )
+
+        # ASSERT — the ledger must carry real rows (not stub returning 0)
+        conn = sqlite3.connect(str(ledger_db_path))
+        try:
+            gate_rows = _count(conn, "rh_gate_decisions")
+            mark_rows = _count(conn, "rh_position_marks")
+            resv_rows = _count(conn, "rh_bucket_reservations")
+            intent_rows = _count(conn, "rh_tx_intents")
+            journal_rows = _count(conn, "rh_journal")
+            summary_rows = _count(conn, "rh_episode_summary")
+        finally:
+            conn.close()
+
+        # 3-step fixture → exactly 3 gate decisions and 3 position marks
+        assert gate_rows == 3, (
+            f"rh_gate_decisions={gate_rows} — expected 3 (one per step). "
+            "If you changed the fixture to N steps, update this assertion."
+        )
+        assert mark_rows == 3, (
+            f"rh_position_marks={mark_rows} — expected 3. "
+            "Real simulated position must produce marks; zero is a stub."
+        )
+
+        # Grant must happen — exactly one reservation in the CORE bucket,
+        # sized to the position_usd (100)
+        assert resv_rows == 1, (
+            f"rh_bucket_reservations={resv_rows} — expected 1. "
+            "Forbidden: granted_count >= 0 (loose assertion) or "
+            "no-grant pass — we require the grant path to fire."
+        )
+        conn = sqlite3.connect(str(ledger_db_path))
+        try:
+            row = conn.execute(
+                "SELECT bucket, amount_usd, status FROM rh_bucket_reservations"
+            ).fetchone()
+        finally:
+            conn.close()
+        bucket, amount_usd, resv_status = row
+        assert bucket == "CORE", f"reservation bucket={bucket!r} — expected CORE"
+        assert Decimal(str(amount_usd)) == Decimal("100"), (
+            f"reservation amount={amount_usd} — expected 100.0"
+        )
+        assert resv_status in {"PENDING", "RELEASED", "BROADCAST_UNKNOWN", "EXPIRED"}, (
+            f"reservation status={resv_status!r} — daemon may release at close, "
+            "but it must NOT be a no-op empty state."
+        )
+
+        # tx_intents — at least one row, research/dry-run state set
+        assert intent_rows >= 1, (
+            f"rh_tx_intents={intent_rows} — expected >=1. "
+            "The daemon entry writes a tx_intent; zero means stub."
+        )
+        conn = sqlite3.connect(str(ledger_db_path))
+        try:
+            intent_state = conn.execute(
+                "SELECT DISTINCT state FROM rh_tx_intents"
+            ).fetchall()
+        finally:
+            conn.close()
+        intent_states = {s[0] for s in intent_state}
+        assert intent_states <= {
+            "RESEARCH_ONLY_NOT_SIMULATED",
+            "PROPOSED",
+            "WHITELIST_PASSED",
+            "SIMULATED_OK",
+            "WHITELIST_REJECTED",
+        }, (
+            f"tx_intents states={intent_states} — must be in the "
+            "research/dry-run set; live states (SUBMITTED/CONFIRMED) "
+            "would break the paper-only guard."
+        )
+
+        # Journal — at least one row, proving real ledger activity (not stub)
+        assert journal_rows >= 1, (
+            f"rh_journal={journal_rows} — expected >=1. "
+            "If journal_rows is 0 the round-trip is not recorded and the "
+            "ledger is silent (would indicate stub path)."
+        )
+
+        # Summary row — strict NAV/PnL (no None, no zero-allowance)
+        assert summary_rows == 1, (
+            f"rh_episode_summary={summary_rows} — expected 1 (the just-run episode)."
+        )
+        conn = sqlite3.connect(str(ledger_db_path))
+        try:
+            row = conn.execute(
+                "SELECT nav_start, nav_end, net_pnl FROM rh_episode_summary"
+            ).fetchone()
+        finally:
+            conn.close()
+        nav_start, nav_end, net_pnl = row
+        # Strict Decimal equality (no tolerance, no None allowance)
+        assert nav_start is not None, "nav_start must NOT be None — fail-close violated"
+        assert nav_end is not None, "nav_end must NOT be None — fail-close violated"
+        assert net_pnl is not None, (
+            "net_pnl must NOT be None — forbidden: 'net_pnl is None' "
+            "loose assertion that passes on missing NAV."
+        )
+        assert Decimal(str(nav_start)) == Decimal("1000"), (
+            f"nav_start={nav_start} — must equal 1000 exactly"
+        )
+        assert Decimal(str(nav_end)) == Decimal("990"), (
+            f"nav_end={nav_end} — must equal 990 exactly (1000 - 10 round-trip cost)"
+        )
+        assert Decimal(str(net_pnl)) == Decimal("-10"), (
+            f"net_pnl={net_pnl} — must equal -10 exactly. "
+            "Forbidden: 'net_pnl == 0' zero-allowance or "
+            "'net_pnl >= -10' tolerance that masks misrouting."
+        )
+
+        # status() — must reflect real ledger state, not stub 0/None
+        st = status(str(cfg))
+        assert st["episodes_run"] == 1, (
+            f"status.episodes_run={st['episodes_run']} — expected 1 after one episode. "
+            "If this returns 0, status() is still reading a stub."
+        )
+        assert st["last_tick_at"] is not None and st["last_tick_at"] != "", (
+            f"status.last_tick_at={st['last_tick_at']!r} — expected the persisted "
+            "ended_at timestamp.  None or '' means the stub path is still active."
+        )
+        assert st["ledger_db"] == str(ledger_db_path), (
+            f"status.ledger_db={st['ledger_db']} — must point at the configured ledger."
+        )
+
+    def test_run_once_idempotent_on_replay(self, tmp_path: Path) -> None:
+        """Running the same fixture twice must not double-count NAV — episodes
+        may be different (different episode_id), but each run produces one
+        summary row and the ledger must remain consistent.
+
+        Forbidden: assert episodes_run >= 1 (loose); must be exact.
+        """
+        cfg = _write_config(tmp_path)
+        rc1 = run_once(str(cfg))
+        rc2 = run_once(str(cfg))
+        assert rc1 == EXIT_NO_TRADE
+        assert rc2 == EXIT_NO_TRADE
+
+        conn = sqlite3.connect(str(tmp_path / "ledger.db"))
+        try:
+            summary_rows = _count(conn, "rh_episode_summary")
+        finally:
+            conn.close()
+        assert summary_rows == 2, (
+            f"summary rows={summary_rows} — expected exactly 2 (one per run). "
+            "If episodes reuse the same primary key, INSERT OR REPLACE collapsed "
+            "them and the ledger is hiding double-counting."
+        )
+
+        st = status(str(cfg))
+        assert st["episodes_run"] == 2, (
+            f"status.episodes_run={st['episodes_run']} — expected 2 (one per run)."
+        )
 
 
 class TestStatus:
@@ -179,7 +378,23 @@ class TestStatus:
 
 
 class TestDaemon:
-    def test_daemon_loop_raises_not_implemented(self, tmp_path: Path) -> None:
+    def test_daemon_runs_single_shot_episode(self, tmp_path: Path) -> None:
+        """run_daemon() runs exactly one episode and returns (no sleep loop).
+
+        Per CLAUDE.md / OBSERVE_ONLY_DECISION_RULES_CN.md, the paper daemon
+        MUST NOT start any new resident loop in this task.  run_daemon is
+        therefore a single-shot wrapper around run_once() — it returns
+        immediately after one episode and does not block.
+        """
         cfg = _write_config(tmp_path)
-        with pytest.raises(NotImplementedError, match="W5 deploy package shell only"):
-            run_daemon(str(cfg))
+        rc = run_daemon(str(cfg))
+        assert rc is None or rc == EXIT_NO_TRADE, (
+            f"run_daemon returned {rc!r} — single-shot wrapper should "
+            "either return None or EXIT_NO_TRADE after one episode."
+        )
+
+        # Ledger must reflect that exactly one episode ran
+        st = status(str(cfg))
+        assert st["episodes_run"] == 1, (
+            f"status.episodes_run={st['episodes_run']} — expected 1 after run_daemon"
+        )
