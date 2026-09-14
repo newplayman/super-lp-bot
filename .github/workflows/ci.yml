@@ -119,10 +119,17 @@ jobs:
     if: ${{ always() }}
     steps:
       - name: quality-gate gate
+        # NOTE: ${{ }} expressions must reference literal needs.<job>.result.
+        # Shell loop variables (for j in ...) cannot be interpolated into ${{ }}.
+        env:
+          GO_LINT_RESULT: ${{ needs.go_lint.result }}
+          GO_BUILD_RESULT: ${{ needs.go_build_unit_property.result }}
+          GO_VULN_RESULT: ${{ needs.go_vulnerability_scan.result }}
         run: |
           set -e
-          for j in go_lint go_build_unit_property go_vulnerability_scan; do
-            r="${{ needs.$j.result }}"
+          for entry in "go_lint=${GO_LINT_RESULT}" "go_build_unit_property=${GO_BUILD_RESULT}" "go_vulnerability_scan=${GO_VULN_RESULT}"; do
+            j="${entry%%=*}"
+            r="${entry##*=}"
             echo "::notice::$j result=$r"
             if [ "$r" != "success" ]; then
               echo "::error::quality-gate failed because $j=$r"
@@ -235,17 +242,19 @@ jobs:
     if: ${{ always() }}
     steps:
       - name: required-gate check
+        # NOTE: ${{ }} expressions must reference literal needs.<job>.result.
+        # Shell loop variables (for j in ...) cannot be interpolated into ${{ }}.
+        env:
+          GO_LINT_RESULT: ${{ needs.go_lint.result }}
+          GO_BUILD_RESULT: ${{ needs.go_build_unit_property.result }}
+          GO_VULN_RESULT: ${{ needs.go_vulnerability_scan.result }}
+          PY_RH_RESULT: ${{ needs.python-rh-tests.result }}
+          PY_ENTRY_RESULT: ${{ needs.python-rh-entry-points.result }}
         run: |
           set -e
-          declare -A REQUIRED=(
-            [go_lint]=1
-            [go_build_unit_property]=1
-            [go_vulnerability_scan]=1
-            [python-rh-tests]=1
-            [python-rh-entry-points]=1
-          )
-          for j in "${!REQUIRED[@]}"; do
-            r="${{ needs.$j.result }}"
+          for entry in "go_lint=${GO_LINT_RESULT}" "go_build_unit_property=${GO_BUILD_RESULT}" "go_vulnerability_scan=${GO_VULN_RESULT}" "python-rh-tests=${PY_RH_RESULT}" "python-rh-entry-points=${PY_ENTRY_RESULT}"; do
+            j="${entry%%=*}"
+            r="${entry##*=}"
             echo "::notice::$j result=$r"
             if [ "$r" != "success" ]; then
               echo "::error::required-gate failed: $j result=$r (must be success)"
