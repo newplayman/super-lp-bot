@@ -1,12 +1,13 @@
 version: "2"
 run:
-  build-tags:
-    - dryrun
-    - shadow
-    - live
-    - property
-    - fork
-    - chaos
+  # CI closeout 2026-09-14: 故意不设 run.build-tags。
+  # golangci-lint v2 在 config 里同时列多个 build-tag 时会把所有 tag 当 AND 关系解析,
+  # 把 cmd/lpbot/mode_dryrun.go + mode_shadow.go + mode_live.go 三个 //go:build 隔离文件
+  # 同时拉进包, 触发 typecheck 假阳性 "validateMode redeclared"。
+  # Makefile 真实构建永远按 -tags=<single> 走 (go_build_unit_property job 已验证 PASS),
+  # 三个 mode_*.go 互斥, 无冲突。
+  # CI workflow 现在用 sequential 3 次 lint invocation 跑 dryrun / shadow / live,
+  # 每次单 tag, 与 Makefile build 语义对齐且避开工具 bug。
 linters:
   enable:
     - bodyclose
