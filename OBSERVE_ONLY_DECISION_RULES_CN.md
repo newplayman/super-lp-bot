@@ -17,10 +17,10 @@
 | # | Gate | 当前状态 | 证据 |
 |---|------|---------|------|
 | 1 | 真实 CORE terminal→ledger E2E 正控制 | **PASS** | `tests/test_lp_rh_terminal_to_ledger_e2e_v1_readonly.py::test_d1` —— NAV 1000→990, NetPnL=-10，3 行 gate_decisions / 3 行 position_marks / 1 行 reservation / 1 行 tx_intents 写入 ledger。5 个负控制（D2-D6）均 PASS。 |
-| 2 | pytest 全量 | **PASS** | 5201 passed / 0 failed / 14 skipped（R3 整改完成 + 本轮 D 6 个新测试）。 |
+| 2 | pytest 全量 | **PASS** | 5219 passed / 0 failed / 14 skipped（5191 基线 + 本轮 18 新测试）；fresh checkout @ TESTED_CODE_SHA `50a18dd` 5145 passed / 49 failed / 29 skipped（49 fail 全部 pre-existing env，与本任务无关）。 |
 | 3 | 5 个长跑 RH 进程在跑 | **PASS** | `reports/lp_rh/STAGE_A_REQUALIFICATION.json` —— collector / organic_recorder / premium_recorder / provider_health_recorder / shadow_daemon 全部存活，最新 tick 16:04–16:17 UTC（落在采集窗口内）。 |
 | 4 | Audit-regression schema contract | **PASS** | workflow 加 `schema_version` / `run_id` / `head_sha` / `mode` / `github.sha` 五个必填字段（见 `tools/audit_repro/audit_repro.py` 改造 + `.github/workflows/audit-regression.yml` 同步）。 |
-| 5 | CORE_PAPER_ENGINEERING_GATE | **FAIL**（已知） | GRADUATION_VERDICT.json 显示 Stage A `HOURS_COVERED_INSUFFICIENT` + `STAGE_A_SYNTHETIC_TESTS_FAILED`；Stage B `DAYS_COVERED_INSUFFICIENT` + `WEEKENDS_COVERED_INSUFFICIENT`；Live Gate `SINGLE_PROVIDER_NOT_ALLOWED_FOR_LIVE` + `CAPITAL_POLICY_NOT_APPROVED`。 |
+| 5 | CORE_PAPER_ENGINEERING_GATE | **FAIL**（已知） | GRADUATION_VERDICT.json 显示 Stage A `HOURS_COVERED_INSUFFICIENT` + `STAGE_A_SYNTHETIC_TESTS_FAILED`；Stage B `DAYS_COVERED_INSUFFICIENT` + `WEEKENDS_COVERED_INSUFFICIENT`；Live Gate `SINGLE_PROVIDER_NOT_ALLOWED_FOR_LIVE` + `CAPITAL_POLICY_NOT_APPROVED`。**本轮在真数据（`reports/lp_rh/scanner.db` 200MB）上跑出 Stage A 快照：`STAGE_A_REALDATA_SNAPSHOT.json` verdict=FAIL，reasons=COVERAGE_INSUFFICIENT + STAGE_A_KEY_FIELDS_INCOMPLETE；按设计报 FAIL，不冒充 PASS。** |
 
 Gate 1–4 PASS 说明 CORE 终端到账本链路**形式正确**；Gate 5 FAIL 阻断
 paper / live 启动。
@@ -88,3 +88,7 @@ paper / live 启动。
 - `BROADCASTS = 0`
 - `OBSERVE_ONLY_ACTIVE = true`
 - `OBSERVE_ONLY_REQUIRES_EXPLICIT_OWNER_APPROVAL_TO_EXIT = true`
+- `BASELINE_SHA = a7677405c2ecaaf100fe01124973ffec4511abfb`
+- `TESTED_CODE_SHA = 50a18dd344fc39790e0371f422ed0fb9eeefe455`
+- `CONTINUOUS_RUN = NOT_APPLICABLE`（single-shot wrapper；multi-round 由 5 长跑 daemon 实测）
+- `SINGLE_SHOT = PASS`（NAV 1000→990、PnL=-10、对账 PASS）

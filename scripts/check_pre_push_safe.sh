@@ -29,7 +29,7 @@ if [ "$staged_count" -eq 0 ]; then
 fi
 
 # 3. Every staged file must be in the RC scope
-allowed_re='^(scripts/lp_rh_paper_daemon_entry_v1\.py|tests/test_lp_rh_paper_daemon_entry_v1\.py|scripts/lp_rh_paper_data_validity_v1\.py|tests/test_lp_rh_paper_data_validity_v1\.py|scripts/check_pre_push_safe\.sh|scripts/run_isolated_diagnostics\.sh|PAPER_MIN_RELEASE_V1_CN\.md|PAPER_START_REQUEST_CN\.md|BLOCKERS_20260914_RC_CN\.csv|ACCEPTANCE_MATRIX_20260914_CN\.md|PUSH_AUTHORIZATION_CN\.md|CONTINUOUS_AND_VARIANT_EVIDENCE_CN\.md|STAGE_A_REALDATA_SNAPSHOT\.json|reports/lp_rh/release_candidate_[a-f0-9]+/(junit_full\.xml|audit_repro\.json|diagnostics_summary\.json)|reports/lp_rh/STAGE_A_REALDATA_SNAPSHOT\.json)$'
+allowed_re='^(scripts/lp_rh_paper_daemon_entry_v1\.py|tests/test_lp_rh_paper_daemon_entry_v1\.py|scripts/lp_rh_paper_data_validity_v1\.py|tests/test_lp_rh_paper_data_validity_v1\.py|scripts/check_pre_push_safe\.sh|scripts/run_isolated_diagnostics\.sh|PAPER_MIN_RELEASE_V1_CN\.md|PAPER_START_REQUEST_CN\.md|BLOCKERS_20260914_RC_CN\.csv|ACCEPTANCE_MATRIX_20260914_CN\.md|PUSH_AUTHORIZATION_CN\.md|CONTINUOUS_AND_VARIANT_EVIDENCE_CN\.md|STAGE_A_REALDATA_SNAPSHOT\.json|READ_FIRST_20260914_CN\.md|FINAL_VERDICT_20260914_CN\.md|HANDOFF_20260914_CN\.md|OBSERVE_ONLY_DECISION_RULES_CN\.md|ACCEPTANCE_EVIDENCE_20260914_CN\.md|reports/lp_rh/release_candidate_[a-f0-9]+/(junit_full\.xml|audit_repro\.json|diagnostics_summary\.json|verify_junit_full\.xml|verify_audit_repro\.json|VERIFY_REPORT_CN\.md)|reports/lp_rh/STAGE_A_REALDATA_SNAPSHOT\.json)$'
 while IFS= read -r path; do
     [ -z "$path" ] && continue
     if echo "$path" | grep -qE "$allowed_re"; then

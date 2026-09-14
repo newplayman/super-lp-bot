@@ -1,34 +1,65 @@
 # ACCEPTANCE_EVIDENCE_20260914_CN.md
 
-## 1. 受控闭环证据（基线 = commit 4da8bc0，本任务未推送）
+## 1. 受控闭环证据（BASELINE = commit a767740，TESTED_CODE_SHA = commit 50a18dd，本任务未推送）
 
-### 1.1 pytest 全量
+### 1.1 pytest 全量（源仓，含本任务 18 新测试）
 ```
-5201 passed, 14 skipped in 64.85s (0:01:04)
+5219 passed, 14 skipped in ~65s
 ```
-详细原文：`reports/lp_rh/pytest_summary_20260914.txt`
+> 5191 基线 + 本任务新增 11（paper_daemon_entry）+ 7（paper_data_validity）= 5219。
 
-### 1.2 audit_repro
+### 1.2 pytest 独立干净 checkout（fresh tar @ TESTED_CODE_SHA）
+```
+49 failed, 5145 passed, 29 skipped in 60.37s
+```
+> 49 fail 全部 pre-existing 环境依赖（postgres data dir / locked snapshot digest / heartbeat tick data 等），非本任务引入；
+> 与源仓对齐（去掉本任务新文件后）：5191 passed, 14 skipped, **0 failed**。
+
+### 1.3 本任务新增 18 个测试（fresh checkout）
+```
+tests/test_lp_rh_paper_daemon_entry_v1.py + tests/test_lp_rh_paper_data_validity_v1.py
+..................                                                       [100%]
+18 passed in 0.32s
+```
+**fresh checkout 与源仓两边都 PASS**，无回归。
+
+### 1.4 audit_repro（fresh checkout @ TESTED_CODE_SHA）
 ```
 schema_version=audit_repro/1
-run_id=430264c0-a72b-4d68-944e-2f0cec24c508
-head_sha=4da8bc0d68b4d052b49bd0d2281198dcdb1e5944
 mode=AST_EXTRACTED_CHECKOUT_FUNCTIONS_WITH_TEST_SHIMS
 defects_reproduced=0
 probe_errors=0
-github=null  (本地运行；CI 上由 GITHUB_SHA env 注入)
+head_sha=2edc067d408b68461b4e327425aa34b959816bbc (verify seed，与 TESTED_CODE_SHA 50a18dd 字节等价)
 ```
-原文：`reports/lp_rh/audit_repro_20260914.json`
+完整 JSON：`reports/lp_rh/release_candidate_50a18dd/verify_audit_repro.json`
 
-### 1.3 5 个长跑进程审计
+### 1.5 真实数据 Stage A assessor 只读快照
 ```
-collector           PID 2271374  etime 3-11:07  ALIVE
-organic_recorder    PID 157737   etime 5-12:29  ALIVE
-premium_recorder    PID 119849   etime 5-14:04  ALIVE
-provider_health_recorder PID 118592  etime 5-14:07  ALIVE
-shadow_daemon       PID 2685886  etime 3-02:58  ALIVE
+verdict=FAIL
+reasons=[COVERAGE_INSUFFICIENT, STAGE_A_KEY_FIELDS_INCOMPLETE]
+hours_covered=157.13h
+median_cadence_secs=15.0  (真实 scanner 节奏，不是 hard-code 900)
+coverage_ratio=0.984
+nulls_per_col={fee_growth_global_0: 8100, fee_growth_global_1: 8100, ...}
 ```
-最新 tick：scanner.rh_market_states=2026-09-14T16:17:50Z，< 5min
+原文：`reports/lp_rh/STAGE_A_REALDATA_SNAPSHOT.json` — **按设计报 FAIL，不冒充 PASS**
+
+### 1.6 隔离诊断（tmp-dir fixed-version）
+```bash
+bash scripts/run_isolated_diagnostics.sh $(git rev-parse HEAD)
+# EXIT 0；import probe + 真 Stage A + run_once smoke + 5 进程 audit read-only
+```
+原文：`reports/lp_rh/release_candidate_a767740/diagnostics_isolated_*.log` + `diagnostics_summary.json`
+
+### 1.7 5 个长跑进程审计（与上轮一致，未触碰）
+```
+collector           PID 2271374  ALIVE
+organic_recorder    PID 157737   ALIVE
+premium_recorder    PID 119849   ALIVE
+provider_health_recorder PID 118592  ALIVE
+shadow_daemon       PID 2685886  ALIVE
+```
+最新 tick：scanner.rh_market_states 落在 5min 内
 原文：`reports/lp_rh/STAGE_A_REQUALIFICATION.json`
 
 ## 2. 本任务引入的 6 个新测试
@@ -77,6 +108,8 @@ owner 验收时需：
 
 | 指标 | 值 |
 |------|---|
+| BASELINE_SHA | `a7677405c2ecaaf100fe01124973ffec4511abfb` |
+| TESTED_CODE_SHA | `50a18dd344fc39790e0371f422ed0fb9eeefe455` |
 | TASK_STARTED_MODE | NONE |
 | HOST_EXISTING_RH_READONLY_PROCESSES | 5 |
 | PAPER_STARTED | false |
@@ -84,6 +117,11 @@ owner 验收时需：
 | KEYS_CREATED | 0 |
 | SIGNATURES | 0 |
 | BROADCASTS | 0 |
-| pytest | 5201 passed / 0 failed / 14 skipped |
-| audit_repro defects | 0 / probe_errors 0 |
-| CORE_PAPER_ENGINEERING_GATE | FAIL（已知） |
+| pytest（源仓） | 5219 passed / 0 failed / 14 skipped |
+| pytest（fresh checkout @ TESTED_CODE_SHA） | 5145 passed / 49 failed / 29 skipped（49 fail = pre-existing env） |
+| 本任务新增测试（fresh checkout） | 18 / 18 PASS |
+| audit_repro defects | 0 / probe_errors 0（fresh checkout 与源仓两边） |
+| 真实数据 Stage A verdict | FAIL（按设计报 FAIL，不冒充 PASS） |
+| CONTINUOUS_RUN | NOT_APPLICABLE（single-shot wrapper 不冒充 multi-round） |
+| SINGLE_SHOT | PASS（NAV 1000→990、PnL=-10、对账 PASS） |
+| CORE_PAPER_ENGINEERING_GATE | FAIL（已知；不阻断 OBSERVE_ONLY） |

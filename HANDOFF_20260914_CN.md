@@ -1,14 +1,14 @@
 # HANDOFF_20260914_CN.md
 
-RH 闭环复跑任务交接（2026-09-14，commit 起点 `4da8bc0`）。
+RH 闭环复跑任务交接（2026-09-14，本任务起点 `a767740` → TESTED_CODE_SHA `50a18dd`）。
 
 ## 0. 交接判定（CLAUDE.md 准则 #1）
 
 这是个**合适的交接节点**：
-- 本轮 5 条工作流（A-E、B/C/D/E/F）已全部完成并交付
-- pytest 全过、audit_repro 全过、E2E 正控制 + 5 负控制齐备
+- 本轮 4 个 Gap（run_once 接真实引擎 / 严格 E2E 正控制 / 真实数据 Stage A gate / 独立干净 checkout 重验）已全部关闭
+- pytest 全过、audit_repro 全过、fresh checkout 双 SHA 验证齐备
 - 5 个长跑 RH 进程未触动；next-pickup 接手人无需猜测意图
-- 下任接手时只需读 §3「全部交付物」、§4「复核命令」、§6「残留方向」
+- 下任接手时只需读 §3「全部交付物」、§4「复核命令」、§5「坑与已排除方向」、§6「待用户决定」
 
 ## 1. 任务上下文（为什么改）
 
@@ -90,39 +90,54 @@ python3 -c "import json;d=json.load(open('audit_repro_local.json'));print(list(d
 
 | 路径 | 类型 |
 |------|------|
+| `ACCEPTANCE_MATRIX_20260914_CN.md` | **新增**：六维验收矩阵（push 来源 / 双 SHA / nodeid 证据 / 真数据 / 隔离诊断 / 本批更新） |
 | `OBSERVE_ONLY_DECISION_RULES_CN.md` | F 主输出 |
-| `BLOCKERS_20260914_CN.csv` | G 子交付 |
-| `ACCEPTANCE_EVIDENCE_20260914_CN.md` | G 子交付 |
+| `BLOCKERS_20260914_RC_CN.csv` | G 子交付（4 Gap 已 RESOLVED） |
+| `ACCEPTANCE_EVIDENCE_20260914_CN.md` | G 子交付（含 fresh checkout 证据） |
+| `CONTINUOUS_AND_VARIANT_EVIDENCE_CN.md` | **新增**：95 nodeid + CONTINUOUS_RUN=NOT_APPLICABLE |
+| `PUSH_AUTHORIZATION_CN.md` | **新增**：push 来源说明 + 8 条 pre-push 自查 |
+| `STAGE_A_REALDATA_SNAPSHOT.json` | **新增**：真数据 Stage A FAIL 快照 |
 | `SCOPE_REQUEST_20260914_CN.md` | G 子交付 |
 | `CI_EVIDENCE_20260914_CN.md` | G 子交付 |
 | `VULNERABILITY_RESOLUTION_20260914_CN.md` | G 子交付 |
-| `READ_FIRST_20260914_CN.md` | G 子交付 |
-| `FINAL_VERDICT_20260914_CN.md` | G 子交付 |
+| `READ_FIRST_20260914_CN.md` | G 子交付（已更新双 SHA + ACCEPTANCE_MATRIX 索引） |
+| `FINAL_VERDICT_20260914_CN.md` | G 子交付（已更新 4 Gap 全关 + CONTINUOUS_RUN=NOT_APPLICABLE） |
 | `HANDOFF_20260914_CN.md` | 本文档 |
-| `tests/test_lp_rh_terminal_to_ledger_e2e_v1_readonly.py` | D 6 测试 |
-| `reports/lp_rh/STAGE_A_REQUALIFICATION.json` | E 实时快照 |
-| `reports/lp_rh/audit_repro_20260914.json` | G 验证原文 |
-| `reports/lp_rh/pytest_summary_20260914.txt` | G 验证原文 |
+| `scripts/lp_rh_paper_daemon_entry_v1.py` | Gap 1（run_once 真实引擎） |
+| `scripts/lp_rh_paper_data_validity_v1.py` | Gap 3（真实数据 Stage A） |
+| `tests/test_lp_rh_paper_daemon_entry_v1.py` | Gap 2（严格 E2E） |
+| `tests/test_lp_rh_paper_data_validity_v1.py` | Gap 3（数据门单测） |
+| `scripts/check_pre_push_safe.sh` | push 自查 |
+| `scripts/run_isolated_diagnostics.sh` | tmp-dir 隔离诊断 |
+| `reports/lp_rh/release_candidate_a767740/{junit_full.xml,audit_repro.json,diagnostics_summary.json}` | BASELINE 产物 |
+| `reports/lp_rh/release_candidate_50a18dd/{verify_junit_full.xml,verify_audit_repro.json,verify_pytest_stdout.log,VERIFY_REPORT_CN.md}` | TESTED 产物（含独立干净 checkout） |
 
 ## 4. 复核命令（owner 一键）
 
 ```bash
-# pytest
+# pytest（源仓）
 python3 -m pytest tests/ -q --tb=line -p no:cacheprovider
-# 预期：5201 passed, 14 skipped in ~65s
+# 预期：5219 passed, 14 skipped in ~65s（含本任务 18 新测试）
+
+# pytest（本任务新测试）
+python3 -m pytest tests/test_lp_rh_paper_daemon_entry_v1.py tests/test_lp_rh_paper_data_validity_v1.py -v
+# 预期：18 passed
 
 # audit_repro（本地无 GITHUB_SHA，github=null 正常）
 python3 tools/audit_repro/audit_repro.py --repo . --allow-other-head --json-out /tmp/x.json
-python3 -c "import json;d=json.load(open('/tmp/x.json'));assert d['schema_version']=='audit_repro/1';assert d['head_sha'];assert d['mode'];assert d['counts']['defects_reproduced']==0;print('audit-repro PASS')"
+python3 -c "import json;d=json.load(open('/tmp/x.json'));assert d['schema_version']=='audit_repro/1';assert d['head_sha'];assert d['mode'];assert d['counts']['defects_reproduced']==0;assert d['counts']['probe_errors']==0;print('audit-repro PASS')"
 
-# 5 长跑进程
+# 真实数据 Stage A（不重跑，直接读 snapshot）
+cat reports/lp_rh/STAGE_A_REALDATA_SNAPSHOT.json | python3 -c "import json,sys;d=json.load(sys.stdin);print('verdict=',d['verdict'],'reasons=',d['reasons'])"
+
+# 5 长跑进程（与上轮一致：未触碰）
 ps -p 2271374,157737,119849,118592,2685886 -o pid,etime,cmd
 
-# 真实 E2E
-python3 -m pytest tests/test_lp_rh_terminal_to_ledger_e2e_v1_readonly.py -v
+# 真实 E2E（D 系列 + 本任务）
+python3 -m pytest tests/test_lp_rh_terminal_to_ledger_e2e_v1_readonly.py tests/test_paper_a_no_grant.py tests/test_paper_b_delayed_grant.py tests/test_paper_c_full_cost_flat.py tests/test_paper_d_liquidation_matrix.py tests/test_paper_e_pool_state.py tests/test_paper_f_crash_recovery.py tests/test_lp_rh_paper_daemon_entry_v1.py tests/test_lp_rh_paper_data_validity_v1.py -v
 
-# STAGE_A_REQUALIFICATION
-python3 -c "import json;d=json.load(open('reports/lp_rh/STAGE_A_REQUALIFICATION.json'));print('alive=', sum(1 for n,p in d['processes'].items() if 'ps' in p))"
+# 隔离诊断（数据门允许 FAIL/NOT_PROVEN，脚本本身 EXIT 0）
+bash scripts/run_isolated_diagnostics.sh $(git rev-parse HEAD)
 ```
 
 ## 5. 踩过的坑与已排除方向（CLAUDE.md 准则 #2）
