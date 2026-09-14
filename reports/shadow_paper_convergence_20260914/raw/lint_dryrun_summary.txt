@@ -1,0 +1,10 @@
+	timeout   time.Duration
+	^
+217 issues:
+* errcheck: 19
+* gocritic: 11
+* gosec: 50
+* ineffassign: 1
+* revive: 50
+* staticcheck: 36
+* unused: 50

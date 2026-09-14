@@ -1,0 +1,1 @@
+2026/09/14 08:10:03 internal error: package "golang.org/x/sys/unix" without types was imported from "github.com/mattn/go-isatty"

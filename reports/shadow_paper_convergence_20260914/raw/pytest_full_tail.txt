@@ -1,0 +1,10 @@
+FAILED tests/test_lp_rh_shadow_runner_v1_readonly.py::test_rh02cn_1_organic_discount_accrual_nine_tenths
+FAILED tests/test_lp_rh_shadow_runner_v1_readonly.py::test_rh02cn_2_no_window_fail_close
+FAILED tests/test_lp_rh_shadow_runner_v1_readonly.py::test_rh02cn_3_estimate_status_not_computed
+FAILED tests/test_lp_rh_shadow_runner_v1_readonly.py::test_rh02cn_4_partial_coverage
+FAILED tests/test_lp_rh_shadow_runner_v1_readonly.py::test_rh02cn_5_invalid_fraction[None]
+FAILED tests/test_lp_rh_shadow_runner_v1_readonly.py::test_rh02cn_5_invalid_fraction[0]
+FAILED tests/test_lp_rh_shadow_runner_v1_readonly.py::test_rh02cn_5_invalid_fraction[1.5]
+FAILED tests/test_lp_rh_shadow_runner_v1_readonly.py::test_rh02cn_7_stack_with_in_range
+FAILED tests/test_lp_rh_shadow_runner_v1_readonly.py::test_pool_state_stale_non_blocking_regression
+59 failed, 5136 passed, 14 skipped in 67.22s (0:01:07)

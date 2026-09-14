@@ -1,0 +1,109 @@
+{
+  "schema_version": "w2-rerun/1",
+  "as_of_date": "2026-09-14",
+  "taskpack": "RH_CORE_OBSERVE_TO_PAPER_CONVERGENCE_V1",
+  "phase": "P2 — final SHA CORE controlled loop re-run (no rewrite)",
+
+  "tested_sha": "fd0ffa6df136de8dc3849d237ca16aa9a0a9eaa4",
+  "tested_sha_role": "HEAD of feat/prd-v2.1-m0-shadow (= code SHA 7dd4e64 + docs-only commit fd0ffa6)",
+  "matched_ci_run_head_sha": "7dd4e6458ad43e964b17b0a58258b198cdab4c65 (run #34815907654)",
+  "no_rewrite_clause": "true — only existing W2 tests were re-invoked; no business logic or test logic was modified.",
+
+  "controls_summary": {
+    "control_1_legal_grant_cost_control": {
+      "requirement": "虚拟资本1000、合法仓位100、其余900；t0预期满足经济门；NAV1000→990、NetPnL=-10",
+      "tests_run": [
+        "tests/test_lp_rh_shadow_daemon_v1_readonly.py::test_ca05_run_one_round_persists_nav_start_as_pre_trade_capital",
+        "tests/test_lp_rh_shadow_daemon_v1_readonly.py::test_ca05_run_one_round_summary_net_pnl_reflects_round_trip_cost",
+        "tests/test_paper_c_full_cost_flat.py::test_paper_c_full_cost_flat_nav_and_pnl_window"
+      ],
+      "result": "3 passed",
+      "exit_code": 0
+    },
+    "control_2_no_grant_no_write": {
+      "requirement": "拒绝事件允许保存，不留该新仓position/journal/收益，不扣不存在的交易成本，不删除旧合法仓位",
+      "tests_run": ["tests/test_paper_a_no_grant.py::test_paper_a_no_grant_episode"],
+      "result": "1 passed",
+      "exit_code": 0
+    },
+    "control_3_two_round_restart_continuity": {
+      "requirement": "两轮+重启后第三轮，重叠/迟到/重复事件不赠送本金、不双记手续费、不重置亏损",
+      "tests_run": [
+        "tests/test_lp_rh_shadow_daemon_v1_readonly.py::TestCrossRoundContinuity::test_two_rounds_preserve_capital_and_dont_reset",
+        "tests/test_lp_rh_shadow_daemon_v1_readonly.py::TestCrossRoundContinuity::test_restart_resume_uses_same_portfolio_id",
+        "tests/test_lp_rh_shadow_daemon_v1_readonly.py::TestCrossRoundContinuity::test_overlapping_samples_not_double_charged",
+        "tests/test_lp_rh_shadow_daemon_v1_readonly.py::TestCrossRoundContinuity::test_late_sample_after_window_close_not_counted_as_active",
+        "tests/test_lp_rh_shadow_daemon_v1_readonly.py::TestCrossRoundContinuity::test_reorg_dedup_by_block_hash_tx_id",
+        "tests/test_lp_rh_shadow_daemon_v1_readonly.py::TestCrossRoundContinuity::test_unobserved_window_does_not_silently_fill_zero"
+      ],
+      "result": "6 passed",
+      "exit_code": 0
+    },
+    "control_4_file_sqlite_atomicity": {
+      "requirement": "真实文件SQLite、实际trigger故障、第二连接不可见半账；恢复和summary投影失败可识别",
+      "tests_run": [
+        "tests/test_lp_rh_tx_intents_writer_v1.py (14 tests: autocommit-off, file-SQLite trigger, second-conn visibility, integrity-error propagation, idempotency uniqueness, dry-run default blocks submitted/confirmed)"
+      ],
+      "result": "14 passed",
+      "exit_code": 0,
+      "note": "tx_intents_writer_v1 is the canonical SQLite file-writer used by CORE; ca04_* tests cover autocommit-off and second-connection isolation."
+    },
+    "control_5_collect_remove_no_double": {
+      "requirement": "外部注资不造利润、collect不重复造利、remove本金不是收入；退出兑换失败保留风险库存；reference/liquidation NAV分开",
+      "tests_run": [
+        "tests/test_lp_rh_shadow_runner_v1_readonly.py::TestAccountingEdgeVariants (10 tests: collect_repeated_incorrectly, remove_capital_baseline_zero_pnl, dust_residual_inventory_tracked, etc.)"
+      ],
+      "result": "10 passed",
+      "exit_code": 0
+    },
+    "control_6_end_gate_negatives": {
+      "requirement": "缺/旧JUnit、required skipped/xfail、错SHA/run、日志与退出码矛盾、异常/缺字段都不得放行",
+      "tests_run": [
+        "tests/test_lp_rh_paper_readiness_v1.py::test_required_no_junit_blocks",
+        "tests/test_lp_rh_paper_readiness_v1.py::test_required_empty_junit_blocks",
+        "tests/test_lp_rh_paper_readiness_v1.py::test_counters_missing_file_blocks",
+        "tests/test_lp_rh_paper_readiness_v1.py::test_counters_parse_error_blocks",
+        "tests/test_lp_rh_paper_readiness_v1.py::test_counters_wrong_head_blocks",
+        "tests/test_lp_rh_paper_readiness_v1.py::test_nonzero_counters_blocks",
+        "tests/test_lp_rh_paper_readiness_v1.py::test_wrong_audit_head_blocks",
+        "tests/test_lp_rh_paper_readiness_v1.py::test_wrong_audit_mode_blocks",
+        "tests/test_lp_rh_paper_readiness_v1.py::test_required_pass_passes",
+        "tests/test_lp_rh_paper_readiness_v1.py::test_required_pass_passes_minimal",
+        "tests/test_lp_rh_paper_readiness_v1.py::test_required_test_timeout_blocks"
+      ],
+      "result": "11 passed",
+      "exit_code": 0,
+      "note": "All negative paths block as expected; required_pass_passes proves the gate opens only when junit + counters + audit head + audit mode all match."
+    }
+  },
+
+  "totals": {
+    "controls_total": 6,
+    "controls_passed": 6,
+    "controls_failed": 0,
+    "tests_total": 45,
+    "tests_passed": 45,
+    "tests_failed": 0,
+    "tests_skipped": 0,
+    "exit_code_combined": 0
+  },
+
+  "w2_g1_final_version": "PASS (45/45 on tested_sha=fd0ffa6; full pytest W2 subset)",
+  "w2_g4_final_version": "PASS (test_paper_c_full_cost_flat_nav_and_pnl_window + ca05 round-trip cost on tested_sha=fd0ffa6)",
+
+  "correction_from_prev_ci_closeout": "Previous FINAL_VERDICT.json claimed W2_G1=PASS by inheriting from commit 752c583. This P2 run executes the W2 controls on the FINAL SHA fd0ffa6 (= code SHA 7dd4e64 + docs commit). All 45 tests pass, confirming W2 is GREEN on the final SHA, not merely on the inherited commit.",
+
+  "raw_evidence_path": "reports/shadow_paper_convergence_20260914/raw/w2_rerun/full_run.txt",
+  "owner_boundary_verified": {
+    "PAPER_OWNER_AUTHORIZED": false,
+    "LIVE_OWNER_AUTHORIZED": false,
+    "OBSERVE_OWNER_AUTHORIZED": false,
+    "RH_PAPER_STARTED_BY_THIS_TASK": false,
+    "LIVE_STARTED_BY_THIS_TASK": false,
+    "RUNNING_MODE": "NONE",
+    "no_daemon_started": true,
+    "no_keys_created": true,
+    "no_signatures": true,
+    "no_broadcasts": true
+  }
+}

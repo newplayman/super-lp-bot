@@ -1,0 +1,74 @@
+=== W2 CONTROL #1: legal grant + cost control ===
+platform linux -- Python 3.12.3, pytest-7.4.4, pluggy-1.4.0
+rootdir: /opt/lpbot/lp-bot-v3-origin-check
+configfile: pytest.ini
+plugins: anyio-4.13.0
+collected 3 items
+
+tests/test_lp_rh_shadow_daemon_v1_readonly.py ..                         [ 66%]
+tests/test_paper_c_full_cost_flat.py .                                   [100%]
+
+============================== 3 passed in 0.19s ===============================
+
+=== W2 CONTROL #2: no-grant no-write ===
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-7.4.4, pluggy-1.4.0
+rootdir: /opt/lpbot/lp-bot-v3-origin-check
+configfile: pytest.ini
+plugins: anyio-4.13.0
+collected 1 item
+
+tests/test_paper_a_no_grant.py .                                         [100%]
+
+============================== 1 passed in 0.06s ===============================
+
+=== W2 CONTROL #3: two-round + restart continuity ===
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-7.4.4, pluggy-1.4.0
+rootdir: /opt/lpbot/lp-bot-v3-origin-check
+configfile: pytest.ini
+plugins: anyio-4.13.0
+collected 6 items
+
+tests/test_lp_rh_shadow_daemon_v1_readonly.py ......                     [100%]
+
+============================== 6 passed in 0.38s ===============================
+
+=== W2 CONTROL #4: file-SQLite atomicity (autocommit-off + trigger) ===
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-7.4.4, pluggy-1.4.0
+rootdir: /opt/lpbot/lp-bot-v3-origin-check
+configfile: pytest.ini
+plugins: anyio-4.13.0
+collected 14 items
+
+tests/test_lp_rh_tx_intents_writer_v1.py ..............                  [100%]
+
+============================== 14 passed in 0.16s ==============================
+
+=== W2 CONTROL #5: collect/remove no-double ===
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-7.4.4, pluggy-1.4.0
+rootdir: /opt/lpbot/lp-bot-v3-origin-check
+configfile: pytest.ini
+plugins: anyio-4.13.0
+collected 10 items
+
+tests/test_lp_rh_shadow_runner_v1_readonly.py ..........                 [100%]
+
+============================== 10 passed in 0.29s ==============================
+
+=== W2 CONTROL #6: end-gate negatives (no-junit / wrong-sha / wrong-mode / counters) ===
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-7.4.4, pluggy-1.4.0
+rootdir: /opt/lpbot/lp-bot-v3-origin-check
+configfile: pytest.ini
+plugins: anyio-4.13.0
+collected 29 items / 18 deselected / 11 selected
+
+tests/test_lp_rh_paper_readiness_v1.py ...........                       [100%]
+
+====================== 11 passed, 18 deselected in 0.10s =======================
+
+=== TESTED SHA ===
+fd0ffa6df136de8dc3849d237ca16aa9a0a9eaa4

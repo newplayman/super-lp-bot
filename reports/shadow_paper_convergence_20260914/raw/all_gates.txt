@@ -1,0 +1,16 @@
+g1_all_pytest_pass: FAIL  SUBPROCESS_NONZERO
+g2_audit_regression_pass: PASS  
+g3_entry_integration_tests_pass: FAIL  SUBPROCESS_NONZERO
+g4_full_cost_nav_wired: PASS  
+g5_liquidation_unit_matrix: PASS  
+g6_no_grant_no_virtual_position: PASS  
+g7_grant_baseline_sync: PASS  
+g8_pool_state_excludes_invalid: PASS  
+g9_reconciliation_binding_failclose: PASS  
+g10_coverage_denominator_consistent: PASS  
+g11_two_providers_usable: FAIL  DB_PATH_NOT_SET
+g12_live_allowed_false: PASS  
+g13_tiny_live_authorized_false: PASS  
+g14_keys_created_zero: FAIL  OBSERVED:UNOBSERVED
+g15_signatures_zero: FAIL  OBSERVED:UNOBSERVED
+g16_broadcasts_zero: FAIL  OBSERVED:UNOBSERVED

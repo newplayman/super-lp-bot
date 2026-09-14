@@ -1,0 +1,14 @@
+=== G1 ===
+{
+  "pass": false,
+  "evidence": {
+    "returncode": 1,
+    "junit_path": "/tmp/lpbot-readiness-zve7yy65/junit.xml",
+    "tests": 5209,
+    "failures": 59,
+    "errors": 0,
+    "skipped": 14,
+    "non_zero_returncode": 1
+  },
+  "reason": "SUBPROCESS_NONZERO"
+}

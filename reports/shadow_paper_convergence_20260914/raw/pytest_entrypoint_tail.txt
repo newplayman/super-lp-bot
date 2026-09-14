@@ -1,0 +1,5 @@
+FAILED tests/test_lp_rh_reconciliation_v1_readonly.py::test_c3_mismatch_unexplained_diff
+FAILED tests/test_lp_rh_reconciliation_v1_readonly.py::test_c3_evidence_json_records_quote_dec1_tolerance
+FAILED tests/test_lp_rh_reconciliation_v1_readonly.py::test_c3_regression_c1_c2_unaffected
+FAILED tests/test_lp_rh_reconciliation_v1_readonly.py::test_c3_pool_meta_file_path_and_unreadable
+14 failed, 355 passed, 4840 deselected in 9.14s

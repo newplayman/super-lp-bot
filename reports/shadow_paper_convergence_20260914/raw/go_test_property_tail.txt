@@ -1,0 +1,20 @@
+ok  	github.com/lpbot/lpbot/internal/core/watchdog	0.157s
+ok  	github.com/lpbot/lpbot/internal/domain	0.013s
+ok  	github.com/lpbot/lpbot/internal/platform/config	0.010s
+ok  	github.com/lpbot/lpbot/internal/platform/decimal_db	0.008s
+ok  	github.com/lpbot/lpbot/internal/platform/health	0.005s
+ok  	github.com/lpbot/lpbot/internal/platform/idgen	0.680s
+ok  	github.com/lpbot/lpbot/internal/platform/log	0.012s
+ok  	github.com/lpbot/lpbot/internal/platform/metrics	0.008s
+ok  	github.com/lpbot/lpbot/internal/platform/redis	0.008s
+ok  	github.com/lpbot/lpbot/internal/platform/timex	0.004s
+ok  	github.com/lpbot/lpbot/internal/platform/trace	0.003s
+ok  	github.com/lpbot/lpbot/internal/ports	0.005s
+ok  	github.com/lpbot/lpbot/pkg/decimal	0.007s
+ok  	github.com/lpbot/lpbot/pkg/il	3.169s
+ok  	github.com/lpbot/lpbot/pkg/tickmath	31.277s
+?   	github.com/lpbot/lpbot/scripts/aggregate-verdict	[no test files]
+ok  	github.com/lpbot/lpbot/tests/chaos	10.013s
+?   	github.com/lpbot/lpbot/tests/fork	[no test files]
+ok  	github.com/lpbot/lpbot/tests/property	0.013s
+ok  	github.com/lpbot/lpbot/tests/property/mocks	0.005s

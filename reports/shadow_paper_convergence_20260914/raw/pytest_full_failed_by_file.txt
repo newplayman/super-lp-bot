@@ -1,0 +1,4 @@
+     39 FAILED tests/test_lp_rh_shadow_runner_v1_readonly.py
+     13 FAILED tests/test_lp_rh_reconciliation_v1_readonly.py
+      6 FAILED tests/test_lp_rh_first_step_accrual_v1_readonly.py
+      1 FAILED tests/test_lp_rh_graduation_evidence_v1_readonly.py

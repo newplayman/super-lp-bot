@@ -1,0 +1,50 @@
+?   	github.com/lpbot/lpbot/internal/adapters/holderconcentration/basescan	[no test files]
+?   	github.com/lpbot/lpbot/internal/adapters/mev/flashbots	[no test files]
+ok  	github.com/lpbot/lpbot/internal/adapters/mev/flashbots-protect	0.013s
+ok  	github.com/lpbot/lpbot/internal/adapters/mev/jito	0.014s
+ok  	github.com/lpbot/lpbot/internal/adapters/pool/aerodrome	0.005s
+ok  	github.com/lpbot/lpbot/internal/adapters/pool/pancakeswap_v3_solana	0.004s
+ok  	github.com/lpbot/lpbot/internal/adapters/pool/raydium_clmm	0.004s
+ok  	github.com/lpbot/lpbot/internal/adapters/pool/uniswap_v3	0.005s
+ok  	github.com/lpbot/lpbot/internal/adapters/pool/whirlpool	0.004s
+ok  	github.com/lpbot/lpbot/internal/adapters/rpc	0.873s
+ok  	github.com/lpbot/lpbot/internal/adapters/simulator/anvil	0.010s
+ok  	github.com/lpbot/lpbot/internal/adapters/simulator/sol_rpc	0.019s
+ok  	github.com/lpbot/lpbot/internal/adapters/store/postgres	0.025s
+ok  	github.com/lpbot/lpbot/internal/adapters/store/postgres/migrator	0.005s
+ok  	github.com/lpbot/lpbot/internal/adapters/store/sqlite	0.660s
+?   	github.com/lpbot/lpbot/internal/adapters/store/sqlite/sqlcgen	[no test files]
+ok  	github.com/lpbot/lpbot/internal/adapters/wallet/keystore	70.175s
+ok  	github.com/lpbot/lpbot/internal/adapters/wallet/kms	0.010s
+?   	github.com/lpbot/lpbot/internal/adapters/wallet/none	[no test files]
+ok  	github.com/lpbot/lpbot/internal/core/audit	0.005s
+ok  	github.com/lpbot/lpbot/internal/core/execution	0.135s
+ok  	github.com/lpbot/lpbot/internal/core/loop	0.088s
+ok  	github.com/lpbot/lpbot/internal/core/pnl	0.708s
+ok  	github.com/lpbot/lpbot/internal/core/reconcile	0.007s
+ok  	github.com/lpbot/lpbot/internal/core/reporting	0.005s
+ok  	github.com/lpbot/lpbot/internal/core/risk	0.006s
+ok  	github.com/lpbot/lpbot/internal/core/scanner	0.307s
+ok  	github.com/lpbot/lpbot/internal/core/simulation	0.004s
+ok  	github.com/lpbot/lpbot/internal/core/strategy	0.007s
+ok  	github.com/lpbot/lpbot/internal/core/tierc	0.006s
+ok  	github.com/lpbot/lpbot/internal/core/watchdog	0.157s
+ok  	github.com/lpbot/lpbot/internal/domain	0.005s
+ok  	github.com/lpbot/lpbot/internal/platform/config	0.010s
+ok  	github.com/lpbot/lpbot/internal/platform/decimal_db	0.006s
+ok  	github.com/lpbot/lpbot/internal/platform/health	0.008s
+ok  	github.com/lpbot/lpbot/internal/platform/idgen	0.512s
+ok  	github.com/lpbot/lpbot/internal/platform/log	0.009s
+ok  	github.com/lpbot/lpbot/internal/platform/metrics	0.011s
+ok  	github.com/lpbot/lpbot/internal/platform/redis	0.007s
+ok  	github.com/lpbot/lpbot/internal/platform/timex	0.006s
+ok  	github.com/lpbot/lpbot/internal/platform/trace	0.010s
+ok  	github.com/lpbot/lpbot/internal/ports	0.007s
+ok  	github.com/lpbot/lpbot/pkg/decimal	0.008s
+ok  	github.com/lpbot/lpbot/pkg/il	3.814s
+ok  	github.com/lpbot/lpbot/pkg/tickmath	31.042s
+?   	github.com/lpbot/lpbot/scripts/aggregate-verdict	[no test files]
+ok  	github.com/lpbot/lpbot/tests/chaos	10.017s
+?   	github.com/lpbot/lpbot/tests/fork	[no test files]
+ok  	github.com/lpbot/lpbot/tests/property	0.023s
+ok  	github.com/lpbot/lpbot/tests/property/mocks	0.016s

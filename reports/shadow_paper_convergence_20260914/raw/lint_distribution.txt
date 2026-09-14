@@ -1,0 +1,16 @@
+total: 217
+---top-level dirs---
+   148  internal
+    53  cmd
+     7  scripts
+     4  adapters
+     3  tests
+     2  pkg
+---by linter---
+    50  gosec
+    50  revive
+    50  unused
+    36  staticcheck
+    19  errcheck
+    11  gocritic
+     1  ineffassign

@@ -1,0 +1,8 @@
+{
+  "pass": true,
+  "evidence": {
+    "has_scenario_reference": true,
+    "has_full_cost_nav": true
+  },
+  "reason": null
+}

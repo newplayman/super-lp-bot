@@ -1,0 +1,225 @@
+{
+  "verdict": "FAIL",
+  "gates": {
+    "g1_all_pytest_pass": {
+      "pass": false,
+      "evidence": {
+        "returncode": 1,
+        "junit_path": "/tmp/lpbot-readiness-ra4pp83f/junit.xml",
+        "tests": 5209,
+        "failures": 59,
+        "errors": 0,
+        "skipped": 14,
+        "non_zero_returncode": 1
+      },
+      "reason": "SUBPROCESS_NONZERO"
+    },
+    "g2_audit_regression_pass": {
+      "pass": true,
+      "evidence": {
+        "probe_errors": 0,
+        "defects_reproduced": 0,
+        "counts": {
+          "PROBE_ERROR": 0,
+          "DEFECT_REPRODUCED": 0
+        },
+        "returncode": 0,
+        "head_sha": "fd0ffa6df136de8dc3849d237ca16aa9a0a9eaa4",
+        "mode": "AST_EXTRACTED_CHECKOUT_FUNCTIONS_WITH_TEST_SHIMS",
+        "run_id": "f6ef8cd5-99e9-4827-9ab4-2939bc6dd3cd",
+        "schema_version": "audit_repro/1"
+      },
+      "reason": null
+    },
+    "g3_entry_integration_tests_pass": {
+      "pass": false,
+      "evidence": {
+        "returncode": 1,
+        "junit_path": "/tmp/lpbot-readiness-5g_ysss8/junit.xml",
+        "tests": 221,
+        "failures": 39,
+        "errors": 0,
+        "skipped": 0,
+        "non_zero_returncode": 1
+      },
+      "reason": "SUBPROCESS_NONZERO"
+    },
+    "g4_full_cost_nav_wired": {
+      "pass": true,
+      "evidence": {
+        "has_scenario_reference": true,
+        "has_full_cost_nav": true
+      },
+      "reason": null
+    },
+    "g5_liquidation_unit_matrix": {
+      "pass": true,
+      "evidence": {
+        "returncode": 0,
+        "junit_path": "/tmp/lpbot-readiness-n4222fy3/junit.xml",
+        "tests": 49,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "reason": null
+    },
+    "g6_no_grant_no_virtual_position": {
+      "pass": true,
+      "evidence": {
+        "returncode": 0,
+        "junit_path": "/tmp/lpbot-readiness-9v3di3w3/junit.xml",
+        "tests": 1,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "reason": null
+    },
+    "g7_grant_baseline_sync": {
+      "pass": true,
+      "evidence": {
+        "returncode": 0,
+        "junit_path": "/tmp/lpbot-readiness-uwcmba7i/junit.xml",
+        "tests": 1,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "reason": null
+    },
+    "g8_pool_state_excludes_invalid": {
+      "pass": true,
+      "evidence": {
+        "returncode": 0,
+        "junit_path": "/tmp/lpbot-readiness-37gax8ar/junit.xml",
+        "tests": 3,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "reason": null
+    },
+    "g9_reconciliation_binding_failclose": {
+      "pass": true,
+      "evidence": {
+        "returncode": 0,
+        "junit_path": "/tmp/lpbot-readiness-xcyz40vz/junit.xml",
+        "tests": 1,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "reason": null
+    },
+    "g10_coverage_denominator_consistent": {
+      "pass": true,
+      "evidence": {
+        "returncode": 0,
+        "junit_path": "/tmp/lpbot-readiness-jf_qe1ff/junit.xml",
+        "tests": 1,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "reason": null
+    },
+    "g11_two_providers_usable": {
+      "pass": false,
+      "evidence": {},
+      "reason": "DB_PATH_NOT_SET"
+    },
+    "g12_live_allowed_false": {
+      "pass": true,
+      "evidence": {
+        "path": "configs/config.shadow.toml",
+        "live_allowed_present": false
+      },
+      "reason": null
+    },
+    "g13_tiny_live_authorized_false": {
+      "pass": true,
+      "evidence": {
+        "path": "configs/config.shadow.toml",
+        "tiny_live_authorized_present": false
+      },
+      "reason": null
+    },
+    "g14_keys_created_zero": {
+      "pass": false,
+      "evidence": {},
+      "reason": "OBSERVED:UNOBSERVED"
+    },
+    "g15_signatures_zero": {
+      "pass": false,
+      "evidence": {},
+      "reason": "OBSERVED:UNOBSERVED"
+    },
+    "g16_broadcasts_zero": {
+      "pass": false,
+      "evidence": {},
+      "reason": "OBSERVED:UNOBSERVED"
+    }
+  },
+  "summary": {
+    "passed": 10,
+    "failed": 5,
+    "unknown": 1,
+    "inconclusive": 1,
+    "advisory_unknown": 1
+  },
+  "PAPER_TECHNICALLY_READY": false,
+  "LIVE_TECHNICALLY_READY": false,
+  "LIVE_STARTED_BY_THIS_TASK": false,
+  "gate_definitions": {
+    "ENGINEERING_GATE": {
+      "description": "Code quality gates: all pytest pass, audit_repro pass, entry integration pass.",
+      "member_gates": [
+        "g1_all_pytest_pass",
+        "g2_audit_regression_pass",
+        "g3_entry_integration_tests_pass"
+      ],
+      "pass_condition": "all member gates pass (no UNKNOWN reasons on REQUIRED members)"
+    },
+    "STAGE_A_DATA_GATE": {
+      "description": "Data readiness: coverage denominator consistent (≥99% coverage in judgment window).",
+      "member_gates": [
+        "g10_coverage_denominator_consistent"
+      ],
+      "pass_condition": "g10 passes"
+    },
+    "PAPER_START_GATE": {
+      "description": "Paper-start prerequisites: full cost NAV wired, liquidation matrix, no-grant, grant sync, pool state, reconciliation, two providers, live_allowed false, tiny_live_authorized false.",
+      "member_gates": [
+        "g4_full_cost_nav_wired",
+        "g5_liquidation_unit_matrix",
+        "g6_no_grant_no_virtual_position",
+        "g7_grant_baseline_sync",
+        "g8_pool_state_excludes_invalid",
+        "g9_reconciliation_binding_failclose",
+        "g11_two_providers_usable",
+        "g12_live_allowed_false",
+        "g13_tiny_live_authorized_false"
+      ],
+      "pass_condition": "all REQUIRED member gates pass; ADVISORY (g11) failure does not block"
+    },
+    "PROFILE_GRADUATION_GATE": {
+      "description": "Profile graduation: keys_created=0, signatures=0, broadcasts=0 (zero unauthorized actions).",
+      "member_gates": [
+        "g14_keys_created_zero",
+        "g15_signatures_zero",
+        "g16_broadcasts_zero"
+      ],
+      "pass_condition": "all three pass"
+    },
+    "LIVE_START_GATE": {
+      "description": "Live-start prerequisites: PROFILE_GRADUATION_GATE pass + capital policy + dual path + fork/recovery + owner approval (placeholder).",
+      "member_gates": [
+        "g14_keys_created_zero",
+        "g15_signatures_zero",
+        "g16_broadcasts_zero"
+      ],
+      "pass_condition": "PROFILE_GRADUATION_GATE pass AND capital_policy_approved AND dual_provider_path AND fork_recovery_plan AND owner_approved"
+    }
+  }
+}

@@ -1,0 +1,5 @@
+* govet: 1
+* ineffassign: 1
+* revive: 50
+* staticcheck: 35
+* unused: 50

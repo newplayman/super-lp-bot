@@ -1,0 +1,309 @@
+{
+  "schema_version": "shadow-paper-convergence/1",
+  "as_of_date": "2026-09-14",
+  "taskpack": "RH_CORE_OBSERVE_TO_PAPER_CONVERGENCE_V1",
+  "taskpack_source": "/opt/lpbot/SUPER_LP_Shadow_Paper_推进任务_20260914.zip (unpacked -> /tmp/shadow_paper_audit/SUPER_LP_SHADOW_PAPER_CONVERGENCE_20260914/CODEX_NEXT_TASK_CN.md)",
+
+  "tested_sha": {
+    "code_sha": "7dd4e6458ad43e964b17b0a58258b198cdab4c65",
+    "code_sha_role": "HEAD of feat/prd-v2.1-m0-shadow with all CI closeout code changes (golangci-lint v2.10.0 install + sequential 3-pass, redis v9.7.3, required-gate aggregation, etc.)",
+    "docs_sha": "fd0ffa6df136de8dc3849d237ca16aa9a0a9eaa4",
+    "docs_sha_role": "Pure docs commit; CI_EVIDENCE.json / VULNERABILITY_RESOLUTION.json / FINAL_VERDICT.json / READ_FIRST_CN.md under reports/ci_security_closeout/20260914_run_34815907654/. No executable change.",
+    "remote_head_match": true,
+    "local_head": "fd0ffa6df136de8dc3849d237ca16aa9a0a9eaa4",
+    "remote_head": "fd0ffa6df136de8dc3849d237ca16aa9a0a9eaa4"
+  },
+
+  "ci_run_identity": {
+    "ci_run_id": "34815907654",
+    "head_sha_in_run": "7dd4e6458ad43e964b17b0a58258b198cdab4c65",
+    "head_sha_in_run_match_tested_code_sha": true,
+    "run_attempt": 1,
+    "run_attempt_note": "Single attempt; no retry. failure is final.",
+    "event": "push",
+    "head_branch": "feat/prd-v2.1-m0-shadow",
+    "status": "completed",
+    "conclusion": "failure",
+    "created_at": "2026-09-14T07:01:04Z",
+    "updated_at": "2026-09-14T07:02:46Z"
+  },
+
+  "ci_run_job_results": {
+    "Go vet + govulncheck (advisory audit)": {
+      "conclusion": "success",
+      "key_step": "step 5 Dependency audit: govulncheck PASS, GHSA-92cp-5422-2mw7 NOT reported (verifies redis v9.7.3 patch end-to-end)"
+    },
+    "Go build + unit + property": {
+      "conclusion": "failure",
+      "step_breakdown": {
+        "step 4 Build all tags": "success (make build-dryrun/shadow/live/backtest/build-migrate-postgres all clean)",
+        "step 5 Migration sync check": "success (postgres migration directories in sync)",
+        "step 6 Unit tests": "failure (pre-existing flake; same step PASSed in run #34815410119 with identical code SHA)",
+        "step 7 Property tests": "skipped (cascaded from step 6 failure)"
+      }
+    },
+    "Go lint (golangci-lint v2.10.0, pinned)": {
+      "conclusion": "failure",
+      "step_breakdown": {
+        "step 4 tidy": "success",
+        "step 5 Install golangci-lint v2.10.0": "success (curl + tarball, no action wrapper)",
+        "step 6 golangci-lint sequential by build tag": "failure (~217 pre-existing findings: errcheck 19, gocritic 11, gosec 50, ineffassign 1, revive 50, staticcheck 36, unused 50)",
+        "step 7 Test files unmodified check": "skipped (cascaded)"
+      }
+    },
+    "RH Python tests (no secrets, no RPC) (3.12)": {
+      "conclusion": "failure",
+      "step_breakdown": {
+        "step 5 Run RH Python unit + integration tests": "failure (see pytest_full below)"
+      }
+    },
+    "RH Python entry-point integration subset (3.12)": {
+      "conclusion": "failure",
+      "step_breakdown": {
+        "step 5 Run daemon entry-point integration subset": "failure (see pytest_entrypoint below)"
+      }
+    },
+    "required-gate (CI identity & result aggregator)": {
+      "conclusion": "failure",
+      "key_step": "step 2 required-gate check: explicitly rejected non-success upstreams (correct behavior, not a regression)"
+    },
+    "quality-gate (back-compat aggregator)": {
+      "conclusion": "failure",
+      "key_step": "step 2 quality-gate gate: rejected non-success Go upstreams (correct behavior)"
+    },
+    "fork-tests": {"conclusion": "skipped", "reason": "schedule or [run-fork] trigger only; not in push event"},
+    "chaos-tests": {"conclusion": "skipped", "reason": "schedule trigger only; not in push event"}
+  },
+
+  "pytest_full_local": {
+    "command": "python3 -m pytest tests/ --tb=no -p no:cacheprovider",
+    "tested_sha": "7dd4e6458ad43e964b17b0a58258b198cdab4c65",
+    "collected": 5209,
+    "passed": 5136,
+    "failed": 59,
+    "errors": 0,
+    "skipped": 14,
+    "xfailed": 0,
+    "xpassed": 0,
+    "exit_code": 1,
+    "passed_rate_pct": 98.60,
+    "failed_nodeids_first_20": [
+      "tests/test_lp_rh_first_step_accrual_v1_readonly.py::test_steps_without_nav_counts_only_none",
+      "tests/test_lp_rh_first_step_accrual_v1_readonly.py::test_net_pnl_is_nav_end_minus_nav_start",
+      "tests/test_lp_rh_first_step_accrual_v1_readonly.py::test_end_to_end_nav_start_magnitude",
+      "tests/test_lp_rh_first_step_accrual_v1_readonly.py::test_rh02al_net_pnl_can_be_negative",
+      "tests/test_lp_rh_first_step_accrual_v1_readonly.py::test_rh02al_window_alignment_equal_timestamps",
+      "tests/test_lp_rh_first_step_accrual_v1_readonly.py::test_rh02al_real_pool_meta_and_db_sanity",
+      "tests/test_lp_rh_graduation_evidence_v1_readonly.py::test_stage_a_not_passed_verdict_is_not_graduated_and_contains_blocker",
+      "tests/test_lp_rh_reconciliation_v1_readonly.py::test_reconciliation_all_pass",
+      "tests/test_lp_rh_reconciliation_v1_readonly.py::test_reconciliation_c3_fee_missing_in_journal_unexplained",
+      "tests/test_lp_rh_reconciliation_v1_readonly.py::test_reconciliation_c2_amount_mismatch_unexplained",
+      "tests/test_lp_rh_reconciliation_v1_readonly.py::test_reconciliation_apply_writes_valid_record",
+      "tests/test_lp_rh_reconciliation_v1_readonly.py::test_reconciliation_c1_unbalanced_unexplained",
+      "tests/test_lp_rh_reconciliation_v1_readonly.py::test_reconciliation_no_since_regression",
+      "tests/test_lp_rh_reconciliation_v1_readonly.py::test_reconciliation_since_excludes_historical_diff_pass",
+      "tests/test_lp_rh_reconciliation_v1_readonly.py::test_reconciliation_since_includes_historical_diff_unexplained",
+      "tests/test_lp_rh_reconciliation_v1_readonly.py::test_c3_matching_conversion_pass",
+      "tests/test_lp_rh_reconciliation_v1_readonly.py::test_c3_mismatch_unexplained_diff",
+      "tests/test_lp_rh_reconciliation_v1_readonly.py::test_c3_evidence_json_records_quote_dec1_tolerance",
+      "tests/test_lp_rh_reconciliation_v1_readonly.py::test_c3_regression_c1_c2_unaffected",
+      "tests/test_lp_rh_reconciliation_v1_readonly.py::test_c3_pool_meta_file_path_and_unreadable"
+    ],
+    "failed_nodeids_full_path": "reports/shadow_paper_convergence_20260914/raw/pytest_full_failed_nodeids.txt",
+    "raw_output_tail_path": "reports/shadow_paper_convergence_20260914/raw/pytest_full_tail.txt",
+    "collected_count_path": "reports/shadow_paper_convergence_20260914/raw/pytest_collected_count.txt"
+  },
+
+  "pytest_entrypoint_subset_local": {
+    "command": "python3 -m pytest tests/ --tb=no -p no:cacheprovider -k 'episode_persisted or daemon or reconciliation or graduation or readiness'",
+    "tested_sha": "7dd4e6458ad43e964b17b0a58258b198cdab4c65",
+    "collected_by_selector": 5209,
+    "deselected": 4840,
+    "selected": 369,
+    "passed": 355,
+    "failed": 14,
+    "errors": 0,
+    "skipped": 0,
+    "exit_code": 1,
+    "raw_output_tail_path": "reports/shadow_paper_convergence_20260914/raw/pytest_entrypoint_tail.txt",
+    "failed_nodeids_path": "reports/shadow_paper_convergence_20260914/raw/pytest_entrypoint_failed_nodeids.txt"
+  },
+
+  "go_test_local": {
+    "command": "go test ./...",
+    "tested_sha": "7dd4e6458ad43e964b17b0a58258b198cdab4c65",
+    "exit_code": 0,
+    "packages_total_with_tests": 47,
+    "packages_failed": 0,
+    "note": "Local go test ./... (no build tags, default only) PASSES. go_build_unit_property CI job failed at step 6 Unit tests with the same code SHA — flaky, not regression. Property tests under -tags=property also PASS locally."
+  },
+
+  "lint_local": {
+    "command": "/tmp/golangci-lint-2.10.0-linux-amd64/golangci-lint run --timeout=5m --build-tags=dryrun ./...",
+    "tested_sha": "7dd4e6458ad43e964b17b0a58258b198cdab4c85",
+    "exit_code": 1,
+    "total_issues_dryrun": 217,
+    "by_linter": {
+      "errcheck": 19,
+      "gocritic": 11,
+      "gosec": 50,
+      "ineffassign": 1,
+      "revive": 50,
+      "staticcheck": 36,
+      "unused": 50
+    },
+    "by_linter_live_tag": {
+      "errcheck": 19,
+      "gocritic": 11,
+      "gosec": 50,
+      "govet": 1,
+      "ineffassign": 1,
+      "revive": 50,
+      "staticcheck": 35,
+      "unused": 50,
+      "total_live": "~219"
+    }
+  },
+
+  "govulncheck_local": {
+    "command": "$(go env GOPATH)/bin/govulncheck ./...",
+    "exit_code": 1,
+    "result": "INTERNAL ERROR: 'golang.org/x/sys/unix' without types was imported from 'github.com/mattn/go-isatty'",
+    "note": "Pre-existing sandbox limitation. CI on actions/setup-go@v5 / go1.25 with govulncheck@v1.1.4 runs successfully — see Go vet + govulncheck (advisory audit) step 5 of run #34815907654 SUCCESS, GHSA-92cp-5422-2mw7 NOT reported."
+  },
+
+  "paper_readiness_16_gates_local": {
+    "command": "python3 -c 'from lp_rh_paper_readiness_v1 import compute_paper_readiness; print(compute_paper_readiness())' (with sys.path including scripts)",
+    "tested_sha": "7dd4e6458ad43e964b17b0a58258b198cdab4c65",
+    "verdict": "FAIL",
+    "gates": {
+      "g1_all_pytest_pass": {"pass": false, "evidence": {"returncode": 1, "tests": 5209, "failures": 59, "errors": 0, "skipped": 14}, "reason": "SUBPROCESS_NONZERO"},
+      "g2_audit_regression_pass": {"pass": true, "evidence": {"probe_errors": 0, "defects_reproduced": 0, "head_sha": "fd0ffa6df136de8dc3849d237ca16aa9a0a9eaa4", "mode": "AST_EXTRACTED_CHECKOUT_FUNCTIONS_WITH_TEST_SHIMS", "schema_version": "audit_repro/1", "run_id": "f6ef8cd5-99e9-4827-9ab4-2939bc6dd3cd"}},
+      "g3_entry_integration_tests_pass": {"pass": false, "evidence": {"returncode": 1, "tests": 221, "failures": 39, "errors": 0}, "reason": "SUBPROCESS_NONZERO"},
+      "g4_full_cost_nav_wired": {"pass": true, "evidence": {"has_scenario_reference": true, "has_full_cost_nav": true}},
+      "g5_liquidation_unit_matrix": {"pass": true},
+      "g6_no_grant_no_virtual_position": {"pass": true},
+      "g7_grant_baseline_sync": {"pass": true},
+      "g8_pool_state_excludes_invalid": {"pass": true},
+      "g9_reconciliation_binding_failclose": {"pass": true},
+      "g10_coverage_denominator_consistent": {"pass": true},
+      "g11_two_providers_usable": {"pass": false, "reason": "DB_PATH_NOT_SET", "note": "ADVISORY gate per paper_readiness source"},
+      "g12_live_allowed_false": {"pass": true},
+      "g13_tiny_live_authorized_false": {"pass": true},
+      "g14_keys_created_zero": {"pass": false, "reason": "OBSERVED:UNOBSERVED (no daemon run, no live counter)"},
+      "g15_signatures_zero": {"pass": false, "reason": "OBSERVED:UNOBSERVED"},
+      "g16_broadcasts_zero": {"pass": false, "reason": "OBSERVED:UNOBSERVED"}
+    },
+    "corrected_audit_note": "PREVIOUS CI closeout FINAL_VERDICT claimed W2_G1=PASS by inheriting from prior commit 752c583. Current SHA fd0ffa6 (parent 7dd4e64) shows g1=FAIL: 5209 tests, 59 failures, exit_code 1. Audit_cn.md correctly flagged this as W2_G1_FINAL_VERSION=NOT_VERIFIED."
+  },
+
+  "first_step_accrual_root_cause_samples": {
+    "scope": "tests/test_lp_rh_first_step_accrual_v1_readonly.py (6 failures)",
+    "sample": "test_net_pnl_is_nav_end_minus_nav_start",
+    "evidence": "Runner writes NAV_start in step 0 from a non-grant mark, not the configured capital; net_pnl assertion fails when grant produces a different opening mark than first_step uses."
+  },
+
+  "shadow_runner_root_cause_samples": {
+    "scope": "tests/test_lp_rh_shadow_runner_v1_readonly.py (39 failures)",
+    "sample_assert_0_eq_1": "test_rh02bu2_granted_step_writes_one_shadow_position: granted step does not write to rh_position_marks; row count = 0 instead of 1",
+    "sample_missing_writes": "rh02by_*: journal rows not written; rh02ce_*: reservation release not traced; rh02ci_*: fee journal not written when accrued positive; rh02cn_*: organic discount accrual window not honored; rh02ck_*: balance enforce not implemented; rh02cm_*: fraction > 1 accrual not handled",
+    "summary": "Runner has multiple missing persistence paths. Not attributable to test fixture mismatches — tests create the same temporary DB and use _run_episode_persisted, and fail at the SQL-level row count assertion."
+  },
+
+  "reconciliation_root_cause_samples": {
+    "scope": "tests/test_lp_rh_reconciliation_v1_readonly.py (13 failures)",
+    "sample_assert_incorrect_verdict": "test_reconciliation_all_pass: actual 'INSUFFICIENT_EVIDENCE', expected 'PASS' (no quote evidence recorded for the test pair)",
+    "sample_key_error": "test_c3_pool_meta_file_path_and_unreadable: KeyError 'quote'",
+    "summary": "Reconciliation verdict path emits 'INSUFFICIENT_EVIDENCE' where tests expect PASS or UNEXPLAINED_DIFF. Real bug: missing evidence construction before reconciliation verdict."
+  },
+
+  "ci_diff_to_baseline_18a8f39": {
+    "baseline_sha": "18a8f39 (PAPER_ACCEPTANCE_REPAIR_V2 §6, 2026-09-13 baseline)",
+    "current_sha": "fd0ffa6 (current HEAD)",
+    "files_changed_in_ci_closeout_only": [
+      ".github/workflows/ci.yml",
+      ".golangci.yml",
+      "go.mod",
+      "go.sum",
+      "internal/platform/redis/runtime_test.go"
+    ],
+    "files_changed_in_docs_only_fd0ffa6": [
+      "reports/ci_security_closeout/20260914_run_34815907654/CI_EVIDENCE.json",
+      "reports/ci_security_closeout/20260914_run_34815907654/VULNERABILITY_RESOLUTION.json",
+      "reports/ci_security_closeout/20260914_run_34815907654/FINAL_VERDICT.json",
+      "reports/ci_security_closeout/20260914_run_34815907654/READ_FIRST_CN.md",
+      "reports/ci_security_closeout/20260914_run_34815907654/run_34815907654_meta.json",
+      "reports/ci_security_closeout/20260914_run_34815907654/run_34815907654_jobs.json"
+    ],
+    "files_not_changed_by_ci_closeout_in_business_logic": "scripts/lp_rh_*_readonly.py, tests/test_lp_rh_*.py, internal/* (except platform/redis/runtime_test.go)"
+  },
+
+  "owner_boundary_verified": {
+    "PAPER_OWNER_AUTHORIZED": false,
+    "LIVE_OWNER_AUTHORIZED": false,
+    "OBSERVE_OWNER_AUTHORIZED": false,
+    "RH_PAPER_STARTED_BY_THIS_TASK": false,
+    "LIVE_STARTED_BY_THIS_TASK": false,
+    "CANARY_STARTED_BY_THIS_TASK": false,
+    "RUNNING_MODE": "NONE",
+    "no_daemon_started": true,
+    "no_keys_created": true,
+    "no_signatures": true,
+    "no_broadcasts": true,
+    "no_real_funds": true,
+    "no_main_branch_modified": true,
+    "no_claude_md_freeze_bypassed": true,
+    "no_secrets_read_or_written": true
+  },
+
+  "p2_w2_rerun_on_final_sha": {
+    "w2_g1_final_version": "PASS (45/45 on tested_sha=fd0ffa6; see W2_RERUN_EVIDENCE.json)",
+    "w2_g4_final_version": "PASS (test_paper_c_full_cost_flat_nav_and_pnl_window + ca05 round-trip cost on tested_sha=fd0ffa6)",
+    "correction_from_prev_ci_closeout": "Previous FINAL_VERDICT.json claimed W2_G1=PASS by inheriting from commit 752c583. This P2 run executes the W2 controls on the FINAL SHA fd0ffa6 (= code SHA 7dd4e64 + docs commit). All 45 tests pass.",
+    "controls_total": 6,
+    "controls_passed": 6,
+    "controls_failed": 0,
+    "tests_total": 45,
+    "tests_passed": 45,
+    "tests_failed": 0,
+    "raw_path": "reports/shadow_paper_convergence_20260914/W2_RERUN_EVIDENCE.json + raw/w2_rerun/full_run.txt"
+  },
+
+  "p3_observe_only_request_status": {
+    "delivered": true,
+    "started": false,
+    "application_path": "reports/shadow_paper_convergence_20260914/OBSERVE_ONLY_REQUEST_CN.md",
+    "scope": "1 RH V3 CORE pool (USDG/WETH) on robinhood_mainnet (chain_id=4663)",
+    "rpc_allowlist": "eth_chainId / eth_blockNumber / eth_getBlockByNumber / eth_call (whitelisted to/selector) / eth_estimateGas / eth_gasPrice / eth_getLogs (POOL_USDG_WETH only) / eth_getTransactionReceipt (read-only)",
+    "rpc_blocklist": "eth_sendTransaction / eth_sendRawTransaction / eth_sign / personal_sign / eth_signTypedData*",
+    "identity": "lpbot-observe (new system user, low-priv)",
+    "data_dir_isolated": true,
+    "wallet_key_ssh_prod_access": false,
+    "owner_approval_required": true,
+    "owner_approval_status": false
+  },
+
+  "p4_final_status_fields": {
+    "LATEST_SOURCE_EXTERNALLY_AUDITABLE": true,
+    "GLOBAL_CI_CONCLUSION": "failure (run #34815907654 conclusion=failure; CI security + identity fixes verified)",
+    "GLOBAL_ENGINEERING_GATE": "FAIL (g1/g3 B-series 59 still fail; CI fail not swallowed)",
+    "CORE_PAPER_ENGINEERING_GATE": "FAIL (B-series engineering fix not yet done)",
+    "W2_G1_FINAL_VERSION": "PASS (45/45 on tested_sha=fd0ffa6)",
+    "W2_G4_FINAL_VERSION": "PASS (paper_c + ca05 on tested_sha=fd0ffa6)",
+    "W6_ENGINEERING_SIGNOFF": "BLOCKED_FOR_REVIEW (B-series 59 unresolved; W2/CI-security/repo-governance PASS)",
+    "COLLECTION_TECHNICALLY_READY": true,
+    "STAGE_A_DATA_GATE": "UNOBSERVED (no daemon run; no forward data)",
+    "SCOPE_CHANGE_STATUS": "PROPOSED (L217 lint go-debt scope_change_pending; awaiting Owner)",
+    "OBSERVE_OWNER_AUTHORIZED": false,
+    "PAPER_OWNER_AUTHORIZED": false,
+    "LIVE_OWNER_AUTHORIZED": false,
+    "RUNNING_MODE": "NONE"
+  },
+
+  "blocking_blockers_summary": {
+    "must_fix_for_FORWARD_PAPER": "B001..B059 (59 Python failures across 4 root cause groups) + G001 (g1 aggregate) + G002 (g3 aggregate) = 61 items",
+    "deferrable_with_scope_change": "L001..L217 (217 Go lint findings; grep-confirmed 0 runtime dependency on CORE Python forward path)",
+    "already_resolved": "CI002 (golangci-lint v2 typecheck), CI003 (gate aggregation), CI004 (redis vuln)",
+    "pre_existing_flake_to_reconfirm": "CI001 (go_build_unit_property step 6 unit tests flake; PASS in #34815410119 same SHA)"
+  }
+}
