@@ -11,9 +11,14 @@ on:
 
 # CI closeout 2026-09-14 changes (vs prior quality-gate aggregate):
 #   - golangci-lint-action pinned to SHA 23faadfdeb23a6f9e511beaba149bb123b5b145a (=v6.0.0)
-#     and version moved v1.65.0 -> v1.64.8 (v1.65.0 release asset has been removed from
-#     GitHub Releases; v1.64.8 is the last existing v1.x binary, same v1 config schema,
-#     same linters, no analysis-scope change).
+#     and version moved v1.65.0 -> v2.10.0. v1.65.0 release asset has been removed from
+#     GitHub Releases (HTTP 404 verified). All v1.x binaries (latest v1.64.8) are built
+#     with Go 1.24.1 and refuse to analyze Go 1.25.7 code with "Go language version used
+#     to build golangci-lint is lower than the targeted Go version". v2.0.0 / v2.4.0 /
+#     v2.6.0 / v2.8.0 are also built with Go 1.24.x and 1.25.0..0.5 which still fail this
+#     check. v2.10.0 (built with Go 1.26.0) is the earliest v2.x that satisfies
+#     setup-go@v5's go-version: "1.25" target. .golangci.yml migrated v1 schema -> v2
+#     schema via `golangci-lint migrate` (commit log preserved for auditability).
 #   - quality-gate split into independent jobs so build/unit/property actually run even
 #     when lint fails: go_lint, go_build_unit_property, go_vulnerability_scan.
 #   - python-rh-tests split: python-rh-tests runs full pytest, python-rh-entry-points
@@ -25,7 +30,7 @@ on:
 
 jobs:
   go_lint:
-    name: Go lint (golangci-lint, pinned)
+    name: Go lint (golangci-lint v2.10.0, pinned)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -42,7 +47,7 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@23faadfdeb23a6f9e511beaba149bb123b5b145a  # v6.0.0
         with:
-          version: v1.64.8
+          version: v2.10.0
           args: --timeout=5m
 
       - name: Test files unmodified check
