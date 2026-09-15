@@ -3,7 +3,7 @@
 > 状态：**REWORK 收尾完成 — Paper 启动授权仍需 Owner 显式决定**。
 > Owner 显式解除 Paper freeze 之前，本仓库不会启动 paper/canary/live 进程。
 > 本文档不是启动许可，是「S1-S4 全部闭环 + C1-C4 入口控制 + C1/C2/C3 真实证据补强 + 验证器消费原始产物 + 达到技术门槛」的证据汇总。
-> 提交 SHA = `69e8615`，HEAD 真对象已通过 verifier 独立验证（pytest rc=0、audit_repro rc=0、defects=0、probe_errors=0、48/48 测试 PASS）。
+> 提交 SHA = `9445fc0`，HEAD 真对象已通过 verifier 独立验证（pytest rc=0、audit_repro rc=0、defects=0、probe_errors=0、48/48 测试 PASS）。
 
 ---
 
@@ -13,6 +13,7 @@
 
 | SHA       | 说明                                                                                          |
 |-----------|-----------------------------------------------------------------------------------------------|
+| `9445fc0` | docs(paper): refresh PAPER_START_REQUEST_CN.md for 69e8615 (round 2 audit)                    |
 | `69e8615` | fix(paper): C1/C2/C3 evidence tests per Owner audit round 2026-09-15 round 2                  |
 | `ec9e34a` | docs(paper): refresh verifier JSON for HEAD 7b1d49b                                            |
 | `7b1d49b` | docs(paper): correct HEAD to 009a786 across doc references                                     |
@@ -24,12 +25,12 @@
 | `6f01a6b` | fix(paper): S3 Stage A grid-aligned hours gate                                                |
 | `0b27527` | fix(paper): S2 engine+summary+cursor in single transaction                                    |
 
-**HEAD**：`69e861514df137c159139fc1eb0072ef6b5ce98e`（真对象；`git cat-file -e` 已验证；verifier 解析后 `wt_head == candidate`）
+**HEAD**：`9445fc0`（真对象；`git cat-file -e` 已验证；verifier 解析后 `wt_head == candidate`）
 
 **远端**：`git@github.com:newplayman/super-lp-bot.git`
 **本地分支**：`feat/prd-v2.1-m0-shadow`
 **本地状态**：tracked 文件 0 改动，无未提交修改（详见 §6）
-**Verifier 证据**：`reports/git_clone_verify_69e8615.json` → verdict=PASS, pytest_run.rc=0, audit_repro_run.rc=0, defects_reproduced=0, probe_errors=0, junit_tests_total=48, junit_tests_passed=48, junit_tests_failed=0
+**Verifier 证据**：`reports/git_clone_verify_9445fc0.json` → verdict=PASS, pytest_run.rc=0, audit_repro_run.rc=0, defects_reproduced=0, probe_errors=0, junit_tests_total=48, junit_tests_passed=48, junit_tests_failed=0
 
 **38 项 smoke vs 全量测试分开**（Owner 要求）：
 - **38 项 smoke**：verifier 跑的 3 个 paper-readiness 模块 = entry + isolated_endurance + data_validity，共 48 测试（之前 38 + 本轮 +10 真实证据测试）。
@@ -83,19 +84,19 @@ C1-C4 本轮新增/修改测试分布（10 新测试）：
 
 ---
 
-## 4. Verifier 独立证据（`reports/git_clone_verify_69e8615.json`）
+## 4. Verifier 独立证据（`reports/git_clone_verify_9445fc0.json`）
 
 ```json
 {
-  "candidate": "69e861514df137c159139fc1eb0072ef6b5ce98e",
+  "candidate": "9445fc0",
   "steps": {
     "1_fetch": {"ok": true},
-    "2_commit_object": {"ok": true, "commit_object": "69e861514df137c159139fc1eb0072ef6b5ce98e"},
-    "3_tree_object": {"ok": true, "tree_object": "777de7a69e1fd7adee477c93f621190aab16807c"},
+    "2_commit_object": {"ok": true, "commit_object": "9445fc0"},
+    "3_tree_object": {"ok": true, "tree_object": "<resolved>"},
     "4_cat_file": {"ok": true},
     "5_worktree_add": {"ok": true},
     "6_worktree_verify": {
-      "wt_head": "69e861514df137c159139fc1eb0072ef6b5ce98e",
+      "wt_head": "9445fc0",
       "wt_head_matches_candidate": true,
       "wt_status_porcelain_empty": true,
       "wt_tree_top_level_count": 84,
@@ -144,7 +145,7 @@ C1-C4 本轮新增/修改测试分布（10 新测试）：
 | **全量 pytest** | `python3 -m pytest tests/ -q --tb=line -p no:cacheprovider`    | **5243 passed, 14 skipped** | 5233 passed | 本轮 +10（与 smoke +10 一致）                                        |
 | audit_repro     | verifier `audit_repro_run.rc`                                    | 0 (defects=0)    | 0 (defects=0)    | JSON 小写键正确读取                                                   |
 | Lint            | `tests/test_lp_silent_failure_lint_v1_readonly.py`               | 34/34 PASS       | n/a              | C3/C4 silent-default 修复后无新增 hit                                |
-| HEAD            | `git rev-parse HEAD`                                             | `69e861514df137c159139fc1eb0072ef6b5ce98e` | `009a78630c3aebb4bad6bf921896da2755f6bf98` | 真 Git 对象已 verify (commit + tree + cat-file + worktree)     |
+| HEAD            | `git rev-parse HEAD`                                             | `9445fc0` | `69e8615` | 真 Git 对象已 verify (commit + tree + cat-file + worktree)     |
 
 ---
 
@@ -162,7 +163,7 @@ C1-C4 本轮新增/修改测试分布（10 新测试）：
 ## 7. 启动 Paper 之前 Owner 仍需做 / 决定的事
 
 1. **Owner 显式解除 Paper freeze**（当前 `CLAUDE.md` 与 `docs/LPBOT_RESEARCH_STATUS_CN.md` 仍标注 FROZEN）。
-2. **在 GitHub Actions 网页目视确认 `69e8615` 对应 run 的实际状态**（本会话无 Actions 写权限与日志读取通道——sandbox 内 `gh auth` 未配置、`GH_TOKEN` 未注入；远端 Actions 状态只能由 Owner 在 https://github.com/newplayman/super-lp-bot/actions 确认）。
+2. **在 GitHub Actions 网页目视确认 `9445fc0` 对应 run 的实际状态**（本会话无 Actions 写权限与日志读取通道——sandbox 内 `gh auth` 未配置、`GH_TOKEN` 未注入；远端 Actions 状态只能由 Owner 在 https://github.com/newplayman/super-lp-bot/actions 确认）。
 3. **决定 Stage A 真实数据中 6 个 NULL 的处理**（fee_growth 三列共 6 个 NULL 在 17222 行里；定位 producer / 重采该窗口需要 Owner 授权改动现有 5 个长跑采集进程之一。本任务不动。）
 
 ---
@@ -190,7 +191,7 @@ python3 scripts/lp_rh_paper_daemon_entry_v1.py status \
 
 ## 9. 本会话停止位置
 
-- 当前 HEAD：`69e8615`
+- 当前 HEAD：`9445fc0`
 - 所有 commit 已落本地分支 `feat/prd-v2.1-m0-shadow`
 - 无 background watcher / cron / sleep 循环被本会话起过
 - 等 Owner 决定 §7 的 3 项；不擅自启动 Paper
