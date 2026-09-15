@@ -1,0 +1,55 @@
+{
+  "started_at": "2026-09-15T13:44:25.036731Z",
+  "repo": "/opt/lpbot/lp-bot-v3-origin-check",
+  "remote": "origin",
+  "branch": "feat/prd-v2.1-m0-shadow",
+  "candidate": "5e72d5d21dfc26dd99eaa46cd79f8197fe6e5d9c",
+  "steps": {
+    "1_fetch": {
+      "ok": true,
+      "warning": null
+    },
+    "2_commit_object": {
+      "ok": true,
+      "commit_object": "5e72d5d21dfc26dd99eaa46cd79f8197fe6e5d9c"
+    },
+    "3_tree_object": {
+      "ok": true,
+      "tree_object": "4c6e25c038880e37ff909a38b38b5b73a640fa3e"
+    },
+    "4_cat_file": {
+      "ok": true
+    },
+    "5_worktree_add": {
+      "ok": true,
+      "path": "/tmp/lpbot_git_verify_1179774_1789479867/wt"
+    },
+    "6_worktree_verify": {
+      "ok": true,
+      "wt_head": "5e72d5d21dfc26dd99eaa46cd79f8197fe6e5d9c",
+      "wt_head_matches_candidate": true,
+      "wt_status_porcelain_empty": true,
+      "wt_status_porcelain": "",
+      "wt_log": "5e72d5d21dfc26dd99eaa46cd79f8197fe6e5d9c fix(paper): exclude recursive verifier test from verifier pytest run",
+      "wt_tree_top_level_count": 84,
+      "pytest_run": {
+        "rc": 0,
+        "passed": true,
+        "summary_line": "",
+        "stdout_tail": "..................................                                       [100%]\n34 passed in 0.84s",
+        "stderr_tail": ""
+      },
+      "audit_repro_run": {
+        "rc": 0,
+        "passed": true,
+        "defects_reproduced": null,
+        "probe_errors": null,
+        "stdout_tail": "ns\": [\n          \"LIVE_GATE: CAPITAL_POLICY_NOT_APPROVED\",\n          \"FULL_TEST_NO_PASS: no passed tests recorded\",\n          \"FULL_TEST_FAILED: 3 failures\",\n          \"FULL_TEST_NONZERO_EXIT: 1\",\n          \"FAULT_INJECTION_FAILED: 0/6 scenarios passed\"\n        ],\n        \"tiny_live_authorized\": false,\n        \"manual_override_blocked\": false\n      }\n    }\n  ],\n  \"counts\": {\n    \"defects_reproduced\": 0,\n    \"probe_errors\": 0\n  },\n  \"defects_reproduced\": 0,\n  \"probe_errors\": 0,\n  \"github\": null\n}",
+        "stderr_tail": ""
+      }
+    }
+  },
+  "worktree_tmp": "/tmp/lpbot_git_verify_1179774_1789479867",
+  "verdict": "PASS",
+  "ended_at": "2026-09-15T13:44:31.096296Z"
+}
