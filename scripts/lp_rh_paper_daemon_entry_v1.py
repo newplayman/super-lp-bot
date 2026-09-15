@@ -1015,14 +1015,21 @@ def run_once(cfg_path: str) -> tuple[int, dict[str, Any]]:
     }
 
     try:
+        if not conn.in_transaction:
+            conn.execute("BEGIN IMMEDIATE")
         steps, duplicate_rows, copy_stats = _run_episode_persisted(
             conn,
             cfg=engine_cfg,
             episode_id=episode_id,
             sample_list=samples,
             now_fn=lambda: now_iso,
+            defer_commit=True,
         )
     except Exception as exc:
+        try:
+            conn.rollback()
+        except sqlite3.Error:
+            pass
         conn.close()
         return EXIT_TECH_ERROR, {
             **base_evidence,
@@ -1063,7 +1070,10 @@ def run_once(cfg_path: str) -> tuple[int, dict[str, Any]]:
         )
         conn.commit()
     except Exception as exc:
-        conn.rollback()
+        try:
+            conn.rollback()
+        except sqlite3.Error:
+            pass
         conn.close()
         return EXIT_TECH_ERROR, {
             **base_evidence,

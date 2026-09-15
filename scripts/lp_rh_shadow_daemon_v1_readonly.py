@@ -581,7 +581,8 @@ def _precise_release_reservation(ledger_conn, *, intent_id: str, episode_id: str
             )
 
 
-def _run_episode_persisted(ledger_conn, *, cfg, episode_id, sample_list, now_fn):
+def _run_episode_persisted(ledger_conn, *, cfg, episode_id, sample_list, now_fn,
+                            defer_commit: bool = False):
     """Run the episode on the persistent ledger, counting duplicate decision_ids.
 
     decision_id does not include the episode, so re-running an overlapping
@@ -589,6 +590,10 @@ def _run_episode_persisted(ledger_conn, *, cfg, episode_id, sample_list, now_fn)
     the ledger; when a duplicate collides we roll back, re-run on a fresh
     scratch to recover the full steps, count the duplicates, and copy the new
     (non-duplicate) rows into the ledger.  Returns (steps, duplicate_rows, copy_stats).
+
+    defer_commit=True: caller already opened a transaction wrapping engine +
+    summary + cursor.  We MUST NOT commit here — leave the transaction open
+    for the caller to atomically commit all writes together.
     """
     kwargs = _episode_kwargs(cfg, episode_id=episode_id, sample_list=sample_list,
                              now_fn=now_fn)
@@ -597,7 +602,8 @@ def _run_episode_persisted(ledger_conn, *, cfg, episode_id, sample_list, now_fn)
             ledger_conn.execute("BEGIN IMMEDIATE")
         steps = run_episode(ledger_conn, **kwargs)
         _record_tx_intents_safe(ledger_conn, steps, cfg=cfg, episode_id=episode_id, now_fn=now_fn, sample_list=sample_list)
-        ledger_conn.commit()
+        if not defer_commit:
+            ledger_conn.commit()
         return steps, 0, None
     except sqlite3.IntegrityError:
         ledger_conn.rollback()
@@ -609,10 +615,13 @@ def _run_episode_persisted(ledger_conn, *, cfg, episode_id, sample_list, now_fn)
             try:
                 steps = run_episode(scratch_conn, **kwargs)
                 scratch_conn.commit()
+                if not ledger_conn.in_transaction:
+                    ledger_conn.execute("BEGIN IMMEDIATE")
                 copy_stats = _copy_new_rows(scratch_conn, ledger_conn)
                 copy_stats["reservations_synced"] = synced
                 _record_tx_intents_safe(ledger_conn, steps, cfg=cfg, episode_id=episode_id, now_fn=now_fn, sample_list=sample_list)
-                ledger_conn.commit()
+                if not defer_commit:
+                    ledger_conn.commit()
             finally:
                 scratch_conn.close()
         dup_rows = copy_stats.get("rh_gate_decisions", {}).get("skipped_existing", 0)
