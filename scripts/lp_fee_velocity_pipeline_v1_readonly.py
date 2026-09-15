@@ -21,7 +21,7 @@ REPORT_DIR = Path(
         str(REPO_ROOT / "reports" / "lp_fee_velocity_pipeline" / RUN_ID),
     )
 )
-WORKSPACE = "/opt/lpbot/lp-bot-v3-origin-check"
+WORKSPACE = str(Path(__file__).resolve().parents[1])
 VNE_DIR = REPO_ROOT / "reports" / "lp_virtual_notional_economics" / "20260601_094238"
 QD_DIR = REPO_ROOT / "reports" / "lp_quote_depth_curve_fix" / "20260601_091739"
 PIPELINE_DIR = REPO_ROOT / "reports" / "lp_data_pipeline" / "20260601_084943"

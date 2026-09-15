@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from decimal import Decimal, localcontext
 from pathlib import Path
 from typing import Any, Mapping, Sequence
-REPO_ROOT = "/opt/lpbot/lp-bot-v3-origin-check"
+REPO_ROOT = str(Path(__file__).resolve().parents[1])
 if REPO_ROOT not in sys.path:
     sys.path.insert(0, REPO_ROOT)
 REPO_ROOT = Path(__file__).resolve().parents[1]

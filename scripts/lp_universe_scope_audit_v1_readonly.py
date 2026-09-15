@@ -19,7 +19,7 @@ REPORT_DIR = Path(
         str(REPO_ROOT / "reports" / "lp_universe_scope_audit" / RUN_ID),
     )
 )
-WORKSPACE = os.environ.get("LPSQL_WORKSPACE", "/opt/lpbot/lp-bot-v3-origin-check")
+WORKSPACE = os.environ.get("LPSQL_WORKSPACE", str(Path(__file__).resolve().parents[1]))
 
 ALLOWED_NEXT = {
     "LP_EVM_UNIVERSE_EXPANSION_DESIGN_V1",

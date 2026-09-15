@@ -17,7 +17,7 @@ REPO_ROOT = Path(os.environ.get("REPO_ROOT_OVERRIDE", "/Users/bendu/lp-bot/v3"))
 REPORT_DIR = Path(
     os.environ.get("REPORT_DIR_OVERRIDE", str(REPO_ROOT / "reports" / "lp_quote_depth_curve" / RUN_ID))
 )
-WORKSPACE = "/opt/lpbot/lp-bot-v3-origin-check"
+WORKSPACE = str(Path(__file__).resolve().parents[1])
 TESTED_NOTIONALS = [20, 100, 500, 1000, 2000]
 PRIOR_PIPELINE_DIR = REPO_ROOT / "reports" / "lp_data_pipeline" / "20260601_084943"
 PRIOR_SCALE_DIR = REPO_ROOT / "reports" / "lp_scale_economics" / "20260601_082100"

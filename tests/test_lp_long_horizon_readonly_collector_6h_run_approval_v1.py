@@ -25,7 +25,9 @@ from pathlib import Path
 
 import pytest
 
-REPO_ROOT = Path("/opt/lpbot/lp-bot-v3-origin-check")
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if not (REPO_ROOT / "scripts").is_dir():
+    raise RuntimeError(f"checkout root does not look right: {REPO_ROOT}")
 REPORT_DIR = REPO_ROOT / "reports" / "lp_long_horizon_readonly_collector_6h_run" / "20260604_130353"
 COLLECTOR_SCRIPT = REPO_ROOT / "scripts" / "lp_long_horizon_readonly_collector_v1.py"
 

@@ -16,7 +16,7 @@ from scripts.lp_rh_swap_logs_v1_readonly import (
 from scripts.lp_rh_organic_volume_v1_readonly import organic_volume_estimate
 from scripts import lp_rh_organic_recorder_v1_readonly as mod
 
-ROOT = Path("/opt/lpbot/lp-bot-v3-origin-check")
+ROOT = Path(str(Path(__file__).resolve().parents[1]))
 POOL = "0x" + "a" * 40
 RECEPIENT = "0x" + "p" * 40
 

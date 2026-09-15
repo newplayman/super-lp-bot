@@ -30,7 +30,7 @@ def load_module(name: str, path: Path) -> Any:
 
 REPO_ROOT = Path(os.environ.get("REPO_ROOT_OVERRIDE", str(Path(__file__).resolve().parents[1]))).resolve()
 INPUT_REPO_ROOT = Path(os.environ.get("INPUT_REPO_ROOT_OVERRIDE", str(REPO_ROOT))).resolve()
-WORKSPACE = "/opt/lpbot/lp-bot-v3-origin-check"
+WORKSPACE = str(Path(__file__).resolve().parents[1])
 SWAP_TOPIC_V3 = "0xc42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115fbcca67"
 READONLY_RPC_FALLBACKS = [
     "https://bsc-dataseed.binance.org",

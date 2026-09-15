@@ -16,7 +16,7 @@ from collections.abc import Mapping
 from decimal import Decimal
 from typing import Any, Optional, Sequence
 
-REPO_ROOT = "/opt/lpbot/lp-bot-v3-origin-check"
+REPO_ROOT = str(Path(__file__).resolve().parents[1])
 if REPO_ROOT not in sys.path:
     sys.path.insert(0, REPO_ROOT)
 

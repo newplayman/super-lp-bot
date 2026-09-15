@@ -1443,7 +1443,7 @@ def test_systemd_template_is_shadow_only_credential_free_and_preflighted():
     assert "lp_scanner_daemon_v1_readonly.py" in text
     assert "--db" in text
     assert "ExecStartPre=" in text
-    assert "/opt/lpbot/lp-bot-v3-origin-check" in text
+    assert str(Path(__file__).resolve().parents[1]) in text
     assert "EnvironmentFile=" not in text
     assert "token" not in lowered
     assert "wallet" not in lowered

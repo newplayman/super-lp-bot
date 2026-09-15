@@ -26,7 +26,8 @@ from pathlib import Path
 
 import pytest
 
-REPO_ROOT = Path("/opt/lpbot/lp-bot-v3-origin-check")
+REPO_ROOT = Path(__file__).resolve().parents[1]
+assert (REPO_ROOT / "scripts").is_dir(), f"checkout root does not look right: {REPO_ROOT}"
 REPORT_DIR = REPO_ROOT / "reports" / "lp_long_horizon_readonly_data_pipeline" / "20260604_062324"
 SCRIPT_PATH = REPO_ROOT / "scripts" / "lp_long_horizon_readonly_collector_v1.py"
 FINAL_VERDICT = REPORT_DIR / "FINAL_VERDICT.json"  # will be created in Stage K

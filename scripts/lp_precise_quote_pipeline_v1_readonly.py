@@ -30,7 +30,7 @@ REPORT_DIR = Path(
         str(REPO_ROOT / "reports" / "lp_precise_quote" / RUN_ID),
     )
 )
-WORKSPACE = "/opt/lpbot/lp-bot-v3-origin-check"
+WORKSPACE = str(Path(__file__).resolve().parents[1])
 REAL_DATA_REOPEN_DIR = REPO_ROOT / "reports" / "lp_real_data_reopen" / "20260601_112642"
 QUOTE_DEPTH_V2_DIR = REPO_ROOT / "reports" / "lp_quote_depth_curve_fix" / "20260601_091739"
 SCALE_FREEZE_DIR = REPO_ROOT / "reports" / "lp_scale_final_freeze" / "20260601_110649"

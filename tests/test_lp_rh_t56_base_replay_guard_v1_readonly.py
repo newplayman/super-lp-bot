@@ -21,7 +21,7 @@ import pytest
 
 from scripts.lp_netcover_snapshot_replay_v1_readonly import replay
 
-CODE_ROOT = Path("/opt/lpbot/lp-bot-v3-origin-check")
+CODE_ROOT = Path(str(Path(__file__).resolve().parents[1]))
 SNAPSHOT = CODE_ROOT / "reports" / "lp_m0f_acceptance" / "20260809" / "scanner.db"
 GOLDEN = CODE_ROOT / "tests" / "fixtures" / "rh" / "t56_base_replay_golden.json"
 

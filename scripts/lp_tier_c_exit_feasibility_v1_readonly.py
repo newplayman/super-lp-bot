@@ -49,7 +49,7 @@ from pathlib import Path
 # Config / constants
 # ---------------------------------------------------------------------------
 
-WORKSPACE = Path(os.environ.get("REPO_ROOT_OVERRIDE", "/opt/lpbot/lp-bot-v3-origin-check"))
+WORKSPACE = Path(os.environ.get("REPO_ROOT_OVERRIDE", str(Path(__file__).resolve().parents[1])))
 REPORT_BASE = WORKSPACE / "reports" / "lp_tier_c_exit_feasibility"
 
 V3_SWAP_TOPIC = "0xc42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115fbcca67"

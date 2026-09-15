@@ -20,7 +20,7 @@ REPORT_DIR = Path(
         str(REPO_ROOT / "reports" / "lp_real_data_reopen" / RUN_ID),
     )
 )
-WORKSPACE = "/opt/lpbot/lp-bot-v3-origin-check"
+WORKSPACE = str(Path(__file__).resolve().parents[1])
 ALLOWED_NEXT = {
     "LP_PRECISE_QUOTE_PIPELINE_V1",
     "LP_V3_TICK_LIQUIDITY_PIPELINE_V1",

@@ -22,7 +22,7 @@ from eth_utils import keccak
 RUN_ID = os.environ.get("RUN_ID_OVERRIDE", "20260601_130245")
 REPO_ROOT = Path(os.environ.get("REPO_ROOT_OVERRIDE", "/Users/bendu/lp-bot/v3"))
 REPORT_DIR = Path(os.environ.get("REPORT_DIR_OVERRIDE", str(REPO_ROOT / "reports" / "lp_v3_tick_liquidity" / RUN_ID)))
-WORKSPACE = "/opt/lpbot/lp-bot-v3-origin-check"
+WORKSPACE = str(Path(__file__).resolve().parents[1])
 PRECISE_QUOTE_DIR = REPO_ROOT / "reports" / "lp_precise_quote" / "20260601_120001"
 REAL_DATA_REOPEN_DIR = REPO_ROOT / "reports" / "lp_real_data_reopen" / "20260601_112642"
 QUOTE_DEPTH_V2_DIR = REPO_ROOT / "reports" / "lp_quote_depth_curve_fix" / "20260601_091739"

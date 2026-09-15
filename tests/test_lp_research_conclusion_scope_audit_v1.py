@@ -21,7 +21,9 @@ from pathlib import Path
 
 import pytest
 
-REPO_ROOT = Path("/opt/lpbot/lp-bot-v3-origin-check")
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if not (REPO_ROOT / "scripts").is_dir():
+    raise RuntimeError(f"checkout root does not look right: {REPO_ROOT}")
 REPORT_DIR = REPO_ROOT / "reports" / "lp_research_conclusion_scope_audit" / "20260604_060659"
 FINAL_FREEZE_VERDICT = (
     REPO_ROOT / "reports" / "lp_research_final_freeze" / "20260604_051254" / "FINAL_VERDICT.json"
