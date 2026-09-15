@@ -140,11 +140,62 @@ gas_usd = "0.01"
 
 
 def _write_config(tmp_path: Path, extra_paths: dict[str, str] | None = None) -> Path:
+    """Build a paper.toml pointing ONLY at tmp_path resources — never at
+    REPO_ROOT / reports / lp_rh / scanner.db.  The verifier clones this
+    branch into a tmp worktree where that real path does not exist;
+    hard-coding it makes the test pass in the main checkout but fail in
+    the worktree (and would mask a future producer regression that
+    deleted/renamed the real scanner.db).
+    """
+    # Provide a minimal stub scanner.db so the source adapter's schema
+    # validation passes.  Real data-shape assertions live in the
+    # endurance tests which seed a richer schema inline.
+    src_dir = tmp_path / "src"
+    src_dir.mkdir(parents=True, exist_ok=True)
+    stub_src = src_dir / "scanner.db"
+    if not stub_src.exists():
+        import sqlite3 as _sqlite3
+        _c = _sqlite3.connect(str(stub_src))
+        try:
+            _c.executescript(
+                "CREATE TABLE IF NOT EXISTS rh_market_states ("
+                "  asset_address TEXT, sample_time TEXT, chain_id INTEGER,"
+                "  reference_mid TEXT, fee_growth_global_0 TEXT,"
+                "  fee_growth_global_1 TEXT,"
+                "  reference_age_secs INTEGER,"
+                "  source_event_time TEXT"
+                ");"
+                "CREATE TABLE IF NOT EXISTS rh_pool_meta ("
+                "  chain_id INTEGER, pool_address TEXT, as_of TEXT,"
+                "  attestation_status TEXT, dec0 INTEGER, dec1 INTEGER,"
+                "  max_impact_bps INTEGER, protocol TEXT, range_pct REAL,"
+                "  token0 TEXT, token1 TEXT, input_price_usd TEXT,"
+                "  tick_data TEXT"
+                ");"
+            )
+            # Adapter requires >= 1 event for the configured (chain_id,
+            # pool_address).  Insert one stub event so preflight passes
+            # the identity check; the actual data-shape assertions live
+            # in the endurance tests.
+            from datetime import datetime as _dt, timezone as _tz
+            _t = _dt(2026, 1, 1, tzinfo=_tz.utc).isoformat().replace(
+                "+00:00", "Z"
+            )
+            _c.execute(
+                "INSERT INTO rh_market_states VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    "0x52e65b17fb6e5ba00ed806f37afcd2daa50271ca",
+                    _t, 4663, "2000", "0", "0", 0, _t,
+                ),
+            )
+            _c.commit()
+        finally:
+            _c.close()
     defaults = {
         "ledger_db": str(tmp_path / "ledger.db"),
         "reports_dir": str(tmp_path / "reports"),
         "pid_file": str(tmp_path / "daemon.pid"),
-        "source_db_path": str(REPO_ROOT / "reports" / "lp_rh" / "scanner.db"),
+        "source_db_path": str(stub_src),
     }
     if extra_paths:
         defaults.update(extra_paths)

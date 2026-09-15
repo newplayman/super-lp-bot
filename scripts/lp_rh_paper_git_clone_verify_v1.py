@@ -213,19 +213,59 @@ def main(argv: list[str] | None = None) -> int:
             [line for line in wt_tree_listing.splitlines() if line.strip()]
         )
 
-        # Confirm pytest works inside worktree using the same venv
-        # We do a minimal smoke: pytest --collect-only on the new test file
+        # Step 6a — REAL pytest run inside the worktree, not just collect.
+        # Run a smoke scope (the four paper-readiness test modules) so we
+        # catch broken imports / syntax errors that --collect-only would
+        # miss.  We capture rc and tail of output for evidence.
         rc_pytest, out_pytest, err_pytest = _run(
             [
                 sys.executable, "-m", "pytest",
                 "tests/test_lp_rh_paper_data_validity_v1.py",
-                "--collect-only", "-q",
-                "--no-header",
+                "tests/test_lp_rh_paper_daemon_entry_v1.py",
+                "tests/test_lp_rh_paper_daemon_isolated_endurance_v1.py",
+                "tests/test_lp_rh_paper_git_clone_verify_v1.py",
+                "-q", "--tb=line", "--no-header",
                 "-p", "no:cacheprovider",
             ],
             cwd=worktree_path,
             check=False,
         )
+        pytest_passed = rc_pytest == 0
+        pytest_summary_line = ""
+        for ln in (out_pytest or "").splitlines():
+            s = ln.strip()
+            if " passed" in s and (" failed" in s or " error" in s
+                                    or s.endswith("passed")):
+                pytest_summary_line = s
+                break
+
+        # Step 6b — REAL audit_repro run.  This catches AST-extraction
+        # regressions (defects_reproduced, probe_errors) that pytest alone
+        # would not detect.
+        rc_audit, out_audit, err_audit = _run(
+            [
+                sys.executable, "tools/audit_repro/audit_repro.py",
+                "--repo", str(worktree_path),
+                "--allow-other-head",
+                "--json-out", str(tmp_root / "audit.json"),
+            ],
+            cwd=worktree_path,
+            check=False,
+        )
+        audit_passed = rc_audit == 0
+        audit_defects = None
+        audit_probe_errors = None
+        audit_path = str(tmp_root / "audit.json")
+        try:
+            audit_blob = json.loads(
+                Path(audit_path).read_text(encoding="utf-8")
+            )
+            counts = audit_blob.get("counts") or {}
+            audit_defects = counts.get("DEFECT_REPRODUCED")
+            audit_probe_errors = counts.get("PROBE_ERROR")
+        except Exception as exc:
+            audit_passed = False
+            audit_defects = f"audit.json unreadable: {exc}"
 
         evidence["steps"]["6_worktree_verify"] = {
             "ok": True,
@@ -235,10 +275,20 @@ def main(argv: list[str] | None = None) -> int:
             "wt_status_porcelain": wt_status,
             "wt_log": wt_log,
             "wt_tree_top_level_count": wt_tree_count,
-            "pytest_collect_only": {
+            "pytest_run": {
                 "rc": rc_pytest,
-                "stdout_tail": out_pytest[-500:] if out_pytest else "",
+                "passed": pytest_passed,
+                "summary_line": pytest_summary_line,
+                "stdout_tail": out_pytest[-1000:] if out_pytest else "",
                 "stderr_tail": err_pytest[-500:] if err_pytest else "",
+            },
+            "audit_repro_run": {
+                "rc": rc_audit,
+                "passed": audit_passed,
+                "defects_reproduced": audit_defects,
+                "probe_errors": audit_probe_errors,
+                "stdout_tail": out_audit[-500:] if out_audit else "",
+                "stderr_tail": err_audit[-500:] if err_audit else "",
             },
         }
     finally:
@@ -253,12 +303,18 @@ def main(argv: list[str] | None = None) -> int:
             pass
         shutil.rmtree(tmp_root, ignore_errors=True)
 
-    # Final verdict
+    # Final verdict — gates on rc of BOTH pytest AND audit_repro.  Per
+    # Owner directive, collecting tests is not enough; the verifier must
+    # actually run them and FAIL if either exits non-zero.
     wt_step = evidence["steps"].get("6_worktree_verify", {})
+    pytest_run = wt_step.get("pytest_run", {})
+    audit_run = wt_step.get("audit_repro_run", {})
     verdict_ok = (
         wt_step.get("wt_head_matches_candidate", False)
         and wt_step.get("wt_status_porcelain_empty", False)
         and wt_step.get("wt_tree_top_level_count", 0) > 0
+        and pytest_run.get("passed", False)
+        and audit_run.get("passed", False)
     )
     evidence["verdict"] = "PASS" if verdict_ok else "FAIL"
     evidence["ended_at"] = _now_iso()

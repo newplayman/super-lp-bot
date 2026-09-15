@@ -40,7 +40,11 @@ def _run_script(*args: str) -> dict:
 
 class TestGitCloneVerify:
     def test_real_sha_passes(self) -> None:
-        """Verify the current HEAD; expect PASS."""
+        """Verify the current HEAD; expect PASS.
+
+        S4: the verifier must gate on actual pytest rc + audit_repro rc,
+        not just collect-only.  For a real HEAD those should both PASS.
+        """
         # Get HEAD via plain git rev-parse (the script does the same thing
         # when --candidate is omitted).
         head = subprocess.check_output(
@@ -60,6 +64,19 @@ class TestGitCloneVerify:
         assert wt["wt_head_matches_candidate"] is True
         assert wt["wt_status_porcelain_empty"] is True
         assert wt["wt_tree_top_level_count"] > 0
+        # S4: gate on pytest rc and audit_repro rc
+        pytest_run = wt["pytest_run"]
+        assert pytest_run["rc"] == 0, (
+            f"pytest rc={pytest_run['rc']}; summary_line={pytest_run.get('summary_line')}; "
+            f"stderr_tail={pytest_run.get('stderr_tail')}"
+        )
+        assert pytest_run["passed"] is True
+        audit_run = wt["audit_repro_run"]
+        assert audit_run["rc"] == 0, (
+            f"audit_repro rc={audit_run['rc']}; defects={audit_run.get('defects_reproduced')}; "
+            f"probe_errors={audit_run.get('probe_errors')}"
+        )
+        assert audit_run["passed"] is True
 
     def test_fake_sha_fails_cleanly(self) -> None:
         """A SHA that doesn't exist must FAIL at step 2 (commit object)."""
