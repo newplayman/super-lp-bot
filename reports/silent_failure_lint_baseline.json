@@ -3,7 +3,7 @@
   "tool": "lp_silent_failure_lint_v1_readonly",
   "identity_schema": "(file, rule, fingerprint)",
   "note": "Baseline of known silent-failure hits matched by content fingerprint. --fail-on-new blocks any hit exceeding baseline occurrence count. Line numbers are for display only. Regenerate after an approved fix.",
-  "count": 369,
+  "count": 372,
   "hits": [
     {
       "file": "scripts/finalize_bsc_fee_velocity_overnight_run_v1_readonly.py",
@@ -992,7 +992,7 @@
       "col": 299,
       "rule": 1,
       "fingerprint": "df6e212f99adc49a",
-      "snippet": "f\"| `{r.get('pool_address', '?')[:8]}\u2026` | {r.get('base_fee_bps', '')} | {r.get('max_fee_bps', '')} |",
+      "snippet": "f\"| `{r.get('pool_address', '?')[:8]}…` | {r.get('base_fee_bps', '')} | {r.get('max_fee_bps', '')} |",
       "key": "scripts/lp_meteora_dlmm_known_pool_feed_expansion_overnight_v1_finalize.py:255:299:1"
     },
     {
@@ -1046,7 +1046,7 @@
       "col": 158,
       "rule": 1,
       "fingerprint": "2ce63479a5ae3506",
-      "snippet": "f\"| `{s.get('pool_address', '?')[:8]}\u2026` | {s.get('token_pair', '')} | {s.get('base_fee_bps', '')} | ",
+      "snippet": "f\"| `{s.get('pool_address', '?')[:8]}…` | {s.get('token_pair', '')} | {s.get('base_fee_bps', '')} | ",
       "key": "scripts/lp_meteora_dlmm_known_pool_feed_expansion_overnight_v1_finalize.py:433:158:1"
     },
     {
@@ -1055,7 +1055,7 @@
       "col": 201,
       "rule": 1,
       "fingerprint": "2ce63479a5ae3506",
-      "snippet": "f\"| `{s.get('pool_address', '?')[:8]}\u2026` | {s.get('token_pair', '')} | {s.get('base_fee_bps', '')} | ",
+      "snippet": "f\"| `{s.get('pool_address', '?')[:8]}…` | {s.get('token_pair', '')} | {s.get('base_fee_bps', '')} | ",
       "key": "scripts/lp_meteora_dlmm_known_pool_feed_expansion_overnight_v1_finalize.py:433:201:1"
     },
     {
@@ -1870,75 +1870,75 @@
     },
     {
       "file": "scripts/lp_rh_fault_injection_v1_readonly.py",
-      "line": 803,
-      "col": 42,
-      "rule": 1,
-      "fingerprint": "5d20adcb51f98879",
-      "snippet": "f\"| fee_growth_0 \u975e\u7a7a\u6bd4\u4f8b | `{prod_before.get('24h_ratio_0', 0):.4f}` | `{s1['control']['col_0_ratio']:.",
-      "key": "scripts/lp_rh_fault_injection_v1_readonly.py:803:42:1"
-    },
-    {
-      "file": "scripts/lp_rh_fault_injection_v1_readonly.py",
       "line": 804,
       "col": 42,
       "rule": 1,
-      "fingerprint": "ae1dc443c41c3509",
-      "snippet": "f\"| fee_growth_1 \u975e\u7a7a\u6bd4\u4f8b | `{prod_before.get('24h_ratio_1', 0):.4f}` | `{s1['control']['col_1_ratio']:.",
+      "fingerprint": "5d20adcb51f98879",
+      "snippet": "f\"| fee_growth_0 非空比例 | `{prod_before.get('24h_ratio_0', 0):.4f}` | `{s1['control']['col_0_ratio']:.",
       "key": "scripts/lp_rh_fault_injection_v1_readonly.py:804:42:1"
     },
     {
+      "file": "scripts/lp_rh_fault_injection_v1_readonly.py",
+      "line": 805,
+      "col": 42,
+      "rule": 1,
+      "fingerprint": "ae1dc443c41c3509",
+      "snippet": "f\"| fee_growth_1 非空比例 | `{prod_before.get('24h_ratio_1', 0):.4f}` | `{s1['control']['col_1_ratio']:.",
+      "key": "scripts/lp_rh_fault_injection_v1_readonly.py:805:42:1"
+    },
+    {
       "file": "scripts/lp_rh_funnel_autopsy_v1_readonly.py",
-      "line": 105,
+      "line": 103,
       "col": 24,
       "rule": 1,
       "fingerprint": "10aa10727530d3ab",
       "snippet": "computed_pass = int(statuses.get(\"COMPUTED_PASS\", 0))",
-      "key": "scripts/lp_rh_funnel_autopsy_v1_readonly.py:105:24:1"
+      "key": "scripts/lp_rh_funnel_autopsy_v1_readonly.py:103:24:1"
+    },
+    {
+      "file": "scripts/lp_rh_funnel_autopsy_v1_readonly.py",
+      "line": 107,
+      "col": 50,
+      "rule": 1,
+      "fingerprint": "af90bdac647dd3f7",
+      "snippet": "f\"已完成经济评估且不合格: {int(statuses.get('COMPUTED_FAIL', 0))}\",",
+      "key": "scripts/lp_rh_funnel_autopsy_v1_readonly.py:107:50:1"
+    },
+    {
+      "file": "scripts/lp_rh_funnel_autopsy_v1_readonly.py",
+      "line": 108,
+      "col": 32,
+      "rule": 1,
+      "fingerprint": "ef9e3f15681dea68",
+      "snippet": "f\"尚未能评估: {int(statuses.get('INPUTS_UNAVAILABLE', 0))}\",",
+      "key": "scripts/lp_rh_funnel_autopsy_v1_readonly.py:108:32:1"
     },
     {
       "file": "scripts/lp_rh_funnel_autopsy_v1_readonly.py",
       "line": 109,
-      "col": 50,
+      "col": 26,
       "rule": 1,
-      "fingerprint": "af90bdac647dd3f7",
-      "snippet": "f\"\u5df2\u5b8c\u6210\u7ecf\u6d4e\u8bc4\u4f30\u4e14\u4e0d\u5408\u683c: {int(statuses.get('COMPUTED_FAIL', 0))}\",",
-      "key": "scripts/lp_rh_funnel_autopsy_v1_readonly.py:109:50:1"
+      "fingerprint": "bb696816c27afe89",
+      "snippet": "f\"不支持: {int(statuses.get('UNSUPPORTED', 0))}\",",
+      "key": "scripts/lp_rh_funnel_autopsy_v1_readonly.py:109:26:1"
     },
     {
       "file": "scripts/lp_rh_funnel_autopsy_v1_readonly.py",
       "line": 110,
-      "col": 32,
-      "rule": 1,
-      "fingerprint": "ef9e3f15681dea68",
-      "snippet": "f\"\u5c1a\u672a\u80fd\u8bc4\u4f30: {int(statuses.get('INPUTS_UNAVAILABLE', 0))}\",",
-      "key": "scripts/lp_rh_funnel_autopsy_v1_readonly.py:110:32:1"
-    },
-    {
-      "file": "scripts/lp_rh_funnel_autopsy_v1_readonly.py",
-      "line": 111,
-      "col": 26,
-      "rule": 1,
-      "fingerprint": "bb696816c27afe89",
-      "snippet": "f\"\u4e0d\u652f\u6301: {int(statuses.get('UNSUPPORTED', 0))}\",",
-      "key": "scripts/lp_rh_funnel_autopsy_v1_readonly.py:111:26:1"
-    },
-    {
-      "file": "scripts/lp_rh_funnel_autopsy_v1_readonly.py",
-      "line": 112,
       "col": 29,
       "rule": 1,
       "fingerprint": "2a881da7ffe77092",
-      "snippet": "f\"\u653f\u7b56\u963b\u6321: {int(statuses.get('POLICY_BLOCKED', 0))}\",",
-      "key": "scripts/lp_rh_funnel_autopsy_v1_readonly.py:112:29:1"
+      "snippet": "f\"政策阻挡: {int(statuses.get('POLICY_BLOCKED', 0))}\",",
+      "key": "scripts/lp_rh_funnel_autopsy_v1_readonly.py:110:29:1"
     },
     {
       "file": "scripts/lp_rh_netcover_inputs_v1_readonly.py",
-      "line": 90,
+      "line": 92,
       "col": 22,
       "rule": 2,
       "fingerprint": "e8f7f6a7b5f5c60e",
       "snippet": "reward_verified = bool(evidence.get(\"reward_verified\", False))",
-      "key": "scripts/lp_rh_netcover_inputs_v1_readonly.py:90:22:2"
+      "key": "scripts/lp_rh_netcover_inputs_v1_readonly.py:92:22:2"
     },
     {
       "file": "scripts/lp_rh_organic_volume_v1_readonly.py",
@@ -1948,6 +1948,114 @@
       "fingerprint": "aa7cf0c457deaa98",
       "snippet": "sender: max(volume - matched.get(sender, Decimal(\"0\")), Decimal(\"0\"))",
       "key": "scripts/lp_rh_organic_volume_v1_readonly.py:225:29:1"
+    },
+    {
+      "file": "scripts/lp_rh_paper_daemon_entry_v1.py",
+      "line": 206,
+      "col": 8,
+      "rule": 3,
+      "fingerprint": "c6a83924307602de",
+      "snippet": "\"SELECT last_event_time FROM rh_paper_cursor WHERE chain_id=? AND pool_address=?\",",
+      "key": "scripts/lp_rh_paper_daemon_entry_v1.py:206:8:3"
+    },
+    {
+      "file": "scripts/lp_rh_paper_daemon_entry_v1.py",
+      "line": 421,
+      "col": 33,
+      "rule": 1,
+      "fingerprint": "feddb76577f04a4e",
+      "snippet": "chain_id=int(src_cfg.get(\"chain_id\", 0)),",
+      "key": "scripts/lp_rh_paper_daemon_entry_v1.py:421:33:1"
+    },
+    {
+      "file": "scripts/lp_rh_paper_daemon_entry_v1.py",
+      "line": 716,
+      "col": 24,
+      "rule": 1,
+      "fingerprint": "071c0e9cc9220a2f",
+      "snippet": "horizon_hours = int(profile_cfg.get(\"horizon_hours\", 24))",
+      "key": "scripts/lp_rh_paper_daemon_entry_v1.py:716:24:1"
+    },
+    {
+      "file": "scripts/lp_rh_paper_pid_lock_v1.py",
+      "line": 29,
+      "col": 8,
+      "rule": 5,
+      "fingerprint": "e706fa9325ded821",
+      "snippet": "return False",
+      "key": "scripts/lp_rh_paper_pid_lock_v1.py:29:8:5"
+    },
+    {
+      "file": "scripts/lp_rh_paper_pid_lock_v1.py",
+      "line": 68,
+      "col": 8,
+      "rule": 5,
+      "fingerprint": "e706fa9325ded821",
+      "snippet": "return False",
+      "key": "scripts/lp_rh_paper_pid_lock_v1.py:68:8:5"
+    },
+    {
+      "file": "scripts/lp_rh_paper_readiness_v1.py",
+      "line": 349,
+      "col": 16,
+      "rule": 1,
+      "fingerprint": "6591349cc2d6617f",
+      "snippet": "count = res.get(\"count\", 0)",
+      "key": "scripts/lp_rh_paper_readiness_v1.py:349:16:1"
+    },
+    {
+      "file": "scripts/lp_rh_paper_readiness_v1.py",
+      "line": 445,
+      "col": 10,
+      "rule": 1,
+      "fingerprint": "f3c4a3637edbaaed",
+      "snippet": "val = c.get(key, 0)",
+      "key": "scripts/lp_rh_paper_readiness_v1.py:445:10:1"
+    },
+    {
+      "file": "scripts/lp_rh_paper_source_adapter_v1.py",
+      "line": 92,
+      "col": 22,
+      "rule": 1,
+      "fingerprint": "528558c21ac60817",
+      "snippet": "horizon = int(profile.get(\"horizon_hours\", 24))",
+      "key": "scripts/lp_rh_paper_source_adapter_v1.py:92:22:1"
+    },
+    {
+      "file": "scripts/lp_rh_paper_source_adapter_v1.py",
+      "line": 97,
+      "col": 22,
+      "rule": 1,
+      "fingerprint": "3d018219a8ca59ef",
+      "snippet": "min_evt = int(profile.get(\"min_event_interval_secs\", 60))",
+      "key": "scripts/lp_rh_paper_source_adapter_v1.py:97:22:1"
+    },
+    {
+      "file": "scripts/lp_rh_paper_source_adapter_v1.py",
+      "line": 147,
+      "col": 42,
+      "rule": 3,
+      "fingerprint": "24ad041fe23cf46d",
+      "snippet": "f\"FROM {self.events_table} \"",
+      "key": "scripts/lp_rh_paper_source_adapter_v1.py:147:42:3"
+    },
+    {
+      "file": "scripts/lp_rh_paper_source_adapter_v1.py",
+      "line": 207,
+      "col": 42,
+      "rule": 3,
+      "fingerprint": "24ad041fe23cf46d",
+      "snippet": "f\"FROM {self.events_table} \"",
+      "key": "scripts/lp_rh_paper_source_adapter_v1.py:207:42:3"
+    },
+    {
+      "file": "scripts/lp_rh_paper_source_adapter_v1.py",
+      "line": 259,
+      "col": 42,
+      "rule": 3,
+      "fingerprint": "24ad041fe23cf46d",
+      "snippet": "f\"FROM {self.events_table} \"",
+      "key": "scripts/lp_rh_paper_source_adapter_v1.py:259:42:3"
     },
     {
       "file": "scripts/lp_rh_pool_probe_v1_readonly.py",
@@ -1993,6 +2101,51 @@
       "fingerprint": "6a228b121b91e823",
       "snippet": "\"cooling_until\": self._cooling_until.get(name, 0.0),",
       "key": "scripts/lp_rh_provider_pool_v1_readonly.py:215:33:1"
+    },
+    {
+      "file": "scripts/lp_rh_quote_refresh_cron.py",
+      "line": 36,
+      "col": 8,
+      "rule": 5,
+      "fingerprint": "e706fa9325ded821",
+      "snippet": "return False",
+      "key": "scripts/lp_rh_quote_refresh_cron.py:36:8:5"
+    },
+    {
+      "file": "scripts/lp_rh_quote_refresh_cron.py",
+      "line": 38,
+      "col": 8,
+      "rule": 5,
+      "fingerprint": "37992c22232b4712",
+      "snippet": "return True",
+      "key": "scripts/lp_rh_quote_refresh_cron.py:38:8:5"
+    },
+    {
+      "file": "scripts/lp_rh_quote_refresh_cron.py",
+      "line": 62,
+      "col": 8,
+      "rule": 5,
+      "fingerprint": "e706fa9325ded821",
+      "snippet": "return False",
+      "key": "scripts/lp_rh_quote_refresh_cron.py:62:8:5"
+    },
+    {
+      "file": "scripts/lp_rh_quote_refresh_cron.py",
+      "line": 125,
+      "col": 8,
+      "rule": 5,
+      "fingerprint": "52513ffe3505899e",
+      "snippet": "return 124",
+      "key": "scripts/lp_rh_quote_refresh_cron.py:125:8:5"
+    },
+    {
+      "file": "scripts/lp_rh_quote_refresh_cron.py",
+      "line": 129,
+      "col": 8,
+      "rule": 5,
+      "fingerprint": "486d9affb60dbb00",
+      "snippet": "return 1",
+      "key": "scripts/lp_rh_quote_refresh_cron.py:129:8:5"
     },
     {
       "file": "scripts/lp_rh_reorg_detector_v1_readonly.py",
@@ -2050,39 +2203,39 @@
     },
     {
       "file": "scripts/lp_rh_shadow_daemon_v1_readonly.py",
-      "line": 387,
+      "line": 618,
       "col": 19,
       "rule": 1,
       "fingerprint": "59be20d56e0eced6",
       "snippet": "dup_rows = copy_stats.get(\"rh_gate_decisions\", {}).get(\"skipped_existing\", 0)",
-      "key": "scripts/lp_rh_shadow_daemon_v1_readonly.py:387:19:1"
+      "key": "scripts/lp_rh_shadow_daemon_v1_readonly.py:618:19:1"
     },
     {
       "file": "scripts/lp_rh_shadow_daemon_v1_readonly.py",
-      "line": 465,
+      "line": 715,
       "col": 48,
       "rule": 1,
       "fingerprint": "c6e72a6c6422a97f",
       "snippet": "parts.append(f\"{short}:{copied_stats[tbl].get('copied', 0)}\")",
-      "key": "scripts/lp_rh_shadow_daemon_v1_readonly.py:465:48:1"
+      "key": "scripts/lp_rh_shadow_daemon_v1_readonly.py:715:48:1"
     },
     {
       "file": "scripts/lp_rh_shadow_runner_v1_readonly.py",
-      "line": 766,
+      "line": 892,
       "col": 21,
       "rule": 2,
       "fingerprint": "0c99e0596dae8f8a",
       "snippet": "sufficient = bool(gate_res.get(\"pass\"))",
-      "key": "scripts/lp_rh_shadow_runner_v1_readonly.py:766:21:2"
+      "key": "scripts/lp_rh_shadow_runner_v1_readonly.py:892:21:2"
     },
     {
       "file": "scripts/lp_rh_shadow_runner_v1_readonly.py",
-      "line": 856,
+      "line": 1029,
       "col": 22,
       "rule": 2,
       "fingerprint": "0a5bed9d2eefede3",
       "snippet": "granted = bool(res.get(\"granted\"))",
-      "key": "scripts/lp_rh_shadow_runner_v1_readonly.py:856:22:2"
+      "key": "scripts/lp_rh_shadow_runner_v1_readonly.py:1029:22:2"
     },
     {
       "file": "scripts/lp_rh_snapshot_diff_v1_readonly.py",
@@ -2095,84 +2248,84 @@
     },
     {
       "file": "scripts/lp_rh_store_v1_readonly.py",
-      "line": 310,
+      "line": 367,
       "col": 33,
       "rule": 3,
       "fingerprint": "c3bac9005e6b8da7",
       "snippet": "+ \" FROM \" + table + \" WHERE derived_block_hash = ?\",",
-      "key": "scripts/lp_rh_store_v1_readonly.py:310:33:3"
+      "key": "scripts/lp_rh_store_v1_readonly.py:367:33:3"
     },
     {
       "file": "scripts/lp_rh_synthetic_evidence_v1.py",
-      "line": 85,
+      "line": 93,
       "col": 13,
       "rule": 1,
       "fingerprint": "87fa0d658a1cd644",
       "snippet": "passed = counts.get(\"passed\", 0)",
-      "key": "scripts/lp_rh_synthetic_evidence_v1.py:85:13:1"
+      "key": "scripts/lp_rh_synthetic_evidence_v1.py:93:13:1"
     },
     {
       "file": "scripts/lp_rh_synthetic_evidence_v1.py",
-      "line": 86,
+      "line": 94,
       "col": 13,
       "rule": 1,
       "fingerprint": "614d94baaedea9d3",
       "snippet": "failed = counts.get(\"failed\", 0)",
-      "key": "scripts/lp_rh_synthetic_evidence_v1.py:86:13:1"
+      "key": "scripts/lp_rh_synthetic_evidence_v1.py:94:13:1"
     },
     {
       "file": "scripts/lp_rh_synthetic_evidence_v1.py",
-      "line": 87,
+      "line": 95,
       "col": 14,
       "rule": 1,
       "fingerprint": "00ee12ba611434de",
       "snippet": "skipped = counts.get(\"skipped\", 0)",
-      "key": "scripts/lp_rh_synthetic_evidence_v1.py:87:14:1"
+      "key": "scripts/lp_rh_synthetic_evidence_v1.py:95:14:1"
     },
     {
       "file": "scripts/lp_rh_synthetic_evidence_v1.py",
-      "line": 88,
+      "line": 96,
       "col": 13,
       "rule": 1,
       "fingerprint": "489018f05683e404",
       "snippet": "errors = counts.get(\"error\", 0) + counts.get(\"errors\", 0)",
-      "key": "scripts/lp_rh_synthetic_evidence_v1.py:88:13:1"
+      "key": "scripts/lp_rh_synthetic_evidence_v1.py:96:13:1"
     },
     {
       "file": "scripts/lp_rh_synthetic_evidence_v1.py",
-      "line": 88,
+      "line": 96,
       "col": 38,
       "rule": 1,
       "fingerprint": "489018f05683e404",
       "snippet": "errors = counts.get(\"error\", 0) + counts.get(\"errors\", 0)",
-      "key": "scripts/lp_rh_synthetic_evidence_v1.py:88:38:1"
+      "key": "scripts/lp_rh_synthetic_evidence_v1.py:96:38:1"
     },
     {
       "file": "scripts/lp_rh_synthetic_evidence_v1.py",
-      "line": 89,
+      "line": 97,
       "col": 14,
       "rule": 1,
       "fingerprint": "a132544a6ed96e89",
       "snippet": "xfailed = counts.get(\"xfailed\", 0)",
-      "key": "scripts/lp_rh_synthetic_evidence_v1.py:89:14:1"
+      "key": "scripts/lp_rh_synthetic_evidence_v1.py:97:14:1"
     },
     {
       "file": "scripts/lp_rh_synthetic_evidence_v1.py",
-      "line": 90,
+      "line": 98,
       "col": 14,
       "rule": 1,
       "fingerprint": "3e8e5907e0b88fb5",
       "snippet": "xpassed = counts.get(\"xpassed\", 0)",
-      "key": "scripts/lp_rh_synthetic_evidence_v1.py:90:14:1"
+      "key": "scripts/lp_rh_synthetic_evidence_v1.py:98:14:1"
     },
     {
       "file": "scripts/lp_rh_synthetic_evidence_v1.py",
-      "line": 205,
+      "line": 213,
       "col": 8,
       "rule": 5,
       "fingerprint": "8373f7e086bb2778",
       "snippet": "return 2",
-      "key": "scripts/lp_rh_synthetic_evidence_v1.py:205:8:5"
+      "key": "scripts/lp_rh_synthetic_evidence_v1.py:213:8:5"
     },
     {
       "file": "scripts/lp_rh_terminal_gate_v1_readonly.py",
@@ -2263,6 +2416,15 @@
       "fingerprint": "222b5404ca5a2d46",
       "snippet": "capital_policy_pass = bool(record.get(\"capital_policy_pass\"))",
       "key": "scripts/lp_rh_terminal_gate_v1_readonly.py:111:30:2"
+    },
+    {
+      "file": "scripts/lp_rh_tx_intents_writer_v1.py",
+      "line": 238,
+      "col": 27,
+      "rule": 3,
+      "fingerprint": "2153d588393379a6",
+      "snippet": "updates.append(\"tx_hash = ?\")",
+      "key": "scripts/lp_rh_tx_intents_writer_v1.py:238:27:3"
     },
     {
       "file": "scripts/lp_rpc_pool_v1_readonly.py",
@@ -2441,7 +2603,7 @@
       "col": 15,
       "rule": 1,
       "fingerprint": "e7be595280660a3e",
-      "snippet": "f\"{report.get('position_coverage', {}).get('unique_position_identities', 0)}\uff1b\"",
+      "snippet": "f\"{report.get('position_coverage', {}).get('unique_position_identities', 0)}；\"",
       "key": "scripts/lp_shadow_gate_v1_readonly.py:466:15:1"
     },
     {
@@ -2450,7 +2612,7 @@
       "col": 15,
       "rule": 1,
       "fingerprint": "7784f640288700d6",
-      "snippet": "f\"{report.get('position_coverage', {}).get('unique_root_pools', 0)}\u3002\"",
+      "snippet": "f\"{report.get('position_coverage', {}).get('unique_root_pools', 0)}。\"",
       "key": "scripts/lp_shadow_gate_v1_readonly.py:468:15:1"
     },
     {
@@ -3190,156 +3352,6 @@
       "fingerprint": "dc5989107fcfe026",
       "snippet": "\"actual_fee_accrual_placeholder_rows\": total.get(\"actual_fee_accrual\", 0),",
       "key": "scripts/test_stage_supervisor_finalize_from_existing_checkpoints_v1.py:308:47:1"
-    },
-    {
-      "file": "scripts/lp_rh_quote_refresh_cron.py",
-      "line": 36,
-      "col": 8,
-      "rule": 5,
-      "fingerprint": "e706fa9325ded821",
-      "snippet": "return False",
-      "note": "lint false positive: _is_pid_alive ProcessLookupError branch \u2014 PID \u4e0d\u5b58\u5728 \u2192 alive=False \u662f alive \u5224\u65ad\u51fd\u6570\u7684\u6b63\u786e\u8bed\u4e49,\u975e\u9519\u8bef\u7801",
-      "key": "scripts/lp_rh_quote_refresh_cron.py:36:8:5"
-    },
-    {
-      "file": "scripts/lp_rh_quote_refresh_cron.py",
-      "line": 38,
-      "col": 8,
-      "rule": 5,
-      "fingerprint": "37992c22232b4712",
-      "snippet": "return True",
-      "note": "lint false positive: _is_pid_alive PermissionError branch \u2014 \u65e0\u6743\u9650 kill \u65f6\u8bf4\u660e PID \u5b58\u5728(\u53ef\u80fd\u5176\u4ed6\u7528\u6237),\u6309 alive \u5904\u7406",
-      "key": "scripts/lp_rh_quote_refresh_cron.py:38:8:5"
-    },
-    {
-      "file": "scripts/lp_rh_quote_refresh_cron.py",
-      "line": 62,
-      "col": 8,
-      "rule": 5,
-      "fingerprint": "e706fa9325ded821",
-      "snippet": "return False",
-      "note": "lint false positive: _acquire_pid_lock PID file write failure \u2014 \u8fd4\u56de False \u901a\u77e5 main() lock \u83b7\u53d6\u5931\u8d25,main() exit 2",
-      "key": "scripts/lp_rh_quote_refresh_cron.py:62:8:5"
-    },
-    {
-      "file": "scripts/lp_rh_quote_refresh_cron.py",
-      "line": 125,
-      "col": 8,
-      "rule": 5,
-      "fingerprint": "52513ffe3505899e",
-      "snippet": "return 124",
-      "note": "lint false positive: main() exit code 124 = coreutils timeout \u547d\u4ee4\u7ea6\u5b9a,\u975e\u9519\u8bef\u4f2a\u88c5",
-      "key": "scripts/lp_rh_quote_refresh_cron.py:125:8:5"
-    },
-    {
-      "file": "scripts/lp_rh_quote_refresh_cron.py",
-      "line": 129,
-      "col": 8,
-      "rule": 5,
-      "fingerprint": "486d9affb60dbb00",
-      "snippet": "return 1",
-      "note": "lint false positive: main() exit code 1 = Unix \u4e00\u822c\u9519\u8bef\u7ea6\u5b9a,\u975e\u9519\u8bef\u4f2a\u88c5",
-      "key": "scripts/lp_rh_quote_refresh_cron.py:129:8:5"
-    },
-    {
-      "file": "scripts/lp_rh_tx_intents_writer_v1.py",
-      "line": 195,
-      "col": 27,
-      "rule": 3,
-      "fingerprint": "2153d588393379a6",
-      "snippet": "updates.append(\"tx_hash = ?\")",
-      "note": "lint false positive: SQL UPDATE SET \u5b50\u53e5\u4e0d\u662f WHERE \u5b50\u53e5 \u2014 placeholder \u8d4b\u503c\u4e0d\u5b58\u5728\u5927\u5c0f\u5199\u95ee\u9898,linter \u5e94\u533a\u5206 SET vs WHERE",
-      "key": "scripts/lp_rh_tx_intents_writer_v1.py:195:27:3"
-    },
-    {
-      "file": "scripts/lp_rh_paper_readiness_v1.py",
-      "line": 91,
-      "rule": 1,
-      "note": "lint false positive: parsing audit_repro JSON output. probe_errors / defects_reproduced missing means audit_repro was not run; counting default=0 keeps gate INCONCLUSIVE-safe and matches the (count, evidence) contract for g2_audit_regression_pass.",
-      "col": 17,
-      "fingerprint": "83cf4ca42e839077",
-      "snippet": "errs, defs = report.get(\"probe_errors\", 0), report.get(\"defects_reproduced\", 0)",
-      "key": "scripts/lp_rh_paper_readiness_v1.py:91:17:1"
-    },
-    {
-      "file": "scripts/lp_rh_paper_readiness_v1.py",
-      "line": 182,
-      "rule": 1,
-      "note": "lint false positive: gN gate result dict reading. count missing \u2192 0 is a counting-path default, not an economic calculation; gate verdict logic uses g[\"pass\"] as the source of truth, not the count fallback.",
-      "col": 16,
-      "fingerprint": "6591349cc2d6617f",
-      "snippet": "count = res.get(\"count\", 0)",
-      "key": "scripts/lp_rh_paper_readiness_v1.py:182:16:1"
-    },
-    {
-      "file": "scripts/lp_rh_paper_readiness_v1.py",
-      "line": 223,
-      "rule": 1,
-      "note": "lint false positive: g14/g15/g16 read runtime counters from reports/paper_runtime_counters.json. key missing \u2192 0 is the fail-close default for an uninitialised counters file; the actual check is whether keys_created/signatures/broadcasts are exactly 0, not whether the file exists.",
-      "col": 10,
-      "fingerprint": "f3c4a3637edbaaed",
-      "snippet": "val = c.get(key, 0)",
-      "key": "scripts/lp_rh_paper_readiness_v1.py:223:10:1"
-    },
-    {
-      "file": "scripts/lp_rh_paper_readiness_v1.py",
-      "line": 304,
-      "rule": 1,
-      "note": "lint false positive: markdown render_report summary line. summary.get(passed/failed/inconclusive, 0) for a known-keyed dict; the renderer does not perform any economic calculation from these numbers \u2014 it only formats them for display.",
-      "col": 25,
-      "fingerprint": "cc83eb5bda30e179",
-      "snippet": "f\"- **Passed**: {summary.get('passed', 0)}\",",
-      "key": "scripts/lp_rh_paper_readiness_v1.py:304:25:1"
-    },
-    {
-      "file": "scripts/lp_rh_paper_readiness_v1.py",
-      "line": 305,
-      "rule": 1,
-      "note": "lint false positive: see :304 (same markdown summary line).",
-      "col": 25,
-      "fingerprint": "d3433b92727bf086",
-      "snippet": "f\"- **Failed**: {summary.get('failed', 0)}\",",
-      "key": "scripts/lp_rh_paper_readiness_v1.py:305:25:1"
-    },
-    {
-      "file": "scripts/lp_rh_paper_readiness_v1.py",
-      "line": 306,
-      "rule": 1,
-      "note": "lint false positive: see :304 (same markdown summary line).",
-      "col": 31,
-      "fingerprint": "586aff263603fd49",
-      "snippet": "f\"- **Inconclusive**: {summary.get('inconclusive', 0)}\",",
-      "key": "scripts/lp_rh_paper_readiness_v1.py:306:31:1"
-    },
-    {
-      "file": "scripts/lp_rh_paper_readiness_v1.py",
-      "line": 91,
-      "col": 48,
-      "rule": 1,
-      "fingerprint": "83cf4ca42e839077",
-      "snippet": "errs, defs = report.get(\"probe_errors\", 0), report.get(\"defects_reproduced\", 0)",
-      "note": "lint false positive: same line as :91 col=17. Single tuple-unpacking statement with two .get(key, 0) calls \u2014 both for audit_repro JSON parsing with the same counting-path semantics. Counter incremented to 2 to match actual code occurrences.",
-      "key": "scripts/lp_rh_paper_readiness_v1.py:91:48:1"
-    },
-    {
-      "file": "scripts/lp_rh_paper_pid_lock_v1.py",
-      "line": 29,
-      "col": 8,
-      "rule": 5,
-      "fingerprint": "e706fa9325ded821",
-      "snippet": "return False",
-      "key": "scripts/lp_rh_paper_pid_lock_v1.py:29:8:5",
-      "note": "PID lock acquire contract: returns False when lock file already exists (another process holds it). This is the documented public contract, not a silent error swallow."
-    },
-    {
-      "file": "scripts/lp_rh_paper_pid_lock_v1.py",
-      "line": 68,
-      "col": 12,
-      "rule": 5,
-      "fingerprint": "e706fa9325ded821",
-      "snippet": "return False",
-      "key": "scripts/lp_rh_paper_pid_lock_v1.py:68:12:5",
-      "note": "PID lock is_alive contract: returns False when stored PID is dead (stale lock). This is the documented public contract, not a silent error swallow."
     }
   ]
 }

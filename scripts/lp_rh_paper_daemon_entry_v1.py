@@ -714,7 +714,7 @@ def run_once(cfg_path: str) -> tuple[int, dict[str, Any]]:
 
     profile_cfg = cfg.get("profile") or {}
     horizon_hours = int(profile_cfg.get("horizon_hours", 24))
-    target_mode = str(cfg.get("meta", {}).get("target_mode", "paper"))
+    target_mode = str(cfg.get("meta", {}).get("target_mode", "SHADOW_SCENARIO"))
 
     engine_cfg = {
         "pool": adapter.pool_address,
@@ -814,6 +814,93 @@ def run_daemon(cfg_path: str) -> tuple[int, dict[str, Any]]:
     loop that would mask source/cursor regressions.
     """
     return run_once(cfg_path)
+
+
+def run_demo_episode(
+    ledger_db_path: str,
+    *,
+    n_steps: int = 3,
+    capital_usd: Decimal | float | str = 1000,
+    position_usd: Decimal | float | str = 100,
+) -> tuple[int, dict[str, Any]]:
+    """EXPLICIT DEMO entry — NOT production.  Drives the engine against the
+    `build_demo_sample_fixture` and persists a rh_episode_summary row so the
+    D1 positive control (NAV 1000→990, PnL=-10) remains a verifiable contract.
+
+    Per NEXT_AGENT_TASK_CN.md §1, the production `run_once()` must not use
+    this fixture.  Tests that want the D1 math call `run_demo_episode()`
+    directly with a tmp ledger path; tests that want the production path
+    call `run_once()` with a config that points at a real source.
+
+    Returns (EXIT_NO_TRADE, evidence_dict).
+    """
+    started_at = "2026-01-01T00:00:00Z"
+    episode_id = str(uuid.uuid4())
+    capital = Decimal(str(capital_usd))
+    position = Decimal(str(position_usd))
+
+    Path(ledger_db_path).parent.mkdir(parents=True, exist_ok=True)
+    conn = open_store(ledger_db_path)
+    migrate(conn)
+    try:
+        samples = build_demo_sample_fixture(n_steps=n_steps)
+        # D1 fixture: deterministic clock pinned at 2026-01-01; horizon 8760h
+        # (1y).  Matches the original positive control shape; production
+        # run_once() resolves these from config / source events.
+        demo_now = "2026-01-01T00:00:00Z"
+        pool_meta = dict(PAPER_POOL_META_FRESH)
+        pool_meta["pool_address"] = "0xpool-paper-core"
+        engine_cfg = {
+            "pool": "0xpool-paper-core",
+            "position_usd": position,
+            "horizon_hours": 8760,
+            "capital_usd": capital,
+            "target_mode": "SHADOW_SCENARIO",
+            "pool_meta": pool_meta,
+            "pool_meta_hash": "h-paper-core",
+            "verify_calldata": False,
+            "live_db": ":memory:",
+            "samples": n_steps,
+            "ledger_db": ledger_db_path,
+        }
+        steps, duplicate_rows, copy_stats = _run_episode_persisted(
+            conn,
+            cfg=engine_cfg,
+            episode_id=episode_id,
+            sample_list=samples,
+            now_fn=lambda: demo_now,
+        )
+        ended_at = "2026-01-01T00:02:00Z"
+        summary = episode_summary(steps, pool_meta=pool_meta, capital_usd=capital)
+        summary["ledger_duplicate_rows"] = int(duplicate_rows or 0)
+        summary["copied"] = copy_stats
+        summary["event_count"] = len(samples)
+        summary["first_event_time"] = samples[0]["sample_time"]
+        summary["last_event_time"] = samples[-1]["sample_time"]
+        _persist_episode_summary(
+            conn,
+            episode_id=episode_id,
+            started_at=started_at,
+            ended_at=ended_at,
+            pool="0xpool-paper-core",
+            position_usd=position,
+            capital_usd=capital,
+            summary=summary,
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    return EXIT_NO_TRADE, {
+        "started_at": started_at,
+        "ended_at": ended_at,
+        "episode_id": episode_id,
+        "ledger_db": ledger_db_path,
+        "status": "demo_episode",
+        "stage": "completed",
+        "summary": summary,
+        "errors": [],
+    }
 
 
 # ---------------------------------------------------------------------------

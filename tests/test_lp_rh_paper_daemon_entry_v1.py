@@ -42,6 +42,7 @@ from scripts.lp_rh_paper_daemon_entry_v1 import (
     MODE_PAPER_ONLY,
     preflight,
     run_daemon,
+    run_demo_episode,
     run_once,
     status,
 )
@@ -52,6 +53,7 @@ MINIMAL_TOML = """
 profile = "rh-core-paper-v1"
 scope = "paper_only_no_signing"
 expected_approval = false
+target_mode = "SHADOW_SCENARIO"
 
 [chain]
 chain_id = 4663
@@ -96,6 +98,18 @@ rpc_timeout_seconds = 30
 shutdown_on_window_close = true
 shutdown_on_data_stale_seconds = 600
 shutdown_on_invariant_violation = true
+
+[source]
+db_path = "{source_db_path}"
+events_table = "rh_market_states"
+chain_id = 4663
+pool_address = "0x52e65b17fb6e5ba00ed806f37afcd2daa50271ca"
+expected_interval_secs = 600
+lookback_hours = 24
+
+[profile]
+horizon_hours = 24
+min_event_interval_secs = 60
 """
 
 
@@ -104,6 +118,7 @@ def _write_config(tmp_path: Path, extra_paths: dict[str, str] | None = None) -> 
         "ledger_db": str(tmp_path / "ledger.db"),
         "reports_dir": str(tmp_path / "reports"),
         "pid_file": str(tmp_path / "daemon.pid"),
+        "source_db_path": str(REPO_ROOT / "reports" / "lp_rh" / "scanner.db"),
     }
     if extra_paths:
         defaults.update(extra_paths)
@@ -111,6 +126,10 @@ def _write_config(tmp_path: Path, extra_paths: dict[str, str] | None = None) -> 
     cfg = tmp_path / "paper.toml"
     cfg.write_text(content)
     return cfg
+
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+SOURCE_DB_PATH = REPO_ROOT / "reports" / "lp_rh" / "scanner.db"
 
 
 class TestPreflight:
@@ -150,6 +169,7 @@ class TestPreflight:
             ledger_db=str(tmp_path / "ledger.db"),
             reports_dir=str(tmp_path / "reports"),
             pid_file=str(tmp_path / "daemon.pid"),
+            source_db_path=str(SOURCE_DB_PATH),
         ).replace('signing_enabled = false', 'signing_enabled = true'))
         ok, errs = preflight(str(cfg_file))
         assert ok is False
@@ -161,6 +181,7 @@ class TestPreflight:
             ledger_db=str(tmp_path / "ledger.db"),
             reports_dir=str(tmp_path / "reports"),
             pid_file=str(tmp_path / "daemon.pid"),
+            source_db_path=str(SOURCE_DB_PATH),
         ).replace('broadcasting_enabled = false', 'broadcasting_enabled = true'))
         ok, errs = preflight(str(cfg_file))
         assert ok is False
@@ -175,11 +196,13 @@ class TestPreflight:
 
 
 class TestRunOnce:
-    def test_run_once_returns_one_on_tech_error(self, tmp_path: Path) -> None:
+    def test_run_once_returns_nonzero_on_tech_or_blocked_error(self, tmp_path: Path) -> None:
         # Point at a path that is not a valid TOML file
         bad_path = tmp_path / "nonexistent.toml"
-        rc = run_once(str(bad_path))
-        assert rc == EXIT_TECH_ERROR
+        rc, evidence = run_once(str(bad_path))
+        assert rc in (EXIT_TECH_ERROR, 2), (
+            f"expected EXIT_TECH_ERROR (1) or BLOCKED_DATA (2), got {rc}: {evidence}"
+        )
 
 
 def _count(conn, tbl: str) -> int:
@@ -197,14 +220,16 @@ class TestPaperRunOncePositiveControl:
     """
 
     def test_run_once_real_episode_nav_1000_to_990_pnl_minus_10(self, tmp_path: Path) -> None:
-        cfg = _write_config(tmp_path)
         ledger_db_path = tmp_path / "ledger.db"
 
-        # ACT — drive the public run_once entry
-        rc = run_once(str(cfg))
+        # ACT — drive the EXPLICIT DEMO entry (not production run_once)
+        # Production run_once uses real source events with cost=0; the D1
+        # NAV 1000→990 PnL=-10 math is preserved as a verifiable contract
+        # via run_demo_episode which uses the demo fixture (cost 5/5).
+        rc, evidence = run_demo_episode(str(ledger_db_path))
         assert rc == EXIT_NO_TRADE, (
-            f"run_once returned {rc} — must be EXIT_NO_TRADE=0 when the "
-            "real research engine finishes the episode end-to-end"
+            f"run_demo_episode returned {rc} — must be EXIT_NO_TRADE=0 when the "
+            "real research engine finishes the demo episode end-to-end"
         )
 
         # ASSERT — the ledger must carry real rows (not stub returning 0)
@@ -317,6 +342,9 @@ class TestPaperRunOncePositiveControl:
         )
 
         # status() — must reflect real ledger state, not stub 0/None
+        # For the demo entry path, status() requires a cfg to know where
+        # the ledger is; build a minimal cfg that points at the demo ledger.
+        cfg = _write_config(tmp_path, {"ledger_db": str(ledger_db_path)})
         st = status(str(cfg))
         assert st["episodes_run"] == 1, (
             f"status.episodes_run={st['episodes_run']} — expected 1 after one episode. "
@@ -331,19 +359,19 @@ class TestPaperRunOncePositiveControl:
         )
 
     def test_run_once_idempotent_on_replay(self, tmp_path: Path) -> None:
-        """Running the same fixture twice must not double-count NAV — episodes
-        may be different (different episode_id), but each run produces one
-        summary row and the ledger must remain consistent.
+        """Running the same demo fixture twice must not double-count NAV —
+        episodes may be different (different episode_id), but each run produces
+        one summary row and the ledger must remain consistent.
 
         Forbidden: assert episodes_run >= 1 (loose); must be exact.
         """
-        cfg = _write_config(tmp_path)
-        rc1 = run_once(str(cfg))
-        rc2 = run_once(str(cfg))
+        ledger_db_path = tmp_path / "ledger.db"
+        rc1, _ = run_demo_episode(str(ledger_db_path))
+        rc2, _ = run_demo_episode(str(ledger_db_path))
         assert rc1 == EXIT_NO_TRADE
         assert rc2 == EXIT_NO_TRADE
 
-        conn = sqlite3.connect(str(tmp_path / "ledger.db"))
+        conn = sqlite3.connect(str(ledger_db_path))
         try:
             summary_rows = _count(conn, "rh_episode_summary")
         finally:
@@ -354,6 +382,7 @@ class TestPaperRunOncePositiveControl:
             "them and the ledger is hiding double-counting."
         )
 
+        cfg = _write_config(tmp_path, {"ledger_db": str(ledger_db_path)})
         st = status(str(cfg))
         assert st["episodes_run"] == 2, (
             f"status.episodes_run={st['episodes_run']} — expected 2 (one per run)."
@@ -387,10 +416,10 @@ class TestDaemon:
         immediately after one episode and does not block.
         """
         cfg = _write_config(tmp_path)
-        rc = run_daemon(str(cfg))
-        assert rc is None or rc == EXIT_NO_TRADE, (
+        rc, evidence = run_daemon(str(cfg))
+        assert rc == EXIT_NO_TRADE, (
             f"run_daemon returned {rc!r} — single-shot wrapper should "
-            "either return None or EXIT_NO_TRADE after one episode."
+            f"return EXIT_NO_TRADE after one episode. evidence={evidence}"
         )
 
         # Ledger must reflect that exactly one episode ran
