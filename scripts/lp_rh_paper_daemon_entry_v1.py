@@ -3,15 +3,29 @@ Paper daemon entry point (W5 deploy package — NOT for live execution).
 
 Provides four pure-import functions that perform no I/O at module load time:
 
-  preflight(cfg_path)   — validate config, paths, PID lock, execution guards
-  status(cfg_path)      — return current operational state (no daemon required)
-  run_once(cfg_path)    — stub: one episode, returns NO_TRADE=0 or TECH_ERROR=1
-  run_daemon(cfg_path)  — stub: raises NotImplementedError (shell only)
+  preflight(cfg_path)   — validate config, paths, PID lock, execution guards,
+                          AND source adapter identity/schema/binding.
+  status(cfg_path)      — return current operational state (no daemon required),
+                          including source health and cursor.
+  run_once(cfg_path)    — execute ONE episode against the configured read-only
+                          source.  Real events only; NO synthetic fallback in
+                          production path.  NO_TRADE/NO_NEW_DATA/BLOCKED_DATA
+                          distinguished by exit code.
+  run_daemon(cfg_path)  — single-shot wrapper around run_once (long-running
+                          loops are out of scope per OBSERVE_ONLY_DECISION_RULES_CN).
 
 No side effects occur at import time.  All functions are safe to call from
 tests or review tooling without starting any daemon.
-"""
 
+Source contract (per NEXT_AGENT_TASK_CN.md §1):
+  * Production source is `[source] db_path / events_table / pool_address /
+    chain_id / expected_interval_secs / lookback_hours` from the config.
+  * Source missing / structured wrong / identity unknown → EXIT_BLOCKED_DATA.
+  * Source normal but no events since cursor → EXIT_NO_NEW_DATA (still 0).
+  * Real data with no qualified candidates → EXIT_NO_TRADE.
+  * Synthetic fixture (`_build_paper_sample_fixture`) is for explicit demo
+    entry only; the production `run_once` path MUST NOT use it.
+"""
 from __future__ import annotations
 
 import os
@@ -30,114 +44,34 @@ import tomllib
 
 # Local dependency — no network, no signing, no broadcasting.
 from scripts.lp_rh_paper_pid_lock_v1 import acquire, is_alive, read_pid
+from scripts.lp_rh_paper_source_adapter_v1 import (
+    EXIT_BLOCKED_DATA,
+    EXIT_NO_NEW_DATA,
+    PaperSourceAdapter,
+    SourceConfigError,
+    SourceFreshnessError,
+    SourceIdentityError,
+    SourceSchemaError,
+)
 from scripts.lp_rh_shadow_daemon_v1_readonly import (
     _run_episode_persisted,
 )
 from scripts.lp_rh_shadow_runner_v1_readonly import episode_summary
 from scripts.lp_rh_store_v1_readonly import migrate, open_store
 
-# Exit codes (match spec I2)
-EXIT_NO_TRADE = 0
-EXIT_TECH_ERROR = 1
+# Exit codes (re-export from adapter for clarity)
+EXIT_NO_TRADE = 0          # episode ran end-to-end or NO_NEW_DATA
+EXIT_TECH_ERROR = 1        # preflight/IO/exception
+EXIT_BLOCKED_DATA = 2      # source missing/structured wrong/identity unknown
 
 # Sentinel values for status dict
 MODE_PAPER_ONLY = "paper_only"
 PROFILE_PAPER = "rh-core-paper-v1"
 
 
-def preflight(cfg_path: str) -> tuple[bool, list[str]]:
-    """Validate the paper daemon configuration.
-
-    Checks:
-      1. File exists and parses as valid TOML with all required sections.
-      2. Ledger DB parent directory exists or can be created.
-      3. PID file parent directory exists.
-      4. PID file is not currently held by another process.
-      5. execution.signing_enabled == False.
-      6. execution.broadcasting_enabled == False.
-
-    Returns (True, []) on success or (False, [reason, ...]) on any failure.
-    """
-    errors: list[str] = []
-
-    # 1. Parse TOML
-    if not os.path.isfile(cfg_path):
-        return False, [f"config file not found: {cfg_path}"]
-
-    try:
-        with open(cfg_path, "rb") as fh:
-            cfg = tomllib.load(fh)
-    except Exception as exc:
-        return False, [f"failed to parse TOML: {exc}"]
-
-    required_sections = [
-        "meta", "chain", "pool", "capital", "economics",
-        "execution", "paths", "resources", "safety",
-    ]
-    for section in required_sections:
-        if section not in cfg:
-            errors.append(f"missing required TOML section: [{section}]")
-
-    if errors:
-        return False, errors
-
-    # 2. Ledger DB parent dir
-    ledger_db: str = cfg.get("paths", {}).get("ledger_db", "")
-    if ledger_db:
-        db_dir = os.path.dirname(ledger_db)
-        if db_dir and not os.path.isdir(db_dir):
-            try:
-                os.makedirs(db_dir, exist_ok=True)
-            except OSError as exc:
-                errors.append(f"cannot create ledger_db parent dir {db_dir}: {exc}")
-
-    # 3. PID file parent dir
-    pid_file: str = cfg.get("paths", {}).get("pid_file", "")
-    if pid_file:
-        pid_dir = os.path.dirname(pid_file)
-        if pid_dir and not os.path.isdir(pid_dir):
-            errors.append(f"PID file parent dir does not exist and cannot be created: {pid_dir}")
-
-    # 4. PID lock not held
-    if pid_file:
-        # Check if another process already holds the lock
-        alive = is_alive(pid_file)
-        if alive:
-            pid = read_pid(pid_file)
-            errors.append(f"PID file {pid_file} already held by alive process {pid}")
-
-        # Also try to acquire — if we can't, someone else has it
-        if not acquire(pid_file):
-            # If is_alive was False (stale), acquire would succeed; if it fails now,
-            # the file was recreated by a race, which is acceptable to report but
-            # not a hard error for preflight (we just note it in warnings)
-            pass
-        else:
-            # We acquired it during preflight — release immediately; preflight
-            # should not leave a lock file behind
-            from scripts.lp_rh_paper_pid_lock_v1 import release as _release
-            _release(pid_file)
-
-    # 5. signing_enabled guard
-    signing: bool = cfg.get("execution", {}).get("signing_enabled", True)
-    if signing:
-        errors.append(
-            "execution.signing_enabled must be False for paper mode; "
-            "found True — refusing to proceed"
-        )
-
-    # 6. broadcasting_enabled guard
-    broadcasting: bool = cfg.get("execution", {}).get("broadcasting_enabled", True)
-    if broadcasting:
-        errors.append(
-            "execution.broadcasting_enabled must be False for paper mode; "
-            "found True — refusing to proceed"
-        )
-
-    if errors:
-        return False, errors
-    return True, []
-
+# ---------------------------------------------------------------------------
+# Demo fixture — used by D1 positive control tests, NEVER by run_once()
+# ---------------------------------------------------------------------------
 
 PAPER_SAMPLE_BASE: dict[str, Any] = {
     "chain_id": 4663,
@@ -181,15 +115,13 @@ PAPER_POOL_META_FRESH: dict[str, Any] = {
 }
 
 
-def _build_paper_sample_fixture(*, n_steps: int = 3) -> list[dict[str, Any]]:
-    """Build a deterministic 3-step CORE paper sample fixture.
+def build_demo_sample_fixture(*, n_steps: int = 3) -> list[dict[str, Any]]:
+    """EXPLICIT DEMO fixture — only for tests / docs; NOT for run_once().
 
-    Same shape as the D1 E2E positive control (tests/test_lp_rh_terminal_to_ledger_e2e_v1_readonly.py:92)
-    so the paper path exercises the exact gate/mark/reservation/tx_intent chain
-    the ledger unit tests assert against.  Three samples with cost_entry=5 and
-    last sample cost_exit=5 — round-trip cost 10 → NAV 1000→990, NetPnL=-10.
-
-    Returns: list of sample dicts, length=n_steps (default 3).
+    Renamed from `_build_paper_sample_fixture` to make the demo-only status
+    visible.  Any call from production code is a contract violation; tests
+    use this function directly.  Same shape as D1 positive control:
+    cost_entry=5, last sample cost_exit=5 → NAV 1000→990, NetPnL=-10.
     """
     samples: list[dict[str, Any]] = []
     for i in range(n_steps):
@@ -200,7 +132,7 @@ def _build_paper_sample_fixture(*, n_steps: int = 3) -> list[dict[str, Any]]:
             "sample_time": t,
             "quote_usd_per_token1": {
                 "value": "1.0",
-                "source": "paper_fixture",
+                "source": "demo_fixture",
                 "observed_at": t,
                 "ttl_secs": 3600,
             },
@@ -211,6 +143,14 @@ def _build_paper_sample_fixture(*, n_steps: int = 3) -> list[dict[str, Any]]:
     return samples
 
 
+# Back-compat alias — old tests import this name.
+_build_paper_sample_fixture = build_demo_sample_fixture
+
+
+# ---------------------------------------------------------------------------
+# Config + path helpers
+# ---------------------------------------------------------------------------
+
 def _load_config(cfg_path: str) -> dict[str, Any]:
     if not os.path.isfile(cfg_path):
         raise FileNotFoundError(f"config not found: {cfg_path}")
@@ -218,11 +158,15 @@ def _load_config(cfg_path: str) -> dict[str, Any]:
         return tomllib.load(fh)
 
 
-def _count_episodes_in_ledger(ledger_db_path: str) -> tuple[int, str | None]:
-    """Read episode rows from the ledger's rh_episode_summary table.
+def _build_source_adapter(cfg: dict[str, Any]) -> PaperSourceAdapter:
+    try:
+        return PaperSourceAdapter.from_config(cfg)
+    except (SourceConfigError, SourceSchemaError) as exc:
+        raise SourceConfigError(str(exc)) from exc
 
-    Returns: (count, last_ended_at_iso) — both None/0 if table does not exist.
-    """
+
+def _count_episodes_in_ledger(ledger_db_path: str) -> tuple[int, str | None]:
+    """Read episode rows from the ledger's rh_episode_summary table."""
     if not os.path.isfile(ledger_db_path):
         return 0, None
     try:
@@ -247,17 +191,171 @@ def _count_episodes_in_ledger(ledger_db_path: str) -> tuple[int, str | None]:
         conn.close()
 
 
+def _read_cursor(conn: sqlite3.Connection, *, chain_id: int, pool_address: str) -> str | None:
+    """Read last processed sample_time from rh_paper_cursor.
+
+    Returns None if no cursor row exists.  The cursor binds (chain_id,
+    pool_address) so a single ledger can serve multiple sources.
+    """
+    cur = conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='rh_paper_cursor'"
+    )
+    if cur.fetchone() is None:
+        return None
+    row = conn.execute(
+        "SELECT last_event_time FROM rh_paper_cursor WHERE chain_id=? AND pool_address=?",
+        (chain_id, pool_address),
+    ).fetchone()
+    if row is None or row[0] is None:
+        return None
+    return str(row[0])
+
+
+def _write_cursor(
+    conn: sqlite3.Connection,
+    *,
+    chain_id: int,
+    pool_address: str,
+    last_event_time: str,
+    episode_id: str,
+) -> None:
+    """Upsert cursor atomically — one row per (chain_id, pool_address)."""
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS rh_paper_cursor (
+            chain_id INTEGER NOT NULL,
+            pool_address TEXT NOT NULL,
+            last_event_time TEXT NOT NULL,
+            episode_id TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            PRIMARY KEY (chain_id, pool_address)
+        )
+        """
+    )
+    conn.execute(
+        """
+        INSERT INTO rh_paper_cursor (chain_id, pool_address, last_event_time, episode_id, updated_at)
+        VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT(chain_id, pool_address) DO UPDATE SET
+            last_event_time = excluded.last_event_time,
+            episode_id = excluded.episode_id,
+            updated_at = excluded.updated_at
+        """,
+        (
+            int(chain_id),
+            str(pool_address),
+            str(last_event_time),
+            str(episode_id),
+            datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Preflight
+# ---------------------------------------------------------------------------
+
+def preflight(cfg_path: str) -> tuple[bool, list[str]]:
+    """Validate config, paths, PID lock, execution guards, AND source.
+
+    Checks:
+      1. File exists + parses as valid TOML with all required sections.
+      2. Ledger DB parent dir exists or can be created.
+      3. PID file parent dir exists.
+      4. PID file is not currently held by another process.
+      5. execution.signing_enabled == False.
+      6. execution.broadcasting_enabled == False.
+      7. [source] section exists with all required keys, schema and identity
+         checks pass against the configured read-only DB.
+
+    Returns (True, []) on success or (False, [reason, ...]) on any failure.
+    """
+    errors: list[str] = []
+
+    if not os.path.isfile(cfg_path):
+        return False, [f"config file not found: {cfg_path}"]
+
+    try:
+        with open(cfg_path, "rb") as fh:
+            cfg = tomllib.load(fh)
+    except Exception as exc:
+        return False, [f"failed to parse TOML: {exc}"]
+
+    required_sections = [
+        "meta", "chain", "pool", "capital", "economics",
+        "execution", "paths", "resources", "safety", "source", "profile",
+    ]
+    for section in required_sections:
+        if section not in cfg:
+            errors.append(f"missing required TOML section: [{section}]")
+
+    if errors:
+        return False, errors
+
+    ledger_db: str = cfg.get("paths", {}).get("ledger_db", "")
+    if ledger_db:
+        db_dir = os.path.dirname(ledger_db)
+        if db_dir and not os.path.isdir(db_dir):
+            try:
+                os.makedirs(db_dir, exist_ok=True)
+            except OSError as exc:
+                errors.append(f"cannot create ledger_db parent dir {db_dir}: {exc}")
+
+    pid_file: str = cfg.get("paths", {}).get("pid_file", "")
+    if pid_file:
+        pid_dir = os.path.dirname(pid_file)
+        if pid_dir and not os.path.isdir(pid_dir):
+            errors.append(f"PID file parent dir does not exist and cannot be created: {pid_dir}")
+
+    if pid_file:
+        alive = is_alive(pid_file)
+        if alive:
+            pid = read_pid(pid_file)
+            errors.append(f"PID file {pid_file} already held by alive process {pid}")
+
+        if not acquire(pid_file):
+            pass  # race-tolerant; preflight does not require sole lock
+        else:
+            from scripts.lp_rh_paper_pid_lock_v1 import release as _release
+            _release(pid_file)
+
+    signing: bool = cfg.get("execution", {}).get("signing_enabled", True)
+    if signing:
+        errors.append("execution.signing_enabled must be False for paper mode; found True")
+
+    broadcasting: bool = cfg.get("execution", {}).get("broadcasting_enabled", True)
+    if broadcasting:
+        errors.append("execution.broadcasting_enabled must be False for paper mode; found True")
+
+    # 7. Source adapter validation (open + schema + identity)
+    try:
+        adapter = PaperSourceAdapter.from_config(cfg)
+        adapter.validate()
+    except (SourceConfigError, SourceSchemaError, SourceIdentityError) as exc:
+        errors.append(f"[source] adapter rejected: {exc}")
+
+    if errors:
+        return False, errors
+    return True, []
+
+
+# ---------------------------------------------------------------------------
+# Status
+# ---------------------------------------------------------------------------
+
 def status(cfg_path: str) -> dict[str, Any]:
-    """Return the current operational state of the paper daemon.
+    """Return current operational state of the paper daemon.
 
-    Reads the config file and the ledger DB (read-only) to surface real
-    episode counts and last-tick timestamps.  Does NOT start a daemon.
+    Reads config + ledger DB (read-only) + source DB (read-only).
+    Does NOT start a daemon.
 
-    Returns a dict with keys:
+    Returns dict with keys:
       mode, profile, capital_usd, position_size_usd,
       episodes_run (real count from rh_episode_summary),
-      last_tick_at (real MAX(ended_at) or None if no episodes),
-      ledger_db (resolved path or "").
+      last_tick_at (real MAX(ended_at) or None),
+      ledger_db (resolved path),
+      source (read-only health of the configured source DB),
+      cursor (last_event_time from rh_paper_cursor or None).
     """
     default = {
         "mode": MODE_PAPER_ONLY,
@@ -267,6 +365,8 @@ def status(cfg_path: str) -> dict[str, Any]:
         "episodes_run": 0,
         "last_tick_at": None,
         "ledger_db": "",
+        "source": None,
+        "cursor": None,
     }
 
     if not os.path.isfile(cfg_path):
@@ -291,7 +391,7 @@ def status(cfg_path: str) -> dict[str, Any]:
     ledger_db = str(paths_cfg.get("ledger_db") or "")
     episodes_run, last_tick_at = _count_episodes_in_ledger(ledger_db)
 
-    return {
+    out = {
         "mode": exec_cfg.get("mode") or MODE_PAPER_ONLY,
         "profile": meta_cfg.get("profile") or PROFILE_PAPER,
         "capital_usd": capital_usd,
@@ -299,108 +399,39 @@ def status(cfg_path: str) -> dict[str, Any]:
         "episodes_run": episodes_run,
         "last_tick_at": last_tick_at,
         "ledger_db": ledger_db,
+        "source": None,
+        "cursor": None,
     }
 
-
-def run_once(cfg_path: str) -> int:
-    """Execute one paper episode against the real research engine.
-
-    Loads cfg, validates preconditions, opens the configured ledger_db,
-    migrates it, builds a deterministic CORE paper sample fixture
-    (NAV 1000→990, NetPnL=-10), runs _run_episode_persisted (the same
-    authoritative daemon entry used by the D1 E2E positive control),
-    then persists the episode_summary to rh_episode_summary.
-
-    Returns:
-      EXIT_NO_TRADE (0) — episode ran end-to-end, summary persisted.
-      EXIT_TECH_ERROR (1) — preflight failed or unexpected exception.
-
-    This function MUST NOT be a stub.  Calling run_once must produce real
-    ledger rows (rh_gate_decisions, rh_position_marks, rh_bucket_reservations,
-    rh_tx_intents) and a non-zero NAV delta record.
-    """
-    ok, errs = preflight(cfg_path)
-    if not ok:
-        sys.stderr.write(f"run_once preflight failed: {errs}\n")
-        return EXIT_TECH_ERROR
-
+    # Source health (read-only, may fail without breaking status)
     try:
-        cfg = _load_config(cfg_path)
-        ledger_db_path = str(cfg["paths"]["ledger_db"])
+        adapter = PaperSourceAdapter.from_config(cfg)
+        out["source"] = adapter.read_source_health()
     except Exception as exc:
-        sys.stderr.write(f"run_once config load failed: {exc}\n")
-        return EXIT_TECH_ERROR
+        out["source"] = {"error": str(exc), "db_path": None}
 
-    capital_cfg_dict = cfg.get("capital") or {}
-    if "virtual_capital_usd" not in capital_cfg_dict:
-        sys.stderr.write("run_once config missing [capital].virtual_capital_usd\n")
-        return EXIT_TECH_ERROR
-    if "position_size_usd" not in capital_cfg_dict:
-        sys.stderr.write("run_once config missing [capital].position_size_usd\n")
-        return EXIT_TECH_ERROR
-    capital_usd_cfg = capital_cfg_dict["virtual_capital_usd"]
-    position_usd_cfg = capital_cfg_dict["position_size_usd"]
-    try:
-        capital_usd = Decimal(str(capital_usd_cfg))
-        position_usd = Decimal(str(position_usd_cfg))
-    except Exception as exc:
-        sys.stderr.write(f"run_once capital/position not decimal: {exc}\n")
-        return EXIT_TECH_ERROR
-
-    db_dir = os.path.dirname(ledger_db_path)
-    if db_dir:
-        os.makedirs(db_dir, exist_ok=True)
-
-    episode_id = f"paper-core-{uuid.uuid4().hex[:12]}"
-
-    try:
-        conn = open_store(Path(ledger_db_path))
-        migrate(conn)
+    # Cursor (read from ledger if available)
+    if ledger_db and os.path.isfile(ledger_db):
         try:
-            samples = _build_paper_sample_fixture(n_steps=3)
-            episode_cfg = {
-                "position_usd": position_usd,
-                "capital_usd": capital_usd,
-                "horizon_hours": 8760,
-                "target_mode": "SHADOW_SCENARIO",
-                "pool_meta": PAPER_POOL_META_FRESH,
-                "pool_meta_hash": "h-paper-core",
-                "verify_calldata": False,
-            }
-            now_fn = lambda: "2026-01-01T00:00:00Z"  # noqa: E731
-            steps, dup_rows, copy_stats = _run_episode_persisted(
-                conn, cfg=episode_cfg, episode_id=episode_id,
-                sample_list=samples, now_fn=now_fn,
-            )
-            summary = episode_summary(
-                steps,
-                load_skipped=0,
-                pool_meta=PAPER_POOL_META_FRESH,
-                capital_usd=capital_usd,
-            )
-            summary["episode_id"] = episode_id
-            summary["ledger_duplicate_rows"] = dup_rows
-            summary["copied"] = copy_stats
+            conn = sqlite3.connect(f"file:{ledger_db}?mode=ro", uri=True)
+            try:
+                src_cfg = cfg.get("source") or {}
+                out["cursor"] = _read_cursor(
+                    conn,
+                    chain_id=int(src_cfg.get("chain_id", 0)),
+                    pool_address=str(src_cfg.get("pool_address", "")),
+                )
+            finally:
+                conn.close()
+        except sqlite3.Error:
+            pass
 
-            _persist_episode_summary(
-                conn,
-                episode_id=episode_id,
-                started_at="2026-01-01T00:00:00Z",
-                ended_at="2026-01-01T00:02:00Z",
-                pool="0xpool-paper-core",
-                position_usd=position_usd,
-                capital_usd=capital_usd,
-                summary=summary,
-            )
-            conn.commit()
-        finally:
-            conn.close()
-    except Exception as exc:
-        sys.stderr.write(f"run_once episode failed: {exc}\n")
-        return EXIT_TECH_ERROR
+    return out
 
-    return EXIT_NO_TRADE
 
+# ---------------------------------------------------------------------------
+# Episode schema persistence
+# ---------------------------------------------------------------------------
 
 def _persist_episode_summary(
     conn,
@@ -413,10 +444,7 @@ def _persist_episode_summary(
     capital_usd: Decimal,
     summary: dict[str, Any],
 ) -> None:
-    """Upsert one row into rh_episode_summary so status() can read it.
-
-    Table created via _ensure_rh_episode_summary_table(); idempotent.
-    """
+    """Upsert one row into rh_episode_summary so status() can read it."""
     _ensure_rh_episode_summary_table(conn)
     nav_start = summary.get("nav_start")
     nav_end = summary.get("nav_end")
@@ -427,8 +455,9 @@ def _persist_episode_summary(
             episode_id, started_at, ended_at, pool,
             position_usd, capital_usd,
             nav_start, nav_end, net_pnl,
-            eligible_steps, ledger_duplicate_rows, copied
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            eligible_steps, ledger_duplicate_rows, copied,
+            event_count, first_event_time, last_event_time
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             episode_id,
@@ -443,6 +472,9 @@ def _persist_episode_summary(
             int(summary.get("eligible_steps") or 0),
             int(summary.get("ledger_duplicate_rows") or 0),
             _json_dumps(summary.get("copied")),
+            int(summary.get("event_count") or 0),
+            str(summary.get("first_event_time")) if summary.get("first_event_time") else None,
+            str(summary.get("last_event_time")) if summary.get("last_event_time") else None,
         ),
     )
 
@@ -453,7 +485,7 @@ def _ensure_rh_episode_summary_table(conn) -> None:
         CREATE TABLE IF NOT EXISTS rh_episode_summary (
             episode_id TEXT PRIMARY KEY,
             started_at TEXT NOT NULL,
-            ended_at TEXT NOT NULL,
+            ended_at TEXT,
             pool TEXT NOT NULL,
             position_usd TEXT NOT NULL,
             capital_usd TEXT NOT NULL,
@@ -462,34 +494,366 @@ def _ensure_rh_episode_summary_table(conn) -> None:
             net_pnl TEXT,
             eligible_steps INTEGER NOT NULL DEFAULT 0,
             ledger_duplicate_rows INTEGER NOT NULL DEFAULT 0,
-            copied TEXT
+            copied TEXT,
+            event_count INTEGER NOT NULL DEFAULT 0,
+            first_event_time TEXT,
+            last_event_time TEXT
         )
         """
     )
 
 
-def _json_dumps(obj: Any) -> str | None:
-    import json
-    if obj is None:
+def _json_dumps(value: Any) -> str | None:
+    if value is None:
         return None
-    return json.dumps(obj, default=str)
+    import json
+    try:
+        return json.dumps(value, separators=(",", ":"), default=str)
+    except Exception:
+        return None
 
 
-def run_daemon(cfg_path: str) -> None:
-    """Start the paper daemon event loop (single-shot only; long-running forbidden).
+def _events_to_samples(
+    events: list[dict[str, Any]],
+    *,
+    pool: str,
+    expected_interval_secs: int,
+) -> list[dict[str, Any]]:
+    """Translate raw adapter events into the paper sample shape consumed by
+    `_run_episode_persisted`.
 
-    Per CLAUDE.md / OBSERVE_ONLY_DECISION_RULES_CN.md, this task MUST NOT
-    start any new resident Observe/Paper/Live daemon.  run_daemon therefore
-    runs exactly one episode via run_once() and returns.  Multiple
-    invocations are the owner's responsibility (cron / systemd); this
-    function does not provide a sleep loop.
-
-    For a long-running daemon, build it as a separate process that calls
-    scripts/lp_rh_paper_daemon_entry_v1.run_once in a loop — DO NOT call
-    run_daemon from CI, tests, or other unattended contexts without an
-    explicit owner-approved schedule.
+    The translation is mechanical and lossless: each event row becomes one
+    sample with cost entries set to zero (paper path does not pay gas;
+    reference price comes from the event itself).  No fabricated costs, no
+    fake cadence, no re-anchoring of `sample_time` to a fixture clock.
     """
-    rc = run_once(cfg_path)
-    if rc != EXIT_NO_TRADE:
-        sys.stderr.write(f"run_daemon: run_once returned {rc}\n")
-        sys.exit(rc)
+    samples: list[dict[str, Any]] = []
+    for idx, evt in enumerate(events):
+        ref_mid = evt.get("reference_mid") or "0"
+        samples.append({
+            **PAPER_SAMPLE_BASE,
+            "candidate_key": f"{pool}-{idx}",
+            "sample_time": evt["sample_time"],
+            "reference_mid": ref_mid,
+            "fee_growth_global_0": evt.get("fee_growth_global_0") or "0",
+            "fee_growth_global_1": evt.get("fee_growth_global_1") or "0",
+            "quote_usd_per_token1": {
+                "value": ref_mid,
+                "source": "rh_market_states",
+                "observed_at": evt["sample_time"],
+                "ttl_secs": max(60, expected_interval_secs * 2),
+            },
+            "entry_cost_usd": "0",
+            "exit_cost_usd": "0",
+            "gas_usd": "0",
+        })
+    return samples
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def _resolve_pool_meta_fresh(cfg: dict[str, Any]) -> dict[str, Any]:
+    """Pool metadata for the episode.  Defaults to PAPER_POOL_META_FRESH if
+    config [pool] doesn't supply pool meta; the caller's pool_address comes
+    from config so the chain_id matches the source adapter binding.
+    """
+    pool_cfg = cfg.get("pool") or {}
+    meta = {
+        **PAPER_POOL_META_FRESH,
+        "pool_address": str(
+            pool_cfg.get("pool_address") or PAPER_POOL_META_FRESH["pool_address"]
+        ),
+        "as_of": _now_iso(),
+    }
+    if "dec0" in pool_cfg:
+        meta["dec0"] = int(pool_cfg["dec0"])
+    if "dec1" in pool_cfg:
+        meta["dec1"] = int(pool_cfg["dec1"])
+    if "tick_data" in pool_cfg:
+        meta["tick_data"] = pool_cfg["tick_data"]
+    return meta
+
+
+# ---------------------------------------------------------------------------
+# run_once / run_daemon
+# ---------------------------------------------------------------------------
+
+def run_once(cfg_path: str) -> tuple[int, dict[str, Any]]:
+    """Execute ONE episode against the configured real read-only source.
+
+    Real events only.  NO synthetic fallback in this path.  Exit codes:
+      0  — EXIT_NO_TRADE   (episode ran; no qualifying trade) or
+           EXIT_NO_NEW_DATA (source OK; no events newer than cursor)
+      1  — EXIT_TECH_ERROR (uncaught exception / IO failure)
+      2  — EXIT_BLOCKED_DATA (source missing/structured wrong/identity unknown)
+
+    Returns (exit_code, evidence_dict).  evidence_dict always has the fields
+    `started_at`, `ended_at`, `episode_id`, plus a status branch
+    (`blocked`, `no_new_data`, `episode`) describing what actually happened.
+    """
+    started_at = _now_iso()
+    episode_id = str(uuid.uuid4())
+    base_evidence: dict[str, Any] = {
+        "started_at": started_at,
+        "episode_id": episode_id,
+        "cfg_path": cfg_path,
+    }
+
+    ok, errs = preflight(cfg_path)
+    if not ok:
+        return EXIT_BLOCKED_DATA, {
+            **base_evidence,
+            "ended_at": _now_iso(),
+            "status": "blocked",
+            "stage": "preflight",
+            "errors": errs,
+        }
+
+    try:
+        cfg = _load_config(cfg_path)
+    except Exception as exc:
+        return EXIT_TECH_ERROR, {
+            **base_evidence,
+            "ended_at": _now_iso(),
+            "status": "blocked",
+            "stage": "config_load",
+            "errors": [f"failed to re-load config: {exc}"],
+        }
+
+    try:
+        adapter = PaperSourceAdapter.from_config(cfg)
+        adapter.validate()
+    except (SourceConfigError, SourceSchemaError, SourceIdentityError, SourceFreshnessError) as exc:
+        return EXIT_BLOCKED_DATA, {
+            **base_evidence,
+            "ended_at": _now_iso(),
+            "status": "blocked",
+            "stage": "source_validate",
+            "errors": [str(exc)],
+        }
+
+    paths_cfg = cfg.get("paths") or {}
+    ledger_db = str(paths_cfg.get("ledger_db") or "")
+    if not ledger_db:
+        return EXIT_TECH_ERROR, {
+            **base_evidence,
+            "ended_at": _now_iso(),
+            "status": "blocked",
+            "stage": "ledger_path",
+            "errors": ["[paths].ledger_db missing"],
+        }
+
+    try:
+        Path(ledger_db).parent.mkdir(parents=True, exist_ok=True)
+        conn = open_store(ledger_db)
+        migrate(conn)
+    except Exception as exc:
+        return EXIT_TECH_ERROR, {
+            **base_evidence,
+            "ended_at": _now_iso(),
+            "status": "blocked",
+            "stage": "ledger_open",
+            "errors": [f"cannot open ledger DB: {exc}"],
+        }
+
+    cursor_ts = _read_cursor(
+        conn,
+        chain_id=adapter.chain_id,
+        pool_address=adapter.pool_address,
+    )
+
+    now_iso = _now_iso()
+    try:
+        events = adapter.read_new_events(cursor_ts, now_iso=now_iso, max_events=1024)
+    except (SourceConfigError, SourceSchemaError, SourceIdentityError) as exc:
+        conn.close()
+        return EXIT_BLOCKED_DATA, {
+            **base_evidence,
+            "ended_at": _now_iso(),
+            "status": "blocked",
+            "stage": "source_read",
+            "errors": [str(exc)],
+        }
+    except Exception as exc:
+        conn.close()
+        return EXIT_TECH_ERROR, {
+            **base_evidence,
+            "ended_at": _now_iso(),
+            "status": "blocked",
+            "stage": "source_read_unexpected",
+            "errors": [f"unexpected error reading source: {exc}"],
+        }
+
+    if not events:
+        conn.close()
+        return EXIT_NO_NEW_DATA, {
+            **base_evidence,
+            "ended_at": _now_iso(),
+            "status": "no_new_data",
+            "stage": "source_read",
+            "chain_id": adapter.chain_id,
+            "pool_address": adapter.pool_address,
+            "cursor": cursor_ts,
+            "now_iso": now_iso,
+            "event_count": 0,
+            "errors": [],
+        }
+
+    pool_meta = _resolve_pool_meta_fresh(cfg)
+    samples = _events_to_samples(
+        events,
+        pool=adapter.pool_address,
+        expected_interval_secs=adapter.expected_interval_secs,
+    )
+
+    cap_cfg = cfg.get("capital") or {}
+    capital_usd = Decimal(str(cap_cfg.get("virtual_capital_usd", "1000")))
+    position_usd = Decimal(str(cap_cfg.get("position_size_usd", "100")))
+
+    profile_cfg = cfg.get("profile") or {}
+    horizon_hours = int(profile_cfg.get("horizon_hours", 24))
+    target_mode = str(cfg.get("meta", {}).get("target_mode", "paper"))
+
+    engine_cfg = {
+        "pool": adapter.pool_address,
+        "position_usd": position_usd,
+        "horizon_hours": horizon_hours,
+        "capital_usd": capital_usd,
+        "target_mode": target_mode,
+        "pool_meta": pool_meta,
+        "pool_meta_hash": None,
+        "live_db": adapter.db_path,
+        "samples": len(samples),
+        "ledger_db": ledger_db,
+    }
+
+    try:
+        steps, duplicate_rows, copy_stats = _run_episode_persisted(
+            conn,
+            cfg=engine_cfg,
+            episode_id=episode_id,
+            sample_list=samples,
+            now_fn=lambda: now_iso,
+        )
+    except Exception as exc:
+        conn.close()
+        return EXIT_TECH_ERROR, {
+            **base_evidence,
+            "ended_at": _now_iso(),
+            "status": "blocked",
+            "stage": "episode_engine",
+            "errors": [f"engine raised: {exc}"],
+        }
+
+    ended_at = _now_iso()
+    summary = episode_summary(
+        steps,
+        pool_meta=pool_meta,
+        capital_usd=capital_usd,
+    )
+    summary["ledger_duplicate_rows"] = int(duplicate_rows or 0)
+    summary["copied"] = copy_stats
+    summary["event_count"] = len(events)
+    summary["first_event_time"] = events[0]["sample_time"]
+    summary["last_event_time"] = events[-1]["sample_time"]
+    try:
+        _persist_episode_summary(
+            conn,
+            episode_id=episode_id,
+            started_at=started_at,
+            ended_at=ended_at,
+            pool=adapter.pool_address,
+            position_usd=position_usd,
+            capital_usd=capital_usd,
+            summary=summary,
+        )
+        _write_cursor(
+            conn,
+            chain_id=adapter.chain_id,
+            pool_address=adapter.pool_address,
+            last_event_time=events[-1]["sample_time"],
+            episode_id=episode_id,
+        )
+        conn.commit()
+    except Exception as exc:
+        conn.rollback()
+        conn.close()
+        return EXIT_TECH_ERROR, {
+            **base_evidence,
+            "ended_at": _now_iso(),
+            "status": "blocked",
+            "stage": "ledger_commit",
+            "errors": [f"cannot commit ledger: {exc}"],
+        }
+
+    conn.close()
+
+    return EXIT_NO_TRADE, {
+        **base_evidence,
+        "ended_at": ended_at,
+        "status": "episode",
+        "stage": "completed",
+        "chain_id": adapter.chain_id,
+        "pool_address": adapter.pool_address,
+        "cursor_before": cursor_ts,
+        "cursor_after": events[-1]["sample_time"],
+        "event_count": len(events),
+        "first_event_time": events[0]["sample_time"],
+        "last_event_time": events[-1]["sample_time"],
+        "summary": summary,
+        "errors": [],
+    }
+
+
+def run_daemon(cfg_path: str) -> tuple[int, dict[str, Any]]:
+    """Single-shot daemon wrapper.  Long-running loops are out of scope per
+    OBSERVE_ONLY_DECISION_RULES_CN; this exists so the deployment package's
+    binary entry point has a daemon-named symbol without inventing a sleep
+    loop that would mask source/cursor regressions.
+    """
+    return run_once(cfg_path)
+
+
+# ---------------------------------------------------------------------------
+# CLI entry
+# ---------------------------------------------------------------------------
+
+def _print_json(obj: Any) -> None:
+    import json
+    print(json.dumps(obj, indent=2, default=str))
+
+
+def main(argv: list[str]) -> int:
+    if len(argv) < 2:
+        print(
+            "usage: lp_rh_paper_daemon_entry_v1.py "
+            "<preflight|status|run-once|run-daemon> <cfg_path>",
+            file=sys.stderr,
+        )
+        return EXIT_TECH_ERROR
+
+    cmd = argv[1]
+    cfg_path = argv[2] if len(argv) >= 3 else ""
+
+    if cmd == "preflight":
+        ok, errs = preflight(cfg_path)
+        _print_json({"ok": ok, "errors": errs})
+        return 0 if ok else EXIT_TECH_ERROR
+
+    if cmd == "status":
+        _print_json(status(cfg_path))
+        return 0
+
+    if cmd in ("run-once", "run_daemon", "run-once-demo"):
+        exit_code, evidence = run_once(cfg_path)
+        _print_json({"exit_code": exit_code, "evidence": evidence})
+        return exit_code
+
+    print(f"unknown command: {cmd}", file=sys.stderr)
+    return EXIT_TECH_ERROR
+
+
+if __name__ == "__main__":  # pragma: no cover
+    sys.exit(main(sys.argv))
