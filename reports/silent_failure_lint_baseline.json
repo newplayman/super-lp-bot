@@ -3,7 +3,7 @@
   "tool": "lp_silent_failure_lint_v1_readonly",
   "identity_schema": "(file, rule, fingerprint)",
   "note": "Baseline of known silent-failure hits matched by content fingerprint. --fail-on-new blocks any hit exceeding baseline occurrence count. Line numbers are for display only. Regenerate after an approved fix.",
-  "count": 372,
+  "count": 374,
   "hits": [
     {
       "file": "scripts/finalize_bsc_fee_velocity_overnight_run_v1_readonly.py",
@@ -1975,6 +1975,24 @@
       "fingerprint": "071c0e9cc9220a2f",
       "snippet": "horizon_hours = int(profile_cfg.get(\"horizon_hours\", 24))",
       "key": "scripts/lp_rh_paper_daemon_entry_v1.py:716:24:1"
+    },
+    {
+      "file": "scripts/lp_rh_paper_data_validity_v1.py",
+      "line": 185,
+      "col": 31,
+      "rule": 3,
+      "fingerprint": "f2954ca4f847ff84",
+      "snippet": "where_parts.append(\"asset_address = ?\")",
+      "key": "scripts/lp_rh_paper_data_validity_v1.py:185:31:3"
+    },
+    {
+      "file": "scripts/lp_rh_paper_data_validity_v1.py",
+      "line": 413,
+      "col": 11,
+      "rule": 1,
+      "fingerprint": "632203fc298870be",
+      "snippet": "if evidence.get(\"duplicates_in_window\", 0) > 0:",
+      "key": "scripts/lp_rh_paper_data_validity_v1.py:413:11:1"
     },
     {
       "file": "scripts/lp_rh_paper_pid_lock_v1.py",

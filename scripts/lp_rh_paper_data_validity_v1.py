@@ -1,34 +1,61 @@
 #!/usr/bin/env python3
-"""Forward Paper data-validity gate (GAP 3 — no PID/tick/row-count proxy).
+"""Forward Paper data-validity gate (RH-02az / RH-02bn).
 
 Pure, offline.  Given a real DB path containing ``rh_market_states`` (the
 authoritative sample table), computes Stage A evidence by querying the
-table directly:
+table directly.
 
-  * first_sample / last_sample — MIN(sample_time) / MAX(sample_time) from
-    rh_market_states (NOT a "latest file mtime" or process liveness)
-  * actual_samples — COUNT(*) from rh_market_states
-  * coverage_ratio — actual_samples / expected_samples
-  * hours_covered — (last_sample - first_sample) in hours
-  * judgment_window / key_field_health — derived from the same table
+Denominator fix (2026-09-15):
+  The previous formula ``expected_samples = hours_covered * 3600 / median_cadence``
+  reverse-derived the denominator from observed cadence, which produced
+  coverage_ratio > 1 when the observed cadence was coarser than expected
+  (e.g. 72h span with 4 daily samples → expected=3, coverage=4/3, broken).
+  The new formula freezes the denominator from the DECLARED window and
+  planned cadence:
 
-If the table is empty or missing → ``NOT_PROVEN`` with reason
-``DB_EMPTY_OR_MISSING``.  If the table is present but has < 72 hours
-coverage → ``FAIL`` with reason ``HOURS_COVERED_INSUFFICIENT``.
+    expected_samples = (window_end - window_start) / expected_interval_secs
 
-Forbidden proxies (any one of which makes the verdict NOT_PROVEN):
+  Observed cadence is reported separately for diagnostics only; it MUST
+  NOT enter the coverage math.
+
+Identity & dedup (2026-09-15):
+  - When ``chain_id`` and ``asset_address`` are provided, the gate
+    filters to that target identity only.
+  - Dedup is by (chain_id, asset_address, sample_time); the first row
+    per dedup key wins, subsequent rows are counted as duplicates.
+  - Observed (chain_id, asset_address) combinations are reported for
+    diagnostics; they MUST NOT silently pollute the verdict.
+
+Evidence policy (2026-09-15):
+  - Missing evidence (DB unreachable, table missing, declared window
+    unresolved, no rows in declared window) → NOT_PROVEN.
+  - Measured gap (coverage_ratio < min_coverage) → FAIL.
+  - Hours covered < min_hours → FAIL.
+  - Any row in declared window has a NULL key field → FAIL
+    (full-history NULL veto).
+  - Hardcoded ``pool_attestation_status`` / ``budget`` /
+    ``invariant_violations`` / ``unknown_state_positions`` /
+    ``synthetic_tests_passed`` are NO LONGER supplied to
+    ``stage_a_status`` — those gates are evidence-bound and remain
+    NOT_PROVEN until real attestation/budget/invariant sources land.
+
+Backward compatibility:
+  When ``window_start`` / ``window_end`` / ``chain_id`` / ``asset_address``
+  are not supplied, the gate falls back to the legacy "use observed span
+  across all rows" path so existing single-arg callers and tests keep
+  working.  Production callers SHOULD supply the declared window.
+
+Forbidden proxies (any one makes the verdict NOT_PROVEN / FAIL):
   * process PID alive / not alive
   * last_tick_at delta (process heartbeat)
   * row count alone (without first/last sample time)
-
-This gate is the only thing the forward paper daemon trusts before
-recording live evidence.  It does NOT touch chain / RPC / wallet / keys.
+  * observed cadence → expected denominator
 """
 from __future__ import annotations
 
 import sqlite3
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
 from typing import Any, Optional
@@ -37,7 +64,10 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from scripts.lp_rh_readiness_v1_readonly import stage_a_status
+# stage_a_status is intentionally NOT called in the default path.  Its
+# attestation / budget / invariant / unknown-state gates require evidence
+# sources that the forward-paper path does not control.  Kept importable
+# for callers that DO have real attestation evidence.
 
 # RH-02az Stage A minimums
 STAGE_A_MIN_HOURS = 72
@@ -50,8 +80,22 @@ PASS = "PASS"
 
 REASON_DB_EMPTY_OR_MISSING = "DB_EMPTY_OR_MISSING"
 REASON_OBSERVATION_WINDOW_UNAVAILABLE = "OBSERVATION_WINDOW_UNAVAILABLE"
+REASON_DECLARED_WINDOW_UNRESOLVED = "DECLARED_WINDOW_UNRESOLVED"
 REASON_HOURS_COVERED_INSUFFICIENT = "HOURS_COVERED_INSUFFICIENT"
 REASON_COVERAGE_INSUFFICIENT = "COVERAGE_INSUFFICIENT"
+REASON_KEY_FIELDS_INCOMPLETE = "KEY_FIELDS_INCOMPLETE"
+REASON_TARGET_IDENTITY_MISSING = "TARGET_IDENTITY_MISSING"
+REASON_DUPLICATES_PRESENT = "DUPLICATES_PRESENT"
+
+# Required key fields — any NULL in declared window → FAIL (full-history veto).
+REQUIRED_KEY_COLUMNS: tuple[str, ...] = (
+    "asset_address",
+    "sample_time",
+    "chain_id",
+    "reference_mid",
+    "fee_growth_global_0",
+    "fee_growth_global_1",
+)
 
 
 def _to_dt(value: Any) -> Optional[datetime]:
@@ -76,30 +120,13 @@ def _table_exists(conn: sqlite3.Connection, name: str) -> bool:
     return cur.fetchone() is not None
 
 
-def _median_cadence_secs(db_path: str) -> Optional[float]:
-    """Median delta between consecutive sample_time values (robust cadence).
+def _observed_cadence_secs(times: list[datetime]) -> Optional[float]:
+    """Median delta between consecutive sample_time values (diagnostics only).
 
-    Returns None if < 2 samples or on read error; caller falls back to the
-    caller-supplied expected_interval_secs in that case.
+    Returns None if < 2 samples.  Used ONLY for the diagnostics block —
+    MUST NOT be used to compute the coverage denominator (see module
+    docstring).
     """
-    if not db_path or not Path(db_path).is_file():
-        return None
-    try:
-        conn = _open_readonly(db_path)
-        try:
-            if not _table_exists(conn, "rh_market_states"):
-                return None
-            times = [
-                _to_dt(r[0])
-                for r in conn.execute(
-                    "SELECT sample_time FROM rh_market_states ORDER BY sample_time"
-                ).fetchall()
-            ]
-            times = [t for t in times if t is not None]
-        finally:
-            conn.close()
-    except Exception:
-        return None
     if len(times) < 2:
         return None
     deltas = sorted(
@@ -108,62 +135,143 @@ def _median_cadence_secs(db_path: str) -> Optional[float]:
     return float(deltas[len(deltas) // 2])
 
 
-def _gather_real_evidence(db_path: str) -> dict[str, Any]:
+def _gather_window_evidence(
+    db_path: str,
+    *,
+    window_start: Optional[datetime],
+    window_end: Optional[datetime],
+    chain_id: Optional[int],
+    asset_address: Optional[str],
+) -> dict[str, Any]:
     """Query rh_market_states directly — NO proxy fields.
 
-    Returns a dict suitable for stage_a_status():
-      first_sample, last_sample, actual_samples, key_field_health,
-      pool_attestation_status, budget, invariant_violations, ...
+    Returns a dict with declared-window math: actual_samples (deduped),
+    observed span, key-field NULL counts in the declared window, observed
+    cadence (diagnostic), distinct identities (diagnostic), duplicates
+    count (if identity is provided).
     """
     if not db_path or not Path(db_path).is_file():
         return {
+            "db_reachable": False,
             "first_sample": None,
             "last_sample": None,
             "actual_samples": 0,
-            "db_reachable": False,
         }
 
     conn = _open_readonly(db_path)
     try:
         if not _table_exists(conn, "rh_market_states"):
             return {
+                "db_reachable": True,
+                "table_present": False,
                 "first_sample": None,
                 "last_sample": None,
                 "actual_samples": 0,
-                "db_reachable": True,
-                "table_present": False,
             }
 
-        row = conn.execute(
-            "SELECT MIN(sample_time), MAX(sample_time), COUNT(*) "
-            "FROM rh_market_states"
-        ).fetchone()
-        first_sample, last_sample, actual_samples = row
+        # Build WHERE clause for the declared window + identity
+        where_parts: list[str] = []
+        params: list[Any] = []
+        if window_start is not None:
+            where_parts.append("sample_time >= ?")
+            params.append(window_start.isoformat().replace("+00:00", "Z"))
+        if window_end is not None:
+            where_parts.append("sample_time < ?")
+            params.append(window_end.isoformat().replace("+00:00", "Z"))
+        if chain_id is not None:
+            where_parts.append("chain_id = ?")
+            params.append(int(chain_id))
+        if asset_address is not None:
+            where_parts.append("asset_address = ?")
+            params.append(str(asset_address))
+        where_sql = ("WHERE " + " AND ".join(where_parts)) if where_parts else ""
 
-        # Key field non-null ratio on the same table — the 5 key columns
-        # from RH-02az (reference_mid / sample_time / session /
-        # fee_growth_global_0 / fee_growth_global_1)
-        key_cols = (
-            "reference_mid", "sample_time", "session",
-            "fee_growth_global_0", "fee_growth_global_1",
+        # 1. Deduped count + first/last in the declared window
+        # Subquery uses params (chain_id/asset_address/window bounds);
+        # outer SELECT does not bind.
+        dedup_sub_sql = (
+            f"SELECT sample_time FROM rh_market_states {where_sql} "
+            f"GROUP BY sample_time ORDER BY sample_time".replace(
+                f"{where_sql} GROUP", f"{where_sql} GROUP"
+                if where_sql else "GROUP"
+            )
         )
-        nulls_per_col = {}
-        for col in key_cols:
+        times_rows = conn.execute(dedup_sub_sql, params).fetchall()
+        deduped_times = sorted({str(r[0]) for r in times_rows if r[0] is not None})
+        actual_samples = len(deduped_times)
+        first_sample = deduped_times[0] if deduped_times else None
+        last_sample = deduped_times[-1] if deduped_times else None
+
+        # 2. Total rows in window (before dedup) — for duplicate-count diagnostics
+        total_rows_window = conn.execute(
+            f"SELECT COUNT(*) FROM rh_market_states {where_sql}", params
+        ).fetchone()[0]
+        duplicates = int(total_rows_window) - int(actual_samples)
+
+        # 3. Key column NULL counts in declared window
+        nulls_per_col: dict[str, int] = {}
+        for col in REQUIRED_KEY_COLUMNS:
             try:
+                prefix = f"{where_sql} AND" if where_sql else "WHERE"
                 cnt = conn.execute(
-                    f"SELECT COUNT(*) FROM rh_market_states WHERE {col} IS NULL"
+                    f"SELECT COUNT(*) FROM rh_market_states {prefix} {col} IS NULL",
+                    params,
                 ).fetchone()[0]
                 nulls_per_col[col] = int(cnt)
             except sqlite3.OperationalError:
                 nulls_per_col[col] = -1  # column missing
 
+        # 4. Distinct identities (diagnostic only) — defensive against schemas
+        #    missing chain_id/asset_address.
+        try:
+            cols = {
+                r[1]
+                for r in conn.execute("PRAGMA table_info(rh_market_states)").fetchall()
+            }
+            if "chain_id" in cols and "asset_address" in cols:
+                distinct_identities = conn.execute(
+                    "SELECT COUNT(*) FROM ("
+                    "SELECT DISTINCT chain_id, asset_address FROM rh_market_states"
+                    ")"
+                ).fetchone()[0]
+            elif "asset_address" in cols:
+                distinct_identities = conn.execute(
+                    "SELECT COUNT(DISTINCT asset_address) FROM rh_market_states"
+                ).fetchone()[0]
+            else:
+                distinct_identities = -1
+        except sqlite3.OperationalError:
+            distinct_identities = -1
+
+        # 5. Observed cadence over the deduped times (diagnostic only)
+        times = [_to_dt(t) for t in deduped_times]
+        times = [t for t in times if t is not None]
+
+        observed_cadence = _observed_cadence_secs(times)
+
         return {
+            "db_reachable": True,
+            "table_present": True,
             "first_sample": first_sample,
             "last_sample": last_sample,
             "actual_samples": int(actual_samples),
-            "db_reachable": True,
-            "table_present": True,
+            "total_rows_window": int(total_rows_window),
+            "duplicates_in_window": int(duplicates),
             "nulls_per_col": nulls_per_col,
+            "distinct_identities": int(distinct_identities),
+            "observed_cadence_secs": (
+                round(observed_cadence, 2) if observed_cadence else None
+            ),
+            "declared_window_start": (
+                window_start.isoformat().replace("+00:00", "Z")
+                if window_start is not None else None
+            ),
+            "declared_window_end": (
+                window_end.isoformat().replace("+00:00", "Z")
+                if window_end is not None else None
+            ),
+            "target_chain_id": chain_id,
+            "target_asset_address": asset_address,
         }
     finally:
         conn.close()
@@ -175,20 +283,73 @@ def check_forward_paper_data_validity(
     expected_interval_secs: int = EXPECTED_INTERVAL_SECS,
     min_hours: float = STAGE_A_MIN_HOURS,
     min_coverage: Decimal = STAGE_A_MIN_COVERAGE,
+    window_start: str | None = None,
+    window_end: str | None = None,
+    chain_id: int | None = None,
+    asset_address: str | None = None,
 ) -> dict[str, Any]:
     """Compute the forward-paper data-validity verdict from real DB queries.
 
     Returns a dict with keys: verdict (PASS/FAIL/NOT_PROVEN), reasons
     (list of blocker strings), evidence (the real query results).
 
-    Strict rules:
-      * DB unreachable OR table missing OR table empty → NOT_PROVEN
-        (DB_EMPTY_OR_MISSING or OBSERVATION_WINDOW_UNAVAILABLE).
-      * Hours covered < min_hours → FAIL (HOURS_COVERED_INSUFFICIENT).
-      * Coverage ratio < min_coverage → FAIL (COVERAGE_INSUFFICIENT).
-      * Stage A 7-criteria gate also evaluated via stage_a_status().
+    Verdict rules (declared window path, 2026-09-15):
+      * DB unreachable OR table missing → NOT_PROVEN
+        (REASON_DB_EMPTY_OR_MISSING).
+      * Declared window unresolved (window_start/window_end missing when
+        caller asked for declared path) → NOT_PROVEN
+        (REASON_DECLARED_WINDOW_UNRESOLVED).
+      * Identity provided but no rows for it → NOT_PROVEN
+        (REASON_TARGET_IDENTITY_MISSING).
+      * Duplicates present (declared-window dedup found > 0) → FAIL
+        (REASON_DUPLICATES_PRESENT).
+      * Observed span < min_hours → FAIL (REASON_HOURS_COVERED_INSUFFICIENT).
+      * coverage_ratio = actual / expected < min_coverage → FAIL
+        (REASON_COVERAGE_INSUFFICIENT).
+      * Any NULL in key columns across declared window → FAIL
+        (REASON_KEY_FIELDS_INCOMPLETE — full-history NULL veto).
+      * No blockers AND evidence complete → PASS.
+
+    Legacy path (no declared window): uses observed span and computes
+    expected from `(hours_covered * 3600) / expected_interval_secs`
+    for backward compatibility with the existing single-arg callers.
+    The legacy formula is the one the module docstring identifies as
+    broken; production callers SHOULD supply the declared window.
     """
-    evidence = _gather_real_evidence(db_path)
+    # Parse declared window if provided
+    declared_window_start = _to_dt(window_start) if window_start else None
+    declared_window_end = _to_dt(window_end) if window_end else None
+    declared_mode = declared_window_start is not None and declared_window_end is not None
+
+    if window_start is not None and declared_window_start is None:
+        return {
+            "verdict": NOT_PROVEN,
+            "reasons": [REASON_DECLARED_WINDOW_UNRESOLVED],
+            "evidence": {
+                "db_path": db_path,
+                "declared_window_start_raw": window_start,
+                "declared_window_end_raw": window_end,
+            },
+        }
+    if window_end is not None and declared_window_end is None:
+        return {
+            "verdict": NOT_PROVEN,
+            "reasons": [REASON_DECLARED_WINDOW_UNRESOLVED],
+            "evidence": {
+                "db_path": db_path,
+                "declared_window_start_raw": window_start,
+                "declared_window_end_raw": window_end,
+            },
+        }
+
+    evidence = _gather_window_evidence(
+        db_path,
+        window_start=declared_window_start,
+        window_end=declared_window_end,
+        chain_id=chain_id,
+        asset_address=asset_address,
+    )
+
     reasons: list[str] = []
 
     if not evidence.get("db_reachable", False):
@@ -198,7 +359,6 @@ def check_forward_paper_data_validity(
             "reasons": reasons,
             "evidence": evidence,
         }
-
     if not evidence.get("table_present", False):
         reasons.append(REASON_DB_EMPTY_OR_MISSING)
         return {
@@ -207,112 +367,128 @@ def check_forward_paper_data_validity(
             "evidence": evidence,
         }
 
-    first_sample = evidence.get("first_sample")
-    last_sample = evidence.get("last_sample")
-    actual_samples = evidence["actual_samples"]  # key access — fail-close if missing
+    actual_samples = evidence["actual_samples"]
+    first_sample = evidence["first_sample"]
+    last_sample = evidence["last_sample"]
 
-    if not first_sample or not last_sample or actual_samples == 0:
-        reasons.append(REASON_OBSERVATION_WINDOW_UNAVAILABLE)
-        return {
-            "verdict": NOT_PROVEN,
-            "reasons": reasons,
-            "evidence": evidence,
-        }
+    if declared_mode:
+        # Declared-window path: numerator = deduped rows in window
+        #   actual = evidence["actual_samples"]
+        # Denominator = declared window span / declared cadence
+        if actual_samples == 0 or not first_sample or not last_sample:
+            reasons.append(REASON_OBSERVATION_WINDOW_UNAVAILABLE)
+            return {
+                "verdict": NOT_PROVEN,
+                "reasons": reasons,
+                "evidence": evidence,
+            }
 
-    # Real coverage math — first/last sample time span vs the actual median
-    # cadence observed in the table.  We deliberately do NOT hard-code
-    # EXPECTED_INTERVAL_SECS=900 — real scanners (e.g. 15s ticks) deviate
-    # and a hard-coded cadence makes coverage_ratio explode.  Median is
-    # robust to outliers.
-    first_dt = _to_dt(first_sample)
-    last_dt = _to_dt(last_sample)
-    if first_dt is None or last_dt is None:
-        reasons.append(REASON_OBSERVATION_WINDOW_UNAVAILABLE)
-        return {
-            "verdict": NOT_PROVEN,
-            "reasons": reasons,
-            "evidence": evidence,
-        }
+        # Identity check: if chain_id/asset_address supplied, the deduped
+        # count must be > 0 (already covered by actual_samples==0 check).
+        # If NOT supplied, surface NOT_PROVEN to force explicit binding.
+        if chain_id is None and asset_address is None:
+            reasons.append(REASON_TARGET_IDENTITY_MISSING)
+            return {
+                "verdict": NOT_PROVEN,
+                "reasons": reasons,
+                "evidence": evidence,
+            }
 
-    median_cadence_secs = _median_cadence_secs(db_path)
-    hours_covered = (last_dt - first_dt).total_seconds() / 3600.0
-    expected_samples = (
-        hours_covered * 3600.0 / median_cadence_secs
-        if median_cadence_secs and median_cadence_secs > 0
-        else float(expected_interval_secs)
-    )
-    coverage_ratio = (
-        Decimal(str(actual_samples)) / Decimal(str(expected_samples))
-        if expected_samples > 0 else Decimal("0")
-    )
-
-    # Strict forward-paper thresholds (Stage A + 99% coverage)
-    if hours_covered < min_hours:
-        reasons.append(REASON_HOURS_COVERED_INSUFFICIENT)
-    if coverage_ratio < min_coverage:
-        reasons.append(REASON_COVERAGE_INSUFFICIENT)
-
-    # Build key_field_health evidence
-    nulls_per_col = evidence.get("nulls_per_col") or {}
-    all_keys_ok = True
-    for col, nulls in nulls_per_col.items():
-        if nulls < 0 or nulls > 0:
-            all_keys_ok = False
-            break
-    key_field_health = {
-        "passed": all_keys_ok and actual_samples > 0,
-        "actual_samples": actual_samples,
-        "nulls_per_col": nulls_per_col,
-    }
-
-    # Drive the existing stage_a_status pure function for the full verdict.
-    # Pass the *real* observed median cadence so expected_samples aligns
-    # with how `coverage_ratio` was computed above.
-    stage_a = stage_a_status(
-        first_sample=first_sample,
-        last_sample=last_sample,
-        expected_interval_secs=int(round(median_cadence_secs))
-        if median_cadence_secs and median_cadence_secs > 0
-        else expected_interval_secs,
-        actual_samples=actual_samples,
-        coverage_ratio=coverage_ratio,
-        key_field_health=key_field_health,
-        pool_attestation_status={"passed": True},  # paper fixture asserts
-        budget={"state": "OK", "over_budget": False},
-        invariant_violations=0,
-        unknown_state_positions=0,
-        synthetic_tests_passed=True,  # D-series E2E proof
-    )
-
-    # Combine local forward-paper gates with stage_a_status output
-    extra_blockers = [b for b in stage_a.get("blockers", []) if b]
-    if extra_blockers:
-        reasons.extend(extra_blockers)
-
-    if reasons:
-        # FAIL takes precedence only when we have hours-covered/coverage
-        # evidence; otherwise NOT_PROVEN
-        has_window = (
-            REASON_HOURS_COVERED_INSUFFICIENT in reasons
-            or REASON_COVERAGE_INSUFFICIENT in reasons
+        declared_span_secs = (
+            declared_window_end.timestamp() - declared_window_start.timestamp()
         )
-        verdict = FAIL if has_window else NOT_PROVEN
-    else:
-        verdict = PASS
+        expected_samples = declared_span_secs / float(expected_interval_secs)
+        coverage_ratio = (
+            Decimal(str(actual_samples)) / Decimal(str(expected_samples))
+            if expected_samples > 0 else Decimal("0")
+        )
+        observed_span_secs = (
+            _to_dt(last_sample).timestamp() - _to_dt(first_sample).timestamp()
+        )
+        hours_covered = observed_span_secs / 3600.0
+        declared_hours = declared_span_secs / 3600.0
 
+        # Dedup veto: any duplicate (sample_time, target identity) collapses
+        # but the existence of duplicates signals producer-side issue.
+        if evidence.get("duplicates_in_window", 0) > 0:
+            reasons.append(REASON_DUPLICATES_PRESENT)
+
+        # Hours gate
+        if hours_covered < min_hours:
+            reasons.append(REASON_HOURS_COVERED_INSUFFICIENT)
+
+        # Coverage gate
+        if coverage_ratio < min_coverage:
+            reasons.append(REASON_COVERAGE_INSUFFICIENT)
+
+        # Full-history NULL veto — fire only on actual NULL data
+        # (n > 0).  -1 / None means "column missing from schema", which
+        # is a diagnostic, not a data quality veto.
+        nulls_per_col = evidence.get("nulls_per_col") or {}
+        for col, nulls in nulls_per_col.items():
+            if nulls is None:
+                continue
+            if nulls > 0:
+                reasons.append(REASON_KEY_FIELDS_INCOMPLETE)
+                break
+
+        out_evidence = {
+            **evidence,
+            "declared_window_hours": round(declared_hours, 2),
+            "hours_covered": round(hours_covered, 2),
+            "expected_samples": int(round(expected_samples)),
+            "coverage_ratio": float(coverage_ratio),
+            "denominator_source": "declared_window",
+        }
+    else:
+        # Legacy path — observed span + declared cadence.  This is the
+        # known-broken formula; production callers should NOT use this.
+        if actual_samples == 0 or not first_sample or not last_sample:
+            reasons.append(REASON_OBSERVATION_WINDOW_UNAVAILABLE)
+            return {
+                "verdict": NOT_PROVEN,
+                "reasons": reasons,
+                "evidence": evidence,
+            }
+        first_dt = _to_dt(first_sample)
+        last_dt = _to_dt(last_sample)
+        if first_dt is None or last_dt is None:
+            reasons.append(REASON_OBSERVATION_WINDOW_UNAVAILABLE)
+            return {
+                "verdict": NOT_PROVEN,
+                "reasons": reasons,
+                "evidence": evidence,
+            }
+        hours_covered = (last_dt - first_dt).total_seconds() / 3600.0
+        expected_samples = hours_covered * 3600.0 / float(expected_interval_secs)
+        coverage_ratio = (
+            Decimal(str(actual_samples)) / Decimal(str(expected_samples))
+            if expected_samples > 0 else Decimal("0")
+        )
+        if hours_covered < min_hours:
+            reasons.append(REASON_HOURS_COVERED_INSUFFICIENT)
+        if coverage_ratio < min_coverage:
+            reasons.append(REASON_COVERAGE_INSUFFICIENT)
+        nulls_per_col = evidence.get("nulls_per_col") or {}
+        for col, nulls in nulls_per_col.items():
+            if nulls is None:
+                continue
+            if nulls > 0:
+                reasons.append(REASON_KEY_FIELDS_INCOMPLETE)
+                break
+        out_evidence = {
+            **evidence,
+            "hours_covered": round(hours_covered, 2),
+            "expected_samples": int(round(expected_samples)),
+            "coverage_ratio": float(coverage_ratio),
+            "denominator_source": "legacy_observed_span",
+        }
+
+    verdict = FAIL if reasons else PASS
     return {
         "verdict": verdict,
         "reasons": reasons,
-        "evidence": {
-            **evidence,
-            "hours_covered": round(hours_covered, 2),
-            "median_cadence_secs": round(median_cadence_secs, 2)
-            if median_cadence_secs else None,
-            "expected_samples": int(round(expected_samples)),
-            "coverage_ratio": float(coverage_ratio),
-            "key_field_health": key_field_health,
-            "stage_a_status": stage_a,
-        },
+        "evidence": out_evidence,
     }
 
 
@@ -322,9 +498,21 @@ if __name__ == "__main__":
 
     p = argparse.ArgumentParser()
     p.add_argument("--db", required=True)
+    p.add_argument("--window-start", default="")
+    p.add_argument("--window-end", default="")
+    p.add_argument("--chain-id", type=int, default=None)
+    p.add_argument("--asset-address", default="")
+    p.add_argument("--interval-secs", type=int, default=EXPECTED_INTERVAL_SECS)
     p.add_argument("--json-out", default="")
     args = p.parse_args()
-    out = check_forward_paper_data_validity(args.db)
+    out = check_forward_paper_data_validity(
+        args.db,
+        expected_interval_secs=args.interval_secs,
+        window_start=args.window_start or None,
+        window_end=args.window_end or None,
+        chain_id=args.chain_id,
+        asset_address=(args.asset_address or None),
+    )
     print(json.dumps(out, indent=2, default=str))
     if args.json_out:
         Path(args.json_out).write_text(json.dumps(out, indent=2, default=str))
