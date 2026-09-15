@@ -3,16 +3,17 @@
 > 状态：**REWORK 收尾完成 — Paper 启动授权仍需 Owner 显式决定**。
 > Owner 显式解除 Paper freeze 之前，本仓库不会启动 paper/canary/live 进程。
 > 本文档不是启动许可，是「S1-S4 全部闭环 + C1-C4 入口控制 + 验证器消费原始产物 + 达到技术门槛」的证据汇总。
-> 提交 SHA = `f3c5b0b`，HEAD 真对象已通过 verifier 独立验证（pytest rc=0、audit_repro rc=0、defects=0、probe_errors=0、38/38 测试 PASS）。
+> 提交 SHA = `009a786`，HEAD 真对象已通过 verifier 独立验证（pytest rc=0、audit_repro rc=0、defects=0、probe_errors=0、38/38 测试 PASS）。
 
 ---
 
 ## 0. 交付 SHA（真 Git 对象，独立可验）
 
-最新 6 个 commit，全部位于 `feat/prd-v2.1-m0-shadow` 分支，HEAD 真对象（`git cat-file -e HEAD^{commit}` 已验证）：
+最新 7 个 commit，全部位于 `feat/prd-v2.1-m0-shadow` 分支，HEAD 真对象（`git cat-file -e HEAD^{commit}` 已验证）：
 
 | SHA       | 说明                                                                                          |
 |-----------|-----------------------------------------------------------------------------------------------|
+| `009a786` | docs(paper): PAPER_START_REQUEST_CN.md 收尾交付（第三轮）— C1-C4 闭环                          |
 | `f3c5b0b` | fix(paper): silent-failure-lint cleanups for C3/C4 (no silent defaults on XML attrs / evidence keys) |
 | `180e6ba` | fix(paper): C1/C2/C3/C4 closure for 5e6897f audit round                                       |
 | `5e72d5d` | fix(paper): exclude recursive verifier test from verifier pytest run                          |
@@ -20,7 +21,7 @@
 | `6f01a6b` | fix(paper): S3 Stage A grid-aligned hours gate                                                |
 | `0b27527` | fix(paper): S2 engine+summary+cursor in single transaction                                    |
 
-**HEAD**：`f3c5b0bf1975b348142be4ef69c07f5444c3c7e1`（真对象；`git cat-file -e` 已验证；verifier 解析后 `wt_head == candidate`）
+**HEAD**：`009a78630c3aebb4bad6bf921896da2755f6bf98`（真对象；`git cat-file -e` 已验证；verifier 解析后 `wt_head == candidate`）
 
 **远端**：`git@github.com:newplayman/super-lp-bot.git`
 **本地分支**：`feat/prd-v2.1-m0-shadow`
@@ -75,15 +76,15 @@ C1-C4 新增/修改测试分布：
 
 ```json
 {
-  "candidate": "f3c5b0bf1975b348142be4ef69c07f5444c3c7e1",
+  "candidate": "009a78630c3aebb4bad6bf921896da2755f6bf98",
   "steps": {
     "1_fetch": {"ok": true},
-    "2_commit_object": {"ok": true, "commit_object": "f3c5b0bf1975b348142be4ef69c07f5444c3c7e1"},
+    "2_commit_object": {"ok": true, "commit_object": "009a78630c3aebb4bad6bf921896da2755f6bf98"},
     "3_tree_object": {"ok": true, "tree_object": "<resolved>"},
     "4_cat_file": {"ok": true},
     "5_worktree_add": {"ok": true},
     "6_worktree_verify": {
-      "wt_head": "f3c5b0bf1975b348142be4ef69c07f5444c3c7e1",
+      "wt_head": "009a78630c3aebb4bad6bf921896da2755f6bf98",
       "wt_head_matches_candidate": true,
       "wt_status_porcelain_empty": true,
       "wt_tree_top_level_count": 84,
@@ -127,7 +128,7 @@ C1-C4 新增/修改测试分布：
 | 全量 pytest     | `python3 -m pytest tests/ -q`                                    | 5233 passed      | 5229 passed      | +4 新测试 (C1 × 3, C2 × 1)                                          |
 | audit_repro     | verifier `audit_repro_run.rc`                                    | 0 (defects=0)    | 0 (defects=0)    | JSON 小写键正确读取                                                   |
 | Lint            | `tests/test_lp_silent_failure_lint_v1_readonly.py`               | 34/34 PASS       | n/a              | C3/C4 silent-default 修复后无新增 hit                                |
-| HEAD            | `git rev-parse HEAD`                                             | `f3c5b0bf1975b348142be4ef69c07f5444c3c7e1` | `5e72d5ddc775e0c95b6b99611f0c67cd6195ec85` | 真 Git 对象已 verify                                                  |
+| HEAD            | `git rev-parse HEAD`                                             | `009a78630c3aebb4bad6bf921896da2755f6bf98` | `5e72d5ddc775e0c95b6b99611f0c67cd6195ec85` | 真 Git 对象已 verify                                                  |
 
 ---
 
@@ -145,7 +146,7 @@ C1-C4 新增/修改测试分布：
 ## 7. 启动 Paper 之前 Owner 仍需做 / 决定的事
 
 1. **Owner 显式解除 Paper freeze**（当前 `CLAUDE.md` 与 `docs/LPBOT_RESEARCH_STATUS_CN.md` 仍标注 FROZEN）。
-2. **在 GitHub Actions 网页目视确认 `f3c5b0b` 对应 run 的实际状态**（本会话无 Actions 写权限与日志写入通道，远端绿灯只能由 Owner 确认）。
+2. **在 GitHub Actions 网页目视确认 `009a786` 对应 run 的实际状态**（本会话无 Actions 写权限与日志写入通道，远端绿灯只能由 Owner 确认）。
 3. **决定 Stage A 真实数据中 6 个 NULL 的处理**（fee_growth 三列共 6 个 NULL 在 17222 行里；定位 producer / 重采该窗口需要 Owner 授权改动现有 5 个长跑采集进程之一。本任务不动。）
 
 ---
@@ -173,7 +174,7 @@ python3 scripts/lp_rh_paper_daemon_entry_v1.py status \
 
 ## 9. 本会话停止位置
 
-- 当前 HEAD：`f3c5b0b`
+- 当前 HEAD：`009a786`
 - 所有 commit 已落本地分支 `feat/prd-v2.1-m0-shadow`
 - 无 background watcher / cron / sleep 循环被本会话起过
 - 等 Owner 决定 §7 的 3 项；不擅自启动 Paper
