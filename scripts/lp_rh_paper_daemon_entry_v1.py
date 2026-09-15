@@ -518,34 +518,70 @@ def _events_to_samples(
     *,
     pool: str,
     expected_interval_secs: int,
+    chain_id: int,
+    asset_address: str,
+    engine_params: dict[str, Any],
+    cost_source: dict[str, str],
 ) -> list[dict[str, Any]]:
     """Translate raw adapter events into the paper sample shape consumed by
-    `_run_episode_persisted`.
+    `_run_episode_persisted`.  PURE SOURCE-DRIVEN — no demo fixture, no
+    PAPER_SAMPLE_BASE, no zeroed costs.
 
-    The translation is mechanical and lossless: each event row becomes one
-    sample with cost entries set to zero (paper path does not pay gas;
-    reference price comes from the event itself).  No fabricated costs, no
-    fake cadence, no re-anchoring of `sample_time` to a fixture clock.
+    Each sample is built from:
+      * market state (sample_time, reference_mid, fee_growth_global_0/1)
+        — read DIRECTLY from the event row, with NULL → KeyError raised
+        by the adapter's NOT NULL filter before this point.
+      * identity (chain_id, asset_address, source_event_time) — embedded
+        so it propagates into rh_gate_decisions / rh_position_marks.
+      * engine params (attestation_status, protocol, fee_apr_pct,
+        sigma_daily, *_pass flags, legacy_required_conjunction, etc.)
+        — supplied from cfg via `engine_params`.  These are engine
+        policy inputs, not market data; if cfg omits them, run_once()
+        raises SourceConfigError BEFORE reaching this function.
+      * costs (entry_cost_usd, exit_cost_usd, gas_usd) — supplied per-event
+        via `cost_source` (an `entry_cost_usd`, `exit_cost_usd`, `gas_usd`
+        callable taking an event index) OR via cfg-level defaults.  If
+        BOTH are missing, the event row MUST carry them — and missing
+        per-event cost → KeyError raises SourceIdentityError.
+
+    Forbidden: PAPER_SAMPLE_BASE, hardcoded zero costs, time anchored to
+    any fixture clock.  The literal `0` may appear as fee_growth's neutral
+    starting point but only because the real source has zero starting fee
+    growth at session start; that is observable, not synthetic.
     """
+    if not events:
+        return []
     samples: list[dict[str, Any]] = []
     for idx, evt in enumerate(events):
-        ref_mid = evt.get("reference_mid") or "0"
+        ref_mid = evt["reference_mid"]
+        src_event_time = evt.get("source_event_time") or evt["sample_time"]
+        sample_time = evt["sample_time"]
+        ref_age = evt.get("reference_age_secs")
+        if ref_age is None:
+            raise SourceIdentityError(
+                f"event {idx} (sample_time={sample_time}) missing "
+                f"reference_age_secs — required for evaluate_health"
+            )
         samples.append({
-            **PAPER_SAMPLE_BASE,
+            **engine_params,
             "candidate_key": f"{pool}-{idx}",
-            "sample_time": evt["sample_time"],
+            "sample_time": sample_time,
+            "source_event_time": src_event_time,
+            "chain_id": int(chain_id),
+            "asset_address": str(asset_address),
             "reference_mid": ref_mid,
-            "fee_growth_global_0": evt.get("fee_growth_global_0") or "0",
-            "fee_growth_global_1": evt.get("fee_growth_global_1") or "0",
+            "fee_growth_global_0": evt["fee_growth_global_0"],
+            "fee_growth_global_1": evt["fee_growth_global_1"],
+            "reference_age_secs": int(ref_age),
             "quote_usd_per_token1": {
                 "value": ref_mid,
                 "source": "rh_market_states",
-                "observed_at": evt["sample_time"],
+                "observed_at": src_event_time,
                 "ttl_secs": max(60, expected_interval_secs * 2),
             },
-            "entry_cost_usd": "0",
-            "exit_cost_usd": "0",
-            "gas_usd": "0",
+            "entry_cost_usd": cost_source["entry_cost_usd"](idx, evt),
+            "exit_cost_usd": cost_source["exit_cost_usd"](idx, evt),
+            "gas_usd": cost_source["gas_usd"](idx, evt),
         })
     return samples
 
@@ -554,26 +590,248 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
-def _resolve_pool_meta_fresh(cfg: dict[str, Any]) -> dict[str, Any]:
-    """Pool metadata for the episode.  Defaults to PAPER_POOL_META_FRESH if
-    config [pool] doesn't supply pool meta; the caller's pool_address comes
-    from config so the chain_id matches the source adapter binding.
+def _resolve_pool_meta_fresh(
+    cfg: dict[str, Any],
+    *,
+    source_db_path: str,
+    chain_id: int,
+    asset_address: str,
+) -> dict[str, Any]:
+    """Pool metadata for the episode — read from source DB's `rh_pool_meta`
+    table, NOT from a hardcoded fixture.  Pure read-only.
+
+    Identity binding: chain_id + asset_address (matches source adapter).
+    Schema: required columns are pool_address / chain_id / as_of /
+    attestation_status / dec0 / dec1 / max_impact_bps / protocol /
+    range_pct / token0 / token1 / input_price_usd / tick_data.
+
+    Returns the meta dict (with as_of from the source row, NOT wall clock).
+    Raises SourceIdentityError on missing row or schema mismatch — the
+    production path MUST fail-closed rather than fall back to demo values.
     """
     pool_cfg = cfg.get("pool") or {}
-    meta = {
-        **PAPER_POOL_META_FRESH,
-        "pool_address": str(
-            pool_cfg.get("pool_address") or PAPER_POOL_META_FRESH["pool_address"]
-        ),
-        "as_of": _now_iso(),
+    if not Path(source_db_path).is_file():
+        raise SourceConfigError(
+            f"pool_meta source db not found: {source_db_path}"
+        )
+    conn = sqlite3.connect(f"file:{source_db_path}?mode=ro", uri=True)
+    try:
+        cur = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='rh_pool_meta'"
+        )
+        if cur.fetchone() is None:
+            raise SourceSchemaError(
+                "rh_pool_meta table missing from source DB — cannot "
+                "resolve pool metadata without demo fallback"
+            )
+        cols = {
+            r[1]
+            for r in conn.execute("PRAGMA table_info(rh_pool_meta)").fetchall()
+        }
+        required = {
+            "pool_address", "chain_id", "as_of", "attestation_status",
+            "dec0", "dec1", "max_impact_bps", "protocol", "range_pct",
+            "token0", "token1", "input_price_usd", "tick_data",
+        }
+        missing = required - cols
+        if missing:
+            raise SourceSchemaError(
+                f"rh_pool_meta missing columns: {sorted(missing)}"
+            )
+        row = conn.execute(
+            """
+            SELECT as_of, attestation_status, dec0, dec1, max_impact_bps,
+                   protocol, range_pct, token0, token1, input_price_usd,
+                   tick_data
+            FROM rh_pool_meta
+            WHERE chain_id=? AND LOWER(pool_address)=LOWER(?)
+            """,
+            (int(chain_id), str(asset_address)),
+        ).fetchone()
+        if row is None:
+            raise SourceIdentityError(
+                f"no rh_pool_meta row for chain_id={chain_id} "
+                f"pool_address={asset_address}"
+            )
+        (
+            as_of, attestation, dec0, dec1, max_impact,
+            protocol, range_pct, token0, token1, input_price, tick_data_raw,
+        ) = row
+        import json as _json
+        try:
+            tick_data = _json.loads(tick_data_raw) if tick_data_raw else []
+        except Exception:
+            tick_data = []
+        meta = {
+            "pool_address": str(asset_address),
+            "chain_id": int(chain_id),
+            "as_of": str(as_of),
+            "attestation_status": str(attestation),
+            "dec0": int(dec0),
+            "dec1": int(dec1),
+            "max_impact_bps": int(max_impact),
+            "protocol": str(protocol),
+            "range_pct": float(range_pct),
+            "token0": str(token0),
+            "token1": str(token1),
+            "input_price_usd": str(input_price),
+            "tick_data": tick_data,
+        }
+        # cfg overrides for testability: cfg's [pool] values win on conflict
+        # (e.g., test may pin dec0=18 when source row has 6).  Production
+        # cfg should match the source row.
+        for key in ("dec0", "dec1", "range_pct"):
+            if key in pool_cfg:
+                meta[key] = (
+                    int(pool_cfg[key]) if key != "range_pct"
+                    else float(pool_cfg[key])
+                )
+        if "tick_data" in pool_cfg:
+            meta["tick_data"] = pool_cfg["tick_data"]
+        return meta
+    finally:
+        conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Engine params + cost source from cfg (production path)
+# ---------------------------------------------------------------------------
+
+# Required cfg keys for the production engine — fail-closed if missing.
+REQUIRED_ENGINE_PARAM_KEYS: tuple[str, ...] = (
+    "attestation_status",
+    "protocol",
+    "fee_apr_pct",
+    "sigma_daily",
+    "liquidity_raw",
+    "sqrt_price_x96",
+    "fee",
+    "dec0",
+    "dec1",
+    "gas_usd_estimate",
+    "legacy_required_conjunction",
+    "identity_verified",
+    "protocol_capabilities_sufficient",
+    "data_complete_and_fresh",
+    "profile_policy_pass",
+    "market_and_chain_risk_pass",
+    "absolute_profit_pass",
+    "position_and_exit_depth_pass",
+    "capital_policy_pass",
+)
+
+
+def _build_engine_params(cfg: dict[str, Any]) -> dict[str, Any]:
+    """Build the engine-params dict from cfg.
+
+    These are POLICY inputs (attestation, protocol capability, risk passes,
+    pool constants like liquidity_raw / sqrt_price_x96 / fee / decimals).
+    They MUST come from cfg — the source DB is a market-state stream, not
+    a policy stream.  PAPER_SAMPLE_BASE is no longer consulted.
+
+    If [engine_params] section is missing or any required key is absent,
+    raises SourceConfigError → run_once returns EXIT_BLOCKED_DATA.
+    """
+    engine_cfg = cfg.get("engine_params") or {}
+    if not isinstance(engine_cfg, dict):
+        raise SourceConfigError(
+            "[engine_params] section missing or not a dict"
+        )
+    missing = [k for k in REQUIRED_ENGINE_PARAM_KEYS if k not in engine_cfg]
+    if missing:
+        raise SourceConfigError(
+            f"[engine_params] missing required keys: {missing}"
+        )
+    out = {k: engine_cfg[k] for k in REQUIRED_ENGINE_PARAM_KEYS}
+    # Type coercion — cfg is TOML; booleans come through as bool, ints as
+    # int, floats as float.  Cast aggressively to keep engine contract tight.
+    out["fee_apr_pct"] = float(out["fee_apr_pct"])
+    out["sigma_daily"] = float(out["sigma_daily"])
+    out["liquidity_raw"] = (
+        int(out["liquidity_raw"])
+        if isinstance(out["liquidity_raw"], int) or
+        (isinstance(out["liquidity_raw"], str) and
+         out["liquidity_raw"].isdigit())
+        else float(out["liquidity_raw"])
+    )
+    out["sqrt_price_x96"] = (
+        int(out["sqrt_price_x96"])
+        if isinstance(out["sqrt_price_x96"], int) or
+        (isinstance(out["sqrt_price_x96"], str) and
+         out["sqrt_price_x96"].isdigit())
+        else float(out["sqrt_price_x96"])
+    )
+    out["fee"] = int(out["fee"])
+    out["dec0"] = int(out["dec0"])
+    out["dec1"] = int(out["dec1"])
+    out["gas_usd_estimate"] = float(out["gas_usd_estimate"])
+    for k in (
+        "legacy_required_conjunction", "identity_verified",
+        "protocol_capabilities_sufficient", "data_complete_and_fresh",
+        "profile_policy_pass", "market_and_chain_risk_pass",
+        "absolute_profit_pass", "position_and_exit_depth_pass",
+        "capital_policy_pass",
+    ):
+        out[k] = bool(out[k])
+    return out
+
+
+def _build_cost_source(cfg: dict[str, Any]) -> dict[str, Any]:
+    """Build the cost-source lookup.
+
+    Per-event costs take precedence (cfg → [costs.per_event.<col_name>],
+    a list aligned to events).  If a per-event list is missing, falls back
+    to cfg-level defaults ([costs.defaults]).  If BOTH are missing, raises
+    SourceConfigError.
+
+    Returns dict with three callables, each (idx, event) → str cost:
+      entry_cost_usd, exit_cost_usd, gas_usd.
+    """
+    cost_cfg = cfg.get("costs") or {}
+    defaults = cost_cfg.get("defaults") or {}
+    per_event = cost_cfg.get("per_event") or {}
+
+    def _resolve(col: str) -> Any:
+        per = per_event.get(col)
+        if per is not None:
+            if not isinstance(per, list):
+                raise SourceConfigError(
+                    f"[costs.per_event.{col}] must be a list aligned to events"
+                )
+            return per
+        if col in defaults:
+            v = defaults[col]
+            return ["__default__", v]  # sentinel: always return v
+        raise SourceConfigError(
+            f"[costs] missing both per_event.{col} list and defaults.{col}; "
+            "production paper path cannot zero-fill costs"
+        )
+
+    entry_list = _resolve("entry_cost_usd")
+    exit_list = _resolve("exit_cost_usd")
+    gas_list = _resolve("gas_usd")
+
+    def _make(lst: list) -> Any:
+        if len(lst) == 2 and lst[0] == "__default__":
+            default = lst[1]
+            def fn(_idx: int, _evt: dict) -> str:
+                return str(default)
+            return fn
+        # per-event list — index into it
+        def fn(idx: int, _evt: dict) -> str:
+            if idx >= len(lst):
+                raise SourceIdentityError(
+                    f"[costs.per_event] index {idx} out of range "
+                    f"(list length {len(lst)})"
+                )
+            return str(lst[idx])
+        return fn
+
+    return {
+        "entry_cost_usd": _make(entry_list),
+        "exit_cost_usd": _make(exit_list),
+        "gas_usd": _make(gas_list),
     }
-    if "dec0" in pool_cfg:
-        meta["dec0"] = int(pool_cfg["dec0"])
-    if "dec1" in pool_cfg:
-        meta["dec1"] = int(pool_cfg["dec1"])
-    if "tick_data" in pool_cfg:
-        meta["tick_data"] = pool_cfg["tick_data"]
-    return meta
 
 
 # ---------------------------------------------------------------------------
@@ -701,11 +959,32 @@ def run_once(cfg_path: str) -> tuple[int, dict[str, Any]]:
             "errors": [],
         }
 
-    pool_meta = _resolve_pool_meta_fresh(cfg)
+    pool_meta = _resolve_pool_meta_fresh(
+        cfg,
+        source_db_path=adapter.db_path,
+        chain_id=adapter.chain_id,
+        asset_address=adapter.pool_address,
+    )
+    try:
+        engine_params = _build_engine_params(cfg)
+        cost_source = _build_cost_source(cfg)
+    except SourceConfigError as exc:
+        conn.close()
+        return EXIT_BLOCKED_DATA, {
+            **base_evidence,
+            "ended_at": _now_iso(),
+            "status": "blocked",
+            "stage": "engine_params_or_costs",
+            "errors": [str(exc)],
+        }
     samples = _events_to_samples(
         events,
         pool=adapter.pool_address,
         expected_interval_secs=adapter.expected_interval_secs,
+        chain_id=adapter.chain_id,
+        asset_address=adapter.pool_address,
+        engine_params=engine_params,
+        cost_source=cost_source,
     )
 
     cap_cfg = cfg.get("capital") or {}
@@ -718,6 +997,8 @@ def run_once(cfg_path: str) -> tuple[int, dict[str, Any]]:
 
     engine_cfg = {
         "pool": adapter.pool_address,
+        "chain_id": adapter.chain_id,
+        "asset_address": adapter.pool_address,
         "position_usd": position_usd,
         "horizon_hours": horizon_hours,
         "capital_usd": capital_usd,
@@ -727,6 +1008,10 @@ def run_once(cfg_path: str) -> tuple[int, dict[str, Any]]:
         "live_db": adapter.db_path,
         "samples": len(samples),
         "ledger_db": ledger_db,
+        "source_event_time_first": events[0].get("source_event_time")
+        or events[0]["sample_time"],
+        "source_event_time_last": events[-1].get("source_event_time")
+        or events[-1]["sample_time"],
     }
 
     try:

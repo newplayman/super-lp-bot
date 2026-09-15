@@ -67,6 +67,23 @@ CREATE TABLE {EVT_TABLE} (
     fee_growth_global_1 TEXT,
     PRIMARY KEY (asset_address, sample_time)
 );
+
+CREATE TABLE rh_pool_meta (
+    chain_id INTEGER NOT NULL,
+    pool_address TEXT NOT NULL,
+    as_of TEXT NOT NULL,
+    attestation_status TEXT NOT NULL,
+    dec0 INTEGER NOT NULL,
+    dec1 INTEGER NOT NULL,
+    max_impact_bps INTEGER NOT NULL,
+    protocol TEXT NOT NULL,
+    range_pct REAL NOT NULL,
+    token0 TEXT NOT NULL,
+    token1 TEXT NOT NULL,
+    input_price_usd TEXT NOT NULL,
+    tick_data TEXT NOT NULL,
+    PRIMARY KEY (chain_id, pool_address)
+);
 """
 
 
@@ -110,9 +127,38 @@ def _seed_source(db_path: Path, events: list[tuple[str, str]]) -> None:
                     "0",
                 ),
             )
+        _insert_pool_meta(conn)
         conn.commit()
     finally:
         conn.close()
+
+
+def _insert_pool_meta(conn: sqlite3.Connection) -> None:
+    """Insert one rh_pool_meta row for the configured (chain_id, pool)."""
+    conn.execute(
+        """
+        INSERT OR REPLACE INTO rh_pool_meta
+        (chain_id, pool_address, as_of, attestation_status,
+         dec0, dec1, max_impact_bps, protocol, range_pct,
+         token0, token1, input_price_usd, tick_data)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            CHAIN_ID,
+            POOL,
+            "2025-12-31T23:00:00Z",
+            "ATTESTED_SAME_BLOCK",
+            18,
+            6,
+            50,
+            "v3",
+            10.0,
+            "0xtoken0",
+            "0xtoken1",
+            "2000",
+            '[{"tick_lower": -100, "tick_upper": 100, "liquidity_net": 1000000000000000000}]',
+        ),
+    )
 
 
 def _seed_source_with_duplicates(
@@ -198,6 +244,7 @@ def _seed_source_with_duplicates(
                     "0",
                 ),
             )
+        _insert_pool_meta(conn)
         conn.commit()
     finally:
         conn.close()
@@ -285,6 +332,32 @@ lookback_hours = {lookback_hours}
 [profile]
 horizon_hours = 24
 min_event_interval_secs = 60
+
+[engine_params]
+attestation_status = "ATTESTED_SAME_BLOCK"
+protocol = "v3"
+fee_apr_pct = 100.0
+sigma_daily = 0.0
+liquidity_raw = 100000000000000000000
+sqrt_price_x96 = 4340000000000000000000000000000
+fee = 500
+dec0 = 18
+dec1 = 6
+gas_usd_estimate = 0.01
+legacy_required_conjunction = true
+identity_verified = true
+protocol_capabilities_sufficient = true
+data_complete_and_fresh = true
+profile_policy_pass = true
+market_and_chain_risk_pass = true
+absolute_profit_pass = true
+position_and_exit_depth_pass = true
+capital_policy_pass = true
+
+[costs.defaults]
+entry_cost_usd = "5"
+exit_cost_usd = "5"
+gas_usd = "0.01"
 """
     )
     return cfg

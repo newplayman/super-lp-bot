@@ -42,6 +42,8 @@ REQUIRED_EVENT_COLUMNS = (
     "reference_mid",
     "fee_growth_global_0",
     "fee_growth_global_1",
+    "reference_age_secs",
+    "source_event_time",
 )
 
 
@@ -203,13 +205,16 @@ class PaperSourceAdapter:
             sql = (
                 f"SELECT sample_time, reference_mid, session, "
                 f"fee_growth_global_0, fee_growth_global_1, "
-                f"reference_bid, reference_ask, source_event_time "
+                f"reference_bid, reference_ask, source_event_time, "
+                f"reference_age_secs "
                 f"FROM {self.events_table} "
                 f"WHERE chain_id=? AND asset_address=? "
                 f"AND sample_time > ? AND sample_time <= ? "
                 f"AND reference_mid IS NOT NULL "
                 f"AND fee_growth_global_0 IS NOT NULL "
                 f"AND fee_growth_global_1 IS NOT NULL "
+                f"AND reference_age_secs IS NOT NULL "
+                f"AND source_event_time IS NOT NULL "
                 f"ORDER BY sample_time ASC LIMIT ?"
             )
             rows = conn.execute(
@@ -241,6 +246,7 @@ class PaperSourceAdapter:
                     "reference_bid": str(r[5]) if r[5] is not None else "",
                     "reference_ask": str(r[6]) if r[6] is not None else "",
                     "source_event_time": str(r[7]) if r[7] is not None else sample_time,
+                    "reference_age_secs": int(r[8]) if r[8] is not None else 0,
                 }
             )
         return out

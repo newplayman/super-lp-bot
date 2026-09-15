@@ -110,6 +110,32 @@ lookback_hours = 24
 [profile]
 horizon_hours = 24
 min_event_interval_secs = 60
+
+[engine_params]
+attestation_status = "ATTESTED_SAME_BLOCK"
+protocol = "v3"
+fee_apr_pct = 100.0
+sigma_daily = 0.0
+liquidity_raw = 100000000000000000000
+sqrt_price_x96 = 4340000000000000000000000000000
+fee = 500
+dec0 = 18
+dec1 = 6
+gas_usd_estimate = 0.01
+legacy_required_conjunction = true
+identity_verified = true
+protocol_capabilities_sufficient = true
+data_complete_and_fresh = true
+profile_policy_pass = true
+market_and_chain_risk_pass = true
+absolute_profit_pass = true
+position_and_exit_depth_pass = true
+capital_policy_pass = true
+
+[costs.defaults]
+entry_cost_usd = "5"
+exit_cost_usd = "5"
+gas_usd = "0.01"
 """
 
 
@@ -414,8 +440,70 @@ class TestDaemon:
         MUST NOT start any new resident loop in this task.  run_daemon is
         therefore a single-shot wrapper around run_once() — it returns
         immediately after one episode and does not block.
+
+        Uses an isolated source DB (built here) so the test does not depend
+        on the production scanner.db's schema or pool_meta presence.
         """
-        cfg = _write_config(tmp_path)
+        import sqlite3
+        from datetime import datetime, timedelta, timezone
+        src = tmp_path / "scanner.db"
+        now = datetime.now(timezone.utc)
+        start = now - timedelta(minutes=240)
+        # Minimal source with rh_market_states + rh_pool_meta
+        conn = sqlite3.connect(str(src))
+        try:
+            conn.executescript(f"""
+                CREATE TABLE rh_market_states (
+                    asset_address TEXT NOT NULL,
+                    sample_time TEXT NOT NULL,
+                    chain_id INTEGER NOT NULL,
+                    session TEXT NOT NULL,
+                    health_flags_json TEXT NOT NULL,
+                    reference_bid TEXT,
+                    reference_ask TEXT,
+                    reference_mid TEXT,
+                    reference_age_secs INTEGER,
+                    source_event_time TEXT,
+                    fee_growth_global_0 TEXT,
+                    fee_growth_global_1 TEXT,
+                    PRIMARY KEY (asset_address, sample_time)
+                );
+                CREATE TABLE rh_pool_meta (
+                    chain_id INTEGER NOT NULL,
+                    pool_address TEXT NOT NULL,
+                    as_of TEXT NOT NULL,
+                    attestation_status TEXT NOT NULL,
+                    dec0 INTEGER NOT NULL,
+                    dec1 INTEGER NOT NULL,
+                    max_impact_bps INTEGER NOT NULL,
+                    protocol TEXT NOT NULL,
+                    range_pct REAL NOT NULL,
+                    token0 TEXT NOT NULL,
+                    token1 TEXT NOT NULL,
+                    input_price_usd TEXT NOT NULL,
+                    tick_data TEXT NOT NULL,
+                    PRIMARY KEY (chain_id, pool_address)
+                );
+            """)
+            POOL_LOCAL = "0x52e65b17fb6e5ba00ed806f37afcd2daa50271ca"
+            for i in range(4):
+                t = (start + timedelta(seconds=i * 600)).isoformat().replace(
+                    "+00:00", "Z"
+                )
+                conn.execute(
+                    "INSERT INTO rh_market_states VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (POOL_LOCAL, t, 4663, "RTH", "{}", "1999", "2001", "2000", 0, t, str(i * 1000), "0"),
+                )
+            conn.execute(
+                "INSERT INTO rh_pool_meta VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (4663, POOL_LOCAL, "2025-12-31T23:00:00Z", "ATTESTED_SAME_BLOCK",
+                 18, 6, 50, "v3", 10.0, "0xt0", "0xt1", "2000",
+                 '[{"tick_lower": -100, "tick_upper": 100, "liquidity_net": 1000000000000000000}]'),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+        cfg = _write_config(tmp_path, {"source_db_path": str(src)})
         rc, evidence = run_daemon(str(cfg))
         assert rc == EXIT_NO_TRADE, (
             f"run_daemon returned {rc!r} — single-shot wrapper should "
