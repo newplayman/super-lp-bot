@@ -140,6 +140,7 @@ def _gather_window_evidence(
     *,
     window_start: Optional[datetime],
     window_end: Optional[datetime],
+    expected_interval_secs: int,
     chain_id: Optional[int],
     asset_address: Optional[str],
 ) -> dict[str, Any]:
@@ -249,6 +250,26 @@ def _gather_window_evidence(
 
         observed_cadence = _observed_cadence_secs(times)
 
+        # 6. C3: distinct samples JOINTLY VALID (no NULL on required keys)
+        #    DEDUPED, ALIGNED to the planned grid ticks.  Each deduped
+        #    time that survives the NULL veto is snapped to the nearest
+        #    grid tick at `expected_interval_secs` boundary; collisions
+        #    collapse (a stream with two samples within the same grid
+        #    cell counts as one).  This is the
+        #    "联合有效、去重的采样格" (jointly valid, deduplicated
+        #    sampling grid) per Owner directive.
+        #    Numerator = grid_aligned_valid_samples.
+        valid_times: set[int] = set()  # epoch ints on the grid
+        if times and window_start is not None and expected_interval_secs > 0:
+            anchor = int(window_start.timestamp())
+            for t in times:
+                # Snapping rule: round to nearest tick boundary.
+                offset = int(t.timestamp()) - anchor
+                snapped = ((offset + expected_interval_secs // 2)
+                           // expected_interval_secs) * expected_interval_secs
+                valid_times.add(snapped)
+        grid_aligned_valid_samples = len(valid_times)
+
         return {
             "db_reachable": True,
             "table_present": True,
@@ -259,6 +280,7 @@ def _gather_window_evidence(
             "duplicates_in_window": int(duplicates),
             "nulls_per_col": nulls_per_col,
             "distinct_identities": int(distinct_identities),
+            "grid_aligned_valid_samples": int(grid_aligned_valid_samples),
             "observed_cadence_secs": (
                 round(observed_cadence, 2) if observed_cadence else None
             ),
@@ -346,6 +368,7 @@ def check_forward_paper_data_validity(
         db_path,
         window_start=declared_window_start,
         window_end=declared_window_end,
+        expected_interval_secs=expected_interval_secs,
         chain_id=chain_id,
         asset_address=asset_address,
     )
@@ -397,43 +420,54 @@ def check_forward_paper_data_validity(
         declared_span_secs = (
             declared_window_end.timestamp() - declared_window_start.timestamp()
         )
-        expected_samples = declared_span_secs / float(expected_interval_secs)
+        planned_grid_ticks = declared_span_secs / float(expected_interval_secs)
+
+        # C3: hours_covered = "completed declared window time" — the span
+        # from window_start to the latest VALID sample (or window_end if
+        # the stream extends past the declared window).  NOT count × cadence.
+        # NOT first-to-last observed span.  This is the time dimension
+        # actually completed by the stream.
+        last_dt = _to_dt(last_sample)
+        completed_secs = (
+            max(0.0, min(last_dt.timestamp(), declared_window_end.timestamp())
+                - declared_window_start.timestamp())
+            if last_dt is not None else 0.0
+        )
+        hours_covered = completed_secs / 3600.0
+        declared_hours = declared_span_secs / 3600.0
+
+        # C3: coverage_ratio = distinct VALID samples ALIGNED to the planned
+        # grid ticks / total planned grid ticks.  "联合有效去重的采样格"
+        # per Owner directive — each grid cell counts at most once, only
+        # cells backed by a non-NULL-key sample are filled.
+        grid_aligned_valid_samples = int(
+            evidence.get("grid_aligned_valid_samples", 0)
+        )
         coverage_ratio = (
-            Decimal(str(actual_samples)) / Decimal(str(expected_samples))
-            if expected_samples > 0 else Decimal("0")
+            Decimal(str(grid_aligned_valid_samples))
+            / Decimal(str(planned_grid_ticks))
+            if planned_grid_ticks > 0 else Decimal("0")
         )
-        # Grid-aligned hours: covered time on the planned cadence grid, NOT
-        # the first-to-last observed span.  The first-to-last span formula
-        # is misleading because a stream that drops its FIRST 4-second sample
-        # still covers 71.999h of usable grid time but would FAIL the span
-        # gate.  Grid-aligned hours = actual_samples * expected_interval_secs
-        # / 3600 answers "how much of the declared window is populated on
-        # the planned grid?".
-        grid_hours_covered = (
-            float(actual_samples) * float(expected_interval_secs) / 3600.0
-        )
+
+        # observed_span_secs kept only as a diagnostic; no longer gates the
+        # verdict.
         observed_span_secs = (
             _to_dt(last_sample).timestamp() - _to_dt(first_sample).timestamp()
         )
-        # observed_span_secs kept only as a diagnostic; no longer gates the
-        # verdict.  hours_covered retained as an alias of grid_hours_covered
-        # for backward compat with downstream consumers.
-        hours_covered = grid_hours_covered
-        declared_hours = declared_span_secs / 3600.0
 
         # Dedup veto: any duplicate (sample_time, target identity) collapses
         # but the existence of duplicates signals producer-side issue.
         if evidence.get("duplicates_in_window", 0) > 0:
             reasons.append(REASON_DUPLICATES_PRESENT)
 
-        # Hours gate — GRID-ALIGNED.  We require coverage of >= min_hours of
-        # the declared window ON THE PLANNED CADENCE GRID, not a first-to-last
-        # span requirement.  This accepts streams that have a short first-or-
-        # last-sample truncation but still populate the planned grid densely.
-        if grid_hours_covered < min_hours:
+        # Hours gate — COMPLETED-DECLARED-WINDOW TIME.  We require at least
+        # min_hours of completed observation time on the declared window.
+        # This replaces the previous grid-aligned formula (actual_samples *
+        # cadence / 3600) which conflated count with time.
+        if hours_covered < min_hours:
             reasons.append(REASON_HOURS_COVERED_INSUFFICIENT)
 
-        # Coverage gate
+        # Coverage gate — grid-aligned valid samples vs planned grid ticks.
         if coverage_ratio < min_coverage:
             reasons.append(REASON_COVERAGE_INSUFFICIENT)
 
@@ -452,12 +486,14 @@ def check_forward_paper_data_validity(
             **evidence,
             "declared_window_hours": round(declared_hours, 2),
             "hours_covered": round(hours_covered, 2),
-            "grid_hours_covered": round(grid_hours_covered, 4),
+            "completed_window_secs": round(completed_secs, 2),
             "observed_span_hours": round(observed_span_secs / 3600.0, 4),
-            "expected_samples": int(round(expected_samples)),
+            "planned_grid_ticks": int(round(planned_grid_ticks)),
+            "grid_aligned_valid_samples": grid_aligned_valid_samples,
             "coverage_ratio": float(coverage_ratio),
             "denominator_source": "declared_window",
-            "hours_formula": "grid_aligned",
+            "hours_formula": "completed_declared_window",
+            "coverage_formula": "grid_aligned_valid_distinct",
         }
     else:
         # Legacy path — observed span + declared cadence.  This is the

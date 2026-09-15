@@ -292,6 +292,24 @@ def preflight(cfg_path: str) -> tuple[bool, list[str]]:
     if errors:
         return False, errors
 
+    # C1 fail-closed: cfg must NOT pre-sign engine-computed conjuncts.
+    # Check at preflight time so the rejection fires before any source I/O.
+    engine_cfg_for_check = cfg.get("engine_params") or {}
+    if isinstance(engine_cfg_for_check, dict):
+        forbidden_present = [
+            k for k in CFG_FORBIDDEN_CONJUNCTS if k in engine_cfg_for_check
+        ]
+        if forbidden_present:
+            errors.append(
+                f"[engine_params] cfg MUST NOT pre-sign engine-computed "
+                f"conjuncts (C1): {forbidden_present}.  These bits are "
+                f"computed by the engine from the actual sample / "
+                f"pool_meta / session."
+            )
+
+    if errors:
+        return False, errors
+
     ledger_db: str = cfg.get("paths", {}).get("ledger_db", "")
     if ledger_db:
         db_dir = os.path.dirname(ledger_db)
@@ -456,8 +474,9 @@ def _persist_episode_summary(
             position_usd, capital_usd,
             nav_start, nav_end, net_pnl,
             eligible_steps, ledger_duplicate_rows, copied,
-            event_count, first_event_time, last_event_time
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            event_count, first_event_time, last_event_time,
+            nav_continuity_source
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             episode_id,
@@ -475,6 +494,7 @@ def _persist_episode_summary(
             int(summary.get("event_count") or 0),
             str(summary.get("first_event_time")) if summary.get("first_event_time") else None,
             str(summary.get("last_event_time")) if summary.get("last_event_time") else None,
+            summary.get("nav_continuity_source"),
         ),
     )
 
@@ -497,10 +517,20 @@ def _ensure_rh_episode_summary_table(conn) -> None:
             copied TEXT,
             event_count INTEGER NOT NULL DEFAULT 0,
             first_event_time TEXT,
-            last_event_time TEXT
+            last_event_time TEXT,
+            nav_continuity_source TEXT
         )
         """
     )
+    # Idempotent migration: add nav_continuity_source column on existing ledgers.
+    cols = {r[1] for r in conn.execute(
+        "PRAGMA table_info(rh_episode_summary)"
+    ).fetchall()}
+    if "nav_continuity_source" not in cols:
+        conn.execute(
+            "ALTER TABLE rh_episode_summary "
+            "ADD COLUMN nav_continuity_source TEXT"
+        )
 
 
 def _json_dumps(value: Any) -> str | None:
@@ -697,7 +727,13 @@ def _resolve_pool_meta_fresh(
 # Engine params + cost source from cfg (production path)
 # ---------------------------------------------------------------------------
 
-# Required cfg keys for the production engine — fail-closed if missing.
+# Required cfg keys for the production engine — POLICY INPUTS only.
+# C1 invariant: cfg must NOT pre-sign engine-computed conjuncts
+# (identity_verified, data_complete_and_fresh, *_pass).  Those bits are
+# computed by the engine from the actual sample / pool_meta / session and
+# any cfg-provided value would override a real decision.  cfg provides
+# POLICY inputs (constants, attestation status, fee/sigma) — the engine
+# then computes each conjunct from real data.
 REQUIRED_ENGINE_PARAM_KEYS: tuple[str, ...] = (
     "attestation_status",
     "protocol",
@@ -709,6 +745,12 @@ REQUIRED_ENGINE_PARAM_KEYS: tuple[str, ...] = (
     "dec0",
     "dec1",
     "gas_usd_estimate",
+)
+
+# Boolean conjuncts that cfg must NOT pre-sign.  If cfg provides them, the
+# daemon REFUSES to load cfg (C1 fail-closed) — prevents regression where
+# cfg silently overrides a real engine decision.
+CFG_FORBIDDEN_CONJUNCTS: tuple[str, ...] = (
     "legacy_required_conjunction",
     "identity_verified",
     "protocol_capabilities_sufficient",
@@ -724,10 +766,12 @@ REQUIRED_ENGINE_PARAM_KEYS: tuple[str, ...] = (
 def _build_engine_params(cfg: dict[str, Any]) -> dict[str, Any]:
     """Build the engine-params dict from cfg.
 
-    These are POLICY inputs (attestation, protocol capability, risk passes,
-    pool constants like liquidity_raw / sqrt_price_x96 / fee / decimals).
-    They MUST come from cfg — the source DB is a market-state stream, not
-    a policy stream.  PAPER_SAMPLE_BASE is no longer consulted.
+    C1: cfg supplies POLICY INPUTS only.  Engine-computed conjuncts
+    (identity_verified, *_pass flags, legacy_required_conjunction) are
+    FORBIDDEN from cfg — if present, raises SourceConfigError (fail-closed).
+
+    PAPER_SAMPLE_BASE is no longer consulted.  Source DB is the market-
+    state stream; cfg is the policy stream; engine code joins them.
 
     If [engine_params] section is missing or any required key is absent,
     raises SourceConfigError → run_once returns EXIT_BLOCKED_DATA.
@@ -736,6 +780,16 @@ def _build_engine_params(cfg: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(engine_cfg, dict):
         raise SourceConfigError(
             "[engine_params] section missing or not a dict"
+        )
+    # C1 fail-closed: reject any cfg attempt to pre-sign engine conjuncts.
+    forbidden_present = [
+        k for k in CFG_FORBIDDEN_CONJUNCTS if k in engine_cfg
+    ]
+    if forbidden_present:
+        raise SourceConfigError(
+            f"[engine_params] cfg MUST NOT pre-sign engine-computed "
+            f"conjuncts (C1): {forbidden_present}.  These bits are computed "
+            f"by the engine from the actual sample / pool_meta / session."
         )
     missing = [k for k in REQUIRED_ENGINE_PARAM_KEYS if k not in engine_cfg]
     if missing:
@@ -765,14 +819,6 @@ def _build_engine_params(cfg: dict[str, Any]) -> dict[str, Any]:
     out["dec0"] = int(out["dec0"])
     out["dec1"] = int(out["dec1"])
     out["gas_usd_estimate"] = float(out["gas_usd_estimate"])
-    for k in (
-        "legacy_required_conjunction", "identity_verified",
-        "protocol_capabilities_sufficient", "data_complete_and_fresh",
-        "profile_policy_pass", "market_and_chain_risk_pass",
-        "absolute_profit_pass", "position_and_exit_depth_pass",
-        "capital_policy_pass",
-    ):
-        out[k] = bool(out[k])
     return out
 
 
@@ -1040,16 +1086,46 @@ def run_once(cfg_path: str) -> tuple[int, dict[str, Any]]:
         }
 
     ended_at = _now_iso()
+    # C2: nav_start of THIS episode must continue from the actual ledger
+    # balance (nav_end of the previous episode), not from the fresh
+    # cfg capital.  After a non-zero PnL episode, the next episode
+    # MUST inherit the previous episode's NAV as its nav_start, so
+    # the loss compounds correctly across episodes.  If there are no
+    # prior episodes in the ledger, fall back to cfg capital_usd.
+    prior_nav_end: Decimal | None = None
+    try:
+        row = conn.execute(
+            "SELECT nav_end FROM rh_episode_summary "
+            "WHERE nav_end IS NOT NULL "
+            "ORDER BY ended_at DESC LIMIT 1"
+        ).fetchone()
+        if row and row[0] is not None:
+            prior_nav_end = Decimal(str(row[0]))
+    except sqlite3.OperationalError:
+        # table missing on first-ever episode
+        prior_nav_end = None
+
+    effective_capital = prior_nav_end if prior_nav_end is not None else capital_usd
+    nav_continuity_source = (
+        "prior_episode_nav_end" if prior_nav_end is not None
+        else "cfg_capital_usd"
+    )
+
     summary = episode_summary(
         steps,
         pool_meta=pool_meta,
-        capital_usd=capital_usd,
+        capital_usd=effective_capital,
     )
     summary["ledger_duplicate_rows"] = int(duplicate_rows or 0)
     summary["copied"] = copy_stats
     summary["event_count"] = len(events)
     summary["first_event_time"] = events[0]["sample_time"]
     summary["last_event_time"] = events[-1]["sample_time"]
+    # C2: tag the source of nav_start so downstream consumers (and the
+    # C2 test) can prove the continuation rule was applied.
+    summary["nav_continuity_source"] = nav_continuity_source
+    if prior_nav_end is not None:
+        summary["prior_nav_end"] = str(prior_nav_end)
     try:
         _persist_episode_summary(
             conn,

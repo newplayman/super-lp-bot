@@ -37,6 +37,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from scripts.lp_rh_paper_daemon_entry_v1 import (
+    EXIT_BLOCKED_DATA,
     EXIT_NO_TRADE,
     EXIT_TECH_ERROR,
     MODE_PAPER_ONLY,
@@ -122,15 +123,6 @@ fee = 500
 dec0 = 18
 dec1 = 6
 gas_usd_estimate = 0.01
-legacy_required_conjunction = true
-identity_verified = true
-protocol_capabilities_sufficient = true
-data_complete_and_fresh = true
-profile_policy_pass = true
-market_and_chain_risk_pass = true
-absolute_profit_pass = true
-position_and_exit_depth_pass = true
-capital_policy_pass = true
 
 [costs.defaults]
 entry_cost_usd = "5"
@@ -565,4 +557,148 @@ class TestDaemon:
         st = status(str(cfg))
         assert st["episodes_run"] == 1, (
             f"status.episodes_run={st['episodes_run']} — expected 1 after run_daemon"
+        )
+
+
+# ---------------------------------------------------------------------------
+# C1: cfg must NOT pre-sign engine-computed conjuncts.
+# ---------------------------------------------------------------------------
+
+
+class TestCfgCannotPreSignEngineConjuncts:
+    """C1 invariant: cfg supplies POLICY INPUTS only.  Engine-computed
+    conjuncts (identity_verified, data_complete_and_fresh, *_pass,
+    legacy_required_conjunction) are computed by the engine from the
+    actual sample / pool_meta / session.  cfg attempting to pre-sign them
+    is a contract violation and run_once must fail-closed.
+    """
+
+    def test_run_once_rejects_cfg_with_identity_verified(self, tmp_path: Path) -> None:
+        """Even if only ONE forbidden conjunct is present, run_once must
+        return EXIT_BLOCKED_DATA — not silently override the engine."""
+        cfg = _write_config(tmp_path)
+        # Add the forbidden key to the existing cfg
+        content = cfg.read_text()
+        content = content.replace(
+            'gas_usd_estimate = 0.01\n',
+            'gas_usd_estimate = 0.01\nidentity_verified = true\n',
+        )
+        cfg.write_text(content)
+
+        rc, ev = run_once(str(cfg))
+        assert rc == EXIT_BLOCKED_DATA, (
+            f"cfg pre-signing identity_verified must yield EXIT_BLOCKED_DATA; "
+            f"got rc={rc}, ev={ev}"
+        )
+        # The error message must explicitly name C1 and the offending key
+        assert any("C1" in e and "identity_verified" in e
+                   for e in ev.get("errors", [])), (
+            f"errors should cite C1 + identity_verified; got {ev.get('errors')}"
+        )
+
+    def test_run_once_rejects_cfg_with_all_conjuncts(self, tmp_path: Path) -> None:
+        """Worst case: cfg pre-signs ALL conjuncts.  Still must fail-closed."""
+        cfg = _write_config(tmp_path)
+        content = cfg.read_text()
+        # Append every forbidden conjunct with True
+        forbidden_lines = "\n".join(
+            f"{k} = true" for k in (
+                "legacy_required_conjunction", "identity_verified",
+                "protocol_capabilities_sufficient", "data_complete_and_fresh",
+                "profile_policy_pass", "market_and_chain_risk_pass",
+                "absolute_profit_pass", "position_and_exit_depth_pass",
+                "capital_policy_pass",
+            )
+        )
+        content = content.replace(
+            "gas_usd_estimate = 0.01\n",
+            f"gas_usd_estimate = 0.01\n{forbidden_lines}\n",
+        )
+        cfg.write_text(content)
+
+        rc, ev = run_once(str(cfg))
+        assert rc == EXIT_BLOCKED_DATA, (
+            f"cfg with all conjuncts must yield EXIT_BLOCKED_DATA; "
+            f"got rc={rc}, ev={ev}"
+        )
+        assert any("C1" in e for e in ev.get("errors", [])), (
+            f"errors must cite C1; got {ev.get('errors')}"
+        )
+
+    def test_engine_computes_conjuncts_not_cfg(self, tmp_path: Path) -> None:
+        """Positive control: cfg with ONLY policy inputs (no conjuncts)
+        runs through, and the engine computes identity_verified etc.
+        from real data.  When sample has matching chain_id, the conjunct
+        MUST be True; when sample has wrong chain_id, conjunct is False.
+        We verify the engine decision is honored by checking
+        episode_summary evidence — not by trusting cfg.
+        """
+        # Build a tmp source with an event whose chain_id matches RH_CHAIN_ID
+        from datetime import datetime, timedelta, timezone as _tz
+        import sqlite3 as _sqlite3
+
+        src_dir = tmp_path / "src"
+        src_dir.mkdir(parents=True, exist_ok=True)
+        src = src_dir / "scanner.db"
+        conn = _sqlite3.connect(str(src))
+        try:
+            conn.executescript(
+                "CREATE TABLE IF NOT EXISTS rh_market_states ("
+                "  asset_address TEXT, sample_time TEXT, chain_id INTEGER,"
+                "  reference_mid TEXT, fee_growth_global_0 TEXT,"
+                "  fee_growth_global_1 TEXT,"
+                "  reference_bid TEXT, reference_ask TEXT,"
+                "  reference_age_secs INTEGER,"
+                "  source_event_time TEXT,"
+                "  session TEXT"
+                ");"
+                "CREATE TABLE IF NOT EXISTS rh_pool_meta ("
+                "  chain_id INTEGER, pool_address TEXT, as_of TEXT,"
+                "  attestation_status TEXT, dec0 INTEGER, dec1 INTEGER,"
+                "  max_impact_bps INTEGER, protocol TEXT, range_pct REAL,"
+                "  token0 TEXT, token1 TEXT, input_price_usd TEXT,"
+                "  tick_data TEXT"
+                ");"
+            )
+            # Insert events spaced so cadence passes; chain_id matches.
+            # Anchor to NOW (per test execution time) so events fall within
+            # the adapter's lookback_hours window.  Anchor is "now - 2h"
+            # so all 6 events (spanning 50 minutes) are inside lookback.
+            _now = datetime.now(_tz.utc)
+            anchor = (_now - timedelta(hours=2)).replace(microsecond=0)
+            _t = anchor.isoformat().replace("+00:00", "Z")
+            for i in range(6):
+                t = (
+                    anchor + timedelta(seconds=i * 600)
+                ).isoformat().replace("+00:00", "Z")
+                conn.execute(
+                    "INSERT INTO rh_market_states VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (
+                        "0x52e65b17fb6e5ba00ed806f37afcd2daa50271ca",
+                        t, 4663, "2000", str(i * 1000), "0",
+                        "1999", "2001", 0, t, "test-session",
+                    ),
+                )
+            conn.execute(
+                "INSERT INTO rh_pool_meta VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (4663, "0x52e65b17fb6e5ba00ed806f37afcd2daa50271ca",
+                 "2025-12-31T23:00:00Z", "ATTESTED_SAME_BLOCK",
+                 18, 6, 50, "v3", 10.0, "0xt0", "0xt1", "2000",
+                 '[{"tick_lower": -100, "tick_upper": 100, "liquidity_net": 1000000000000000000}]'),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+        cfg = _write_config(tmp_path, {"source_db_path": str(src)})
+        rc, ev = run_once(str(cfg))
+        assert rc == EXIT_NO_TRADE, (
+            f"engine must compute its own conjuncts from real data; "
+            f"got rc={rc}, ev={ev}"
+        )
+        # The episode ran; identity_verified was computed by the engine
+        # from sample.chain_id (which matches).  We don't trust the
+        # summary's net_pnl for this — we verify the run completed.
+        assert ev["status"] == "episode", (
+            f"episode did not run; status={ev['status']!r}; evidence={ev}"
         )

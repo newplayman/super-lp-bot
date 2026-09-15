@@ -77,6 +77,32 @@ class TestGitCloneVerify:
             f"probe_errors={audit_run.get('probe_errors')}"
         )
         assert audit_run["passed"] is True
+        # C4: audit_repro JSON uses LOWERCASE keys.  Verifier must read
+        # `defects_reproduced` / `probe_errors` (not uppercase), so these
+        # must be int (not None).
+        assert isinstance(audit_run["defects_reproduced"], int), (
+            f"defects_reproduced must be int (lowercase JSON key); "
+            f"got {type(audit_run['defects_reproduced']).__name__}: "
+            f"{audit_run['defects_reproduced']!r}"
+        )
+        assert isinstance(audit_run["probe_errors"], int), (
+            f"probe_errors must be int (lowercase JSON key); "
+            f"got {type(audit_run['probe_errors']).__name__}: "
+            f"{audit_run['probe_errors']!r}"
+        )
+        assert audit_run["defects_reproduced"] == 0
+        assert audit_run["probe_errors"] == 0
+        # C4: JUnit XML must be parsed and present (not None).
+        assert pytest_run["junit_tests_total"] is not None
+        assert isinstance(pytest_run["junit_tests_total"], int)
+        assert pytest_run["junit_tests_total"] > 0
+        # total = passed + failed (no dropped tests)
+        assert (
+            pytest_run["junit_tests_passed"] + pytest_run["junit_tests_failed"]
+            == pytest_run["junit_tests_total"]
+        )
+        # On a clean run there should be NO failures.
+        assert pytest_run["junit_tests_failed"] == 0
 
     def test_fake_sha_fails_cleanly(self) -> None:
         """A SHA that doesn't exist must FAIL at step 2 (commit object)."""

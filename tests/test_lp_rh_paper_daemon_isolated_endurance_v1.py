@@ -344,15 +344,6 @@ fee = 500
 dec0 = 18
 dec1 = 6
 gas_usd_estimate = 0.01
-legacy_required_conjunction = true
-identity_verified = true
-protocol_capabilities_sufficient = true
-data_complete_and_fresh = true
-profile_policy_pass = true
-market_and_chain_risk_pass = true
-absolute_profit_pass = true
-position_and_exit_depth_pass = true
-capital_policy_pass = true
 
 [costs.defaults]
 entry_cost_usd = "5"
@@ -981,6 +972,144 @@ class TestEconomicContinuityAcrossEpisodes:
             assert cur_row is not None, "rh_paper_cursor missing"
             assert cur_row[0] == cursor_after_r2, (
                 f"ledger cursor {cur_row[0]} != evidence cursor {cursor_after_r2}"
+            )
+        finally:
+            lconn.close()
+
+
+class TestNavContinuityAcrossNonzeroPnL:
+    """C2 invariant: after a non-zero PnL episode, the next episode must
+    continue from the previous episode's actual ledger NAV, not from
+    cfg.virtual_capital_usd.  Loss compounds across episodes; NAV
+    continuity is the source of truth.
+
+    Two-round scenario:
+      round 1: seed events with fee_growth_global_0 ramp; engine accrues
+               fees; nav_end_1 may differ from cfg capital (1000).
+      round 2: NEW events past round 1's cursor; engine resumes from
+               nav_start_2 = nav_end_1 (NOT cfg capital_usd).
+
+    The C2 invariant is verified via:
+      (a) round 2 summary's `nav_continuity_source == 'prior_episode_nav_end'`
+      (b) round 2 summary's `nav_start` equals round 1 summary's `nav_end`
+          within Decimal precision
+      (c) ledger rh_episode_summary row for round 2 has
+          nav_continuity_source = 'prior_episode_nav_end'
+    """
+
+    def test_nav_continues_from_prior_episode_ledger_balance(
+        self, tmp_path: Path
+    ) -> None:
+        src = tmp_path / "scanner.db"
+        ledger = tmp_path / "ledger.db"
+        now_real = datetime.now(timezone.utc)
+        start = now_real - timedelta(minutes=300)
+
+        _seed_source(
+            src, _events_between(start, n=8, interval_secs=600, fg_start=100)
+        )
+        cfg = _write_cfg(tmp_path, source_db=src, ledger_db=ledger)
+        ok, errs = preflight(str(cfg))
+        assert ok is True, f"preflight failed: {errs}"
+
+        rc1, ev1 = run_once(str(cfg))
+        assert rc1 == EXIT_NO_TRADE, f"round1 rc={rc1}; ev={ev1}"
+        assert ev1["status"] == "episode"
+        s1 = ev1["summary"]
+        nav_end_1 = Decimal(str(s1["nav_end"]))
+        nav_start_1 = Decimal(str(s1["nav_start"]))
+        net_pnl_1 = Decimal(str(s1["net_pnl"]))
+
+        # Append 8 NEW events AFTER round 1's cursor with HIGHER fee growth.
+        cursor_ts_1 = ev1["cursor_after"]
+        cursor_dt = datetime.fromisoformat(
+            cursor_ts_1.replace("Z", "+00:00")
+        )
+        start2 = cursor_dt + timedelta(seconds=1)
+        new_events = _events_between(
+            start2, n=8, interval_secs=600, fg_start=9000
+        )
+        conn = sqlite3.connect(str(src))
+        try:
+            for i, (t, fg) in enumerate(new_events):
+                idx = 100 + i
+                conn.execute(
+                    f"""
+                    INSERT INTO {EVT_TABLE} VALUES (
+                        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                    )
+                    """,
+                    (
+                        POOL,
+                        t,
+                        CHAIN_ID,
+                        f"hash-{idx}",
+                        "RTH",
+                        "{}",
+                        "1999",
+                        "2001",
+                        "2000",
+                        0,
+                        "1.0",
+                        0,
+                        f"0xblock{idx}",
+                        1000 + idx,
+                        t,
+                        fg,
+                        "0",
+                    ),
+                )
+            conn.commit()
+        finally:
+            conn.close()
+
+        rc2, ev2 = run_once(str(cfg))
+        assert rc2 == EXIT_NO_TRADE, f"round2 rc={rc2}; ev={ev2}"
+        s2 = ev2["summary"]
+
+        # (a) nav_continuity_source MUST be 'prior_episode_nav_end' on round 2
+        assert s2.get("nav_continuity_source") == "prior_episode_nav_end", (
+            f"round2 nav_continuity_source must be prior_episode_nav_end; "
+            f"got {s2.get('nav_continuity_source')!r}"
+        )
+
+        # (b) round2 nav_start == round1 nav_end (within Decimal precision)
+        nav_start_2 = Decimal(str(s2["nav_start"]))
+        assert abs(nav_start_2 - nav_end_1) < Decimal("1e-9"), (
+            f"NAV continuity broken: nav_start_2={nav_start_2} != "
+            f"nav_end_1={nav_end_1}; cfg capital was 1000; "
+            f"nav_continuity_source={s2.get('nav_continuity_source')!r}"
+        )
+
+        # (c) ledger row for round 2 has the tag persisted
+        lconn = sqlite3.connect(str(ledger))
+        try:
+            rows = lconn.execute(
+                "SELECT episode_id, nav_continuity_source, "
+                "nav_start, nav_end FROM rh_episode_summary "
+                "ORDER BY started_at ASC"
+            ).fetchall()
+            assert len(rows) == 2, (
+                f"expected 2 summary rows; got {len(rows)}"
+            )
+            _, src_1, ns_1, ne_1 = rows[0]
+            _, src_2, ns_2, ne_2 = rows[1]
+            # Round 1 used fresh cfg capital (no prior episode)
+            assert src_1 == "cfg_capital_usd", (
+                f"round1 should anchor to cfg capital; got {src_1!r}"
+            )
+            # Round 2 anchored to prior episode
+            assert src_2 == "prior_episode_nav_end", (
+                f"round2 ledger tag must be prior_episode_nav_end; "
+                f"got {src_2!r}"
+            )
+            assert Decimal(str(ns_2)) == Decimal(str(ne_1)), (
+                f"ledger round2.nav_start {ns_2} != round1.nav_end {ne_1}"
+            )
+            # Per-episode identity still holds (sanity)
+            assert (
+                abs(Decimal(str(ne_1)) - Decimal(str(ns_1)) - net_pnl_1)
+                < Decimal("1e-9")
             )
         finally:
             lconn.close()

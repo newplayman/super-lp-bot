@@ -357,10 +357,11 @@ class TestDeclaredWindow:
             asset_address="0xpool",
             expected_interval_secs=86400,  # 1 day planned cadence
         )
-        # 72h window / 86400 = 3 expected; 4 actual → coverage 4/3 ≥ 0.99 → PASS
+        # 72h+1s window / 86400 = 3 ticks; 4 distinct samples → coverage 4/3 ≥ 0.99
         assert out["evidence"]["denominator_source"] == "declared_window"
-        assert out["evidence"]["expected_samples"] == 3
+        assert out["evidence"]["planned_grid_ticks"] == 3
         assert out["evidence"]["actual_samples"] == 4
+        assert out["evidence"]["grid_aligned_valid_samples"] == 4
         assert out["evidence"]["coverage_ratio"] >= 0.99
         assert out["verdict"] == PASS
 
@@ -401,7 +402,7 @@ class TestDeclaredWindow:
         )
         # 72h+1s declared window → 259201s / 600s ≈ 432.0 expected.
         # Actual = 433 deduped rows (incl. row at t=72h via inclusive boundary).
-        assert out["evidence"]["expected_samples"] == 432
+        assert out["evidence"]["planned_grid_ticks"] == 432
         assert out["evidence"]["actual_samples"] == 433
         assert out["evidence"]["denominator_source"] == "declared_window"
 
@@ -516,23 +517,21 @@ class TestDeclaredWindow:
         assert out["verdict"] == FAIL
         assert "DUPLICATES_PRESENT" in " ".join(out["reasons"])
 
-    def test_grid_aligned_hours_passes_when_first_sample_late(self, tmp_path: Path) -> None:
-        """S3: grid-aligned hours gate does NOT require first-to-last span.
+    def test_completed_declared_window_passes_when_last_reaches_end(
+        self, tmp_path: Path
+    ) -> None:
+        """C3 positive: full completed declared window PASSes.
 
-        Scenario: 72h declared window, 600s cadence.  The first sample is
-        delayed by 30s and the last sample is 30s short of the window end.
-        Under the OLD (first-to-last span) formula, observed_span = 71.983h
-        < 72h → FAIL.  Under the NEW grid-aligned formula,
-        grid_hours_covered = (N+1) * 600 / 3600 = 72.0h+ → PASS.
+        72h declared window, 600s cadence, samples span the full window.
+        hours_covered = (window_end - window_start) = 72h exactly.
+        coverage_ratio = grid_aligned_valid_samples / planned_grid_ticks ≈ 1.
         """
-        db_path = tmp_path / "grid_aligned.db"
+        db_path = tmp_path / "completed.db"
         conn = sqlite3.connect(str(db_path))
         try:
             conn.executescript(DDL)
-            start = datetime(2026, 1, 1, 0, 0, 30, tzinfo=timezone.utc)  # +30s
-            # Fill the grid 600s spacing for 72h, ending at t=71:59:30.
-            # That's 433 sample times: 0:00:30, 0:10:30, ..., 71:59:30.
-            for i in range(433):
+            start = datetime(2026, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
+            for i in range(433):  # inclusive of t=72h
                 t = start + timedelta(seconds=i * 600)
                 conn.execute(
                     "INSERT INTO rh_market_states VALUES (?, ?, ?, ?, ?, ?, ?)",
@@ -545,53 +544,50 @@ class TestDeclaredWindow:
         finally:
             conn.close()
 
-        # Declared window is full 72h.  First sample is 30s after declared
-        # start, last sample is 30s before declared end → observed span is
-        # only 71.983h.  But grid coverage is full (433 rows × 600s = 72h).
         out = check_forward_paper_data_validity(
             str(db_path),
             window_start="2026-01-01T00:00:00Z",
-            window_end="2026-01-04T00:00:00Z",
+            window_end="2026-01-04T00:00:01Z",  # inclusive of t=72h
             chain_id=4663,
             asset_address="0xpool",
             expected_interval_secs=600,
             min_hours=72.0,
         )
         ev = out["evidence"]
-        # Grid-aligned hours: 433 * 600 / 3600 = 72.1666...h
-        assert ev["hours_formula"] == "grid_aligned", (
-            f"hours_formula should be 'grid_aligned', got {ev.get('hours_formula')!r}"
+        # hours_covered = completed declared window time = 72h
+        assert ev["hours_formula"] == "completed_declared_window", (
+            f"hours_formula={ev.get('hours_formula')!r}"
         )
-        assert ev["grid_hours_covered"] >= 72.0, (
-            f"grid_hours_covered={ev['grid_hours_covered']} < 72.0"
+        assert ev["hours_covered"] >= 72.0, (
+            f"hours_covered={ev['hours_covered']} < 72.0"
         )
-        assert ev["observed_span_hours"] < 72.0, (
-            f"observed_span_hours={ev['observed_span_hours']} >= 72.0; "
-            f"test premise broken — first/last must straddle window"
-        )
-        # hours_covered is the new alias of grid_hours_covered
-        assert ev["hours_covered"] == ev["grid_hours_covered"]
-        # Verdict: PASS (no HOURS_COVERED_INSUFFICIENT)
+        # coverage_ratio uses grid_aligned_valid_samples / planned_grid_ticks
+        assert ev["coverage_formula"] == "grid_aligned_valid_distinct"
+        assert ev["grid_aligned_valid_samples"] > 0
+        assert ev["planned_grid_ticks"] > 0
+        assert ev["coverage_ratio"] >= 0.99
         assert out["verdict"] == PASS, (
-            f"expected PASS (grid-aligned 72h satisfied); got {out['verdict']} "
-            f"reasons={out['reasons']}"
+            f"expected PASS; got {out['verdict']} reasons={out['reasons']}"
         )
         assert REASON_HOURS_COVERED_INSUFFICIENT not in out["reasons"]
 
-    def test_grid_aligned_hours_fails_when_too_few_samples(self, tmp_path: Path) -> None:
-        """S3 negative: when grid_hours_covered < min_hours, still FAIL.
+    def test_hours_covered_fails_when_last_sample_short_of_window_end(
+        self, tmp_path: Path
+    ) -> None:
+        """C3 negative: even with dense grid, if last sample is short of
+        window_end the completed time < min_hours → FAIL.
 
-        Regression guard: grid-aligned must NOT silently lower the bar.
-        71h declared, 600s cadence: expected = 71 * 3600 / 600 = 426.  With
-        only 425 rows, grid_hours = 70.83h < 71h → FAIL.
+        Regression guard: completed_declared_window must NOT silently lower
+        the bar by counting samples × cadence.
         """
-        db_path = tmp_path / "short_grid.db"
+        db_path = tmp_path / "short_completed.db"
         conn = sqlite3.connect(str(db_path))
         try:
             conn.executescript(DDL)
             start = datetime(2026, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
-            # 425 samples × 600s = 70.83h on the grid
-            for i in range(425):
+            # Only 24h of data — last sample is at t=24h, window_end=72h.
+            # hours_covered = (24h - 0) = 24h < 71h min_hours → FAIL.
+            for i in range(145):  # 24h × 3600 / 600 = 144 ticks; 145 incl.
                 t = start + timedelta(seconds=i * 600)
                 conn.execute(
                     "INSERT INTO rh_market_states VALUES (?, ?, ?, ?, ?, ?, ?)",
@@ -607,18 +603,18 @@ class TestDeclaredWindow:
         out = check_forward_paper_data_validity(
             str(db_path),
             window_start="2026-01-01T00:00:00Z",
-            window_end="2026-01-03T23:00:00Z",  # 71h declared
+            window_end="2026-01-04T00:00:00Z",  # 72h declared
             chain_id=4663,
             asset_address="0xpool",
             expected_interval_secs=600,
             min_hours=71.0,
         )
         ev = out["evidence"]
-        assert ev["grid_hours_covered"] < 71.0, (
-            f"grid_hours_covered={ev['grid_hours_covered']} >= 71.0; "
-            f"test premise broken"
+        assert ev["hours_formula"] == "completed_declared_window"
+        assert ev["hours_covered"] < 71.0, (
+            f"hours_covered={ev['hours_covered']} >= 71.0; test premise broken"
         )
         assert out["verdict"] == FAIL, (
-            f"expected FAIL (grid_hours<min_hours); got {out['verdict']}"
+            f"expected FAIL; got {out['verdict']} reasons={out['reasons']}"
         )
         assert REASON_HOURS_COVERED_INSUFFICIENT in out["reasons"]

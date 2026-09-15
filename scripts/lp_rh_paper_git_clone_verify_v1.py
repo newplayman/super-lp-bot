@@ -96,10 +96,19 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 1
 
-    # Step 0 — determine candidate SHA
-    candidate = args.candidate or _git(
-        ["rev-parse", "HEAD"], cwd=repo
-    )
+    # Step 0 — determine candidate SHA.  If user passed a non-SHA
+    # reflike (e.g. "HEAD", "feat/foo"), resolve it to the full SHA so
+    # the step-6 comparison `wt_head == candidate` works (a SHA always
+    # equals itself, a reflike never equals a SHA).
+    if args.candidate:
+        try:
+            candidate = _git(
+                ["rev-parse", "--verify", args.candidate], cwd=repo
+            )
+        except Exception:
+            candidate = args.candidate
+    else:
+        candidate = _git(["rev-parse", "HEAD"], cwd=repo)
 
     evidence: dict[str, Any] = {
         "started_at": _now_iso(),
@@ -220,6 +229,10 @@ def main(argv: list[str] | None = None) -> int:
         # NOTE: test_lp_rh_paper_git_clone_verify_v1.py is intentionally
         # excluded — invoking it would spawn a recursive verifier.  The
         # outer test_harness already runs it on the candidate SHA.
+        # C4: produce JUnit XML so the verifier consumes the RAW artifact
+        # (not just stdout parsing).  Test count is read from the XML's
+        # `testsuite.tests` attribute, which is authoritative.
+        junit_path = tmp_root / "junit.xml"
         rc_pytest, out_pytest, err_pytest = _run(
             [
                 sys.executable, "-m", "pytest",
@@ -228,18 +241,54 @@ def main(argv: list[str] | None = None) -> int:
                 "tests/test_lp_rh_paper_daemon_isolated_endurance_v1.py",
                 "-q", "--tb=line", "--no-header",
                 "-p", "no:cacheprovider",
+                f"--junitxml={junit_path}",
             ],
             cwd=worktree_path,
             check=False,
         )
         pytest_passed = rc_pytest == 0
-        pytest_summary_line = ""
-        for ln in (out_pytest or "").splitlines():
-            s = ln.strip()
-            if " passed" in s and (" failed" in s or " error" in s
-                                    or s.endswith("passed")):
-                pytest_summary_line = s
-                break
+
+        # C4: consume the raw JUnit XML for authoritative test count +
+        # failure list.  Stdout parsing is unreliable (pytest may emit
+        # different summary formats).  Per Owner directive, the verifier
+        # must consume the RAW artifact, not stdout.
+        junit_tests_total: int | None = None
+        junit_tests_failed: int | None = None
+        junit_tests_passed: int | None = None
+        junit_error: str | None = None
+        junit_first_failure: dict[str, str] | None = None
+        try:
+            import xml.etree.ElementTree as ET
+            junit_root = ET.parse(str(junit_path)).getroot()
+            # pytest emits <testsuites><testsuite>...</testsuite></testsuites>.
+            # Aggregate across all <testsuite> children — the root tag is
+            # <testsuites> and may have no attributes of its own.
+            tests_total = 0
+            failures = 0
+            errors = 0
+            for ts in junit_root.iter("testsuite"):
+                tests_total += int(ts.attrib.get("tests", 0))
+                failures += int(ts.attrib.get("failures", 0))
+                errors += int(ts.attrib.get("errors", 0))
+            junit_tests_total = tests_total
+            junit_tests_failed = failures + errors
+            junit_tests_passed = junit_tests_total - junit_tests_failed
+            for tc in junit_root.iter("testcase"):
+                if tc.find("failure") is not None or tc.find("error") is not None:
+                    junit_first_failure = {
+                        "classname": tc.attrib.get("classname", ""),
+                        "name": tc.attrib.get("name", ""),
+                        "file": tc.attrib.get("file", ""),
+                    }
+                    break
+        except Exception as exc:
+            junit_error = f"junit.xml unreadable: {exc}"
+            pytest_passed = False
+
+        pytest_summary_line = (
+            f"{junit_tests_passed} passed, {junit_tests_failed} failed "
+            f"(total {junit_tests_total})"
+        )
 
         # Step 6b — REAL audit_repro run.  This catches AST-extraction
         # regressions (defects_reproduced, probe_errors) that pytest alone
@@ -262,9 +311,18 @@ def main(argv: list[str] | None = None) -> int:
             audit_blob = json.loads(
                 Path(audit_path).read_text(encoding="utf-8")
             )
+            # C4: audit_repro writes JSON with LOWERCASE keys
+            # (`defects_reproduced`, `probe_errors`) — per
+            # tools/audit_repro/audit_repro.py:491-498.  The old
+            # uppercase lookup returned None silently.  Also honor the
+            # top-level convenience fields when present.
             counts = audit_blob.get("counts") or {}
-            audit_defects = counts.get("DEFECT_REPRODUCED")
-            audit_probe_errors = counts.get("PROBE_ERROR")
+            audit_defects = counts.get("defects_reproduced")
+            if audit_defects is None:
+                audit_defects = audit_blob.get("defects_reproduced")
+            audit_probe_errors = counts.get("probe_errors")
+            if audit_probe_errors is None:
+                audit_probe_errors = audit_blob.get("probe_errors")
         except Exception as exc:
             audit_passed = False
             audit_defects = f"audit.json unreadable: {exc}"
@@ -281,6 +339,12 @@ def main(argv: list[str] | None = None) -> int:
                 "rc": rc_pytest,
                 "passed": pytest_passed,
                 "summary_line": pytest_summary_line,
+                "junit_xml": str(junit_path),
+                "junit_tests_total": junit_tests_total,
+                "junit_tests_failed": junit_tests_failed,
+                "junit_tests_passed": junit_tests_passed,
+                "junit_first_failure": junit_first_failure,
+                "junit_error": junit_error,
                 "stdout_tail": out_pytest[-1000:] if out_pytest else "",
                 "stderr_tail": err_pytest[-500:] if err_pytest else "",
             },
