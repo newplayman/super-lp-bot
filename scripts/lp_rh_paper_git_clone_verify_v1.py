@@ -214,16 +214,18 @@ def main(argv: list[str] | None = None) -> int:
         )
 
         # Step 6a — REAL pytest run inside the worktree, not just collect.
-        # Run a smoke scope (the four paper-readiness test modules) so we
-        # catch broken imports / syntax errors that --collect-only would
-        # miss.  We capture rc and tail of output for evidence.
+        # Run a smoke scope (the three paper-readiness test modules that
+        # do not themselves invoke this verifier) so we catch broken
+        # imports / syntax errors that --collect-only would miss.
+        # NOTE: test_lp_rh_paper_git_clone_verify_v1.py is intentionally
+        # excluded — invoking it would spawn a recursive verifier.  The
+        # outer test_harness already runs it on the candidate SHA.
         rc_pytest, out_pytest, err_pytest = _run(
             [
                 sys.executable, "-m", "pytest",
                 "tests/test_lp_rh_paper_data_validity_v1.py",
                 "tests/test_lp_rh_paper_daemon_entry_v1.py",
                 "tests/test_lp_rh_paper_daemon_isolated_endurance_v1.py",
-                "tests/test_lp_rh_paper_git_clone_verify_v1.py",
                 "-q", "--tb=line", "--no-header",
                 "-p", "no:cacheprovider",
             ],
