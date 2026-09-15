@@ -1,0 +1,45 @@
+{
+  "started_at": "2026-09-15T07:14:40.451606Z",
+  "repo": "/opt/lpbot/lp-bot-v3-origin-check",
+  "remote": "origin",
+  "branch": "feat/prd-v2.1-m0-shadow",
+  "candidate": "f57f0ba6da100a6c6f91cfde02b98dc6e54f0dba",
+  "steps": {
+    "1_fetch": {
+      "ok": true,
+      "warning": null
+    },
+    "2_commit_object": {
+      "ok": true,
+      "commit_object": "f57f0ba6da100a6c6f91cfde02b98dc6e54f0dba"
+    },
+    "3_tree_object": {
+      "ok": true,
+      "tree_object": "818332d68b2d4d05803d63eee75eeab7b20557e1"
+    },
+    "4_cat_file": {
+      "ok": true
+    },
+    "5_worktree_add": {
+      "ok": true,
+      "path": "/tmp/lpbot_git_verify_962653_1789456483/wt"
+    },
+    "6_worktree_verify": {
+      "ok": true,
+      "wt_head": "f57f0ba6da100a6c6f91cfde02b98dc6e54f0dba",
+      "wt_head_matches_candidate": true,
+      "wt_status_porcelain_empty": true,
+      "wt_status_porcelain": "",
+      "wt_log": "f57f0ba6da100a6c6f91cfde02b98dc6e54f0dba test(paper): 3-round/restart/duplicate/full-close isolated tmp-dir tests",
+      "wt_tree_top_level_count": 84,
+      "pytest_collect_only": {
+        "rc": 0,
+        "stdout_tail": "not_proven\ntests/test_lp_rh_paper_data_validity_v1.py::TestDeclaredWindow::test_declared_window_no_rows_for_target_returns_not_proven\ntests/test_lp_rh_paper_data_validity_v1.py::TestDeclaredWindow::test_declared_window_key_field_null_returns_fail\ntests/test_lp_rh_paper_data_validity_v1.py::TestDeclaredWindow::test_declared_window_short_returns_fail_not_upgrade\ntests/test_lp_rh_paper_data_validity_v1.py::TestDeclaredWindow::test_declared_window_duplicates_returns_fail\n\n14 tests collected in 0.03s",
+        "stderr_tail": ""
+      }
+    }
+  },
+  "worktree_tmp": "/tmp/lpbot_git_verify_962653_1789456483",
+  "verdict": "PASS",
+  "ended_at": "2026-09-15T07:14:45.881382Z"
+}

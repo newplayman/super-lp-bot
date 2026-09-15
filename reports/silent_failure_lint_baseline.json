@@ -3,7 +3,7 @@
   "tool": "lp_silent_failure_lint_v1_readonly",
   "identity_schema": "(file, rule, fingerprint)",
   "note": "Baseline of known silent-failure hits matched by content fingerprint. --fail-on-new blocks any hit exceeding baseline occurrence count. Line numbers are for display only. Regenerate after an approved fix.",
-  "count": 374,
+  "count": 375,
   "hits": [
     {
       "file": "scripts/finalize_bsc_fee_velocity_overnight_run_v1_readonly.py",
@@ -1993,6 +1993,15 @@
       "fingerprint": "632203fc298870be",
       "snippet": "if evidence.get(\"duplicates_in_window\", 0) > 0:",
       "key": "scripts/lp_rh_paper_data_validity_v1.py:413:11:1"
+    },
+    {
+      "file": "scripts/lp_rh_paper_git_clone_verify_v1.py",
+      "line": 261,
+      "col": 12,
+      "rule": 1,
+      "fingerprint": "f968e35671d37492",
+      "snippet": "and wt_step.get(\"wt_tree_top_level_count\", 0) > 0",
+      "key": "scripts/lp_rh_paper_git_clone_verify_v1.py:261:12:1"
     },
     {
       "file": "scripts/lp_rh_paper_pid_lock_v1.py",
