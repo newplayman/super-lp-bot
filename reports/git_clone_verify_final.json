@@ -1,9 +1,9 @@
 {
-  "started_at": "2026-09-15T14:50:53.889235Z",
+  "started_at": "2026-09-15T14:52:32.686324Z",
   "repo": "/opt/lpbot/lp-bot-v3-origin-check",
   "remote": "origin",
   "branch": "feat/prd-v2.1-m0-shadow",
-  "candidate": "f3c5b0bf1975b348142be4ef69c07f5444c3c7e1",
+  "candidate": "7b1d49b1fcf91f128eae917d4a25e611deffbbb3",
   "steps": {
     "1_fetch": {
       "ok": true,
@@ -11,38 +11,38 @@
     },
     "2_commit_object": {
       "ok": true,
-      "commit_object": "f3c5b0bf1975b348142be4ef69c07f5444c3c7e1"
+      "commit_object": "7b1d49b1fcf91f128eae917d4a25e611deffbbb3"
     },
     "3_tree_object": {
       "ok": true,
-      "tree_object": "7db3c1c42070f1dc53a5fc30164846ed9ede1818"
+      "tree_object": "023ffc2690be515ec54cb123d202578728378fb2"
     },
     "4_cat_file": {
       "ok": true
     },
     "5_worktree_add": {
       "ok": true,
-      "path": "/tmp/lpbot_git_verify_1191118_1789483856/wt"
+      "path": "/tmp/lpbot_git_verify_1191449_1789483955/wt"
     },
     "6_worktree_verify": {
       "ok": true,
-      "wt_head": "f3c5b0bf1975b348142be4ef69c07f5444c3c7e1",
+      "wt_head": "7b1d49b1fcf91f128eae917d4a25e611deffbbb3",
       "wt_head_matches_candidate": true,
       "wt_status_porcelain_empty": true,
       "wt_status_porcelain": "",
-      "wt_log": "f3c5b0bf1975b348142be4ef69c07f5444c3c7e1 fix(paper): silent-failure-lint cleanups for C3/C4",
+      "wt_log": "7b1d49b1fcf91f128eae917d4a25e611deffbbb3 docs(paper): correct HEAD to 009a786 across doc references",
       "wt_tree_top_level_count": 84,
       "pytest_run": {
         "rc": 0,
         "passed": true,
         "summary_line": "38 passed, 0 failed (total 38)",
-        "junit_xml": "/tmp/lpbot_git_verify_1191118_1789483856/junit.xml",
+        "junit_xml": "/tmp/lpbot_git_verify_1191449_1789483955/junit.xml",
         "junit_tests_total": 38,
         "junit_tests_failed": 0,
         "junit_tests_passed": 38,
         "junit_first_failure": null,
         "junit_error": null,
-        "stdout_tail": "......................................                                   [100%]\n---- generated xml file: /tmp/lpbot_git_verify_1191118_1789483856/junit.xml ----\n38 passed in 0.92s",
+        "stdout_tail": "......................................                                   [100%]\n---- generated xml file: /tmp/lpbot_git_verify_1191449_1789483955/junit.xml ----\n38 passed in 0.86s",
         "stderr_tail": ""
       },
       "audit_repro_run": {
@@ -55,7 +55,7 @@
       }
     }
   },
-  "worktree_tmp": "/tmp/lpbot_git_verify_1191118_1789483856",
+  "worktree_tmp": "/tmp/lpbot_git_verify_1191449_1789483955",
   "verdict": "PASS",
-  "ended_at": "2026-09-15T14:50:59.836489Z"
+  "ended_at": "2026-09-15T14:52:39.047994Z"
 }
