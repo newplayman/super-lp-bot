@@ -439,9 +439,6 @@ def check_forward_paper_data_validity(
         # C3: coverage_ratio = distinct VALID samples ALIGNED to the planned
         # grid ticks / total planned grid ticks.  "联合有效去重的采样格"
         # per Owner directive — each grid cell counts at most once, only
-        # C3: distinct VALID samples ALIGNED to the planned grid ticks /
-        # total planned grid ticks.  "联合有效去重的采样格"
-        # per Owner directive — each grid cell counts at most once, only
         # cells backed by a non-NULL-key sample are filled.
         if "grid_aligned_valid_samples" not in evidence:
             reasons.append(

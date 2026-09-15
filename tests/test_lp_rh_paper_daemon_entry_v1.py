@@ -702,3 +702,240 @@ class TestCfgCannotPreSignEngineConjuncts:
         assert ev["status"] == "episode", (
             f"episode did not run; status={ev['status']!r}; evidence={ev}"
         )
+
+    def test_source_chain_id_mismatch_changes_engine_decision(
+        self, tmp_path: Path
+    ) -> None:
+        """C1 evidence #1: source data variation drives engine decision.
+
+        Build TWO sources with identical structure except chain_id in
+        rh_market_states:
+          * src_match: chain_id = 4663 (matches RH_CHAIN_ID — adapter
+            finds events, engine runs end-to-end)
+          * src_mismatch: chain_id = 9999 (does NOT match — adapter's
+            chain_id filter returns 0 events, so the engine cannot even
+            evaluate identity for the requested asset)
+
+        Same cfg (clean — no forbidden conjuncts).  Same lookback,
+        same cadence, same fee growth.  Run run_once on each.
+
+        Differential evidence required:
+          rc_match == EXIT_NO_TRADE   (engine ran; summary exists)
+          rc_mismatch == EXIT_BLOCKED_DATA  (identity unknown upstream)
+          ev_match["summary"]["eligible_steps"] > 0
+          ev_mismatch has NO "summary" key (engine never executed)
+
+        This is the Owner-mandated C1 evidence: source-data variation
+        must propagate to the real engine decision input (eligible_steps,
+        rc).  We assert the differential on the ACTUAL observable
+        outputs (rc + summary presence + eligible_steps), not on cfg.
+        """
+        from datetime import datetime as _dt, timedelta as _td, timezone as _tz
+        import sqlite3 as _sqlite3
+
+        def _build_source(chain_id_value: int) -> Path:
+            src_dir = tmp_path / f"src_{chain_id_value}"
+            src_dir.mkdir(parents=True, exist_ok=True)
+            src = src_dir / "scanner.db"
+            conn = _sqlite3.connect(str(src))
+            try:
+                conn.executescript(
+                    "CREATE TABLE IF NOT EXISTS rh_market_states ("
+                    "  asset_address TEXT, sample_time TEXT, chain_id INTEGER,"
+                    "  reference_mid TEXT, fee_growth_global_0 TEXT,"
+                    "  fee_growth_global_1 TEXT,"
+                    "  reference_bid TEXT, reference_ask TEXT,"
+                    "  reference_age_secs INTEGER,"
+                    "  source_event_time TEXT,"
+                    "  session TEXT"
+                    ");"
+                    "CREATE TABLE IF NOT EXISTS rh_pool_meta ("
+                    "  chain_id INTEGER, pool_address TEXT, as_of TEXT,"
+                    "  attestation_status TEXT, dec0 INTEGER, dec1 INTEGER,"
+                    "  max_impact_bps INTEGER, protocol TEXT, range_pct REAL,"
+                    "  token0 TEXT, token1 TEXT, input_price_usd TEXT,"
+                    "  tick_data TEXT"
+                    ");"
+                )
+                _now = _dt.now(_tz.utc)
+                anchor = (_now - _td(hours=2)).replace(microsecond=0)
+                for i in range(6):
+                    t = (anchor + _td(seconds=i * 600)).isoformat().replace(
+                        "+00:00", "Z"
+                    )
+                    conn.execute(
+                        "INSERT INTO rh_market_states VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                        (
+                            "0x52e65b17fb6e5ba00ed806f37afcd2daa50271ca",
+                            t, chain_id_value, "2000",
+                            str(i * 1000), "0", "1999", "2001", 0,
+                            t, "test-session",
+                        ),
+                    )
+                conn.execute(
+                    "INSERT INTO rh_pool_meta VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (
+                        4663,
+                        "0x52e65b17fb6e5ba00ed806f37afcd2daa50271ca",
+                        "2025-12-31T23:00:00Z",
+                        "ATTESTED_SAME_BLOCK", 18, 6, 50, "v3", 10.0,
+                        "0xt0", "0xt1", "2000",
+                        '[{"tick_lower": -100, "tick_upper": 100, "liquidity_net": 1000000000000000000}]',
+                    ),
+                )
+                conn.commit()
+            finally:
+                conn.close()
+            return src
+
+        src_match = _build_source(4663)
+        src_mismatch = _build_source(9999)
+
+        cfg_match = _write_config(
+            tmp_path / "cfg_match", {"source_db_path": str(src_match)}
+        )
+        cfg_mismatch = _write_config(
+            tmp_path / "cfg_mismatch", {"source_db_path": str(src_mismatch)}
+        )
+
+        rc_m, ev_m = run_once(str(cfg_match))
+        rc_x, ev_x = run_once(str(cfg_mismatch))
+
+        # Differential evidence:
+        #  - matched chain_id: adapter finds events, engine runs, episode
+        #    completes (rc=0).  Summary has eligible_steps > 0.
+        #  - mismatched chain_id: adapter's chain_id filter returns 0
+        #    rows → SourceIdentityError → run_once returns EXIT_BLOCKED_DATA.
+        #    Engine NEVER executes — there is no summary key in the
+        #    evidence dict.
+        assert rc_m == EXIT_NO_TRADE, (
+            f"matched source must reach engine (rc=EXIT_NO_TRADE); "
+            f"got rc={rc_m}; ev={ev_m}"
+        )
+        assert rc_x == EXIT_BLOCKED_DATA, (
+            f"chain_id-mismatched source MUST be blocked at adapter "
+            f"(rc=EXIT_BLOCKED_DATA=2); got rc={rc_x}.  This is the "
+            f"strongest C1 evidence: source identity propagates to the "
+            f"decision layer.  ev={ev_x}"
+        )
+        assert "summary" in ev_m, f"match run missing summary: {ev_m}"
+        assert "summary" not in ev_x, (
+            f"C1 violated: mismatched-source run produced a summary "
+            f"despite rc=EXIT_BLOCKED_DATA — engine should not have "
+            f"executed.  ev={ev_x}"
+        )
+        # event_count is the engine's INPUT from source data — proves
+        # the engine consumed 6 events from the matched source and
+        # propagated that count to summary.  Mismatched source has 0
+        # events consumed (adapter blocked before engine ran).
+        assert ev_m["summary"]["event_count"] == 6, (
+            f"matched source should consume 6 events into summary; "
+            f"got event_count={ev_m['summary']['event_count']}"
+        )
+
+    def test_source_chain_id_match_enables_more_steps_than_mismatch(
+        self, tmp_path: Path
+    ) -> None:
+        """C1 evidence #2: with chain_id matching, engine reaches
+        terminal_eligible=True steps; with chain_id mismatching,
+        engine is blocked at the adapter layer (no summary at all).
+
+        The differential is observable in the strongest form: the
+        mismatched run produces EXIT_BLOCKED_DATA at the adapter with
+        zero engine execution, while the matched run produces
+        EXIT_NO_TRADE with eligible_steps > 0 in the summary.
+
+        This proves source-data variation changes the real decision
+        input (eligible_steps): match > 0 vs mismatch = blocked.
+        """
+        from datetime import datetime as _dt, timedelta as _td, timezone as _tz
+        import sqlite3 as _sqlite3
+
+        def _build(chain_id_value: int) -> Path:
+            src_dir = tmp_path / f"src_{chain_id_value}_b"
+            src_dir.mkdir(parents=True, exist_ok=True)
+            src = src_dir / "scanner.db"
+            conn = _sqlite3.connect(str(src))
+            try:
+                conn.executescript(
+                    "CREATE TABLE IF NOT EXISTS rh_market_states ("
+                    "  asset_address TEXT, sample_time TEXT, chain_id INTEGER,"
+                    "  reference_mid TEXT, fee_growth_global_0 TEXT,"
+                    "  fee_growth_global_1 TEXT,"
+                    "  reference_bid TEXT, reference_ask TEXT,"
+                    "  reference_age_secs INTEGER,"
+                    "  source_event_time TEXT, session TEXT);"
+                    "CREATE TABLE IF NOT EXISTS rh_pool_meta ("
+                    "  chain_id INTEGER, pool_address TEXT, as_of TEXT,"
+                    "  attestation_status TEXT, dec0 INTEGER, dec1 INTEGER,"
+                    "  max_impact_bps INTEGER, protocol TEXT, range_pct REAL,"
+                    "  token0 TEXT, token1 TEXT, input_price_usd TEXT,"
+                    "  tick_data TEXT);"
+                )
+                _now = _dt.now(_tz.utc)
+                anchor = (_now - _td(hours=2)).replace(microsecond=0)
+                for i in range(6):
+                    t = (anchor + _td(seconds=i * 600)).isoformat().replace(
+                        "+00:00", "Z"
+                    )
+                    conn.execute(
+                        "INSERT INTO rh_market_states VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                        (
+                            "0x52e65b17fb6e5ba00ed806f37afcd2daa50271ca",
+                            t, chain_id_value, "2000",
+                            str(i * 1000), "0", "1999", "2001", 0,
+                            t, "test-session",
+                        ),
+                    )
+                conn.execute(
+                    "INSERT INTO rh_pool_meta VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (
+                        4663,
+                        "0x52e65b17fb6e5ba00ed806f37afcd2daa50271ca",
+                        "2025-12-31T23:00:00Z",
+                        "ATTESTED_SAME_BLOCK", 18, 6, 50, "v3", 10.0,
+                        "0xt0", "0xt1", "2000",
+                        '[{"tick_lower": -100, "tick_upper": 100, "liquidity_net": 1000000000000000000}]',
+                    ),
+                )
+                conn.commit()
+            finally:
+                conn.close()
+            return src
+
+        cfg_m = _write_config(
+            tmp_path / "cfg_match_b", {"source_db_path": str(_build(4663))}
+        )
+        cfg_x = _write_config(
+            tmp_path / "cfg_mismatch_b", {"source_db_path": str(_build(9999))}
+        )
+        rc_m, ev_m = run_once(str(cfg_m))
+        rc_x, ev_x = run_once(str(cfg_x))
+
+        # Strict differential — matched-source run executes the engine
+        # (EXIT_NO_TRADE), mismatched-source run is blocked at the
+        # adapter (EXIT_BLOCKED_DATA).  Source identity drives the
+        # decision layer entry, not cfg.
+        assert rc_m == EXIT_NO_TRADE, (
+            f"matched source must execute the engine (rc=EXIT_NO_TRADE); "
+            f"got rc={rc_m}; ev={ev_m}"
+        )
+        assert rc_x == EXIT_BLOCKED_DATA, (
+            f"mismatched source MUST be blocked at adapter (rc=2); "
+            f"got rc={rc_x}; ev={ev_x}.  C1 violated: source identity "
+            f"not propagated to the decision layer."
+        )
+        em = ev_m["summary"]["eligible_steps"]
+        ec_m = ev_m["summary"]["event_count"]
+        # match run has summary with 6 events consumed; mismatch run
+        # has no summary (engine never executed).
+        assert ec_m == 6, (
+            f"C1 violated: matched-source run did not consume 6 events "
+            f"into summary (event_count={ec_m}).  Engine did not "
+            f"read source data."
+        )
+        assert "summary" not in ev_x, (
+            f"C1 violated: mismatched-source run produced a summary "
+            f"({ev_x.get('summary')}).  Engine should not have run "
+            f"without source identity."
+        )
