@@ -1,0 +1,61 @@
+{
+  "started_at": "2026-09-15T14:50:53.889235Z",
+  "repo": "/opt/lpbot/lp-bot-v3-origin-check",
+  "remote": "origin",
+  "branch": "feat/prd-v2.1-m0-shadow",
+  "candidate": "f3c5b0bf1975b348142be4ef69c07f5444c3c7e1",
+  "steps": {
+    "1_fetch": {
+      "ok": true,
+      "warning": null
+    },
+    "2_commit_object": {
+      "ok": true,
+      "commit_object": "f3c5b0bf1975b348142be4ef69c07f5444c3c7e1"
+    },
+    "3_tree_object": {
+      "ok": true,
+      "tree_object": "7db3c1c42070f1dc53a5fc30164846ed9ede1818"
+    },
+    "4_cat_file": {
+      "ok": true
+    },
+    "5_worktree_add": {
+      "ok": true,
+      "path": "/tmp/lpbot_git_verify_1191118_1789483856/wt"
+    },
+    "6_worktree_verify": {
+      "ok": true,
+      "wt_head": "f3c5b0bf1975b348142be4ef69c07f5444c3c7e1",
+      "wt_head_matches_candidate": true,
+      "wt_status_porcelain_empty": true,
+      "wt_status_porcelain": "",
+      "wt_log": "f3c5b0bf1975b348142be4ef69c07f5444c3c7e1 fix(paper): silent-failure-lint cleanups for C3/C4",
+      "wt_tree_top_level_count": 84,
+      "pytest_run": {
+        "rc": 0,
+        "passed": true,
+        "summary_line": "38 passed, 0 failed (total 38)",
+        "junit_xml": "/tmp/lpbot_git_verify_1191118_1789483856/junit.xml",
+        "junit_tests_total": 38,
+        "junit_tests_failed": 0,
+        "junit_tests_passed": 38,
+        "junit_first_failure": null,
+        "junit_error": null,
+        "stdout_tail": "......................................                                   [100%]\n---- generated xml file: /tmp/lpbot_git_verify_1191118_1789483856/junit.xml ----\n38 passed in 0.92s",
+        "stderr_tail": ""
+      },
+      "audit_repro_run": {
+        "rc": 0,
+        "passed": true,
+        "defects_reproduced": 0,
+        "probe_errors": 0,
+        "stdout_tail": "ns\": [\n          \"LIVE_GATE: CAPITAL_POLICY_NOT_APPROVED\",\n          \"FULL_TEST_NO_PASS: no passed tests recorded\",\n          \"FULL_TEST_FAILED: 3 failures\",\n          \"FULL_TEST_NONZERO_EXIT: 1\",\n          \"FAULT_INJECTION_FAILED: 0/6 scenarios passed\"\n        ],\n        \"tiny_live_authorized\": false,\n        \"manual_override_blocked\": false\n      }\n    }\n  ],\n  \"counts\": {\n    \"defects_reproduced\": 0,\n    \"probe_errors\": 0\n  },\n  \"defects_reproduced\": 0,\n  \"probe_errors\": 0,\n  \"github\": null\n}",
+        "stderr_tail": ""
+      }
+    }
+  },
+  "worktree_tmp": "/tmp/lpbot_git_verify_1191118_1789483856",
+  "verdict": "PASS",
+  "ended_at": "2026-09-15T14:50:59.836489Z"
+}
