@@ -262,23 +262,25 @@ def main(argv: list[str] | None = None) -> int:
             junit_root = ET.parse(str(junit_path)).getroot()
             # pytest emits <testsuites><testsuite>...</testsuite></testsuites>.
             # Aggregate across all <testsuite> children — the root tag is
-            # <testsuites> and may have no attributes of its own.
+            # <testsuites> and may have no attributes of its own.  Required
+            # attributes (tests / failures / errors) are read directly from
+            # the dict; missing key is a parse error → fail-closed.
             tests_total = 0
             failures = 0
             errors = 0
             for ts in junit_root.iter("testsuite"):
-                tests_total += int(ts.attrib.get("tests", 0))
-                failures += int(ts.attrib.get("failures", 0))
-                errors += int(ts.attrib.get("errors", 0))
+                tests_total += int(ts.attrib["tests"])
+                failures += int(ts.attrib["failures"])
+                errors += int(ts.attrib["errors"])
             junit_tests_total = tests_total
             junit_tests_failed = failures + errors
             junit_tests_passed = junit_tests_total - junit_tests_failed
             for tc in junit_root.iter("testcase"):
                 if tc.find("failure") is not None or tc.find("error") is not None:
                     junit_first_failure = {
-                        "classname": tc.attrib.get("classname", ""),
-                        "name": tc.attrib.get("name", ""),
-                        "file": tc.attrib.get("file", ""),
+                        "classname": tc.attrib["classname"],
+                        "name": tc.attrib["name"],
+                        "file": tc.attrib["file"],
                     }
                     break
         except Exception as exc:

@@ -439,10 +439,22 @@ def check_forward_paper_data_validity(
         # C3: coverage_ratio = distinct VALID samples ALIGNED to the planned
         # grid ticks / total planned grid ticks.  "联合有效去重的采样格"
         # per Owner directive — each grid cell counts at most once, only
+        # C3: distinct VALID samples ALIGNED to the planned grid ticks /
+        # total planned grid ticks.  "联合有效去重的采样格"
+        # per Owner directive — each grid cell counts at most once, only
         # cells backed by a non-NULL-key sample are filled.
-        grid_aligned_valid_samples = int(
-            evidence.get("grid_aligned_valid_samples", 0)
-        )
+        if "grid_aligned_valid_samples" not in evidence:
+            reasons.append(
+                "GRID_ALIGNED_VALID_SAMPLES_MISSING: evidence dict "
+                "did not carry grid_aligned_valid_samples; refuse to "
+                "default to 0 (silent failure)."
+            )
+            return {
+                "verdict": FAIL,
+                "reasons": reasons,
+                "evidence": evidence,
+            }
+        grid_aligned_valid_samples = int(evidence["grid_aligned_valid_samples"])
         coverage_ratio = (
             Decimal(str(grid_aligned_valid_samples))
             / Decimal(str(planned_grid_ticks))
