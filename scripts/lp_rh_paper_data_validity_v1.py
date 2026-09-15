@@ -402,10 +402,23 @@ def check_forward_paper_data_validity(
             Decimal(str(actual_samples)) / Decimal(str(expected_samples))
             if expected_samples > 0 else Decimal("0")
         )
+        # Grid-aligned hours: covered time on the planned cadence grid, NOT
+        # the first-to-last observed span.  The first-to-last span formula
+        # is misleading because a stream that drops its FIRST 4-second sample
+        # still covers 71.999h of usable grid time but would FAIL the span
+        # gate.  Grid-aligned hours = actual_samples * expected_interval_secs
+        # / 3600 answers "how much of the declared window is populated on
+        # the planned grid?".
+        grid_hours_covered = (
+            float(actual_samples) * float(expected_interval_secs) / 3600.0
+        )
         observed_span_secs = (
             _to_dt(last_sample).timestamp() - _to_dt(first_sample).timestamp()
         )
-        hours_covered = observed_span_secs / 3600.0
+        # observed_span_secs kept only as a diagnostic; no longer gates the
+        # verdict.  hours_covered retained as an alias of grid_hours_covered
+        # for backward compat with downstream consumers.
+        hours_covered = grid_hours_covered
         declared_hours = declared_span_secs / 3600.0
 
         # Dedup veto: any duplicate (sample_time, target identity) collapses
@@ -413,8 +426,11 @@ def check_forward_paper_data_validity(
         if evidence.get("duplicates_in_window", 0) > 0:
             reasons.append(REASON_DUPLICATES_PRESENT)
 
-        # Hours gate
-        if hours_covered < min_hours:
+        # Hours gate — GRID-ALIGNED.  We require coverage of >= min_hours of
+        # the declared window ON THE PLANNED CADENCE GRID, not a first-to-last
+        # span requirement.  This accepts streams that have a short first-or-
+        # last-sample truncation but still populate the planned grid densely.
+        if grid_hours_covered < min_hours:
             reasons.append(REASON_HOURS_COVERED_INSUFFICIENT)
 
         # Coverage gate
@@ -436,9 +452,12 @@ def check_forward_paper_data_validity(
             **evidence,
             "declared_window_hours": round(declared_hours, 2),
             "hours_covered": round(hours_covered, 2),
+            "grid_hours_covered": round(grid_hours_covered, 4),
+            "observed_span_hours": round(observed_span_secs / 3600.0, 4),
             "expected_samples": int(round(expected_samples)),
             "coverage_ratio": float(coverage_ratio),
             "denominator_source": "declared_window",
+            "hours_formula": "grid_aligned",
         }
     else:
         # Legacy path — observed span + declared cadence.  This is the

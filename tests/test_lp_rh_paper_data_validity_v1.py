@@ -515,3 +515,110 @@ class TestDeclaredWindow:
         )
         assert out["verdict"] == FAIL
         assert "DUPLICATES_PRESENT" in " ".join(out["reasons"])
+
+    def test_grid_aligned_hours_passes_when_first_sample_late(self, tmp_path: Path) -> None:
+        """S3: grid-aligned hours gate does NOT require first-to-last span.
+
+        Scenario: 72h declared window, 600s cadence.  The first sample is
+        delayed by 30s and the last sample is 30s short of the window end.
+        Under the OLD (first-to-last span) formula, observed_span = 71.983h
+        < 72h → FAIL.  Under the NEW grid-aligned formula,
+        grid_hours_covered = (N+1) * 600 / 3600 = 72.0h+ → PASS.
+        """
+        db_path = tmp_path / "grid_aligned.db"
+        conn = sqlite3.connect(str(db_path))
+        try:
+            conn.executescript(DDL)
+            start = datetime(2026, 1, 1, 0, 0, 30, tzinfo=timezone.utc)  # +30s
+            # Fill the grid 600s spacing for 72h, ending at t=71:59:30.
+            # That's 433 sample times: 0:00:30, 0:10:30, ..., 71:59:30.
+            for i in range(433):
+                t = start + timedelta(seconds=i * 600)
+                conn.execute(
+                    "INSERT INTO rh_market_states VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    (
+                        t.isoformat().replace("+00:00", "Z"),
+                        "0xpool", 4663, "2000", "RTH", "0", "0",
+                    ),
+                )
+            conn.commit()
+        finally:
+            conn.close()
+
+        # Declared window is full 72h.  First sample is 30s after declared
+        # start, last sample is 30s before declared end → observed span is
+        # only 71.983h.  But grid coverage is full (433 rows × 600s = 72h).
+        out = check_forward_paper_data_validity(
+            str(db_path),
+            window_start="2026-01-01T00:00:00Z",
+            window_end="2026-01-04T00:00:00Z",
+            chain_id=4663,
+            asset_address="0xpool",
+            expected_interval_secs=600,
+            min_hours=72.0,
+        )
+        ev = out["evidence"]
+        # Grid-aligned hours: 433 * 600 / 3600 = 72.1666...h
+        assert ev["hours_formula"] == "grid_aligned", (
+            f"hours_formula should be 'grid_aligned', got {ev.get('hours_formula')!r}"
+        )
+        assert ev["grid_hours_covered"] >= 72.0, (
+            f"grid_hours_covered={ev['grid_hours_covered']} < 72.0"
+        )
+        assert ev["observed_span_hours"] < 72.0, (
+            f"observed_span_hours={ev['observed_span_hours']} >= 72.0; "
+            f"test premise broken — first/last must straddle window"
+        )
+        # hours_covered is the new alias of grid_hours_covered
+        assert ev["hours_covered"] == ev["grid_hours_covered"]
+        # Verdict: PASS (no HOURS_COVERED_INSUFFICIENT)
+        assert out["verdict"] == PASS, (
+            f"expected PASS (grid-aligned 72h satisfied); got {out['verdict']} "
+            f"reasons={out['reasons']}"
+        )
+        assert REASON_HOURS_COVERED_INSUFFICIENT not in out["reasons"]
+
+    def test_grid_aligned_hours_fails_when_too_few_samples(self, tmp_path: Path) -> None:
+        """S3 negative: when grid_hours_covered < min_hours, still FAIL.
+
+        Regression guard: grid-aligned must NOT silently lower the bar.
+        71h declared, 600s cadence: expected = 71 * 3600 / 600 = 426.  With
+        only 425 rows, grid_hours = 70.83h < 71h → FAIL.
+        """
+        db_path = tmp_path / "short_grid.db"
+        conn = sqlite3.connect(str(db_path))
+        try:
+            conn.executescript(DDL)
+            start = datetime(2026, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
+            # 425 samples × 600s = 70.83h on the grid
+            for i in range(425):
+                t = start + timedelta(seconds=i * 600)
+                conn.execute(
+                    "INSERT INTO rh_market_states VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    (
+                        t.isoformat().replace("+00:00", "Z"),
+                        "0xpool", 4663, "2000", "RTH", "0", "0",
+                    ),
+                )
+            conn.commit()
+        finally:
+            conn.close()
+
+        out = check_forward_paper_data_validity(
+            str(db_path),
+            window_start="2026-01-01T00:00:00Z",
+            window_end="2026-01-03T23:00:00Z",  # 71h declared
+            chain_id=4663,
+            asset_address="0xpool",
+            expected_interval_secs=600,
+            min_hours=71.0,
+        )
+        ev = out["evidence"]
+        assert ev["grid_hours_covered"] < 71.0, (
+            f"grid_hours_covered={ev['grid_hours_covered']} >= 71.0; "
+            f"test premise broken"
+        )
+        assert out["verdict"] == FAIL, (
+            f"expected FAIL (grid_hours<min_hours); got {out['verdict']}"
+        )
+        assert REASON_HOURS_COVERED_INSUFFICIENT in out["reasons"]
