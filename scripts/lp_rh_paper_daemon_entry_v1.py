@@ -352,6 +352,24 @@ def preflight(cfg_path: str) -> tuple[bool, list[str]]:
     except (SourceConfigError, SourceSchemaError, SourceIdentityError) as exc:
         errors.append(f"[source] adapter rejected: {exc}")
 
+    # 8. Pool meta validation (fail-closed: missing rh_pool_meta table / row
+    # / columns must BLOCK at preflight, NOT be deferred to first run_once
+    # where it would raise mid-episode and leave an inconsistent ledger).
+    # This catches the preflight coverage bug where preflight PASSed but
+    # run_once raised SourceSchemaError on first call.  Freshness of as_of
+    # is intentionally NOT checked here — that is an engine-time concern
+    # (NOT in scope for this preflight coverage fix).
+    if not errors:
+        try:
+            _resolve_pool_meta_fresh(
+                cfg,
+                source_db_path=adapter.db_path,
+                chain_id=adapter.chain_id,
+                asset_address=adapter.pool_address,
+            )
+        except (SourceConfigError, SourceSchemaError, SourceIdentityError) as exc:
+            errors.append(f"[source] pool_meta rejected: {exc}")
+
     if errors:
         return False, errors
     return True, []

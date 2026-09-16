@@ -180,6 +180,22 @@ def _write_config(tmp_path: Path, extra_paths: dict[str, str] | None = None) -> 
                     _t, 4663, "2000", "0", "0", 0, _t,
                 ),
             )
+            # Preflight (per coverage fix) now resolves rh_pool_meta at
+            # preflight time.  Insert one stub pool-meta row so the
+            # preflight path can complete without raising
+            # SourceIdentityError on missing row.
+            _c.execute(
+                "INSERT INTO rh_pool_meta VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    4663,
+                    "0x52e65b17fb6e5ba00ed806f37afcd2daa50271ca",
+                    _t,
+                    "ATTESTED_SAME_BLOCK",
+                    18, 6, 50, "v3", 10.0,
+                    "0xtoken0", "0xtoken1", "2000",
+                    '[{"tick_lower": -100, "tick_upper": 100, "liquidity_net": 1000000000000000000}]',
+                ),
+            )
             _c.commit()
         finally:
             _c.close()
