@@ -1,0 +1,293 @@
+{
+  "schema_version": "audit_repro/1",
+  "run_id": "5e90edcb-68da-4417-9382-4586ed74ad6d",
+  "head_sha": "d1291e8d8bf159b38d57b96d73bff9646f2e4dbb",
+  "mode": "AST_EXTRACTED_CHECKOUT_FUNCTIONS_WITH_TEST_SHIMS",
+  "scope": "AST_EXTRACTED_CHECKOUT_FUNCTIONS_WITH_TEST_SHIMS",
+  "tested_code_sha": "d1291e8d8bf159b38d57b96d73bff9646f2e4dbb",
+  "tested_config_sha": "852fcb3cfe037f6171934d9ce4c6ac4bca2c7d04",
+  "started_at": "2026-09-16T06:52:18Z",
+  "finished_at": "2026-09-16T06:52:18Z",
+  "python": "3.12.3",
+  "sqlite": "3.45.1",
+  "source": {
+    "mode": "AST_EXTRACTED_CHECKOUT_FUNCTIONS_WITH_TEST_SHIMS",
+    "not_full_repository_tests": true,
+    "pinned_source": "c2fb020a1ad36b7b186e71d3b25a0563b24b8e08",
+    "head": "d1291e8d8bf159b38d57b96d73bff9646f2e4dbb",
+    "source_ranges": {
+      "scripts/lp_rh_bucket_ledger_v1_readonly.py": {
+        "_require_decimal": [
+          47,
+          51
+        ],
+        "_to_decimal_text": [
+          54,
+          59
+        ],
+        "bucket_budget": [
+          69,
+          72
+        ],
+        "bucket_active_cap": [
+          75,
+          76
+        ],
+        "reserved_total": [
+          79,
+          91
+        ],
+        "try_reserve": [
+          94,
+          162
+        ],
+        "release": [
+          165,
+          186
+        ]
+      },
+      "scripts/lp_rh_shadow_daemon_v1_readonly.py": {
+        "_copy_new_rows": [
+          263,
+          330
+        ]
+      },
+      "scripts/lp_rh_readiness_v1_readonly.py": {
+        "_to_datetime": [
+          267,
+          275
+        ],
+        "stage_b_status": [
+          426,
+          504
+        ],
+        "audit_key_field_health": [
+          714,
+          874
+        ],
+        "_day_start": [
+          1101,
+          1103
+        ],
+        "audit_weekends_covered": [
+          1106,
+          1177
+        ],
+        "_journal_amount": [
+          1180,
+          1188
+        ],
+        "audit_unexplained_ledger_diffs": [
+          1191,
+          1256
+        ]
+      },
+      "scripts/lp_rh_graduation_evidence_v1.py": {
+        "build_verdict": [
+          204,
+          353
+        ]
+      }
+    },
+    "worktree_source_modified": false
+  },
+  "probes": [
+    {
+      "id": "R01_reservation_survives_later_rollback",
+      "status": "NOT_REPRODUCED",
+      "evidence": {},
+      "details": {
+        "grant": true,
+        "reservation_after_rollback": null,
+        "reserved_usd": "0"
+      }
+    },
+    {
+      "id": "R02_release_commits_unrelated_caller_write",
+      "status": "NOT_REPRODUCED",
+      "evidence": {},
+      "details": {
+        "unrelated_caller_write_survived_rollback": 0
+      }
+    },
+    {
+      "id": "R03_scratch_release_skipped_by_primary_key",
+      "status": "NOT_REPRODUCED",
+      "evidence": {},
+      "details": {
+        "copy_stats": {
+          "rh_bucket_reservations": {
+            "copied": 1,
+            "skipped_existing": 0
+          }
+        },
+        "ledger_row": [
+          "RELEASED",
+          "2026-09-11T14:00:00Z"
+        ]
+      }
+    },
+    {
+      "id": "R04_one_sample_counts_as_weekend",
+      "status": "NOT_REPRODUCED",
+      "evidence": {},
+      "details": {
+        "weekends_covered": 0,
+        "checks_performed": [
+          "rh_market_states:weekend_coverage"
+        ],
+        "days": [
+          {
+            "date": "2026-09-12",
+            "weekday": 5,
+            "actual": 1,
+            "expected": 5760.0,
+            "complete": false,
+            "weekend": true,
+            "span_secs": 0.0
+          }
+        ],
+        "reason": "OK"
+      }
+    },
+    {
+      "id": "R05_stage_b_pass_without_economic_evidence",
+      "status": "NOT_REPRODUCED",
+      "evidence": {},
+      "details": {
+        "all_cost_profit_evidence_supplied": false,
+        "result": {
+          "days_covered": 14,
+          "days_required": 14,
+          "weekends_covered": 1,
+          "weekends_required": 1,
+          "unexplained_ledger_diffs": 0,
+          "invariant_violations": 0,
+          "missed_risk_events": 0,
+          "profile_locked": false,
+          "code_version_locked": false,
+          "policy_version_locked": false,
+          "capital_policy_version_locked": false,
+          "full_cost_profitable_episodes": null,
+          "oos_episode_ratio": null,
+          "exit_stress_passed": false,
+          "netcover_passed": false,
+          "passed": false,
+          "blockers": [
+            "PROFILE_NOT_LOCKED",
+            "CODE_VERSION_NOT_LOCKED",
+            "POLICY_VERSION_NOT_LOCKED",
+            "CAPITAL_POLICY_VERSION_NOT_LOCKED",
+            "ECONOMIC_EVIDENCE_MISSING",
+            "OOS_EPISODE_RATIO_UNAVAILABLE",
+            "EXIT_STRESS_NOT_PASSED",
+            "NETCOVER_NOT_PASSED"
+          ]
+        }
+      }
+    },
+    {
+      "id": "R06_reconciliation_failure_ignored",
+      "status": "NOT_REPRODUCED",
+      "evidence": {},
+      "details": {
+        "marks_accrued_fee": "100",
+        "fee_journal_rows": 0,
+        "reconciliation_status": "UNEXPLAINED_DIFF",
+        "graduation_ledger_probe": {
+          "count": 1,
+          "checks_performed": [
+            "rh_journal:balance"
+          ],
+          "details": [
+            "rh_reconciliation_runs:status=UNEXPLAINED_DIFF"
+          ],
+          "reason": "UNBALANCED_ENTRIES"
+        }
+      }
+    },
+    {
+      "id": "R07_missing_key_fields_excluded_from_denominator",
+      "status": "NOT_REPRODUCED",
+      "evidence": {},
+      "details": {
+        "total_rows": 17281,
+        "fee_populated_rows": 1,
+        "actual_fee_valid_fraction": "0.00005786702158439905098084601586",
+        "health_passed": false,
+        "reported_fee_column": {
+          "first_populated_time": "2026-09-11T00:00:00Z",
+          "first_populated_at": "2026-09-11T00:00:00Z",
+          "window_rows": 17281,
+          "window_non_null_ratio": "0.00005786702158439905098084601586",
+          "non_null_count": 1,
+          "total_rows": 17281,
+          "non_null_ratio": "0.00005786702158439905098084601586",
+          "passed": false,
+          "health_passed": false,
+          "reason": "KEY_FIELD_INCOMPLETE:fee_growth_global_0",
+          "code": "KEY_FIELD_INCOMPLETE"
+        }
+      }
+    },
+    {
+      "id": "R08_failed_tests_still_shadow_complete",
+      "status": "NOT_REPRODUCED",
+      "evidence": {},
+      "details": {
+        "schema_version": 1,
+        "generated_at": "2026-09-11T14:00:00Z",
+        "code_version": "c2fb020a1ad36b7b186e71d3b25a0563b24b8e08",
+        "working_tree_clean": true,
+        "db_path": ":memory:",
+        "as_of": null,
+        "stage_a": {
+          "passed": true,
+          "blockers": [],
+          "hours_covered": null,
+          "hours_required": null,
+          "coverage_ratio": null
+        },
+        "stage_b": {
+          "passed": true,
+          "blockers": [],
+          "days_covered": null,
+          "days_required": null
+        },
+        "live_gate": {
+          "live_allowed": false,
+          "blockers": [
+            "CAPITAL_POLICY_NOT_APPROVED"
+          ]
+        },
+        "full_test": {
+          "passed": 0,
+          "failed": 3,
+          "exit_code": 1
+        },
+        "fault_injection": {
+          "report_present": true,
+          "scenarios_passed": 0,
+          "scenarios_total": 6
+        },
+        "verdict": "OBSERVATION_INCOMPLETE",
+        "verdict_reasons": [
+          "LIVE_GATE: CAPITAL_POLICY_NOT_APPROVED",
+          "FULL_TEST_NO_PASS: no passed tests recorded",
+          "FULL_TEST_FAILED: 3 failures",
+          "FULL_TEST_NONZERO_EXIT: 1",
+          "FAULT_INJECTION_FAILED: 0/6 scenarios passed"
+        ],
+        "tiny_live_authorized": false,
+        "manual_override_blocked": false
+      }
+    }
+  ],
+  "counts": {
+    "defects_reproduced": 0,
+    "probe_errors": 0
+  },
+  "defects_reproduced": 0,
+  "probe_errors": 0,
+  "github": null
+}
