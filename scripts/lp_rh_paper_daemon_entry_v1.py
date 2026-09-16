@@ -1144,6 +1144,15 @@ def run_once(cfg_path: str) -> tuple[int, dict[str, Any]]:
             last_event_time=events[-1]["sample_time"],
             episode_id=episode_id,
         )
+        # C2-FAULT barrier: emit a deterministic marker on stderr between
+        # business writes and the transaction commit so a parent process
+        # that needs to fault-inject a SIGKILL at this exact boundary can
+        # synchronise via pipe read instead of guessing with sleep().
+        import sys as _sys_fault
+        print(
+            "IN_TRANSACTION_AFTER_BUSINESS_WRITE_BEFORE_COMMIT",
+            file=_sys_fault.stderr, flush=True,
+        )
         conn.commit()
     except Exception as exc:
         try:

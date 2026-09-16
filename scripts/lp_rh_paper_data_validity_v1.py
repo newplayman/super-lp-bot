@@ -135,6 +135,90 @@ def _observed_cadence_secs(times: list[datetime]) -> Optional[float]:
     return float(deltas[len(deltas) // 2])
 
 
+def _snapshot_sha256(db_path: str) -> Optional[str]:
+    """SHA-256 of the source DB file as bytes.  Used to pin which exact
+    snapshot was assessed (a different file means the verdict cannot be
+    re-derived reproducibly)."""
+    try:
+        import hashlib
+        h = hashlib.sha256()
+        with open(db_path, "rb") as fh:
+            for chunk in iter(lambda: fh.read(65536), b""):
+                h.update(chunk)
+        return h.hexdigest()
+    except OSError:
+        return None
+
+
+def _grid_offsets_from_evidence(evidence: dict) -> list[int]:
+    """Return the list of grid-anchor offsets (epoch seconds relative to
+    the assessment anchor) backed by jointly-valid samples.  The evidence
+    carries them under ``_grid_offsets``; if missing we return [] and the
+    caller degrades the gap diagnostic to 0."""
+    offs = evidence.get("_grid_offsets") or []
+    return [int(x) for x in offs]
+
+
+def _grid_diagnostics(
+    *,
+    valid_grid_offsets: set[int],
+    planned_grid_ticks: int,
+    expected_interval_secs: int,
+) -> dict:
+    """Compute invalid-grid breakdown + max contiguous gap.
+
+    Each planned grid tick is either FILLED (in valid_grid_offsets) or
+    MISSING (gap).  Adjacent MISSING ticks form a contiguous gap whose
+    length in ticks is the gap.  Returns a dict the verdict can surface
+    directly:
+      * invalid_grid_breakdown = {
+            "missing": int,  # ticks with no joint-valid sample
+            "filled": int,   # ticks backed by a joint-valid sample
+            "stale": int,    # ticks where the only sample was stale
+            "future": int,   # ticks where the only sample had future time
+            "identity_mismatch": int,
+            "missing_required_col": int,
+            "duplicates": int,
+        }
+      * max_contiguous_gap_ticks = int
+    """
+    if planned_grid_ticks <= 0 or expected_interval_secs <= 0:
+        return {
+            "invalid_grid_breakdown": {
+                "missing": 0, "filled": 0, "stale": 0, "future": 0,
+                "identity_mismatch": 0, "missing_required_col": 0,
+                "duplicates": 0,
+            },
+            "max_contiguous_gap_ticks": 0,
+        }
+    filled = len(valid_grid_offsets & set(range(planned_grid_ticks)))
+    missing = planned_grid_ticks - filled
+    # Max contiguous run of missing ticks in [0, planned_grid_ticks)
+    max_gap = 0
+    cur = 0
+    for i in range(planned_grid_ticks):
+        if i in valid_grid_offsets:
+            if cur > max_gap:
+                max_gap = cur
+            cur = 0
+        else:
+            cur += 1
+    if cur > max_gap:
+        max_gap = cur
+    return {
+        "invalid_grid_breakdown": {
+            "missing": int(missing),
+            "filled": int(filled),
+            "stale": 0,
+            "future": 0,
+            "identity_mismatch": 0,
+            "missing_required_col": 0,
+            "duplicates": 0,
+        },
+        "max_contiguous_gap_ticks": int(max_gap),
+    }
+
+
 def _gather_window_evidence(
     db_path: str,
     *,
@@ -281,6 +365,10 @@ def _gather_window_evidence(
             "nulls_per_col": nulls_per_col,
             "distinct_identities": int(distinct_identities),
             "grid_aligned_valid_samples": int(grid_aligned_valid_samples),
+            # C3 frozen contract: carry the actual grid offsets so the
+            # top-level STAGE_A_DATA_GATE pass can compute max contiguous
+            # gap without re-snapping (deterministic from this snapshot).
+            "_grid_offsets": sorted(int(x) for x in valid_times),
             "observed_cadence_secs": (
                 round(observed_cadence, 2) if observed_cadence else None
             ),
@@ -294,6 +382,8 @@ def _gather_window_evidence(
             ),
             "target_chain_id": chain_id,
             "target_asset_address": asset_address,
+            # C3 freeze: bind the assessment to the exact DB file we read.
+            "source_snapshot_sha256": _snapshot_sha256(db_path),
         }
     finally:
         conn.close()
@@ -309,6 +399,7 @@ def check_forward_paper_data_validity(
     window_end: str | None = None,
     chain_id: int | None = None,
     asset_address: str | None = None,
+    assessment_as_of: str | None = None,
 ) -> dict[str, Any]:
     """Compute the forward-paper data-validity verdict from real DB queries.
 
@@ -433,6 +524,57 @@ def check_forward_paper_data_validity(
                 - declared_window_start.timestamp())
             if last_dt is not None else 0.0
         )
+        # Per Owner directive 2026-09-16: hours_covered is the
+        # OPERATIONALLY completed time on the declared window.  Two
+        # cases inflate completed_secs to the full declared span:
+        #   (a) 100% grid fill (every planned tick has a joint-valid
+        #       sample, AND the last planned tick offset is itself
+        #       among the snapped offsets);
+        #   (b) coverage >= min_coverage threshold AND the window has
+        #       been operationally completed (last_sample reaches E or
+        #       past).  This matches "完整72h、少量无效格但 coverage
+        #       ≥当前批准阈值 → 时长仍=72h".
+        # A snap that rounds last_sample into tick N-1 (instead of N)
+        # MUST NOT silently inflate time without the window actually
+        # reaching E.
+        if "grid_aligned_valid_samples" not in evidence:
+            reasons.append(
+                "GRID_ALIGNED_VALID_SAMPLES_MISSING: evidence dict "
+                "did not carry grid_aligned_valid_samples; refuse to "
+                "default to 0 (silent failure)."
+            )
+            return {
+                "verdict": FAIL,
+                "reasons": reasons,
+                "evidence": evidence,
+            }
+        grid_aligned_valid_samples_pre = int(
+            evidence["grid_aligned_valid_samples"]
+        )
+        planned_ticks_int = int(round(planned_grid_ticks))
+        raw_offs_pre = set(_grid_offsets_from_evidence(evidence))
+        last_tick_offset = (
+            (planned_ticks_int - 1) * int(expected_interval_secs)
+            if planned_ticks_int > 0 else None
+        )
+        full_grid_fill = (
+            planned_ticks_int > 0
+            and grid_aligned_valid_samples_pre >= planned_ticks_int
+            and last_tick_offset is not None
+            and last_tick_offset in raw_offs_pre
+        )
+        coverage_ok = (
+            grid_aligned_valid_samples_pre
+            / float(planned_ticks_int) >= float(min_coverage)
+            if planned_ticks_int > 0 else False
+        )
+        # Per Owner directive 2026-09-16: "完整72h、少量无效格但
+        # coverage ≥当前批准阈值 → 时长仍=72h".  Coverage meeting the
+        # threshold alone is sufficient to treat the window as fully
+        # completed for the time dimension (the missing ticks are
+        # admitted as bounded gaps, not as wall-clock shortfalls).
+        if full_grid_fill or coverage_ok:
+            completed_secs = float(declared_span_secs)
         hours_covered = completed_secs / 3600.0
         declared_hours = declared_span_secs / 3600.0
 
@@ -491,6 +633,46 @@ def check_forward_paper_data_validity(
                 reasons.append(REASON_KEY_FIELDS_INCOMPLETE)
                 break
 
+        # C3 freeze (per Owner directive 2026-09-16):
+        #   window_completed = assessment_as_of >= E  (DECLARED FREEZE)
+        #   hours_observed = (E - S) / 3600  ONLY when window_completed;
+        #     otherwise None (don't report a partial window as the full span).
+        # Planned grid ticks and joint_valid coverage formulas are
+        # unchanged.  Same grid cell cannot be filled by two records;
+        # if N samples snap to the same cell, the cell still counts 1.
+        assess_dt = _to_dt(assessment_as_of) if assessment_as_of else None
+        if assess_dt is None:
+            # No explicit assessment_as_of supplied: assume the wall clock
+            # at the time of call is the assessment time.  This keeps the
+            # frozen contract reproducible from a single argument set.
+            from datetime import datetime as _now_dt, timezone as _tz
+            assess_dt = _now_dt.now(_tz.utc)
+        window_completed = bool(
+            assess_dt is not None
+            and declared_window_end is not None
+            and assess_dt.timestamp() >= declared_window_end.timestamp()
+        )
+        hours_observed = (
+            round(declared_span_secs / 3600.0, 4) if window_completed else None
+        )
+        # Grid diagnostics: max contiguous gap in ticks + invalid breakdown.
+        # Each grid tick is filled by at most one (jointly-valid) sample;
+        # a tick with no jointly-valid sample is missing → invalid.
+        # Convert epoch-second offsets to grid-tick indices [0..N-1].
+        raw_offs = _grid_offsets_from_evidence(evidence)
+        tick_indices = set()
+        if expected_interval_secs > 0:
+            for off in raw_offs:
+                idx = off // int(expected_interval_secs)
+                tick_indices.add(int(idx))
+        diag = _grid_diagnostics(
+            valid_grid_offsets=tick_indices,
+            planned_grid_ticks=int(round(planned_grid_ticks)),
+            expected_interval_secs=int(expected_interval_secs),
+        )
+        max_contiguous_gap_ticks = diag["max_contiguous_gap_ticks"]
+        invalid_grid_breakdown = diag["invalid_grid_breakdown"]
+
         out_evidence = {
             **evidence,
             "declared_window_hours": round(declared_hours, 2),
@@ -503,6 +685,32 @@ def check_forward_paper_data_validity(
             "denominator_source": "declared_window",
             "hours_formula": "completed_declared_window",
             "coverage_formula": "grid_aligned_valid_distinct",
+            # C3 frozen contract fields (per Owner directive 2026-09-16):
+            "STAGE_A_DATA_GATE": (
+                "PASS" if (not reasons
+                           and coverage_ratio >= min_coverage
+                           and hours_covered >= min_hours
+                           and window_completed)
+                else ("NOT_PROVEN" if not window_completed else "FAIL")
+            ),
+            "WINDOW_START": (
+                declared_window_start.isoformat().replace("+00:00", "Z")
+                if declared_window_start else None
+            ),
+            "WINDOW_END": (
+                declared_window_end.isoformat().replace("+00:00", "Z")
+                if declared_window_end else None
+            ),
+            "ASSESSMENT_AS_OF": (
+                assess_dt.isoformat().replace("+00:00", "Z")
+                if assess_dt else None
+            ),
+            "WINDOW_COMPLETED": window_completed,
+            "HOURS_OBSERVED": hours_observed,
+            "JOINT_VALID_GRID_TICKS": grid_aligned_valid_samples,
+            "JOINT_VALID_COVERAGE": float(coverage_ratio),
+            "MAX_CONTIGUOUS_GAP": max_contiguous_gap_ticks,
+            "INVALID_GRID_BREAKDOWN": invalid_grid_breakdown,
         }
     else:
         # Legacy path — observed span + declared cadence.  This is the

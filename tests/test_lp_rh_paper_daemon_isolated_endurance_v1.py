@@ -1527,7 +1527,11 @@ class TestC2DuplicateAndFaultRollback:
         assert pre_cursor_count == 0
         assert pre_summary_count == 0
 
-        # Spawn child Python interpreter; SIGKILL after it starts.
+        # Spawn child Python interpreter.  Use a deterministic fault
+        # barrier instead of sleep(): the daemon emits a stderr marker
+        # IN_TRANSACTION_AFTER_BUSINESS_WRITE_BEFORE_COMMIT right before
+        # conn.commit(), so the parent can synchronise on that pipe line
+        # and SIGKILL precisely at the business-write / commit boundary.
         script = (
             "import sys; "
             f"sys.path.insert(0, {str(REPO_ROOT)!r}); "
@@ -1540,9 +1544,24 @@ class TestC2DuplicateAndFaultRollback:
             stdout=_subprocess.PIPE,
             stderr=_subprocess.PIPE,
             text=True,
+            bufsize=1,
         )
-        # Give the child a brief moment to begin work, then SIGKILL.
-        _time.sleep(0.05)
+        # Read stderr line-by-line until the barrier marker is seen,
+        # then SIGKILL.  This is deterministic — no sleep window.
+        barrier_seen = False
+        deadline = _time.monotonic() + 30.0
+        while _time.monotonic() < deadline:
+            line = proc.stderr.readline()
+            if not line:
+                break
+            if "IN_TRANSACTION_AFTER_BUSINESS_WRITE_BEFORE_COMMIT" in line:
+                barrier_seen = True
+                break
+        assert barrier_seen, (
+            f"child never reached barrier marker "
+            f"IN_TRANSACTION_AFTER_BUSINESS_WRITE_BEFORE_COMMIT — cannot "
+            f"inject SIGKILL at the deterministic boundary"
+        )
         proc.kill()
         try:
             stdout, stderr = proc.communicate(timeout=10)

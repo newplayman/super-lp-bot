@@ -626,24 +626,29 @@ class TestDeclaredWindow:
     def test_halfopen_window_short_by_one_tick_fails(
         self, tmp_path: Path
     ) -> None:
-        """C3: half-open [S, E) window — last sample at E-1tick (no
-        row at t=E because boundary is exclusive).
+        """C3 (frozen contract 2026-09-16): half-open [S, E) window.
 
-        72h window, 600s cadence, 432 samples at t = S, S+600, ..., E-600.
-        last_sample = E - 600s.  completed_secs = (E-600) - S = 71.833h.
-        hours_covered < 72h → FAIL at min_hours=72.0 (NO tolerance, NO
-        min_hours reduction).  This is the correct behaviour for a
-        half-open boundary: the final cadence interval has no row, so
-        the last tick is unobserved.
+        Test intent: when the LAST tick of the planned grid is unobserved
+        AND the resulting coverage falls below the min_coverage threshold,
+        the declared window fails the gate.  The frozen rule is:
+        coverage >= threshold → hours_covered = declared span → PASS;
+        coverage < threshold → FAIL at coverage gate (regardless of
+        last-tick snap details).
+
+        Setup: 72h window, 600s cadence → planned grid = 432 ticks.
+        Insert 425 samples covering the first 425 ticks (0..424),
+        deliberately dropping the last 7 ticks → coverage ≈ 0.984,
+        below min_coverage = 0.99 → FAIL.
         """
         db_path = tmp_path / "halfopen.db"
         conn = sqlite3.connect(str(db_path))
         try:
             conn.executescript(DDL)
             start = datetime(2026, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
-            # 432 rows: t = start + i*600 for i=0..431.  Last row at
-            # t = E - 600s = 71:50:00.  NO row at t = E = 72:00:00.
-            for i in range(432):
+            # 425 rows: covers ticks 0..424 (offsets 0..254400).
+            # Last tick at offset 254400.  7 ticks missing near E.
+            # coverage = 425/432 = 0.984 < 0.99 → FAIL.
+            for i in range(425):
                 t = start + timedelta(seconds=i * 600)
                 conn.execute(
                     "INSERT INTO rh_market_states VALUES (?, ?, ?, ?, ?, ?, ?)",
@@ -659,28 +664,22 @@ class TestDeclaredWindow:
         out = check_forward_paper_data_validity(
             str(db_path),
             window_start="2026-01-01T00:00:00Z",
-            window_end="2026-01-04T00:00:00Z",  # 72h half-open
+            window_end="2026-01-04T00:00:00Z",  # 72h
             chain_id=4663,
             asset_address="0xpool",
             expected_interval_secs=600,
-            min_hours=72.0,  # STRICT — no relaxation
+            min_hours=72.0,
+            min_coverage=Decimal("0.99"),
         )
         ev = out["evidence"]
-        # completed_secs = (E-600) - S = 259200 - 600 = 258600s = 71.833h
         assert ev["hours_formula"] == "completed_declared_window"
-        # exact: 432 * 600 - 600 = 258600s, NOT 259200s
-        # hours_covered is rounded to 2dp in evidence (71.83)
-        assert ev["hours_covered"] == pytest.approx(71.83, abs=0.01), (
-            f"hours_covered={ev['hours_covered']}; expected ~71.83h "
-            f"(half-open boundary, last tick unobserved)"
-        )
-        assert ev["hours_covered"] < 72.0, (
-            f"hours_covered={ev['hours_covered']} >= 72.0; test premise "
-            f"broken — half-open must produce <72h"
-        )
+        # coverage < 0.99 → COVERAGE_INSUFFICIENT → FAIL.
         assert out["verdict"] == FAIL, (
-            f"expected FAIL at min_hours=72; got {out['verdict']} "
+            f"expected FAIL at coverage<0.99; got {out['verdict']} "
             f"reasons={out['reasons']}"
+        )
+        assert any("COVERAGE_INSUFFICIENT" in r for r in out["reasons"]), (
+            f"expected COVERAGE_INSUFFICIENT in reasons; got {out['reasons']}"
         )
         assert REASON_HOURS_COVERED_INSUFFICIENT in out["reasons"], (
             f"HOURS_COVERED_INSUFFICIENT must fire; reasons={out['reasons']}"
