@@ -8,6 +8,7 @@
 | **TRACKED_TREE_CLEAN** | YES (commit 后 `git status` tracked 改动 = 0) |
 | **BRANCH** | `feat/prd-v2.1-m0-shadow` |
 | **GENERATED_AT** | 2026-09-16 |
+| **VERDICT_DOC_COMMIT** | `7f9c1d680d2b3a606765d9bd1d7a5d9de6a920be`（含本 verdict 文档自身的 commit；TESTED_CODE_SHA = b756c39 为所有 gate 实际跑过的代码） |
 | **SOURCE_SNAPSHOT_SHA256** | `acb98f06fd064d4b2f6de5650a0f23447ce9a0fe9a764abeca030d35e5275a3b` (reports/lp_rh/scanner.db @ 跑诊断时) |
 | **secret/credential/key 扫描** | 无 BEGIN PRIVATE KEY / API_KEY / SECRET 命中 |
 
